@@ -59,9 +59,14 @@ class Prototype < CLXML
   attr_reader :return_type
   attr_reader :name
 
+  def has_return_type?
+    return_type != "void"
+  end
+
   def initialize(proto)
     super
     @name = proto.search("name").text
+    @return_type = @__node.children.reject { |c| c.name == "name" }.collect(&:text).join(" ").squeeze(" ").strip
   end
 
   def decl
@@ -145,7 +150,18 @@ commands.each { |c|
   puts <<EOF
 #{c.decl} {
   printf("Called: #{c.prototype.name}\\n");
-  return #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
+EOF
+  if c.prototype.has_return_type?
+    puts <<EOF
+  #{c.prototype.return_type} _retval;
+  _retval = #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
+  return _retval;
 }
 EOF
+  else
+    puts <<EOF
+  #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
+}
+EOF
+  end
 }
