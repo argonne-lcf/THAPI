@@ -104,15 +104,48 @@ commands = funcs_e.collect { |func|
 }
 
 
+puts <<EOF
+#define CL_TARGET_OPENCL_VERSION 220
+#include <CL/opencl.h>
+#include <CL/cl_gl_ext.h>
+#include <CL/cl_egl.h>
+#include <dlfcn.h>
+#include <stdio.h>
+EOF
+
 commands.each { |c|
   puts <<EOF
 static #{c.decl_pointer} = (void *) 0x0;
 EOF
 }
+
+puts <<EOF
+static void * handle;
+__thread char buff_events[4096];
+void __load_tracer(void) __attribute__((constructor));
+void __load_tracer(void) {
+  void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
+  if( !handle ) {
+    printf("Failure: could not load OpenCL library!\\n");
+    exit(1);
+  }
+EOF
+
+commands.each { |c|
+  puts <<EOF
+  #{c.prototype.pointer_name} = dlsym(handle, "#{c.prototype.name}") ;
+EOF
+}
+
+puts <<EOF
+}
+EOF
+
 commands.each { |c|
   puts <<EOF
 #{c.decl} {
-  #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
+  printf("Called: #{c.prototype.name}\\n");
+  return #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
 }
 EOF
 }
