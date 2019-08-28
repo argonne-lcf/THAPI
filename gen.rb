@@ -1,6 +1,6 @@
 require_relative 'opencl_model'
 
-INSTR = :printf
+INSTR = :lttng
 
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 220
@@ -10,6 +10,10 @@ puts <<EOF
 #include <dlfcn.h>
 #include <stdio.h>
 EOF
+
+if INSTR == :lttng
+  puts '#include "opencl_tracepoints.h"'
+end
 
 $opencl_commands.each { |c|
   puts <<EOF
@@ -44,8 +48,9 @@ $opencl_commands.each { |c|
 #{c.decl} {
 EOF
   if INSTR == :printf
-    printf("Called: #{c.prototype.name}\\n");
-  else
+    puts '  printf("Called: #{c.prototype.name}\\n");'
+  elsif INSTR == :lttng && c.parameters.length <= 10 
+    puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{c.parameters.collect(&:name).join(", ")});"
   end
   if c.prototype.has_return_type?
     puts <<EOF

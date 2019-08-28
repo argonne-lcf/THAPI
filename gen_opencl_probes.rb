@@ -4,6 +4,7 @@ provider = :lttng_ust_opencl
 
 
 puts <<EOF
+#define CL_TARGET_OPENCL_VERSION 220
 #include <CL/opencl.h>
 #include <CL/cl_ext.h>
 #include <CL/cl_gl.h>
@@ -12,6 +13,7 @@ puts <<EOF
 EOF
 
 $opencl_commands.each { |c|
+  next if c.parameters.length > 10
   puts <<EOF
 TRACEPOINT_EVENT(
   #{provider},
@@ -23,7 +25,7 @@ EOF
     print "void"
   else
     puts c.parameters.collect { |p|
-      "#{p.callback? ? "void *" : p.decl_pointer.gsub("const","").gsub("[]", "*")}, #{p.name}"
+      "#{p.callback? ? "void *" : p.decl_pointer.gsub("[]", "*")}, #{p.name}"
     }.join(",\n    ")
   end
   puts <<EOF
