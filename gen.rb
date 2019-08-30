@@ -49,7 +49,7 @@ $opencl_commands.each { |c|
 EOF
   if INSTR == :printf
     puts '  printf("Called: #{c.prototype.name}\\n");'
-  elsif INSTR == :lttng && c.parameters.length <= 10 
+  elsif INSTR == :lttng && c.parameters.length <= 10
     puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{c.parameters.collect(&:name).join(", ")});"
   end
   if c.prototype.has_return_type?

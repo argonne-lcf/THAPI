@@ -1,0 +1,9 @@
+#!/bin/sh
+lttng-sessiond --daemonize
+lttng list --userspace
+lttng create my-userspace-opencl-session
+lttng enable-event --userspace lttng_ust_opencl:*
+lttng start
+LD_PRELOAD=PATH_TO_LIB/tracer.so "$@"
+lttng stop
+lttng destroy
