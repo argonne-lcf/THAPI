@@ -56,13 +56,19 @@ EOF
     puts <<EOF
   #{c.prototype.return_type} _retval;
   _retval = #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
+EOF
+    if INSTR == :lttng && c.parameters.length <= 10
+      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{c.parameters.collect(&:name).join(", ")});"
+    end
+    puts <<EOF
   return _retval;
 }
 EOF
   else
-    puts <<EOF
-  #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
-}
-EOF
+    puts "  #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});"
+    if INSTR == :lttng && c.parameters.length <= 10
+      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{c.parameters.collect(&:name).join(", ")});"
+    end
+    puts "}"
   end
 }

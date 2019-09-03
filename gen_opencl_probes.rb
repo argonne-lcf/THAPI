@@ -12,12 +12,12 @@ puts <<EOF
 #include <CL/cl_egl.h>
 EOF
 
-$opencl_commands.each { |c|
-  next if c.parameters.length > 10
+
+tracepoint_lambda = lambda { |c, dir|
   puts <<EOF
 TRACEPOINT_EVENT(
   #{provider},
-  #{c.prototype.name}_start,
+  #{c.prototype.name}_#{dir},
   TP_ARGS(
 EOF
   print "    "
@@ -35,6 +35,12 @@ EOF
 )
 
 EOF
+}
+
+$opencl_commands.each { |c|
+  next if c.parameters.length > 10
+  tracepoint_lambda.call(c, :start)
+  tracepoint_lambda.call(c, :stop)
 }
 
 puts <<EOF
