@@ -47,27 +47,30 @@ $opencl_commands.each { |c|
   puts <<EOF
 #{c.decl} {
 EOF
+  params = []
+  params = c.parameters.collect(&:name) unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
   if INSTR == :printf
     puts '  printf("Called: #{c.prototype.name}\\n");'
-  elsif INSTR == :lttng && c.parameters.length <= 10
-    puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{c.parameters.collect(&:name).join(", ")});"
+  elsif INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
+    puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{params.join(", ")});"
   end
   if c.prototype.has_return_type?
     puts <<EOF
   #{c.prototype.return_type} _retval;
-  _retval = #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});
+  _retval = #{c.prototype.pointer_name}(#{params.join(", ")});
 EOF
-    if INSTR == :lttng && c.parameters.length <= 10
-      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{c.parameters.collect(&:name).join(", ")});"
+    if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
+      params.push "_retval"
+      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{params.join(", ")});"
     end
     puts <<EOF
   return _retval;
 }
 EOF
   else
-    puts "  #{c.prototype.pointer_name}(#{c.parameters.collect(&:name).join(", ")});"
-    if INSTR == :lttng && c.parameters.length <= 10
-      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{c.parameters.collect(&:name).join(", ")});"
+    puts "  #{c.prototype.pointer_name}(#{params.join(", ")});"
+    if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
+      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{params.join(", ")});"
     end
     puts "}"
   end
