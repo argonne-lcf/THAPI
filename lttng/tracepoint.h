@@ -97,7 +97,7 @@ extern "C" {
 #define _TP_EXVAR18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)		b,d,f,h,j,l,n,p,r
 #define _TP_EXVAR20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		b,d,f,h,j,l,n,p,r,t
 #define _TP_EXVAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	b,d,f,h,j,l,n,p,r,t,v
-#define _TP_EXVAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,x,y)	b,d,f,h,j,l,n,p,r,t,v,y
+#define _TP_EXVAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	b,d,f,h,j,l,n,p,r,t,v,x
 
 #define _TP_EXDATA_VAR0()							__tp_data
 #define _TP_EXDATA_VAR1(a)							__tp_data
@@ -112,7 +112,7 @@ extern "C" {
 #define _TP_EXDATA_VAR18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)			__tp_data,b,d,f,h,j,l,n,p,r
 #define _TP_EXDATA_VAR20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		__tp_data,b,d,f,h,j,l,n,p,r,t
 #define _TP_EXDATA_VAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)		__tp_data,b,d,f,h,j,l,n,p,r,t,v
-#define _TP_EXDATA_VAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,x,y)	__tp_data,b,d,f,h,j,l,n,p,r,t,v,y
+#define _TP_EXDATA_VAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	__tp_data,b,d,f,h,j,l,n,p,r,t,v,x
 
 /*
  * _TP_EXPROTO* extract tuples of type, var.
@@ -131,7 +131,7 @@ extern "C" {
 #define _TP_EXPROTO18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)		a b,c d,e f,g h,i j,k l,m n,o p,q r
 #define _TP_EXPROTO20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		a b,c d,e f,g h,i j,k l,m n,o p,q r,s t
 #define _TP_EXPROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
-#define _TP_EXPROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,x,y)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,x y
+#define _TP_EXPROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
 
 #define _TP_EXDATA_PROTO0()							void *__tp_data
 #define _TP_EXDATA_PROTO1(a)							void *__tp_data
@@ -146,7 +146,7 @@ extern "C" {
 #define _TP_EXDATA_PROTO18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)			void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r
 #define _TP_EXDATA_PROTO20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t
 #define _TP_EXDATA_PROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)		void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
-#define _TP_EXDATA_PROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,x,y)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,x y
+#define _TP_EXDATA_PROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
 
 /* Preprocessor trick to count arguments. Inspired from sdt.h. */
 #define _TP_NARGS(...)			__TP_NARGS(__VA_ARGS__, 24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
