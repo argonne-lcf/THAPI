@@ -86,18 +86,19 @@ extern "C" {
  */
 #define _TP_EXVAR0()
 #define _TP_EXVAR1(a)
-#define _TP_EXVAR2(a,b)							b
-#define _TP_EXVAR4(a,b,c,d)						b,d
-#define _TP_EXVAR6(a,b,c,d,e,f)						b,d,f
-#define _TP_EXVAR8(a,b,c,d,e,f,g,h)					b,d,f,h
-#define _TP_EXVAR10(a,b,c,d,e,f,g,h,i,j)				b,d,f,h,j
-#define _TP_EXVAR12(a,b,c,d,e,f,g,h,i,j,k,l)				b,d,f,h,j,l
-#define _TP_EXVAR14(a,b,c,d,e,f,g,h,i,j,k,l,m,n)			b,d,f,h,j,l,n
-#define _TP_EXVAR16(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)			b,d,f,h,j,l,n,p
-#define _TP_EXVAR18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)		b,d,f,h,j,l,n,p,r
-#define _TP_EXVAR20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		b,d,f,h,j,l,n,p,r,t
-#define _TP_EXVAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	b,d,f,h,j,l,n,p,r,t,v
-#define _TP_EXVAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	b,d,f,h,j,l,n,p,r,t,v,x
+#define _TP_EXVAR2(a,b)								b
+#define _TP_EXVAR4(a,b,c,d)							b,d
+#define _TP_EXVAR6(a,b,c,d,e,f)							b,d,f
+#define _TP_EXVAR8(a,b,c,d,e,f,g,h)						b,d,f,h
+#define _TP_EXVAR10(a,b,c,d,e,f,g,h,i,j)					b,d,f,h,j
+#define _TP_EXVAR12(a,b,c,d,e,f,g,h,i,j,k,l)					b,d,f,h,j,l
+#define _TP_EXVAR14(a,b,c,d,e,f,g,h,i,j,k,l,m,n)				b,d,f,h,j,l,n
+#define _TP_EXVAR16(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)				b,d,f,h,j,l,n,p
+#define _TP_EXVAR18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)			b,d,f,h,j,l,n,p,r
+#define _TP_EXVAR20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)			b,d,f,h,j,l,n,p,r,t
+#define _TP_EXVAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)		b,d,f,h,j,l,n,p,r,t,v
+#define _TP_EXVAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)		b,d,f,h,j,l,n,p,r,t,v,x
+#define _TP_EXVAR26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	b,d,f,h,j,l,n,p,r,t,v,x,z
 
 #define _TP_EXDATA_VAR0()							__tp_data
 #define _TP_EXDATA_VAR1(a)							__tp_data
@@ -113,25 +114,27 @@ extern "C" {
 #define _TP_EXDATA_VAR20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		__tp_data,b,d,f,h,j,l,n,p,r,t
 #define _TP_EXDATA_VAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)		__tp_data,b,d,f,h,j,l,n,p,r,t,v
 #define _TP_EXDATA_VAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	__tp_data,b,d,f,h,j,l,n,p,r,t,v,x
+#define _TP_EXDATA_VAR26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	__tp_data,b,d,f,h,j,l,n,p,r,t,v,x,z
 
 /*
  * _TP_EXPROTO* extract tuples of type, var.
  * _TP_EXPROTO1 and _TP_EXDATA_PROTO1 are needed for -std=c99.
  */
-#define _TP_EXPROTO0()							void
-#define _TP_EXPROTO1(a)							void
-#define _TP_EXPROTO2(a,b)						a b
-#define _TP_EXPROTO4(a,b,c,d)						a b,c d
-#define _TP_EXPROTO6(a,b,c,d,e,f)					a b,c d,e f
-#define _TP_EXPROTO8(a,b,c,d,e,f,g,h)					a b,c d,e f,g h
-#define _TP_EXPROTO10(a,b,c,d,e,f,g,h,i,j)				a b,c d,e f,g h,i j
-#define _TP_EXPROTO12(a,b,c,d,e,f,g,h,i,j,k,l)				a b,c d,e f,g h,i j,k l
-#define _TP_EXPROTO14(a,b,c,d,e,f,g,h,i,j,k,l,m,n)			a b,c d,e f,g h,i j,k l,m n
-#define _TP_EXPROTO16(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)			a b,c d,e f,g h,i j,k l,m n,o p
-#define _TP_EXPROTO18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)		a b,c d,e f,g h,i j,k l,m n,o p,q r
-#define _TP_EXPROTO20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		a b,c d,e f,g h,i j,k l,m n,o p,q r,s t
-#define _TP_EXPROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
-#define _TP_EXPROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
+#define _TP_EXPROTO0()								void
+#define _TP_EXPROTO1(a)								void
+#define _TP_EXPROTO2(a,b)							a b
+#define _TP_EXPROTO4(a,b,c,d)							a b,c d
+#define _TP_EXPROTO6(a,b,c,d,e,f)						a b,c d,e f
+#define _TP_EXPROTO8(a,b,c,d,e,f,g,h)						a b,c d,e f,g h
+#define _TP_EXPROTO10(a,b,c,d,e,f,g,h,i,j)					a b,c d,e f,g h,i j
+#define _TP_EXPROTO12(a,b,c,d,e,f,g,h,i,j,k,l)					a b,c d,e f,g h,i j,k l
+#define _TP_EXPROTO14(a,b,c,d,e,f,g,h,i,j,k,l,m,n)				a b,c d,e f,g h,i j,k l,m n
+#define _TP_EXPROTO16(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p)				a b,c d,e f,g h,i j,k l,m n,o p
+#define _TP_EXPROTO18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)			a b,c d,e f,g h,i j,k l,m n,o p,q r
+#define _TP_EXPROTO20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)			a b,c d,e f,g h,i j,k l,m n,o p,q r,s t
+#define _TP_EXPROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)		a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
+#define _TP_EXPROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)		a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
+#define _TP_EXPROTO26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x,y z
 
 #define _TP_EXDATA_PROTO0()							void *__tp_data
 #define _TP_EXDATA_PROTO1(a)							void *__tp_data
@@ -147,10 +150,11 @@ extern "C" {
 #define _TP_EXDATA_PROTO20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)		void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t
 #define _TP_EXDATA_PROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)		void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
 #define _TP_EXDATA_PROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
+#define _TP_EXDATA_PROTO26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x,y z
 
 /* Preprocessor trick to count arguments. Inspired from sdt.h. */
-#define _TP_NARGS(...)			__TP_NARGS(__VA_ARGS__, 24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
-#define __TP_NARGS(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24, N, ...)	N
+#define _TP_NARGS(...)			__TP_NARGS(__VA_ARGS__, 26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+#define __TP_NARGS(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26, N, ...)	N
 #define _TP_PROTO_N(N, ...)		_TP_PARAMS(_TP_COMBINE_TOKENS(_TP_EXPROTO, N)(__VA_ARGS__))
 #define _TP_VAR_N(N, ...)		_TP_PARAMS(_TP_COMBINE_TOKENS(_TP_EXVAR, N)(__VA_ARGS__))
 #define _TP_DATA_PROTO_N(N, ...)	_TP_PARAMS(_TP_COMBINE_TOKENS(_TP_EXDATA_PROTO, N)(__VA_ARGS__))
