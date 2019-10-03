@@ -7,7 +7,7 @@ VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$/
 
 ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clEnqueueMigrateMemObjectEXT$/
 
-LTTNG_AVAILABLE_PARAMS = 13
+LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
 #map = Hash::new { |h, k| h[k] = [] }

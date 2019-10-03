@@ -53,6 +53,8 @@ EOF
     puts '  printf("Called: #{c.prototype.name}\\n");'
   elsif INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
     puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{params.join(", ")});"
+  else
+    $stderr.puts "Skipped: #{c.prototype.name}"
   end
   if c.prototype.has_return_type?
     puts <<EOF
