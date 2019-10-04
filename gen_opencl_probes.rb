@@ -35,6 +35,27 @@ EOF
   puts <<EOF
   ),
   TP_FIELDS(
+EOF
+  fields = []
+  if dir == :start
+    c.parameters.collect(&:lttng_in_type).compact.each { |func, *args|
+      fields.push("#{func}(#{args.join(", ")})")
+    }
+    c.meta_parameters.collect(&:lttng_in_type).compact.each { |func, *args|
+      fields.push("#{func}(#{args.join(", ")})")
+    }
+  elsif dir == :stop
+    r = c.prototype.lttng_return_type
+    if r
+      func, *args = r
+      fields.push("#{func}(#{args.join(", ")})")
+    end
+    c.meta_parameters.collect(&:lttng_out_type).compact.each { |func, *args|
+      fields.push("#{func}(#{args.join(", ")})")
+    }
+  end
+  puts "    " << fields.join("\n    ")
+  puts <<EOF
   )
 )
 

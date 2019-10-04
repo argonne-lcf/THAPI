@@ -18,6 +18,9 @@ funcs_e = doc.xpath("//commands/command").reject do |l|
   name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS)
 end.collect
 
+CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue", "cl_mem", "cl_program", "cl_kernel", "cl_event", "cl_sampler"]
+
+CL_EXT_OBJECTS = ["CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
 
 CL_OBJECTS_FORMAT = {
   "cl_platform_id" => "%p",
@@ -81,11 +84,26 @@ class Parameter < CLXML
     return @__pointer if @__pointer
     @__node.children.collect { |n|
       break if n.name == "name"
-      if n.text.match("*")
-        @__pointer == true
+      if n.text.match("\\*")
+        @__pointer = true
         break
       end
-    } 
+    }
+    @__pointer
+  end
+
+  def lttng_in_type
+    if pointer?
+      return [:ctf_integer_hex, :intptr_t, @name, @name]
+    end
+    case @type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      return [:ctf_integer_hex, :intptr_t, @name, @name]
+    end
+    nil
+  end
+
+  def lttng_out_type
   end
 
 end
@@ -117,17 +135,110 @@ class Prototype < CLXML
     @name + "_ptr"
   end
 
+  def lttng_return_type
+    if @return_type.match("\\*")
+      return [:ctf_integer_hex, :intptr_t, "_retval", "_retval"]
+    end
+    case @return_type
+    when "cl_int"
+      return [:ctf_integer, :cl_int, "errcode_ret", "_retval"]
+    when *CL_OBJECTS
+      return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^cl_/,""), "_retval"]
+    when *CL_EXT_OBJECTS
+      return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "_retval"]
+    end
+    nil
+  end
+
 end
+
+class MetaParameter
+  def self.create_if_match(command)
+    nil
+  end
+
+  def lttng_in_type
+    nil
+  end
+
+  def lttng_out_type
+    nil
+  end
+end
+
+class EventWaitList < MetaParameter
+
+  def self.create_if_match(command)
+    el = command.parameters.select { |p| p.name == "event_wait_list" }.first
+    if el
+      return self::new(:event_wait_list, :num_events_in_wait_list)
+    end
+    nil
+  end
+
+  def initialize(name, count_name)
+    @name = name
+    @count_name = count_name
+  end
+
+  def lttng_in_type
+    return [:ctf_sequence_hex, :intptr_t, :event_wait_list_vals, @name, :cl_uint, "event_wait_list == NULL ? 0 : #{@count_name}"]
+  end
+end
+
+class ErrCodeRet < MetaParameter
+
+  def self.create_if_match(command)
+    err = command.parameters.select { |p| p.name == "errcode_ret" }.first
+    if err
+      return self::new(:errcode_ret)
+    end
+    nil
+  end
+
+  def initialize(name)
+    @name = name
+  end
+
+  def lttng_out_type
+    return [:ctf_integer, :cl_int, @name, "#{@name} == NULL ? 0 : *#{@name}"]
+  end
+
+end
+
+class Event < MetaParameter
+
+  def self.create_if_match(command)
+    ev = command.parameters.select { |p| p.name == "event" && p.pointer? }.first
+    if ev
+      return self::new(:event)
+    end
+    nil
+  end
+
+  def initialize(name)
+    @name = name
+  end
+
+  def lttng_out_type
+    return [:ctf_integer_hex, :intptr_t, @name, "#{@name} == NULL ? 0 : *#{@name}"]
+  end
+
+end
+
+META_PARAMETERS = [EventWaitList, ErrCodeRet, Event]
 
 class Command < CLXML
 
   attr_reader :prototype
   attr_reader :parameters
+  attr_reader :meta_parameters
 
   def initialize( command )
     super
     @prototype = Prototype::new( command.search("proto" ) )
     @parameters = command.search("param").collect { |p| Parameter::new(p) }
+    @meta_parameters = META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
   end
 
   def decl
