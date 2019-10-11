@@ -22,6 +22,9 @@ CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue"
 
 CL_EXT_OBJECTS = ["CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
 
+CL_INT_SCALARS = ["cl_int", "cl_uint", "size_t", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
+CL_FLOAT_SCALARS = ["cl_float", "cl_double"]
+
 CL_OBJECTS_FORMAT = {
   "cl_platform_id" => "%p",
   "cl_device_id" => "%p",
@@ -99,6 +102,10 @@ class Parameter < CLXML
     case @type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
       return [:ctf_integer_hex, :intptr_t, @name, @name]
+    when *CL_INT_SCALARS
+      return [:ctf_integer, @type, @name, @name]
+    when *CL_FLOAT_SCALARS
+      return [:ctf_float, @type, @name, @name]
     end
     nil
   end
