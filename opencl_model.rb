@@ -18,12 +18,28 @@ funcs_e = doc.xpath("//commands/command").reject do |l|
   name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS)
 end.collect
 
+typedef_e = doc.xpath("//types/type").select do |l|
+  l["category"] == "define" && l.search("type").size > 0
+end.collect
+
 CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue", "cl_mem", "cl_program", "cl_kernel", "cl_event", "cl_sampler"]
 
 CL_EXT_OBJECTS = ["CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
 
-CL_INT_SCALARS = ["cl_int", "cl_uint", "size_t", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
-CL_FLOAT_SCALARS = ["cl_float", "cl_double"]
+CL_INT_SCALARS = ["intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
+CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
+CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
+
+CL_TYPE_MAP = typedef_e.collect { |l|
+  [l.search("name").text, l.search("type").text]
+}.to_h
+
+CL_TYPE_MAP.transform_values! { |v|
+  until CL_BASE_TYPES.include?( v )
+    v = CL_TYPE_MAP[v]
+  end
+  v
+}
 
 CL_OBJECTS_FORMAT = {
   "cl_platform_id" => "%p",
@@ -99,13 +115,15 @@ class Parameter < CLXML
     if pointer?
       return [:ctf_integer_hex, :intptr_t, @name, @name]
     end
-    case @type
+    t = @type
+    t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
+    case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
       return [:ctf_integer_hex, :intptr_t, @name, @name]
     when *CL_INT_SCALARS
-      return [:ctf_integer, @type, @name, @name]
+      return [:ctf_integer, t, @name, @name]
     when *CL_FLOAT_SCALARS
-      return [:ctf_float, @type, @name, @name]
+      return [:ctf_float, t, @name, @name]
     end
     nil
   end
