@@ -28,6 +28,7 @@ CL_EXT_OBJECTS = ["CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
 
 CL_INT_SCALARS = ["intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
 CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
+CL_FLOAT_SCALARS_MAP = {"cl_half" => "cl_ushort", "cl_float" => "cl_uint", "cl_double" => "cl_ulong"}
 CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
 
 CL_TYPE_MAP = typedef_e.collect { |l|
@@ -35,7 +36,7 @@ CL_TYPE_MAP = typedef_e.collect { |l|
 }.to_h
 
 CL_TYPE_MAP.transform_values! { |v|
-  until CL_BASE_TYPES.include?( v )
+  until CL_BASE_TYPES.include? v
     v = CL_TYPE_MAP[v]
   end
   v
@@ -129,6 +130,7 @@ class Parameter < CLXML
   end
 
   def lttng_out_type
+    nil
   end
 
 end
@@ -166,11 +168,13 @@ class Prototype < CLXML
     end
     case @return_type
     when "cl_int"
-      return [:ctf_integer, :cl_int, "errcode_ret", "_retval"]
+      return [:ctf_integer, :cl_int, "errcode_ret_val", "_retval"]
     when *CL_OBJECTS
       return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^cl_/,""), "_retval"]
     when *CL_EXT_OBJECTS
       return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "_retval"]
+    when "void*"
+      return [:ctf_integer_hex, :intptr_t, "ret_ptr", "_retval"]
     end
     nil
   end
@@ -187,73 +191,116 @@ class MetaParameter
   end
 end
 
-class AutoMetaParameter < MetaParameter
+class OutMetaParameter < MetaParameter
+  def lttng_out_type
+    @lttng_out_type
+  end
+end
+
+class InMetaParameter < MetaParameter
+  def lttng_in_type
+    @lttng_in_type
+  end
+end
+
+class OutScalar < OutMetaParameter
+  def initialize(name, type)
+    @name = name
+    @type = type
+    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_INT_SCALARS
+      @lttng_out_type = [:ctf_integer, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_out_type = [:ctf_float, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+    else
+      raise "Unknown Type: #{type.inspect}!"
+    end
+  end
+end
+
+class OutArray < OutMetaParameter
+  def initialize(name, sname, type)
+    @name = name
+    @sname = sname
+    @type = type
+    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+    when *CL_INT_SCALARS
+      @lttng_out_type = [:ctf_sequence, type, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+    else
+      raise "Unknown Type: #{type.inspect}!"
+    end
+  end
+end
+
+class InArray < InMetaParameter
+  def initialize(name, sname, type)
+    @name = name
+    @sname = sname
+    @type = type
+    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+    when *CL_INT_SCALARS
+      @lttng_in_type = [:ctf_sequence, type, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+    else
+      raise "Unknown Type: #{type.inspect}!"
+    end
+  end
+end
+
+class AutoMetaParameter
   def self.create_if_match(command)
     nil
   end
 end
 
 class EventWaitList < AutoMetaParameter
-
   def self.create_if_match(command)
     el = command.parameters.select { |p| p.name == "event_wait_list" }.first
     if el
-      return self::new(:event_wait_list, :num_events_in_wait_list)
+      return InArray::new("event_wait_list", "num_events_in_wait_list", "cl_event")
     end
     nil
-  end
-
-  def initialize(name, count_name)
-    @name = name
-    @count_name = count_name
-  end
-
-  def lttng_in_type
-    return [:ctf_sequence_hex, :intptr_t, :event_wait_list_vals, @name, :cl_uint, "event_wait_list == NULL ? 0 : #{@count_name}"]
   end
 end
 
 class ErrCodeRet < AutoMetaParameter
-
   def self.create_if_match(command)
     err = command.parameters.select { |p| p.name == "errcode_ret" }.first
     if err
-      return self::new(:errcode_ret)
+      return OutScalar::new("errcode_ret", "cl_int")
     end
     nil
   end
-
-  def initialize(name)
-    @name = name
-  end
-
-  def lttng_out_type
-    return [:ctf_integer, :cl_int, @name, "#{@name} == NULL ? 0 : *#{@name}"]
-  end
-
 end
 
 class Event < AutoMetaParameter
-
   def self.create_if_match(command)
     ev = command.parameters.select { |p| p.name == "event" && p.pointer? }.first
     if ev
-      return self::new(:event)
+      return OutScalar::new("event", "cl_event")
     end
     nil
   end
+end
 
-  def initialize(name)
-    @name = name
-  end
-
-  def lttng_out_type
-    return [:ctf_integer_hex, :intptr_t, @name, "#{@name} == NULL ? 0 : *#{@name}"]
-  end
-
+def register_meta_parameter( mehtod, type, *args )
+  META_PARAMETERS[mehtod].push type::new(*args)
 end
 
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, Event]
+META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 
 class Command < CLXML
 
@@ -266,6 +313,7 @@ class Command < CLXML
     @prototype = Prototype::new( command.search("proto" ) )
     @parameters = command.search("param").collect { |p| Parameter::new(p) }
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
+    @meta_parameters += META_PARAMETERS[@prototype.name]
   end
 
   def decl
@@ -277,6 +325,13 @@ class Command < CLXML
   end
 
 end
+
+
+register_meta_parameter "clGetPlatformIDs", OutScalar, "num_platforms", "cl_uint"
+register_meta_parameter "clGetPlatformIDs", OutArray, "platforms", "num_entries", "cl_platform_id"
+register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_offset", "work_dim", "size_t"
+register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_size", "work_dim", "size_t"
+register_meta_parameter "clEnqueueNDRangeKernel", InArray, "local_work_size", "work_dim", "size_t"
 
 $opencl_commands = funcs_e.collect { |func|
   Command::new(func)
