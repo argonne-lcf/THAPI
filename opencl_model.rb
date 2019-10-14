@@ -178,10 +178,6 @@ class Prototype < CLXML
 end
 
 class MetaParameter
-  def self.create_if_match(command)
-    nil
-  end
-
   def lttng_in_type
     nil
   end
@@ -191,7 +187,13 @@ class MetaParameter
   end
 end
 
-class EventWaitList < MetaParameter
+class AutoMetaParameter < MetaParameter
+  def self.create_if_match(command)
+    nil
+  end
+end
+
+class EventWaitList < AutoMetaParameter
 
   def self.create_if_match(command)
     el = command.parameters.select { |p| p.name == "event_wait_list" }.first
@@ -211,7 +213,7 @@ class EventWaitList < MetaParameter
   end
 end
 
-class ErrCodeRet < MetaParameter
+class ErrCodeRet < AutoMetaParameter
 
   def self.create_if_match(command)
     err = command.parameters.select { |p| p.name == "errcode_ret" }.first
@@ -231,7 +233,7 @@ class ErrCodeRet < MetaParameter
 
 end
 
-class Event < MetaParameter
+class Event < AutoMetaParameter
 
   def self.create_if_match(command)
     ev = command.parameters.select { |p| p.name == "event" && p.pointer? }.first
@@ -251,7 +253,7 @@ class Event < MetaParameter
 
 end
 
-META_PARAMETERS = [EventWaitList, ErrCodeRet, Event]
+AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, Event]
 
 class Command < CLXML
 
@@ -263,7 +265,7 @@ class Command < CLXML
     super
     @prototype = Prototype::new( command.search("proto" ) )
     @parameters = command.search("param").collect { |p| Parameter::new(p) }
-    @meta_parameters = META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
+    @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
   end
 
   def decl
