@@ -30,6 +30,9 @@ EOF
     if c.prototype.has_return_type? && dir == :stop
       params.push("#{c.prototype.return_type}, _retval");
     end
+    params += c.tracepoint_parameters.collect { |p|
+      "#{p.type}, #{p.name}"
+    }
     puts params.join(",\n    ")
   end
   puts <<EOF

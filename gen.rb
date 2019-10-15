@@ -52,7 +52,14 @@ EOF
   if INSTR == :printf
     puts '  printf("Called: #{c.prototype.name}\\n");'
   elsif INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
-    puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{params.join(", ")});"
+    tracepoint_params = c.tracepoint_parameters.collect(&:name)
+    c.tracepoint_parameters.each { |p|
+      puts "  #{p.type} #{p.name};"
+    }
+    c.tracepoint_parameters.each { |p|
+      puts p.init
+    }
+    puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{(params+tracepoint_params).join(", ")});"
   else
     $stderr.puts "Skipped: #{c.prototype.name}"
   end
@@ -63,7 +70,7 @@ EOF
 EOF
     if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
       params.push "_retval"
-      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{params.join(", ")});"
+      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{(params+tracepoint_params).join(", ")});"
     end
     puts <<EOF
   return _retval;
@@ -72,7 +79,7 @@ EOF
   else
     puts "  #{c.prototype.pointer_name}(#{params.join(", ")});"
     if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
-      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{params.join(", ")});"
+      puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{(params+tracepoint_params).join(", ")});"
     end
     puts "}"
   end

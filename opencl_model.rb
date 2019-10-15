@@ -26,7 +26,7 @@ CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue"
 
 CL_EXT_OBJECTS = ["CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
 
-CL_INT_SCALARS = ["intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
+CL_INT_SCALARS = ["int", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
 CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
 CL_FLOAT_SCALARS_MAP = {"cl_half" => "cl_ushort", "cl_float" => "cl_uint", "cl_double" => "cl_ulong"}
 CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
@@ -204,9 +204,10 @@ class InMetaParameter < MetaParameter
 end
 
 class OutScalar < OutMetaParameter
-  def initialize(name, type)
+  def initialize(command, name)
+    @command = command
     @name = name
-    @type = type
+    type = command[name].type.gsub("*", "")
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
@@ -222,18 +223,23 @@ class OutScalar < OutMetaParameter
 end
 
 class OutArray < OutMetaParameter
-  def initialize(name, sname, type)
+  def initialize(command, name, sname)
+    @command = command
     @name = name
     @sname = sname
-    @type = type
+    type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    stype = command[sname].type
+    stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_INT_SCALARS
-      @lttng_out_type = [:ctf_sequence, type, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_out_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_FLOAT_SCALARS
-      @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+    when ""
+      @lttng_out_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
@@ -241,21 +247,40 @@ class OutArray < OutMetaParameter
 end
 
 class InArray < InMetaParameter
-  def initialize(name, sname, type)
+  def initialize(command, name, sname)
+    @command = command
     @name = name
     @sname = sname
-    @type = type
+    type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    stype = command[sname].type
+    stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_INT_SCALARS
-      @lttng_in_type = [:ctf_sequence, type, name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_in_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_FLOAT_SCALARS
-      @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, :size_t, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
+  end
+end
+
+class InNullArray < InArray
+  def initialize(command, name)
+    sname = "_#{name}_size"
+    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
+  #{sname} = 0;
+  if(#{name} != NULL) {
+    while(#{name}[#{sname}] != 0) {
+      #{sname}++;
+    }
+    #{sname}++;
+  }
+EOF
+    super(command, name, sname)
   end
 end
 
@@ -269,51 +294,86 @@ class EventWaitList < AutoMetaParameter
   def self.create_if_match(command)
     el = command.parameters.select { |p| p.name == "event_wait_list" }.first
     if el
-      return InArray::new("event_wait_list", "num_events_in_wait_list", "cl_event")
+      return InArray::new(command, "event_wait_list", "num_events_in_wait_list")
     end
     nil
   end
 end
 
-class ErrCodeRet < AutoMetaParameter
+class AutoOutScalar
+  def self.create(name)
+    str = <<EOF
+    Class::new(AutoMetaParameter) do
+      def self.create_if_match(command)
+        par = command.parameters.find { |p| p.name == "#{name}" && p.pointer? }
+        if par
+          return OutScalar::new(command, "#{name}")
+        end
+        nil
+      end
+    end
+EOF
+    eval str
+  end
+end
+
+class Value < AutoMetaParameter
   def self.create_if_match(command)
-    err = command.parameters.select { |p| p.name == "errcode_ret" }.first
-    if err
-      return OutScalar::new("errcode_ret", "cl_int")
+    pv = command.parameters.select { |p| p.name == "param_value" }.first
+    if pv
+      return OutArray::new(command, "param_value", "param_value_size")
     end
     nil
   end
 end
 
-class Event < AutoMetaParameter
-  def self.create_if_match(command)
-    ev = command.parameters.select { |p| p.name == "event" && p.pointer? }.first
-    if ev
-      return OutScalar::new("event", "cl_event")
-    end
-    nil
+class TracepointParameter
+  attr_reader :name
+  attr_reader :type
+  attr_reader :init
+
+  def initialize(name, type, init)
+    @name = name
+    @type = type
+    @init = init
   end
 end
+
+ErrCodeRet = AutoOutScalar::create("errcode_ret")
+
+ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret")
+
+Event = AutoOutScalar::create("event")
 
 def register_meta_parameter( mehtod, type, *args )
-  META_PARAMETERS[mehtod].push type::new(*args)
+  META_PARAMETERS[mehtod].push [type, args]
 end
 
-AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, Event]
+AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, Value, Event]
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 
 class Command < CLXML
 
   attr_reader :prototype
   attr_reader :parameters
+  attr_reader :tracepoint_parameters
   attr_reader :meta_parameters
 
   def initialize( command )
     super
     @prototype = Prototype::new( command.search("proto" ) )
     @parameters = command.search("param").collect { |p| Parameter::new(p) }
+    @tracepoint_parameters = []
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@prototype.name]
+    @meta_parameters += META_PARAMETERS[@prototype.name].collect { |type, args|
+      type::new(self, *args)
+    }
+  end
+
+  def [](name)
+    res = @parameters.find { |p| p.name == name }
+    return res if res
+    @tracepoint_parameters.find { |p| p.name == name }
   end
 
   def decl
@@ -326,12 +386,15 @@ class Command < CLXML
 
 end
 
-
-register_meta_parameter "clGetPlatformIDs", OutScalar, "num_platforms", "cl_uint"
-register_meta_parameter "clGetPlatformIDs", OutArray, "platforms", "num_entries", "cl_platform_id"
-register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_offset", "work_dim", "size_t"
-register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_size", "work_dim", "size_t"
-register_meta_parameter "clEnqueueNDRangeKernel", InArray, "local_work_size", "work_dim", "size_t"
+register_meta_parameter "clGetPlatformIDs", OutScalar, "num_platforms"
+register_meta_parameter "clGetPlatformIDs", OutArray, "platforms", "num_entries"
+register_meta_parameter "clGetDeviceIDs", OutScalar, "num_devices"
+register_meta_parameter "clGetDeviceIDs", OutArray, "devices", "num_entries"
+register_meta_parameter "clCreateContext", InNullArray, "properties"
+register_meta_parameter "clCreateContextFromType", InNullArray, "properties"
+register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_offset", "work_dim"
+register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_size", "work_dim"
+register_meta_parameter "clEnqueueNDRangeKernel", InArray, "local_work_size", "work_dim"
 
 $opencl_commands = funcs_e.collect { |func|
   Command::new(func)
