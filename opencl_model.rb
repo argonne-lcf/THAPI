@@ -22,6 +22,10 @@ typedef_e = doc.xpath("//types/type").select do |l|
   l["category"] == "define" && l.search("type").size > 0
 end.collect
 
+struct_e = doc.xpath("//types/type").select do |l|
+  l["category"] == "struct"
+end.collect
+
 CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue", "cl_mem", "cl_program", "cl_kernel", "cl_event", "cl_sampler"]
 
 CL_EXT_OBJECTS = ["CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
@@ -42,18 +46,6 @@ CL_TYPE_MAP.transform_values! { |v|
   v
 }
 
-CL_OBJECTS_FORMAT = {
-  "cl_platform_id" => "%p",
-  "cl_device_id" => "%p",
-  "cl_context" => "%p",
-  "cl_command_queue" => "%p",
-  "cl_mem" => "%p",
-  "cl_program" => "%p",
-  "cl_kernel" => "%p",
-  "cl_event" => "%p",
-  "cl_sampler" => "%p"
-}
-
 class CLXML
 
   attr_reader :__node
@@ -71,8 +63,7 @@ class CLXML
 
 end
 
-class Parameter < CLXML
-
+class Declaration < CLXML
   attr_reader :type
   attr_reader :name
 
@@ -91,17 +82,9 @@ class Parameter < CLXML
     @__node.children.collect { |n| "#{n.name == "name" ? "" : n.text}" }.join(" ").squeeze(" ")
   end
 
-  def callback?
-    @__callback if !@__callback.nil?
-    @__callback = false
-    @__node.children.collect { |n| @__callback = true if n.text.match("CL_CALLBACK") }
-    @__callback
-  end
-
   def pointer?
     @__pointer if !@__pointer.nil?
-    @__pointer = callback?
-    return @__pointer if @__pointer
+    @__pointer = false
     @__node.children.collect { |n|
       break if n.name == "name"
       if n.text.match("\\*")
@@ -110,6 +93,62 @@ class Parameter < CLXML
       end
     }
     @__pointer
+  end
+
+end
+
+class Member < Declaration
+  def initialize(command, member, prefix)
+    super(member)
+    name = "#{prefix}_#{@name}"
+    expr = "#{prefix}->#{@name}"
+    @lttng_type = [:ctf_integer_hex, :intptr_t, name, expr] if pointer?
+    t = @type
+    t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
+    case t
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      @lttng_type = [:ctf_integer_hex, :intptr_t, name, expr]
+    when *CL_INT_SCALARS
+      @lttng_type = [:ctf_integer, t, name, expr]
+    when *CL_FLOAT_SCALARS
+      @lttng_type = [:ctf_float, t, name, expr]
+    end
+   end
+
+   def lttng_in_type
+     @lttng_type
+   end
+
+   def lttng_out_type
+     @lttng_type
+   end
+
+end
+
+CL_STRUCT_MAP = struct_e.collect { |s|
+  members = s.search("member")
+  [s["name"], members]
+}.to_h
+
+CL_STRUCTS = CL_STRUCT_MAP.keys
+
+class Parameter < Declaration
+
+  def initialize(param)
+    super
+    @__callback = nil
+  end
+
+  def callback?
+    @__callback if !@__callback.nil?
+    @__callback = false
+    @__node.children.collect { |n| @__callback = true if n.text.match("CL_CALLBACK") }
+    @__callback
+  end
+
+  def pointer?
+    return true if callback?
+    super
   end
 
   def lttng_in_type
@@ -182,6 +221,11 @@ class Prototype < CLXML
 end
 
 class MetaParameter
+  def initialize(command, name)
+    @command = command
+    @name = name
+  end
+
   def lttng_in_type
     nil
   end
@@ -205,8 +249,7 @@ end
 
 class OutScalar < OutMetaParameter
   def initialize(command, name)
-    @command = command
-    @name = name
+    super
     type = command[name].type.gsub("*", "")
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     case type
@@ -224,8 +267,7 @@ end
 
 class OutArray < OutMetaParameter
   def initialize(command, name, sname)
-    @command = command
-    @name = name
+    super(command, name)
     @sname = sname
     type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
@@ -248,8 +290,7 @@ end
 
 class InArray < InMetaParameter
   def initialize(command, name, sname)
-    @command = command
-    @name = name
+    super(command, name)
     @sname = sname
     type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
@@ -292,7 +333,7 @@ end
 
 class EventWaitList < AutoMetaParameter
   def self.create_if_match(command)
-    el = command.parameters.select { |p| p.name == "event_wait_list" }.first
+    el = command.parameters.find { |p| p.name == "event_wait_list" }
     if el
       return InArray::new(command, "event_wait_list", "num_events_in_wait_list")
     end
@@ -317,9 +358,9 @@ EOF
   end
 end
 
-class Value < AutoMetaParameter
+class ParamValue < AutoMetaParameter
   def self.create_if_match(command)
-    pv = command.parameters.select { |p| p.name == "param_value" }.first
+    pv = command.parameters.find { |p| p.name == "param_value" }
     if pv
       return OutArray::new(command, "param_value", "param_value_size")
     end
@@ -345,11 +386,18 @@ ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret")
 
 Event = AutoOutScalar::create("event")
 
-def register_meta_parameter( mehtod, type, *args )
-  META_PARAMETERS[mehtod].push [type, args]
+def register_meta_parameter( method, type, *args )
+  META_PARAMETERS[method].push [type, args]
 end
 
-AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, Value, Event]
+def register_meta_struct(method, name, type)
+  raise "Unknown struct: #{type}!" unless CL_STRUCTS.include?(type)
+  CL_STRUCT_MAP[type].each { |m|
+    META_PARAMETERS[method].push [Member, [m, name]]
+  }
+end
+
+AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 
 class Command < CLXML
@@ -395,6 +443,8 @@ register_meta_parameter "clCreateContextFromType", InNullArray, "properties"
 register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_offset", "work_dim"
 register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_size", "work_dim"
 register_meta_parameter "clEnqueueNDRangeKernel", InArray, "local_work_size", "work_dim"
+register_meta_parameter "clSetCommandQueueProperty", OutScalar, "old_properties"
+register_meta_struct    "clCreateImage2D", "image_format", "cl_image_format"
 
 $opencl_commands = funcs_e.collect { |func|
   Command::new(func)
