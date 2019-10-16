@@ -336,6 +336,13 @@ EOF
   end
 end
 
+class InString < InMetaParameter
+  def initialize(command, name)
+    super
+    @lttng_in_type = [:ctf_string, name+"_val", name]
+  end
+end
+
 class AutoMetaParameter
   def self.create_if_match(command)
     nil
