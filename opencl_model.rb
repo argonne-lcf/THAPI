@@ -73,6 +73,7 @@ class Declaration < CLXML
     super
     @name = param.search("name").text
     @type = param.search("type").text
+    @type += "*" if decl.match?(/\*\*/)
     @__callback = nil
   end
 
@@ -284,6 +285,8 @@ class OutArray < OutMetaParameter
       @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when ""
       @lttng_out_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+    when /\*/
+      @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
@@ -305,6 +308,8 @@ class InArray < InMetaParameter
       @lttng_in_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_FLOAT_SCALARS
       @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+    when /\*/
+      @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
