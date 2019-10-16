@@ -104,7 +104,7 @@ class Member < Declaration
   def initialize(command, member, prefix)
     super(member)
     name = "#{prefix}_#{@name}"
-    expr = "#{prefix}->#{@name}"
+    expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
     @lttng_type = [:ctf_integer_hex, :intptr_t, name, expr] if pointer?
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
@@ -283,6 +283,8 @@ class OutArray < OutMetaParameter
       @lttng_out_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_FLOAT_SCALARS
       @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+    when *CL_STRUCTS
+      @lttng_out_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
     when ""
       @lttng_out_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when /\*/
@@ -308,6 +310,8 @@ class InArray < InMetaParameter
       @lttng_in_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_FLOAT_SCALARS
       @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+    when *CL_STRUCTS
+      @lttng_in_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
     when /\*/
       @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
