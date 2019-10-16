@@ -268,6 +268,30 @@ class OutScalar < OutMetaParameter
   end
 end
 
+class InFixedArray  < InMetaParameter
+  def initialize(command, name, count)
+    super(command, name)
+    type = command[name].type
+    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      @lttng_out_type = [:ctf_array_hex, :intptr_t, name+"_vals", name, count]
+    when *CL_INT_SCALARS
+      @lttng_out_type = [:ctf_array, type, name+"_vals", name, count]
+    when *CL_FLOAT_SCALARS
+      @lttng_out_type = [:ctf_array_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, count]
+    when *CL_STRUCTS
+      @lttng_out_type = [:ctf_array_hex, :uint8_t, name+"_vals", name, count]
+    when ""
+      @lttng_out_type = [:ctf_array_hex, :uint8_t, name+"_vals", name, count]
+    when /\*/
+      @lttng_out_type = [:ctf_array_hex, :intptr_t, name+"_vals", name, count]
+    else
+      raise "Unknown Type: #{type.inspect}!"
+    end
+  end
+end
+
 class OutArray < OutMetaParameter
   def initialize(command, name, sname = "num_entries")
     super(command, name)
