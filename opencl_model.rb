@@ -269,7 +269,7 @@ class OutScalar < OutMetaParameter
 end
 
 class OutArray < OutMetaParameter
-  def initialize(command, name, sname)
+  def initialize(command, name, sname = "num_entries")
     super(command, name)
     @sname = sname
     type = command[name].type
@@ -296,7 +296,7 @@ class OutArray < OutMetaParameter
 end
 
 class InArray < InMetaParameter
-  def initialize(command, name, sname)
+  def initialize(command, name, sname = "num_entries")
     super(command, name)
     @sname = sname
     type = command[name].type
@@ -312,6 +312,8 @@ class InArray < InMetaParameter
       @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_STRUCTS
       @lttng_in_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
+    when ""
+      @lttng_in_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when /\*/
       @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
@@ -453,9 +455,10 @@ class Command < CLXML
 end
 
 register_meta_parameter "clGetPlatformIDs", OutScalar, "num_platforms"
-register_meta_parameter "clGetPlatformIDs", OutArray, "platforms", "num_entries"
+register_meta_parameter "clGetPlatformIDs", OutArray, "platforms"
+
 register_meta_parameter "clGetDeviceIDs", OutScalar, "num_devices"
-register_meta_parameter "clGetDeviceIDs", OutArray, "devices", "num_entries"
+register_meta_parameter "clGetDeviceIDs", OutArray, "devices"
 register_meta_parameter "clCreateContext", InNullArray, "properties"
 register_meta_parameter "clCreateContextFromType", InNullArray, "properties"
 register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_offset", "work_dim"
