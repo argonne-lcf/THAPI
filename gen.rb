@@ -22,8 +22,6 @@ EOF
 }
 
 puts <<EOF
-static void * handle;
-__thread char buff_events[4096];
 void __load_tracer(void) __attribute__((constructor));
 void __load_tracer(void) {
   void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
