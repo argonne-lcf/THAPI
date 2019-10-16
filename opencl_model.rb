@@ -30,7 +30,7 @@ CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue"
 
 CL_EXT_OBJECTS = ["cl_GLsync", "CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
 
-CL_INT_SCALARS = ["int", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
+CL_INT_SCALARS = ["unsigned int", "int", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
 CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
 CL_FLOAT_SCALARS_MAP = {"cl_half" => "cl_ushort", "cl_float" => "cl_uint", "cl_double" => "cl_ulong"}
 CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
