@@ -584,6 +584,80 @@ register_meta_parameter "clEnqueueAcquireGLObjects", InArray, "mem_objects", "nu
 
 register_meta_parameter "clEnqueueReleaseGLObjects", InArray, "mem_objects", "num_objects"
 
+register_meta_parameter "clEnqueueReadBufferRect", InFixedArray, "buffer_offset", 3
+register_meta_parameter "clEnqueueReadBufferRect", InFixedArray, "host_offset", 3
+register_meta_parameter "clEnqueueReadBufferRect", InFixedArray, "region", 3
+
+register_meta_parameter "clEnqueueWriteBufferRect", InFixedArray, "buffer_offset", 3
+register_meta_parameter "clEnqueueWriteBufferRect", InFixedArray, "host_offset", 3
+register_meta_parameter "clEnqueueWriteBufferRect", InFixedArray, "region", 3
+
+register_meta_parameter "clEnqueueCopyBufferRect", InFixedArray, "src_origin", 3
+register_meta_parameter "clEnqueueCopyBufferRect", InFixedArray, "dst_origin", 3
+register_meta_parameter "clEnqueueCopyBufferRect", InFixedArray, "region", 3
+
+register_meta_parameter "clCreateSubDevicesEXT", DeviceFissionPropertyList, "properties"
+register_meta_parameter "clCreateSubDevicesEXT", OutScalar, "num_devices"
+register_meta_parameter "clCreateSubDevicesEXT", OutArray, "out_devices"
+
+register_meta_parameter "clCreateSubDevices", DeviceFissionPropertyList, "properties"
+register_meta_parameter "clCreateSubDevices", OutScalar, "num_devices_ret"
+register_meta_parameter "clCreateSubDevices", OutArray, "out_devices", "num_devices"
+
+register_meta_struct    "clCreateImage", "image_format", "cl_image_format"
+register_meta_struct    "clCreateImage", "image_desc", "cl_image_desc"
+
+register_meta_parameter "clCreateProgramWithBuiltInKernels", InArray, "device_list", "num_devices"
+register_meta_parameter "clCreateProgramWithBuiltInKernels", InString, "kernel_names"
+
+register_meta_parameter "clCompileProgram", InArray, "device_list", "num_devices"
+register_meta_parameter "clCompileProgram", InString, "options"
+register_meta_parameter "clCompileProgram", InArray, "input_headers", "num_input_headers"
+register_meta_parameter "clCompileProgram", InArray, "header_include_names", "num_input_headers"
+
+register_meta_parameter "clLinkProgram", InArray, "device_list", "num_devices"
+register_meta_parameter "clLinkProgram", InString, "options"
+register_meta_parameter "clLinkProgram", InArray, "input_programs", "num_input_programs"
+
+register_meta_parameter "clEnqueueFillBuffer", InArray, "pattern", "pattern_size"
+
+register_meta_parameter "clEnqueueFillImage", InFixedArray, "origin", 3
+register_meta_parameter "clEnqueueFillImage", InFixedArray, "region", 3
+
+register_meta_parameter "clEnqueueMigrateMemObjects", InArray, "mem_objects", "num_mem_objects"
+
+register_meta_parameter "clGetExtensionFunctionAddressForPlatform", InString, "func_name"
+
+register_meta_parameter "clCreateFromEGLImageKHR", InNullArray, "properties"
+
+register_meta_parameter "clEnqueueAcquireEGLObjectsKHR", InArray, "mem_objects", "num_objects"
+
+register_meta_parameter "clEnqueueReleaseEGLObjectsKHR", InArray, "mem_objects", "num_objects"
+
+register_meta_parameter "clCreateCommandQueueWithProperties", InNullArray, "properties"
+
+register_meta_parameter "clCreatePipe", InNullArray, "properties"
+
+register_meta_parameter "clEnqueueSVMFree", InArray, "svm_pointers", "num_svm_pointers"
+
+register_meta_parameter "clEnqueueSVMMemFill", InArray, "pattern", "pattern_size"
+
+register_meta_parameter "clCreateSamplerWithProperties", InNullArray, "sampler_properties"
+
+register_meta_parameter "clSetKernelExecInfo", InArray, "param_value", "param_value_size"
+
+register_meta_parameter "clEnqueueSVMMigrateMem", InArray, "svm_pointers", "num_svm_pointers"
+register_meta_parameter "clEnqueueSVMMigrateMem", InArray, "sizes", "num_svm_pointers"
+
+register_meta_parameter "clGetDeviceAndHostTimer", OutScalar, "device_timestamp"
+register_meta_parameter "clGetDeviceAndHostTimer", OutScalar, "host_timestamp"
+
+register_meta_parameter "clGetHostTimer", OutScalar, "host_timestamp"
+
+register_meta_parameter "clGetKernelSubGroupInfo", InArray, "input_value", "input_value_size"
+
+register_meta_parameter "clSetProgramSpecializationConstant", InArray, "spec_value", "spec_size"
+
 $opencl_commands = funcs_e.collect { |func|
   Command::new(func)
 }
