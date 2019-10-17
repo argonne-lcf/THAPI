@@ -254,6 +254,7 @@ end
 class OutScalar < OutMetaParameter
   def initialize(command, name)
     super
+    raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type.gsub("*", "")
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     case type
@@ -272,6 +273,7 @@ end
 class InFixedArray  < InMetaParameter
   def initialize(command, name, count)
     super(command, name)
+    raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     case type
@@ -297,8 +299,10 @@ class OutArray < OutMetaParameter
   def initialize(command, name, sname = "num_entries")
     super(command, name)
     @sname = sname
+    raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    raise "Couldn't find variable #{sname} for #{command.prototype.name}!" unless command[sname]
     stype = command[sname].type
     stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
     case type
@@ -324,8 +328,10 @@ class InArray < InMetaParameter
   def initialize(command, name, sname = "num_entries")
     super(command, name)
     @sname = sname
+    raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    raise "Couldn't find variable #{sname} for #{command.prototype.name}!" unless command[sname]
     stype = command[sname].type
     stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
     case type
