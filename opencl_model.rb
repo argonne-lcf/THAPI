@@ -353,16 +353,40 @@ class InArray < InMetaParameter
   end
 end
 
+class DeviceFissionPropertyList < InArray
+  def initialize(command, name)
+    sname = "_#{name}_size"
+    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
+  #{sname} = 0;
+  if(#{name} != NULL) {
+    while(#{name}[#{sname}++] != CL_PROPERTIES_LIST_END_EXT) {
+      switch(#{name}[#{sname}]) {
+      case CL_DEVICE_PARTITION_EQUALLY_EXT:
+      case CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT:
+        #{sname}++; //value
+        break;
+      case CL_DEVICE_PARTITION_BY_COUNTS_EXT:
+        while(#{name}[#{sname}++] != CL_PARTITION_BY_COUNTS_LIST_END_EXT);
+        break;
+      case CL_DEVICE_PARTITION_BY_NAMES_EXT:
+        while(#{name}[#{sname}] != CL_PARTITION_BY_NAMES_LIST_END_EXT);
+        break;
+      }
+    }
+  }
+EOF
+    super(command, name, sname)
+  end
+end
+
+
 class InNullArray < InArray
   def initialize(command, name)
     sname = "_#{name}_size"
     command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
   #{sname} = 0;
   if(#{name} != NULL) {
-    while(#{name}[#{sname}] != 0) {
-      #{sname}++;
-    }
-    #{sname}++;
+    while(#{name}[#{sname}++] != 0);
   }
 EOF
     super(command, name, sname)
