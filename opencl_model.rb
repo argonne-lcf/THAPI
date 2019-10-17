@@ -101,10 +101,11 @@ class Declaration < CLXML
 end
 
 class Member < Declaration
-  def initialize(command, member, prefix)
+  def initialize(command, member, prefix, dir = :start)
     super(member)
     name = "#{prefix}_#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
+    @dir = dir
     @lttng_type = [:ctf_integer_hex, :intptr_t, name, expr] if pointer?
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
@@ -119,11 +120,11 @@ class Member < Declaration
    end
 
    def lttng_in_type
-     @lttng_type
+     @dir == :start ? @lttng_type : nil
    end
 
    def lttng_out_type
-     @lttng_type
+     @dir == :start ? nil : @lttng_type
    end
 
 end
