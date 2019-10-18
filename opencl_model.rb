@@ -507,6 +507,14 @@ class Command < CLXML
     "CL_API_ENTRY " + @prototype.decl_pointer + "(" + @parameters.collect(&:decl_pointer).join(", ") + ")"
   end
 
+  def event?
+    returns_event? || @parameters.find { |p| p.name == "event" && p.pointer? }
+  end
+
+  def returns_event?
+    prototype.return_type == "cl_event"
+  end
+
 end
 
 register_meta_parameter "clGetPlatformIDs", OutScalar, "num_platforms"

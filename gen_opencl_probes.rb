@@ -9,6 +9,48 @@ puts <<EOF
 #include <CL/cl_gl.h>
 #include <CL/cl_gl_ext.h>
 #include <CL/cl_egl.h>
+
+TRACEPOINT_EVENT(
+  #{provider},
+  event_profiling,
+  TP_ARGS(
+    int, status,
+    cl_event, event
+  ),
+  TP_FIELDS(
+    ctf_integer(int, status, status)
+    ctf_integer_hex(intptr_t, event, event)
+  )
+)
+
+TRACEPOINT_EVENT(
+  #{provider},
+  event_profiling_results,
+  TP_ARGS(
+    cl_event, event,
+    cl_int, event_command_exec_status,
+    cl_int, queued_status,
+    cl_ulong, queued,
+    cl_int, submit_status,
+    cl_ulong, submit,
+    cl_int, start_status,
+    cl_ulong, start,
+    cl_int, end_status,
+    cl_ulong, end
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, event, event)
+    ctf_integer(int, event_command_exec_status, event_command_exec_status)
+    ctf_integer(cl_int, queued_status, queued_status)
+    ctf_integer(cl_ulong, queued, queued)
+    ctf_integer(cl_int, submit_status, submit_status)
+    ctf_integer(cl_ulong, submit, submit)
+    ctf_integer(cl_int, start_status, start_status)
+    ctf_integer(cl_ulong, start, start)
+    ctf_integer(cl_int, end_status, end_status)
+    ctf_integer(cl_ulong, end, end)
+  )
+)
 EOF
 
 
