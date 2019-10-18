@@ -3,7 +3,7 @@ arg_count = ARGV[0].to_i
 puts <<EOF
 /*
  * TP_ARGS takes tuples of type, argument separated by a comma.
- * It can take up to #{arg_count} tuples (which means that less than 12 tuples is
+ * It can take up to #{arg_count} tuples (which means that less than #{arg_count} tuples is
  * fine too).
  * Each tuple is also separated by a comma.
  */
