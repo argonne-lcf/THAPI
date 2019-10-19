@@ -87,6 +87,52 @@ EOF
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
+    elsif c.prototype.name == "clCreateCommandQueueWithProperties"
+      puts <<EOF
+  cl_queue_properties *_profiling_properties = NULL;
+  if (do_profile) {
+    int _found_queue_properties = 0;
+    int _queue_properties_index = 0;
+    int _properties_count = 0;
+    if (properties) {
+      while(properties[_properties_count]) {
+        if (properties[_properties_count] == CL_QUEUE_PROPERTIES){
+          _found_queue_properties = 1;
+          _queue_properties_index = _properties_count;
+        }
+        _properties_count += 2;
+      }
+      _properties_count++;
+      if (!_found_queue_properties)
+        _properties_count +=2;
+    } else
+      _properties_count = 3;
+    _profiling_properties = (cl_queue_properties *)malloc(_properties_count*sizeof(cl_queue_properties));
+    if (_profiling_properties) {
+      if (properties) {
+        int _i = 0;
+        while(properties[_i]) {
+          _profiling_properties[_i] = properties[_i];
+          _profiling_properties[_i+1] = properties[_i+1];
+          _i += 2;
+        }
+        if (_found_queue_properties) {
+          _profiling_properties[_queue_properties_index+1] |= CL_QUEUE_PROFILING_ENABLE;
+          _profiling_properties[_i] = 0;
+        } else {
+          _profiling_properties[_i++] = CL_QUEUE_PROPERTIES;
+          _profiling_properties[_i++] = CL_QUEUE_PROFILING_ENABLE;
+          _profiling_properties[_i] = 0;
+        }
+      } else {
+        _profiling_properties[0] = CL_QUEUE_PROPERTIES;
+        _profiling_properties[1] = CL_QUEUE_PROFILING_ENABLE;
+        _profiling_properties[2] = 0;
+      }
+      properties = _profiling_properties;
+    }
+  }
+EOF
     end
     if c.event? && !c.returns_event?
       event = c.parameters.find { |p| p.name == "event" && p.pointer? }
@@ -107,6 +153,9 @@ EOF
   #{c.prototype.return_type} _retval;
   _retval = #{c.prototype.pointer_name}(#{params.join(", ")});
 EOF
+    if c.prototype.name == "clCreateCommandQueueWithProperties"
+      puts "  if (_profiling_properties) free(_profiling_properties);"
+    end
     if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
       if c.event?
         puts "  if (do_profile) {"
@@ -132,12 +181,17 @@ EOF
     puts <<EOF
   return _retval;
 }
+
 EOF
   else
     puts "  #{c.prototype.pointer_name}(#{params.join(", ")});"
+    if c.prototype.name == "clCreateCommandQueueWithProperties"
+      puts "  if (_profiling_properties) free(_profiling_properties);"
+    end
     if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
       puts "  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{(params+tracepoint_params).join(", ")});"
     end
     puts "}"
+    puts
   end
 }
