@@ -284,9 +284,9 @@ class InFixedArray  < InMetaParameter
     when *CL_FLOAT_SCALARS
       @lttng_in_type = [:ctf_array_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, count]
     when *CL_STRUCTS
-      @lttng_in_type = [:ctf_array_hex, :uint8_t, name+"_vals", name, count]
+      @lttng_in_type = [:ctf_array_text, :uint8_t, name+"_vals", name, count]
     when ""
-      @lttng_in_type = [:ctf_array_hex, :uint8_t, name+"_vals", name, count]
+      @lttng_in_type = [:ctf_array_text, :uint8_t, name+"_vals", name, count]
     when /\*/
       @lttng_in_type = [:ctf_array_hex, :intptr_t, name+"_vals", name, count]
     else
@@ -313,9 +313,9 @@ class OutArray < OutMetaParameter
     when *CL_FLOAT_SCALARS
       @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_STRUCTS
-      @lttng_out_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
+      @lttng_out_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
     when ""
-      @lttng_out_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_out_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when /\*/
       @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
@@ -342,9 +342,9 @@ class InArray < InMetaParameter
     when *CL_FLOAT_SCALARS
       @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when *CL_STRUCTS
-      @lttng_in_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
+      @lttng_in_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
     when ""
-      @lttng_in_type = [:ctf_sequence_hex, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
+      @lttng_in_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     when /\*/
       @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
     else
@@ -676,3 +676,4 @@ buffer_create_info = InMetaParameter::new(create_sub_buffer, "buffer_create_info
 buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :uint8_t, "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
 
 create_sub_buffer.meta_parameters.push buffer_create_info
+
