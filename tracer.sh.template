@@ -2,7 +2,8 @@
 lttng-sessiond --daemonize
 lttng list --userspace
 lttng create my-userspace-opencl-session
-lttng enable-event --userspace lttng_ust_opencl:*
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:*
 lttng start
 LD_PRELOAD=PATH_TO_LIB/tracer.so "$@"
 lttng stop
