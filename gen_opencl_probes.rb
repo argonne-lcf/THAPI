@@ -82,6 +82,19 @@ TRACEPOINT_EVENT(
     ctf_sequence_text(unsigned char, binary, binaries[index], size_t, binaries[index] == NULL ? 0 : lengths[index])
   )
 )
+
+TRACEPOINT_EVENT(
+  #{provider},
+  program_il,
+  TP_ARGS(
+    const size_t, length,
+    const void*, il
+  ),
+  TP_FIELDS(
+    ctf_integer(size_t, length, length)
+    ctf_sequence_text(uint8_t, il, il, size_t, length)
+  )
+)
 EOF
 
 

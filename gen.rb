@@ -171,6 +171,13 @@ EOF
   }
 EOF
     end
+    if c.prototype.name == "clCreateProgramWithIL"
+      puts <<EOF
+  if( tracepoint_enabled(#{provider}, program_il) && do_programs && il != NULL) {
+    do_tracepoint(#{provider}, program_il, length, il);
+  }
+EOF
+    end
     if c.event? && !c.returns_event?
       event = c.parameters.find { |p| p.name == "event" && p.pointer? }
       puts <<EOF
