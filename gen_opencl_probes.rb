@@ -9,6 +9,7 @@ puts <<EOF
 #include <CL/cl_gl.h>
 #include <CL/cl_gl_ext.h>
 #include <CL/cl_egl.h>
+#include <string.h>
 
 TRACEPOINT_EVENT(
   #{provider},
@@ -49,6 +50,36 @@ TRACEPOINT_EVENT(
     ctf_integer(cl_ulong, start, start)
     ctf_integer(cl_int, end_status, end_status)
     ctf_integer(cl_ulong, end, end)
+  )
+)
+
+TRACEPOINT_EVENT(
+  #{provider},
+  program_string,
+  TP_ARGS(
+    int, index,
+    size_t , length,
+    const char **, strings
+  ),
+  TP_FIELDS(
+    ctf_integer(int, index, index)
+    ctf_integer(size_t, length, length)
+    ctf_sequence_text(char, string, strings[index], size_t, length)
+  )
+)
+
+TRACEPOINT_EVENT(
+  #{provider},
+  program_binary,
+  TP_ARGS(
+    int, index,
+    const size_t *, lengths,
+    const unsigned char **, binaries
+  ),
+  TP_FIELDS(
+    ctf_integer(int, index, index)
+    ctf_integer(size_t, length, lengths[index])
+    ctf_sequence_text(unsigned char, binary, binaries[index], size_t, binaries[index] == NULL ? 0 : lengths[index])
   )
 )
 EOF
