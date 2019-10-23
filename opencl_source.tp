@@ -1,0 +1,49 @@
+#define CL_TARGET_OPENCL_VERSION 220
+#include <CL/opencl.h>
+#include <CL/cl_ext.h>
+#include <CL/cl_gl.h>
+#include <CL/cl_gl_ext.h>
+#include <CL/cl_egl.h>
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_source,
+  program_string,
+  TP_ARGS(
+    int, index,
+    size_t , length,
+    const char **, strings
+  ),
+  TP_FIELDS(
+    ctf_integer(int, index, index)
+    ctf_integer(size_t, length, length)
+    ctf_sequence_text(char, string, strings[index], size_t, length)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_source,
+  program_binary,
+  TP_ARGS(
+    int, index,
+    const size_t *, lengths,
+    const unsigned char **, binaries
+  ),
+  TP_FIELDS(
+    ctf_integer(int, index, index)
+    ctf_integer(size_t, length, lengths[index])
+    ctf_sequence_text(unsigned char, binary, binaries[index], size_t, binaries[index] == NULL ? 0 : lengths[index])
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_source,
+  program_il,
+  TP_ARGS(
+    const size_t, length,
+    const void*, il
+  ),
+  TP_FIELDS(
+    ctf_integer(size_t, length, length)
+    ctf_sequence_text(uint8_t, il, il, size_t, length)
+  )
+)

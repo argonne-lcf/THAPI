@@ -17,6 +17,8 @@ EOF
 
 if INSTR == :lttng
   puts '#include "opencl_tracepoints.h"'
+  puts '#include "opencl_profiling.h"'
+  puts '#include "opencl_source.h"'
 end
 
 $opencl_commands.each { |c|
@@ -31,20 +33,19 @@ $clGetEventProfilingInfo = $opencl_commands.find { |c| c.prototype.name == "clGe
 
 puts <<EOF
 void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
-  cl_ulong queued;
-  cl_ulong submit;
-  cl_ulong start;
-  cl_ulong end;
-  cl_int queued_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_QUEUED, sizeof(cl_ulong), &queued, NULL);
-  cl_int submit_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_SUBMIT, sizeof(cl_ulong), &submit, NULL);
-  cl_int start_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
-  cl_int end_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
-  tracepoint(#{provider}, event_profiling_results, event, event_command_exec_status,
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling_results)) {
+    cl_ulong queued;
+    cl_ulong submit;
+    cl_ulong start;
+    cl_ulong end;
+    cl_int queued_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_QUEUED, sizeof(cl_ulong), &queued, NULL);
+    cl_int submit_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_SUBMIT, sizeof(cl_ulong), &submit, NULL);
+    cl_int start_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
+    cl_int end_status = #{$clGetEventProfilingInfo.prototype.pointer_name}(event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
+    do_tracepoint(#{provider}_profiling, event_profiling_results, event, event_command_exec_status,
               queued_status, queued, submit_status, submit, start_status, start, end_status, end);
+  }
 }
-
-static int do_profile = 0;
-static int do_programs = 0;
 
 void __load_tracer(void) __attribute__((constructor));
 void __load_tracer(void) {
@@ -52,14 +53,6 @@ void __load_tracer(void) {
   if( !handle ) {
     printf("Failure: could not load OpenCL library!\\n");
     exit(1);
-  }
-  const char * s = getenv("LTTNG_UST_OPENCL_PROFILE");
-  if (s) {
-    do_profile = 1;
-  }
-  s = getenv("LTTNG_UST_OPENCL_PROGRAMS");
-  if (s) {
-    do_programs = 1;
   }
 EOF
 
@@ -92,7 +85,7 @@ EOF
     puts "  tracepoint(#{provider}, #{c.prototype.name}_start, #{(params+tracepoint_params).join(", ")});"
     if c.prototype.name == "clCreateCommandQueue"
       puts <<EOF
-  if (do_profile) {
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
@@ -100,7 +93,7 @@ EOF
     if c.prototype.name == "clCreateCommandQueueWithProperties"
       puts <<EOF
   cl_queue_properties *_profiling_properties = NULL;
-  if (do_profile) {
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
     int _found_queue_properties = 0;
     int _queue_properties_index = 0;
     int _properties_count = 0;
@@ -146,7 +139,7 @@ EOF
     end
     if c.prototype.name == "clCreateProgramWithSource"
       puts <<EOF
-  if( tracepoint_enabled(#{provider}, program_string) && do_programs && strings != NULL) {
+  if (tracepoint_enabled(#{provider}_source, program_string) && strings != NULL) {
     int index;
     for (index = 0; index < count; index++) {
       size_t length = 0;
@@ -156,25 +149,25 @@ EOF
         else
           length = lengths[index];
       }
-      do_tracepoint(#{provider}, program_string, index, length, strings);
+      do_tracepoint(#{provider}_source, program_string, index, length, strings);
     }
   }
 EOF
     end
     if c.prototype.name == "clCreateProgramWithBinary"
       puts <<EOF
-  if( tracepoint_enabled(#{provider}, program_binary) && do_programs && binaries != NULL && lengths != NULL) {
+  if (tracepoint_enabled(#{provider}_source, program_binary) && binaries != NULL && lengths != NULL) {
     int index;
     for (index = 0; index < num_devices; index++) {
-      do_tracepoint(#{provider}, program_binary, index, lengths, binaries);
+      do_tracepoint(#{provider}_source, program_binary, index, lengths, binaries);
     }
   }
 EOF
     end
     if c.prototype.name == "clCreateProgramWithIL"
       puts <<EOF
-  if( tracepoint_enabled(#{provider}, program_il) && do_programs && il != NULL) {
-    do_tracepoint(#{provider}, program_il, length, il);
+  if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
+    do_tracepoint(#{provider}_source, program_il, length, il);
   }
 EOF
     end
@@ -182,10 +175,12 @@ EOF
       event = c.parameters.find { |p| p.name == "event" && p.pointer? }
       puts <<EOF
   int _release_event = 0;
+  int _event_profiling = 0;
   cl_event profiling_event;
-  if (do_profile && #{event.name} == NULL) {
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling) && #{event.name} == NULL) {
     #{event.name} = &profiling_event;
     _release_event = 1;
+    _event_profiling = 1;
   }
 EOF
     end
@@ -202,22 +197,26 @@ EOF
     end
     if INSTR == :lttng && c.parameters.length <= LTTNG_USABLE_PARAMS
       if c.event?
-        puts "  if (do_profile) {"
         if !c.returns_event?
           event = c.parameters.find { |p| p.name == "event" && p.pointer? }
           puts <<EOF
+  if (_event_profiling) {
     int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(*#{event.name}, CL_COMPLETE, event_notify, NULL);
-    tracepoint(#{provider}, event_profiling, _set_retval, *#{event.name});
+    do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, *#{event.name});
     if(_release_event) {
       #{$clReleaseEvent.prototype.pointer_name}(*#{event.name});
       #{event.name} = NULL;
     }
+  }
 EOF
         else
-          puts "  int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(_retval, CL_COMPLETE, event_notify, NULL);"
-          puts "  tracepoint(#{provider}, event_profiling, _set_retval, _retval);"
+          puts <<EOF
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling) ) {
+    int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(_retval, CL_COMPLETE, event_notify, NULL);
+    do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, _retval);
+  }
+EOF
         end
-        puts "  }"
       end
       params.push "_retval"
       puts "  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(params+tracepoint_params).join(", ")});"

@@ -4,6 +4,15 @@ lttng list --userspace
 lttng create my-userspace-opencl-session
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:*
+while true; do
+  case "$1" in
+    -p | --profiling ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*;;
+    -s | --source ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:* ;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+
 lttng start
 LD_PRELOAD=PATH_TO_LIB/tracer.so "$@"
 lttng stop
