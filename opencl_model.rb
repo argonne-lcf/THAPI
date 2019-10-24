@@ -475,8 +475,8 @@ def register_meta_struct(method, name, type)
 end
 
 
-def register_prelude(method, code)
-  PRELUDES[method].push(code)
+def register_prologue(method, code)
+  PROLOGUES[method].push(code)
 end
 
 def register_epilogue(method, code)
@@ -485,7 +485,7 @@ end
 
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
-PRELUDES = Hash::new { |h, k| h[k] = [] }
+PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 class Command < CLXML
@@ -494,7 +494,7 @@ class Command < CLXML
   attr_reader :parameters
   attr_reader :tracepoint_parameters
   attr_reader :meta_parameters
-  attr_reader :preludes
+  attr_reader :prologues
   attr_reader :epilogues
 
   def initialize( command )
@@ -506,7 +506,7 @@ class Command < CLXML
     @meta_parameters += META_PARAMETERS[@prototype.name].collect { |type, args|
       type::new(self, *args)
     }
-    @preludes = PRELUDES[@prototype.name]
+    @prologues = PROLOGUES[@prototype.name]
     @epilogues = EPILOGUES[@prototype.name]
   end
 
@@ -703,9 +703,9 @@ create_sub_buffer.meta_parameters.push buffer_create_info
 
 $opencl_commands.each { |c|
   if c.prototype.name.match "clEnqueue"
-    c.epilogues.push <<EOF
+    c.prologues.push <<EOF
+  uint64_t _enqueue_counter = 0;
   if (do_dump) {
-    uint64_t _enqueue_counter = 0;
     pthread_mutex_lock(&enqueue_counter_mutex);
     _enqueue_counter = enqueue_counter;
     enqueue_counter++;
@@ -716,13 +716,13 @@ EOF
   end
 }
 
-register_prelude "clCreateCommandQueue", <<EOF
+register_prologue "clCreateCommandQueue", <<EOF
   if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
 
-register_prelude "clCreateCommandQueueWithProperties", <<EOF
+register_prologue "clCreateCommandQueueWithProperties", <<EOF
   cl_queue_properties *_profiling_properties = NULL;
   if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
     int _found_queue_properties = 0;
@@ -772,7 +772,7 @@ register_epilogue "clCreateCommandQueueWithProperties", <<EOF
   if (_profiling_properties) free(_profiling_properties);
 EOF
 
-register_prelude "clCreateProgramWithSource", <<EOF
+register_prologue "clCreateProgramWithSource", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_string) && strings != NULL) {
     int index;
     for (index = 0; index < count; index++) {
@@ -788,7 +788,7 @@ register_prelude "clCreateProgramWithSource", <<EOF
   }
 EOF
 
-register_prelude "clCreateProgramWithBinary", <<EOF
+register_prologue "clCreateProgramWithBinary", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_binary) && binaries != NULL && lengths != NULL) {
     int index;
     for (index = 0; index < num_devices; index++) {
@@ -797,7 +797,7 @@ register_prelude "clCreateProgramWithBinary", <<EOF
   }
 EOF
 
-register_prelude "clCreateProgramWithIL", <<EOF
+register_prologue "clCreateProgramWithIL", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
     do_tracepoint(#{provider}_source, program_il, length, il);
   }
@@ -806,7 +806,7 @@ EOF
 $opencl_commands.each { |c|
   if c.event?
     if !c.returns_event?
-      c.preludes.push <<EOF
+      c.prologues.push <<EOF
   int _release_event = 0;
   int _event_profiling = 0;
   cl_event profiling_event;

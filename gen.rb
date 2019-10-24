@@ -133,7 +133,7 @@ EOF
   puts <<EOF
   tracepoint(#{provider}, #{c.prototype.name}_start, #{(params+tracepoint_params).join(", ")});
 EOF
-  c.preludes.each { |p|
+  c.prologues.each { |p|
     puts p
   }
   if c.prototype.has_return_type?
