@@ -1,6 +1,8 @@
 require 'nokogiri'
 require 'yaml'
 
+provider = :lttng_ust_opencl
+
 WINDOWS = /D3D|DX9/
 
 VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$/
@@ -461,7 +463,7 @@ ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret")
 
 Event = AutoOutScalar::create("event")
 
-def register_meta_parameter( method, type, *args )
+def register_meta_parameter(method, type, *args)
   META_PARAMETERS[method].push [type, args]
 end
 
@@ -472,8 +474,19 @@ def register_meta_struct(method, name, type)
   }
 end
 
+
+def register_prelude(method, code)
+  PRELUDES[method].push(code)
+end
+
+def register_epilogue(method, code)
+  EPILOGUES[method].push(code)
+end
+
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
+PRELUDES = Hash::new { |h, k| h[k] = [] }
+EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 class Command < CLXML
 
@@ -481,6 +494,8 @@ class Command < CLXML
   attr_reader :parameters
   attr_reader :tracepoint_parameters
   attr_reader :meta_parameters
+  attr_reader :preludes
+  attr_reader :epilogues
 
   def initialize( command )
     super
@@ -491,6 +506,8 @@ class Command < CLXML
     @meta_parameters += META_PARAMETERS[@prototype.name].collect { |type, args|
       type::new(self, *args)
     }
+    @preludes = PRELUDES[@prototype.name]
+    @epilogues = EPILOGUES[@prototype.name]
   end
 
   def [](name)
@@ -670,10 +687,139 @@ $opencl_commands = funcs_e.collect { |func|
   Command::new(func)
 }
 
+$clReleaseEvent = $opencl_commands.find { |c| c.prototype.name == "clReleaseEvent" }
+$clSetEventCallback = $opencl_commands.find { |c| c.prototype.name == "clSetEventCallback" }
+$clGetEventProfilingInfo = $opencl_commands.find { |c| c.prototype.name == "clGetEventProfilingInfo" }
+$clGetKernelInfo = $opencl_commands.find { |c| c.prototype.name == "clGetKernelInfo" }
+$clGetMemObjectInfo = $opencl_commands.find { |c| c.prototype.name == "clGetMemObjectInfo" }
+
 create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
 
 buffer_create_info = InMetaParameter::new(create_sub_buffer, "buffer_create_info")
 buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :uint8_t, "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
 
 create_sub_buffer.meta_parameters.push buffer_create_info
+
+
+register_prelude "clCreateCommandQueue", <<EOF
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
+    properties |= CL_QUEUE_PROFILING_ENABLE;
+  }
+EOF
+
+register_prelude "clCreateCommandQueueWithProperties", <<EOF
+  cl_queue_properties *_profiling_properties = NULL;
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
+    int _found_queue_properties = 0;
+    int _queue_properties_index = 0;
+    int _properties_count = 0;
+    if (properties) {
+      while(properties[_properties_count]) {
+        if (properties[_properties_count] == CL_QUEUE_PROPERTIES){
+          _found_queue_properties = 1;
+          _queue_properties_index = _properties_count;
+        }
+        _properties_count += 2;
+      }
+      _properties_count++;
+      if (!_found_queue_properties)
+        _properties_count +=2;
+    } else
+      _properties_count = 3;
+    _profiling_properties = (cl_queue_properties *)malloc(_properties_count*sizeof(cl_queue_properties));
+    if (_profiling_properties) {
+      if (properties) {
+        int _i = 0;
+        while(properties[_i]) {
+          _profiling_properties[_i] = properties[_i];
+          _profiling_properties[_i+1] = properties[_i+1];
+          _i += 2;
+        }
+        if (_found_queue_properties) {
+          _profiling_properties[_queue_properties_index+1] |= CL_QUEUE_PROFILING_ENABLE;
+          _profiling_properties[_i] = 0;
+        } else {
+          _profiling_properties[_i++] = CL_QUEUE_PROPERTIES;
+          _profiling_properties[_i++] = CL_QUEUE_PROFILING_ENABLE;
+          _profiling_properties[_i] = 0;
+        }
+      } else {
+        _profiling_properties[0] = CL_QUEUE_PROPERTIES;
+        _profiling_properties[1] = CL_QUEUE_PROFILING_ENABLE;
+        _profiling_properties[2] = 0;
+      }
+      properties = _profiling_properties;
+    }
+  }
+EOF
+
+register_epilogue "clCreateCommandQueueWithProperties", <<EOF
+  if (_profiling_properties) free(_profiling_properties);
+EOF
+
+register_prelude "clCreateProgramWithSource", <<EOF
+  if (tracepoint_enabled(#{provider}_source, program_string) && strings != NULL) {
+    int index;
+    for (index = 0; index < count; index++) {
+      size_t length = 0;
+      if ( strings[index] != NULL ) {
+        if (lengths == NULL || lengths[index] == 0)
+          length = strlen(strings[index]);
+        else
+          length = lengths[index];
+      }
+      do_tracepoint(#{provider}_source, program_string, index, length, strings);
+    }
+  }
+EOF
+
+register_prelude "clCreateProgramWithBinary", <<EOF
+  if (tracepoint_enabled(#{provider}_source, program_binary) && binaries != NULL && lengths != NULL) {
+    int index;
+    for (index = 0; index < num_devices; index++) {
+      do_tracepoint(#{provider}_source, program_binary, index, lengths, binaries);
+    }
+  }
+EOF
+
+register_prelude "clCreateProgramWithIL", <<EOF
+  if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
+    do_tracepoint(#{provider}_source, program_il, length, il);
+  }
+EOF
+
+$opencl_commands.each { |c|
+  if c.event?
+    if !c.returns_event?
+      c.preludes.push <<EOF
+  int _release_event = 0;
+  int _event_profiling = 0;
+  cl_event profiling_event;
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling) && event == NULL) {
+    event = &profiling_event;
+    _release_event = 1;
+    _event_profiling = 1;
+  }
+EOF
+      c.epilogues.push <<EOF
+  if (_event_profiling) {
+    int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(*event, CL_COMPLETE, event_notify, NULL);
+    do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, *event);
+    if(_release_event) {
+      #{$clReleaseEvent.prototype.pointer_name}(*event);
+      event = NULL;
+    }
+  }
+EOF
+    else
+      c.epilogues.push <<EOF
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling) ) {
+    int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(_retval, CL_COMPLETE, event_notify, NULL);
+    do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, _retval);
+  }
+EOF
+    end
+  end
+}
+
 
