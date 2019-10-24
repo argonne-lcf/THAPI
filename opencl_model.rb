@@ -701,6 +701,21 @@ buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :u
 create_sub_buffer.meta_parameters.push buffer_create_info
 
 
+$opencl_commands.each { |c|
+  if c.prototype.name.match "clEnqueue"
+    c.epilogues.push <<EOF
+  if (do_dump) {
+    uint64_t _enqueue_counter = 0;
+    pthread_mutex_lock(&enqueue_counter_mutex);
+    _enqueue_counter = enqueue_counter;
+    enqueue_counter++;
+    pthread_mutex_unlock(&enqueue_counter_mutex);
+    tracepoint(lttng_ust_opencl_dump, enqueue_counter, _enqueue_counter);
+  }
+EOF
+  end
+}
+
 register_prelude "clCreateCommandQueue", <<EOF
   if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;

@@ -1,5 +1,6 @@
 require_relative 'opencl_model'
 
+DUMP_MECHANISM = :buffer # :file, :buffer
 
 provider = :lttng_ust_opencl
 
@@ -12,12 +13,15 @@ puts <<EOF
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include "uthash.h"
 EOF
 
 puts <<EOF
 #include "opencl_tracepoints.h"
 #include "opencl_profiling.h"
 #include "opencl_source.h"
+#include "opencl_dump.h"
 EOF
 
 $opencl_commands.each { |c|
@@ -42,6 +46,47 @@ void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status
   }
 }
 
+static int     do_dump = 0;
+pthread_mutex_t enqueue_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int64_t enqueue_counter = 0;
+static int64_t dump_start = 0;
+static int64_t dump_end = INT64_MAX;
+
+pthread_mutex_t memobj_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct memobj_h {
+  cl_mem memobj;
+  UT_hash_handle hh;
+  size_t sz;
+};
+
+struct memobj_h *memobjs = NULL;
+
+struct svmmemobj_h {
+  void* memobj;
+  UT_hash_handle hh;
+  size_t sz;
+};
+
+struct svmmemobj_h *svmmemobjs = NULL;
+
+pthread_mutex_t kernel_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct kernel_param {
+  cl_uint arg_index;
+  int memobj;
+  size_t arg_size;
+  const void *arg_value;
+};
+
+struct kernel_obj_h {
+  cl_kernel kernel;
+  UT_hash_handle hh;
+  struct kernel_param *params;
+};
+
+struct kernel_obj_h *kernels = NULL;
+
 void __load_tracer(void) __attribute__((constructor));
 void __load_tracer(void) {
   void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
@@ -49,6 +94,17 @@ void __load_tracer(void) {
     printf("Failure: could not load OpenCL library!\\n");
     exit(1);
   }
+
+  char *s = NULL;
+  s = getenv("LTTNG_UST_OPENCL_DUMP");
+  if (s)
+    do_dump = 1;
+  s = getenv("LTTNG_UST_OPENCL_DUMP_START");
+  if (s)
+    dump_start = atoll(s);
+  s = getenv("LTTNG_UST_OPENCL_DUMP_END");
+  if (s)
+    dump_end = atoll(s);
 EOF
 
 $opencl_commands.each { |c|
@@ -74,7 +130,9 @@ EOF
   c.tracepoint_parameters.each { |p|
     puts p.init
   }
-  puts "  tracepoint(#{provider}, #{c.prototype.name}_start, #{(params+tracepoint_params).join(", ")});"
+  puts <<EOF
+  tracepoint(#{provider}, #{c.prototype.name}_start, #{(params+tracepoint_params).join(", ")});
+EOF
   c.preludes.each { |p|
     puts p
   }

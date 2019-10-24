@@ -1,0 +1,18 @@
+#define CL_TARGET_OPENCL_VERSION 220
+#include <CL/opencl.h>
+#include <CL/cl_ext.h>
+#include <CL/cl_gl.h>
+#include <CL/cl_gl_ext.h>
+#include <CL/cl_egl.h>
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_dump,
+  enqueue_counter,
+  TP_ARGS(
+    uint64_t, enqueue_counter
+  ),
+  TP_FIELDS(
+    ctf_integer(uint64_t, enqueue_counter, enqueue_counter)
+  )
+)
+
