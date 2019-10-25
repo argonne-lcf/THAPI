@@ -11,12 +11,12 @@ TRACEPOINT_EVENT(
   TP_ARGS(
     int, index,
     size_t , length,
-    const char **, strings
+    char *, path
   ),
   TP_FIELDS(
     ctf_integer(int, index, index)
     ctf_integer(size_t, length, length)
-    ctf_sequence_text(char, string, strings[index], size_t, length)
+    ctf_string(path, path)
   )
 )
 
@@ -25,13 +25,13 @@ TRACEPOINT_EVENT(
   program_binary,
   TP_ARGS(
     int, index,
-    const size_t *, lengths,
-    const unsigned char **, binaries
+    size_t , length,
+    char *, path
   ),
   TP_FIELDS(
     ctf_integer(int, index, index)
-    ctf_integer(size_t, length, lengths[index])
-    ctf_sequence_text(unsigned char, binary, binaries[index], size_t, binaries[index] == NULL ? 0 : lengths[index])
+    ctf_integer(size_t, length, length)
+    ctf_string(path, path)
   )
 )
 
@@ -40,10 +40,10 @@ TRACEPOINT_EVENT(
   program_il,
   TP_ARGS(
     const size_t, length,
-    const void*, il
+    char *, path
   ),
   TP_FIELDS(
     ctf_integer(size_t, length, length)
-    ctf_sequence_text(uint8_t, il, il, size_t, length)
+    ctf_string(path, path)
   )
 )

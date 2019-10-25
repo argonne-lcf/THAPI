@@ -1,7 +1,5 @@
 require_relative 'opencl_model'
 
-DUMP_MECHANISM = :buffer # :file, :buffer
-
 provider = :lttng_ust_opencl
 
 puts <<EOF
@@ -12,8 +10,10 @@ puts <<EOF
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/mman.h>
 #include "uthash.h"
 EOF
 
@@ -60,6 +60,12 @@ struct svmptr_obj_data {
   void* memptr;
   size_t size;
 };
+
+#define IN_TEMPLATE "/tmp/inbinXXXXXX"
+#define OUT_TEMPLATE "/tmp/outbinXXXXXX"
+#define SOURCE_TEMPLATE "/tmp/sourceXXXXXX"
+#define BIN_SOURCE_TEMPLATE "/tmp/binsourceXXXXXX"
+#define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
 
 pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -193,13 +199,62 @@ static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t ar
 
 struct buffer_dump_notify_data {
   size_t size;
+  int fd;
+  char path[sizeof(IN_TEMPLATE)];
 };
 
 void CL_CALLBACK  buffer_dump_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
   struct buffer_dump_notify_data * data = (struct buffer_dump_notify_data *)user_data;
-  void *ptr = (void *)((intptr_t)user_data + sizeof(struct buffer_dump_notify_data));
-  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, event, event_command_exec_status, data->size, ptr);
+  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, event, event_command_exec_status, data->size, data->path);
+  if (event_command_exec_status == CL_COMPLETE) {
+    ftruncate(data->fd, data->size);
+  } else {
+    ftruncate(data->fd, 0);
+    unlink(data->path);
+  }
+  close(data->fd);
   free(user_data);
+}
+
+static inline size_t align(size_t size, unsigned int bit) {
+  size_t alignment_mask = (1 << bit) - 1;
+  return (size + alignment_mask) & ~(alignment_mask);
+}
+
+static inline int create_file_and_map(char template[], size_t size, void **ptr) {
+  int fd = mkstemp(template);
+  size_t map_size = align(size, 12);
+  int err = ftruncate(fd, map_size); //page size
+  if (err == 0) {
+    *ptr = mmap(NULL, map_size, PROT_WRITE, MAP_SHARED, fd, 0);
+    if (*ptr == MAP_FAILED) {
+      ftruncate(fd, 0);
+      close(fd);
+      unlink(template);
+      return -1;
+    }
+    return fd;
+  } else {
+    return -1;
+  }
+}
+
+static inline void create_file_and_write(char template[], size_t size, const void * ptr) {
+  int fd = mkstemp(template);
+  if (fd != -1) {
+    if (ptr != NULL) {
+      ssize_t ret;
+      size_t written = 0;
+      while (written < size) {
+        ret = write(fd, ptr, size);
+        if (ret > 0) {
+          written += ret;
+        } else //if (errno != EINTR) avoid errno...
+          break;
+      }
+    }
+    close(fd);
+  }
 }
 
 static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
@@ -208,20 +263,30 @@ static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj
   struct buffer_dump_notify_data *data = NULL;
   struct buffer_obj_data *obj_data = (struct buffer_obj_data *)(o_h->obj_data);
 
-  data = (struct buffer_dump_notify_data *)malloc(obj_data->size + sizeof(struct buffer_dump_notify_data));
+  data = (struct buffer_dump_notify_data *)malloc(sizeof(struct buffer_dump_notify_data));
   if (data == NULL)
     return;
   ptr = (void *)((intptr_t)data + sizeof(struct buffer_dump_notify_data));
   data->size = obj_data->size;
+  strncpy(data->path, IN_TEMPLATE, sizeof(data->path));
+  data->fd = create_file_and_map(data->path, data->size, &ptr);
+  if (data->fd == -1) {
+    free(data);
+    return;
+  }
 
   cl_int err = #{$clEnqueueReadBuffer.prototype.pointer_name}(command_queue, (cl_mem)(o_h->ptr), CL_FALSE, 0, obj_data->size, ptr, num_events_in_wait_list, event_wait_list, &event);
   if (err == CL_SUCCESS) {
     int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(event, CL_COMPLETE, buffer_dump_notify, data);
     tracepoint(lttng_ust_opencl_dump, buffer_dump_event, (cl_mem)(o_h->ptr), _set_retval, event);
-    *new_num_events_in_wait_list += 1;
-    *new_event_wait_list = realloc(*new_event_wait_list, *new_num_events_in_wait_list * sizeof(cl_event));
-    if (*new_event_wait_list != NULL) {
-      *new_event_wait_list[*new_num_events_in_wait_list -1] = event;
+    if (new_event_wait_list != NULL) {
+      *new_num_events_in_wait_list += 1;
+      *new_event_wait_list = realloc(*new_event_wait_list, *new_num_events_in_wait_list * sizeof(cl_event));
+      if (*new_event_wait_list != NULL) {
+        *new_event_wait_list[*new_num_events_in_wait_list -1] = event;
+      } else {
+        #{$clReleaseEvent.prototype.pointer_name}(event);
+      }
     } else {
       #{$clReleaseEvent.prototype.pointer_name}(event);
     }
@@ -241,6 +306,8 @@ static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel ker
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
     if (k_data !=NULL) {
+      cl_command_queue_properties properties;
+      #{$clGetCommandQueueInfo.prototype.pointer_name}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
       for (int arg_index = 0; arg_index < k_data->num_args; arg_index++) {
         struct kernel_arg *arg = k_data->args + arg_index;
         tracepoint(#{provider}_dump, kernel_arg_value, enqueue_counter, arg->arg_size, arg->arg_value);
@@ -250,7 +317,10 @@ static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel ker
           if (oo_h != NULL) {
             switch (oo_h->type) {
             case BUFFER:
-              dump_buffer(command_queue, oo_h, *num_events_in_wait_list, *event_wait_list, &new_num_events_in_wait_list, &new_event_wait_list);
+              if (properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
+                dump_buffer(command_queue, oo_h, *num_events_in_wait_list, *event_wait_list, &new_num_events_in_wait_list, &new_event_wait_list);
+              else
+                dump_buffer(command_queue, oo_h, *num_events_in_wait_list, *event_wait_list, NULL, NULL);
               break;
             default:
               break;

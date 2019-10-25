@@ -693,6 +693,7 @@ $clGetEventProfilingInfo = $opencl_commands.find { |c| c.prototype.name == "clGe
 $clGetKernelInfo = $opencl_commands.find { |c| c.prototype.name == "clGetKernelInfo" }
 $clGetMemObjectInfo = $opencl_commands.find { |c| c.prototype.name == "clGetMemObjectInfo" }
 $clEnqueueReadBuffer = $opencl_commands.find { |c| c.prototype.name == "clEnqueueReadBuffer" }
+$clGetCommandQueueInfo = $opencl_commands.find { |c| c.prototype.name == "clGetCommandQueueInfo" }
 
 create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
 
@@ -827,13 +828,16 @@ register_prologue "clCreateProgramWithSource", <<EOF
     int index;
     for (index = 0; index < count; index++) {
       size_t length = 0;
+      char path[sizeof(SOURCE_TEMPLATE)];
+      strncpy(path, SOURCE_TEMPLATE, sizeof(path));
       if ( strings[index] != NULL ) {
         if (lengths == NULL || lengths[index] == 0)
           length = strlen(strings[index]);
         else
           length = lengths[index];
       }
-      do_tracepoint(#{provider}_source, program_string, index, length, strings);
+      create_file_and_write(path, length, strings[index]);
+      do_tracepoint(#{provider}_source, program_string, index, length, path);
     }
   }
 EOF
@@ -842,14 +846,20 @@ register_prologue "clCreateProgramWithBinary", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_binary) && binaries != NULL && lengths != NULL) {
     int index;
     for (index = 0; index < num_devices; index++) {
-      do_tracepoint(#{provider}_source, program_binary, index, lengths, binaries);
+      char path[sizeof(BIN_SOURCE_TEMPLATE)];
+      strncpy(path, BIN_SOURCE_TEMPLATE, sizeof(path));
+      create_file_and_write(path, lengths[index], binaries[index]);
+      do_tracepoint(#{provider}_source, program_binary, index, lengths[index], path);
     }
   }
 EOF
 
 register_prologue "clCreateProgramWithIL", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
-    do_tracepoint(#{provider}_source, program_il, length, il);
+    char path[sizeof(IL_SOURCE_TEMPLATE)];
+    strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
+    create_file_and_write(path, length, il);
+    do_tracepoint(#{provider}_source, program_il, length, path);
   }
 EOF
 

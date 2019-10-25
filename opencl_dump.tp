@@ -53,11 +53,12 @@ TRACEPOINT_EVENT(
     cl_event, event,
     cl_int, status,
     size_t, size,
-    void *, ptr
+    void *, path
   ),
   TP_FIELDS(
     ctf_integer_hex(intptr_t, event, event)
     ctf_integer(int, status, status)
     ctf_integer(size_t, size, size)
+    ctf_string(path, path)
   )
 )
