@@ -692,6 +692,7 @@ $clSetEventCallback = $opencl_commands.find { |c| c.prototype.name == "clSetEven
 $clGetEventProfilingInfo = $opencl_commands.find { |c| c.prototype.name == "clGetEventProfilingInfo" }
 $clGetKernelInfo = $opencl_commands.find { |c| c.prototype.name == "clGetKernelInfo" }
 $clGetMemObjectInfo = $opencl_commands.find { |c| c.prototype.name == "clGetMemObjectInfo" }
+$clEnqueueReadBuffer = $opencl_commands.find { |c| c.prototype.name == "clEnqueueReadBuffer" }
 
 create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
 
@@ -715,6 +716,55 @@ $opencl_commands.each { |c|
 EOF
   end
 }
+
+register_epilogue "clCreateKernel", <<EOF
+  if (do_dump && _retval != NULL) {
+    pthread_mutex_lock(&opencl_obj_mutex);
+    add_kernel(_retval);
+    pthread_mutex_unlock(&opencl_obj_mutex);
+  }
+EOF
+
+register_epilogue "clSetKernelArg", <<EOF
+  if (do_dump && _retval == CL_SUCCESS) {
+    pthread_mutex_lock(&opencl_obj_mutex);
+    add_kernel_arg(kernel, arg_index, arg_size, arg_value);
+    pthread_mutex_unlock(&opencl_obj_mutex);
+  }
+EOF
+
+register_prologue "clEnqueueNDRangeKernel", <<EOF
+  int _release_events = 0;
+  if (do_dump && command_queue != NULL && kernel != NULL && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
+    pthread_mutex_lock(&opencl_obj_mutex);
+    _release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, &num_events_in_wait_list, (cl_event **)&event_wait_list);
+    pthread_mutex_unlock(&opencl_obj_mutex);
+  }
+EOF
+
+register_epilogue "clEnqueueNDRangeKernel", <<EOF
+  if (do_dump && _release_events) {
+    for (int event_index = 0; event_index < num_events_in_wait_list; event_index++) {
+      #{$clReleaseEvent.prototype.pointer_name}(event_wait_list[event_index]);
+      free((void *)event_wait_list);
+    }
+  }
+EOF
+
+register_prologue "clCreateBuffer", <<EOF
+  if (do_dump) {
+    flags &= ~CL_MEM_HOST_WRITE_ONLY;
+    flags &= ~CL_MEM_HOST_NO_ACCESS;
+  }
+EOF
+
+register_epilogue "clCreateBuffer", <<EOF
+  if (do_dump && _retval != NULL) {
+    pthread_mutex_lock(&opencl_obj_mutex);
+    add_buffer(_retval, size);
+    pthread_mutex_unlock(&opencl_obj_mutex);
+  }
+EOF
 
 register_prologue "clCreateCommandQueue", <<EOF
   if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {

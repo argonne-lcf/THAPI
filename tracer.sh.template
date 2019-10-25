@@ -8,12 +8,19 @@ while true; do
   case "$1" in
     -p | --profiling ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*;;
     -s | --source ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:* ;;
+    -d | --dump ) shift; export LTTNG_UST_OPENCL_DUMP=1;;
+    -i | --iteration ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
+    -s | --iteration-start ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; shift ;;
+    -e | --iteration-end ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
-
+if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
+fi
 lttng start
-LD_PRELOAD=PATH_TO_LIB/tracer.so "$@"
+LTTNG_UST_ALLOW_BLOCKING=1 LD_PRELOAD=PATH_TO_LIB/tracer.so "$@"
 lttng stop
 lttng destroy

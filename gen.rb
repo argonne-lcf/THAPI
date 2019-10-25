@@ -52,40 +52,221 @@ static int64_t enqueue_counter = 0;
 static int64_t dump_start = 0;
 static int64_t dump_end = INT64_MAX;
 
-pthread_mutex_t memobj_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct memobj_h {
-  cl_mem memobj;
-  UT_hash_handle hh;
-  size_t sz;
+struct buffer_obj_data {
+  size_t size;
 };
 
-struct memobj_h *memobjs = NULL;
-
-struct svmmemobj_h {
-  void* memobj;
-  UT_hash_handle hh;
-  size_t sz;
+struct svmptr_obj_data {
+  void* memptr;
+  size_t size;
 };
 
-struct svmmemobj_h *svmmemobjs = NULL;
+pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-pthread_mutex_t kernel_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct kernel_param {
-  cl_uint arg_index;
-  int memobj;
+struct kernel_arg {
+  int type;
   size_t arg_size;
-  const void *arg_value;
+  void *arg_value;
 };
 
-struct kernel_obj_h {
-  cl_kernel kernel;
+struct kernel_obj_data {
+  cl_uint num_args;
+  struct kernel_arg *args;
+};
+
+enum cl_obj_type {
+  UNKNOWN = 0,
+  PLATFORM,
+  DEVICE,
+  CONTEXT,
+  COMMAND_QUEUE,
+  BUFFER,
+  PIPE,
+  IMAGE,
+  KERNEL,
+  EVENT,
+  SAMPLER,
+  SVMMEM
+};
+
+struct opencl_obj_h {
+  void *ptr;
   UT_hash_handle hh;
-  struct kernel_param *params;
+  enum cl_obj_type type;
+  void *obj_data;
 };
 
-struct kernel_obj_h *kernels = NULL;
+struct opencl_obj_h *opencl_objs = NULL;
+
+static inline void add_buffer(cl_mem b, size_t size) {
+  struct opencl_obj_h *o_h = NULL;
+  struct buffer_obj_data *b_data = NULL;
+  HASH_FIND_PTR(opencl_objs, &b, o_h);
+  if (o_h != NULL) {
+    if (o_h->obj_data != NULL)
+      free(o_h->obj_data);
+    b_data = (struct buffer_obj_data *)calloc(1, sizeof(struct buffer_obj_data));
+    if (b_data == NULL) {
+      HASH_DEL(opencl_objs, o_h);
+      free(o_h);
+      return;
+    }
+    o_h->type = BUFFER;
+    b_data->size = size;
+    o_h->obj_data = (void *)b_data;
+  } else {
+    o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
+    if (o_h == NULL)
+      return;
+    b_data = (struct buffer_obj_data *)calloc(1, sizeof(struct buffer_obj_data));
+    if (b_data == NULL) {
+      free(o_h);
+      return;
+    }
+    o_h->ptr = (void *)b;
+    o_h->type = BUFFER;
+    b_data->size = size;
+    o_h->obj_data = (void *)b_data;
+    HASH_ADD_PTR(opencl_objs, ptr, o_h);
+  }
+}
+
+static inline void add_kernel(cl_kernel k) {
+  cl_uint num_args = 0;
+  cl_int err = #{$clGetKernelInfo.prototype.pointer_name}(k, CL_KERNEL_NUM_ARGS, sizeof(cl_uint), &num_args, NULL);
+  if (err == CL_SUCCESS) {
+    struct opencl_obj_h *o_h = NULL;
+    struct kernel_obj_data *k_data = NULL;
+    HASH_FIND_PTR(opencl_objs, &k, o_h);
+    if (o_h != NULL) {
+      if (o_h->obj_data != NULL)
+        free(o_h->obj_data);
+      k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data)+num_args*sizeof(struct kernel_arg));
+      if (k_data == NULL) {
+        HASH_DEL(opencl_objs, o_h);
+        free(o_h);
+        return;
+      }
+      o_h->type = KERNEL;
+      k_data->num_args = num_args;
+      k_data->args = (struct kernel_arg *)((intptr_t)k_data + sizeof(struct kernel_obj_data));
+      o_h->obj_data = (void *)k_data;
+    } else {
+      o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
+      if (o_h == NULL)
+        return;
+      k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data)+num_args*sizeof(struct kernel_arg));
+      if (k_data == NULL) {
+        free(o_h);
+        return;
+      }
+      o_h->ptr = (void *)k;
+      o_h->type = KERNEL;
+      k_data->num_args = num_args;
+      k_data->args = (struct kernel_arg *)((intptr_t)k_data + sizeof(struct kernel_obj_data));
+      o_h->obj_data = (void *)k_data;
+      HASH_ADD_PTR(opencl_objs, ptr, o_h);
+    }
+  }
+}
+
+static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t arg_size, const void *arg_value) {
+  struct opencl_obj_h *o_h = NULL;
+  HASH_FIND_PTR(opencl_objs, &kernel, o_h);
+  if (o_h != NULL && o_h->type == KERNEL) {
+    struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
+    if (k_data !=NULL && arg_index < k_data->num_args) {
+      struct kernel_arg *arg = k_data->args + arg_index;
+      if (arg_value != NULL) {
+        if (arg->arg_value == NULL) {
+          arg->arg_value = malloc(arg_size);
+        } else if (arg->arg_size < arg_size) {
+          arg->arg_value = realloc(arg->arg_value, arg_size);
+        }
+        memcpy(arg->arg_value, arg_value, arg_size);
+      }
+      arg->arg_size = arg_size;
+      arg->type = 0;
+    }
+  }
+}
+
+struct buffer_dump_notify_data {
+  size_t size;
+};
+
+void CL_CALLBACK  buffer_dump_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
+  struct buffer_dump_notify_data * data = (struct buffer_dump_notify_data *)user_data;
+  void *ptr = (void *)((intptr_t)user_data + sizeof(struct buffer_dump_notify_data));
+  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, event, event_command_exec_status, data->size, ptr);
+  free(user_data);
+}
+
+static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
+  cl_event event;
+  void *ptr = NULL;
+  struct buffer_dump_notify_data *data = NULL;
+  struct buffer_obj_data *obj_data = (struct buffer_obj_data *)(o_h->obj_data);
+
+  data = (struct buffer_dump_notify_data *)malloc(obj_data->size + sizeof(struct buffer_dump_notify_data));
+  if (data == NULL)
+    return;
+  ptr = (void *)((intptr_t)data + sizeof(struct buffer_dump_notify_data));
+  data->size = obj_data->size;
+
+  cl_int err = #{$clEnqueueReadBuffer.prototype.pointer_name}(command_queue, (cl_mem)(o_h->ptr), CL_FALSE, 0, obj_data->size, ptr, num_events_in_wait_list, event_wait_list, &event);
+  if (err == CL_SUCCESS) {
+    int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(event, CL_COMPLETE, buffer_dump_notify, data);
+    tracepoint(lttng_ust_opencl_dump, buffer_dump_event, (cl_mem)(o_h->ptr), _set_retval, event);
+    *new_num_events_in_wait_list += 1;
+    *new_event_wait_list = realloc(*new_event_wait_list, *new_num_events_in_wait_list * sizeof(cl_event));
+    if (*new_event_wait_list != NULL) {
+      *new_event_wait_list[*new_num_events_in_wait_list -1] = event;
+    } else {
+      #{$clReleaseEvent.prototype.pointer_name}(event);
+    }
+    if (_set_retval != CL_SUCCESS) {
+      free(data);
+    }
+  } else {
+    free(data);
+  }
+}
+
+static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_uint *num_events_in_wait_list, cl_event **event_wait_list) {
+  cl_event * new_event_wait_list = NULL;
+  cl_uint new_num_events_in_wait_list = 0;
+  struct opencl_obj_h *o_h = NULL;
+  HASH_FIND_PTR(opencl_objs, &kernel, o_h);
+  if (o_h != NULL && o_h->type == KERNEL) {
+    struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
+    if (k_data !=NULL) {
+      for (int arg_index = 0; arg_index < k_data->num_args; arg_index++) {
+        struct kernel_arg *arg = k_data->args + arg_index;
+        tracepoint(#{provider}_dump, kernel_arg_value, enqueue_counter, arg->arg_size, arg->arg_value);
+        if (arg->arg_value != NULL && arg->arg_size == 8) {
+          struct opencl_obj_h *oo_h = NULL;
+          HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
+          if (oo_h != NULL) {
+            switch (oo_h->type) {
+            case BUFFER:
+              dump_buffer(command_queue, oo_h, *num_events_in_wait_list, *event_wait_list, &new_num_events_in_wait_list, &new_event_wait_list);
+              break;
+            default:
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  if (new_event_wait_list != NULL && new_num_events_in_wait_list > 0) {
+    *event_wait_list = new_event_wait_list;
+    *num_events_in_wait_list = new_num_events_in_wait_list;
+    return 1;
+  }
+  return 0;
+}
 
 void __load_tracer(void) __attribute__((constructor));
 void __load_tracer(void) {
