@@ -61,8 +61,7 @@ struct svmptr_obj_data {
   size_t size;
 };
 
-#define IN_TEMPLATE "/tmp/inbinXXXXXX"
-#define OUT_TEMPLATE "/tmp/outbinXXXXXX"
+#define BIN_TEMPLATE "/tmp/binXXXXXX"
 #define SOURCE_TEMPLATE "/tmp/sourceXXXXXX"
 #define BIN_SOURCE_TEMPLATE "/tmp/binsourceXXXXXX"
 #define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
@@ -200,7 +199,7 @@ static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t ar
 struct buffer_dump_notify_data {
   size_t size;
   int fd;
-  char path[sizeof(IN_TEMPLATE)];
+  char path[sizeof(BIN_TEMPLATE)];
 };
 
 void CL_CALLBACK  buffer_dump_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
@@ -268,7 +267,7 @@ static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj
     return;
   ptr = (void *)((intptr_t)data + sizeof(struct buffer_dump_notify_data));
   data->size = obj_data->size;
-  strncpy(data->path, IN_TEMPLATE, sizeof(data->path));
+  strncpy(data->path, BIN_TEMPLATE, sizeof(data->path));
   data->fd = create_file_and_map(data->path, data->size, &ptr);
   if (data->fd == -1) {
     free(data);
@@ -298,7 +297,7 @@ static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj
   }
 }
 
-static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_uint *num_events_in_wait_list, cl_event **event_wait_list) {
+static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_command_queue_properties properties, cl_uint *num_events_in_wait_list, cl_event **event_wait_list) {
   cl_event * new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   struct opencl_obj_h *o_h = NULL;
@@ -306,8 +305,6 @@ static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel ker
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
     if (k_data !=NULL) {
-      cl_command_queue_properties properties;
-      #{$clGetCommandQueueInfo.prototype.pointer_name}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
       for (int arg_index = 0; arg_index < k_data->num_args; arg_index++) {
         struct kernel_arg *arg = k_data->args + arg_index;
         tracepoint(#{provider}_dump, kernel_arg_value, enqueue_counter, arg->arg_size, arg->arg_value);
@@ -335,7 +332,53 @@ static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel ker
     *num_events_in_wait_list = new_num_events_in_wait_list;
     return 1;
   }
+  if (new_event_wait_list != NULL)
+    free(new_event_wait_list);
   return 0;
+}
+
+static inline cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel kernel, cl_event *event) {
+  cl_event * new_event_wait_list = NULL;
+  cl_uint new_num_events_in_wait_list = 0;
+  cl_uint num_event = (event == NULL ? 0 : 1);
+  struct opencl_obj_h *o_h = NULL;
+  HASH_FIND_PTR(opencl_objs, &kernel, o_h);
+  if (o_h != NULL && o_h->type == KERNEL) {
+    struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
+    if (k_data !=NULL) {
+      for (int arg_index = 0; arg_index < k_data->num_args; arg_index++) {
+        struct kernel_arg *arg = k_data->args + arg_index;
+        if (arg->arg_value != NULL && arg->arg_size == 8) {
+          struct opencl_obj_h *oo_h = NULL;
+          HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
+          if (oo_h != NULL) {
+            switch (oo_h->type) {
+            case BUFFER:
+              if (event != NULL)
+                dump_buffer(command_queue, oo_h, num_event, event, &new_num_events_in_wait_list, &new_event_wait_list);
+              else
+                dump_buffer(command_queue, oo_h, 0, NULL, NULL, NULL);
+              break;
+            default:
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  if (new_event_wait_list != NULL && new_num_events_in_wait_list > 0) {
+    cl_event ev;
+    #{$clEnqueueBarrierWithWaitList.prototype.pointer_name}(command_queue, new_num_events_in_wait_list, new_event_wait_list, &ev);
+    for (int i = 0; i < new_num_events_in_wait_list; i++) {
+      #{$clReleaseEvent.prototype.pointer_name}(new_event_wait_list[i]);
+    }
+    free(new_event_wait_list);
+    return ev;
+  }
+  if (new_event_wait_list != NULL)
+    free(new_event_wait_list);
+  return NULL;
 }
 
 void __load_tracer(void) __attribute__((constructor));

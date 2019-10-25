@@ -694,6 +694,7 @@ $clGetKernelInfo = $opencl_commands.find { |c| c.prototype.name == "clGetKernelI
 $clGetMemObjectInfo = $opencl_commands.find { |c| c.prototype.name == "clGetMemObjectInfo" }
 $clEnqueueReadBuffer = $opencl_commands.find { |c| c.prototype.name == "clEnqueueReadBuffer" }
 $clGetCommandQueueInfo = $opencl_commands.find { |c| c.prototype.name == "clGetCommandQueueInfo" }
+$clEnqueueBarrierWithWaitList = $opencl_commands.find { |c| c.prototype.name == "clEnqueueBarrierWithWaitList" }
 
 create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
 
@@ -735,16 +736,24 @@ register_epilogue "clSetKernelArg", <<EOF
 EOF
 
 register_prologue "clEnqueueNDRangeKernel", <<EOF
-  int _release_events = 0;
+  int _dump_release_events = 0;
+  int _dump_release_event = 0;
+  cl_event extra_event;
   if (do_dump && command_queue != NULL && kernel != NULL && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
+    cl_command_queue_properties properties;
+    #{$clGetCommandQueueInfo.prototype.pointer_name}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
     pthread_mutex_lock(&opencl_obj_mutex);
-    _release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, &num_events_in_wait_list, (cl_event **)&event_wait_list);
+    _dump_release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, properties, &num_events_in_wait_list, (cl_event **)&event_wait_list);
     pthread_mutex_unlock(&opencl_obj_mutex);
+    if (properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE && event == NULL) {
+      event = &extra_event;
+      _dump_release_event = 1;
+    }
   }
 EOF
 
 register_epilogue "clEnqueueNDRangeKernel", <<EOF
-  if (do_dump && _release_events) {
+  if (do_dump && _dump_release_events) {
     for (int event_index = 0; event_index < num_events_in_wait_list; event_index++) {
       #{$clReleaseEvent.prototype.pointer_name}(event_wait_list[event_index]);
       free((void *)event_wait_list);
@@ -867,12 +876,14 @@ $opencl_commands.each { |c|
   if c.event?
     if !c.returns_event?
       c.prologues.push <<EOF
-  int _release_event = 0;
+  int _profile_release_event = 0;
   int _event_profiling = 0;
   cl_event profiling_event;
-  if (tracepoint_enabled(#{provider}_profiling, event_profiling) && event == NULL) {
-    event = &profiling_event;
-    _release_event = 1;
+  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
+    if (event == NULL) {
+      event = &profiling_event;
+      _profile_release_event = 1;
+    }
     _event_profiling = 1;
   }
 EOF
@@ -880,7 +891,7 @@ EOF
   if (_event_profiling) {
     int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(*event, CL_COMPLETE, event_notify, NULL);
     do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, *event);
-    if(_release_event) {
+    if(_profile_release_event) {
       #{$clReleaseEvent.prototype.pointer_name}(*event);
       event = NULL;
     }
@@ -897,4 +908,31 @@ EOF
   end
 }
 
+register_epilogue "clEnqueueNDRangeKernel", <<EOF
+  if (do_dump && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
+    if (_retval == CL_SUCCESS) {
+      pthread_mutex_lock(&opencl_obj_mutex);
+      cl_event ev = dump_kernel_buffers(command_queue, kernel, event);
+      pthread_mutex_unlock(&opencl_obj_mutex);
+      if (_dump_release_event) {
+        #{$clReleaseEvent.prototype.pointer_name}(*event);
+        event = NULL;
+        if (ev != NULL) {
+          #{$clReleaseEvent.prototype.pointer_name}(ev);
+        }
+      } else if ( ev != NULL ) {
+        if (event != NULL) {
+          if (*event != NULL)
+            #{$clReleaseEvent.prototype.pointer_name}(*event);
+          *event = ev;
+        }
+      }
+    } else {
+      if (_dump_release_event) {
+        #{$clReleaseEvent.prototype.pointer_name}(*event);
+        event = NULL;
+      }
+    }
+  }
+EOF
 
