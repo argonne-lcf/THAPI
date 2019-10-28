@@ -775,8 +775,8 @@ register_epilogue "clEnqueueNDRangeKernel", <<EOF
   if (do_dump && _dump_release_events) {
     for (int event_index = 0; event_index < num_events_in_wait_list; event_index++) {
       #{$clReleaseEvent.prototype.pointer_name}(event_wait_list[event_index]);
-      free((void *)event_wait_list);
     }
+    free((void *)event_wait_list);
   }
 EOF
 

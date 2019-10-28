@@ -294,9 +294,9 @@ static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h
     tracepoint(lttng_ust_opencl_dump, buffer_dump_event, (cl_mem)(o_h->ptr), _set_retval, event);
     if (new_event_wait_list != NULL) {
       *new_num_events_in_wait_list += 1;
-      *new_event_wait_list = realloc(*new_event_wait_list, *new_num_events_in_wait_list * sizeof(cl_event));
+      *new_event_wait_list = (cl_event *)reallocarray(*new_event_wait_list, *new_num_events_in_wait_list, sizeof(cl_event));
       if (*new_event_wait_list != NULL) {
-        *new_event_wait_list[*new_num_events_in_wait_list -1] = event;
+        (*new_event_wait_list)[*new_num_events_in_wait_list -1] = event;
       } else {
         #{$clReleaseEvent.prototype.pointer_name}(event);
       }
