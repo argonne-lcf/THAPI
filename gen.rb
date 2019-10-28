@@ -211,9 +211,14 @@ void CL_CALLBACK  buffer_dump_notify (cl_event event, cl_int event_command_exec_
   struct buffer_dump_notify_data * data = (struct buffer_dump_notify_data *)user_data;
   tracepoint(lttng_ust_opencl_dump, buffer_dump_result, event, event_command_exec_status, data->size, data->path);
   if (event_command_exec_status == CL_COMPLETE) {
-    ftruncate(data->fd, data->size);
+    int err = ftruncate(data->fd, data->size);
+    if(err)
+      unlink(data->path);
   } else {
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-result"
     ftruncate(data->fd, 0);
+    #pragma GCC diagnostic pop
     unlink(data->path);
   }
   close(data->fd);
@@ -232,7 +237,10 @@ static inline int create_file_and_map(char template[], size_t size, void **ptr) 
   if (err == 0) {
     *ptr = mmap(NULL, map_size, PROT_WRITE, MAP_SHARED, fd, 0);
     if (*ptr == MAP_FAILED) {
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wunused-result"
       ftruncate(fd, 0);
+      #pragma GCC diagnostic pop
       close(fd);
       unlink(template);
       return -1;
