@@ -408,9 +408,23 @@ static void _load_tracer(void) {
 EOF
 
 $opencl_commands.each { |c|
-  puts <<EOF
+  unless (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
+    puts <<EOF
   #{c.prototype.pointer_name} = dlsym(handle, "#{c.prototype.name}") ;
+  if (!#{c.prototype.pointer_name})
+    fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
+  end
+}
+
+$opencl_commands.each { |c|
+  if (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
+    puts <<EOF
+  #{c.prototype.pointer_name} = #{$clGetExtensionFunctionAddress.prototype.pointer_name}("#{c.prototype.name}");
+  if (!#{c.prototype.pointer_name})
+    fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
+EOF
+  end
 }
 
 puts <<EOF

@@ -9,6 +9,8 @@ VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$/
 
 ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clEnqueueMigrateMemObjectEXT$/
 
+EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
+
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
 LTTNG_AVAILABLE_PARAMS = 25
@@ -508,6 +510,7 @@ class Command < CLXML
     @meta_parameters += META_PARAMETERS[@prototype.name].collect { |type, args|
       type::new(self, *args)
     }
+    @extension = @prototype.name.match(EXTENSION_FUNCTIONS)
     @init      = @prototype.name.match(INIT_FUNCTIONS)
     @prologues = PROLOGUES[@prototype.name]
     @epilogues = EPILOGUES[@prototype.name]
@@ -533,6 +536,10 @@ class Command < CLXML
 
   def returns_event?
     prototype.return_type == "cl_event"
+  end
+
+  def extension?
+    return !!@extension
   end
 
   def init?
@@ -702,6 +709,7 @@ $clGetMemObjectInfo = $opencl_commands.find { |c| c.prototype.name == "clGetMemO
 $clEnqueueReadBuffer = $opencl_commands.find { |c| c.prototype.name == "clEnqueueReadBuffer" }
 $clGetCommandQueueInfo = $opencl_commands.find { |c| c.prototype.name == "clGetCommandQueueInfo" }
 $clEnqueueBarrierWithWaitList = $opencl_commands.find { |c| c.prototype.name == "clEnqueueBarrierWithWaitList" }
+$clGetExtensionFunctionAddress = $opencl_commands.find { |c| c.prototype.name == "clGetExtensionFunctionAddress" }
 
 create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
 
@@ -878,6 +886,34 @@ register_prologue "clCreateProgramWithIL", <<EOF
     do_tracepoint(#{provider}_source, program_il, length, path);
   }
 EOF
+
+str = ""
+$opencl_commands.each { |c|
+  if c.extension?
+    str << <<EOF
+  if (strcmp(func_name, "#{c.prototype.name}") == 0) {
+    tracepoint(#{provider}, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)#{c.prototype.pointer_name});
+    return (void *)(&#{c.prototype.name});
+  }
+EOF
+  end
+}
+
+register_prologue "clGetExtensionFunctionAddressForPlatform", str
+
+str = ""
+$opencl_commands.each { |c|
+  if c.extension?
+    str << <<EOF
+  if (strcmp(func_name, "#{c.prototype.name}") == 0) {
+    tracepoint(#{provider}, clGetExtensionFunctionAddress_stop, func_name, (void *)#{c.prototype.pointer_name});
+    return (void *)(&#{c.prototype.name});
+  }
+EOF
+  end
+}
+
+register_prologue "clGetExtensionFunctionAddress", str
 
 $opencl_commands.each { |c|
   if c.event?
