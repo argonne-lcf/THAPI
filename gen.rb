@@ -270,7 +270,7 @@ static inline void create_file_and_write(char template[], size_t size, const voi
   }
 }
 
-static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
+static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
   cl_event event;
   void *ptr = NULL;
   struct buffer_dump_notify_data *data = NULL;
@@ -311,7 +311,7 @@ static inline void dump_buffer(cl_command_queue command_queue, struct opencl_obj
   }
 }
 
-static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_command_queue_properties properties, cl_uint *num_events_in_wait_list, cl_event **event_wait_list) {
+static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_command_queue_properties properties, cl_uint *num_events_in_wait_list, cl_event **event_wait_list) {
   cl_event * new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   struct opencl_obj_h *o_h = NULL;
@@ -351,7 +351,7 @@ static inline int dump_kernel_args(cl_command_queue command_queue, cl_kernel ker
   return 0;
 }
 
-static inline cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel kernel, cl_event *event) {
+static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel kernel, cl_event *event) {
   cl_event * new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   cl_uint num_event = (event == NULL ? 0 : 1);
