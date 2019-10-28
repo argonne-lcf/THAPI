@@ -203,12 +203,16 @@ class Prototype < CLXML
     @__node.children.collect { |n| "#{n.name == "name" ? "CL_API_CALL " : ""}#{n.text}" }.join(" ").squeeze(" ")
   end
 
-  def decl_pointer
-    @__node.children.collect { |n| "#{n.name == "name" ? "(CL_API_CALL *#{pointer_name})" : n.text}" }.join(" ").squeeze(" ")
+  def decl_pointer(type: false)
+    @__node.children.collect { |n| "#{n.name == "name" ? "(CL_API_CALL *#{type ? pointer_type_name : pointer_name})" : n.text}" }.join(" ").squeeze(" ")
   end
 
   def pointer_name
     @name + "_ptr"
+  end
+
+  def pointer_type_name
+    @name + "_t"
   end
 
   def lttng_return_type
@@ -526,8 +530,8 @@ class Command < CLXML
     "CL_API_ENTRY " + @prototype.decl + "(" + @parameters.collect(&:decl).join(", ") + ")"
   end
 
-  def decl_pointer
-    "CL_API_ENTRY " + @prototype.decl_pointer + "(" + @parameters.collect(&:decl_pointer).join(", ") + ")"
+  def decl_pointer(type: false)
+    "CL_API_ENTRY " + @prototype.decl_pointer(type: type) + "(" + @parameters.collect(&:decl_pointer).join(", ") + ")"
   end
 
   def event?
@@ -892,8 +896,8 @@ $opencl_commands.each { |c|
   if c.extension?
     str << <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(#{provider}, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)#{c.prototype.pointer_name});
-    return (void *)(&#{c.prototype.name});
+    tracepoint(#{provider}, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
+    return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
   end
@@ -906,8 +910,8 @@ $opencl_commands.each { |c|
   if c.extension?
     str << <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(#{provider}, clGetExtensionFunctionAddress_stop, func_name, (void *)#{c.prototype.pointer_name});
-    return (void *)(&#{c.prototype.name});
+    tracepoint(#{provider}, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
+    return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
   end

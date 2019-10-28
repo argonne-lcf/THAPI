@@ -31,7 +31,8 @@ EOF
 
 $opencl_commands.each { |c|
   puts <<EOF
-static #{c.decl_pointer} = (void *) 0x0;
+typedef #{c.decl_pointer(type: true)};
+static #{c.prototype.pointer_type_name}  #{c.prototype.pointer_name} = (void *) 0x0;
 EOF
 }
 
@@ -418,7 +419,7 @@ EOF
 $opencl_commands.each { |c|
   unless (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
     puts <<EOF
-  #{c.prototype.pointer_name} = dlsym(handle, "#{c.prototype.name}") ;
+  #{c.prototype.pointer_name} = (#{c.prototype.pointer_type_name})(intptr_t)dlsym(handle, "#{c.prototype.name}") ;
   if (!#{c.prototype.pointer_name})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
@@ -428,7 +429,7 @@ EOF
 $opencl_commands.each { |c|
   if (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
     puts <<EOF
-  #{c.prototype.pointer_name} = #{$clGetExtensionFunctionAddress.prototype.pointer_name}("#{c.prototype.name}");
+  #{c.prototype.pointer_name} = (#{c.prototype.pointer_type_name})(intptr_t)#{$clGetExtensionFunctionAddress.prototype.pointer_name}("#{c.prototype.name}");
   if (!#{c.prototype.pointer_name})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
@@ -454,7 +455,11 @@ EOF
 EOF
   end
   params = []
-  params = c.parameters.collect(&:name) unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
+  tp_params = []
+  unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
+    params = c.parameters.collect(&:name)
+    tp_params = c.parameters.collect { |p| (p.callback? ? "(void *)(intptr_t)" : "" ) + p.name }
+  end
   tracepoint_params = c.tracepoint_parameters.collect(&:name)
   c.tracepoint_parameters.each { |p|
     puts "  #{p.type} #{p.name};"
@@ -463,7 +468,7 @@ EOF
     puts p.init
   }
   puts <<EOF
-  tracepoint(#{provider}, #{c.prototype.name}_start, #{(params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.prototype.name}_start, #{(tp_params+tracepoint_params).join(", ")});
 EOF
   c.prologues.each { |p|
     puts p
@@ -480,16 +485,16 @@ EOF
     puts e
   }
   if c.prototype.has_return_type?
-    params.push "_retval"
+    tp_params.push "_retval"
     puts <<EOF
-  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
   return _retval;
 }
 
 EOF
   else
     puts <<EOF
-  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
 }
 
 EOF
