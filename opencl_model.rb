@@ -9,6 +9,8 @@ VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$/
 
 ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clEnqueueMigrateMemObjectEXT$/
 
+INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
+
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
@@ -506,6 +508,7 @@ class Command < CLXML
     @meta_parameters += META_PARAMETERS[@prototype.name].collect { |type, args|
       type::new(self, *args)
     }
+    @init      = @prototype.name.match(INIT_FUNCTIONS)
     @prologues = PROLOGUES[@prototype.name]
     @epilogues = EPILOGUES[@prototype.name]
   end
@@ -530,6 +533,10 @@ class Command < CLXML
 
   def returns_event?
     prototype.return_type == "cl_event"
+  end
+
+  def init?
+    return !!@init
   end
 
 end

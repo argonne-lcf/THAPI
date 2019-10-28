@@ -386,8 +386,9 @@ static inline cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_ke
   return NULL;
 }
 
-void __load_tracer(void) __attribute__((constructor));
-void __load_tracer(void) {
+static pthread_once_t _init = PTHREAD_ONCE_INIT;
+
+static void _load_tracer(void) {
   void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
   if( !handle ) {
     printf("Failure: could not load OpenCL library!\\n");
@@ -414,12 +415,22 @@ EOF
 
 puts <<EOF
 }
+
+static inline void _init_tracer(void) {
+  pthread_once(&_init, _load_tracer);
+}
+
 EOF
 
 $opencl_commands.each { |c|
   puts <<EOF
 #{c.decl} {
 EOF
+  if c.init?
+    puts <<EOF
+  _init_tracer();
+EOF
+  end
   params = []
   params = c.parameters.collect(&:name) unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
   tracepoint_params = c.tracepoint_parameters.collect(&:name)
