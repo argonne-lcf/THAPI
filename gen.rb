@@ -4,6 +4,11 @@ provider = :lttng_ust_opencl
 
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 220
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_1_APIS
 #include <CL/opencl.h>
 #include <CL/cl_gl_ext.h>
 #include <CL/cl_egl.h>
