@@ -959,7 +959,7 @@ register_epilogue "clEnqueueNDRangeKernel", <<EOF
   if (do_dump && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
     if (_retval == CL_SUCCESS) {
       pthread_mutex_lock(&opencl_obj_mutex);
-      cl_event ev = dump_kernel_buffers(command_queue, kernel, event);
+      cl_event ev = dump_kernel_buffers(command_queue, kernel, _enqueue_counter, event);
       pthread_mutex_unlock(&opencl_obj_mutex);
       if (_dump_release_event) {
         #{$clReleaseEvent.prototype.pointer_name}(*event);

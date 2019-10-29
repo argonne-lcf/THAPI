@@ -203,6 +203,9 @@ static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t ar
 }
 
 struct buffer_dump_notify_data {
+  uint64_t enqueue_counter;
+  cl_uint arg_index;
+  int direction;
   size_t size;
   int fd;
   char path[sizeof(BIN_TEMPLATE)];
@@ -210,7 +213,7 @@ struct buffer_dump_notify_data {
 
 void CL_CALLBACK  buffer_dump_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
   struct buffer_dump_notify_data * data = (struct buffer_dump_notify_data *)user_data;
-  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, event, event_command_exec_status, data->size, data->path);
+  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, data->enqueue_counter, data->arg_index, data->direction, event, event_command_exec_status, data->size, data->path);
   if (event_command_exec_status == CL_COMPLETE) {
     int err = ftruncate(data->fd, data->size);
     if(err)
@@ -270,7 +273,7 @@ static inline void create_file_and_write(char template[], size_t size, const voi
   }
 }
 
-static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
+static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, uint64_t enqueue_counter, cl_uint arg_index, int direction, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
   cl_event event;
   void *ptr = NULL;
   struct buffer_dump_notify_data *data = NULL;
@@ -280,6 +283,9 @@ static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h
   if (data == NULL)
     return;
   ptr = (void *)((intptr_t)data + sizeof(struct buffer_dump_notify_data));
+  data->enqueue_counter = enqueue_counter;
+  data->arg_index = arg_index;
+  data->direction = direction;
   data->size = obj_data->size;
   strncpy(data->path, BIN_TEMPLATE, sizeof(data->path));
   data->fd = create_file_and_map(data->path, data->size, &ptr);
@@ -291,7 +297,7 @@ static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h
   cl_int err = #{$clEnqueueReadBuffer.prototype.pointer_name}(command_queue, (cl_mem)(o_h->ptr), CL_FALSE, 0, obj_data->size, ptr, num_events_in_wait_list, event_wait_list, &event);
   if (err == CL_SUCCESS) {
     int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(event, CL_COMPLETE, buffer_dump_notify, data);
-    tracepoint(lttng_ust_opencl_dump, buffer_dump_event, (cl_mem)(o_h->ptr), _set_retval, event);
+    tracepoint(lttng_ust_opencl_dump, buffer_dump_event, enqueue_counter, arg_index, direction, (cl_mem)(o_h->ptr), _set_retval, event);
     if (new_event_wait_list != NULL) {
       *new_num_events_in_wait_list += 1;
       *new_event_wait_list = (cl_event *)reallocarray(*new_event_wait_list, *new_num_events_in_wait_list, sizeof(cl_event));
@@ -319,9 +325,9 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
     if (k_data !=NULL) {
-      for (int arg_index = 0; arg_index < k_data->num_args; arg_index++) {
+      for (cl_uint arg_index = 0; arg_index < k_data->num_args; arg_index++) {
         struct kernel_arg *arg = k_data->args + arg_index;
-        tracepoint(#{provider}_dump, kernel_arg_value, enqueue_counter, arg->arg_size, arg->arg_value);
+        tracepoint(#{provider}_dump, kernel_arg_value, enqueue_counter, arg_index, arg->arg_size, arg->arg_value);
         if (arg->arg_value != NULL && arg->arg_size == 8) {
           struct opencl_obj_h *oo_h = NULL;
           HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
@@ -329,9 +335,9 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
             switch (oo_h->type) {
             case BUFFER:
               if (properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
-                dump_buffer(command_queue, oo_h, *num_events_in_wait_list, *event_wait_list, &new_num_events_in_wait_list, &new_event_wait_list);
+                dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, 0, *num_events_in_wait_list, *event_wait_list, &new_num_events_in_wait_list, &new_event_wait_list);
               else
-                dump_buffer(command_queue, oo_h, *num_events_in_wait_list, *event_wait_list, NULL, NULL);
+                dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, 0, *num_events_in_wait_list, *event_wait_list, NULL, NULL);
               break;
             default:
               break;
@@ -351,7 +357,7 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
   return 0;
 }
 
-static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel kernel, cl_event *event) {
+static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_event *event) {
   cl_event * new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   cl_uint num_event = (event == NULL ? 0 : 1);
@@ -360,7 +366,7 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
     if (k_data !=NULL) {
-      for (int arg_index = 0; arg_index < k_data->num_args; arg_index++) {
+      for (cl_uint arg_index = 0; arg_index < k_data->num_args; arg_index++) {
         struct kernel_arg *arg = k_data->args + arg_index;
         if (arg->arg_value != NULL && arg->arg_size == 8) {
           struct opencl_obj_h *oo_h = NULL;
@@ -369,9 +375,9 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
             switch (oo_h->type) {
             case BUFFER:
               if (event != NULL)
-                dump_buffer(command_queue, oo_h, num_event, event, &new_num_events_in_wait_list, &new_event_wait_list);
+                dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, 1, num_event, event, &new_num_events_in_wait_list, &new_event_wait_list);
               else
-                dump_buffer(command_queue, oo_h, 0, NULL, NULL, NULL);
+                dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, 1, 0, NULL, NULL, NULL);
               break;
             default:
               break;
