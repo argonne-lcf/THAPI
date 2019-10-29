@@ -112,34 +112,30 @@ struct opencl_obj_h *opencl_objs = NULL;
 static inline void add_buffer(cl_mem b, size_t size) {
   struct opencl_obj_h *o_h = NULL;
   struct buffer_obj_data *b_data = NULL;
+
+  pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, &b, o_h);
   if (o_h != NULL) {
-    if (o_h->obj_data != NULL)
-      free(o_h->obj_data);
-    b_data = (struct buffer_obj_data *)calloc(1, sizeof(struct buffer_obj_data));
-    if (b_data == NULL) {
-      HASH_DEL(opencl_objs, o_h);
-      free(o_h);
-      return;
-    }
-    o_h->type = BUFFER;
-    b_data->size = size;
-    o_h->obj_data = (void *)b_data;
-  } else {
-    o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
-    if (o_h == NULL)
-      return;
-    b_data = (struct buffer_obj_data *)calloc(1, sizeof(struct buffer_obj_data));
-    if (b_data == NULL) {
-      free(o_h);
-      return;
-    }
-    o_h->ptr = (void *)b;
-    o_h->type = BUFFER;
-    b_data->size = size;
-    o_h->obj_data = (void *)b_data;
-    HASH_ADD_PTR(opencl_objs, ptr, o_h);
+      delete_opencl_obj(o_h);
   }
+  pthread_mutex_unlock(&opencl_obj_mutex);
+
+  o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
+  if (o_h == NULL)
+    return;
+  b_data = (struct buffer_obj_data *)calloc(1, sizeof(struct buffer_obj_data));
+  if (b_data == NULL) {
+    free(o_h);
+    return;
+  }
+  o_h->ptr = (void *)b;
+  o_h->type = BUFFER;
+  b_data->size = size;
+  o_h->obj_data = (void *)b_data;
+
+  pthread_mutex_lock(&opencl_obj_mutex);
+  HASH_ADD_PTR(opencl_objs, ptr, o_h);
+  pthread_mutex_unlock(&opencl_obj_mutex);
 }
 
 static inline void add_kernel(cl_kernel k) {
@@ -148,41 +144,38 @@ static inline void add_kernel(cl_kernel k) {
   if (err == CL_SUCCESS) {
     struct opencl_obj_h *o_h = NULL;
     struct kernel_obj_data *k_data = NULL;
+
+    pthread_mutex_lock(&opencl_obj_mutex);
     HASH_FIND_PTR(opencl_objs, &k, o_h);
     if (o_h != NULL) {
-      if (o_h->obj_data != NULL)
-        free(o_h->obj_data);
-      k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data)+num_args*sizeof(struct kernel_arg));
-      if (k_data == NULL) {
-        HASH_DEL(opencl_objs, o_h);
-        free(o_h);
-        return;
-      }
-      o_h->type = KERNEL;
-      k_data->num_args = num_args;
-      k_data->args = (struct kernel_arg *)((intptr_t)k_data + sizeof(struct kernel_obj_data));
-      o_h->obj_data = (void *)k_data;
-    } else {
-      o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
-      if (o_h == NULL)
-        return;
-      k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data)+num_args*sizeof(struct kernel_arg));
-      if (k_data == NULL) {
-        free(o_h);
-        return;
-      }
-      o_h->ptr = (void *)k;
-      o_h->type = KERNEL;
-      k_data->num_args = num_args;
-      k_data->args = (struct kernel_arg *)((intptr_t)k_data + sizeof(struct kernel_obj_data));
-      o_h->obj_data = (void *)k_data;
-      HASH_ADD_PTR(opencl_objs, ptr, o_h);
+      delete_opencl_obj(o_h);
     }
+    pthread_mutex_unlock(&opencl_obj_mutex);
+
+    o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
+    if (o_h == NULL)
+      return;
+    k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data)+num_args*sizeof(struct kernel_arg));
+    if (k_data == NULL) {
+      free(o_h);
+      return;
+    }
+    o_h->ptr = (void *)k;
+    o_h->type = KERNEL;
+    k_data->num_args = num_args;
+    k_data->args = (struct kernel_arg *)((intptr_t)k_data + sizeof(struct kernel_obj_data));
+    o_h->obj_data = (void *)k_data;
+    o_h->obj_data_free = kernel_obj_data_free;
+
+    pthread_mutex_lock(&opencl_obj_mutex);
+    HASH_ADD_PTR(opencl_objs, ptr, o_h);
+    pthread_mutex_unlock(&opencl_obj_mutex);
   }
 }
 
 static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t arg_size, const void *arg_value) {
   struct opencl_obj_h *o_h = NULL;
+  pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, &kernel, o_h);
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
@@ -200,6 +193,7 @@ static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t ar
       arg->type = 0;
     }
   }
+  pthread_mutex_unlock(&opencl_obj_mutex);
 }
 
 struct buffer_dump_notify_data {
@@ -321,7 +315,9 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
   cl_event * new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   struct opencl_obj_h *o_h = NULL;
+  pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, &kernel, o_h);
+  pthread_mutex_unlock(&opencl_obj_mutex);
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
     if (k_data !=NULL) {
@@ -330,7 +326,9 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
         tracepoint(#{provider}_dump, kernel_arg_value, enqueue_counter, arg_index, arg->arg_size, arg->arg_value);
         if (arg->arg_value != NULL && arg->arg_size == 8) {
           struct opencl_obj_h *oo_h = NULL;
+          pthread_mutex_lock(&opencl_obj_mutex);
           HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
+          pthread_mutex_unlock(&opencl_obj_mutex);
           if (oo_h != NULL) {
             switch (oo_h->type) {
             case BUFFER:
@@ -362,7 +360,9 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   cl_uint new_num_events_in_wait_list = 0;
   cl_uint num_event = (event == NULL ? 0 : 1);
   struct opencl_obj_h *o_h = NULL;
+  pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, &kernel, o_h);
+  pthread_mutex_unlock(&opencl_obj_mutex);
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
     if (k_data !=NULL) {
@@ -370,7 +370,9 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
         struct kernel_arg *arg = k_data->args + arg_index;
         if (arg->arg_value != NULL && arg->arg_size == 8) {
           struct opencl_obj_h *oo_h = NULL;
+          pthread_mutex_lock(&opencl_obj_mutex);
           HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
+          pthread_mutex_unlock(&opencl_obj_mutex);
           if (oo_h != NULL) {
             switch (oo_h->type) {
             case BUFFER:

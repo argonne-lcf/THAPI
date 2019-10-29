@@ -740,17 +740,13 @@ EOF
 
 register_epilogue "clCreateKernel", <<EOF
   if (do_dump && _retval != NULL) {
-    pthread_mutex_lock(&opencl_obj_mutex);
     add_kernel(_retval);
-    pthread_mutex_unlock(&opencl_obj_mutex);
   }
 EOF
 
 register_epilogue "clSetKernelArg", <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
-    pthread_mutex_lock(&opencl_obj_mutex);
     add_kernel_arg(kernel, arg_index, arg_size, arg_value);
-    pthread_mutex_unlock(&opencl_obj_mutex);
   }
 EOF
 
@@ -761,9 +757,7 @@ register_prologue "clEnqueueNDRangeKernel", <<EOF
   if (do_dump && command_queue != NULL && kernel != NULL && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
     cl_command_queue_properties properties;
     #{$clGetCommandQueueInfo.prototype.pointer_name}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
-    pthread_mutex_lock(&opencl_obj_mutex);
     _dump_release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, properties, &num_events_in_wait_list, (cl_event **)&event_wait_list);
-    pthread_mutex_unlock(&opencl_obj_mutex);
     if (properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE && event == NULL) {
       event = &extra_event;
       _dump_release_event = 1;
@@ -789,9 +783,7 @@ EOF
 
 register_epilogue "clCreateBuffer", <<EOF
   if (do_dump && _retval != NULL) {
-    pthread_mutex_lock(&opencl_obj_mutex);
     add_buffer(_retval, size);
-    pthread_mutex_unlock(&opencl_obj_mutex);
   }
 EOF
 
@@ -958,9 +950,7 @@ EOF
 register_epilogue "clEnqueueNDRangeKernel", <<EOF
   if (do_dump && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
     if (_retval == CL_SUCCESS) {
-      pthread_mutex_lock(&opencl_obj_mutex);
       cl_event ev = dump_kernel_buffers(command_queue, kernel, _enqueue_counter, event);
-      pthread_mutex_unlock(&opencl_obj_mutex);
       if (_dump_release_event) {
         #{$clReleaseEvent.prototype.pointer_name}(*event);
         event = NULL;
