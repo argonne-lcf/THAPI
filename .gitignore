@@ -1,0 +1,7 @@
+*.swp
+*.o
+*.so
+*.c
+*.h
+opencl_tracepoints.tp
+tracer.sh
