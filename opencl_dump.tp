@@ -44,6 +44,50 @@ TRACEPOINT_EVENT(
 
 TRACEPOINT_EVENT(
   lttng_ust_opencl_dump,
+  svmptr_dump_event,
+  TP_ARGS(
+    uint64_t, enqueue_counter,
+    cl_uint, arg_index,
+    int, direction,
+    void *, buffer,
+    int, status,
+    cl_event, event
+  ),
+  TP_FIELDS(
+    ctf_integer(uint64_t,enqueue_counter, enqueue_counter)
+    ctf_integer(cl_uint, arg_index, arg_index)
+    ctf_enum(lttng_ust_opencl_dump, dump_enum, int, direction, direction)
+    ctf_integer_hex(intptr_t, buffer, buffer)
+    ctf_integer(int, status, status)
+    ctf_integer_hex(intptr_t, event, event)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_dump,
+  svmptr_dump_result,
+  TP_ARGS(
+    uint64_t, enqueue_counter,
+    cl_uint, arg_index,
+    int, direction,
+    cl_event, event,
+    cl_int, status,
+    size_t, size,
+    void *, path
+  ),
+  TP_FIELDS(
+    ctf_integer(uint64_t,enqueue_counter, enqueue_counter)
+    ctf_integer(cl_uint, arg_index, arg_index)
+    ctf_enum(lttng_ust_opencl_dump, dump_enum, int, direction, direction)
+    ctf_integer_hex(intptr_t, event, event)
+    ctf_integer(int, status, status)
+    ctf_integer(size_t, size, size)
+    ctf_string(path, path)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_dump,
   buffer_dump_event,
   TP_ARGS(
     uint64_t, enqueue_counter,

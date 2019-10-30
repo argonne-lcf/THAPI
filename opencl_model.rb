@@ -714,6 +714,7 @@ $clEnqueueReadBuffer = $opencl_commands.find { |c| c.prototype.name == "clEnqueu
 $clGetCommandQueueInfo = $opencl_commands.find { |c| c.prototype.name == "clGetCommandQueueInfo" }
 $clEnqueueBarrierWithWaitList = $opencl_commands.find { |c| c.prototype.name == "clEnqueueBarrierWithWaitList" }
 $clGetExtensionFunctionAddress = $opencl_commands.find { |c| c.prototype.name == "clGetExtensionFunctionAddress" }
+$clEnqueueSVMMemcpy = $opencl_commands.find { |c| c.prototype.name == "clEnqueueSVMMemcpy" }
 
 create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
 
@@ -746,7 +747,25 @@ EOF
 
 register_epilogue "clSetKernelArg", <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
-    add_kernel_arg(kernel, arg_index, arg_size, arg_value);
+    add_kernel_arg(kernel, arg_index, arg_size, arg_value, 0);
+  }
+EOF
+
+register_epilogue "clSetKernelArgSVMPointer", <<EOF
+  if (do_dump && _retval == CL_SUCCESS) {
+    add_kernel_arg(kernel, arg_index, sizeof(arg_value), arg_value, 1);
+  }
+EOF
+
+register_epilogue "clSVMAlloc", <<EOF
+  if (do_dump && _retval != NULL) {
+    add_svmptr(_retval, size);
+  }
+EOF
+
+register_prologue "clSVMFree", <<EOF
+  if (do_dump && svm_pointer != NULL) {
+    remove_svmptr(svm_pointer);
   }
 EOF
 
