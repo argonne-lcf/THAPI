@@ -464,6 +464,7 @@ static void dump_svmptr(cl_command_queue command_queue, struct opencl_obj_h *o_h
 
 static void dump_opencl_object(cl_command_queue command_queue, uint64_t enqueue_counter, struct kernel_arg *arg, int do_event, cl_uint arg_index, int direction, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
   struct opencl_obj_h *oo_h = NULL;
+  struct svmptr_obj_data *svm_data = NULL;
   pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
   pthread_mutex_unlock(&opencl_obj_mutex);
@@ -483,6 +484,22 @@ static void dump_opencl_object(cl_command_queue command_queue, uint64_t enqueue_
       break;
     default:
       break;
+    }
+  } else {
+    //check if it is a pointer into an SVM region
+    pthread_mutex_lock(&opencl_obj_mutex);
+    DL_FOREACH(svmptr_objs, svm_data) {
+      if (*(intptr_t *)(arg->arg_value) > (intptr_t)(svm_data->ptr) && *(intptr_t *)(arg->arg_value) < (intptr_t)(svm_data->ptr) + svm_data->size) {
+        HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
+        break;
+      }
+    }
+    pthread_mutex_unlock(&opencl_obj_mutex);
+    if (oo_h != NULL && oo_h->type == SVMMEM) {
+      if (do_event)
+        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list, new_event_wait_list);
+      else
+        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, NULL, NULL);
     }
   }
 }
