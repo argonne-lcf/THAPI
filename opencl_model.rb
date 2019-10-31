@@ -11,7 +11,7 @@ ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTermi
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /clCreateProgramWithILKHR/
+SUPPORTED_EXTENSION_FUNCTIONS = /clCreateProgramWithILKHR|clTerminateContextKHR|clCreateCommandQueueWithPropertiesKHR|clEnqueueMigrateMemObjectEXT/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
@@ -739,6 +739,7 @@ register_meta_parameter "clEnqueueFillImage", InFixedArray, "origin", 3
 register_meta_parameter "clEnqueueFillImage", InFixedArray, "region", 3
 
 register_meta_parameter "clEnqueueMigrateMemObjects", InArray, "mem_objects", "num_mem_objects"
+register_meta_parameter "clEnqueueMigrateMemObjectsEXT", InArray, "mem_objects", "num_mem_objects"
 
 register_meta_parameter "clGetExtensionFunctionAddressForPlatform", InString, "func_name"
 
@@ -749,6 +750,7 @@ register_meta_parameter "clEnqueueAcquireEGLObjectsKHR", InArray, "mem_objects",
 register_meta_parameter "clEnqueueReleaseEGLObjectsKHR", InArray, "mem_objects", "num_objects"
 
 register_meta_parameter "clCreateCommandQueueWithProperties", InNullArray, "properties"
+register_meta_parameter "clCreateCommandQueueWithPropertiesKHR", InNullArray, "properties"
 
 register_meta_parameter "clCreatePipe", InNullArray, "properties"
 
@@ -969,6 +971,15 @@ register_prologue "clCreateProgramWithBinary", <<EOF
 EOF
 
 register_prologue "clCreateProgramWithIL", <<EOF
+  if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
+    char path[sizeof(IL_SOURCE_TEMPLATE)];
+    strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
+    create_file_and_write(path, length, il);
+    do_tracepoint(#{provider}_source, program_il, length, path);
+  }
+EOF
+
+register_prologue "clCreateProgramWithILKHR", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
