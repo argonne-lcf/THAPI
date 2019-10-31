@@ -71,5 +71,11 @@ $opencl_commands.each { |c|
   tracepoint_lambda.call(c, :stop)
 }
 
+$opencl_extension_commands.each { |c|
+  next if c.parameters.length > LTTNG_USABLE_PARAMS
+  tracepoint_lambda.call(c, :start)
+  tracepoint_lambda.call(c, :stop)
+}
+
 puts <<EOF
 EOF

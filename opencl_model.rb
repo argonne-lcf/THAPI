@@ -11,6 +11,8 @@ ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTermi
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
+SUPPORTED_EXTENSION_FUNCTIONS = /clCreateProgramWithILKHR/
+
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
 LTTNG_AVAILABLE_PARAMS = 25
@@ -22,6 +24,11 @@ doc = Nokogiri::XML(open("cl.xml"))
 funcs_e = doc.xpath("//commands/command").reject do |l|
   name = l.search("proto/name").text
   name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS)
+end.collect
+
+ext_funcs_e = doc.xpath("//commands/command").select do |l|
+  name = l.search("proto/name").text
+  name.match(SUPPORTED_EXTENSION_FUNCTIONS)
 end.collect
 
 typedef_e = doc.xpath("//types/type").select do |l|
@@ -53,6 +60,46 @@ CL_TYPE_MAP.transform_values! { |v|
 }
 
 CL_TYPE_MAP.merge!([["cl_GLint", "int"], ["cl_GLenum", "unsigned int"], ["cl_GLuint", "unsigned int"]].to_h)
+
+FFI_BASE_TYPES = ["ffi_type_uint8", "ffi_type_sint8", "ffi_type_uint16", "ffi_type_sint16", "ffi_type_uint32", "ffi_type_sint32", "ffi_type_uint64", "ffi_type_sint64", "ffi_type_float", "ffi_type_double", "ffi_type_void", "ffi_type_pointer"]
+FFI_TYPE_MAP =  {
+ "uint8_t" => "ffi_type_uint8",
+ "int8_t" => "ffi_type_sint8",
+ "uint16_t" => "ffi_type_uint16",
+ "int16_t" => "ffi_type_sint16",
+ "uint32_t" => "ffi_type_uint32",
+ "int32_t" => "ffi_type_sint32",
+ "uint64_t" => "ffi_type_uint64",
+ "int64_t" => "ffi_type_sint64",
+ "float" => "ffi_type_float",
+ "double" => "ffi_type_double",
+ "intptr_t" => "ffi_type_pointer",
+ "size_t" => "ffi_type_pointer",
+ "cl_double" => "double",
+ "cl_float" => "float",
+ "cl_char" => "int8_t",
+ "cl_uchar" => "uint8_t",
+ "cl_short" => "int16_t",
+ "cl_ushort" => "uint16_t",
+ "cl_int" => "int32_t",
+ "cl_uint" => "uint32_t",
+ "cl_long" => "int64_t",
+ "cl_ulong" => "uint64_t",
+ "cl_half" => "uint8_t"
+}
+
+FFI_TYPE_MAP.merge! typedef_e.collect { |l|
+  [l.search("name").text, l.search("type").text]
+}.to_h
+
+
+FFI_TYPE_MAP.transform_values! { |v|
+  until FFI_BASE_TYPES.include? v
+    v = FFI_TYPE_MAP[v]
+    exit unless v
+  end
+  v
+}
 
 class CLXML
 
@@ -178,8 +225,18 @@ class Parameter < Declaration
     nil
   end
 
+  def void?
+    decl.strip == "void"
+  end
+
   def lttng_out_type
     nil
+  end
+
+  def ffi_type
+    return "ffi_type_pointer" if pointer? || CL_OBJECTS.include?(type) || CL_EXT_OBJECTS.include?(type)
+    return "ffi_type_void" if void?
+    return FFI_TYPE_MAP[type]
   end
 
 end
@@ -191,6 +248,12 @@ class Prototype < CLXML
 
   def has_return_type?
     return_type != "void"
+  end
+
+  def ffi_return_type
+    return "ffi_type_void" unless has_return_type?
+    return "ffi_type_pointer" if return_type.match(/\*/) || CL_OBJECTS.include?(return_type) || CL_EXT_OBJECTS.include?(return_type)
+    FFI_TYPE_MAP[return_type]
   end
 
   def initialize(proto)
@@ -534,6 +597,10 @@ class Command < CLXML
     "CL_API_ENTRY " + @prototype.decl_pointer(type: type) + "(" + @parameters.collect(&:decl_pointer).join(", ") + ")"
   end
 
+  def decl_ffi_wrapper
+    "void #{@prototype.name}_ffi(ffi_cif *cif, #{@prototype.return_type} *ffi_ret, void* args[], #{@prototype.pointer_type_name} #{@prototype.pointer_name})"
+  end
+
   def event?
     returns_event? || @parameters.find { |p| p.name == "event" && p.pointer? }
   end
@@ -548,6 +615,10 @@ class Command < CLXML
 
   def init?
     return !!@init
+  end
+
+  def void_parameters?
+    @parameters.size == 1 && @parameters.first.void?
   end
 
 end
@@ -702,6 +773,10 @@ register_meta_parameter "clGetKernelSubGroupInfo", InArray, "input_value", "inpu
 register_meta_parameter "clSetProgramSpecializationConstant", InArray, "spec_value", "spec_size"
 
 $opencl_commands = funcs_e.collect { |func|
+  Command::new(func)
+}
+
+$opencl_extension_commands = ext_funcs_e.collect { |func|
   Command::new(func)
 }
 
@@ -929,6 +1004,54 @@ EOF
 }
 
 register_prologue "clGetExtensionFunctionAddress", str
+
+
+register_extension_callbacks = lambda { |ext_method|
+
+  str = <<EOF
+  if (_retval != NULL) {
+EOF
+  $opencl_extension_commands.each { |c|
+    str << <<EOF
+    if (tracepoint_enabled(#{provider}, #{c.prototype.name}_stop) && strcmp(func_name, "#{c.prototype.name}") == 0) {
+      struct opencl_closure *closure = NULL;
+      pthread_mutex_lock(&opencl_closures_mutex);
+      HASH_FIND_PTR(opencl_closures, &_retval, closure);
+      pthread_mutex_unlock(&opencl_closures_mutex);
+      if (closure != NULL) {
+        tracepoint(#{provider}, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
+        return closure->c_ptr;
+      }
+      closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure));
+      if (closure != NULL) {
+        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
+        if (closure->closure == NULL) {
+          free(closure);
+        } else {
+          ffi_type *args[#{c.parameters.size}] = {#{c.parameters.collect { |a| "&#{a.ffi_type}" }.join(", ")}};
+          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.void_parameters? ? 0 : c.parameters.size}, &#{c.prototype.ffi_return_type}, args) == FFI_OK) {
+            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.prototype.name}_ffi, _retval, closure->c_ptr) == FFI_OK) {
+              pthread_mutex_lock(&opencl_closures_mutex);
+              HASH_ADD_PTR(opencl_closures, ptr, closure);
+              pthread_mutex_unlock(&opencl_closures_mutex);
+              tracepoint(#{provider}, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
+              return closure->c_ptr;
+            }
+          }
+        }
+      }
+    }
+EOF
+  }
+  str << <<EOF
+  }
+EOF
+
+  register_epilogue ext_method, str
+}
+
+register_extension_callbacks.call("clGetExtensionFunctionAddress")
+register_extension_callbacks.call("clGetExtensionFunctionAddressForPlatform")
 
 $opencl_commands.each { |c|
   if c.event?

@@ -19,6 +19,7 @@ puts <<EOF
 #include <string.h>
 #include <pthread.h>
 #include <sys/mman.h>
+#include <ffi.h>
 #include "uthash.h"
 #include "utlist.h"
 EOF
@@ -34,6 +35,13 @@ $opencl_commands.each { |c|
   puts <<EOF
 typedef #{c.decl_pointer(type: true)};
 static #{c.prototype.pointer_type_name}  #{c.prototype.pointer_name} = (void *) 0x0;
+EOF
+}
+
+$opencl_extension_commands.each { |c|
+  puts <<EOF
+typedef #{c.decl_pointer(type: true)};
+#{c.decl_ffi_wrapper};
 EOF
 }
 
@@ -55,9 +63,27 @@ void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status
 
 static int     do_dump = 0;
 pthread_mutex_t enqueue_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int64_t enqueue_counter = 0;
 static int64_t dump_start = 0;
 static int64_t dump_end = INT64_MAX;
+
+#define BIN_TEMPLATE "/tmp/binXXXXXX"
+#define SOURCE_TEMPLATE "/tmp/sourceXXXXXX"
+#define BIN_SOURCE_TEMPLATE "/tmp/binsourceXXXXXX"
+#define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
+
+pthread_mutex_t opencl_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct opencl_closure {
+  void *ptr;
+  void *c_ptr;
+  UT_hash_handle hh;
+  ffi_cif cif;
+  ffi_closure *closure;
+};
+
+struct opencl_closure * opencl_closures = NULL;
 
 struct buffer_obj_data {
   size_t size;
@@ -73,14 +99,6 @@ struct svmptr_obj_data {
 };
 
 struct svmptr_obj_data *svmptr_objs = NULL;
-
-#define BIN_TEMPLATE "/tmp/binXXXXXX"
-#define SOURCE_TEMPLATE "/tmp/sourceXXXXXX"
-#define BIN_SOURCE_TEMPLATE "/tmp/binsourceXXXXXX"
-#define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
-
-pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t opencl_svmptr_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct kernel_arg {
   // 0 regular, 1 SVM
@@ -617,18 +635,10 @@ static inline void _init_tracer(void) {
 
 EOF
 
-$opencl_commands.each { |c|
-  puts <<EOF
-#{c.decl} {
-EOF
-  if c.init?
-    puts <<EOF
-  _init_tracer();
-EOF
-  end
+common_block = lambda { |c|
   params = []
   tp_params = []
-  unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
+  unless c.void_parameters?
     params = c.parameters.collect(&:name)
     tp_params = c.parameters.collect { |p| (p.callback? ? "(void *)(intptr_t)" : "" ) + p.name }
   end
@@ -658,17 +668,49 @@ EOF
   }
   if c.prototype.has_return_type?
     tp_params.push "_retval"
-    puts <<EOF
+  end
+  puts <<EOF
   tracepoint(#{provider}, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
-  return _retval;
-}
-
 EOF
-  else
-    puts <<EOF
-  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
 }
 
+$opencl_commands.each { |c|
+  puts <<EOF
+#{c.decl} {
+EOF
+  if c.init?
+    puts <<EOF
+  _init_tracer();
 EOF
   end
+  common_block.call(c)
+  if c.prototype.has_return_type?
+    puts <<EOF
+  return _retval;
+EOF
+  end
+  puts <<EOF
+}
+
+EOF
+}
+
+$opencl_extension_commands.each { |c|
+  puts <<EOF
+#{c.decl_ffi_wrapper} {
+EOF
+  c.parameters.each_with_index { |p, i|
+    puts <<EOF
+  #{p.decl} = *(#{p.decl_pointer} *)args[#{i}];
+EOF
+  }
+  common_block.call(c)
+  if c.prototype.has_return_type?
+    puts <<EOF
+  *ffi_ret = _retval;
+EOF
+  end
+  puts <<EOF
+}
+EOF
 }
