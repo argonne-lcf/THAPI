@@ -1895,7 +1895,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_command_queue</type>           <name>clCreateCommandQueueWithPropertiesKHR</name></proto>
             <param><type>cl_context</type>                 <name>context</name></param>
             <param><type>cl_device_id</type>               <name>device</name></param>
-            <param>const <type>cl_queue_properties_khr</type> <name>*properties</name></param>
+            <param>const <type>cl_queue_properties_khr</type>* <name>properties</name></param>
             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_1">
