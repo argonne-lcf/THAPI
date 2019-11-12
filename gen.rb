@@ -47,6 +47,7 @@ EOF
 
 puts <<EOF
 void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
+  (void)user_data;
   if (tracepoint_enabled(#{provider}_profiling, event_profiling_results)) {
     cl_ulong queued;
     cl_ulong submit;
@@ -114,7 +115,7 @@ struct kernel_obj_data {
 
 void kernel_obj_data_free(void *obj_data) {
   struct kernel_obj_data *data = (struct kernel_obj_data *)obj_data;
-  for (int i = 0; i < data->num_args; i++) {
+  for (cl_uint i = 0; i < data->num_args; i++) {
     if (data->args[i].arg_value) {
       free(data->args[i].arg_value);
     }
@@ -507,7 +508,7 @@ static void dump_opencl_object(cl_command_queue command_queue, uint64_t enqueue_
     //check if it is a pointer into an SVM region
     pthread_mutex_lock(&opencl_obj_mutex);
     DL_FOREACH(svmptr_objs, svm_data) {
-      if (*(intptr_t *)(arg->arg_value) > (intptr_t)(svm_data->ptr) && *(intptr_t *)(arg->arg_value) < (intptr_t)(svm_data->ptr) + svm_data->size) {
+      if (*(uintptr_t *)(arg->arg_value) > (uintptr_t)(svm_data->ptr) && *(uintptr_t *)(arg->arg_value) < (uintptr_t)(svm_data->ptr) + svm_data->size) {
         HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
         break;
       }
@@ -574,7 +575,7 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   if (new_event_wait_list != NULL && new_num_events_in_wait_list > 0) {
     cl_event ev;
     #{$clEnqueueBarrierWithWaitList.prototype.pointer_name}(command_queue, new_num_events_in_wait_list, new_event_wait_list, &ev);
-    for (int i = 0; i < new_num_events_in_wait_list; i++) {
+    for (cl_uint i = 0; i < new_num_events_in_wait_list; i++) {
       #{$clReleaseEvent.prototype.pointer_name}(new_event_wait_list[i]);
     }
     free(new_event_wait_list);
@@ -698,6 +699,7 @@ EOF
 $opencl_extension_commands.each { |c|
   puts <<EOF
 #{c.decl_ffi_wrapper} {
+  (void)cif;
 EOF
   c.parameters.each_with_index { |p, i|
     puts <<EOF

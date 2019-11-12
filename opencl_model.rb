@@ -429,6 +429,7 @@ end
 class DeviceFissionPropertyList < InArray
   def initialize(command, name)
     sname = "_#{name}_size"
+    type = command[name].type
     command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
   #{sname} = 0;
   if(#{name} != NULL) {
@@ -442,7 +443,7 @@ class DeviceFissionPropertyList < InArray
         while(#{name}[#{sname}++] != CL_PARTITION_BY_COUNTS_LIST_END_EXT);
         break;
       case CL_DEVICE_PARTITION_BY_NAMES_EXT:
-        while(#{name}[#{sname}] != CL_PARTITION_BY_NAMES_LIST_END_EXT);
+        while(#{name}[#{sname}] != (#{type})CL_PARTITION_BY_NAMES_LIST_END_EXT);
         break;
       }
     }
@@ -804,7 +805,7 @@ create_sub_buffer.meta_parameters.push buffer_create_info
 $opencl_commands.each { |c|
   if c.prototype.name.match "clEnqueue"
     c.prologues.push <<EOF
-  uint64_t _enqueue_counter = 0;
+  int64_t _enqueue_counter = 0;
   if (do_dump) {
     pthread_mutex_lock(&enqueue_counter_mutex);
     _enqueue_counter = enqueue_counter;
@@ -863,7 +864,7 @@ EOF
 
 register_epilogue "clEnqueueNDRangeKernel", <<EOF
   if (do_dump && _dump_release_events) {
-    for (int event_index = 0; event_index < num_events_in_wait_list; event_index++) {
+    for (cl_uint event_index = 0; event_index < num_events_in_wait_list; event_index++) {
       #{$clReleaseEvent.prototype.pointer_name}(event_wait_list[event_index]);
     }
     free((void *)event_wait_list);
@@ -941,7 +942,7 @@ EOF
 
 register_prologue "clCreateProgramWithSource", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_string) && strings != NULL) {
-    int index;
+    cl_uint index;
     for (index = 0; index < count; index++) {
       size_t length = 0;
       char path[sizeof(SOURCE_TEMPLATE)];
@@ -960,7 +961,7 @@ EOF
 
 register_prologue "clCreateProgramWithBinary", <<EOF
   if (tracepoint_enabled(#{provider}_source, program_binary) && binaries != NULL && lengths != NULL) {
-    int index;
+    cl_uint index;
     for (index = 0; index < num_devices; index++) {
       char path[sizeof(BIN_SOURCE_TEMPLATE)];
       strncpy(path, BIN_SOURCE_TEMPLATE, sizeof(path));
