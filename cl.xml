@@ -192,7 +192,8 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_profiling_info</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_sampler_properties</name>;</type>
-        <type category="define">typedef <type>cl_uint</type>          <name>cl_kernel_exec_info</name>;</type>
+	<type category="define">typedef <type>cl_uint</type>          <name>cl_kernel_exec_info</name>;</type>
+	<type category="define">typedef <type>cl_uint</type>          <name>cl_icdl_info</name>;</type>
 
             <comment>Structure types</comment>
         <type category="struct" name="cl_dx9_surface_info_khr">
@@ -514,6 +515,13 @@ server's OpenCL/api-docs repository.
         <enum value="0x4"           name="CL_AFFINITY_DOMAIN_L4_CACHE_EXT"/>
         <enum value="0x10"          name="CL_AFFINITY_DOMAIN_NUMA_EXT"/>
         <enum value="0x100"         name="CL_AFFINITY_DOMAIN_NEXT_FISSIONABLE_EXT"/>
+    </enums>
+
+    <enums name="cl_icdl_info" vendor="OCLICD" comment="Property names for clGetICDLoaderInfoOCLICD.">
+        <enum value="0x1"           name="CL_ICDL_OCL_VERSION"/>
+        <enum value="0x2"           name="CL_ICDL_VERSION"/>
+        <enum value="0x3"           name="CL_ICDL_NAME"/>
+        <enum value="0x4"           name="CL_ICDL_VENDOR"/>
     </enums>
 
     <enums name="cl_build_status" vendor="Khronos" comment="New values decrease">
@@ -2160,6 +2168,13 @@ server's OpenCL/api-docs repository.
             <param><type>cl_GLint</type>                   <name>miplevel</name></param>
             <param><type>cl_GLuint</type>                  <name>texture</name></param>
             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clGetICDLoaderInfoOCLICD</name></proto>
+            <param><type>cl_icdl_info</type>               <name>param_name</name></param>
+            <param><type>size_t</type>                     <name>param_value_size</name></param>
+            <param>void*                                   <name>param_value</name></param>
+            <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>

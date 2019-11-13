@@ -2,7 +2,10 @@ all: tracer.so
 
 LTTNG_FLAGS=-fPIC -g -Wall -Werror -O3 -I./
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb
+tracer.h: gen_header.rb
+	ruby gen_header.rb > tracer.h
+
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer.h
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 opencl_tracepoints.o: opencl_tracepoints.tp lttng/tracepoint_gen.h
@@ -27,4 +30,4 @@ tracer.so: tracer.c opencl_tracepoints.o opencl_profiling.o opencl_source.o open
 	gcc -g -O3 -Wall -pedantic -Wextra -Werror -I./ -o tracer.so -shared -fPIC -Wl,--version-script,tracer.map tracer.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o -llttng-ust -ldl -lffi
 
 clean:
-	rm -f tracer.c tracer.so opencl_tracepoints.tp opencl_profiling.o opencl_source.o opencl_tracepoints.o opencl_dump.o opencl_tracepoints.c opencl_profiling.c opencl_source.c opencl_dump.c opencl_tracepoints.h opencl_profiling.h opencl_source.h opencl_dump.h lttng/tracepoint_gen.h
+	rm -f tracer.c tracer.h tracer.so opencl_tracepoints.tp opencl_profiling.o opencl_source.o opencl_tracepoints.o opencl_dump.o opencl_tracepoints.c opencl_profiling.c opencl_source.c opencl_dump.c opencl_tracepoints.h opencl_profiling.h opencl_source.h opencl_dump.h lttng/tracepoint_gen.h

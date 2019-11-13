@@ -5,13 +5,13 @@ provider = :lttng_ust_opencl
 
 WINDOWS = /D3D|DX9/
 
-VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$/
+VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$/
 
 ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clEnqueueMigrateMemObjectEXT$/
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /clCreateProgramWithILKHR|clTerminateContextKHR|clCreateCommandQueueWithPropertiesKHR|clEnqueueMigrateMemObjectEXT/
+SUPPORTED_EXTENSION_FUNCTIONS = /clCreateProgramWithILKHR|clTerminateContextKHR|clCreateCommandQueueWithPropertiesKHR|clEnqueueMigrateMemObjectEXT|clGetICDLoaderInfoOCLICD/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
