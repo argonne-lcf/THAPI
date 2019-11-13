@@ -82,6 +82,7 @@ struct opencl_closure {
   UT_hash_handle hh;
   ffi_cif cif;
   ffi_closure *closure;
+  ffi_type **types;
 };
 
 struct opencl_closure * opencl_closures = NULL;

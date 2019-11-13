@@ -599,7 +599,7 @@ class Command < CLXML
   end
 
   def decl_ffi_wrapper
-    "void #{@prototype.name}_ffi(ffi_cif *cif, #{@prototype.return_type} *ffi_ret, void* args[], #{@prototype.pointer_type_name} #{@prototype.pointer_name})"
+    "void #{@prototype.name}_ffi(ffi_cif *cif, #{@prototype.return_type} *ffi_ret, void** args, #{@prototype.pointer_type_name} #{@prototype.pointer_name})"
   end
 
   def event?
@@ -1034,14 +1034,21 @@ EOF
         tracepoint(#{provider}, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
         return closure->c_ptr;
       }
-      closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure));
+      closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
+      closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct opencl_closure));
       if (closure != NULL) {
         closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
         if (closure->closure == NULL) {
           free(closure);
         } else {
-          ffi_type *args[#{c.parameters.size}] = {#{c.parameters.collect { |a| "&#{a.ffi_type}" }.join(", ")}};
-          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.void_parameters? ? 0 : c.parameters.size}, &#{c.prototype.ffi_return_type}, args) == FFI_OK) {
+EOF
+    c.parameters.each_with_index { |a, i|
+      str << <<EOF
+         closure->types[#{i}] = &#{a.ffi_type};
+EOF
+    }
+    str << <<EOF
+          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.void_parameters? ? 0 : c.parameters.size}, &#{c.prototype.ffi_return_type}, closure->types) == FFI_OK) {
             if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.prototype.name}_ffi, _retval, closure->c_ptr) == FFI_OK) {
               pthread_mutex_lock(&opencl_closures_mutex);
               HASH_ADD_PTR(opencl_closures, ptr, closure);
