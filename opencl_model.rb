@@ -624,156 +624,17 @@ class Command < CLXML
 
 end
 
-register_meta_parameter "clGetPlatformIDs", OutScalar, "num_platforms"
-register_meta_parameter "clGetPlatformIDs", OutArray, "platforms"
-
-register_meta_parameter "clGetDeviceIDs", OutScalar, "num_devices"
-register_meta_parameter "clGetDeviceIDs", OutArray, "devices"
-
-register_meta_parameter "clCreateContext", InNullArray, "properties"
-
-register_meta_parameter "clCreateContextFromType", InNullArray, "properties"
-
-register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_offset", "work_dim"
-register_meta_parameter "clEnqueueNDRangeKernel", InArray, "global_work_size", "work_dim"
-register_meta_parameter "clEnqueueNDRangeKernel", InArray, "local_work_size", "work_dim"
-
-register_meta_parameter "clSetCommandQueueProperty", OutScalar, "old_properties"
-
+YAML::load_file("opencl_meta_parameters.yaml").each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
 register_meta_struct    "clCreateImage2D", "image_format", "cl_image_format"
 
 register_meta_struct    "clCreateImage3D", "image_format", "cl_image_format"
 
-register_meta_parameter "clGetSupportedImageFormats", OutScalar, "num_image_formats"
-register_meta_parameter "clGetSupportedImageFormats", OutArray, "image_formats"
-register_meta_parameter "clCreateProgramWithSource", InArray, "strings", "count"
-register_meta_parameter "clCreateProgramWithSource", InArray, "lengths", "count"
-
-register_meta_parameter "clCreateProgramWithBinary", InArray, "device_list", "num_devices"
-register_meta_parameter "clCreateProgramWithBinary", InArray, "lengths", "num_devices"
-register_meta_parameter "clCreateProgramWithBinary", InArray, "binaries", "num_devices"
-register_meta_parameter "clCreateProgramWithBinary", OutArray, "binary_status", "num_devices"
-
-register_meta_parameter "clBuildProgram", InArray, "device_list", "num_devices"
-register_meta_parameter "clBuildProgram", InString, "options"
-
-register_meta_parameter "clCreateKernel", InString, "kernel_name"
-
-register_meta_parameter "clCreateKernelsInProgram", OutArray, "kernels", "num_kernels"
-register_meta_parameter "clCreateKernelsInProgram", OutScalar, "num_kernels_ret"
-
-register_meta_parameter "clSetKernelArg", InArray, "arg_value", "arg_size"
-
-register_meta_parameter "clWaitForEvents", InArray, "event_list", "num_events"
-
-register_meta_parameter "clEnqueueReadImage", InFixedArray, "origin", 3
-register_meta_parameter "clEnqueueReadImage", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueWriteImage", InFixedArray, "origin", 3
-register_meta_parameter "clEnqueueWriteImage", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueCopyImage", InFixedArray, "src_origin", 3
-register_meta_parameter "clEnqueueCopyImage", InFixedArray, "dst_origin", 3
-register_meta_parameter "clEnqueueCopyImage", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueCopyBufferToImage", InFixedArray, "dst_origin", 3
-register_meta_parameter "clEnqueueCopyBufferToImage", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueMapImage", InFixedArray, "origin", 3
-register_meta_parameter "clEnqueueMapImage", InFixedArray, "region", 3
-register_meta_parameter "clEnqueueMapImage", OutScalar, "image_row_pitch"
-register_meta_parameter "clEnqueueMapImage", OutScalar, "image_slice_pitch"
-
-register_meta_parameter "clEnqueueNativeKernel", InArray, "args", "cb_args"
-register_meta_parameter "clEnqueueNativeKernel", InArray, "mem_list", "num_mem_objects"
-register_meta_parameter "clEnqueueNativeKernel", InArray, "args_mem_loc", "num_mem_objects"
-
-register_meta_parameter "clEnqueueWaitForEvents", InArray, "event_list", "num_events"
-
-register_meta_parameter "clGetExtensionFunctionAddress", InString, "func_name"
-
-register_meta_parameter "clGetGLObjectInfo", OutScalar, "gl_object_type"
-register_meta_parameter "clGetGLObjectInfo", OutScalar, "gl_object_name"
-
-register_meta_parameter "clEnqueueAcquireGLObjects", InArray, "mem_objects", "num_objects"
-
-register_meta_parameter "clEnqueueReleaseGLObjects", InArray, "mem_objects", "num_objects"
-
-register_meta_parameter "clEnqueueReadBufferRect", InFixedArray, "buffer_offset", 3
-register_meta_parameter "clEnqueueReadBufferRect", InFixedArray, "host_offset", 3
-register_meta_parameter "clEnqueueReadBufferRect", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueWriteBufferRect", InFixedArray, "buffer_offset", 3
-register_meta_parameter "clEnqueueWriteBufferRect", InFixedArray, "host_offset", 3
-register_meta_parameter "clEnqueueWriteBufferRect", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueCopyBufferRect", InFixedArray, "src_origin", 3
-register_meta_parameter "clEnqueueCopyBufferRect", InFixedArray, "dst_origin", 3
-register_meta_parameter "clEnqueueCopyBufferRect", InFixedArray, "region", 3
-
-register_meta_parameter "clCreateSubDevicesEXT", DeviceFissionPropertyList, "properties"
-register_meta_parameter "clCreateSubDevicesEXT", OutScalar, "num_devices"
-register_meta_parameter "clCreateSubDevicesEXT", OutArray, "out_devices"
-
-register_meta_parameter "clCreateSubDevices", DeviceFissionPropertyList, "properties"
-register_meta_parameter "clCreateSubDevices", OutScalar, "num_devices_ret"
-register_meta_parameter "clCreateSubDevices", OutArray, "out_devices", "num_devices"
-
 register_meta_struct    "clCreateImage", "image_format", "cl_image_format"
 register_meta_struct    "clCreateImage", "image_desc", "cl_image_desc"
-
-register_meta_parameter "clCreateProgramWithBuiltInKernels", InArray, "device_list", "num_devices"
-register_meta_parameter "clCreateProgramWithBuiltInKernels", InString, "kernel_names"
-
-register_meta_parameter "clCompileProgram", InArray, "device_list", "num_devices"
-register_meta_parameter "clCompileProgram", InString, "options"
-register_meta_parameter "clCompileProgram", InArray, "input_headers", "num_input_headers"
-register_meta_parameter "clCompileProgram", InArray, "header_include_names", "num_input_headers"
-
-register_meta_parameter "clLinkProgram", InArray, "device_list", "num_devices"
-register_meta_parameter "clLinkProgram", InString, "options"
-register_meta_parameter "clLinkProgram", InArray, "input_programs", "num_input_programs"
-
-register_meta_parameter "clEnqueueFillBuffer", InArray, "pattern", "pattern_size"
-
-register_meta_parameter "clEnqueueFillImage", InFixedArray, "origin", 3
-register_meta_parameter "clEnqueueFillImage", InFixedArray, "region", 3
-
-register_meta_parameter "clEnqueueMigrateMemObjects", InArray, "mem_objects", "num_mem_objects"
-register_meta_parameter "clEnqueueMigrateMemObjectsEXT", InArray, "mem_objects", "num_mem_objects"
-
-register_meta_parameter "clGetExtensionFunctionAddressForPlatform", InString, "func_name"
-
-register_meta_parameter "clCreateFromEGLImageKHR", InNullArray, "properties"
-
-register_meta_parameter "clEnqueueAcquireEGLObjectsKHR", InArray, "mem_objects", "num_objects"
-
-register_meta_parameter "clEnqueueReleaseEGLObjectsKHR", InArray, "mem_objects", "num_objects"
-
-register_meta_parameter "clCreateCommandQueueWithProperties", InNullArray, "properties"
-register_meta_parameter "clCreateCommandQueueWithPropertiesKHR", InNullArray, "properties"
-
-register_meta_parameter "clCreatePipe", InNullArray, "properties"
-
-register_meta_parameter "clEnqueueSVMFree", InArray, "svm_pointers", "num_svm_pointers"
-
-register_meta_parameter "clEnqueueSVMMemFill", InArray, "pattern", "pattern_size"
-
-register_meta_parameter "clCreateSamplerWithProperties", InNullArray, "sampler_properties"
-
-register_meta_parameter "clSetKernelExecInfo", InArray, "param_value", "param_value_size"
-
-register_meta_parameter "clEnqueueSVMMigrateMem", InArray, "svm_pointers", "num_svm_pointers"
-register_meta_parameter "clEnqueueSVMMigrateMem", InArray, "sizes", "num_svm_pointers"
-
-register_meta_parameter "clGetDeviceAndHostTimer", OutScalar, "device_timestamp"
-register_meta_parameter "clGetDeviceAndHostTimer", OutScalar, "host_timestamp"
-
-register_meta_parameter "clGetHostTimer", OutScalar, "host_timestamp"
-
-register_meta_parameter "clGetKernelSubGroupInfo", InArray, "input_value", "input_value_size"
-
-register_meta_parameter "clSetProgramSpecializationConstant", InArray, "spec_value", "spec_size"
 
 $opencl_commands = funcs_e.collect { |func|
   Command::new(func)

@@ -1,0 +1,148 @@
+---
+clGetPlatformIDs:
+  - [ OutScalar, num_platforms ]
+  - [ OutArray, platforms ]
+clGetDeviceIDs:
+  - [ OutScalar, num_devices ]
+  - [ OutArray, devices ]
+clCreateContext:
+  - [ InNullArray, properties ]
+clCreateContextFromType:
+  - [ InNullArray, properties ]
+clEnqueueNDRangeKernel:
+  - [ InArray, global_work_offset, work_dim ]
+  - [ InArray, global_work_size, work_dim ]
+  - [ InArray, local_work_size, work_dim ]
+clSetCommandQueueProperty:
+  - [ OutScalar, old_properties ]
+clGetSupportedImageFormats:
+  - [ OutScalar, num_image_formats ]
+  - [ OutArray, image_formats ]
+clCreateProgramWithSource:
+  - [ InArray, strings, count ]
+  - [ InArray, lengths, count ]
+clCreateProgramWithBinary:
+  - [ InArray, device_list, num_devices ]
+  - [ InArray, lengths, num_devices ]
+  - [ InArray, binaries, num_devices ]
+  - [ OutArray, binary_status, num_devices ]
+clBuildProgram:
+  - [ InArray, device_list, num_devices ]
+  - [ InString, options ]
+clCreateKernel:
+  - [ InString, kernel_name ]
+clCreateKernelsInProgram:
+  - [ OutArray, kernels, num_kernels ]
+  - [ OutScalar, num_kernels_ret ]
+clSetKernelArg:
+  - [ InArray, arg_value, arg_size ]
+clWaitForEvents:
+  - [ InArray, event_list, num_events ]
+clEnqueueReadImage:
+  - [ InFixedArray, origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueWriteImage:
+  - [ InFixedArray, origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueCopyImage:
+  - [ InFixedArray, src_origin, 3 ]
+  - [ InFixedArray, dst_origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueCopyBufferToImage:
+  - [ InFixedArray, dst_origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueMapImage:
+  - [ InFixedArray, origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+  - [ OutScalar, image_row_pitch ]
+  - [ OutScalar, image_slice_pitch ]
+clEnqueueNativeKernel:
+  - [ InArray, args, cb_args ]
+  - [ InArray, mem_list, num_mem_objects ]
+  - [ InArray, args_mem_loc, num_mem_objects ]
+clEnqueueWaitForEvents:
+  - [ InArray, event_list, num_events ]
+clGetGLObjectInfo:
+  - [ OutScalar, gl_object_type ]
+  - [ OutScalar, gl_object_name ]
+clEnqueueAcquireGLObjects:
+  - [ InArray, mem_objects, num_objects ]
+clEnqueueReleaseGLObjects:
+  - [ InArray, mem_objects, num_objects ]
+clEnqueueReadBufferRect:
+  - [ InFixedArray, buffer_offset, 3 ]
+  - [ InFixedArray, host_offset, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueWriteBufferRect:
+  - [ InFixedArray, buffer_offset, 3 ]
+  - [ InFixedArray, host_offset, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueCopyBufferRect:
+  - [ InFixedArray, src_origin, 3 ]
+  - [ InFixedArray, dst_origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+clCreateSubDevicesEXT:
+  - [ DeviceFissionPropertyList, properties ]
+  - [ OutScalar, num_devices ]
+  - [ OutArray, out_devices ]
+clCreateSubDevices:
+  - [ DeviceFissionPropertyList, properties ]
+  - [ OutScalar, num_devices_ret ]
+  - [ OutArray, out_devices, num_devices ]
+clCreateProgramWithBuiltInKernels:
+  - [ InArray, device_list, num_devices ]
+  - [ InString, kernel_names ]
+clCompileProgram:
+  - [ InArray, device_list, num_devices ]
+  - [ InString, options ]
+  - [ InArray, input_headers, num_input_headers ]
+  - [ InArray, header_include_names, num_input_headers ]
+clLinkProgram:
+  - [ InArray, device_list, num_devices ]
+  - [ InString, options ]
+  - [ InArray, input_programs, num_input_programs ]
+clEnqueueFillBuffer:
+  - [ InArray, pattern, pattern_size ]
+clEnqueueFillImage:
+  - [ InFixedArray, origin, 3 ]
+  - [ InFixedArray, region, 3 ]
+clEnqueueMigrateMemObjects:
+  - [ InArray, mem_objects, num_mem_objects ]
+clEnqueueMigrateMemObjectsEXT:
+  - [ InArray, mem_objects, num_mem_objects ]
+clGetExtensionFunctionAddress:
+  - [ InString, func_name ]
+clGetExtensionFunctionAddressForPlatform:
+  - [ InString, func_name ]
+clCreateFromEGLImageKHR:
+  - [ InNullArray, properties ]
+clEnqueueAcquireEGLObjectsKHR:
+  - [ InArray, mem_objects, num_objects ]
+clEnqueueReleaseEGLObjectsKHR:
+  - [ InArray, mem_objects, num_objects ]
+clCreateCommandQueueWithProperties:
+  - [ InNullArray, properties ]
+clCreateCommandQueueWithPropertiesKHR:
+  - [ InNullArray, properties ]
+clCreatePipe:
+  - [ InNullArray, properties ]
+clEnqueueSVMFree:
+  - [ InArray, svm_pointers, num_svm_pointers ]
+clEnqueueSVMMemFill:
+  - [ InArray, pattern, pattern_size ]
+clCreateSamplerWithProperties:
+  - [ InNullArray, sampler_properties ]
+clSetKernelExecInfo:
+  - [ InArray, param_value, param_value_size ]
+clEnqueueSVMMigrateMem:
+  - [ InArray, svm_pointers, num_svm_pointers ]
+  - [ InArray, sizes, num_svm_pointers ]
+clGetDeviceAndHostTimer:
+  - [ OutScalar, device_timestamp ]
+  - [ OutScalar, host_timestamp ]
+clGetHostTimer:
+  - [ OutScalar, host_timestamp ]
+clGetKernelSubGroupInfo:
+  - [ InArray, input_value, input_value_size ]
+clSetProgramSpecializationConstant:
+  - [ InArray, spec_value, spec_size ]
