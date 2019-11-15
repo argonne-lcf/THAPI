@@ -5,7 +5,7 @@ LTTNG_FLAGS=-fPIC -g -Wall -Werror -O3 -I./
 tracer.h: gen_header.rb
 	ruby gen_header.rb > tracer.h
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer.h
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer.h opencl_meta_parameters.yaml
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 opencl_tracepoints.o: opencl_tracepoints.tp lttng/tracepoint_gen.h
@@ -23,7 +23,7 @@ opencl_dump.o: opencl_dump.tp lttng/tracepoint_gen.h
 lttng/tracepoint_gen.h: tracepoint_gen.rb
 	ruby tracepoint_gen.rb 25 > lttng/tracepoint_gen.h
 
-tracer.c: gen.rb opencl_model.rb
+tracer.c: gen.rb opencl_model.rb opencl_meta_parameters.yaml tracer_helpers.include.c
 	ruby gen.rb > tracer.c
 
 tracer.so: tracer.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o
