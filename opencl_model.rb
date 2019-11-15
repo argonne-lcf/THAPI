@@ -645,23 +645,18 @@ $opencl_extension_commands = ext_funcs_e.collect { |func|
   Command::new(func)
 }
 
-$clReleaseEvent = $opencl_commands.find { |c| c.prototype.name == "clReleaseEvent" }
-$clSetEventCallback = $opencl_commands.find { |c| c.prototype.name == "clSetEventCallback" }
-$clGetEventProfilingInfo = $opencl_commands.find { |c| c.prototype.name == "clGetEventProfilingInfo" }
-$clGetKernelInfo = $opencl_commands.find { |c| c.prototype.name == "clGetKernelInfo" }
-$clGetMemObjectInfo = $opencl_commands.find { |c| c.prototype.name == "clGetMemObjectInfo" }
-$clEnqueueReadBuffer = $opencl_commands.find { |c| c.prototype.name == "clEnqueueReadBuffer" }
-$clGetCommandQueueInfo = $opencl_commands.find { |c| c.prototype.name == "clGetCommandQueueInfo" }
-$clEnqueueBarrierWithWaitList = $opencl_commands.find { |c| c.prototype.name == "clEnqueueBarrierWithWaitList" }
-$clGetExtensionFunctionAddress = $opencl_commands.find { |c| c.prototype.name == "clGetExtensionFunctionAddress" }
-$clEnqueueSVMMemcpy = $opencl_commands.find { |c| c.prototype.name == "clEnqueueSVMMemcpy" }
+$opencl_commands.each { |c|
+  eval "$#{c.prototype.name} = c"
+}
 
-create_sub_buffer = $opencl_commands.find { |c| c.prototype.name == "clCreateSubBuffer" }
+$opencl_extension_commands.each { |c|
+  eval "$#{c.prototype.name} = c"
+}
 
-buffer_create_info = InMetaParameter::new(create_sub_buffer, "buffer_create_info")
+buffer_create_info = InMetaParameter::new($clCreateSubBuffer, "buffer_create_info")
 buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :uint8_t, "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
 
-create_sub_buffer.meta_parameters.push buffer_create_info
+$clCreateSubBuffer.meta_parameters.push buffer_create_info
 
 
 $opencl_commands.each { |c|
