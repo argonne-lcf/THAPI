@@ -22,13 +22,12 @@ puts <<EOF
 #include <ffi.h>
 #include "uthash.h"
 #include "utlist.h"
-EOF
 
-puts <<EOF
 #include "opencl_tracepoints.h"
 #include "opencl_profiling.h"
 #include "opencl_source.h"
 #include "opencl_dump.h"
+
 EOF
 
 $opencl_commands.each { |c|
@@ -46,39 +45,8 @@ EOF
 }
 
 puts <<EOF
-#define CL_GET_EVENT_PROFILING_INFO_PTR #{$clGetEventProfilingInfo.prototype.pointer_name}
-#define CL_GET_KERNEL_INFO_PTR #{$clGetKernelInfo.prototype.pointer_name}
-#define CL_ENQUEUE_READ_BUFFER_PTR #{$clEnqueueReadBuffer.prototype.pointer_name}
-#define CL_SET_EVENT_CALLBACK_PTR #{$clSetEventCallback.prototype.pointer_name}
-#define CL_RELEASE_EVENT_PTR #{$clReleaseEvent.prototype.pointer_name}
-#define CL_ENQUEUE_SVM_MEMCPY_PTR #{$clEnqueueSVMMemcpy.prototype.pointer_name}
-#define CL_EMQUEUE_BARRIER_WITH_WAIT_LIST_PTR #{$clEnqueueBarrierWithWaitList.prototype.pointer_name}
+static void find_opencl_symbols(void * handle) {
 EOF
-
-puts File::read("tracer_helpers.include.c")
-
-puts <<EOF
-static pthread_once_t _init = PTHREAD_ONCE_INIT;
-
-static void _load_tracer(void) {
-  void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
-  if( !handle ) {
-    printf("Failure: could not load OpenCL library!\\n");
-    exit(1);
-  }
-
-  char *s = NULL;
-  s = getenv("LTTNG_UST_OPENCL_DUMP");
-  if (s)
-    do_dump = 1;
-  s = getenv("LTTNG_UST_OPENCL_DUMP_START");
-  if (s)
-    dump_start = atoll(s);
-  s = getenv("LTTNG_UST_OPENCL_DUMP_END");
-  if (s)
-    dump_end = atoll(s);
-EOF
-
 
 $opencl_commands.each { |c|
   unless (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
@@ -103,11 +71,16 @@ EOF
 puts <<EOF
 }
 
-static inline void _init_tracer(void) {
-  pthread_once(&_init, _load_tracer);
-}
-
+#define CL_GET_EVENT_PROFILING_INFO_PTR #{$clGetEventProfilingInfo.prototype.pointer_name}
+#define CL_GET_KERNEL_INFO_PTR #{$clGetKernelInfo.prototype.pointer_name}
+#define CL_ENQUEUE_READ_BUFFER_PTR #{$clEnqueueReadBuffer.prototype.pointer_name}
+#define CL_SET_EVENT_CALLBACK_PTR #{$clSetEventCallback.prototype.pointer_name}
+#define CL_RELEASE_EVENT_PTR #{$clReleaseEvent.prototype.pointer_name}
+#define CL_ENQUEUE_SVM_MEMCPY_PTR #{$clEnqueueSVMMemcpy.prototype.pointer_name}
+#define CL_EMQUEUE_BARRIER_WITH_WAIT_LIST_PTR #{$clEnqueueBarrierWithWaitList.prototype.pointer_name}
 EOF
+
+puts File::read("tracer_helpers.include.c")
 
 common_block = lambda { |c|
   params = []

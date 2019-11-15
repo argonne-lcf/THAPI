@@ -539,3 +539,30 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   return NULL;
 }
 
+static pthread_once_t _init = PTHREAD_ONCE_INIT;
+
+static void _load_tracer(void) {
+  void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
+  if( !handle ) {
+    printf("Failure: could not load OpenCL library!\n");
+    exit(1);
+  }
+
+  char *s = NULL;
+  s = getenv("LTTNG_UST_OPENCL_DUMP");
+  if (s)
+    do_dump = 1;
+  s = getenv("LTTNG_UST_OPENCL_DUMP_START");
+  if (s)
+    dump_start = atoll(s);
+  s = getenv("LTTNG_UST_OPENCL_DUMP_END");
+  if (s)
+    dump_end = atoll(s);
+
+  find_opencl_symbols(handle);
+}
+
+static inline void _init_tracer(void) {
+  pthread_once(&_init, _load_tracer);
+}
+
