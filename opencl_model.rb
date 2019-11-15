@@ -624,17 +624,18 @@ class Command < CLXML
 
 end
 
-YAML::load_file("opencl_meta_parameters.yaml").each  { |func, list|
+meta_parameters = YAML::load_file("opencl_meta_parameters.yaml")
+meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
-register_meta_struct    "clCreateImage2D", "image_format", "cl_image_format"
 
-register_meta_struct    "clCreateImage3D", "image_format", "cl_image_format"
-
-register_meta_struct    "clCreateImage", "image_format", "cl_image_format"
-register_meta_struct    "clCreateImage", "image_desc", "cl_image_desc"
+meta_parameters["meta_structs"].each { |func, list|
+  list.each { |args|
+    register_meta_struct func, *args
+  }
+}
 
 $opencl_commands = funcs_e.collect { |func|
   Command::new(func)
