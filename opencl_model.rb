@@ -303,6 +303,36 @@ class MetaParameter
     @name = name
   end
 
+  def lttng_array_type_broker(type, name, size, stype = nil)
+    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    if stype
+      stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
+      lttng_arr_type = "sequence"
+      lttng_args = [ stype, "#{name} == NULL ? 0 : #{size}" ]
+    else
+      lttng_arr_type = "array"
+      lttng_args = [ size ]
+    end
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", :intptr_t]
+    when *CL_INT_SCALARS
+      lttng_type = ["ctf_#{lttng_arr_type}", type]
+    when *CL_FLOAT_SCALARS
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", CL_FLOAT_SCALARS_MAP[type]]
+    when *CL_STRUCTS
+      lttng_type = ["ctf_#{lttng_arr_type}_text", :uint8_t]
+    when ""
+      lttng_type = ["ctf_#{lttng_arr_type}_text", :uint8_t]
+    when /\*/
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", :intptr_t]
+    else
+      raise "Unknown Type: #{type.inspect}!"
+    end
+    lttng_type += [ name+"_vals", name ]
+    lttng_type += lttng_args
+  end
+
   def lttng_in_type
     nil
   end
@@ -348,23 +378,7 @@ class InFixedArray  < InMetaParameter
     super(command, name)
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type
-    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
-    case type
-    when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_in_type = [:ctf_array_hex, :intptr_t, name+"_vals", name, count]
-    when *CL_INT_SCALARS
-      @lttng_in_type = [:ctf_array, type, name+"_vals", name, count]
-    when *CL_FLOAT_SCALARS
-      @lttng_in_type = [:ctf_array_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, count]
-    when *CL_STRUCTS
-      @lttng_in_type = [:ctf_array_text, :uint8_t, name+"_vals", name, count]
-    when ""
-      @lttng_in_type = [:ctf_array_text, :uint8_t, name+"_vals", name, count]
-    when /\*/
-      @lttng_in_type = [:ctf_array_hex, :intptr_t, name+"_vals", name, count]
-    else
-      raise "Unknown Type: #{type.inspect}!"
-    end
+    @lttng_in_type = lttng_array_type_broker(type, name, count)
   end
 end
 
@@ -374,26 +388,9 @@ class OutArray < OutMetaParameter
     @sname = sname
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type
-    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     raise "Couldn't find variable #{sname} for #{command.prototype.name}!" unless command[sname]
     stype = command[sname].type
-    stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
-    case type
-    when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when *CL_INT_SCALARS
-      @lttng_out_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when *CL_FLOAT_SCALARS
-      @lttng_out_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when *CL_STRUCTS
-      @lttng_out_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
-    when ""
-      @lttng_out_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when /\*/
-      @lttng_out_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    else
-      raise "Unknown Type: #{type.inspect}!"
-    end
+    @lttng_out_type = lttng_array_type_broker(type, name, sname, stype)
   end
 end
 
@@ -403,26 +400,9 @@ class InArray < InMetaParameter
     @sname = sname
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type
-    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     raise "Couldn't find variable #{sname} for #{command.prototype.name}!" unless command[sname]
     stype = command[sname].type
-    stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
-    case type
-    when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when *CL_INT_SCALARS
-      @lttng_in_type = [:ctf_sequence, type, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when *CL_FLOAT_SCALARS
-      @lttng_in_type = [:ctf_sequence_hex, CL_FLOAT_SCALARS_MAP[type], name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when *CL_STRUCTS
-      @lttng_in_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}*sizeof(#{type})"]
-    when ""
-      @lttng_in_type = [:ctf_sequence_text, :uint8_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    when /\*/
-      @lttng_in_type = [:ctf_sequence_hex, :intptr_t, name+"_vals", name, stype, "#{name} == NULL ? 0 : #{sname}"]
-    else
-      raise "Unknown Type: #{type.inspect}!"
-    end
+    @lttng_in_type = lttng_array_type_broker(type, name, sname, stype)
   end
 end
 
