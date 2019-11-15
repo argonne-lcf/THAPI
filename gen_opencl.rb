@@ -80,7 +80,7 @@ puts <<EOF
 #define CL_EMQUEUE_BARRIER_WITH_WAIT_LIST_PTR #{$clEnqueueBarrierWithWaitList.prototype.pointer_name}
 EOF
 
-puts File::read("tracer_helpers.include.c")
+puts File::read("tracer_opencl_helpers.include.c")
 
 common_block = lambda { |c|
   params = []

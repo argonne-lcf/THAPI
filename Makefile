@@ -1,11 +1,11 @@
-all: tracer.so
+all: tracer_opencl.so
 
 LTTNG_FLAGS=-fPIC -g -Wall -Werror -O3 -I./
 
-tracer.h: gen_header.rb
-	ruby gen_header.rb > tracer.h
+tracer_opencl.h: gen_opencl_header.rb
+	ruby gen_opencl_header.rb > tracer_opencl.h
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer.h opencl_meta_parameters.yaml
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 opencl_tracepoints.o: opencl_tracepoints.tp lttng/tracepoint_gen.h
@@ -23,11 +23,11 @@ opencl_dump.o: opencl_dump.tp lttng/tracepoint_gen.h
 lttng/tracepoint_gen.h: tracepoint_gen.rb
 	ruby tracepoint_gen.rb 25 > lttng/tracepoint_gen.h
 
-tracer.c: gen.rb opencl_model.rb opencl_meta_parameters.yaml tracer_helpers.include.c
-	ruby gen.rb > tracer.c
+tracer_opencl.c: gen_opencl.rb opencl_model.rb opencl_meta_parameters.yaml tracer_opencl_helpers.include.c
+	ruby gen_opencl.rb > tracer_opencl.c
 
-tracer.so: tracer.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o
-	gcc -g -O3 -Wall -pedantic -Wextra -Werror -I./ -o tracer.so -shared -fPIC -Wl,--version-script,tracer.map tracer.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o -llttng-ust -ldl -lffi
+tracer_opencl.so: tracer_opencl.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o
+	gcc -g -O3 -Wall -pedantic -Wextra -Werror -I./ -o tracer_opencl.so -shared -fPIC -Wl,--version-script,tracer_opencl.map tracer_opencl.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o -llttng-ust -ldl -lffi
 
 clean:
-	rm -f tracer.c tracer.h tracer.so opencl_tracepoints.tp opencl_profiling.o opencl_source.o opencl_tracepoints.o opencl_dump.o opencl_tracepoints.c opencl_profiling.c opencl_source.c opencl_dump.c opencl_tracepoints.h opencl_profiling.h opencl_source.h opencl_dump.h lttng/tracepoint_gen.h
+	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so opencl_tracepoints.tp opencl_profiling.o opencl_source.o opencl_tracepoints.o opencl_dump.o opencl_tracepoints.c opencl_profiling.c opencl_source.c opencl_dump.c opencl_tracepoints.h opencl_profiling.h opencl_source.h opencl_dump.h lttng/tracepoint_gen.h

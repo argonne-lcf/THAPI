@@ -8,7 +8,7 @@ Dir.mkdir "./traces"
 `lttng stop 2>&1`
 `lttng destroy --all 2>&1`
 
-ENV["LIBOPENCL_SO"] = "../tracer.so"
+ENV["LIBOPENCL_SO"] = "../tracer_opencl.so"
 require 'opencl_ruby_ffi'
 
 at_exit do

@@ -4,4 +4,4 @@
 *.c
 *.h
 opencl_tracepoints.tp
-tracer.sh
+tracer_opencl.sh

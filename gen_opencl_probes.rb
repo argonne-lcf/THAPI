@@ -9,7 +9,7 @@ puts <<EOF
 #include <CL/cl_gl.h>
 #include <CL/cl_gl_ext.h>
 #include <CL/cl_egl.h>
-#include "./tracer.h"
+#include "./tracer_opencl.h"
 EOF
 
 tracepoint_lambda = lambda { |c, dir|

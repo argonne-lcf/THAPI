@@ -21,6 +21,6 @@ then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
 fi
 lttng start
-LTTNG_UST_ALLOW_BLOCKING=1 LD_PRELOAD=PATH_TO_LIB/tracer.so "$@"
+LTTNG_UST_ALLOW_BLOCKING=1 LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so "$@"
 lttng stop
 lttng destroy
