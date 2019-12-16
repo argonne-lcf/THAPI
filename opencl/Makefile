@@ -23,9 +23,6 @@ opencl_source.o: opencl_source.tp utils
 opencl_dump.o: opencl_dump.tp utils
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp opencl_dump.tp
 
-lttng/tracepoint_gen.h: tracepoint_gen.rb
-	ruby tracepoint_gen.rb 25 > lttng/tracepoint_gen.h
-
 tracer_opencl.c: gen_opencl.rb opencl_model.rb opencl_meta_parameters.yaml tracer_opencl_helpers.include.c
 	ruby gen_opencl.rb > tracer_opencl.c
 
