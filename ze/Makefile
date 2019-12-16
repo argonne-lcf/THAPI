@@ -17,6 +17,8 @@ zet_api.yaml: $(shell find include/core include/experimental include/tools -type
 tracer_ze.so: utils ze_api.yaml zex_api.yaml zet_api.yaml
 	echo nop
 
+# objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
+
 clean:
 	rm -f ze_api.yaml zex_api.yaml zet_api.yaml
 	$(MAKE) -C ../utils clean
