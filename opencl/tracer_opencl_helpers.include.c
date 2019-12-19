@@ -540,6 +540,8 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
+volatile static __thread int in_init = 0;
+volatile static cl_uint _initialized = 0;
 
 static void _load_tracer(void) {
   void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
@@ -563,6 +565,16 @@ static void _load_tracer(void) {
 }
 
 static inline void _init_tracer(void) {
-  pthread_once(&_init, _load_tracer);
+  if( __builtin_expect (_initialized, 1) )
+    return;
+  /* Avoid reentrancy */
+  if (!in_init) {
+    in_init=1;
+    __sync_synchronize();
+    pthread_once(&_init, _load_tracer);
+    __sync_synchronize();
+    in_init=0;
+  }
+  _initialized = 1;
 }
 
