@@ -2,6 +2,9 @@ require 'yaml'
 require 'pp'
 require './yaml_ast'
 
+LTTNG_AVAILABLE_PARAMS = 25
+LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
+
 provider = :lttng_ust_ze
 
 ze_api = YAMLCAst.from_yaml_ast(YAML::load_file("ze_api.yaml"))
@@ -19,6 +22,7 @@ ZE_INT_SCALARS = %w(intptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint
 ZE_ENUM_SCALARS = ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
 ZE_STRUCT_TYPES = ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
 ZE_UNION_TYPES = ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
+ZE_POINTER_TYPES = ze_types_e.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
 ZE_STRUCT_MAP = {}
 ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
@@ -28,14 +32,6 @@ ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
     ZE_STRUCT_MAP[t.name] = ze_api["structs"].find { |str| str.name == t.type.name }.members
   end
 }
-
-pp ZE_OBJECTS
-pp ZE_INT_SCALARS
-pp ZE_ENUM_SCALARS
-pp ZE_STRUCT_TYPES
-pp ZE_UNION_TYPES
-
-#pp ZE_STRUCT_MAP
 
 INIT_FUNCTIONS = /zeInit/
 
@@ -87,6 +83,27 @@ module LTTNG
 end
 
 module YAMLCAst
+  class Declaration
+    def lttng_type
+      r = type.lttng_type
+      r.name = name
+      case type
+      when Struct, Union
+        r.expression = "&#{name}"
+      when CustomType
+        case type.name
+        when *ZE_STRUCT_TYPES, *ZE_UNION_TYPES
+          r.expression = "&#{name}"
+        else
+          r.expression = name
+        end
+      else
+        r.expression = name
+      end
+      r
+    end
+  end
+
   class Type
     def lttng_type
       raise "Unsupported type #{self}!"
@@ -158,11 +175,11 @@ module YAMLCAst
     end
   end
 
-  class CustonType
+  class CustomType
     def lttng_type
       ev = LTTNG::TracepointEvent::new
-      case type.name
-      when *ZE_OBJECTS
+      case name
+      when *ZE_OBJECTS, *ZE_POINTER_TYPES
         ev.macro = :ctf_integer_hex
         ev.type = :intptr_t
       when *ZE_INT_SCALARS
@@ -171,7 +188,7 @@ module YAMLCAst
       when *ZE_ENUM_SCALARS
         ev.macro = :ctf_integer
         ev.type = :int32_t
-      when *ZE_STRUCTS_TYPES, *ZE_UNION_TYPES
+      when *ZE_STRUCT_TYPES, *ZE_UNION_TYPES
         ev.macro = :ctf_array_text
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
@@ -224,7 +241,7 @@ module YAMLCAst
         ev.type = type.name
       when YAMLCAst::CustomType
         case type.name
-        when *ZE_OBJECTS
+        when *ZE_OBJECTS, *ZE_POINTER_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :intptr_t
         when *ZE_INT_SCALARS
@@ -233,7 +250,7 @@ module YAMLCAst
         when *ZE_ENUM_SCALARS
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
-        when *ZE_STRUCTS_TYPES, *ZE_UNION_TYPES
+        when *ZE_STRUCT_TYPES, *ZE_UNION_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length
@@ -285,12 +302,28 @@ class Command
       type::new(self, *args)
     }
     @init      = @function.name.match(INIT_FUNCTIONS)
-    @prologues = PROLOGUES[@funciton.name]
+    @prologues = PROLOGUES[@function.name]
     @epilogues = EPILOGUES[@function.name]
   end
 
+  def name
+    @function.name
+  end
+
+  def type
+    @function.type.type
+  end
+
   def parameters
-    @function.params
+    @function.type.params
+  end
+
+  def has_return_type?
+    if type && !type.kind_of?(YAMLCAst::Void)
+      true
+    else
+      false
+    end
   end
 
   def [](name)
@@ -306,7 +339,7 @@ def register_meta_parameter(method, type, *args)
 end
 
 def register_meta_struct(method, name, type)
-  raise "Unknown struct: #{type}!" unless ZE_STRUCTS_TYPES.include?(type)
+  raise "Unknown struct: #{type}!" unless ZE_STRUCT_TYPES.include?(type)
   ZE_STRUCT_MAP[type].each { |m|
     META_PARAMETERS[method].push [Member, [m, name]]
   }
@@ -324,5 +357,9 @@ AUTO_META_PARAMETERS = []
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
+
+$ze_commands = ze_funcs_e.collect { |func|
+  Command::new(func)
+}
 
 
