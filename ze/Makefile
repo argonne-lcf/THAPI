@@ -26,7 +26,13 @@ zex_tracepoints.tp: ze_api.yaml zex_api.yaml zet_api.yaml yaml_ast.rb ze_model.r
 zex_tracepoints.o: zex_tracepoints.tp utils
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp zex_tracepoints.tp
 
-tracer_ze.so: utils ze_tracepoints.o zex_tracepoints.o
+zet_tracepoints.tp: ze_api.yaml zex_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb gen_zet_probes.rb gen_probe_base.rb
+	ruby gen_zet_probes.rb > zet_tracepoints.tp
+
+zet_tracepoints.o: zet_tracepoints.tp utils
+	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp zet_tracepoints.tp
+
+tracer_ze.so: utils ze_tracepoints.o zex_tracepoints.o zet_tracepoints.o
 	echo nop
 
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation

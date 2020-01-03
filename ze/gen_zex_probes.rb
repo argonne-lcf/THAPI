@@ -13,4 +13,3 @@ $zex_commands.each { |c|
   $tracepoint_lambda.call(provider, c, :stop)
 }
 
-

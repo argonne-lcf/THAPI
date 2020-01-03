@@ -374,4 +374,7 @@ $zex_commands = zex_funcs_e.collect { |func|
   Command::new(func)
 }
 
+$zet_commands = zet_funcs_e.collect { |func|
+  Command::new(func)
+}
 
