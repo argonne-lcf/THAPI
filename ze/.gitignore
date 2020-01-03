@@ -4,3 +4,5 @@
 *.c
 *.h
 *.yaml
+ze_tracepoints.tp
+zex_tracepoints.tp

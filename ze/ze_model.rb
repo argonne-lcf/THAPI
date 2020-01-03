@@ -16,20 +16,30 @@ zex_funcs_e = zex_api["functions"]
 zet_funcs_e = zet_api["functions"]
 
 ze_types_e = ze_api["typedefs"]
+zex_types_e = zex_api["typedefs"]
+zet_types_e = zet_api["typedefs"]
 
-ZE_OBJECTS = ze_types_e.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+all_types = ze_types_e + zex_types_e + zet_types_e
+all_structs = ze_api["structs"] + zex_api["structs"] + zet_api["structs"]
+
+ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+all_types.each { |t|
+  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
+    ZE_OBJECTS.push t.name
+  end
+}
 ZE_INT_SCALARS = %w(intptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t ze_bool_t)
-ZE_ENUM_SCALARS = ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-ZE_STRUCT_TYPES = ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
-ZE_UNION_TYPES = ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
-ZE_POINTER_TYPES = ze_types_e.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
+ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
+ZE_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
+ZE_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
 ZE_STRUCT_MAP = {}
-ze_types_e.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
+all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   if t.type.members
     ZE_STRUCT_MAP[t.name] = t.type.members
   else
-    ZE_STRUCT_MAP[t.name] = ze_api["structs"].find { |str| str.name == t.type.name }.members
+    ZE_STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
   end
 }
 
@@ -58,8 +68,6 @@ ZE_OBJECTS.each { |o|
 ZE_ENUM_SCALARS.each { |e|
   FFI_TYPE_MAP[e] = "ffi_type_sint32"
 }
-
-
 
 ZE_FLOAT_SCALARS_MAP = {"float" => "uint32_t", "double" => "uint64_t"}
 
@@ -359,6 +367,10 @@ PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 $ze_commands = ze_funcs_e.collect { |func|
+  Command::new(func)
+}
+
+$zex_commands = zex_funcs_e.collect { |func|
   Command::new(func)
 }
 
