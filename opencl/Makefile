@@ -8,7 +8,7 @@ utils:
 tracer_opencl.h: gen_opencl_header.rb
 	ruby gen_opencl_header.rb > tracer_opencl.h
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml supported_extensions.yaml
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 opencl_tracepoints.o: opencl_tracepoints.tp utils
@@ -23,7 +23,7 @@ opencl_source.o: opencl_source.tp utils
 opencl_dump.o: opencl_dump.tp utils
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp opencl_dump.tp
 
-tracer_opencl.c: gen_opencl.rb opencl_model.rb opencl_meta_parameters.yaml tracer_opencl_helpers.include.c
+tracer_opencl.c: gen_opencl.rb opencl_model.rb opencl_meta_parameters.yaml supported_extensions.yaml tracer_opencl_helpers.include.c
 	ruby gen_opencl.rb > tracer_opencl.c
 
 tracer_opencl.so: utils tracer_opencl.c opencl_tracepoints.o opencl_profiling.o opencl_source.o opencl_dump.o
