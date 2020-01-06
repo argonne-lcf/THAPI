@@ -2193,13 +2193,13 @@ server's OpenCL/api-docs repository.
             <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
-            <proto><type>cl_mem</type>                     <name>clCreateImageWithPropertiesINTEL</name></proto>
-            <param><type>cl_context</type>                 <name>context</name></param>
-            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
-            <param>const <type>cl_image_format</type>*     <name>image_format</name></param>
-            <param>const <type>cl_image_desc</type>*       <name>image_desc</name></param>
-            <param>void*                                   <name>host_ptr</name></param>
-            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+            <proto><type>cl_mem</type>                          <name>clCreateImageWithPropertiesINTEL</name></proto>
+            <param><type>cl_context</type>                      <name>context</name></param>
+            <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
+            <param>const <type>cl_image_format</type>*          <name>image_format</name></param>
+            <param>const <type>cl_image_desc</type>*            <name>image_desc</name></param>
+            <param>void*                                        <name>host_ptr</name></param>
+            <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_1">
             <proto><type>cl_int</type>                     <name>clGetImageParamsINTEL</name></proto>
@@ -2238,30 +2238,30 @@ server's OpenCL/api-docs repository.
             <param><type>cl_uint</type>*                   <name>values</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
-            <proto>void*                                   <name>clHostMemAllocINTEL</name></proto>
-            <param><type>cl_context</type>                 <name>context</name></param>
-            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
-            <param><type>size_t</type>                     <name>size</name></param>
-            <param><type>cl_uint</type>                    <name>alignment</name></param>
-            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+            <proto>void*                                         <name>clHostMemAllocINTEL</name></proto>
+            <param><type>cl_context</type>                       <name>context</name></param>
+            <param>const <type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param><type>size_t</type>                           <name>size</name></param>
+            <param><type>cl_uint</type>                          <name>alignment</name></param>
+            <param><type>cl_int</type>*                          <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
-            <proto>void*                                   <name>clDeviceMemAllocINTEL</name></proto>
-            <param><type>cl_context</type>                 <name>context</name></param>
-            <param><type>cl_device_id</type>               <name>device</name></param>
-            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
-            <param><type>size_t</type>                     <name>size</name></param>
-            <param><type>cl_uint</type>                    <name>alignment</name></param>
-            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+            <proto>void*                                         <name>clDeviceMemAllocINTEL</name></proto>
+            <param><type>cl_context</type>                       <name>context</name></param>
+            <param><type>cl_device_id</type>                     <name>device</name></param>
+            <param>const <type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param><type>size_t</type>                           <name>size</name></param>
+            <param><type>cl_uint</type>                          <name>alignment</name></param>
+            <param><type>cl_int</type>*                          <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
-            <proto>void*                                   <name>clSharedMemAllocINTEL</name></proto>
-            <param><type>cl_context</type>                 <name>context</name></param>
-            <param><type>cl_device_id</type>               <name>device</name></param>
-            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
-            <param><type>size_t</type>                     <name>size</name></param>
-            <param><type>cl_uint</type>                    <name>alignment</name></param>
-            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+            <proto>void*                                         <name>clSharedMemAllocINTEL</name></proto>
+            <param><type>cl_context</type>                       <name>context</name></param>
+            <param><type>cl_device_id</type>                     <name>device</name></param>
+            <param>const <type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param><type>size_t</type>                           <name>size</name></param>
+            <param><type>cl_uint</type>                          <name>alignment</name></param>
+            <param><type>cl_int</type>*                          <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
             <proto><type>cl_int</type>                     <name>clMemFreeINTEL</name></proto>
