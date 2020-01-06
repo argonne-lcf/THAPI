@@ -367,6 +367,8 @@ class OutScalar < OutMetaParameter
       @lttng_out_type = [:ctf_integer, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
     when *CL_FLOAT_SCALARS
       @lttng_out_type = [:ctf_float, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+    when ""
+      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
