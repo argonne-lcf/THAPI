@@ -194,6 +194,14 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_sampler_properties</name>;</type>
 	<type category="define">typedef <type>cl_uint</type>          <name>cl_kernel_exec_info</name>;</type>
 	<type category="define">typedef <type>cl_uint</type>          <name>cl_icdl_info</name>;</type>
+	<type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_alloc_flags_intel</name>;</type>
+	<type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_properties_intel</name>;</type>
+	<type category="define">typedef <type>cl_mem_flags</type>     <name>cl_mem_flags_intel</name>;</type>
+	<type category="define">typedef <type>cl_uint</type>          <name>cl_mem_info_intel</name>;</type>
+	<type category="define">typedef <type>cl_uint</type>          <name>cl_mem_advice_intel</name>;</type>
+	<type category="define">typedef <type>cl_uint</type>          <name>cl_unified_shared_memory_type_intel</name>;</type>
+	<type category="define">typedef <type>cl_bitfield</type>      <name>cl_unified_shared_memory_capabilities_intel</name>;</type>
+	<type category="define">typedef <type>cl_uint</type>          <name>cl_execution_info_intel</name>;</type>
 
             <comment>Structure types</comment>
         <type category="struct" name="cl_dx9_surface_info_khr">
@@ -2175,6 +2183,195 @@ server's OpenCL/api-docs repository.
             <param><type>size_t</type>                     <name>param_value_size</name></param>
             <param>void*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
+            <proto><type>cl_mem</type>                          <name>clCreateBufferWithPropertiesINTEL</name></proto>
+            <param><type>cl_context</type>                      <name>context</name></param>
+            <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
+            <param><type>size_t</type>                          <name>size</name></param>
+            <param>void*                                        <name>host_ptr</name></param>
+            <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
+            <proto><type>cl_mem</type>                     <name>clCreateImageWithPropertiesINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param>const <type>cl_image_format</type>*     <name>image_format</name></param>
+            <param>const <type>cl_image_desc</type>*       <name>image_desc</name></param>
+            <param>void*                                   <name>host_ptr</name></param>
+            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_1_1">
+            <proto><type>cl_int</type>                     <name>clGetImageParamsINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param>const <type>cl_image_format</type>*     <name>image_format</name></param>
+            <param>const <type>cl_image_desc</type>*       <name>image_desc</name></param>
+            <param><type>size_t</type>*                    <name>image_row_pitch</name></param>
+            <param><type>size_t</type>*                    <name>image_slice_pitch</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_0">
+            <proto><type>cl_int</type>                     <name>clEnqueueVerifyMemoryINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param>const void*                             <name>allocation_ptr</name></param>
+            <param>const void*                             <name>expected_data</name></param>
+            <param><type>size_t</type>                     <name>size_of_comparison</name></param>
+            <param><type>cl_uint</type>                    <name>comparison_mode</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_0">
+            <proto><type>cl_int</type>                     <name>clAddCommentINTEL</name></proto>
+            <param><type>cl_device_id</type>               <name>device</name></param>
+            <param>const <type>char</type>*                <name>comment</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_command_queue</type>             <name>clCreatePerfCountersCommandQueueINTEL</name></proto>
+            <param><type>cl_context</type>                   <name>context</name></param>
+            <param><type>cl_device_id</type>                 <name>device</name></param>
+            <param><type>cl_command_queue_properties</type>  <name>properties</name></param>
+            <param><type>cl_uint</type>                      <name>configuration</name></param>
+            <param><type>cl_int</type>*                      <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clSetPerformanceConfigurationINTEL</name></proto>
+            <param><type>cl_device_id</type>               <name>device</name></param>
+            <param><type>cl_uint</type>                    <name>count</name></param>
+            <param><type>cl_uint</type>*                   <name>offsets</name></param>
+            <param><type>cl_uint</type>*                   <name>values</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto>void*                                   <name>clHostMemAllocINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_uint</type>                    <name>alignment</name></param>
+            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto>void*                                   <name>clDeviceMemAllocINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param><type>cl_device_id</type>               <name>device</name></param>
+            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_uint</type>                    <name>alignment</name></param>
+            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto>void*                                   <name>clSharedMemAllocINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param><type>cl_device_id</type>               <name>device</name></param>
+            <param><type>cl_mem_properties_intel</type>*   <name>properties</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_uint</type>                    <name>alignment</name></param>
+            <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clMemFreeINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param>const void*                             <name>ptr</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clGetMemAllocInfoINTEL</name></proto>
+            <param><type>cl_context</type>                 <name>context</name></param>
+            <param>const void*                             <name>ptr</name></param>
+            <param><type>cl_mem_info_intel</type>          <name>param_name</name></param>
+            <param><type>size_t</type>                     <name>param_value_size</name></param>
+            <param>void*                                   <name>param_value</name></param>
+            <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clSetKernelArgMemPointerINTEL</name></proto>
+            <param><type>cl_kernel</type>                  <name>kernel</name></param>
+            <param><type>cl_uint</type>                    <name>arg_index</name></param>
+            <param>const void*                             <name>arg_value</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clEnqueueMemsetINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param>void*                                   <name>dst_ptr</name></param>
+            <param><type>cl_int</type>                     <name>value</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
+            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
+            <param><type>cl_event</type>*                  <name>event</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clEnqueueMemFillINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param>void*                                   <name>dst_ptr</name></param>
+            <param>const void*                             <name>pattern</name></param>
+            <param><type>size_t</type>                     <name>pattern_size</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
+            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
+            <param><type>cl_event</type>*                  <name>event</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clEnqueueMemcpyINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param>void*                                   <name>dst_ptr</name></param>
+            <param>const void*                             <name>src_ptr</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
+            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
+            <param><type>cl_event</type>*                  <name>event</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clEnqueueMigrateMemINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param>const void*                             <name>ptr</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_mem_migration_flags</type>     <name>flags</name></param>
+            <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
+            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
+            <param><type>cl_event</type>*                  <name>event</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clEnqueueMemAdviseINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param>const void*                             <name>ptr</name></param>
+            <param><type>size_t</type>                     <name>size</name></param>
+            <param><type>cl_mem_advice_intel</type>        <name>advice</name></param>
+            <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
+            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
+            <param><type>cl_event</type>*                  <name>event</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clGetDeviceFunctionPointerINTEL</name></proto>
+            <param><type>cl_device_id</type>               <name>device</name></param>
+            <param><type>cl_program</type>                 <name>program</name></param>
+            <param>const <type>char</type>*                <name>function_name</name></param>
+            <param><type>cl_ulong</type>*                  <name>function_pointer_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clGetDeviceGlobalVariablePointerINTEL</name></proto>
+            <param><type>cl_device_id</type>               <name>device</name></param>
+            <param><type>cl_program</type>                 <name>program</name></param>
+            <param>const <type>char</type>*                <name>global_variable_name</name></param>
+            <param><type>size_t</type>*                    <name>global_variable_size_ret</name></param>
+            <param>void**                                  <name>global_variable_pointer_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clGetExecutionInfoINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param><type>cl_kernel</type>                  <name>kernel</name></param>
+            <param><type>cl_uint</type>                    <name>work_dim</name></param>
+            <param>const <type>size_t</type>*              <name>global_work_offset</name></param>
+            <param>const <type>size_t</type>*              <name>local_work_size</name></param>
+            <param><type>cl_execution_info_intel</type>    <name>param_name</name></param>
+            <param><type>size_t</type>                     <name>param_value_size</name></param>
+            <param>void*                                   <name>param_value</name></param>
+            <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
+        </command>
+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
+            <proto><type>cl_int</type>                     <name>clEnqueueNDRangeKernelINTEL</name></proto>
+            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
+            <param><type>cl_kernel</type>                  <name>kernel</name></param>
+            <param><type>cl_uint</type>                    <name>work_dim</name></param>
+            <param>const <type>size_t</type>*              <name>global_work_offset</name></param>
+            <param>const <type>size_t</type>*              <name>work_group_count</name></param>
+            <param>const <type>size_t</type>*              <name>local_work_size</name></param>
+            <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
+            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
+            <param><type>cl_event</type>*                  <name>event</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>
