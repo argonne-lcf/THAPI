@@ -8,6 +8,7 @@ meta_parameters:
     - [ OutArray, devices ]
   clCreateContext:
     - [ InNullArray, properties ]
+    - [ InArray, devices, num_devices ]
   clCreateContextFromType:
     - [ InNullArray, properties ]
   clEnqueueNDRangeKernel:
