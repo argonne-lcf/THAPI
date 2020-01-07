@@ -81,10 +81,11 @@ module LTTNG
     attr_accessor :enum_name
     attr_accessor :length
     attr_accessor :length_type
+    attr_accessor :cast
 
     def call_string
       str = "#{macro}("
-      str << [ @provider_name, @enum_name, @type, @name, @expression, @length_type, @length ].compact.join(", ")
+      str << [ @provider_name, @enum_name, @type, @name, @cast ? "(#{@cast})(#{@expression})" : @expression, @length_type, @length ].compact.join(", ")
       str << ")"
     end
   end
@@ -190,6 +191,7 @@ module YAMLCAst
       when *ZE_OBJECTS, *ZE_POINTER_TYPES
         ev.macro = :ctf_integer_hex
         ev.type = :intptr_t
+        ev.cast = "intptr_t"
       when *ZE_INT_SCALARS
         ev.macro = :ctf_integer
         ev.type = name
@@ -212,6 +214,7 @@ module YAMLCAst
       ev = LTTNG::TracepointEvent::new
       ev.macro = :ctf_integer_hex
       ev.type = :intptr_t
+      ev.cast = "intptr_t"
       ev
     end
   end
@@ -226,6 +229,7 @@ module YAMLCAst
       else
         ev.macro = :ctf_integer_hex
         ev.type = :intptr_t
+        ev.cast = "intptr_t"
         return ev
       end
       if length_type

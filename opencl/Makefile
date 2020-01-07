@@ -18,7 +18,7 @@ tracer_opencl.h: gen_opencl_header.rb
 opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml supported_extensions.yaml
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
-%.o %.h: %.tp ../utils/lttng/tracepoint_gen.h
+%.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
 
 tracer_opencl.c: gen_opencl.rb opencl_model.rb opencl_meta_parameters.yaml supported_extensions.yaml tracer_opencl_helpers.include.c
