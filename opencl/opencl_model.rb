@@ -159,12 +159,12 @@ class Member < Declaration
     name = "#{prefix}_#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
     @dir = dir
-    @lttng_type = [:ctf_integer_hex, :intptr_t, name, expr] if pointer?
+    @lttng_type = [:ctf_integer_hex, :intptr_t, name, "(intptr_t)(#{expr})"] if pointer?
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
     case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_type = [:ctf_integer_hex, :intptr_t, name, expr]
+      @lttng_type = [:ctf_integer_hex, :intptr_t, name, "(intptr_t)(#{expr})"]
     when *CL_INT_SCALARS
       @lttng_type = [:ctf_integer, t, name, expr]
     when *CL_FLOAT_SCALARS
@@ -210,13 +210,13 @@ class Parameter < Declaration
 
   def lttng_in_type
     if pointer?
-      return [:ctf_integer_hex, :intptr_t, @name, @name]
+      return [:ctf_integer_hex, :intptr_t, @name, "(intptr_t)#{@name}"]
     end
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
     case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      return [:ctf_integer_hex, :intptr_t, @name, @name]
+      return [:ctf_integer_hex, :intptr_t, @name, "(intptr_t)#{@name}"]
     when *CL_INT_SCALARS
       return [:ctf_integer, t, @name, @name]
     when *CL_FLOAT_SCALARS
@@ -280,17 +280,17 @@ class Prototype < CLXML
 
   def lttng_return_type
     if @return_type.match("\\*")
-      return [:ctf_integer_hex, :intptr_t, "_retval", "_retval"]
+      return [:ctf_integer_hex, :intptr_t, "_retval", "(intptr_t)_retval"]
     end
     case @return_type
     when "cl_int"
       return [:ctf_integer, :cl_int, "errcode_ret_val", "_retval"]
     when *CL_OBJECTS
-      return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^cl_/,""), "_retval"]
+      return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^cl_/,""), "(intptr_t)_retval"]
     when *CL_EXT_OBJECTS
-      return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "_retval"]
+      return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "(intptr_t)_retval"]
     when "void*"
-      return [:ctf_integer_hex, :intptr_t, "ret_ptr", "_retval"]
+      return [:ctf_integer_hex, :intptr_t, "ret_ptr", "(intptr_t)_retval"]
     end
     nil
   end
@@ -313,6 +313,7 @@ class MetaParameter
       lttng_arr_type = "array"
       lttng_args = [ size ]
     end
+    expr = name
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
       lttng_type = ["ctf_#{lttng_arr_type}_hex", :intptr_t]
@@ -329,7 +330,7 @@ class MetaParameter
     else
       raise "Unknown Type: #{type.inspect}!"
     end
-    lttng_type += [ name+"_vals", name ]
+    lttng_type += [ name+"_vals", expr ]
     lttng_type += lttng_args
   end
 
@@ -362,13 +363,13 @@ class OutScalar < OutMetaParameter
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
     when *CL_INT_SCALARS
       @lttng_out_type = [:ctf_integer, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
     when *CL_FLOAT_SCALARS
       @lttng_out_type = [:ctf_float, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
     when ""
-      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end

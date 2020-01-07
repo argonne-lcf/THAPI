@@ -14,7 +14,7 @@ TRACEPOINT_EVENT(
   ),
   TP_FIELDS(
     ctf_integer(int, status, status)
-    ctf_integer_hex(intptr_t, event, event)
+    ctf_integer_hex(intptr_t, event, (intptr_t)event)
   )
 )
 
@@ -34,7 +34,7 @@ TRACEPOINT_EVENT(
     cl_ulong, end
   ),
   TP_FIELDS(
-    ctf_integer_hex(intptr_t, event, event)
+    ctf_integer_hex(intptr_t, event, (intptr_t)event)
     ctf_integer(int, event_command_exec_status, event_command_exec_status)
     ctf_integer(cl_int, queued_status, queued_status)
     ctf_integer(cl_ulong, queued, queued)
