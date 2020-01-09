@@ -539,6 +539,56 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   return NULL;
 }
 
+static void dump_argument_info(cl_kernel kernel, cl_uint arg_indx) {
+
+  cl_int error = CL_SUCCESS;
+  cl_kernel_arg_address_qualifier address_qualifier;
+  cl_kernel_arg_access_qualifier access_qualifier;
+  char * type_name;
+  size_t type_name_sz;
+  cl_kernel_arg_type_qualifier type_qualifier;
+  char * name;
+  size_t name_sz;
+
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_ADDRESS_QUALIFIER, sizeof(address_qualifier), &address_qualifier, NULL);  
+  if (error != CL_SUCCESS)
+    return;
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_ACCESS_QUALIFIER, sizeof(access_qualifier), &access_qualifier, NULL);
+  if (error != CL_SUCCESS)
+    return;
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_TYPE_QUALIFIER, sizeof(type_qualifier), &type_qualifier, NULL);
+  if (error != CL_SUCCESS)
+    return;
+  //Strings are forced to be zero terminated
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_TYPE_NAME, 0, NULL, &type_name_sz);
+  if (error != CL_SUCCESS)
+    return;
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_NAME, 0, NULL, &name_sz);
+  if (error != CL_SUCCESS)
+    return;
+  type_name = (char*)calloc(type_name_sz+1, 1);
+  if (type_name == NULL)
+    return;
+  name = (char*)calloc(name_sz+1, 1);
+  if (name == NULL)
+    goto type_name_lb;
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_TYPE_NAME, type_name_sz, type_name, NULL);
+  if (error != CL_SUCCESS)
+    goto name_lb;
+  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_NAME, name_sz, name, NULL);
+  if (error != CL_SUCCESS)
+    goto name_lb;
+  //Menbers are initialized, call tracepoint
+  do_tracepoint(lttng_ust_opencl_arguments, argument_info, kernel, arg_indx, address_qualifier, access_qualifier, type_name, type_qualifier,  name);
+
+  name_lb:
+    free(name);  
+  type_name_lb:
+    free(type_name);
+}
+
+
+
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile cl_uint _initialized = 0;

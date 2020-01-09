@@ -829,6 +829,18 @@ register_prologue "clCreateProgramWithILKHR", <<EOF
   }
 EOF
 
+
+register_epilogue "clCreateKernel", <<EOF
+  if (tracepoint_enabled(#{provider}_arguments, argument_info) && _retval != NULL) {
+    cl_uint num_args;
+    if ( clGetKernelInfo_ptr(_retval, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) == CL_SUCCESS ) {
+      for (cl_uint i = 0; i < num_args ; i++)
+        dump_argument_info(_retval, i);
+    }
+  }
+EOF
+
+
 str = ""
 $opencl_commands.each { |c|
   if c.extension?

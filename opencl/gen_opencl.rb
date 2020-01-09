@@ -27,7 +27,7 @@ puts <<EOF
 #include "opencl_profiling.h"
 #include "opencl_source.h"
 #include "opencl_dump.h"
-
+#include "opencl_arguments.h"
 EOF
 
 $opencl_commands.each { |c|
