@@ -27,3 +27,24 @@ TRACEPOINT_EVENT(
     ctf_string(name, name)
   )
 )
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_arguments,
+  kernel_info,
+  TP_ARGS(
+    cl_kernel, kernel,
+    char *, function_name,
+    cl_uint, num_args,
+    cl_context, context,
+    cl_program, program,
+    char *, attibutes
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, kernel, (intptr_t)kernel)
+    ctf_string(funtion_name, function_name)
+    ctf_integer(cl_uint, num_args, num_args)
+    ctf_integer_hex(intptr_t, context, (intptr_t)context)
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_string(attibutes, attibutes)
+  )
+)

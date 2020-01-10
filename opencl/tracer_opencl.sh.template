@@ -8,6 +8,7 @@ while true; do
   case "$1" in
     -p | --profiling ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*;;
     -s | --source ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:* ;;
+    -a | --arguments ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*;;
     -d | --dump ) shift; export LTTNG_UST_OPENCL_DUMP=1;;
     -i | --iteration ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
     -s | --iteration-start ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; shift ;;

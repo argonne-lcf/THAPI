@@ -14,6 +14,77 @@ void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status
   }
 }
 
+struct opencl_version {
+  cl_uint minor;
+  cl_uint major;
+};
+
+static const struct opencl_version opencl_version_1_2 = {1, 2};
+
+static inline int compare_opencl_version(const struct opencl_version *v1, const struct opencl_version *v2) {
+  if (v1->major > v2->major)
+    return 1;
+  if (v1->major > v2->major)
+    return -1;
+  if (v1->minor > v2->minor)
+    return 1;
+  if (v1->minor > v2->minor)
+    return -1;
+  return 0;
+}
+
+static void get_platform_version(cl_platform_id platform, struct opencl_version *v) {
+  if (!v)
+    return;
+  cl_int err;
+  char version[128];
+  char major[2], minor[2];
+  size_t version_sz;
+
+  v->major = 1;
+  v->minor = 0;
+  err = clGetPlatformInfo_ptr(platform, CL_PLATFORM_VERSION, 128, version, &version_sz);
+  if (err != CL_SUCCESS || version_sz < 10)
+    return;
+  major[0] = version[7];
+  major[1] = 0;
+  minor[0] = version[9];
+  minor[1] = 0;
+  v->major = atoi(major);
+  v->minor = atoi(minor);
+}
+
+static void get_device_platform_version(cl_device_id device, struct opencl_version *v) {
+  if (!v)  
+    return;
+  cl_platform_id platform;
+
+  if (clGetDeviceInfo_ptr(device, CL_DEVICE_PLATFORM, sizeof(platform), &platform, NULL) == CL_SUCCESS)
+    get_platform_version(platform, v);
+  else {
+    v->major = 1;
+    v->minor = 0;
+  } 
+}
+
+static void get_program_platform_version(cl_program program, struct opencl_version *v) {
+  if (!v)  
+    return;
+  cl_device_id *devices;
+  cl_uint num_devices;
+
+  v->major = 1;
+  v->minor = 0;
+  if (clGetProgramInfo_ptr(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices, NULL) != CL_SUCCESS || num_devices == 0)
+    return;
+  devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id));
+
+  if (devices && clGetProgramInfo_ptr(program, CL_PROGRAM_DEVICES, num_devices * sizeof(cl_device_id), devices, NULL) == CL_SUCCESS) {
+    get_device_platform_version(*devices, v);
+    free(devices);
+  }
+}
+
 static int     do_dump = 0;
 pthread_mutex_t enqueue_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -539,6 +610,52 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   return NULL;
 }
 
+static void dump_kernel_info(cl_kernel kernel) {
+  cl_int error = CL_SUCCESS;
+  char *function_name = "";
+  size_t function_name_sz = 0;
+  int free_function_name = 0;
+  cl_uint num_args;
+  cl_context context = NULL;
+  cl_program program = NULL;
+  char *attributes = "";
+  size_t attributes_sz = 0;
+  int free_attributes = 0;
+
+  error = clGetKernelInfo_ptr(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL);
+  if (error != CL_SUCCESS)
+    return;
+  error = clGetKernelInfo_ptr(kernel, CL_KERNEL_FUNCTION_NAME, 0, NULL, &function_name_sz);
+  if (error == CL_SUCCESS && function_name_sz > 0) {
+    char *new_function_name = (char *)calloc(function_name_sz + 1, 1);
+    if (new_function_name) {
+      error = clGetKernelInfo_ptr(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz, new_function_name, NULL);
+      if (error == CL_SUCCESS) {
+        function_name = new_function_name;
+        free_function_name = 1;
+      }
+    }
+  }
+  clGetKernelInfo_ptr(kernel, CL_KERNEL_CONTEXT, sizeof(context), &context, NULL);
+  clGetKernelInfo_ptr(kernel, CL_KERNEL_PROGRAM, sizeof(program), &program, NULL);
+  error = clGetKernelInfo_ptr(kernel, CL_KERNEL_ATTRIBUTES, 0, NULL, &attributes_sz);
+  if (error == CL_SUCCESS && attributes_sz > 0) {
+     char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
+     if (new_attributes) {
+       error = clGetKernelInfo_ptr(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, &attributes, NULL);
+       if (error == CL_SUCCESS) {
+         attributes = new_attributes;
+         free_attributes = 1;
+       }
+     }
+  }
+  do_tracepoint(lttng_ust_opencl_arguments, kernel_info, kernel, function_name, num_args, context, program, attributes);
+  if (free_function_name)
+    free(function_name);
+  if (free_attributes)
+    free(attributes);
+}
+
 static void dump_argument_info(cl_kernel kernel, cl_uint arg_indx) {
 
   cl_int error = CL_SUCCESS;
@@ -587,7 +704,17 @@ static void dump_argument_info(cl_kernel kernel, cl_uint arg_indx) {
     free(type_name);
 }
 
-
+static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
+  struct opencl_version version = {1, 0};
+  get_program_platform_version(program, &version);
+  if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
+    cl_uint num_args;
+    if ( clGetKernelInfo_ptr(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) == CL_SUCCESS ) {
+      for (cl_uint i = 0; i < num_args ; i++)
+        dump_argument_info(kernel, i);
+    }
+  }
+}
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;

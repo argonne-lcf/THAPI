@@ -830,16 +830,74 @@ register_prologue "clCreateProgramWithILKHR", <<EOF
 EOF
 
 
-register_epilogue "clCreateKernel", <<EOF
-  if (tracepoint_enabled(#{provider}_arguments, argument_info) && _retval != NULL) {
-    cl_uint num_args;
-    if ( clGetKernelInfo_ptr(_retval, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) == CL_SUCCESS ) {
-      for (cl_uint i = 0; i < num_args ; i++)
-        dump_argument_info(_retval, i);
+register_prologue "clBuildProgram", <<EOF
+  int free_options = 0;
+  if (tracepoint_enabled(#{provider}_arguments, argument_info)) {
+    struct opencl_version version = {1, 0};
+    get_program_platform_version(program, &version);
+    if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
+      if (options) {
+        if (!strstr(options, "-cl-kernel-arg-info")) {
+          size_t sz = strlen(options) + strlen("-cl-kernel-arg-info") + 2;
+          char * new_options = (char *)malloc(sz);
+          if (new_options) {
+            snprintf(new_options, sz, "%s %s", options, "-cl-kernel-arg-info");
+            free_options = 1;
+            options = new_options;
+          }
+        }
+      } else {
+        options = "-cl-kernel-arg-info";
+      }
     }
   }
 EOF
 
+register_epilogue "clBuildProgram", <<EOF
+  if (free_options)
+    free((char *)options);
+EOF
+
+register_epilogue "clCreateKernel", <<EOF
+  if (tracepoint_enabled(#{provider}_arguments, kernel_info)) {
+    dump_kernel_info(_retval);
+  }
+EOF
+
+register_epilogue "clCreateKernel", <<EOF
+  if (tracepoint_enabled(#{provider}_arguments, argument_info) && _retval != NULL) {
+    dump_kernel_arguments(program, _retval);
+  }
+EOF
+
+register_prologue "clCreateKernelsInProgram", <<EOF
+  cl_uint n_k = 0;
+  if (tracepoint_enabled(#{provider}_arguments, kernel_info) && !num_kernels_ret && kernels) {
+    num_kernels_ret = &n_k;
+  }
+EOF
+
+register_epilogue "clCreateKernelsInProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_arguments, kernel_info) && _retval == CL_SUCCESS && kernels) {
+    for (cl_uint i = 0; i < *num_kernels_ret; i++) {
+      dump_kernel_info(kernels[i]);
+    }
+  }
+EOF
+
+register_prologue "clCreateKernelsInProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_arguments, argument_info) && !num_kernels_ret && kernels) {
+    num_kernels_ret = &n_k;
+  }
+EOF
+
+register_epilogue "clCreateKernelsInProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_arguments, argument_info) && _retval == CL_SUCCESS && kernels) {
+    for (cl_uint i = 0; i < *num_kernels_ret; i++) {
+      dump_kernel_arguments(program, kernels[i]);
+    }
+  }
+EOF
 
 str = ""
 $opencl_commands.each { |c|
