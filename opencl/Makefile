@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-OPENCL_PROBES = opencl_tracepoints opencl_profiling opencl_source opencl_dump opencl_arguments
+OPENCL_PROBES = opencl_tracepoints opencl_profiling opencl_source opencl_dump opencl_arguments opencl_build
 OPENCL_PROBES_OBJS = $(OPENCL_PROBES:=.o)
 OPENCL_PROBES_INCL = $(OPENCL_PROBES:=.h)
 OPENCL_PROBES_SRC = $(OPENCL_PROBES:=.c)

@@ -858,6 +858,18 @@ register_epilogue "clBuildProgram", <<EOF
     free((char *)options);
 EOF
 
+register_epilogue "clBuildProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, binaries)) {
+    dump_program_binaries(program);
+  }
+EOF
+
+register_epilogue "clLinkProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, binaries) && _retval != NULL) {
+    dump_program_binaries(_retval);
+  }
+EOF
+
 register_epilogue "clCreateKernel", <<EOF
   if (tracepoint_enabled(#{provider}_arguments, kernel_info)) {
     dump_kernel_info(_retval);

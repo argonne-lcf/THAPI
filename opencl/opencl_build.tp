@@ -1,0 +1,46 @@
+#define CL_TARGET_OPENCL_VERSION 220
+#include <CL/opencl.h>
+#include <CL/cl_ext.h>
+#include <CL/cl_gl.h>
+#include <CL/cl_gl_ext.h>
+#include <CL/cl_egl.h>
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_build,
+  binaries,
+  TP_ARGS(
+    cl_program, program,
+    cl_device_id, device,
+    size_t, size,
+    char *, path
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, device, (intptr_t)device)
+    ctf_integer(size_t, size, size)
+    ctf_string(path, path)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_build,
+  infos,
+  TP_ARGS(
+    cl_program, program,
+    cl_device_id, device,
+    char *, build_options,
+    cl_build_status, build_status,
+    char *, build_log,
+    cl_program_binary_type, binary_type,
+    ssize_t, build_global_variable_total_size
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, device, (intptr_t)device)
+    ctf_integer(cl_build_status, build_status, build_status)
+    ctf_string(build_options, build_options)
+    ctf_string(build_log, build_log)
+    ctf_integer(cl_program_binary_type, binary_type, binary_type)
+    ctf_integer(ssize_t, build_global_variable_total_size, build_global_variable_total_size)
+  )
+)
