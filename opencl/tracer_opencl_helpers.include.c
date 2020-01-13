@@ -67,19 +67,37 @@ static void get_device_platform_version(cl_device_id device, struct opencl_versi
   } 
 }
 
+static inline cl_device_id* get_program_devices(cl_program program, cl_uint *num_devices_ret) {
+  cl_device_id *devices = NULL;
+  cl_uint num_devices = 0;
+
+  if (clGetProgramInfo_ptr(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices, NULL) != CL_SUCCESS)
+    num_devices = 0;
+  else if (num_devices != 0) {
+    devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id));
+    if (!devices)
+      num_devices = 0;
+    else
+      if (clGetProgramInfo_ptr(program, CL_PROGRAM_DEVICES, num_devices * sizeof(cl_device_id), devices, NULL) != CL_SUCCESS) {
+        free(devices);
+        devices = NULL;
+        num_devices = 0;
+      }
+  }
+  if (num_devices_ret)
+    *num_devices_ret = num_devices;
+  return devices;
+}
+
 static void get_program_platform_version(cl_program program, struct opencl_version *v) {
   if (!v)  
     return;
   cl_device_id *devices;
-  cl_uint num_devices;
 
   v->major = 1;
   v->minor = 0;
-  if (clGetProgramInfo_ptr(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices, NULL) != CL_SUCCESS || num_devices == 0)
-    return;
-  devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id));
-
-  if (devices && clGetProgramInfo_ptr(program, CL_PROGRAM_DEVICES, num_devices * sizeof(cl_device_id), devices, NULL) == CL_SUCCESS) {
+  devices = get_program_devices(program, NULL);
+  if (devices) {
     get_device_platform_version(*devices, v);
     free(devices);
   }
