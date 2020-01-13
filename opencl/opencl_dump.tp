@@ -73,7 +73,7 @@ TRACEPOINT_EVENT(
     cl_event, event,
     cl_int, status,
     size_t, size,
-    void *, path
+    char *, path
   ),
   TP_FIELDS(
     ctf_integer(uint64_t,enqueue_counter, enqueue_counter)
@@ -117,7 +117,7 @@ TRACEPOINT_EVENT(
     cl_event, event,
     cl_int, status,
     size_t, size,
-    void *, path
+    char *, path
   ),
   TP_FIELDS(
     ctf_integer(uint64_t,enqueue_counter, enqueue_counter)
