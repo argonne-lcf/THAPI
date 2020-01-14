@@ -33,6 +33,7 @@ EOF
 
 $opencl_commands.each { |c|
   puts <<EOF
+
 typedef #{c.decl_pointer(type: true)};
 static #{c.prototype.pointer_type_name}  #{c.prototype.pointer_name} = (void *) 0x0;
 EOF
@@ -40,18 +41,21 @@ EOF
 
 $opencl_extension_commands.each { |c|
   puts <<EOF
+
 typedef #{c.decl_pointer(type: true)};
 #{c.decl_ffi_wrapper};
 EOF
 }
 
 puts <<EOF
+
 static void find_opencl_symbols(void * handle) {
 EOF
 
 $opencl_commands.each { |c|
   unless (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
     puts <<EOF
+
   #{c.prototype.pointer_name} = (#{c.prototype.pointer_type_name})(intptr_t)dlsym(handle, "#{c.prototype.name}") ;
   if (!#{c.prototype.pointer_name})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
@@ -62,6 +66,7 @@ EOF
 $opencl_commands.each { |c|
   if (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
     puts <<EOF
+
   #{c.prototype.pointer_name} = (#{c.prototype.pointer_type_name})(intptr_t)#{$clGetExtensionFunctionAddress.prototype.pointer_name}("#{c.prototype.name}");
   if (!#{c.prototype.pointer_name})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
@@ -79,6 +84,13 @@ puts <<EOF
 #define CL_RELEASE_EVENT_PTR #{$clReleaseEvent.prototype.pointer_name}
 #define CL_ENQUEUE_SVM_MEMCPY_PTR #{$clEnqueueSVMMemcpy.prototype.pointer_name}
 #define CL_EMQUEUE_BARRIER_WITH_WAIT_LIST_PTR #{$clEnqueueBarrierWithWaitList.prototype.pointer_name}
+#define CL_GET_DEVICE_INFO_PTR #{$clGetDeviceInfo.prototype.pointer_name}
+#define CL_GET_PROGRAM_INFO_PTR #{$clGetProgramInfo.prototype.pointer_name}
+#define CL_GET_PROGRAM_BUILD_INFO_PTR #{$clGetProgramBuildInfo.prototype.pointer_name}
+#define CL_GET_PLATFORM_INFO_PTR #{$clGetPlatformInfo.prototype.pointer_name}
+#define CL_GET_KERNEL_INFO_PTR #{$clGetKernelInfo.prototype.pointer_name}
+#define CL_GET_KERNEL_ARG_INFO_PTR #{$clGetKernelArgInfo.prototype.pointer_name}
+
 EOF
 
 puts File::read("tracer_opencl_helpers.include.c")

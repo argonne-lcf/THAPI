@@ -10,7 +10,7 @@ void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status
     cl_int start_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
     cl_int end_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
     do_tracepoint(lttng_ust_opencl_profiling, event_profiling_results, event, event_command_exec_status,
-              queued_status, queued, submit_status, submit, start_status, start, end_status, end);
+                  queued_status, queued, submit_status, submit, start_status, start, end_status, end);
   }
 }
 
@@ -48,7 +48,7 @@ static void get_platform_version(cl_platform_id platform, struct opencl_version 
 
   v->major = 1;
   v->minor = 0;
-  err = clGetPlatformInfo_ptr(platform, CL_PLATFORM_VERSION, 128, version, &version_sz);
+  err = CL_GET_PLATFORM_INFO_PTR(platform, CL_PLATFORM_VERSION, 128, version, &version_sz);
   if (err != CL_SUCCESS || version_sz < 10)
     return;
   major[0] = version[7];
@@ -60,30 +60,30 @@ static void get_platform_version(cl_platform_id platform, struct opencl_version 
 }
 
 static void get_device_platform_version(cl_device_id device, struct opencl_version *v) {
-  if (!v)  
+  if (!v)
     return;
   cl_platform_id platform;
 
-  if (clGetDeviceInfo_ptr(device, CL_DEVICE_PLATFORM, sizeof(platform), &platform, NULL) == CL_SUCCESS)
+  if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_PLATFORM, sizeof(platform), &platform, NULL) == CL_SUCCESS)
     get_platform_version(platform, v);
   else {
     v->major = 1;
     v->minor = 0;
-  } 
+  }
 }
 
 static inline cl_device_id* get_program_devices(cl_program program, cl_uint *num_devices_ret) {
   cl_device_id *devices = NULL;
   cl_uint num_devices = 0;
 
-  if (clGetProgramInfo_ptr(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices, NULL) != CL_SUCCESS)
     num_devices = 0;
   else if (num_devices != 0) {
     devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id));
     if (!devices)
       num_devices = 0;
     else
-      if (clGetProgramInfo_ptr(program, CL_PROGRAM_DEVICES, num_devices * sizeof(cl_device_id), devices, NULL) != CL_SUCCESS) {
+      if (CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_DEVICES, num_devices * sizeof(cl_device_id), devices, NULL) != CL_SUCCESS) {
         free(devices);
         devices = NULL;
         num_devices = 0;
@@ -95,7 +95,7 @@ static inline cl_device_id* get_program_devices(cl_program program, cl_uint *num
 }
 
 static void get_program_platform_version(cl_program program, struct opencl_version *v) {
-  if (!v)  
+  if (!v)
     return;
   cl_device_id *devices;
 
@@ -646,27 +646,27 @@ static void dump_kernel_info(cl_kernel kernel) {
   size_t attributes_sz = 0;
   int free_attributes = 0;
 
-  error = clGetKernelInfo_ptr(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL);
+  error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL);
   if (error != CL_SUCCESS)
     return;
-  error = clGetKernelInfo_ptr(kernel, CL_KERNEL_FUNCTION_NAME, 0, NULL, &function_name_sz);
+  error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, 0, NULL, &function_name_sz);
   if (error == CL_SUCCESS && function_name_sz > 0) {
     char *new_function_name = (char *)calloc(function_name_sz + 1, 1);
     if (new_function_name) {
-      error = clGetKernelInfo_ptr(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz, new_function_name, NULL);
+      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz, new_function_name, NULL);
       if (error == CL_SUCCESS) {
         function_name = new_function_name;
         free_function_name = 1;
       }
     }
   }
-  clGetKernelInfo_ptr(kernel, CL_KERNEL_CONTEXT, sizeof(context), &context, NULL);
-  clGetKernelInfo_ptr(kernel, CL_KERNEL_PROGRAM, sizeof(program), &program, NULL);
-  error = clGetKernelInfo_ptr(kernel, CL_KERNEL_ATTRIBUTES, 0, NULL, &attributes_sz);
+  CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_CONTEXT, sizeof(context), &context, NULL);
+  CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_PROGRAM, sizeof(program), &program, NULL);
+  error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, 0, NULL, &attributes_sz);
   if (error == CL_SUCCESS && attributes_sz > 0) {
      char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
      if (new_attributes) {
-       error = clGetKernelInfo_ptr(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, &attributes, NULL);
+       error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, &attributes, NULL);
        if (error == CL_SUCCESS) {
          attributes = new_attributes;
          free_attributes = 1;
@@ -691,20 +691,20 @@ static void dump_argument_info(cl_kernel kernel, cl_uint arg_indx) {
   char * name;
   size_t name_sz;
 
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_ADDRESS_QUALIFIER, sizeof(address_qualifier), &address_qualifier, NULL);  
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_ADDRESS_QUALIFIER, sizeof(address_qualifier), &address_qualifier, NULL);
   if (error != CL_SUCCESS)
     return;
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_ACCESS_QUALIFIER, sizeof(access_qualifier), &access_qualifier, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_ACCESS_QUALIFIER, sizeof(access_qualifier), &access_qualifier, NULL);
   if (error != CL_SUCCESS)
     return;
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_TYPE_QUALIFIER, sizeof(type_qualifier), &type_qualifier, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_TYPE_QUALIFIER, sizeof(type_qualifier), &type_qualifier, NULL);
   if (error != CL_SUCCESS)
     return;
   //Strings are forced to be zero terminated
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_TYPE_NAME, 0, NULL, &type_name_sz);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_TYPE_NAME, 0, NULL, &type_name_sz);
   if (error != CL_SUCCESS)
     return;
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_NAME, 0, NULL, &name_sz);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_NAME, 0, NULL, &name_sz);
   if (error != CL_SUCCESS)
     return;
   type_name = (char*)calloc(type_name_sz+1, 1);
@@ -713,17 +713,17 @@ static void dump_argument_info(cl_kernel kernel, cl_uint arg_indx) {
   name = (char*)calloc(name_sz+1, 1);
   if (name == NULL)
     goto type_name_lb;
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_TYPE_NAME, type_name_sz, type_name, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_TYPE_NAME, type_name_sz, type_name, NULL);
   if (error != CL_SUCCESS)
     goto name_lb;
-  error = clGetKernelArgInfo_ptr(kernel, arg_indx, CL_KERNEL_ARG_NAME, name_sz, name, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_indx, CL_KERNEL_ARG_NAME, name_sz, name, NULL);
   if (error != CL_SUCCESS)
     goto name_lb;
   //Menbers are initialized, call tracepoint
   do_tracepoint(lttng_ust_opencl_arguments, argument_info, kernel, arg_indx, address_qualifier, access_qualifier, type_name, type_qualifier,  name);
 
   name_lb:
-    free(name);  
+    free(name);
   type_name_lb:
     free(type_name);
 }
@@ -733,7 +733,7 @@ static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
   get_program_platform_version(program, &version);
   if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
     cl_uint num_args;
-    if ( clGetKernelInfo_ptr(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) == CL_SUCCESS ) {
+    if ( CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) == CL_SUCCESS ) {
       for (cl_uint i = 0; i < num_args ; i++)
         dump_argument_info(kernel, i);
     }
@@ -749,11 +749,11 @@ static inline void dump_program_device_build_infos(cl_program program, cl_device
   size_t build_log_sz = 0;
   int free_build_log = 0;
 
-  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(build_status), &build_status, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(build_status), &build_status, NULL) != CL_SUCCESS)
     return;
-  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_OPTIONS, 0, NULL, &build_options_sz) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_OPTIONS, 0, NULL, &build_options_sz) != CL_SUCCESS)
     return;
-  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_sz) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_sz) != CL_SUCCESS)
     return;
 
   if (build_options_sz > 0) {
@@ -761,16 +761,16 @@ static inline void dump_program_device_build_infos(cl_program program, cl_device
     if(!build_options)
       return;
     free_build_options = 1;
-    if(clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_OPTIONS, build_options_sz, build_options, NULL) != CL_SUCCESS)
+    if(CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_OPTIONS, build_options_sz, build_options, NULL) != CL_SUCCESS)
       goto cleanup;
   }
- 
+
   if (build_log_sz > 0) {
     build_log = (char *)calloc(build_log_sz+1, 1);
     if(!build_log)
       goto cleanup;
     free_build_log = 1;
-    if(clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_LOG, build_log_sz, build_log, NULL) != CL_SUCCESS)
+    if(CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_LOG, build_log_sz, build_log, NULL) != CL_SUCCESS)
       goto cleanup;
   }
 
@@ -785,7 +785,7 @@ cleanup:
 static inline void dump_program_device_build_infos_1_2(cl_program program, cl_device_id device) {
   cl_program_binary_type binary_type;
 
-  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BINARY_TYPE, sizeof(binary_type), &binary_type, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BINARY_TYPE, sizeof(binary_type), &binary_type, NULL) != CL_SUCCESS)
     return;
 
   do_tracepoint(lttng_ust_opencl_build, infos_1_2, program, device, binary_type);
@@ -794,7 +794,7 @@ static inline void dump_program_device_build_infos_1_2(cl_program program, cl_de
 static inline void dump_program_device_build_infos_2_0(cl_program program, cl_device_id device) {
   size_t build_global_variable_total_size;
 
-  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE, sizeof(size_t), &build_global_variable_total_size, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE, sizeof(size_t), &build_global_variable_total_size, NULL) != CL_SUCCESS)
     return;
 
   do_tracepoint(lttng_ust_opencl_build, infos_2_0, program, device, build_global_variable_total_size);
@@ -834,7 +834,7 @@ static void dump_program_binaries(cl_program program) {
   if (!binary_sizes)
     goto with_devices;
 
-  err = clGetProgramInfo_ptr(program, CL_PROGRAM_BINARY_SIZES, num_devices*sizeof(size_t), binary_sizes, NULL);
+  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARY_SIZES, num_devices*sizeof(size_t), binary_sizes, NULL);
   if (err != CL_SUCCESS)
     goto with_binary_sizes;
 
@@ -869,7 +869,7 @@ static void dump_program_binaries(cl_program program) {
     }
   }
 
-  err = clGetProgramInfo_ptr(program, CL_PROGRAM_BINARIES, total_size, binaries, NULL);
+  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARIES, total_size, binaries, NULL);
   if (err != CL_SUCCESS) {
     for (i = 0; i < num_devices; i++) {
       if (binary_sizes[i] > 0) {
