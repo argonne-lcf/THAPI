@@ -825,6 +825,49 @@ with_noting:
   return;
 }
 
+struct clLinkProgram_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clLinkProgram_callback(cl_program program, void *user_data) {
+  struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)user_data;
+  do_tracepoint(lttng_ust_opencl, clLinkProgram_callback_start, program, payload->user_data);
+  payload->pfn_notify(program, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clLinkProgram_callback_stop, program, payload->user_data);
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && program)
+    dump_program_binaries(program);
+  free(user_data);
+}
+
+struct clCompileProgram_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clCompileProgram_callback(cl_program program, void *user_data) {
+  struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)user_data;
+  do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_start, program, payload->user_data);
+  payload->pfn_notify(program, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_stop, program, payload->user_data);
+  free(user_data);
+}
+
+struct clBuildProgram_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clBuildProgram_callback(cl_program program, void *user_data) {
+  struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)user_data;
+  do_tracepoint(lttng_ust_opencl, clBuildProgram_callback_start, program, payload->user_data);
+  payload->pfn_notify(program, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clBuildProgram_callback_stop, program, payload->user_data);
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries))
+    dump_program_binaries(program);
+  free(user_data);
+}
+
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile cl_uint _initialized = 0;

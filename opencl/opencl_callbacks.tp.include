@@ -1,0 +1,71 @@
+TRACEPOINT_EVENT(
+  lttng_ust_opencl,
+  clBuildProgram_callback_start,
+  TP_ARGS(
+    cl_program, program,
+    void *, user_data
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, user_data, (intptr_t)user_data)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl,
+  clBuildProgram_callback_stop,
+  TP_ARGS(
+    cl_program, program,
+    void *, user_data
+  ),
+  TP_FIELDS(
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl,
+  clCompileProgram_callback_start,
+  TP_ARGS(
+    cl_program, program,
+    void *, user_data
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, user_data, (intptr_t)user_data)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl,
+  clCompileProgram_callback_stop,
+  TP_ARGS(
+    cl_program, program,
+    void *, user_data
+  ),
+  TP_FIELDS(
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl,
+  clLinkProgram_callback_start,
+  TP_ARGS(
+    cl_program, program,
+    void *, user_data
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, user_data, (intptr_t)user_data)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl,
+  clLinkProgram_callback_stop,
+  TP_ARGS(
+    cl_program, program,
+    void *, user_data
+  ),
+  TP_FIELDS(
+  )
+)

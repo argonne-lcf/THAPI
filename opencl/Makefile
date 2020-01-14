@@ -15,7 +15,7 @@ LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werro
 tracer_opencl.h: gen_opencl_header.rb
 	ruby gen_opencl_header.rb > tracer_opencl.h
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml supported_extensions.yaml
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml supported_extensions.yaml opencl_callbacks.tp.include
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h

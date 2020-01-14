@@ -79,3 +79,5 @@ $opencl_extension_commands.each { |c|
 
 puts <<EOF
 EOF
+
+puts File::read("opencl_callbacks.tp.include")

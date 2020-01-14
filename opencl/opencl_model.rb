@@ -829,7 +829,6 @@ register_prologue "clCreateProgramWithILKHR", <<EOF
   }
 EOF
 
-
 register_prologue "clBuildProgram", <<EOF
   int free_options = 0;
   if (tracepoint_enabled(#{provider}_arguments, argument_info)) {
@@ -853,19 +852,49 @@ register_prologue "clBuildProgram", <<EOF
   }
 EOF
 
+register_prologue "clBuildProgram", <<EOF
+  if ((tracepoint_enabled(#{provider}, clBuildProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries)) && pfn_notify) {
+    struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)malloc(sizeof(struct clBuildProgram_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clBuildProgram_callback;
+  }
+EOF
+
 register_epilogue "clBuildProgram", <<EOF
   if (free_options)
     free((char *)options);
 EOF
 
 register_epilogue "clBuildProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, binaries)) {
+  if (tracepoint_enabled(#{provider}_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
 
+register_prologue "clCompileProgram", <<EOF
+  if (tracepoint_enabled(#{provider}, clCompileProgram_callback_start) && pfn_notify) {
+    struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)malloc(sizeof(struct clCompileProgram_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clCompileProgram_callback;
+  }
+EOF
+
+register_prologue "clLinkProgram", <<EOF
+  if ((tracepoint_enabled(#{provider}, clLinkProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries)) && pfn_notify) {
+    struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)malloc(sizeof(struct clLinkProgram_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clLinkProgram_callback;
+  }
+EOF
+
 register_epilogue "clLinkProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, binaries) && _retval != NULL) {
+  if (tracepoint_enabled(#{provider}_build, binaries) && _retval != NULL && !pfn_notify) {
     dump_program_binaries(_retval);
   }
 EOF
