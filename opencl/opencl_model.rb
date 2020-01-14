@@ -1,8 +1,6 @@
 require 'nokogiri'
 require 'yaml'
 
-provider = :lttng_ust_opencl
-
 WINDOWS = /D3D|DX9/
 
 VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$/
@@ -732,14 +730,14 @@ register_epilogue "clCreateBuffer", <<EOF
 EOF
 
 register_prologue "clCreateCommandQueue", <<EOF
-  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
+  if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
 
 register_prologue "clCreateCommandQueueWithProperties", <<EOF
   cl_queue_properties *_profiling_properties = NULL;
-  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
+  if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     int _found_queue_properties = 0;
     int _queue_properties_index = 0;
     int _properties_count = 0;
@@ -788,7 +786,7 @@ register_epilogue "clCreateCommandQueueWithProperties", <<EOF
 EOF
 
 register_prologue "clCreateProgramWithSource", <<EOF
-  if (tracepoint_enabled(#{provider}_source, program_string) && strings != NULL) {
+  if (tracepoint_enabled(lttng_ust_opencl_source, program_string) && strings != NULL) {
     cl_uint index;
     for (index = 0; index < count; index++) {
       size_t length = 0;
@@ -801,44 +799,44 @@ register_prologue "clCreateProgramWithSource", <<EOF
           length = lengths[index];
       }
       create_file_and_write(path, length, strings[index]);
-      do_tracepoint(#{provider}_source, program_string, index, length, path);
+      do_tracepoint(lttng_ust_opencl_source, program_string, index, length, path);
     }
   }
 EOF
 
 register_prologue "clCreateProgramWithBinary", <<EOF
-  if (tracepoint_enabled(#{provider}_source, program_binary) && binaries != NULL && lengths != NULL) {
+  if (tracepoint_enabled(lttng_ust_opencl_source, program_binary) && binaries != NULL && lengths != NULL) {
     cl_uint index;
     for (index = 0; index < num_devices; index++) {
       char path[sizeof(BIN_SOURCE_TEMPLATE)];
       strncpy(path, BIN_SOURCE_TEMPLATE, sizeof(path));
       create_file_and_write(path, lengths[index], binaries[index]);
-      do_tracepoint(#{provider}_source, program_binary, index, lengths[index], path);
+      do_tracepoint(lttng_ust_opencl_source, program_binary, index, lengths[index], path);
     }
   }
 EOF
 
 register_prologue "clCreateProgramWithIL", <<EOF
-  if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
+  if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
     create_file_and_write(path, length, il);
-    do_tracepoint(#{provider}_source, program_il, length, path);
+    do_tracepoint(lttng_ust_opencl_source, program_il, length, path);
   }
 EOF
 
 register_prologue "clCreateProgramWithILKHR", <<EOF
-  if (tracepoint_enabled(#{provider}_source, program_il) && il != NULL) {
+  if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
     create_file_and_write(path, length, il);
-    do_tracepoint(#{provider}_source, program_il, length, path);
+    do_tracepoint(lttng_ust_opencl_source, program_il, length, path);
   }
 EOF
 
 register_prologue "clBuildProgram", <<EOF
   int free_options = 0;
-  if (tracepoint_enabled(#{provider}_arguments, argument_info)) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info)) {
     struct opencl_version version = {1, 0};
     get_program_platform_version(program, &version);
     if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
@@ -860,7 +858,7 @@ register_prologue "clBuildProgram", <<EOF
 EOF
 
 register_prologue "clBuildProgram", <<EOF
-  if ((tracepoint_enabled(#{provider}, clBuildProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries) || tracepoint_enabled(#{provider}_build, infos)) && pfn_notify) {
+  if ((tracepoint_enabled(lttng_ust_opencl, clBuildProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
     struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)malloc(sizeof(struct clBuildProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
@@ -875,20 +873,20 @@ register_epilogue "clBuildProgram", <<EOF
 EOF
 
 register_epilogue "clBuildProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, binaries) && !pfn_notify) {
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
 
 register_epilogue "clBuildProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, infos) && !pfn_notify) {
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && !pfn_notify) {
     dump_program_build_infos(program);
   }
 EOF
 
 register_prologue "clCompileProgram", <<EOF
   int free_options = 0;
-  if (tracepoint_enabled(#{provider}_arguments, argument_info)) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info)) {
     struct opencl_version version = {1, 0};
     get_program_platform_version(program, &version);
     if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
@@ -910,7 +908,7 @@ register_prologue "clCompileProgram", <<EOF
 EOF
 
 register_prologue "clCompileProgram", <<EOF
-  if ((tracepoint_enabled(#{provider}, clCompileProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries) || tracepoint_enabled(#{provider}_build, infos)) && pfn_notify) {
+  if ((tracepoint_enabled(lttng_ust_opencl, clCompileProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
     struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)malloc(sizeof(struct clCompileProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
@@ -925,20 +923,20 @@ register_epilogue "clCompileProgram", <<EOF
 EOF
 
 register_epilogue "clCompileProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, binaries) && !pfn_notify) {
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
 
 register_epilogue "clCompileProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, infos) && !pfn_notify) {
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && !pfn_notify) {
     dump_program_build_infos(program);
   }
 EOF
 
 register_prologue "clLinkProgram", <<EOF
   int free_options = 0;
-  if (tracepoint_enabled(#{provider}_arguments, argument_info) && input_programs && *input_programs) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && input_programs && *input_programs) {
     struct opencl_version version = {1, 0};
     get_program_platform_version(*input_programs, &version);
     if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
@@ -960,7 +958,7 @@ register_prologue "clLinkProgram", <<EOF
 EOF
 
 register_prologue "clLinkProgram", <<EOF
-  if ((tracepoint_enabled(#{provider}, clLinkProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries) || tracepoint_enabled(#{provider}_build, infos)) && pfn_notify) {
+  if ((tracepoint_enabled(lttng_ust_opencl, clLinkProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
     struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)malloc(sizeof(struct clLinkProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
@@ -975,38 +973,38 @@ register_epilogue "clLinkProgram", <<EOF
 EOF
 
 register_epilogue "clLinkProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, binaries) && _retval && !pfn_notify) {
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);
   }
 EOF
 
 register_epilogue "clLinkProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, infos) && _retval && !pfn_notify) {
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && _retval && !pfn_notify) {
     dump_program_build_infos(_retval);
   }
 EOF
 
 register_epilogue "clCreateKernel", <<EOF
-  if (tracepoint_enabled(#{provider}_arguments, kernel_info)) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info)) {
     dump_kernel_info(_retval);
   }
 EOF
 
 register_epilogue "clCreateKernel", <<EOF
-  if (tracepoint_enabled(#{provider}_arguments, argument_info) && _retval != NULL) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval != NULL) {
     dump_kernel_arguments(program, _retval);
   }
 EOF
 
 register_prologue "clCreateKernelsInProgram", <<EOF
   cl_uint n_k = 0;
-  if (tracepoint_enabled(#{provider}_arguments, kernel_info) && !num_kernels_ret && kernels) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
 register_epilogue "clCreateKernelsInProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_arguments, kernel_info) && _retval == CL_SUCCESS && kernels) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_info(kernels[i]);
     }
@@ -1014,13 +1012,13 @@ register_epilogue "clCreateKernelsInProgram", <<EOF
 EOF
 
 register_prologue "clCreateKernelsInProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_arguments, argument_info) && !num_kernels_ret && kernels) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
 register_epilogue "clCreateKernelsInProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_arguments, argument_info) && _retval == CL_SUCCESS && kernels) {
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_arguments(program, kernels[i]);
     }
@@ -1032,7 +1030,7 @@ $opencl_commands.each { |c|
   if c.extension?
     str << <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(#{provider}, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1046,7 +1044,7 @@ $opencl_commands.each { |c|
   if c.extension?
     str << <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(#{provider}, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1063,13 +1061,13 @@ register_extension_callbacks = lambda { |ext_method|
 EOF
   $opencl_extension_commands.each { |c|
     str << <<EOF
-    if (tracepoint_enabled(#{provider}, #{c.prototype.name}_stop) && strcmp(func_name, "#{c.prototype.name}") == 0) {
+    if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_stop) && strcmp(func_name, "#{c.prototype.name}") == 0) {
       struct opencl_closure *closure = NULL;
       pthread_mutex_lock(&opencl_closures_mutex);
       HASH_FIND_PTR(opencl_closures, &_retval, closure);
       pthread_mutex_unlock(&opencl_closures_mutex);
       if (closure != NULL) {
-        tracepoint(#{provider}, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
+        tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
         return closure->c_ptr;
       }
       closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
@@ -1091,7 +1089,7 @@ EOF
               pthread_mutex_lock(&opencl_closures_mutex);
               HASH_ADD_PTR(opencl_closures, ptr, closure);
               pthread_mutex_unlock(&opencl_closures_mutex);
-              tracepoint(#{provider}, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
+              tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
               return closure->c_ptr;
             }
           }
@@ -1117,7 +1115,7 @@ $opencl_commands.each { |c|
   int _profile_release_event = 0;
   int _event_profiling = 0;
   cl_event profiling_event;
-  if (tracepoint_enabled(#{provider}_profiling, event_profiling)) {
+  if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     if (event == NULL) {
       event = &profiling_event;
       _profile_release_event = 1;
@@ -1128,7 +1126,7 @@ EOF
       c.epilogues.push <<EOF
   if (_event_profiling) {
     int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(*event, CL_COMPLETE, event_notify, NULL);
-    do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, *event);
+    do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, *event);
     if(_profile_release_event) {
       #{$clReleaseEvent.prototype.pointer_name}(*event);
       event = NULL;
@@ -1137,9 +1135,9 @@ EOF
 EOF
     else
       c.epilogues.push <<EOF
-  if (tracepoint_enabled(#{provider}_profiling, event_profiling) ) {
+  if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling) ) {
     int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(_retval, CL_COMPLETE, event_notify, NULL);
-    do_tracepoint(#{provider}_profiling, event_profiling, _set_retval, _retval);
+    do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, _retval);
   }
 EOF
     end

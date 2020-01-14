@@ -1,7 +1,5 @@
 require_relative 'opencl_model'
 
-provider = :lttng_ust_opencl
-
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 220
 #define CL_USE_DEPRECATED_OPENCL_1_0_APIS
@@ -110,7 +108,7 @@ common_block = lambda { |c|
     puts p.init
   }
   puts <<EOF
-  tracepoint(#{provider}, #{c.prototype.name}_start, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{(tp_params+tracepoint_params).join(", ")});
 EOF
   c.prologues.each { |p|
     puts p
@@ -130,7 +128,7 @@ EOF
     tp_params.push "_retval"
   end
   puts <<EOF
-  tracepoint(#{provider}, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 }
 

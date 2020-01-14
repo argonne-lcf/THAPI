@@ -1,7 +1,5 @@
 require_relative 'opencl_model'
 
-provider = :lttng_ust_opencl
-
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 220
 #include <CL/opencl.h>
@@ -15,7 +13,7 @@ EOF
 tracepoint_lambda = lambda { |c, dir|
   puts <<EOF
 TRACEPOINT_EVENT(
-  #{provider},
+  lttng_ust_opencl,
   #{c.prototype.name}_#{dir},
   TP_ARGS(
 EOF
