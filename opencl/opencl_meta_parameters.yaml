@@ -110,7 +110,7 @@ meta_parameters:
     - [ InFixedArray, region, 3 ]
   clEnqueueMigrateMemObjects:
     - [ InArray, mem_objects, num_mem_objects ]
-  clEnqueueMigrateMemObjectsEXT:
+  clEnqueueMigrateMemObjectEXT:
     - [ InArray, mem_objects, num_mem_objects ]
   clGetExtensionFunctionAddress:
     - [ InString, func_name ]
