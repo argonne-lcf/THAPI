@@ -28,11 +28,9 @@ TRACEPOINT_EVENT(
   TP_ARGS(
     cl_program, program,
     cl_device_id, device,
-    char *, build_options,
     cl_build_status, build_status,
-    char *, build_log,
-    cl_program_binary_type, binary_type,
-    ssize_t, build_global_variable_total_size
+    char *, build_options,
+    char *, build_log
   ),
   TP_FIELDS(
     ctf_integer_hex(intptr_t, program, (intptr_t)program)
@@ -40,7 +38,35 @@ TRACEPOINT_EVENT(
     ctf_integer(cl_build_status, build_status, build_status)
     ctf_string(build_options, build_options)
     ctf_string(build_log, build_log)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_build,
+  infos_1_2,
+  TP_ARGS(
+    cl_program, program,
+    cl_device_id, device,
+    cl_program_binary_type, binary_type
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, device, (intptr_t)device)
     ctf_integer(cl_program_binary_type, binary_type, binary_type)
-    ctf_integer(ssize_t, build_global_variable_total_size, build_global_variable_total_size)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_build,
+  infos_2_0,
+  TP_ARGS(
+    cl_program, program,
+    cl_device_id, device,
+    size_t, build_global_variable_total_size
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, device, (intptr_t)device)
+    ctf_integer(size_t, build_global_variable_total_size, build_global_variable_total_size)
   )
 )

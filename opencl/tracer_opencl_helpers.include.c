@@ -19,7 +19,12 @@ struct opencl_version {
   cl_uint major;
 };
 
+//static const struct opencl_version opencl_version_1_0 = {1, 0};
+//static const struct opencl_version opencl_version_1_1 = {1, 1};
 static const struct opencl_version opencl_version_1_2 = {1, 2};
+//static const struct opencl_version opencl_version_2_0 = {2, 0};
+//static const struct opencl_version opencl_version_2_1 = {2, 1};
+//static const struct opencl_version opencl_version_2_2 = {2, 2};
 
 static inline int compare_opencl_version(const struct opencl_version *v1, const struct opencl_version *v2) {
   if (v1->major > v2->major)
@@ -735,6 +740,82 @@ static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
   }
 }
 
+static inline void dump_program_device_build_infos(cl_program program, cl_device_id device) {
+  cl_build_status build_status;
+  char *build_options = "";
+  size_t build_options_sz = 0;
+  int free_build_options = 0;
+  char *build_log = "";
+  size_t build_log_sz = 0;
+  int free_build_log = 0;
+
+  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(build_status), &build_status, NULL) != CL_SUCCESS)
+    return;
+  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_OPTIONS, 0, NULL, &build_options_sz) != CL_SUCCESS)
+    return;
+  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_sz) != CL_SUCCESS)
+    return;
+
+  if (build_options_sz > 0) {
+    build_options = (char *)calloc(build_options_sz+1, 1);
+    if(!build_options)
+      return;
+    free_build_options = 1;
+    if(clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_OPTIONS, build_options_sz, build_options, NULL) != CL_SUCCESS)
+      goto cleanup;
+  }
+ 
+  if (build_log_sz > 0) {
+    build_log = (char *)calloc(build_log_sz+1, 1);
+    if(!build_log)
+      goto cleanup;
+    free_build_log = 1;
+    if(clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_LOG, build_log_sz, build_log, NULL) != CL_SUCCESS)
+      goto cleanup;
+  }
+
+  do_tracepoint(lttng_ust_opencl_build, infos, program, device, build_status, build_options, build_log);
+cleanup:
+  if (free_build_options)
+    free(build_options);
+  if (free_build_log)
+    free(build_log);
+}
+
+static inline void dump_program_device_build_infos_1_2(cl_program program, cl_device_id device) {
+  cl_program_binary_type binary_type;
+
+  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BINARY_TYPE, sizeof(binary_type), &binary_type, NULL) != CL_SUCCESS)
+    return;
+
+  do_tracepoint(lttng_ust_opencl_build, infos_1_2, program, device, binary_type);
+}
+
+static inline void dump_program_device_build_infos_2_0(cl_program program, cl_device_id device) {
+  size_t build_global_variable_total_size;
+
+  if (clGetProgramBuildInfo_ptr(program, device, CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE, sizeof(size_t), &build_global_variable_total_size, NULL) != CL_SUCCESS)
+    return;
+
+  do_tracepoint(lttng_ust_opencl_build, infos_2_0, program, device, build_global_variable_total_size);
+}
+
+static void dump_program_build_infos(cl_program program) {
+  cl_device_id *devices;
+  cl_uint num_devices;
+  cl_uint i;
+
+  devices = get_program_devices(program, &num_devices);
+  if (!devices)
+    return;
+
+  for(i = 0; i < num_devices; i++) {
+    dump_program_device_build_infos(program, devices[i]);
+    dump_program_device_build_infos_1_2(program, devices[i]);
+    dump_program_device_build_infos_2_0(program, devices[i]);
+  }
+}
+
 static void dump_program_binaries(cl_program program) {
   cl_int err = CL_SUCCESS;
   cl_device_id *devices;
@@ -837,6 +918,8 @@ void CL_CALLBACK clLinkProgram_callback(cl_program program, void *user_data) {
   do_tracepoint(lttng_ust_opencl, clLinkProgram_callback_stop, program, payload->user_data);
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && program)
     dump_program_binaries(program);
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && program)
+    dump_program_build_infos(program);
   free(user_data);
 }
 
@@ -850,6 +933,8 @@ void CL_CALLBACK clCompileProgram_callback(cl_program program, void *user_data) 
   do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_start, program, payload->user_data);
   payload->pfn_notify(program, payload->user_data);
   do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_stop, program, payload->user_data);
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos))
+    dump_program_build_infos(program);
   free(user_data);
 }
 
@@ -865,6 +950,8 @@ void CL_CALLBACK clBuildProgram_callback(cl_program program, void *user_data) {
   do_tracepoint(lttng_ust_opencl, clBuildProgram_callback_stop, program, payload->user_data);
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries))
     dump_program_binaries(program);
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos))
+    dump_program_build_infos(program);
   free(user_data);
 }
 

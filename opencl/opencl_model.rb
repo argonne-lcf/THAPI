@@ -853,7 +853,7 @@ register_prologue "clBuildProgram", <<EOF
 EOF
 
 register_prologue "clBuildProgram", <<EOF
-  if ((tracepoint_enabled(#{provider}, clBuildProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries)) && pfn_notify) {
+  if ((tracepoint_enabled(#{provider}, clBuildProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries) || tracepoint_enabled(#{provider}_build, infos)) && pfn_notify) {
     struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)malloc(sizeof(struct clBuildProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
@@ -873,8 +873,37 @@ register_epilogue "clBuildProgram", <<EOF
   }
 EOF
 
+register_epilogue "clBuildProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, infos) && !pfn_notify) {
+    dump_program_build_infos(program);
+  }
+EOF
+
 register_prologue "clCompileProgram", <<EOF
-  if (tracepoint_enabled(#{provider}, clCompileProgram_callback_start) && pfn_notify) {
+  int free_options = 0;
+  if (tracepoint_enabled(#{provider}_arguments, argument_info)) {
+    struct opencl_version version = {1, 0};
+    get_program_platform_version(program, &version);
+    if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
+      if (options) {
+        if (!strstr(options, "-cl-kernel-arg-info")) {
+          size_t sz = strlen(options) + strlen("-cl-kernel-arg-info") + 2;
+          char * new_options = (char *)malloc(sz);
+          if (new_options) {
+            snprintf(new_options, sz, "%s %s", options, "-cl-kernel-arg-info");
+            free_options = 1;
+            options = new_options;
+          }
+        }
+      } else {
+        options = "-cl-kernel-arg-info";
+      }
+    }
+  }
+EOF
+
+register_prologue "clCompileProgram", <<EOF
+  if ((tracepoint_enabled(#{provider}, clCompileProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries) || tracepoint_enabled(#{provider}_build, infos)) && pfn_notify) {
     struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)malloc(sizeof(struct clCompileProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
@@ -883,8 +912,48 @@ register_prologue "clCompileProgram", <<EOF
   }
 EOF
 
+register_epilogue "clCompileProgram", <<EOF
+  if (free_options)
+    free((char *)options);
+EOF
+
+register_epilogue "clCompileProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, binaries) && !pfn_notify) {
+    dump_program_binaries(program);
+  }
+EOF
+
+register_epilogue "clCompileProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, infos) && !pfn_notify) {
+    dump_program_build_infos(program);
+  }
+EOF
+
 register_prologue "clLinkProgram", <<EOF
-  if ((tracepoint_enabled(#{provider}, clLinkProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries)) && pfn_notify) {
+  int free_options = 0;
+  if (tracepoint_enabled(#{provider}_arguments, argument_info) && input_programs && *input_programs) {
+    struct opencl_version version = {1, 0};
+    get_program_platform_version(*input_programs, &version);
+    if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
+      if (options) {
+        if (!strstr(options, "-cl-kernel-arg-info")) {
+          size_t sz = strlen(options) + strlen("-cl-kernel-arg-info") + 2;
+          char * new_options = (char *)malloc(sz);
+          if (new_options) {
+            snprintf(new_options, sz, "%s %s", options, "-cl-kernel-arg-info");
+            free_options = 1;
+            options = new_options;
+          }
+        }
+      } else {
+        options = "-cl-kernel-arg-info";
+      }
+    }
+  }
+EOF
+
+register_prologue "clLinkProgram", <<EOF
+  if ((tracepoint_enabled(#{provider}, clLinkProgram_callback_start) || tracepoint_enabled(#{provider}_build, binaries) || tracepoint_enabled(#{provider}_build, infos)) && pfn_notify) {
     struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)malloc(sizeof(struct clLinkProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
@@ -894,8 +963,19 @@ register_prologue "clLinkProgram", <<EOF
 EOF
 
 register_epilogue "clLinkProgram", <<EOF
-  if (tracepoint_enabled(#{provider}_build, binaries) && _retval != NULL && !pfn_notify) {
+  if (free_options)
+    free((char *)options);
+EOF
+
+register_epilogue "clLinkProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);
+  }
+EOF
+
+register_epilogue "clLinkProgram", <<EOF
+  if (tracepoint_enabled(#{provider}_build, infos) && _retval && !pfn_notify) {
+    dump_program_build_infos(_retval);
   }
 EOF
 
