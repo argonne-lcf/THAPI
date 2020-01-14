@@ -519,10 +519,12 @@ ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret")
 Event = AutoOutScalar::create("event")
 
 def register_meta_parameter(method, type, *args)
+  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
   META_PARAMETERS[method].push [type, args]
 end
 
 def register_meta_struct(method, name, type)
+  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
   raise "Unknown struct: #{type}!" unless CL_STRUCTS.include?(type)
   CL_STRUCT_MAP[type].each { |m|
     META_PARAMETERS[method].push [Member, [m, name]]
@@ -531,10 +533,12 @@ end
 
 
 def register_prologue(method, code)
+  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
   PROLOGUES[method].push(code)
 end
 
 def register_epilogue(method, code)
+  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
   EPILOGUES[method].push(code)
 end
 
@@ -607,6 +611,17 @@ class Command < CLXML
 
 end
 
+$opencl_commands = funcs_e.collect { |func|
+  Command::new(func)
+}
+
+$opencl_extension_commands = ext_funcs_e.collect { |func|
+  Command::new(func)
+}
+
+OPENCL_COMMAND_NAMES = $opencl_commands.collect { |c| c.prototype.name }
+OPENCL_EXTENSION_COMMAND_NAMES = $opencl_extension_commands.collect { |c| c.prototype.name }
+
 meta_parameters = YAML::load_file("opencl_meta_parameters.yaml")
 meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
@@ -618,14 +633,6 @@ meta_parameters["meta_structs"].each { |func, list|
   list.each { |args|
     register_meta_struct func, *args
   }
-}
-
-$opencl_commands = funcs_e.collect { |func|
-  Command::new(func)
-}
-
-$opencl_extension_commands = ext_funcs_e.collect { |func|
-  Command::new(func)
 }
 
 $opencl_commands.each { |c|
