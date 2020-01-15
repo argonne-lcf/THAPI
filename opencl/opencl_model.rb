@@ -1188,3 +1188,100 @@ register_epilogue "clEnqueueNDRangeKernel", <<EOF
   }
 EOF
 
+register_prologue "clCreateContext", <<EOF
+  struct clCreateContext_callback_payload *payload = NULL;
+  if (tracepoint_enabled(lttng_ust_opencl, clCreateContext_callback_start) && pfn_notify) {
+    // WARNING: Memory leak, as we can't know when the context will really be destroyed...
+    payload = (struct clCreateContext_callback_payload *)malloc(sizeof(struct clCreateContext_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clCreateContext_callback;
+  }
+EOF
+
+register_epilogue "clCreateContext", <<EOF
+  if (payload && !_retval)
+    free(payload);
+EOF
+
+register_prologue "clCreateContextFromType", <<EOF
+  struct clCreateContextFromType_callback_payload *payload = NULL;
+  if (tracepoint_enabled(lttng_ust_opencl, clCreateContextFromType_callback_start) && pfn_notify) {
+    // WARNING: Memory leak, as we can't know when the context will really be destroyed...
+    payload = (struct clCreateContextFromType_callback_payload *)malloc(sizeof(struct clCreateContextFromType_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clCreateContextFromType_callback;
+  }
+EOF
+
+register_epilogue "clCreateContextFromType", <<EOF
+  if (payload && !_retval)
+    free(payload);
+EOF
+
+register_prologue "clSetMemObjectDestructorCallback", <<EOF
+  struct clSetMemObjectDestructorCallback_callback_payload *payload = NULL;
+  if (tracepoint_enabled(lttng_ust_opencl, clSetMemObjectDestructorCallback_callback_start) && pfn_notify) {
+    payload = (struct clSetMemObjectDestructorCallback_callback_payload *)malloc(sizeof(struct clSetMemObjectDestructorCallback_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clSetMemObjectDestructorCallback_callback;
+  }
+EOF
+
+register_epilogue "clSetMemObjectDestructorCallback", <<EOF
+  if (payload && _retval != CL_SUCCESS)
+    free(payload);
+EOF
+
+register_prologue "clSetProgramReleaseCallback", <<EOF
+  struct clSetProgramReleaseCallback_callback_payload *payload = NULL;
+  if (tracepoint_enabled(lttng_ust_opencl, clSetProgramReleaseCallback_callback_start) && pfn_notify) {
+    payload = (struct clSetProgramReleaseCallback_callback_payload *)malloc(sizeof(struct clSetProgramReleaseCallback_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clSetProgramReleaseCallback_callback;
+  }
+EOF
+
+register_epilogue "clSetProgramReleaseCallback", <<EOF
+  if (payload && _retval != CL_SUCCESS)
+    free(payload);
+EOF
+
+register_prologue "clSetEventCallback", <<EOF
+  struct clSetEventCallback_callback_payload *payload = NULL;
+  if (tracepoint_enabled(lttng_ust_opencl, clSetEventCallback_callback_start) && pfn_notify) {
+    payload = (struct clSetEventCallback_callback_payload *)malloc(sizeof(struct clSetEventCallback_callback_payload));
+    payload->pfn_notify = pfn_notify;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_notify = &clSetEventCallback_callback;
+  }
+EOF
+
+register_epilogue "clSetEventCallback", <<EOF
+  if (payload && _retval != CL_SUCCESS)
+    free(payload);
+EOF
+
+register_prologue "clEnqueueSVMFree", <<EOF
+  struct clEnqueueSVMFree_callback_payload *payload = NULL;
+  if (tracepoint_enabled(lttng_ust_opencl, clEnqueueSVMFree_callback_start) && pfn_free_func) {
+    payload = (struct clEnqueueSVMFree_callback_payload *)malloc(sizeof(struct clEnqueueSVMFree_callback_payload));
+    payload->pfn_free_func = pfn_free_func;
+    payload->user_data = user_data;
+    user_data = (void *)payload;
+    pfn_free_func = &clEnqueueSVMFree_callback;
+  }
+EOF
+
+register_epilogue "clEnqueueSVMFree", <<EOF
+  if (payload && _retval != CL_SUCCESS)
+    free(payload);
+EOF

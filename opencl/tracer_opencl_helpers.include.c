@@ -931,6 +931,7 @@ struct clCompileProgram_callback_payload {
 
 void CL_CALLBACK clCompileProgram_callback(cl_program program, void *user_data) {
   struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)user_data;
+
   do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_start, program, payload->user_data);
   payload->pfn_notify(program, payload->user_data);
   do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_stop, program, payload->user_data);
@@ -946,6 +947,7 @@ struct clBuildProgram_callback_payload {
 
 void CL_CALLBACK clBuildProgram_callback(cl_program program, void *user_data) {
   struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)user_data;
+
   do_tracepoint(lttng_ust_opencl, clBuildProgram_callback_start, program, payload->user_data);
   payload->pfn_notify(program, payload->user_data);
   do_tracepoint(lttng_ust_opencl, clBuildProgram_callback_stop, program, payload->user_data);
@@ -953,6 +955,88 @@ void CL_CALLBACK clBuildProgram_callback(cl_program program, void *user_data) {
     dump_program_binaries(program);
   if (tracepoint_enabled(lttng_ust_opencl_build, infos))
     dump_program_build_infos(program);
+  free(user_data);
+}
+
+struct clCreateContext_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(const char *errinfo, const void *private_info, size_t cb, void *user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clCreateContext_callback(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
+  struct clCreateContext_callback_payload *payload = (struct clCreateContext_callback_payload *)user_data;
+
+  tracepoint(lttng_ust_opencl, clCreateContext_callback_start, errinfo, private_info, cb, payload->user_data);
+  payload->pfn_notify(errinfo, private_info, cb, payload->user_data);
+  tracepoint(lttng_ust_opencl, clCreateContext_callback_stop, errinfo, private_info, cb, payload->user_data);
+}
+
+struct clCreateContextFromType_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(const char *errinfo, const void *private_info, size_t cb, void *user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clCreateContextFromType_callback(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
+  struct clCreateContextFromType_callback_payload *payload = (struct clCreateContextFromType_callback_payload *)user_data;
+
+  tracepoint(lttng_ust_opencl, clCreateContextFromType_callback_start, errinfo, private_info, cb, payload->user_data);
+  payload->pfn_notify(errinfo, private_info, cb, payload->user_data);
+  tracepoint(lttng_ust_opencl, clCreateContextFromType_callback_stop, errinfo, private_info, cb, payload->user_data);
+}
+
+struct clSetMemObjectDestructorCallback_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(cl_mem memobj, void * user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clSetMemObjectDestructorCallback_callback(cl_mem memobj, void * user_data) {
+  struct clSetMemObjectDestructorCallback_callback_payload *payload = (struct clSetMemObjectDestructorCallback_callback_payload *)user_data;
+
+  do_tracepoint(lttng_ust_opencl, clSetMemObjectDestructorCallback_callback_start, memobj, payload->user_data);
+  payload->pfn_notify(memobj, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clSetMemObjectDestructorCallback_callback_stop, memobj, payload->user_data);
+  free(user_data);
+}
+
+struct clSetProgramReleaseCallback_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(cl_program program, void * user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clSetProgramReleaseCallback_callback(cl_program program, void * user_data) {
+  struct clSetProgramReleaseCallback_callback_payload *payload = (struct clSetProgramReleaseCallback_callback_payload *)user_data;
+
+  do_tracepoint(lttng_ust_opencl, clSetProgramReleaseCallback_callback_start, program, payload->user_data);
+  payload->pfn_notify(program, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clSetProgramReleaseCallback_callback_stop, program, payload->user_data);
+  free(user_data);
+}
+
+struct clSetEventCallback_callback_payload {
+  void (CL_CALLBACK *pfn_notify)(cl_event event, cl_int type, void * user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clSetEventCallback_callback(cl_event event, cl_int type, void * user_data) {
+  struct clSetEventCallback_callback_payload *payload = (struct clSetEventCallback_callback_payload *)user_data;
+
+  do_tracepoint(lttng_ust_opencl, clSetEventCallback_callback_start, event, type, payload->user_data);
+  payload->pfn_notify(event, type, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clSetEventCallback_callback_stop, event, type, payload->user_data);
+  free(user_data);
+}
+
+struct clEnqueueSVMFree_callback_payload {
+  void (CL_CALLBACK *pfn_free_func)(cl_command_queue command_queue, cl_uint num_svm_pointers, void *svm_pointers[], void* user_data);
+  void *user_data;
+};
+
+void CL_CALLBACK clEnqueueSVMFree_callback(cl_command_queue command_queue, cl_uint num_svm_pointers, void *svm_pointers[], void* user_data) {
+  struct clEnqueueSVMFree_callback_payload *payload = (struct clEnqueueSVMFree_callback_payload *)user_data;
+
+  do_tracepoint(lttng_ust_opencl, clEnqueueSVMFree_callback_start, command_queue, num_svm_pointers, svm_pointers, payload->user_data);
+  payload->pfn_free_func(command_queue, num_svm_pointers, svm_pointers, payload->user_data);
+  do_tracepoint(lttng_ust_opencl, clEnqueueSVMFree_callback_stop, command_queue, num_svm_pointers, svm_pointers, payload->user_data);
   free(user_data);
 }
 
