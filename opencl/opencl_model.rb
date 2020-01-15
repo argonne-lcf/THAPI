@@ -434,7 +434,6 @@ EOF
   end
 end
 
-
 class InNullArray < InArray
   def initialize(command, name)
     sname = "_#{name}_size"
@@ -609,16 +608,8 @@ class Command < CLXML
 
 end
 
-$opencl_commands = funcs_e.collect { |func|
-  Command::new(func)
-}
-
-$opencl_extension_commands = ext_funcs_e.collect { |func|
-  Command::new(func)
-}
-
-OPENCL_COMMAND_NAMES = $opencl_commands.collect { |c| c.prototype.name }
-OPENCL_EXTENSION_COMMAND_NAMES = $opencl_extension_commands.collect { |c| c.prototype.name }
+OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
+OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
 
 meta_parameters = YAML::load_file("opencl_meta_parameters.yaml")
 meta_parameters["meta_parameters"].each  { |func, list|
@@ -631,6 +622,14 @@ meta_parameters["meta_structs"].each { |func, list|
   list.each { |args|
     register_meta_struct func, *args
   }
+}
+
+$opencl_commands = funcs_e.collect { |func|
+  Command::new(func)
+}
+
+$opencl_extension_commands = ext_funcs_e.collect { |func|
+  Command::new(func)
 }
 
 $opencl_commands.each { |c|
