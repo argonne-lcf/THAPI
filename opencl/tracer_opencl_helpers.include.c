@@ -913,12 +913,13 @@ struct clLinkProgram_callback_payload {
 
 void CL_CALLBACK clLinkProgram_callback(cl_program program, void *user_data) {
   struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)user_data;
+
   do_tracepoint(lttng_ust_opencl, clLinkProgram_callback_start, program, payload->user_data);
   payload->pfn_notify(program, payload->user_data);
   do_tracepoint(lttng_ust_opencl, clLinkProgram_callback_stop, program, payload->user_data);
-  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && program)
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries))
     dump_program_binaries(program);
-  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && program)
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos))
     dump_program_build_infos(program);
   free(user_data);
 }
