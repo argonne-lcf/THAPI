@@ -858,13 +858,19 @@ register_prologue "clBuildProgram", <<EOF
 EOF
 
 register_prologue "clBuildProgram", <<EOF
+  struct clBuildProgram_callback_payload *payload = NULL;
   if ((tracepoint_enabled(lttng_ust_opencl, clBuildProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
-    struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)malloc(sizeof(struct clBuildProgram_callback_payload));
+    payload = (struct clBuildProgram_callback_payload *)malloc(sizeof(struct clBuildProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
     user_data = (void *)payload;
     pfn_notify = &clBuildProgram_callback;
   }
+EOF
+
+register_epilogue "clBuildProgram", <<EOF
+  if (payload && _retval != CL_SUCCESS)
+    free(payload);
 EOF
 
 register_epilogue "clBuildProgram", <<EOF
@@ -908,13 +914,19 @@ register_prologue "clCompileProgram", <<EOF
 EOF
 
 register_prologue "clCompileProgram", <<EOF
+  struct clCompileProgram_callback_payload *payload = NULL;
   if ((tracepoint_enabled(lttng_ust_opencl, clCompileProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
-    struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)malloc(sizeof(struct clCompileProgram_callback_payload));
+    payload = (struct clCompileProgram_callback_payload *)malloc(sizeof(struct clCompileProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
     user_data = (void *)payload;
     pfn_notify = &clCompileProgram_callback;
   }
+EOF
+
+register_epilogue "clCompileProgram", <<EOF
+  if (payload && _retval != CL_SUCCESS)
+    free(payload);
 EOF
 
 register_epilogue "clCompileProgram", <<EOF
@@ -958,13 +970,19 @@ register_prologue "clLinkProgram", <<EOF
 EOF
 
 register_prologue "clLinkProgram", <<EOF
+  struct clLinkProgram_callback_payload *payload = NULL;
   if ((tracepoint_enabled(lttng_ust_opencl, clLinkProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
-    struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)malloc(sizeof(struct clLinkProgram_callback_payload));
+    payload = (struct clLinkProgram_callback_payload *)malloc(sizeof(struct clLinkProgram_callback_payload));
     payload->pfn_notify = pfn_notify;
     payload->user_data = user_data;
     user_data = (void *)payload;
     pfn_notify = &clLinkProgram_callback;
   }
+EOF
+
+register_epilogue "clLinkProgram", <<EOF
+  if (payload && !_retval)
+    free(payload);
 EOF
 
 register_epilogue "clLinkProgram", <<EOF
