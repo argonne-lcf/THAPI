@@ -171,5 +171,6 @@ EOF
   end
   puts <<EOF
 }
+
 EOF
 }
