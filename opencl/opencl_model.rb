@@ -646,7 +646,7 @@ buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :u
 $clCreateSubBuffer.meta_parameters.push buffer_create_info
 
 
-$opencl_commands.each { |c|
+($opencl_commands+$opencl_extension_commands).each { |c|
   if c.prototype.name.match "clEnqueue"
     c.prologues.push <<EOF
   int64_t _enqueue_counter = 0;
@@ -691,7 +691,7 @@ register_prologue "clSVMFree", <<EOF
   }
 EOF
 
-register_prologue "clEnqueueNDRangeKernel", <<EOF
+str = <<EOF
   int _dump_release_events = 0;
   int _dump_release_event = 0;
   cl_event extra_event;
@@ -705,8 +705,10 @@ register_prologue "clEnqueueNDRangeKernel", <<EOF
     }
   }
 EOF
+register_prologue "clEnqueueNDRangeKernel", str
+register_prologue "clEnqueueNDRangeKernelINTEL", str
 
-register_epilogue "clEnqueueNDRangeKernel", <<EOF
+str = <<EOF
   if (do_dump && _dump_release_events) {
     for (cl_uint event_index = 0; event_index < num_events_in_wait_list; event_index++) {
       #{$clReleaseEvent.prototype.pointer_name}(event_wait_list[event_index]);
@@ -714,6 +716,8 @@ register_epilogue "clEnqueueNDRangeKernel", <<EOF
     free((void *)event_wait_list);
   }
 EOF
+register_epilogue "clEnqueueNDRangeKernel", str
+register_epilogue "clEnqueueNDRangeKernelINTEL", str
 
 register_prologue "clCreateBuffer", <<EOF
   if (do_dump) {
@@ -1125,16 +1129,18 @@ EOF
 register_extension_callbacks.call("clGetExtensionFunctionAddress")
 register_extension_callbacks.call("clGetExtensionFunctionAddressForPlatform")
 
-$opencl_commands.each { |c|
+
+#Create event profiling code
+($opencl_commands+$opencl_extension_commands).each { |c|
   if c.event?
     if !c.returns_event?
       c.prologues.push <<EOF
   int _profile_release_event = 0;
   int _event_profiling = 0;
-  cl_event profiling_event;
+  cl_event _profiling_event;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     if (event == NULL) {
-      event = &profiling_event;
+      event = &_profiling_event;
       _profile_release_event = 1;
     }
     _event_profiling = 1;
