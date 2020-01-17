@@ -10,6 +10,7 @@ while true; do
     -s | --source ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:* ;;
     -a | --arguments ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*;;
     -b | --build ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:*;;
+    -h | --host-profile) shift; export LTTNG_UST_OPENCL_HOST_PROFILE=1;;
     -d | --dump ) shift; export LTTNG_UST_OPENCL_DUMP=1;;
     -i | --iteration ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
     -s | --iteration-start ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; shift ;;
@@ -22,7 +23,9 @@ if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
 fi
+export LTTNG_UST_ALLOW_BLOCKING=1
+export LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so:$LD_PRELOAD
 lttng start
-LTTNG_UST_ALLOW_BLOCKING=1 LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so "$@"
+"$@"
 lttng stop
 lttng destroy

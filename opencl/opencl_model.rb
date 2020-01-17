@@ -1,6 +1,8 @@
 require 'nokogiri'
 require 'yaml'
 
+HOST_PROFILE = true
+
 WINDOWS = /D3D|DX9/
 
 VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$/
@@ -1003,7 +1005,7 @@ EOF
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name}#{HOST_PROFILE ? ", 0" : ""});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1016,7 +1018,7 @@ register_prologue "clGetExtensionFunctionAddressForPlatform", str
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name}#{HOST_PROFILE ? ", 0" : ""});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1040,7 +1042,7 @@ EOF
       HASH_FIND_PTR(opencl_closures, &_retval, closure);
       pthread_mutex_unlock(&opencl_closures_mutex);
       if (closure != NULL) {
-        tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
+        tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
         return closure->c_ptr;
       }
       closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
@@ -1062,7 +1064,7 @@ EOF
               pthread_mutex_lock(&opencl_closures_mutex);
               HASH_ADD_PTR(opencl_closures, ptr, closure);
               pthread_mutex_unlock(&opencl_closures_mutex);
-              tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval);
+              tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
               return closure->c_ptr;
             }
           }

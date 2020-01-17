@@ -108,6 +108,7 @@ static void get_program_platform_version(cl_program program, struct opencl_versi
   }
 }
 
+static int     do_host_profile = 0;
 static int     do_dump = 0;
 pthread_mutex_t enqueue_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1040,6 +1041,12 @@ void CL_CALLBACK clEnqueueSVMFree_callback(cl_command_queue command_queue, cl_ui
   free(user_data);
 }
 
+static inline uint64_t get_timestamp_ns() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ((uint64_t)ts.tv_sec)*1000000000+((uint64_t)ts.tv_nsec);
+}
+
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile cl_uint _initialized = 0;
@@ -1052,6 +1059,9 @@ static void _load_tracer(void) {
   }
 
   char *s = NULL;
+  s = getenv("LTTNG_UST_OPENCL_HOST_PROFILE");
+  if (s)
+    do_host_profile = 1;
   s = getenv("LTTNG_UST_OPENCL_DUMP");
   if (s)
     do_dump = 1;

@@ -18,15 +18,16 @@ TRACEPOINT_EVENT(
   TP_ARGS(
 EOF
   print "    "
-  if c.parameters.size == 1 && c.parameters.first.decl.strip == "void" && !(c.prototype.has_return_type? && dir == :stop)
+  if c.parameters.size == 1 && c.parameters.first.decl.strip == "void" && !((HOST_PROFILE || c.prototype.has_return_type?) && dir == :stop)
     print "void"
   else
     params = []
     params << c.parameters.collect { |p|
       "#{p.callback? ? "void *" : p.decl_pointer.gsub("[]", "*")}, #{p.name}"
     } unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
-    if c.prototype.has_return_type? && dir == :stop
-      params.push("#{c.prototype.return_type}, _retval");
+    if dir == :stop
+      params.push("#{c.prototype.return_type}, _retval") if c.prototype.has_return_type?
+      params.push("uint64_t, _duration") if HOST_PROFILE
     end
     params += c.tracepoint_parameters.collect { |p|
       "#{p.type}, #{p.name}"
@@ -50,6 +51,9 @@ EOF
     if r
       func, *args = r
       fields.push("#{func}(#{args.join(", ")})")
+    end
+    if HOST_PROFILE
+      fields.push("ctf_integer(uint64_t, _duration, _duration)")
     end
     c.meta_parameters.collect(&:lttng_out_type).compact.each { |func, *args|
       fields.push("#{func}(#{args.join(", ")})")

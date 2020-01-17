@@ -113,6 +113,15 @@ EOF
   c.prologues.each { |p|
     puts p
   }
+  if HOST_PROFILE
+    puts <<EOF
+  uint64_t _start_ts = 0;
+  uint64_t _stop_ts = 0;
+  uint64_t _duration = 0;
+  if (do_host_profile)
+    _start_ts = get_timestamp_ns();
+EOF
+  end
   if c.prototype.has_return_type?
     puts <<EOF
   #{c.prototype.return_type} _retval;
@@ -121,11 +130,22 @@ EOF
   else
     puts "  #{c.prototype.pointer_name}(#{params.join(", ")});"
   end
+  if HOST_PROFILE
+    puts <<EOF
+  if (do_host_profile) {
+    _stop_ts = get_timestamp_ns();
+    _duration = _stop_ts - _start_ts;
+  }
+EOF
+  end
   c.epilogues.each { |e|
     puts e
   }
   if c.prototype.has_return_type?
     tp_params.push "_retval"
+  end
+  if HOST_PROFILE
+    tp_params.push "_duration"
   end
   puts <<EOF
   tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
