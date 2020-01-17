@@ -1046,31 +1046,29 @@ register_epilogue "clCreateKernelsInProgram", <<EOF
   }
 EOF
 
-str = ""
-$opencl_commands.each { |c|
-  if c.extension?
-    str << <<EOF
+str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
+  <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
     tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
-  end
-}
+}.join(<<EOF)
+  else
+EOF
 
 register_prologue "clGetExtensionFunctionAddressForPlatform", str
 
-str = ""
-$opencl_commands.each { |c|
-  if c.extension?
-    str << <<EOF
+str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
+  <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
     tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
-  end
-}
+}.join(<<EOF)
+  else
+EOF
 
 register_prologue "clGetExtensionFunctionAddress", str
 
@@ -1080,9 +1078,9 @@ register_extension_callbacks = lambda { |ext_method|
   str = <<EOF
   if (_retval != NULL) {
 EOF
-  $opencl_extension_commands.each { |c|
-    str << <<EOF
-    if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_stop) && strcmp(func_name, "#{c.prototype.name}") == 0) {
+  str << $opencl_extension_commands.collect { |c|
+    sstr = <<EOF
+    if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_start) && strcmp(func_name, "#{c.prototype.name}") == 0) {
       struct opencl_closure *closure = NULL;
       pthread_mutex_lock(&opencl_closures_mutex);
       HASH_FIND_PTR(opencl_closures, &_retval, closure);
@@ -1100,11 +1098,11 @@ EOF
         } else {
 EOF
     c.parameters.each_with_index { |a, i|
-      str << <<EOF
+      sstr << <<EOF
          closure->types[#{i}] = &#{a.ffi_type};
 EOF
     }
-    str << <<EOF
+    sstr << <<EOF
           if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.void_parameters? ? 0 : c.parameters.size}, &#{c.prototype.ffi_return_type}, closure->types) == FFI_OK) {
             if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.prototype.name}_ffi, _retval, closure->c_ptr) == FFI_OK) {
               pthread_mutex_lock(&opencl_closures_mutex);
@@ -1118,7 +1116,9 @@ EOF
       }
     }
 EOF
-  }
+  }.join(<<EOF)
+    else
+EOF
   str << <<EOF
   }
 EOF
