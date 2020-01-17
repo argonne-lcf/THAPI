@@ -837,8 +837,8 @@ register_prologue "clCreateProgramWithILKHR", <<EOF
   }
 EOF
 
-register_prologue "clBuildProgram", <<EOF
-  int free_options = 0;
+str = <<EOF
+  int _free_options = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info)) {
     struct opencl_version version = {1, 0};
     get_program_platform_version(program, &version);
@@ -849,7 +849,7 @@ register_prologue "clBuildProgram", <<EOF
           char * new_options = (char *)malloc(sz);
           if (new_options) {
             snprintf(new_options, sz, "%s %s", options, "-cl-kernel-arg-info");
-            free_options = 1;
+            _free_options = 1;
             options = new_options;
           }
         }
@@ -859,99 +859,11 @@ register_prologue "clBuildProgram", <<EOF
     }
   }
 EOF
-
-register_prologue "clBuildProgram", <<EOF
-  struct clBuildProgram_callback_payload *payload = NULL;
-  if ((tracepoint_enabled(lttng_ust_opencl, clBuildProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
-    payload = (struct clBuildProgram_callback_payload *)malloc(sizeof(struct clBuildProgram_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clBuildProgram_callback;
-  }
-EOF
-
-register_epilogue "clBuildProgram", <<EOF
-  if (payload && _retval != CL_SUCCESS)
-    free(payload);
-EOF
-
-register_epilogue "clBuildProgram", <<EOF
-  if (free_options)
-    free((char *)options);
-EOF
-
-register_epilogue "clBuildProgram", <<EOF
-  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
-    dump_program_binaries(program);
-  }
-EOF
-
-register_epilogue "clBuildProgram", <<EOF
-  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && !pfn_notify) {
-    dump_program_build_infos(program);
-  }
-EOF
-
-register_prologue "clCompileProgram", <<EOF
-  int free_options = 0;
-  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info)) {
-    struct opencl_version version = {1, 0};
-    get_program_platform_version(program, &version);
-    if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
-      if (options) {
-        if (!strstr(options, "-cl-kernel-arg-info")) {
-          size_t sz = strlen(options) + strlen("-cl-kernel-arg-info") + 2;
-          char * new_options = (char *)malloc(sz);
-          if (new_options) {
-            snprintf(new_options, sz, "%s %s", options, "-cl-kernel-arg-info");
-            free_options = 1;
-            options = new_options;
-          }
-        }
-      } else {
-        options = "-cl-kernel-arg-info";
-      }
-    }
-  }
-EOF
-
-register_prologue "clCompileProgram", <<EOF
-  struct clCompileProgram_callback_payload *payload = NULL;
-  if ((tracepoint_enabled(lttng_ust_opencl, clCompileProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
-    payload = (struct clCompileProgram_callback_payload *)malloc(sizeof(struct clCompileProgram_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clCompileProgram_callback;
-  }
-EOF
-
-register_epilogue "clCompileProgram", <<EOF
-  if (payload && _retval != CL_SUCCESS)
-    free(payload);
-EOF
-
-register_epilogue "clCompileProgram", <<EOF
-  if (free_options)
-    free((char *)options);
-EOF
-
-register_epilogue "clCompileProgram", <<EOF
-  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
-    dump_program_binaries(program);
-  }
-EOF
-
-register_epilogue "clCompileProgram", <<EOF
-  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && !pfn_notify) {
-    dump_program_build_infos(program);
-  }
-EOF
-
+register_prologue "clBuildProgram", str
+register_prologue "clCompileProgram", str
 register_prologue "clLinkProgram", <<EOF
-  int free_options = 0;
-  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && input_programs && *input_programs) {
+  int _free_options = 0;
+  if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && input_programs && num_input_programs > 0) {
     struct opencl_version version = {1, 0};
     get_program_platform_version(*input_programs, &version);
     if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
@@ -961,7 +873,7 @@ register_prologue "clLinkProgram", <<EOF
           char * new_options = (char *)malloc(sz);
           if (new_options) {
             snprintf(new_options, sz, "%s %s", options, "-cl-kernel-arg-info");
-            free_options = 1;
+            _free_options = 1;
             options = new_options;
           }
         }
@@ -972,33 +884,75 @@ register_prologue "clLinkProgram", <<EOF
   }
 EOF
 
-register_prologue "clLinkProgram", <<EOF
-  struct clLinkProgram_callback_payload *payload = NULL;
-  if ((tracepoint_enabled(lttng_ust_opencl, clLinkProgram_callback_start) || tracepoint_enabled(lttng_ust_opencl_build, binaries) || tracepoint_enabled(lttng_ust_opencl_build, infos)) && pfn_notify) {
-    payload = (struct clLinkProgram_callback_payload *)malloc(sizeof(struct clLinkProgram_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clLinkProgram_callback;
-  }
-EOF
-
-register_epilogue "clLinkProgram", <<EOF
-  if (payload && !_retval)
-    free(payload);
-EOF
-
-register_epilogue "clLinkProgram", <<EOF
-  if (free_options)
+str = <<EOF
+  if (_free_options)
     free((char *)options);
 EOF
+register_epilogue "clBuildProgram", str
+register_epilogue "clCompileProgram", str
+register_prologue "clLinkProgram", str
 
+l = lambda { |func, name: "pfn_notify", extra_conditions: nil|
+  register_prologue func, <<EOF
+  struct #{func}_callback_payload *_payload = NULL;
+  if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_start)#{extra_conditions ? " || #{extra_conditions.join(" || ")}" : ""}) && #{name}) {
+    _payload = (struct #{func}_callback_payload *)malloc(sizeof(struct #{func}_callback_payload));
+    _payload->#{name} = #{name};
+    _payload->user_data = user_data;
+    user_data = (void *)_payload;
+    #{name} = &#{func}_callback;
+  }
+EOF
+}
+program_conditions = ["tracepoint_enabled(lttng_ust_opencl_build, binaries)", "tracepoint_enabled(lttng_ust_opencl_build, infos)"]
+l.call("clBuildProgram", extra_conditions: program_conditions)
+l.call("clCompileProgram")
+l.call("clLinkProgram")
+l.call("clCreateContext")
+l.call("clCreateContextFromType")
+l.call("clSetMemObjectDestructorCallback")
+l.call("clSetProgramReleaseCallback")
+l.call("clSetEventCallback")
+l.call("clEnqueueSVMFree", name: "pfn_free_func")
+
+str = <<EOF
+  if (_payload && _retval != CL_SUCCESS)
+    free(_payload);
+EOF
+register_epilogue "clBuildProgram", str
+register_epilogue "clCompileProgram", str
+register_epilogue "clSetMemObjectDestructorCallback", str
+register_epilogue "clSetProgramReleaseCallback", str
+register_epilogue "clSetEventCallback", str
+register_epilogue "clEnqueueSVMFree", str
+str = <<EOF
+  if (_payload && !_retval)
+    free(_payload);
+EOF
+register_epilogue "clLinkProgram", str
+register_epilogue "clCreateContext", str
+register_epilogue "clCreateContextFromType", str
+
+str = <<EOF
+  if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
+    dump_program_binaries(program);
+  }
+EOF
+register_epilogue "clBuildProgram", str
+register_epilogue "clCompileProgram", str
 register_epilogue "clLinkProgram", <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);
   }
 EOF
 
+str = <<EOF
+  if (tracepoint_enabled(lttng_ust_opencl_build, infos) && !pfn_notify) {
+    dump_program_build_infos(program);
+  }
+EOF
+register_epilogue "clBuildProgram", str
+register_epilogue "clCompileProgram", str
 register_epilogue "clLinkProgram", <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, infos) && _retval && !pfn_notify) {
     dump_program_build_infos(_retval);
@@ -1167,7 +1121,7 @@ EOF
   end
 }
 
-register_epilogue "clEnqueueNDRangeKernel", <<EOF
+str = <<EOF
   if (do_dump && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
     if (_retval == CL_SUCCESS) {
       cl_event ev = dump_kernel_buffers(command_queue, kernel, _enqueue_counter, event);
@@ -1192,101 +1146,6 @@ register_epilogue "clEnqueueNDRangeKernel", <<EOF
     }
   }
 EOF
+register_epilogue "clEnqueueNDRangeKernel", str
+register_epilogue "clEnqueueNDRangeKernelINTEL", str
 
-register_prologue "clCreateContext", <<EOF
-  struct clCreateContext_callback_payload *payload = NULL;
-  if (tracepoint_enabled(lttng_ust_opencl, clCreateContext_callback_start) && pfn_notify) {
-    // WARNING: Memory leak, as we can't know when the context will really be destroyed...
-    payload = (struct clCreateContext_callback_payload *)malloc(sizeof(struct clCreateContext_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clCreateContext_callback;
-  }
-EOF
-
-register_epilogue "clCreateContext", <<EOF
-  if (payload && !_retval)
-    free(payload);
-EOF
-
-register_prologue "clCreateContextFromType", <<EOF
-  struct clCreateContextFromType_callback_payload *payload = NULL;
-  if (tracepoint_enabled(lttng_ust_opencl, clCreateContextFromType_callback_start) && pfn_notify) {
-    // WARNING: Memory leak, as we can't know when the context will really be destroyed...
-    payload = (struct clCreateContextFromType_callback_payload *)malloc(sizeof(struct clCreateContextFromType_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clCreateContextFromType_callback;
-  }
-EOF
-
-register_epilogue "clCreateContextFromType", <<EOF
-  if (payload && !_retval)
-    free(payload);
-EOF
-
-register_prologue "clSetMemObjectDestructorCallback", <<EOF
-  struct clSetMemObjectDestructorCallback_callback_payload *payload = NULL;
-  if (tracepoint_enabled(lttng_ust_opencl, clSetMemObjectDestructorCallback_callback_start) && pfn_notify) {
-    payload = (struct clSetMemObjectDestructorCallback_callback_payload *)malloc(sizeof(struct clSetMemObjectDestructorCallback_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clSetMemObjectDestructorCallback_callback;
-  }
-EOF
-
-register_epilogue "clSetMemObjectDestructorCallback", <<EOF
-  if (payload && _retval != CL_SUCCESS)
-    free(payload);
-EOF
-
-register_prologue "clSetProgramReleaseCallback", <<EOF
-  struct clSetProgramReleaseCallback_callback_payload *payload = NULL;
-  if (tracepoint_enabled(lttng_ust_opencl, clSetProgramReleaseCallback_callback_start) && pfn_notify) {
-    payload = (struct clSetProgramReleaseCallback_callback_payload *)malloc(sizeof(struct clSetProgramReleaseCallback_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clSetProgramReleaseCallback_callback;
-  }
-EOF
-
-register_epilogue "clSetProgramReleaseCallback", <<EOF
-  if (payload && _retval != CL_SUCCESS)
-    free(payload);
-EOF
-
-register_prologue "clSetEventCallback", <<EOF
-  struct clSetEventCallback_callback_payload *payload = NULL;
-  if (tracepoint_enabled(lttng_ust_opencl, clSetEventCallback_callback_start) && pfn_notify) {
-    payload = (struct clSetEventCallback_callback_payload *)malloc(sizeof(struct clSetEventCallback_callback_payload));
-    payload->pfn_notify = pfn_notify;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_notify = &clSetEventCallback_callback;
-  }
-EOF
-
-register_epilogue "clSetEventCallback", <<EOF
-  if (payload && _retval != CL_SUCCESS)
-    free(payload);
-EOF
-
-register_prologue "clEnqueueSVMFree", <<EOF
-  struct clEnqueueSVMFree_callback_payload *payload = NULL;
-  if (tracepoint_enabled(lttng_ust_opencl, clEnqueueSVMFree_callback_start) && pfn_free_func) {
-    payload = (struct clEnqueueSVMFree_callback_payload *)malloc(sizeof(struct clEnqueueSVMFree_callback_payload));
-    payload->pfn_free_func = pfn_free_func;
-    payload->user_data = user_data;
-    user_data = (void *)payload;
-    pfn_free_func = &clEnqueueSVMFree_callback;
-  }
-EOF
-
-register_epilogue "clEnqueueSVMFree", <<EOF
-  if (payload && _retval != CL_SUCCESS)
-    free(payload);
-EOF
