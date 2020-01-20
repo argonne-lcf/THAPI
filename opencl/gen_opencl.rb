@@ -46,7 +46,7 @@ $opencl_extension_commands.each { |c|
   puts <<EOF
 
 typedef #{c.decl_pointer(type: true)};
-#{c.decl_ffi_wrapper};
+static #{c.decl_ffi_wrapper};
 EOF
 }
 
@@ -166,7 +166,7 @@ EOF
 
 $opencl_extension_commands.each { |c|
   puts <<EOF
-#{c.decl_ffi_wrapper} {
+static #{c.decl_ffi_wrapper} {
   (void)cif;
 EOF
   c.parameters.each_with_index { |p, i|
