@@ -507,7 +507,7 @@ static void dump_svmptr(cl_command_queue command_queue, struct opencl_obj_h *o_h
     return;
   }
 
-  cl_int err = CL_ENQUEUE_SVM_MEMCPY_PTR(command_queue, CL_FALSE, ptr, obj_data->ptr, obj_data->size, num_events_in_wait_list, event_wait_list, &event);
+  cl_int err = CL_ENQUEUE_SVMMEMCPY_PTR(command_queue, CL_FALSE, ptr, obj_data->ptr, obj_data->size, num_events_in_wait_list, event_wait_list, &event);
   if (err == CL_SUCCESS) {
     int _set_retval = CL_SET_EVENT_CALLBACK_PTR(event, CL_COMPLETE, svmptr_dump_notify, data);
     tracepoint(lttng_ust_opencl_dump, svmptr_dump_event, enqueue_counter, arg_index, direction, obj_data->ptr, _set_retval, event);
@@ -623,7 +623,7 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   }
   if (new_event_wait_list != NULL && new_num_events_in_wait_list > 0) {
     cl_event ev;
-    CL_EMQUEUE_BARRIER_WITH_WAIT_LIST_PTR(command_queue, new_num_events_in_wait_list, new_event_wait_list, &ev);
+    CL_ENQUEUE_BARRIER_WITH_WAIT_LIST_PTR(command_queue, new_num_events_in_wait_list, new_event_wait_list, &ev);
     for (cl_uint i = 0; i < new_num_events_in_wait_list; i++) {
       CL_RELEASE_EVENT_PTR(new_event_wait_list[i]);
     }

@@ -274,6 +274,10 @@ class Prototype < CLXML
     @name + "_ptr"
   end
 
+  def ffi_function_name
+    @name + "_ffi"
+  end
+
   def pointer_type_name
     @name + "_t"
   end
@@ -585,7 +589,7 @@ class Command < CLXML
   end
 
   def decl_ffi_wrapper
-    "void #{@prototype.name}_ffi(ffi_cif *cif, #{@prototype.return_type} *ffi_ret, void** args, #{@prototype.pointer_type_name} #{@prototype.pointer_name})"
+    "void #{@prototype.ffi_function_name}(ffi_cif *cif, #{@prototype.return_type} *ffi_ret, void** args, #{@prototype.pointer_type_name} #{@prototype.pointer_name})"
   end
 
   def event?
@@ -641,6 +645,16 @@ $opencl_commands.each { |c|
 $opencl_extension_commands.each { |c|
   eval "$#{c.prototype.name} = c"
 }
+
+def upper_snake_case(str)
+  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
+end
+
+OPENCL_POINTER_NAMES = ($opencl_commands.collect { |c|
+  [c, upper_snake_case(c.prototype.pointer_name)]
+} + $opencl_extension_commands.collect { |c|
+  [c, c.prototype.pointer_name]
+}).to_h
 
 buffer_create_info = InMetaParameter::new($clCreateSubBuffer, "buffer_create_info")
 buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :uint8_t, "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
@@ -699,7 +713,7 @@ str = <<EOF
   cl_event extra_event;
   if (do_dump && command_queue != NULL && kernel != NULL && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
     cl_command_queue_properties properties;
-    #{$clGetCommandQueueInfo.prototype.pointer_name}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
+    #{OPENCL_POINTER_NAMES[$clGetCommandQueueInfo]}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
     _dump_release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, properties, &num_events_in_wait_list, (cl_event **)&event_wait_list);
     if (properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE && event == NULL) {
       event = &extra_event;
@@ -713,7 +727,7 @@ register_prologue "clEnqueueNDRangeKernelINTEL", str
 str = <<EOF
   if (do_dump && _dump_release_events) {
     for (cl_uint event_index = 0; event_index < num_events_in_wait_list; event_index++) {
-      #{$clReleaseEvent.prototype.pointer_name}(event_wait_list[event_index]);
+      #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(event_wait_list[event_index]);
     }
     free((void *)event_wait_list);
   }
@@ -1005,7 +1019,7 @@ EOF
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{c.prototype.pointer_name}#{HOST_PROFILE ? ", 0" : ""});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1018,7 +1032,7 @@ register_prologue "clGetExtensionFunctionAddressForPlatform", str
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{c.prototype.pointer_name}#{HOST_PROFILE ? ", 0" : ""});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1104,10 +1118,10 @@ register_extension_callbacks.call("clGetExtensionFunctionAddressForPlatform")
 EOF
       c.epilogues.push <<EOF
   if (_event_profiling) {
-    int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(*event, CL_COMPLETE, event_notify, NULL);
+    int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(*event, CL_COMPLETE, event_notify, NULL);
     do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, *event);
     if(_profile_release_event) {
-      #{$clReleaseEvent.prototype.pointer_name}(*event);
+      #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
       event = NULL;
     }
   }
@@ -1115,7 +1129,7 @@ EOF
     else
       c.epilogues.push <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling) ) {
-    int _set_retval = #{$clSetEventCallback.prototype.pointer_name}(_retval, CL_COMPLETE, event_notify, NULL);
+    int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(_retval, CL_COMPLETE, event_notify, NULL);
     do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, _retval);
   }
 EOF
@@ -1128,21 +1142,21 @@ str = <<EOF
     if (_retval == CL_SUCCESS) {
       cl_event ev = dump_kernel_buffers(command_queue, kernel, _enqueue_counter, event);
       if (_dump_release_event) {
-        #{$clReleaseEvent.prototype.pointer_name}(*event);
+        #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
         event = NULL;
         if (ev != NULL) {
-          #{$clReleaseEvent.prototype.pointer_name}(ev);
+          #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(ev);
         }
       } else if ( ev != NULL ) {
         if (event != NULL) {
           if (*event != NULL)
-            #{$clReleaseEvent.prototype.pointer_name}(*event);
+            #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
           *event = ev;
         }
       }
     } else {
       if (_dump_release_event) {
-        #{$clReleaseEvent.prototype.pointer_name}(*event);
+        #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
         event = NULL;
       }
     }
