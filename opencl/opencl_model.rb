@@ -24,7 +24,7 @@ ENUM_TYPES = []
 
 #map = Hash::new { |h, k| h[k] = [] }
 
-doc = Nokogiri::XML(open("cl.xml"))
+doc = Nokogiri::XML(open("cl.xml.patched"))
 funcs_e = doc.xpath("//commands/command").reject do |l|
   name = l.search("proto/name").text
   name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS)
@@ -385,7 +385,7 @@ class MetaParameter
     when /\*/
       lttng_type = ["ctf_#{lttng_arr_type}_hex", :intptr_t]
     else
-      raise "Unknown Type: #{type.inspect}!"
+      raise "Unknown Type: #{type.inspect} for #{name}!"
     end
     lttng_type += [ name+"_vals", expr ]
     lttng_type += lttng_args

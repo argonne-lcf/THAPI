@@ -15,5 +15,6 @@ typedef cl_uint      cl_mem_advice_intel;
 typedef cl_uint      cl_unified_shared_memory_type_intel;
 typedef cl_bitfield  cl_unified_shared_memory_capabilities_intel;
 typedef cl_uint      cl_execution_info_intel;
+typedef cl_bitfield  cl_mem_migration_flags_intel;
 #endif
 EOF

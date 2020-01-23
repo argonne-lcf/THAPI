@@ -5,3 +5,4 @@
 *.h
 opencl_tracepoints.tp
 tracer_opencl.sh
+cl.xml.patched
