@@ -18,6 +18,10 @@ INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateCont
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
+ENUMS = {}
+ENUM_PARAM_NAME_MAP = {}
+ENUM_TYPES = []
+
 #map = Hash::new { |h, k| h[k] = [] }
 
 doc = Nokogiri::XML(open("cl.xml"))
@@ -38,6 +42,15 @@ end.collect
 struct_e = doc.xpath("//types/type").select do |l|
   l["category"] == "struct"
 end.collect
+
+require_e = doc.xpath("//feature/require").to_a + doc.xpath("//extensions/extension/require").to_a
+constants = doc.xpath("//enums/enum").collect { |n|
+  if n["value"]
+    [n["name"], n["value"]]
+  elsif n["bitpos"]
+    [n["name"], "(1 << #{n["bitpos"]})"]
+  end
+}.to_h
 
 CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue", "cl_mem", "cl_program", "cl_kernel", "cl_event", "cl_sampler"]
 
@@ -117,6 +130,42 @@ class CLXML
   end
 
 end
+
+class Require < CLXML
+  attr_reader :comment
+
+  def initialize(node)
+    super
+    @comment = node["comment"]
+  end
+
+  def bitfield?
+    @comment.match("bitfield")
+  end
+
+  def enums
+    @__node.search("enum").collect { |e| e["name"] }
+  end
+
+end
+
+enums = YAML::load_file("supported_enums.yaml")
+
+require_e = require_e.collect { |r| Require::new(r) }
+
+enums.each { |e|
+  vals = require_e.select { |r|
+    r.comment && r.comment.match(e["name"])
+  }.collect { |r|
+    r.enums
+  }.reduce(:+).collect { |v|
+   [v, constants[v]]
+  }.to_h
+  ENUMS[e["name"]] = { "values" => vals, "trace_name" => e["trace_name"], "type_name" => e["type_name"] }
+  ENUM_PARAM_NAME_MAP[e["trace_name"]] = e["type_name"]
+  ENUM_TYPES.push(e["type_name"] ? e["type_name"] : e["name"])
+}
+ENUM_TYPES.push "cl_bool"
 
 class Declaration < CLXML
   attr_reader :type
@@ -214,13 +263,17 @@ class Parameter < Declaration
     end
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
-    case t
-    when *CL_OBJECTS, *CL_EXT_OBJECTS
-      return [:ctf_integer_hex, :intptr_t, @name, "(intptr_t)#{@name}"]
-    when *CL_INT_SCALARS
-      return [:ctf_integer, t, @name, @name]
-    when *CL_FLOAT_SCALARS
-      return [:ctf_float, t, @name, @name]
+    if ENUM_TYPES.include? @type
+      return [:ctf_enum, :lttng_ust_opencl, @type, t, @name, @name]
+    else
+      case t
+      when *CL_OBJECTS, *CL_EXT_OBJECTS
+        return [:ctf_integer_hex, :intptr_t, @name, "(intptr_t)#{@name}"]
+      when *CL_INT_SCALARS
+        return [:ctf_integer, t, @name, @name]
+      when *CL_FLOAT_SCALARS
+        return [:ctf_float, t, @name, @name]
+      end
     end
     nil
   end
@@ -288,7 +341,7 @@ class Prototype < CLXML
     end
     case @return_type
     when "cl_int"
-      return [:ctf_integer, :cl_int, "errcode_ret_val", "_retval"]
+      return [:ctf_enum, :lttng_ust_opencl, :cl_errcode, :cl_int, "errcode_ret_val", "_retval"]
     when *CL_OBJECTS
       return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^cl_/,""), "(intptr_t)_retval"]
     when *CL_EXT_OBJECTS
@@ -365,17 +418,21 @@ class OutScalar < OutMetaParameter
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type.gsub("*", "")
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
-    case type
-    when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
-    when *CL_INT_SCALARS
-      @lttng_out_type = [:ctf_integer, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
-    when *CL_FLOAT_SCALARS
-      @lttng_out_type = [:ctf_float, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
-    when ""
-      @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
+    if ENUM_PARAM_NAME_MAP[name]
+      @lttng_out_type = [:ctf_enum, :lttng_ust_opencl, ENUM_PARAM_NAME_MAP[name], type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
     else
-      raise "Unknown Type: #{type.inspect}!"
+      case type
+      when *CL_OBJECTS, *CL_EXT_OBJECTS
+        @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
+      when *CL_INT_SCALARS
+        @lttng_out_type = [:ctf_integer, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+      when *CL_FLOAT_SCALARS
+        @lttng_out_type = [:ctf_float, type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+      when ""
+        @lttng_out_type = [:ctf_integer_hex, :intptr_t, name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
+      else
+        raise "Unknown Type: #{type.inspect}!"
+      end
     end
   end
 end

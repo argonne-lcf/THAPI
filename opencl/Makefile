@@ -4,6 +4,7 @@ OPENCL_PROBES = opencl_tracepoints opencl_profiling opencl_source opencl_dump op
 OPENCL_PROBES_OBJS = $(OPENCL_PROBES:=.o)
 OPENCL_PROBES_INCL = $(OPENCL_PROBES:=.h)
 OPENCL_PROBES_SRC = $(OPENCL_PROBES:=.c)
+YAML_FILES = opencl_meta_parameters.yaml supported_extensions.yaml supported_enums.yaml
 
 all: tracer_opencl.so
 
@@ -15,13 +16,13 @@ LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werro
 tracer_opencl.h: gen_opencl_header.rb
 	ruby gen_opencl_header.rb > tracer_opencl.h
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h opencl_meta_parameters.yaml supported_extensions.yaml opencl_callbacks.tp.include
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(YAML_FILES) opencl_callbacks.tp.include
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
 
-tracer_opencl.c: gen_opencl.rb opencl_model.rb opencl_meta_parameters.yaml supported_extensions.yaml tracer_opencl_helpers.include.c
+tracer_opencl.c: gen_opencl.rb opencl_model.rb $(YAML_FILES) tracer_opencl_helpers.include.c
 	ruby gen_opencl.rb > tracer_opencl.c
 
 tracer_opencl.so: ../utils/lttng/tracepoint_gen.h tracer_opencl.c $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL)

@@ -8,7 +8,31 @@ puts <<EOF
 #include <CL/cl_gl_ext.h>
 #include <CL/cl_egl.h>
 #include "./tracer_opencl.h"
+
+TRACEPOINT_ENUM(
+  lttng_ust_opencl,
+  cl_bool,
+  TP_ENUM_VALUES(
+    ctf_enum_value("CL_FALSE", 0)
+    ctf_enum_value("CL_TRUE", 1)
+  )
+)
+
 EOF
+
+ENUMS.each { |name, e|
+  name = e["type_name"] if e["type_name"]
+  puts <<EOF
+TRACEPOINT_ENUM(
+  lttng_ust_opencl,
+  #{name},
+  TP_ENUM_VALUES(
+    #{e["values"].collect { |k, v| "ctf_enum_value(\"#{k}\", #{v})" }.join("\n    ")}
+  )
+)
+
+EOF
+}
 
 tracepoint_lambda = lambda { |c, dir|
   puts <<EOF
