@@ -120,7 +120,7 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef void *                        <name>CLeglDisplayKHR</name>;</type>
         <type category="define">typedef void *                        <name>CLeglSyncKHR</name>;</type>
         <type category="define">typedef <type>intptr_t</type>         <name>cl_egl_image_properties_khr</name>;</type>
-        <type category="define">typedef <type>cl_ulong</type>         <name>cl_device_partition_property_ext</name>;</type>
+        <type category="define">typedef <type>cl_long</type>          <name>cl_device_partition_property_ext</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags_ext</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_image_pitch_info_qcom</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_kernel_sub_group_info</name>;</type>
@@ -4465,7 +4465,7 @@ server's OpenCL/api-docs repository.
             <require comment="cl_device_info">
                 <enum name="CL_DEVICE_TERMINATE_CAPABILITY_KHR"/>
             </require>
-            <require comment="Error codes">
+            <require comment="cl_context_properties">
                 <enum name="CL_CONTEXT_TERMINATE_KHR"/>
             </require>
             <require>
