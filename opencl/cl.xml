@@ -508,11 +508,11 @@ server's OpenCL/api-docs repository.
     </enums>
 
     <enums name="MiscNumbers" vendor="Multiple" comment="Tokens whose numeric value is intrinsically meaningful">
-        <enum value="((cl_device_partition_property_ext)0)"        name="CL_PROPERTIES_LIST_END_EXT"/>
-        <enum value="((cl_device_partition_property_ext)0)"        name="CL_PARTITION_BY_COUNTS_LIST_END_EXT"/>
-        <enum value="0x0"           name="CL_DEVICE_PARTITION_BY_COUNTS_LIST_END"/>
-        <enum value="((cl_device_partition_property_ext)CL_ULONG_MAX)"    name="CL_PARTITION_BY_NAMES_LIST_END_EXT"/>
-        <enum value="-1"            name="CL_PARTITION_BY_NAMES_LIST_END_INTEL"/>
+        <enum value="0x0"             name="CL_PROPERTIES_LIST_END_EXT"/>
+        <enum value="0x0"             name="CL_PARTITION_BY_COUNTS_LIST_END_EXT"/>
+        <enum value="0x0"             name="CL_DEVICE_PARTITION_BY_COUNTS_LIST_END"/>
+        <enum value="-1"              name="CL_PARTITION_BY_NAMES_LIST_END_EXT"/>
+        <enum value="-1"              name="CL_PARTITION_BY_NAMES_LIST_END_INTEL"/>
     </enums>
 
     <enums name="cl_affinity_domain_ext" vendor="IBM" comment="Property names for CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT. This is not a bitfield.">
