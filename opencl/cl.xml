@@ -120,7 +120,7 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef void *                        <name>CLeglDisplayKHR</name>;</type>
         <type category="define">typedef void *                        <name>CLeglSyncKHR</name>;</type>
         <type category="define">typedef <type>intptr_t</type>         <name>cl_egl_image_properties_khr</name>;</type>
-        <type category="define">typedef <type>cl_long</type>          <name>cl_device_partition_property_ext</name>;</type>
+        <type category="define">typedef <type>cl_ulong</type>          <name>cl_device_partition_property_ext</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags_ext</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_image_pitch_info_qcom</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_kernel_sub_group_info</name>;</type>
@@ -155,7 +155,6 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_svm_capabilities</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_command_queue_properties</name>;</type>
         <type category="define">typedef <type>intptr_t</type>         <name>cl_device_partition_property</name>;</type>
-        <type category="define">typedef <type>cl_ulong</type>         <name>cl_device_partition_property_ext</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_affinity_domain</name>;</type>
         <type category="define">typedef <type>intptr_t</type>         <name>cl_context_properties</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_context_info</name>;</type>
@@ -512,7 +511,7 @@ server's OpenCL/api-docs repository.
         <enum value="((cl_device_partition_property_ext)0)"        name="CL_PROPERTIES_LIST_END_EXT"/>
         <enum value="((cl_device_partition_property_ext)0)"        name="CL_PARTITION_BY_COUNTS_LIST_END_EXT"/>
         <enum value="0x0"           name="CL_DEVICE_PARTITION_BY_COUNTS_LIST_END"/>
-        <enum value="((cl_device_partition_property_ext)0 - 1)"    name="CL_PARTITION_BY_NAMES_LIST_END_EXT"/>
+        <enum value="((cl_device_partition_property_ext)CL_ULONG_MAX)"    name="CL_PARTITION_BY_NAMES_LIST_END_EXT"/>
         <enum value="-1"            name="CL_PARTITION_BY_NAMES_LIST_END_INTEL"/>
     </enums>
 
