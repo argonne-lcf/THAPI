@@ -155,7 +155,7 @@ require_e = require_e.collect { |r| Require::new(r) }
 
 enums.each { |e|
   vals = require_e.select { |r|
-    r.comment && r.comment.match(e["name"])
+    r.comment && r.comment.match(/#{e["name"]}(\z| )/)
   }.collect { |r|
     r.enums
   }.reduce(:+).collect { |v|
