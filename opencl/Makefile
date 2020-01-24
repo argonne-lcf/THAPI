@@ -8,7 +8,7 @@ ML_FILES = opencl_meta_parameters.yaml supported_extensions.yaml supported_enums
 
 all: tracer_opencl.so
 
-LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werror -O3 -I./ -I../utils/
+LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -O3 -I./ -I../utils/
 
 cl.xml.patched: cl.xml
 	patch cl.xml cl.xml.patch -o cl.xml.patched
