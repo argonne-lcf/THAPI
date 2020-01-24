@@ -27,7 +27,7 @@ TRACEPOINT_ENUM(
   lttng_ust_opencl,
   #{name},
   TP_ENUM_VALUES(
-    #{e["values"].collect { |k, v| "ctf_enum_value(\"#{k}\", #{v})" }.join("\n    ")}
+    #{e["values"].collect { |k, v| "ctf_enum_value(\"#{k}\", #{e["type_name"]? "" : "(#{name})"}#{v})" }.join("\n    ")}
   )
 )
 
