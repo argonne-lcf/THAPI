@@ -1,5 +1,5 @@
 --- cl.xml	2020-01-23 16:49:27.868190068 -0600
-+++ cl.xml.patched	2020-01-23 17:27:31.565498333 -0600
++++ cl.xml.patched	2020-01-23 19:18:47.914595838 -0600
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -398,3 +398,56 @@
                  <enum name="CL_DEVICE_PARTITION_BY_COUNTS_EXT"/>
                  <enum name="CL_DEVICE_PARTITION_BY_NAMES_EXT"/>
                  <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT"/>
+@@ -4957,11 +5062,15 @@
+                 <enum name="CL_VYUY_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_required_subgroup_size" supported="opencl">
+-            <require>
++            <require comment="cl_device_info">
+                 <enum name="CL_DEVICE_SUB_GROUP_SIZES_INTEL"/>
++            </require>
++            <require comment="cl_kernel_work_group_info">
+                 <enum name="CL_KERNEL_SPILL_MEM_SIZE_INTEL"/>
++            </require>
++            <require comment="cl_kernel_sub_group_info">
+                 <enum name="CL_KERNEL_COMPILE_SUB_GROUP_SIZE_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_driver_diagnostics" supported="opencl">
+@@ -4974,18 +5083,22 @@
+                 <enum name="CL_CONTEXT_DIAGNOSTICS_LEVEL_NEUTRAL_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_planar_yuv" supported="opencl">
+-            <require>
++            <require comment="cl_channel_order">
+                 <enum name="CL_NV12_INTEL"/>
++            </require>
++            <require comment="cl_mem_flags">
+                 <enum name="CL_MEM_NO_ACCESS_INTEL"/>
+                 <enum name="CL_MEM_ACCESS_FLAGS_UNRESTRICTED_INTEL"/>
++            </require>
++            <require comment="cl_device_info">
+                 <enum name="CL_DEVICE_PLANAR_YUV_MAX_WIDTH_INTEL"/>
+                 <enum name="CL_DEVICE_PLANAR_YUV_MAX_HEIGHT_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_device_side_avc_motion_estimation" supported="opencl">
+-            <require comment="cl_intel_device_side_avc_motion_estimation.??">
++            <require comment="cl_device_info">
+                 <enum name="CL_DEVICE_AVC_ME_VERSION_INTEL"/>
+                 <enum name="CL_DEVICE_AVC_ME_SUPPORTS_TEXTURE_SAMPLER_USE_INTEL"/>
+                 <enum name="CL_DEVICE_AVC_ME_SUPPORTS_PREEMPTION_INTEL"/>
+             </require>
+@@ -5137,9 +5250,9 @@
+             <require>
+                 <type name="CL/cl_gl.h"/>
+                 <type name="cl_GLsync"/>
+             </require>
+-            <require>
++            <require comment="cl_command_type">
+                 <enum name="CL_COMMAND_GL_FENCE_SYNC_OBJECT_KHR"/>
+             </require>
+             <require>
+                 <command name="clCreateEventFromGLsyncKHR"/>
