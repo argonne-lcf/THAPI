@@ -1,5 +1,5 @@
 --- cl.xml	2020-01-23 16:49:27.868190068 -0600
-+++ cl.xml.patched	2020-01-23 19:18:47.914595838 -0600
++++ cl.xml.patched	2020-01-23 19:27:01.805311903 -0600
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -398,7 +398,51 @@
                  <enum name="CL_DEVICE_PARTITION_BY_COUNTS_EXT"/>
                  <enum name="CL_DEVICE_PARTITION_BY_NAMES_EXT"/>
                  <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT"/>
-@@ -4957,11 +5062,15 @@
+@@ -4832,9 +4937,9 @@
+             <require>
+                 <type name="CL/cl.h"/>
+                 <type name="CL/cl_platform.h"/>
+             </require>
+-            <require>
++            <require comment="cl_command_queue_properties - bitfield">
+                 <enum name="CL_QUEUE_THREAD_LOCAL_EXEC_ENABLE_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_device_partition_by_names" supported="opencl">
+@@ -4854,9 +4959,9 @@
+                 <enum name="CL_ACCELERATOR_REFERENCE_COUNT_INTEL"/>
+                 <enum name="CL_ACCELERATOR_CONTEXT_INTEL"/>
+                 <enum name="CL_ACCELERATOR_TYPE_INTEL"/>
+             </require>
+-            <require comment="error codes">
++            <require comment="Error codes">
+                 <enum name="CL_INVALID_ACCELERATOR_INTEL"/>
+                 <enum name="CL_INVALID_ACCELERATOR_TYPE_INTEL"/>
+                 <enum name="CL_INVALID_ACCELERATOR_DESCRIPTOR_INTEL"/>
+                 <enum name="CL_ACCELERATOR_TYPE_NOT_SUPPORTED_INTEL"/>
+@@ -4938,30 +5043,34 @@
+                 <enum name="CL_ME_BIDIR_WEIGHT_THREE_QUARTER_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_simultaneous_sharing" supported="opencl">
+-            <require>
++            <require comment="cl_device_info">
+                 <enum name="CL_DEVICE_SIMULTANEOUS_INTEROPS_INTEL"/>
+                 <enum name="CL_DEVICE_NUM_SIMULTANEOUS_INTEROPS_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_egl_image_yuv" supported="opencl">
+-            <require>
++            <require comment="cl_egl_image_properties_khr">
+                 <enum name="CL_EGL_YUV_PLANE_INTEL"/>
+             </require>
+         </extension>
+         <extension name="cl_intel_packed_yuv" supported="opencl">
+-            <require>
++            <require comment="cl_channel_order">
+                 <enum name="CL_YUYV_INTEL"/>
+                 <enum name="CL_UYVY_INTEL"/>
+                 <enum name="CL_YVYU_INTEL"/>
                  <enum name="CL_VYUY_INTEL"/>
              </require>
          </extension>
