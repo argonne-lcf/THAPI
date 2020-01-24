@@ -1,5 +1,5 @@
 --- cl.xml	2020-01-23 16:49:27.868190068 -0600
-+++ cl.xml.patched	2020-01-23 19:27:01.805311903 -0600
++++ cl.xml.patched	2020-01-24 11:19:52.355484064 -0600
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -376,7 +376,7 @@
                  <enum name="CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV"/>
                  <enum name="CL_DEVICE_REGISTERS_PER_BLOCK_NV"/>
                  <enum name="CL_DEVICE_WARP_SIZE_NV"/>
-@@ -4520,9 +4625,9 @@
+@@ -4520,17 +4625,17 @@
          <extension name="cl_amd_device_attribute_query" supported="opencl">
              <require>
                  <type name="CL/cl.h"/>
@@ -387,6 +387,15 @@
              </require>
          </extension>
          <extension name="cl_arm_printf" supported="opencl">
+             <require>
+                 <type name="CL/cl.h"/>
+             </require>
+-            <require>
++            <require comment="cl_context_properties">
+                 <enum name="CL_PRINTF_CALLBACK_ARM"/>
+                 <enum name="CL_PRINTF_BUFFERSIZE_ARM"/>
+             </require>
+         </extension>
 @@ -4548,9 +4653,9 @@
          <extension name="cl_device_partition_property_ext" supported="opencl">
              <require>
@@ -398,7 +407,144 @@
                  <enum name="CL_DEVICE_PARTITION_BY_COUNTS_EXT"/>
                  <enum name="CL_DEVICE_PARTITION_BY_NAMES_EXT"/>
                  <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT"/>
-@@ -4832,9 +4937,9 @@
+@@ -4589,8 +4694,10 @@
+                 <type name="cl_mem_migration_flags_ext"/>
+             </require>
+             <require comment="cl_mem_migration_flags_ext">
+                 <enum name="CL_MIGRATE_MEM_OBJECT_HOST_EXT"/>
++            </require>
++            <require comment="cl_command_type">
+                 <enum name="CL_COMMAND_MIGRATE_MEM_OBJECT_EXT"/>
+             </require>
+             <require>
+                 <command name="clEnqueueMigrateMemObjectEXT"/>
+@@ -4644,18 +4751,18 @@
+         <extension name="cl_img_yuv_image" supported="opencl">
+             <require>
+                 <type name="CL/cl.h"/>
+             </require>
+-            <require>
++            <require comment="cl_channel_order">
+                 <enum name="CL_NV21_IMG"/>
+                 <enum name="CL_YV12_IMG"/>
+             </require>
+         </extension>
+         <extension name="cl_img_cached_allocations" supported="opencl">
+             <require>
+                 <type name="CL/cl.h"/>
+             </require>
+-            <require>
++            <require comment="cl_mem_flags">
+                 <enum name="CL_MEM_USE_UNCACHED_CPU_MEMORY_IMG"/>
+                 <enum name="CL_MEM_USE_CACHED_CPU_MEMORY_IMG"/>
+             </require>
+         </extension>
+@@ -4672,17 +4779,19 @@
+         <extension name="cl_img_use_gralloc_ptr" supported="opencl">
+             <require>
+                 <type name="CL/cl.h"/>
+             </require>
+-            <require comment="Flag values used by clCreateBuffer">
++            <require comment="cl_mem_flags Flag values used by clCreateBuffer">
+                 <enum name="CL_MEM_USE_GRALLOC_PTR_IMG"/>
+             </require>
+-            <require comment="To be used by clGetEventInfo">
++            <require comment="cl_command_type To be used by clGetEventInfo">
+                 <enum name="CL_COMMAND_ACQUIRE_GRALLOC_OBJECTS_IMG"/>
+                 <enum name="CL_COMMAND_RELEASE_GRALLOC_OBJECTS_IMG"/>
+             </require>
+             <require comment="Error codes">
+                 <enum name="CL_GRALLOC_RESOURCE_NOT_ACQUIRED_IMG"/>
++            <require>
++            </require>
+                 <command name="clEnqueueAcquireGrallocObjectsIMG"/>
+                 <command name="clEnqueueReleaseGrallocObjectsIMG"/>
+             </require>
+         </extension>
+@@ -4695,8 +4804,10 @@
+             </require>
+             <require comment="cl_kernel_sub_group_info">
+                 <enum name="CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR"/>
+                 <enum name="CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR"/>
++            </require>
++            <require>
+                 <command name="clGetKernelSubGroupInfoKHR"/>
+             </require>
+         </extension>
+         <extension name="cl_khr_priority_hints" supported="opencl">
+@@ -4705,9 +4816,9 @@
+             </require>
+             <require comment="To be used by clGetEventInfo">
+                 <type name="cl_queue_priority_khr"/>
+             </require>
+-            <require comment="cl_command_queue_properties">
++            <require comment="cl_queue_properties">
+                 <enum name="CL_QUEUE_PRIORITY_KHR"/>
+             </require>
+             <require comment="cl_queue_priority_khr">
+                 <enum name="CL_QUEUE_PRIORITY_HIGH_KHR"/>
+@@ -4721,9 +4832,9 @@
+             </require>
+             <require comment="To be used by clGetEventInfo">
+                 <type name="cl_queue_throttle_khr"/>
+             </require>
+-            <require comment="cl_command_queue_properties">
++            <require comment="cl_queue_properties">
+                 <enum name="CL_QUEUE_THROTTLE_KHR"/>
+             </require>
+             <require comment="cl_queue_throttle_khr">
+                 <enum name="CL_QUEUE_THROTTLE_HIGH_KHR"/>
+@@ -4745,9 +4856,9 @@
+             </require>
+             <require comment="To be used by clGetEventInfo">
+                 <type name="cl_import_properties_arm"/>
+             </require>
+-            <require comment="default and valid properties name for cl_arm_import_memory">
++            <require comment="cl_import_properties_arm default and valid properties name for cl_arm_import_memory">
+                 <enum name="CL_IMPORT_TYPE_ARM"/>
+                 <enum name="CL_IMPORT_TYPE_HOST_ARM"/>
+                 <enum name="CL_IMPORT_TYPE_DMA_BUF_ARM"/>
+                 <enum name="CL_IMPORT_TYPE_PROTECTED_ARM"/>
+@@ -4780,32 +4891,32 @@
+                 <type name="cl_svm_mem_flags_arm"/>
+                 <type name="cl_kernel_exec_info_arm"/>
+                 <type name="cl_device_svm_capabilities_arm"/>
+             </require>
+-            <require comment="Used by clGetEventInfo">
++            <require comment="cl_event_info Used by clGetEventInfo">
+                 <enum name="CL_DEVICE_SVM_CAPABILITIES_ARM"/>
+             </require>
+-            <require comment="Used by clGetMemObjectInfo">
++            <require comment="cl_mem_info Used by clGetMemObjectInfo">
+                 <enum name="CL_MEM_USES_SVM_POINTER_ARM"/>
+             </require>
+-            <require comment="Used by clSetKernelExecInfoARM">
++            <require comment="cl_kernel_exec_info_arm Used by clSetKernelExecInfoARM">
+                 <enum name="CL_KERNEL_EXEC_INFO_SVM_PTRS_ARM"/>
+                 <enum name="CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM_ARM"/>
+             </require>
+-            <require comment="Used by clGetEventInfo">
++            <require comment="cl_command_type Used by clGetEventInfo">
+                 <enum name="CL_COMMAND_SVM_FREE_ARM"/>
+                 <enum name="CL_COMMAND_SVM_MEMCPY_ARM"/>
+                 <enum name="CL_COMMAND_SVM_MEMFILL_ARM"/>
+                 <enum name="CL_COMMAND_SVM_MAP_ARM"/>
+                 <enum name="CL_COMMAND_SVM_UNMAP_ARM"/>
+             </require>
+-            <require comment="Returned by clGetDeviceInfo with CL_DEVICE_SVM_CAPABILITIES_ARM">
++            <require comment="cl_device_svm_capabilities_arm - bitfield Returned by clGetDeviceInfo with CL_DEVICE_SVM_CAPABILITIES_ARM">
+                 <enum name="CL_DEVICE_SVM_COARSE_GRAIN_BUFFER_ARM"/>
+                 <enum name="CL_DEVICE_SVM_FINE_GRAIN_BUFFER_ARM"/>
+                 <enum name="CL_DEVICE_SVM_FINE_GRAIN_SYSTEM_ARM"/>
+                 <enum name="CL_DEVICE_SVM_ATOMICS_ARM"/>
+             </require>
+-            <require comment="Flag values used by clSVMAllocARM">
++            <require comment="cl_svm_mem_flags_arm Flag values used by clSVMAllocARM">
+                 <enum name="CL_MEM_SVM_FINE_GRAIN_BUFFER_ARM"/>
+                 <enum name="CL_MEM_SVM_ATOMICS_ARM"/>
+             </require>
+             <require>
+@@ -4832,9 +4943,9 @@
              <require>
                  <type name="CL/cl.h"/>
                  <type name="CL/cl_platform.h"/>
@@ -409,7 +555,7 @@
              </require>
          </extension>
          <extension name="cl_intel_device_partition_by_names" supported="opencl">
-@@ -4854,9 +4959,9 @@
+@@ -4854,9 +4965,9 @@
                  <enum name="CL_ACCELERATOR_REFERENCE_COUNT_INTEL"/>
                  <enum name="CL_ACCELERATOR_CONTEXT_INTEL"/>
                  <enum name="CL_ACCELERATOR_TYPE_INTEL"/>
@@ -420,7 +566,7 @@
                  <enum name="CL_INVALID_ACCELERATOR_TYPE_INTEL"/>
                  <enum name="CL_INVALID_ACCELERATOR_DESCRIPTOR_INTEL"/>
                  <enum name="CL_ACCELERATOR_TYPE_NOT_SUPPORTED_INTEL"/>
-@@ -4938,30 +5043,34 @@
+@@ -4938,30 +5049,34 @@
                  <enum name="CL_ME_BIDIR_WEIGHT_THREE_QUARTER_INTEL"/>
              </require>
          </extension>
@@ -459,7 +605,7 @@
              </require>
          </extension>
          <extension name="cl_intel_driver_diagnostics" supported="opencl">
-@@ -4974,18 +5083,22 @@
+@@ -4974,18 +5089,22 @@
                  <enum name="CL_CONTEXT_DIAGNOSTICS_LEVEL_NEUTRAL_INTEL"/>
              </require>
          </extension>
@@ -484,7 +630,7 @@
                  <enum name="CL_DEVICE_AVC_ME_SUPPORTS_TEXTURE_SAMPLER_USE_INTEL"/>
                  <enum name="CL_DEVICE_AVC_ME_SUPPORTS_PREEMPTION_INTEL"/>
              </require>
-@@ -5137,9 +5250,9 @@
+@@ -5137,9 +5256,9 @@
              <require>
                  <type name="CL/cl_gl.h"/>
                  <type name="cl_GLsync"/>
@@ -495,3 +641,53 @@
              </require>
              <require>
                  <command name="clCreateEventFromGLsyncKHR"/>
+@@ -5238,19 +5357,21 @@
+         <extension name="cl_khr_gl_depth_images" requires="cl_khr_gl_sharing" comment="no API - reuses tokens from core API" supported="opencl">
+             <require>
+                 <type name="CL/cl.h"/>
+             </require>
+-            <require>
++            <require comment="cl_channel_order">
+                 <enum name="CL_DEPTH_STENCIL"/>
++            </require>
++            <require comment="cl_channel_type">
+                 <enum name="CL_UNORM_INT24"/>
+                 <enum name="CL_FLOAT"/>
+             </require>
+         </extension>
+         <extension name="cl_khr_gl_msaa_sharing" requires="cl_khr_gl_depth_images" comment="no API - reuses tokens from core API" supported="opencl">
+             <require>
+                 <type name="CL/cl.h"/>
+             </require>
+-            <require>
++            <require comment="cl_gl_texture_info">
+                 <!-- <enum name="GL_TEXTURE_2D_MULTISAMPLE"/> -->
+                 <!-- <enum name="GL_TEXTURE_2D_MULTISAMPLE_ARRAY"/> -->
+                 <enum name="CL_GL_NUM_SAMPLES"/>
+             </require>
+@@ -5292,9 +5413,9 @@
+                 <enum name="CL_GL_OBJECT_TEXTURE2D"/>
+                 <enum name="CL_GL_OBJECT_TEXTURE3D"/>
+                 <enum name="CL_GL_OBJECT_RENDERBUFFER"/>
+             </require>
+-            <require feature="CL_VERSION_1_2">
++            <require feature="CL_VERSION_1_2" comment="cl_gl_object_type">
+                 <enum name="CL_GL_OBJECT_TEXTURE2D_ARRAY"/>
+                 <enum name="CL_GL_OBJECT_TEXTURE1D"/>
+                 <enum name="CL_GL_OBJECT_TEXTURE1D_ARRAY"/>
+                 <enum name="CL_GL_OBJECT_TEXTURE_BUFFER"/>
+@@ -5302,12 +5423,12 @@
+             <require comment="cl_gl_texture_info">
+                 <enum name="CL_GL_TEXTURE_TARGET"/>
+                 <enum name="CL_GL_MIPMAP_LEVEL"/>
+             </require>
+-            <require feature="CL_VERSION_1_2">
++            <require feature="CL_VERSION_1_2" comment="cl_gl_texture_info">
+                 <enum name="CL_GL_NUM_SAMPLES"/>
+             </require>
+-            <require>
++            <require comment="Error codes">
+                 <enum name="CL_INVALID_GL_OBJECT"/>
+                 <enum name="CL_INVALID_MIP_LEVEL"/>
+             </require>
+             <require>
