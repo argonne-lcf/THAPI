@@ -713,6 +713,19 @@ OPENCL_POINTER_NAMES = ($opencl_commands.collect { |c|
   [c, c.prototype.pointer_name]
 }).to_h
 
+($opencl_commands+$opencl_extension_commands).select { |c|
+   c.parameters.find { |p| p.name == "param_value_size_ret" && p.pointer? }
+}.each { |c|
+   c.prologues.push <<EOF
+  size_t _new_param_value_size;
+  if (!param_value_size_ret)
+    param_value_size_ret = &_new_param_value_size;
+EOF
+  c.epilogues.push <<EOF
+  param_value_size = (param_value_size <= *param_value_size_ret ? param_value_size : *param_value_size_ret );
+EOF
+}
+
 buffer_create_info = InMetaParameter::new($clCreateSubBuffer, "buffer_create_info")
 buffer_create_info.instance_variable_set(:@lttng_in_type, [:ctf_sequence_hex, :uint8_t, "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
 
