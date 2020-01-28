@@ -1,5 +1,5 @@
---- cl.xml	2020-01-23 16:49:27.868190068 -0600
-+++ cl.xml.patched	2020-01-24 11:19:52.355484064 -0600
+--- cl.xml	2020-01-28 11:16:14.063493089 -0600
++++ cl.xml.patched	2020-01-28 11:02:44.513848455 -0600
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -13,7 +13,7 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_info_intel</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_unified_shared_memory_type_intel</name>;</type>
          <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags_intel</name>;</type>
--        <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_advice_intel"/></name>;</type>
+-        <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_advice_intel></name>;</type>
 +        <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_advice_intel</name>;</type>
 +        <type category="define">typedef <type>cl_uint</type>          <name>cl_execution_info_intel</name>;</type>
  
@@ -89,17 +89,17 @@
          <enum value="0"             name="CL_BUILD_SUCCESS"/>
          <enum value="-1"            name="CL_BUILD_NONE"/>
          <enum value="-2"            name="CL_BUILD_ERROR"/>
-@@ -2137,9 +2139,9 @@
-         </command>
-         <command suffix="CL_EXT_SUFFIX__VERSION_1_1">
-             <proto><type>cl_event</type>                   <name>clCreateEventFromGLsyncKHR</name></proto>
-             <param><type>cl_context</type>                 <name>context</name></param>
--            <param><type>cl_GLsync</type>                  <name>cl_GLsync</name></param>
-+            <param><type>cl_GLsync</type>                  <name>sync</name></param>
-             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
-         </command>
-         <command suffix="CL_API_SUFFIX__VERSION_1_0">
-             <proto><type>cl_int</type>                     <name>clGetGLContextInfoKHR</name></proto>
+@@ -1628,9 +1630,9 @@
+             <unused start="0x4160" end="0x416F"/>
+     </enums>
+ 
+     <enums start="0x4170" end="0x417F" name="enums.4170" vendor="Intel" comment="Per bug 16067.">
+-            <unused start="0x4170" end="0x417D"/>
++            <unused start="0x4170" end="0x417F"/>
+         <enum value="0x417E"        name="CL_DEVICE_PLANAR_YUV_MAX_WIDTH_INTEL"/>
+         <enum value="0x417F"        name="CL_DEVICE_PLANAR_YUV_MAX_HEIGHT_INTEL"/>
+     </enums>
+ 
 @@ -2221,8 +2223,107 @@
              <param><type>cl_GLint</type>                   <name>miplevel</name></param>
              <param><type>cl_GLuint</type>                  <name>texture</name></param>
@@ -208,118 +208,6 @@
              <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>
              <param><type>cl_platform_id</type>             <name>platform</name></param>
              <param><type>cl_va_api_device_source_intel</type> <name>media_adapter_type</name></param>
-@@ -2258,26 +2359,26 @@
-             <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
-             <param><type>cl_event</type>*                  <name>event</name></param>
-         </command>
-         <command>
--            <proto><type>void</type>*                           <name>clHostMemAllocINTEL</name></proto>
-+            <proto>void*                                        <name>clHostMemAllocINTEL</name></proto>
-             <param><type>cl_context</type>                      <name>context</name></param>
-             <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_uint</type>                         <name>alignment</name></param>
-             <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
-         </command>
-         <command>
--            <proto><type>void</type>*                           <name>clDeviceMemAllocINTEL</name></proto>
-+            <proto>void*                                        <name>clDeviceMemAllocINTEL</name></proto>
-             <param><type>cl_context</type>                      <name>context</name></param>
-             <param><type>cl_device_id</type>                    <name>device</name></param>
-             <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_uint</type>                         <name>alignment</name></param>
-             <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
-         </command>
-         <command>
--            <proto><type>void</type>*                           <name>clSharedMemAllocINTEL</name></proto>
-+            <proto>void*                                        <name>clSharedMemAllocINTEL</name></proto>
-             <param><type>cl_context</type>                      <name>context</name></param>
-             <param><type>cl_device_id</type>                    <name>device</name></param>
-             <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-@@ -2286,29 +2387,29 @@
-         </command>
-         <command>
-             <proto><type>cl_int</type>                          <name>clMemFreeINTEL</name></proto>
-             <param><type>cl_context</type>                      <name>context</name></param>
--            <param><type>void</type>*                           <name>ptr</name></param>
-+            <param>void*                                        <name>ptr</name></param>
-         </command>
-         <command>
-             <proto><type>cl_int</type>                          <name>clGetMemAllocInfoINTEL</name></proto>
-             <param><type>cl_context</type>                      <name>context</name></param>
--            <param>const <type>void</type>*                     <name>ptr</name></param>
-+            <param>const void*                                  <name>ptr</name></param>
-             <param><type>cl_mem_info_intel</type>               <name>param_name</name></param>
-             <param><type>size_t</type>                          <name>param_value_size</name></param>
--            <param><type>void</type>*                           <name>param_value</name></param>
-+            <param>void*                                        <name>param_value</name></param>
-             <param><type>size_t</type>*                         <name>param_value_size_ret</name></param>
-         </command>
-         <command>
-             <proto><type>cl_int</type>                          <name>clSetKernelArgMemPointerINTEL</name></proto>
-             <param><type>cl_kernel</type>                       <name>kernel</name></param>
-             <param><type>cl_uint</type>                         <name>arg_index</name></param>
--            <param>const <type>void</type>*                     <name>arg_value</name></param>
-+            <param>const void*                                  <name>arg_value</name></param>
-         </command>
-         <command comment="Deprecated">
-             <proto><type>cl_int</type>                          <name>clEnqueueMemsetINTEL</name></proto>
-             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
--            <param><type>void</type>*                           <name>dst_ptr</name></param>
-+            <param>void*                                        <name>dst_ptr</name></param>
-             <param><type>cl_int</type>                          <name>value</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
-             <param>const <type>cl_event</type>*                 <name>event_wait_list</name></param>
-@@ -2316,10 +2417,10 @@
-         </command>
-         <command>
-             <proto><type>cl_int</type>                          <name>clEnqueueMemFillINTEL</name></proto>
-             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
--            <param><type>void</type>*                           <name>dst_ptr</name></param>
--            <param>const <type>void</type>*                     <name>pattern</name></param>
-+            <param>void*                                        <name>dst_ptr</name></param>
-+            <param>const void*                                  <name>pattern</name></param>
-             <param><type>size_t</type>                          <name>pattern_size</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
-             <param>const <type>cl_event</type>*                 <name>event_wait_list</name></param>
-@@ -2328,19 +2429,19 @@
-         <command>
-             <proto><type>cl_int</type>                          <name>clEnqueueMemcpyINTEL</name></proto>
-             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
-             <param><type>cl_bool</type>                         <name>blocking</name></param>
--            <param><type>void</type>*                           <name>dst_ptr</name></param>
--            <param>const <type>void</type>*                     <name>src_ptr</name></param>
-+            <param>void*                                        <name>dst_ptr</name></param>
-+            <param>const void*                                  <name>src_ptr</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
-             <param>const <type>cl_event</type>*                 <name>event_wait_list</name></param>
-             <param><type>cl_event</type>*                       <name>event</name></param>
-         </command>
-         <command>
-             <proto><type>cl_int</type>                          <name>clEnqueueMigrateMemINTEL</name></proto>
-             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
--            <param>const <type>void</type>*                     <name>ptr</name></param>
-+            <param>const void*                                  <name>ptr</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_mem_migration_flags_intel</type>    <name>flags</name></param>
-             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
-             <param>const <type>cl_event</type>*                 <name>event_wait_list</name></param>
-@@ -2348,9 +2449,9 @@
-         </command>
-         <command>
-             <proto><type>cl_int</type>                          <name>clEnqueueMemAdviseINTEL</name></proto>
-             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
--            <param>const <type>void</type>*                     <name>ptr</name></param>
-+            <param>const void*                                  <name>ptr</name></param>
-             <param><type>size_t</type>                          <name>size</name></param>
-             <param><type>cl_mem_advice_intel</type>             <name>advice</name></param>
-             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
-             <param>const <type>cl_event</type>*                 <name>event_wait_list</name></param>
 @@ -4362,14 +4463,14 @@
          <extension name="cl_khr_egl_image" supported="opencl">
              <require>
@@ -337,109 +225,7 @@
                  <enum name="CL_EGL_RESOURCE_NOT_ACQUIRED_KHR"/>
              </require>
              <require comment="CLeglImageKHR is an opaque handle to an EGLImage">
-@@ -4474,10 +4575,12 @@
-         <extension name="cl_khr_terminate_context" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require comment="Interop tokens">
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_TERMINATE_CAPABILITY_KHR"/>
-+            </require>
-+            <require comment="cl_context_properties">
-                 <enum name="CL_CONTEXT_TERMINATE_KHR"/>
-             </require>
-             <require>
-                 <command name="clTerminateContextKHR"/>
-@@ -4486,10 +4589,12 @@
-         <extension name="cl_khr_spir" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_SPIR_VERSIONS"/>
-+            </require>
-+            <require comment="cl_program_binary_type">
-                 <enum name="CL_PROGRAM_BINARY_TYPE_INTERMEDIATE"/>
-             </require>
-         </extension>
-         <extension name="cl_khr_create_command_queue" supported="opencl">
-@@ -4506,9 +4611,9 @@
-         <extension name="cl_nv_device_attribute_query" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV"/>
-                 <enum name="CL_DEVICE_COMPUTE_CAPABILITY_MINOR_NV"/>
-                 <enum name="CL_DEVICE_REGISTERS_PER_BLOCK_NV"/>
-                 <enum name="CL_DEVICE_WARP_SIZE_NV"/>
-@@ -4520,17 +4625,17 @@
-         <extension name="cl_amd_device_attribute_query" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_PROFILING_TIMER_OFFSET_AMD"/>
-             </require>
-         </extension>
-         <extension name="cl_arm_printf" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_context_properties">
-                 <enum name="CL_PRINTF_CALLBACK_ARM"/>
-                 <enum name="CL_PRINTF_BUFFERSIZE_ARM"/>
-             </require>
-         </extension>
-@@ -4548,9 +4653,9 @@
-         <extension name="cl_device_partition_property_ext" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require comment="cl_device_info">
-+            <require comment="cl_device_partition_property_ext">
-                 <enum name="CL_DEVICE_PARTITION_EQUALLY_EXT"/>
-                 <enum name="CL_DEVICE_PARTITION_BY_COUNTS_EXT"/>
-                 <enum name="CL_DEVICE_PARTITION_BY_NAMES_EXT"/>
-                 <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT"/>
-@@ -4589,8 +4694,10 @@
-                 <type name="cl_mem_migration_flags_ext"/>
-             </require>
-             <require comment="cl_mem_migration_flags_ext">
-                 <enum name="CL_MIGRATE_MEM_OBJECT_HOST_EXT"/>
-+            </require>
-+            <require comment="cl_command_type">
-                 <enum name="CL_COMMAND_MIGRATE_MEM_OBJECT_EXT"/>
-             </require>
-             <require>
-                 <command name="clEnqueueMigrateMemObjectEXT"/>
-@@ -4644,18 +4751,18 @@
-         <extension name="cl_img_yuv_image" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_channel_order">
-                 <enum name="CL_NV21_IMG"/>
-                 <enum name="CL_YV12_IMG"/>
-             </require>
-         </extension>
-         <extension name="cl_img_cached_allocations" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_mem_flags">
-                 <enum name="CL_MEM_USE_UNCACHED_CPU_MEMORY_IMG"/>
-                 <enum name="CL_MEM_USE_CACHED_CPU_MEMORY_IMG"/>
-             </require>
-         </extension>
-@@ -4672,17 +4779,19 @@
+@@ -4678,12 +4779,12 @@
          <extension name="cl_img_use_gralloc_ptr" supported="opencl">
              <require>
                  <type name="CL/cl.h"/>
@@ -454,47 +240,7 @@
                  <enum name="CL_COMMAND_RELEASE_GRALLOC_OBJECTS_IMG"/>
              </require>
              <require comment="Error codes">
-                 <enum name="CL_GRALLOC_RESOURCE_NOT_ACQUIRED_IMG"/>
-+            <require>
-+            </require>
-                 <command name="clEnqueueAcquireGrallocObjectsIMG"/>
-                 <command name="clEnqueueReleaseGrallocObjectsIMG"/>
-             </require>
-         </extension>
-@@ -4695,8 +4804,10 @@
-             </require>
-             <require comment="cl_kernel_sub_group_info">
-                 <enum name="CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR"/>
-                 <enum name="CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR"/>
-+            </require>
-+            <require>
-                 <command name="clGetKernelSubGroupInfoKHR"/>
-             </require>
-         </extension>
-         <extension name="cl_khr_priority_hints" supported="opencl">
-@@ -4705,9 +4816,9 @@
-             </require>
-             <require comment="To be used by clGetEventInfo">
-                 <type name="cl_queue_priority_khr"/>
-             </require>
--            <require comment="cl_command_queue_properties">
-+            <require comment="cl_queue_properties">
-                 <enum name="CL_QUEUE_PRIORITY_KHR"/>
-             </require>
-             <require comment="cl_queue_priority_khr">
-                 <enum name="CL_QUEUE_PRIORITY_HIGH_KHR"/>
-@@ -4721,9 +4832,9 @@
-             </require>
-             <require comment="To be used by clGetEventInfo">
-                 <type name="cl_queue_throttle_khr"/>
-             </require>
--            <require comment="cl_command_queue_properties">
-+            <require comment="cl_queue_properties">
-                 <enum name="CL_QUEUE_THROTTLE_KHR"/>
-             </require>
-             <require comment="cl_queue_throttle_khr">
-                 <enum name="CL_QUEUE_THROTTLE_HIGH_KHR"/>
-@@ -4745,9 +4856,9 @@
+@@ -4755,9 +4856,9 @@
              </require>
              <require comment="To be used by clGetEventInfo">
                  <type name="cl_import_properties_arm"/>
@@ -505,7 +251,7 @@
                  <enum name="CL_IMPORT_TYPE_HOST_ARM"/>
                  <enum name="CL_IMPORT_TYPE_DMA_BUF_ARM"/>
                  <enum name="CL_IMPORT_TYPE_PROTECTED_ARM"/>
-@@ -4780,32 +4891,32 @@
+@@ -4790,32 +4891,32 @@
                  <type name="cl_svm_mem_flags_arm"/>
                  <type name="cl_kernel_exec_info_arm"/>
                  <type name="cl_device_svm_capabilities_arm"/>
@@ -542,152 +288,5 @@
 +            <require comment="cl_svm_mem_flags_arm Flag values used by clSVMAllocARM">
                  <enum name="CL_MEM_SVM_FINE_GRAIN_BUFFER_ARM"/>
                  <enum name="CL_MEM_SVM_ATOMICS_ARM"/>
-             </require>
-             <require>
-@@ -4832,9 +4943,9 @@
-             <require>
-                 <type name="CL/cl.h"/>
-                 <type name="CL/cl_platform.h"/>
-             </require>
--            <require>
-+            <require comment="cl_command_queue_properties - bitfield">
-                 <enum name="CL_QUEUE_THREAD_LOCAL_EXEC_ENABLE_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_device_partition_by_names" supported="opencl">
-@@ -4854,9 +4965,9 @@
-                 <enum name="CL_ACCELERATOR_REFERENCE_COUNT_INTEL"/>
-                 <enum name="CL_ACCELERATOR_CONTEXT_INTEL"/>
-                 <enum name="CL_ACCELERATOR_TYPE_INTEL"/>
-             </require>
--            <require comment="error codes">
-+            <require comment="Error codes">
-                 <enum name="CL_INVALID_ACCELERATOR_INTEL"/>
-                 <enum name="CL_INVALID_ACCELERATOR_TYPE_INTEL"/>
-                 <enum name="CL_INVALID_ACCELERATOR_DESCRIPTOR_INTEL"/>
-                 <enum name="CL_ACCELERATOR_TYPE_NOT_SUPPORTED_INTEL"/>
-@@ -4938,30 +5049,34 @@
-                 <enum name="CL_ME_BIDIR_WEIGHT_THREE_QUARTER_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_simultaneous_sharing" supported="opencl">
--            <require>
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_SIMULTANEOUS_INTEROPS_INTEL"/>
-                 <enum name="CL_DEVICE_NUM_SIMULTANEOUS_INTEROPS_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_egl_image_yuv" supported="opencl">
--            <require>
-+            <require comment="cl_egl_image_properties_khr">
-                 <enum name="CL_EGL_YUV_PLANE_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_packed_yuv" supported="opencl">
--            <require>
-+            <require comment="cl_channel_order">
-                 <enum name="CL_YUYV_INTEL"/>
-                 <enum name="CL_UYVY_INTEL"/>
-                 <enum name="CL_YVYU_INTEL"/>
-                 <enum name="CL_VYUY_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_required_subgroup_size" supported="opencl">
--            <require>
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_SUB_GROUP_SIZES_INTEL"/>
-+            </require>
-+            <require comment="cl_kernel_work_group_info">
-                 <enum name="CL_KERNEL_SPILL_MEM_SIZE_INTEL"/>
-+            </require>
-+            <require comment="cl_kernel_sub_group_info">
-                 <enum name="CL_KERNEL_COMPILE_SUB_GROUP_SIZE_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_driver_diagnostics" supported="opencl">
-@@ -4974,18 +5089,22 @@
-                 <enum name="CL_CONTEXT_DIAGNOSTICS_LEVEL_NEUTRAL_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_planar_yuv" supported="opencl">
--            <require>
-+            <require comment="cl_channel_order">
-                 <enum name="CL_NV12_INTEL"/>
-+            </require>
-+            <require comment="cl_mem_flags">
-                 <enum name="CL_MEM_NO_ACCESS_INTEL"/>
-                 <enum name="CL_MEM_ACCESS_FLAGS_UNRESTRICTED_INTEL"/>
-+            </require>
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_PLANAR_YUV_MAX_WIDTH_INTEL"/>
-                 <enum name="CL_DEVICE_PLANAR_YUV_MAX_HEIGHT_INTEL"/>
-             </require>
-         </extension>
-         <extension name="cl_intel_device_side_avc_motion_estimation" supported="opencl">
--            <require comment="cl_intel_device_side_avc_motion_estimation.??">
-+            <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_AVC_ME_VERSION_INTEL"/>
-                 <enum name="CL_DEVICE_AVC_ME_SUPPORTS_TEXTURE_SAMPLER_USE_INTEL"/>
-                 <enum name="CL_DEVICE_AVC_ME_SUPPORTS_PREEMPTION_INTEL"/>
-             </require>
-@@ -5137,9 +5256,9 @@
-             <require>
-                 <type name="CL/cl_gl.h"/>
-                 <type name="cl_GLsync"/>
-             </require>
--            <require>
-+            <require comment="cl_command_type">
-                 <enum name="CL_COMMAND_GL_FENCE_SYNC_OBJECT_KHR"/>
-             </require>
-             <require>
-                 <command name="clCreateEventFromGLsyncKHR"/>
-@@ -5238,19 +5357,21 @@
-         <extension name="cl_khr_gl_depth_images" requires="cl_khr_gl_sharing" comment="no API - reuses tokens from core API" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_channel_order">
-                 <enum name="CL_DEPTH_STENCIL"/>
-+            </require>
-+            <require comment="cl_channel_type">
-                 <enum name="CL_UNORM_INT24"/>
-                 <enum name="CL_FLOAT"/>
-             </require>
-         </extension>
-         <extension name="cl_khr_gl_msaa_sharing" requires="cl_khr_gl_depth_images" comment="no API - reuses tokens from core API" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require>
-+            <require comment="cl_gl_texture_info">
-                 <!-- <enum name="GL_TEXTURE_2D_MULTISAMPLE"/> -->
-                 <!-- <enum name="GL_TEXTURE_2D_MULTISAMPLE_ARRAY"/> -->
-                 <enum name="CL_GL_NUM_SAMPLES"/>
-             </require>
-@@ -5292,9 +5413,9 @@
-                 <enum name="CL_GL_OBJECT_TEXTURE2D"/>
-                 <enum name="CL_GL_OBJECT_TEXTURE3D"/>
-                 <enum name="CL_GL_OBJECT_RENDERBUFFER"/>
-             </require>
--            <require feature="CL_VERSION_1_2">
-+            <require feature="CL_VERSION_1_2" comment="cl_gl_object_type">
-                 <enum name="CL_GL_OBJECT_TEXTURE2D_ARRAY"/>
-                 <enum name="CL_GL_OBJECT_TEXTURE1D"/>
-                 <enum name="CL_GL_OBJECT_TEXTURE1D_ARRAY"/>
-                 <enum name="CL_GL_OBJECT_TEXTURE_BUFFER"/>
-@@ -5302,12 +5423,12 @@
-             <require comment="cl_gl_texture_info">
-                 <enum name="CL_GL_TEXTURE_TARGET"/>
-                 <enum name="CL_GL_MIPMAP_LEVEL"/>
-             </require>
--            <require feature="CL_VERSION_1_2">
-+            <require feature="CL_VERSION_1_2" comment="cl_gl_texture_info">
-                 <enum name="CL_GL_NUM_SAMPLES"/>
-             </require>
--            <require>
-+            <require comment="Error codes">
-                 <enum name="CL_INVALID_GL_OBJECT"/>
-                 <enum name="CL_INVALID_MIP_LEVEL"/>
              </require>
              <require>
