@@ -45,8 +45,7 @@ struct_e = doc.xpath("//types/type").select do |l|
   l["category"] == "struct"
 end.collect
 
-require_e = doc.xpath("//feature/require").to_a + doc.xpath("//extensions/extension/require").to_a
-constants = doc.xpath("//enums/enum").collect { |n|
+$constants = doc.xpath("//enums/enum").collect { |n|
   if n["value"]
     [n["name"], n["value"]]
   elsif n["bitpos"]
@@ -151,18 +150,19 @@ class Require < CLXML
 
 end
 
+$requires = (doc.xpath("//feature/require").to_a + doc.xpath("//extensions/extension/require").to_a).collect { |r| Require::new(r) }
+
 if GENERATE_ENUMS_TRACEPOINTS
   enums = YAML::load_file("supported_enums.yaml")
 
-  require_e = require_e.collect { |r| Require::new(r) }
 
   enums.each { |e|
-    vals = require_e.select { |r|
+    vals = $requires.select { |r|
       r.comment && r.comment.match(/#{e["name"]}(\z| )/)
     }.collect { |r|
       r.enums
     }.reduce(:+).collect { |v|
-     [v, constants[v]]
+     [v, $constants[v]]
     }.to_h
     ENUMS[e["name"]] = { "values" => vals, "trace_name" => e["trace_name"], "type_name" => e["type_name"] }
     ENUM_PARAM_NAME_MAP[e["trace_name"]] = e["type_name"]

@@ -6,3 +6,4 @@
 opencl_tracepoints.tp
 tracer_opencl.sh
 cl.xml.patched
+opencl_model.yaml

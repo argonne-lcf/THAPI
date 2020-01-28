@@ -6,7 +6,7 @@ OPENCL_PROBES_INCL = $(OPENCL_PROBES:=.h)
 OPENCL_PROBES_SRC = $(OPENCL_PROBES:=.c)
 ML_FILES = opencl_meta_parameters.yaml supported_extensions.yaml supported_enums.yaml
 
-all: tracer_opencl.so
+all: tracer_opencl.so opencl_model.yaml
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -O3 -I./ -I../utils/
 
@@ -18,6 +18,9 @@ cl.xml.patched: cl.xml
 
 tracer_opencl.h: gen_opencl_header.rb
 	ruby gen_opencl_header.rb > tracer_opencl.h
+
+opencl_model.yaml: gen_opencl_model.rb opencl_model.rb $(ML_FILES) cl.xml.patched
+	ruby gen_opencl_model.rb > opencl_model.yaml
 
 opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched opencl_callbacks.tp.include
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
@@ -32,5 +35,5 @@ tracer_opencl.so: ../utils/lttng/tracepoint_gen.h tracer_opencl.c $(OPENCL_PROBE
 	gcc -g -O3 -Wall -Wextra -Werror -I./ -I../utils/ -o tracer_opencl.so -shared -fPIC -Wl,--version-script,tracer_opencl.map tracer_opencl.c $(OPENCL_PROBES_OBJS) -llttng-ust -ldl -lffi
 
 clean:
-	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so opencl_tracepoints.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) cl.xml.patched
+	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so opencl_tracepoints.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) cl.xml.patched opencl_model.yaml
 	$(MAKE) -C ../utils clean
