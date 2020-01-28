@@ -9,6 +9,10 @@ puts <<EOF
 #include <CL/cl_egl.h>
 #include "./tracer_opencl.h"
 
+EOF
+
+if GENERATE_ENUMS_TRACEPOINTS
+  puts <<EOF
 TRACEPOINT_ENUM(
   lttng_ust_opencl,
   cl_bool,
@@ -20,9 +24,9 @@ TRACEPOINT_ENUM(
 
 EOF
 
-ENUMS.each { |name, e|
-  name = e["type_name"] if e["type_name"]
-  puts <<EOF
+  ENUMS.each { |name, e|
+    name = e["type_name"] if e["type_name"]
+    puts <<EOF
 TRACEPOINT_ENUM(
   lttng_ust_opencl,
   #{name},
@@ -32,7 +36,8 @@ TRACEPOINT_ENUM(
 )
 
 EOF
-}
+  }
+end
 
 tracepoint_lambda = lambda { |c, dir|
   puts <<EOF

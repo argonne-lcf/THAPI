@@ -1,6 +1,8 @@
 require 'nokogiri'
 require 'yaml'
 
+GENERATE_ENUMS_TRACEPOINTS = false
+
 HOST_PROFILE = true
 
 WINDOWS = /D3D|DX9/
@@ -149,23 +151,25 @@ class Require < CLXML
 
 end
 
-enums = YAML::load_file("supported_enums.yaml")
+if GENERATE_ENUMS_TRACEPOINTS
+  enums = YAML::load_file("supported_enums.yaml")
 
-require_e = require_e.collect { |r| Require::new(r) }
+  require_e = require_e.collect { |r| Require::new(r) }
 
-enums.each { |e|
-  vals = require_e.select { |r|
-    r.comment && r.comment.match(/#{e["name"]}(\z| )/)
-  }.collect { |r|
-    r.enums
-  }.reduce(:+).collect { |v|
-   [v, constants[v]]
-  }.to_h
-  ENUMS[e["name"]] = { "values" => vals, "trace_name" => e["trace_name"], "type_name" => e["type_name"] }
-  ENUM_PARAM_NAME_MAP[e["trace_name"]] = e["type_name"]
-  ENUM_TYPES.push(e["type_name"] ? e["type_name"] : e["name"])
-}
-ENUM_TYPES.push "cl_bool"
+  enums.each { |e|
+    vals = require_e.select { |r|
+      r.comment && r.comment.match(/#{e["name"]}(\z| )/)
+    }.collect { |r|
+      r.enums
+    }.reduce(:+).collect { |v|
+     [v, constants[v]]
+    }.to_h
+    ENUMS[e["name"]] = { "values" => vals, "trace_name" => e["trace_name"], "type_name" => e["type_name"] }
+    ENUM_PARAM_NAME_MAP[e["trace_name"]] = e["type_name"]
+    ENUM_TYPES.push(e["type_name"] ? e["type_name"] : e["name"])
+  }
+  ENUM_TYPES.push "cl_bool"
+end
 
 class Declaration < CLXML
   attr_reader :type
@@ -341,7 +345,11 @@ class Prototype < CLXML
     end
     case @return_type
     when "cl_int"
-      return [:ctf_enum, :lttng_ust_opencl, :cl_errcode, :cl_int, "errcode_ret_val", "_retval"]
+      if GENERATE_ENUMS_TRACEPOINTS
+        return [:ctf_enum, :lttng_ust_opencl, :cl_errcode, :cl_int, "errcode_ret_val", "_retval"]
+      else
+        return [:ctf_integer, :cl_int, "errcode_ret_val", "_retval"]
+      end
     when *CL_OBJECTS
       return [:ctf_integer_hex, :intptr_t, @return_type.gsub(/^cl_/,""), "(intptr_t)_retval"]
     when *CL_EXT_OBJECTS
