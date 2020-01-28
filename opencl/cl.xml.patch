@@ -89,17 +89,6 @@
          <enum value="0"             name="CL_BUILD_SUCCESS"/>
          <enum value="-1"            name="CL_BUILD_NONE"/>
          <enum value="-2"            name="CL_BUILD_ERROR"/>
-@@ -1628,9 +1630,9 @@
-             <unused start="0x4160" end="0x416F"/>
-     </enums>
- 
-     <enums start="0x4170" end="0x417F" name="enums.4170" vendor="Intel" comment="Per bug 16067.">
--            <unused start="0x4170" end="0x417D"/>
-+            <unused start="0x4170" end="0x417F"/>
-         <enum value="0x417E"        name="CL_DEVICE_PLANAR_YUV_MAX_WIDTH_INTEL"/>
-         <enum value="0x417F"        name="CL_DEVICE_PLANAR_YUV_MAX_HEIGHT_INTEL"/>
-     </enums>
- 
 @@ -2221,8 +2223,107 @@
              <param><type>cl_GLint</type>                   <name>miplevel</name></param>
              <param><type>cl_GLuint</type>                  <name>texture</name></param>
