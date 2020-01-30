@@ -4,13 +4,17 @@ en = YAML::load_file("supported_enums.yaml")
 en.push( { "name" => "cl_bool"} )
 en.push( { "name" => "command execution status", "trace_name" => "command_exec_callback_type", "type_name" => "cl_command_execution_status" } )
 
+bitfields = {}
 enums = {}
 events = {}
-res = { "enums" => enums, "events" => events }
+res = { "enums" => enums, "bitfields" => bitfields, "events" => events }
 
 en.each { |e|
+  bitfield = false
   vals = $requires.select { |r|
     r.comment && r.comment.match(/#{e["name"]}(\z| )/)
+  }.each { |r|
+    bitfield = true if r.comment.match(/ - bitfield/)
   }.collect { |r|
     r.enums
   }.reduce(:+).collect { |v|
@@ -20,7 +24,11 @@ en.each { |e|
   r["trace_name"] = e["trace_name"] if e["trace_name"]
   r["type_name"] = e["type_name"] if e["type_name"]
 
-  enums[e["name"]] = r
+  if bitfield
+    bitfields[e["name"]] = r
+  else
+    enums[e["name"]] = r
+  end
 }
 
 
