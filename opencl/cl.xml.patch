@@ -1,5 +1,5 @@
 --- cl.xml	2020-01-28 11:16:14.063493089 -0600
-+++ cl.xml.patched	2020-01-28 11:02:44.513848455 -0600
++++ cl.xml.patched	2020-01-30 16:44:29.116146562 -0600
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -197,6 +197,50 @@
              <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>
              <param><type>cl_platform_id</type>             <name>platform</name></param>
              <param><type>cl_va_api_device_source_intel</type> <name>media_adapter_type</name></param>
+@@ -3915,9 +4016,9 @@
+             <enum name="CL_DEVICE_PARTITION_BY_COUNTS"/>
+             <enum name="CL_DEVICE_PARTITION_BY_COUNTS_LIST_END"/>
+             <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN"/>
+         </require>
+-        <require comment="cl_device_affinity_domain">
++        <require comment="cl_device_affinity_domain - bitfield">
+             <enum name="CL_DEVICE_AFFINITY_DOMAIN_NUMA"/>
+             <enum name="CL_DEVICE_AFFINITY_DOMAIN_L4_CACHE"/>
+             <enum name="CL_DEVICE_AFFINITY_DOMAIN_L3_CACHE"/>
+             <enum name="CL_DEVICE_AFFINITY_DOMAIN_L2_CACHE"/>
+@@ -3988,9 +4089,9 @@
+             <enum name="CL_KERNEL_ARG_ACCESS_WRITE_ONLY"/>
+             <enum name="CL_KERNEL_ARG_ACCESS_READ_WRITE"/>
+             <enum name="CL_KERNEL_ARG_ACCESS_NONE"/>
+         </require>
+-        <require comment="cl_kernel_arg_type_qualifier">
++        <require comment="cl_kernel_arg_type_qualifier - bitfield">
+             <enum name="CL_KERNEL_ARG_TYPE_NONE"/>
+             <enum name="CL_KERNEL_ARG_TYPE_CONST"/>
+             <enum name="CL_KERNEL_ARG_TYPE_RESTRICT"/>
+             <enum name="CL_KERNEL_ARG_TYPE_VOLATILE"/>
+@@ -4067,9 +4168,9 @@
+         <require comment="cl_command_queue_properties - bitfield">
+             <enum name="CL_QUEUE_ON_DEVICE"/>
+             <enum name="CL_QUEUE_ON_DEVICE_DEFAULT"/>
+         </require>
+-        <require comment="cl_device_svm_capabilities">
++        <require comment="cl_device_svm_capabilities - bitfield">
+             <enum name="CL_DEVICE_SVM_COARSE_GRAIN_BUFFER"/>
+             <enum name="CL_DEVICE_SVM_FINE_GRAIN_BUFFER"/>
+             <enum name="CL_DEVICE_SVM_FINE_GRAIN_SYSTEM"/>
+             <enum name="CL_DEVICE_SVM_ATOMICS"/>
+@@ -4106,9 +4207,9 @@
+         </require>
+         <require comment="cl_program_build_info">
+             <enum name="CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE"/>
+         </require>
+-        <require comment="cl_kernel_arg_type_qualifier">
++        <require comment="cl_kernel_arg_type_qualifier - bitfield">
+             <enum name="CL_KERNEL_ARG_TYPE_PIPE"/>
+         </require>
+         <require comment="cl_kernel_exec_info">
+             <enum name="CL_KERNEL_EXEC_INFO_SVM_PTRS"/>
 @@ -4362,14 +4463,14 @@
          <extension name="cl_khr_egl_image" supported="opencl">
              <require>
@@ -214,6 +258,17 @@
                  <enum name="CL_EGL_RESOURCE_NOT_ACQUIRED_KHR"/>
              </require>
              <require comment="CLeglImageKHR is an opaque handle to an EGLImage">
+@@ -4591,9 +4692,9 @@
+             </require>
+             <require comment="cl_device_partition_property_ext">
+                 <type name="cl_mem_migration_flags_ext"/>
+             </require>
+-            <require comment="cl_mem_migration_flags_ext">
++            <require comment="cl_mem_migration_flags_ext - bitfield">
+                 <enum name="CL_MIGRATE_MEM_OBJECT_HOST_EXT"/>
+             </require>
+             <require comment="cl_command_type">
+                 <enum name="CL_COMMAND_MIGRATE_MEM_OBJECT_EXT"/>
 @@ -4678,12 +4779,12 @@
          <extension name="cl_img_use_gralloc_ptr" supported="opencl">
              <require>
