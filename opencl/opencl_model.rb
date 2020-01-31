@@ -55,7 +55,7 @@ $constants = doc.xpath("//enums/enum").collect { |n|
 
 CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue", "cl_mem", "cl_program", "cl_kernel", "cl_event", "cl_sampler"]
 
-CL_EXT_OBJECTS = ["cl_GLsync", "CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR"]
+CL_EXT_OBJECTS = ["cl_GLsync", "CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR", "cl_accelerator_intel"]
 
 CL_INT_SCALARS = ["unsigned int", "int", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
 CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
@@ -682,14 +682,14 @@ end
 OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
 OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
 
-meta_parameters = YAML::load_file("opencl_meta_parameters.yaml")
-meta_parameters["meta_parameters"].each  { |func, list|
+$meta_parameters = YAML::load_file("opencl_meta_parameters.yaml")
+$meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
 
-meta_parameters["meta_structs"].each { |func, list|
+$meta_parameters["meta_structs"].each { |func, list|
   list.each { |args|
     register_meta_struct func, *args
   }
