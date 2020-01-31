@@ -1,4 +1,5 @@
 require_relative 'opencl_model'
+require_relative 'opencl_tracepoints'
 
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 220
@@ -111,4 +112,11 @@ $opencl_extension_commands.each { |c|
 puts <<EOF
 EOF
 
-puts File::read("opencl_callbacks.tp.include")
+callbacks = YAML::load_file("opencl_events.yaml")["callbacks"]
+
+namespace = callbacks["namespace"]
+callbacks["events"].each { |e|
+  ["start", "stop"].each { |dir|
+    print_tracepoint(namespace, e, dir)
+  }
+}

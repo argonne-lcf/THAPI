@@ -22,7 +22,7 @@ tracer_opencl.h: gen_opencl_header.rb
 opencl_model.yaml: gen_opencl_model.rb opencl_model.rb $(ML_FILES) cl.xml.patched
 	ruby gen_opencl_model.rb > opencl_model.yaml
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched opencl_callbacks.tp.include
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched opencl_tracepoints.rb opencl_events.yaml
 	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
