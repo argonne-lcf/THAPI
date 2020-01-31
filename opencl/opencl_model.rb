@@ -180,6 +180,7 @@ class Declaration < CLXML
     @name = param.search("name").text
     @type = param.search("type").text
     @type += "*" if decl.match?(/\*\*/)
+    @type += "*" if decl.match?(/\[\]/)
     @__callback = nil
   end
 

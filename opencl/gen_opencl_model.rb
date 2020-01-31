@@ -82,8 +82,8 @@ event_lambda = lambda { |c, dir|
   c.parameters.each { |p|
     param = {}
     params[p.name] = param
-    param["type"] = (p.type == '' ? "void" : p.type)
-    param["pointer"] = p.pointer?
+    param["type"] = ( (p.callback? || p.type == '') ? "void" : p.type == '*' ? "void*" : p.type)
+    param["pointer"] = true if p.pointer?
   }
   meta_structs = []
   if $meta_parameters["meta_structs"][c.prototype.name]
@@ -127,6 +127,12 @@ event_lambda = lambda { |c, dir|
           meta_field["struct"] = pname
         end
       end
+      if meta_field["type"].match(/\*\z/)
+        meta_field["type"] = meta_field["type"].gsub(/\*\z/, "")
+        meta_field["pointer"] = true
+      end
+      meta_field["array"] = true if LTTng.array?(*lttng)
+      meta_field["string"] = true if LTTng.string?(*lttng)
       meta_field["lttng"] = lttng[0]
       fields[fname] = meta_field
     }
@@ -155,6 +161,12 @@ event_lambda = lambda { |c, dir|
           $stderr.puts name, lttng.inspect
         end
       end
+      if meta_field["type"].match(/\*\z/)
+        meta_field["type"] = meta_field["type"].gsub(/\*\z/, "")
+        meta_field["pointer"] = true
+      end
+      meta_field["array"] = true if LTTng.array?(*lttng)
+      meta_field["string"] = true if LTTng.string?(*lttng)
       meta_field["lttng"] = lttng[0]
       fields[fname] = meta_field
     }
