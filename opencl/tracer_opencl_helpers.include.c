@@ -120,6 +120,7 @@ static int64_t dump_end = INT64_MAX;
 #define SOURCE_TEMPLATE "/tmp/sourceXXXXXX"
 #define BIN_SOURCE_TEMPLATE "/tmp/binsourceXXXXXX"
 #define BIN_BUILD_TEMPLATE "/tmp/binbuildXXXXXX"
+#define OBJ_BUILD_TEMPLATE "/tmp/objbuildXXXXXX"
 #define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
 
 pthread_mutex_t opencl_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -817,6 +818,96 @@ static void dump_program_build_infos(cl_program program) {
   }
 }
 
+static void dump_program_objects(cl_program program) {
+  cl_int err = CL_SUCCESS;
+  cl_device_id *devices;
+  cl_uint num_devices;
+  size_t *binary_sizes;
+  size_t total_size = 0;
+  void **binaries;
+  char (*paths)[sizeof(OBJ_BUILD_TEMPLATE)];
+  int *fds;
+  cl_uint i;
+
+  devices = get_program_devices(program, &num_devices);
+  if (!devices)
+    goto with_noting;
+  binary_sizes = (size_t *)malloc(num_devices*sizeof(size_t));
+  if (!binary_sizes)
+    goto with_devices;
+
+  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARY_SIZES, num_devices*sizeof(size_t), binary_sizes, NULL);
+  if (err != CL_SUCCESS)
+    goto with_binary_sizes;
+
+  binaries = (void **)calloc(num_devices*sizeof(void *), 1);
+  if (!binaries)
+    goto with_binary_sizes;
+  paths = (char (*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices*sizeof(OBJ_BUILD_TEMPLATE), 1);
+  if (!paths)
+    goto with_binaries;
+  fds = (int *)calloc(num_devices*sizeof(int), 1);
+  if (!fds)
+    goto with_paths;
+
+  for (i = 0; i < num_devices; i++) {
+    if (binary_sizes[i] > 0) {
+      strncpy(paths[i], OBJ_BUILD_TEMPLATE, sizeof(paths[i]));
+      fds[i] = create_file_and_map(paths[i], binary_sizes[i], binaries + i);
+      if (fds[i] == -1) {
+        for (cl_uint j = i; j > 0; j--) {
+          if (binary_sizes[j-1] > 0) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+            ftruncate(fds[j-1], 0);
+#pragma GCC diagnostic pop
+            close(fds[j-1]);
+            unlink(paths[j-1]);
+          }
+        }
+        goto with_fds;
+      }
+      total_size += binary_sizes[i];
+    }
+  }
+
+  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARIES, total_size, binaries, NULL);
+  if (err != CL_SUCCESS) {
+    for (i = 0; i < num_devices; i++) {
+      if (binary_sizes[i] > 0) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+        ftruncate(fds[i], 0);
+#pragma GCC diagnostic pop
+        close(fds[i]);
+        unlink(paths[i]);
+      }
+    }
+  }
+  for (i = 0; i < num_devices; i++) {
+    int e = ftruncate(fds[i], binary_sizes[i]);
+    if (e) {
+      unlink(paths[i]);
+      close(fds[i]);
+    } else {
+      close(fds[i]);
+      do_tracepoint(lttng_ust_opencl_build, objects, program, devices[i], binary_sizes[i], paths[i]);
+    }
+  }
+with_fds:
+  free(fds);
+with_paths:
+  free(paths);
+with_binaries:
+  free(binaries);
+with_binary_sizes:
+  free(binary_sizes);
+with_devices:
+  free(devices);
+with_noting:
+  return;
+}
+
 static void dump_program_binaries(cl_program program) {
   cl_int err = CL_SUCCESS;
   cl_device_id *devices;
@@ -936,6 +1027,8 @@ void CL_CALLBACK clCompileProgram_callback(cl_program program, void *user_data) 
   do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_start, program, payload->user_data);
   payload->pfn_notify(program, payload->user_data);
   do_tracepoint(lttng_ust_opencl, clCompileProgram_callback_stop, program, payload->user_data);
+  if (tracepoint_enabled(lttng_ust_opencl_build, objects))
+    dump_program_objects(program);
   if (tracepoint_enabled(lttng_ust_opencl_build, infos))
     dump_program_build_infos(program);
   free(user_data);

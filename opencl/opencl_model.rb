@@ -1000,8 +1000,8 @@ EOF
 }
 program_conditions = ["tracepoint_enabled(lttng_ust_opencl_build, binaries)", "tracepoint_enabled(lttng_ust_opencl_build, infos)"]
 l.call("clBuildProgram", extra_conditions: program_conditions)
-l.call("clCompileProgram")
-l.call("clLinkProgram")
+l.call("clCompileProgram", extra_conditions: ["tracepoint_enabled(lttng_ust_opencl_build, objects)", "tracepoint_enabled(lttng_ust_opencl_build, infos)"])
+l.call("clLinkProgram", extra_conditions: program_conditions)
 l.call("clCreateContext")
 l.call("clCreateContextFromType")
 l.call("clSetMemObjectDestructorCallback")
@@ -1027,13 +1027,16 @@ register_epilogue "clLinkProgram", str
 register_epilogue "clCreateContext", str
 register_epilogue "clCreateContextFromType", str
 
-str = <<EOF
+register_epilogue "clBuildProgram", <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
-register_epilogue "clBuildProgram", str
-register_epilogue "clCompileProgram", str
+register_epilogue "clCompileProgram", <<EOF
+  if (tracepoint_enabled(lttng_ust_opencl_build, objects) && !pfn_notify) {
+    dump_program_objects(program);
+  }
+EOF
 register_epilogue "clLinkProgram", <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);

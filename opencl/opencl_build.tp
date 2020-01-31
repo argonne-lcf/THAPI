@@ -7,6 +7,23 @@
 
 TRACEPOINT_EVENT(
   lttng_ust_opencl_build,
+  objects,
+  TP_ARGS(
+    cl_program, program,
+    cl_device_id, device,
+    size_t, size,
+    char *, path
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(intptr_t, program, (intptr_t)program)
+    ctf_integer_hex(intptr_t, device, (intptr_t)device)
+    ctf_integer(size_t, size, size)
+    ctf_string(path, path)
+  )
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_opencl_build,
   binaries,
   TP_ARGS(
     cl_program, program,
