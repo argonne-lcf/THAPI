@@ -41,60 +41,45 @@ EOF
 end
 
 tracepoint_lambda = lambda { |c, dir|
-  puts <<EOF
-TRACEPOINT_EVENT(
-  lttng_ust_opencl,
-  #{c.prototype.name}_#{dir},
-  TP_ARGS(
-EOF
-  print "    "
-  if c.parameters.size == 1 && c.parameters.first.decl.strip == "void" && !((HOST_PROFILE || c.prototype.has_return_type?) && dir == :stop)
-    print "void"
-  else
-    params = []
-    params << c.parameters.collect { |p|
-      "#{p.callback? ? "void *" : p.decl_pointer.gsub("[]", "*")}, #{p.name}"
+  event = {}
+  event["name"] = c.prototype.name
+  args = []
+  unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void" && !((HOST_PROFILE || c.prototype.has_return_type?) && dir == :stop)
+    args = c.parameters.collect { |p|
+      [p.callback? ? "void *" : p.decl_pointer.gsub("[]", "*"),
+       p.name]
     } unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
     if dir == :stop
-      params.push("#{c.prototype.return_type}, _retval") if c.prototype.has_return_type?
-      params.push("uint64_t, _duration") if HOST_PROFILE
+      args.push [c.prototype.return_type, "_retval"] if c.prototype.has_return_type?
+      args.push ["uint64_t", "_duration"] if HOST_PROFILE
     end
-    params += c.tracepoint_parameters.collect { |p|
-      "#{p.type}, #{p.name}"
+    args += c.tracepoint_parameters.collect { |p|
+      [p.type, p.name]
     }
-    puts params.join(",\n    ")
   end
-  puts <<EOF
-  ),
-  TP_FIELDS(
-EOF
+  event["args"] = args
+
   fields = []
   if dir == :start
-    c.parameters.collect(&:lttng_in_type).compact.each { |func, *args|
-      fields.push("#{func}(#{args.join(", ")})")
+    c.parameters.collect(&:lttng_in_type).compact.each { |arr|
+      fields.push arr
     }
-    c.meta_parameters.collect(&:lttng_in_type).compact.each { |func, *args|
-      fields.push("#{func}(#{args.join(", ")})")
+    c.meta_parameters.collect(&:lttng_in_type).compact.each { |arr|
+      fields.push arr
     }
   elsif dir == :stop
     r = c.prototype.lttng_return_type
-    if r
-      func, *args = r
-      fields.push("#{func}(#{args.join(", ")})")
-    end
+    fields.push r if r
     if HOST_PROFILE
-      fields.push("ctf_integer(uint64_t, _duration, _duration)")
+      fields.push ["ctf_integer", "uint64_t", "_duration", "_duration"]
     end
-    c.meta_parameters.collect(&:lttng_out_type).compact.each { |func, *args|
-      fields.push("#{func}(#{args.join(", ")})")
+    c.meta_parameters.collect(&:lttng_out_type).compact.each { |arr|
+      fields.push arr
     }
   end
-  puts "    " << fields.join("\n    ")
-  puts <<EOF
-  )
-)
+  event[dir] = fields
 
-EOF
+  print_tracepoint("lttng_ust_opencl", event, dir)
 }
 
 $opencl_commands.each { |c|

@@ -189,7 +189,7 @@ class Declaration < CLXML
   end
 
   def decl_pointer
-    @__node.children.collect { |n| "#{n.name == "name" ? "" : n.text}" }.join(" ").squeeze(" ")
+    @__node.children.collect { |n| "#{n.name == "name" ? "" : n.text}" }.join(" ").squeeze(" ").strip
   end
 
   def pointer?

@@ -6,7 +6,12 @@ TRACEPOINT_EVENT(
   TP_ARGS(
 EOF
   print "    "
-  puts tp["args"].collect { |a| a.join(", ") }.join(",\n    ")
+  args = tp["args"]
+  if args.empty?
+    puts "void"
+  else
+    puts args.collect { |a| a.join(", ") }.join(",\n    ")
+  end
   puts <<EOF
   ),
   TP_FIELDS(
