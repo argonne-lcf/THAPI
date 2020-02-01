@@ -19,7 +19,7 @@ cl.xml.patched: cl.xml
 tracer_opencl.h: gen_opencl_header.rb
 	ruby gen_opencl_header.rb > tracer_opencl.h
 
-opencl_model.yaml: gen_opencl_model.rb opencl_model.rb $(ML_FILES) cl.xml.patched
+opencl_model.yaml: gen_opencl_model.rb opencl_model.rb $(ML_FILES) cl.xml.patched opencl_events.yaml opencl_tracepoints.rb
 	ruby gen_opencl_model.rb > opencl_model.yaml
 
 opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched opencl_tracepoints.rb opencl_events.yaml

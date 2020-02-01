@@ -1,37 +1,5 @@
 require_relative 'opencl_model'
-
-class LTTng
-  def self.name(*args)
-    case args[0]
-    when "ctf_string"
-      args[1]
-    when "ctf_enum"
-      args[4]
-    else
-      args[2]
-    end
-  end
-
-  def self.array?(*args)
-    args[0].match("array") || args[0].match("sequence")
-  end
-
-  def self.string?(*args)
-    args[0].match("string")
-  end
-
-  def self.expression(*args)
-    case args[0]
-    when "ctf_string"
-      args[2]
-    when "ctf_enum"
-      args[5]
-    else
-      args[3]
-    end
-  end
-
-end
+require_relative 'opencl_tracepoints.rb'
 
 en = YAML::load_file("supported_enums.yaml")
 en.push( { "name" => "cl_bool"} )
@@ -178,6 +146,16 @@ event_lambda = lambda { |c, dir|
   [:start, :stop].each { |dir|
     name, val = event_lambda.call(c, dir)
     events[name] = val
+  }
+}
+
+YAML::load_file("opencl_events.yaml").each { |klass, h|
+  namespace = h["namespace"]
+  h["events"].each { |e|
+    ["start", "stop"].each { |dir|
+      event = get_fields(e["args"], e[dir])
+      events["#{namespace}:#{e["name"]}_#{dir}"] = event
+    }
   }
 }
 
