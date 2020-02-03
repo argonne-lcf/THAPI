@@ -3,7 +3,7 @@
 *.so
 *.c
 *.h
-opencl_tracepoints.tp
+*.tp
 tracer_opencl.sh
 cl.xml.patched
 opencl_model.yaml
