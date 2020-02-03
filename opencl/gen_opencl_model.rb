@@ -158,4 +158,11 @@ YAML::load_file("opencl_wrapper_events.yaml").each { |namespace, h|
   }
 }
 
+YAML::load_file("opencl_events.yaml").each { |namespace, h|
+  h["events"].each { |e|
+    event = get_fields(e["args"], e["fields"])
+    events["#{namespace}:#{e["name"]}"] = event
+  }
+}
+
 puts YAML::dump(res)
