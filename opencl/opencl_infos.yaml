@@ -432,6 +432,27 @@ cl_kernel_work_group_info:
   - name: CL_KERNEL_GLOBAL_WORK_SIZE
     type: size_t
     array: true
+cl_kernel_sub_group_info:
+  2_1:
+  - name: CL_KERNEL_MAX_NUM_SUB_GROUPS
+    type: size_t
+  - name: CL_KERNEL_COMPILE_NUM_SUB_GROUPS
+    type: size_t
+  - name: CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE
+    type: size_t
+    input:
+      type: size_t
+      array: true
+  - name: CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE
+    type: size_t
+    input:
+      type: size_t
+      array: true
+  - name: CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT
+    type: size_t
+    array: true
+    input:
+      type: size_t
 cl_event_info:
   1_0:
   - name: CL_EVENT_COMMAND_QUEUE
