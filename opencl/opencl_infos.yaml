@@ -1,0 +1,460 @@
+---
+cl_platform_info:
+  1_0:
+  - name: CL_PLATFORM_PROFILE
+    type: char
+    string: true
+  - name: CL_PLATFORM_VERSION
+    type: char
+    string: true
+  - name: CL_PLATFORM_NAME
+    type: char
+    string: true
+  - name: CL_PLATFORM_VENDOR
+    type: char
+    string: true
+  - name: CL_PLATFORM_EXTENSIONS
+    type: char
+    string: true
+  2_1:
+  - name: CL_PLATFORM_HOST_TIMER_RESOLUTION
+    type: cl_ulong
+  cl_icd_khr:
+  - name: CL_PLATFORM_ICD_SUFFIX_KHR
+    type: char
+    string: true
+cl_device_info:
+  1_0:
+  - name: CL_DEVICE_ADDRESS_BITS
+    type: cl_uint
+  - name: CL_DEVICE_AVAILABLE
+    type: cl_bool
+  - name: CL_DEVICE_COMPILER_AVAILABLE
+    type: cl_bool
+  - name: CL_DEVICE_DOUBLE_FP_CONFIG
+    type: cl_device_fp_config
+  - name: CL_DEVICE_ENDIAN_LITTLE
+    type: cl_bool
+  - name: CL_DEVICE_ERROR_CORRECTION_SUPPORT
+    type: cl_bool
+  - name: CL_DEVICE_EXECUTION_CAPABILITIES
+    type: cl_device_exec_capabilities
+  - name: CL_DEVICE_EXTENSIONS
+    type: char
+    string: true
+  - name: CL_DEVICE_GLOBAL_MEM_CACHE_SIZE
+    type: cl_ulong
+  - name: CL_DEVICE_GLOBAL_MEM_CACHE_TYPE
+    type: cl_device_mem_cache_type
+  - name: CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE
+    type: cl_uint
+  - name: CL_DEVICE_GLOBAL_MEM_SIZE
+    type: cl_ulong
+  - name: CL_DEVICE_HALF_FP_CONFIG
+    type: cl_device_fp_config
+  - name: CL_DEVICE_IMAGE_SUPPORT
+    type: cl_bool
+  - name: CL_DEVICE_IMAGE2D_MAX_HEIGHT
+    type: size_t
+  - name: CL_DEVICE_IMAGE2D_MAX_WIDTH
+    type: size_t
+  - name: CL_DEVICE_IMAGE3D_MAX_DEPTH
+    type: size_t
+  - name: CL_DEVICE_IMAGE3D_MAX_HEIGHT
+    type: size_t
+  - name: CL_DEVICE_IMAGE3D_MAX_WIDTH
+    type: size_t
+  - name: CL_DEVICE_LOCAL_MEM_SIZE
+    type: cl_ulong
+  - name: CL_DEVICE_LOCAL_MEM_TYPE
+    type: cl_device_local_mem_type
+  - name: CL_DEVICE_MAX_CLOCK_FREQUENCY
+    type: cl_uint
+  - name: CL_DEVICE_MAX_COMPUTE_UNITS
+    type: cl_uint
+  - name: CL_DEVICE_MAX_CONSTANT_ARGS
+    type: cl_uint
+  - name: CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE
+    type: cl_ulong
+  - name: CL_DEVICE_MAX_MEM_ALLOC_SIZE
+    type: cl_ulong
+  - name: CL_DEVICE_MAX_PARAMETER_SIZE
+    type: size_t
+  - name: CL_DEVICE_MAX_READ_IMAGE_ARGS
+    type: cl_uint
+  - name: CL_DEVICE_MAX_SAMPLERS
+    type: cl_uint
+  - name: CL_DEVICE_MAX_WORK_GROUP_SIZE
+    type: size_t
+  - name: CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS
+    type: cl_uint
+  - name: CL_DEVICE_MAX_WORK_ITEM_SIZES
+    type: size_t
+    array: true
+  - name: CL_DEVICE_MAX_WRITE_IMAGE_ARGS
+    type: cl_uint
+  - name: CL_DEVICE_MEM_BASE_ADDR_ALIGN
+    type: cl_uint
+  - name: CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE
+    type: cl_uint
+  - name: CL_DEVICE_NAME
+    type: char
+    string: true
+  - name: CL_DEVICE_PLATFORM
+    type: cl_platform_id
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE
+    type: cl_uint
+  - name: CL_DEVICE_PROFILE
+    type: char
+    string: true
+  - name: CL_DEVICE_PROFILING_TIMER_RESOLUTION
+    type: size_t
+  - name: CL_DEVICE_QUEUE_PROPERTIES
+    type: cl_command_queue_properties
+  - name: CL_DEVICE_SINGLE_FP_CONFIG
+    type: cl_device_fp_config
+  - name: CL_DEVICE_TYPE
+    type: cl_device_type
+  - name: CL_DEVICE_VENDOR
+    type: char
+    string: true
+  - name: CL_DEVICE_VENDOR_ID
+    type: cl_uint
+  - name: CL_DEVICE_VERSION
+    type: char
+    string: true
+  - name: CL_DRIVER_VERSION
+    type: char
+    string: true
+  1_1:
+  - name: CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF
+    type: cl_uint
+  - name: CL_DEVICE_HOST_UNIFIED_MEMORY
+    type: cl_bool
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_CHAR
+    type: cl_uint
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_SHORT
+    type: cl_uint
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_INT
+    type: cl_uint
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_LONG
+    type: cl_uint
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT
+    type: cl_uint
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE
+    type: cl_uint
+  - name: CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF
+    type: cl_uint
+  - name: CL_DEVICE_OPENCL_C_VERSION
+    type: char
+    string: true
+  1_2:
+  - name: CL_DEVICE_LINKER_AVAILABLE
+    type: cl_bool
+  - name: CL_DEVICE_BUILT_IN_KERNELS
+    type: char
+    string: true
+  - name: CL_DEVICE_IMAGE_MAX_BUFFER_SIZE
+    type: size_t
+  - name: CL_DEVICE_IMAGE_MAX_ARRAY_SIZE
+    type: size_t
+  - name: CL_DEVICE_PARENT_DEVICE
+    type: cl_device_id
+  - name: CL_DEVICE_PARTITION_MAX_SUB_DEVICES
+    type: cl_uint
+  - name: CL_DEVICE_PARTITION_PROPERTIES
+    type: cl_device_partition_property
+    array: true
+  - name: CL_DEVICE_PARTITION_AFFINITY_DOMAIN
+    type: cl_device_affinity_domain
+  - name: CL_DEVICE_PARTITION_TYPE
+    type: cl_device_partition_property
+    array: true
+  - name: CL_DEVICE_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_INTEROP_USER_SYNC
+    type: cl_bool
+  - name: CL_DEVICE_PRINTF_BUFFER_SIZE
+    type: size_t
+  2_0:
+  - name: CL_DEVICE_IMAGE_PITCH_ALIGNMENT
+    type: cl_uint
+  - name: CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT
+    type: cl_uint
+  - name: CL_DEVICE_MAX_READ_WRITE_IMAGE_ARGS
+    type: cl_uint
+  - name: CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE
+    type: size_t
+  - name: CL_DEVICE_QUEUE_ON_DEVICE_PROPERTIES
+    type: cl_command_queue_properties
+  - name: CL_DEVICE_QUEUE_ON_DEVICE_PREFERRED_SIZE
+    type: cl_uint
+  - name: CL_DEVICE_QUEUE_ON_DEVICE_MAX_SIZE
+    type: cl_uint
+  - name: CL_DEVICE_MAX_ON_DEVICE_QUEUES
+    type: cl_uint
+  - name: CL_DEVICE_MAX_ON_DEVICE_EVENTS
+    type: cl_uint
+  - name: CL_DEVICE_SVM_CAPABILITIES
+    type: cl_device_svm_capabilities
+  - name: CL_DEVICE_GLOBAL_VARIABLE_PREFERRED_TOTAL_SIZE
+    type: size_t
+  - name: CL_DEVICE_MAX_PIPE_ARGS
+    type: cl_uint
+  - name: CL_DEVICE_PIPE_MAX_ACTIVE_RESERVATIONS
+    type: cl_uint
+  - name: CL_DEVICE_PIPE_MAX_PACKET_SIZE
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_PLATFORM_ATOMIC_ALIGNMENT
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_GLOBAL_ATOMIC_ALIGNMENT
+    type: cl_uint
+  - name: CL_DEVICE_PREFERRED_LOCAL_ATOMIC_ALIGNMENT
+    type: cl_uint
+  2_1:
+  - name: CL_DEVICE_IL_VERSION
+    type: char
+    string: true
+  - name: CL_DEVICE_MAX_NUM_SUB_GROUPS
+    type: cl_uint
+  - name: CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS
+    type: cl_bool
+cl_context_info:
+  1_0:
+  - name: CL_CONTEXT_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_CONTEXT_DEVICES
+    type: cl_device_id
+    array: true
+  - name: CL_CONTEXT_PROPERTIES
+    type: cl_context_properties
+    array: true
+  1_1:
+  - name: CL_CONTEXT_NUM_DEVICES
+    type: cl_uint
+cl_command_queue_info:
+  1_0:
+  - name: CL_QUEUE_CONTEXT
+    type: cl_context
+  - name: CL_QUEUE_DEVICE
+    type: cl_device_id
+  - name: CL_QUEUE_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_QUEUE_PROPERTIES
+    type: cl_command_queue_properties
+  2_0:
+  - name: CL_QUEUE_SIZE
+    type: cl_uint
+  2_1:
+  - name: CL_QUEUE_DEVICE_DEFAULT
+    type: cl_command_queue
+cl_mem_info:
+  1_0:
+  - name: CL_MEM_TYPE
+    type: cl_mem_object_type
+  - name: CL_MEM_FLAGS
+    type: cl_mem_flags
+  - name: CL_MEM_SIZE
+    type: size_t
+  - name: CL_MEM_HOST_PTR
+    type: void
+    pointer: true
+  - name: CL_MEM_MAP_COUNT
+    type: cl_uint
+  - name: CL_MEM_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_MEM_CONTEXT
+    type: cl_context
+  1_1:
+  - name: CL_MEM_ASSOCIATED_MEMOBJECT
+    type: cl_mem
+  - name: CL_MEM_OFFSET
+    type: size_t
+  2_0:
+  - name: CL_MEM_USES_SVM_POINTER
+    type: cl_bool
+cl_image_info:
+  1_0:
+  - name: CL_IMAGE_FORMAT
+    type: cl_image_format
+  - name: CL_IMAGE_ELEMENT_SIZE
+    type: size_t
+  - name: CL_IMAGE_ROW_PITCH
+    type: size_t
+  - name: CL_IMAGE_SLICE_PITCH
+    type: size_t
+  - name: CL_IMAGE_WIDTH
+    type: size_t
+  - name: CL_IMAGE_HEIGHT
+    type: size_t
+  - name: CL_IMAGE_DEPTH
+    type: size_t
+  1_2:
+  - name: CL_IMAGE_ARRAY_SIZE
+    type: size_t
+  - name: CL_IMAGE_BUFFER
+    type: cl_mem
+  - name: CL_IMAGE_NUM_MIP_LEVELS
+    type: cl_uint
+  - name: CL_IMAGE_NUM_SAMPLES
+    type: cl_uint
+cl_pipe_info:
+  2_0:
+  - name: CL_PIPE_PACKET_SIZE
+    type: cl_uint
+  - name: CL_PIPE_MAX_PACKETS
+    type: cl_uint
+cl_sampler_info:
+  1_0:
+  - name: CL_SAMPLER_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_SAMPLER_CONTEXT
+    type: cl_context
+  - name: CL_SAMPLER_NORMALIZED_COORDS
+    type: cl_bool
+  - name: CL_SAMPLER_ADDRESSING_MODE
+    type: cl_addressing_mode
+  - name: CL_SAMPLER_FILTER_MODE
+    type: cl_filter_mode
+  2_0:
+  - name: CL_SAMPLER_MIP_FILTER_MODE
+    type: cl_filter_mode
+  - name: CL_SAMPLER_LOD_MIN
+    type: cl_float
+  - name: CL_SAMPLER_LOD_MAX
+    type: cl_float
+cl_program_info:
+  1_0:
+  - name: CL_PROGRAM_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_PROGRAM_CONTEXT
+    type: cl_context
+  - name: CL_PROGRAM_NUM_DEVICES
+    type: cl_uint
+  - name: CL_PROGRAM_DEVICES
+    type: cl_device_id
+    array: true
+  - name: CL_PROGRAM_SOURCE
+    type: char
+    string: true
+  - name: CL_PROGRAM_BINARY_SIZES
+    type: size_t
+    array: true
+  - name: CL_PROGRAM_BINARIES
+    type: char
+    pointer: true
+    array: true
+  1_2:
+  - name: CL_PROGRAM_NUM_KERNELS
+    type: cl_uint
+  - name: CL_PROGRAM_KERNEL_NAMES
+    type: char
+    string: true
+  2_1:
+  - name: CL_PROGRAM_IL
+    type: char
+    array: true
+  - name: CL_PROGRAM_SCOPE_GLOBAL_CTORS_PRESENT
+    type: cl_bool
+  - name: CL_PROGRAM_SCOPE_GLOBAL_DTORS_PRESENT
+    type: cl_bool
+cl_program_build_info:
+  1_0:
+  - name: CL_PROGRAM_BUILD_STATUS
+    type: cl_build_status
+  - name: CL_PROGRAM_BUILD_OPTIONS
+    type: char
+    string: true
+  - name: CL_PROGRAM_BUILD_LOG
+    type: char
+    string: true
+  1_2:
+  - name: CL_PROGRAM_BINARY_TYPE
+    type: cl_program_binary_type
+  2_0:
+  - name: CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE
+    type: size_t
+cl_kernel_info:
+  1_0:
+  - name: CL_KERNEL_FUNCTION_NAME
+    type: char
+    string: true
+  - name: CL_KERNEL_NUM_ARGS
+    type: cl_uint
+  - name: CL_KERNEL_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_KERNEL_CONTEXT
+    type: cl_context
+  - name: CL_KERNEL_PROGRAM
+    type: cl_program
+  1_2:
+  - name: CL_KERNEL_ATTRIBUTES
+    type: char
+    string: true
+cl_kernel_arg_info:
+  1_2:
+  - name: CL_KERNEL_ARG_ADDRESS_QUALIFIER
+    type: cl_kernel_arg_address_qualifier
+  - name: CL_KERNEL_ARG_ACCESS_QUALIFIER
+    type: cl_kernel_arg_access_qualifier
+  - name: CL_KERNEL_ARG_TYPE_NAME
+    type: char
+    string: true
+  - name: CL_KERNEL_ARG_TYPE_QUALIFIER
+    type: cl_kernel_arg_type_qualifier
+  - name: CL_KERNEL_ARG_NAME
+    type: char
+    string: true
+cl_kernel_work_group_info:
+  1_0:
+  - name: CL_KERNEL_WORK_GROUP_SIZE
+    type: size_t
+  - name: CL_KERNEL_COMPILE_WORK_GROUP_SIZE
+    type: size_t
+    array: true
+  - name: CL_KERNEL_LOCAL_MEM_SIZE
+    type: cl_ulong
+  - name: CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE
+    type: size_t
+  - name: CL_KERNEL_PRIVATE_MEM_SIZE
+    type: cl_ulong
+  1_2:
+  - name: CL_KERNEL_GLOBAL_WORK_SIZE
+    type: size_t
+    array: true
+cl_event_info:
+  1_0:
+  - name: CL_EVENT_COMMAND_QUEUE
+    type: cl_command_queue
+  - name: CL_EVENT_COMMAND_TYPE
+    type: cl_command_type
+  - name: CL_EVENT_REFERENCE_COUNT
+    type: cl_uint
+  - name: CL_EVENT_COMMAND_EXECUTION_STATUS
+    type: cl_int
+  1_1:
+  - name: CL_EVENT_CONTEXT
+    type: cl_context
+cl_profiling_info:
+  1_0:
+  - name: CL_PROFILING_COMMAND_QUEUED
+    type: cl_ulong
+  - name: CL_PROFILING_COMMAND_SUBMIT
+    type: cl_ulong
+  - name: CL_PROFILING_COMMAND_START
+    type: cl_ulong
+  - name: CL_PROFILING_COMMAND_END
+    type: cl_ulong
+  2_0:
+  - name: CL_PROFILING_COMMAND_COMPLETE
+    type: cl_ulong
