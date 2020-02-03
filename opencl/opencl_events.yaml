@@ -1,6 +1,5 @@
 ---
-callbacks:
-  namespace: lttng_ust_opencl
+lttng_ust_opencl:
   events:
   - name: clBuildProgram_callback
     args:

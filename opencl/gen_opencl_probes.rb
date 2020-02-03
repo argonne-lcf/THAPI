@@ -97,9 +97,8 @@ $opencl_extension_commands.each { |c|
 puts <<EOF
 EOF
 
-callbacks = YAML::load_file("opencl_events.yaml")["callbacks"]
-
-namespace = callbacks["namespace"]
+namespace = "lttng_ust_opencl"
+callbacks = YAML::load_file("opencl_events.yaml")[namespace]
 callbacks["events"].each { |e|
   ["start", "stop"].each { |dir|
     print_tracepoint(namespace, e, dir)
