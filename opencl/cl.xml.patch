@@ -1,5 +1,5 @@
---- cl.xml	2020-01-28 11:16:14.063493089 -0600
-+++ cl.xml.patched	2020-01-30 16:44:29.116146562 -0600
+--- cl.xml	2020-01-28 18:16:14.063493089 +0100
++++ cl.xml.patched	2020-02-03 16:27:00.611331406 +0100
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -241,7 +241,26 @@
          </require>
          <require comment="cl_kernel_exec_info">
              <enum name="CL_KERNEL_EXEC_INFO_SVM_PTRS"/>
-@@ -4362,14 +4463,14 @@
+@@ -4171,16 +4272,14 @@
+         </require>
+         <require comment="cl_program_info">
+             <enum name="CL_PROGRAM_IL"/>
+         </require>
+-        <require comment="cl_kernel_info">
+-            <enum name="CL_KERNEL_MAX_NUM_SUB_GROUPS"/>
+-            <enum name="CL_KERNEL_COMPILE_NUM_SUB_GROUPS"/>
+-        </require>
+         <require comment="cl_kernel_sub_group_info">
+             <enum name="CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE"/>
+             <enum name="CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE"/>
+             <enum name="CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT"/>
++            <enum name="CL_KERNEL_MAX_NUM_SUB_GROUPS"/>
++            <enum name="CL_KERNEL_COMPILE_NUM_SUB_GROUPS"/>
+         </require>
+         <require comment="Platform APIs">
+             <command name="clSetDefaultDeviceCommandQueue"/>
+         </require>
+@@ -4362,14 +4461,14 @@
          <extension name="cl_khr_egl_image" supported="opencl">
              <require>
                  <type name="CL/cl.h"/>
@@ -258,7 +277,7 @@
                  <enum name="CL_EGL_RESOURCE_NOT_ACQUIRED_KHR"/>
              </require>
              <require comment="CLeglImageKHR is an opaque handle to an EGLImage">
-@@ -4591,9 +4692,9 @@
+@@ -4591,9 +4690,9 @@
              </require>
              <require comment="cl_device_partition_property_ext">
                  <type name="cl_mem_migration_flags_ext"/>
@@ -269,7 +288,7 @@
              </require>
              <require comment="cl_command_type">
                  <enum name="CL_COMMAND_MIGRATE_MEM_OBJECT_EXT"/>
-@@ -4678,12 +4779,12 @@
+@@ -4678,12 +4777,12 @@
          <extension name="cl_img_use_gralloc_ptr" supported="opencl">
              <require>
                  <type name="CL/cl.h"/>
@@ -284,7 +303,7 @@
                  <enum name="CL_COMMAND_RELEASE_GRALLOC_OBJECTS_IMG"/>
              </require>
              <require comment="Error codes">
-@@ -4755,9 +4856,9 @@
+@@ -4755,9 +4854,9 @@
              </require>
              <require comment="To be used by clGetEventInfo">
                  <type name="cl_import_properties_arm"/>
@@ -295,7 +314,7 @@
                  <enum name="CL_IMPORT_TYPE_HOST_ARM"/>
                  <enum name="CL_IMPORT_TYPE_DMA_BUF_ARM"/>
                  <enum name="CL_IMPORT_TYPE_PROTECTED_ARM"/>
-@@ -4790,32 +4891,32 @@
+@@ -4790,32 +4889,32 @@
                  <type name="cl_svm_mem_flags_arm"/>
                  <type name="cl_kernel_exec_info_arm"/>
                  <type name="cl_device_svm_capabilities_arm"/>
