@@ -17,13 +17,28 @@ cl.xml.patched: cl.xml
 	ruby ../utils/tracepoint_gen.rb 25 > ../utils/lttng/tracepoint_gen.h
 
 tracer_opencl.h: gen_opencl_header.rb
-	ruby gen_opencl_header.rb > tracer_opencl.h
+	ruby gen_opencl_header.rb > $@
 
-opencl_model.yaml: gen_opencl_model.rb opencl_model.rb $(ML_FILES) cl.xml.patched opencl_events.yaml opencl_tracepoints.rb
-	ruby gen_opencl_model.rb > opencl_model.yaml
+opencl_model.yaml: gen_opencl_model.rb opencl_model.rb $(ML_FILES) cl.xml.patched opencl_wrapper_events.yaml opencl_tracepoints.rb
+	ruby gen_opencl_model.rb > $@
 
-opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched opencl_tracepoints.rb opencl_events.yaml
-	ruby gen_opencl_probes.rb > opencl_tracepoints.tp
+opencl_tracepoints.tp: gen_opencl_probes.rb opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched opencl_tracepoints.rb opencl_wrapper_events.yaml
+	ruby gen_opencl_probes.rb > $@
+
+opencl_build.tp: gen_opencl_custom_probes.rb opencl_events.yaml
+	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_build > $@
+
+opencl_arguments.tp: gen_opencl_custom_probes.rb opencl_events.yaml
+	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_arguments > $@
+
+opencl_dump.tp: gen_opencl_custom_probes.rb opencl_events.yaml
+	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_dump > $@
+
+opencl_profiling.tp: gen_opencl_custom_probes.rb opencl_events.yaml
+	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_profiling > $@
+
+opencl_source.tp: gen_opencl_custom_probes.rb opencl_events.yaml
+	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_source > $@
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
@@ -35,5 +50,5 @@ tracer_opencl.so: ../utils/lttng/tracepoint_gen.h tracer_opencl.c $(OPENCL_PROBE
 	gcc -g -O3 -Wall -Wextra -Werror -I./ -I../utils/ -o tracer_opencl.so -shared -fPIC -Wl,--version-script,tracer_opencl.map tracer_opencl.c $(OPENCL_PROBES_OBJS) -llttng-ust -ldl -lffi
 
 clean:
-	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so opencl_tracepoints.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) cl.xml.patched opencl_model.yaml
+	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so *.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) cl.xml.patched opencl_model.yaml
 	$(MAKE) -C ../utils clean

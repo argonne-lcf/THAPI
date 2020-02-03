@@ -1,85 +1,236 @@
 ---
-lttng_ust_opencl:
+lttng_ust_opencl_build:
   events:
-  - name: clBuildProgram_callback
+  - name: objects
     args:
     - [ cl_program, program ]
-    - [ "void *", user_data ]
-    start:
+    - [ cl_device_id, device ]
+    - [ size_t, size ]
+    - [ "char *", path ]
+    fields:
     - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-  - name: clCompileProgram_callback
+    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer, size_t, size, size ]
+    - [ ctf_string, path, path ]
+  - name: binaries
     args:
     - [ cl_program, program ]
-    - [ "void *", user_data ]
-    start:
+    - [ cl_device_id, device ]
+    - [ size_t, size ]
+    - [ "char *", path ]
+    fields:
     - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-  - name: clLinkProgram_callback
+    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer, size_t, size, size ]
+    - [ ctf_string, path, path ]
+  - name: infos
     args:
     - [ cl_program, program ]
-    - [ "void *", user_data ]
-    start:
+    - [ cl_device_id, device ]
+    - [ cl_build_status, build_status ]
+    - [ "char *", build_options ]
+    - [ "char *", build_log ]
+    fields:
     - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-  - name: clCreateContext_callback
-    args:
-    - [ "const char *", errinfo ]
-    - [ "const void *", private_info ]
-    - [ size_t, cb, ]
-    - [ "void *", user_data ]
-    start:
-    - [ ctf_integer_hex, intptr_t, errinfo, "(intptr_t)errinfo" ]
-    - [ ctf_integer_hex, intptr_t, private_info, "(intptr_t)private_info" ]
-    - [ ctf_integer, size_t, cb, cb ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-    - [ ctf_string, errinfo_val, errinfo ]
-    - [ ctf_sequence_text, uint8_t, private_info_vals, private_info, size_t, "(private_info ? cb : 0)" ]
-  - name: clCreateContextFromType_callback
-    args:
-    - [ "const char *", errinfo ]
-    - [ "const void *", private_info ]
-    - [ size_t, cb, ]
-    - [ "void *", user_data ]
-    start:
-    - [ ctf_integer_hex, intptr_t, errinfo, "(intptr_t)errinfo" ]
-    - [ ctf_integer_hex, intptr_t, private_info, "(intptr_t)private_info" ]
-    - [ ctf_integer, size_t, cb, cb ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-    - [ ctf_string, errinfo_val, errinfo ]
-    - [ ctf_sequence_text, uint8_t, private_info_vals, private_info, size_t, "(private_info ? cb : 0)" ]
-  - name: clSetMemObjectDestructorCallback_callback
-    args:
-    - [ cl_mem, memobj ]
-    - [ "void *", user_data ]
-    start:
-    - [ ctf_integer_hex, intptr_t, memobj, "(intptr_t)memobj" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-  - name: clSetProgramReleaseCallback_callback
+    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer, cl_build_status, build_status, build_status ]
+    - [ ctf_string, build_options, build_options ]
+    - [ ctf_string, build_log, build_log ]
+  - name: infos_1_2
     args:
     - [ cl_program, program ]
-    - [ "void *", user_data ]
-    start:
+    - [ cl_device_id, device ]
+    - [ cl_program_binary_type, binary_type ]
+    fields:
     - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-  - name: clSetEventCallback_callback
+    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer, cl_program_binary_type, binary_type, binary_type ]
+  - name: infos_2_0
+    args:
+    - [ cl_program, program ]
+    - [ cl_device_id, device ]
+    - [ size_t, build_global_variable_total_size ]
+    fields:
+    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
+    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer, size_t, build_global_variable_total_size, build_global_variable_total_size ]
+lttng_ust_opencl_arguments:
+  events:
+  - name: argument_info
+    args:
+    - [ cl_kernel, kernel ]
+    - [ cl_uint, arg_indx ]
+    - [ cl_kernel_arg_address_qualifier, address_qualifier ]
+    - [ cl_kernel_arg_access_qualifier, access_qualifier ]
+    - [ "char *", type_name ]
+    - [ cl_kernel_arg_type_qualifier, type_qualifier ]
+    - [ "char *", name ]
+    fields:
+    - [ ctf_integer_hex, intptr_t, kernel, "(intptr_t)kernel" ]
+    - [ ctf_integer, cl_uint, arg_indx, arg_indx ]
+    - [ ctf_integer, cl_kernel_arg_address_qualifier, address_qualifier, address_qualifier ]
+    - [ ctf_integer, cl_kernel_arg_access_qualifier, access_qualifier, access_qualifier ]
+    - [ ctf_string, type_name, type_name ]
+    - [ ctf_integer, cl_kernel_arg_type_qualifier, type_qualifier, type_qualifier ]
+    - [ ctf_string, name, name ]
+  - name: kernel_info
+    args:
+    - [ cl_kernel, kernel ]
+    - [ "char *", function_name ]
+    - [ cl_uint, num_args ]
+    - [ cl_context, context ]
+    - [ cl_program, program ]
+    - [ "char *", attibutes ]
+    fields:
+    - [ ctf_integer_hex, intptr_t, kernel, "(intptr_t)kernel" ]
+    - [ ctf_string, function_name, function_name ]
+    - [ ctf_integer, cl_uint, num_args, num_args ]
+    - [ ctf_integer_hex, intptr_t, context, "(intptr_t)context" ]
+    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
+    - [ ctf_string, attibutes, attibutes ]
+lttng_ust_opencl_dump:
+  enums:
+  - name: dump_enum
+    values:
+    - [ ctf_enum_value, BEFORE, 0 ]
+    - [ ctf_enum_value, AFTER, 1 ]
+  events:
+  - name: enqueue_counter
+    args:
+    - [ uint64_t, enqueue_counter ]
+    fields:
+    - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
+  - name: kernel_arg_value
+    args:
+    - [ uint64_t, enqueue_counter ]
+    - [ cl_uint, arg_index ]
+    - [ size_t, arg_size ]
+    - [ "void *", arg_value ]
+    fields:
+    - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
+    - [ ctf_integer, cl_uint, arg_index, arg_index ]
+    - [ ctf_integer, size_t, arg_size, arg_size ]
+    - [ ctf_sequence_text, uint8_t, arg_value, arg_value, size_t, "arg_value == NULL ? 0 : arg_size" ]
+  - name: svmptr_dump_event
+    args:
+    - [ uint64_t, enqueue_counter ]
+    - [ cl_uint, arg_index ]
+    - [ int, direction ]
+    - [ "void *", buffer ]
+    - [ int, status ]
+    - [ cl_event, event ]
+    fields:
+    - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
+    - [ ctf_integer, cl_uint, arg_index, arg_index ]
+    - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
+    - [ ctf_integer_hex, intptr_t, buffer, "(intptr_t)buffer" ]
+    - [ ctf_integer, int, status, status ]
+    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+  - name: svmptr_dump_result
+    args:
+    - [ uint64_t, enqueue_counter ]
+    - [ cl_uint, arg_index ]
+    - [ int, direction ]
+    - [ cl_event, event ]
+    - [ cl_int, status ]
+    - [ size_t, size ]
+    - [ "char *", path ]
+    fields:
+    - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
+    - [ ctf_integer, cl_uint, arg_index, arg_index ]
+    - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
+    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer, int, status, status ]
+    - [ ctf_integer, size_t, size, size ]
+    - [ ctf_string, path, path ]
+  - name: buffer_dump_event
+    args:
+    - [ uint64_t, enqueue_counter ]
+    - [ cl_uint, arg_index ]
+    - [ int, direction ]
+    - [ cl_mem, buffer ]
+    - [ int, status ]
+    - [ cl_event, event ]
+    fields:
+    - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
+    - [ ctf_integer, cl_uint, arg_index, arg_index ]
+    - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
+    - [ ctf_integer_hex, intptr_t, buffer, "(intptr_t)buffer" ]
+    - [ ctf_integer, int, status, status ]
+    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+  - name: buffer_dump_result
+    args:
+    - [ uint64_t, enqueue_counter ]
+    - [ cl_uint, arg_index ]
+    - [ int, direction ]
+    - [ cl_event, event ]
+    - [ cl_int, status ]
+    - [ size_t, size ]
+    - [ "char *", path ]
+    fields:
+    - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
+    - [ ctf_integer, cl_uint, arg_index, arg_index ]
+    - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
+    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer, int, status, status ]
+    - [ ctf_integer, size_t, size, size ]
+    - [ ctf_string, path, path ]
+lttng_ust_opencl_profiling:
+  events:
+  - name: event_profiling
+    args:
+    - [ int, status ]
+    - [ cl_event, event ]
+    fields:
+    - [ ctf_integer, int, status, status ]
+    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+  - name: event_profiling_results
     args:
     - [ cl_event, event ]
-    - [ cl_int, type ]
-    - [ "void *", user_data ]
-    start:
+    - [ cl_int, event_command_exec_status ]
+    - [ cl_int, queued_status ]
+    - [ cl_ulong, queued ]
+    - [ cl_int, submit_status ]
+    - [ cl_ulong, submit ]
+    - [ cl_int, start_status ]
+    - [ cl_ulong, start ]
+    - [ cl_int, end_status ]
+    - [ cl_ulong, end ]
+    fields:
     - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
-    - [ ctf_integer, cl_int, type, type ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-  - name: clEnqueueSVMFree_callback
+    - [ ctf_integer, int, event_command_exec_status, event_command_exec_status ]
+    - [ ctf_integer, cl_int, queued_status, queued_status ]
+    - [ ctf_integer, cl_ulong, queued, queued ]
+    - [ ctf_integer, cl_int, submit_status, submit_status ]
+    - [ ctf_integer, cl_ulong, submit, submit ]
+    - [ ctf_integer, cl_int, start_status, start_status ]
+    - [ ctf_integer, cl_ulong, start, start ]
+    - [ ctf_integer, cl_int, end_status, end_status ]
+    - [ ctf_integer, cl_ulong, end, end ]
+lttng_ust_opencl_source:
+  events:
+  - name: program_string
     args:
-    - [ cl_command_queue, command_queue ]
-    - [ cl_uint, num_svm_pointers ]
-    - [ "void **", svm_pointers ]
-    - [ "void *", user_data ]
-    start:
-    - [ ctf_integer_hex, intptr_t, command_queue, "(intptr_t)command_queue" ]
-    - [ ctf_integer, cl_uint, num_svm_pointers, num_svm_pointers ]
-    - [ ctf_integer_hex, intptr_t, svm_pointers, "(intptr_t)svm_pointers" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-    - [ ctf_sequence_hex, intptr_t, svm_pointers_vals, svm_pointers, cl_uint, "svm_pointers ? num_svm_pointers : 0" ]
+    - [ int, index ]
+    - [ size_t , length ]
+    - [ "char *", path ]
+    fields:
+    - [ ctf_integer, int, index, index ]
+    - [ ctf_integer, size_t, length, length ]
+    - [ ctf_string, path, path ]
+  - name: program_binary
+    args:
+    - [ int, index ]
+    - [ size_t , length ]
+    - [ char *, path ]
+    fields:
+    - [ ctf_integer, int, index, index ]
+    - [ ctf_integer, size_t, length, length ]
+    - [ ctf_string, path, path ]
+  - name: program_il
+    args:
+    - [ const size_t, length ]
+    - [ "char *", path ]
+    fields:
+    - [ ctf_integer, size_t, length, length ]
+    - [ ctf_string, path, path ]

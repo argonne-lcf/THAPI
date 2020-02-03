@@ -31,11 +31,29 @@ class LTTng
 
 end
 
-def print_tracepoint(namespace, tp, dir)
+def print_enum(namespace, en)
+  puts <<EOF
+TRACEPOINT_ENUM(
+  #{namespace},
+  #{en["name"]},
+  TP_ENUM_VALUES(
+EOF
+  print "    "
+  puts en["values"].collect { |(f, sy, *args)|
+    "#{f}(#{sy.to_s.inspect}, #{args.join(", ")})"
+  }.join("\n    ")
+  puts <<EOF
+  )
+)
+
+EOF
+end
+
+def print_tracepoint(namespace, tp, dir = nil)
   puts <<EOF
 TRACEPOINT_EVENT(
   #{namespace},
-  #{tp["name"]}_#{dir},
+  #{tp["name"]}#{dir ? "_#{dir}" : ""},
   TP_ARGS(
 EOF
   print "    "
@@ -49,6 +67,7 @@ EOF
   ),
   TP_FIELDS(
 EOF
+  dir = "fields" unless dir
   if tp[dir]
     print "    "
     puts tp[dir].collect { |(f, *args)| "#{f}(#{args.join(", ")})" }.join("\n    ")

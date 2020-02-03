@@ -149,8 +149,7 @@ event_lambda = lambda { |c, dir|
   }
 }
 
-YAML::load_file("opencl_events.yaml").each { |klass, h|
-  namespace = h["namespace"]
+YAML::load_file("opencl_wrapper_events.yaml").each { |namespace, h|
   h["events"].each { |e|
     ["start", "stop"].each { |dir|
       event = get_fields(e["args"], e[dir])

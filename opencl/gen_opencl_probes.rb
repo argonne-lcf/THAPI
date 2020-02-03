@@ -98,7 +98,7 @@ puts <<EOF
 EOF
 
 namespace = "lttng_ust_opencl"
-callbacks = YAML::load_file("opencl_events.yaml")[namespace]
+callbacks = YAML::load_file("opencl_wrapper_events.yaml")[namespace]
 callbacks["events"].each { |e|
   ["start", "stop"].each { |dir|
     print_tracepoint(namespace, e, dir)
