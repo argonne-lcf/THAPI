@@ -121,6 +121,8 @@ cl_device_info:
     type: size_t
   - name: CL_DEVICE_QUEUE_PROPERTIES
     type: cl_command_queue_properties
+  - name: CL_DEVICE_QUEUE_ON_HOST_PROPERTIES
+    type: cl_command_queue_properties
   - name: CL_DEVICE_SINGLE_FP_CONFIG
     type: cl_device_fp_config
   - name: CL_DEVICE_TYPE
@@ -229,6 +231,18 @@ cl_device_info:
     type: cl_uint
   - name: CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS
     type: cl_bool
+  cl_khr_spir:
+  - name: CL_DEVICE_SPIR_VERSIONS
+    type: char
+    string: true
+  cl_intel_required_subgroup_size:
+  - name: CL_DEVICE_SUB_GROUP_SIZES_INTEL
+    type: size_t
+    array: true
+  cl_khr_il_program:
+  - name: CL_DEVICE_IL_VERSION_KHR
+    type: char
+    string: true
 cl_context_info:
   1_0:
   - name: CL_CONTEXT_REFERENCE_COUNT
@@ -364,10 +378,15 @@ cl_program_info:
   - name: CL_PROGRAM_IL
     type: char
     array: true
+  2_2:
   - name: CL_PROGRAM_SCOPE_GLOBAL_CTORS_PRESENT
     type: cl_bool
   - name: CL_PROGRAM_SCOPE_GLOBAL_DTORS_PRESENT
     type: cl_bool
+  cl_khr_il_program:
+  - name: CL_PROGRAM_IL_KHR
+    type: char
+    array: true
 cl_program_build_info:
   1_0:
   - name: CL_PROGRAM_BUILD_STATUS
@@ -432,6 +451,9 @@ cl_kernel_work_group_info:
   - name: CL_KERNEL_GLOBAL_WORK_SIZE
     type: size_t
     array: true
+  cl_intel_required_subgroup_size:
+  - name: CL_KERNEL_SPILL_MEM_SIZE_INTEL
+    type: cl_ulong
 cl_kernel_sub_group_info:
   2_1:
   - name: CL_KERNEL_MAX_NUM_SUB_GROUPS
@@ -453,6 +475,9 @@ cl_kernel_sub_group_info:
     array: true
     input:
       type: size_t
+  cl_intel_required_subgroup_size:
+  - name: CL_KERNEL_COMPILE_SUB_GROUP_SIZE_INTEL
+    type: size_t
 cl_event_info:
   1_0:
   - name: CL_EVENT_COMMAND_QUEUE

@@ -79,7 +79,7 @@ event_lambda = lambda { |c, dir|
       lttng = p.lttng_in_type
       fname = LTTng.name(*lttng)
       if fname == "errcode_ret_val"
-        meta_field["type"] = "cl_int"
+        meta_field["type"] = "cl_errcode"
       elsif fname.match(/_val\z/)
         pname = fname.gsub(/_val\z/, "")
         meta_field["type"] = params[pname]["type"]
@@ -113,12 +113,12 @@ event_lambda = lambda { |c, dir|
       fname = LTTng.name(*lttng)
       fields[fname] = field
     end
-    c.meta_parameters.select { |p| p.lttng_out_type }.each { |p|
+    c.meta_parameters.select { |p| p.lttng_out_type && LTTng.name(*(p.lttng_out_type)) != "_param_name" }.each { |p|
       meta_field = {}
       lttng = p.lttng_out_type
       fname = LTTng.name(*lttng)
       if fname == "errcode_ret_val"
-        meta_field["type"] = "cl_int"
+        meta_field["type"] = "cl_errcode"
       elsif fname.match(/_val\z/)
         pname = fname.gsub(/_val\z/, "")
         meta_field["type"] = params[pname]["type"]

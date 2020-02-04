@@ -1,5 +1,5 @@
 --- cl.xml	2020-01-28 18:16:14.063493089 +0100
-+++ cl.xml.patched	2020-02-03 16:27:00.611331406 +0100
++++ cl.xml.patched	2020-02-04 16:10:11.271915944 +0100
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -277,7 +277,21 @@
                  <enum name="CL_EGL_RESOURCE_NOT_ACQUIRED_KHR"/>
              </require>
              <require comment="CLeglImageKHR is an opaque handle to an EGLImage">
-@@ -4591,9 +4690,9 @@
+@@ -4453,10 +4552,12 @@
+             </require>
+             <require comment="cl_device_info">
+                 <enum name="CL_DEVICE_IL_VERSION_KHR"/>
+             </require>
+-            <require comment="Program Object APIs">
++            <require comment="cl_program_info">
+                 <enum name="CL_PROGRAM_IL_KHR"/>
++            </require>
++            <require>
+                 <command name="clCreateProgramWithILKHR" comment="No EXT_SUFFIX?"/>
+             </require>
+         </extension>
+         <extension name="cl_khr_image2D_buffer" supported="opencl">
+@@ -4591,9 +4692,9 @@
              </require>
              <require comment="cl_device_partition_property_ext">
                  <type name="cl_mem_migration_flags_ext"/>
@@ -288,7 +302,7 @@
              </require>
              <require comment="cl_command_type">
                  <enum name="CL_COMMAND_MIGRATE_MEM_OBJECT_EXT"/>
-@@ -4678,12 +4777,12 @@
+@@ -4678,12 +4779,12 @@
          <extension name="cl_img_use_gralloc_ptr" supported="opencl">
              <require>
                  <type name="CL/cl.h"/>
@@ -303,7 +317,7 @@
                  <enum name="CL_COMMAND_RELEASE_GRALLOC_OBJECTS_IMG"/>
              </require>
              <require comment="Error codes">
-@@ -4755,9 +4854,9 @@
+@@ -4755,9 +4856,9 @@
              </require>
              <require comment="To be used by clGetEventInfo">
                  <type name="cl_import_properties_arm"/>
@@ -314,7 +328,7 @@
                  <enum name="CL_IMPORT_TYPE_HOST_ARM"/>
                  <enum name="CL_IMPORT_TYPE_DMA_BUF_ARM"/>
                  <enum name="CL_IMPORT_TYPE_PROTECTED_ARM"/>
-@@ -4790,32 +4889,32 @@
+@@ -4790,32 +4891,32 @@
                  <type name="cl_svm_mem_flags_arm"/>
                  <type name="cl_kernel_exec_info_arm"/>
                  <type name="cl_device_svm_capabilities_arm"/>

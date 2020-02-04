@@ -1,0 +1,217 @@
+#!/usr/bin/env ruby
+require 'babeltrace'
+require 'babeltrace/ctf'
+require 'yaml'
+require 'pp'
+
+c = Babeltrace::Context::new
+traces = c.add_traces(path: ARGV[0])
+
+puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
+
+opencl_model = YAML::load_file("./opencl_model.yaml")
+infos = YAML::load_file("./opencl_infos.yaml")
+enums_by_type = {}
+enums_by_value = {}
+enums_by_name = {}
+bitfields_by_type = {}
+
+class Bitfield
+  def self.to_s(v)
+    res = []
+    if v == 0
+      default self.const_get(:DEFAULT)
+      res.push default if default
+    else
+      s = self.const_get(:SPECIAL)
+      if s
+        n, s = s
+        if v & s == s
+          res.push n
+          v ^= s
+        end
+      end
+      self.const_get(:FLAGS).each { |n, f|
+        if f & v == f
+          res.push(n)
+          v ^= f
+        end
+      }
+      if v != 0
+        res.push(v)
+      end
+    end
+    res
+  end
+end
+
+enums = opencl_model["enums"].collect { |k, v|
+  hash = {}
+  v["values"].each { |n, str|
+    int =
+      begin
+        eval(str)
+      rescue
+        nil
+      end
+    hash[int] = n if int
+  }
+  k = v["type_name"] if v["type_name"]
+  enums_by_type[k] = hash
+  enums_by_value[k] = hash.invert
+  enums_by_name[v["trace_name"]] = hash if v["trace_name"]
+}
+
+bifields = opencl_model["bitfields"].collect { |k, v|
+  hash = {}
+  default = nil
+  special = nil
+  v["values"].each { |n, str|
+    int =
+      begin
+        eval(str)
+      rescue
+        nil
+      end
+    if int
+      if int > 0
+        if int.to_s(2).count("1") > 1
+          special = [n, int]
+        else
+          hash[n] = int
+        end
+      else
+        default = n
+      end
+    end
+  }
+  klass = Class::new(Bitfield) {
+    if default
+      self.const_set(:DEFAULT, default)
+    end
+    if special
+      self.const_set(:SPECIAL, special)
+    end
+    self.const_set(:FLAGS, hash)
+  }
+  bitfields_by_type[k] = klass
+}
+
+infos_type = {}
+
+type_map = {
+  "unsigned int" => "L",
+  "int" => "l",
+  "intptr_t" => "J",
+  "size_t" => "Q",
+  "cl_int" => "l",
+  "cl_uint" => "L",
+  "cl_long" => "q",
+  "cl_ulong" => "Q",
+  "cl_short" => "s",
+  "cl_ushort" => "S",
+  "cl_char" => "c",
+  "cl_uchar" => "C",
+  "cl_half" => "S",
+  "cl_float" => "f",
+  "cl_double" => "d"
+}
+opencl_model["objects"].each { |n|
+  type_map[n] = "J"
+}
+enums_by_type.keys.each { |n|
+  type_map[n] = "l"
+}
+bitfields_by_type.keys.each { |n|
+  type_map[n] = "Q"
+}
+
+infos.each { |inf, vers|
+  infos_type[inf] = {}
+  vers.each { |vername, list|
+    list.each { |i|
+      type =
+        if i["array"]
+          if i["pointer"]
+            ["J*", true]
+          elsif type_map[i["type"]]
+            [type_map[i["type"]] + "*", true]
+          else
+            nil
+          end
+        elsif i["string"]
+          ["Z*", false]
+        elsif i["pointer"]
+          ["J", false]
+        elsif type_map[i["type"]]
+          [type_map[i["type"]], false]
+        else
+          nil
+        end
+      infos_type[inf][enums_by_value[inf][i["name"]]] = type
+    }
+  }
+}
+
+events = {}
+traces.each { |t|
+  events[t.handle_id] = t.get_event_decl_list.collect(&:name).collect { |n|
+    [n, opencl_model["events"][n]]
+  }
+}
+
+event_lambdas = {}
+events.each { |handle, arr|
+  event_lambdas[handle] = arr.collect { |(n, v)|
+    src = <<EOF
+lambda { |defi|
+  {
+EOF
+  src << "  "
+  src << v.collect { |name, desc|
+    expr =
+      if name == "param_value_vals"
+        startn = n.gsub("_stop", "_start")
+        type = opencl_model["events"][startn]["param_name"]["type"]
+        "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+      elsif desc["array"]
+        if enums_by_type[desc["type"]]
+          "defi[\"#{name}\"].collect { |v| (tmp = enums_by_type[\"#{desc["type"]}\"][v]) ? tmp : v }"
+        elsif bitfields_by_type[desc["type"]]
+          "defi[\"#{name}\"].collect { |v| bitfields_by_type[\"#{desc["type"]}\"].to_s(v) }"
+        elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
+          "defi[\"#{name}\"].collect { |v| \"0x\#{v.to_s(16)}\" }"
+        else
+          "defi[\"#{name}\"]"
+        end
+      else
+        if enums_by_type[desc["type"]]
+          "(tmp = enums_by_type[\"#{desc["type"]}\"][defi[\"#{name}\"]]) ? tmp : defi[\"#{name}\"]"
+        elsif bitfields_by_type[desc["type"]]
+          "bitfields_by_type[\"#{desc["type"]}\"].to_s(defi[\"#{name}\"])"
+        elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
+          "\"0x\#{defi[\"#{name}\"].to_s(16)}\""
+        else
+          "defi[\"#{name}\"]"
+        end
+      end
+    "\"#{name}\" => (#{expr})"
+  }.join(",\n  ")
+  src << "\n"
+    src << <<EOF
+  }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
+}
+EOF
+    eval(src)
+  }
+}
+
+it = c.iter_create
+
+it.each { |ev|
+  name, descs = events[ev.handle_id][ev.id]
+  print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{name}: "
+  defi = ev.top_level_scope(:EVENT_FIELDS)
+  puts event_lambdas[ev.handle_id][ev.id].call(defi.value)
+}
+

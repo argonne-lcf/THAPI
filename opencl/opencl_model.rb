@@ -756,6 +756,24 @@ EOF
   end
 }
 
+class ParamName < MetaParameter
+  def initialize(c)
+    super(c, "param_name")
+    raise "Couldn't find variable param_name for #{c.prototype.name}!" unless c["param_name"]
+    @type = c["param_name"].type.gsub("*", "")
+  end
+
+  def lttng_out_type
+    ["ctf_integer_hex", @type, "_param_name", "param_name"]
+  end
+end
+
+($opencl_commands+$opencl_extension_commands).each { |c|
+  if c.prototype.name.match(/clGet(\w*?)Info\z/) && c["param_name"]
+    c.meta_parameters.push(ParamName::new(c))
+  end
+}
+
 register_epilogue "clCreateKernel", <<EOF
   if (do_dump && _retval != NULL) {
     add_kernel(_retval);
