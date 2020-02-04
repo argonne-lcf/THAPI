@@ -42,8 +42,8 @@ class TracerTest < Minitest::Test
     names = plats.collect(&:name)
     delete_session
     c = Babeltrace::Context::new
-    t = c.add_trace(path: "./traces/#{$counter}/ust/uid/1000/64-bit/")
-    it = t.iter_create
+    t = c.add_traces(path: "./traces/#{$counter}/")
+    it = c.iter_create
 
     assert_equal(4 + 2 * 2 * plats.size, it.each.count)
 
