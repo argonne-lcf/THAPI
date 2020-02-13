@@ -88,9 +88,13 @@ bifields = opencl_model["bitfields"].collect { |k, v|
   klass = Class::new(Bitfield) {
     if default
       self.const_set(:DEFAULT, default)
+    else
+      self.const_set(:DEFAULT, nil)
     end
     if special
       self.const_set(:SPECIAL, special)
+    else
+      self.const_set(:SPECIAL, nil)
     end
     self.const_set(:FLAGS, hash)
   }
@@ -199,7 +203,7 @@ EOF
   }.join(",\n  ")
   src << "\n"
     src << <<EOF
-  }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
+  }.collect { |k,v| "\#{k}: \#{v.inspect}"}.join(", ")
 }
 EOF
     eval(src)

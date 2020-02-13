@@ -111,6 +111,9 @@ event_lambda = lambda { |c, dir|
       lttng = c.prototype.lttng_return_type
       field["lttng"] = lttng[0]
       fname = LTTng.name(*lttng)
+      if fname == "errcode_ret_val"
+        field["type"] = "cl_errcode"
+      end
       fields[fname] = field
     end
     c.meta_parameters.select { |p| p.lttng_out_type && LTTng.name(*(p.lttng_out_type)) != "_param_name" }.each { |p|
