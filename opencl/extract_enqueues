@@ -103,8 +103,8 @@ def dump_enqueues(enqueues)
         arg_name = "arg_%02d" % arg_index
       end
       if arg[:size_buff]
-        FileUtils.cp(arg[:buff_in], File.join(dirname, arg_name + "_buff.in"))
-        FileUtils.cp(arg[:buff_out], File.join(dirname, arg_name + "_buff.out"))
+        FileUtils.cp(arg[:buff_in], File.join(dirname, arg_name + ".in"))
+        FileUtils.cp(arg[:buff_out], File.join(dirname, arg_name + ".out"))
       else
         File::open(File.join(dirname, arg_name + ".in"), "wb") { |f|
           f.write arg[:value]
