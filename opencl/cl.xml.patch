@@ -1,5 +1,5 @@
---- cl.xml	2020-01-28 18:16:14.063493089 +0100
-+++ cl.xml.patched	2020-02-04 16:10:11.271915944 +0100
+--- cl.xml	2020-01-28 11:16:14.063493089 -0600
++++ cl.xml.patched	2020-02-14 10:47:41.356261702 -0600
 @@ -186,16 +186,18 @@
          <type category="define">typedef <type>cl_uint</type>          <name>cl_event_info</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_command_type</name>;</type>
@@ -197,6 +197,17 @@
              <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>
              <param><type>cl_platform_id</type>             <name>platform</name></param>
              <param><type>cl_va_api_device_source_intel</type> <name>media_adapter_type</name></param>
+@@ -2760,9 +2861,9 @@
+         </command>
+         <command suffix="CL_API_SUFFIX__VERSION_1_2">
+             <proto><type>cl_int</type>                                  <name>clGetKernelArgInfo</name></proto>
+             <param><type>cl_kernel</type>                               <name>kernel</name></param>
+-            <param><type>cl_uint</type>                                 <name>arg_indx</name></param>
++            <param><type>cl_uint</type>                                 <name>arg_index</name></param>
+             <param><type>cl_kernel_arg_info</type>                      <name>param_name</name></param>
+             <param><type>size_t</type>                                  <name>param_value_size</name></param>
+             <param>void*                                                <name>param_value</name></param>
+             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
 @@ -3915,9 +4016,9 @@
              <enum name="CL_DEVICE_PARTITION_BY_COUNTS"/>
              <enum name="CL_DEVICE_PARTITION_BY_COUNTS_LIST_END"/>

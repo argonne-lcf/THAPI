@@ -59,7 +59,7 @@ lttng_ust_opencl_arguments:
   - name: argument_info
     args:
     - [ cl_kernel, kernel ]
-    - [ cl_uint, arg_indx ]
+    - [ cl_uint, arg_index ]
     - [ cl_kernel_arg_address_qualifier, address_qualifier ]
     - [ cl_kernel_arg_access_qualifier, access_qualifier ]
     - [ "char *", type_name ]
@@ -67,7 +67,7 @@ lttng_ust_opencl_arguments:
     - [ "char *", name ]
     fields:
     - [ ctf_integer_hex, intptr_t, kernel, "(intptr_t)kernel" ]
-    - [ ctf_integer, cl_uint, arg_indx, arg_indx ]
+    - [ ctf_integer, cl_uint, arg_index, arg_index ]
     - [ ctf_integer, cl_kernel_arg_address_qualifier, address_qualifier, address_qualifier ]
     - [ ctf_integer, cl_kernel_arg_access_qualifier, access_qualifier, access_qualifier ]
     - [ ctf_string, type_name, type_name ]
