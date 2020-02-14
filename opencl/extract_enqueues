@@ -1,0 +1,179 @@
+#!/usr/bin/env ruby
+require 'babeltrace'
+require 'babeltrace/ctf'
+require 'pp'
+require 'fileutils'
+require 'set'
+require 'yaml'
+
+c = Babeltrace::Context::new
+
+c.add_traces(path: ARGV[0] )
+
+it = c.iter_create
+
+
+def get_enqueues(it)
+
+  enqueues = Hash::new { |h, k| h[k] = {args: Hash::new {|h2, k2| h2[k2] = {} }, name: nil, source: nil,  type: nil} } 
+  kernels = {}
+  programs = {}
+
+  res = nil
+  kernel = nil
+  enqueue_counter = nil
+  program = nil
+  it.each { |ev|
+    defi = ev.top_level_scope(:EVENT_FIELDS)
+    next unless defi
+    v = defi.value
+    case ev.name
+    when "lttng_ust_opencl:clCreateProgramWithSource_start"
+      program = {}
+      program[:context] = v["context"]
+    when "lttng_ust_opencl:clCreateProgramWithIL_start"
+      program = {}
+      program[:context] = v["context"]
+      program[:type] = :il
+    when "lttng_ust_opencl_source:program_string", "lttng_ust_opencl_source:program_il"
+      program[:source] = v["path"]
+    when "lttng_ust_opencl:clCreateProgramWithIL_stop", "lttng_ust_opencl:clCreateProgramWithSource_stop"
+      if v["errcode_ret_val"] == 0
+        programs[v["program"]] = program
+      end
+      program = nil
+    when "lttng_ust_opencl:clCreateKernel_start"
+      kernel = {}
+      kernel[:name] = v["kernel_name_val"]
+      kernel[:program] = programs[v["program"]]
+      kernel[:arg_infos] = {}
+    when "lttng_ust_opencl:clCreateKernel_stop"
+      if v["errcode_ret_val"] == 0
+        kernels[v["kernel"]] = kernel
+      end
+      kernel = nil
+    when "lttng_ust_opencl_dump:kernel_arg_value"
+      enqueues[v["enqueue_counter"]][:args][v["arg_index"]] = {arg_size: v["arg_size"] , value:  v["arg_value"] }
+    when "lttng_ust_opencl_dump:buffer_dump_result"
+      r = enqueues[v["enqueue_counter"]][:args][v["arg_index"]]
+      r[:size_buff] = v["size"]
+      if v["direction"][1] == "BEFORE"
+        r[:buff_in] = v["path"]
+      else
+        r[:buff_out] = v["path"]
+      end
+    when "lttng_ust_opencl:clEnqueueNDRangeKernel_start"
+      res = {}
+      res[:kernel] = kernels[v["kernel"]]
+      res[:global_work_size] = v["global_work_size_vals"]
+      res[:global_work_offset] = v["global_work_offset_vals"]
+      res[:local_work_size] = v["local_work_size_vals"]
+    when "lttng_ust_opencl_dump:enqueue_counter"
+      if res
+        enqueue_counter = v["enqueue_counter"]
+        res2 = enqueues[enqueue_counter]
+        res.merge!(res2)
+      end
+    when "lttng_ust_opencl:clEnqueueNDRangeKernel_stop"
+      if v["errcode_ret_val"] == 0
+        enqueues[enqueue_counter] = res
+      end
+      enqueue_counter = nil
+      res = nil
+    when "lttng_ust_opencl_arguments:argument_info"
+      kernel[:arg_infos][v["arg_index"]] = { name: v["name"], type_name: v["type_name"] }
+    end
+  }
+  it.rewind
+  enqueues
+end
+
+def dump_enqueues(enqueues)
+  FileUtils.mkdir( "enqueue_data" ) unless Dir.exist?("enqueue_data")
+  enqueues.each { |enqueue_counter, enqueue|
+    kerdir = File.join("enqueue_data", "#{enqueue[:kernel][:name]}")
+    FileUtils.mkdir(kerdir) unless Dir.exist?( kerdir )
+    FileUtils.cp(enqueue[:kernel][:program][:source], File.join(kerdir, "source"))
+    dirname = File.join(kerdir, "#{enqueue_counter}")
+    FileUtils.mkdir(dirname) unless Dir.exist?( dirname )
+    enqueue[:args].each { |arg_index, arg|
+      if enqueue[:kernel][:arg_infos][arg_index]
+        arg_name = enqueue[:kernel][:arg_infos][arg_index][:name]
+      else
+        arg_name = "arg_%02d" % arg_index
+      end
+      if arg[:size_buff]
+        FileUtils.cp(arg[:buff_in], File.join(dirname, arg_name + "_buff.in"))
+        FileUtils.cp(arg[:buff_out], File.join(dirname, arg_name + "_buff.out"))
+      else
+        File::open(File.join(dirname, arg_name + ".in"), "wb") { |f|
+          f.write arg[:value]
+        }
+      end
+    }
+    File::open(File.join(dirname, "global_work_size"), "wb") { |f|
+      f.write enqueue[:global_work_size].pack("Q*")
+    }
+    File::open(File.join(dirname, "global_work_offset"), "wb") { |f|
+      f.write enqueue[:global_work_offset].pack("Q*")
+    }
+    File::open(File.join(dirname, "local_work_size"), "wb") { |f|
+      f.write enqueue[:local_work_size].pack("Q*")
+    }
+  }
+end
+
+def dump_replay(enqueues)
+  replay = {}
+  enqueues.each { |enqueue_counter, enqueue|
+    next if replay[enqueue[:kernel][:name]]
+    res = {"name" => enqueue[:kernel][:name], "arguments" => {}, "instances" => [ {"language" => "CL"} ], "data_sets" => [ "./enqueue_data/#{enqueue[:kernel][:name]}" ]}
+    enqueue[:args].each { |arg_index, arg|
+      arg_h = {}
+      if enqueue[:kernel][:arg_infos][arg_index]
+        arg_name = arg_h["name"] = enqueue[:kernel][:arg_infos][arg_index][:name]
+        if arg[:size_buff]
+          arg_h["type"] = enqueue[:kernel][:arg_infos][arg_index][:type_name].gsub(/\*\z/, "")
+          arg_h["array"] = true
+        else
+          arg_h["type"] = enqueue[:kernel][:arg_infos][arg_index][:type_name]
+          arg_h["size"] = arg[:arg_size]
+        end
+      else
+        arg_name = "arg_%02d" % arg_index
+        if arg[:size_buff]
+          arg_name << "_buff"
+          arg_h["type"] = "char"
+          arg_h["array"] = true
+        else
+          arg_h["type"] =
+            case arg[:arg_size]
+            when 8
+              "int64_t"
+            when 4
+              "int"
+            when 2
+              "short"
+            when 1
+              "char"
+            else
+              "char[#{arg[:arg_size]}]"
+            end
+        end
+      end
+      res["arguments"][arg_name] = arg_h
+    }
+    replay[enqueue[:kernel][:name]] = res
+    res["instances"].first["file"] = "./enqueue_data/#{enqueue[:kernel][:name]}/source"
+    res["instances"].first["il"] = true if enqueue[:kernel][:program][:type] == :il
+  }
+  replay.each { |name, h|
+    File::open("#{name}.kernel", "w") { |f|
+      f.write YAML::dump(h)
+    }
+  }
+end
+
+enqueues = get_enqueues(it)
+dump_enqueues(enqueues)
+dump_replay(enqueues)
