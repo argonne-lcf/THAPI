@@ -9,8 +9,8 @@ traces = c.add_traces(path: ARGV[0])
 
 puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
 
-opencl_model = YAML::load_file("./opencl_model.yaml")
-infos = YAML::load_file("./opencl_infos.yaml")
+opencl_model = YAML::load_file(File.join(File.dirname(__FILE__),"opencl_model.yaml"))
+infos = YAML::load_file(File.join(File.dirname(__FILE__),"./opencl_infos.yaml"))
 enums_by_type = {}
 enums_by_value = {}
 enums_by_name = {}
