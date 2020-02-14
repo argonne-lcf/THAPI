@@ -20,7 +20,7 @@ class Bitfield
   def self.to_s(v)
     res = []
     if v == 0
-      default self.const_get(:DEFAULT)
+      default = self.const_get(:DEFAULT)
       res.push default if default
     else
       s = self.const_get(:SPECIAL)
@@ -188,6 +188,8 @@ EOF
         else
           "defi[\"#{name}\"]"
         end
+      elsif desc["string"]
+        "defi[\"#{name}\"]"
       else
         if enums_by_type[desc["type"]]
           "(tmp = enums_by_type[\"#{desc["type"]}\"][defi[\"#{name}\"]]) ? tmp : defi[\"#{name}\"]"

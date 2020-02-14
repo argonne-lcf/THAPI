@@ -99,8 +99,14 @@ def get_field(args, field)
   end
   res["type"] = type
   res["pointer"] = pointer if pointer
-  res["array"] = true if LTTng.array?(*field)
-  res["string"] = true if LTTng.string?(*field)
+  if LTTng.array?(*field)
+    res["array"] = true
+    res.delete("pointer")
+  end
+  if LTTng.string?(*field)
+    res["string"] = true
+    res.delete("pointer")
+  end
   res["lttng"] = field[0]
   [ name, res ]
 end
