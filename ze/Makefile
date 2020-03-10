@@ -25,8 +25,11 @@ zet_api.yaml: $(shell find include/core include/tools -type f) extract_base.rb e
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
 
-tracer_ze.so: ../utils/lttng/tracepoint_gen.h $(ZE_OBJS) $(ZE_INCL)
-	echo nop
+tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb
+	ruby $< > $@
+
+tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
+	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_ze.so -shared -fPIC tracer_ze.c $(ZE_OBJS) -llttng-ust -ldl -lffi
 
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
 

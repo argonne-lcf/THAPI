@@ -303,6 +303,7 @@ class Command
   attr_reader :meta_parameters
   attr_reader :prologues
   attr_reader :epilogues
+  attr_reader :function
 
   def initialize(function)
     @function = function
@@ -320,12 +321,32 @@ class Command
     @function.name
   end
 
+  def decl_pointer(name = pointer_name)
+    YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
+  end
+
+  def decl
+    @function.to_s
+  end
+
+  def pointer_name
+    name + "_ptr"
+  end
+
+  def pointer_type_name
+    name + "_t"
+  end
+
   def type
     @function.type.type
   end
 
   def parameters
     @function.type.params
+  end
+
+  def init?
+    name.match(INIT_FUNCTIONS)
   end
 
   def has_return_type?
@@ -375,4 +396,12 @@ $ze_commands = ze_funcs_e.collect { |func|
 $zet_commands = zet_funcs_e.collect { |func|
   Command::new(func)
 }
+
+def upper_snake_case(str)
+  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
+end
+
+ZE_POINTER_NAMES = ($ze_commands + $zet_commands).collect { |c|
+  [c, upper_snake_case(c.pointer_name)]
+}.to_h
 
