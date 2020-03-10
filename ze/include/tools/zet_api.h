@@ -6,10 +6,6 @@
  *
  * @file zet_api.h
  *
- * @cond DEV
- * DO NOT EDIT: generated from /scripts/tools
- * @endcond
- *
  */
 #ifndef _ZET_API_H
 #define _ZET_API_H
@@ -25,10 +21,11 @@
 #include "zet_driver.h"
 #include "zet_device.h"
 #include "zet_cmdlist.h"
-#include "zet_metric.h"
+#include "zet_sysman.h"
 #include "zet_module.h"
 #include "zet_pin.h"
-#include "zet_sysman.h"
+#include "zet_metric.h"
+#include "zet_debug.h"
 #include "zet_tracing.h"
 
 #endif // _ZET_API_H
