@@ -1,7 +1,7 @@
 require_relative 'ze_model'
 require_relative 'gen_probe_base.rb'
 
-provider = :lttng_ust_ze
+provider = :lttng_ust_zet
 
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 220

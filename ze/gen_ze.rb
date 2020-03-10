@@ -56,7 +56,7 @@ EOF
 
 puts File::read("tracer_ze_helpers.include.c")
 
-common_block = lambda { |c|
+common_block = lambda { |c, provider|
   params = c.parameters.collect(&:name)
   tp_params = c.parameters.collect { |p|
     if p.type.kind_of?(YAMLCAst::Pointer) && p.type.type.kind_of?(YAMLCAst::Function)
@@ -73,7 +73,7 @@ common_block = lambda { |c|
     puts p.init
   }
   puts <<EOF
-  tracepoint(lttng_ust_ze, #{c.name}_start, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_start, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 
   c.prologues.each { |p|
@@ -95,11 +95,11 @@ EOF
     tp_params.push "_retval"
   end
   puts <<EOF
-  tracepoint(lttng_ust_ze, #{c.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 }
 
-($ze_commands + $zet_commands).each { |c|
+normal_wrapper = lambda { |c, provider|
   puts <<EOF
 #{c.decl} {
 EOF
@@ -108,7 +108,7 @@ EOF
   _init_tracer();
 EOF
   end
-  common_block.call(c)
+  common_block.call(c, provider)
   if c.has_return_type?
     puts <<EOF
   return _retval;
@@ -120,3 +120,9 @@ EOF
 EOF
 } 
 
+$ze_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_ze)
+}
+$zet_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_zet)
+}

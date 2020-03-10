@@ -4,6 +4,7 @@ lttng list --userspace
 lttng create my-userspace-ze-session
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 while true; do
   case "$1" in
     -- ) shift; break ;;
