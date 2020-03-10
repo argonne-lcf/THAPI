@@ -20,7 +20,7 @@
 #endif
 
 #if ZE_ENABLE_OCL_INTEROP
-#include <CL/cl.h>
+//#include <CL/cl.h>
 #endif
 
 #if defined(__cplusplus)

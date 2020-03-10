@@ -8,20 +8,18 @@ LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 provider = :lttng_ust_ze
 
 ze_api = YAMLCAst.from_yaml_ast(YAML::load_file("ze_api.yaml"))
-zex_api = YAMLCAst.from_yaml_ast(YAML::load_file("zex_api.yaml"))
 zet_api = YAMLCAst.from_yaml_ast(YAML::load_file("zet_api.yaml"))
 
 ze_funcs_e = ze_api["functions"]
-zex_funcs_e = zex_api["functions"]
 zet_funcs_e = zet_api["functions"]
 
 ze_types_e = ze_api["typedefs"]
-zex_types_e = zex_api["typedefs"]
 zet_types_e = zet_api["typedefs"]
 
-all_types = ze_types_e + zex_types_e + zet_types_e
-all_structs = ze_api["structs"] + zex_api["structs"] + zet_api["structs"]
+all_types = ze_types_e + zet_types_e
+all_structs = ze_api["structs"] + zet_api["structs"]
 
+CL_OBJECTS = %w(cl_platform_id cl_device_id cl_context cl_command_queue cl_mem cl_program cl_kernel cl_event cl_sampler)
 ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
   if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
@@ -188,7 +186,7 @@ module YAMLCAst
     def lttng_type
       ev = LTTNG::TracepointEvent::new
       case name
-      when *ZE_OBJECTS, *ZE_POINTER_TYPES
+      when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
         ev.macro = :ctf_integer_hex
         ev.type = :intptr_t
         ev.cast = "intptr_t"
@@ -253,7 +251,7 @@ module YAMLCAst
         ev.type = type.name
       when YAMLCAst::CustomType
         case type.name
-        when *ZE_OBJECTS, *ZE_POINTER_TYPES
+        when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :intptr_t
         when *ZE_INT_SCALARS
@@ -371,10 +369,6 @@ PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 $ze_commands = ze_funcs_e.collect { |func|
-  Command::new(func)
-}
-
-$zex_commands = zex_funcs_e.collect { |func|
   Command::new(func)
 }
 

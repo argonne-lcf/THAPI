@@ -208,139 +208,139 @@ typedef enum _ze_result_t
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_driver_uuid_t
-typedef struct _ze_driver_uuid_t ze_driver_uuid_t;
+/// typedef struct _ze_driver_uuid_t ze_driver_uuid_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_driver_properties_t
-typedef struct _ze_driver_properties_t ze_driver_properties_t;
+/// typedef struct _ze_driver_properties_t ze_driver_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_driver_ipc_properties_t
-typedef struct _ze_driver_ipc_properties_t ze_driver_ipc_properties_t;
+/// typedef struct _ze_driver_ipc_properties_t ze_driver_ipc_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_ipc_mem_handle_t
-typedef struct _ze_ipc_mem_handle_t ze_ipc_mem_handle_t;
+/// typedef struct _ze_ipc_mem_handle_t ze_ipc_mem_handle_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_ipc_event_pool_handle_t
-typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
+/// typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_uuid_t
-typedef struct _ze_device_uuid_t ze_device_uuid_t;
+/// typedef struct _ze_device_uuid_t ze_device_uuid_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_properties_t
-typedef struct _ze_device_properties_t ze_device_properties_t;
+/// typedef struct _ze_device_properties_t ze_device_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_compute_properties_t
-typedef struct _ze_device_compute_properties_t ze_device_compute_properties_t;
+/// typedef struct _ze_device_compute_properties_t ze_device_compute_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_native_kernel_uuid_t
-typedef struct _ze_native_kernel_uuid_t ze_native_kernel_uuid_t;
+/// typedef struct _ze_native_kernel_uuid_t ze_native_kernel_uuid_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_kernel_properties_t
-typedef struct _ze_device_kernel_properties_t ze_device_kernel_properties_t;
+/// typedef struct _ze_device_kernel_properties_t ze_device_kernel_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_memory_properties_t
-typedef struct _ze_device_memory_properties_t ze_device_memory_properties_t;
+/// typedef struct _ze_device_memory_properties_t ze_device_memory_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_memory_access_properties_t
-typedef struct _ze_device_memory_access_properties_t ze_device_memory_access_properties_t;
+/// typedef struct _ze_device_memory_access_properties_t ze_device_memory_access_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_cache_properties_t
-typedef struct _ze_device_cache_properties_t ze_device_cache_properties_t;
+/// typedef struct _ze_device_cache_properties_t ze_device_cache_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_image_properties_t
-typedef struct _ze_device_image_properties_t ze_device_image_properties_t;
+/// typedef struct _ze_device_image_properties_t ze_device_image_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_p2p_properties_t
-typedef struct _ze_device_p2p_properties_t ze_device_p2p_properties_t;
+/// typedef struct _ze_device_p2p_properties_t ze_device_p2p_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_command_queue_desc_t
-typedef struct _ze_command_queue_desc_t ze_command_queue_desc_t;
+/// typedef struct _ze_command_queue_desc_t ze_command_queue_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_command_list_desc_t
-typedef struct _ze_command_list_desc_t ze_command_list_desc_t;
+/// typedef struct _ze_command_list_desc_t ze_command_list_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_image_format_desc_t
-typedef struct _ze_image_format_desc_t ze_image_format_desc_t;
+/// typedef struct _ze_image_format_desc_t ze_image_format_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_image_desc_t
-typedef struct _ze_image_desc_t ze_image_desc_t;
+/// typedef struct _ze_image_desc_t ze_image_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_image_properties_t
-typedef struct _ze_image_properties_t ze_image_properties_t;
+/// typedef struct _ze_image_properties_t ze_image_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_module_constants_t
-typedef struct _ze_module_constants_t ze_module_constants_t;
+/// typedef struct _ze_module_constants_t ze_module_constants_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_module_desc_t
-typedef struct _ze_module_desc_t ze_module_desc_t;
+/// typedef struct _ze_module_desc_t ze_module_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_kernel_desc_t
-typedef struct _ze_kernel_desc_t ze_kernel_desc_t;
+/// typedef struct _ze_kernel_desc_t ze_kernel_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_kernel_properties_t
-typedef struct _ze_kernel_properties_t ze_kernel_properties_t;
+/// typedef struct _ze_kernel_properties_t ze_kernel_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_group_count_t
-typedef struct _ze_group_count_t ze_group_count_t;
+/// typedef struct _ze_group_count_t ze_group_count_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_event_pool_desc_t
-typedef struct _ze_event_pool_desc_t ze_event_pool_desc_t;
+/// typedef struct _ze_event_pool_desc_t ze_event_pool_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_event_desc_t
-typedef struct _ze_event_desc_t ze_event_desc_t;
+/// typedef struct _ze_event_desc_t ze_event_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_sampler_desc_t
-typedef struct _ze_sampler_desc_t ze_sampler_desc_t;
+/// typedef struct _ze_sampler_desc_t ze_sampler_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_device_mem_alloc_desc_t
-typedef struct _ze_device_mem_alloc_desc_t ze_device_mem_alloc_desc_t;
+/// typedef struct _ze_device_mem_alloc_desc_t ze_device_mem_alloc_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_host_mem_alloc_desc_t
-typedef struct _ze_host_mem_alloc_desc_t ze_host_mem_alloc_desc_t;
+/// typedef struct _ze_host_mem_alloc_desc_t ze_host_mem_alloc_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_memory_allocation_properties_t
-typedef struct _ze_memory_allocation_properties_t ze_memory_allocation_properties_t;
+/// typedef struct _ze_memory_allocation_properties_t ze_memory_allocation_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_fence_desc_t
-typedef struct _ze_fence_desc_t ze_fence_desc_t;
+/// typedef struct _ze_fence_desc_t ze_fence_desc_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_copy_region_t
-typedef struct _ze_copy_region_t ze_copy_region_t;
+/// typedef struct _ze_copy_region_t ze_copy_region_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_image_region_t
-typedef struct _ze_image_region_t ze_image_region_t;
+/// typedef struct _ze_image_region_t ze_image_region_t;
 
 
 #if defined(__cplusplus)
