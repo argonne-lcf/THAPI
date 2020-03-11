@@ -506,13 +506,17 @@ EOF
   end
 end
 
+# NULL terminated Key Value pairs
 class InNullArray < InArray
   def initialize(command, name)
     sname = "_#{name}_size"
     command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
   #{sname} = 0;
   if(#{name} != NULL) {
-    while(#{name}[#{sname}++] != 0);
+    while(#{name}[#{sname}] != 0) {
+      #{sname} += 2;
+    }
+    #{sname} ++;
   }
 EOF
     super(command, name, sname)
