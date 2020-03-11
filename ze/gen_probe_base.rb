@@ -30,6 +30,9 @@ EOF
     c.parameters.collect(&:lttng_type).compact.each { |r|
       fields.push(r.call_string)
     }
+    c.meta_parameters.collect(&:lttng_in_type).flatten.compact.each { |r|
+      fields.push(r.call_string)
+    }
   elsif dir == :stop
     r = c.type.lttng_type
     if r
@@ -37,6 +40,9 @@ EOF
       r.expression = "ze_result"
       fields.push(r.call_string)
     end
+    c.meta_parameters.collect(&:lttng_out_type).flatten.compact.each { |r|
+      fields.push(r.call_string)
+    }
   end
   puts "    " << fields.join("\n    ")
   puts <<EOF

@@ -1,0 +1,89 @@
+---
+meta_parameters:
+  zeDriverGet:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phDrivers, pCount ]
+  zeDriverGetApiVersion:
+    - [ OutScalar, version ]
+  zeDriverGetProperties:
+    - [ OutScalar, pDriverProperties ]
+  zeDriverGetIPCProperties:
+    - [ OutScalar, pIPCProperties ]
+  zeDriverGetExtensionFunctionAddress:
+    - [ InString, pFuncName ]
+    - [ OutScalar, pfunc ]
+  zeDeviceGet:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phDevices, pCount ]
+  zeDeviceGetSubDevices:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phSubdevices, pCount ]
+  zeDeviceGetProperties:
+    - [ OutScalar, pDeviceProperties ]
+  zeDeviceGetComputeProperties:
+    - [ OutScalar, pComputeProperties ]
+  zeDeviceGetKernelProperties:
+    - [ OutScalar, pKernelProperties ]
+  zeDeviceGetMemoryProperties:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pMemProperties, pCount ]
+  zeDeviceGetMemoryAccessProperties:
+    - [ OutScalar, pMemAccessProperties ]
+  zeDeviceGetCacheProperties:
+    - [ OutScalar, pCacheProperties ]
+  zeDeviceGetImageProperties:
+    - [ OutScalar, pImageProperties ]
+  zeDeviceGetP2PProperties:
+    - [ OutScalar, pP2PProperties ]
+  zeDeviceCanAccessPeer:
+    - [ OutScalar, value ]
+  zeCommandQueueCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phCommandQueue ]
+  zeCommandQueueExecuteCommandLists:
+    - [ InArray, phCommandLists, numCommandLists ]
+  zeCommandListCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phCommandList ]
+  zeCommandListCreateImmediate:
+    - [ InScalar, altdesc ]
+    - [ OutScalar, phCommandList ]
+  zeImageGetProperties:
+    - [ InScalar, desc ]
+    - [ OutScalar, pImageProperties ]
+  zeImageCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phImage ]
+  zeCommandListAppendBarrier:
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendMemoryRangesBarrier:
+    - [ InArray, pRangeSizes, numRanges ]
+    - [ InArray, pRanges, numRanges ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeModuleCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phModule ]
+    - [ OutScalar, phBuildLog ]
+  zeModuleBuildLogGetString:
+    - [ InOutScalar, pSize ]
+    - [ OutArray, pBuildLog, pSize ]
+  zeModuleGetNativeBinary:
+    - [ InOutScalar, pSize ]
+  zeModuleGetGlobalPointer:
+    - [ InString, pGlobalName ]
+    - [ OutScalar, pptr ]
+  zeModuleGetKernelNames:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pNames, pCount ]
+  zeKernelCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phKernel ]
+  zeModuleGetFunctionPointer:
+    - [ InString, pFunctionName ]
+    - [ OutScalar, pfnFunction ]
+  zeKernelSuggestGroupSize:
+    - [ OutScalar, groupSizeX ]
+    - [ OutScalar, groupSizeY ]
+    - [ OutScalar, groupSizeZ ]
+  zeKernelSuggestMaxCooperativeGroupCount:
+    - [ OutScalar, totalGroupCount ]

@@ -1,10 +1,13 @@
 .DELETE_ON_ERROR:
+.SUFFIXES:
 
 ZE_PROBES = ze_tracepoints zet_tracepoints
 ZE_TP = $(ZE_PROBES:=.tp)
 ZE_OBJS = $(ZE_PROBES:=.o)
 ZE_INCL = $(ZE_PROBES:=.h)
 ZE_SRC = $(ZE_PROBES:=.c)
+
+.SECONDARY: $(ZE_TP)
 
 all: tracer_ze.so
 
@@ -19,13 +22,13 @@ ze_api.yaml: $(shell find include/core -type f) extract_base.rb extract_ze.rb
 zet_api.yaml: $(shell find include/core include/tools -type f) extract_base.rb extract_zet.rb
 	ruby extract_zet.rb
 
-%.tp: %.rb ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb gen_probe_base.rb
-	ruby $< > $@
+%.tp: %.rb ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb gen_probe_base.rb ze_meta_parameters.yaml
+	ruby $*.rb > $@
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
 
-tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb
+tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb ze_meta_parameters.yaml
 	ruby $< > $@
 
 tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
@@ -34,5 +37,5 @@ tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
 
 clean:
-	rm -f ze_api.yaml zet_api.yaml $(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC)
+	rm -f ze_api.yaml zet_api.yaml $(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC) tracer_ze.c tracer_ze.so
 	$(MAKE) -C ../utils clean

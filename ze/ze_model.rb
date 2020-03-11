@@ -365,6 +365,142 @@ class Command
 
 end
 
+module In
+  def lttng_in_type
+    @lttng_in_type
+  end
+end
+
+module Out
+  def lttng_out_type
+    @lttng_out_type
+  end
+end
+
+class MetaParameter
+  attr_reader :name
+  attr_reader :command
+  def initialize(command, name)
+    @command = command
+    @name = name
+  end
+
+  def lttng_in_type
+    nil
+  end
+
+  def lttng_out_type
+    nil
+  end
+end
+
+class InString < MetaParameter
+  prepend In
+  def initialize(command, name)
+    super
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    ev = LTTNG::TracepointEvent::new
+    ev.macro = :ctf_string
+    ev.name = "#{name}_val"
+    ev.expression = "#{name}"
+    @lttng_in_type = ev
+  end
+end
+
+class ScalarMetaParameter < MetaParameter
+
+  def initialize(command, name)
+    super
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    st = t.type
+    lttngt = st.lttng_type
+    lttngt.name = name + "_val"
+    if lttngt.macro == :ctf_array_text
+      lttngt.macro = :ctf_sequence_text
+      lttngt.expression = "#{name}"
+      lttngt.length = "(#{name} == NULL ? 0 : #{lttngt.length})"
+      lttngt.length_type = "size_t"
+    else
+      lttngt.expression = "(#{name} == NULL ? 0 : *#{name})"
+    end
+    @lttng_type = @lttng_type = lttngt
+  end
+end
+
+class InOutScalar < ScalarMetaParameter
+  prepend In
+  prepend Out
+  def initialize(command, name)
+    super
+    @lttng_out_type = @lttng_in_type = @lttng_type
+  end
+end
+
+class OutScalar < ScalarMetaParameter
+  prepend Out
+  def initialize(command, name)
+    super
+    @lttng_out_type = @lttng_type
+  end
+end
+
+class InScalar < ScalarMetaParameter
+  prepend In
+  def initialize(command, name)
+    super
+    @lttng_in_type = @lttng_type
+  end
+end
+
+class ArrayMetaParameter < MetaParameter
+  attr_reader :size
+
+  def initialize(command, name, size)
+    @size = size
+    super(command, name)
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    s = command[size]
+    raise "Invalid parameter: #{size} for #{command.name}!" unless s
+    if s.type.kind_of?(YAMLCAst::Pointer)
+      sz = "(#{size} == NULL ? 0 : #{name} == NULL ? 0 : *#{size})"
+      st = "#{s.type.type}"
+    else
+      sz = "(#{name} == NULL ? 0 : #{size})"
+      st = "#{s.type}"
+    end
+    y = YAMLCAst::Array::new(type: t.type)
+    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt.name = name + "_vals"
+    lttngt.expression = "#{name}"
+    @lttng_type = lttngt
+  end
+end
+
+class OutArray < ArrayMetaParameter
+  prepend Out
+  def initialize(command, name, size)
+    super
+    @lttng_out_type = @lttng_type
+  end
+end
+
+class InArray < ArrayMetaParameter
+  prepend In
+  def initialize(command, name, size)
+    super
+    @lttng_in_type = @lttng_type
+  end
+end
+
 def register_meta_parameter(method, type, *args)
   META_PARAMETERS[method].push [type, args]
 end
@@ -388,6 +524,13 @@ AUTO_META_PARAMETERS = []
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
+
+$meta_parameters = YAML::load_file("ze_meta_parameters.yaml")
+$meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
 
 $ze_commands = ze_funcs_e.collect { |func|
   Command::new(func)
