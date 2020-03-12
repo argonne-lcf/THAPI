@@ -87,3 +87,82 @@ meta_parameters:
     - [ OutScalar, groupSizeZ ]
   zeKernelSuggestMaxCooperativeGroupCount:
     - [ OutScalar, totalGroupCount ]
+  zeKernelSetArgumentValue:
+    - [ InArray, pArgValue, argSize ]
+  zeKernelSetAttribute:
+    - [ InArray, pValue, size ]
+  zeKernelGetAttribute:
+    - [ InOutScalar, pSize ]
+    - [ OutArray, pValue, pSize ]
+  zeKernelGetProperties:
+    - [ OutScalar, pKernelProperties ]
+  zeCommandListAppendLaunchKernel:
+    - [ InScalar, pLaunchFuncArgs ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendLaunchCooperativeKernel:
+    - [ InScalar, pLaunchFuncArgs ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendLaunchKernelIndirect:
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendLaunchMultipleKernelsIndirect:
+    - [ InArray, phKernels, numKernels ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeDeviceRegisterCLMemory:
+    - [ OutScalar, ptr ]
+  zeDeviceRegisterCLProgram:
+    - [ OutScalar, phModule ]
+  zeDeviceRegisterCLCommandQueue:
+    - [ OutScalar, phCommandQueue ]
+  zeEventPoolCreate:
+    - [ InScalar, desc ]
+    - [ InArray, phDevices, numDevices ]
+    - [ OutScalar, phEventPool ]
+  zeEventCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phEvent ]
+  zeEventPoolGetIpcHandle:
+    - [ OutScalar, phIpc ]
+  zeEventPoolOpenIpcHandle:
+    - [ OutScalar, phEventPool ]
+  zeCommandListAppendWaitOnEvents:
+    - [ InArray, phEvents, numEvents ]
+  zeEventGetTimestamp:
+    - [ OutScalar, dstptr, 'YAMLCAst::CustomType::new(name: "uint64_t")' ]
+  zeSamplerCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phSampler ]
+  zeDriverAllocSharedMem:
+    - [ InScalar, device_desc ]
+    - [ InScalar, host_desc ]
+    - [ OutScalar, pptr ]
+  zeDriverAllocDeviceMem:
+    - [ InScalar, device_desc ]
+    - [ OutScalar, pptr ]
+  zeDriverAllocHostMem:
+    - [ InScalar, host_desc ]
+    - [ OutScalar, pptr ]
+  zeDriverGetMemAllocProperties:
+    - [ OutScalar, pMemAllocProperties ]
+    - [ OutScalar, phDevice ]
+  zeDriverGetMemAddressRange:
+    - [ OutScalar, pBase ]
+    - [ OutScalar, pSize ]
+  zeDriverGetMemIpcHandle:
+    - [ OutScalar, pIpcHandle ]
+  zeDriverOpenMemIpcHandle:
+    - [ OutScalar, pptr ]
+  zeFenceCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phFence ]
+  zeCommandListAppendMemoryFill:
+    - [ InArray, pattern, pattern_size ]
+  zeCommandListAppendMemoryCopyRegion:
+    - [ InScalar, dstRegion ]
+    - [ InScalar, srcRegion ]
+  zeCommandListAppendImageCopyRegion:
+    - [ InScalar, pDstRegion ]
+    - [ InScalar, pSrcRegion ]
+  zeCommandListAppendImageCopyToMemory:
+    - [ InScalar, pSrcRegion ]
+  zeCommandListAppendImageCopyFromMemory:
+    - [ InScalar, pDstRegion ]

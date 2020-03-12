@@ -411,14 +411,20 @@ class InString < MetaParameter
 end
 
 class ScalarMetaParameter < MetaParameter
+  attr_reader :type
 
-  def initialize(command, name)
-    super
+  def initialize(command, name, type = nil)
+    super(command, name)
+    @type = type
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
     t = a.type
     raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    st = t.type
+    if type
+      st = eval(type)
+    else
+      st = t.type
+    end
     lttngt = st.lttng_type
     lttngt.name = name + "_val"
     if lttngt.macro == :ctf_array_text
@@ -426,6 +432,8 @@ class ScalarMetaParameter < MetaParameter
       lttngt.expression = "#{name}"
       lttngt.length = "(#{name} == NULL ? 0 : #{lttngt.length})"
       lttngt.length_type = "size_t"
+    elsif type
+      lttngt.expression = "(#{name} == NULL ? 0 : *(#{YAMLCAst::Pointer::new(type: st)})#{name})"
     else
       lttngt.expression = "(#{name} == NULL ? 0 : *#{name})"
     end
@@ -436,7 +444,7 @@ end
 class InOutScalar < ScalarMetaParameter
   prepend In
   prepend Out
-  def initialize(command, name)
+  def initialize(command, name, type = nil)
     super
     @lttng_out_type = @lttng_in_type = @lttng_type
   end
@@ -444,7 +452,7 @@ end
 
 class OutScalar < ScalarMetaParameter
   prepend Out
-  def initialize(command, name)
+  def initialize(command, name, type = nil)
     super
     @lttng_out_type = @lttng_type
   end
@@ -452,7 +460,7 @@ end
 
 class InScalar < ScalarMetaParameter
   prepend In
-  def initialize(command, name)
+  def initialize(command, name, type = nil)
     super
     @lttng_in_type = @lttng_type
   end
@@ -477,7 +485,12 @@ class ArrayMetaParameter < MetaParameter
       sz = "(#{name} == NULL ? 0 : #{size})"
       st = "#{s.type}"
     end
-    y = YAMLCAst::Array::new(type: t.type)
+    if t.type.kind_of?(YAMLCAst::Void)
+      tt = YAMLCAst::CustomType::new(name: "uint8_t")
+    else
+      tt = t.type
+    end
+    y = YAMLCAst::Array::new(type: tt)
     lttngt = y.lttng_type(length: sz, length_type: st)
     lttngt.name = name + "_vals"
     lttngt.expression = "#{name}"
