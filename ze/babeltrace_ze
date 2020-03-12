@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+require 'babeltrace'
+require 'babeltrace/ctf'
+require 'yaml'
+require 'pp'
+
+c = Babeltrace::Context::new
+traces = c.add_traces(path: ARGV[0])
+
+puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
+
+it = c.iter_create
+it.each { |ev|
+  print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{ev.name}: "
+  defi = ev.top_level_scope(:EVENT_FIELDS)
+  puts defi.value
+}
+
