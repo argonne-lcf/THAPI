@@ -28,7 +28,7 @@ all_types.each { |t|
 }
 ZE_INT_SCALARS = %w(intptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t ze_bool_t)
 ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
+ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t" ]
 ZE_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
 ZE_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
@@ -245,7 +245,7 @@ module YAMLCAst
         ev.type = type.name
       when YAMLCAst::Float
         ev.macro = :"ctf_#{lttng_arr_type}_hex"
-        ev.type = ZE_FLOAT_SCALARS_MAP[type.type.name]
+        ev.type = ZE_FLOAT_SCALARS_MAP[type.name]
       when YAMLCAst::Char
         ev.macro = :"ctf_#{lttng_arr_type}_text"
         ev.type = type.name
@@ -539,6 +539,7 @@ PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 $meta_parameters = YAML::load_file("ze_meta_parameters.yaml")
+$meta_parameters.merge! YAML::load_file("zet_meta_parameters.yaml")
 $meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args

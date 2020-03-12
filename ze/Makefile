@@ -22,13 +22,13 @@ ze_api.yaml: $(shell find include/core -type f) extract_base.rb extract_ze.rb
 zet_api.yaml: $(shell find include/core include/tools -type f) extract_base.rb extract_zet.rb
 	ruby extract_zet.rb
 
-%.tp: %.rb ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb gen_probe_base.rb ze_meta_parameters.yaml
+%.tp: %.rb ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb gen_probe_base.rb ze_meta_parameters.yaml zet_meta_parameters.yaml
 	ruby $*.rb > $@
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
 
-tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb ze_meta_parameters.yaml
+tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb ze_meta_parameters.yaml zet_meta_parameters.yaml
 	ruby $< > $@
 
 tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
