@@ -7,7 +7,9 @@ puts <<EOF
 #include <stdint.h>
 #include <stddef.h>
 #include <ze_api.h>
+#include <ze_ddi.h>
 #include <zet_api.h>
+#include <zet_ddi.h>
 #include <dlfcn.h>
 #include <dlfcn.h>
 #include <stdio.h>

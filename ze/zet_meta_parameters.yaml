@@ -248,3 +248,57 @@ meta_parameters:
     - [ InScalar, pCoreCbs ]
   zetTracerSetEpilogues:
     - [ InScalar, pCoreCbs ]
+  zetGetGlobalProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetDeviceProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetCommandListProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanPowerProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanFrequencyProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanEngineProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanStandbyProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanFirmwareProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanMemoryProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanFabricPortProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanTemperatureProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanPsuProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanFanProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanLedProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanRasProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanEventProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetSysmanDiagnosticsProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetModuleProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetKernelProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetMetricGroupProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetMetricProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetMetricTracerProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetMetricQueryPoolProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetMetricQueryProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetTracerProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetDebugProcAddrTable:
+    - [ OutScalar, pDdiTable]

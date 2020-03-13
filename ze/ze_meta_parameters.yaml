@@ -166,3 +166,29 @@ meta_parameters:
     - [ InScalar, pSrcRegion ]
   zeCommandListAppendImageCopyFromMemory:
     - [ InScalar, pDstRegion ]
+  zeGetGlobalProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetDriverProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetDeviceProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetCommandQueueProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetCommandListProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetImageProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetModuleProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetModuleBuildLogProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetKernelProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetEventPoolProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetEventProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetFenceProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetSamplerProcAddrTable:
+    - [ OutScalar, pDdiTable ]

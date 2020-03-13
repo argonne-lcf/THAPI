@@ -8,6 +8,7 @@ puts <<EOF
 #define ZE_ENABLE_OCL_INTEROP 1
 #include <CL/cl.h>
 #include <ze_api.h>
+#include <ze_ddi.h>
 EOF
 
 $ze_commands.each { |c|

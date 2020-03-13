@@ -538,9 +538,14 @@ META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
-$meta_parameters = YAML::load_file("ze_meta_parameters.yaml")
-$meta_parameters.merge! YAML::load_file("zet_meta_parameters.yaml")
-$meta_parameters["meta_parameters"].each  { |func, list|
+$ze_meta_parameters = YAML::load_file("ze_meta_parameters.yaml")
+$ze_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
+$zet_meta_parameters = YAML::load_file("zet_meta_parameters.yaml")
+$zet_meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   }

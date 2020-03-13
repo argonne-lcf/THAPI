@@ -40,7 +40,7 @@ module YAMLCAst
       @inline
     end
 
-    def initialize(name:, type:, init: nil, num_bits: nil, inline: nil, storage: nil)
+    def initialize(name: nil, type:, init: nil, num_bits: nil, inline: nil, storage: nil)
       @name = name
       @type = type
       @init = init
