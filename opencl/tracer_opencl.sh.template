@@ -1,26 +1,52 @@
 #!/bin/sh
-lttng-sessiond --daemonize
-lttng list --userspace
-lttng create my-userspace-opencl-session
-lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
 while true; do
   case "$1" in
-    -l | --lightweight ) shift; lttng disable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*;;
-    -p | --profiling ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*;;
-    -s | --source ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:* ;;
-    -a | --arguments ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*;;
-    -b | --build ) shift; lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:*;;
+    -l | --lightweight ) shift; lightweight=1;;
+    -p | --profiling ) shift; profiling=1;;
+    -s | --source ) shift; src=1;;
+    -a | --arguments ) shift; arguments=1;;
+    -b | --build ) shift; build=1;;
     -h | --host-profile) shift; export LTTNG_UST_OPENCL_HOST_PROFILE=1;;
     -d | --dump ) shift; export LTTNG_UST_OPENCL_DUMP=1;;
     -i | --iteration ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
     -s | --iteration-start ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; shift ;;
     -e | --iteration-end ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
+    -v | --visualize) shift; lttng_view=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
+lttng-sessiond --daemonize --quiet
+if [ ! -z "lttng_view" ]
+then
+  lttng-relayd --daemonize
+  lttng create my-userspace-opencl-session --live
+else
+  lttng create my-userspace-opencl-session
+fi
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
+if [ ! -z "$lightweight" ]
+then
+  lttng disable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
+fi
+if [ ! -z "$profiling" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
+fi
+if [ ! -z "$src" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:*
+fi
+if [ ! -z "$arguments" ]
+then
+ lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*
+fi
+if [ ! -z "$build" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:*
+fi
 if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
@@ -28,6 +54,10 @@ fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so:$LD_PRELOAD
 lttng start
+if [ ! -z "$lttng_view" ]
+then
+  lttng view &
+fi
 "$@"
 lttng stop
 lttng destroy
