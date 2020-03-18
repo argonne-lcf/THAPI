@@ -17,7 +17,7 @@ while true; do
   esac
 done
 lttng-sessiond --daemonize --quiet
-if [ ! -z "lttng_view" ]
+if [ ! -z "$lttng_view" ]
 then
   lttng-relayd --daemonize
   lttng create my-userspace-opencl-session --live
