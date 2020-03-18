@@ -1,19 +1,29 @@
 #!/bin/sh
-lttng-sessiond --daemonize
-lttng list --userspace
-lttng create my-userspace-ze-session
-lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 while true; do
   case "$1" in
+    -v | --visualize) shift; lttng_view=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
+lttng-sessiond --daemonize --quiet
+if [ ! -z "lttng_view" ]
+then
+  lttng-relayd --daemonize
+  lttng create my-userspace-ze-session --live
+else
+  lttng create my-userspace-ze-session
+fi
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=PATH_TO_LIB/tracer_ze.so:$LD_PRELOAD
 lttng start
+if [ ! -z "$lttng_view" ]
+then
+  lttng view &
+fi
 "$@"
 lttng stop
 lttng destroy
