@@ -26,10 +26,9 @@ else
 fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
-if [ ! -z "$lightweight" ]
+if [ -z "$lightweight" ]
 then
-  lttng disable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
 fi
 if [ ! -z "$profiling" ]
 then
