@@ -56,7 +56,12 @@ lttng start
 if [ ! -z "$lttng_view" ]
 then
   lttng view &
+  PID=$!
 fi
 "$@"
 lttng stop
 lttng destroy
+if [ ! -z "$lttng_view" ]
+then
+  wait $PID
+fi
