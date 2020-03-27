@@ -214,7 +214,7 @@ module YAMLCAst
     def full_name
       str = "enum"
       str << " #{name}" if name
-      str << " {#{members.join(", ")}" if members
+      str << " {#{members.join(", ")}}" if members
       str
     end
   end
