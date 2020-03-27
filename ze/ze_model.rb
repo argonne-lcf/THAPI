@@ -7,17 +7,20 @@ LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
 provider = :lttng_ust_ze
 
-ze_api = YAMLCAst.from_yaml_ast(YAML::load_file("ze_api.yaml"))
-zet_api = YAMLCAst.from_yaml_ast(YAML::load_file("zet_api.yaml"))
+$ze_api_yaml = YAML::load_file("ze_api.yaml")
+$zet_api_yaml = YAML::load_file("zet_api.yaml")
 
-ze_funcs_e = ze_api["functions"]
-zet_funcs_e = zet_api["functions"]
+$ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
+$zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
 
-ze_types_e = ze_api["typedefs"]
-zet_types_e = zet_api["typedefs"]
+ze_funcs_e = $ze_api["functions"]
+zet_funcs_e = $zet_api["functions"]
+
+ze_types_e = $ze_api["typedefs"]
+zet_types_e = $zet_api["typedefs"]
 
 all_types = ze_types_e + zet_types_e
-all_structs = ze_api["structs"] + zet_api["structs"]
+all_structs = $ze_api["structs"] + $zet_api["structs"]
 
 CL_OBJECTS = %w(cl_platform_id cl_device_id cl_context cl_command_queue cl_mem cl_program cl_kernel cl_event cl_sampler)
 ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
