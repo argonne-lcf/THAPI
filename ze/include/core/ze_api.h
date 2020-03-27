@@ -14,8 +14,8 @@
 #endif
 
 // standard headers
-//#include <stdint.h>
-//#include <stddef.h>
+#include <stdint.h>
+#include <stddef.h>
 
 // 'core' API headers
 #include "ze_common.h"

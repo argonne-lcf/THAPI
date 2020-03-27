@@ -1,0 +1,613 @@
+diff -ruN include/core/ze_api.h modified_include/core/ze_api.h
+--- include/core/ze_api.h	2020-03-27 10:49:22.228969825 -0500
++++ modified_include/core/ze_api.h	2020-03-10 10:45:15.698201540 -0500
+@@ -14,8 +14,8 @@
+ #endif
+ 
+ // standard headers
+-#include <stdint.h>
+-#include <stddef.h>
++//#include <stdint.h>
++//#include <stddef.h>
+ 
+ // 'core' API headers
+ #include "ze_common.h"
+@@ -34,4 +34,4 @@
+ #include "ze_fence.h"
+ #include "ze_copy.h"
+ 
+-#endif // _ZE_API_H
+\ No newline at end of file
++#endif // _ZE_API_H
+diff -ruN include/core/ze_cl_interop.h modified_include/core/ze_cl_interop.h
+--- include/core/ze_cl_interop.h	2020-03-27 10:49:22.236970035 -0500
++++ modified_include/core/ze_cl_interop.h	2020-03-10 11:47:07.057940419 -0500
+@@ -20,7 +20,7 @@
+ #endif
+ 
+ #if ZE_ENABLE_OCL_INTEROP
+-#include <CL/cl.h>
++//#include <CL/cl.h>
+ #endif
+ 
+ #if defined(__cplusplus)
+diff -ruN include/core/ze_common.h modified_include/core/ze_common.h
+--- include/core/ze_common.h	2020-03-27 10:49:22.244970245 -0500
++++ modified_include/core/ze_common.h	2020-03-27 10:47:26.157958885 -0500
+@@ -24,22 +24,22 @@
+ #endif
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+-#ifndef ZE_MAKE_VERSION
++//#ifndef ZE_MAKE_VERSION
+ /// @brief Generates generic 'One API' API versions
+-#define ZE_MAKE_VERSION( _major, _minor )  (( _major << 16 )|( _minor & 0x0000ffff))
+-#endif // ZE_MAKE_VERSION
++//#define ZE_MAKE_VERSION( _major, _minor )  (( _major << 16 )|( _minor & 0x0000ffff))
++//#endif // ZE_MAKE_VERSION
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+-#ifndef ZE_MAJOR_VERSION
++//#ifndef ZE_MAJOR_VERSION
+ /// @brief Extracts 'One API' API major version
+-#define ZE_MAJOR_VERSION( _ver )  ( _ver >> 16 )
+-#endif // ZE_MAJOR_VERSION
++//#define ZE_MAJOR_VERSION( _ver )  ( _ver >> 16 )
++//#endif // ZE_MAJOR_VERSION
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+-#ifndef ZE_MINOR_VERSION
++//#ifndef ZE_MINOR_VERSION
+ /// @brief Extracts 'One API' API minor version
+-#define ZE_MINOR_VERSION( _ver )  ( _ver & 0x0000ffff )
+-#endif // ZE_MINOR_VERSION
++//#define ZE_MINOR_VERSION( _ver )  ( _ver & 0x0000ffff )
++//#endif // ZE_MINOR_VERSION
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef __zecall
+@@ -154,10 +154,10 @@
+ } ze_ipc_event_pool_handle_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+-#ifndef ZE_BIT
++//#ifndef ZE_BIT
+ /// @brief Generic macro for enumerator bit masks
+-#define ZE_BIT( _i )  ( 1 << _i )
+-#endif // ZE_BIT
++//#define ZE_BIT( _i )  ( 1 << _i )
++//#endif // ZE_BIT
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Defines Return/Error codes
+@@ -208,139 +208,139 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_driver_uuid_t
+-typedef struct _ze_driver_uuid_t ze_driver_uuid_t;
++/// typedef struct _ze_driver_uuid_t ze_driver_uuid_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_driver_properties_t
+-typedef struct _ze_driver_properties_t ze_driver_properties_t;
++/// typedef struct _ze_driver_properties_t ze_driver_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_driver_ipc_properties_t
+-typedef struct _ze_driver_ipc_properties_t ze_driver_ipc_properties_t;
++/// typedef struct _ze_driver_ipc_properties_t ze_driver_ipc_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_ipc_mem_handle_t
+-typedef struct _ze_ipc_mem_handle_t ze_ipc_mem_handle_t;
++/// typedef struct _ze_ipc_mem_handle_t ze_ipc_mem_handle_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_ipc_event_pool_handle_t
+-typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
++/// typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_uuid_t
+-typedef struct _ze_device_uuid_t ze_device_uuid_t;
++/// typedef struct _ze_device_uuid_t ze_device_uuid_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_properties_t
+-typedef struct _ze_device_properties_t ze_device_properties_t;
++/// typedef struct _ze_device_properties_t ze_device_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_compute_properties_t
+-typedef struct _ze_device_compute_properties_t ze_device_compute_properties_t;
++/// typedef struct _ze_device_compute_properties_t ze_device_compute_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_native_kernel_uuid_t
+-typedef struct _ze_native_kernel_uuid_t ze_native_kernel_uuid_t;
++/// typedef struct _ze_native_kernel_uuid_t ze_native_kernel_uuid_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_kernel_properties_t
+-typedef struct _ze_device_kernel_properties_t ze_device_kernel_properties_t;
++/// typedef struct _ze_device_kernel_properties_t ze_device_kernel_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_memory_properties_t
+-typedef struct _ze_device_memory_properties_t ze_device_memory_properties_t;
++/// typedef struct _ze_device_memory_properties_t ze_device_memory_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_memory_access_properties_t
+-typedef struct _ze_device_memory_access_properties_t ze_device_memory_access_properties_t;
++/// typedef struct _ze_device_memory_access_properties_t ze_device_memory_access_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_cache_properties_t
+-typedef struct _ze_device_cache_properties_t ze_device_cache_properties_t;
++/// typedef struct _ze_device_cache_properties_t ze_device_cache_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_image_properties_t
+-typedef struct _ze_device_image_properties_t ze_device_image_properties_t;
++/// typedef struct _ze_device_image_properties_t ze_device_image_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_p2p_properties_t
+-typedef struct _ze_device_p2p_properties_t ze_device_p2p_properties_t;
++/// typedef struct _ze_device_p2p_properties_t ze_device_p2p_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_command_queue_desc_t
+-typedef struct _ze_command_queue_desc_t ze_command_queue_desc_t;
++/// typedef struct _ze_command_queue_desc_t ze_command_queue_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_command_list_desc_t
+-typedef struct _ze_command_list_desc_t ze_command_list_desc_t;
++/// typedef struct _ze_command_list_desc_t ze_command_list_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_format_desc_t
+-typedef struct _ze_image_format_desc_t ze_image_format_desc_t;
++/// typedef struct _ze_image_format_desc_t ze_image_format_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_desc_t
+-typedef struct _ze_image_desc_t ze_image_desc_t;
++/// typedef struct _ze_image_desc_t ze_image_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_properties_t
+-typedef struct _ze_image_properties_t ze_image_properties_t;
++/// typedef struct _ze_image_properties_t ze_image_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_module_constants_t
+-typedef struct _ze_module_constants_t ze_module_constants_t;
++/// typedef struct _ze_module_constants_t ze_module_constants_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_module_desc_t
+-typedef struct _ze_module_desc_t ze_module_desc_t;
++/// typedef struct _ze_module_desc_t ze_module_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_kernel_desc_t
+-typedef struct _ze_kernel_desc_t ze_kernel_desc_t;
++/// typedef struct _ze_kernel_desc_t ze_kernel_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_kernel_properties_t
+-typedef struct _ze_kernel_properties_t ze_kernel_properties_t;
++/// typedef struct _ze_kernel_properties_t ze_kernel_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_group_count_t
+-typedef struct _ze_group_count_t ze_group_count_t;
++/// typedef struct _ze_group_count_t ze_group_count_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_event_pool_desc_t
+-typedef struct _ze_event_pool_desc_t ze_event_pool_desc_t;
++/// typedef struct _ze_event_pool_desc_t ze_event_pool_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_event_desc_t
+-typedef struct _ze_event_desc_t ze_event_desc_t;
++/// typedef struct _ze_event_desc_t ze_event_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_sampler_desc_t
+-typedef struct _ze_sampler_desc_t ze_sampler_desc_t;
++/// typedef struct _ze_sampler_desc_t ze_sampler_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_mem_alloc_desc_t
+-typedef struct _ze_device_mem_alloc_desc_t ze_device_mem_alloc_desc_t;
++/// typedef struct _ze_device_mem_alloc_desc_t ze_device_mem_alloc_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_host_mem_alloc_desc_t
+-typedef struct _ze_host_mem_alloc_desc_t ze_host_mem_alloc_desc_t;
++/// typedef struct _ze_host_mem_alloc_desc_t ze_host_mem_alloc_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_memory_allocation_properties_t
+-typedef struct _ze_memory_allocation_properties_t ze_memory_allocation_properties_t;
++/// typedef struct _ze_memory_allocation_properties_t ze_memory_allocation_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_fence_desc_t
+-typedef struct _ze_fence_desc_t ze_fence_desc_t;
++/// typedef struct _ze_fence_desc_t ze_fence_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_copy_region_t
+-typedef struct _ze_copy_region_t ze_copy_region_t;
++/// typedef struct _ze_copy_region_t ze_copy_region_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_region_t
+-typedef struct _ze_image_region_t ze_image_region_t;
++/// typedef struct _ze_image_region_t ze_image_region_t;
+ 
+ 
+ #if defined(__cplusplus)
+diff -ruN include/tools/zet_api.h modified_include/tools/zet_api.h
+--- include/tools/zet_api.h	2020-03-27 10:49:22.256970561 -0500
++++ modified_include/tools/zet_api.h	2020-03-10 10:56:52.788269067 -0500
+@@ -28,4 +28,4 @@
+ #include "zet_debug.h"
+ #include "zet_tracing.h"
+ 
+-#endif // _ZET_API_H
+\ No newline at end of file
++#endif // _ZET_API_H
+diff -ruN include/tools/zet_common.h modified_include/tools/zet_common.h
+--- include/tools/zet_common.h	2020-03-27 10:49:22.256970561 -0500
++++ modified_include/tools/zet_common.h	2020-03-10 11:26:39.059157935 -0500
+@@ -129,275 +129,275 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_sysman_properties_t
+-typedef struct _zet_sysman_properties_t zet_sysman_properties_t;
++/// typedef struct _zet_sysman_properties_t zet_sysman_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_sched_timeout_properties_t
+-typedef struct _zet_sched_timeout_properties_t zet_sched_timeout_properties_t;
++/// typedef struct _zet_sched_timeout_properties_t zet_sched_timeout_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_sched_timeslice_properties_t
+-typedef struct _zet_sched_timeslice_properties_t zet_sched_timeslice_properties_t;
++/// typedef struct _zet_sched_timeslice_properties_t zet_sched_timeslice_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_process_state_t
+-typedef struct _zet_process_state_t zet_process_state_t;
++/// typedef struct _zet_process_state_t zet_process_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_pci_address_t
+-typedef struct _zet_pci_address_t zet_pci_address_t;
++/// typedef struct _zet_pci_address_t zet_pci_address_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_pci_speed_t
+-typedef struct _zet_pci_speed_t zet_pci_speed_t;
++/// typedef struct _zet_pci_speed_t zet_pci_speed_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_pci_properties_t
+-typedef struct _zet_pci_properties_t zet_pci_properties_t;
++/// typedef struct _zet_pci_properties_t zet_pci_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_pci_state_t
+-typedef struct _zet_pci_state_t zet_pci_state_t;
++/// typedef struct _zet_pci_state_t zet_pci_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_pci_bar_properties_t
+-typedef struct _zet_pci_bar_properties_t zet_pci_bar_properties_t;
++/// typedef struct _zet_pci_bar_properties_t zet_pci_bar_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_pci_stats_t
+-typedef struct _zet_pci_stats_t zet_pci_stats_t;
++/// typedef struct _zet_pci_stats_t zet_pci_stats_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_power_properties_t
+-typedef struct _zet_power_properties_t zet_power_properties_t;
++/// typedef struct _zet_power_properties_t zet_power_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_power_energy_counter_t
+-typedef struct _zet_power_energy_counter_t zet_power_energy_counter_t;
++/// typedef struct _zet_power_energy_counter_t zet_power_energy_counter_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_power_sustained_limit_t
+-typedef struct _zet_power_sustained_limit_t zet_power_sustained_limit_t;
++/// typedef struct _zet_power_sustained_limit_t zet_power_sustained_limit_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_power_burst_limit_t
+-typedef struct _zet_power_burst_limit_t zet_power_burst_limit_t;
++/// typedef struct _zet_power_burst_limit_t zet_power_burst_limit_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_power_peak_limit_t
+-typedef struct _zet_power_peak_limit_t zet_power_peak_limit_t;
++/// typedef struct _zet_power_peak_limit_t zet_power_peak_limit_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_energy_threshold_t
+-typedef struct _zet_energy_threshold_t zet_energy_threshold_t;
++/// typedef struct _zet_energy_threshold_t zet_energy_threshold_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_freq_properties_t
+-typedef struct _zet_freq_properties_t zet_freq_properties_t;
++/// typedef struct _zet_freq_properties_t zet_freq_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_freq_range_t
+-typedef struct _zet_freq_range_t zet_freq_range_t;
++/// typedef struct _zet_freq_range_t zet_freq_range_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_freq_state_t
+-typedef struct _zet_freq_state_t zet_freq_state_t;
++/// typedef struct _zet_freq_state_t zet_freq_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_freq_throttle_time_t
+-typedef struct _zet_freq_throttle_time_t zet_freq_throttle_time_t;
++/// typedef struct _zet_freq_throttle_time_t zet_freq_throttle_time_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_oc_capabilities_t
+-typedef struct _zet_oc_capabilities_t zet_oc_capabilities_t;
++/// typedef struct _zet_oc_capabilities_t zet_oc_capabilities_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_oc_config_t
+-typedef struct _zet_oc_config_t zet_oc_config_t;
++/// typedef struct _zet_oc_config_t zet_oc_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_engine_properties_t
+-typedef struct _zet_engine_properties_t zet_engine_properties_t;
++/// typedef struct _zet_engine_properties_t zet_engine_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_engine_stats_t
+-typedef struct _zet_engine_stats_t zet_engine_stats_t;
++/// typedef struct _zet_engine_stats_t zet_engine_stats_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_standby_properties_t
+-typedef struct _zet_standby_properties_t zet_standby_properties_t;
++/// typedef struct _zet_standby_properties_t zet_standby_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_firmware_properties_t
+-typedef struct _zet_firmware_properties_t zet_firmware_properties_t;
++/// typedef struct _zet_firmware_properties_t zet_firmware_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_mem_properties_t
+-typedef struct _zet_mem_properties_t zet_mem_properties_t;
++/// typedef struct _zet_mem_properties_t zet_mem_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_mem_state_t
+-typedef struct _zet_mem_state_t zet_mem_state_t;
++/// typedef struct _zet_mem_state_t zet_mem_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_mem_bandwidth_t
+-typedef struct _zet_mem_bandwidth_t zet_mem_bandwidth_t;
++/// typedef struct _zet_mem_bandwidth_t zet_mem_bandwidth_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_port_uuid_t
+-typedef struct _zet_fabric_port_uuid_t zet_fabric_port_uuid_t;
++/// typedef struct _zet_fabric_port_uuid_t zet_fabric_port_uuid_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_port_speed_t
+-typedef struct _zet_fabric_port_speed_t zet_fabric_port_speed_t;
++/// typedef struct _zet_fabric_port_speed_t zet_fabric_port_speed_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_port_properties_t
+-typedef struct _zet_fabric_port_properties_t zet_fabric_port_properties_t;
++/// typedef struct _zet_fabric_port_properties_t zet_fabric_port_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_link_type_t
+-typedef struct _zet_fabric_link_type_t zet_fabric_link_type_t;
++/// typedef struct _zet_fabric_link_type_t zet_fabric_link_type_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_port_config_t
+-typedef struct _zet_fabric_port_config_t zet_fabric_port_config_t;
++/// typedef struct _zet_fabric_port_config_t zet_fabric_port_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_port_state_t
+-typedef struct _zet_fabric_port_state_t zet_fabric_port_state_t;
++/// typedef struct _zet_fabric_port_state_t zet_fabric_port_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fabric_port_throughput_t
+-typedef struct _zet_fabric_port_throughput_t zet_fabric_port_throughput_t;
++/// typedef struct _zet_fabric_port_throughput_t zet_fabric_port_throughput_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_temp_properties_t
+-typedef struct _zet_temp_properties_t zet_temp_properties_t;
++/// typedef struct _zet_temp_properties_t zet_temp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_temp_threshold_t
+-typedef struct _zet_temp_threshold_t zet_temp_threshold_t;
++/// typedef struct _zet_temp_threshold_t zet_temp_threshold_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_temp_config_t
+-typedef struct _zet_temp_config_t zet_temp_config_t;
++/// typedef struct _zet_temp_config_t zet_temp_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_psu_properties_t
+-typedef struct _zet_psu_properties_t zet_psu_properties_t;
++/// typedef struct _zet_psu_properties_t zet_psu_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_psu_state_t
+-typedef struct _zet_psu_state_t zet_psu_state_t;
++/// typedef struct _zet_psu_state_t zet_psu_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fan_temp_speed_t
+-typedef struct _zet_fan_temp_speed_t zet_fan_temp_speed_t;
++/// typedef struct _zet_fan_temp_speed_t zet_fan_temp_speed_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fan_properties_t
+-typedef struct _zet_fan_properties_t zet_fan_properties_t;
++/// typedef struct _zet_fan_properties_t zet_fan_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_fan_config_t
+-typedef struct _zet_fan_config_t zet_fan_config_t;
++/// typedef struct _zet_fan_config_t zet_fan_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_led_properties_t
+-typedef struct _zet_led_properties_t zet_led_properties_t;
++/// typedef struct _zet_led_properties_t zet_led_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_led_state_t
+-typedef struct _zet_led_state_t zet_led_state_t;
++/// typedef struct _zet_led_state_t zet_led_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_ras_properties_t
+-typedef struct _zet_ras_properties_t zet_ras_properties_t;
++/// typedef struct _zet_ras_properties_t zet_ras_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_ras_details_t
+-typedef struct _zet_ras_details_t zet_ras_details_t;
++/// typedef struct _zet_ras_details_t zet_ras_details_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_ras_config_t
+-typedef struct _zet_ras_config_t zet_ras_config_t;
++/// typedef struct _zet_ras_config_t zet_ras_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_event_config_t
+-typedef struct _zet_event_config_t zet_event_config_t;
++/// typedef struct _zet_event_config_t zet_event_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_diag_test_t
+-typedef struct _zet_diag_test_t zet_diag_test_t;
++/// typedef struct _zet_diag_test_t zet_diag_test_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_diag_properties_t
+-typedef struct _zet_diag_properties_t zet_diag_properties_t;
++/// typedef struct _zet_diag_properties_t zet_diag_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_profile_info_t
+-typedef struct _zet_profile_info_t zet_profile_info_t;
++/// typedef struct _zet_profile_info_t zet_profile_info_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_profile_free_register_token_t
+-typedef struct _zet_profile_free_register_token_t zet_profile_free_register_token_t;
++/// typedef struct _zet_profile_free_register_token_t zet_profile_free_register_token_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_profile_register_sequence_t
+-typedef struct _zet_profile_register_sequence_t zet_profile_register_sequence_t;
++/// typedef struct _zet_profile_register_sequence_t zet_profile_register_sequence_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_group_properties_t
+-typedef struct _zet_metric_group_properties_t zet_metric_group_properties_t;
++/// typedef struct _zet_metric_group_properties_t zet_metric_group_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_typed_value_t
+-typedef struct _zet_typed_value_t zet_typed_value_t;
++/// typedef struct _zet_typed_value_t zet_typed_value_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_properties_t
+-typedef struct _zet_metric_properties_t zet_metric_properties_t;
++/// typedef struct _zet_metric_properties_t zet_metric_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_tracer_desc_t
+-typedef struct _zet_metric_tracer_desc_t zet_metric_tracer_desc_t;
++/// typedef struct _zet_metric_tracer_desc_t zet_metric_tracer_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_query_pool_desc_t
+-typedef struct _zet_metric_query_pool_desc_t zet_metric_query_pool_desc_t;
++/// typedef struct _zet_metric_query_pool_desc_t zet_metric_query_pool_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_config_v1_t
+-typedef struct _zet_debug_config_v1_t zet_debug_config_v1_t;
++/// typedef struct _zet_debug_config_v1_t zet_debug_config_v1_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_config_t
+-typedef struct _zet_debug_config_t zet_debug_config_t;
++/// typedef struct _zet_debug_config_t zet_debug_config_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_event_info_detached_t
+-typedef struct _zet_debug_event_info_detached_t zet_debug_event_info_detached_t;
++/// typedef struct _zet_debug_event_info_detached_t zet_debug_event_info_detached_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_event_info_module_t
+-typedef struct _zet_debug_event_info_module_t zet_debug_event_info_module_t;
++/// typedef struct _zet_debug_event_info_module_t zet_debug_event_info_module_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_event_t
+-typedef struct _zet_debug_event_t zet_debug_event_t;
++/// typedef struct _zet_debug_event_t zet_debug_event_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_state_section_t
+-typedef struct _zet_debug_state_section_t zet_debug_state_section_t;
++/// typedef struct _zet_debug_state_section_t zet_debug_state_section_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_state_t
+-typedef struct _zet_debug_state_t zet_debug_state_t;
++/// typedef struct _zet_debug_state_t zet_debug_state_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_tracer_desc_t
+-typedef struct _zet_tracer_desc_t zet_tracer_desc_t;
++/// typedef struct _zet_tracer_desc_t zet_tracer_desc_t;
+ 
+ 
+ #if defined(__cplusplus)

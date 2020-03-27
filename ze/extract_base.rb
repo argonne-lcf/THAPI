@@ -13,9 +13,9 @@ $cpp.macros['__zedllexport'] = ''
 $cpp.macros['__ze_api_export'] = ''
 $cpp.macros['__asm__(a)'] = ''
 $cpp.macros['ZE_ENABLE_OCL_INTEROP'] = '1'
-$cpp.include_path << './include/core'
-$cpp.include_path << './include/experimental'
-$cpp.include_path << './include/tools'
+$cpp.include_path << './modified_include/core'
+$cpp.include_path << './modified_include/experimental'
+$cpp.include_path << './modified_include/tools'
 
 
 
