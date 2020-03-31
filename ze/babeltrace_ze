@@ -3,16 +3,28 @@ require 'babeltrace'
 require 'babeltrace/ctf'
 require 'yaml'
 require 'pp'
+require_relative './babeltrace_ze_lib'
 
 c = Babeltrace::Context::new
 traces = c.add_traces(path: ARGV[0])
 
 puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
 
+events = {}
+traces.each { |t|
+  events[t.handle_id] = t.get_event_decl_list.collect(&:name)
+}
+
 it = c.iter_create
 it.each { |ev|
-  print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{ev.name}: "
+  name = events[ev.handle_id][ev.id]
+  print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{name}: "
   defi = ev.top_level_scope(:EVENT_FIELDS)
-  puts defi.value
+  l = $event_lambdas[name]
+  if l
+    puts l.call(defi.value)
+  else
+    puts defi.value
+  end
 }
 

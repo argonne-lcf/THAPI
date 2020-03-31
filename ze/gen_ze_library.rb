@@ -1,22 +1,4 @@
-require_relative 'ze_model'
-require_relative 'gen_probe_base.rb'
-
-
-all_types = $ze_api["typedefs"]# + $zet_api["typedefs"]
-all_structs = $ze_api["structs"]# + $zet_api["structs"]
-all_enums = $ze_api["enums"]# + $zet_api["enums"]
-$all_struct_names = []
-
-objects = all_types.select { |t|
-  t.type.kind_of?(YAMLCAst::Pointer) &&
-  t.type.type.kind_of?(YAMLCAst::Struct)
-}.collect { |t| t.name }
-
-all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
-    objects.push t.name
-  end
-}
+require_relative 'gen_ze_library_base.rb'
 
 def ZE_BIT(i)
   1 << i
@@ -89,15 +71,6 @@ EOF
   puts "\n"
 end
 
-def to_class_name(name)
-  n = name.gsub(/_t\z/, "").gsub(/\Aze_/, "").split("_").collect(&:capitalize).join
-  n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("Api","API").gsub("P2p", "P2P")
-end
-
-def to_ffi_name(name)
-  name.to_sym.inspect
-end
-
 def print_enum(name, enum)
   members = enum.members.collect { |m|
     r = [ m.name.to_sym ]
@@ -110,7 +83,7 @@ def print_enum(name, enum)
     s
   }
   puts <<EOF
-  #{to_class_name(name)} = enum #{to_ffi_name(name)},
+  #{to_class_name(name)} = zeenum #{to_ffi_name(name)},
     [ #{members.collect(&print_lambda).join(",\n      ")} ]
 
 EOF
@@ -126,6 +99,27 @@ end
 puts <<EOF
 require 'ffi'
 module FFI
+
+  class ZEStruct < Struct
+    def to_h
+      members.zip(values).to_h
+    end
+
+    def to_s
+      s = "{ "
+      s << to_h.each.collect { |k, v|
+        if v.kind_of? Array
+          "\#{k}: [ \#{v.join(", ")} ]"
+        else
+          "\#{k}: \#{v}"
+        end
+      }.join(", ")
+      s << " }"
+      s
+    end
+  end
+  class ZEEnum < Enum
+  end
   class ZEBitmask < Bitmask
     def default=(default)
       @default = default
@@ -158,6 +152,23 @@ module FFI
     def zebitmask(*args)
       generic_enum(FFI::ZEBitmask, *args)
     end
+    def zeenum(*args)
+      generic_enum(FFI::ZEEnum, *args)
+    end
+  end
+
+  class Struct::InlineArray
+    def to_s
+      s = "[ "
+      s << to_a.join(", ")
+      s << " ]"
+    end
+  end
+
+  class Pointer
+    def to_s
+      "0x%016x" % address
+    end
   end
 end
 module ZE
@@ -181,6 +192,34 @@ module ZE
 
   def self.ZE_MINOR_VERSION(ver)
     ver & 0x0000ffff
+  end
+
+  module UUID
+    def to_s
+      a = self[:id].to_a
+      s = "{ id: "
+      s << "%02x" % a[3]
+      s << "%02x" % a[2]
+      s << "%02x" % a[1]
+      s << "%02x" % a[0]
+      s << "-"
+      s << "%02x" % a[5]
+      s << "%02x" % a[4]
+      s << "-"
+      s << "%02x" % a[7]
+      s << "%02x" % a[6]
+      s << "-"
+      s << "%02x" % a[8]
+      s << "%02x" % a[9]
+      s << "-"
+      s << "%02x" % a[10]
+      s << "%02x" % a[11]
+      s << "%02x" % a[12]
+      s << "%02x" % a[13]
+      s << "%02x" % a[14]
+      s << "%02x" % a[15]
+      s << " }"
+    end
   end
 
 EOF
@@ -248,7 +287,12 @@ def print_struct(name, struct)
     s
   }
   puts <<EOF
-  class #{to_class_name(name)} < FFI::Struct
+  class #{to_class_name(name)} < FFI::ZEStruct
+EOF
+  puts <<EOF if to_class_name(name).match("UUID")
+    prepend UUID
+EOF
+  puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
   end
   typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
@@ -266,7 +310,7 @@ def print_function_pointer_type(name, func)
 EOF
 end
 
-ze_bool = all_types.find { |t| t.name == "ze_bool_t" }
+ze_bool = $all_types.find { |t| t.name == "ze_bool_t" }
 
 puts <<EOF
   typedef #{to_ffi_name(ze_bool.type.name)}, #{to_ffi_name(ze_bool.name)}
@@ -277,21 +321,20 @@ CL_OBJECTS.each { |o|
   print_ze_object(o)
 }
 
-all_types.each { |t|
+$all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
-    enum = all_enums.find { |e| t.type.name == e.name }
+    enum = $all_enums.find { |e| t.type.name == e.name }
     if enum.members.find { |m| m.val && m.val.match("ZE_BIT") }
       print_bitfield(t.name, enum)
     else
       print_enum(t.name, enum)
     end
-  elsif objects.include?(t.name)
+  elsif $objects.include?(t.name)
     print_ze_object(t.name)
   elsif t.type.kind_of? YAMLCAst::Struct
-    struct = all_structs.find { |s| t.type.name == s.name }
+    struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct
     print_struct(t.name, struct)
-    $all_struct_names.push(t.name)
   elsif t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
   end
