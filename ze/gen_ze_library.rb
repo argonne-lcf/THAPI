@@ -2,27 +2,6 @@ require_relative 'ze_model'
 require_relative 'gen_probe_base.rb'
 
 
-bitfields = {}
-enums = {}
-structs = {}
-unions = {}
-objects = []
-int_scalars = ZE_INT_SCALARS
-float_scalars = [ "double", "float" ]
-events = {}
-
-
-res = {
-  "enums" => enums,
-  "bitfields" => bitfields,
-  "structs" => structs,
-  "unions" => unions,
-  "objects" => objects,
-  "int_scalars" => int_scalars,
-  "float_scalars" => float_scalars,
-  "events" => events
-}
-
 all_types = $ze_api["typedefs"]# + $zet_api["typedefs"]
 all_structs = $ze_api["structs"]# + $zet_api["structs"]
 all_enums = $ze_api["enums"]# + $zet_api["enums"]
@@ -41,18 +20,6 @@ all_types.each { |t|
 
 def ZE_BIT(i)
   1 << i
-end
-
-def ZE_MAKE_VERSION(major, minor)
-  ( major << 16 )|( minor & 0x0000ffff )
-end
-
-def ZE_MAJOR_VERSION(ver)
-  ver >> 16
-end
-
-def ZE_MINOR_VERSION(ver)
-  ver & 0x0000ffff
 end
 
 def popcount(x)
