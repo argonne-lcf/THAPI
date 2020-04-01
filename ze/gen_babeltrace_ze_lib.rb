@@ -105,3 +105,9 @@ $ze_commands.each { |c|
   gen_event_lambda.call(provider, c, :start)
   gen_event_lambda.call(provider, c, :stop)
 }
+
+provider = :lttng_ust_zet
+$zet_commands.each { |c|
+  gen_event_lambda.call(provider, c, :start)
+  gen_event_lambda.call(provider, c, :stop)
+}

@@ -120,6 +120,8 @@ module FFI
   end
   class ZEEnum < Enum
   end
+  class ZEUnion < Union
+  end
   class ZEBitmask < Bitmask
     def default=(default)
       @default = default
@@ -243,6 +245,24 @@ module YAMLCAst
     end
   end
 
+  class Union
+    def to_ffi
+      res = []
+      members.each { |m|
+        mt = case m.type
+        when Array
+          m.type.to_ffi
+        when Pointer
+          ":pointer"
+        else
+          to_ffi_name(m.type.name)
+        end
+        res.push [to_ffi_name(m.name), mt]
+      }
+      res
+    end
+  end
+
   class Array
     def to_ffi
       t = case type
@@ -273,6 +293,26 @@ module YAMLCAst
       [t, p]
     end
   end
+end
+
+def print_union(name, union)
+  members = union.to_ffi
+  print_lambda = lambda { |m|
+    s = "#{m[0]}, "
+    if m[1].kind_of?(Array)
+      s << "[ #{m[1][0]}, #{m[1][1]} ]"
+    else
+      s << "#{m[1]}"
+    end
+    s
+  }
+  puts <<EOF
+  class #{to_class_name(name)} < FFI::ZEUnion
+    layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
+  end
+  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+
+EOF
 end
 
 def print_struct(name, struct)
@@ -335,11 +375,33 @@ $all_types.each { |t|
     struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct
     print_struct(t.name, struct)
+  elsif t.type.kind_of? YAMLCAst::Union
+    union = $all_unions.find { |s| t.type.name == s.name }
+    next unless union
+    print_union(t.name, union)
   elsif t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
   end
 }
 
 puts <<EOF
+  class TypedValue
+    def to_s
+      case self[:type]
+      when :ZET_VALUE_TYPE_UINT32
+        self[:value][:ui32].to_s
+      when :ZET_VALUE_TYPE_UINT64
+        self[:value][:ui64].to_s
+      when :ZET_VALUE_TYPE_FLOAT32
+        self[:value][:fp32].to_s
+      when :ZET_VALUE_TYPE_FLOAT64
+        self[:value][:fp64].to_s
+      when :ZET_VALUE_TYPE_BOOL8
+        self[:value][:b8].to_s
+      else
+        self[:value][:ui64].to_s
+      end
+    end
+  end
 end
 EOF

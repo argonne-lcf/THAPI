@@ -1,13 +1,15 @@
 require_relative 'ze_model'
 require_relative 'gen_probe_base.rb'
 
-$all_types = $ze_api["typedefs"]# + $zet_api["typedefs"]
-$all_structs = $ze_api["structs"]# + $zet_api["structs"]
-$all_enums = $ze_api["enums"]# + $zet_api["enums"]
+$all_types = $ze_api["typedefs"] + $zet_api["typedefs"]
+$all_structs = $ze_api["structs"] + $zet_api["structs"]
+$all_unions = $zet_api["unions"]
+$all_enums = $ze_api["enums"] + $zet_api["enums"]
 
 $all_enum_names = []
 $all_bitfield_names = []
 $all_struct_names = []
+$all_union_names = []
 
 $objects = $all_types.select { |t|
   t.type.kind_of?(YAMLCAst::Pointer) &&
@@ -21,7 +23,7 @@ $all_types.each { |t|
 }
 
 def to_class_name(name)
-  n = name.gsub(/_t\z/, "").gsub(/\Aze_/, "").split("_").collect(&:capitalize).join
+  n = name.gsub(/_t\z/, "").gsub(/\Azet?_/, "").split("_").collect(&:capitalize).join
   n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("Api","API").gsub("P2p", "P2P")
 end
 
@@ -29,6 +31,9 @@ def to_ffi_name(name)
   name.to_sym.inspect
 end
 
+def to_name_space(name)
+  name.match(/\A(zet?)_/)[0].upcase
+end
 
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
@@ -40,5 +45,7 @@ $all_types.each { |t|
     end
   elsif t.type.kind_of? YAMLCAst::Struct
     $all_struct_names.push t.name
+  elsif t.type.kind_of? YAMLCAst::Union
+    $all_union_names.push t.name
   end
 }
