@@ -23,8 +23,10 @@ $all_types.each { |t|
 }
 
 def to_class_name(name)
+  mod = to_name_space(name)
   n = name.gsub(/_t\z/, "").gsub(/\Azet?_/, "").split("_").collect(&:capitalize).join
   n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("Api","API").gsub("P2p", "P2P")
+  mod << n
 end
 
 def to_ffi_name(name)
@@ -32,7 +34,7 @@ def to_ffi_name(name)
 end
 
 def to_name_space(name)
-  name.match(/\A(zet?)_/)[0].upcase
+  name.match(/\A(zet?)_/)[1].upcase
 end
 
 $all_types.each { |t|

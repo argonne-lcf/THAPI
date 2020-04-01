@@ -385,7 +385,7 @@ $all_types.each { |t|
 }
 
 puts <<EOF
-  class TypedValue
+  class ZETypedValue
     def to_s
       case self[:type]
       when :ZET_VALUE_TYPE_UINT32

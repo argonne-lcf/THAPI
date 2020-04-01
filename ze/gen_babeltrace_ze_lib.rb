@@ -79,7 +79,7 @@ EOF
       }
     end
   else
-    fields.push 's << "ze_result: #{ZE::Result.from_native(defi["ze_result"], nil)}"'
+    fields.push 's << "ze_result: #{ZE::ZEResult.from_native(defi["ze_result"], nil)}"'
     fields += c.meta_parameters.select { |m| m.kind_of?(Out) }.collect { |m|
         meta_parameter_lambda.call(m, :stop)
       }
