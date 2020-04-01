@@ -9,7 +9,7 @@ ZE_SRC = $(ZE_PROBES:=.c)
 
 .SECONDARY: $(ZE_TP)
 
-all: tracer_ze.so
+all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werror -O3 -I./ -I./include/core -I./include/tools -I../utils/
 
@@ -38,9 +38,15 @@ tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml
 tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
 	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_ze.so -shared -fPIC tracer_ze.c $(ZE_OBJS) -llttng-ust -ldl -lffi
 
+ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb
+	ruby $< > $@
+
+babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb
+	ruby $< > $@
+
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
 
 clean:
-	rm -f ze_api.yaml zet_api.yaml $(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC) tracer_ze.c tracer_ze.so
+	rm -f ze_api.yaml zet_api.yaml $(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC) tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
 	rm -fr modified_include
 	$(MAKE) -C ../utils clean
