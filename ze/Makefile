@@ -41,7 +41,7 @@ tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
 ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml
 	ruby $< > $@
 
-babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml
+babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml ze_meta_parameters.yaml zet_meta_parameters.yaml
 	ruby $< > $@
 
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
