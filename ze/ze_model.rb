@@ -2,6 +2,8 @@ require 'yaml'
 require 'pp'
 require './yaml_ast'
 
+MEMBER_SEPARATOR = "__"
+
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
@@ -91,6 +93,10 @@ module LTTNG
       str << [ @provider_name, @enum_name, @type, @name, @cast ? "(#{@cast})(#{@expression})" : @expression, @length_type, @length ].compact.join(", ")
       str << ")"
     end
+
+    def name=(n)
+      @name = n.gsub("->", MEMBER_SEPARATOR)
+    end
   end
 end
 
@@ -165,6 +171,10 @@ module YAMLCAst
       ev.type = :uint8_t
       ev.length = "sizeof(#{name})"
       ev
+    end
+
+    def [](name)
+      members.find { |m| m.name == name }
     end
   end
 
@@ -287,8 +297,8 @@ class Member
     @member = member
     @dir = dir
     @prefix = prefix
-    name = "#{prefix}_#{member.name}"
-    expr = "#{prefix} != NULL ? #{prefix}->#{member.name} : 0"
+    name = "#{prefix}#{MEMBER_SEPARATOR}#{member.name}"
+    expr = "#{prefix} ? #{prefix}->#{member.name} : 0"
     @lttng_type = member.type.lttng_type
     @lttng_type.name = name
     @lttng_type.expr = expr
@@ -363,9 +373,21 @@ class Command
   end
 
   def [](name)
-    res = parameters.find { |p| p.name == name }
-    return res if res
-    @tracepoint_parameters.find { |p| p.name == name }
+    path = name.split(/->/)
+    if path.length == 1
+      res = parameters.find { |p| p.name == name }
+      return res if res
+      @tracepoint_parameters.find { |p| p.name == name }
+    else
+      param_name = path.shift
+      res = parameters.find { |p| p.name == param_name }
+      return nil unless res
+      path.each { |n|
+        res = ZE_STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
+        return nil unless res
+      }
+      return res
+    end
   end
 
 end
@@ -397,6 +419,34 @@ class MetaParameter
   def lttng_out_type
     nil
   end
+
+  def check_for_null(expr, incl = true)
+    list = expr.split("->")
+    if list.length == 1
+      if incl
+        return [expr]
+      else
+        return []
+      end
+    else
+      res = []
+      pre = ""
+      list[0..(incl ? -1 : -2)].each { |n|
+        pre += n
+        res.push(pre)
+        pre += "->"
+      }
+      return res
+    end
+  end
+
+  def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
+    if checks.empty?
+      expr
+    else
+      "(#{checks.join(" && ")} ? #{expr} : #{default})"
+    end
+  end
 end
 
 class InString < MetaParameter
@@ -410,7 +460,7 @@ class InString < MetaParameter
     ev = LTTNG::TracepointEvent::new
     ev.macro = :ctf_string
     ev.name = "#{name}_val"
-    ev.expression = "#{name}"
+    ev.expression = sanitize_expression("#{name}")
     @lttng_in_type = ev
   end
 end
@@ -434,13 +484,16 @@ class ScalarMetaParameter < MetaParameter
     lttngt.name = name + "_val"
     if lttngt.macro == :ctf_array_text
       lttngt.macro = :ctf_sequence_text
-      lttngt.expression = "#{name}"
-      lttngt.length = "(#{name} == NULL ? 0 : #{lttngt.length})"
+      lttngt.expression = sanitize_expression("#{name}")
+      checks = check_for_null("#{name}")
+      lttngt.length = sanitize_expression("#{lttngt.length}", checks)
       lttngt.length_type = "size_t"
     elsif type
-      lttngt.expression = "(#{name} == NULL ? 0 : *(#{YAMLCAst::Pointer::new(type: st)})#{name})"
+      checks = check_for_null("#{name}")
+      lttngt.expression = sanitize_expression("*(#{YAMLCAst::Pointer::new(type: st)})#{name}", checks)
     else
-      lttngt.expression = "(#{name} == NULL ? 0 : *#{name})"
+      checks = check_for_null("#{name}")
+      lttngt.expression = sanitize_expression("*#{name}", checks)
     end
     @lttng_type = @lttng_type = lttngt
   end
@@ -484,10 +537,12 @@ class ArrayMetaParameter < MetaParameter
     s = command[size]
     raise "Invalid parameter: #{size} for #{command.name}!" unless s
     if s.type.kind_of?(YAMLCAst::Pointer)
-      sz = "(#{size} == NULL ? 0 : #{name} == NULL ? 0 : *#{size})"
+      checks = check_for_null("#{size}") + check_for_null("#{name}")
+      sz = sanitize_expression("*#{size}", checks)
       st = "#{s.type.type}"
     else
-      sz = "(#{name} == NULL ? 0 : #{size})"
+      checks = check_for_null("#{name}")
+      sz = sanitize_expression("#{size}", checks)
       st = "#{s.type}"
     end
     if t.type.kind_of?(YAMLCAst::Void)
@@ -498,7 +553,7 @@ class ArrayMetaParameter < MetaParameter
     y = YAMLCAst::Array::new(type: tt)
     lttngt = y.lttng_type(length: sz, length_type: st)
     lttngt.name = name + "_vals"
-    lttngt.expression = "#{name}"
+    lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
   end
 end
