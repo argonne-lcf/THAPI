@@ -210,7 +210,7 @@ end
 class Member < Declaration
   def initialize(command, member, prefix, dir = :start)
     super(member)
-    name = "#{prefix}_#{@name}"
+    name = "#{prefix}.#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
     @dir = dir
     @lttng_type = ["ctf_integer_hex", "intptr_t", name, "(intptr_t)(#{expr})"] if pointer?
