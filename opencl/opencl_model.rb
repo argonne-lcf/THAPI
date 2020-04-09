@@ -1,6 +1,8 @@
 require 'nokogiri'
 require 'yaml'
 
+MEMBER_SEPARATOR = "__"
+
 GENERATE_ENUMS_TRACEPOINTS = false
 
 HOST_PROFILE = true
@@ -210,7 +212,7 @@ end
 class Member < Declaration
   def initialize(command, member, prefix, dir = :start)
     super(member)
-    name = "#{prefix}.#{@name}"
+    name = "#{prefix}#{MEMBER_SEPARATOR}#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
     @dir = dir
     @lttng_type = ["ctf_integer_hex", "intptr_t", name, "(intptr_t)(#{expr})"] if pointer?

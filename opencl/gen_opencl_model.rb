@@ -88,7 +88,7 @@ event_lambda = lambda { |c, dir|
           meta_field["type"] = params[LTTng.expression(*lttng)]["type"]
         rescue #must be a struct member
           pname = LTTng.expression(*lttng).match(/(\w+) != NULL/)[1]
-          m = meta_structs[pname][fname.gsub(/\A#{pname}\./,"")]
+          m = meta_structs[pname][fname.gsub(/\A#{pname}#{MEMBER_SEPARATOR}/,"")]
           meta_field["name"] = m.name
           meta_field["type"] = m.type
           meta_field["pointer"] = m.pointer? if m.pointer?
