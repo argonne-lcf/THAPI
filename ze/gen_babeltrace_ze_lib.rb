@@ -21,7 +21,7 @@ meta_parameter_lambda = lambda { |m, dir|
       elsif $all_bitfield_names.include?(t.name)
         "s << \"#{name}: [ \#{ZE::#{to_class_name(t.name)}.from_native(defi[\"#{name}\"], nil).join(\", \")} ]\""
       elsif $all_struct_names.include?(t.name)
-        "s << \"#{name}: \#{ZE::#{to_class_name(t.name)}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"]))}\""
+        "s << \"#{name}: \#{defi[\"#{name}\"].size > 0 ? ZE::#{to_class_name(t.name)}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])) : nil}\""
       else
         "s << \"#{name}: \#{defi[\"#{name}\"]}\""
       end
