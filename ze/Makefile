@@ -38,10 +38,10 @@ tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml
 tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL)
 	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_ze.so -shared -fPIC tracer_ze.c $(ZE_OBJS) -llttng-ust -ldl -lffi
 
-ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb
+ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml
 	ruby $< > $@
 
-babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb
+babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml
 	ruby $< > $@
 
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
