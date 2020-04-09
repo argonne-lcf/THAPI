@@ -64,6 +64,8 @@ meta_parameters:
     - [ InScalar, desc ]
     - [ OutScalar, phModule ]
     - [ OutScalar, phBuildLog ]
+    - [ InString, "desc->pBuildFlags" ]
+    - [ InScalar, "desc->pConstants" ]
   zeModuleBuildLogGetString:
     - [ InOutScalar, pSize ]
     - [ OutArray, pBuildLog, pSize ]
@@ -78,6 +80,7 @@ meta_parameters:
   zeKernelCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phKernel ]
+    - [ InString, "desc->pKernelName" ]
   zeModuleGetFunctionPointer:
     - [ InString, pFunctionName ]
     - [ OutScalar, pfnFunction ]
