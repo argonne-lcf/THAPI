@@ -71,7 +71,20 @@ EOF
   puts "\n"
 end
 
+def print_version_enum_struct(name)
+  puts <<EOF
+  class #{to_class_name(name)} < FFI::ZEStruct
+    prepend Version
+    layout :minor, :uint16_t,
+           :major, :uint16_t
+  end
+  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+
+EOF
+end
+
 def print_enum(name, enum)
+  return print_version_enum_struct(name) if name.match(/_version_t\z/)
   members = enum.members.collect { |m|
     r = [ m.name.to_sym ]
     r.push m.val if m.val
@@ -221,6 +234,12 @@ module ZE
       s << "%02x" % a[14]
       s << "%02x" % a[15]
       s << " }"
+    end
+  end
+
+  module Version
+    def to_s
+      "\#{self[:major]}.\#{self[:minor]}"
     end
   end
 
