@@ -627,3 +627,73 @@ ZE_POINTER_NAMES = ($ze_commands + $zet_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
+register_epilogue "zeDeviceGet", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
+      for (uint32_t i = 0; i < *pCount; i++)
+        _register_ze_device(phDevices[i], hDriver);
+    }
+  }
+EOF
+
+register_epilogue "zeCommandListCreate", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
+      _register_ze_command_list(*phCommandList, hDevice);
+    }
+  }
+EOF
+
+register_epilogue "zeCommandListDestroy", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
+      _unregister_ze_command_list(hCommandList);
+    }
+  }
+EOF
+
+register_prologue "zeEventPoolCreate", <<EOF
+  ze_event_pool_desc_t _new_desc;
+  if (_do_profile && desc) {
+    _new_desc = *desc;
+    _new_desc.flags |= ZE_EVENT_POOL_FLAG_TIMESTAMP;
+    desc = &_new_desc;
+  }
+EOF
+
+register_prologue "zeEventDestroy", <<EOF
+  if (_do_profile && hEvent) {
+    _unregister_ze_event(hEvent);
+  }
+EOF
+
+register_prologue "zeEventHostReset", <<EOF
+  if (_do_profile && hEvent) {
+    _unregister_ze_event(hEvent);
+  }
+EOF
+
+profiling_prologue = lambda { |event_name|
+  <<EOF
+  if (_do_profile) {
+    if(!#{event_name}) {
+      #{event_name} = _get_profiling_event(hCommandList);
+    } else {
+      _register_ze_event(#{event_name}, hCommandList, NULL);
+    }
+  }
+EOF
+}
+
+profiling_epilogue = lambda { |event_name|
+  <<EOF
+  if (_do_profile && #{event_name}) {
+    if (_retval == ZE_RESULT_SUCCESS)
+      tracepoint(lttng_ust_ze_profiling, event_profiling, #{event_name});
+  }
+EOF
+}
+
+register_prologue "zeCommandListAppendLaunchKernel", profiling_prologue.call("hSignalEvent")
+
+register_epilogue "zeCommandListAppendLaunchKernel",  profiling_epilogue.call("hSignalEvent")
