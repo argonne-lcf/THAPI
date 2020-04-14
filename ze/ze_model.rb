@@ -105,7 +105,7 @@ module YAMLCAst
 
   class Int
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = name
       ev
@@ -114,7 +114,7 @@ module YAMLCAst
 
   class Float
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_float
       ev.type = name
       ev
@@ -123,7 +123,7 @@ module YAMLCAst
 
   class Char
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = name
       ev
@@ -132,7 +132,7 @@ module YAMLCAst
 
   class Bool
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = name
       ev
@@ -141,7 +141,7 @@ module YAMLCAst
 
   class Struct
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
       ev.length = "sizeof(#{name})"
@@ -155,7 +155,7 @@ module YAMLCAst
 
   class Union
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
       ev.length = "sizeof(#{name})"
@@ -165,7 +165,7 @@ module YAMLCAst
 
   class Enum
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = "enum #{name}"
       ev
@@ -174,7 +174,7 @@ module YAMLCAst
 
   class CustomType
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       case name
       when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
         ev.macro = :ctf_integer_hex
@@ -199,7 +199,7 @@ module YAMLCAst
 
   class Pointer
     def lttng_type
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer_hex
       ev.type = :intptr_t
       ev.cast = "intptr_t"
@@ -209,7 +209,7 @@ module YAMLCAst
 
   class Array
     def lttng_type(length: nil, length_type: nil)
-      ev = LTTng::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       if length
         ev.length = length
       elsif self.length
@@ -432,7 +432,7 @@ class InString < MetaParameter
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
     t = a.type
     raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    ev = LTTng::TracepointEvent::new
+    ev = LTTng::TracepointField::new
     ev.macro = :ctf_string
     ev.name = "#{name}_val"
     ev.expression = sanitize_expression("#{name}")

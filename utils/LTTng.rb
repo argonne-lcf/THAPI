@@ -1,7 +1,26 @@
 MEMBER_SEPARATOR = "__"
 
 module LTTng
-  class TracepointEvent
+  class TracepointField
+    FIELDS = {
+       :ctf_array => [ :type, :name, :expression, :length ],
+       :ctf_array_hex => [ :type, :name, :expression, :length ],
+       :ctf_array_network => [:type, :name, :expression, :length ],
+       :ctf_array_network_hex => [:type, :name, :expression, :length ],
+       :ctf_array_text => [:type, :name, :expression, :length ],
+       :ctf_enum => [:provider_name, :enum_name, :type, :name, :expression ],
+       :ctf_float => [:type, :name, :expression ],
+       :ctf_integer => [:type, :name, :expression ],
+       :ctf_integer_hex => [:type, :name, :expression ],
+       :ctf_integer_network => [:type, :name, :expression ],
+       :ctf_integer_network_hex => [:type, :name, :expression ],
+       :ctf_sequence => [:type, :name, :expression, :length_type, :length ],
+       :ctf_sequence_hex => [:type, :name, :expression, :length_type, :length ],
+       :ctf_sequence_network => [:type, :name, :expression, :length_type, :length ],
+       :ctf_sequence_network_hex => [:type, :name, :expression, :length_type, :length ],
+       :ctf_sequence_text => [:type, :name, :expression, :length_type, :length ],
+       :ctf_string => [:name, :expression ]
+    }
     attr_accessor :macro
     attr_accessor :name
     attr_accessor :expression
@@ -12,8 +31,25 @@ module LTTng
     attr_accessor :length_type
     attr_accessor :cast
 
+    def initialize(*args)
+      if args.length > 0
+        desc = FIELDS[args[0].to_sym]
+        raise "Invalid field #{args[0]}!" unless desc
+        @macro = args[0].to_sym
+        raise "Invalid field parameters #{args[1..-1]}!" unless args[1..-1].length == desc.length
+        desc.zip(args[1..-1]).each { |sym, v|
+          self.instance_variable_set(:"@#{sym}", v)
+        }
+        m = @expression.match(/\((.*?)\)(.*)/)
+        if m
+          @cast = m[1]
+          @expression = m[2]
+        end
+      end
+    end
+
     def call_string
-      str = "#{macro}("
+      str = "#{@macro}("
       str << [ @provider_name, @enum_name, @type, @name, @cast ? "(#{@cast})(#{@expression})" : @expression, @length_type, @length ].compact.join(", ")
       str << ")"
     end

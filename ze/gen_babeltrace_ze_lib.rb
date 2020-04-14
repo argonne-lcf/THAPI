@@ -79,7 +79,7 @@ EOF
       }
     end
   else
-    fields.push 's << "ze_result: #{ZE::ZEResult.from_native(defi["ze_result"], nil)}"'
+    fields.push "s << \"#{RESULT_NAME}: \#{ZE::ZEResult.from_native(defi[\"#{RESULT_NAME}\"], nil)}\""
     fields += c.meta_parameters.select { |m| m.kind_of?(Out) }.collect { |m|
         meta_parameter_lambda.call(m, :stop)
       }
@@ -110,4 +110,46 @@ provider = :lttng_ust_zet
 $zet_commands.each { |c|
   gen_event_lambda.call(provider, c, :start)
   gen_event_lambda.call(provider, c, :stop)
+}
+
+extra_events = YAML::load_file("ze_events.yaml")
+
+extra_events.each { |provider, h|
+  h["events"].each { |e|
+    puts <<EOF
+$event_lambdas["#{provider}:#{e["name"]}"] = lambda { |defi|
+  s = "{ "
+EOF
+    fields = e["fields"].collect { |f|
+      field = LTTng::TracepointField::new(*f)
+      case field.macro
+      when :ctf_integer_hex
+        "s << \"#{field.name}: \#{\"0x%016x\" % defi[\"#{field.name}\"]}\""
+      when :ctf_integer
+        arg = e["args"].find { |type, name|
+          name == field.expression
+        }
+        if arg
+          if $all_enum_names.include?(arg[0])
+            "s << \"#{field.name}: \#{ZE::#{to_class_name(arg[0])}.from_native(defi[\"#{field.name}\"], nil)}\""
+          elsif $all_bitfield_names.include?(arg[0])
+            "s << \"#{field.name}: [ \#{ZE::#{to_class_name(arg[0])}.from_native(defi[\"#{field.name}\"], nil)} ]\""
+          else
+            "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
+          end
+        else
+          "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
+        end
+      else
+        raise "Unsupported LTTng macro #{field.macro}!"
+      end
+    }
+    puts <<EOF
+  #{fields.join("\n  s << ', '\n  ")}
+EOF
+    puts <<EOF
+  s << " }"
+}
+EOF
+  }
 }
