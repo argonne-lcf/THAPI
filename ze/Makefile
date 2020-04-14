@@ -13,6 +13,10 @@ ZE_STATIC_OBJS = $(ZE_STATIC_PROBES:=.o)
 ZE_STATIC_INCL = $(ZE_STATIC_PROBES:=.h)
 ZE_STATIC_SRC = $(ZE_STATIC_PROBES:=.c)
 
+ZE_EXTRACT = extract_base.rb modified_include
+ZE_EXTRACTED = ze_api.yaml zet_api.yaml
+ZE_MODEL = ze_model.rb yaml_ast.rb ze_meta_parameters.yaml zet_meta_parameters.yaml $(ZE_EXTRACTED)
+
 .SECONDARY: $(ZE_TP)
 
 all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
@@ -26,33 +30,40 @@ modified_include: include headers.patch
 ../utils/lttng/tracepoint_gen.h: ../utils/tracepoint_gen.rb
 	ruby ../utils/tracepoint_gen.rb 25 > ../utils/lttng/tracepoint_gen.h
 
-ze_api.yaml: $(shell find include/core -type f) extract_base.rb extract_ze.rb modified_include
+ze_api.yaml: $(shell find include/core -type f) $(ZE_EXTRACT) extract_ze.rb
 	ruby extract_ze.rb
 
-zet_api.yaml: $(shell find include/core include/tools -type f) extract_base.rb extract_zet.rb modified_include
+zet_api.yaml: $(shell find include/core include/tools -type f) $(ZE_EXTRACT) extract_zet.rb
 	ruby extract_zet.rb
 
-%.tp: %.rb ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb gen_probe_base.rb ze_meta_parameters.yaml zet_meta_parameters.yaml
+ze_profiling.tp: gen_ze_custom_probes.rb ../utils/LTTng.rb $(ZE_MODEL)
+	ruby gen_ze_custom_probes.rb lttng_ust_ze_profiling > $@
+
+%.tp: %.rb $(ZE_MODEL) gen_probe_base.rb
 	ruby $*.rb > $@
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<
 
-tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c ze_api.yaml zet_api.yaml yaml_ast.rb ze_model.rb ze_meta_parameters.yaml zet_meta_parameters.yaml
+tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c $(ZE_MODEL)
 	ruby $< > $@
 
 tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL)
 	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_ze.so -shared -fPIC tracer_ze.c $(ZE_OBJS) $(ZE_STATIC_OBJS) -llttng-ust -ldl -lffi
 
-ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml
+ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_MODEL)
 	ruby $< > $@
 
-babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb ze_model.rb ze_api.yaml zet_api.yaml ze_meta_parameters.yaml zet_meta_parameters.yaml
+babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_MODEL)
 	ruby $< > $@
 
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
 
 clean:
-	rm -f ze_api.yaml zet_api.yaml $(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL) $(ZE_STATIC_SRC) tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
+	rm -f \
+		ze_api.yaml zet_api.yaml\
+		$(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC)\
+		$(ZE_STATIC_TP) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL) $(ZE_STATIC_SRC)\
+		tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
 	rm -fr modified_include
 	$(MAKE) -C ../utils clean
