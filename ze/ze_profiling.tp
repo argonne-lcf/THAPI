@@ -7,10 +7,10 @@ TRACEPOINT_EVENT(
   lttng_ust_ze_profiling,
   event_profiling,
   TP_ARGS(
-    ze_event_handle_t, event
+    ze_event_handle_t, hEvent
   ),
   TP_FIELDS(
-    ctf_integer_hex(intptr_t, event, (intptr_t)event)
+    ctf_integer_hex(intptr_t, hEvent, (intptr_t)hEvent)
   )
 )
 
@@ -18,27 +18,27 @@ TRACEPOINT_EVENT(
   lttng_ust_ze_profiling,
   event_profiling_results,
   TP_ARGS(
-    ze_event_handle_t, event,
+    ze_event_handle_t, hEvent,
     ze_result_t, status,
-    ze_result_t, global_start_status,
-    uint64_t, global_start,
-    ze_result_t, global_end_status,
-    uint64_t, global_end,
-    ze_result_t, context_start_status,
-    uint64_t, context_start,
-    ze_result_t, context_end_status,
-    uint64_t, context_end
+    ze_result_t, globalStartStatus,
+    uint64_t, globalStart,
+    ze_result_t, globalEndStatus,
+    uint64_t, globalEnd,
+    ze_result_t, contextStartStatus,
+    uint64_t, contextStart,
+    ze_result_t, contextEndStatus,
+    uint64_t, contextEnd
   ),
   TP_FIELDS(
-    ctf_integer_hex(intptr_t, event, (intptr_t)event)
+    ctf_integer_hex(intptr_t, hEvent, (intptr_t)hEvent)
     ctf_integer(int32_t, status, (int32_t)status)
-    ctf_integer(int32_t, global_start_status, (int32_t)global_start_status)
-    ctf_integer(uint64_t, global_start, global_start)
-    ctf_integer(int32_t, global_end_status, (int32_t)global_end_status)
-    ctf_integer(uint64_t, global_end, global_end)
-    ctf_integer(int32_t, context_start_status, (int32_t)context_start_status)
-    ctf_integer(uint64_t, context_start, context_start)
-    ctf_integer(int32_t, context_end_status, (int32_t)context_end_status)
-    ctf_integer(uint64_t, context_end, context_end)
+    ctf_integer(int32_t, globalStartStatus, (int32_t)globalStartStatus)
+    ctf_integer(uint64_t, globalStart, globalStart)
+    ctf_integer(int32_t, globalEndStatus, (int32_t)globalEndStatus)
+    ctf_integer(uint64_t, globalEnd, globalEnd)
+    ctf_integer(int32_t, contextStartStatus, (int32_t)contextStartStatus)
+    ctf_integer(uint64_t, contextStart, contextStart)
+    ctf_integer(int32_t, contextEndStatus, (int32_t)contextEndStatus)
+    ctf_integer(uint64_t, contextEnd, contextEnd)
   )
 )
