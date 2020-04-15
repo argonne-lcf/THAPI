@@ -669,6 +669,23 @@ profiling_epilogue = lambda { |event_name|
 EOF
 }
 
-register_prologue "zeCommandListAppendLaunchKernel", profiling_prologue.call("hSignalEvent")
+[ "zeCommandListAppendLaunchKernel",
+  "zeCommandListAppendBarrier",
+  "zeCommandListAppendLaunchCooperativeKernel",
+  "zeCommandListAppendLaunchKernelIndirect",
+  "zeCommandListAppendLaunchMultipleKernelsIndirect",
+  "zeCommandListAppendMemoryRangesBarrier" ].each { |c|
+    register_prologue c, profiling_prologue.call("hSignalEvent")
+    register_epilogue c, profiling_epilogue.call("hSignalEvent")
+}
 
-register_epilogue "zeCommandListAppendLaunchKernel",  profiling_epilogue.call("hSignalEvent")
+[ "zeCommandListAppendMemoryCopy",
+  "zeCommandListAppendMemoryFill",
+  "zeCommandListAppendMemoryCopyRegion",
+  "zeCommandListAppendImageCopy",
+  "zeCommandListAppendImageCopyRegion",
+  "zeCommandListAppendImageCopyToMemory",
+  "zeCommandListAppendImageCopyFromMemory" ].each { |c|
+    register_prologue c, profiling_prologue.call("hEvent")
+    register_epilogue c, profiling_epilogue.call("hEvent")
+}
