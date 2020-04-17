@@ -1,3 +1,5 @@
+RESULT_NAME = "zeResult"
+
 $tracepoint_lambda = lambda { |provider, c, dir|
   puts <<EOF
 TRACEPOINT_EVENT(
@@ -14,7 +16,7 @@ EOF
       "#{p.type}, #{p.name}"
     } unless c.parameters.nil?
     if c.has_return_type? && dir == :stop
-      params.push("#{c.type}, ze_result")
+      params.push("#{c.type}, #{RESULT_NAME}")
     end
     params += c.tracepoint_parameters.collect { |p|
       "#{p.type}, #{p.name}"
@@ -36,8 +38,8 @@ EOF
   elsif dir == :stop
     r = c.type.lttng_type
     if r
-      r.name = "ze_result"
-      r.expression = "ze_result"
+      r.name = RESULT_NAME
+      r.expression = RESULT_NAME
       fields.push(r.call_string)
     end
     c.meta_parameters.collect(&:lttng_out_type).flatten.compact.each { |r|

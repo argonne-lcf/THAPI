@@ -1,8 +1,7 @@
 require 'yaml'
 require 'pp'
-require './yaml_ast'
-
-MEMBER_SEPARATOR = "__"
+require_relative 'yaml_ast'
+require_relative '../utils/LTTng.rb'
 
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
@@ -76,30 +75,6 @@ ZE_ENUM_SCALARS.each { |e|
 
 ZE_FLOAT_SCALARS_MAP = {"float" => "uint32_t", "double" => "uint64_t"}
 
-module LTTNG
-  class TracepointEvent
-    attr_accessor :macro
-    attr_accessor :name
-    attr_accessor :expression
-    attr_accessor :type
-    attr_accessor :provider_name
-    attr_accessor :enum_name
-    attr_accessor :length
-    attr_accessor :length_type
-    attr_accessor :cast
-
-    def call_string
-      str = "#{macro}("
-      str << [ @provider_name, @enum_name, @type, @name, @cast ? "(#{@cast})(#{@expression})" : @expression, @length_type, @length ].compact.join(", ")
-      str << ")"
-    end
-
-    def name=(n)
-      @name = n.gsub("->", MEMBER_SEPARATOR)
-    end
-  end
-end
-
 module YAMLCAst
   class Declaration
     def lttng_type
@@ -130,7 +105,7 @@ module YAMLCAst
 
   class Int
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = name
       ev
@@ -139,7 +114,7 @@ module YAMLCAst
 
   class Float
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_float
       ev.type = name
       ev
@@ -148,7 +123,7 @@ module YAMLCAst
 
   class Char
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = name
       ev
@@ -157,7 +132,7 @@ module YAMLCAst
 
   class Bool
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = name
       ev
@@ -166,7 +141,7 @@ module YAMLCAst
 
   class Struct
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
       ev.length = "sizeof(#{name})"
@@ -180,7 +155,7 @@ module YAMLCAst
 
   class Union
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
       ev.length = "sizeof(#{name})"
@@ -190,7 +165,7 @@ module YAMLCAst
 
   class Enum
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer
       ev.type = "enum #{name}"
       ev
@@ -199,7 +174,7 @@ module YAMLCAst
 
   class CustomType
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       case name
       when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
         ev.macro = :ctf_integer_hex
@@ -224,7 +199,7 @@ module YAMLCAst
 
   class Pointer
     def lttng_type
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer_hex
       ev.type = :intptr_t
       ev.cast = "intptr_t"
@@ -234,7 +209,7 @@ module YAMLCAst
 
   class Array
     def lttng_type(length: nil, length_type: nil)
-      ev = LTTNG::TracepointEvent::new
+      ev = LTTng::TracepointField::new
       if length
         ev.length = length
       elsif self.length
@@ -457,7 +432,7 @@ class InString < MetaParameter
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
     t = a.type
     raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    ev = LTTNG::TracepointEvent::new
+    ev = LTTng::TracepointField::new
     ev.macro = :ctf_string
     ev.name = "#{name}_val"
     ev.expression = sanitize_expression("#{name}")
@@ -627,3 +602,95 @@ ZE_POINTER_NAMES = ($ze_commands + $zet_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
+register_epilogue "zeDeviceGet", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
+      for (uint32_t i = 0; i < *pCount; i++)
+        _register_ze_device(phDevices[i], hDriver);
+    }
+  }
+EOF
+
+register_epilogue "zeCommandListCreate", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
+      _register_ze_command_list(*phCommandList, hDevice);
+    }
+  }
+EOF
+
+register_epilogue "zeCommandListDestroy", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
+      _unregister_ze_command_list(hCommandList);
+    }
+  }
+EOF
+
+register_prologue "zeEventPoolCreate", <<EOF
+  ze_event_pool_desc_t _new_desc;
+  if (_do_profile && desc) {
+    _new_desc = *desc;
+    _new_desc.flags |= ZE_EVENT_POOL_FLAG_TIMESTAMP;
+    desc = &_new_desc;
+  }
+EOF
+
+register_prologue "zeEventDestroy", <<EOF
+  if (_do_profile && hEvent) {
+    _unregister_ze_event(hEvent);
+  }
+EOF
+
+register_prologue "zeEventHostReset", <<EOF
+  if (_do_profile && hEvent) {
+    _unregister_ze_event(hEvent);
+  }
+EOF
+
+# WARNING: there seems to be no way to profile if
+# zeCommandListAppendEventReset is used or at least
+# not very cleanly is used....
+profiling_prologue = lambda { |event_name|
+  <<EOF
+  ze_event_pool_handle_t _pool = NULL;
+  if (_do_profile && !#{event_name}) {
+    #{event_name} = _get_profiling_event(hCommandList, &_pool);
+  }
+EOF
+}
+
+profiling_epilogue = lambda { |event_name|
+  <<EOF
+  if (_do_profile && #{event_name}) {
+    if (_retval == ZE_RESULT_SUCCESS) {
+      _register_ze_event(#{event_name}, hCommandList, _pool);
+      tracepoint(lttng_ust_ze_profiling, event_profiling, #{event_name});
+    } else if (_pool) {
+      ZE_EVENT_DESTROY_PTR(#{event_name});
+      ZE_EVENT_POOL_DESTROY_PTR(_pool);
+    }
+  }
+EOF
+}
+
+[ "zeCommandListAppendLaunchKernel",
+  "zeCommandListAppendBarrier",
+  "zeCommandListAppendLaunchCooperativeKernel",
+  "zeCommandListAppendLaunchKernelIndirect",
+  "zeCommandListAppendLaunchMultipleKernelsIndirect",
+  "zeCommandListAppendMemoryRangesBarrier" ].each { |c|
+    register_prologue c, profiling_prologue.call("hSignalEvent")
+    register_epilogue c, profiling_epilogue.call("hSignalEvent")
+}
+
+[ "zeCommandListAppendMemoryCopy",
+  "zeCommandListAppendMemoryFill",
+  "zeCommandListAppendMemoryCopyRegion",
+  "zeCommandListAppendImageCopy",
+  "zeCommandListAppendImageCopyRegion",
+  "zeCommandListAppendImageCopyToMemory",
+  "zeCommandListAppendImageCopyFromMemory" ].each { |c|
+    register_prologue c, profiling_prologue.call("hEvent")
+    register_epilogue c, profiling_epilogue.call("hEvent")
+}
