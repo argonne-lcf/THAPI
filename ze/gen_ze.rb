@@ -19,9 +19,11 @@ puts <<EOF
 #include <pthread.h>
 #include <sys/mman.h>
 #include <ffi.h>
+#include "uthash.h"
 
 #include "ze_tracepoints.h"
 #include "zet_tracepoints.h"
+#include "ze_profiling.h"
 
 EOF
 

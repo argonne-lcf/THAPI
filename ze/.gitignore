@@ -4,6 +4,6 @@
 *.c
 *.h
 *.yaml
-ze_tracepoints.tp
-zex_tracepoints.tp
-zet_tracepoints.tp
+*.tp
+babeltrace_ze_lib.rb
+ze_library.rb
