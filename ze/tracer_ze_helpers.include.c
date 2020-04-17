@@ -183,7 +183,9 @@ static inline void _register_ze_event(
   ADD_ZE_EVENT(_ze_event);
 }
 
-ze_event_handle_t _get_profiling_event(ze_command_list_handle_t command_list) {
+ze_event_handle_t _get_profiling_event(
+ ze_command_list_handle_t command_list,
+ ze_event_pool_handle_t *pool_ret) {
   struct _ze_obj_h *o_h = NULL;
 
   FIND_ZE_OBJ(&command_list, o_h);
@@ -206,7 +208,7 @@ ze_event_handle_t _get_profiling_event(ze_command_list_handle_t command_list) {
     ZE_EVENT_POOL_DESTROY_PTR(event_pool);
     return NULL;
   }
-  _register_ze_event(event, command_list, event_pool);
+  *pool_ret = event_pool;
   return event;
 }
 
@@ -293,7 +295,7 @@ void _lib_cleanup() {
 static void _load_tracer(void) {
   void * handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL);
   if( !handle ) {
-    printf("Failure: could not load ze library!\n");
+    fprintf(stderr, "Failure: could not load ze library!\n");
     exit(1);
   }
 

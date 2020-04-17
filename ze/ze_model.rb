@@ -648,14 +648,14 @@ register_prologue "zeEventHostReset", <<EOF
   }
 EOF
 
+# WARNING: there seems to be no way to profile if
+# zeCommandListAppendEventReset is used or at least
+# not very cleanly is used....
 profiling_prologue = lambda { |event_name|
   <<EOF
-  if (_do_profile) {
-    if(!#{event_name}) {
-      #{event_name} = _get_profiling_event(hCommandList);
-    } else {
-      _register_ze_event(#{event_name}, hCommandList, NULL);
-    }
+  ze_event_pool_handle_t _pool = NULL;
+  if (_do_profile && !#{event_name}) {
+    #{event_name} = _get_profiling_event(hCommandList, &_pool);
   }
 EOF
 }
@@ -663,8 +663,13 @@ EOF
 profiling_epilogue = lambda { |event_name|
   <<EOF
   if (_do_profile && #{event_name}) {
-    if (_retval == ZE_RESULT_SUCCESS)
+    if (_retval == ZE_RESULT_SUCCESS) {
+      _register_ze_event(#{event_name}, hCommandList, _pool);
       tracepoint(lttng_ust_ze_profiling, event_profiling, #{event_name});
+    } else if (_pool) {
+      ZE_EVENT_DESTROY_PTR(#{event_name});
+      ZE_EVENT_POOL_DESTROY_PTR(_pool);
+    }
   }
 EOF
 }
