@@ -1,6 +1,7 @@
 #!/bin/sh
 while true; do
   case "$1" in
+    -p | --profiling ) shift; profiling=1;export LTTNG_UST_ZE_PROFILE=1;;
     -v | --visualize) shift; lttng_view=1;;
     -- ) shift; break ;;
     * ) break ;;
@@ -15,11 +16,25 @@ else
   lttng create my-userspace-ze-session
 fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng add-context --userspace --channel=blocking-channel -t vtid -t pthread_id
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
+if [ ! -z "$profiling" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=PATH_TO_LIB/tracer_ze.so:$LD_PRELOAD
 lttng start
+
+ctrl_c() {
+  lttng stop
+  lttng destroy
+  exit
+}
+
+trap ctrl_c INT
+
 if [ ! -z "$lttng_view" ]
 then
   lttng view &
