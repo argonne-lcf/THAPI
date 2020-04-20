@@ -1,0 +1,31 @@
+---
+lttng_ust_ze_profiling:
+  events:
+  - name: event_profiling
+    args:
+    - [ ze_event_handle_t, hEvent ]
+    fields:
+    - [ ctf_integer_hex, intptr_t, hEvent, "(intptr_t)hEvent" ]
+  - name: event_profiling_results
+    args:
+    - [ ze_event_handle_t, hEvent ]
+    - [ ze_result_t, status ]
+    - [ ze_result_t, globalStartStatus ]
+    - [ uint64_t, globalStart ]
+    - [ ze_result_t, globalEndStatus ]
+    - [ uint64_t, globalEnd ]
+    - [ ze_result_t, contextStartStatus ]
+    - [ uint64_t, contextStart ]
+    - [ ze_result_t, contextEndStatus ]
+    - [ uint64_t, contextEnd ]
+    fields:
+    - [ ctf_integer_hex, intptr_t, hEvent, "(intptr_t)hEvent" ]
+    - [ ctf_integer, int32_t, status, "(int32_t)status" ]
+    - [ ctf_integer, int32_t, globalStartStatus, "(int32_t)globalStartStatus" ]
+    - [ ctf_integer, uint64_t, globalStart, "globalStart" ]
+    - [ ctf_integer, int32_t, globalEndStatus, "(int32_t)globalEndStatus" ]
+    - [ ctf_integer, uint64_t, globalEnd, "globalEnd" ]
+    - [ ctf_integer, int32_t, contextStartStatus, "(int32_t)contextStartStatus" ]
+    - [ ctf_integer, uint64_t, contextStart, "contextStart" ]
+    - [ ctf_integer, int32_t, contextEndStatus, "(int32_t)contextEndStatus" ]
+    - [ ctf_integer, uint64_t, contextEnd, "contextEnd" ]
