@@ -201,11 +201,13 @@ module ZE
     ( major << 16 )|( minor & 0x0000ffff)
   end
 
-  def self.ZE_MAJOR_VERSION(ver)
+  VERSION_CURRENT = ZE_MAKE_VERSION(0, 91)
+
+  def self.ZE_MAJOR_VERSION(ver = VERSION_CURRENT)
     ver >> 16
   end
 
-  def self.ZE_MINOR_VERSION(ver)
+  def self.ZE_MINOR_VERSION(ver = VERSION_CURRENT)
     ver & 0x0000ffff
   end
 
@@ -241,78 +243,14 @@ module ZE
     def to_s
       "\#{self[:major]}.\#{self[:minor]}"
     end
+
+    def to_i
+      ZE.ZE_MAKE_VERSION(self[:major], self[:minor])
+    end
+    alias to_int to_i
   end
 
 EOF
-
-module YAMLCAst
-  class Struct
-    def to_ffi
-      res = []
-      members.each { |m|
-        mt = case m.type
-        when Array
-          m.type.to_ffi
-        when Pointer
-          ":pointer"
-        else
-          to_ffi_name(m.type.name)
-        end
-        res.push [to_ffi_name(m.name), mt]
-      }
-      res
-    end
-  end
-
-  class Union
-    def to_ffi
-      res = []
-      members.each { |m|
-        mt = case m.type
-        when Array
-          m.type.to_ffi
-        when Pointer
-          ":pointer"
-        else
-          to_ffi_name(m.type.name)
-        end
-        res.push [to_ffi_name(m.name), mt]
-      }
-      res
-    end
-  end
-
-  class Array
-    def to_ffi
-      t = case type
-      when Pointer
-        ":pointer"
-      else
-       to_ffi_name(type.name)
-      end
-      [ t, length ]
-    end
-  end
-
-  class Function
-    def to_ffi
-      t = to_ffi_name(type.name)
-      p = params.collect { |par|
-        if par.type.kind_of?(Pointer)
-          if par.type.type.respond_to?(:name) &&
-             $all_struct_names.include?(par.type.type.name)
-            "#{to_class_name(par.type.type.name)}.ptr"
-          else
-            ":pointer"
-          end
-        else
-          to_ffi_name(par.type.name)
-        end
-      }
-      [t, p]
-    end
-  end
-end
 
 def print_union(name, union)
   members = union.to_ffi
@@ -353,6 +291,23 @@ EOF
 EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
+EOF
+  if members.first[0] == ":version"
+    puts <<EOF
+
+    def initialize(*args, version: nil)
+      super(*args)
+      if version
+        self[:version][:minor] = ZE.ZE_MINOR_VERSION(version.to_i)
+        self[:version][:major] = ZE.ZE_MAJOR_VERSION(version.to_i)
+      elsif args.length == 0
+        self[:version][:minor] = ZE.ZE_MINOR_VERSION()
+        self[:version][:major] = ZE.ZE_MAJOR_VERSION()
+      end
+    end
+EOF
+  end
+  puts <<EOF
   end
   typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
 

@@ -17,9 +17,11 @@ ZE_EXTRACT = extract_base.rb modified_include
 ZE_EXTRACTED = ze_api.yaml zet_api.yaml
 ZE_MODEL = ze_model.rb yaml_ast.rb ze_meta_parameters.yaml zet_meta_parameters.yaml $(ZE_EXTRACTED)
 
+ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
+
 .SECONDARY: $(ZE_TP)
 
-all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
+all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS)
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werror -O3 -I./ -I./include/core -I./include/tools -I../utils/
 
@@ -57,6 +59,12 @@ ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_M
 babeltrace_ze_lib.rb: gen_babeltrace_ze_lib.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_MODEL)
 	ruby $< > $@
 
+ze_refinements.rb: gen_ze_refinements.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_MODEL)
+	ruby $< > $@
+
+ze_bindings.rb: gen_ze_bindings.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_MODEL)
+	ruby $< > $@
+
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
 
 clean:
@@ -64,6 +72,7 @@ clean:
 		ze_api.yaml zet_api.yaml\
 		$(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC)\
 		$(ZE_STATIC_TP) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL) $(ZE_STATIC_SRC)\
+		$(ZE_BINDINGS)\
 		tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
 	rm -fr modified_include
 	$(MAKE) -C ../utils clean

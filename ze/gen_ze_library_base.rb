@@ -5,6 +5,7 @@ $all_types = $ze_api["typedefs"] + $zet_api["typedefs"]
 $all_structs = $ze_api["structs"] + $zet_api["structs"]
 $all_unions = $zet_api["unions"]
 $all_enums = $ze_api["enums"] + $zet_api["enums"]
+$all_funcs = $ze_api["functions"] + $zet_api["functions"]
 
 $all_enum_names = []
 $all_bitfield_names = []
@@ -25,7 +26,7 @@ $all_types.each { |t|
 def to_class_name(name)
   mod = to_name_space(name)
   n = name.gsub(/_t\z/, "").gsub(/\Azet?_/, "").split("_").collect(&:capitalize).join
-  mod << n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("Api","API").gsub("P2p", "P2P")
+  mod << n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("P2p", "P2P")
 end
 
 def to_ffi_name(name)
@@ -50,3 +51,72 @@ $all_types.each { |t|
     $all_union_names.push t.name
   end
 }
+
+module YAMLCAst
+  class Struct
+    def to_ffi
+      res = []
+      members.each { |m|
+        mt = case m.type
+        when Array
+          m.type.to_ffi
+        when Pointer
+          ":pointer"
+        else
+          to_ffi_name(m.type.name)
+        end
+        res.push [to_ffi_name(m.name), mt]
+      }
+      res
+    end
+  end
+
+  class Union
+    def to_ffi
+      res = []
+      members.each { |m|
+        mt = case m.type
+        when Array
+          m.type.to_ffi
+        when Pointer
+          ":pointer"
+        else
+          to_ffi_name(m.type.name)
+        end
+        res.push [to_ffi_name(m.name), mt]
+      }
+      res
+    end
+  end
+
+  class Array
+    def to_ffi
+      t = case type
+      when Pointer
+        ":pointer"
+      else
+       to_ffi_name(type.name)
+      end
+      [ t, length ]
+    end
+  end
+
+  class Function
+    def to_ffi
+      t = to_ffi_name(type.name)
+      p = params.collect { |par|
+        if par.type.kind_of?(Pointer)
+          if par.type.type.respond_to?(:name) &&
+             $all_struct_names.include?(par.type.type.name)
+            "#{to_class_name(par.type.type.name)}.ptr"
+          else
+            ":pointer"
+          end
+        else
+          to_ffi_name(par.type.name)
+        end
+      }
+      [t, p]
+    end
+  end
+end
