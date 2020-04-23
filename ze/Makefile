@@ -23,7 +23,7 @@ ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
 
 all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS)
 
-LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Werror -O3 -I./ -I./include/core -I./include/tools -I../utils/
+LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/core -I./include/tools -I../utils/
 
 modified_include: include headers.patch
 	cp -r include/ modified_include/

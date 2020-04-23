@@ -299,6 +299,11 @@ static void _load_tracer(void) {
     exit(1);
   }
 
+  find_ze_symbols(handle);
+
+  //FIX for intel tracing layer that needs to register its callbacks first...
+  ZE_INIT_PTR(ZE_INIT_FLAG_NONE);
+
   char *s = NULL;
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
@@ -306,8 +311,6 @@ static void _load_tracer(void) {
 
   if (_do_profile)
     atexit(&_lib_cleanup);
-
-  find_ze_symbols(handle);
 }
 
 static inline void _init_tracer(void) {
