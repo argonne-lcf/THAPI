@@ -1,6 +1,6 @@
 require_relative 'gen_ze_library_base.rb'
 
-METHOD_PREFIX = [:put, :get, :write, :read, :put_array_of, :get_array_of, :read_array_of]
+METHOD_PREFIX = [:put, :get, :write, :read, :put_array_of, :get_array_of, :read_array_of, :write_array_of]
 
 def print_acessor(orig, add)
   METHOD_PREFIX.each { |meth|
@@ -29,6 +29,15 @@ $all_types.each { |t|
   end
 }
 puts <<EOF
+      if FFI.find_type(:size_t).size == 8
+EOF
+print_acessor(:uint64, :size_t)
+puts <<EOF
+      else
+EOF
+print_acessor(:uint32, :size_t)
+puts <<EOF
+      end
     end
 
   end
