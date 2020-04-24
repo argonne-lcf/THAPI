@@ -694,3 +694,7 @@ EOF
     register_prologue c, profiling_prologue.call("hEvent")
     register_epilogue c, profiling_epilogue.call("hEvent")
 }
+
+#WARNING
+# zeModuleGetKernelNames, returns an array of strings.
+# This is problematic for lttng.
