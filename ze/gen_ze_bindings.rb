@@ -14,7 +14,7 @@ $all_funcs.each { |f|
   type, params = f.type.to_ffi
   puts <<EOF
   attach_function #{to_ffi_name(f.name)},
-                  [ #{params.join(",\n"+" "*18)} ],
+                  [ #{params.join(",\n"+" "*20)} ],
                   #{type}
 
 EOF
