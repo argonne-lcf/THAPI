@@ -81,7 +81,7 @@ module ZE
 
   def self.error_check(result)
     if result != :ZE_RESULT_SUCCESS &&
-       result != :ZE_ZE_RESULT_NOT_READY
+       result != :ZE_RESULT_NOT_READY
       raise Error, result
     end
   end
@@ -227,6 +227,31 @@ EOF
       result = ZE.zeDriverFreeMem(@handle, ptr)
       ZE.error_check(result)
       return self
+    end
+
+    def event_pool_create(count, flags: 0, devices: self.devices)
+      desc = ZEEventPoolDesc::new()
+      desc[:flags] = flags
+      desc[:count] = count
+      ph_devices = nil
+      num_devices = 0
+      if devices
+        devices = [devices].flatten
+        num_devices = devices.length
+        ph_devices = MemoryPointer::new(:ze_device_handle_t, num_devices)
+        ph_devices.write_array_of_ze_device_handle_t(devices.collect(&:to_ptr))
+      end
+      ph_event_pool = MemoryPointer::new(:ze_event_pool_handle_t)
+      result = ZE.zeEventPoolCreate(@handle, desc, num_devices, ph_devices, ph_event_pool)
+      ZE.error_check(result)
+      EventPool::new(ph_event_pool.read_ze_event_pool_handle_t)
+    end
+
+    def event_pool_open_ipc_handle(h_ipc)
+      ph_event_pool = MemoryPointer::new(:ze_event_pool_handle_t)
+      result = ZE.zeEventPoolOpenIpcHandle(@handle, h_ipc, ph_event_pool)
+      ZE.error_check(result)
+      IPCEventPool::new(ph_event_pool.read_ze_event_pool_handle_t)
     end
   end
 
@@ -426,6 +451,56 @@ EOF
       @driver.alloc_shared_mem(size, @handle, alignment: alignment, ordinal: ordinal, host_flags: host_flags, device_flags: device_flags)
     end
 
+    def make_memory_resident(ptr, size: nil)
+      size = ptr.to_ptr.size unless size
+      result = ZE.zeDeviceMakeMemoryResident(@handle, ptr, size)
+      ZE.error_check(result)
+      ptr.to_ptr.slice(0, size)
+    end
+
+    def evict_memory(ptr, size: nil)
+      size = ptr.to_ptr.size unless size
+      result = ZE.zeDeviceEvictMemory(@handle, ptr, size)
+      ZE.error_check(result)
+      ptr.to_ptr.slice(0, size)
+    end
+
+    def make_image_resident(image)
+      result = ZE.zeDeviceMakeImageResident(@handle, image)
+      ZE.error_check(result)
+      self
+    end
+
+    def evict_image(image)
+      result = ZE.zeDeviceEvictImage(@handle, image)
+      ZE.error_check(result)
+      self
+    end
+
+    def register_cl_memory(mem, context: nil)
+      context = mem.context unless context
+      ptr = MemoryPointer::new(:pointer)
+      result = ZE.zeDeviceRegisterCLMemory(@handle, context, mem, ptr)
+      ZE.error_check(result)
+      ptr.read_pointer.slice(0, mem.size)
+    end
+
+    def register_cl_program(program, context: nil)
+      context = program.context unless context
+      ptr = MemoryPointer::new(:ze_module_handle_t)
+      result = ZE.zeDeviceRegisterCLProgram(@handle, context, program, ptr)
+      ZE.error_check(result)
+      Module::new(ptr.read_ze_module_handle_t)
+    end
+
+    def register_cl_command_queue(command_queue, context: nil)
+      context = command_queue.context unless context
+      ptr = MemoryPointer::new(:ze_command_queue_handle_t)
+      result = ZE.zeDeviceRegisterCLCommandQueue(@handle, context, command_queue, ptr)
+      ZE.error_check(result)
+      CommandQueue::new(ptr.read_ze_command_queue_handle_t)
+    end
+
     private
     def _get_image_type(width, height, depth, arraylevels)
       if arraylevels > 0
@@ -459,7 +534,7 @@ EOF
       self
     end
 
-    def synchronize(timeout: ZE.UINT32_MAX)
+    def synchronize(timeout: ZE::UINT32_MAX)
       result = ZE.zeCommandQueueSynchronize(@handle, timeout)
       ZE.error_check(result)
       result
@@ -482,14 +557,14 @@ EOF
     end
 
     def append_barrier(signal_event: nil, wait_events: nil)
-      count, phWaitEvents = _create_event_list(wait_events)
-      result = ZE.zeCommandListAppendBarrier(@handle, signal_event, count, phWaitEvents)
+      count, ph_wait_events = _create_event_list(wait_events)
+      result = ZE.zeCommandListAppendBarrier(@handle, signal_event, count, ph_wait_events)
       ZE.error_check(result)
       self
     end
 
     def append_memory_ranges_barrier(*ranges, signal_event: nil, wait_events: nil)
-      count, phWaitEvents = _create_event_list(wait_events)
+      count, ph_wait_events = _create_event_list(wait_events)
       num_ranges = ranges.length
       if num_ranges > 0
         pRangesSizes = MemoryPointer::new(:size_t, num_ranges)
@@ -513,18 +588,68 @@ EOF
         pRanges = nil
         pRangesSizes = nil
       end
-      result = ZE.zeCommandListAppendMemoryRangesBarrier(@handle, num_ranges, pRangesSizes, pRanges, signal_event, count, phWaitEvents)
+      result = ZE.zeCommandListAppendMemoryRangesBarrier(@handle, num_ranges, pRangesSizes, pRanges, signal_event, count, ph_wait_events)
       ZE.error_check(result)
       self
     end
 
     def append_launch_kernel(kernel, x, y = 1, z = 1, signal_event: nil, wait_events: nil)
-      count, phWaitEvents = _create_event_list(wait_events)
+      count, ph_wait_events = _create_event_list(wait_events)
       group_count = ZEGroupCount::new
       group_count[:groupCountX] = x
       group_count[:groupCountY] = y
       group_count[:groupCountZ] = z
-      result = ZE.zeCommandListAppendLaunchKernel(@handle, kernel, group_count, signal_event, count, phWaitEvents)
+      result = ZE.zeCommandListAppendLaunchKernel(@handle, kernel, group_count, signal_event, count, ph_wait_events)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_launch_cooperative_kernel(kernel, x, y = 1, z = 1, signal_event: nil, wait_events: nil)
+      count, ph_wait_events = _create_event_list(wait_events)
+      group_count = ZEGroupCount::new
+      group_count[:groupCountX] = x
+      group_count[:groupCountY] = y
+      group_count[:groupCountZ] = z
+      result = ZE.zeCommandListAppendLaunchCooperativeKernel(@handle, kernel, group_count, signal_event, count, ph_wait_events)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_launch_kernel_indirect(kernel, group_count, signal_event: nil, wait_events: nil)
+      count, ph_wait_events = _create_event_list(wait_events)
+      group_count = ZEGroupCount::new(group_count.to_ptr)
+      result = ZE.zeCommandListAppendLaunchKernelIndirect(@handle, kernel, group_count, signal_event, count, ph_wait_events)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_launch_nultiple_kernels_indirect(kernels, count_buffer, group_counts, signal_event: nil, wait_events: nil)
+      count, ph_wait_events = _create_event_list(wait_events)
+      kernels = [kernels].flatten
+      num_kernels = kernels.length
+      ph_kernels = MemoryPointer::new(:ze_kernel_handle_t, num_kernels)
+      ph_kernels.write_array_of_ze_kernel_handle_t(kernels.collect(&:to_ptr))
+      group_counts = ZEGroupCount::new(group_counts.to_ptr)
+      result = ZE.zeCommandListAppendLaunchMultipleKernelsIndirect(@handle, num_kernels, kernels, count_buffer, group_counts, signal_event, count, ph_wait_events)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_signal_event(event)
+      result = ZE.zeCommandListAppendSignalEvent(@handle, event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_wait_on_events(events)
+      count, ph_events = _create_event_list(events)
+      result = ZE.zeCommandListAppendWaitOnEvents(@handle, count, ph_events)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_event_reset(event)
+      result = ZE.zeCommandListAppendEventReset(@handle, event)
       ZE.error_check(result)
       self
     end
@@ -532,16 +657,16 @@ EOF
     private
     def _create_event_list(wait_events)
       count = 0
-      phWaitEvents = nil
+      ph_wait_events = nil
       if wait_events
         events = [wait_events].flatten
         count = events.length
         if count > 0
-          phWaitEvents = MemoryPointer::new(:ze_event_handle_t, count)
-          phWaitEvents.write_array_of_event_handle_t(events.collect(&:handle).collect(&:address))
+          ph_wait_events = MemoryPointer::new(:ze_event_handle_t, count)
+          ph_wait_events.write_array_of_event_handle_t(events.collect(&:handle).collect(&:address))
         end
       end
-      [count, phWaitEvents]
+      [count, ph_wait_events]
     end
   end
 
@@ -686,6 +811,78 @@ EOF
       result = ZE.zeKernelSetIntermediateCacheConfig(@handle, config)
       ZE.error_check(result)
       self
+    end
+  end
+
+  class EventPool < ManagedObject
+    @destructor = :zeEventPoolDestroy
+
+    def event_create(index, signal: 0, wait: 0)
+      desc = ZEEventDesc::new
+      desc[:index] = index
+      desc[:signal] = signal
+      desc[:wait] = wait
+      ph_event = MemoryPointer::new(:ze_event_handle_t)
+      result = ZE.zeEventCreate(@handle, desc, ph_event)
+      ZE.error_check(result)
+      return Event::new(ph_event.read_ze_event_handle_t)
+    end
+
+    def ipc_handle
+      ph_ipc = ZEIPCEventPoolHandle::new
+      result = ZE.zeEventPoolGetIpcHandle(@handle, ph_ipc)
+      ZE.error_check(result)
+      return ph_ipc
+    end
+  end
+
+  class IPCEventPool < EventPool
+    @destructor = :zeEventPoolCloseIpcHandle
+
+    alias close destroy
+  end
+
+  class Event < ManagedObject
+    @destructor = :zeEventDestroy
+
+    def host_signal
+      result = ZE.zeEventHostSignal(@handle)
+      ZE.error_check(result)
+      self
+    end
+    alias signal host_signal
+
+    def host_synchronize(timeout: ZE::UINT32_MAX)
+      result = ZE.zeEventHostSynchronize(@handle, timeout)
+      ZE.error_check(result)
+      return self if timeout == ZE::UINT32_MAX
+      result
+    end
+    alias synchronize host_synchronize
+
+    def query_status
+      result = ZE.zeEventQueryStatus(@handle)
+      ZE.error_check(result)
+      result
+    end
+    alias status query_status
+
+    def host_reset
+      result = ZE.zeEventHostReset(@handle)
+      ZE.error_check(result)
+      self
+    end
+    alias reset host_reset
+
+    def timestamp(type)
+      dstptr = MemoryPointer::new(:uint64_t)
+      result = ZE.zeEventGetTimestamp(@handle, type, dstptr)
+      ZE.error_check(result)
+      dstptr.read_uint64
+    end
+
+    def timestamps
+      ZEEventTimestampType.symbol_map.collect { |k, v| [k, timestamp(v)] }.to_h
     end
   end
 
