@@ -115,7 +115,7 @@ module ZE
       @#{pname} = #{pname}
     end
 EOF
-      eval src
+      class_eval src
     end
 
     def self.add_object_array(aname, oname, fname)
@@ -133,7 +133,7 @@ EOF
       @#{aname} = pArr.read_array_of_pointer(count).collect { |h| #{oname}::new(h) }
     end
 EOF
-      eval src
+      class_eval src
     end
 
     def self.add_array_property(aname, sname, fname)
@@ -153,7 +153,7 @@ EOF
       @#{aname} = #{aname}
     end
 EOF
-      eval src
+      class_eval src
     end
   end
 
