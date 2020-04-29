@@ -53,16 +53,6 @@ module ZE
     end
   end
 
-  at_exit {
-    ZE_OBJECTS_MUTEX.synchronize {
-      ZE_OBJECTS.to_a.reverse.each do |h, d|
-        result = method(d).call(h)
-        ZE.error_check(result)
-      end
-      ZE_OBJECTS.clear
-    }
-  }
-
   ENV["ZE_ENABLE_VALIDATION_LAYER"] = "1"
   ENV["ZE_ENABLE_LOADER_INTERCEPT"] = "1"
   ENV["ZE_ENABLE_PARAMETER_VALIDATION"] = "1"
@@ -180,6 +170,14 @@ EOF
     add_property :properties
     add_property :ipc_properties
 
+    def extension_function(name, return_type, param_types, **options )
+      p_name = MemoryPointer.from_string(name.to_s)
+      pptr = MemoryPointer::new(:pointer)
+      result = ZE.zeDriverGetExtensionFunctionAddress(@handle, p_name, pptr)
+      ZE.error_check(result)
+      return Function::new(return_type, param_types, pptr.read_pointer, options)
+    end
+
     def devices
       return @devices if @devices
       pCount = MemoryPointer::new(:uint32_t)
@@ -191,6 +189,31 @@ EOF
       result = ZE.zeDeviceGet(@handle, pCount, pArr)
       ZE.error_check(result)
       @devices = pArr.read_array_of_pointer(count).collect { |h| Device::new(h, self) }
+    end
+
+    def event_pool_create(count, flags: 0, devices: self.devices)
+      desc = ZEEventPoolDesc::new()
+      desc[:flags] = flags
+      desc[:count] = count
+      ph_devices = nil
+      num_devices = 0
+      if devices
+        devices = [devices].flatten
+        num_devices = devices.length
+        ph_devices = MemoryPointer::new(:ze_device_handle_t, num_devices)
+        ph_devices.write_array_of_ze_device_handle_t(devices.collect(&:to_ptr))
+      end
+      ph_event_pool = MemoryPointer::new(:ze_event_pool_handle_t)
+      result = ZE.zeEventPoolCreate(@handle, desc, num_devices, ph_devices, ph_event_pool)
+      ZE.error_check(result)
+      EventPool::new(ph_event_pool.read_ze_event_pool_handle_t)
+    end
+
+    def event_pool_open_ipc_handle(h_ipc)
+      ph_event_pool = MemoryPointer::new(:ze_event_pool_handle_t)
+      result = ZE.zeEventPoolOpenIpcHandle(@handle, h_ipc, ph_event_pool)
+      ZE.error_check(result)
+      IPCEventPool::new(ph_event_pool.read_ze_event_pool_handle_t)
     end
 
     def alloc_host_mem(size, alignment: 0, flags: 0)
@@ -229,30 +252,44 @@ EOF
       return self
     end
 
-    def event_pool_create(count, flags: 0, devices: self.devices)
-      desc = ZEEventPoolDesc::new()
-      desc[:flags] = flags
-      desc[:count] = count
-      ph_devices = nil
-      num_devices = 0
-      if devices
-        devices = [devices].flatten
-        num_devices = devices.length
-        ph_devices = MemoryPointer::new(:ze_device_handle_t, num_devices)
-        ph_devices.write_array_of_ze_device_handle_t(devices.collect(&:to_ptr))
-      end
-      ph_event_pool = MemoryPointer::new(:ze_event_pool_handle_t)
-      result = ZE.zeEventPoolCreate(@handle, desc, num_devices, ph_devices, ph_event_pool)
+    def mem_alloc_properties(ptr)
+      props = ZEMemoryAllocationProperties::new
+      ph_device = MemoryPointer::new(:ze_device_handle_t)
+      result = ZE.zeDriverGetMemAllocProperties(@handle, ptr, props, ph_device)
       ZE.error_check(result)
-      EventPool::new(ph_event_pool.read_ze_event_pool_handle_t)
+      h_device = ph_device.read_ze_device_handle_t
+      device = h_device.null? ? nil : Device::new(h_device, self)
+      return [props, device]
     end
 
-    def event_pool_open_ipc_handle(h_ipc)
-      ph_event_pool = MemoryPointer::new(:ze_event_pool_handle_t)
-      result = ZE.zeEventPoolOpenIpcHandle(@handle, h_ipc, ph_event_pool)
+    def mem_address_range(ptr)
+      p_base = MemoryPointer::new(:pointer)
+      p_size = MemoryPointer::new(:size_t)
+      result = ZE.zeDriverGetMemAddressRange(@handle, ptr, p_base, p_size)
       ZE.error_check(result)
-      IPCEventPool::new(ph_event_pool.read_ze_event_pool_handle_t)
+      return p_base.read_pointer.slice(0, p_size.read_size_t)
     end
+
+    def mem_ipc_handle(ptr)
+      ipc_handle = ZEIPCMemHandle.new
+      result = ZE.zeDriverGetMemIpcHandle(@handle, ptr, ipc_handle)
+      ZE.error_check(result)
+      return ipc_handle
+    end
+
+    def open_mem_ipc_handle(device, ipc_handle, flags: 0)
+      pptr = MemoryPointer::new(:pointer)
+      result = ZE.zeDriverOpenMemIpcHandle(@handle, device, ipc_handle, flags, pptr)
+      ZE.error_check(result)
+      return pptr.read_pointer
+    end
+
+    def close_mem_ipc_handle(ptr)
+      result = ZE.zeDriverCloseMemIpcHandle(@handle, ptr)
+      ZE.error_check(result)
+      return self
+    end
+
   end
 
   class Device < Object
@@ -501,6 +538,17 @@ EOF
       CommandQueue::new(ptr.read_ze_command_queue_handle_t)
     end
 
+    def sampler_create(address_mode:, filter_mode:, normalized:)
+      desc = ZESamplerDesc::new
+      desc[:addressMode] = address_mode
+      desc[:filterMode] = filter_mode
+      desc[:isNormalized] = normalized
+      ptr = MemoryPointer::new(:ze_sampler_handle_t)
+      result = ZE.zeSamplerCreate(@handle, desc, ptr)
+      ZE.error_check(result)
+      Sampler::new(ptr.read_ze_sampler_handle_t)
+    end
+
     private
     def _get_image_type(width, height, depth, arraylevels)
       if arraylevels > 0
@@ -539,6 +587,14 @@ EOF
       ZE.error_check(result)
       result
     end
+
+    def fence_create(flags: 0)
+      desc = ZEFenceDesc::new
+      ph_fence = MemoryPointer::new(:ze_fence_handle_t)
+      result = ZE.zeFenceCreate(@handle, desc, ph_fence)
+      ZE.error_check(result)
+      return Fence::new(ph_fence.read_ze_fence_handle_t)
+    end
   end
 
   class CommandList < ManagedObject
@@ -572,7 +628,7 @@ EOF
         rranges = ranges.collect { |r|
           case r
           when Array
-            [r.first, r.last]
+            [r.last, r.first]
           when Range
             [r.size, r.first]
           else
@@ -654,6 +710,106 @@ EOF
       self
     end
 
+    def append_memory_copy(dstptr, srcptr, size: nil, signal_event: nil)
+      unless size
+        size = [dstptr.size, srcptr.size].min
+      end
+      result = ZE.zeCommandListAppendMemoryCopy(@handle, dstptr, srcptr, size, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_memory_fill(ptr, pattern, size: nil, pattern_size: nil, signal_event: nil)
+      size = ptr.size unless size
+      pattern_size = pattern.size unless size
+      result = zeCommandListAppendMemoryFill(@handle, ptr, pattern, pattern_size, size, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_memory_copy_region(dstptr, srcptr, width, height, depth = 0,
+                                  dst_origin: [0, 0, 0], src_origin: [0, 0, 0],
+                                  dst_pitch: width, src_pitch: width,
+                                  dst_slice_pitch: depth == 0 ? 0 : dst_pitch * height,
+                                  src_slice_pitch: depth == 0 ? 0 : src_pitch * height,
+                                  signal_event: nil)
+      dst_region = ZECopyRegion::new
+      dst_region[:originX] = dst_origin[0]
+      dst_region[:originY] = dst_origin[1]
+      dst_region[:originZ] = dst_origin[2]
+      dst_region[:width] = width
+      dst_region[:height] = height
+      dst_region[:depth] = depth
+      src_region = ZECopyRegion::new
+      src_region[:originX] = src_origin[0]
+      src_region[:originY] = src_origin[1]
+      src_region[:originZ] = src_origin[2]
+      src_region[:width] = width
+      src_region[:height] = height
+      src_region[:depth] = depth
+      result = ZE.zeCommandListAppendMemoryCopyRegion(@handle, dstptr, dst_region, dst_pitch, dst_slice_pitch, srcptr, src_region, src_pitch, src_slice_pitch, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_image_copy(dst_image, src_image, signal_event: nil)
+      result = ZE.zeCommandListAppendImageCopy(@handle, dst_image, src_image, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_image_copy_region(dst_image, src_image, width, height = 1, depth = 1,
+                                 dst_origin: [0, 0, 0], src_origin: [0, 0, 0],
+                                 signal_event: nil)
+      dst_region = ZEImageRegion::new
+      dst_region[:originX] = dst_origin[0]
+      dst_region[:originY] = dst_origin[1]
+      dst_region[:originZ] = dst_origin[2]
+      dst_region[:width] = width
+      dst_region[:height] = height
+      dst_region[:depth] = depth
+      src_region = ZEImageRegion::new
+      src_region[:originX] = src_origin[0]
+      src_region[:originY] = src_origin[1]
+      src_region[:originZ] = src_origin[2]
+      src_region[:width] = width
+      src_region[:height] = height
+      src_region[:depth] = depth
+      result = ZE.zeCommandListAppendImageCopyRegion(@handle, dst_image, src_image, dst_region, src_region, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_image_copy_to_memory(dstptr, image, ranges: nil, signal_event: nil)
+      src_region = nil
+      src_region = _create_image_region_from_ranges(ranges) if ranges
+      result = ZE.zeCommandListAppendImageCopyToMemory(@handle, dstptr, image, src_region, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_image_copy_from_memory(image, srcptr, ranges: nil, signal_event: nil)
+      dst_region = nil
+      dst_region = _create_image_region_from_ranges(ranges) if ranges
+      result = ZE.zeCommandListAppendImageCopyFromMemory(@handle, image, srcptr, dst_region, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_memory_prefetch(ptr, size: nil)
+      size = ptr.to_ptr.size unless size
+      result = ZE.zeCommandListAppendMemoryPrefetch(@handle, ptr, size)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_mem_advise(device, ptr, advice, size: nil)
+      size = ptr.to_ptr.size unless size
+      result = ZE.zeCommandListAppendMemAdvise(@handle, device, ptr, size, advice)
+      ZE.error_check(result)
+      self
+    end
+
     private
     def _create_event_list(wait_events)
       count = 0
@@ -667,6 +823,30 @@ EOF
         end
       end
       [count, ph_wait_events]
+    end
+
+    def _create_image_region_from_ranges(ranges)
+      ranges.collect! do r
+        case r
+        when Range
+          [r.size, r.first]
+        when Integer
+          [r, 0]
+        when Array
+          [r.last, r.first]
+        else
+          ZE.error_check(:ZE_RESULT_ERROR_INVALID_ARGUMENT)
+        end
+      end
+      ranges += [[1, 0]] * (3 - ranges.length) if ranges.length < 3
+      region = ZEImageRegion::new
+      region[:originX] = ranges[0][1]
+      region[:originY] = ranges[1][1]
+      region[:originZ] = ranges[2][1]
+      region[:width] = ranges[0][0]
+      region[:height] = ranges[1][0]
+      region[:depth] = ranges[2][0]
+      region
     end
   end
 
@@ -855,7 +1035,6 @@ EOF
     def host_synchronize(timeout: ZE::UINT32_MAX)
       result = ZE.zeEventHostSynchronize(@handle, timeout)
       ZE.error_check(result)
-      return self if timeout == ZE::UINT32_MAX
       result
     end
     alias synchronize host_synchronize
@@ -883,6 +1062,34 @@ EOF
 
     def timestamps
       ZEEventTimestampType.symbol_map.collect { |k, v| [k, timestamp(v)] }.to_h
+    end
+  end
+
+  class Sampler < ManagedObject
+    @destructor = :zeSamplerDestroy
+  end
+
+  class Fence < ManagedObject
+    @destructor = :zeFenceDestroy
+
+    def host_synchronize(timeout: ZE::UINT32_MAX)
+      result = zeFenceHostSynchronize(@handle, timeout)
+      ZE.error_check(result)
+      result
+    end
+    alias synchronize host_synchronize
+
+    def query_status
+      result = zeFenceQueryStatus(@handle)
+      ZE.error_check(result)
+      result
+    end
+    alias status query_status
+
+    def reset
+      result = zeFenceReset(@handle)
+      ZE.error_check(result)
+      self
     end
   end
 

@@ -21,5 +21,17 @@ EOF
 }
 
 puts <<EOF
+  ZE.init
+
+  at_exit {
+    ZE::ZE_OBJECTS_MUTEX.synchronize {
+      ZE::ZE_OBJECTS.to_a.reverse.each do |h, d|
+        result = method(d).call(h)
+        ZE.error_check(result)
+      end
+      ZE::ZE_OBJECTS.clear
+    }
+  }
+
 end
 EOF
