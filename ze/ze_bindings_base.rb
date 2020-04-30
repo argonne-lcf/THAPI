@@ -55,7 +55,7 @@ module ZE
 
   ENV["ZE_ENABLE_VALIDATION_LAYER"] = "1"
   ENV["ZE_ENABLE_LOADER_INTERCEPT"] = "1"
-  ENV["ZE_ENABLE_PARAMETER_VALIDATION"] = "1"
+#  ENV["ZE_ENABLE_PARAMETER_VALIDATION"] = "1"
   if ENV["LIBZE_LOADER_SO"]
     ffi_lib ENV["LIBZE_LOADER_SO"]
   else
@@ -91,27 +91,21 @@ module ZE
       res.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("P2p", "P2P")
     end
 
-    def self.add_property(pname, sname: nil, fname: nil)
-      n = name.split("::").last
-      ppn = process_property_name(pname) unless sname && fname
-      sname = "ZE" << n << ppn unless sname
-      fname = "ze#{n}Get" << ppn unless fname
-      src = <<EOF
-    def #{pname}
-      return @#{pname} if @#{pname}
-      #{pname} = #{sname}::new
-      result = ZE.#{fname}(@handle, #{pname})
-      ZE.error_check(result)
-      @#{pname} = #{pname}
-    end
-EOF
-      class_eval src
+    def self.process_ffi_name(name)
+      res = name.to_s.gsub(/_t\z/, "").split("_").collect(&:capitalize).join
+      res.gsub(/\AZet/,"ZET").gsub(/\AZe/, "ZE").gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("P2p", "P2P")
     end
 
-    def self.add_object_array(aname, oname, fname)
+    def self.add_object_array(aname, oname, fname, memoize: true)
       src = <<EOF
     def #{aname}
+EOF
+      if memoize
+        src << <<EOF
       return @#{aname} if @#{aname}
+EOF
+      end
+      src << <<EOF
       pCount = MemoryPointer::new(:uint32_t)
       result = ZE.#{fname}(@handle, pCount, nil)
       ZE.error_check(result)
@@ -120,16 +114,31 @@ EOF
       pArr = MemoryPointer::new(:pointer, count)
       result = ZE.#{fname}(@handle, pCount, pArr)
       ZE.error_check(result)
+EOF
+      if memoize
+        src << <<EOF
       @#{aname} = pArr.read_array_of_pointer(count).collect { |h| #{oname}::new(h) }
     end
 EOF
+      else
+        src << <<EOF
+      pArr.read_array_of_pointer(count).collect { |h| #{oname}::new(h) }
+    end
+EOF
+      end
       class_eval src
     end
 
-    def self.add_array_property(aname, sname, fname)
+    def self.add_array_property(aname, sname, fname, memoize: true)
       src = <<EOF
     def #{aname}
+EOF
+      if memoize
+        src << <<EOF
       return @#{aname} if @#{aname}
+EOF
+      end
+      src << <<EOF
       pCount = MemoryPointer::new(:uint32_t)
       result = ZE.#{fname}(@handle, pCount, nil)
       ZE.error_check(result)
@@ -140,18 +149,133 @@ EOF
       #{aname} = count.times.collect { |i| #{sname}::new(pArr.slice(sz * i, sz)) }
       result = ZE.#{fname}(@handle, pCount, #{aname}.first)
       ZE.error_check(result)
+EOF
+      if memoize
+        src << <<EOF
       @#{aname} = #{aname}
     end
 EOF
+      else
+        src << <<EOF
+      #{aname}
+    end
+EOF
+      end
+      class_eval src
+    end
+
+    def self.add_enum_array_property(aname, ename, fname, memoize: true)
+      pname = process_ffi_name(ename)
+      src = <<EOF
+    def #{aname}
+EOF
+      if memoize
+        src << <<EOF
+      return @#{aname} if @#{aname}
+EOF
+      end
+      src << <<EOF
+      p_count = MemoryPointer::new(:uint32_t)
+      result = ZE.#{fname}(@handle, p_count, nil)
+      ZE.error_check(result)
+      count = p_count.read(:uint32)
+      return [] if count == 0
+      p_arr = MemoryPointer::new(:#{ename}, count)
+      result = ZE.#{fname}(@handle, p_count, p_arr)
+      ZE.error_check(result)
+EOF
+      if memoize
+        src << <<EOF
+      @#{aname} = p_arr.read_array_of_int32.collect { |i| #{pname}.from_native(i) }
+    end
+EOF
+      else
+        src << <<EOF
+      p_arr.read_array_of_int32.collect { |i| #{pname}.from_native(i) }
+    end
+EOF
+      end
+      class_eval src
+    end
+
+    def self.add_property(pname, sname, fname, memoize: true)
+      src = <<EOF
+    def #{pname}
+EOF
+      if memoize
+        src << <<EOF
+      return @#{pname} if @#{pname}
+EOF
+      end
+      src << <<EOF
+      #{pname} = #{sname}::new
+      result = ZE.#{fname}(@handle, #{pname})
+      ZE.error_check(result)
+EOF
+      if memoize
+        src << <<EOF
+      @#{pname} = #{pname}
+    end
+EOF
+      else
+        src << <<EOF
+      #{pname}
+    end
+EOF
+      end
+      class_eval src
+    end
+    def self.add_enum_property(pname, ename, fname, memoize: true)
+      pename = process_ffi_name(ename)
+      src = <<EOF
+    def #{pname}
+EOF
+      if memoize
+        src << <<EOF
+      return @#{pname} if @#{pname}
+EOF
+      end
+      src << <<EOF
+      p_prop = MemoryPointer::new(:#{ename})
+      result = ZE.#{fname}(@handle, p_prop)
+      ZE.error_check(result)
+EOF
+      if memoize
+        src << <<EOF
+      @#{pname} = #{pename}.from_native(p_prop.read_int32)
+    end
+EOF
+      else
+        src << <<EOF
+      #{pename}.from_native(p_prop.read_int32)
+    end
+EOF
+      end
       class_eval src
     end
   end
 
-  class ManagedObject < Object
-    class << self
-      attr_reader :destructor
+  class ZEObject < Object
+    def self.add_property(pname, sname: nil, fname: nil, memoize: true)
+      n = name.split("::").last
+      ppn = process_property_name(pname) unless sname && fname
+      sname = "ZE" << n << ppn unless sname
+      fname = "ze#{n}Get" << ppn unless fname
+      super(pname, sname, fname, memoize: memoize)
     end
+  end
 
+  class ZETObject < Object
+    def self.add_property(pname, sname: nil, fname: nil, memoize: true)
+      n = name.split("::").last
+      ppn = process_property_name(pname) unless sname && fname
+      sname = "ZET" << n << ppn unless sname
+      fname = "zet#{n}Get" << ppn unless fname
+      super(pname, sname, fname, memoize: memoize)
+    end
+  end
+
+  module Lifetime
     def initialize(handle)
       super
       ZE.register(handle, self.class.destructor)
@@ -165,7 +289,21 @@ EOF
     end
   end
 
-  class Driver < Object
+  module Destructor
+    attr_reader :destructor
+  end
+
+  class ZEManagedObject < ZEObject
+    extend Destructor
+    include Lifetime
+  end
+
+  class ZETManagedObject < ZETObject
+    extend Destructor
+    include Lifetime
+  end
+
+  class Driver < ZEObject
     add_property :api_version, sname: :ZEApiVersion
     add_property :properties
     add_property :ipc_properties
@@ -292,7 +430,7 @@ EOF
 
   end
 
-  class Device < Object
+  class Device < ZEObject
     attr_reader :driver
 
     def initialize(handle, driver)
@@ -549,6 +687,13 @@ EOF
       Sampler::new(ptr.read_ze_sampler_handle_t)
     end
 
+    def sysman
+      ph_sysman = MemoryPointer::new(:zet_sysman_handle_t)
+      result = ZE.zetSysmanGet(@handle, @driver.api_version.to_ptr, ph_sysman)
+      ZE.error_check(result)
+      Sysman::new(ph_sysman.read_zet_sysman_handle_t)
+    end
+
     private
     def _get_image_type(width, height, depth, arraylevels)
       if arraylevels > 0
@@ -573,11 +718,15 @@ EOF
 
   end
 
-  class CommandQueue < ManagedObject
+  class CommandQueue < ZEManagedObject
     @destructor = :zeCommandQueueDestroy
 
     def execute_command_lists(command_lists, fence: nil)
-      result = ZE.zeCommandQueueExecuteCommandLists(@handle, [command_lists].flatten, fence)
+      cl = [command_lists].flatten
+      num_command_lists = cl.length
+      ph_command_lists = MemoryPointer::new(:ze_command_list_handle_t, num_command_lists)
+      ph_command_lists.write_array_of_ze_command_list_handle_t(cl.collect(&:handle))
+      result = ZE.zeCommandQueueExecuteCommandLists(@handle, num_command_lists, ph_command_lists, fence)
       ZE.error_check(result)
       self
     end
@@ -597,7 +746,7 @@ EOF
     end
   end
 
-  class CommandList < ManagedObject
+  class CommandList < ZEManagedObject
     @destructor = :zeCommandListDestroy
 
     def close
@@ -850,14 +999,14 @@ EOF
     end
   end
 
-  class Image < ManagedObject
+  class Image < ZEManagedObject
     @destructor = :zeImageDestroy
   end
 
-  class Module < ManagedObject
+  class Module < ZEManagedObject
     @destructor = :zeModuleDestroy
     attr_reader :device
-    class BuildLog < ManagedObject
+    class BuildLog < ZEManagedObject
       @destructor = :zeModuleBuildLogDestroy
 
       def string
@@ -928,7 +1077,7 @@ EOF
 
   end
 
-  class Kernel < ManagedObject
+  class Kernel < ZEManagedObject
     @destructor = :zeKernelDestroy
     add_property :properties
 
@@ -994,7 +1143,7 @@ EOF
     end
   end
 
-  class EventPool < ManagedObject
+  class EventPool < ZEManagedObject
     @destructor = :zeEventPoolDestroy
 
     def event_create(index, signal: 0, wait: 0)
@@ -1022,7 +1171,7 @@ EOF
     alias close destroy
   end
 
-  class Event < ManagedObject
+  class Event < ZEManagedObject
     @destructor = :zeEventDestroy
 
     def host_signal
@@ -1065,33 +1214,193 @@ EOF
     end
   end
 
-  class Sampler < ManagedObject
+  class Sampler < ZEManagedObject
     @destructor = :zeSamplerDestroy
   end
 
-  class Fence < ManagedObject
+  class Fence < ZEManagedObject
     @destructor = :zeFenceDestroy
 
     def host_synchronize(timeout: ZE::UINT32_MAX)
-      result = zeFenceHostSynchronize(@handle, timeout)
+      result = ZE.zeFenceHostSynchronize(@handle, timeout)
       ZE.error_check(result)
       result
     end
     alias synchronize host_synchronize
 
     def query_status
-      result = zeFenceQueryStatus(@handle)
+      result = ZE,zeFenceQueryStatus(@handle)
       ZE.error_check(result)
       result
     end
     alias status query_status
 
     def reset
-      result = zeFenceReset(@handle)
+      result = ZE.zeFenceReset(@handle)
       ZE.error_check(result)
       self
     end
   end
+
+  class Sysman < ZETObject
+    add_property :device_properties, sname: :ZETSysmanProperties, fname: :zetSysmanDeviceGetProperties
+    add_enum_array_property :scheduler_supported_modes, :zet_sched_mode_t, :zetSysmanSchedulerGetSupportedModes
+    add_enum_property :scheduler_current_mode, :zet_sched_mode_t, :zetSysmanSchedulerGetCurrentMode, memoize: false
+    add_enum_array_property :performance_profile_supported, :zet_perf_profile_t, :zetSysmanPerformanceProfileGetSupported
+    add_enum_property :performance_profile, :zet_perf_profile_t, :zetSysmanPerformanceProfileGet, memoize: false
+    add_array_property :processes_state, :ZETProcessState, :zetSysmanProcessesGetState, memoize: false
+    add_enum_property :device_repair_status, :zet_repair_status_t, :zetSysmanDeviceGetRepairStatus, memoize: false
+    add_property :pci_properties, sname: :ZETPciProperties, fname: :zetSysmanPciGetProperties
+    add_property :pci_state, sname: :ZETPciState, fname: :zetSysmanPciGetState, memoize: false
+    add_array_property :pci_bars, :ZETPciBarProperties, :zetSysmanPciGetBars
+    add_property :pci_stats, sname: :ZETPciStats, fname: :zetSysmanPciGetStats
+    add_object_array :powers, :SysmanPwr, :zetSysmanPowerGet
+
+    def scheduler_timeout_mode_properties(default: false)
+      config = ZETSchedTimeoutProperties::new
+      result = ZE.zetSysmanSchedulerGetTimeoutModeProperties(@handle, default ? 1 : 0, config)
+      ZE.error_check(result)
+      config
+    end
+
+    def scheduler_timeslice_mode_properties(default: false)
+      config = ZETSchedTimesliceProperties::new
+      result = ZE.zetSysmanSchedulerGetTimesliceModeProperties(@handle, default ? 1 : 0, config)
+      ZE.error_check(result)
+      config
+    end
+
+    def scheduler_set_timeout_mode(watchdog_timeout)
+      properties = ZETSchedTimeoutProperties::new
+      properties[:watchdogTimeout]
+      p_need_reboot = MemoryPointer::new(:ze_bool_t)
+      result = ZE.zetSysmanSchedulerSetTimeoutMode(@handle, properties, p_need_reboot)
+      ZE.error_check(result)
+      p_need_reboot.read_ze_bool_t != 0
+    end
+
+    def scheduler_set_timeslice_mode(interval, yield_timeout)
+      properties = ZETSchedTimesliceProperties::new
+      properties[:interval] = interval
+      properties[:yieldTimeout] = yield_timeout
+      p_need_reboot = MemoryPointer::new(:ze_bool_t)
+      result = ZE.zetSysmanSchedulerSetTimesliceMode(@handle, properties, p_need_reboot)
+      ZE.error_check(result)
+      p_need_reboot.read_ze_bool_t != 0
+    end
+
+    def scheduler_set_exclusive_mode
+      p_need_reboot = MemoryPointer::new(:ze_bool_t)
+      result = ZE.zetSysmanSchedulerSetExclusiveMode(@handle, p_need_reboot)
+      ZE.error_check(result)
+      p_need_reboot.read_ze_bool_t != 0
+    end
+
+    def scheduler_set_compute_unit_debug_mode
+      p_need_reboot = MemoryPointer::new(:ze_bool_t)
+      result = ZE.zetSysmanSchedulerSetComputeUnitDebugMode(@handle, p_need_reboot)
+      ZE.error_check(result)
+      p_need_reboot.read_ze_bool_t != 0
+    end
+
+    def performace_profile_set(profile)
+      result = ZE.zetSysmanPerformanceProfileSet(@handle, profile)
+      ZE.error_check(result)
+      profile
+    end
+    alias performace_profile= performace_profile_set
+
+    def device_reset
+      result = ZE.zetSysmanDeviceReset(@handle)
+      ZE.error_check(result)
+      self
+    end
+
+  end
+
+  class SysmanPwr < ZETObject
+    add_property :properties, sname: :ZETPowerProperties, fname: :zetSysmanPowerGetProperties
+    add_property :energy_counter, sname: :ZETPowerEnergyCounter, fname: :zetSysmanPowerGetEnergyCounter
+    add_property :energy_threshold, sname: :ZETEnergyThreshold, fname: :zetSysmanPowerGetEnergyThreshold
+
+    def limits
+      sustained_limit = ZETPowerSustainedLimit::new
+      burst_limit = ZETPowerBurstLimit::new
+      peak_limit = ZETPowerPeakLimit::new
+      result = ZE.zetSysmanPowerGetLimits(@handle, sustained_limit, burst_limit, peak_limit)
+      ZE.error_check(result)
+      [sustained_limit, burst_limit, peak_limit]
+    end
+
+    def sustained_limit
+      sustained_limit = ZETPowerSustainedLimit::new
+      result = ZE.zetSysmanPowerGetLimits(@handle, sustained_limit, nil, nil)
+      ZE.error_check(result)
+      sustained_limit
+    end
+
+    def burst_limit
+      burst_limit = ZETPowerBurstLimit::new
+      result = ZE.zetSysmanPowerGetLimits(@handle, nil, burst_limit, nil)
+      ZE.error_check(result)
+      burst_limit
+    end
+
+    def peak_limit
+      peak_limit = ZETPowerPeakLimit::new
+      result = ZE.zetSysmanPowerGetLimits(@handle, nil, nil, peak_limit)
+      ZE.error_check(result)
+      peak_limit
+    end
+
+    def set_limits(sustained_enabled: false, sustained_power: 0, sustained_interval: 0,
+                   burst_enabled: false, burst_power: 0,
+                   peak_power_ac: 0, peak_power_dc: 0)
+      sustained_limit = ZETPowerSustainedLimit::new
+      sustained_limit[:enabled] = sustained_enabled ? 1 : 0
+      sustained_limit[:power] = sustained_power
+      sustained_limit[:interval] = sustained_interval
+      burst_limit = ZETPowerBurstLimit::new
+      burst_limit[:enabled] = burst_enabled ? 1 : 0
+      burst_limit[:power] = burst_power
+      peak_limit = ZETPowerPeakLimit::new
+      peak_limit[:powerAC] = peak_power_ac
+      peak_limit[:powerDC] = peak_power_dc
+      result = ZE.zetSysmanPowerSetLimits(@handle, sustained_limit, burst_limit, peak_limit)
+      ZE.error_check(result)
+      self
+    end
+
+    def set_sustained_limit(enabled, power, interval)
+      sustained_limit = ZETPowerSustainedLimit::new
+      sustained_limit[:enabled] = enabled ? 1 : 0
+      sustained_limit[:power] = power
+      sustained_limit[:interval] = interval
+      result = ZE.zetSysmanPowerSetLimits(@handle, sustained_limit, nil, nil)
+      ZE.error_check(result)
+      self
+    end
+
+    def set_burst_limit(enabled, power)
+      burst_limit = ZETPowerBurstLimit::new
+      burst_limit[:enabled] = enabled ? 1 : 0
+      burst_limit[:power] = power
+      result = ZE.zetSysmanPowerSetLimits(@handle, nil, burst_limit, nil)
+      ZE.error_check(result)
+      self
+    end
+
+    def set_peak_limit(power_ac, power_dc)
+      peak_limit = ZETPowerPeakLimit::new
+      peak_limit[:powerAC] = power_ac
+      peak_limit[:powerDC] = power_dc
+      result = ZE.zetSysmanPowerSetLimits(@handle, nil, nil, peak_limit)
+      ZE.error_check(result)
+      self
+    end
+  end
+
+  SysmanPower = SysmanPwr
 
   def self.ze_init(flags: 0)
     result = zeInit(flags)
@@ -1113,15 +1422,15 @@ EOF
 
   def self.drivers
     return @drivers if @drivers
-    pCount = MemoryPointer::new(:uint32_t)
-    result = zeDriverGet(pCount, nil);
+    p_count = MemoryPointer::new(:uint32_t)
+    result = zeDriverGet(p_count, nil);
     error_check(result)
-    count = pCount.read(:uint32)
+    count = p_count.read(:uint32)
     return [] if count == 0
-    phDrivers = MemoryPointer::new(:ze_driver_handle_t, count)
-    result = zeDriverGet(pCount, phDrivers);
+    ph_drivers = MemoryPointer::new(:ze_driver_handle_t, count)
+    result = zeDriverGet(p_count, ph_drivers);
     error_check(result)
-    @drivers = phDrivers.read_array_of_ze_driver_handle_t(count).collect { |h| Driver::new(h) }
+    @drivers = ph_drivers.read_array_of_ze_driver_handle_t(count).collect { |h| Driver::new(h) }
   end
 
 end
