@@ -329,7 +329,7 @@ EOF
       @devices = pArr.read_array_of_pointer(count).collect { |h| Device::new(h, self) }
     end
 
-    def event_pool_create(count, flags: 0, devices: self.devices)
+    def event_pool_create(count, flags: 0, devices: nil)
       desc = ZEEventPoolDesc::new()
       desc[:flags] = flags
       desc[:count] = count
