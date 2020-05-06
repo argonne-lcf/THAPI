@@ -46,6 +46,7 @@
 - name: cl_kernel_exec_info
 - name: cl_profiling_info
 - name: cl_kernel_sub_group_info
+- name: cl_device_atomic_capabilities
 - name: cl_device_partition_property_ext
 - name: cl_device_affinity_domain_ext
 - name: cl_mem_migration_flags_ext

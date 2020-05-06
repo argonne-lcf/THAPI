@@ -10,7 +10,7 @@ h = YAML::load_file("opencl_events.yaml")[namespace]
 raise "Invalid namespace!" unless h
 
 puts <<EOF
-#define CL_TARGET_OPENCL_VERSION 220
+#define CL_TARGET_OPENCL_VERSION 300
 #include <CL/opencl.h>
 #include <CL/cl_ext.h>
 #include <CL/cl_gl.h>

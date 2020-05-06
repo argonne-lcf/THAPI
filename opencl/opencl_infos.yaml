@@ -19,6 +19,12 @@ cl_platform_info:
   2_1:
   - name: CL_PLATFORM_HOST_TIMER_RESOLUTION
     type: cl_ulong
+  3_0:
+  - name: CL_PLATFORM_NUMERIC_VERSION
+    type: cl_version
+  - name: CL_PLATFORM_EXTENSIONS_WITH_VERSION
+    type: cl_name_version
+    array: true
   cl_icd_khr:
   - name: CL_PLATFORM_ICD_SUFFIX_KHR
     type: char
@@ -231,6 +237,40 @@ cl_device_info:
     type: cl_uint
   - name: CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS
     type: cl_bool
+  3_0:
+  - name: CL_DEVICE_NUMERIC_VERSION
+    type: cl_version
+  - name: CL_DEVICE_EXTENSIONS_WITH_VERSION
+    type: cl_name_version
+    array: true
+  - name: CL_DEVICE_ILS_WITH_VERSION
+    type: cl_name_version
+    array: true
+  - name: CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION
+    type: cl_name_version
+    array: true
+  - name: CL_DEVICE_ATOMIC_MEMORY_CAPABILITIES
+    type: cl_device_atomic_capabilities
+  - name: CL_DEVICE_ATOMIC_FENCE_CAPABILITIES
+    type: cl_device_atomic_capabilities
+  - name: CL_DEVICE_NON_UNIFORM_WORK_GROUP_SUPPORT
+    type: cl_bool
+  - name: CL_DEVICE_OPENCL_C_ALL_VERSIONS
+    type: cl_name_version
+    array: true
+  - name: CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE
+    type: size_t
+  - name: CL_DEVICE_WORK_GROUP_COLLECTIVE_FUNCTIONS_SUPPORT
+    type: cl_bool
+  - name: CL_DEVICE_GENERIC_ADDRESS_SPACE_SUPPORT
+    type: cl_bool
+  - name: CL_DEVICE_OPENCL_C_FEATURES
+    type: cl_name_version
+    array: true
+  - name: CL_DEVICE_DEVICE_ENQUEUE_SUPPORT
+    type: cl_bool
+  - name: CL_DEVICE_PIPE_SUPPORT
+    type: cl_bool
   cl_khr_spir:
   - name: CL_DEVICE_SPIR_VERSIONS
     type: char
@@ -272,6 +312,10 @@ cl_command_queue_info:
   2_1:
   - name: CL_QUEUE_DEVICE_DEFAULT
     type: cl_command_queue
+  3_0:
+  - name: CL_QUEUE_PROPERTIES_ARRAY
+    type: cl_queue_properties
+    array: true
 cl_mem_info:
   1_0:
   - name: CL_MEM_TYPE
@@ -297,6 +341,10 @@ cl_mem_info:
   2_0:
   - name: CL_MEM_USES_SVM_POINTER
     type: cl_bool
+  3_0:
+  - name: CL_MEM_PROPERTIES
+    type: cl_mem_properties
+    array: true
 cl_image_info:
   1_0:
   - name: CL_IMAGE_FORMAT
@@ -328,6 +376,10 @@ cl_pipe_info:
     type: cl_uint
   - name: CL_PIPE_MAX_PACKETS
     type: cl_uint
+  3_0:
+  - name: CL_PIPE_PROPERTIES
+    type: cl_pipe_properties
+    array: true
 cl_sampler_info:
   1_0:
   - name: CL_SAMPLER_REFERENCE_COUNT

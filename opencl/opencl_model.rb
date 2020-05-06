@@ -67,18 +67,31 @@ CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
 CL_TYPE_MAP = typedef_e.collect { |l|
   [l.search("name").text, l.search("type").text]
 }.to_h
-
-CL_TYPE_MAP.transform_values! { |v|
-  until CL_BASE_TYPES.include? v
-    v = CL_TYPE_MAP[v]
-  end
-  v
+(CL_BASE_TYPES + CL_EXT_OBJECTS + CL_OBJECTS).each { |t|
+  CL_TYPE_MAP.delete(t)
 }
 
-CL_TYPE_MAP.merge!([["cl_GLint", "int"], ["cl_GLenum", "unsigned int"], ["cl_GLuint", "unsigned int"]].to_h)
+err = false
+CL_TYPE_MAP.transform_values! { |v|
+  counter = 0
+  until CL_BASE_TYPES.include?(v) || counter > 10
+    counter += 1
+    v = CL_TYPE_MAP[v]
+  end
+  err = true if counter > 10
+  v
+}
+if err
+  CL_TYPE_MAP.each { |k, v|
+    $stderr.puts "#{k}" unless v
+  }
+  raise "Failed to achieve transitive closure!"
+end
 
-FFI_BASE_TYPES = ["ffi_type_uint8", "ffi_type_sint8", "ffi_type_uint16", "ffi_type_sint16", "ffi_type_uint32", "ffi_type_sint32", "ffi_type_uint64", "ffi_type_sint64", "ffi_type_float", "ffi_type_double", "ffi_type_void", "ffi_type_pointer"]
+FFI_BASE_TYPES = ["ffi_type_int", "ffi_type_uint", "ffi_type_uint8", "ffi_type_sint8", "ffi_type_uint16", "ffi_type_sint16", "ffi_type_uint32", "ffi_type_sint32", "ffi_type_uint64", "ffi_type_sint64", "ffi_type_float", "ffi_type_double", "ffi_type_void", "ffi_type_pointer"]
 FFI_TYPE_MAP =  {
+ "int" => "ffi_type_int",
+ "unsigned int" => "ffi_type_uint",
  "uint8_t" => "ffi_type_uint8",
  "int8_t" => "ffi_type_sint8",
  "uint16_t" => "ffi_type_uint16",
@@ -104,14 +117,14 @@ FFI_TYPE_MAP =  {
  "cl_half" => "uint8_t"
 }
 
-FFI_TYPE_MAP.merge! typedef_e.collect { |l|
-  [l.search("name").text, l.search("type").text]
-}.to_h
-
+FFI_TYPE_MAP.merge! CL_TYPE_MAP
 
 FFI_TYPE_MAP.transform_values! { |v|
   until FFI_BASE_TYPES.include? v
+    ov = v
     v = FFI_TYPE_MAP[v]
+    $stderr.puts ov unless v
+    $stderr.puts FFI_BASE_TYPES unless v
     exit unless v
   end
   v
@@ -391,12 +404,12 @@ class MetaParameter
       lttng_type = ["ctf_#{lttng_arr_type}_hex", CL_FLOAT_SCALARS_MAP[type]]
     when *CL_STRUCTS
       lttng_type = ["ctf_#{lttng_arr_type}_text", "uint8_t"]
-    when ""
+    when "void"
       lttng_type = ["ctf_#{lttng_arr_type}_text", "uint8_t"]
     when /\*/
       lttng_type = ["ctf_#{lttng_arr_type}_hex", "intptr_t"]
     else
-      raise "Unknown Type: #{type.inspect} for #{name}!"
+      raise "Unknown Type: #{type.inspect} for #{name} in #{@command.prototype.name}!"
     end
     lttng_type += [ name+"_vals", expr ]
     lttng_type += lttng_args
@@ -439,7 +452,7 @@ class OutScalar < OutMetaParameter
         @lttng_out_type = ["ctf_integer", type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
       when *CL_FLOAT_SCALARS
         @lttng_out_type = ["ctf_float", type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
-      when ""
+      when "void"
         @lttng_out_type = ["ctf_integer_hex", "intptr_t", name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
@@ -1270,4 +1283,3 @@ str = <<EOF
 EOF
 register_epilogue "clEnqueueNDRangeKernel", str
 register_epilogue "clEnqueueNDRangeKernelINTEL", str
-

@@ -148,6 +148,10 @@ meta_parameters:
     - [ InArray, input_value, input_value_size ]
   clSetProgramSpecializationConstant:
     - [ InArray, spec_value, spec_size ]
+  clCreateBufferWithProperties:
+    - [ InNullArray, properties ]
+  clCreateImageWithProperties:
+    - [ InNullArray, properties ]
   clCreateImageWithPropertiesINTEL:
     - [ InNullArray, properties ]
   clGetImageParamsINTEL:
@@ -187,6 +191,9 @@ meta_structs:
   clCreateImage3D:
     - [ image_format, cl_image_format ]
   clCreateImage:
+    - [ image_format, cl_image_format ]
+    - [ image_desc, cl_image_desc ]
+  clCreateImageWithProperties:
     - [ image_format, cl_image_format ]
     - [ image_desc, cl_image_desc ]
   clCreateImageWithPropertiesINTEL:

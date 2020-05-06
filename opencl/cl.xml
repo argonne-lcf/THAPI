@@ -83,21 +83,31 @@ server's OpenCL/api-docs repository.
         <type category="basetype" requires="CL/cl_platform.h" name="unsigned char"/>
         <type category="basetype" requires="CL/cl_platform.h" name="intptr_t"/>
         <type category="basetype" requires="CL/cl_platform.h" name="size_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="float"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="double"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="int8_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="int16_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="int32_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="int64_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="uint8_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="uint16_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="uint32_t"/>
+        <type category="basetype" requires="CL/cl_platform.h" name="uint64_t"/>
 
             <comment>Scalar types</comment>
-        <type category="define" requires="stdint">typedef double      <name>cl_double</name> __attribute__((aligned(8)));</type>
-        <type category="define" requires="stdint">typedef float       <name>cl_float</name> __attribute__((aligned(4)));</type>
-        <type category="define" requires="stdint">typedef int16_t     <name>cl_short</name> __attribute__((aligned(2)));</type>
-        <type category="define" requires="stdint">typedef int32_t     <name>cl_int</name> __attribute__((aligned(4)));</type>
-        <type category="define" requires="stdint">typedef int64_t     <name>cl_long</name> __attribute__((aligned(8)));</type>
-        <type category="define" requires="stdint">typedef int8_t      <name>cl_char</name>;</type>
-        <type category="define" requires="stdint">typedef uint16_t    <name>cl_half</name> __attribute__((aligned(2)));</type>
-        <type category="define" requires="stdint">typedef uint16_t    <name>cl_ushort</name> __attribute__((aligned(2)));</type>
-        <type category="define" requires="stdint">typedef uint32_t    <name>cl_uint</name> __attribute__((aligned(4)));</type>
-        <type category="define" requires="stdint">typedef uint64_t    <name>cl_ulong</name> __attribute__((aligned(8)));</type>
-        <type category="define">typedef int                           <name>cl_GLint</name>;</type>
-        <type category="define">typedef unsigned int                  <name>cl_GLenum</name>;</type>
-        <type category="define">typedef unsigned int                  <name>cl_GLuint</name>;</type>
+        <type category="define" requires="stdint">typedef <type>double</type>   <name>cl_double</name> __attribute__((aligned(8)));</type>
+        <type category="define" requires="stdint">typedef <type>float</type>    <name>cl_float</name> __attribute__((aligned(4)));</type>
+        <type category="define" requires="stdint">typedef <type>int16_t</type>  <name>cl_short</name> __attribute__((aligned(2)));</type>
+        <type category="define" requires="stdint">typedef <type>int32_t</type>  <name>cl_int</name> __attribute__((aligned(4)));</type>
+        <type category="define" requires="stdint">typedef <type>int64_t</type>  <name>cl_long</name> __attribute__((aligned(8)));</type>
+        <type category="define" requires="stdint">typedef <type>int8_t</type>   <name>cl_char</name>;</type>
+        <type category="define" requires="stdint">typedef <type>uint16_t</type> <name>cl_half</name> __attribute__((aligned(2)));</type>
+        <type category="define" requires="stdint">typedef <type>uint16_t</type> <name>cl_ushort</name> __attribute__((aligned(2)));</type>
+        <type category="define" requires="stdint">typedef <type>uint32_t</type> <name>cl_uint</name> __attribute__((aligned(4)));</type>
+        <type category="define" requires="stdint">typedef <type>uint64_t</type> <name>cl_ulong</name> __attribute__((aligned(8)));</type>
+        <type category="define">typedef <type>int</type>              <name>cl_GLint</name>;</type>
+        <type category="define">typedef <type>unsigned int</type>     <name>cl_GLenum</name>;</type>
+        <type category="define">typedef <type>unsigned int</type>     <name>cl_GLuint</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_d3d11_device_source_khr</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_d3d11_device_set_khr</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_dx9_media_adapter_type_khr</name>;</type>
@@ -113,9 +123,9 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef <type>cl_uint</type>          <name>cl_va_api_device_source_intel</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_va_api_device_set_intel</name>;</type>
         <type category="define">typedef struct __GLsync *             <name>cl_GLsync</name>;</type>
-        <type category="define">typedef void *                        <name>CLeglImageKHR</name>;</type>
-        <type category="define">typedef void *                        <name>CLeglDisplayKHR</name>;</type>
-        <type category="define">typedef void *                        <name>CLeglSyncKHR</name>;</type>
+        <type category="define">typedef <type>void</type>*            <name>CLeglImageKHR</name>;</type>
+        <type category="define">typedef <type>void</type>*            <name>CLeglDisplayKHR</name>;</type>
+        <type category="define">typedef <type>void</type>*            <name>CLeglSyncKHR</name>;</type>
         <type category="define">typedef <type>intptr_t</type>         <name>cl_egl_image_properties_khr</name>;</type>
         <type category="define">typedef <type>cl_ulong</type>         <name>cl_device_partition_property_ext</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags_ext</name>;</type>
@@ -164,6 +174,7 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_object_type</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_info</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags</name>;</type>
+        <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_properties</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_image_info</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_buffer_create_type</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_addressing_mode</name>;</type>
@@ -194,7 +205,10 @@ server's OpenCL/api-docs repository.
         <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_info_intel</name>;</type>
         <type category="define">typedef <type>cl_uint</type>          <name>cl_unified_shared_memory_type_intel</name>;</type>
         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags_intel</name>;</type>
-        <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_advice_intel></name>;</type>
+        <type category="define">typedef <type>cl_uint</type>          <name>cl_mem_advice_intel</name>;</type>
+        <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_atomic_capabilities</name>;</type>
+        <type category="define">typedef <type>cl_uint</type>          <name>cl_khronos_vendor_id</name>;</type>
+        <type category="define">typedef <type>cl_uint</type>          <name>cl_version</name>;</type>
 
             <comment>Structure types</comment>
         <type category="struct" name="cl_dx9_surface_info_khr">
@@ -246,6 +260,10 @@ server's OpenCL/api-docs repository.
         <type category="struct" name="cl_buffer_region">
             <member><type>size_t</type>              <name>origin</name></member>
             <member><type>size_t</type>              <name>size</name></member>
+        </type>
+        <type category="struct" name="cl_name_version">
+            <member><type>cl_version</type>          <name>version</name></member>
+            <member><type>char</type><name>name</name>[<enum>CL_NAME_VERSION_MAX_NAME_SIZE</enum>]</member>
         </type>
     </types>
 
@@ -346,6 +364,12 @@ server's OpenCL/api-docs repository.
                    #define CL_NAN           nanf( "" )
                 #endif
             </comment>
+    </enums>
+    <enums name="Constants.Versioning" vendor="Khronos" comment="Miscellaneous API constants, in cl.h">
+        <enum value="10"                                 name="CL_VERSION_MAJOR_BITS"/>
+        <enum value="10"                                 name="CL_VERSION_MINOR_BITS"/>
+        <enum value="12"                                 name="CL_VERSION_PATCH_BITS"/>
+        <enum value="64"                                 name="CL_NAME_VERSION_MAX_NAME_SIZE"/>
     </enums>
 
     <enums start="0" end="-999" name="ErrorCodes.0" vendor="Khronos" comment="Error codes start at 0 and decrease">
@@ -500,8 +524,16 @@ server's OpenCL/api-docs repository.
         <enum value="-1107"         name="CL_PIPE_EMPTY_INTEL"/>
     </enums>
 
-    <enums start="-1108" end="-9999" name="ErrorCodes.1108" vendor="Khronos" comment="RESERVED FOR FUTURE ALLOCATIONS BY KHRONOS">
-            <unused start="-1102" end="-9999"/>
+    <enums start="-1108" end="-1120" name="ErrorCodes.1108" vendor="Arm" comment="Reserved for Arm extensions">
+            <unused start="-1108" end="-1120"/>
+    </enums>
+
+    <enums start="-1121" end="-1121" name="ErrorCodes.1121" vendor="Khronos" comment="For cl_khr_terminate_context">
+        <enum value="-1121"         name="CL_CONTEXT_TERMINATED_KHR"/>
+    </enums>
+
+    <enums start="-1122" end="-9999" name="ErrorCodes.future" vendor="Khronos" comment="RESERVED FOR FUTURE ALLOCATIONS BY KHRONOS">
+            <unused start="-1122" end="-9999"/>
     </enums>
 
     <enums name="cl_bool" vendor="Khronos" comment="Boolean values">
@@ -615,6 +647,17 @@ server's OpenCL/api-docs repository.
             <unused start="4" end="31"/>
     </enums>
 
+    <enums name="cl_device_atomic_capabilities" vendor="Khronos" type="bitmask">
+        <enum bitpos="0"            name="CL_DEVICE_ATOMIC_ORDER_RELAXED"/>
+        <enum bitpos="1"            name="CL_DEVICE_ATOMIC_ORDER_ACQ_REL"/>
+        <enum bitpos="2"            name="CL_DEVICE_ATOMIC_ORDER_SEQ_CST"/>
+        <enum bitpos="3"            name="CL_DEVICE_ATOMIC_SCOPE_WORK_ITEM"/>
+        <enum bitpos="4"            name="CL_DEVICE_ATOMIC_SCOPE_WORK_GROUP"/>
+        <enum bitpos="5"            name="CL_DEVICE_ATOMIC_SCOPE_DEVICE"/>
+        <enum bitpos="6"            name="CL_DEVICE_ATOMIC_SCOPE_ALL_DEVICES"/>
+            <unused start="7" end="31"/>
+    </enums>
+
     <enums name="cl_command_queue_properties" vendor="Khronos" type="bitmask">
         <enum bitpos="0"            name="CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE"/>
         <enum bitpos="1"            name="CL_QUEUE_PROFILING_ENABLE"/>
@@ -678,9 +721,11 @@ server's OpenCL/api-docs repository.
     </enums>
 
     <enums name="cl_mem_migration_flags" vendor="Khronos" type="bitmask">
-        <enum bitpos="0"            name="CL_MIGRATE_MEM_OBJECT_HOST_EXT"/>
         <enum bitpos="0"            name="CL_MIGRATE_MEM_OBJECT_HOST"/>
+        <enum bitpos="0"            name="CL_MIGRATE_MEM_OBJECT_HOST_EXT"/>
+        <enum bitpos="0"            name="CL_MIGRATE_MEM_OBJECT_HOST_INTEL"/>
         <enum bitpos="1"            name="CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED"/>
+        <enum bitpos="1"            name="CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED_INTEL"/>
             <unused start="2" end="31"/>
     </enums>
 
@@ -992,6 +1037,19 @@ server's OpenCL/api-docs repository.
         <enum bitpos="0"            name="CL_MEM_ALLOC_WRITE_COMBINED_INTEL"/>
     </enums>
 
+    <enums start="0x10000" end="0x1FFFF" name="cl_khronos_vendor_id" vendor="Khronos">
+        <comment>
+            In order to synchronize vendor IDs across Khronos APIs, Vulkan's vk.xml
+            is used as the central Khronos vendor ID registry. To obtain a vendor
+            ID for use in OpenCL, first follow the process defined Vulkan's "Procedures and Conventions"
+            document under the section "Registering a Vendor ID with Khronos".
+            Only once the ID has been reserved should a new enum entry be added here.
+        </comment>
+        <unused start="0x10000" end="0x10003" comment="These Khronos vendor IDs are already assigned in vk.xml"/>
+        <enum value="0x10004" name="CL_KHRONOS_VENDOR_ID_CODEPLAY" comment="Codeplay Software Ltd."/>
+        <unused start="0x10005" end="0x1FFFF" comment="See vk.xml for the next available Khronos vendor ID"/>
+    </enums>
+
     <enums start="0x0900" end="0x09FF" name="cl_platform_info" vendor="Khronos">
         <enum value="0x0900"        name="CL_PLATFORM_PROFILE"/>
         <enum value="0x0901"        name="CL_PLATFORM_VERSION"/>
@@ -999,7 +1057,9 @@ server's OpenCL/api-docs repository.
         <enum value="0x0903"        name="CL_PLATFORM_VENDOR"/>
         <enum value="0x0904"        name="CL_PLATFORM_EXTENSIONS"/>
         <enum value="0x0905"        name="CL_PLATFORM_HOST_TIMER_RESOLUTION"/>
-            <unused start="0x0906" end="0x091F" comment="Reserved to Khronos"/>
+        <enum value="0x0906"        name="CL_PLATFORM_NUMERIC_VERSION"/>
+        <enum value="0x0907"        name="CL_PLATFORM_EXTENSIONS_WITH_VERSION"/>
+            <unused start="0x0908" end="0x091F" comment="Reserved to Khronos"/>
         <enum value="0x0920"        name="CL_PLATFORM_ICD_SUFFIX_KHR"/>
             <unused start="0x0921" end="0x09FF" comment="Vendor extensions"/>
     </enums>
@@ -1101,7 +1161,23 @@ server's OpenCL/api-docs repository.
         <enum value="0x105B"        name="CL_DEVICE_IL_VERSION_KHR"/>
         <enum value="0x105C"        name="CL_DEVICE_MAX_NUM_SUB_GROUPS"/>
         <enum value="0x105D"        name="CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS"/>
-            <unused start="0x105E" end="0x107F" comment="Reserved for cl_device_info"/>
+        <enum value="0x105E"        name="CL_DEVICE_NUMERIC_VERSION"/>
+            <unused start="0x105F" end="0x105F" comment="was CL_DEVICE_OPENCL_C_NUMERIC_VERSION_KHR"/>
+        <enum value="0x1060"        name="CL_DEVICE_EXTENSIONS_WITH_VERSION"/>
+        <enum value="0x1061"        name="CL_DEVICE_ILS_WITH_VERSION"/>
+        <enum value="0x1062"        name="CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION"/>
+        <enum value="0x1063"        name="CL_DEVICE_ATOMIC_MEMORY_CAPABILITIES"/>
+        <enum value="0x1064"        name="CL_DEVICE_ATOMIC_FENCE_CAPABILITIES"/>
+        <enum value="0x1065"        name="CL_DEVICE_NON_UNIFORM_WORK_GROUP_SUPPORT"/>
+        <enum value="0x1066"        name="CL_DEVICE_OPENCL_C_ALL_VERSIONS"/>
+        <enum value="0x1067"        name="CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE"/>
+        <enum value="0x1068"        name="CL_DEVICE_WORK_GROUP_COLLECTIVE_FUNCTIONS_SUPPORT"/>
+        <enum value="0x1069"        name="CL_DEVICE_GENERIC_ADDRESS_SPACE_SUPPORT"/>
+            <unused start="0x106A" end="0x106E" comment="Reserved for upcoming KHR extension"/>
+        <enum value="0x106F"        name="CL_DEVICE_OPENCL_C_FEATURES"/>
+        <enum value="0x1070"        name="CL_DEVICE_DEVICE_ENQUEUE_SUPPORT"/>
+        <enum value="0x1071"        name="CL_DEVICE_PIPE_SUPPORT"/>
+            <unused start="0x1072" end="0x107F" comment="Reserved for cl_device_info"/>
         <enum value="0x1080"        name="CL_CONTEXT_REFERENCE_COUNT"/>
         <enum value="0x1081"        name="CL_CONTEXT_DEVICES"/>
         <enum value="0x1082"        name="CL_CONTEXT_PROPERTIES"/>
@@ -1120,7 +1196,8 @@ server's OpenCL/api-docs repository.
         <enum value="0x1095"        name="CL_QUEUE_DEVICE_DEFAULT"/>
         <enum value="0x1096"        name="CL_QUEUE_PRIORITY_KHR"/>
         <enum value="0x1097"        name="CL_QUEUE_THROTTLE_KHR"/>
-            <unused start="0x1098" end="0x109F" comment="Reserved for cl_command_queue_info"/>
+        <enum value="0x1098"        name="CL_QUEUE_PROPERTIES_ARRAY"/>
+            <unused start="0x1099" end="0x109F" comment="Reserved for cl_command_queue_info"/>
             <unused start="0x10A0" end="0x10AF" comment="Reserved for core API tokens"/>
         <enum value="0x10B0"        name="CL_R"/>
         <enum value="0x10B1"        name="CL_A"/>
@@ -1180,7 +1257,8 @@ server's OpenCL/api-docs repository.
         <enum value="0x1107"        name="CL_MEM_ASSOCIATED_MEMOBJECT"/>
         <enum value="0x1108"        name="CL_MEM_OFFSET"/>
         <enum value="0x1109"        name="CL_MEM_USES_SVM_POINTER"/>
-            <unused start="0x110A" end="0x110F" comment="Reserved for cl_mem_info"/>
+        <enum value="0x110A"        name="CL_MEM_PROPERTIES"/>
+            <unused start="0x110B" end="0x110F" comment="Reserved for cl_mem_info"/>
         <enum value="0x1110"        name="CL_IMAGE_FORMAT"/>
         <enum value="0x1111"        name="CL_IMAGE_ELEMENT_SIZE"/>
         <enum value="0x1112"        name="CL_IMAGE_ROW_PITCH"/>
@@ -1195,7 +1273,8 @@ server's OpenCL/api-docs repository.
             <unused start="0x111B" end="0x111F" comment="Reserved for cl_image_info"/>
         <enum value="0x1120"        name="CL_PIPE_PACKET_SIZE"/>
         <enum value="0x1121"        name="CL_PIPE_MAX_PACKETS"/>
-            <unused start="0x1122" end="0x112F" comment="Reserved for cl_pipe_info"/>
+        <enum value="0x1122"        name="CL_PIPE_PROPERTIES"/>
+            <unused start="0x1123" end="0x112F" comment="Reserved for cl_pipe_info"/>
         <enum value="0x1130"        name="CL_ADDRESS_NONE"/>
         <enum value="0x1131"        name="CL_ADDRESS_CLAMP_TO_EDGE"/>
         <enum value="0x1132"        name="CL_ADDRESS_CLAMP"/>
@@ -1213,7 +1292,8 @@ server's OpenCL/api-docs repository.
         <enum value="0x1155"        name="CL_SAMPLER_MIP_FILTER_MODE"/>
         <enum value="0x1156"        name="CL_SAMPLER_LOD_MIN"/>
         <enum value="0x1157"        name="CL_SAMPLER_LOD_MAX"/>
-            <unused start="0x1158" end="0x115F" comment="Reserved for cl_sampler_info"/>
+        <enum value="0x1158"        name="CL_SAMPLER_PROPERTIES"/>
+            <unused start="0x1159" end="0x115F" comment="Reserved for cl_sampler_info"/>
         <enum value="0x1160"        name="CL_PROGRAM_REFERENCE_COUNT"/>
         <enum value="0x1161"        name="CL_PROGRAM_CONTEXT"/>
         <enum value="0x1162"        name="CL_PROGRAM_NUM_DEVICES"/>
@@ -1304,7 +1384,8 @@ server's OpenCL/api-docs repository.
         <enum value="0x120B"        name="CL_COMMAND_SVM_MEMFILL"/>
         <enum value="0x120C"        name="CL_COMMAND_SVM_MAP"/>
         <enum value="0x120D"        name="CL_COMMAND_SVM_UNMAP"/>
-            <unused start="0x120E" end="0x121A" comment="Reserved for cl_command_types"/>
+        <enum value="0x120E"        name="CL_COMMAND_SVM_MIGRATE_MEM"/>
+            <unused start="0x120F" end="0x121F" comment="Reserved for cl_command_types"/>
         <enum value="0x1220"        name="CL_BUFFER_CREATE_TYPE_REGION"/>
             <unused start="0x1221" end="0x127F" comment="Reserved for cl_buffer_create_type"/>
         <enum value="0x1280"        name="CL_PROFILING_COMMAND_QUEUED"/>
@@ -1664,7 +1745,8 @@ server's OpenCL/api-docs repository.
         <enum value="0x41E0"        name="CL_DEVICE_JOB_SLOTS_ARM"/>
         <enum value="0x41E1"        name="CL_QUEUE_JOB_SLOT_ARM"/>
         <enum value="0x41E2"        name="CL_IMPORT_TYPE_ANDROID_HARDWARE_BUFFER_ARM"/>
-            <unused start="0x41E3" end="0x41FF"/>
+        <enum value="0x41E3"        name="CL_IMPORT_DMA_BUF_DATA_CONSISTENCY_WITH_HOST_ARM"/>
+            <unused start="0x41E4" end="0x41FF"/>
     </enums>
 
     <enums start="0x4200" end="0x420F" name="enums.4200" vendor="Intel">
@@ -1679,11 +1761,12 @@ server's OpenCL/api-docs repository.
             <unused start="0x4208" end="0x420F"/>
     </enums>
 
-    <enums start="0x4210" end="0x421F" name="enums.4210" vendor="Intel">
+    <enums start="0x4210" end="0x421F" name="enums.4210" vendor="Intel" comment="Contact michael.kinsner@intel.com">
         <enum value="0x4210"        name="CL_KERNEL_ARG_HOST_ACCESSIBLE_PIPE_INTEL"/>
         <enum value="0x4211"        name="CL_DEVICE_MAX_HOST_READ_PIPES_INTEL"/>
         <enum value="0x4212"        name="CL_DEVICE_MAX_HOST_WRITE_PIPES_INTEL"/>
-            <unused start="0x4213" end="0x421F"/>
+        <enum value="0x4213"        name="CL_MEM_CHANNEL_INTEL"/>
+            <unused start="0x4214" end="0x421F"/>
     </enums>
 
     <enums start="0x4220" end="0x4FFF" name="enums.4220" comment="Reserved for vendor extensions. Allocate in groups of 16.">
@@ -1707,7 +1790,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromD3D10KHR</name></proto>
             <param><type>cl_platform_id</type>             <name>platform</name></param>
             <param><type>cl_d3d10_device_source_khr</type> <name>d3d_device_source</name></param>
-            <param>void*                                   <name>d3d_object</name></param>
+            <param><type>void</type>*                      <name>d3d_object</name></param>
             <param><type>cl_d3d10_device_set_khr</type>    <name>d3d_device_set</name></param>
             <param><type>cl_uint</type>                    <name>num_entries</name></param>
             <param><type>cl_device_id</type>*              <name>devices</name></param>
@@ -1758,7 +1841,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromD3D11KHR</name></proto>
             <param><type>cl_platform_id</type>             <name>platform</name></param>
             <param><type>cl_d3d11_device_source_khr</type> <name>d3d_device_source</name></param>
-            <param>void*                                   <name>d3d_object</name></param>
+            <param><type>void</type>*                      <name>d3d_object</name></param>
             <param><type>cl_d3d11_device_set_khr</type>    <name>d3d_device_set</name></param>
             <param><type>cl_uint</type>                    <name>num_entries</name></param>
             <param><type>cl_device_id</type>*              <name>devices</name></param>
@@ -1810,7 +1893,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_platform_id</type>             <name>platform</name></param>
             <param><type>cl_uint</type>                    <name>num_media_adapters</name></param>
             <param><type>cl_dx9_media_adapter_type_khr</type>*  <name>media_adapter_type</name></param>
-            <param>void*                                   <name>media_adapters</name></param>
+            <param><type>void</type>*                      <name>media_adapters</name></param>
             <param><type>cl_dx9_media_adapter_set_khr</type> <name>media_adapter_set</name></param>
             <param><type>cl_uint</type>                    <name>num_entries</name></param>
             <param><type>cl_device_id</type>*              <name>devices</name></param>
@@ -1821,7 +1904,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_context</type>                 <name>context</name></param>
             <param><type>cl_mem_flags</type>               <name>flags</name></param>
             <param><type>cl_dx9_media_adapter_type_khr</type> <name>adapter_type</name></param>
-            <param>void*                                   <name>surface_info</name></param>
+            <param><type>void</type>*                      <name>surface_info</name></param>
             <param><type>cl_uint</type>                    <name>plane</name></param>
             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
         </command>
@@ -1847,7 +1930,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromDX9INTEL</name></proto>
             <param><type>cl_platform_id</type>             <name>platform</name></param>
             <param><type>cl_dx9_device_source_intel</type> <name>dx9_device_source</name></param>
-            <param>void*                                   <name>dx9_object</name></param>
+            <param><type>void</type>*                      <name>dx9_object</name></param>
             <param><type>cl_dx9_device_set_intel</type>    <name>dx9_device_set</name></param>
             <param><type>cl_uint</type>                    <name>num_entries</name></param>
             <param><type>cl_device_id</type>*              <name>devices</name></param>
@@ -1915,25 +1998,25 @@ server's OpenCL/api-docs repository.
             <param><type>cl_event</type>*                  <name>event</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
-            <proto>void                                    <name>clLogMessagesToSystemLogAPPLE</name></proto>
-            <param>const char*                             <name>errstr</name></param>
-            <param>const void*                             <name>private_info</name></param>
+            <proto><type>void</type>                       <name>clLogMessagesToSystemLogAPPLE</name></proto>
+            <param>const <type>char</type>*                <name>errstr</name></param>
+            <param>const <type>void</type>*                <name>private_info</name></param>
             <param><type>size_t</type>                     <name>cb</name></param>
-            <param>void*                                   <name>user_data</name></param>
+            <param><type>void</type>*                      <name>user_data</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
-            <proto>void                                    <name>clLogMessagesToStdoutAPPLE</name></proto>
-            <param>const char*                             <name>errstr</name></param>
-            <param>const void*                             <name>private_info</name></param>
+            <proto><type>void</type>                       <name>clLogMessagesToStdoutAPPLE</name></proto>
+            <param>const <type>char</type>*                <name>errstr</name></param>
+            <param>const <type>void</type>*                <name>private_info</name></param>
             <param><type>size_t</type>                     <name>cb</name></param>
-            <param>void*                                   <name>user_data</name></param>
+            <param><type>void</type>*                      <name>user_data</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
-            <proto>void                                    <name>clLogMessagesToStderrAPPLE</name></proto>
-            <param>const char*                             <name>errstr</name></param>
-            <param>const void*                             <name>private_info</name></param>
+            <proto><type>void</type>                       <name>clLogMessagesToStderrAPPLE</name></proto>
+            <param>const <type>char</type>*                <name>errstr</name></param>
+            <param>const <type>void</type>*                <name>private_info</name></param>
             <param><type>size_t</type>                     <name>cb</name></param>
-            <param>void*                                   <name>user_data</name></param>
+            <param><type>void</type>*                      <name>user_data</name></param>
         </command>
         <command>
             <proto><type>cl_int</type>                     <name>clIcdGetPlatformIDsKHR</name></proto>
@@ -1944,7 +2027,7 @@ server's OpenCL/api-docs repository.
         <command>
             <proto><type>cl_program</type>                 <name>clCreateProgramWithILKHR</name></proto>
             <param><type>cl_context</type>                 <name>context</name></param>
-            <param>const void*                             <name>il</name></param>
+            <param>const <type>void</type>*                <name>il</name></param>
             <param><type>size_t</type>                     <name>length</name></param>
             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
         </command>
@@ -1993,7 +2076,7 @@ server's OpenCL/api-docs repository.
             <param>const <type>cl_image_format</type>*     <name>image_format</name></param>
             <param><type>cl_image_pitch_info_qcom</type>   <name>param_name</name></param>
             <param><type>size_t</type>                     <name>param_value_size</name></param>
-            <param>void*                                   <name>param_value</name></param>
+            <param><type>void</type>*                      <name>param_value</name></param>
             <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
@@ -2020,9 +2103,9 @@ server's OpenCL/api-docs repository.
             <param><type>cl_device_id</type>               <name>in_device</name></param>
             <param><type>cl_kernel_sub_group_info</type>   <name>param_name</name></param>
             <param><type>size_t</type>                     <name>input_value_size</name></param>
-            <param>const void*                             <name>input_value</name></param>
+            <param>const <type>void</type>*                <name>input_value</name></param>
             <param><type>size_t</type>                     <name>param_value_size</name></param>
-            <param>void*                                   <name>param_value</name></param>
+            <param><type>void</type>*                      <name>param_value</name></param>
             <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
@@ -2030,29 +2113,29 @@ server's OpenCL/api-docs repository.
             <param><type>cl_context</type>                 <name>context</name></param>
             <param><type>cl_mem_flags</type>               <name>flags</name></param>
             <param>const <type>cl_import_properties_arm</type>* <name>properties</name></param>
-            <param>void*                                   <name>memory</name></param>
+            <param><type>void</type>*                      <name>memory</name></param>
             <param><type>size_t</type>                     <name>size</name></param>
             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
-            <proto>void*                                   <name>clSVMAllocARM</name></proto>
+            <proto><type>void</type>*                      <name>clSVMAllocARM</name></proto>
             <param><type>cl_context</type>                 <name>context</name></param>
             <param><type>cl_svm_mem_flags_arm</type>       <name>flags</name></param>
             <param><type>size_t</type>                     <name>size</name></param>
             <param><type>cl_uint</type>                    <name>alignment</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
-            <proto>void                                    <name>clSVMFreeARM</name></proto>
+            <proto><type>void</type>                       <name>clSVMFreeARM</name></proto>
             <param><type>cl_context</type>                 <name>context</name></param>
-            <param>void*                                   <name>svm_pointer</name></param>
+            <param><type>void</type>*                      <name>svm_pointer</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                     <name>clEnqueueSVMFreeARM</name></proto>
             <param><type>cl_command_queue</type>           <name>command_queue</name></param>
             <param><type>cl_uint</type>                    <name>num_svm_pointers</name></param>
-            <param>void*                                   <name>svm_pointers</name>[]</param>
-            <param>void (CL_CALLBACK*                      <name>pfn_free_func</name>)(cl_command_queue, cl_uint, void *[], void *)</param>
-            <param>void*                                   <name>user_data</name></param>
+            <param><type>void</type>*                      <name>svm_pointers</name>[]</param>
+            <param>void (CL_CALLBACK*                      <name>pfn_free_func</name>)(cl_command_queue queue, cl_uint num_svm_pointers, void * svm_pointers[], void *user_data)</param>
+            <param><type>void</type>*                      <name>user_data</name></param>
             <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                  <name>event</name></param>
@@ -2061,8 +2144,8 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                     <name>clEnqueueSVMMemcpyARM</name></proto>
             <param><type>cl_command_queue</type>           <name>command_queue</name></param>
             <param><type>cl_bool</type>                    <name>blocking_copy</name></param>
-            <param>void*                                   <name>dst_ptr</name></param>
-            <param>const void*                             <name>src_ptr</name></param>
+            <param><type>void</type>*                      <name>dst_ptr</name></param>
+            <param>const <type>void</type>*                <name>src_ptr</name></param>
             <param><type>size_t</type>                     <name>size</name></param>
             <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
@@ -2071,8 +2154,8 @@ server's OpenCL/api-docs repository.
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                     <name>clEnqueueSVMMemFillARM</name></proto>
             <param><type>cl_command_queue</type>           <name>command_queue</name></param>
-            <param>void*                                   <name>svm_ptr</name></param>
-            <param>const void*                             <name>pattern</name></param>
+            <param><type>void</type>*                      <name>svm_ptr</name></param>
+            <param>const <type>void</type>*                <name>pattern</name></param>
             <param><type>size_t</type>                     <name>pattern_size</name></param>
             <param><type>size_t</type>                     <name>size</name></param>
             <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
@@ -2084,7 +2167,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_command_queue</type>           <name>command_queue</name></param>
             <param><type>cl_bool</type>                    <name>blocking_map</name></param>
             <param><type>cl_map_flags</type>               <name>flags</name></param>
-            <param>void*                                   <name>svm_ptr</name></param>
+            <param><type>void</type>*                      <name>svm_ptr</name></param>
             <param><type>size_t</type>                     <name>size</name></param>
             <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
@@ -2093,7 +2176,7 @@ server's OpenCL/api-docs repository.
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                     <name>clEnqueueSVMUnmapARM</name></proto>
             <param><type>cl_command_queue</type>           <name>command_queue</name></param>
-            <param>void*                                   <name>svm_ptr</name></param>
+            <param><type>void</type>*                      <name>svm_ptr</name></param>
             <param><type>cl_uint</type>                    <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                  <name>event</name></param>
@@ -2102,21 +2185,21 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                     <name>clSetKernelArgSVMPointerARM</name></proto>
             <param><type>cl_kernel</type>                  <name>kernel</name></param>
             <param><type>cl_uint</type>                    <name>arg_index</name></param>
-            <param>const void*                             <name>arg_value</name></param>
+            <param>const <type>void</type>*                <name>arg_value</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                     <name>clSetKernelExecInfoARM</name></proto>
             <param><type>cl_kernel</type>                  <name>kernel</name></param>
             <param><type>cl_kernel_exec_info_arm</type>    <name>param_name</name></param>
             <param><type>size_t</type>                     <name>param_value_size</name></param>
-            <param>const void*                             <name>param_value</name></param>
+            <param>const <type>void</type>*                <name>param_value</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
             <proto><type>cl_accelerator_intel</type>       <name>clCreateAcceleratorINTEL</name></proto>
             <param><type>cl_context</type>                 <name>context</name></param>
             <param><type>cl_accelerator_type_intel</type>  <name>accelerator_type</name></param>
             <param><type>size_t</type>                     <name>descriptor_size</name></param>
-            <param>const void*                             <name>descriptor</name></param>
+            <param>const <type>void</type>*                <name>descriptor</name></param>
             <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
@@ -2124,7 +2207,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_accelerator_intel</type>       <name>accelerator</name></param>
             <param><type>cl_accelerator_info_intel</type>  <name>param_name</name></param>
             <param><type>size_t</type>                     <name>param_value_size</name></param>
-            <param>void*                                   <name>param_value</name></param>
+            <param><type>void</type>*                      <name>param_value</name></param>
             <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
@@ -2146,7 +2229,7 @@ server's OpenCL/api-docs repository.
             <param>const <type>cl_context_properties</type>*  <name>properties</name></param>
             <param><type>cl_gl_context_info</type>         <name>param_name</name></param>
             <param><type>size_t</type>                     <name>param_value_size</name></param>
-            <param>void*                                   <name>param_value</name></param>
+            <param><type>void</type>*                      <name>param_value</name></param>
             <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2183,7 +2266,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_mem</type>                     <name>memobj</name></param>
             <param><type>cl_gl_texture_info</type>         <name>param_name</name></param>
             <param><type>size_t</type>                     <name>param_value_size</name></param>
-            <param>void*                                   <name>param_value</name></param>
+            <param><type>void</type>*                      <name>param_value</name></param>
             <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2226,7 +2309,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>
             <param><type>cl_platform_id</type>             <name>platform</name></param>
             <param><type>cl_va_api_device_source_intel</type> <name>media_adapter_type</name></param>
-            <param>void*                                   <name>media_adapter</name></param>
+            <param><type>void</type>*                      <name>media_adapter</name></param>
             <param><type>cl_va_api_device_set_intel</type> <name>media_adapter_set</name></param>
             <param><type>cl_uint</type>                    <name>num_entries</name></param>
             <param><type>cl_device_id</type>*              <name>devices</name></param>
@@ -2259,7 +2342,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_event</type>*                  <name>event</name></param>
         </command>
         <command>
-            <proto>void*                                        <name>clHostMemAllocINTEL</name></proto>
+            <proto><type>void</type>*                           <name>clHostMemAllocINTEL</name></proto>
             <param><type>cl_context</type>                      <name>context</name></param>
             <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
             <param><type>size_t</type>                          <name>size</name></param>
@@ -2267,7 +2350,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
         </command>
         <command>
-            <proto>void*                                        <name>clDeviceMemAllocINTEL</name></proto>
+            <proto><type>void</type>*                           <name>clDeviceMemAllocINTEL</name></proto>
             <param><type>cl_context</type>                      <name>context</name></param>
             <param><type>cl_device_id</type>                    <name>device</name></param>
             <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
@@ -2276,7 +2359,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
         </command>
         <command>
-            <proto>void*                                        <name>clSharedMemAllocINTEL</name></proto>
+            <proto><type>void</type>*                           <name>clSharedMemAllocINTEL</name></proto>
             <param><type>cl_context</type>                      <name>context</name></param>
             <param><type>cl_device_id</type>                    <name>device</name></param>
             <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
@@ -2287,27 +2370,27 @@ server's OpenCL/api-docs repository.
         <command>
             <proto><type>cl_int</type>                          <name>clMemFreeINTEL</name></proto>
             <param><type>cl_context</type>                      <name>context</name></param>
-            <param>void*                                        <name>ptr</name></param>
+            <param><type>void</type>*                           <name>ptr</name></param>
         </command>
         <command>
             <proto><type>cl_int</type>                          <name>clGetMemAllocInfoINTEL</name></proto>
             <param><type>cl_context</type>                      <name>context</name></param>
-            <param>const void*                                  <name>ptr</name></param>
+            <param>const <type>void</type>*                     <name>ptr</name></param>
             <param><type>cl_mem_info_intel</type>               <name>param_name</name></param>
             <param><type>size_t</type>                          <name>param_value_size</name></param>
-            <param>void*                                        <name>param_value</name></param>
+            <param><type>void</type>*                           <name>param_value</name></param>
             <param><type>size_t</type>*                         <name>param_value_size_ret</name></param>
         </command>
         <command>
             <proto><type>cl_int</type>                          <name>clSetKernelArgMemPointerINTEL</name></proto>
             <param><type>cl_kernel</type>                       <name>kernel</name></param>
             <param><type>cl_uint</type>                         <name>arg_index</name></param>
-            <param>const void*                                  <name>arg_value</name></param>
+            <param>const <type>void</type>*                     <name>arg_value</name></param>
         </command>
         <command comment="Deprecated">
             <proto><type>cl_int</type>                          <name>clEnqueueMemsetINTEL</name></proto>
             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
-            <param>void*                                        <name>dst_ptr</name></param>
+            <param><type>void</type>*                           <name>dst_ptr</name></param>
             <param><type>cl_int</type>                          <name>value</name></param>
             <param><type>size_t</type>                          <name>size</name></param>
             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
@@ -2317,8 +2400,8 @@ server's OpenCL/api-docs repository.
         <command>
             <proto><type>cl_int</type>                          <name>clEnqueueMemFillINTEL</name></proto>
             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
-            <param>void*                                        <name>dst_ptr</name></param>
-            <param>const void*                                  <name>pattern</name></param>
+            <param><type>void</type>*                           <name>dst_ptr</name></param>
+            <param>const <type>void</type>*                     <name>pattern</name></param>
             <param><type>size_t</type>                          <name>pattern_size</name></param>
             <param><type>size_t</type>                          <name>size</name></param>
             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
@@ -2329,8 +2412,8 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                          <name>clEnqueueMemcpyINTEL</name></proto>
             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
             <param><type>cl_bool</type>                         <name>blocking</name></param>
-            <param>void*                                        <name>dst_ptr</name></param>
-            <param>const void*                                  <name>src_ptr</name></param>
+            <param><type>void</type>*                           <name>dst_ptr</name></param>
+            <param>const <type>void</type>*                     <name>src_ptr</name></param>
             <param><type>size_t</type>                          <name>size</name></param>
             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                 <name>event_wait_list</name></param>
@@ -2339,7 +2422,7 @@ server's OpenCL/api-docs repository.
         <command>
             <proto><type>cl_int</type>                          <name>clEnqueueMigrateMemINTEL</name></proto>
             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
-            <param>const void*                                  <name>ptr</name></param>
+            <param>const <type>void</type>*                     <name>ptr</name></param>
             <param><type>size_t</type>                          <name>size</name></param>
             <param><type>cl_mem_migration_flags_intel</type>    <name>flags</name></param>
             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
@@ -2349,7 +2432,7 @@ server's OpenCL/api-docs repository.
         <command>
             <proto><type>cl_int</type>                          <name>clEnqueueMemAdviseINTEL</name></proto>
             <param><type>cl_command_queue</type>                <name>command_queue</name></param>
-            <param>const void*                                  <name>ptr</name></param>
+            <param>const <type>void</type>*                     <name>ptr</name></param>
             <param><type>size_t</type>                          <name>size</name></param>
             <param><type>cl_mem_advice_intel</type>             <name>advice</name></param>
             <param><type>cl_uint</type>                         <name>num_events_in_wait_list</name></param>
@@ -2367,7 +2450,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_platform_id</type>                          <name>platform</name></param>
             <param><type>cl_platform_info</type>                        <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2383,7 +2466,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_device_id</type>                            <name>device</name></param>
             <param><type>cl_device_info</type>                          <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
@@ -2424,16 +2507,16 @@ server's OpenCL/api-docs repository.
             <param>const <type>cl_context_properties</type>*            <name>properties</name></param>
             <param><type>cl_uint</type>                                 <name>num_devices</name></param>
             <param>const <type>cl_device_id</type>*                     <name>devices</name></param>
-            <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(const char*, const void*, size_t, void*)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(const char* errinfo, const void* private_info, size_t cb, void* user_data)</param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
             <proto><type>cl_context</type>                              <name>clCreateContextFromType</name></proto>
             <param>const <type>cl_context_properties</type>*            <name>properties</name></param>
             <param><type>cl_device_type</type>                          <name>device_type</name></param>
-            <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(const char*, const void*, size_t, void*)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(const char* errinfo, const void* private_info, size_t cb, void* user_data)</param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2449,7 +2532,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_context</type>                              <name>context</name></param>
             <param><type>cl_context_info</type>                         <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
@@ -2472,7 +2555,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_command_queue_info</type>                   <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2480,7 +2563,16 @@ server's OpenCL/api-docs repository.
             <param><type>cl_context</type>                              <name>context</name></param>
             <param><type>cl_mem_flags</type>                            <name>flags</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
-            <param>void*                                                <name>host_ptr</name></param>
+            <param><type>void</type>*                                   <name>host_ptr</name></param>
+            <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_API_SUFFIX__VERSION_3_0">
+            <proto><type>cl_mem</type>                                  <name>clCreateBufferWithProperties</name></proto>
+            <param><type>cl_context</type>                              <name>context</name></param>
+            <param>const <type>cl_mem_properties</type>*                <name>properties</name></param>
+            <param><type>cl_mem_flags</type>                            <name>flags</name></param>
+            <param><type>size_t</type>                                  <name>size</name></param>
+            <param><type>void</type>*                                   <name>host_ptr</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_1">
@@ -2488,7 +2580,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_mem</type>                                  <name>buffer</name></param>
             <param><type>cl_mem_flags</type>                            <name>flags</name></param>
             <param><type>cl_buffer_create_type</type>                   <name>buffer_create_type</name></param>
-            <param>const void*                                          <name>buffer_create_info</name></param>
+            <param>const <type>void</type>*                             <name>buffer_create_info</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
@@ -2497,7 +2589,17 @@ server's OpenCL/api-docs repository.
             <param><type>cl_mem_flags</type>                            <name>flags</name></param>
             <param>const <type>cl_image_format</type>*                  <name>image_format</name></param>
             <param>const <type>cl_image_desc</type>*                    <name>image_desc</name></param>
-            <param>void*                                                <name>host_ptr</name></param>
+            <param><type>void</type>*                                   <name>host_ptr</name></param>
+            <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
+        </command>
+        <command suffix="CL_API_SUFFIX__VERSION_3_0">
+            <proto><type>cl_mem</type>                                  <name>clCreateImageWithProperties</name></proto>
+            <param><type>cl_context</type>                              <name>context</name></param>
+            <param>const <type>cl_mem_properties</type>*                <name>properties</name></param>
+            <param><type>cl_mem_flags</type>                            <name>flags</name></param>
+            <param>const <type>cl_image_format</type>*                  <name>image_format</name></param>
+            <param>const <type>cl_image_desc</type>*                    <name>image_desc</name></param>
+            <param><type>void</type>*                                   <name>host_ptr</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
@@ -2531,7 +2633,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_mem</type>                                  <name>memobj</name></param>
             <param><type>cl_mem_info</type>                             <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2539,7 +2641,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_mem</type>                                  <name>image</name></param>
             <param><type>cl_image_info</type>                           <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
@@ -2547,32 +2649,32 @@ server's OpenCL/api-docs repository.
             <param><type>cl_mem</type>                                  <name>pipe</name></param>
             <param><type>cl_pipe_info</type>                            <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_1">
             <proto><type>cl_int</type>                                  <name>clSetMemObjectDestructorCallback</name></proto>
             <param><type>cl_mem</type>                                  <name>memobj</name></param>
             <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_mem memobj, void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
         </command>
         <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
             <proto><type>cl_int</type>                                  <name>clSetMemObjectDestructorAPPLE</name></proto>
             <param><type>cl_mem</type>                                  <name>memobj</name></param>
             <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_mem memobj, void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
-            <proto>void*                                                <name>clSVMAlloc</name></proto>
+            <proto><type>void</type>*                                   <name>clSVMAlloc</name></proto>
             <param><type>cl_context</type>                              <name>context</name></param>
             <param><type>cl_svm_mem_flags</type>                        <name>flags</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
             <param><type>cl_uint</type>                                 <name>alignment</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
-            <proto>void                                                 <name>clSVMFree</name></proto>
+            <proto><type>void</type>                                    <name>clSVMFree</name></proto>
             <param><type>cl_context</type>                              <name>context</name></param>
-            <param>void*                                                <name>svm_pointer</name></param>
+            <param><type>void</type>*                                   <name>svm_pointer</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
             <proto><type>cl_sampler</type>                              <name>clCreateSamplerWithProperties</name></proto>
@@ -2593,7 +2695,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_sampler</type>                              <name>sampler</name></param>
             <param><type>cl_sampler_info</type>                         <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2625,7 +2727,7 @@ server's OpenCL/api-docs repository.
         <command suffix="CL_API_SUFFIX__VERSION_2_1">
             <proto><type>cl_program</type>                              <name>clCreateProgramWithIL</name></proto>
             <param><type>cl_context</type>                              <name>context</name></param>
-            <param>const void*                                          <name>il</name></param>
+            <param>const <type>void</type>*                             <name>il</name></param>
             <param><type>size_t</type>                                  <name>length</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
@@ -2644,7 +2746,7 @@ server's OpenCL/api-docs repository.
             <param>const <type>cl_device_id</type>*                     <name>device_list</name></param>
             <param>const <type>char</type>*                             <name>options</name></param>
             <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_program program, void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                                  <name>clCompileProgram</name></proto>
@@ -2656,7 +2758,7 @@ server's OpenCL/api-docs repository.
             <param>const <type>cl_program</type>*                       <name>input_headers</name></param>
             <param>const <type>char</type>**                            <name>header_include_names</name></param>
             <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_program program, void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
             <proto><type>cl_program</type>                              <name>clLinkProgram</name></proto>
@@ -2667,21 +2769,21 @@ server's OpenCL/api-docs repository.
             <param><type>cl_uint</type>                                 <name>num_input_programs</name></param>
             <param>const <type>cl_program</type>*                       <name>input_programs</name></param>
             <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_program program, void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_2">
             <proto><type>cl_int</type>                                  <name>clSetProgramReleaseCallback</name></proto>
             <param><type>cl_program</type>                              <name>program</name></param>
             <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_program program, void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_2">
             <proto><type>cl_int</type>                                  <name>clSetProgramSpecializationConstant</name></proto>
             <param><type>cl_program</type>                              <name>program</name></param>
             <param><type>cl_uint</type>                                 <name>spec_id</name></param>
             <param><type>size_t</type>                                  <name>spec_size</name></param>
-            <param>const void*                                          <name>spec_value</name></param>
+            <param>const <type>void</type>*                             <name>spec_value</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
             <proto><type>cl_int</type>                                  <name>clUnloadPlatformCompiler</name></proto>
@@ -2692,7 +2794,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_program</type>                              <name>program</name></param>
             <param><type>cl_program_info</type>                         <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2701,7 +2803,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_device_id</type>                            <name>device</name></param>
             <param><type>cl_program_build_info</type>                   <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2735,27 +2837,27 @@ server's OpenCL/api-docs repository.
             <param><type>cl_kernel</type>                               <name>kernel</name></param>
             <param><type>cl_uint</type>                                 <name>arg_index</name></param>
             <param><type>size_t</type>                                  <name>arg_size</name></param>
-            <param>const void*                                          <name>arg_value</name></param>
+            <param>const <type>void</type>*                             <name>arg_value</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
             <proto><type>cl_int</type>                                  <name>clSetKernelArgSVMPointer</name></proto>
             <param><type>cl_kernel</type>                               <name>kernel</name></param>
             <param><type>cl_uint</type>                                 <name>arg_index</name></param>
-            <param>const void*                                          <name>arg_value</name></param>
+            <param>const <type>void</type>*                             <name>arg_value</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
             <proto><type>cl_int</type>                                  <name>clSetKernelExecInfo</name></proto>
             <param><type>cl_kernel</type>                               <name>kernel</name></param>
             <param><type>cl_kernel_exec_info</type>                     <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>const void*                                          <name>param_value</name></param>
+            <param>const <type>void</type>*                             <name>param_value</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
             <proto><type>cl_int</type>                                  <name>clGetKernelInfo</name></proto>
             <param><type>cl_kernel</type>                               <name>kernel</name></param>
             <param><type>cl_kernel_info</type>                          <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
@@ -2764,7 +2866,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_uint</type>                                 <name>arg_indx</name></param>
             <param><type>cl_kernel_arg_info</type>                      <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2773,7 +2875,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_device_id</type>                            <name>device</name></param>
             <param><type>cl_kernel_work_group_info</type>               <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_2_1">
@@ -2782,9 +2884,9 @@ server's OpenCL/api-docs repository.
             <param><type>cl_device_id</type>                            <name>device</name></param>
             <param><type>cl_kernel_sub_group_info</type>                <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>input_value_size</name></param>
-            <param>const void*                                          <name>input_value</name></param>
+            <param>const <type>void</type>*                             <name>input_value</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2797,7 +2899,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_event</type>                                <name>event</name></param>
             <param><type>cl_event_info</type>                           <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_1">
@@ -2822,15 +2924,15 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clSetEventCallback</name></proto>
             <param><type>cl_event</type>                                <name>event</name></param>
             <param><type>cl_int</type>                                  <name>command_exec_callback_type</name></param>
-            <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_event event, cl_int type, void *user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param>void (CL_CALLBACK*                                   <name>pfn_notify</name>)(cl_event event, cl_int event_command_status, void *user_data)</param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
             <proto><type>cl_int</type>                                  <name>clGetEventProfilingInfo</name></proto>
             <param><type>cl_event</type>                                <name>event</name></param>
             <param><type>cl_profiling_info</type>                       <name>param_name</name></param>
             <param><type>size_t</type>                                  <name>param_value_size</name></param>
-            <param>void*                                                <name>param_value</name></param>
+            <param><type>void</type>*                                   <name>param_value</name></param>
             <param><type>size_t</type>*                                 <name>param_value_size_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
@@ -2848,7 +2950,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_bool</type>                                 <name>blocking_read</name></param>
             <param><type>size_t</type>                                  <name>offset</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
-            <param>void*                                                <name>ptr</name></param>
+            <param><type>void</type>*                                   <name>ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -2865,7 +2967,7 @@ server's OpenCL/api-docs repository.
             <param><type>size_t</type>                                  <name>buffer_slice_pitch</name></param>
             <param><type>size_t</type>                                  <name>host_row_pitch</name></param>
             <param><type>size_t</type>                                  <name>host_slice_pitch</name></param>
-            <param>void*                                                <name>ptr</name></param>
+            <param><type>void</type>*                                   <name>ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -2877,7 +2979,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_bool</type>                                 <name>blocking_write</name></param>
             <param><type>size_t</type>                                  <name>offset</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
-            <param>const void*                                          <name>ptr</name></param>
+            <param>const <type>void</type>*                             <name>ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -2894,7 +2996,7 @@ server's OpenCL/api-docs repository.
             <param><type>size_t</type>                                  <name>buffer_slice_pitch</name></param>
             <param><type>size_t</type>                                  <name>host_row_pitch</name></param>
             <param><type>size_t</type>                                  <name>host_slice_pitch</name></param>
-            <param>const void*                                          <name>ptr</name></param>
+            <param>const <type>void</type>*                             <name>ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -2903,7 +3005,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueFillBuffer</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_mem</type>                                  <name>buffer</name></param>
-            <param>const void*                                          <name>pattern</name></param>
+            <param>const <type>void</type>*                             <name>pattern</name></param>
             <param><type>size_t</type>                                  <name>pattern_size</name></param>
             <param><type>size_t</type>                                  <name>offset</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
@@ -2948,7 +3050,7 @@ server's OpenCL/api-docs repository.
             <param>const <type>size_t</type>*                           <name>region</name></param>
             <param><type>size_t</type>                                  <name>row_pitch</name></param>
             <param><type>size_t</type>                                  <name>slice_pitch</name></param>
-            <param>void*                                                <name>ptr</name></param>
+            <param><type>void</type>*                                   <name>ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -2962,7 +3064,7 @@ server's OpenCL/api-docs repository.
             <param>const <type>size_t</type>*                           <name>region</name></param>
             <param><type>size_t</type>                                  <name>input_row_pitch</name></param>
             <param><type>size_t</type>                                  <name>input_slice_pitch</name></param>
-            <param>const void*                                          <name>ptr</name></param>
+            <param>const <type>void</type>*                             <name>ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -2971,7 +3073,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueFillImage</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_mem</type>                                  <name>image</name></param>
-            <param>const void*                                          <name>fill_color</name></param>
+            <param>const <type>void</type>*                             <name>fill_color</name></param>
             <param>const <type>size_t</type>*                           <name>origin</name></param>
             <param>const <type>size_t</type>*                           <name>region</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
@@ -3015,7 +3117,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_event</type>*                               <name>event</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
-            <proto>void*                                                <name>clEnqueueMapBuffer</name></proto>
+            <proto><type>void</type>*                                   <name>clEnqueueMapBuffer</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_mem</type>                                  <name>buffer</name></param>
             <param><type>cl_bool</type>                                 <name>blocking_map</name></param>
@@ -3028,7 +3130,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_0">
-            <proto>void*                                                <name>clEnqueueMapImage</name></proto>
+            <proto><type>void</type>*                                   <name>clEnqueueMapImage</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_mem</type>                                  <name>image</name></param>
             <param><type>cl_bool</type>                                 <name>blocking_map</name></param>
@@ -3046,7 +3148,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueUnmapMemObject</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_mem</type>                                  <name>memobj</name></param>
-            <param>void*                                                <name>mapped_ptr</name></param>
+            <param><type>void</type>*                                   <name>mapped_ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -3077,11 +3179,11 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueNativeKernel</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param>void (CL_CALLBACK*                                   <name>user_func</name>)(void*)</param>
-            <param>void*                                                <name>args</name></param>
+            <param><type>void</type>*                                   <name>args</name></param>
             <param><type>size_t</type>                                  <name>cb_args</name></param>
             <param><type>cl_uint</type>                                 <name>num_mem_objects</name></param>
             <param>const <type>cl_mem</type>*                           <name>mem_list</name></param>
-            <param>const void**                                         <name>args_mem_loc</name></param>
+            <param>const <type>void</type>**                            <name>args_mem_loc</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -3104,9 +3206,9 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueSVMFree</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_uint</type>                                 <name>num_svm_pointers</name></param>
-            <param>void*                                                <name>svm_pointers</name>[]</param>
+            <param><type>void</type>*                                   <name>svm_pointers</name>[]</param>
             <param>void (CL_CALLBACK*                                   <name>pfn_free_func</name>)(cl_command_queue queue, cl_uint num_svm_pointers, void* svm_pointers[], void* user_data)</param>
-            <param>void*                                                <name>user_data</name></param>
+            <param><type>void</type>*                                   <name>user_data</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -3115,8 +3217,8 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueSVMMemcpy</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_bool</type>                                 <name>blocking_copy</name></param>
-            <param>void*                                                <name>dst_ptr</name></param>
-            <param>const void*                                          <name>src_ptr</name></param>
+            <param><type>void</type>*                                   <name>dst_ptr</name></param>
+            <param>const <type>void</type>*                             <name>src_ptr</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
@@ -3125,8 +3227,8 @@ server's OpenCL/api-docs repository.
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
             <proto><type>cl_int</type>                                  <name>clEnqueueSVMMemFill</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
-            <param>void*                                                <name>svm_ptr</name></param>
-            <param>const void*                                          <name>pattern</name></param>
+            <param><type>void</type>*                                   <name>svm_ptr</name></param>
+            <param>const <type>void</type>*                             <name>pattern</name></param>
             <param><type>size_t</type>                                  <name>pattern_size</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
@@ -3138,7 +3240,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_bool</type>                                 <name>blocking_map</name></param>
             <param><type>cl_map_flags</type>                            <name>flags</name></param>
-            <param>void*                                                <name>svm_ptr</name></param>
+            <param><type>void</type>*                                   <name>svm_ptr</name></param>
             <param><type>size_t</type>                                  <name>size</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
@@ -3147,7 +3249,7 @@ server's OpenCL/api-docs repository.
         <command suffix="CL_API_SUFFIX__VERSION_2_0">
             <proto><type>cl_int</type>                                  <name>clEnqueueSVMUnmap</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
-            <param>void*                                                <name>svm_ptr</name></param>
+            <param><type>void</type>*                                   <name>svm_ptr</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
             <param>const <type>cl_event</type>*                         <name>event_wait_list</name></param>
             <param><type>cl_event</type>*                               <name>event</name></param>
@@ -3156,7 +3258,7 @@ server's OpenCL/api-docs repository.
             <proto><type>cl_int</type>                                  <name>clEnqueueSVMMigrateMem</name></proto>
             <param><type>cl_command_queue</type>                        <name>command_queue</name></param>
             <param><type>cl_uint</type>                                 <name>num_svm_pointers</name></param>
-            <param>const void**                                         <name>svm_pointers</name></param>
+            <param>const <type>void</type>**                            <name>svm_pointers</name></param>
             <param>const <type>size_t</type>*                           <name>sizes</name></param>
             <param><type>cl_mem_migration_flags</type>                  <name>flags</name></param>
             <param><type>cl_uint</type>                                 <name>num_events_in_wait_list</name></param>
@@ -3164,7 +3266,7 @@ server's OpenCL/api-docs repository.
             <param><type>cl_event</type>*                               <name>event</name></param>
         </command>
         <command suffix="CL_API_SUFFIX__VERSION_1_2">
-            <proto>void*                                                <name>clGetExtensionFunctionAddressForPlatform</name></proto>
+            <proto><type>void</type>*                                   <name>clGetExtensionFunctionAddressForPlatform</name></proto>
             <param><type>cl_platform_id</type>                          <name>platform</name></param>
             <param>const <type>char</type>*                             <name>func_name</name></param>
         </command>
@@ -3183,7 +3285,7 @@ server's OpenCL/api-docs repository.
             <param><type>size_t</type>                                  <name>image_width</name></param>
             <param><type>size_t</type>                                  <name>image_height</name></param>
             <param><type>size_t</type>                                  <name>image_row_pitch</name></param>
-            <param>void*                                                <name>host_ptr</name></param>
+            <param><type>void</type>*                                   <name>host_ptr</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command prefix="CL_EXT_PREFIX__VERSION_1_1_DEPRECATED" suffix="CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED">
@@ -3196,7 +3298,7 @@ server's OpenCL/api-docs repository.
             <param><type>size_t</type>                                  <name>image_depth</name></param>
             <param><type>size_t</type>                                  <name>image_row_pitch</name></param>
             <param><type>size_t</type>                                  <name>image_slice_pitch</name></param>
-            <param>void*                                                <name>host_ptr</name></param>
+            <param><type>void</type>*                                   <name>host_ptr</name></param>
             <param><type>cl_int</type>*                                 <name>errcode_ret</name></param>
         </command>
         <command prefix="CL_EXT_PREFIX__VERSION_1_1_DEPRECATED" suffix="CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED">
@@ -3216,10 +3318,10 @@ server's OpenCL/api-docs repository.
         </command>
         <command prefix="CL_EXT_PREFIX__VERSION_1_1_DEPRECATED" suffix="CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED">
             <proto><type>cl_int</type> <name>clUnloadCompiler</name></proto>
-            <param>void                                                 </param>
+            <param><type>void</type>                                    </param>
         </command>
         <command prefix="CL_EXT_PREFIX__VERSION_1_1_DEPRECATED" suffix="CL_EXT_SUFFIX__VERSION_1_1_DEPRECATED">
-            <proto>void* <name>clGetExtensionFunctionAddress</name></proto>
+            <proto><type>void</type>*  <name>clGetExtensionFunctionAddress</name></proto>
             <param>const <type>char</type>*  <name>func_name</name></param>
         </command>
         <command prefix="CL_EXT_PREFIX__VERSION_1_1_DEPRECATED" suffix="CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED">
@@ -3790,6 +3892,8 @@ server's OpenCL/api-docs repository.
             <enum name="CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT"/>
             <enum name="CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE"/>
             <enum name="CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF"/>
+        </require>
+        <require comment="cl_device_info enums deprecated in OpenCL 3.0">
             <enum name="CL_DEVICE_OPENCL_C_VERSION"/>
         </require>
         <require comment="cl_device_fp_config - bitfield">
@@ -4172,11 +4276,9 @@ server's OpenCL/api-docs repository.
         <require comment="cl_program_info">
             <enum name="CL_PROGRAM_IL"/>
         </require>
-        <require comment="cl_kernel_info">
+        <require comment="cl_kernel_sub_group_info">
             <enum name="CL_KERNEL_MAX_NUM_SUB_GROUPS"/>
             <enum name="CL_KERNEL_COMPILE_NUM_SUB_GROUPS"/>
-        </require>
-        <require comment="cl_kernel_sub_group_info">
             <enum name="CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE"/>
             <enum name="CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE"/>
             <enum name="CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT"/>
@@ -4212,6 +4314,70 @@ server's OpenCL/api-docs repository.
         <require comment="Program Object APIs">
             <command name="clSetProgramReleaseCallback"/>
             <command name="clSetProgramSpecializationConstant"/>
+        </require>
+    </feature>
+
+    <feature api="opencl" name="CL_VERSION_3_0" number="3.0" comment="OpenCL experimental API interface definitions">
+        <require>
+            <type name="cl_device_atomic_capabilities"/>
+            <type name="cl_khronos_vendor_id"/>
+            <type name="cl_mem_properties"/>
+            <type name="cl_version"/>
+            <type name="cl_name_version"/>
+        </require>
+        <require comment="cl_device_atomic_capabilities - bitfield">
+            <enum name="CL_DEVICE_ATOMIC_ORDER_RELAXED"/>
+            <enum name="CL_DEVICE_ATOMIC_ORDER_ACQ_REL"/>
+            <enum name="CL_DEVICE_ATOMIC_ORDER_SEQ_CST"/>
+            <enum name="CL_DEVICE_ATOMIC_SCOPE_WORK_ITEM"/>
+            <enum name="CL_DEVICE_ATOMIC_SCOPE_WORK_GROUP"/>
+            <enum name="CL_DEVICE_ATOMIC_SCOPE_DEVICE"/>
+            <enum name="CL_DEVICE_ATOMIC_SCOPE_ALL_DEVICES"/>
+        </require>
+        <require comment="cl_platform_info">
+            <enum name="CL_PLATFORM_NUMERIC_VERSION"/>
+            <enum name="CL_PLATFORM_EXTENSIONS_WITH_VERSION"/>
+        </require>
+        <require comment="cl_device_info">
+            <enum name="CL_DEVICE_ATOMIC_MEMORY_CAPABILITIES"/>
+            <enum name="CL_DEVICE_ATOMIC_FENCE_CAPABILITIES"/>
+            <enum name="CL_DEVICE_NON_UNIFORM_WORK_GROUP_SUPPORT"/>
+            <enum name="CL_DEVICE_OPENCL_C_ALL_VERSIONS"/>
+            <enum name="CL_DEVICE_WORK_GROUP_COLLECTIVE_FUNCTIONS_SUPPORT"/>
+            <enum name="CL_DEVICE_GENERIC_ADDRESS_SPACE_SUPPORT"/>
+            <enum name="CL_DEVICE_OPENCL_C_FEATURES"/>
+            <enum name="CL_DEVICE_DEVICE_ENQUEUE_SUPPORT"/>
+            <enum name="CL_DEVICE_PIPE_SUPPORT"/>
+            <enum name="CL_DEVICE_NUMERIC_VERSION"/>
+            <enum name="CL_DEVICE_EXTENSIONS_WITH_VERSION"/>
+            <enum name="CL_DEVICE_ILS_WITH_VERSION"/>
+            <enum name="CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION"/>
+            <enum name="CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE"/>
+        </require>
+        <require comment="cl_pipe_info">
+            <enum name="CL_PIPE_PROPERTIES"/>
+        </require>
+        <require comment="cl_sampler_info">
+            <enum name="CL_SAMPLER_PROPERTIES"/>
+        </require>
+        <require comment="cl_command_queue_info">
+            <enum name="CL_QUEUE_PROPERTIES_ARRAY"/>
+        </require>
+        <require comment="cl_mem_info">
+            <enum name="CL_MEM_PROPERTIES"/>
+        </require>
+        <require comment="cl_command_type">
+            <enum name="CL_COMMAND_SVM_MIGRATE_MEM"/>
+        </require>
+        <require comment="Misc API enums">
+            <enum name="CL_VERSION_MAJOR_BITS"/>
+            <enum name="CL_VERSION_MINOR_BITS"/>
+            <enum name="CL_VERSION_PATCH_BITS"/>
+            <enum name="CL_NAME_VERSION_MAX_NAME_SIZE"/>
+        </require>
+        <require comment="Memory Object APIs">
+            <command name="clCreateBufferWithProperties"/>
+            <command name="clCreateImageWithProperties"/>
         </require>
     </feature>
 
@@ -4480,6 +4646,9 @@ server's OpenCL/api-docs repository.
             </require>
             <require comment="cl_context_properties">
                 <enum name="CL_CONTEXT_TERMINATE_KHR"/>
+            </require>
+            <require comment="Error codes">
+                <enum name="CL_CONTEXT_TERMINATED_KHR"/>
             </require>
             <require>
                 <command name="clTerminateContextKHR"/>

@@ -8,9 +8,9 @@ ML_FILES = opencl_meta_parameters.yaml supported_extensions.yaml supported_enums
 
 all: tracer_opencl.so opencl_model.yaml
 
-LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -O3 -I./ -I../utils/
+LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -O3 -I./ -I../utils/ -I./include/
 
-cl.xml.patched: cl.xml
+cl.xml.patched: cl.xml cl.xml.patch
 	patch cl.xml cl.xml.patch -o cl.xml.patched
 
 ../utils/lttng/tracepoint_gen.h: ../utils/tracepoint_gen.rb
@@ -47,7 +47,7 @@ tracer_opencl.c: gen_opencl.rb opencl_model.rb $(ML_FILES) cl.xml.patched tracer
 	ruby gen_opencl.rb > tracer_opencl.c
 
 tracer_opencl.so: ../utils/lttng/tracepoint_gen.h tracer_opencl.c $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL)
-	gcc -g -O3 -Wall -Wextra -Werror -I./ -I../utils/ -o tracer_opencl.so -shared -fPIC -Wl,--version-script,tracer_opencl.map tracer_opencl.c $(OPENCL_PROBES_OBJS) -llttng-ust -ldl -lffi
+	gcc -g -O3 -Wall -Wextra -Werror -I./ -I../utils/ -I./include/ -o tracer_opencl.so -shared -fPIC -Wl,--version-script,tracer_opencl.map tracer_opencl.c $(OPENCL_PROBES_OBJS) -llttng-ust -ldl -lffi
 
 clean:
 	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so *.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) cl.xml.patched opencl_model.yaml
