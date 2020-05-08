@@ -152,6 +152,8 @@ meta_parameters:
     - [ InNullArray, properties ]
   clCreateImageWithProperties:
     - [ InNullArray, properties ]
+  clCreateBufferWithPropertiesINTEL:
+    - [ InNullArray, properties ]
   clCreateImageWithPropertiesINTEL:
     - [ InNullArray, properties ]
   clGetImageParamsINTEL:
