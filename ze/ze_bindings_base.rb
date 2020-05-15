@@ -186,12 +186,12 @@ EOF
 EOF
       if memoize
         src << <<EOF
-      @#{aname} = p_arr.read_array_of_int32.collect { |i| #{pname}.from_native(i) }
+      @#{aname} = p_arr.read_array_of_int32.collect { |i| #{pname}.from_native(i, nil) }
     end
 EOF
       else
         src << <<EOF
-      p_arr.read_array_of_int32.collect { |i| #{pname}.from_native(i) }
+      p_arr.read_array_of_int32.collect { |i| #{pname}.from_native(i, nil) }
     end
 EOF
       end
@@ -242,12 +242,12 @@ EOF
 EOF
       if memoize
         src << <<EOF
-      @#{pname} = #{pename}.from_native(p_prop.read_int32)
+      @#{pname} = #{pename}.from_native(p_prop.read_int32, nil)
     end
 EOF
       else
         src << <<EOF
-      #{pename}.from_native(p_prop.read_int32)
+      #{pename}.from_native(p_prop.read_int32, nil)
     end
 EOF
       end
@@ -1255,6 +1255,9 @@ EOF
     add_array_property :pci_bars, :ZETPciBarProperties, :zetSysmanPciGetBars
     add_property :pci_stats, sname: :ZETPciStats, fname: :zetSysmanPciGetStats
     add_object_array :powers, :SysmanPwr, :zetSysmanPowerGet
+    add_object_array :frequencies, :SysmanFreq, :zetSysmanFrequencyGet
+    add_object_array :engines, :SysmanEngine, :zetSysmanEngineGet
+    add_object_array :standbies, :SysmanStandby, :zetSysmanStandbyGet
 
     def scheduler_timeout_mode_properties(default: false)
       config = ZETSchedTimeoutProperties::new
@@ -1320,8 +1323,8 @@ EOF
 
   class SysmanPwr < ZETObject
     add_property :properties, sname: :ZETPowerProperties, fname: :zetSysmanPowerGetProperties
-    add_property :energy_counter, sname: :ZETPowerEnergyCounter, fname: :zetSysmanPowerGetEnergyCounter
-    add_property :energy_threshold, sname: :ZETEnergyThreshold, fname: :zetSysmanPowerGetEnergyThreshold
+    add_property :energy_counter, sname: :ZETPowerEnergyCounter, fname: :zetSysmanPowerGetEnergyCounter, memoize: false
+    add_property :energy_threshold, sname: :ZETEnergyThreshold, fname: :zetSysmanPowerGetEnergyThreshold, memoize: false
 
     def limits
       sustained_limit = ZETPowerSustainedLimit::new
@@ -1398,9 +1401,93 @@ EOF
       ZE.error_check(result)
       self
     end
+
+    def set_energy_threshold(threshold)
+      result = ZE.zetSysmanPowerSetEnergyThreshold(@handle, threshold)
+      ZE.error_check(result)
+      threshold
+    end
+    alias energy_threshold= set_energy_threshold
   end
 
   SysmanPower = SysmanPwr
+
+  class SysmanFreq < ZETObject
+    add_property :properties, sname: :ZETFreqProperties, fname: :zetSysmanFrequencyGetProperties
+    add_property :range, sname: :ZETFreqRange, fname: :zetSysmanFrequencyGetRange, memoize: false
+    add_property :state, sname: :ZETFreqState, fname: :zetSysmanFrequencyGetState, memoize: false
+    add_property :throttle_time, sname: :ZETFreqThrottleTime, fname: :zetSysmanFrequencyGetThrottleTime, memoize: false
+    add_property :oc_capabilities, sname: :ZETOcCapabilities, fname: :zetSysmanFrequencyOcGetCapabilities, memoize: false
+    add_property :oc_config, sname: :ZETOcConfig, fname: :zetSysmanFrequencyOcGetConfig, memoize: false
+
+    def clocks
+      pCount = MemoryPointer::new(:uint32_t)
+      result = ZE.zetSysmanFrequencyGetAvailableClocks(@handle, pCount, nil)
+      ZE.error_check(result)
+      count = pCount.read(:uint32)
+      return [] if count == 0
+      pArr = MemoryPointer::new(:double, count)
+      result = ZE.zetSysmanFrequencyGetAvailableClocks(@handle, pCount, pArr)
+      ZE.error_check(result)
+      return pArr.read_array_of_double(count)
+    end
+
+    def set_range(min, max)
+      limits = ZETFreqRange::new
+      limits[:min] = min
+      limits[:max] = max
+      result = ZE.zetSysmanFrequencySetRange(@handle, limits)
+      ZE.error_check(result)
+      limits
+    end
+
+    def oc_set_config(mode, frequency, voltage_target, voltage_offset)
+      config = ZETOcConfig::new
+      config[:mode] = mode
+      config[:frequency] = frequency
+      config[:voltageTarget] = voltage_target
+      config[:voltageOffset] = voltage_offset
+      p_need_reboot = MemoryPointer::new(:ze_bool_t)
+      result = ZE.zetSysmanFrequencyOcSetConfig(@handle, config, p_need_reboot)
+      ZE.error_check(result)
+      p_need_reboot.read_ze_bool_t != 0
+    end
+
+    def oc_icc_max
+      p_oc_icc_max = MemoryPointer::new(:double)
+      result = ZE.zetSysmanFrequencyOcGetIccMax(@handle, p_oc_icc_max)
+      ZE.error_check(result)
+      p_oc_icc_max.read_double
+    end
+
+    def oc_set_icc_max(oc_icc_max)
+      result = ZE.zetSysmanFrequencyOcSetIccMax(@handle, oc_icc_max)
+      ZE.error_check(result)
+      oc_icc_max
+    end
+    alias oc_icc_max= oc_set_icc_max
+
+    def oc_tj_max
+      p_oc_tj_max = MemoryPointer::new(:double)
+      result = ZE.zetSysmanFrequencyOcGetTjMax(@handle, p_oc_tj_max)
+      ZE.error_check(result)
+      p_oc_tj_max.read_double
+    end
+
+    def oc_set_tj_max(tj_max)
+      result = ZE.zetSysmanFrequencyOcSetTjMax(@handle, tj_max)
+      ZE.error_check(result)
+      tj_max
+    end
+    alias oc_tj_max= oc_set_tj_max
+  end
+
+  SysmanFrequency = SysmanFreq
+
+  class SysmanEngine < ZETObject
+    add_property :properties, sname: :ZETEngineProperties, fname: :zetSysmanEngineGetProperties, memoize: false
+    add_property :activity, sname: :ZETEngineStats, fname: :zetSysmanEngineGetActivity, memoize: false
+  end
 
   def self.ze_init(flags: 0)
     result = zeInit(flags)
@@ -1418,6 +1505,18 @@ EOF
     ze_init(flags: flags)
     zet_init(flags: flags)
     nil
+  end
+
+  class SysmanStandby < ZETObject
+    add_property :properties, sname: :ZETStandbyProperties, fname: :zetSysmanStandbyGetProperties
+    add_enum_property :mode, :zet_standby_promo_mode_t, :zetSysmanStandbyGetMode, memoize: false
+
+    def set_mode(mode)
+      result = ZE.zetSysmanStandbySetMode(@handle, mode)
+      ZE.error_check(result)
+      mode
+    end
+    alias mode= set_mode
   end
 
   def self.drivers
