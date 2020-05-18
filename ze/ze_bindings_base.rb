@@ -1258,6 +1258,11 @@ EOF
     add_object_array :frequencies, :Freq, :zetSysmanFrequencyGet, memoize: true
     add_object_array :engines, :Engine, :zetSysmanEngineGet, memoize: true
     add_object_array :standbies, :Standby, :zetSysmanStandbyGet, memoize: true
+    add_object_array :firmwares, :Firmware, :zetSysmanFirmwareGet, memoize: true
+    add_object_array :memories, :Mem, :zetSysmanMemoryGet, memoize: true
+    add_object_array :fabric_ports, :FabricPort, :zetSysmanFabricPortGet, memoize: true
+    add_object_array :temperatures, :Temp, :zetSysmanTemperatureGet, memoize: true
+    add_object_array :psus, :Psu, :zetSysmanPsuGet, memoize: true
 
     def scheduler_timeout_mode_properties(default: false)
       config = ZETSchedTimeoutProperties::new
@@ -1523,12 +1528,96 @@ EOF
     alias mode= set_mode
   end
 
+  class Sysman::Firmware < ZETObject
+    add_property :properties, sname: :ZETFirmwareProperties, fname: :zetSysmanFirmwareGetProperties
+
+    def checksum
+      p_checksum = MemoryPointer::new(:uint32_t)
+      result = ZE.zetSysmanFirmwareGetChecksum(@handle, p_checksum)
+      ZE.error_check(result)
+      p_checksum.read_uint32
+    end
+
+    def flash(firmware)
+      size = firmware.bytesize
+      p_image = MemoryPointer::new(size)
+      p_image.write_bytes(firmware)
+      result = ZE.zetSysmanFirmwareFlash(@handle, p_image, size)
+      ZE.error_check(result)
+      self
+    end
+  end
+
+  class Sysman::Mem < ZETObject
+    add_property :properties, sname: :ZETMemProperties, fname: :zetSysmanMemGetProperties, memoize: true
+    add_property :state, sname: :ZETMemState, fname: :zetSysmanMemoryGetState
+    add_property :bandwidth, sname: :ZETMemBandwidth, fname: :zetSysmanMemoryGetBandwidth
+  end
+
+  class Sysman
+    Memory = Mem
+  end
+
+  class Sysman::FabricPort < ZETObject
+    add_property :properties, sname: :ZETFabricPortProperties, fname: :zetSysmanFabricPortGetProperties, memoize: true
+    add_property :config, sname: :ZETFabricPortConfig, fname: :zetSysmanFabricPortGetConfig
+    add_property :state, sname: :ZETFabricPortState, fname: :zetSysmanFabricPortGetState
+    add_property :throughput, sname: :ZETFabricPortThroughput, fname: :zetSysmanFabricPortGetThroughput
+
+    def link_type(verbose: false)
+      link_type = ZETFabricLinkType::new
+      result = ZE.zetSysmanFabricPortGetLinkType(@handle, verbose ? 1 : 0, link_type)
+      ZE.error_check(result)
+      link_type
+    end
+
+    def set_config(enabled:, beaconing:)
+      config = ZETFabricPortConfig::new
+      config[:enabled] = enabled ? 1 : 0
+      config[:beaconing] = beaconing ? 1 : 0
+      result = ZE.zetSysmanFabricPortSetConfig(@handle, config)
+      ZE.error_check(result)
+      self
+    end
+  end
+
+  class Sysman::Temp < ZETObject
+    add_property :properties, sname: :ZETTempProperties, fname: :zetSysmanTemperatureGetProperties, memoize: true
+    add_property :config, sname: :ZETTempConfig, fname: :zetSysmanTemperatureGetConfig
+
+    def set_config(enable_critical:, threshold1:, threshold2:)
+      config = ZETTempConfig::new
+      config[:enableCritical] = enable_critical ? 1 : 0
+      config[:threshold1] = threshold1
+      config[:threshold2] = threshold2
+      result = ZE.zetSysmanTemperatureSetConfig(@handle, config)
+      ZE.error_check(result)
+      self
+    end
+
+    def state
+      p_temperature = MemoryPointer::new(:double)
+      result = zetSysmanTemperatureGetState(@handle, p_temperature)
+      ZE.error_check(result)
+      p_temperature.read_double
+    end
+  end
+
+  class Sysman
+    Temperature = Temp
+  end
+
+  class Sysman::Psu < ZETObject
+    add_property :properties, sname: :ZETPsuProperties, fname: :zetSysmanPsuGetProperties, memoize: true
+    add_property :state, sname: :ZETPsuState, fname: :zetSysmanPsuGetState
+  end
+
   def self.drivers
     return @drivers if @drivers
     p_count = MemoryPointer::new(:uint32_t)
     result = zeDriverGet(p_count, nil);
     error_check(result)
-    count = p_count.read(:uint32)
+    count = p_count.read_uint32
     return [] if count == 0
     ph_drivers = MemoryPointer::new(:ze_driver_handle_t, count)
     result = zeDriverGet(p_count, ph_drivers);
