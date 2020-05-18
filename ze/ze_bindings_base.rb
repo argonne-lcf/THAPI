@@ -607,6 +607,7 @@ EOF
     def module_create(input_module,
                       format: :ZE_MODULE_FORMAT_IL_SPIRV,
                       build_flags: "",
+                      profile_flags: nil,
                       constants: nil)
       consts = ZEModuleConstants::new
       consts[:numConstants] = 0
@@ -614,6 +615,9 @@ EOF
       input_size = input_module.bytesize
       p_input_module = MemoryPointer::new(input_size)
       p_input_module.write_bytes(input_module)
+      if profile_flags
+       build_flags += " -zet-profile-flags 0x#{ZETProfileFlag.to_native(profile_flags, nil).to_s(16)}"
+      end
       p_build_flags = MemoryPointer.from_string(build_flags)
       desc[:format] = format
       desc[:inputSize] = input_size
@@ -1090,6 +1094,16 @@ EOF
       return pptr.read_pointer
     end
 
+    def debug_info(format: :ZET_MODULE_DEBUG_INFO_FORMAT_ELF_DWARF)
+      p_size = MemoryPointer::new(:size_t)
+      result = ZE.zetModuleGetDebugInfo(@handle, format, p_size, nil)
+      ZE.error_check(result)
+      p_debug_info = MemoryPointer::new(p_size.read_size_t)
+      result = ZE.zetModuleGetDebugInfo(@handle, format, p_size, p_debug_info)
+      ZE.error_check(result)
+      p_debug_info.read_bytes(p_size.read_size_t)
+    end
+
   end
 
   class Kernel < ZEManagedObject
@@ -1155,6 +1169,13 @@ EOF
       result = ZE.zeKernelSetIntermediateCacheConfig(@handle, config)
       ZE.error_check(result)
       self
+    end
+
+    def profile_info
+      info = ZETProfileInfo::new
+      result = ZE.zetKernelGetProfileInfo(@handle, info)
+      ZE.error_check(result)
+      info
     end
   end
 
