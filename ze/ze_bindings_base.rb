@@ -96,7 +96,7 @@ module ZE
       res.gsub(/\AZet/,"ZET").gsub(/\AZe/, "ZE").gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("P2p", "P2P")
     end
 
-    def self.add_object_array(aname, oname, fname, memoize: true)
+    def self.add_object_array(aname, oname, fname, memoize: false)
       src = <<EOF
     def #{aname}
 EOF
@@ -129,7 +129,7 @@ EOF
       class_eval src
     end
 
-    def self.add_array_property(aname, sname, fname, memoize: true)
+    def self.add_array_property(aname, sname, fname, memoize: false)
       src = <<EOF
     def #{aname}
 EOF
@@ -164,7 +164,7 @@ EOF
       class_eval src
     end
 
-    def self.add_enum_array_property(aname, ename, fname, memoize: true)
+    def self.add_enum_array_property(aname, ename, fname, memoize: false)
       pname = process_ffi_name(ename)
       src = <<EOF
     def #{aname}
@@ -198,7 +198,7 @@ EOF
       class_eval src
     end
 
-    def self.add_property(pname, sname, fname, memoize: true)
+    def self.add_property(pname, sname, fname, memoize: false)
       src = <<EOF
     def #{pname}
 EOF
@@ -225,7 +225,7 @@ EOF
       end
       class_eval src
     end
-    def self.add_enum_property(pname, ename, fname, memoize: true)
+    def self.add_enum_property(pname, ename, fname, memoize: false)
       pename = process_ffi_name(ename)
       src = <<EOF
     def #{pname}
@@ -256,7 +256,7 @@ EOF
   end
 
   class ZEObject < Object
-    def self.add_property(pname, sname: nil, fname: nil, memoize: true)
+    def self.add_property(pname, sname: nil, fname: nil, memoize: false)
       n = name.split("::").last
       ppn = process_property_name(pname) unless sname && fname
       sname = "ZE" << n << ppn unless sname
@@ -266,7 +266,7 @@ EOF
   end
 
   class ZETObject < Object
-    def self.add_property(pname, sname: nil, fname: nil, memoize: true)
+    def self.add_property(pname, sname: nil, fname: nil, memoize: false)
       n = name.split("::").last
       ppn = process_property_name(pname) unless sname && fname
       sname = "ZET" << n << ppn unless sname
@@ -304,9 +304,9 @@ EOF
   end
 
   class Driver < ZEObject
-    add_property :api_version, sname: :ZEApiVersion
-    add_property :properties
-    add_property :ipc_properties
+    add_property :api_version, sname: :ZEApiVersion, memoize: true
+    add_property :properties, memoize: true
+    add_property :ipc_properties, memoize: true
 
     def extension_function(name, return_type, param_types, **options )
       p_name = MemoryPointer.from_string(name.to_s)
@@ -438,14 +438,14 @@ EOF
       @driver = driver
     end
 
-    add_property :properties
-    add_object_array :sub_devices, :Device, :zeDeviceGetSubDevices
-    add_property :compute_properties
-    add_property :kernel_properties
-    add_array_property :memory_properties, :ZEDeviceMemoryProperties, :zeDeviceGetMemoryProperties
-    add_property :memory_access_properties
-    add_property :cache_properties
-    add_property :image_properties
+    add_property :properties, memoize: true
+    add_object_array :sub_devices, :Device, :zeDeviceGetSubDevices, memoize: true
+    add_property :compute_properties, memoize: true
+    add_property :kernel_properties, memoize: true
+    add_array_property :memory_properties, :ZEDeviceMemoryProperties, :zeDeviceGetMemoryProperties, memoize: true
+    add_property :memory_access_properties, memoize: true
+    add_property :cache_properties, memoize: true
+    add_property :image_properties, memoize: true
 
     def sub_devices
       return @sub_devices if @sub_devices
@@ -1243,21 +1243,21 @@ EOF
   end
 
   class Sysman < ZETObject
-    add_property :device_properties, sname: :ZETSysmanProperties, fname: :zetSysmanDeviceGetProperties
-    add_enum_array_property :scheduler_supported_modes, :zet_sched_mode_t, :zetSysmanSchedulerGetSupportedModes
-    add_enum_property :scheduler_current_mode, :zet_sched_mode_t, :zetSysmanSchedulerGetCurrentMode, memoize: false
-    add_enum_array_property :performance_profile_supported, :zet_perf_profile_t, :zetSysmanPerformanceProfileGetSupported
-    add_enum_property :performance_profile, :zet_perf_profile_t, :zetSysmanPerformanceProfileGet, memoize: false
-    add_array_property :processes_state, :ZETProcessState, :zetSysmanProcessesGetState, memoize: false
-    add_enum_property :device_repair_status, :zet_repair_status_t, :zetSysmanDeviceGetRepairStatus, memoize: false
-    add_property :pci_properties, sname: :ZETPciProperties, fname: :zetSysmanPciGetProperties
-    add_property :pci_state, sname: :ZETPciState, fname: :zetSysmanPciGetState, memoize: false
+    add_property :device_properties, sname: :ZETSysmanProperties, fname: :zetSysmanDeviceGetProperties, memoize: true
+    add_enum_array_property :scheduler_supported_modes, :zet_sched_mode_t, :zetSysmanSchedulerGetSupportedModes, memoize: true
+    add_enum_property :scheduler_current_mode, :zet_sched_mode_t, :zetSysmanSchedulerGetCurrentMode
+    add_enum_array_property :performance_profile_supported, :zet_perf_profile_t, :zetSysmanPerformanceProfileGetSupported, memoize: true
+    add_enum_property :performance_profile, :zet_perf_profile_t, :zetSysmanPerformanceProfileGet
+    add_array_property :processes_state, :ZETProcessState, :zetSysmanProcessesGetState
+    add_enum_property :device_repair_status, :zet_repair_status_t, :zetSysmanDeviceGetRepairStatus
+    add_property :pci_properties, sname: :ZETPciProperties, fname: :zetSysmanPciGetProperties, memoize: true
+    add_property :pci_state, sname: :ZETPciState, fname: :zetSysmanPciGetState
     add_array_property :pci_bars, :ZETPciBarProperties, :zetSysmanPciGetBars
     add_property :pci_stats, sname: :ZETPciStats, fname: :zetSysmanPciGetStats
-    add_object_array :powers, :SysmanPwr, :zetSysmanPowerGet
-    add_object_array :frequencies, :SysmanFreq, :zetSysmanFrequencyGet
-    add_object_array :engines, :SysmanEngine, :zetSysmanEngineGet
-    add_object_array :standbies, :SysmanStandby, :zetSysmanStandbyGet
+    add_object_array :powers, :Pwr, :zetSysmanPowerGet, memoize: true
+    add_object_array :frequencies, :Freq, :zetSysmanFrequencyGet, memoize: true
+    add_object_array :engines, :Engine, :zetSysmanEngineGet, memoize: true
+    add_object_array :standbies, :Standby, :zetSysmanStandbyGet, memoize: true
 
     def scheduler_timeout_mode_properties(default: false)
       config = ZETSchedTimeoutProperties::new
@@ -1321,10 +1321,10 @@ EOF
 
   end
 
-  class SysmanPwr < ZETObject
-    add_property :properties, sname: :ZETPowerProperties, fname: :zetSysmanPowerGetProperties
-    add_property :energy_counter, sname: :ZETPowerEnergyCounter, fname: :zetSysmanPowerGetEnergyCounter, memoize: false
-    add_property :energy_threshold, sname: :ZETEnergyThreshold, fname: :zetSysmanPowerGetEnergyThreshold, memoize: false
+  class Sysman::Pwr < ZETObject
+    add_property :properties, sname: :ZETPowerProperties, fname: :zetSysmanPowerGetProperties, memoize: true
+    add_property :energy_counter, sname: :ZETPowerEnergyCounter, fname: :zetSysmanPowerGetEnergyCounter
+    add_property :energy_threshold, sname: :ZETEnergyThreshold, fname: :zetSysmanPowerGetEnergyThreshold
 
     def limits
       sustained_limit = ZETPowerSustainedLimit::new
@@ -1410,15 +1410,17 @@ EOF
     alias energy_threshold= set_energy_threshold
   end
 
-  SysmanPower = SysmanPwr
+  class Sysman
+    Power = Pwr
+  end
 
-  class SysmanFreq < ZETObject
-    add_property :properties, sname: :ZETFreqProperties, fname: :zetSysmanFrequencyGetProperties
-    add_property :range, sname: :ZETFreqRange, fname: :zetSysmanFrequencyGetRange, memoize: false
-    add_property :state, sname: :ZETFreqState, fname: :zetSysmanFrequencyGetState, memoize: false
-    add_property :throttle_time, sname: :ZETFreqThrottleTime, fname: :zetSysmanFrequencyGetThrottleTime, memoize: false
-    add_property :oc_capabilities, sname: :ZETOcCapabilities, fname: :zetSysmanFrequencyOcGetCapabilities, memoize: false
-    add_property :oc_config, sname: :ZETOcConfig, fname: :zetSysmanFrequencyOcGetConfig, memoize: false
+  class Sysman::Freq < ZETObject
+    add_property :properties, sname: :ZETFreqProperties, fname: :zetSysmanFrequencyGetProperties, memoize: true
+    add_property :range, sname: :ZETFreqRange, fname: :zetSysmanFrequencyGetRange
+    add_property :state, sname: :ZETFreqState, fname: :zetSysmanFrequencyGetState
+    add_property :throttle_time, sname: :ZETFreqThrottleTime, fname: :zetSysmanFrequencyGetThrottleTime
+    add_property :oc_capabilities, sname: :ZETOcCapabilities, fname: :zetSysmanFrequencyOcGetCapabilities
+    add_property :oc_config, sname: :ZETOcConfig, fname: :zetSysmanFrequencyOcGetConfig
 
     def clocks
       pCount = MemoryPointer::new(:uint32_t)
@@ -1482,11 +1484,13 @@ EOF
     alias oc_tj_max= oc_set_tj_max
   end
 
-  SysmanFrequency = SysmanFreq
+  class Sysman
+    Frequency = Freq
+  end
 
-  class SysmanEngine < ZETObject
-    add_property :properties, sname: :ZETEngineProperties, fname: :zetSysmanEngineGetProperties, memoize: false
-    add_property :activity, sname: :ZETEngineStats, fname: :zetSysmanEngineGetActivity, memoize: false
+  class Sysman::Engine < ZETObject
+    add_property :properties, sname: :ZETEngineProperties, fname: :zetSysmanEngineGetProperties
+    add_property :activity, sname: :ZETEngineStats, fname: :zetSysmanEngineGetActivity
   end
 
   def self.ze_init(flags: 0)
@@ -1507,9 +1511,9 @@ EOF
     nil
   end
 
-  class SysmanStandby < ZETObject
-    add_property :properties, sname: :ZETStandbyProperties, fname: :zetSysmanStandbyGetProperties
-    add_enum_property :mode, :zet_standby_promo_mode_t, :zetSysmanStandbyGetMode, memoize: false
+  class Sysman::Standby < ZETObject
+    add_property :properties, sname: :ZETStandbyProperties, fname: :zetSysmanStandbyGetProperties, memoize: true
+    add_enum_property :mode, :zet_standby_promo_mode_t, :zetSysmanStandbyGetMode
 
     def set_mode(mode)
       result = ZE.zetSysmanStandbySetMode(@handle, mode)
