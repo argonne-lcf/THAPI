@@ -28,6 +28,11 @@ module ZE
   end
 
   UINT32_MAX = 0xffffffff
+  ZET_EVENT_WAIT_NONE = 0x0
+  ZET_EVENT_WAIT_INFINITE = 0xffffffff
+  ZET_DIAG_FIRST_TEST_INDEX =  0x0
+  ZET_DIAG_LAST_TEST_INDEX = 0xffffffff
+
   ZE_OBJECTS = {}
   ZE_OBJECTS_MUTEX = Mutex.new
 
@@ -426,6 +431,16 @@ EOF
       result = ZE.zeDriverCloseMemIpcHandle(@handle, ptr)
       ZE.error_check(result)
       return self
+    end
+
+    def sysman_event_listen(events, timeout: ZET_EVENT_WAIT_NONE)
+      count = events.length
+      ph_events = MemoryPointer::new(:zet_sysman_event_handle_t, count)
+      ph_events.write_array_of_zet_sysman_event_handle_t(events.collect(&:to_ptr))
+      p_events = MemoryPointer::new(:uint32_t)
+      result = ZE.zetSysmanEventListen(@handle, timeout, count, ph_events, p_events)
+      ZE.error_check(result)
+      p_events.read_array_of_uint32(count).collect { |e| ZETSysmanEventType.from_native(e, nil) }
     end
 
   end
@@ -1263,6 +1278,10 @@ EOF
     add_object_array :fabric_ports, :FabricPort, :zetSysmanFabricPortGet, memoize: true
     add_object_array :temperatures, :Temp, :zetSysmanTemperatureGet, memoize: true
     add_object_array :psus, :Psu, :zetSysmanPsuGet, memoize: true
+    add_object_array :fans, :Fan, :zetSysmanFanGet, memoize: true
+    add_object_array :leds, :Led, :zetSysmanLedGet, memoize: true
+    add_object_array :rases, :Ras, :zetSysmanRasGet, memoize: true
+    add_object_array :diagnostics, :Diag, :zetSysmanDiagnosticsGet, memoize: true
 
     def scheduler_timeout_mode_properties(default: false)
       config = ZETSchedTimeoutProperties::new
@@ -1322,6 +1341,13 @@ EOF
       result = ZE.zetSysmanDeviceReset(@handle)
       ZE.error_check(result)
       self
+    end
+
+    def event
+      ph_event = MemoryPointer::new(:zet_sysman_event_handle_t)
+      result = ZE.zetSysmanEventGet(@handle, ph_event)
+      ZE.error_check(result)
+      Event::new(ph_event.read_zet_sysman_event_handle_t)
     end
 
   end
@@ -1610,6 +1636,123 @@ EOF
   class Sysman::Psu < ZETObject
     add_property :properties, sname: :ZETPsuProperties, fname: :zetSysmanPsuGetProperties, memoize: true
     add_property :state, sname: :ZETPsuState, fname: :zetSysmanPsuGetState
+  end
+
+  class Sysman::Fan < ZETObject
+    add_property :properties, sname: :ZETFanProperties, fname: :zetSysmanFanGetProperties, memoize: true
+    add_property :config, sname: :ZETFanConfig, fname: :zetSysmanFanGetConfig
+
+    def set_config(mode: , speed: 0, speed_units: :ZET_FAN_SPEED_UNITS_PERCENT, points: [])
+      config = ZETFanConfig::new
+      config[:mode] = mode
+      config[:speed] = speed
+      config[:speedUnits] = speed_units
+      config[:numPoints] = points.length
+      points.each_with_index { |args, i|
+        t = config[:table][i]
+        t[:temperature] = args[0]
+        t[:speed] = args[1]
+        t[:units] = args[2] || :ZET_FAN_SPEED_UNITS_PERCENT 
+      }
+      result = ZE.zetSysmanFanSetConfig(@handle, config)
+      ZE.error_check(result)
+      self
+    end
+
+    def state(units: :ZET_FAN_SPEED_UNITS_PERCENT)
+      p_speed = MemoryPointer::new(:uint32_t)
+      result = ZE.zetSysmanFanGetState(@handle, units, p_speed)
+      ZE.error_check(result)
+      return p_speed.read_uint32
+    end
+  end
+
+  class Sysman::Led < ZETObject
+    add_property :properties, sname: :ZETLedProperties, fname: :zetSysmanLedGetProperties, memoize: true
+    add_property :state, sname: :ZETLedState, fname: :zetSysmanLedGetState
+
+    def set_state(is_on:, red:, green:, blue:)
+      normalize = lambda { |c| (c.kind_of?(Float) ? (c*255).to_i : c).clamp(0, 255) }
+      state = ZETLedState::new
+      state[:isOn] = is_on ? 1 : 0
+      state[:red] = normalize.call(red)
+      state[:green] = normalize.call(green)
+      state[:blue] = normalize.call(blue)
+      result = ZE.zetSysmanLedSetState(@handle, state)
+      ZE.error_check(result)
+      self
+    end
+  end
+
+  class Sysman::Ras < ZETObject
+    add_property :properties, sname: :ZETRasProperties, fname: :zetSysmanRasGetProperties, memoize: true
+    add_property :config, sname: :ZETRasConfig, fname: :zetSysmanRasGetConfig
+
+    def set_config(total_threshold: 0,
+                   num_resets: 0,
+                   num_programming_errors: 0,
+                   num_driver_errors: 0,
+                   num_compute_errors: 0,
+                   num_non_compute_errors: 0,
+                   num_cache_errors: 0,
+                   num_display_errors: 0)
+      config = ZETRasConfig::new
+      config[:totalThreshold] = total_threshold
+      detailed_thresholds = config[:detailedThresholds]
+      detailed_thresholds[:numResets] = num_resets
+      detailed_thresholds[:numProgrammingErrors] = num_programming_errors
+      detailed_thresholds[:numDriverErrors] = num_driver_errors
+      detailed_thresholds[:numComputeErrors] = num_compute_errors
+      detailed_thresholds[:numNonComputeErrors] = num_non_compute_errors
+      detailed_thresholds[:numCacheErrors] = num_cache_errors
+      detailed_thresholds[:numDisplayErrors] = num_display_errors
+      result = ZE.zetSysmanRasSetConfig(@handle, config)
+      ZE.error_check(result)
+      self
+    end
+
+    def state(clear: false)
+      details = ZETRasDetails::new
+      p_total_errors = MemoryPointer::new(:uint64_t)
+      result = ZE.zetSysmanRasGetState(@handle, clear ? 1 : 0, p_total_errors, details)
+      ZE.error_check(result)
+      [ p_total_errors.read_uint64, details ]
+    end
+  end
+
+  class Sysman::Event < ZETObject
+    add_property :config, sname: :ZETEventConfig, fname: :zetSysmanEventGetConfig
+
+    def set_config(registered)
+      config = ZETEventConfig::new
+      config[:registered] = ZETSysmanEventType.to_native(registered, nil)
+      result = ZE.zetSysmanEventSetConfig(@handle, config)
+      ZE.error_check(result)
+      self
+    end
+
+    def state(clear: false)
+      p_events = MemoryPointer::new(:zet_sysman_event_type_t)
+      result = ZE.zetSysmanEventGetState(@handle, clear ? 1 : 0, p_events)
+      ZE.error_check(result)
+      ZETSysmanEventType.from_native(p_events.read_zet_sysman_event_type_t, nil)
+    end
+  end
+
+  class Sysman::Diag < ZETObject
+    add_property :properties, sname: :ZETDiagProperties, fname: :zetSysmanDiagnosticsGetProperties, memoize: true
+    add_array_property :tests, :ZETDiagTest, :zetSysmanDiagnosticsGetTests, memoize: true
+
+    def run_tests(start: ZET_DIAG_FIRST_TEST_INDEX, stop: ZET_DIAG_LAST_TEST_INDEX)
+      res = ZETDiagResult::new
+      result = ZE.zetSysmanDiagnosticsRunTests(@handle, start, stop, res)
+      ZE.error_check(result)
+      res
+    end
+  end
+
+  class Sysman
+    Diagnostics = Diag
   end
 
   def self.drivers
