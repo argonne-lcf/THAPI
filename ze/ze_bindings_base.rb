@@ -30,8 +30,13 @@ module ZE
   UINT32_MAX = 0xffffffff
   ZET_EVENT_WAIT_NONE = 0x0
   ZET_EVENT_WAIT_INFINITE = 0xffffffff
+
   ZET_DIAG_FIRST_TEST_INDEX =  0x0
   ZET_DIAG_LAST_TEST_INDEX = 0xffffffff
+
+  ZET_DEBUG_TIMEOUT_INFINITE = 0xffffffffffffffff
+  ZET_DEBUG_THREAD_NONE = 0xffffffffffffffff
+  ZET_DEBUG_THREAD_ALL = 0xfffffffffffffffe
 
   ZE_OBJECTS = {}
   ZE_OBJECTS_MUTEX = Mutex.new
@@ -61,6 +66,7 @@ module ZE
   ENV["ZE_ENABLE_VALIDATION_LAYER"] = "1"
   ENV["ZE_ENABLE_LOADER_INTERCEPT"] = "1"
 #  ENV["ZE_ENABLE_PARAMETER_VALIDATION"] = "1"
+  ENV["ZE_ENABLE_API_TRACING"] = "1"
   if ENV["LIBZE_LOADER_SO"]
     ffi_lib ENV["LIBZE_LOADER_SO"]
   else
@@ -443,6 +449,16 @@ EOF
       p_events.read_array_of_uint32(count).collect { |e| ZETSysmanEventType.from_native(e, nil) }
     end
 
+    def tracer_create(user_data: nil)
+      user_data = @handle unless user_data
+      ph_tracer = MemoryPointer::new(:zet_tracer_handle_t)
+      desc = ZETTracerDesc::new
+      desc[:pUserData] = user_data
+      result = ZE.zetTracerCreate(@handle, desc, ph_tracer)
+      ZE.error_check(result)
+      Tracer::new(ph_tracer.read_zet_tracer_handle_t)
+    end
+
   end
 
   class Device < ZEObject
@@ -461,6 +477,7 @@ EOF
     add_property :memory_access_properties, memoize: true
     add_property :cache_properties, memoize: true
     add_property :image_properties, memoize: true
+    add_object_array :metric_groups, :MetricGroup, :zetMetricGroupGet, memoize: true
 
     def sub_devices
       return @sub_devices if @sub_devices
@@ -711,6 +728,45 @@ EOF
       result = ZE.zetSysmanGet(@handle, @driver.api_version.to_ptr, ph_sysman)
       ZE.error_check(result)
       Sysman::new(ph_sysman.read_zet_sysman_handle_t)
+    end
+
+    def activate_metric_groups(metric_groups)
+      metric_groups = [metric_groups].flatten
+      count = metric_groups.length
+      ph_metric_groups = MemoryPointer::new(:zet_metric_group_handle_t, count)
+      ph_metric_groups.write_array_of_zet_metric_group_handle_t(metric_group.collect(&:to_ptr))
+      result = ZE.zetDeviceActivateMetricGroups(@handle, count, ph_metric_groups)
+      ZE.error_check(result)
+      self
+    end
+
+    def metric_tracer_open(metric_group, sampling_period: 1000,  notify_every_n_reports: 0, signal_event: nil)
+      desc = ZETMetricTracerDesc::new
+      desc[:notifyEveryNReports] = notify_every_n_reports
+      desc[:samplingPeriod] = sampling_period
+      ph_metric_tracer = MemoryPointer::new(:zet_metric_tracer_handle_t)
+      result = ZE.zetMetricTracerOpen(@handle, metric_group, desc, signal_event, ph_metric_tracer)
+      ZE.error_check(result)
+      MetricTracer::new(ph_metric_tracer.read_zet_metric_tracer_handle_t)
+    end
+
+    def metric_query_pool_create(metric_group, count, flags: [:ZET_METRIC_QUERY_POOL_FLAG_PERFORMANCE])
+      desc = ZETMetricQueryPoolDesc::new
+      desc[:flags] = flags
+      desc[:count] = count
+      ph_metric_query_pool = MemoryPointer::new(:zet_metric_query_pool_handle_t)
+      result = ZE.zetMetricQueryPoolCreate(@handle, metric_group, desc, ph_metric_query_pool)
+      ZE.error_check(result)
+      MetricQueryPool::new(ph_metric_query_pool.read_zet_metric_query_pool_handle_t)
+    end
+
+    def debug_attach(pid)
+      config = ZETDebugConfig::new
+      config[:variant][:v1][:pid] = pid
+      ph_debug = MemoryPointer::new(:zet_debug_session_handle_t)
+      result = ZE.zetDebugAttach(@handle, config, ph_debug)
+      ZE.error_check(result)
+      Debug::new(ph_debug.read_zet_debug_session_handle_t)
     end
 
     private
@@ -978,6 +1034,30 @@ EOF
       self
     end
 
+    def append_metric_tracer_marker(metric_tracer, value)
+      result = ZE.zetCommandListAppendMetricTracerMarker(@handle, metric_tracer, value)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_metric_query_begin(metric_query)
+      result = ZE.zetCommandListAppendMetricQueryBegin(@handle, metric_query)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_metric_query_end(metric_query, signal_event: nil)
+      result = ZE.zetCommandListAppendMetricQueryEnd(@handle, metric_query, signal_event)
+      ZE.error_check(result)
+      self
+    end
+
+    def append_metric_memory_barrier
+      result = ZE.zetCommandListAppendMetricMemoryBarrier(@handle)
+      ZE.error_check(result)
+      self
+    end
+
     private
     def _create_event_list(wait_events)
       count = 0
@@ -1190,14 +1270,14 @@ EOF
       ph_event = MemoryPointer::new(:ze_event_handle_t)
       result = ZE.zeEventCreate(@handle, desc, ph_event)
       ZE.error_check(result)
-      return Event::new(ph_event.read_ze_event_handle_t)
+      Event::new(ph_event.read_ze_event_handle_t)
     end
 
     def ipc_handle
       ph_ipc = ZEIPCEventPoolHandle::new
       result = ZE.zeEventPoolGetIpcHandle(@handle, ph_ipc)
       ZE.error_check(result)
-      return ph_ipc
+      ph_ipc
     end
   end
 
@@ -1545,24 +1625,6 @@ EOF
     add_property :activity, sname: :ZETEngineStats, fname: :zetSysmanEngineGetActivity
   end
 
-  def self.ze_init(flags: 0)
-    result = zeInit(flags)
-    error_check(result)
-    nil
-  end
-
-  def self.zet_init(flags: 0)
-    result = zetInit(flags)
-    error_check(result)
-    nil
-  end
-
-  def self.init(flags: 0)
-    ze_init(flags: flags)
-    zet_init(flags: flags)
-    nil
-  end
-
   class Sysman::Standby < ZETObject
     add_property :properties, sname: :ZETStandbyProperties, fname: :zetSysmanStandbyGetProperties, memoize: true
     add_enum_property :mode, :zet_standby_promo_mode_t, :zetSysmanStandbyGetMode
@@ -1774,6 +1836,190 @@ EOF
 
   class Sysman
     Diagnostics = Diag
+  end
+
+  class MetricGroup < ZETObject
+    add_property :properties, sname: :ZETMetricGroupProperties, fname: :zetMetricGroupGetProperties, memoize: true
+    add_object_array :metrics, :Metric, :zetMetricGet, memoize: true
+
+    def calculate_metric_values(raw_data)
+      if raw_data.kind_of?(FFI::Pointer)
+        p_raw_data = raw_data
+        raw_data_size = raw_data.size
+      else
+        raw_data_size = raw_data.bytesize
+        p_raw_data = MemoryPointer::new(raw_data_size)
+        p_raw_data.write_bytes(raw_data)
+      end
+      p_metric_value_count = MemoryPointer::new(:uint32_t)
+      result = ZE.zetMetricGroupCalculateMetricValues(@handle, raw_data_size, p_raw_data, p_metric_value_count, nil)
+      ZE.error_check(result)
+      count = p_metric_value_count.read_uint32
+      return [] if count == 0
+      p_metric_values = MemoryPointer::new(ZETTypedValue, count)
+      sz = ZETTypedValue.size
+      metric_values = count.times.collect { |i| ZETTypedValue::new(p_metric_values.slice(sz * i, sz)) }
+      result = ZE.zetMetricGroupCalculateMetricValues(@handle, raw_data_size, p_raw_data, p_metric_value_count, metric_values.first)
+      ZE.error_check(result)
+      metric_values
+    end
+  end
+
+  class Metric < ZETObject
+    add_property :properties, sname: :ZETMetricProperties, fname: :zetMetricGetProperties, memoize: true
+  end
+
+  class MetricTracer < ZETManagedObject
+    @destructor = :zetMetricTracerClose
+
+    def read_data(max_report_count: UINT32_MAX)
+      p_raw_data_size = MemoryPointer::new(:size_t)
+      result = ZE.zetMetricTracerReadData(@handle, max_report_count, p_raw_data_size, nil)
+      ZE.error_check(result)
+      raw_data_size = p_raw_data_size.read_size_t
+      p_raw_data = MemoryPointer::new(raw_data_size)
+      result = ZE.zetMetricTracerReadData(@handle, max_report_count, p_raw_data_size, p_raw_data)
+      ZE.error_check(result)
+      p_raw_data
+    end
+  end
+
+  class MetricQueryPool < ZETManagedObject
+    @destructor = :zetMetricQueryPoolDestroy
+
+    def metric_query_create(index)
+      ph_metric_query = MemoryPointer::new(:zet_metric_query_handle_t)
+      result = ZE.zetMetricQueryCreate(@handle, index, ph_metric_query)
+      ZE.error_check(result)
+      MetricQuery::new(ph_metric_query.read_zet_metric_query_handle_t)
+    end
+  end
+
+  class MetricQuery < ZETManagedObject
+    @destructor = :zetMetricQueryDestroy
+
+    def reset
+      result = ZE.zetMetricQueryReset(@handle)
+      ZE.error_check(result)
+      self
+    end
+
+    def data
+      p_raw_data_size = MemoryPointer::new(:size_t)
+      result = ZE.zetMetricQueryGetData(@handle, p_raw_data_size, nil)
+      ZE.error_check(result)
+      raw_data_size = p_raw_data_size.read_size_t
+      p_raw_data = MemoryPointer::new(raw_data_size)
+      result = ZE.zetMetricQueryGetData(@handle, p_raw_data_size, p_raw_data)
+      ZE.error_check(result)
+      p_raw_data
+    end
+  end
+
+  class Debug < ZETManagedObject
+    @destructor = :zetDebugDetach
+
+    def num_thread
+      p_num_threads = MemoryPointer::new(:uint64_t)
+      result = ZE.zetDebugGetNumThreads(@handle, p_num_threads)
+      ZE.error_check(result)
+      p_num_threads.read_uint64
+    end
+
+    def read_event(timeout: ZET_DEBUG_TIMEOUT_INFINITE)
+      ev = ZETDebugEvent::new
+      result = ZE.zetDebugReadEvent(@handle, timeout, ev.size, ev)
+      ZE.error_check(result)
+      ev
+    end
+
+    def interrupt(threadid)
+      result = ZE.zetDebugInterrupt(@handle, threadid)
+      ZE.error_check(result)
+      self
+    end
+
+    def resume(threadid)
+      result = ZE.zetDebugResume(@handle, threadid)
+      ZE.error_check(result)
+      self
+    end
+
+    def read_memory(threadid, address, memspace: 0, size: nil)
+      size = address.size unless size
+      p_buffer = MemoryPointer::new(size)
+      result = ZE.zetDebugReadMemory(@handle, threadid, memspace, address.to_i, size, p_buffer)
+      ZE.error_check(result)
+      p_buffer
+    end
+
+    def write_memory(threadid, address, buffer, memspace: 0, size: nil)
+      unless size
+        if address.respond_to?(:size)
+          size = [address.size, buffer.size].min
+        else
+          size = buffer.size
+        end
+      end
+      result = ZE.zetDebugWriteMemory(@module, threadid, memspace, address.to_i, size, buffer)
+      ZE.error_check(result)
+      self
+    end
+
+#   Incomprehensible doc
+#   def read_state
+#   end
+#
+#   def write_state
+#   end
+  end
+
+  class Tracer < ZETManagedObject
+    @destructor = :zetTracerDestroy
+    attr_reader :prologues
+    attr_reader :epilogues
+
+    def initialize(*args)
+      super
+      @prologues = ZECallbacks::new
+      @epilogues = ZECallbacks::new
+    end
+
+    def set_prologues
+      result = ZE.zetTracerSetPrologues(@handle, @prologues)
+      ZE.error_check(result)
+      self
+    end
+
+    def set_epilogues
+      result = ZE.zetTracerSetEpilogues(@handle, @epilogues)
+      ZE.error_check(result)
+      self
+    end
+
+    def set_enabled(enable)
+      result = ZE.zetTracerSetEnabled(@handle, enable ? 1 : 0)
+      ZE.error_check(result)
+      self
+    end
+  end
+
+  def self.ze_init(flags: 0)
+    result = zeInit(flags)
+    error_check(result)
+    nil
+  end
+
+  def self.zet_init(flags: 0)
+    result = zetInit(flags)
+    error_check(result)
+    nil
+  end
+
+  def self.init(flags: 0)
+    ze_init(flags: flags)
+    zet_init(flags: flags)
+    nil
   end
 
   def self.drivers
