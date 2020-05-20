@@ -1981,18 +1981,32 @@ EOF
 
     def initialize(*args)
       super
-      @prologues = ZECallbacks::new
-      @epilogues = ZECallbacks::new
+      @prologues = Hash::new { |h, k| h[k] = {} }
+      @prologues_ze = ZECallbacks::new
+      @epilogues = Hash::new { |h, k| h[k] = {} }
+      @epilogues_ze = ZECallbacks::new
+    end
+
+    def self.copy_table(table_ze, table)
+      table.each { |group, t|
+        g = table_ze[group]
+        t.each { |name, block|
+           g[name] = block
+        }
+      }
+      nil
     end
 
     def set_prologues
-      result = ZE.zetTracerSetPrologues(@handle, @prologues)
+      Tracer.copy_table(@prologues_ze, @prologues)
+      result = ZE.zetTracerSetPrologues(@handle, @prologues_ze)
       ZE.error_check(result)
       self
     end
 
     def set_epilogues
-      result = ZE.zetTracerSetEpilogues(@handle, @epilogues)
+      Tracer.copy_table(@epilogues_ze, @epilogues)
+      result = ZE.zetTracerSetEpilogues(@handle, @epilogues_ze)
       ZE.error_check(result)
       self
     end
