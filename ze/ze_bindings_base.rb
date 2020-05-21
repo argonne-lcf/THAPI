@@ -1981,24 +1981,15 @@ EOF
 
     def initialize(*args)
       super
+      @callbacks = []
       @prologues = Hash::new { |h, k| h[k] = {} }
       @prologues_ze = ZECallbacks::new
       @epilogues = Hash::new { |h, k| h[k] = {} }
       @epilogues_ze = ZECallbacks::new
     end
 
-    def self.copy_table(table_ze, table)
-      table.each { |group, t|
-        g = table_ze[group]
-        t.each { |name, block|
-           g[name] = block
-        }
-      }
-      nil
-    end
-
     def set_prologues
-      Tracer.copy_table(@prologues_ze, @prologues)
+      copy_table(@prologues_ze, @prologues)
       result = ZE.zetTracerSetPrologues(@handle, @prologues_ze)
       ZE.error_check(result)
       self
@@ -2015,6 +2006,18 @@ EOF
       result = ZE.zetTracerSetEnabled(@handle, enable ? 1 : 0)
       ZE.error_check(result)
       self
+    end
+    private
+
+    def copy_table(table_ze, table)
+      table.each { |group, t|
+        g = table_ze[group]
+        t.each { |name, block|
+           g[name] = block
+           @callbacks.push block
+        }
+      }
+      nil
     end
   end
 
