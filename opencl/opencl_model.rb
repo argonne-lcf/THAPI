@@ -1022,7 +1022,7 @@ str = <<EOF
 EOF
 register_epilogue "clBuildProgram", str
 register_epilogue "clCompileProgram", str
-register_prologue "clLinkProgram", str
+register_epilogue "clLinkProgram", str
 
 l = lambda { |func, name: "pfn_notify", extra_conditions: nil|
   register_prologue func, <<EOF
