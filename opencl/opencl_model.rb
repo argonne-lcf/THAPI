@@ -1182,9 +1182,7 @@ EOF
       closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct opencl_closure));
       if (closure != NULL) {
         closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
-        if (closure->closure == NULL) {
-          free(closure);
-        } else {
+        if (closure->closure != NULL) {
           closure->ptr = _retval;
 EOF
     c.parameters.each_with_index { |a, i|
@@ -1202,7 +1200,9 @@ EOF
               return closure->c_ptr;
             }
           }
+          ffi_closure_free(closure->closure);
         }
+        free(closure);
       }
     }
 EOF
