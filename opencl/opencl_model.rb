@@ -1185,10 +1185,11 @@ EOF
         if (closure->closure == NULL) {
           free(closure);
         } else {
+          closure->ptr = _retval;
 EOF
     c.parameters.each_with_index { |a, i|
       sstr << <<EOF
-         closure->types[#{i}] = &#{a.ffi_type};
+          closure->types[#{i}] = &#{a.ffi_type};
 EOF
     }
     sstr << <<EOF
