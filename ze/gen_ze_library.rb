@@ -77,6 +77,13 @@ def print_version_enum_struct(name)
     prepend Version
     layout :minor, :uint16_t,
            :major, :uint16_t
+
+    def self.from_native(i, ctx = nil)
+      v = self::new
+      v[:major] = ZE.ZE_MAJOR_VERSION(i)
+      v[:minor] = ZE.ZE_MINOR_VERSION(i)
+      v
+    end
   end
   typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
 
