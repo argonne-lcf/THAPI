@@ -23,7 +23,8 @@ extern void init_dispatchers(struct opencl_dispatch *opencl_dispatch);
 typedef void (opencl_dispatcher_t)
     (struct opencl_dispatch   *opencl_dispatch,
      struct opencl_callbacks *callbacks,
-     const bt_event          *message);
+     const bt_event          *message,
+     const bt_clock_snapshot *clock);
 
 struct opencl_unique_id {
     uint64_t class_id;

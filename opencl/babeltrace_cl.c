@@ -207,7 +207,7 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
             }
             /* Print line for current message if it's an event message */
             if (callbacks->dispatcher)
-                callbacks->dispatcher(opencl_dispatch, callbacks, event);
+                callbacks->dispatcher(opencl_dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(message));
 
             /* Put this message's reference */
 	}

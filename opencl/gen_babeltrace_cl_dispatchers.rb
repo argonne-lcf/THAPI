@@ -76,7 +76,8 @@ static void
 #{name.gsub(":","_")}_dispatcher(
     struct opencl_dispatch  *opencl_dispatch,
     struct opencl_callbacks *callbacks,
-    const bt_event          *bt_event) {
+    const bt_event          *bt_event,
+    const bt_clock_snapshot *bt_clock) {
   #{fields.each.collect { |n, f|
   s =  "#{f["type"].gsub("cl_errcode", "cl_int")}"
   s << " *" if f["pointer"]
@@ -95,7 +96,7 @@ puts <<EOF
   void *p = NULL;
   while( (p = utarray_next(callbacks->callbacks, p)) ) {
     ((#{name.gsub(":","_")}_cb *)p)(
-      #{(["bt_event"] + fields.each.collect { |n, f|
+      #{(["bt_event", "bt_clock"] + fields.each.collect { |n, f|
         s = "#{n}"
         if f["array"]
           ["_#{n}_length", s]

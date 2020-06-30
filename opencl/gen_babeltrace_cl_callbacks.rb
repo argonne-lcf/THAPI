@@ -24,7 +24,7 @@ EOF
 opencl_model["events"].each { |name, fields|
   puts <<EOF
 typedef void (#{name.gsub(":","_")}_cb)(
-    #{(["const bt_event *bt_event"]+fields.each.collect { |n, f|
+    #{(["const bt_event *bt_event", "const bt_clock_snapshot *bt_clock"]+fields.each.collect { |n, f|
   s =  "#{f["type"].gsub("cl_errcode", "cl_int")}"
   s << " *" if f["pointer"]
   s << " *" if f["array"]
