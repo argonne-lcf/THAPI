@@ -70,12 +70,12 @@ tracepoint_lambda = lambda { |c, dir|
   elsif dir == :stop
     r = c.prototype.lttng_return_type
     fields.push r if r
-    if HOST_PROFILE
-      fields.push ["ctf_integer", "uint64_t", "_duration", "_duration"]
-    end
     c.meta_parameters.collect(&:lttng_out_type).compact.each { |arr|
       fields.push arr
     }
+    if HOST_PROFILE
+      fields.push ["ctf_integer", "uint64_t", "_duration", "_duration"]
+    end
   end
   event[dir] = fields
 

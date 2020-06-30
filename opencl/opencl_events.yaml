@@ -229,7 +229,7 @@ lttng_ust_opencl_source:
     - [ ctf_string, path, path ]
   - name: program_il
     args:
-    - [ const size_t, length ]
+    - [ size_t, length ]
     - [ "char *", path ]
     fields:
     - [ ctf_integer, size_t, length, length ]

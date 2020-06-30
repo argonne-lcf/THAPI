@@ -755,7 +755,7 @@ EOF
 }
 
 buffer_create_info = InMetaParameter::new($clCreateSubBuffer, "buffer_create_info")
-buffer_create_info.instance_variable_set(:@lttng_in_type, ["ctf_sequence_hex", "uint8_t", "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
+buffer_create_info.instance_variable_set(:@lttng_in_type, ["ctf_sequence_text", "uint8_t", "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
 
 $clCreateSubBuffer.meta_parameters.push buffer_create_info
 
@@ -788,7 +788,7 @@ class ParamName < MetaParameter
 end
 
 ($opencl_commands+$opencl_extension_commands).each { |c|
-  if c.prototype.name.match(/clGet(\w*?)Info\z/) && c["param_name"]
+  if c.prototype.name.match(/clGet(\w*?)Info/) && c["param_name"]
     c.meta_parameters.push(ParamName::new(c))
   end
 }

@@ -96,7 +96,7 @@ event_lambda = lambda { |c, dir|
         end
       end
       if meta_field["type"].match(/\*\z/)
-        meta_field["type"] = meta_field["type"].gsub(/\*\z/, "")
+        meta_field["type"] = meta_field["type"].sub(/\*\z/, "")
         meta_field["pointer"] = true
       end
       meta_field["array"] = true if LTTng.array?(*lttng)
