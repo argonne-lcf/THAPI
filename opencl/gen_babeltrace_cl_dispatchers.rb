@@ -72,7 +72,8 @@ end
 
 opencl_model["events"].each { |name, fields|
   puts <<EOF
-void #{name.gsub(":","_")}_dispatcher(
+static void
+#{name.gsub(":","_")}_dispatcher(
     struct opencl_dispatch  *opencl_dispatch,
     struct opencl_callbacks *callbacks,
     const bt_event          *bt_event) {
