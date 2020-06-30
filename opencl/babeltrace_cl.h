@@ -11,6 +11,10 @@
 #include "uthash.h"
 #include "utarray.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct opencl_dispatch;
 struct opencl_callbacks;
 
@@ -57,4 +61,13 @@ extern void
 opencl_register_dispatcher(struct opencl_dispatch *opencl_dispatch,
                            const char *name,
                            opencl_dispatcher_t *dispatcher);
+
+extern void
+opencl_register_callback(struct opencl_dispatch *opencl_dispatch,
+                         const char *name,
+                         void *func);
+#ifdef __cplusplus
+}
+#endif
+
 #endif
