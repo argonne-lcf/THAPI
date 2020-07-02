@@ -93,9 +93,9 @@ static void
 EOF
 print_field_members_access(fields)
 puts <<EOF
-  void *p = NULL;
+  void **p = NULL;
   while( (p = utarray_next(callbacks->callbacks, p)) ) {
-    ((#{name.gsub(":","_")}_cb *)p)(
+    ((#{name.gsub(":","_")}_cb *)*p)(
       #{(["bt_event", "bt_clock"] + fields.each.collect { |n, f|
         s = "#{n}"
         if f["array"]
