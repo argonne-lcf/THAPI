@@ -63,7 +63,7 @@ def print_field_members_access(fields)
     arr.push [lttng, type, name]
   }
   puts <<EOF unless arr.empty?
-  const bt_field *payload_field = bt_event_borrow_payload_field_const(bt_event);
+  const bt_field *payload_field = bt_event_borrow_payload_field_const(bt_evt);
 EOF
   arr.each_with_index { |(lttng, type, name), i|
     print_field_member_access(lttng, type, name, i)
@@ -76,7 +76,7 @@ static void
 #{name.gsub(":","_")}_dispatcher(
     struct opencl_dispatch  *opencl_dispatch,
     struct opencl_callbacks *callbacks,
-    const bt_event          *bt_event,
+    const bt_event          *bt_evt,
     const bt_clock_snapshot *bt_clock) {
   #{fields.each.collect { |n, f|
   s =  "#{f["type"].gsub("cl_errcode", "cl_int")}"
@@ -96,7 +96,7 @@ puts <<EOF
   void **p = NULL;
   while( (p = utarray_next(callbacks->callbacks, p)) ) {
     ((#{name.gsub(":","_")}_cb *)*p)(
-      #{(["bt_event", "bt_clock"] + fields.each.collect { |n, f|
+      #{(["bt_evt", "bt_clock"] + fields.each.collect { |n, f|
         s = "#{n}"
         if f["array"]
           ["_#{n}_length", s]
