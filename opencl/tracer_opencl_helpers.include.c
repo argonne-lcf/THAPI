@@ -742,6 +742,23 @@ static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
   }
 }
 
+static inline void dump_device_name(cl_device_id device) {
+  size_t  name_sz = 0;
+  char   *name = "";
+  if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_NAME, 0, NULL, &name_sz) != CL_SUCCESS)
+    return;
+  if (name_sz > 0) {
+    name = (char *)calloc(name_sz+1, 1);
+    if (!name)
+      return;
+    if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_NAME, name_sz, name, NULL) != CL_SUCCESS)
+      goto cleanup;
+  }
+  do_tracepoint(lttng_ust_opencl_devices, device_name, device, name);
+cleanup:
+  free(name);
+}
+
 static inline void dump_program_device_build_infos(cl_program program, cl_device_id device) {
   cl_build_status build_status;
   char *build_options = "";

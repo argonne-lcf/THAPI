@@ -234,3 +234,12 @@ lttng_ust_opencl_source:
     fields:
     - [ ctf_integer, size_t, length, length ]
     - [ ctf_string, path, path ]
+lttng_ust_opencl_devices:
+  events:
+  - name: device_name
+    args:
+    - [ cl_device_id, device]
+    - [ "char *", name ]
+    fields:
+    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_string, name, name ]

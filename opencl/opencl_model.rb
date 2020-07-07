@@ -1135,6 +1135,21 @@ register_epilogue "clCreateKernelsInProgram", <<EOF
   }
 EOF
 
+register_prologue "clGetDeviceIDs", <<EOF
+  cl_uint n_e;
+  if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && !num_devices && devices) {
+  num_devices = &n_e;
+}
+EOF
+
+register_epilogue "clGetDeviceIDs", <<EOF
+  if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && _retval == CL_SUCCESS && devices) {
+    for (cl_uint i = 0; i < *num_devices; i++) {
+      dump_device_name(devices[i]);
+    }
+  }
+EOF
+
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {

@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-OPENCL_PROBES = opencl_tracepoints opencl_profiling opencl_source opencl_dump opencl_arguments opencl_build
+OPENCL_PROBES = opencl_tracepoints opencl_profiling opencl_source opencl_dump opencl_arguments opencl_build opencl_devices
 OPENCL_PROBES_OBJS = $(OPENCL_PROBES:=.o)
 OPENCL_PROBES_INCL = $(OPENCL_PROBES:=.h)
 OPENCL_PROBES_SRC = $(OPENCL_PROBES:=.c)
@@ -39,6 +39,9 @@ opencl_profiling.tp: gen_opencl_custom_probes.rb opencl_events.yaml
 
 opencl_source.tp: gen_opencl_custom_probes.rb opencl_events.yaml
 	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_source > $@
+
+opencl_devices.tp: gen_opencl_custom_probes.rb opencl_events.yaml
+	ruby gen_opencl_custom_probes.rb lttng_ust_opencl_devices > $@
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
 	CFLAGS="$(LTTNG_FLAGS)" lttng-gen-tp $<

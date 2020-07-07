@@ -12,6 +12,7 @@ while true; do
     -s | --iteration-start ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; shift ;;
     -e | --iteration-end ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
     -v | --visualize) shift; lttng_view=1;;
+    --devices ) shift; devices=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -40,7 +41,11 @@ then
 fi
 if [ ! -z "$arguments" ]
 then
- lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*
+fi
+if [ ! -z "$devices" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 fi
 if [ ! -z "$build" ]
 then

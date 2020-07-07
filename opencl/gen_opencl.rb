@@ -28,6 +28,7 @@ puts <<EOF
 #include "opencl_dump.h"
 #include "opencl_arguments.h"
 #include "opencl_build.h"
+#include "opencl_devices.h"
 
 EOF
 
