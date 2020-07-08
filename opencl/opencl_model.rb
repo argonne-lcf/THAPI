@@ -1261,7 +1261,7 @@ EOF
     }
   }
 EOF
-    else
+    elsif c.prototype.name != "clCreateUserEvent"
       c.epilogues.push <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling) ) {
     int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(_retval, CL_COMPLETE, event_notify, NULL);
