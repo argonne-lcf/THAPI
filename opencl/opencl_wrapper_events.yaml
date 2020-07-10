@@ -6,22 +6,22 @@ lttng_ust_opencl:
     - [ cl_program, program ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
   - name: clCompileProgram_callback
     args:
     - [ cl_program, program ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
   - name: clLinkProgram_callback
     args:
     - [ cl_program, program ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
   - name: clCreateContext_callback
     args:
     - [ "const char *", errinfo ]
@@ -29,10 +29,10 @@ lttng_ust_opencl:
     - [ size_t, cb, ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, errinfo, "(intptr_t)errinfo" ]
-    - [ ctf_integer_hex, intptr_t, private_info, "(intptr_t)private_info" ]
+    - [ ctf_integer_hex, uintptr_t, errinfo, "(uintptr_t)errinfo" ]
+    - [ ctf_integer_hex, uintptr_t, private_info, "(uintptr_t)private_info" ]
     - [ ctf_integer, size_t, cb, cb ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
     - [ ctf_string, errinfo_val, errinfo ]
     - [ ctf_sequence_text, uint8_t, private_info_vals, private_info, size_t, "(private_info ? cb : 0)" ]
   - name: clCreateContextFromType_callback
@@ -42,10 +42,10 @@ lttng_ust_opencl:
     - [ size_t, cb, ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, errinfo, "(intptr_t)errinfo" ]
-    - [ ctf_integer_hex, intptr_t, private_info, "(intptr_t)private_info" ]
+    - [ ctf_integer_hex, uintptr_t, errinfo, "(uintptr_t)errinfo" ]
+    - [ ctf_integer_hex, uintptr_t, private_info, "(uintptr_t)private_info" ]
     - [ ctf_integer, size_t, cb, cb ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
     - [ ctf_string, errinfo_val, errinfo ]
     - [ ctf_sequence_text, uint8_t, private_info_vals, private_info, size_t, "(private_info ? cb : 0)" ]
   - name: clSetMemObjectDestructorCallback_callback
@@ -53,24 +53,24 @@ lttng_ust_opencl:
     - [ cl_mem, memobj ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, memobj, "(intptr_t)memobj" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, memobj, "(uintptr_t)memobj" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
   - name: clSetProgramReleaseCallback_callback
     args:
     - [ cl_program, program ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
   - name: clSetEventCallback_callback
     args:
     - [ cl_event, event ]
     - [ cl_int, type ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
     - [ ctf_integer, cl_int, type, type ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
   - name: clEnqueueSVMFree_callback
     args:
     - [ cl_command_queue, command_queue ]
@@ -78,8 +78,8 @@ lttng_ust_opencl:
     - [ "void **", svm_pointers ]
     - [ "void *", user_data ]
     start:
-    - [ ctf_integer_hex, intptr_t, command_queue, "(intptr_t)command_queue" ]
+    - [ ctf_integer_hex, uintptr_t, command_queue, "(uintptr_t)command_queue" ]
     - [ ctf_integer, cl_uint, num_svm_pointers, num_svm_pointers ]
-    - [ ctf_integer_hex, intptr_t, svm_pointers, "(intptr_t)svm_pointers" ]
-    - [ ctf_integer_hex, intptr_t, user_data, "(intptr_t)user_data" ]
-    - [ ctf_sequence_hex, intptr_t, svm_pointers_vals, svm_pointers, cl_uint, "svm_pointers ? num_svm_pointers : 0" ]
+    - [ ctf_integer_hex, uintptr_t, svm_pointers, "(uintptr_t)svm_pointers" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
+    - [ ctf_sequence_hex, uintptr_t, svm_pointers_vals, svm_pointers, cl_uint, "svm_pointers ? num_svm_pointers : 0" ]

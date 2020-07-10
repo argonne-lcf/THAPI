@@ -59,7 +59,7 @@ CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue"
 
 CL_EXT_OBJECTS = ["cl_GLsync", "CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR", "cl_accelerator_intel"]
 
-CL_INT_SCALARS = ["unsigned int", "int", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
+CL_INT_SCALARS = ["unsigned int", "int","uintptr_t", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
 CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
 CL_FLOAT_SCALARS_MAP = {"cl_half" => "cl_ushort", "cl_float" => "cl_uint", "cl_double" => "cl_ulong"}
 CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
@@ -103,6 +103,7 @@ FFI_TYPE_MAP =  {
  "float" => "ffi_type_float",
  "double" => "ffi_type_double",
  "intptr_t" => "ffi_type_pointer",
+ "uintptr_t" => "ffi_type_pointer",
  "size_t" => "ffi_type_pointer",
  "cl_double" => "double",
  "cl_float" => "float",
@@ -228,12 +229,12 @@ class Member < Declaration
     name = "#{prefix}#{MEMBER_SEPARATOR}#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
     @dir = dir
-    @lttng_type = ["ctf_integer_hex", "intptr_t", name, "(intptr_t)(#{expr})"] if pointer?
+    @lttng_type = ["ctf_integer_hex", "uintptr_t", name, "(uintptr_t)(#{expr})"] if pointer?
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
     case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_type = ["ctf_integer_hex", "intptr_t", name, "(intptr_t)(#{expr})"]
+      @lttng_type = ["ctf_integer_hex", "uintptr_t", name, "(uintptr_t)(#{expr})"]
     when *CL_INT_SCALARS
       @lttng_type = ["ctf_integer", t, name, expr]
     when *CL_FLOAT_SCALARS
@@ -279,7 +280,7 @@ class Parameter < Declaration
 
   def lttng_in_type
     if pointer?
-      return ["ctf_integer_hex", "intptr_t", @name, "(intptr_t)#{@name}"]
+      return ["ctf_integer_hex", "uintptr_t", @name, "(uintptr_t)#{@name}"]
     end
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
@@ -288,7 +289,7 @@ class Parameter < Declaration
     else
       case t
       when *CL_OBJECTS, *CL_EXT_OBJECTS
-        return ["ctf_integer_hex", "intptr_t", @name, "(intptr_t)#{@name}"]
+        return ["ctf_integer_hex", "uintptr_t", @name, "(uintptr_t)#{@name}"]
       when *CL_INT_SCALARS
         return ["ctf_integer", t, @name, @name]
       when *CL_FLOAT_SCALARS
@@ -357,7 +358,7 @@ class Prototype < CLXML
 
   def lttng_return_type
     if @return_type.match("\\*")
-      return ["ctf_integer_hex", "intptr_t", "_retval", "(intptr_t)_retval"]
+      return ["ctf_integer_hex", "uintptr_t", "_retval", "(uintptr_t)_retval"]
     end
     case @return_type
     when "cl_int"
@@ -367,11 +368,11 @@ class Prototype < CLXML
         return ["ctf_integer", "cl_int", "errcode_ret_val", "_retval"]
       end
     when *CL_OBJECTS
-      return ["ctf_integer_hex", "intptr_t", @return_type.gsub(/^cl_/,""), "(intptr_t)_retval"]
+      return ["ctf_integer_hex", "uintptr_t", @return_type.gsub(/^cl_/,""), "(uintptr_t)_retval"]
     when *CL_EXT_OBJECTS
-      return ["ctf_integer_hex", "intptr_t", @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "(intptr_t)_retval"]
+      return ["ctf_integer_hex", "uintptr_t", @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "(uintptr_t)_retval"]
     when "void*"
-      return ["ctf_integer_hex", "intptr_t", "ret_ptr", "(intptr_t)_retval"]
+      return ["ctf_integer_hex", "uintptr_t", "ret_ptr", "(uintptr_t)_retval"]
     end
     nil
   end
@@ -397,7 +398,7 @@ class MetaParameter
     expr = name
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      lttng_type = ["ctf_#{lttng_arr_type}_hex", "intptr_t"]
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", "uintptr_t"]
     when *CL_INT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}", type]
     when *CL_FLOAT_SCALARS
@@ -407,7 +408,7 @@ class MetaParameter
     when "void"
       lttng_type = ["ctf_#{lttng_arr_type}_text", "uint8_t"]
     when /\*/
-      lttng_type = ["ctf_#{lttng_arr_type}_hex", "intptr_t"]
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", "uintptr_t"]
     else
       raise "Unknown Type: #{type.inspect} for #{name} in #{@command.prototype.name}!"
     end
@@ -447,13 +448,13 @@ class OutScalar < OutMetaParameter
     else
       case type
       when *CL_OBJECTS, *CL_EXT_OBJECTS
-        @lttng_out_type = ["ctf_integer_hex", "intptr_t", name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val", "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       when *CL_INT_SCALARS
         @lttng_out_type = ["ctf_integer", type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
       when *CL_FLOAT_SCALARS
         @lttng_out_type = ["ctf_float", type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
       when "void"
-        @lttng_out_type = ["ctf_integer_hex", "intptr_t", name+"_val", "(intptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val", "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
       end

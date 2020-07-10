@@ -8,8 +8,8 @@ lttng_ust_opencl_build:
     - [ size_t, size ]
     - [ "char *", path ]
     fields:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_integer, size_t, size, size ]
     - [ ctf_string, path, path ]
   - name: binaries
@@ -19,8 +19,8 @@ lttng_ust_opencl_build:
     - [ size_t, size ]
     - [ "char *", path ]
     fields:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_integer, size_t, size, size ]
     - [ ctf_string, path, path ]
   - name: infos
@@ -31,8 +31,8 @@ lttng_ust_opencl_build:
     - [ "char *", build_options ]
     - [ "char *", build_log ]
     fields:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_integer, cl_build_status, build_status, build_status ]
     - [ ctf_string, build_options, build_options ]
     - [ ctf_string, build_log, build_log ]
@@ -42,8 +42,8 @@ lttng_ust_opencl_build:
     - [ cl_device_id, device ]
     - [ cl_program_binary_type, binary_type ]
     fields:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_integer, cl_program_binary_type, binary_type, binary_type ]
   - name: infos_2_0
     args:
@@ -51,8 +51,8 @@ lttng_ust_opencl_build:
     - [ cl_device_id, device ]
     - [ size_t, build_global_variable_total_size ]
     fields:
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
-    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_integer, size_t, build_global_variable_total_size, build_global_variable_total_size ]
 lttng_ust_opencl_arguments:
   events:
@@ -66,7 +66,7 @@ lttng_ust_opencl_arguments:
     - [ cl_kernel_arg_type_qualifier, type_qualifier ]
     - [ "char *", name ]
     fields:
-    - [ ctf_integer_hex, intptr_t, kernel, "(intptr_t)kernel" ]
+    - [ ctf_integer_hex, uintptr_t, kernel, "(uintptr_t)kernel" ]
     - [ ctf_integer, cl_uint, arg_index, arg_index ]
     - [ ctf_integer, cl_kernel_arg_address_qualifier, address_qualifier, address_qualifier ]
     - [ ctf_integer, cl_kernel_arg_access_qualifier, access_qualifier, access_qualifier ]
@@ -82,11 +82,11 @@ lttng_ust_opencl_arguments:
     - [ cl_program, program ]
     - [ "char *", attibutes ]
     fields:
-    - [ ctf_integer_hex, intptr_t, kernel, "(intptr_t)kernel" ]
+    - [ ctf_integer_hex, uintptr_t, kernel, "(uintptr_t)kernel" ]
     - [ ctf_string, function_name, function_name ]
     - [ ctf_integer, cl_uint, num_args, num_args ]
-    - [ ctf_integer_hex, intptr_t, context, "(intptr_t)context" ]
-    - [ ctf_integer_hex, intptr_t, program, "(intptr_t)program" ]
+    - [ ctf_integer_hex, uintptr_t, context, "(uintptr_t)context" ]
+    - [ ctf_integer_hex, uintptr_t, program, "(uintptr_t)program" ]
     - [ ctf_string, attibutes, attibutes ]
 lttng_ust_opencl_dump:
   enums:
@@ -123,9 +123,9 @@ lttng_ust_opencl_dump:
     - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
     - [ ctf_integer, cl_uint, arg_index, arg_index ]
     - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
-    - [ ctf_integer_hex, intptr_t, buffer, "(intptr_t)buffer" ]
+    - [ ctf_integer_hex, uintptr_t, buffer, "(uintptr_t)buffer" ]
     - [ ctf_integer, int, status, status ]
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
   - name: svmptr_dump_result
     args:
     - [ uint64_t, enqueue_counter ]
@@ -139,7 +139,7 @@ lttng_ust_opencl_dump:
     - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
     - [ ctf_integer, cl_uint, arg_index, arg_index ]
     - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
     - [ ctf_integer, int, status, status ]
     - [ ctf_integer, size_t, size, size ]
     - [ ctf_string, path, path ]
@@ -155,9 +155,9 @@ lttng_ust_opencl_dump:
     - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
     - [ ctf_integer, cl_uint, arg_index, arg_index ]
     - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
-    - [ ctf_integer_hex, intptr_t, buffer, "(intptr_t)buffer" ]
+    - [ ctf_integer_hex, uintptr_t, buffer, "(uintptr_t)buffer" ]
     - [ ctf_integer, int, status, status ]
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
   - name: buffer_dump_result
     args:
     - [ uint64_t, enqueue_counter ]
@@ -171,7 +171,7 @@ lttng_ust_opencl_dump:
     - [ ctf_integer, uint64_t, enqueue_counter, enqueue_counter ]
     - [ ctf_integer, cl_uint, arg_index, arg_index ]
     - [ ctf_enum, lttng_ust_opencl_dump, dump_enum, int, direction, direction ]
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
     - [ ctf_integer, int, status, status ]
     - [ ctf_integer, size_t, size, size ]
     - [ ctf_string, path, path ]
@@ -183,7 +183,7 @@ lttng_ust_opencl_profiling:
     - [ cl_event, event ]
     fields:
     - [ ctf_integer, int, status, status ]
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
   - name: event_profiling_results
     args:
     - [ cl_event, event ]
@@ -197,7 +197,7 @@ lttng_ust_opencl_profiling:
     - [ cl_int, end_status ]
     - [ cl_ulong, end ]
     fields:
-    - [ ctf_integer_hex, intptr_t, event, "(intptr_t)event" ]
+    - [ ctf_integer_hex, uintptr_t, event, "(uintptr_t)event" ]
     - [ ctf_integer, int, event_command_exec_status, event_command_exec_status ]
     - [ ctf_integer, cl_int, queued_status, queued_status ]
     - [ ctf_integer, cl_ulong, queued, queued ]
@@ -241,5 +241,5 @@ lttng_ust_opencl_devices:
     - [ cl_device_id, device]
     - [ "char *", name ]
     fields:
-    - [ ctf_integer_hex, intptr_t, device, "(intptr_t)device" ]
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_string, name, name ]
