@@ -30,7 +30,7 @@ all_types.each { |t|
     ZE_OBJECTS.push t.name
   end
 }
-ZE_INT_SCALARS = %w(intptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t ze_bool_t char)
+ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t ze_bool_t char)
 ZE_FLOAT_SCALARS = %w(float double)
 ZE_SCALARS = ZE_INT_SCALARS + ZE_FLOAT_SCALARS
 ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
@@ -60,7 +60,7 @@ FFI_TYPE_MAP =  {
  "int64_t" => "ffi_type_sint64",
  "float" => "ffi_type_float",
  "double" => "ffi_type_double",
- "intptr_t" => "ffi_type_pointer",
+ "uintptr_t" => "ffi_type_pointer",
  "size_t" => "ffi_type_pointer",
  "ze_bool_t" => "ffi_type_uint8"
 }
@@ -178,8 +178,8 @@ module YAMLCAst
       case name
       when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
         ev.macro = :ctf_integer_hex
-        ev.type = :intptr_t
-        ev.cast = "intptr_t"
+        ev.type = :uintptr_t
+        ev.cast = "uintptr_t"
       when *ZE_INT_SCALARS
         ev.macro = :ctf_integer
         ev.type = name
@@ -201,8 +201,8 @@ module YAMLCAst
     def lttng_type
       ev = LTTng::TracepointField::new
       ev.macro = :ctf_integer_hex
-      ev.type = :intptr_t
-      ev.cast = "intptr_t"
+      ev.type = :uintptr_t
+      ev.cast = "uintptr_t"
       ev
     end
   end
@@ -216,8 +216,8 @@ module YAMLCAst
         ev.length = self.length
       else
         ev.macro = :ctf_integer_hex
-        ev.type = :intptr_t
-        ev.cast = "intptr_t"
+        ev.type = :uintptr_t
+        ev.cast = "uintptr_t"
         return ev
       end
       if length_type
@@ -229,7 +229,7 @@ module YAMLCAst
       case type
       when YAMLCAst::Pointer
         ev.macro = :"ctf_#{lttng_arr_type}_hex"
-        ev.type = :intptr_t
+        ev.type = :uintptr_t
       when YAMLCAst::Int
         ev.macro = :"ctf_#{lttng_arr_type}"
         ev.type = type.name
@@ -243,7 +243,7 @@ module YAMLCAst
         case type.name
         when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
-          ev.type = :intptr_t
+          ev.type = :uintptr_t
         when *ZE_INT_SCALARS
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = type.name

@@ -5,7 +5,7 @@ lttng_ust_ze_profiling:
     args:
     - [ ze_event_handle_t, hEvent ]
     fields:
-    - [ ctf_integer_hex, intptr_t, hEvent, "(intptr_t)hEvent" ]
+    - [ ctf_integer_hex, uintptr_t, hEvent, "(uintptr_t)hEvent" ]
   - name: event_profiling_results
     args:
     - [ ze_event_handle_t, hEvent ]
@@ -19,7 +19,7 @@ lttng_ust_ze_profiling:
     - [ ze_result_t, contextEndStatus ]
     - [ uint64_t, contextEnd ]
     fields:
-    - [ ctf_integer_hex, intptr_t, hEvent, "(intptr_t)hEvent" ]
+    - [ ctf_integer_hex, uintptr_t, hEvent, "(uintptr_t)hEvent" ]
     - [ ctf_integer, int32_t, status, "(int32_t)status" ]
     - [ ctf_integer, int32_t, globalStartStatus, "(int32_t)globalStartStatus" ]
     - [ ctf_integer, uint64_t, globalStart, "globalStart" ]
