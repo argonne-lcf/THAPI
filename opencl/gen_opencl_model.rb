@@ -18,6 +18,7 @@ res = {
   "objects" => objects,
   "int_scalars" => int_scalars,
   "float_scalars" => float_scalars,
+  "type_map" => CL_TYPE_MAP,
   "events" => events
 }
 
