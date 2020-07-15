@@ -1,8 +1,8 @@
 require_relative 'extract_base.rb'
 
 preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
+#include <stdlib.h>
 #include <stdint.h>
-#include <stddef.h>
 EOF
 $parser.parse(preprocessed_sources_libc)
 

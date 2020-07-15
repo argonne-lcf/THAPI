@@ -1,27 +1,41 @@
 .DELETE_ON_ERROR:
 .SUFFIXES:
 
-CUDA_PROBES = cuda_tracepoints cudart_tracepoints
+CUDA_PROBES = cuda_tracepoints
 CUDA_TP = $(CUDA_PROBES:=.tp)
 CUDA_OBJS = $(CUDA_PROBES:=.o)
 CUDA_INCL = $(CUDA_PROBES:=.h)
 CUDA_SRC = $(CUDA_PROBES:=.c)
 
-CUDA_STATIC_PROBES = cuda_profiling
+CUDA_STATIC_PROBES = 
 CUDA_STATIC_TP = $(CUDA_STATIC_PROBES:=.tp)
 CUDA_STATIC_OBJS = $(CUDA_STATIC_PROBES:=.o)
 CUDA_STATIC_INCL = $(CUDA_STATIC_PROBES:=.h)
 CUDA_STATIC_SRC = $(CUDA_STATIC_PROBES:=.c)
 
+CUDART_PROBES = cudart_tracepoints
+CUDART_TP = $(CUDART_PROBES:=.tp)
+CUDART_OBJS = $(CUDART_PROBES:=.o)
+CUDART_INCL = $(CUDART_PROBES:=.h)
+CUDART_SRC = $(CUDART_PROBES:=.c)
+
+CUDART_STATIC_PROBES = 
+CUDART_STATIC_TP = $(CUDART_STATIC_PROBES:=.tp)
+CUDART_STATIC_OBJS = $(CUDART_STATIC_PROBES:=.o)
+CUDART_STATIC_INCL = $(CUDART_STATIC_PROBES:=.h)
+CUDART_STATIC_SRC = $(CUDART_STATIC_PROBES:=.c)
+
 CUDA_EXTRACT = extract_base.rb modified_include
-CUDA_EXTRACTED = cuda_api.yaml cudart_api.yaml
-CUDA_MODEL = cuda_model.rb yaml_ast.rb cuda_meta_parameters.yaml cudart_meta_parameters.yaml $(CUDA_EXTRACTED)
+CUDA_EXTRACTED = cuda_api.yaml
+CUDART_EXTRACTED = cudart_api.yaml
+CUDA_MODEL = cuda_model.rb ../utils/yaml_ast.rb cuda_meta_parameters.yaml $(CUDA_EXTRACTED)
+CUDART_MODEL = cudart_model.rb ../utils/yaml_ast.rb cudart_meta_parameters.yaml $(CUDART_EXTRACTED)
 
 CUDA_BINDINGS = cuda_bindings.rb cuda_refinements.rb
 
 .SECONDARY: $(CUDA_TP)
 
-all: tracer_cuda.so cuda_library.rb babeltrace_cuda_lib.rb $(CUDA_BINDINGS)
+all: tracer_cuda.so tracer_cudart.so cuda_library.rb babeltrace_cuda_lib.rb $(CUDA_BINDINGS)
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/ -I../utils/
 
@@ -41,7 +55,7 @@ cudart_api.yaml: modified_include $(CUDA_EXTRACT) extract_cudart.rb
 cuda_profiling.tp: gen_cuda_custom_probes.rb ../utils/LTTng.rb $(CUDA_MODEL)
 	ruby gen_cuda_custom_probes.rb lttng_ust_cuda_profiling > $@
 
-%.tp: %.rb $(CUDA_MODEL) gen_probe_base.rb
+%.tp: %.rb $(CUDA_MODEL) $(CUDART_MODEL) gen_probe_base.rb
 	ruby $*.rb > $@
 
 %.c %.h %.o: %.tp ../utils/lttng/tracepoint_gen.h
@@ -50,8 +64,14 @@ cuda_profiling.tp: gen_cuda_custom_probes.rb ../utils/LTTng.rb $(CUDA_MODEL)
 tracer_cuda.c: gen_cuda.rb tracer_cuda_helpers.include.c $(CUDA_MODEL)
 	ruby $< > $@
 
+tracer_cudart.c: gen_cudart.rb tracer_cudart_helpers.include.c $(CUDART_MODEL)
+	ruby $< > $@
+
 tracer_cuda.so: ../utils/lttng/tracepoint_gen.h tracer_cuda.c $(CUDA_OBJS) $(CUDA_INCL) $(CUDA_STATIC_OBJS) $(CUDA_STATIC_INCL)
 	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_cuda.so -shared -fPIC tracer_cuda.c $(CUDA_OBJS) $(CUDA_STATIC_OBJS) -llttng-ust -ldl -lffi
+
+tracer_cudart.so: ../utils/lttng/tracepoint_gen.h tracer_cudart.c $(CUDART_OBJS) $(CUDART_INCL) $(CUDART_STATIC_OBJS) $(CUDART_STATIC_INCL)
+	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_cudart.so -shared -fPIC tracer_cudart.c $(CUDART_OBJS) $(CUDART_STATIC_OBJS) -llttng-ust -ldl -lffi
 
 cuda_library.rb: gen_cuda_library.rb gen_cuda_library_base.rb gen_probe_base.rb $(CUDA_MODEL)
 	ruby $< > $@
@@ -71,8 +91,10 @@ clean:
 	rm -f \
 		cuda_api.yaml cudart_api.yaml\
 		$(CUDA_TP) $(CUDA_OBJS) $(CUDA_INCL) $(CUDA_SRC)\
+		$(CUDART_TP) $(CUDART_OBJS) $(CUDART_INCL) $(CUDART_SRC)\
 		$(CUDA_STATIC_TP) $(CUDA_STATIC_OBJS) $(CUDA_STATIC_INCL) $(CUDA_STATIC_SRC)\
+		$(CUDART_STATIC_TP) $(CUDART_STATIC_OBJS) $(CUDART_STATIC_INCL) $(CUDART_STATIC_SRC)\
 		$(CUDA_BINDINGS)\
-		tracer_cuda.c tracer_cuda.so cuda_library.rb babeltrace_cuda_lib.rb
+		tracer_cuda.c tracer_cuda.so tracer_cudart.c tracer_cudart.so cuda_library.rb babeltrace_cuda_lib.rb
 	rm -fr modified_include
 	$(MAKE) -C ../utils clean
