@@ -444,6 +444,38 @@ class InString < MetaParameter
   end
 end
 
+class OutString < MetaParameter
+  prepend Out
+  def initialize(command, name)
+    super
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    ev = LTTng::TracepointField::new
+    ev.macro = :ctf_string
+    ev.name = "#{name}_val"
+    ev.expression = sanitize_expression("#{name}")
+    @lttng_out_type = ev
+  end
+end
+
+class OutPtrString < MetaParameter
+  prepend Out
+  def initialize(command, name)
+    super
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    ev = LTTng::TracepointField::new
+    ev.macro = :ctf_string
+    ev.name = "#{name}_val_val"
+    ev.expression = sanitize_expression("*#{name}")
+    @lttng_out_type = ev
+  end
+end
+
 class ScalarMetaParameter < MetaParameter
   attr_reader :type
 

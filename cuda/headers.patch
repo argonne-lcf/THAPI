@@ -1,6 +1,6 @@
 diff -u4 include/cuda.h modified_include/cuda.h
 --- include/cuda.h	2020-07-14 13:39:54.180519602 -0500
-+++ modified_include/cuda.h	2020-07-14 13:42:16.728001186 -0500
++++ modified_include/cuda.h	2020-07-15 17:02:39.193569005 -0500
 @@ -49,14 +49,12 @@
  
  #ifndef __cuda_cuda_h__
@@ -16,3 +16,36 @@ diff -u4 include/cuda.h modified_include/cuda.h
  typedef uint64_t cuuint64_t;
  #endif
  
+@@ -427,9 +425,9 @@
+  * Per-operation parameters for ::cuStreamBatchMemOp
+  */
+ typedef union CUstreamBatchMemOpParams_union {
+     CUstreamBatchMemOpType operation;
+-    struct CUstreamMemOpWaitValueParams_st {
++    struct {
+         CUstreamBatchMemOpType operation;
+         CUdeviceptr address;
+         union {
+             cuuint32_t value;
+@@ -437,9 +435,9 @@
+         };
+         unsigned int flags;
+         CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
+     } waitValue;
+-    struct CUstreamMemOpWriteValueParams_st {
++    struct {
+         CUstreamBatchMemOpType operation;
+         CUdeviceptr address;
+         union {
+             cuuint32_t value;
+@@ -447,9 +445,9 @@
+         };
+         unsigned int flags;
+         CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
+     } writeValue;
+-    struct CUstreamMemOpFlushRemoteWritesParams_st {
++    struct {
+         CUstreamBatchMemOpType operation;
+         unsigned int flags;
+     } flushRemoteWrites;
+     cuuint64_t pad[6];

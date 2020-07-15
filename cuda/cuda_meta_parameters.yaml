@@ -1,2 +1,31 @@
 ---
-meta_parameters: []
+meta_parameters:
+  cuGetErrorString:
+    - [OutScalar, pStr]
+    - [OutPtrString, pStr]
+  cuDriverGetVersion:
+    - [OutScalar, driverVersion]
+  cuDeviceGet:
+    - [OutScalar, device]
+  cuDeviceGetCount:
+    - [OutScalar, count]
+  cuDeviceGetName:
+    - [OutString, name]
+  cuDeviceGetUuid:
+    - [OutScalar, uuid]
+  cuDeviceTotalMem:
+    - [OutScalar, bytes]
+  cuDeviceTotalMem_v2:
+    - [OutScalar, bytes]
+  cuDeviceGetAttribute:
+    - [OutScalar, pi]
+  cuDeviceGetProperties:
+    - [OutScalar, prop]
+  cuDeviceComputeCapability:
+    - [OutScalar, major]
+    - [OutScalar, minor]
+  cuDevicePrimaryCtxRetain:
+    - [OutScalar, pctx]
+  cuDevicePrimaryCtxGetState:
+    - [OutScalar, flags]
+    - [OutScalar, active]
