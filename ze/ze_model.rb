@@ -1,7 +1,7 @@
 require 'yaml'
 require 'pp'
-require_relative 'yaml_ast'
-require_relative '../utils/LTTng.rb'
+require_relative '../utils/yaml_ast'
+require_relative '../utils/LTTng'
 
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
@@ -144,7 +144,7 @@ module YAMLCAst
       ev = LTTng::TracepointField::new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
-      ev.length = "sizeof(#{name})"
+      ev.length = "sizeof(struct #{name})"
       ev
     end
 
@@ -158,7 +158,7 @@ module YAMLCAst
       ev = LTTng::TracepointField::new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
-      ev.length = "sizeof(#{name})"
+      ev.length = "sizeof(union #{name})"
       ev
     end
   end

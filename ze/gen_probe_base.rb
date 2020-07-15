@@ -8,13 +8,13 @@ TRACEPOINT_EVENT(
   TP_ARGS(
 EOF
   print "    "
-  if (c.parameters.nil? || c.parameters.empty?) && !(c.type.has_return_type? && dir == :stop)
+  if (c.parameters.nil? || c.parameters.empty?) && !(c.has_return_type? && dir == :stop)
     print "void"
   else
     params = []
-    params << c.parameters.collect { |p|
+    params.concat c.parameters.collect { |p|
       "#{p.type}, #{p.name}"
-    } unless c.parameters.nil?
+    } unless c.parameters.nil? || c.parameters.empty?
     if c.has_return_type? && dir == :stop
       params.push("#{c.type}, #{RESULT_NAME}")
     end
