@@ -45,10 +45,10 @@ modified_include: include/cuda.h include/cuda_runtime_api.h headers.patch
 ../utils/lttng/tracepoint_gen.h: ../utils/tracepoint_gen.rb
 	ruby ../utils/tracepoint_gen.rb 25 > ../utils/lttng/tracepoint_gen.h
 
-cuda_api.yaml: modified_include/cuda.h $(CUDA_EXTRACT) extract_cuda.rb
+cuda_api.yaml: modified_include $(CUDA_EXTRACT) extract_cuda.rb
 	ruby extract_cuda.rb
 
-cudart_api.yaml: modified_include/cuda_runtime_api.h $(CUDA_EXTRACT) extract_cudart.rb
+cudart_api.yaml: modified_include $(CUDA_EXTRACT) extract_cudart.rb
 	ruby extract_cudart.rb
 
 cuda_profiling.tp: gen_cuda_custom_probes.rb ../utils/LTTng.rb $(CUDA_MODEL)

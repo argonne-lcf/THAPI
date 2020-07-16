@@ -260,6 +260,12 @@ module YAMLCAst
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(#{type.name})"
           end
+        when "uint8_t"
+          ev.macro = :"ctf_#{lttng_arr_type}_text"
+          ev.type = :uint8_t
+          if ev.length
+            ev.length = "(#{ev.length}) * sizeof(uint8_t)"
+          end
         else
           super
         end
@@ -582,6 +588,24 @@ class InArray < ArrayMetaParameter
   def initialize(command, name, size)
     super
     @lttng_in_type = @lttng_type
+  end
+end
+
+class OutLTTng < MetaParameter
+  prepend Out
+  def initialize(command, name, *args)
+    raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+    super(command, name)
+    @lttng_out_type = LTTng::TracepointField::new(*args)
+  end
+end
+
+class InLTTng < MetaParameter
+  prepend In
+  def initialize(command, name, *args)
+    raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+    super(command, name)
+    @lttng_in_type = LTTng::TracepointField::new(*args)
   end
 end
 

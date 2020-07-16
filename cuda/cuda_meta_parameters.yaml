@@ -13,6 +13,8 @@ meta_parameters:
     - [OutString, name]
   cuDeviceGetUuid:
     - [OutScalar, uuid]
+  cuDeviceGetLuid:
+    - [OutArray, luid, 8]
   cuDeviceTotalMem:
     - [OutScalar, bytes]
   cuDeviceTotalMem_v2:
@@ -29,3 +31,277 @@ meta_parameters:
   cuDevicePrimaryCtxGetState:
     - [OutScalar, flags]
     - [OutScalar, active]
+  cuCtxCreate:
+    - [OutScalar, pctx]
+  cuCtxCreate_v2:
+    - [OutScalar, pctx]
+  cuCtxPopCurrent:
+    - [OutScalar, pctx]
+  cuCtxPopCurrent_v2:
+    - [OutScalar, pctx]
+  cuCtxGetCurrent:
+    - [OutScalar, pctx]
+  cuCtxGetDevice:
+    - [OutScalar, device]
+  cuCtxGetFlags:
+    - [OutScalar, flags]
+  cuCtxGetLimit:
+    - [OutScalar, pvalue]
+  cuCtxGetCacheConfig:
+    - [OutScalar, pconfig]
+  cuCtxGetSharedMemConfig:
+    - [OutScalar, pConfig]
+  cuCtxGetApiVersion:
+    - [OutScalar, version]
+  cuCtxGetStreamPriorityRange:
+    - [OutScalar, leastPriority]
+    - [OutScalar, greatestPriority]
+  cuCtxAttach:
+    - [OutScalar, pctx]
+  cuModuleLoad:
+    - [InString, fname]
+    - [OutScalar, module]
+  cuModuleLoadData:
+    - [OutScalar, module]
+  cuModuleLoadDataEx:
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+    - [OutScalar, module]
+  cuModuleLoadFatBinary:
+    - [OutScalar, module]
+  cuModuleGetFunction:
+    - [InString, name]
+    - [OutScalar, hfunc]
+  cuModuleGetGlobal:
+    - [InString, name]
+    - [OutScalar, dptr]
+    - [OutScalar, bytes]
+  cuModuleGetGlobal_v2:
+    - [InString, name]
+    - [OutScalar, dptr]
+    - [OutScalar, bytes]
+  cuModuleGetTexRef:
+    - [InString, name]
+    - [OutScalar, pTexRef]
+  cuModuleGetSurfRef:
+    - [InString, name]
+    - [OutScalar, pSurfRef]
+  cuLinkCreate:
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+    - [OutScalar, stateOut]
+  cuLinkCreate_v2:
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+    - [OutScalar, stateOut]
+  cuLinkAddData:
+    - [InString, name]
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+  cuLinkAddData_v2:
+    - [InString, name]
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+  cuLinkAddFile:
+    - [InString, path]
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+  cuLinkAddFile_v2:
+    - [InString, path]
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+  cuLinkComplete:
+    - [OutScalar, cubinOut]
+    - [OutScalar, sizeOut]
+  cuMemGetInfo:
+    - [OutScalar, free]
+    - [OutScalar, total]
+  cuMemGetInfo_v2:
+    - [OutScalar, free]
+    - [OutScalar, total]
+  cuMemAlloc:
+    - [OutScalar, dptr]
+  cuMemAlloc_v2:
+    - [OutScalar, dptr]
+  cuMemAllocPitch:
+    - [OutScalar, dptr]
+    - [OutScalar, pPitch]
+  cuMemAllocPitch_v2:
+    - [OutScalar, dptr]
+    - [OutScalar, pPitch]
+  cuMemGetAddressRange:
+    - [OutScalar, pbase]
+    - [OutScalar, psize]
+  cuMemGetAddressRange_v2:
+    - [OutScalar, pbase]
+    - [OutScalar, psize]
+  cuMemAllocHost:
+    - [OutScalar, pp]
+  cuMemAllocHost_v2:
+    - [OutScalar, pp]
+  cuMemHostAlloc:
+    - [OutScalar, pp]
+  cuMemHostGetDevicePointer:
+    - [OutScalar, pdptr]
+  cuMemHostGetDevicePointer_v2:
+    - [OutScalar, pdptr]
+  cuMemHostGetFlags:
+    - [OutScalar, pFlags]
+  cuMemAllocManaged:
+    - [OutScalar, dptr]
+  cuDeviceGetByPCIBusId:
+    - [InString, pciBusId]
+    - [OutScalar, dev]
+  cuDeviceGetPCIBusId:
+    - [OutString, pciBusId]
+  cuIpcGetEventHandle:
+    - [OutScalar, pHandle]
+  cuIpcOpenEventHandle:
+    - [OutScalar, phEvent]
+  cuIpcGetMemHandle:
+    - [OutScalar, pHandle]
+  cuIpcOpenMemHandle:
+    - [OutScalar, pdptr]
+  cuMemcpy2D:
+    - [InScalar, pCopy]
+  cuMemcpy2D_v2:
+    - [InScalar, pCopy]
+  cuMemcpy2D_v2_ptds:
+    - [InScalar, pCopy]
+  cuMemcpy2DUnaligned:
+    - [InScalar, pCopy]
+  cuMemcpy2DUnaligned_v2:
+    - [InScalar, pCopy]
+  cuMemcpy2DUnaligned_v2_ptds:
+    - [InScalar, pCopy]
+  cuMemcpy2DAsync:
+    - [InScalar, pCopy]
+  cuMemcpy2DAsync_v2:
+    - [InScalar, pCopy]
+  cuMemcpy2DAsync_v2_ptsz:
+    - [InScalar, pCopy]
+  cuMemcpy3D:
+    - [InScalar, pCopy]
+  cuMemcpy3D_v2:
+    - [InScalar, pCopy]
+  cuMemcpy3D_v2_ptds:
+    - [InScalar, pCopy]
+  cuMemcpy3DPeer:
+    - [InScalar, pCopy]
+  cuMemcpy3DPeer_ptds:
+    - [InScalar, pCopy]
+  cuMemcpy3DAsync:
+    - [InScalar, pCopy]
+  cuMemcpy3DAsync_v2:
+    - [InScalar, pCopy]
+  cuMemcpy3DAsync_v2_ptsz:
+    - [InScalar, pCopy]
+  cuMemcpy3DPeerAsync:
+    - [InScalar, pCopy]
+  cuMemcpy3DPeerAsync_ptsz:
+    - [InScalar, pCopy]
+  cuArrayCreate:
+    - [InScalar, pAllocateArray]
+    - [OutScalar, pHandle]
+  cuArrayCreate_v2:
+    - [InScalar, pAllocateArray]
+    - [OutScalar, pHandle]
+  cuArrayGetDescriptor:
+    - [OutScalar, pArrayDescriptor]
+  cuArrayGetDescriptor_v2:
+    - [OutScalar, pArrayDescriptor]
+  cuArray3DCreate:
+    - [InScalar, pAllocateArray]
+    - [OutScalar, pHandle]
+  cuArray3DCreate_v2:
+    - [InScalar, pAllocateArray]
+    - [OutScalar, pHandle]
+  cuArray3DGetDescriptor:
+    - [OutScalar, pArrayDescriptor]
+  cuArray3DGetDescriptor_v2:
+    - [OutScalar, pArrayDescriptor]
+  cuMipmappedArrayCreate:
+    - [InScalar, pMipmappedArrayDesc]
+    - [OutScalar, pHandle]
+  cuMipmappedArrayGetLevel:
+    - [OutScalar, pLevelArray]
+  cuPointerGetAttribute:
+    - [OutLTTng, data, ctf_sequence_text, uint8_t, data, data, size_t, "attribute == CU_POINTER_ATTRIBUTE_CONTEXT ? sizeof(CUcontext) : attribute == CU_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(CUdeviceptr) : attribute == CU_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_P2P_TOKENS ? sizeof(CUDA_POINTER_ATTRIBUTE_P2P_TOKENS) : attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : attribute == CU_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : 0"]
+  cuMemRangeGetAttribute:
+    - [OutArray, data, dataSize]
+  cuMemRangeGetAttributes:
+    - [InArray, attributes, numAttributes]
+    - [InArray, dataSizes, numAttributes]
+    - [OutArray, data, numAttributes]
+  cuPointerSetAttribute:
+    - [InLTTng, value, ctf_sequence_text, uint8_t, value, value, size_t, "attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : 0"]
+  cuPointerGetAttributes:
+    - [InArray, attributes, numAttributes]
+    - [OutArray, data, numAttributes]
+  cuStreamCreate:
+    - [OutScalar, phStream]
+  cuStreamCreateWithPriority:
+    - [OutScalar, phStream]
+  cuStreamGetPriority:
+    - [OutScalar, priority]
+  cuStreamGetPriority_ptsz:
+    - [OutScalar, priority]
+  cuStreamGetFlags:
+    - [OutScalar, flags]
+  cuStreamGetFlags_ptsz:
+    - [OutScalar, flags]
+  cuStreamGetCtx:
+    - [OutScalar, pctx]
+  cuStreamGetCtx_ptsz:
+    - [OutScalar, pctx]
+  cuThreadExchangeStreamCaptureMode:
+    - [InScalar, mode]
+    - [OutScalar, mode]
+  cuStreamEndCapture:
+    - [OutScalar, phGraph]
+  cuStreamEndCapture_ptsz:
+    - [OutScalar, phGraph]
+  cuStreamIsCapturing:
+    - [OutScalar, captureStatus]
+  cuStreamIsCapturing_ptsz:
+    - [OutScalar, captureStatus]
+  cuStreamGetCaptureInfo:
+    - [OutScalar, captureStatus]
+    - [OutScalar, id]
+  cuStreamGetCaptureInfo_ptsz:
+    - [OutScalar, captureStatus]
+    - [OutScalar, id]
+  cuEventCreate:
+    - [OutScalar, phEvent]
+  cuEventElapsedTime:
+    - [OutScalar, pMilliseconds]
+  cuImportExternalMemory:
+    - [InScalar, memHandleDesc]
+    - [OutScalar, extMem_out]
+  cuExternalMemoryGetMappedBuffer:
+    - [InScalar, bufferDesc]
+    - [OutScalar, devPtr]
+  cuExternalMemoryGetMappedMipmappedArray:
+    - [InScalar, mipmapDesc]
+    - [OutScalar, mipmap]
+  cuImportExternalSemaphore:
+    - [InScalar, semHandleDesc]
+    - [OutScalar, extSem_out]
+  cuSignalExternalSemaphoresAsync:
+    - [InArray, extSemArray, numExtSems]
+    - [InArray, paramsArray, numExtSems]
+  cuSignalExternalSemaphoresAsync_ptsz:
+    - [InArray, extSemArray, numExtSems]
+    - [InArray, paramsArray, numExtSems]
+  cuWaitExternalSemaphoresAsync:
+    - [InArray, extSemArray, numExtSems]
+    - [InArray, paramsArray, numExtSems]
+  cuWaitExternalSemaphoresAsync_ptsz:
+    - [InArray, extSemArray, numExtSems]
+    - [InArray, paramsArray, numExtSems]
+  cuStreamBatchMemOp:
+    - [InArray, paramArray, count]
+  cuStreamBatchMemOp_ptsz:
+    - [InArray, paramArray, count]
+  cuFuncGetAttribute:
+    - [OutScalar, pi]
