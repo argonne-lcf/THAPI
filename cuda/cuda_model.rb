@@ -541,6 +541,29 @@ class InScalar < ScalarMetaParameter
   end
 end
 
+class FixedArrayMetaParameter < MetaParameter
+  attr_reader :size
+  def initialize(command, name, size)
+    @size = size
+    super(command, name)
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    checks = check_for_null("#{name}")
+    if t.type.kind_of?(YAMLCAst::Void)
+      tt = YAMLCAst::CustomType::new(name: "uint8_t")
+    else
+      tt = t.type
+    end
+    y = YAMLCAst::Array::new(type: tt)
+    lttngt = y.lttng_type(length: size, length_type: nil)
+    lttngt.name = name + "_vals"
+    lttngt.expression = sanitize_expression("#{name}")
+    @lttng_type = lttngt
+  end
+end
+
 class ArrayMetaParameter < MetaParameter
   attr_reader :size
 
@@ -588,6 +611,74 @@ class InArray < ArrayMetaParameter
   def initialize(command, name, size)
     super
     @lttng_in_type = @lttng_type
+  end
+end
+
+class InFixedArray < FixedArrayMetaParameter
+  prepend In
+  def initialize(command, name, size)
+    super
+    @lttng_in_type = @lttng_type
+  end
+end
+
+class OutFixedArray < FixedArrayMetaParameter
+  prepend Out
+  def initialize(command, name, size)
+    super
+    @lttng_out_type = @lttng_type
+  end
+end
+
+class TracepointParameter
+  attr_reader :name
+  attr_reader :type
+  attr_reader :init
+  attr_reader :after
+
+  def initialize(name, type, init, after: false)
+    @name = name
+    @type = type
+    @init = init
+    @after = after
+  end
+
+  def after?
+    @after
+  end
+end
+
+class OutNullArray < OutArray
+  def initialize(command, name)
+    sname = "_#{name.split("->").join(MEMBER_SEPARATOR)}_size"
+    checks = check_for_null("#{name}")
+    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF, after: true)
+  #{sname} = 0;
+  if(#{checks.join(" && ")}) {
+    while(#{name}[#{sname}] != 0) {
+      #{sname} += 2;
+    }
+    #{sname} ++;
+  }
+EOF
+    super(command, name, sname)
+  end
+end
+
+class InNullArray < InArray
+  def initialize(command, name)
+    sname = "_#{name.split("->").join(MEMBER_SEPARATOR)}_size"
+    checks = check_for_null("#{name}")
+    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
+  #{sname} = 0;
+  if(#{checks.join(" && ")}) {
+    while(#{name}[#{sname}] != 0) {
+      #{sname} += 2;
+    }
+    #{sname} ++;
+  }
+EOF
+    super(command, name, sname)
   end
 end
 

@@ -305,3 +305,174 @@ meta_parameters:
     - [InArray, paramArray, count]
   cuFuncGetAttribute:
     - [OutScalar, pi]
+  cuLaunchKernel:
+    - [InNullArray, extra]
+  cuLaunchKernel_ptsz:
+    - [InNullArray, extra]
+  cuLaunchCooperativeKernelMultiDevice:
+    - [InArray, launchParamsList, numDevices]
+  cuParamSetv:
+    - [InArray, ptr, numbytes]
+  cuGraphCreate:
+    - [OutScalar, phGraph]
+  cuGraphAddKernelNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [InNullArray, nodeParams->extra]
+    - [OutScalar, phGraphNode]
+  cuGraphKernelNodeGetParams:
+    - [OutScalar, nodeParams]
+    - [OutNullArray, nodeParams->extra]
+  cuGraphKernelNodeSetParams:
+    - [InScalar, nodeParams]
+    - [InNullArray, nodeParams->extra]
+  cuGraphAddMemcpyNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, copyParams]
+    - [OutScalar, phGraphNode]
+  cuGraphMemcpyNodeGetParams:
+    - [OutScalar, nodeParams]
+  cuGraphMemcpyNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphAddMemsetNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, memsetParams]
+    - [OutScalar, phGraphNode]
+  cuGraphMemsetNodeGetParams:
+    - [OutScalar, nodeParams]
+  cuGraphMemsetNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphAddHostNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [OutScalar, phGraphNode]
+  cuGraphHostNodeGetParams:
+    - [OutScalar, nodeParams]
+  cuGraphHostNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphAddChildGraphNode:
+    - [InArray, dependencies, numDependencies]
+  cuGraphChildGraphNodeGetGraph:
+    - [OutScalar, phGraph]
+  cuGraphAddEmptyNode:
+    - [InArray, dependencies, numDependencies]
+    - [OutScalar, phGraphNode]
+  cuGraphClone:
+    - [OutScalar, phGraphClone]
+  cuGraphNodeFindInClone:
+    - [OutScalar, phNode]
+  cuGraphNodeGetType:
+    - [OutScalar, type]
+  cuGraphGetNodes:
+    - [InOutScalar, numNodes]
+    - [OutArray, nodes, numNodes]
+  cuGraphGetRootNodes:
+    - [InOutScalar, numRootNodes]
+    - [OutArray, rootNodes, numRootNodes]
+  cuGraphGetEdges:
+    - [InOutScalar, numEdges]
+    - [OutArray, from, numEdges]
+    - [OutArray, to, numEdges]
+  cuGraphNodeGetDependencies:
+    - [InOutScalar, numDependencies]
+    - [OutArray, dependencies, numDependencies]
+  cuGraphNodeGetDependentNodes:
+    - [InOutScalar, numDependentNodes]
+    - [OutArray, dependentNodes, numDependentNodes]
+  cuGraphAddDependencies:
+    - [InArray, from, numDependencies]
+    - [InArray, to, numDependencies]
+  cuGraphRemoveDependencies:
+    - [InArray, from, numDependencies]
+    - [InArray, to, numDependencies]
+  cuGraphInstantiate:
+    - [OutScalar, phGraphExec]
+    - [OutScalar, phErrorNode]
+    - [OutArray, logBuffer, bufferSize]
+  cuGraphExecKernelNodeSetParams:
+    - [InScalar, nodeParams]
+  cuOccupancyMaxActiveBlocksPerMultiprocessor:
+    - [OutScalar, numBlocks]
+  cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
+    - [OutScalar, numBlocks]
+  cuOccupancyMaxPotentialBlockSize:
+    - [OutScalar, minGridSize]
+    - [OutScalar, blockSize]
+  cuOccupancyMaxPotentialBlockSizeWithFlags:
+    - [OutScalar, minGridSize]
+    - [OutScalar, blockSize]
+  cuTexRefSetAddress:
+    - [OutScalar, ByteOffset]
+  cuTexRefSetAddress2D:
+    - [InScalar, desc]
+  cuTexRefSetBorderColor:
+    - [InFixedArray, pBorderColor, 4]
+  cuTexRefGetAddress:
+    - [OutScalar, pdptr]
+  cuTexRefGetAddress_v2:
+    - [OutScalar, pdptr]
+  cuTexRefGetArray:
+    - [OutScalar, phArray]
+  cuTexRefGetMipmappedArray:
+    - [OutScalar, phMipmappedArray]
+  cuTexRefGetAddressMode:
+    - [OutScalar, pam]
+  cuTexRefGetFilterMode:
+    - [OutScalar, pfm]
+  cuTexRefGetFormat:
+    - [OutScalar, pFormat]
+    - [OutScalar, pNumChannels]
+  cuTexRefGetMipmapFilterMode:
+    - [OutScalar, pfm]
+  cuTexRefGetMipmapLevelBias:
+    - [OutScalar, pbias]
+  cuTexRefGetMipmapLevelClamp:
+    - [OutScalar, pminMipmapLevelClamp]
+    - [OutScalar, pmaxMipmapLevelClamp]
+  cuTexRefGetMaxAnisotropy:
+    - [OutScalar, pmaxAniso]
+  cuTexRefGetBorderColor:
+    - [OutScalar, pBorderColor]
+  cuTexRefGetFlags:
+    - [OutScalar, pFlags]
+  cuTexRefCreate:
+    - [OutScalar, pTexRef]
+  cuSurfRefGetArray:
+    - [OutScalar, phArray]
+  cuTexObjectCreate:
+    - [InScalar, pResDesc]
+    - [InScalar, pTexDesc]
+    - [InScalar, pResViewDesc]
+    - [OutScalar, pTexObject]
+  cuTexObjectGetResourceDesc:
+    - [OutScalar, pResDesc]
+  cuTexObjectGetTextureDesc:
+    - [OutScalar, pTexDesc]
+  cuTexObjectGetResourceViewDesc:
+    - [OutScalar, pResViewDesc]
+  cuSurfObjectCreate:
+    - [OutScalar, pSurfObject]
+    - [InScalar, pResDesc]
+  cuSurfObjectGetResourceDesc:
+    - [OutScalar, pResDesc]
+  cuDeviceCanAccessPeer:
+    - [OutScalar, canAccessPeer]
+  cuDeviceGetP2PAttribute:
+    - [OutScalar, value]
+  cuGraphicsSubResourceGetMappedArray:
+    - [OutScalar, pArray]
+  cuGraphicsResourceGetMappedMipmappedArray:
+    - [OutScalar, pMipmappedArray]
+  cuGraphicsResourceGetMappedPointer:
+    - [OutScalar, pDevPtr]
+    - [OutScalar, pSize]
+  cuGraphicsResourceGetMappedPointer_v2:
+    - [OutScalar, pDevPtr]
+    - [OutScalar, pSize]
+  cuGraphicsMapResources:
+    - [InArray, resources, count]
+  cuGraphicsUnmapResources:
+    - [InArray, resources, count]
+  cuGetExportTable:
+    - [InScalar, pExportTableId]
+    - [OutFixedArray, ppExportTable, 3]

@@ -54,7 +54,7 @@ common_block = lambda { |c, provider|
     puts "  #{p.type} #{p.name};"
   }
   c.tracepoint_parameters.each { |p|
-    puts p.init
+    puts p.init unless p.after?
   }
   puts <<EOF
   tracepoint(#{provider}, #{c.name}_start, #{(tp_params+tracepoint_params).join(", ")});
@@ -72,6 +72,9 @@ EOF
   else
     puts "  #{CUDA_POINTER_NAMES[c]}(#{params.join(", ")});"
   end
+  c.tracepoint_parameters.each { |p|
+    puts p.init if p.after?
+  }
   c.epilogues.each { |e|
     puts e
   }
