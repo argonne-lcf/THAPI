@@ -91,7 +91,7 @@ babeltrace_cl.so: babeltrace_cl.c babeltrace_cl.h babeltrace_cl_dispatchers.c tr
 	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o babeltrace_cl.so -shared -fPIC babeltrace_cl.c babeltrace_cl_dispatchers.c $(shell pkg-config --libs babeltrace2)
 
 clean:
-	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so dust.so babeltrace_cl.so *.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) babeltrace_cl_dispatchers.c babeltrace_cl_callbacks.h cl.xml.patched opencl_model.yaml iprof_callbacks.cpp
+	rm -f tracer_opencl.c tracer_opencl.h tracer_opencl.so dust.so babeltrace_cl.so *.tp $(OPENCL_PROBES_OBJS) $(OPENCL_PROBES_INCL) $(OPENCL_PROBES_SRC) babeltrace_cl_dispatchers.c babeltrace_cl_callbacks.h cl.xml.patched opencl_model.yaml iprof_callbacks.cpp iprof.so
 	$(MAKE) -C ../utils clean
 	-$(MAKE)  -s -f testing.mk clean;  
 	rm -f testing.mk 
