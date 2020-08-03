@@ -84,7 +84,7 @@ iprof_callbacks.o: iprof_callbacks.cpp iprof_callbacks.h
 	g++ -std=c++17 -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o iprof_callbacks.o -fPIC -c iprof_callbacks.cpp
 
 iprof.so: iprof.c iprof.h iprof_callbacks.o tracer_opencl.h babeltrace_cl_dispatchers.c 
-	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o iprof.so -shared -fPIC -DHASH_DEBUG=1 iprof.c babeltrace_cl_dispatchers.c iprof_callbacks.o -lstdc++ $(shell pkg-config --libs babeltrace2)
+	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o iprof.so -shared -fPIC iprof.c babeltrace_cl_dispatchers.c iprof_callbacks.o -lstdc++ $(shell pkg-config --libs babeltrace2)
 
 # Iprof test
 testing.mk: gen_iprof.rb opencl_model.yaml testing.mk.erb
