@@ -1,0 +1,9 @@
+image: "ruby:2.5"
+
+before_script:
+  - apt-add-repository ppa:lttng/ppa
+  - apt-get update -qq && apt-get install -y -qq babeltrace2 lttng-tools
+
+clsummary_test:
+  script:
+    - cd opencl && make run_iprof_test 
