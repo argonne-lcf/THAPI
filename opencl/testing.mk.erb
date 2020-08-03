@@ -16,9 +16,8 @@ dust.so: dust.c
 testing_iprof_callbacks.o: testing_iprof_callbacks.cpp testing_iprof_callbacks.h babeltrace_cl_callbacks.h tracer_opencl.h
 	g++ -std=c++17 $(TESTING_IPROF_CFLAGS) -c testing_iprof_callbacks.cpp -o testing_iprof_callbacks.o
 
-testing_iprof.so: testing_iprof.c iprof.h testing_iprof_callbacks.o babeltrace_cl_dispatchers.c 
-	gcc -lstdc++ -shared $(TESTING_IPROF_CFLAGS) -o testing_iprof.so testing_iprof.c babeltrace_cl_dispatchers.c testing_iprof_callbacks.o $(shell pkg-config --libs babeltrace2)
-	#gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ -I/home/videau/opt/babeltrace2/2.0.2/include   -o testing_iprof.so -shared -fPIC testing_iprof.c babeltrace_cl_dispatchers.c  -L/home/videau/opt/babeltrace2/2.0.2/lib -lbabeltrace2 -lstdc++
+testing_iprof.so: testing_iprof.c iprof.h testing_iprof_callbacks.o babeltrace_cl_dispatchers.c
+	gcc -shared $(TESTING_IPROF_CFLAGS) -o testing_iprof.so testing_iprof.c babeltrace_cl_dispatchers.c testing_iprof_callbacks.o -lstdc++ $(shell pkg-config --libs babeltrace2)
 
 <% $l_test.each do |test| %>
 .PHONY: <%= test.name %>
@@ -28,4 +27,4 @@ testing_iprof.so: testing_iprof.c iprof.h testing_iprof_callbacks.o babeltrace_c
 
 .PHONY: clean
 clean:
-	rm -f <%= $l_file_generated.map{ |f| "testing_#{f}"}.join(' ') %> testing_iprof_callbacks.o testing_iprof.so 
+	rm -f <%= $l_file_generated.map{ |f| "testing_#{f}"}.join(' ') %> testing_iprof_callbacks.o testing_iprof.so test_iprof/*.dust

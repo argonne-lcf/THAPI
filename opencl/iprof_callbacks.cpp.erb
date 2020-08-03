@@ -54,15 +54,15 @@ namespace std{
     }
 
     template <typename ... TT>
-    struct hash<std::tuple<TT...>> 
+    struct hash<std::tuple<TT...>>
     {
         size_t
         operator()(std::tuple<TT...> const& tt) const
-        {                                              
-            size_t seed = 0;                             
-            HashValueImpl<std::tuple<TT...> >::apply(seed, tt);    
-            return seed;                                 
-        }                                              
+        {
+            size_t seed = 0;
+            HashValueImpl<std::tuple<TT...> >::apply(seed, tt);
+            return seed;
+        }
 
     };
 }
@@ -99,7 +99,7 @@ std::string to_string_with_precision(const T a_value, const std::string extensio
     out.precision(n);
     out << std::fixed << a_value << extension;
     return out.str();
-} 
+}
 
 template <typename T>
 std::string format_time(const T duration) {
@@ -145,10 +145,10 @@ struct StatTime_string {
     std::string max;
 };
 
-class StatTime {      
+class StatTime {
     uint64_t _start;
 
-  public:       
+  public:
     uint64_t _total_time{1};
     void start(const int64_t);
     void stop(const int64_t);
@@ -169,11 +169,11 @@ void StatTime::start(const int64_t start) {
 }
 
 void StatTime::stop(const int64_t stop) {
-   const uint64_t  delta = stop - _start; 
+   const uint64_t  delta = stop - _start;
    _min = std::min(_min,delta);
    _max = std::max(_max,delta);
    _count++;
-   _time += delta; 
+   _time += delta;
 }
 
 void StatTime::delta(const uint64_t delta) {
@@ -192,7 +192,7 @@ void StatTime::merge(StatTime st) {
 }
 
 StatTime_string StatTime::to_string(const uint64_t total_time){
-    const double avg = _count ? _time / _count : 0.; 
+    const double avg = _count ? _time / _count : 0.;
     return StatTime_string{format_time(_time), // Time
                            to_string_with_precision( (100.*_time / total_time), "%"), // Percent
                            to_string_with_precision(_count,"",0), // Count
@@ -215,7 +215,7 @@ class StatByte: public StatTime {
        }
 };
 
-std::unordered_map<hp_t, cl_device_id> last_device; 
+std::unordered_map<hp_t, cl_device_id> last_device;
 std::unordered_map<hpt_t, cl_command_name> last_command;
 
 std::unordered_map<hp_command_queue_t, cl_device_id> command_queue_to_device;
@@ -229,8 +229,8 @@ std::unordered_map<hp_event_t, uint64_t> event_result_to_delta;
 std::unordered_map<hp_device_t, std::string> device_to_name;
 std::unordered_map<hp_kernel_t, std::string> kernel_to_name;
 
-/* 
-Utils function 
+/*
+Utils function
 */
 static const hostname_t borrow_hostname(const bt_event *event){
     const bt_stream *stream = bt_event_borrow_stream_const(event);
@@ -263,7 +263,7 @@ static void iprof_<%= dbt_event.name %>_callback(
     const process_id_t process_id = borrow_process_id(bt_evt);
     const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
 
-    int64_t ns_from_origin; 
+    int64_t ns_from_origin;
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
     <%if dbt_event.name.end_with?("start") %>
     api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].start(ns_from_origin);
@@ -279,15 +279,15 @@ static void iprof_<%= dbt_event.name %>_callback(
   <%if dbt_event.name.end_with?("start") and dbt_event.fields['device'] %>
     last_device[hp_t(hostname,process_id) ] = device;
 
-  <%elsif dbt_event.name.end_with?("stop") and dbt_event.fields['command_queue'] %>   
+  <%elsif dbt_event.name.end_with?("stop") and dbt_event.fields['command_queue'] %>
     const cl_device_id device  = last_device[hp_t(hostname,process_id) ];
-    command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] = device ; 
+    command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] = device ;
 
   <%elsif dbt_event.name.end_with?("start") and dbt_event.fields['command_queue'] %>
     const cl_device_id device = command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)];
 
     <% if dbt_event.fields['kernel'] %>
-    const cl_command_name name  = kernel_to_name[hp_kernel_t(hostname,process_id,kernel)]; 
+    const cl_command_name name  = kernel_to_name[hp_kernel_t(hostname,process_id,kernel)];
     <% else %>
     constexpr char name[] =  "<%= dbt_event.name_striped %>";
     <% end %>
@@ -308,7 +308,7 @@ static void iprof_<%= dbt_event.name %>_callback(
         const uint64_t delta = event_result_to_delta[hp_event];
         const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
         device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,device,command_name)].delta(delta);
-        
+
         event_to_command_name.erase(hp_event);
     }
 
@@ -335,7 +335,7 @@ static void iprof_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
     const std::string hostname    = borrow_hostname(bt_evt);
     const process_id_t process_id = borrow_process_id(bt_evt);
-    device_to_name[hp_device_t(hostname,process_id,device)] = std::string{name}; 
+    device_to_name[hp_device_t(hostname,process_id,device)] = std::string{name};
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_arguments:kernel_info" %>
     const std::string hostname    = borrow_hostname(bt_evt);
@@ -349,7 +349,7 @@ static void iprof_<%= dbt_event.name %>_callback(
 void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
         opencl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &iprof_<%= dbt_event.name %>_callback);
-<% end %>      
+<% end %>
 }
 
 <% d_headers = {"StatTime" =>  [['command_name','Name'],
@@ -365,12 +365,12 @@ void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
                                 ['count', 'Calls'],
                                 ['avg', 'Average'],
                                 ['min', 'Min'],
-                                ['max', 'Max'] ] 
+                                ['max', 'Max'] ]
                 } %>
 <% d_headers.each do | main_type, l_headers | %>
 
 void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregated, std::string header) {
-    
+
     uint64_t total_time{0};
     uint64_t total_count{0};
     for (std::pair<cl_command_name,  <%= main_type %> > element: aggregated) {
@@ -384,10 +384,10 @@ void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregat
    std::cout << header << std::endl;
 
 <%#
-  _                                                               
- /   _  ._ _  ._     _|_  _    |\/|  _.      |  _  ._   _ _|_ |_  
- \_ (_) | | | |_) |_| |_ (/_   |  | (_| ><   | (/_ | | (_| |_ | | 
-              |                                         _|        
+  _
+ /   _  ._ _  ._     _|_  _    |\/|  _.      |  _  ._   _ _|_ |_
+ \_ (_) | | | |_) |_| |_ (/_   |  | (_| ><   | (/_ | | (_| |_ | |
+              |                                         _|
 %>
 
 <%# Need to be bigger than the header %>
@@ -414,12 +414,12 @@ void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregat
    std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
 
 <%#
-  _              
- |_) ._ o ._ _|_ 
- |   |  | | | |_ 
-                 
+  _
+ |_) ._ o ._ _|_
+ |   |  | | | |_
+
 %>
- 
+
 <%# Print Header %>
    std::cout
 <% l_headers.each do |v, n| %>
@@ -453,7 +453,7 @@ void finalize_callbacks() {
    std::string test_path {bt_value_string_get(test_type_value)};
   <% $l_test.each do | test | %>
    if (test_path == "<%= test.name %>") {
-       std :: cout << "testing <%= test.name %>" << std::endl;  
+       std :: cout << "testing <%= test.name %>" << std::endl;
     <% test.device_id_result.each do |assert| %>
        <% assert[0][-2] = "(cl_device_id) #{assert[0][-2]}" %>
        assert(device_id_result[hpt_device_command_name_t(<%= assert[0].join(',') %>)]._time == <%= assert[1] %>);
@@ -493,7 +493,7 @@ void finalize_callbacks() {
 
    std::string display {bt_value_string_get(display_mode)};
    if (display == "compact" ) {
-  <% output.each do |main_type, result,header, _, var| %> 
+  <% output.each do |main_type, result,header, _, var| %>
       {
     <% var.each do |t,n | %>
          std::set<<%= t %>> s_<%=n%>;
@@ -516,28 +516,28 @@ void finalize_callbacks() {
     <% end %>
              << std::endl;
          print_array(aggregated,oss.str());
-         std::cout << std::endl; 
+         std::cout << std::endl;
       }
   <% end %>
-   } else if (display == "extended" ) { 
+   } else if (display == "extended" ) {
   <% output.each do |main_type, result,header, type, var| %>
-      { 
+      {
     <% args = var.map{ |t,_,n| n}.join(',') %>
          std::unordered_map< <%= type %>, std::unordered_map<cl_command_name, <%= main_type %> >> d1;
          for (auto [s, time]: <%= result %> ) {
             auto [<%= args %>, command_name] = s;
             d1[ <%= type %>( <%= args %> )][command_name].merge(time);
          }
-   
+
          std::vector<std::pair< <%= type %> , std::unordered_map<cl_command_name,  <%= main_type %> >>> array_sorted(d1.begin(), d1.end());
-         std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } ); 
+         std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
 
          for (auto[s, aggregated]: array_sorted) {
             auto [ <%= args %> ] = s;
             std::ostringstream oss;
             oss <<  "<%= header %>"
     <% var.each do | _,_, n | %>
-                << " | <%= n %>: " << <%= n %> 
+                << " | <%= n %>: " << <%= n %>
     <% end %>
     <% if result == 'device_id_result' %>
                 <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"

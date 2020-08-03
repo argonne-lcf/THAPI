@@ -26,7 +26,6 @@ bt_event_class *create_event_class_<%= dbt_event.name%>(bt_stream_class *stream_
     bt_event_class *event_class = bt_event_class_create(stream_class);
     bt_event_class_set_name(event_class, "<%= dbt_event.name_unsanitized %>");
 
-    
     /* Common field */
     bt_field_class *contect_field_class = bt_field_class_structure_create(trace_class);
 
@@ -40,12 +39,12 @@ bt_event_class *create_event_class_<%= dbt_event.name%>(bt_stream_class *stream_
 
     bt_stream_class_set_event_common_context_field_class(stream_class, contect_field_class);
 
-    /* Put the references we don't need anymore */ 
+    /* Put the references we don't need anymore */
     bt_field_class_put_ref(contect_field_class);
 <% ['vpid','pthread_id'].each do |context| %>
     bt_field_class_put_ref(<%= context %>_context_class);
 <% end %>
- 
+
     /* Payload */
    bt_field_class *payload_field_class = bt_field_class_structure_create(trace_class);
 
@@ -63,7 +62,7 @@ bt_event_class *create_event_class_<%= dbt_event.name%>(bt_stream_class *stream_
     return event_class;
 }
 <% end %>
-    
+
 /*
  * Creates the source component's metadata and stream objects.
  */
@@ -94,7 +93,7 @@ void create_metadata_and_stream(bt_self_component *self_component,
 <% $dbt_events.each do |dbt_event| %>
     dust_in-><%= dbt_event.name%>_event_class = create_event_class_<%= dbt_event.name%>(stream_class);
 <% end %>
-    
+
     /* Create a default trace from (instance of `trace_class`) */
     bt_trace *trace = bt_trace_create(trace_class);
 
@@ -305,7 +304,7 @@ bt_message *create_message_from_line(
 <% $dbt_events.each do |dbt_event| %>
     if (strcmp(dust_in_iter->name_buffer, "<%= dbt_event.name_unsanitized%>") == 0) {
         event_class = dust_in_iter->dust_in-><%= dbt_event.name%>_event_class;
-    } 
+    }
 <% end %>
 
     /* Create the event message */
@@ -336,15 +335,15 @@ bt_message *create_message_from_line(
       or better, should rewrite evertyhing in a high level langauge... */
     char msg_keyvalue[1024];
     char *p_space_delimiter;
-    char* rest = dust_in_iter->msg_buffer; 
+    char* rest = dust_in_iter->msg_buffer;
 
     char *p_equal_delimiter_left;
     char *p_equal_delimiter_righ;
 <% $dbt_events.each do |dbt_event| %>
     /* Get with type of event we parse */
-    if (strcmp(dust_in_iter->name_buffer, "<%= dbt_event.name_unsanitized%>") == 0) { 
+    if (strcmp(dust_in_iter->name_buffer, "<%= dbt_event.name_unsanitized%>") == 0) {
       /* Do the parsing. Split into space */
-      while ((p_space_delimiter = strtok_r(rest, " ", &rest))) { 
+      while ((p_space_delimiter = strtok_r(rest, " ", &rest))) {
         strcpy(msg_keyvalue,p_space_delimiter);
         p_equal_delimiter_left = strtok (msg_keyvalue,"=");
         /* Check wich field we need to set */
@@ -353,14 +352,14 @@ bt_message *create_message_from_line(
             p_equal_delimiter_righ = strtok (NULL,"=");
             bt_field *msg_field = bt_field_structure_borrow_member_field_by_index(payload_field, <%= i %>);
       <% case payload.lttng_type
-        when "integer_unsigned" %>       
+        when "integer_unsigned" %>
             bt_field_<%= payload.lttng_type %>_set_value(msg_field, strtoull(p_equal_delimiter_righ,NULL, 0));
       <% when "integer_signed" %>
             bt_field_<%= payload.lttng_type %>_set_value(msg_field, strtoll(p_equal_delimiter_righ,NULL, 0));
       <% when "real_single" %>
             bt_field_<%= payload.lttng_type %>_set_value(msg_field, (float) strtod(p_equal_delimiter_righ,NULL));
       <% when "string" %>
-            bt_field_<%= payload.lttng_type %>_set_value(msg_field, p_equal_delimiter_righ);    
+            bt_field_<%= payload.lttng_type %>_set_value(msg_field, p_equal_delimiter_righ);
       <% end %>
         }
    <% end %>

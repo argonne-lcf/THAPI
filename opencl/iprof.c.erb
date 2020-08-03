@@ -3,7 +3,7 @@
 #include "iprof_callbacks.h"
 const bt_value *display_mode;
 <% elsif $sink_type == 'testing' %>
-#include "testing_iprof_callbacks.h"    
+#include "testing_iprof_callbacks.h"
 const bt_value *test_type_value;
 <% end %>
 
@@ -54,7 +54,7 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
 
     /* Allocate a private data structure */
     struct opencl_dispatch *opencl_dispatch = calloc(1, sizeof(struct opencl_dispatch));
-    
+
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
         bt_self_component_sink_as_self_component(self_component_sink),
