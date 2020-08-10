@@ -241,7 +241,7 @@ $dbt_events = opencl_model['events'].map { |dbt_event|
 
 def write_file_via_template(file, testing = false)
     template = File.read("#{file}.erb")
-    template_rendered = ERB.new(template).result( binding )
+    template_rendered = ERB.new(template).result(binding).gsub(/^\s*$\n/,'')
     if testing
         File.write("testing_#{file}", template_rendered)
     else

@@ -103,15 +103,15 @@ std::string to_string_with_precision(const T a_value, const std::string extensio
 
 template <typename T>
 std::string format_time(const T duration) {
-<% [['hours','h',  '3.6e+12'],
-    ['min','min',  '6e+10'],
-    ['second','s', '1e+9'],
-    ['ms', 'ms',   '1e+6'],
-    ['us', 'us',   '1e+3'],
-    ['ns','ns', '1']].each do |var, unit, factor |  %>
-    const double <%= var %> = duration / <%= factor %>;
-    if (<%= var %> >= 1.) {
-        return  to_string_with_precision(<%= var %>, "<%= unit %>");
+<% [['h',  '3.6e+12'],
+    ['min', '6e+10'],
+    ['s', '1e+9'],
+    ['ms', '1e+6'],
+    ['us', '1e+3'],
+    ['ns', '1']].each do | unit, factor |  %>
+    const double <%= unit %> = duration / <%= factor %>;
+    if (<%= unit %> >= 1.) {
+        return  to_string_with_precision(<%= unit %>, "<%= unit %>");
     }
 <% end %>
     return "";
@@ -119,14 +119,14 @@ std::string format_time(const T duration) {
 
 template <typename T>
 std::string format_byte(const T duration) {
-<%[  ['tb','TB',  '1e+12'],
-     ['gb','GB', '1e+9'],
-     ['mb', 'MB',   '1e+6'],
-     ['kb', 'kB',   '1e+3'],
-     ['b','B', '1']].each do |var, unit, factor |  %>
-    const double <%= var %> = duration / <%= factor %>;
-    if (<%= var %> >= 1.) {
-        return  to_string_with_precision(<%= var %>, "<%= unit %>");
+<%[  ['TB',  '1e+12'],
+     ['GB', '1e+9'],
+     ['MB',   '1e+6'],
+     ['kB',   '1e+3'],
+     ['B', '1']].each do | unit, factor |  %>
+    const double <%= unit %> = duration / <%= factor %>;
+    if (<%= unit %> >= 1.) {
+        return  to_string_with_precision(<%= unit %>, "<%= unit %>");
     }
 <% end %>
     return "";
@@ -136,7 +136,7 @@ std::string format_byte(const T duration) {
 Class for time
  */
 
-struct StatTime_string {
+struct StatIprof_string {
     std::string time;
     std::string time_ratio;
     std::string count;
@@ -145,7 +145,7 @@ struct StatTime_string {
     std::string max;
 };
 
-class StatTime {
+class StatIprof {
     uint64_t _start;
 
   public:
@@ -153,8 +153,8 @@ class StatTime {
     void start(const int64_t);
     void stop(const int64_t);
     void delta(const uint64_t);
-    void merge(StatTime);
-    StatTime_string to_string(const uint64_t);
+    void merge(StatIprof);
+    StatIprof_string to_string(const uint64_t);
 
     //Used in merge
     uint64_t _count{0};
@@ -164,11 +164,11 @@ class StatTime {
 
 };
 
-void StatTime::start(const int64_t start) {
+void StatIprof::start(const int64_t start) {
    _start  = start;
 }
 
-void StatTime::stop(const int64_t stop) {
+void StatIprof::stop(const int64_t stop) {
    const uint64_t  delta = stop - _start;
    _min = std::min(_min,delta);
    _max = std::max(_max,delta);
@@ -176,14 +176,14 @@ void StatTime::stop(const int64_t stop) {
    _time += delta;
 }
 
-void StatTime::delta(const uint64_t delta) {
+void StatIprof::delta(const uint64_t delta) {
    _min = std::min(_min,delta);
    _max = std::max(_max,delta);
    _count++;
    _time += delta;
 }
 
-void StatTime::merge(StatTime st) {
+void StatIprof::merge(StatIprof st) {
    _min = std::min(_min,st._min);
    _max = std::max(_max,st._max);
    // total can overfloat Need to handle that correctly at some point...
@@ -191,29 +191,21 @@ void StatTime::merge(StatTime st) {
    _time += st._time;
 }
 
-StatTime_string StatTime::to_string(const uint64_t total_time){
-    const double avg = _count ? _time / _count : 0.;
-    return StatTime_string{format_time(_time), // Time
-                           to_string_with_precision( (100.*_time / total_time), "%"), // Percent
-                           to_string_with_precision(_count,"",0), // Count
-                           format_time(avg),
-                           format_time(_min),
-                           format_time(_max)};
-}
-
-
-class StatByte: public StatTime {
-    public:
-        StatTime_string to_string(const uint64_t total_time){
-               const double avg = _count ? _time / _count : 0.;
-               return StatTime_string{format_byte(_time), // Time
-                           to_string_with_precision( (100.*_time / total_time), "%"), // Percent
-                           to_string_with_precision(_count,"",0), // Count
-                           format_byte(avg),
-                           format_byte(_min),
-                           format_byte(_max)};
-       }
+<% { "StatTime" => "format_time",
+     "StatByte" => "format_byte" }.each do |n,t| %>
+class <%= n %>: public StatIprof {
+   public:
+     StatIprof_string to_string(const uint64_t total_time){
+                                  const double avg = _count ? _time / _count : 0.;
+                                  return StatIprof_string{<%= t %>(_time), // Time
+                                                          to_string_with_precision( (100.*_time / total_time), "%"), // Percent
+                                                          to_string_with_precision(_count,"",0), // Count
+                                                          <%= t %>(avg),
+                                                          <%= t %>(_min),
+                                                          <%= t %>(_max)};
+    }
 };
+<% end %>
 
 std::unordered_map<hp_t, cl_device_id> last_device;
 std::unordered_map<hpt_t, cl_command_name> last_command;
@@ -352,14 +344,14 @@ void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
 <% end %>
 }
 
-<% d_headers = {"StatTime" =>  [['command_name','Name'],
+<% d_headers = { ["StatTime","format_time"] =>  [['command_name','Name'],
                                 ['time', 'Time'],
                                 ['time_ratio', 'Time(%)'],
                                 ['count', 'Calls'],
                                 ['avg', 'Average'],
                                 ['min', 'Min'],
                                 ['max', 'Max'] ],
-                "StatByte" => [['command_name','Name'],
+                ["StatByte", "format_byte"] => [['command_name','Name'],
                                 ['time', 'Byte'],
                                 ['time_ratio', 'Byte(%)'],
                                 ['count', 'Calls'],
@@ -367,8 +359,8 @@ void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
                                 ['min', 'Min'],
                                 ['max', 'Max'] ]
                 } %>
-<% d_headers.each do | main_type, l_headers | %>
-
+<% d_headers.each do | m, l_headers | %>
+   <% main_type, main_function = m %>
 void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregated, std::string header) {
 
     uint64_t total_time{0};
@@ -397,7 +389,7 @@ void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregat
 
 <%# Need to be bigger than the footer %>
    len_max_command_name = std::max(len_max_command_name,  uint64_t{<%= "Total".size() %>} );
-   len_max_time = std::max(len_max_time, format_time(total_time).size());
+   len_max_time = std::max(len_max_time, <%= main_function %>(total_time).size());
    len_max_count = std::max(len_max_count, to_string_with_precision(total_count,"",0).size() );
 
 <%# Need to be bigger than the body %>
@@ -440,7 +432,7 @@ void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregat
 
 <%# Print footer %>
    std::cout << std::setw(len_max_command_name) << std::right << "Total" << " | "
-             << std::setw(len_max_time) << std::right << format_time(total_time) << " | "
+             << std::setw(len_max_time) << std::right << <%= main_function %>(total_time) << " | "
              << std::setw(len_max_time_ratio) << std::right << "100.00%" << " | "
              << std::setw(len_max_count) << std::right <<  to_string_with_precision(total_count,"",0) << " | "
              << std::endl;
