@@ -1,6 +1,6 @@
 #include "babeltrace2/babeltrace.h"
 #include "babeltrace_cl.h"
-#include "iprof.h"
+#include "clprof.h"
 #include <iomanip>
 #include <vector>
 #include <algorithm>
@@ -9,10 +9,10 @@
 #include <tuple>
 #include <climits>
 <% if $sink_type == 'production' %>
-#include "iprof_callbacks.h"
+#include "clprof_callbacks.h"
 #include <set>
 <% elsif $sink_type == 'testing' %>
-#include "testing_iprof_callbacks.h"
+#include "testing_clprof_callbacks.h"
 #include <cassert>
 <% end %>
 
@@ -247,7 +247,7 @@ static thread_id_t borrow_thread_id(const bt_event *event){
 /* Callback */
 
 <% $dbt_events.each do | dbt_event| %>
-static void iprof_<%= dbt_event.name %>_callback(
+static void clprof_<%= dbt_event.name %>_callback(
 <%= dbt_event.callback_signature %>
     ){
   <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
@@ -340,7 +340,7 @@ static void iprof_<%= dbt_event.name %>_callback(
 
 void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
-        opencl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &iprof_<%= dbt_event.name %>_callback);
+        opencl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
 <% end %>
 }
 

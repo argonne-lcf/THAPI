@@ -3,28 +3,28 @@ TESTING_IPROF_CFLAGS = -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -
 .PHONY: all_test
 all_test: <%= $l_test.map{ |test| test.name }.join(' ') %>
 
-dust.c: dust.c.erb gen_iprof.rb opencl_model.yaml
-	ruby gen_iprof.rb dust
+dust.c: dust.c.erb gen_clprof.rb opencl_model.yaml
+	ruby gen_clprof.rb dust
 
 dust.so: dust.c
 	gcc dust.c -fPIC -c $(pkg-config --cflags babeltrace2)
 	ld dust.o -o dust.so -shared $(pkg-config --libs babeltrace2)
 
 <%= $l_file_generated.map{ |f| "testing_#{f}"}.join(' ') %>  <%= $l_test.map{|t| t.path}.join(' ') %>: <%= $l_file_generated.map{ |f| "#{f}.erb"}.join(' ') %>
-	ruby gen_iprof.rb testing
+	ruby gen_clprof.rb testing
 
-testing_iprof_callbacks.o: testing_iprof_callbacks.cpp testing_iprof_callbacks.h babeltrace_cl_callbacks.h tracer_opencl.h
-	g++ -std=c++17 $(TESTING_IPROF_CFLAGS) -c testing_iprof_callbacks.cpp -o testing_iprof_callbacks.o
+testing_clprof_callbacks.o: testing_clprof_callbacks.cpp testing_clprof_callbacks.h babeltrace_cl_callbacks.h tracer_opencl.h
+	g++ -std=c++17 $(TESTING_IPROF_CFLAGS) -c testing_clprof_callbacks.cpp -o testing_clprof_callbacks.o
 
-testing_iprof.so: testing_iprof.c iprof.h testing_iprof_callbacks.o babeltrace_cl_dispatchers.c
-	gcc -shared $(TESTING_IPROF_CFLAGS) -o testing_iprof.so testing_iprof.c babeltrace_cl_dispatchers.c testing_iprof_callbacks.o -lstdc++ $(shell pkg-config --libs babeltrace2)
+testing_clprof.so: testing_clprof.c clprof.h testing_clprof_callbacks.o babeltrace_cl_dispatchers.c
+	gcc -shared $(TESTING_IPROF_CFLAGS) -o testing_clprof.so testing_clprof.c babeltrace_cl_dispatchers.c testing_clprof_callbacks.o -lstdc++ $(shell pkg-config --libs babeltrace2)
 
 <% $l_test.each do |test| %>
 .PHONY: <%= test.name %>
-<%= test.name %>: dust.so testing_iprof.so  <%= test.path %>
-	@babeltrace2 --plugin-path=./ --component=source.dust.input --params='path="./<%= test.path %>"' --component=sink.testing_iprof.dispatch --params='test="<%= test.name %>"'
+<%= test.name %>: dust.so testing_clprof.so  <%= test.path %>
+	@babeltrace2 --plugin-path=./ --component=source.dust.input --params='path="./<%= test.path %>"' --component=sink.testing_clprof.dispatch --params='test="<%= test.name %>"'
 <% end %>
 
 .PHONY: clean
 clean:
-	rm -f <%= $l_file_generated.map{ |f| "testing_#{f}"}.join(' ') %> testing_iprof_callbacks.o testing_iprof.so test_iprof/*.dust
+	rm -f <%= $l_file_generated.map{ |f| "testing_#{f}"}.join(' ') %> testing_clprof_callbacks.o testing_clprof.so test_clprof/*.dust

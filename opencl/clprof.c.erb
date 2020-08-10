@@ -1,9 +1,9 @@
-#include "iprof.h"
+#include "clprof.h"
 <% if $sink_type == 'production' %>
-#include "iprof_callbacks.h"
+#include "clprof_callbacks.h"
 const bt_value *display_mode;
 <% elsif $sink_type == 'testing' %>
-#include "testing_iprof_callbacks.h"
+#include "testing_clprof_callbacks.h"
 const bt_value *test_type_value;
 <% end %>
 
@@ -216,11 +216,11 @@ end:
 /* Mandatory */
 BT_PLUGIN_MODULE();
 
-/* Define the `iprof` plugin */
+/* Define the `clprof` plugin */
 <% if $sink_type == 'production' %>
-BT_PLUGIN(iprof);
+BT_PLUGIN(clprof);
 <% elsif $sink_type == 'testing' %>
-BT_PLUGIN(testing_iprof);
+BT_PLUGIN(testing_clprof);
 <% end %>
 
 /* Define the `text` sink component class */

@@ -199,7 +199,7 @@ l_test_d = [
     }
 ]
 
-class Test_iprof
+class Test_clprof
     def initialize(d)
         @d =  d
     end
@@ -229,7 +229,7 @@ class Test_iprof
     end
 
     def path
-        "test_iprof/#{name}.dust"
+        "test_clprof/#{name}.dust"
     end
 
 end
@@ -250,8 +250,8 @@ def write_file_via_template(file, testing = false)
 end
 
 $sink_type = ARGV[0]
-$l_file_generated=['iprof_callbacks.cpp','iprof_callbacks.h','iprof.c']
-$l_test = l_test_d.map{ |  d | Test_iprof.new(d) }
+$l_file_generated=['clprof_callbacks.cpp','clprof_callbacks.h','clprof.c']
+$l_test = l_test_d.map{ |  d | Test_clprof.new(d) }
 
 if $sink_type == 'dust'
     write_file_via_template('dust.c')
