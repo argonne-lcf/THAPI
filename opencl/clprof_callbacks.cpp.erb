@@ -1,0 +1,545 @@
+#include "babeltrace2/babeltrace.h"
+#include "babeltrace_cl.h"
+#include "clprof.h"
+#include <iomanip>
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <tuple>
+#include <climits>
+<% if $sink_type == 'production' %>
+#include "clprof_callbacks.h"
+#include <set>
+<% elsif $sink_type == 'testing' %>
+#include "testing_clprof_callbacks.h"
+#include <cassert>
+<% end %>
+
+// https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
+// Hash of std tuple
+namespace std{
+    namespace
+    {
+        // Code from boost
+        // Reciprocal of the golden ratio helps spread entropy
+        //     and handles duplicates.
+        // See Mike Seymour in magic-numbers-in-boosthash-combine:
+        //     https://stackoverflow.com/questions/4948780
+        template <class T>
+        inline void hash_combine(std::size_t& seed, T const& v)
+        {
+            seed ^= hash<T>()(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        }
+
+        // Recursive template code derived from Matthieu M.
+        template <class Tuple, size_t Index = std::tuple_size<Tuple>::value - 1>
+        struct HashValueImpl
+        {
+          static void apply(size_t& seed, Tuple const& tuple)
+          {
+            HashValueImpl<Tuple, Index-1>::apply(seed, tuple);
+            hash_combine(seed, get<Index>(tuple));
+          }
+        };
+
+        template <class Tuple>
+        struct HashValueImpl<Tuple,0>
+        {
+          static void apply(size_t& seed, Tuple const& tuple)
+          {
+            hash_combine(seed, get<0>(tuple));
+          }
+        };
+    }
+
+    template <typename ... TT>
+    struct hash<std::tuple<TT...>>
+    {
+        size_t
+        operator()(std::tuple<TT...> const& tt) const
+        {
+            size_t seed = 0;
+            HashValueImpl<std::tuple<TT...> >::apply(seed, tt);
+            return seed;
+        }
+
+    };
+}
+/*
+Global variable
+*/
+<% if $sink_type == 'testing' %>
+const bt_value *test_type_value;
+<% elsif $sink_type == 'production' %>
+const bt_value *display_mode;
+<% end %>
+
+typedef std::string hostname_t;
+typedef std::string cl_command_name;
+typedef int64_t     process_id_t;
+typedef uint64_t    thread_id_t;
+
+typedef std::tuple<hostname_t, process_id_t> hp_t;
+typedef std::tuple<thread_id_t, cl_command_name> t_command_name_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
+typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
+typedef std::tuple<hostname_t, process_id_t, cl_device_id> hp_device_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, cl_device_id> hpt_device_t;
+typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
+typedef std::tuple<hostname_t, process_id_t, cl_kernel> hp_kernel_t;
+
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, cl_command_name> hpt_command_name_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, cl_device_id, cl_command_name> hpt_device_command_name_t;
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const std::string extension, const int n = 2)
+{
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << a_value << extension;
+    return out.str();
+}
+
+template <typename T>
+std::string format_time(const T duration) {
+<% [['h',  '3.6e+12'],
+    ['min', '6e+10'],
+    ['s', '1e+9'],
+    ['ms', '1e+6'],
+    ['us', '1e+3'],
+    ['ns', '1']].each do | unit, factor |  %>
+    const double <%= unit %> = duration / <%= factor %>;
+    if (<%= unit %> >= 1.) {
+        return  to_string_with_precision(<%= unit %>, "<%= unit %>");
+    }
+<% end %>
+    return "";
+}
+
+template <typename T>
+std::string format_byte(const T duration) {
+<%[  ['TB',  '1e+12'],
+     ['GB', '1e+9'],
+     ['MB',   '1e+6'],
+     ['kB',   '1e+3'],
+     ['B', '1']].each do | unit, factor |  %>
+    const double <%= unit %> = duration / <%= factor %>;
+    if (<%= unit %> >= 1.) {
+        return  to_string_with_precision(<%= unit %>, "<%= unit %>");
+    }
+<% end %>
+    return "";
+}
+
+/*
+Class for time
+ */
+
+struct StatIprof_string {
+    std::string time;
+    std::string time_ratio;
+    std::string count;
+    std::string avg;
+    std::string min;
+    std::string max;
+};
+
+class StatIprof {
+    uint64_t _start;
+
+  public:
+    uint64_t _total_time{1};
+    void start(const int64_t);
+    void stop(const int64_t);
+    void delta(const uint64_t);
+    void merge(StatIprof);
+    StatIprof_string to_string(const uint64_t);
+
+    //Used in merge
+    uint64_t _count{0};
+    uint64_t _min{ULONG_MAX};
+    uint64_t _max{0};
+    uint64_t _time{0};
+
+};
+
+void StatIprof::start(const int64_t start) {
+   _start  = start;
+}
+
+void StatIprof::stop(const int64_t stop) {
+   const uint64_t  delta = stop - _start;
+   _min = std::min(_min,delta);
+   _max = std::max(_max,delta);
+   _count++;
+   _time += delta;
+}
+
+void StatIprof::delta(const uint64_t delta) {
+   _min = std::min(_min,delta);
+   _max = std::max(_max,delta);
+   _count++;
+   _time += delta;
+}
+
+void StatIprof::merge(StatIprof st) {
+   _min = std::min(_min,st._min);
+   _max = std::max(_max,st._max);
+   // total can overfloat Need to handle that correctly at some point...
+   _count += st._count;
+   _time += st._time;
+}
+
+<% { "StatTime" => "format_time",
+     "StatByte" => "format_byte" }.each do |n,t| %>
+class <%= n %>: public StatIprof {
+   public:
+     StatIprof_string to_string(const uint64_t total_time){
+                                  const double avg = _count ? _time / _count : 0.;
+                                  return StatIprof_string{<%= t %>(_time), // Time
+                                                          to_string_with_precision( (100.*_time / total_time), "%"), // Percent
+                                                          to_string_with_precision(_count,"",0), // Count
+                                                          <%= t %>(avg),
+                                                          <%= t %>(_min),
+                                                          <%= t %>(_max)};
+    }
+};
+<% end %>
+
+std::unordered_map<hp_t, cl_device_id> last_device;
+std::unordered_map<hpt_t, cl_command_name> last_command;
+
+std::unordered_map<hp_command_queue_t, cl_device_id> command_queue_to_device;
+std::unordered_map<hpt_command_name_t, cl_device_id> command_name_to_device;
+std::unordered_map<hp_event_t,t_command_name_t> event_to_command_name;
+std::unordered_map<hpt_device_command_name_t, StatTime> device_id_result;
+std::unordered_map<hpt_command_name_t, StatTime> api_call;
+std::unordered_map<hpt_command_name_t, StatByte> memory_trafic;
+
+std::unordered_map<hp_event_t, uint64_t> event_result_to_delta;
+std::unordered_map<hp_device_t, std::string> device_to_name;
+std::unordered_map<hp_kernel_t, std::string> kernel_to_name;
+
+/*
+Utils function
+*/
+static const hostname_t borrow_hostname(const bt_event *event){
+    const bt_stream *stream = bt_event_borrow_stream_const(event);
+    const bt_trace *trace = bt_stream_borrow_trace_const(stream);
+    const bt_value *host_name_str = bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
+    return  bt_value_string_get(host_name_str);
+}
+
+static process_id_t borrow_process_id(const bt_event *event){
+    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
+    return bt_field_integer_signed_get_value(field);
+}
+
+static thread_id_t borrow_thread_id(const bt_event *event){
+    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
+    return bt_field_integer_unsigned_get_value(field);
+}
+
+
+/* Callback */
+
+<% $dbt_events.each do | dbt_event| %>
+static void clprof_<%= dbt_event.name %>_callback(
+<%= dbt_event.callback_signature %>
+    ){
+  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
+    const hostname_t   hostname   = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+
+    int64_t ns_from_origin;
+    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+    <%if dbt_event.name.end_with?("start") %>
+    api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].start(ns_from_origin);
+    <%elsif dbt_event.name.end_with?("stop") %>
+    api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].stop(ns_from_origin);
+    <% end %>
+
+    <%if dbt_event.name.include?("clEnqueue") and dbt_event.fields.key?("size") %>
+    memory_trafic[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].delta(size);
+    <% end %>
+  <% end %>
+
+  <%if dbt_event.name.end_with?("start") and dbt_event.fields['device'] %>
+    last_device[hp_t(hostname,process_id) ] = device;
+
+  <%elsif dbt_event.name.end_with?("stop") and dbt_event.fields['command_queue'] %>
+    const cl_device_id device  = last_device[hp_t(hostname,process_id) ];
+    command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] = device ;
+
+  <%elsif dbt_event.name.end_with?("start") and dbt_event.fields['command_queue'] %>
+    const cl_device_id device = command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)];
+
+    <% if dbt_event.fields['kernel'] %>
+    const cl_command_name name  = kernel_to_name[hp_kernel_t(hostname,process_id,kernel)];
+    <% else %>
+    constexpr char name[] =  "<%= dbt_event.name_striped %>";
+    <% end %>
+
+    command_name_to_device[hpt_command_name_t(hostname,process_id, thread_id, name)] = device ;
+    last_command[hpt_t(hostname,process_id,thread_id)] = name;
+
+  <%elsif dbt_event.name == "lttng_ust_opencl_profiling_event_profiling" %>
+    const hostname_t hostname    = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+    const hp_event_t hp_event{hostname,process_id, event};
+    const cl_command_name command_name = last_command[hpt_t(hostname,process_id,thread_id)];
+
+    if (!event_to_command_name.count(hp_event)){
+        event_to_command_name[hp_event] = t_command_name_t(thread_id, command_name);
+    } else {
+        const uint64_t delta = event_result_to_delta[hp_event];
+        const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
+        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,device,command_name)].delta(delta);
+
+        event_to_command_name.erase(hp_event);
+    }
+
+  <% elsif dbt_event.name == "lttng_ust_opencl_profiling_event_profiling_results" %>
+    const std::string hostname    = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const hp_event_t hp_event{hostname,process_id, event};
+    const uint64_t delta = end - start;
+
+    if (event_to_command_name.count(hp_event)) {
+        const auto [thread_id,command_name] =  event_to_command_name[hp_event];
+        const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
+
+        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,device,command_name)].delta(delta);
+        event_to_command_name.erase(hp_event);
+    } else {
+        const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+        const cl_command_name command_name = last_command[hpt_t(hostname,process_id,thread_id)];
+        event_result_to_delta[hp_event]= delta;
+
+        event_to_command_name[hp_event] = t_command_name_t(thread_id, command_name);
+    }
+
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
+    const std::string hostname    = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    device_to_name[hp_device_t(hostname,process_id,device)] = std::string{name};
+
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_arguments:kernel_info" %>
+    const std::string hostname    = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    kernel_to_name[hp_kernel_t(hostname,process_id,kernel)] = std::string{function_name};
+  <% end %>
+
+}
+<% end %>
+
+void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
+<% $dbt_events.each do | dbt_event| %>
+        opencl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
+<% end %>
+}
+
+<% d_headers = { ["StatTime","format_time"] =>  [['command_name','Name'],
+                                ['time', 'Time'],
+                                ['time_ratio', 'Time(%)'],
+                                ['count', 'Calls'],
+                                ['avg', 'Average'],
+                                ['min', 'Min'],
+                                ['max', 'Max'] ],
+                ["StatByte", "format_byte"] => [['command_name','Name'],
+                                ['time', 'Byte'],
+                                ['time_ratio', 'Byte(%)'],
+                                ['count', 'Calls'],
+                                ['avg', 'Average'],
+                                ['min', 'Min'],
+                                ['max', 'Max'] ]
+                } %>
+<% d_headers.each do | m, l_headers | %>
+   <% main_type, main_function = m %>
+void print_array(std::unordered_map<cl_command_name, <%= main_type %> > aggregated, std::string header) {
+
+    uint64_t total_time{0};
+    uint64_t total_count{0};
+    for (std::pair<cl_command_name,  <%= main_type %> > element: aggregated) {
+        total_time += element.second._time;
+        total_count += element.second._count;
+   }
+   if (!total_count) {
+        std::cout << "No "<< header << " information avalaible" << std::endl;
+        return;
+   }
+   std::cout << header << std::endl;
+
+<%#
+  _
+ /   _  ._ _  ._     _|_  _    |\/|  _.      |  _  ._   _ _|_ |_
+ \_ (_) | | | |_) |_| |_ (/_   |  | (_| ><   | (/_ | | (_| |_ | |
+              |                                         _|
+%>
+
+<%# Need to be bigger than the header %>
+<% l_headers.each do |v, n| %>
+   uint64_t len_max_<%= v %> = <%= n.size() %>;
+<% end %>
+
+<%# Need to be bigger than the footer %>
+   len_max_command_name = std::max(len_max_command_name,  uint64_t{<%= "Total".size() %>} );
+   len_max_time = std::max(len_max_time, <%= main_function %>(total_time).size());
+   len_max_count = std::max(len_max_count, to_string_with_precision(total_count,"",0).size() );
+
+<%# Need to be bigger than the body %>
+   for (std::pair<cl_command_name,  <%= main_type %> > element: aggregated) {
+       len_max_command_name =  std::max(len_max_command_name,  element.first.size());
+       const auto [time, time_ratio, count, avg, min, max ] = element.second.to_string(total_time);
+<% l_headers.drop(1).each do |v, _| %>
+       len_max_<%= v %> = std::max(len_max_<%= v %>, <%= v %>.size());
+<% end %>
+   }
+
+<%# Sort the table %>
+   std::vector<std::pair<cl_command_name,  <%= main_type %> >> array_sorted(aggregated.begin(), aggregated.end());
+   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
+
+<%#
+  _
+ |_) ._ o ._ _|_
+ |   |  | | | |_
+
+%>
+
+<%# Print Header %>
+   std::cout
+<% l_headers.each do |v, n| %>
+   << std::setw(len_max_<%= v %>) << std::right << "<%= n %>" << " | "
+<% end %>
+   << std::endl;
+
+<%# Print Body %>
+   for (std::pair<cl_command_name,  <%= main_type %> > element: array_sorted) {
+        const cl_command_name command_name = element.first;
+        const auto [time, time_ratio, count, avg, min, max ] = element.second.to_string(total_time);
+        std::cout
+        <% l_headers.each do |v, _| %>
+        << std::setw(len_max_<%= v %>) << std::right << <%= v %> << " | "
+        <% end %>
+        << std::endl;
+    }
+
+<%# Print footer %>
+   std::cout << std::setw(len_max_command_name) << std::right << "Total" << " | "
+             << std::setw(len_max_time) << std::right << <%= main_function %>(total_time) << " | "
+             << std::setw(len_max_time_ratio) << std::right << "100.00%" << " | "
+             << std::setw(len_max_count) << std::right <<  to_string_with_precision(total_count,"",0) << " | "
+             << std::endl;
+}
+
+<% end %>
+
+void finalize_callbacks() {
+<% if $sink_type == 'testing' %>
+   std::string test_path {bt_value_string_get(test_type_value)};
+  <% $l_test.each do | test | %>
+   if (test_path == "<%= test.name %>") {
+       std :: cout << "testing <%= test.name %>" << std::endl;
+    <% test.device_id_result.each do |assert| %>
+       <% assert[0][-2] = "(cl_device_id) #{assert[0][-2]}" %>
+       assert(device_id_result[hpt_device_command_name_t(<%= assert[0].join(',') %>)]._time == <%= assert[1] %>);
+    <% end %>
+    <% test.device_to_name.each do |assert| %>
+       <% assert[0][-1] = "(cl_device_id) #{assert[0][-1]}" %>
+       assert(device_to_name[hp_device_t(<%= assert[0].join(',') %>)] == <%= assert[1] %>);
+    <% end %>
+    <% test.kernel_to_name.each do |assert| %>
+       <% assert[0][-1] = "(cl_kernel) #{assert[0][-1]}" %>
+       assert(kernel_to_name[hp_kernel_t(<%= assert[0].join(',') %>)] == <%= assert[1] %>);
+    <% end %>
+    <% test.api_call.each do |assert| %>
+       assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)]._count    == <%= assert[1][0] %>);
+       assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)]._min      == <%= assert[1][1] %>);
+       assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)]._max      == <%= assert[1][2] %>);
+       //assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)].avg() == <%= assert[1][3] %>);
+    <% end %>
+   }
+  <% end %>
+<% elsif $sink_type == "production" %>
+
+   <% output = [ ['StatTime', 'api_call', 'API calls', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+                 ['StatTime', 'device_id_result','Device profiling', 'hpt_device_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ,
+                      ['cl_device_id','Devices','Device'] ] ],
+                 ['StatByte', 'memory_trafic', 'Explicit memory trafic', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+   ] %>
+
+   std::string display {bt_value_string_get(display_mode)};
+   if (display == "compact" ) {
+  <% output.each do |main_type, result,header, _, var| %>
+      {
+    <% var.each do |t,n | %>
+         std::set<<%= t %>> s_<%=n%>;
+    <% end %>
+    <%# Agreagate API Call Result and compute total time spend %>
+         std::unordered_map<cl_command_name, <%= main_type %> > aggregated;
+         for (auto element: <%= result %>)
+         {
+            auto [ <%= var.map{ |t,n| n}.join(',') %>,command_name ] = element.first;
+    <% var.each do | _, n | %>
+            s_<%= n %>.insert(<%= n %>);
+    <% end %>
+            const <%= main_type %> time = element.second;
+            aggregated[command_name].merge(time);
+         }
+         std::ostringstream oss;
+         oss << "<%= header %>"
+    <% var.each do | _, n | %>
+             << " | " << s_<%= n %>.size() << " <%= n %>"
+    <% end %>
+             << std::endl;
+         print_array(aggregated,oss.str());
+         std::cout << std::endl;
+      }
+  <% end %>
+   } else if (display == "extended" ) {
+  <% output.each do |main_type, result,header, type, var| %>
+      {
+    <% args = var.map{ |t,_,n| n}.join(',') %>
+         std::unordered_map< <%= type %>, std::unordered_map<cl_command_name, <%= main_type %> >> d1;
+         for (auto [s, time]: <%= result %> ) {
+            auto [<%= args %>, command_name] = s;
+            d1[ <%= type %>( <%= args %> )][command_name].merge(time);
+         }
+
+         std::vector<std::pair< <%= type %> , std::unordered_map<cl_command_name,  <%= main_type %> >>> array_sorted(d1.begin(), d1.end());
+         std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
+
+         for (auto[s, aggregated]: array_sorted) {
+            auto [ <%= args %> ] = s;
+            std::ostringstream oss;
+            oss <<  "<%= header %>"
+    <% var.each do | _,_, n | %>
+                << " | <%= n %>: " << <%= n %>
+    <% end %>
+    <% if result == 'device_id_result' %>
+                <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
+    <% end %>
+                << std::endl;
+            print_array(aggregated, oss.str());
+            std::cout << std::endl;
+         }
+     }
+   <%end%>
+   }
+<% end %>
+}
