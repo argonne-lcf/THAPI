@@ -338,10 +338,6 @@ puts <<EOF
 
 EOF
 
-CL_OBJECTS.each { |o|
-  print_ze_object(o)
-}
-
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }

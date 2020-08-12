@@ -1,9 +1,6 @@
 require_relative 'ze_model'
 
 puts <<EOF
-#define ZE_ENABLE_OCL_INTEROP 1
-#define CL_TARGET_OPENCL_VERSION 220
-#include <CL/cl.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <ze_api.h>

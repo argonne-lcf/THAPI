@@ -23,7 +23,7 @@ ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
 
 all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS)
 
-LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/core -I./include/tools -I../utils/
+LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/ -I../utils/
 
 modified_include: include headers.patch
 	cp -r include/ modified_include/
@@ -32,10 +32,10 @@ modified_include: include headers.patch
 ../utils/lttng/tracepoint_gen.h: ../utils/tracepoint_gen.rb
 	ruby ../utils/tracepoint_gen.rb 25 > ../utils/lttng/tracepoint_gen.h
 
-ze_api.yaml: $(shell find include/core -type f) $(ZE_EXTRACT) extract_ze.rb
+ze_api.yaml: $(shell find modified_include/ -type f) $(ZE_EXTRACT) extract_ze.rb
 	ruby extract_ze.rb
 
-zet_api.yaml: $(shell find include/core include/tools -type f) $(ZE_EXTRACT) extract_zet.rb
+zet_api.yaml: $(shell find modified_include/ -type f) $(ZE_EXTRACT) extract_zet.rb
 	ruby extract_zet.rb
 
 ze_profiling.tp: gen_ze_custom_probes.rb ../utils/LTTng.rb $(ZE_MODEL)
@@ -51,7 +51,7 @@ tracer_ze.c: gen_ze.rb tracer_ze_helpers.include.c $(ZE_MODEL)
 	ruby $< > $@
 
 tracer_ze.so: ../utils/lttng/tracepoint_gen.h tracer_ze.c $(ZE_OBJS) $(ZE_INCL) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL)
-	gcc -g -O3 -Wall -Wextra -Werror -I./include/core -I./include/tools -I./ -I../utils/ -o tracer_ze.so -shared -fPIC tracer_ze.c $(ZE_OBJS) $(ZE_STATIC_OBJS) -llttng-ust -ldl -lffi
+	gcc -g -O3 -Wall -Wextra -Werror -I./include/ -I./ -I../utils/ -o tracer_ze.so -shared -fPIC tracer_ze.c $(ZE_OBJS) $(ZE_STATIC_OBJS) -llttng-ust -ldl -lffi
 
 ze_library.rb: gen_ze_library.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE_MODEL)
 	ruby $< > $@

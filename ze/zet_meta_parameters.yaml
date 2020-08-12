@@ -205,7 +205,7 @@ meta_parameters:
   zetModuleGetDebugInfo:
     - [ InOutScalar, pSize ]
   zetKernelGetProfileInfo:
-    - [ OutScalar, pInfo ]
+    - [ OutScalar, pProfileProperties ]
   zetMetricGroupGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetricGroups, pCount ]
@@ -238,7 +238,7 @@ meta_parameters:
     - [ OutArray, pRawData, pRawDataSize ]
   zetDebugAttach:
     - [ InScalar, config ]
-    - [ OutScalar, hDebug ]
+    - [ OutScalar, phDebug ]
   zetDebugGetNumThreads:
     - [ OutScalar, pNumThreads ]
   zetTracerCreate:

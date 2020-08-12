@@ -23,16 +23,22 @@ zet_types_e = $zet_api["typedefs"]
 all_types = ze_types_e + zet_types_e
 all_structs = $ze_api["structs"] + $zet_api["structs"]
 
-CL_OBJECTS = %w(cl_platform_id cl_device_id cl_context cl_command_queue cl_mem cl_program cl_kernel cl_event cl_sampler)
 ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
   if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
     ZE_OBJECTS.push t.name
   end
 }
-ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t ze_bool_t char)
+ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t char)
 ZE_FLOAT_SCALARS = %w(float double)
 ZE_SCALARS = ZE_INT_SCALARS + ZE_FLOAT_SCALARS
+
+all_types.each { |t| 
+  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
+    ZE_INT_SCALARS.push t.name
+  end
+}
+
 ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
 ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t" ]
 ZE_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
@@ -176,7 +182,7 @@ module YAMLCAst
     def lttng_type
       ev = LTTng::TracepointField::new
       case name
-      when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
+      when *ZE_OBJECTS, *ZE_POINTER_TYPES
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = "uintptr_t"
@@ -241,7 +247,7 @@ module YAMLCAst
         ev.type = type.name
       when YAMLCAst::CustomType
         case type.name
-        when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
+        when *ZE_OBJECTS, *ZE_POINTER_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
         when *ZE_INT_SCALARS
@@ -614,7 +620,7 @@ EOF
 register_epilogue "zeCommandListCreate", <<EOF
   if (_do_profile) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _register_ze_command_list(*phCommandList, hDevice);
+      _register_ze_command_list(*phCommandList, hContext, hDevice);
     }
   }
 EOF
@@ -631,7 +637,7 @@ register_prologue "zeEventPoolCreate", <<EOF
   ze_event_pool_desc_t _new_desc;
   if (_do_profile && desc) {
     _new_desc = *desc;
-    _new_desc.flags |= ZE_EVENT_POOL_FLAG_TIMESTAMP;
+    _new_desc.flags |= ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP;
     desc = &_new_desc;
   }
 EOF
@@ -679,20 +685,16 @@ EOF
   "zeCommandListAppendLaunchCooperativeKernel",
   "zeCommandListAppendLaunchKernelIndirect",
   "zeCommandListAppendLaunchMultipleKernelsIndirect",
-  "zeCommandListAppendMemoryRangesBarrier" ].each { |c|
-    register_prologue c, profiling_prologue.call("hSignalEvent")
-    register_epilogue c, profiling_epilogue.call("hSignalEvent")
-}
-
-[ "zeCommandListAppendMemoryCopy",
+  "zeCommandListAppendMemoryRangesBarrier",
+  "zeCommandListAppendMemoryCopy",
   "zeCommandListAppendMemoryFill",
   "zeCommandListAppendMemoryCopyRegion",
   "zeCommandListAppendImageCopy",
   "zeCommandListAppendImageCopyRegion",
   "zeCommandListAppendImageCopyToMemory",
   "zeCommandListAppendImageCopyFromMemory" ].each { |c|
-    register_prologue c, profiling_prologue.call("hEvent")
-    register_epilogue c, profiling_epilogue.call("hEvent")
+    register_prologue c, profiling_prologue.call("hSignalEvent")
+    register_epilogue c, profiling_epilogue.call("hSignalEvent")
 }
 
 #WARNING

@@ -12,6 +12,7 @@ struct _ze_device_obj_data {
 
 struct _ze_command_list_obj_data {
   ze_device_handle_t device;
+  ze_context_handle_t context;
   ze_driver_handle_t driver;
 };
 
@@ -78,7 +79,7 @@ static inline void _register_ze_device(
   d_data->driver = driver;
   o_h->obj_data = (void *)d_data;
 
-  d_data->properties.version = ZE_DEVICE_PROPERTIES_VERSION_CURRENT;
+  d_data->properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
   ze_result_t res = zeDeviceGetProperties(device, &(d_data->properties));
   if (res != ZE_RESULT_SUCCESS) {
     free((void *)mem);
@@ -90,6 +91,7 @@ static inline void _register_ze_device(
 
 static inline void _register_ze_command_list(
  ze_command_list_handle_t command_list,
+ ze_context_handle_t context,
  ze_device_handle_t device) {
   struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
@@ -115,6 +117,7 @@ static inline void _register_ze_command_list(
   o_h->ptr = (void *)command_list;
   o_h->type = COMMAND_LIST;
   cl_data->device = device;
+  cl_data->context = context;
   cl_data->driver = driver;
   o_h->obj_data = (void *)cl_data;
 
@@ -191,18 +194,18 @@ ze_event_handle_t _get_profiling_event(
   FIND_ZE_OBJ(&command_list, o_h);
   if (!o_h)
     return NULL;
-  ze_driver_handle_t driver =
-    ((struct _ze_command_list_obj_data *)(o_h->obj_data))->driver;
+  ze_context_handle_t context =
+    ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
   ze_device_handle_t device =
     ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
 
   ze_event_pool_handle_t event_pool = NULL;
-  ze_event_pool_desc_t desc = {ZE_EVENT_POOL_DESC_VERSION_CURRENT, ZE_EVENT_POOL_FLAG_TIMESTAMP, 1};
-  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(driver, &desc, 1, &device, &event_pool);
+  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, 1};
+  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 1, &device, &event_pool);
   if (res != ZE_RESULT_SUCCESS)
     return NULL;
   ze_event_handle_t event;
-  ze_event_desc_t e_desc = {ZE_EVENT_DESC_VERSION_CURRENT, 0, ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
+  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
   res = ZE_EVENT_CREATE_PTR(event_pool, &e_desc, &event);
   if (res != ZE_RESULT_SUCCESS) {
     ZE_EVENT_POOL_DESTROY_PTR(event_pool);
@@ -226,40 +229,41 @@ static inline void _unregister_ze_event(ze_event_handle_t event) {
 }
 
 static void _profile_event_results(ze_event_handle_t event) {
-  ze_result_t status;
-  ze_result_t global_start_status;
-  uint64_t global_start;
-  ze_result_t global_end_status;
-  uint64_t global_end;
-  ze_result_t context_start_status;
-  uint64_t context_start;
-  ze_result_t context_end_status;
-  uint64_t context_end;
+  (void)event;
+//  ze_result_t status;
+//  ze_result_t global_start_status;
+//  uint64_t global_start;
+//  ze_result_t global_end_status;
+//  uint64_t global_end;
+//  ze_result_t context_start_status;
+//  uint64_t context_start;
+//  ze_result_t context_end_status;
+//  uint64_t context_end;
 
   if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
-    status = ZE_EVENT_QUERY_STATUS_PTR(event);
-    global_start_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-      event,
-      ZE_EVENT_TIMESTAMP_GLOBAL_START,
-      &global_start);
-    global_end_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-      event,
-      ZE_EVENT_TIMESTAMP_GLOBAL_END,
-      &global_end);
-    context_start_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-      event,
-      ZE_EVENT_TIMESTAMP_CONTEXT_START,
-      &context_start);
-    context_end_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-      event,
-      ZE_EVENT_TIMESTAMP_CONTEXT_END,
-      &context_end);
-    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results,
-                  event, status,
-                  global_start_status, global_start,
-                  global_end_status, global_end,
-                  context_start_status, context_start,
-                  context_end_status, context_end);
+//    status = ZE_EVENT_QUERY_STATUS_PTR(event);
+//    global_start_status = ZE_EVENT_GET_TIMESTAMP_PTR(
+//      event,
+//      ZE_EVENT_TIMESTAMP_GLOBAL_START,
+//      &global_start);
+//    global_end_status = ZE_EVENT_GET_TIMESTAMP_PTR(
+//      event,
+//      ZE_EVENT_TIMESTAMP_GLOBAL_END,
+//      &global_end);
+//    context_start_status = ZE_EVENT_GET_TIMESTAMP_PTR(
+//      event,
+//      ZE_EVENT_TIMESTAMP_CONTEXT_START,
+//      &context_start);
+//    context_end_status = ZE_EVENT_GET_TIMESTAMP_PTR(
+//      event,
+//      ZE_EVENT_TIMESTAMP_CONTEXT_END,
+//      &context_end);
+//    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results,
+//                  event, status,
+//                  global_start_status, global_start,
+//                  global_end_status, global_end,
+//                  context_start_status, context_start,
+//                  context_end_status, context_end);
   }
 }
 
@@ -283,7 +287,7 @@ void _event_cleanup() {
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
-static volatile cl_uint _initialized = 0;
+static volatile unsigned int _initialized = 0;
 static int     _do_profile = 0;
 
 void _lib_cleanup() {
@@ -302,7 +306,7 @@ static void _load_tracer(void) {
   find_ze_symbols(handle);
 
   //FIX for intel tracing layer that needs to register its callbacks first...
-  ZE_INIT_PTR(ZE_INIT_FLAG_NONE);
+  ZE_INIT_PTR(0);
 
   char *s = NULL;
   s = getenv("LTTNG_UST_ZE_PROFILE");
