@@ -23,6 +23,14 @@ $all_types.each { |t|
   end
 }
 
+
+$int_scalars = {}
+$all_types.each { |t|
+  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
+    $int_scalars[t.name] = t.type.name
+  end
+}
+
 def to_class_name(name)
   mod = to_name_space(name)
   n = name.gsub(/_t\z/, "").gsub(/\Aze[st]?_/, "").split("_").collect(&:capitalize).join
