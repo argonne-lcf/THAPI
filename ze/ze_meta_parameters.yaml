@@ -33,7 +33,8 @@ meta_parameters:
   zeDeviceGetMemoryAccessProperties:
     - [ OutScalar, pMemAccessProperties ]
   zeDeviceGetCacheProperties:
-    - [ OutScalar, pCacheProperties ]
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pCacheProperties, pCount ]
   zeDeviceGetImageProperties:
     - [ OutScalar, pImageProperties ]
   zeDeviceGetExternalMemoryProperties:
@@ -56,18 +57,85 @@ meta_parameters:
   zeCommandListCreateImmediate:
     - [ InScalar, altdesc ]
     - [ OutScalar, phCommandList ]
-  zeImageGetProperties:
-    - [ InScalar, desc ]
-    - [ OutScalar, pImageProperties ]
-  zeImageCreate:
-    - [ InScalar, desc ]
-    - [ OutScalar, phImage ]
+  zeCommandListAppendWriteGlobalTimestamp:
+    - [ InArray, phWaitEvents, numWaitEvents ]
   zeCommandListAppendBarrier:
     - [ InArray, phWaitEvents, numWaitEvents ]
   zeCommandListAppendMemoryRangesBarrier:
     - [ InArray, pRangeSizes, numRanges ]
     - [ InArray, pRanges, numRanges ]
     - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendMemoryCopy:
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendMemoryFill:
+    - [ InArray, pattern, pattern_size ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendMemoryCopyRegion:
+    - [ InScalar, dstRegion ]
+    - [ InScalar, srcRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendMemoryCopyFromContext:
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendImageCopy:
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendImageCopyRegion:
+    - [ InScalar, pDstRegion ]
+    - [ InScalar, pSrcRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendImageCopyToMemory:
+    - [ InScalar, pSrcRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendImageCopyFromMemory:
+    - [ InScalar, pDstRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeEventPoolCreate:
+    - [ InScalar, desc ]
+    - [ InArray, phDevices, numDevices ]
+    - [ OutScalar, phEventPool ]
+  zeEventCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phEvent ]
+  zeEventPoolGetIpcHandle:
+    - [ OutScalar, phIpc ]
+  zeEventPoolOpenIpcHandle:
+    - [ OutScalar, phEventPool ]
+  zeCommandListAppendWaitOnEvents:
+    - [ InArray, phEvents, numEvents ]
+  zeEventQueryKernelTimestamp:
+    - [ OutScalar, dstptr ]
+  zeCommandListAppendQueryKernelTimestamps:
+    - [ InArray, phEvents, numEvents ]
+    - [ InArray, pOffsets, numEvents ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeFenceCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phFence ]
+  zeImageGetProperties:
+    - [ InScalar, desc ]
+    - [ OutScalar, pImageProperties ]
+  zeImageCreate:
+    - [ InScalar, desc ]
+    - [ OutScalar, phImage ]
+  zeMemAllocShared:
+    - [ InScalar, device_desc ]
+    - [ InScalar, host_desc ]
+    - [ OutScalar, pptr ]
+  zeMemAllocDevice:
+    - [ InScalar, device_desc ]
+    - [ OutScalar, pptr ]
+  zeMemAllocHost:
+    - [ InScalar, host_desc ]
+    - [ OutScalar, pptr ]
+  zeMemGetAllocProperties:
+    - [ OutScalar, pMemAllocProperties ]
+    - [ OutScalar, phDevice ]
+  zeMemGetAddressRange:
+    - [ OutScalar, pBase ]
+    - [ OutScalar, pSize ]
+  zeMemGetIpcHandle:
+    - [ OutScalar, pIpcHandle ]
+  zeMemOpenIpcHandle:
+    - [ OutScalar, pptr ]
   zeModuleCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phModule ]
@@ -86,10 +154,13 @@ meta_parameters:
     - [ InOutScalar, pSize ]
   zeModuleGetGlobalPointer:
     - [ InString, pGlobalName ]
+    - [ OutScalar, pSize ]
     - [ OutScalar, pptr ]
   zeModuleGetKernelNames:
     - [ InOutScalar, pCount ]
     - [ OutArray, pNames, pCount ]
+  zeModuleGetProperties:
+    - [ OutScalar, pModuleProperties]
   zeKernelCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phKernel ]
@@ -109,6 +180,7 @@ meta_parameters:
     - [ OutScalar, pFlags ]
   zeKernelGetSourceAttributes:
     - [ InOutScalar, pSize ]
+    - [ InOutScalar, pString ]
   zeKernelGetProperties:
     - [ OutScalar, pKernelProperties ]
   zeKernelGetName:
@@ -138,69 +210,23 @@ meta_parameters:
   zeVirtualMemGetAccessAttribute:
     - [ OutScalar, access ]
     - [ OutScalar, outSize ]
-  zeEventPoolCreate:
-    - [ InScalar, desc ]
-    - [ InArray, phDevices, numDevices ]
-    - [ OutScalar, phEventPool ]
-  zeEventCreate:
-    - [ InScalar, desc ]
-    - [ OutScalar, phEvent ]
-  zeEventPoolGetIpcHandle:
-    - [ OutScalar, phIpc ]
-  zeEventPoolOpenIpcHandle:
-    - [ OutScalar, phEventPool ]
-  zeCommandListAppendWaitOnEvents:
-    - [ InArray, phEvents, numEvents ]
-  zeEventQueryKernelTimestamp:
-    - [ OutScalar, dstptr ]
-  zeCommandListAppendQueryKernelTimestamps:
-    - [ InArray, phEvents, numEvents ]
-    - [ InArray, pOffsets, numEvents ]
-    - [ InArray, phWaitEvents, numWaitEvents ]
-  zeMemAllocShared:
-    - [ InScalar, device_desc ]
-    - [ InScalar, host_desc ]
-    - [ OutScalar, pptr ]
-  zeMemAllocDevice:
-    - [ InScalar, device_desc ]
-    - [ OutScalar, pptr ]
-  zeMemAllocHost:
-    - [ InScalar, host_desc ]
-    - [ OutScalar, pptr ]
-  zeMemGetAllocProperties:
-    - [ OutScalar, pMemAllocProperties ]
-    - [ OutScalar, phDevice ]
-  zeMemGetAddressRange:
-    - [ OutScalar, pBase ]
-    - [ OutScalar, pSize ]
-  zeMemGetIpcHandle:
-    - [ OutScalar, pIpcHandle ]
-  zeMemOpenIpcHandle:
-    - [ OutScalar, pptr ]
-  zeFenceCreate:
-    - [ InScalar, desc ]
-    - [ OutScalar, phFence ]
-  zeCommandListAppendMemoryFill:
-    - [ InArray, pattern, pattern_size ]
-  zeCommandListAppendMemoryCopyRegion:
-    - [ InScalar, dstRegion ]
-    - [ InScalar, srcRegion ]
-  zeCommandListAppendImageCopyRegion:
-    - [ InScalar, pDstRegion ]
-    - [ InScalar, pSrcRegion ]
-  zeCommandListAppendImageCopyToMemory:
-    - [ InScalar, pSrcRegion ]
-  zeCommandListAppendImageCopyFromMemory:
-    - [ InScalar, pDstRegion ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDeviceProcAddrTable:
     - [ OutScalar, pDdiTable ]
+  zeGetContextProcAddrTable:
+    - [ OutScalar, pDdiTable ]
   zeGetCommandQueueProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetCommandListProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetFenceProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetEventPoolProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetEventProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetImageProcAddrTable:
     - [ OutScalar, pDdiTable ]
@@ -210,11 +236,11 @@ meta_parameters:
     - [ OutScalar, pDdiTable ]
   zeGetKernelProcAddrTable:
     - [ OutScalar, pDdiTable ]
-  zeGetEventPoolProcAddrTable:
-    - [ OutScalar, pDdiTable ]
-  zeGetEventProcAddrTable:
-    - [ OutScalar, pDdiTable ]
-  zeGetFenceProcAddrTable:
-    - [ OutScalar, pDdiTable ]
   zeGetSamplerProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetPhysicalMemProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetMemProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetVirtualMemProcAddrTable:
     - [ OutScalar, pDdiTable ]
