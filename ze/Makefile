@@ -14,7 +14,7 @@ ZE_STATIC_INCL = $(ZE_STATIC_PROBES:=.h)
 ZE_STATIC_SRC = $(ZE_STATIC_PROBES:=.c)
 
 ZE_EXTRACT = extract_base.rb modified_include
-ZE_EXTRACTED = ze_api.yaml zet_api.yaml
+ZE_EXTRACTED = ze_api.yaml zet_api.yaml zes_api.yaml
 ZE_MODEL = ze_model.rb ../utils/yaml_ast.rb ze_meta_parameters.yaml zet_meta_parameters.yaml $(ZE_EXTRACTED)
 
 ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
@@ -37,6 +37,9 @@ ze_api.yaml: $(shell find modified_include/ -type f) $(ZE_EXTRACT) extract_ze.rb
 
 zet_api.yaml: $(shell find modified_include/ -type f) $(ZE_EXTRACT) extract_zet.rb
 	ruby extract_zet.rb
+
+zes_api.yaml: $(shell find modified_include/ -type f) $(ZE_EXTRACT) extract_zes.rb
+	ruby extract_zes.rb
 
 ze_profiling.tp: gen_ze_custom_probes.rb ../utils/LTTng.rb $(ZE_MODEL)
 	ruby gen_ze_custom_probes.rb lttng_ust_ze_profiling > $@
