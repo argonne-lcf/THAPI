@@ -15,7 +15,7 @@ ZE_STATIC_SRC = $(ZE_STATIC_PROBES:=.c)
 
 ZE_EXTRACT = extract_base.rb modified_include
 ZE_EXTRACTED = ze_api.yaml zet_api.yaml zes_api.yaml
-ZE_MODEL = ze_model.rb ../utils/yaml_ast.rb ze_meta_parameters.yaml zet_meta_parameters.yaml $(ZE_EXTRACTED)
+ZE_MODEL = ze_model.rb ../utils/yaml_ast.rb ze_meta_parameters.yaml zet_meta_parameters.yaml zes_meta_parameters.yaml $(ZE_EXTRACTED)
 
 ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
 
