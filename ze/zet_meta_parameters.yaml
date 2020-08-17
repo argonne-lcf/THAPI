@@ -2,8 +2,20 @@
 meta_parameters:
   zetModuleGetDebugInfo:
     - [ InOutScalar, pSize ]
-  zetKernelGetProfileInfo:
-    - [ OutScalar, pProfileProperties ]
+  zetDeviceGetDebugProperties:
+    - [ OutScalar, pDebugProperties ]
+  zetDebugAttach:
+    - [ InScalar, config ]
+    - [ OutScalar, phDebug ]
+  zetDebugReadEvent:
+    - [ OutScalar, event ]
+  zetDebugReadMemory:
+    - [ InScalar, desc ]
+  zetDebugWriteMemory:
+    - [ InScalar, desc ]
+  zetDebugGetRegisterSetProperties:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pRegisterSetProperties, pCount ]
   zetMetricGroupGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetricGroups, pCount ]
@@ -18,12 +30,12 @@ meta_parameters:
     - [ OutArray, phMetrics, pCount ]
   zetMetricGetProperties:
     - [ OutScalar, pProperties ]
-  zetDeviceActivateMetricGroups:
+  zetContextActivateMetricGroups:
     - [ InArray, phMetricGroups, count ]
-  zetMetricTracerOpen:
+  zetMetricStreamerOpen:
     - [ InScalar, desc ]
-    - [ OutScalar, phMetricTracer ]
-  zetMetricTracerReadData:
+    - [ OutScalar, phMetricStreamer ]
+  zetMetricStreamerReadData:
     - [ InOutScalar, pRawDataSize ]
     - [ OutArray, pRawData, pRawDataSize ]
   zetMetricQueryPoolCreate:
@@ -31,56 +43,25 @@ meta_parameters:
     - [ OutScalar, phMetricQueryPool ]
   zetMetricQueryCreate:
     - [ OutScalar, phMetricQuery ]
+  zetCommandListAppendMetricQueryEnd:
+    - [ InArray, phWaitEvents, numWaitEvents ]
   zetMetricQueryGetData:
     - [ InOutScalar, pRawDataSize ]
     - [ OutArray, pRawData, pRawDataSize ]
-  zetDebugAttach:
-    - [ InScalar, config ]
-    - [ OutScalar, phDebug ]
-  zetDebugGetNumThreads:
-    - [ OutScalar, pNumThreads ]
-  zetTracerCreate:
+  zetKernelGetProfileInfo:
+    - [ OutScalar, pProfileProperties ]
+  zetTracerExpCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phTracer ]
-  zetTracerSetPrologues:
+  zetTracerExpSetPrologues:
     - [ InScalar, pCoreCbs ]
-  zetTracerSetEpilogues:
+  zetTracerExpSetEpilogues:
     - [ InScalar, pCoreCbs ]
-  zetGetGlobalProcAddrTable:
-    - [ OutScalar, pDdiTable]
   zetGetDeviceProcAddrTable:
     - [ OutScalar, pDdiTable]
+  zetGetContextProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zetGetCommandListProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanPowerProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFrequencyProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanEngineProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanStandbyProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFirmwareProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanMemoryProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFabricPortProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanTemperatureProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanPsuProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFanProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanLedProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanRasProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanEventProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanDiagnosticsProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetModuleProcAddrTable:
     - [ OutScalar, pDdiTable]
@@ -90,13 +71,13 @@ meta_parameters:
     - [ OutScalar, pDdiTable]
   zetGetMetricProcAddrTable:
     - [ OutScalar, pDdiTable]
-  zetGetMetricTracerProcAddrTable:
+  zetGetMetricStreamerProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricQueryPoolProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricQueryProcAddrTable:
     - [ OutScalar, pDdiTable]
-  zetGetTracerProcAddrTable:
+  zetGetTracerExpProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetDebugProcAddrTable:
     - [ OutScalar, pDdiTable]
