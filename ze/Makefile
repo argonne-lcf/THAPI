@@ -1,7 +1,7 @@
 .DELETE_ON_ERROR:
 .SUFFIXES:
 
-ZE_PROBES = ze_tracepoints zet_tracepoints
+ZE_PROBES = ze_tracepoints zet_tracepoints zes_tracepoints
 ZE_TP = $(ZE_PROBES:=.tp)
 ZE_OBJS = $(ZE_PROBES:=.o)
 ZE_INCL = $(ZE_PROBES:=.h)

@@ -10,18 +10,22 @@ provider = :lttng_ust_ze
 
 $ze_api_yaml = YAML::load_file("ze_api.yaml")
 $zet_api_yaml = YAML::load_file("zet_api.yaml")
+$zes_api_yaml = YAML::load_file("zes_api.yaml")
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
 $zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
+$zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
 
 ze_funcs_e = $ze_api["functions"]
 zet_funcs_e = $zet_api["functions"]
+zes_funcs_e = $zes_api["functions"]
 
 ze_types_e = $ze_api["typedefs"]
 zet_types_e = $zet_api["typedefs"]
+zes_types_e = $zes_api["typedefs"]
 
-all_types = ze_types_e + zet_types_e
-all_structs = $ze_api["structs"] + $zet_api["structs"]
+all_types = ze_types_e + zet_types_e + zes_types_e
+all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"]
 
 ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
@@ -592,6 +596,13 @@ $zet_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
+$zes_meta_parameters = YAML::load_file("zes_meta_parameters.yaml")
+$zes_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
+
 $ze_commands = ze_funcs_e.collect { |func|
   Command::new(func)
 }
@@ -600,11 +611,15 @@ $zet_commands = zet_funcs_e.collect { |func|
   Command::new(func)
 }
 
+$zes_commands = zes_funcs_e.collect { |func|
+  Command::new(func)
+}
+
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-ZE_POINTER_NAMES = ($ze_commands + $zet_commands).collect { |c|
+ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
