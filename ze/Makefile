@@ -21,11 +21,12 @@ ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
 
 .SECONDARY: $(ZE_TP)
 
-all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS)
+all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS) babeltrace_ze.so
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/ -I../utils/
 
 modified_include: include headers.patch
+	rm -fr modified_include/
 	cp -r include/ modified_include/
 	patch -i ../headers.patch -d modified_include/ -s -p1
 
@@ -70,12 +71,23 @@ ze_bindings.rb: gen_ze_bindings.rb gen_ze_library_base.rb gen_probe_base.rb $(ZE
 
 # objcopy --prefix-symbols= on ze_api.a content should allow a wrapper creation
 
+babeltrace_ze_callbacks.h: gen_babeltrace_ze_callbacks.rb gen_ze_library_base.rb $(ZE_MODEL)
+	ruby gen_babeltrace_ze_callbacks.rb > babeltrace_ze_callbacks.h
+
+babeltrace_ze_dispatchers.c: gen_babeltrace_ze_dispatchers.rb gen_ze_library_base.rb $(ZE_MODEL)
+	ruby gen_babeltrace_ze_dispatchers.rb > babeltrace_ze_dispatchers.c
+
+# Babeltrace
+babeltrace_ze.so: babeltrace_ze.c babeltrace_ze.h babeltrace_ze_dispatchers.c babeltrace_ze_callbacks.h
+	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o babeltrace_ze.so -shared -fPIC babeltrace_ze.c babeltrace_ze_dispatchers.c $(shell pkg-config --libs babeltrace2)
+
 clean:
 	rm -f \
 		ze_api.yaml zet_api.yaml\
 		$(ZE_TP) $(ZE_OBJS) $(ZE_INCL) $(ZE_SRC)\
 		$(ZE_STATIC_TP) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL) $(ZE_STATIC_SRC)\
 		$(ZE_BINDINGS)\
-		tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb
+		tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb\
+		babeltrace_ze.so babeltrace_ze_dispatchers.c babeltrace_ze_callbacks.h
 	rm -fr modified_include
 	$(MAKE) -C ../utils clean
