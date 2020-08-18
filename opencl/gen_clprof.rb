@@ -250,7 +250,7 @@ def write_file_via_template(file, testing = false)
 end
 
 $sink_type = ARGV[0]
-$l_file_generated=['clprof_callbacks.cpp','clprof_callbacks.h','clprof.c']
+$l_file_generated=['clprof_callbacks.cpp','clprof_callbacks.h','clprof.c','utils.h']
 $l_test = l_test_d.map{ |  d | Test_clprof.new(d) }
 
 if $sink_type == 'dust'

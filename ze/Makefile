@@ -21,7 +21,7 @@ ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
 
 .SECONDARY: $(ZE_TP)
 
-all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS) babeltrace_ze.so
+all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS) babeltrace_ze.so zeprof.so
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/ -I../utils/
 
@@ -81,6 +81,25 @@ babeltrace_ze_dispatchers.c: gen_babeltrace_ze_dispatchers.rb gen_ze_library_bas
 babeltrace_ze.so: babeltrace_ze.c babeltrace_ze.h babeltrace_ze_dispatchers.c babeltrace_ze_callbacks.h
 	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o babeltrace_ze.so -shared -fPIC babeltrace_ze.c babeltrace_ze_dispatchers.c $(shell pkg-config --libs babeltrace2)
 
+
+# zeprof
+zeprof.c: zeprof_callbacks.cpp.erb zeprof_callbacks.h.erb zeprof.c.erb gen_zeprof.rb babeltrace_ze_callbacks.h
+	ruby gen_zeprof.rb
+
+zeprof_callbacks.cpp zeprof_callbacks.h: zeprof.c
+	@if test -f $@; then \
+      touch $@; \
+    else \
+      rm -f zeprof.c; \
+      $(MAKE) $(AM_MAKEFLAGS) zeprof.c; \
+    fi
+
+zeprof_callbacks.o: babeltrace_ze.c babeltrace_ze.h zeprof_callbacks.cpp zeprof_callbacks.h
+	g++ -std=c++17 -g -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o zeprof_callbacks.o -fPIC -c zeprof_callbacks.cpp	
+
+zeprof.so: zeprof.c zeprof.h zeprof_callbacks.o babeltrace_ze_dispatchers.c
+	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o zeprof.so -shared -fPIC zeprof.c babeltrace_ze_dispatchers.c zeprof_callbacks.o -lstdc++  $(shell pkg-config --libs babeltrace2)
+	
 clean:
 	rm -f \
 		ze_api.yaml zet_api.yaml\
@@ -88,6 +107,8 @@ clean:
 		$(ZE_STATIC_TP) $(ZE_STATIC_OBJS) $(ZE_STATIC_INCL) $(ZE_STATIC_SRC)\
 		$(ZE_BINDINGS)\
 		tracer_ze.c tracer_ze.so ze_library.rb babeltrace_ze_lib.rb\
-		babeltrace_ze.so babeltrace_ze_dispatchers.c babeltrace_ze_callbacks.h
+		babeltrace_ze.so babeltrace_ze_dispatchers.c babeltrace_ze_callbacks.h \
+		zeprof.so zeprof.c zeprof_callbacks.o babeltrace_ze_dispatchers.c \
+		zeprof_callbacks.cpp zeprof_callbacks.h
 	rm -fr modified_include
 	$(MAKE) -C ../utils clean

@@ -1,0 +1,229 @@
+#include <ze_api.h>
+#include <ze_ddi.h>
+#include <zet_api.h>
+#include <zet_ddi.h>
+#include <zes_api.h>
+#include <zes_ddi.h>
+#include "babeltrace2/babeltrace.h"
+#include "babeltrace_ze.h"
+#include "zeprof.h"
+#include "utils.h"
+#include <iomanip>
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <tuple>
+#include <climits>
+#include "zeprof_callbacks.h"
+#include <set>
+
+/*
+Global variable
+*/
+const bt_value *display_mode;
+
+typedef std::string hostname_t;
+typedef std::string thapi_command_name;
+typedef int64_t     process_id_t;
+typedef uint64_t    thread_id_t;
+
+typedef std::tuple<hostname_t, process_id_t> hp_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
+
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_command_name> hpt_command_name_t;
+
+std::unordered_map<hpt_t, thapi_command_name> last_command;
+std::unordered_map<hpt_command_name_t, StatTime> api_call;
+
+/* Callback */
+
+<% $dbt_events.each do | dbt_event | %>
+static void zeprof_<%= dbt_event.lltng_name %>_callback(
+   <%= dbt_event.fields.join(",\n  ") %>
+){
+   <%if dbt_event.lltng_name.start_with?('lttng_ust_ze_') %>
+  const hostname_t   hostname   = borrow_hostname(bt_evt);
+  const process_id_t process_id = borrow_process_id(bt_evt);
+  const thread_id_t  thread_id  = borrow_thread_id(bt_evt);  
+  int64_t ns_from_origin;
+  bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+   <%if dbt_event.lltng_name.end_with?("start") %>
+  api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].start(ns_from_origin);
+   <%elsif dbt_event.lltng_name.end_with?("stop") %>
+  api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].stop(ns_from_origin);
+    <% end %>
+<% end %>
+};
+<% end %>
+
+
+void init_callbacks(struct ze_dispatch   *ze_dispatch) {
+<% $dbt_events.each do | dbt_event| %>
+        ze_register_callback(ze_dispatch, "<%= dbt_event.lltng_event %>", (void *) &zeprof_<%= dbt_event.lltng_name %>_callback);
+<% end %>
+}
+
+<% d_headers = { ["StatTime","format_time"] =>  [['command_name','Name'],
+                                ['time', 'Time'],
+                                ['time_ratio', 'Time(%)'],
+                                ['count', 'Calls'],
+                                ['avg', 'Average'],
+                                ['min', 'Min'],
+                                ['max', 'Max'] ],
+                ["StatByte", "format_byte"] => [['command_name','Name'],
+                                ['time', 'Byte'],
+                                ['time_ratio', 'Byte(%)'],
+                                ['count', 'Calls'],
+                                ['avg', 'Average'],
+                                ['min', 'Min'],
+                                ['max', 'Max'] ]
+                } %>
+<% d_headers.each do | m, l_headers | %>
+   <% main_type, main_function = m %>
+void print_array(std::unordered_map<thapi_command_name, <%= main_type %> > aggregated, std::string header) {
+
+    uint64_t total_time{0};
+    uint64_t total_count{0};
+    for (std::pair<thapi_command_name,  <%= main_type %> > element: aggregated) {
+        total_time += element.second._time;
+        total_count += element.second._count;
+   }
+   if (!total_count) {
+        std::cout << "No "<< header << " information avalaible" << std::endl;
+        return;
+   }
+   std::cout << header << std::endl;
+
+<%#
+  _
+ /   _  ._ _  ._     _|_  _    |\/|  _.      |  _  ._   _ _|_ |_
+ \_ (_) | | | |_) |_| |_ (/_   |  | (_| ><   | (/_ | | (_| |_ | |
+              |                                         _|
+%>
+
+<%# Need to be bigger than the header %>
+<% l_headers.each do |v, n| %>
+   uint64_t len_max_<%= v %> = <%= n.size() %>;
+<% end %>
+
+<%# Need to be bigger than the footer %>
+   len_max_command_name = std::max(len_max_command_name,  uint64_t{<%= "Total".size() %>} );
+   len_max_time = std::max(len_max_time, <%= main_function %>(total_time).size());
+   len_max_count = std::max(len_max_count, to_string_with_precision(total_count,"",0).size() );
+
+<%# Need to be bigger than the body %>
+   for (std::pair<thapi_command_name,  <%= main_type %> > element: aggregated) {
+       len_max_command_name =  std::max(len_max_command_name,  element.first.size());
+       const auto [time, time_ratio, count, avg, min, max ] = element.second.to_string(total_time);
+<% l_headers.drop(1).each do |v, _| %>
+       len_max_<%= v %> = std::max(len_max_<%= v %>, <%= v %>.size());
+<% end %>
+   }
+
+<%# Sort the table %>
+   std::vector<std::pair<thapi_command_name,  <%= main_type %> >> array_sorted(aggregated.begin(), aggregated.end());
+   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
+
+<%#
+  _
+ |_) ._ o ._ _|_
+ |   |  | | | |_
+
+%>
+
+<%# Print Header %>
+   std::cout
+<% l_headers.each do |v, n| %>
+   << std::setw(len_max_<%= v %>) << std::right << "<%= n %>" << " | "
+<% end %>
+   << std::endl;
+
+<%# Print Body %>
+   for (std::pair<thapi_command_name,  <%= main_type %> > element: array_sorted) {
+        const thapi_command_name command_name = element.first;
+        const auto [time, time_ratio, count, avg, min, max ] = element.second.to_string(total_time);
+        std::cout
+        <% l_headers.each do |v, _| %>
+        << std::setw(len_max_<%= v %>) << std::right << <%= v %> << " | "
+        <% end %>
+        << std::endl;
+    }
+
+<%# Print footer %>
+   std::cout << std::setw(len_max_command_name) << std::right << "Total" << " | "
+             << std::setw(len_max_time) << std::right << <%= main_function %>(total_time) << " | "
+             << std::setw(len_max_time_ratio) << std::right << "100.00%" << " | "
+             << std::setw(len_max_count) << std::right <<  to_string_with_precision(total_count,"",0) << " | "
+             << std::endl;
+}
+
+<% end %>
+
+void finalize_callbacks() {
+
+   <% output = [ ['StatTime', 'api_call', 'API calls', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ] ] %>
+
+   std::string display {bt_value_string_get(display_mode)};
+   if (display == "compact" ) {
+  <% output.each do |main_type, result,header, _, var| %>
+      {
+    <% var.each do |t,n | %>
+         std::set<<%= t %>> s_<%=n%>;
+    <% end %>
+    <%# Agreagate API Call Result and compute total time spend %>
+         std::unordered_map<thapi_command_name, <%= main_type %> > aggregated;
+         for (auto element: <%= result %>)
+         {
+            auto [ <%= var.map{ |t,n| n}.join(',') %>,command_name ] = element.first;
+    <% var.each do | _, n | %>
+            s_<%= n %>.insert(<%= n %>);
+    <% end %>
+            const <%= main_type %> time = element.second;
+            aggregated[command_name].merge(time);
+         }
+         std::ostringstream oss;
+         oss << "<%= header %>"
+    <% var.each do | _, n | %>
+             << " | " << s_<%= n %>.size() << " <%= n %>"
+    <% end %>
+             << std::endl;
+         print_array(aggregated,oss.str());
+         std::cout << std::endl;
+      }
+  <% end %>
+   } else if (display == "extended" ) {
+  <% output.each do |main_type, result,header, type, var| %>
+      {
+    <% args = var.map{ |t,_,n| n}.join(',') %>
+         std::unordered_map< <%= type %>, std::unordered_map<thapi_command_name, <%= main_type %> >> d1;
+         for (auto [s, time]: <%= result %> ) {
+            auto [<%= args %>, command_name] = s;
+            d1[ <%= type %>( <%= args %> )][command_name].merge(time);
+         }
+
+         std::vector<std::pair< <%= type %> , std::unordered_map<thapi_command_name,  <%= main_type %> >>> array_sorted(d1.begin(), d1.end());
+         std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
+
+         for (auto[s, aggregated]: array_sorted) {
+            auto [ <%= args %> ] = s;
+            std::ostringstream oss;
+            oss <<  "<%= header %>"
+    <% var.each do | _,_, n | %>
+                << " | <%= n %>: " << <%= n %>
+    <% end %>
+    <% if result == 'device_id_result' %>
+                <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
+    <% end %>
+                << std::endl;
+            print_array(aggregated, oss.str());
+            std::cout << std::endl;
+         }
+     }
+   <%end%>
+  }
+}
+
