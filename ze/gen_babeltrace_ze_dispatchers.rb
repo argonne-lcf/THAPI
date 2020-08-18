@@ -262,7 +262,7 @@ EOF
   puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{provider}_#{c.name}_#{dir}_cb *)_p)(
+    ((#{provider}_#{c.name}_#{dir}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + get_fields_names(c, dir)).join(",\n      ")});
   }
 EOF
