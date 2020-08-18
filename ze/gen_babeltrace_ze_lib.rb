@@ -100,7 +100,6 @@ $event_lambdas = {}
 EOF
 
 provider = :lttng_ust_ze
-
 $ze_commands.each { |c|
   gen_event_lambda.call(provider, c, :start)
   gen_event_lambda.call(provider, c, :stop)
@@ -108,6 +107,12 @@ $ze_commands.each { |c|
 
 provider = :lttng_ust_zet
 $zet_commands.each { |c|
+  gen_event_lambda.call(provider, c, :start)
+  gen_event_lambda.call(provider, c, :stop)
+}
+
+provider = :lttng_ust_zes
+$zes_commands.each { |c|
   gen_event_lambda.call(provider, c, :start)
   gen_event_lambda.call(provider, c, :stop)
 }

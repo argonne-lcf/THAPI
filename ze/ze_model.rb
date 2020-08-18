@@ -10,29 +10,39 @@ provider = :lttng_ust_ze
 
 $ze_api_yaml = YAML::load_file("ze_api.yaml")
 $zet_api_yaml = YAML::load_file("zet_api.yaml")
+$zes_api_yaml = YAML::load_file("zes_api.yaml")
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
 $zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
+$zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
 
 ze_funcs_e = $ze_api["functions"]
 zet_funcs_e = $zet_api["functions"]
+zes_funcs_e = $zes_api["functions"]
 
 ze_types_e = $ze_api["typedefs"]
 zet_types_e = $zet_api["typedefs"]
+zes_types_e = $zes_api["typedefs"]
 
-all_types = ze_types_e + zet_types_e
-all_structs = $ze_api["structs"] + $zet_api["structs"]
+all_types = ze_types_e + zet_types_e + zes_types_e
+all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"]
 
-CL_OBJECTS = %w(cl_platform_id cl_device_id cl_context cl_command_queue cl_mem cl_program cl_kernel cl_event cl_sampler)
 ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
   if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
     ZE_OBJECTS.push t.name
   end
 }
-ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t ze_bool_t char)
+ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t char)
 ZE_FLOAT_SCALARS = %w(float double)
 ZE_SCALARS = ZE_INT_SCALARS + ZE_FLOAT_SCALARS
+
+all_types.each { |t| 
+  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
+    ZE_INT_SCALARS.push t.name
+  end
+}
+
 ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
 ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t" ]
 ZE_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
@@ -176,7 +186,7 @@ module YAMLCAst
     def lttng_type
       ev = LTTng::TracepointField::new
       case name
-      when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
+      when *ZE_OBJECTS, *ZE_POINTER_TYPES
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = "uintptr_t"
@@ -241,7 +251,7 @@ module YAMLCAst
         ev.type = type.name
       when YAMLCAst::CustomType
         case type.name
-        when *ZE_OBJECTS, *ZE_POINTER_TYPES, *CL_OBJECTS
+        when *ZE_OBJECTS, *ZE_POINTER_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
         when *ZE_INT_SCALARS
@@ -440,6 +450,40 @@ class InString < MetaParameter
   end
 end
 
+class OutString < MetaParameter
+  prepend Out
+  def initialize(command, name, size = nil)
+    super(command, name)
+    a = command[name]
+    s = nil
+    s = command[size] if size
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    ev = LTTng::TracepointField::new
+    if s
+      ev.macro = :ctf_sequence_text
+      if s.type.kind_of?(YAMLCAst::Pointer)
+        checks = check_for_null("#{size}") + check_for_null("#{name}")
+        sz = sanitize_expression("*#{size}", checks)
+        st = "#{s.type.type}"
+      else
+        checks = check_for_null("#{name}")
+        sz = sanitize_expression("#{size}", checks)
+        st = "#{s.type}"
+      end
+      ev.type = "char"
+      ev.length = sz
+      ev.length_type = st
+    else
+      ev.macro = :ctf_string
+    end
+    ev.name = "#{name}_val"
+    ev.expression = sanitize_expression("#{name}")
+    @lttng_out_type = ev
+  end
+end
+
 class ScalarMetaParameter < MetaParameter
   attr_reader :type
 
@@ -586,6 +630,13 @@ $zet_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
+$zes_meta_parameters = YAML::load_file("zes_meta_parameters.yaml")
+$zes_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
+
 $ze_commands = ze_funcs_e.collect { |func|
   Command::new(func)
 }
@@ -594,11 +645,15 @@ $zet_commands = zet_funcs_e.collect { |func|
   Command::new(func)
 }
 
+$zes_commands = zes_funcs_e.collect { |func|
+  Command::new(func)
+}
+
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-ZE_POINTER_NAMES = ($ze_commands + $zet_commands).collect { |c|
+ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
@@ -614,7 +669,7 @@ EOF
 register_epilogue "zeCommandListCreate", <<EOF
   if (_do_profile) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _register_ze_command_list(*phCommandList, hDevice);
+      _register_ze_command_list(*phCommandList, hContext, hDevice);
     }
   }
 EOF
@@ -631,7 +686,7 @@ register_prologue "zeEventPoolCreate", <<EOF
   ze_event_pool_desc_t _new_desc;
   if (_do_profile && desc) {
     _new_desc = *desc;
-    _new_desc.flags |= ZE_EVENT_POOL_FLAG_TIMESTAMP;
+    _new_desc.flags |= ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP;
     desc = &_new_desc;
   }
 EOF
@@ -679,20 +734,16 @@ EOF
   "zeCommandListAppendLaunchCooperativeKernel",
   "zeCommandListAppendLaunchKernelIndirect",
   "zeCommandListAppendLaunchMultipleKernelsIndirect",
-  "zeCommandListAppendMemoryRangesBarrier" ].each { |c|
-    register_prologue c, profiling_prologue.call("hSignalEvent")
-    register_epilogue c, profiling_epilogue.call("hSignalEvent")
-}
-
-[ "zeCommandListAppendMemoryCopy",
+  "zeCommandListAppendMemoryRangesBarrier",
+  "zeCommandListAppendMemoryCopy",
   "zeCommandListAppendMemoryFill",
   "zeCommandListAppendMemoryCopyRegion",
   "zeCommandListAppendImageCopy",
   "zeCommandListAppendImageCopyRegion",
   "zeCommandListAppendImageCopyToMemory",
   "zeCommandListAppendImageCopyFromMemory" ].each { |c|
-    register_prologue c, profiling_prologue.call("hEvent")
-    register_epilogue c, profiling_epilogue.call("hEvent")
+    register_prologue c, profiling_prologue.call("hSignalEvent")
+    register_epilogue c, profiling_epilogue.call("hSignalEvent")
 }
 
 #WARNING

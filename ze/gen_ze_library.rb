@@ -331,15 +331,11 @@ def print_function_pointer_type(name, func)
 EOF
 end
 
-ze_bool = $all_types.find { |t| t.name == "ze_bool_t" }
-
-puts <<EOF
-  typedef #{to_ffi_name(ze_bool.type.name)}, #{to_ffi_name(ze_bool.name)}
+$int_scalars.each { |k, v|
+  puts <<EOF
+  typedef #{to_ffi_name(v)}, #{to_ffi_name(k)}
 
 EOF
-
-CL_OBJECTS.each { |o|
-  print_ze_object(o)
 }
 
 $all_types.each { |t|

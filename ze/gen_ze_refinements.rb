@@ -20,9 +20,6 @@ EOF
 ze_bool = $all_types.find { |t| t.name == "ze_bool_t" }
 print_acessor(ze_bool.type.name.gsub(/_t\z/,""), ze_bool.name)
 
-CL_OBJECTS.each { |o|
-  print_acessor(:pointer, o)
-}
 $all_types.each { |t|
   if $objects.include?(t.name)
     print_acessor(:pointer, t.name)

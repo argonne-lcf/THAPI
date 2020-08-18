@@ -1,15 +1,14 @@
 require_relative 'ze_model'
 
 puts <<EOF
-#define ZE_ENABLE_OCL_INTEROP 1
-#define CL_TARGET_OPENCL_VERSION 220
-#include <CL/cl.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <ze_api.h>
 #include <ze_ddi.h>
 #include <zet_api.h>
 #include <zet_ddi.h>
+#include <zes_api.h>
+#include <zes_ddi.h>
 #include <dlfcn.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -23,15 +22,16 @@ puts <<EOF
 
 #include "ze_tracepoints.h"
 #include "zet_tracepoints.h"
+#include "zes_tracepoints.h"
 #include "ze_profiling.h"
 
 EOF
 
-($ze_commands + $zet_commands).each { |c|
+($ze_commands + $zet_commands + $zes_commands).each { |c|
   puts "#define #{ZE_POINTER_NAMES[c]} #{c.pointer_name}"
 }
 
-($ze_commands + $zet_commands).each { |c|
+($ze_commands + $zet_commands + $zes_commands).each { |c|
   puts <<EOF
 
 #{c.decl_pointer(c.pointer_type_name)};
@@ -44,7 +44,7 @@ puts <<EOF
 static void find_ze_symbols(void * handle) {
 EOF
 
-($ze_commands + $zet_commands).each { |c|
+($ze_commands + $zet_commands + $zes_commands).each { |c|
   puts <<EOF
 
   #{ZE_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
@@ -129,4 +129,7 @@ $ze_commands.each { |c|
 }
 $zet_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zet)
+}
+$zes_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_zes)
 }

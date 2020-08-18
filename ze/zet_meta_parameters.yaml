@@ -1,211 +1,21 @@
 ---
 meta_parameters:
-  zetSysmanGet:
-    - [ OutScalar, phSysman ]
-  zetSysmanDeviceGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanSchedulerGetSupportedModes:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, pModes, pCount ]
-  zetSysmanSchedulerGetCurrentMode:
-    - [ OutScalar, pMode ]
-  zetSysmanSchedulerGetTimeoutModeProperties:
-    - [ OutScalar, pConfig ]
-  zetSysmanSchedulerGetTimesliceModeProperties:
-    - [ OutScalar, pConfig ]
-  zetSysmanSchedulerSetTimeoutMode:
-    - [ OutScalar, pProperties ]
-    - [ OutScalar, pNeedReboot ]
-  zetSysmanSchedulerSetTimesliceMode:
-    - [ OutScalar, pProperties ]
-    - [ OutScalar, pNeedReboot ]
-  zetSysmanSchedulerSetExclusiveMode:
-    - [ OutScalar, pNeedReboot ]
-  zetSysmanSchedulerSetComputeUnitDebugMode:
-    - [ OutScalar, pNeedReboot ]
-  zetSysmanPerformanceProfileGetSupported:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, pProfiles, pCount ]
-  zetSysmanPerformanceProfileGet:
-    - [ OutScalar, pProfile ]
-  zetSysmanProcessesGetState:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, pProcesses, pCount ]
-  zetSysmanDeviceGetRepairStatus:
-    - [ OutScalar, pRepairStatus ]
-  zetSysmanPciGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanPciGetState:
-    - [ OutScalar, pState ]
-  zetSysmanPciGetBars:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, pProperties, pCount ]
-  zetSysmanPciGetStats:
-    - [ OutScalar, pStats ]
-  zetSysmanPowerGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phPower, pCount ]
-  zetSysmanPowerGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanPowerGetEnergyCounter:
-    - [ OutScalar, pEnergy ]
-  zetSysmanPowerGetLimits:
-    - [ OutScalar, pSustained ]
-    - [ OutScalar, pBurst ]
-    - [ OutScalar, pPeak ]
-  zetSysmanPowerSetLimits:
-    - [ InScalar, pSustained ]
-    - [ InScalar, pBurst ]
-    - [ InScalar, pPeak ]
-  zetSysmanPowerGetEnergyThreshold:
-    - [ OutScalar, pThreshold ]
-  zetSysmanFrequencyGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phFrequency, pCount ]
-  zetSysmanFrequencyGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanFrequencyGetAvailableClocks:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phFrequency, pCount ]
-  zetSysmanFrequencyGetRange:
-    - [ OutScalar, pLimits ]
-  zetSysmanFrequencySetRange:
-    - [ InScalar, pLimits ]
-  zetSysmanFrequencyGetState:
-    - [ OutScalar, pState ]
-  zetSysmanFrequencyGetThrottleTime:
-    - [ OutScalar, pThrottleTime ]
-  zetSysmanFrequencyOcGetCapabilities:
-    - [ OutScalar, pOcCapabilities ]
-  zetSysmanFrequencyOcGetConfig:
-    - [ OutScalar, pOcConfiguration ]
-  zetSysmanFrequencyOcSetConfig:
-    - [ InScalar, pOcConfiguration ]
-    - [ OutScalar, pDeviceRestart ]
-  zetSysmanFrequencyOcGetIccMax:
-    - [ OutScalar, pOcIccMax ]
-  zetSysmanFrequencyOcGetTjMax:
-    - [ OutScalar, pOcTjMax ]
-  zetSysmanEngineGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phEngine, pCount ]
-  zetSysmanEngineGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanEngineGetActivity:
-    - [ OutScalar, pStats ]
-  zetSysmanStandbyGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phStandby, pCount ]
-  zetSysmanStandbyGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanStandbyGetMode:
-    - [ OutScalar, pMode ]
-  zetSysmanFirmwareGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phFirmware, pCount ]
-  zetSysmanFirmwareGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanFirmwareGetChecksum:
-    - [ OutScalar, pChecksum ]
-  zetSysmanMemoryGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phMemory, pCount ]
-  zetSysmanMemoryGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanMemoryGetState:
-    - [ OutScalar, pState ]
-  zetSysmanMemoryGetBandwidth:
-    - [ OutScalar, pBandwidth ]
-  zetSysmanFabricPortGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phPort, pCount ]
-  zetSysmanFabricPortGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanFabricPortGetLinkType:
-    - [ OutScalar, pLinkType ]
-  zetSysmanFabricPortGetConfig:
-    - [ OutScalar, pConfig ]
-  zetSysmanFabricPortSetConfig:
-    - [ InScalar, pConfig ]
-  zetSysmanFabricPortGetState:
-    - [ OutScalar, pState ]
-  zetSysmanFabricPortGetThroughput:
-    - [ OutScalar, pThroughput ]
-  zetSysmanTemperatureGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phTemperature, pCount ]
-  zetSysmanTemperatureGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanTemperatureGetConfig:
-    - [ OutScalar, pConfig ]
-  zetSysmanTemperatureSetConfig:
-    - [ InScalar, pConfig ]
-  zetSysmanTemperatureGetState:
-    - [ OutScalar, pTemperature ]
-  zetSysmanPsuGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phPsu, pCount ]
-  zetSysmanPsuGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanPsuGetState:
-    - [ OutScalar, pState ]
-  zetSysmanFanGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phFan, pCount ]
-  zetSysmanFanGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanFanGetConfig:
-    - [ OutScalar, pConfig ]
-  zetSysmanFanSetConfig:
-    - [ InScalar, pConfig ]
-  zetSysmanFanGetState:
-    - [ OutScalar, pSpeed ]
-  zetSysmanLedGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phLed, pCount ]
-  zetSysmanLedGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanLedGetState:
-    - [ OutScalar, pState ]
-  zetSysmanLedSetState:
-    - [ InScalar, pState ]
-  zetSysmanRasGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phRas, pCount ]
-  zetSysmanRasGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanRasGetConfig:
-    - [ OutScalar, pConfig ]
-  zetSysmanRasSetConfig:
-    - [ InScalar, pConfig ]
-  zetSysmanRasGetState:
-    - [ OutScalar, pTotalErrors ]
-    - [ OutScalar, pDetails ]
-  zetSysmanEventGet:
-    - [ OutScalar, phEvent ]
-  zetSysmanEventGetConfig:
-    - [ OutScalar, pConfig ]
-  zetSysmanEventSetConfig:
-    - [ InScalar, pConfig ]
-  zetSysmanEventGetState:
-    - [ OutScalar, pEvents ]
-  zetSysmanEventListen:
-    - [ InArray, phEvents, count ]
-    - [ OutScalar, pEvents ]
-  zetSysmanDiagnosticsGet:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, phDiagnostics, pCount ]
-  zetSysmanDiagnosticsGetProperties:
-    - [ OutScalar, pProperties ]
-  zetSysmanDiagnosticsGetTests:
-    - [ InOutScalar, pCount ]
-    - [ OutArray, pTests, pCount ]
-  zetSysmanDiagnosticsRunTests:
-    - [ OutScalar, pResult ]
   zetModuleGetDebugInfo:
     - [ InOutScalar, pSize ]
-  zetKernelGetProfileInfo:
-    - [ OutScalar, pInfo ]
+  zetDeviceGetDebugProperties:
+    - [ OutScalar, pDebugProperties ]
+  zetDebugAttach:
+    - [ InScalar, config ]
+    - [ OutScalar, phDebug ]
+  zetDebugReadEvent:
+    - [ OutScalar, event ]
+  zetDebugReadMemory:
+    - [ InScalar, desc ]
+  zetDebugWriteMemory:
+    - [ InScalar, desc ]
+  zetDebugGetRegisterSetProperties:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pRegisterSetProperties, pCount ]
   zetMetricGroupGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetricGroups, pCount ]
@@ -220,12 +30,12 @@ meta_parameters:
     - [ OutArray, phMetrics, pCount ]
   zetMetricGetProperties:
     - [ OutScalar, pProperties ]
-  zetDeviceActivateMetricGroups:
+  zetContextActivateMetricGroups:
     - [ InArray, phMetricGroups, count ]
-  zetMetricTracerOpen:
+  zetMetricStreamerOpen:
     - [ InScalar, desc ]
-    - [ OutScalar, phMetricTracer ]
-  zetMetricTracerReadData:
+    - [ OutScalar, phMetricStreamer ]
+  zetMetricStreamerReadData:
     - [ InOutScalar, pRawDataSize ]
     - [ OutArray, pRawData, pRawDataSize ]
   zetMetricQueryPoolCreate:
@@ -233,56 +43,25 @@ meta_parameters:
     - [ OutScalar, phMetricQueryPool ]
   zetMetricQueryCreate:
     - [ OutScalar, phMetricQuery ]
+  zetCommandListAppendMetricQueryEnd:
+    - [ InArray, phWaitEvents, numWaitEvents ]
   zetMetricQueryGetData:
     - [ InOutScalar, pRawDataSize ]
     - [ OutArray, pRawData, pRawDataSize ]
-  zetDebugAttach:
-    - [ InScalar, config ]
-    - [ OutScalar, hDebug ]
-  zetDebugGetNumThreads:
-    - [ OutScalar, pNumThreads ]
-  zetTracerCreate:
+  zetKernelGetProfileInfo:
+    - [ OutScalar, pProfileProperties ]
+  zetTracerExpCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phTracer ]
-  zetTracerSetPrologues:
+  zetTracerExpSetPrologues:
     - [ InScalar, pCoreCbs ]
-  zetTracerSetEpilogues:
+  zetTracerExpSetEpilogues:
     - [ InScalar, pCoreCbs ]
-  zetGetGlobalProcAddrTable:
-    - [ OutScalar, pDdiTable]
   zetGetDeviceProcAddrTable:
     - [ OutScalar, pDdiTable]
+  zetGetContextProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zetGetCommandListProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanPowerProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFrequencyProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanEngineProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanStandbyProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFirmwareProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanMemoryProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFabricPortProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanTemperatureProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanPsuProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanFanProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanLedProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanRasProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanEventProcAddrTable:
-    - [ OutScalar, pDdiTable]
-  zetGetSysmanDiagnosticsProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetModuleProcAddrTable:
     - [ OutScalar, pDdiTable]
@@ -292,13 +71,13 @@ meta_parameters:
     - [ OutScalar, pDdiTable]
   zetGetMetricProcAddrTable:
     - [ OutScalar, pDdiTable]
-  zetGetMetricTracerProcAddrTable:
+  zetGetMetricStreamerProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricQueryPoolProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricQueryProcAddrTable:
     - [ OutScalar, pDdiTable]
-  zetGetTracerProcAddrTable:
+  zetGetTracerExpProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetDebugProcAddrTable:
     - [ OutScalar, pDdiTable]

@@ -1,0 +1,235 @@
+---
+meta_parameters:
+  zesDeviceGetProperties:
+    - [ OutScalar, pProperties ]
+  zesDeviceGetState:
+    - [ OutScalar, pState ]
+  zesDeviceProcessesGetState:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pProcesses, pCount ]
+  zesDevicePciGetProperties:
+    - [ OutScalar, pProperties ]
+  zesDevicePciGetState:
+    - [ OutScalar, pState ]
+  zesDevicePciGetBars:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pProperties, pCount ]
+  zesDevicePciGetStats:
+    - [ OutScalar, pStats ]
+  zesDeviceEnumDiagnosticTestSuites:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phDiagnostics, pCount ]
+  zesDiagnosticsGetProperties:
+    - [ OutScalar, pProperties ]
+  zesDiagnosticsGetTests:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pTests, pCount ]
+  zesDiagnosticsRunTests:
+    - [ OutScalar, pResult ]
+  zesDeviceEnumEngineGroups:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phEngine, pCount ]
+  zesEngineGetProperties:
+    - [ OutScalar, pProperties ]
+  zesEngineGetActivity:
+    - [ OutScalar, pStats ]
+  zesDriverEventListen:
+    - [ InArray, phDevices, count ]
+    - [ OutScalar, pNumDeviceEvents ]
+    - [ OutArray, pEvents, count ]
+  zesDeviceEnumFabricPorts:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phPort, pCount ]
+  zesFabricPortGetProperties:
+    - [ OutScalar, pProperties ]
+  zesFabricPortGetLinkType:
+    - [ OutScalar, pLinkType ]
+  zesFabricPortGetConfig:
+    - [ OutScalar, pConfig ]
+  zesFabricPortSetConfig:
+    - [ InScalar, pConfig ]
+  zesFabricPortGetState:
+    - [ OutScalar, pState ]
+  zesFabricPortGetThroughput:
+    - [ OutScalar, pThroughput ]
+  zesDeviceEnumFans:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phFan, pCount ]
+  zesFanGetProperties:
+    - [ OutScalar, pProperties ]
+  zesFanGetConfig:
+    - [ OutScalar, pConfig ]
+  zesFanSetFixedSpeedMode:
+    - [ InScalar, speed ]
+  zesFanSetSpeedTableMode:
+    - [ InScalar, speedTable ]
+  zesFanGetState:
+    - [ OutScalar, pSpeed ]
+  zesDeviceEnumFirmwares:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phFirmware, pCount ]
+  zesFirmwareGetProperties:
+    - [ OutScalar, pProperties ]
+  zesDeviceEnumFrequencyDomains:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phFrequency, pCount ]
+  zesFrequencyGetProperties:
+    - [ OutScalar, pProperties ]
+  zesFrequencyGetAvailableClocks:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phFrequency, pCount ]
+  zesFrequencyGetRange:
+    - [ OutScalar, pLimits ]
+  zesFrequencySetRange:
+    - [ InScalar, pLimits ]
+  zesFrequencyGetState:
+    - [ OutScalar, pState ]
+  zesFrequencyGetThrottleTime:
+    - [ OutScalar, pThrottleTime ]
+  zesFrequencyOcGetCapabilities:
+    - [ OutScalar, pOcCapabilities ]
+  zesFrequencyOcGetFrequencyTarget:
+    - [ OutScalar, pCurrentOcFrequency ]
+  zesFrequencyOcGetVoltageTarget:
+    - [ OutScalar, pCurrentVoltageTarget ]
+    - [ OutScalar, pCurrentVoltageOffset ]
+  zesFrequencyOcGetMode:
+    - [ OutScalar, pCurrentOcMode ]
+  zesFrequencyOcGetIccMax:
+    - [ OutScalar, pOcIccMax ]
+  zesFrequencyOcGetTjMax:
+    - [ OutScalar, pOcTjMax ]
+  zesDeviceEnumLeds:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phLed, pCount ]
+  zesLedGetProperties:
+    - [ OutScalar, pProperties ]
+  zesLedGetState:
+    - [ OutScalar, pState ]
+  zesLedSetColor:
+    - [ InScalar, pColor ]
+  zesDeviceEnumMemoryModules:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phMemory, pCount ]
+  zesMemoryGetProperties:
+    - [ OutScalar, pProperties ]
+  zesMemoryGetState:
+    - [ OutScalar, pState ]
+  zesMemoryGetBandwidth:
+    - [ OutScalar, pBandwidth ]
+  zesDeviceEnumPerformanceFactorDomains:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phPerf, pCount ]
+  zesPerformanceFactorGetProperties:
+    - [ OutScalar, pProperties ]
+  zesPerformanceFactorGetConfig:
+    - [ OutScalar, pFactor ]
+  zesDeviceEnumPowerDomains:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phPower, pCount ]
+  zesPowerGetProperties:
+    - [ OutScalar, pProperties ]
+  zesPowerGetEnergyCounter:
+    - [ OutScalar, pEnergy ]
+  zesPowerGetLimits:
+    - [ OutScalar, pSustained ]
+    - [ OutScalar, pBurst ]
+    - [ OutScalar, pPeak ]
+  zesPowerSetLimits:
+    - [ InScalar, pSustained ]
+    - [ InScalar, pBurst ]
+    - [ InScalar, pPeak ]
+  zesPowerGetEnergyThreshold:
+    - [ OutScalar, pThreshold ]
+  zesDeviceEnumPsus:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phPsu, pCount ]
+  zesPsuGetProperties:
+    - [ OutScalar, pProperties ]
+  zesPsuGetState:
+    - [ OutScalar, pState ]
+  zesDeviceEnumRasErrorSets:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phRas, pCount ]
+  zesRasGetProperties:
+    - [ OutScalar, pProperties ]
+  zesRasGetConfig:
+    - [ OutScalar, pConfig ]
+  zesRasSetConfig:
+    - [ InScalar, pConfig ]
+  zesRasGetState:
+    - [ OutScalar, pState ]
+  zesDeviceEnumSchedulers:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phScheduler, pCount ]
+  zesSchedulerGetProperties:
+    - [ OutScalar, pProperties ]
+  zesSchedulerGetCurrentMode:
+    - [ OutScalar, pMode ]
+  zesSchedulerGetTimeoutModeProperties:
+    - [ OutScalar, pConfig ]
+  zesSchedulerGetTimesliceModeProperties:
+    - [ OutScalar, pConfig ]
+  zesSchedulerSetTimeoutMode:
+    - [ OutScalar, pProperties ]
+    - [ OutScalar, pNeedReload ]
+  zesSchedulerSetTimesliceMode:
+    - [ OutScalar, pProperties ]
+    - [ OutScalar, pNeedReload ]
+  zesSchedulerSetExclusiveMode:
+    - [ OutScalar, pNeedReload ]
+  zesSchedulerSetComputeUnitDebugMode:
+    - [ OutScalar, pNeedReload ]
+  zesDeviceEnumStandbyDomains:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phStandby, pCount ]
+  zesStandbyGetProperties:
+    - [ OutScalar, pProperties ]
+  zesStandbyGetMode:
+    - [ OutScalar, pMode ]
+  zesDeviceEnumTemperatureSensors:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phTemperature, pCount ]
+  zesTemperatureGetProperties:
+    - [ OutScalar, pProperties ]
+  zesTemperatureGetConfig:
+    - [ OutScalar, pConfig ]
+  zesTemperatureSetConfig:
+    - [ InScalar, pConfig ]
+  zesTemperatureGetState:
+    - [ OutScalar, pTemperature ]
+  zesGetDriverProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetDeviceProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetSchedulerProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetPerformanceFactorProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetPowerProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetFrequencyProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetEngineProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetStandbyProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetFirmwareProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetMemoryProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetFabricPortProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetTemperatureProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetPsuProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetFanProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetLedProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetRasProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetDiagnosticsProcAddrTable:
+    - [ OutScalar, pDdiTable]
+

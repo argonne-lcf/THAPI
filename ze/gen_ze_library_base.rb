@@ -1,11 +1,11 @@
 require_relative 'ze_model'
 require_relative 'gen_probe_base.rb'
 
-$all_types = $ze_api["typedefs"] + $zet_api["typedefs"]
-$all_structs = $ze_api["structs"] + $zet_api["structs"]
+$all_types = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"]
+$all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"]
 $all_unions = $zet_api["unions"]
-$all_enums = $ze_api["enums"] + $zet_api["enums"]
-$all_funcs = $ze_api["functions"] + $zet_api["functions"]
+$all_enums = $ze_api["enums"] + $zet_api["enums"] + $zes_api["enums"]
+$all_funcs = $ze_api["functions"] + $zet_api["functions"] + $zes_api["functions"]
 
 $all_enum_names = []
 $all_bitfield_names = []
@@ -23,9 +23,17 @@ $all_types.each { |t|
   end
 }
 
+
+$int_scalars = {}
+$all_types.each { |t|
+  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
+    $int_scalars[t.name] = t.type.name
+  end
+}
+
 def to_class_name(name)
   mod = to_name_space(name)
-  n = name.gsub(/_t\z/, "").gsub(/\Azet?_/, "").split("_").collect(&:capitalize).join
+  n = name.gsub(/_t\z/, "").gsub(/\Aze[st]?_/, "").split("_").collect(&:capitalize).join
   mod << n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("Ipc", "IPC").gsub("P2p", "P2P")
 end
 
@@ -34,7 +42,7 @@ def to_ffi_name(name)
 end
 
 def to_name_space(name)
-  name.match(/\A(zet?)_/)[1].upcase
+  name.match(/\A(ze[st]?)_/)[1].upcase
 end
 
 $all_types.each { |t|

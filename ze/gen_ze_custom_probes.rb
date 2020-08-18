@@ -9,8 +9,6 @@ h = YAML::load_file("ze_events.yaml")[namespace]
 raise "Invalid namespace!" unless h
 
 puts <<EOF
-#define CL_TARGET_OPENCL_VERSION 220
-#define ZE_ENABLE_OCL_INTEROP 1
 #include <ze_api.h>
 #include <ze_ddi.h>
 
