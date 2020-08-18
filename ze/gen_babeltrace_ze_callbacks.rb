@@ -28,13 +28,17 @@ meta_parameter_lambda = lambda { |m, dir|
       "#{t} #{name}"
     end
   when ArrayMetaParameter, InString, OutString
+    if lttng.macro.to_s == "ctf_string"
+      "#{t} *#{name}"
+    else
       ["size_t _#{name}_length", "#{t} *#{name}"]
+    end
   end
 }
 
 gen_event_callback = lambda { |provider, c, dir|
   puts <<EOF
-typedef void (#{provider}_#{c.name}_#{dir})(
+typedef void (#{provider}_#{c.name}_#{dir}_cb)(
 EOF
   fields = ["const bt_event *bt_evt",
             "const bt_clock_snapshot *bt_clock"]
@@ -51,7 +55,7 @@ EOF
       meta_parameter_lambda.call(m, :stop)
     }
   end
-  fields.flatten
+  fields.flatten!
   puts <<EOF
   #{fields.join(",\n  ")}
 EOF
