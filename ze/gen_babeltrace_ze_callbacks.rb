@@ -27,11 +27,7 @@ meta_parameter_lambda = lambda { |m, dir|
     else
       "#{t} #{name}"
     end
-  when ArrayMetaParameter
-      ["size_t _#{name}_length", "#{t} *#{name}"]
-  when InString
-      ["size_t _#{name}_length", "#{t} *#{name}"]
-  when OutString
+  when ArrayMetaParameter, InString, OutString
       ["size_t _#{name}_length", "#{t} *#{name}"]
   end
 }
