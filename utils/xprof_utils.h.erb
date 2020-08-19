@@ -1,11 +1,21 @@
 #include <string>
 #include <iomanip>
 #include <climits>
+#include <unordered_map>
+#include <iostream>
+#include <vector>
+#include <algorithm>
 #include "babeltrace2/babeltrace.h"
 
 typedef int64_t     process_id_t;
 typedef uint64_t    thread_id_t;
 typedef std::string hostname_t;
+typedef std::string thapi_command_name;
+
+typedef std::tuple<hostname_t, process_id_t> hp_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_command_name> hpt_command_name_t;
+typedef std::tuple<thread_id_t, thapi_command_name> t_command_name_t;
 
 // https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 // Hash of std tuple
@@ -196,3 +206,78 @@ class <%= n %>: public StatIprof {
 };
 <% end %>
 
+<%#
+   _
+  |_) ._ o ._ _|_    /\  ._ ._ _.
+  |   |  | | | |_   /--\ |  | (_| \/
+                                  /
+%>
+
+<% l_menbers = ['command_name', 'time','time_ratio','count','avg','min','max'] %>
+<% d_headers = [ ["StatTime","format_time",  [ 'Name', 'Time', 'Time(%)', 'Calls', 'Average', 'Min', 'Max'] ],
+                 ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max'] ] ]  %>
+
+ <% d_headers.each do | main_type, main_function, l_headers | %>
+void print_array(std::unordered_map<thapi_command_name, <%= main_type %> > aggregated, std::string header) {
+
+    uint64_t total_time{0};
+    uint64_t total_count{0};
+    for (std::pair<thapi_command_name,  <%= main_type %> > element: aggregated) {
+        total_time += element.second._time;
+        total_count += element.second._count;
+   }
+   if (!total_count) {
+        return;
+   }
+   std::cout << header << std::endl;
+
+<%# Need to be bigger than the header %>
+<% l_menbers.zip(l_headers).each do |v, n| %>
+   uint64_t len_max_<%= v %> = <%= n.size() %>;
+<% end %>
+
+<%# Need to be bigger than the footer %>
+   len_max_command_name = std::max(len_max_command_name,  uint64_t{<%= "Total".size() %>} );
+   len_max_time = std::max(len_max_time, <%= main_function %>(total_time).size());
+   len_max_count = std::max(len_max_count, to_string_with_precision(total_count,"",0).size() );
+
+<%# Need to be bigger than the body %>
+   for (std::pair<thapi_command_name,  <%= main_type %> > element: aggregated) {
+       len_max_command_name =  std::max(len_max_command_name,  element.first.size());
+       const auto [time, time_ratio, count, avg, min, max ] = element.second.to_string(total_time);
+  <% l_menbers.drop(1).each do |v| %>
+       len_max_<%= v %> = std::max(len_max_<%= v %>, <%= v %>.size());
+<% end %>
+   }
+
+<%# Sort the table %>
+   std::vector<std::pair<thapi_command_name,  <%= main_type %> >> array_sorted(aggregated.begin(), aggregated.end());
+   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
+
+<%# Print Header %>
+   std::cout
+<% l_menbers.zip(l_headers).each do |v, n| %>
+   << std::setw(len_max_<%= v %>) << std::right << "<%= n %>" << " | "
+<% end %>
+   << std::endl;
+
+<%# Print Body %>
+   for (std::pair<thapi_command_name,  <%= main_type %> > element: array_sorted) {
+        const thapi_command_name command_name = element.first;
+        const auto [time, time_ratio, count, avg, min, max ] = element.second.to_string(total_time);
+        std::cout
+        <% l_menbers.each do |v | %>
+        << std::setw(len_max_<%= v %>) << std::right << <%= v %> << " | "
+        <% end %>
+        << std::endl;
+    }
+
+<%# Print footer %>
+   std::cout << std::setw(len_max_command_name) << std::right << "Total" << " | "
+             << std::setw(len_max_time) << std::right << <%= main_function %>(total_time) << " | "
+             << std::setw(len_max_time_ratio) << std::right << "100.00%" << " | "
+             << std::setw(len_max_count) << std::right <<  to_string_with_precision(total_count,"",0) << " | "
+             << std::endl;
+}
+
+<% end %>

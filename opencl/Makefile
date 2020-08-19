@@ -59,16 +59,10 @@ babeltrace_cl_callbacks.h: gen_babeltrace_cl_callbacks.rb opencl_model.yaml
 babeltrace_cl_dispatchers.c: gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
 	ruby gen_babeltrace_cl_dispatchers.rb > babeltrace_cl_dispatchers.c
 
-# Dust 
-dust.c: dust.c.erb gen_clprof.rb opencl_model.yaml
-	ruby gen_clprof.rb dust 
-
-dust.so: dust.c
-	gcc dust.c -fPIC -c $(pkg-config --cflags babeltrace2)
-	ld dust.o -o dust.so -shared $(pkg-config --libs babeltrace2)
-
-
 # Iprof
+../utils/xprof_utils.h: ../utils/xprof_utils.h.erb
+	    $(MAKE) -C ../utils xprof_utils.h
+
 clprof.c: clprof_callbacks.cpp.erb clprof_callbacks.h.erb clprof.c.erb gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	ruby gen_clprof.rb production
 
@@ -80,7 +74,7 @@ clprof_callbacks.cpp clprof_callbacks.h: clprof.c
 	  $(MAKE) $(AM_MAKEFLAGS) clprof.c; \
 	fi
 	
-clprof_callbacks.o: clprof_callbacks.cpp clprof_callbacks.h 
+clprof_callbacks.o: clprof_callbacks.cpp clprof_callbacks.h ../utils/xprof_utils.h 
 	g++ -std=c++17 -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o clprof_callbacks.o -fPIC -c clprof_callbacks.cpp
 
 clprof.so: clprof.c clprof.h clprof_callbacks.o tracer_opencl.h babeltrace_cl_dispatchers.c 
@@ -91,8 +85,8 @@ testing.mk: gen_clprof.rb opencl_model.yaml testing.mk.erb
 	ruby gen_clprof.rb testing_makefile
 
 .PHONY: run_clprof_test
-run_clprof_test: testing.mk babeltrace_cl_dispatchers.c  babeltrace_cl_callbacks.h tracer_opencl.h
-	$(MAKE) --no-print-directory -f testing.mk all_test
+run_clprof_test: testing.mk babeltrace_cl_dispatchers.c  babeltrace_cl_callbacks.h tracer_opencl.h ../utils/xprof_utils.h
+	$(MAKE) -j1 --no-print-directory -f testing.mk all_test
 
 # Babeltrace
 babeltrace_cl.so: babeltrace_cl.c babeltrace_cl.h babeltrace_cl_dispatchers.c tracer_opencl.h babeltrace_cl_callbacks.h

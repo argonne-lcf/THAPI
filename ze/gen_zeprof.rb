@@ -96,7 +96,6 @@ provider = :lttng_ust_zes
 $dbt_events += $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :start) } +
                $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :stop) }
 
-write_file_via_template("utils.h")
 write_file_via_template("zeprof_callbacks.cpp")
 write_file_via_template("zeprof_callbacks.h")
 write_file_via_template("zeprof.c")

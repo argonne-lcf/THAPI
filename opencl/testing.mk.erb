@@ -16,7 +16,7 @@ dust.so: dust.c
 testing_clprof_callbacks.o: testing_clprof_callbacks.cpp testing_clprof_callbacks.h babeltrace_cl_callbacks.h tracer_opencl.h
 	g++ -std=c++17 $(TESTING_IPROF_CFLAGS) -c testing_clprof_callbacks.cpp -o testing_clprof_callbacks.o
 
-testing_clprof.so: testing_clprof.c clprof.h testing_clprof_callbacks.o babeltrace_cl_dispatchers.c
+testing_clprof.so: testing_clprof.c clprof.h testing_clprof_callbacks.o babeltrace_cl_dispatchers.c ../utils/xprof_utils.h
 	gcc -shared $(TESTING_IPROF_CFLAGS) -o testing_clprof.so testing_clprof.c babeltrace_cl_dispatchers.c testing_clprof_callbacks.o -lstdc++ $(shell pkg-config --libs babeltrace2)
 
 <% $l_test.each do |test| %>

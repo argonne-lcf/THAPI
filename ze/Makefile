@@ -21,6 +21,7 @@ ZE_BINDINGS = ze_bindings.rb ze_refinements.rb
 
 .SECONDARY: $(ZE_TP)
 
+.PHONY: all
 all: tracer_ze.so ze_library.rb babeltrace_ze_lib.rb $(ZE_BINDINGS) babeltrace_ze.so zeprof.so
 
 LTTNG_FLAGS=-fPIC -g -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-nonnull -Werror -O3 -I./ -I./include/ -I../utils/
@@ -31,7 +32,7 @@ modified_include: include headers.patch
 	patch -i ../headers.patch -d modified_include/ -s -p1
 
 ../utils/lttng/tracepoint_gen.h: ../utils/tracepoint_gen.rb
-	ruby ../utils/tracepoint_gen.rb 25 > ../utils/lttng/tracepoint_gen.h
+	$(MAKE) -C ../utils lttng/tracepoint_gen.h
 
 ze_api.yaml: $(shell find modified_include/ -type f) $(ZE_EXTRACT) extract_ze.rb
 	ruby extract_ze.rb
@@ -83,6 +84,7 @@ babeltrace_ze.so: babeltrace_ze.c babeltrace_ze.h babeltrace_ze_dispatchers.c ba
 
 
 # zeprof
+
 zeprof.c: zeprof_callbacks.cpp.erb zeprof_callbacks.h.erb zeprof.c.erb gen_zeprof.rb babeltrace_ze_callbacks.h
 	ruby gen_zeprof.rb
 
@@ -94,12 +96,16 @@ zeprof_callbacks.cpp zeprof_callbacks.h: zeprof.c
       $(MAKE) $(AM_MAKEFLAGS) zeprof.c; \
     fi
 
-zeprof_callbacks.o: babeltrace_ze.c babeltrace_ze.h zeprof_callbacks.cpp zeprof_callbacks.h
+../utils/xprof_utils.h: ../utils/xprof_utils.h.erb
+	$(MAKE) -C ../utils xprof_utils.h
+	
+zeprof_callbacks.o: babeltrace_ze.c babeltrace_ze.h zeprof_callbacks.cpp zeprof_callbacks.h ../utils/xprof_utils.h
 	g++ -std=c++17 -g -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o zeprof_callbacks.o -fPIC -c zeprof_callbacks.cpp	
 
 zeprof.so: zeprof.c zeprof.h zeprof_callbacks.o babeltrace_ze_dispatchers.c
 	gcc -g -O3 -Wall -Wextra -Wno-unused-parameter -Werror -I./ -I../utils/ -I./include/ $(shell pkg-config --cflags babeltrace2) -o zeprof.so -shared -fPIC zeprof.c babeltrace_ze_dispatchers.c zeprof_callbacks.o -lstdc++  $(shell pkg-config --libs babeltrace2)
-	
+
+.PHONY: clean
 clean:
 	rm -f \
 		ze_api.yaml zet_api.yaml\
