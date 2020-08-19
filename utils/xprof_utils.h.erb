@@ -9,11 +9,11 @@
 
 #include "babeltrace2/babeltrace.h"
 
-typedef int64_t     process_id_t;
-typedef uint64_t    thread_id_t;
+typedef intptr_t     process_id_t;
+typedef uintptr_t    thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_command_name;
-typedef uint64_t thapi_device_id;
+typedef uintptr_t thapi_device_id;
 
 
 typedef std::tuple<hostname_t, process_id_t> hp_t;

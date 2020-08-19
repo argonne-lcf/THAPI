@@ -22,7 +22,6 @@
 Global variable
 */
 const bt_value *display_mode;
-std::unordered_map<hpt_t, thapi_command_name> last_command;
 
 /* Callback */
 
@@ -54,7 +53,7 @@ static void zeprof_<%= dbt_event.lltng_name %>_callback(
 
 void init_callbacks(struct ze_dispatch   *ze_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
-        ze_register_callback(ze_dispatch, "<%= dbt_event.lltng_event %>", (void *) &zeprof_<%= dbt_event.lltng_name %>_callback);
+  ze_register_callback(ze_dispatch, "<%= dbt_event.lltng_event %>", (void *) &zeprof_<%= dbt_event.lltng_name %>_callback);
 <% end %>
 }
 
