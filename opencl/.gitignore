@@ -7,3 +7,4 @@
 tracer_opencl.sh
 cl.xml.patched
 opencl_model.yaml
+clprof_callbacks.cpp

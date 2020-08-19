@@ -27,12 +27,8 @@ const bt_value *display_mode;
 <% end %>
 
 typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
-typedef std::tuple<hostname_t, process_id_t, cl_device_id> hp_device_t;
-typedef std::tuple<hostname_t, process_id_t, thread_id_t, cl_device_id> hpt_device_t;
 typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
 typedef std::tuple<hostname_t, process_id_t, cl_kernel> hp_kernel_t;
-
-typedef std::tuple<hostname_t, process_id_t, thread_id_t, cl_device_id, thapi_command_name> hpt_device_command_name_t;
 
 std::unordered_map<hp_t, cl_device_id> last_device;
 std::unordered_map<hpt_t, thapi_command_name> last_command;
@@ -40,12 +36,8 @@ std::unordered_map<hpt_t, thapi_command_name> last_command;
 std::unordered_map<hp_command_queue_t, cl_device_id> command_queue_to_device;
 std::unordered_map<hpt_command_name_t, cl_device_id> command_name_to_device;
 std::unordered_map<hp_event_t,t_command_name_t> event_to_command_name;
-std::unordered_map<hpt_device_command_name_t, StatTime> device_id_result;
-std::unordered_map<hpt_command_name_t, StatTime> api_call;
-std::unordered_map<hpt_command_name_t, StatByte> memory_trafic;
 
 std::unordered_map<hp_event_t, uint64_t> event_result_to_delta;
-std::unordered_map<hp_device_t, std::string> device_to_name;
 std::unordered_map<hp_kernel_t, std::string> kernel_to_name;
 
 
@@ -104,7 +96,7 @@ static void clprof_<%= dbt_event.name %>_callback(
     } else {
         const uint64_t delta = event_result_to_delta[hp_event];
         const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
-        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,device,command_name)].delta(delta);
+        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
 
         event_to_command_name.erase(hp_event);
     }
@@ -119,7 +111,7 @@ static void clprof_<%= dbt_event.name %>_callback(
         const auto [thread_id,command_name] =  event_to_command_name[hp_event];
         const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
 
-        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,device,command_name)].delta(delta);
+        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
         event_to_command_name.erase(hp_event);
     } else {
         const thread_id_t thread_id   = borrow_thread_id(bt_evt);
@@ -132,7 +124,7 @@ static void clprof_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
     const std::string hostname    = borrow_hostname(bt_evt);
     const process_id_t process_id = borrow_process_id(bt_evt);
-    device_to_name[hp_device_t(hostname,process_id,device)] = std::string{name};
+    device_to_name[hp_device_t(hostname,process_id,(thapi_device_id) device)] = std::string{name};
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_arguments:kernel_info" %>
     const std::string hostname    = borrow_hostname(bt_evt);
@@ -143,6 +135,13 @@ static void clprof_<%= dbt_event.name %>_callback(
 }
 <% end %>
 
+<%# 
+ ___                            
+  |  ._  o _|_ o  _. | o _   _  
+ _|_ | | |  |_ | (_| | | /_ (/_ 
+                                
+%>
+
 void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
         opencl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
@@ -150,10 +149,10 @@ void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
 }
 
 <%#
-   _
-  |_) ._ o ._ _|_    /\  ._ ._ _.
-  |   |  | | | |_   /--\ |  | (_| \/
-                                  /
+  _                      
+ |_ o ._   _. | o _   _  
+ |  | | | (_| | | /_ (/_ 
+                         
 %>
 
 void finalize_callbacks() {
@@ -178,84 +177,20 @@ void finalize_callbacks() {
        assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)]._count    == <%= assert[1][0] %>);
        assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)]._min      == <%= assert[1][1] %>);
        assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)]._max      == <%= assert[1][2] %>);
-       //assert(api_call[hpt_command_name_t(<%= assert[0].join(',') %>)].avg() == <%= assert[1][3] %>);
     <% end %>
    }
   <% end %>
 <% elsif $sink_type == "production" %>
 
-   <% output = [ ['StatTime', 'api_call', 'API calls', 'hpt_t',
-                    [ ['hostname_t','Hostnames','Hostname'],
-                      ['process_id_t','Processes','Process'],
-                      ['thread_id_t','Threads','Thread'] ] ],
-                 ['StatTime', 'device_id_result','Device profiling', 'hpt_device_t',
-                    [ ['hostname_t','Hostnames','Hostname'],
-                      ['process_id_t','Processes','Process'],
-                      ['thread_id_t','Threads','Thread'] ,
-                      ['cl_device_id','Devices','Device'] ] ],
-                 ['StatByte', 'memory_trafic', 'Explicit memory trafic', 'hpt_t',
-                    [ ['hostname_t','Hostnames','Hostname'],
-                      ['process_id_t','Processes','Process'],
-                      ['thread_id_t','Threads','Thread'] ] ],
-   ] %>
-
    std::string display {bt_value_string_get(display_mode)};
    if (display == "compact" ) {
-  <% output.each do |main_type, result,header, _, var| %>
-      {
-    <% var.each do |t,n | %>
-         std::set<<%= t %>> s_<%=n%>;
-    <% end %>
-    <%# Agreagate API Call Result and compute total time spend %>
-         std::unordered_map<thapi_command_name, <%= main_type %> > aggregated;
-         for (auto element: <%= result %>)
-         {
-            auto [ <%= var.map{ |t,n| n}.join(',') %>,command_name ] = element.first;
-    <% var.each do | _, n | %>
-            s_<%= n %>.insert(<%= n %>);
-    <% end %>
-            const <%= main_type %> time = element.second;
-            aggregated[command_name].merge(time);
-         }
-         std::ostringstream oss;
-         oss << "<%= header %>"
-    <% var.each do | _, n | %>
-             << " | " << s_<%= n %>.size() << " <%= n %>"
-    <% end %>
-             << std::endl;
-         print_array(aggregated,oss.str());
-         std::cout << std::endl;
-      }
+  <% ['api_call','device_id_result','memory_trafic'].each do |a| %>
+    print_compact_<%= a %>();
   <% end %>
    } else if (display == "extended" ) {
-  <% output.each do |main_type, result,header, type, var| %>
-      {
-    <% args = var.map{ |t,_,n| n}.join(',') %>
-         std::unordered_map< <%= type %>, std::unordered_map<thapi_command_name, <%= main_type %> >> d1;
-         for (auto [s, time]: <%= result %> ) {
-            auto [<%= args %>, command_name] = s;
-            d1[ <%= type %>( <%= args %> )][command_name].merge(time);
-         }
-
-         std::vector<std::pair< <%= type %> , std::unordered_map<thapi_command_name,  <%= main_type %> >>> array_sorted(d1.begin(), d1.end());
-         std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
-
-         for (auto[s, aggregated]: array_sorted) {
-            auto [ <%= args %> ] = s;
-            std::ostringstream oss;
-            oss <<  "<%= header %>"
-    <% var.each do | _,_, n | %>
-                << " | <%= n %>: " << <%= n %>
-    <% end %>
-    <% if result == 'device_id_result' %>
-                <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
-    <% end %>
-                << std::endl;
-            print_array(aggregated, oss.str());
-            std::cout << std::endl;
-         }
-     }
-   <%end%>
-   }
+  <% ['api_call','device_id_result','memory_trafic'].each do |a| %>
+     print_extented_<%= a %>();
+  <% end %>
+   } 
 <% end %>
 }

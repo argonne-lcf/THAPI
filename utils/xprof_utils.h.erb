@@ -5,17 +5,24 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <set>
+
 #include "babeltrace2/babeltrace.h"
 
 typedef int64_t     process_id_t;
 typedef uint64_t    thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_command_name;
+typedef uint64_t thapi_device_id;
+
 
 typedef std::tuple<hostname_t, process_id_t> hp_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_command_name> hpt_command_name_t;
 typedef std::tuple<thread_id_t, thapi_command_name> t_command_name_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id> hpt_device_t;
+typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_command_name> hpt_device_command_name_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
 
 // https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 // Hash of std tuple
@@ -206,6 +213,13 @@ class <%= n %>: public StatIprof {
 };
 <% end %>
 
+
+<%# Glolbal variable %>
+std::unordered_map<hpt_device_command_name_t, StatTime> device_id_result;
+std::unordered_map<hpt_command_name_t, StatTime> api_call;
+std::unordered_map<hpt_command_name_t, StatByte> memory_trafic;
+std::unordered_map<hp_device_t, std::string> device_to_name;
+
 <%#
    _
   |_) ._ o ._ _|_    /\  ._ ._ _.
@@ -280,4 +294,82 @@ void print_array(std::unordered_map<thapi_command_name, <%= main_type %> > aggre
              << std::endl;
 }
 
+<% end %>
+
+<%#
+   _
+  |_) ._ o ._ _|_    /\  ._ ._ _.
+  |   |  | | | |_   /--\ |  | (_| \/
+                                  /
+%>
+
+   <% output = [ ['StatTime', 'api_call', 'API calls', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+                 ['StatTime', 'device_id_result','Device profiling', 'hpt_device_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ,
+                      ['thapi_device_id','Devices','Device'] ] ],
+                 ['StatByte', 'memory_trafic', 'Explicit memory trafic', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+   ] %>
+
+<% output.each do |main_type, result,header, type, var| %>
+void print_compact_<%= result %>(){
+    <% var.each do |t,n,_ | %>
+   std::set<<%= t %>> s_<%= n %>;
+    <% end %>
+    <%# Agreagate API Call Result and compute total time spend %>
+   std::unordered_map<thapi_command_name, <%= main_type %> > aggregated;
+   for (auto element: <%= result %>)
+   {
+       auto [ <%= var.map{ |t,n| n}.join(',') %>,command_name ] = element.first;
+    <% var.each do | _, n,_ | %>
+       s_<%= n %>.insert(<%= n %>);
+    <% end %>
+       const <%= main_type %> time = element.second;
+       aggregated[command_name].merge(time);
+    }
+
+   std::ostringstream oss;
+   oss << "<%= header %>"
+    <% var.each do | _, n,_ | %>
+       << " | " << s_<%= n %>.size() << " <%= n %>"
+    <% end %>
+        << std::endl;
+   print_array(aggregated,oss.str());
+   std::cout << std::endl;
+};
+
+void print_extented_<%= result %>(){
+
+  <% args = var.map{ |t,_,n| n}.join(',') %>
+  std::unordered_map< <%= type %>, std::unordered_map<thapi_command_name, <%= main_type %> >> d;
+  for (auto [s, time]: <%= result %> ) {
+    auto [<%= args %>, command_name] = s;
+    d[ <%= type %>( <%= args %> )][command_name].merge(time);
+  }
+
+  std::vector<std::pair< <%= type %> , std::unordered_map<thapi_command_name,  <%= main_type %> >>> array_sorted(d.begin(), d.end());
+  std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
+
+  for (auto[s, aggregated]: array_sorted) {
+    auto [ <%= args %> ] = s;
+    std::ostringstream oss;
+    oss <<  "<%= header %>"
+     <% var.each do | _,_, n | %>
+        << " | <%= n %>: " << <%= n %>
+     <% end %>
+     <% if result == 'device_id_result' %>
+        <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
+     <% end %>
+        << std::endl;
+     print_array(aggregated, oss.str());
+     std::cout << std::endl;
+   }
+};
 <% end %>
