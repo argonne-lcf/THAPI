@@ -14,14 +14,15 @@ meta_parameter_lambda = lambda { |m, dir|
     when YAMLCAst::Pointer
       "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
     when YAMLCAst::CustomType
-      if $objects.include?(t.name)
+      tname = t.name.sub(/_flags_t\Z/, "_flag_t")
+      if $objects.include?(tname)
         "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
-      elsif $all_enum_names.include?(t.name)
-        "s << \"#{name}: \#{ZE::#{to_class_name(t.name)}.from_native(defi[\"#{name}\"], nil)}\""
-      elsif $all_bitfield_names.include?(t.name)
-        "s << \"#{name}: [ \#{ZE::#{to_class_name(t.name)}.from_native(defi[\"#{name}\"], nil).join(\", \")} ]\""
-      elsif $all_struct_names.include?(t.name)
-        "s << \"#{name}: \#{defi[\"#{name}\"].size > 0 ? ZE::#{to_class_name(t.name)}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])) : nil}\""
+      elsif $all_enum_names.include?(tname)
+        "s << \"#{name}: \#{ZE::#{to_class_name(tname)}.from_native(defi[\"#{name}\"], nil)}\""
+      elsif $all_bitfield_names.include?(tname)
+        "s << \"#{name}: [ \#{ZE::#{to_class_name(tname)}.from_native(defi[\"#{name}\"], nil).join(\", \")} ]\""
+      elsif $all_struct_names.include?(tname)
+        "s << \"#{name}: \#{defi[\"#{name}\"].size > 0 ? ZE::#{to_class_name(tname)}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])) : nil}\""
       else
         "s << \"#{name}: \#{defi[\"#{name}\"]}\""
       end
@@ -61,12 +62,13 @@ EOF
         when YAMLCAst::Pointer
           "s << \"#{p.name}: \#{\"0x%016x\" % defi[\"#{p.name}\"]}\""
         when YAMLCAst::CustomType
-          if $objects.include?(p.type.name)
+          t = p.type.name.sub(/_flags_t\Z/, "_flag_t")
+          if $objects.include?(t)
             "s << \"#{p.name}: \#{\"0x%016x\" % defi[\"#{p.name}\"]}\""
-          elsif $all_enum_names.include?(p.type.name)
-            "s << \"#{p.name}: \#{ZE::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil)}\""
-          elsif $all_bitfield_names.include?(p.type.name)
-            "s << \"#{p.name}: [ \#{ZE::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil).join(\", \")} ]\""
+          elsif $all_enum_names.include?(t)
+            "s << \"#{p.name}: \#{ZE::#{to_class_name(t)}.from_native(defi[\"#{p.name}\"], nil)}\""
+          elsif $all_bitfield_names.include?(t)
+            "s << \"#{p.name}: [ \#{ZE::#{to_class_name(t)}.from_native(defi[\"#{p.name}\"], nil).join(\", \")} ]\""
           else
             "s << \"#{p.name}: \#{defi[\"#{p.name}\"]}\""
           end
@@ -135,10 +137,12 @@ EOF
           name == field.expression
         }
         if arg
-          if $all_enum_names.include?(arg[0])
-            "s << \"#{field.name}: \#{ZE::#{to_class_name(arg[0])}.from_native(defi[\"#{field.name}\"], nil)}\""
-          elsif $all_bitfield_names.include?(arg[0])
-            "s << \"#{field.name}: [ \#{ZE::#{to_class_name(arg[0])}.from_native(defi[\"#{field.name}\"], nil)} ]\""
+          t = arg[0]
+          t = t.sub(/_flags_t\Z/, "_flag_t") if t
+          if $all_enum_names.include?(t)
+            "s << \"#{field.name}: \#{ZE::#{to_class_name(t)}.from_native(defi[\"#{field.name}\"], nil)}\""
+          elsif $all_bitfield_names.include?(t)
+            "s << \"#{field.name}: [ \#{ZE::#{to_class_name(t)}.from_native(defi[\"#{field.name}\"], nil)} ]\""
           else
             "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
           end

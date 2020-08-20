@@ -68,6 +68,9 @@ EOF
   # #{special_values.collect(&print_lambda).join(",\n  # ")}
 EOF
   end
+  if to_ffi_name(name).match("_flag_t")
+    puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub("_flag_t", "_flags_t")}"
+  end
   puts "\n"
 end
 
@@ -299,17 +302,22 @@ EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
 EOF
-  if members.first[0] == ":version"
+  if members.first[0] == ":stype"
     puts <<EOF
 
-    def initialize(*args, version: nil)
+    def initialize(*args)
       super(*args)
-      if version
-        self[:version][:minor] = ZE.ZE_MINOR_VERSION(version.to_i)
-        self[:version][:major] = ZE.ZE_MAJOR_VERSION(version.to_i)
-      elsif args.length == 0
-        self[:version][:minor] = ZE.ZE_MINOR_VERSION()
-        self[:version][:major] = ZE.ZE_MAJOR_VERSION()
+      if(args.length == 0)
+EOF
+    case to_ffi_name(name)
+    when /\A:ze_/
+      puts "        self[:stype] = :ZE_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[4..-3].upcase}"
+    when /\A:zet_/
+      puts "        self[:stype] = :ZET_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[5..-3].upcase}"
+    when /\A:zes_/
+      puts "        self[:stype] = :ZES_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[5..-3].upcase}"
+    end
+    puts <<EOF
       end
     end
 EOF
@@ -332,6 +340,7 @@ EOF
 end
 
 $int_scalars.each { |k, v|
+  next if to_ffi_name(k).match("_flags_t")
   puts <<EOF
   typedef #{to_ffi_name(v)}, #{to_ffi_name(k)}
 
