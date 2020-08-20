@@ -35,12 +35,17 @@ static void zeprof_<%= dbt_event.lltng_name %>_callback(
   const thread_id_t  thread_id  = borrow_thread_id(bt_evt);  
   int64_t ns_from_origin;
   bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-   <%if dbt_event.lltng_name.end_with?("start") %>
+     <%if dbt_event.lltng_name.end_with?("start") %>
   api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].start(ns_from_origin);
-   <%elsif dbt_event.lltng_name.end_with?("stop") %>
+     <%elsif dbt_event.lltng_name.end_with?("stop") %>
   api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].stop(ns_from_origin);
-    <% end %>
-<% end %>
+     <% end %>
+      
+         <% if dbt_event.name.include?("zeCommandListAppendMemory") and  dbt_event.fields.any? {|n| n.include?("size_t size")} %>
+  memory_trafic[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].delta(size);
+         <% end %>
+    
+  <% end %>
 };
 <% end %>
 
