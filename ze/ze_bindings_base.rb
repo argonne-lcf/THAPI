@@ -72,7 +72,7 @@ module ZE
   ENV["ZET_ENABLE_API_TRACING_EXP"] = "1"
   ENV["ZET_ENABLE_METRICS"] = "1"
 #  ENV["ZET_ENABLE_PROGRAM_INSTRUMENTATION"] = "1"
-  ENV["ZET_ENABLE_PROGRAM_DEBUGGING"] = "1"
+#  ENV["ZET_ENABLE_PROGRAM_DEBUGGING"] = "1"
   ENV["ZES_ENABLE_SYSMAN"] = "1"
   if ENV["LIBZE_LOADER_SO"]
     ffi_lib ENV["LIBZE_LOADER_SO"]
@@ -2190,18 +2190,12 @@ offsets, signal_event, count, ph_wait_events)
 
   class Scheduler < ZESObject
     add_property :properties, sname: :ZESSchedProperties, fname: :zesSchedulerGetProperties, memoize: true
-
-    def current_mode
-      ptr = MemoryPointer::new(:zes_sched_mode_t)
-      result = ZE.zesSchedulerGetCurrentMode(@handle, ptr)
-      ZE.error_check(result)
-      ZESSchedMode.from_native(ptr.read_zes_sched_mode_t)
-    end
+    add_enum_property :current_mode, :zes_sched_mode_t, :zesSchedulerGetCurrentMode
     alias mode current_mode
 
     def timeout_mode_properties(default: false)
       props = ZESSchedTimeoutProperties::new
-      result = ZE.zesSchedulerSetTimeoutMode(@handle, default ? 1 : 0, props)
+      result = ZE.zesSchedulerGetTimeoutModeProperties(@handle, default ? 1 : 0, props)
       ZE.error_check(result)
       props
     end
