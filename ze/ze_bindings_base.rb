@@ -1525,12 +1525,13 @@ offsets, signal_event, count, ph_wait_events)
     end
     alias reset host_reset
 
-    def query_kernel_timestamp(type)
+    def query_kernel_timestamp
       res = ZEKernelTimestampResult::new()
       result = ZE.zeEventQueryKernelTimestamp(@handle, res)
       ZE.error_check(result)
       res
     end
+    alias kernel_timestamp query_kernel_timestamp
 
   end
 
