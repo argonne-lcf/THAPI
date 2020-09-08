@@ -66,14 +66,6 @@ namespace std{
 
     };
 }
-/*
-Global variable
-*/
-<% if $sink_type == 'testing' %>
-const bt_value *test_type_value;
-<% elsif $sink_type == 'production' %>
-const bt_value *display_mode;
-<% end %>
 
 typedef std::string hostname_t;
 typedef std::string cl_command_name;
