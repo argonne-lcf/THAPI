@@ -7,4 +7,6 @@
 *.tp
 babeltrace_ze_lib.rb
 ze_library.rb
+ze_bindings.rb
+ze_refinements.rb
 zeprof_callbacks.cpp
