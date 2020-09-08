@@ -6,6 +6,7 @@ require 'pp'
 
 c = Babeltrace::Context::new
 traces = c.add_traces(path: ARGV[0])
+raise "Trace not found: #{ARGV[0].inspect}, check path." if traces == []
 
 puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
 
@@ -42,6 +43,7 @@ class Bitfield
       end
     end
     res
+    "[#{res.join(", ")}]"
   end
 end
 
@@ -185,9 +187,9 @@ EOF
         elsif bitfields_by_type[desc["type"]]
           "defi[\"#{name}\"].collect { |v| bitfields_by_type[\"#{desc["type"]}\"].to_s(v) }"
         elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
-          "defi[\"#{name}\"].collect { |v| \"0x\#{v.to_s(16)}\" }"
+          "\"[\#{defi[\"#{name}\"].collect { |v| \"0x\#{v.to_s(16)}\" }.join(\", \")}]\""
         else
-          "defi[\"#{name}\"]"
+          "defi[\"#{name}\"].inspect"
         end
       elsif desc["string"]
         "defi[\"#{name}\"]"
@@ -199,14 +201,14 @@ EOF
         elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
           "\"0x\#{defi[\"#{name}\"].to_s(16)}\""
         else
-          "defi[\"#{name}\"]"
+          "defi[\"#{name}\"].inspect"
         end
       end
     "\"#{name}\" => (#{expr})"
   }.join(",\n  ")
   src << "\n"
     src << <<EOF
-  }.collect { |k,v| "\#{k}: \#{v.inspect}"}.join(", ")
+  }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
 }
 EOF
     eval(src)
