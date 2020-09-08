@@ -16,15 +16,6 @@
 #include "testing_clprof_callbacks.h"
 #include <cassert>
 <% end %>
-#
-/*
-Global variable
-*/
-<% if $sink_type == 'testing' %>
-const bt_value *test_type_value;
-<% elsif $sink_type == 'production' %>
-const bt_value *display_mode;
-<% end %>
 
 typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
 typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
