@@ -13,11 +13,16 @@ $cpp.macros['ZE_DLLEXPORT'] = ''
 $cpp.macros['ZE_APIEXPORT'] = ''
 $cpp.macros['__asm__(a)'] = ''
 $cpp.include_path << './modified_include/'
-
-
-
-preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
+begin
+  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
 #include <stdint.h>
 #include <stddef.h>
 EOF
+rescue
+  C::Preprocessor.command = "gcc -E"
+  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
+#include <stdint.h>
+#include <stddef.h>
+EOF
+end
 $parser.parse(preprocessed_sources_libc)
