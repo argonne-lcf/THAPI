@@ -668,7 +668,7 @@ static void dump_kernel_info(cl_kernel kernel) {
   if (error == CL_SUCCESS && attributes_sz > 0) {
      char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
      if (new_attributes) {
-       error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, &attributes, NULL);
+       error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, new_attributes, NULL);
        if (error == CL_SUCCESS) {
          attributes = new_attributes;
          free_attributes = 1;
