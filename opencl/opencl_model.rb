@@ -581,6 +581,7 @@ end
 
 class ParamValue < AutoMetaParameter
   def self.create_if_match(command)
+    return nil if command.prototype.name == "clSetKernelExecInfo"
     pv = command.parameters.find { |p| p.name == "param_value" }
     if pv
       return OutArray::new(command, "param_value", "param_value_size")

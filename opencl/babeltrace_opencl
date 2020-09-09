@@ -111,6 +111,7 @@ type_map = {
   "intptr_t" => "j",
   "uintptr_t" => "J",
   "size_t" => "Q",
+  "cl_bool" => "l",
   "cl_int" => "l",
   "cl_uint" => "L",
   "cl_long" => "q",
@@ -180,7 +181,11 @@ EOF
       if name == "param_value_vals"
         startn = n.gsub("_stop", "_start")
         type = opencl_model["events"][startn]["param_name"]["type"]
-        "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+        if n == "lttng_ust_opencl:clSetKernelExecInfo_start"
+          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+        else
+          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+        end
       elsif desc["array"]
         if enums_by_type[desc["type"]]
           "defi[\"#{name}\"].collect { |v| (tmp = enums_by_type[\"#{desc["type"]}\"][v]) ? tmp : v }"
