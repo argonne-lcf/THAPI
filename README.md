@@ -25,7 +25,7 @@ For now, each folder (opencl, ze, cuda) has its own folder and makefile.
 
 # Installation
 
-The build system is not done, so instalation is manual.
+The build system is not done, so installation is manual.
 
 ## OpenCL
 
@@ -58,7 +58,7 @@ One of these is created from templates that need to be copied and edited:
 
 ## OpenCL Tracer
 
-The tracer can be heavily tuned and each event can be monitored independantly from others, but for convinience a series of default presets are defined in the `tracer_opencl.sh` script:
+The tracer can be heavily tuned and each event can be monitored independently from others, but for convenience a series of default presets are defined in the `tracer_opencl.sh` script:
 ```
 tracer_opencl.sh [options] -- cmd
     -l | --lightweight : remove kernel argument related calls from the trace
@@ -89,7 +89,7 @@ Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_ze`. The l
 
 ## clprof.sh (iprof)
 
-`clprof.sh` also often aliased as `iprof` is another wrapper around the OpenCL tracer. It gives agregated profiling information.
+`clprof.sh` also often aliased as `iprof` is another wrapper around the OpenCL tracer. It gives aggregated profiling information.
 
 ```
 iprof: a tracing / summarizer of OpenCL Calls
