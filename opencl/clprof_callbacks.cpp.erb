@@ -153,11 +153,11 @@ void finalize_callbacks() {
    if (test_path == "<%= test.name %>") {
        std :: cout << "testing <%= test.name %>" << std::endl;
     <% test.device_id_result.each do |assert| %>
-       <% assert[0][-2] = "(cl_device_id) #{assert[0][-2]}" %>
+       <% assert[0][-2] = "(thapi_device_id) #{assert[0][-2]}" %>
        assert(device_id_result[hpt_device_command_name_t(<%= assert[0].join(',') %>)]._time == <%= assert[1] %>);
     <% end %>
     <% test.device_to_name.each do |assert| %>
-       <% assert[0][-1] = "(cl_device_id) #{assert[0][-1]}" %>
+       <% assert[0][-1] = "(thapi_device_id) #{assert[0][-1]}" %>
        assert(device_to_name[hp_device_t(<%= assert[0].join(',') %>)] == <%= assert[1] %>);
     <% end %>
     <% test.kernel_to_name.each do |assert| %>
