@@ -229,41 +229,19 @@ static inline void _unregister_ze_event(ze_event_handle_t event) {
 }
 
 static void _profile_event_results(ze_event_handle_t event) {
-  (void)event;
-//  ze_result_t status;
-//  ze_result_t global_start_status;
-//  uint64_t global_start;
-//  ze_result_t global_end_status;
-//  uint64_t global_end;
-//  ze_result_t context_start_status;
-//  uint64_t context_start;
-//  ze_result_t context_end_status;
-//  uint64_t context_end;
+  ze_kernel_timestamp_result_t res = {0};
+  ze_result_t status;
+  ze_result_t timestamp_status;
 
   if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
-//    status = ZE_EVENT_QUERY_STATUS_PTR(event);
-//    global_start_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-//      event,
-//      ZE_EVENT_TIMESTAMP_GLOBAL_START,
-//      &global_start);
-//    global_end_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-//      event,
-//      ZE_EVENT_TIMESTAMP_GLOBAL_END,
-//      &global_end);
-//    context_start_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-//      event,
-//      ZE_EVENT_TIMESTAMP_CONTEXT_START,
-//      &context_start);
-//    context_end_status = ZE_EVENT_GET_TIMESTAMP_PTR(
-//      event,
-//      ZE_EVENT_TIMESTAMP_CONTEXT_END,
-//      &context_end);
-//    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results,
-//                  event, status,
-//                  global_start_status, global_start,
-//                  global_end_status, global_end,
-//                  context_start_status, context_start,
-//                  context_end_status, context_end);
+    status = ZE_EVENT_QUERY_STATUS_PTR(event);
+    timestamp_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(event, &res);
+    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results,
+                  event, status, timestamp_status,
+                  res.global.kernelStart,
+                  res.global.kernelEnd,
+                  res.context.kernelStart,
+                  res.context.kernelEnd);
   }
 }
 
