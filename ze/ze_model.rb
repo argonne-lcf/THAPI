@@ -703,6 +703,12 @@ register_prologue "zeEventHostReset", <<EOF
   }
 EOF
 
+register_epilogue "zeContextDestroy", <<EOF
+  if (_do_profile && hContext) {
+    _context_cleanup(hContext);
+  }
+EOF
+
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
 # not very cleanly is used....

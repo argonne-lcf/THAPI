@@ -124,16 +124,6 @@ static inline void _register_ze_command_list(
   ADD_ZE_OBJ(o_h);
 }
 
-static inline void _unregister_ze_command_list(
- ze_command_list_handle_t command_list ) {
-  struct _ze_obj_h *o_h = NULL;
-
-  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h)
-    return;
-  free(o_h);
-}
-
 struct _ze_event_h {
   ze_event_handle_t event;
   UT_hash_handle hh;
@@ -261,6 +251,60 @@ void _event_cleanup() {
     }
     free(ze_event);
   }
+}
+
+static void _context_cleanup(ze_context_handle_t context){
+  struct _ze_obj_h *o_h = NULL;
+  struct _ze_obj_h *o_tmp = NULL;
+  struct _ze_event_h *ze_event = NULL;
+  struct _ze_event_h *tmp = NULL;
+  pthread_mutex_lock(&_ze_objs_mutex);
+  HASH_ITER(hh, _ze_objs, o_h, o_tmp) {
+    if (o_h->type == COMMAND_LIST && ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context == context) {
+      pthread_mutex_lock(&_ze_events_mutex);
+      HASH_ITER(hh, _ze_events, ze_event, tmp) {
+        if (ze_event->command_list == o_h->ptr) {
+          HASH_DEL(_ze_events, ze_event);
+          if (ze_event->event) {
+            _profile_event_results(ze_event->event);
+            ZE_EVENT_DESTROY_PTR(ze_event->event);
+          }
+          if (ze_event->event_pool) {
+            ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
+          }
+          free(ze_event);
+        }
+      }
+      pthread_mutex_unlock(&_ze_events_mutex);
+    }
+  }
+  pthread_mutex_unlock(&_ze_objs_mutex);
+}
+
+static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
+  struct _ze_obj_h *o_h = NULL;
+
+  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
+  if (!o_h)
+    return;
+  struct _ze_event_h *ze_event = NULL;
+  struct _ze_event_h *tmp = NULL;
+  pthread_mutex_lock(&_ze_events_mutex);
+  HASH_ITER(hh, _ze_events, ze_event, tmp) {
+    if (ze_event->command_list == o_h->ptr) {
+      HASH_DEL(_ze_events, ze_event);
+      if (ze_event->event) {
+        _profile_event_results(ze_event->event);
+        ZE_EVENT_DESTROY_PTR(ze_event->event);
+      }
+      if (ze_event->event_pool) {
+        ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
+      }
+      free(ze_event);
+    }
+  }
+  pthread_mutex_unlock(&_ze_events_mutex);
+  free(o_h);
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
