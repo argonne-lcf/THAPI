@@ -273,6 +273,46 @@ EOF
 EOF
 }
 
+gen_extra_event_dispatcher = lambda { |provider, event|
+    args = event["args"].collect { |arg| arg.reverse }.to_h
+    lttng_fields = event["fields"].collect { |field|
+      LTTng::TracepointField::new(*field)
+    }
+    fields_decl = lttng_fields.collect { |lttng|
+      name = lttng.name
+      type = lttng.type
+      type = args[lttng.name] if args[lttng.name]
+      "#{type} #{name}"
+    }
+    puts <<EOF
+static void
+#{provider}_#{event["name"]}_dispatcher(
+    struct ze_dispatch      *ze_dispatch,
+    struct ze_callbacks     *callbacks,
+    const bt_event          *bt_evt,
+    const bt_clock_snapshot *bt_clock) {
+  const bt_field *payload_field = bt_event_borrow_payload_field_const(bt_evt);
+  #{fields_decl.join(";\n  ")};
+EOF
+    lttng_fields.each_with_index { |lttng, i|
+      name = lttng.name
+      type = lttng.type
+      type = args[name] if args[name]
+      print_field_member_access(lttng.macro.to_s, type, name, i)
+    }
+    puts <<EOF
+  void **_p = NULL;
+  while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
+    ((#{provider}_#{event["name"]}_cb *)*_p)(
+      #{(["bt_evt", "bt_clock"] + lttng_fields.collect(&:name)).join(",\n      ")});
+  }
+EOF
+  puts <<EOF
+}
+
+EOF
+}
+
 provider = :lttng_ust_ze
 $ze_commands.each { |c|
   gen_event_dispatcher.call(provider, c, :start)
@@ -291,9 +331,23 @@ $zes_commands.each { |c|
   gen_event_dispatcher.call(provider, c, :stop)
 }
 
+ze_events = YAML::load_file("ze_events.yaml")
+
+ze_events.each { |provider, es|
+  es["events"].each { |event|
+    gen_extra_event_dispatcher.call(provider, event)
+  }
+}
+
 gen_event_dispatch_init = lambda { |provider, c, dir|
   puts <<EOF
   ze_register_dispatcher(ze_dispatch, "#{provider}:#{c.name}_#{dir}", &#{provider}_#{c.name}_#{dir}_dispatcher);
+EOF
+}
+
+gen_extra_event_dispatch_init = lambda { |provider, e|
+  puts <<EOF
+  ze_register_dispatcher(ze_dispatch, "#{provider}:#{e["name"]}", &#{provider}_#{e["name"]}_dispatcher);
 EOF
 }
 
@@ -317,6 +371,12 @@ provider = :lttng_ust_zes
 $zes_commands.each { |c|
   gen_event_dispatch_init.call(provider, c, :start)
   gen_event_dispatch_init.call(provider, c, :stop)
+}
+
+ze_events.each { |provider, es|
+  es["events"].each { |event|
+    gen_extra_event_dispatch_init.call(provider, event)
+  }
 }
 
 puts <<EOF

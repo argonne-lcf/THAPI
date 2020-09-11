@@ -67,6 +67,29 @@ EOF
 }
 
 
+gen_extra_event_callback =lambda { |provider, event|
+    puts <<EOF
+typedef void (#{provider}_#{event["name"]}_cb)(
+EOF
+    fields = ["const bt_event *bt_evt",
+              "const bt_clock_snapshot *bt_clock"]
+    args = event["args"].collect { |arg| arg.reverse }.to_h
+    fields += event["fields"].collect { |field|
+      lttng = LTTng::TracepointField::new(*field)
+      name = lttng.name
+      type = lttng.type
+      type = args[name] if args[name]
+      "#{type} #{name}"
+    }
+    puts <<EOF
+  #{fields.join(",\n  ")}
+EOF
+    puts <<EOF
+);
+
+EOF
+}
+
 provider = :lttng_ust_ze
 $ze_commands.each { |c|
   gen_event_callback.call(provider, c, :start)
@@ -85,3 +108,10 @@ $zes_commands.each { |c|
   gen_event_callback.call(provider, c, :stop)
 }
 
+ze_events = YAML::load_file("ze_events.yaml")
+
+ze_events.each { |provider, es|
+  es["events"].each { |event|
+    gen_extra_event_callback.call(provider, event)
+  }
+}
