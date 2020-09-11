@@ -737,11 +737,14 @@ EOF
   "zeCommandListAppendMemoryRangesBarrier",
   "zeCommandListAppendMemoryCopy",
   "zeCommandListAppendMemoryFill",
+  "zeCommandListAppendMemoryCopyFromContext",
   "zeCommandListAppendMemoryCopyRegion",
   "zeCommandListAppendImageCopy",
   "zeCommandListAppendImageCopyRegion",
   "zeCommandListAppendImageCopyToMemory",
-  "zeCommandListAppendImageCopyFromMemory" ].each { |c|
+  "zeCommandListAppendImageCopyFromMemory",
+  "zeCommandListAppendQueryKernelTimestamps",
+  "zeCommandListAppendWriteGlobalTimestamp" ].each { |c|
     register_prologue c, profiling_prologue.call("hSignalEvent")
     register_epilogue c, profiling_epilogue.call("hSignalEvent")
 }

@@ -205,7 +205,7 @@ ze_event_handle_t _get_profiling_event(
   if (res != ZE_RESULT_SUCCESS)
     return NULL;
   ze_event_handle_t event;
-  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
+  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, 0, 0};
   res = ZE_EVENT_CREATE_PTR(event_pool, &e_desc, &event);
   if (res != ZE_RESULT_SUCCESS) {
     ZE_EVENT_POOL_DESTROY_PTR(event_pool);
