@@ -90,11 +90,11 @@ zeprof.c: zeprof_callbacks.cpp.erb zeprof_callbacks.h.erb zeprof.c.erb gen_zepro
 
 zeprof_callbacks.cpp zeprof_callbacks.h: zeprof.c
 	@if test -f $@; then \
-      touch $@; \
-    else \
-      rm -f zeprof.c; \
-      $(MAKE) $(AM_MAKEFLAGS) zeprof.c; \
-    fi
+	  touch $@; \
+	else \
+	  rm -f zeprof.c; \
+	  $(MAKE) $(AM_MAKEFLAGS) zeprof.c; \
+	fi
 
 ../utils/xprof_utils.h: ../utils/xprof_utils.h.erb
 	$(MAKE) -C ../utils xprof_utils.h
