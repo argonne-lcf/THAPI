@@ -1,8 +1,9 @@
 #!/bin/sh
 while true; do
   case "$1" in
-    -p | --profiling ) shift; profiling=1;export LTTNG_UST_ZE_PROFILE=1;;
+    -p | --profiling ) shift; profiling=1; export LTTNG_UST_ZE_PROFILE=1;;
     -v | --visualize) shift; lttng_view=1;;
+    --properties ) shift; properties=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -22,6 +23,10 @@ lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 if [ ! -z "$profiling" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+fi
+if [ ! -z "$properties" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
 fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=PATH_TO_LIB/tracer_ze.so:$LD_PRELOAD

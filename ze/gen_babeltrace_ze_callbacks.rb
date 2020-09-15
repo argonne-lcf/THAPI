@@ -74,12 +74,18 @@ EOF
     fields = ["const bt_event *bt_evt",
               "const bt_clock_snapshot *bt_clock"]
     args = event["args"].collect { |arg| arg.reverse }.to_h
-    fields += event["fields"].collect { |field|
+    event["fields"].each { |field|
       lttng = LTTng::TracepointField::new(*field)
       name = lttng.name
       type = lttng.type
-      type = args[name] if args[name]
-      "#{type} #{name}"
+      if name.match(/_val\z/)
+        n = name.sub(/_val\z/,"")
+        fields.push "size_t _#{name}_length"
+        type = args[n] if args[n]
+      else
+        type = args[name] if args[name]
+      end
+      fields.push "#{type} #{name}"
     }
     puts <<EOF
   #{fields.join(",\n  ")}

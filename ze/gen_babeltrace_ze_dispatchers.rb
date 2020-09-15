@@ -278,11 +278,22 @@ gen_extra_event_dispatcher = lambda { |provider, event|
     lttng_fields = event["fields"].collect { |field|
       LTTng::TracepointField::new(*field)
     }
-    fields_decl = lttng_fields.collect { |lttng|
+    param_fields = []
+    lttng_fields.each { |lttng|
       name = lttng.name
       type = lttng.type
-      type = args[lttng.name] if args[lttng.name]
-      "#{type} #{name}"
+      if name.match(/_val\z/)
+        n = name.sub(/_val\z/,"")
+        param_fields.push ["ctf_integer", "size_t", "_#{name}_length"]
+        type = args[n] if args[n]
+      else
+        type = args[name] if args[name]
+      end
+      param_fields.push [lttng.macro.to_s, type.to_s, name.to_s]
+    }
+    fields_decl = []
+    param_fields.each { |param_field|
+      fields_decl.push "#{param_field[1]} #{param_field[2]}"
     }
     puts <<EOF
 static void
@@ -294,17 +305,14 @@ static void
   const bt_field *payload_field = bt_event_borrow_payload_field_const(bt_evt);
   #{fields_decl.join(";\n  ")};
 EOF
-    lttng_fields.each_with_index { |lttng, i|
-      name = lttng.name
-      type = lttng.type
-      type = args[name] if args[name]
-      print_field_member_access(lttng.macro.to_s, type, name, i)
+    param_fields.each_with_index { |param_field, i|
+      print_field_member_access(param_field[0], param_field[1], param_field[2], i)
     }
     puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
     ((#{provider}_#{event["name"]}_cb *)*_p)(
-      #{(["bt_evt", "bt_clock"] + lttng_fields.collect(&:name)).join(",\n      ")});
+      #{(["bt_evt", "bt_clock"] + param_fields.collect { |param_field| param_field[2] }).join(",\n      ")});
   }
 EOF
   puts <<EOF

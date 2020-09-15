@@ -4,8 +4,6 @@ require_relative 'gen_probe_base.rb'
 provider = :lttng_ust_ze
 
 puts <<EOF
-#define CL_TARGET_OPENCL_VERSION 220
-#define ZE_ENABLE_OCL_INTEROP 1
 #include <ze_api.h>
 #include <ze_ddi.h>
 EOF

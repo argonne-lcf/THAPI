@@ -23,3 +23,21 @@ lttng_ust_ze_profiling:
     - [ ctf_integer, uint64_t, globalEnd, "globalEnd" ]
     - [ ctf_integer, uint64_t, contextStart, "contextStart" ]
     - [ ctf_integer, uint64_t, contextEnd, "contextEnd" ]
+lttng_ust_ze_properties:
+  events:
+  - name: driver
+    args:
+    - [ ze_driver_handle_t, hDriver ]
+    - [ ze_driver_properties_t *, pDriverProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver" ]
+    - [ ctf_sequence_text, uint8_t, pDriverProperties_val, pDriverProperties, size_t, "sizeof(ze_driver_properties_t)" ]
+  - name: device
+    args:
+    - [ ze_driver_handle_t, hDriver ]
+    - [ ze_device_handle_t, hDevice ]
+    - [ ze_device_properties_t *, pDeviceProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver" ]
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
