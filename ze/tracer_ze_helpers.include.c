@@ -306,9 +306,9 @@ static void _load_tracer(void) {
 
   s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
   if (s)
-    dlopen(s, RTLD_LAZY | RTLD_LOCAL);
+    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
   else
-    dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL);
+    handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL);
   if( !handle ) {
     fprintf(stderr, "Failure: could not load ze library!\n");
     exit(1);
