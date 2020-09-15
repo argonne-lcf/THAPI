@@ -263,6 +263,7 @@ void _event_cleanup() {
 static void _context_cleanup(ze_context_handle_t context){
   struct _ze_event_h *ze_event = NULL;
   struct _ze_event_h *tmp = NULL;
+  pthread_mutex_lock(&_ze_events_mutex);
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     if (ze_event->context == context) {
       HASH_DEL(_ze_events, ze_event);
