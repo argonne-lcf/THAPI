@@ -301,7 +301,14 @@ void _lib_cleanup() {
 }
 
 static void _load_tracer(void) {
-  void * handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL);
+  char *s = NULL;
+  void *handle = NULL;
+
+  s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
+  if (s)
+    dlopen(s, RTLD_LAZY | RTLD_LOCAL);
+  else
+    dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL);
   if( !handle ) {
     fprintf(stderr, "Failure: could not load ze library!\n");
     exit(1);
@@ -312,7 +319,6 @@ static void _load_tracer(void) {
   //FIX for intel tracing layer that needs to register its callbacks first...
   ZE_INIT_PTR(0);
 
-  char *s = NULL;
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
     _do_profile = 1;
