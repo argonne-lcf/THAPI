@@ -249,6 +249,56 @@ module ZE
     end
   end
 
+  module KUUID
+    def to_s
+      a = self[:kid].to_a
+      s = "{ kid: "
+      s << "%02x" % a[3]
+      s << "%02x" % a[2]
+      s << "%02x" % a[1]
+      s << "%02x" % a[0]
+      s << "-"
+      s << "%02x" % a[5]
+      s << "%02x" % a[4]
+      s << "-"
+      s << "%02x" % a[7]
+      s << "%02x" % a[6]
+      s << "-"
+      s << "%02x" % a[8]
+      s << "%02x" % a[9]
+      s << "-"
+      s << "%02x" % a[10]
+      s << "%02x" % a[11]
+      s << "%02x" % a[12]
+      s << "%02x" % a[13]
+      s << "%02x" % a[14]
+      s << "%02x" % a[15]
+      a = self[:mid].to_a
+      s << ", mid: "
+      s << "%02x" % a[3]
+      s << "%02x" % a[2]
+      s << "%02x" % a[1]
+      s << "%02x" % a[0]
+      s << "-"
+      s << "%02x" % a[5]
+      s << "%02x" % a[4]
+      s << "-"
+      s << "%02x" % a[7]
+      s << "%02x" % a[6]
+      s << "-"
+      s << "%02x" % a[8]
+      s << "%02x" % a[9]
+      s << "-"
+      s << "%02x" % a[10]
+      s << "%02x" % a[11]
+      s << "%02x" % a[12]
+      s << "%02x" % a[13]
+      s << "%02x" % a[14]
+      s << "%02x" % a[15]
+      s << " }"
+    end
+  end
+
   module Version
     def to_s
       "\#{self[:major]}.\#{self[:minor]}"
@@ -296,9 +346,17 @@ def print_struct(name, struct)
   puts <<EOF
   class #{to_class_name(name)} < FFI::ZEStruct
 EOF
-  puts <<EOF if to_class_name(name).match("UUID")
+  if to_class_name(name).match("UUID")
+    if to_class_name(name).match("ZEKernelUUID")
+  puts <<EOF
+    prepend KUUID
+EOF
+    else
+  puts <<EOF
     prepend UUID
 EOF
+    end
+  end
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
 EOF
