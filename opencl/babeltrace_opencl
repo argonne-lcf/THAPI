@@ -171,7 +171,7 @@ traces.each { |t|
 event_lambdas = {}
 events.each { |handle, arr|
   event_lambdas[handle] = arr.collect { |(n, v)|
-    raise "Invalid trace!" if !v
+    next if !v
     src = <<EOF
 lambda { |defi|
   {
@@ -227,6 +227,11 @@ it.each { |ev|
   name, descs = events[ev.handle_id][ev.id]
   print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{name}: "
   defi = ev.top_level_scope(:EVENT_FIELDS)
-  puts event_lambdas[ev.handle_id][ev.id].call(defi.value)
+  l = event_lambdas[ev.handle_id][ev.id]
+  if l
+    puts l.call(defi.value)
+  else
+    puts defi.value
+  end
 }
 
