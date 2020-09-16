@@ -171,6 +171,7 @@ traces.each { |t|
 event_lambdas = {}
 events.each { |handle, arr|
   event_lambdas[handle] = arr.collect { |(n, v)|
+    raise "Invalid trace!" if !v
     src = <<EOF
 lambda { |defi|
   {
