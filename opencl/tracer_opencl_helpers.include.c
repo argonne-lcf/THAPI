@@ -1162,13 +1162,19 @@ static __thread volatile int in_init = 0;
 static volatile cl_uint _initialized = 0;
 
 static void _load_tracer(void) {
-  void * handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
+  char *s = NULL;
+  void * handle = NULL;
+
+  s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
+  if (s)
+      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
+  else
+      handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
   if( !handle ) {
     printf("Failure: could not load OpenCL library!\n");
     exit(1);
   }
 
-  char *s = NULL;
   s = getenv("LTTNG_UST_OPENCL_HOST_PROFILE");
   if (s)
     do_host_profile = 1;
