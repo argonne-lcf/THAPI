@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+display_help() {
+    echo "$(basename $0): a tracing / summarizer of OpenCL Calls"
+    echo "Usage:"
+    echo " $(basename $0) -h | --help "
+    echo " $(basename $0) [option]... <application> <application-arguments>"
+    echo " $(basename $0) [option]... -r [<trace>]..."
+    echo
+    echo "  -h, --help         Show this screen"
+    echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
+    echo "  -t, --trace        Display the trace"
+    echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
+    echo "  -r, --replay       Allow you to replay an old trace. Take a path as argument ($HOME/lttng-traces/...)"
+    echo "                     If no argument is provided, will use the latest trace available"
+    echo
+    echo " Example:"
+    echo " $(basename $0) ./a.out"
+    echo
+    echo "iprof will save the trace in $HOME/lttng-traces/"
+    echo " Please tidy up from time to time"
+    echo "                                                   __ "
+    echo "For complain, praise, bug repport please use:    <(o )___"
+    echo "   https://xgitlab.cels.anl.gov/heteroflow/tracer ( ._> /"
+    echo "   or send email to {apl,bvideau}@anl.gov          \`---'"
+    exit 1
+}
+
+# If people already set some env variable, respect their will. Common decency.
+function lazy_export {
+    # Export $1 with the value $2 if it was not already set to a non empty string.
+    export $1=${!1:=$2}
+}
+
+# Find all location of a `.so`
+function whichlib {
+  # Output of ldconfig:
+  #/usr/lib32:
+  #       libstdc++.so.6 -> libstdc++.so.6.0.26
+  # After the awk:
+  # -> /usr/lib32/libstdc++.so.6
+
+  # In OpenSUSE ldconfig, is in '/sbin'.
+  PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+               match($1, "^lib") && match($1, p) { print header "/" $1}'
+}
+
+trace_and_summary() {
+    lttng-sessiond $quiet --daemonize
+    lttng $quiet create iprof
+    #Using blocking more to trace event record loss
+    lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
+
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:device_name
+
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
+    export LTTNG_UST_ZE_PROFILE=1
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
+
+    lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
+
+    #Preventing trace event record loss
+    export LTTNG_UST_ALLOW_BLOCKING=1
+
+    lttng $quiet start
+    #Caution, need to be done before the dlopen workarround
+    lazy_export LTTNG_UST_OPENCL_LIBOPENCL $(whichlib libOpenCL.so | head -n 1)
+    lazy_export LTTNG_UST_ZE_LIBZE_LOADER $(whichlib libze_loader.so | head -n 1)
+
+    export LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so:PATH_TO_LIB/tracer_ze.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=PATH_TO_LIB:$LD_LIBRARY_PATH
+
+    trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
+    "$@"
+}
+
+trace_epilogue() {
+  lttng $quiet stop
+  lttng $quiet destroy
+  summary
+}
+
+
+summary() {
+    if [ -z "$path" ]; then
+        lltng_last_session=$(ls -dt $HOME/lttng-traces/* | head -1)
+        echo "Trace location:" $lltng_last_session
+        echo
+    else
+        lltng_last_session=$path
+    fi
+    # Check that the argument are trace.
+    # We don't quote the $lltng_last_session, to be able to loop over hit.
+    # Should be cleaner to use bash arrays.
+    for f in  $lltng_last_session; do
+        if [ ! -d "$f" ]; then
+            echo "$f is not a trace folder"
+            exit 1
+        fi
+   done
+
+    if [ -n "$trace" ]; then
+        # Todo filter direcly in the babeltrace
+        babeltrace_opencl $lltng_last_session | grep lttng_ust_opencl
+        babeltrace_ze $lltng_last_session | grep lttng_ust_ze
+    fi
+
+
+    ocl_output=$(babeltrace2 --plugin-path=PATH_TO_LIB --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session})
+    if [ -n "$ocl_output" ]; then
+        echo "== OpenCL == "
+        echo "$ocl_output"
+    fi
+
+    ze_output=$(babeltrace2 --plugin-path=PATH_TO_LIB --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session})
+    if [ -n "$ze_output" ]; then
+        echo "== Level0 == "
+        echo "$ze_output"
+    fi
+
+}
+
+#  _
+# |_) _. ._ _ o ._   _     /\  ._ _
+# |  (_| | _> | | | (_|   /--\ | (_| \/
+#                    _|           _|
+display="compact";
+if [[ $# -eq 0 ]]; then
+    display_help
+fi
+
+while (( "$#" )); do
+    case "$1" in
+        -h | --help)     display_help; exit ;;
+        -e | --extented) shift; display="extended"   ;;
+        -r | --replay)   shift; path=$@; replay=true ;;
+        -d | --debug)    shift; debug=true ;;
+        -a | --asm)      shift; asm=true ;;
+        -t | --trace)    shift; trace=true ;;
+        --)              shift; break ;;
+        *)               break  ;;
+    esac
+done
+
+if [ -n "$debug" ]; then
+    export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
+    export BABELTRACE_CLI_LOG_LEVEL=WARNING
+else
+    quiet="--quiet"
+fi
+
+if [ -n "$asm" ]; then
+    export IGC_ShaderDumpEnable=1
+    export IGC_DumpToCurrentDir=1
+fi
+
+if [ -n "$replay" ]; then
+    summary
+else
+    trace_and_summary "$@"
+fi

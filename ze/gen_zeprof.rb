@@ -28,27 +28,43 @@ meta_parameter_lambda = lambda { |m, dir|
 
 class DBT_event
 
-   def initialize(provider, c, dir, fields)
-       @name = c.name
-       @lltng_name = "#{provider}_#{c.name}_#{dir}"
-       @lltng_event = "#{provider}:#{c.name}_#{dir}"
+   def initialize(namespace, name, fields, suffix=nil)
+       @namespace = namespace
+       @name = name
        @fields = fields
+       @suffix = suffix
+
    end 
 
    def name
        @name
    end   
-
-   def lltng_name
-       @lltng_name
+   def suffix
+       @suffix
+   end
+    
+   def namespace
+      @namespace
    end
 
-   def lltng_event
-       @lltng_event
+   def uuid
+     "#{@namespace}_#{@name}_#{@suffix}"
+   end
+
+   def lltng
+     if @suffix
+        "#{@namespace}:#{@name}_#{@suffix}"
+     else
+        "#{@namespace}:#{@name}"
+     end
    end
 
    def fields
        @fields
+   end
+
+   def include?(p1)
+       @fields.any? { |f| f.include? p1}
    end
 end
 
@@ -68,8 +84,31 @@ gen_event_callback_name_fields = lambda { |provider, c, dir|
       meta_parameter_lambda.call(m, :stop)
     }
   end
-  DBT_event.new(provider, c, dir, fields)
+  DBT_event.new(provider, c.name, fields, dir)
 }
+
+gen_extra_event_callback =lambda { |provider, event|
+    fields = ["const bt_event *bt_evt",
+              "const bt_clock_snapshot *bt_clock"]
+    args = event["args"].collect { |arg| arg.reverse }.to_h
+    event["fields"].each { |field|
+      lttng = LTTng::TracepointField::new(*field)
+      name = lttng.name
+      type = lttng.type
+      if name.match(/_val\z/)
+        n = name.sub(/_val\z/,"")
+        fields.push "size_t _#{name}_length"
+        type = args[n] if args[n]
+      else
+        type = args[name] if args[name]
+      end
+      fields.push "#{type} #{name}"
+    }
+    DBT_event.new(provider,event["name"], fields)
+}
+
+
+h = YAML::load_file("ze_events.yaml")
 
 def write_file_via_template(file, testing = false)
     template = File.read("#{file}.erb")
@@ -95,6 +134,13 @@ $dbt_events += $zet_commands.map{ |c| gen_event_callback_name_fields.call(provid
 provider = :lttng_ust_zes
 $dbt_events += $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :start) } +
                $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :stop) }
+
+ze_events = YAML::load_file("ze_events.yaml")
+$dbt_events += ze_events.map{ |provider,es|
+    es['events'].map{ |event|
+         gen_extra_event_callback.call(provider, event)
+    }
+}.flatten
 
 write_file_via_template("zeprof_callbacks.cpp")
 write_file_via_template("zeprof_callbacks.h")

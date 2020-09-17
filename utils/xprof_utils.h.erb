@@ -361,8 +361,12 @@ void print_extented_<%= result %>(){
     auto [ <%= args %> ] = s;
     std::ostringstream oss;
     oss <<  "<%= header %>"
-     <% var.each do | _,_, n | %>
-        << " | <%= n %>: " << <%= n %>
+    <% var.each do | _,_, n | %>
+        << " | <%= n %>: " 
+        <% if n == 'Device' %>
+        << std::hex << std::showbase << std::internal << std::setfill('0')
+        <% end %>
+        << <%= n %>
      <% end %>
      <% if result == 'device_id_result' %>
         <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"

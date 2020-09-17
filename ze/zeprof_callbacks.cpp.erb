@@ -20,26 +20,151 @@
 
 /* Callback */
 
+typedef std::tuple<hostname_t, process_id_t, ze_event_handle_t> hp_event_t;
+typedef std::tuple<hostname_t, process_id_t, ze_kernel_handle_t> hp_kernel_t;
+
+typedef std::tuple<hostname_t, process_id_t, ze_command_list_handle_t> hp_command_list_t; 
+typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_command_queue_t;
+
+
+typedef std::tuple<uint64_t, uint64_t> timerResolution_kernelTimestampValidBits_t;
+
+std::unordered_map<hpt_t, thapi_command_name> last_command;
+std::unordered_map<hpt_t, thapi_command_name> last_kernel;
+
+std::unordered_map<hpt_t, ze_device_handle_t> last_device;
+std::unordered_map<hpt_t, ze_command_queue_handle_t> last_command_queue;
+
+std::unordered_map<hpt_command_name_t, ze_device_handle_t> command_name_to_device;
+std::unordered_map<hp_event_t,t_command_name_t> event_to_command_name;
+
+std::unordered_map<hp_event_t, uint64_t> event_result_to_delta;
+std::unordered_map<hp_kernel_t, std::string> kernel_to_name;
+
+
+std::unordered_map<hp_command_list_t, ze_device_handle_t> command_list_to_device;
+std::unordered_map<hp_command_queue_t, ze_device_handle_t> command_queue_to_device;
+
+std::unordered_map<hpt_device_t, timerResolution_kernelTimestampValidBits_t> device_to_timerResolution_kernelTimestampValidBits;
+
+<%# Rely on global variable device_to_timerResolution_kernelTimestampValidBits %>
+inline uint64_t born_timing_to_ns(hpt_device_t hpt_device, uint64_t start, uint64_t end) {
+    const auto [timerResolution,kernelTimestampValidBits] =  device_to_timerResolution_kernelTimestampValidBits[hpt_device];
+    if (end >= start) {
+        return (end - start) * timerResolution;
+    } else {
+       <%# We cycle (don't know how many time. Lets assume one) %>
+       const uint64_t max_val = (1 << kernelTimestampValidBits) - 1;
+       return (max_val - start + end ) * timerResolution;
+    }
+}
+
 <% $dbt_events.each do | dbt_event | %>
-static void zeprof_<%= dbt_event.lltng_name %>_callback(
+static void zeprof_<%= dbt_event.uuid %>_callback(
    <%= dbt_event.fields.join(",\n  ") %>
 ){
-   <%if dbt_event.lltng_name.start_with?('lttng_ust_ze_') %>
+   <%if dbt_event.namespace == :lttng_ust_ze %>
   const hostname_t   hostname   = borrow_hostname(bt_evt);
   const process_id_t process_id = borrow_process_id(bt_evt);
   const thread_id_t  thread_id  = borrow_thread_id(bt_evt);  
   int64_t ns_from_origin;
   bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-     <%if dbt_event.lltng_name.end_with?("start") %>
+     <%if dbt_event.suffix == :start %>
   api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].start(ns_from_origin);
-     <%elsif dbt_event.lltng_name.end_with?("stop") %>
+     <%elsif dbt_event.suffix == :stop %>
   api_call[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].stop(ns_from_origin);
-     <% end %>
+     <%end%>
       
-         <% if dbt_event.name.include?("zeCommandListAppendMemory") and  dbt_event.fields.any? {|n| n.include?("size_t size")} %>
+     <% if (dbt_event.name == "zeMemAllocShared" or dbt_event.name.include?("zeCommandListAppendMemory")) and  dbt_event.include? ("size_t size") %>
   memory_trafic[hpt_command_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].delta(size);
-         <% end %>
-    
+     <% end %>
+
+     <%# Save kernel name %>
+     <% if dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_start" %>
+  last_kernel[hpt_t(hostname,process_id,thread_id)] = std::string{desc__pKernelName_val};
+     <% elsif dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_stop" %>
+  kernel_to_name[hp_kernel_t(hostname,process_id,phKernel_val)] =  last_kernel[hpt_t(hostname,process_id,thread_id)];
+     <% end %>
+
+    <%# Mappinf between CommnadList and Device %>
+    <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include? dbt_event.name %>
+        <% if dbt_event.suffix == :start %>
+  last_device[hpt_t(hostname,process_id,thread_id)] = hDevice;
+        <% elsif dbt_event.suffix == :stop %>
+  command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=last_device[hpt_t(hostname,process_id,thread_id)];
+        <% end %>
+    <% end %>
+
+     <%# function that we can profile %> 
+     <% if dbt_event.suffix == :start and  dbt_event.include? "hSignalEvent" %>
+        <%if  dbt_event.include? " hKernel" %>
+  const thapi_command_name name  = kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)];
+        <% else %> 
+  constexpr char name[] = "<%= dbt_event.name %>";
+        <% end %>
+
+    <% if dbt_event.suffix == :start and dbt_event.include? 'hCommandList' %>
+        command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id,name)] = command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
+    <% end %>
+
+  last_command[hpt_t(hostname,process_id,thread_id)] = name;
+     <% end %>
+   <%elsif dbt_event.lltng == "lttng_ust_ze_properties:device" %>
+  const hostname_t hostname    = borrow_hostname(bt_evt);
+  const process_id_t process_id = borrow_process_id(bt_evt);
+  const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+  //device_to_timerResolution[hpt_device_t(hostname,process_id, thread_id, (thapi_device_id) hDevice)] = pDeviceProperties_val -> timerResolution;
+   timerResolution_kernelTimestampValidBits_t a;
+    if ( hostname.rfind("iris",0) == 0){
+       a =  timerResolution_kernelTimestampValidBits_t(83,64);
+
+    } else if  ( hostname.rfind("yarrow",0) == 0){
+       a =  timerResolution_kernelTimestampValidBits_t(53,64);
+    } else {
+        std::cerr << "Warning: Unknow hostname "
+                  << hostname
+                  << "Cannot perform cycle to ns convertion "
+                  << std::endl;
+      a =  timerResolution_kernelTimestampValidBits_t(1,64);
+   }
+  device_to_timerResolution_kernelTimestampValidBits[hpt_device_t(hostname,process_id, thread_id, (thapi_device_id) hDevice)] = a;
+
+   <%elsif dbt_event.lltng == "lttng_ust_ze_profiling:event_profiling" %>
+  const hostname_t hostname    = borrow_hostname(bt_evt);
+  const process_id_t process_id = borrow_process_id(bt_evt);
+  const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+  const hp_event_t hp_event{hostname,process_id, hEvent};
+  const thapi_command_name command_name = last_command[hpt_t(hostname,process_id,thread_id)];
+  if (!event_to_command_name.count(hp_event)){
+     event_to_command_name[hp_event] = t_command_name_t(thread_id, command_name);
+  } else {
+     const uint64_t delta = event_result_to_delta[hp_event];
+     const ze_device_handle_t device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
+     device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
+     event_to_command_name.erase(hp_event);
+  }
+
+   <% elsif dbt_event.lltng == "lttng_ust_ze_profiling:event_profiling_results" %>
+  const std::string hostname    = borrow_hostname(bt_evt);
+  const process_id_t process_id = borrow_process_id(bt_evt);
+  const hp_event_t hp_event{hostname,process_id, hEvent};
+  if (event_to_command_name.count(hp_event)) {
+     const auto [thread_id,command_name] =  event_to_command_name[hp_event];
+     const ze_device_handle_t device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
+
+     const uint64_t delta = born_timing_to_ns(hpt_device_t(hostname,process_id,thread_id,(thapi_device_id) device),contextStart,contextEnd);
+     device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
+     event_to_command_name.erase(hp_event);
+  } else {
+     <%# Not sure about this one. Need to see when we have callbacks %>
+     const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+     const thapi_command_name command_name = last_command[hpt_t(hostname,process_id,thread_id)];
+     const ze_device_handle_t device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
+     const uint64_t delta = born_timing_to_ns(hpt_device_t(hostname,process_id,thread_id,(thapi_device_id) device),contextStart,contextEnd);
+     event_result_to_delta[hp_event]= delta;
+     event_to_command_name[hp_event] = t_command_name_t(thread_id, command_name);
+  }
+
   <% end %>
 };
 <% end %>
@@ -53,7 +178,7 @@ static void zeprof_<%= dbt_event.lltng_name %>_callback(
 
 void init_callbacks(struct ze_dispatch   *ze_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
-  ze_register_callback(ze_dispatch, "<%= dbt_event.lltng_event %>", (void *) &zeprof_<%= dbt_event.lltng_name %>_callback);
+  ze_register_callback(ze_dispatch, "<%= dbt_event.lltng %>", (void *) &zeprof_<%= dbt_event.uuid %>_callback);
 <% end %>
 }
 

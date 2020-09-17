@@ -87,8 +87,8 @@ static void clprof_<%= dbt_event.name %>_callback(
     } else {
         const uint64_t delta = event_result_to_delta[hp_event];
         const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
-        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
-
+        if (delta != 0)
+            device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
         event_to_command_name.erase(hp_event);
     }
 
@@ -96,13 +96,20 @@ static void clprof_<%= dbt_event.name %>_callback(
     const std::string hostname    = borrow_hostname(bt_evt);
     const process_id_t process_id = borrow_process_id(bt_evt);
     const hp_event_t hp_event{hostname,process_id, event};
-    const uint64_t delta = end - start;
-
+    uint64_t delta = end - start;
+    if (queued_status != 0 or submit_status != 0 or start_status != 0) {
+        std::cerr << "Warning: 'lttng_ust_opencl_profiling:event_profiling_results' for event " 
+                  << std::hex << std::showbase << std::internal << std::setfill('0') << event  
+                  << " returned invalid status" << std::endl;
+        delta = 0;
+    } else {
+        delta = end - start;
+    }
     if (event_to_command_name.count(hp_event)) {
         const auto [thread_id,command_name] =  event_to_command_name[hp_event];
         const cl_device_id device = command_name_to_device[hpt_command_name_t(hostname,process_id,thread_id, command_name)];
-
-        device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
+        if (delta != 0)
+            device_id_result[hpt_device_command_name_t(hostname,process_id,thread_id,(thapi_device_id) device,command_name)].delta(delta);
         event_to_command_name.erase(hp_event);
     } else {
         const thread_id_t thread_id   = borrow_thread_id(bt_evt);
