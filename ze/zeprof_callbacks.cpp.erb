@@ -113,21 +113,8 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
   const hostname_t hostname    = borrow_hostname(bt_evt);
   const process_id_t process_id = borrow_process_id(bt_evt);
   const thread_id_t thread_id   = borrow_thread_id(bt_evt);
-  //device_to_timerResolution[hpt_device_t(hostname,process_id, thread_id, (thapi_device_id) hDevice)] = pDeviceProperties_val -> timerResolution;
-   timerResolution_kernelTimestampValidBits_t a;
-    if ( hostname.rfind("iris",0) == 0){
-       a =  timerResolution_kernelTimestampValidBits_t(83,64);
-
-    } else if  ( hostname.rfind("yarrow",0) == 0){
-       a =  timerResolution_kernelTimestampValidBits_t(53,64);
-    } else {
-        std::cerr << "Warning: Unknow hostname "
-                  << hostname
-                  << "Cannot perform cycle to ns convertion "
-                  << std::endl;
-      a =  timerResolution_kernelTimestampValidBits_t(1,64);
-   }
-  device_to_timerResolution_kernelTimestampValidBits[hpt_device_t(hostname,process_id, thread_id, (thapi_device_id) hDevice)] = a;
+  const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val -> timerResolution, 64);
+  device_to_timerResolution_kernelTimestampValidBits[hpt_device_t(hostname,process_id, thread_id, (thapi_device_id) hDevice)] = t ;
 
    <%elsif dbt_event.lltng == "lttng_ust_ze_profiling:event_profiling" %>
   const hostname_t hostname    = borrow_hostname(bt_evt);
