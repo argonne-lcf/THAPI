@@ -615,7 +615,13 @@ EOF
       ph_module = MemoryPointer::new(:ze_module_handle_t)
       ph_build_log = MemoryPointer::new(:ze_module_build_log_handle_t)
       result = ZE.zeModuleCreate(@handle, device, desc, ph_module, ph_build_log)
-      ZE.error_check(result)
+      begin
+        ZE.error_check(result)
+      rescue
+        l = Module::BuildLog::new(ph_build_log.read_ze_module_build_log_handle_t)
+        p l.string
+        raise
+      end
       [Module::new(ph_module.read_ze_module_handle_t, device),
        Module::BuildLog::new(ph_build_log.read_ze_module_build_log_handle_t)]
     end
