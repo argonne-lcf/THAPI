@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+exec_prefix=@prefix@
+libdir=@libdir@
 
 trace() {
     quiet="--quiet"
@@ -19,7 +21,7 @@ trace() {
     export LTTNG_UST_ALLOW_BLOCKING=1
 
     lttng $quiet start
-    LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so "$@"
+    LD_PRELOAD=${libdir}/libTracerOpenCL.so "$@"
     lttng $quiet stop
     lttng $quiet destroy
 }
@@ -32,7 +34,7 @@ summary() {
     else
         lltng_last_session=$1
     fi
-    babeltrace2 --plugin-path=PATH_TO_LIB --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session}
+    babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session}
 }
 
 #  _

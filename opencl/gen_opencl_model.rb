@@ -1,7 +1,7 @@
 require_relative 'opencl_model'
 require_relative 'opencl_tracepoints.rb'
 
-en = YAML::load_file("supported_enums.yaml")
+en = YAML::load_file(File.join(SRC_DIR,"supported_enums.yaml"))
 en.push( { "name" => "cl_bool"} )
 en.push( { "name" => "command execution status", "trace_name" => "command_exec_callback_type", "type_name" => "cl_command_execution_status" } )
 
@@ -153,7 +153,7 @@ event_lambda = lambda { |c, dir|
   }
 }
 
-YAML::load_file("opencl_wrapper_events.yaml").each { |namespace, h|
+YAML::load_file(File.join(SRC_DIR,"opencl_wrapper_events.yaml")).each { |namespace, h|
   h["events"].each { |e|
     ["start", "stop"].each { |dir|
       event = get_fields(e["args"], e[dir])
@@ -162,7 +162,7 @@ YAML::load_file("opencl_wrapper_events.yaml").each { |namespace, h|
   }
 }
 
-YAML::load_file("opencl_events.yaml").each { |namespace, h|
+YAML::load_file(File.join(SRC_DIR,"opencl_events.yaml")).each { |namespace, h|
   h["events"].each { |e|
     event = get_fields(e["args"], e["fields"])
     events["#{namespace}:#{e["name"]}"] = event

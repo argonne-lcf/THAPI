@@ -1,4 +1,6 @@
 #!/bin/sh
+exec_prefix=@prefix@
+libdir=@libdir@
 while true; do
   case "$1" in
     -l | --lightweight ) shift; lightweight=1;;
@@ -56,7 +58,7 @@ then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
 fi
 export LTTNG_UST_ALLOW_BLOCKING=1
-export LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so:$LD_PRELOAD
+export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
 lttng start
 if [ ! -z "$lttng_view" ]
 then
