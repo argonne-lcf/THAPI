@@ -249,7 +249,7 @@ class Test_clprof
     end
 
     def path
-        "test_clprof/#{name}.dust"
+        "#{name}.dust"
     end
 
 end

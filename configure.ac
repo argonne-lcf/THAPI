@@ -15,7 +15,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.12])
 AM_PROG_AR
 
 # check for libtool
-LT_INIT
+LT_INIT([disable-static])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -28,6 +28,9 @@ if test -z "$ERB"; then
 fi
 if test -z "$LTTNG_GEN_TP"; then
   AC_CHECK_PROG(LTTNG_GEN_TP,lttng-gen-tp,lttng-gen-tp)
+fi
+if test -z "$BABELTRACE2_PROG"; then
+  AC_CHECK_PROG(BABELTRACE2_PROG,babeltrace2,babeltrace2)
 fi
 if test -z "$PATCH"; then
   AC_CHECK_PROG(PATCH,patch,patch)
@@ -70,6 +73,7 @@ AC_CONFIG_FILES([Makefile
                  opencl/Makefile])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/clprof.sh], [chmod +x opencl/clprof.sh])
+AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 #                 ze/Makefile
 #                 cuda/Makefile])
 AC_OUTPUT

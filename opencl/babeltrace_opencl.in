@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+DATADIR = File.join("@prefix@", "share")
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'yaml'
@@ -10,8 +11,8 @@ raise "Trace not found: #{ARGV[0].inspect}, check path." if traces == []
 
 puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
 
-opencl_model = YAML::load_file(File.join(File.dirname(__FILE__),"opencl_model.yaml"))
-infos = YAML::load_file(File.join(File.dirname(__FILE__),"opencl_infos.yaml"))
+opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
+infos = YAML::load_file(File.join(DATADIR,"opencl_infos.yaml"))
 enums_by_type = {}
 enums_by_value = {}
 enums_by_name = {}
