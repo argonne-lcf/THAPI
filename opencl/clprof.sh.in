@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 exec_prefix=@prefix@
 libdir=@libdir@
+pkglibdir=$libdir/@PACKAGE@
+
+# Find all location of a `.so`
+whichlib() {
+  # Output of ldconfig:
+  #/usr/lib32:
+  #       libstdc++.so.6 -> libstdc++.so.6.0.26
+  # After the awk:
+  # -> /usr/lib32/libstdc++.so.6
+
+  # In OpenSUSE ldconfig, is in '/sbin'.
+  PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+               match($1, "^lib") && match($1, p) { print header "/" $1}'
+}
 
 trace() {
     quiet="--quiet"
@@ -17,8 +32,14 @@ trace() {
 
     lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
 
+    if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
+    then
+      export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
+    fi
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
+    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir:$LD_LIBRARY_PATH
 
     lttng $quiet start
     LD_PRELOAD=${libdir}/libTracerOpenCL.so "$@"
@@ -51,6 +72,7 @@ while (( "$#" )); do
         -r|--replay)
             shift; path=$@; replay=true;
             ;;
+        -- ) shift; break ;;
         *)
             break 
             ;;
