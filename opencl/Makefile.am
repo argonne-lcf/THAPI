@@ -100,6 +100,13 @@ libTracerOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -
 libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
 libTracerOpenCL_la_LIBADD = libtracepoints.la
 
+install-exec-hook::
+	$(RM) -r $(pkglibdir)
+	mkdir -p $(pkglibdir)
+	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/libOpenCL.so.1.0.0
+	ln -s $(pkglibdir)/libOpenCL.so.1.0.0 $(pkglibdir)/libOpenCL.so.1
+	ln -s $(pkglibdir)/libOpenCL.so.1 $(pkglibdir)/libOpenCL.so
+
 clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
 
@@ -130,9 +137,10 @@ libCLProf_la_LDFLAGS = -lstdc++ $(BABELTRACE2_LIBS) -avoid-version -module
 #   noinst_LTLIBRARIES would be the correct thing but then libtool
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
-pkglib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingCLProf.la
-install-exec-hook::
-	$(RM) -r $(DESTDIR)$(pkglibdir)
+tmplibdir = $(libdir)/tmp
+tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingCLProf.la
+install-data-hook::
+	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb > babeltrace_cl_callbacks.h

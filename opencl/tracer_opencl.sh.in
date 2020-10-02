@@ -1,6 +1,22 @@
 #!/bin/sh
 exec_prefix=@prefix@
 libdir=@libdir@
+pkglibdir=$libdir/@PACKAGE@
+
+# Find all location of a `.so`
+whichlib() {
+  # Output of ldconfig:
+  #/usr/lib32:
+  #       libstdc++.so.6 -> libstdc++.so.6.0.26
+  # After the awk:
+  # -> /usr/lib32/libstdc++.so.6
+
+  # In OpenSUSE ldconfig, is in '/sbin'.
+  PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+               match($1, "^lib") && match($1, p) { print header "/" $1}'
+}
+
 while true; do
   case "$1" in
     -l | --lightweight ) shift; lightweight=1;;
@@ -57,8 +73,13 @@ if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
 fi
+if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
+then
+  export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
+fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
+export LD_LIBRARY_PATH=$pkglibdir:$LD_LIBRARY_PATH
 lttng start
 if [ ! -z "$lttng_view" ]
 then
