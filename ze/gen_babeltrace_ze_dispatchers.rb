@@ -339,7 +339,7 @@ $zes_commands.each { |c|
   gen_event_dispatcher.call(provider, c, :stop)
 }
 
-ze_events = YAML::load_file("ze_events.yaml")
+ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
 
 ze_events.each { |provider, es|
   es["events"].each { |event|

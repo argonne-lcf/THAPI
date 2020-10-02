@@ -19,26 +19,27 @@ whichlib() {
 
 trace() {
     quiet="--quiet"
-    lttng-sessiond --daemonize $quiet
-    lttng $quiet create clprof                                      
+    lttng-sessiond $quiet --daemonize
+    lttng $quiet create zeprof
     #Using blocking more to trace event record loss
-    lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel     
+    lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:*  
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:device_name
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zes:*
+    export LTTNG_UST_ZE_PROFILE=1
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
 
     lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
 
-    if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
+    if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
     then
-      export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
+      export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
     fi
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
-    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
+    export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir:$LD_LIBRARY_PATH
 
     lttng $quiet start
@@ -54,25 +55,25 @@ trace_epilogue() {
 
 summary() {
     if [ -z "$path" ]; then
-        lltng_last_session=$(ls -dt $HOME/lttng-traces/clprof* | head -1)
-        echo "Trace location " $lltng_last_session
+        lltng_last_session=$(ls -dt $HOME/lttng-traces/zeprof* | head -1)
+        echo "Trace location:" $lltng_last_session
         echo
     else
         lltng_last_session=$path
     fi
-    babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session}
+    babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session}
 }
 
 #  _
 # |_) _. ._ _ o ._   _     /\  ._ _
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
-display="compact"
+display="compact";
 while (( "$#" )); do
     case "$1" in
         -e | --extented) shift; display="extended"   ;;
         -r | --replay)   shift; path=$@; replay=true ;;
-        -- )             shift; break ;;
+        --)              shift; break ;;
         *)               break  ;;
     esac
 done

@@ -1,1 +1,2 @@
 lttng/tracepoint_gen.h
+config.h.in

@@ -101,10 +101,9 @@ libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
 libTracerOpenCL_la_LIBADD = libtracepoints.la
 
 install-exec-hook::
-	$(RM) -r $(pkglibdir)
 	mkdir -p $(pkglibdir)
-	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/libOpenCL.so.1.0.0
-	ln -s $(pkglibdir)/libOpenCL.so.1.0.0 $(pkglibdir)/libOpenCL.so.1
+	$(RM) $(pkglibdir)/libOpenCL.so.1 $(pkglibdir)/libOpenCL.so
+	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/libOpenCL.so.1
 	ln -s $(pkglibdir)/libOpenCL.so.1 $(pkglibdir)/libOpenCL.so
 
 clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
@@ -125,7 +124,7 @@ nodist_libCLProf_la_SOURCES = \
 	tracer_opencl.h \
 	babeltrace_cl_dispatchers.c
 libCLProf_la_SOURCES = \
-	clprof.h
+	babeltrace_cl.h
 
 libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
@@ -173,7 +172,7 @@ testing_clprof_callbacks.cpp testing_clprof_callbacks.h: testing_clprof.c
 	@if test -f $@; then \
 	  touch $@; \
 	else \
-	  rm -f clprof.c; \
+	  rm -f testing_clprof.c; \
 	  $(MAKE) $(AM_MAKEFLAGS) testing_clprof.c; \
 	fi
 

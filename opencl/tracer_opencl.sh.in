@@ -81,6 +81,15 @@ export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
 export LD_LIBRARY_PATH=$pkglibdir:$LD_LIBRARY_PATH
 lttng start
+
+ctrl_c() {
+  lttng stop
+  lttng destroy
+  exit
+}
+
+trap ctrl_c INT
+
 if [ ! -z "$lttng_view" ]
 then
   lttng view &
