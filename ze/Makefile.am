@@ -151,6 +151,8 @@ BUILT_SOURCES = $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) babeltrace_ze_callbac
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze.rb > $@
 
+EXTRA_DIST += gen_ze.rb tracer_ze_helpers.include.c
+
 CLEANFILES += tracer_ze.c
 
 bin_SCRIPTS = tracer_ze.sh babeltrace_ze zeprof.sh
@@ -241,6 +243,10 @@ babeltrace_ze_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB
 EXTRA_DIST += \
 	gen_babeltrace_ze_callbacks.rb \
 	gen_babeltrace_ze_dispatchers.rb
+
+CLEANFILES += \
+	babeltrace_ze_callbacks.h \
+	babeltrace_ze_dispatchers.c
 
 nodist_libBabeltraceZE_la_SOURCES = \
 	babeltrace_ze_callbacks.h \

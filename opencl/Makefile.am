@@ -183,7 +183,7 @@ nodist_libTestingCLProf_la_SOURCES = \
 	tracer_opencl.h \
 	babeltrace_cl_dispatchers.c
 libTestingCLProf_la_SOURCES = \
-	clprof.h
+	babeltrace_cl.h
 
 libTestingCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libTestingCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
