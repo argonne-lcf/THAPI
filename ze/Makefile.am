@@ -43,7 +43,6 @@ ML_FILES = \
 	$(srcdir)/zet_meta_parameters.yaml
 
 EXTRA_DIST = $(ML_FILES)
-EXTRA_DIST += ze_events.yaml
 
 ZE_EXTRACT = \
 	$(srcdir)/extract_base.rb
@@ -79,7 +78,7 @@ ZE_HDR = \
 	$(srcdir)/include/ze_api.h \
 	$(ZE_EXTRA_HDR)
 
-MODIFIED_EXTRA_HDR = \
+MODIFIED_ZE_EXTRA_HDR = \
 	modified_include/ze_ddi.h \
 	modified_include/zes_api.h \
 	modified_include/zes_ddi.h \
@@ -87,14 +86,14 @@ MODIFIED_EXTRA_HDR = \
 	modified_include/zet_ddi.h
 MODIFIED_ZE_HDR = \
 	modified_include/ze_api.h \
-	$(MODIFIED_EXTRA_HDR)
+	$(MODIFIED_ZE_EXTRA_HDR)
 
 modified_include/ze_api.h: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
-$(MODIFIED_EXTRA_HDR): modified_include/ze_api.h
+$(MODIFIED_ZE_EXTRA_HDR): modified_include/ze_api.h
 	@if test -f $@; then \
 	  touch $@; \
 	else \
@@ -149,7 +148,7 @@ EXTRA_DIST += \
 BUILT_SOURCES = $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) babeltrace_ze_callbacks.h
 
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += gen_ze.rb tracer_ze_helpers.include.c
 
@@ -183,7 +182,7 @@ libTracerZE_la_LIBADD = libzetracepoints.la
 install-exec-hook::
 	mkdir -p $(pkglibdir)
 	$(RM) $(pkglibdir)/libze_loader.so.1 $(pkglibdir)/libze_loader.so
-	ln -s $(libdir)/libTracerZE.so.1.0.0 $(pkglibdir)/libze_loader.so.1
+	ln -s $(libdir)/libTracerZE.so.0.0.0 $(pkglibdir)/libze_loader.so.1
 	ln -s $(pkglibdir)/libze_loader.so.1 $(pkglibdir)/libze_loader.so
 
 ZEPROF = \

@@ -106,7 +106,7 @@ $cuda_commands.each { |c|
   gen_event_lambda.call(provider, c, :stop)
 }
 
-extra_events = YAML::load_file("cuda_events.yaml")
+extra_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
 
 extra_events.each { |provider, h|
   h["events"].each { |e|
