@@ -23,7 +23,10 @@ CUDART_PROBES_SRC = \
 CLEANFILES = \
 	$(CUDA_PROBES_TP) \
 	$(CUDA_PROBES_INCL) \
-	$(CUDA_PROBES_SRC)
+	$(CUDA_PROBES_SRC) \
+	$(CUDART_PROBES_TP) \
+	$(CUDART_PROBES_INCL) \
+	$(CUDART_PROBES_SRC)
 
 ML_CUDA_FILES = \
 	$(srcdir)/cuda_meta_parameters.yaml
@@ -44,7 +47,7 @@ CUDA_EXTRACTED = \
 CUDART_EXTRACTED = \
 	cudart_api.yaml
 
-CLEANFILES += $(CUDA_EXTRACTED)
+CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
 
 CUDA_MODEL = \
 	$(srcdir)/cuda_model.rb \
