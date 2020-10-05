@@ -3,6 +3,12 @@ require 'pp'
 require_relative '../utils/yaml_ast'
 require_relative '../utils/LTTng'
 
+if ENV["SRC_DIR"]
+  SRC_DIR = ENV["SRC_DIR"]
+else
+  SRC_DIR = "."
+end
+
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
@@ -617,20 +623,20 @@ META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
-$ze_meta_parameters = YAML::load_file("ze_meta_parameters.yaml")
+$ze_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ze_meta_parameters.yaml"))
 $ze_meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
-$zet_meta_parameters = YAML::load_file("zet_meta_parameters.yaml")
+$zet_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zet_meta_parameters.yaml"))
 $zet_meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
 
-$zes_meta_parameters = YAML::load_file("zes_meta_parameters.yaml")
+$zes_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zes_meta_parameters.yaml"))
 $zes_meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args

@@ -107,11 +107,8 @@ gen_extra_event_callback =lambda { |provider, event|
     DBT_event.new(provider,event["name"], fields)
 }
 
-
-h = YAML::load_file("ze_events.yaml")
-
 def write_file_via_template(file, testing = false)
-    template = File.read("#{file}.erb")
+    template = File.read(File.join(SRC_DIR,"#{file}.erb"))
     template_rendered = ERB.new(template).result(binding).gsub(/^\s*$\n/,'')
     
     if testing
@@ -120,8 +117,6 @@ def write_file_via_template(file, testing = false)
         File.write("#{file}", template_rendered)
     end
 end
-
-
 
 provider = :lttng_ust_ze
 $dbt_events = $ze_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :start) } + 
@@ -135,7 +130,7 @@ provider = :lttng_ust_zes
 $dbt_events += $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :start) } +
                $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :stop) }
 
-ze_events = YAML::load_file("ze_events.yaml")
+ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
 $dbt_events += ze_events.map{ |provider,es|
     es['events'].map{ |event|
          gen_extra_event_callback.call(provider, event)

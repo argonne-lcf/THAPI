@@ -1,6 +1,12 @@
 require 'nokogiri'
 require 'yaml'
 
+if ENV["SRC_DIR"]
+  SRC_DIR = ENV["SRC_DIR"]
+else
+  SRC_DIR = "."
+end
+
 MEMBER_SEPARATOR = "__"
 
 GENERATE_ENUMS_TRACEPOINTS = false
@@ -15,7 +21,7 @@ ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTermi
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /#{YAML::load_file("supported_extensions.yaml").join("|")}/
+SUPPORTED_EXTENSION_FUNCTIONS = /#{YAML::load_file(File.join(SRC_DIR,"supported_extensions.yaml")).join("|")}/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
@@ -169,7 +175,7 @@ end
 $requires = (doc.xpath("//feature/require").to_a + doc.xpath("//extensions/extension/require").to_a).collect { |r| Require::new(r) }
 
 if GENERATE_ENUMS_TRACEPOINTS
-  enums = YAML::load_file("supported_enums.yaml")
+  enums = YAML::load_file(File.join(SRC_DIR,"supported_enums.yaml"))
 
 
   enums.each { |e|
@@ -704,7 +710,7 @@ end
 OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
 OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
 
-$meta_parameters = YAML::load_file("opencl_meta_parameters.yaml")
+$meta_parameters = YAML::load_file(File.join(SRC_DIR,"opencl_meta_parameters.yaml"))
 $meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args

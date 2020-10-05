@@ -1,5 +1,12 @@
 require 'erb'
 require 'yaml'
+
+if ENV["SRC_DIR"]
+  SRC_DIR = ENV["SRC_DIR"]
+else
+  SRC_DIR = "."
+end
+
 opencl_model = YAML::load_file("opencl_model.yaml")
 
 # Todo. This list is not complete
@@ -242,7 +249,7 @@ class Test_clprof
     end
 
     def path
-        "test_clprof/#{name}.dust"
+        "#{name}.dust"
     end
 
 end
@@ -253,7 +260,7 @@ $dbt_events = opencl_model['events'].map { |dbt_event|
 }
 
 def write_file_via_template(file, testing = false)
-    template = File.read("#{file}.erb")
+    template = File.read(File.join(SRC_DIR, "#{file}.erb"))
     template_rendered = ERB.new(template).result(binding).gsub(/^\s*$\n/,'')
     if testing
         File.write("testing_#{file}", template_rendered)

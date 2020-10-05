@@ -1,9 +1,12 @@
 #!/usr/bin/env ruby
+DATADIR = File.join("@prefix@", "share")
+$:.unshift(DATADIR) if File::directory?(DATADIR)
+$:.unshift("./")
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'yaml'
 require 'pp'
-require_relative './babeltrace_ze_lib'
+require 'babeltrace_ze_lib'
 
 c = Babeltrace::Context::new
 traces = c.add_traces(path: ARGV[0])

@@ -1,0 +1,80 @@
+#!/bin/sh
+exec_prefix=@prefix@
+libdir=@libdir@
+pkglibdir=$libdir/@PACKAGE@
+
+# Find all location of a `.so`
+whichlib() {
+  # Output of ldconfig:
+  #/usr/lib32:
+  #       libstdc++.so.6 -> libstdc++.so.6.0.26
+  # After the awk:
+  # -> /usr/lib32/libstdc++.so.6
+
+  # In OpenSUSE ldconfig, is in '/sbin'.
+  PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+               match($1, "^lib") && match($1, p) { print header "/" $1}'
+}
+
+while true; do
+  case "$1" in
+    --cudart) shift; cudart=1;;
+    -v | --visualize) shift; lttng_view=1;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+lttng-sessiond --daemonize --quiet
+if [ ! -z "$lttng_view" ]
+then
+  lttng-relayd --daemonize
+  lttng create my-userspace-ze-session --live
+else
+  lttng create my-userspace-ze-session
+fi
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng add-context --userspace --channel=blocking-channel -t vtid -t pthread_id
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
+if [ ! -z "$cudart" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_cudart:*
+fi
+if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
+then
+  export LTTNG_UST_CUDA_LIBCUDA=$(whichlib libcuda.so | head -n 1)
+fi
+export LTTNG_UST_ALLOW_BLOCKING=1
+export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
+export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
+if [ ! -z "$cudart" ]
+then
+  if [ -z "$LTTNG_UST_CUDA_LIBCUDART" ]
+  then
+    export LTTNG_UST_CUDART_LIBCUDART=$(whichlib libcudart.so | head -n 1)
+  fi
+  export LD_PRELOAD=$libdir/libTracerCUDART.so:$LD_PRELOAD
+  export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
+fi
+lttng start
+
+ctrl_c() {
+  lttng stop
+  lttng destroy
+  exit
+}
+
+trap ctrl_c INT
+
+if [ ! -z "$lttng_view" ]
+then
+  lttng view &
+  PID=$!
+fi
+"$@"
+lttng stop
+lttng destroy
+if [ ! -z "$lttng_view" ]
+then
+  wait $PID
+fi

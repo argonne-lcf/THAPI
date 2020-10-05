@@ -18,3 +18,9 @@ tags
 # Persistent undo
 [._]*.un~
 
+build
+autom4te.cache
+m4
+aclocal.m4
+configure
+Makefile.in

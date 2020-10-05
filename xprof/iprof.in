@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+exec_prefix=@prefix@
+libdir=@libdir@
+pkglibdir=$libdir/@PACKAGE@
+
 display_help() {
-    echo "$(basename $0): a tracing / summarizer of OpenCL Calls"
+    echo "$(basename $0): a tracing / summarizer of OpenCL and L0 Calls"
     echo "Usage:"
     echo " $(basename $0) -h | --help "
     echo " $(basename $0) [option]... <application> <application-arguments>"
@@ -25,14 +29,8 @@ display_help() {
     exit 1
 }
 
-# If people already set some env variable, respect their will. Common decency.
-function lazy_export {
-    # Export $1 with the value $2 if it was not already set to a non empty string.
-    export $1=${!1:=$2}
-}
-
 # Find all location of a `.so`
-function whichlib {
+whichlib() {
   # Output of ldconfig:
   #/usr/lib32:
   #       libstdc++.so.6 -> libstdc++.so.6.0.26
@@ -66,16 +64,20 @@ trace_and_summary() {
     lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
 
     #Preventing trace event record loss
+    if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
+    then
+      export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
+    fi
+    if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
+    then
+      export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
+    fi
+    #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
+    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$libdir/libTracerZE.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir/opencl:$pkglibdir/ze:$LD_LIBRARY_PATH
 
     lttng $quiet start
-    #Caution, need to be done before the dlopen workarround
-    lazy_export LTTNG_UST_OPENCL_LIBOPENCL $(whichlib libOpenCL.so | head -n 1)
-    lazy_export LTTNG_UST_ZE_LIBZE_LOADER $(whichlib libze_loader.so | head -n 1)
-
-    export LD_PRELOAD=PATH_TO_LIB/tracer_opencl.so:PATH_TO_LIB/tracer_ze.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=PATH_TO_LIB:$LD_LIBRARY_PATH
-
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
     "$@"
 }
@@ -112,13 +114,13 @@ summary() {
     fi
 
 
-    ocl_output=$(babeltrace2 --plugin-path=PATH_TO_LIB --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session})
+    ocl_output=$(babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session})
     if [ -n "$ocl_output" ]; then
         echo "== OpenCL == "
         echo "$ocl_output"
     fi
 
-    ze_output=$(babeltrace2 --plugin-path=PATH_TO_LIB --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session})
+    ze_output=$(babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session})
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"

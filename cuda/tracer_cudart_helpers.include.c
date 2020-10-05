@@ -3,7 +3,14 @@ static __thread volatile int in_init = 0;
 static volatile int _initialized = 0;
 
 static void _load_tracer(void) {
-  void * handle = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
+  char *s = NULL;
+  void *handle = NULL;
+
+  s = getenv("LTTNG_UST_CUDART_LIBCUDART");
+  if (s)
+      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
+  else
+      handle = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
   if( !handle ) {
     fprintf(stderr, "Failure: could not load cudart library!\n");
     exit(1);

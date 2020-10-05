@@ -4,7 +4,7 @@ namespace = ARGV[0]
 
 raise "No namespace provided!" unless namespace
 
-h = YAML::load_file("ze_events.yaml")[namespace]
+h = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))[namespace]
 
 raise "Invalid namespace!" unless h
 

@@ -38,7 +38,7 @@ puts <<EOF
 
 EOF
 
-puts File::read("tracer_cuda_helpers.include.c")
+puts File::read(File.join(SRC_DIR,"tracer_cuda_helpers.include.c"))
 
 common_block = lambda { |c, provider|
   params = c.parameters.collect(&:name)

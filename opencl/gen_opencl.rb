@@ -84,7 +84,7 @@ puts <<EOF
 
 EOF
 
-puts File::read("tracer_opencl_helpers.include.c")
+puts File::read(File.join(SRC_DIR,"tracer_opencl_helpers.include.c"))
 
 common_block = lambda { |c|
   params = []
