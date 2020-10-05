@@ -101,10 +101,10 @@ libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
 libTracerOpenCL_la_LIBADD = libtracepoints.la
 
 install-exec-hook::
-	mkdir -p $(pkglibdir)
-	$(RM) $(pkglibdir)/libOpenCL.so.1 $(pkglibdir)/libOpenCL.so
-	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/libOpenCL.so.1
-	ln -s $(pkglibdir)/libOpenCL.so.1 $(pkglibdir)/libOpenCL.so
+	mkdir -p $(pkglibdir)/opencl
+	$(RM) $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
+	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
+	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
 
 clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production

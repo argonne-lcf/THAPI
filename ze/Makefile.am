@@ -180,10 +180,10 @@ libTracerZE_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerZE_la_LIBADD = libzetracepoints.la
 
 install-exec-hook::
-	mkdir -p $(pkglibdir)
-	$(RM) $(pkglibdir)/libze_loader.so.1 $(pkglibdir)/libze_loader.so
-	ln -s $(libdir)/libTracerZE.so.0.0.0 $(pkglibdir)/libze_loader.so.1
-	ln -s $(pkglibdir)/libze_loader.so.1 $(pkglibdir)/libze_loader.so
+	mkdir -p $(pkglibdir)/ze
+	$(RM) $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
+	ln -s $(libdir)/libTracerZE.so.0.0.0 $(pkglibdir)/ze/libze_loader.so.1
+	ln -s $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
 
 ZEPROF = \
 	$(srcdir)/zeprof_callbacks.cpp.erb \

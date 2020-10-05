@@ -46,6 +46,7 @@ then
 fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
+export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
 if [ ! -z "$cudart" ]
 then
   if [ -z "$LTTNG_UST_CUDA_LIBCUDART" ]
@@ -53,8 +54,8 @@ then
     export LTTNG_UST_CUDART_LIBCUDART=$(whichlib libcudart.so | head -n 1)
   fi
   export LD_PRELOAD=$libdir/libTracerCUDART.so:$LD_PRELOAD
+  export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
 fi
-#export LD_LIBRARY_PATH=$pkglibdir:$LD_LIBRARY_PATH
 lttng start
 
 ctrl_c() {

@@ -180,12 +180,14 @@ libTracerCUDART_la_LIBADD = libcudarttracepoints.la
 
 install-exec-hook::
 	mkdir -p $(pkglibdir)
-	$(RM) $(pkglibdir)/libcudart.so.10.1 $(pkglibdir)/libcudart.so
-	$(RM) $(pkglibdir)/libcuda.so.1 $(pkglibdir)/libcuda.so
-	ln -s $(libdir)/libTracerCUDART.so.10.1.0 $(pkglibdir)/libcudart.so.10.1
-	ln -s $(pkglibdir)/libcudart.so.10.1 $(pkglibdir)/libcudart.so
-	ln -s $(libdir)/libTracerCUDA.so.1.0.0 $(pkglibdir)/libcuda.so.1
-	ln -s $(pkglibdir)/libcuda.so.1 $(pkglibdir)/libcuda.so
+	mkdir -p $(pkglibdir)/cuda
+	mkdir -p $(pkglibdir)/cudart
+	$(RM) $(pkglibdir)/cudart/libcudart.so.10.1 $(pkglibdir)/cudart/libcudart.so
+	$(RM) $(pkglibdir)/cuda/libcuda.so.1 $(pkglibdir)/cuda/libcuda.so
+	ln -s $(libdir)/libTracerCUDART.so.10.1.0 $(pkglibdir)/cudart/libcudart.so.10.1
+	ln -s $(pkglibdir)/cudart/libcudart.so.10.1 $(pkglibdir)/cudart/libcudart.so
+	ln -s $(libdir)/libTracerCUDA.so.1.0.0 $(pkglibdir)/cuda/libcuda.so.1
+	ln -s $(pkglibdir)/cuda/libcuda.so.1 $(pkglibdir)/cuda/libcuda.so
 
 CUDA_LIB_GEN = \
 	$(srcdir)/gen_cuda_library_base.rb \

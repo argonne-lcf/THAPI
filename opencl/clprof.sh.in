@@ -39,7 +39,7 @@ trace() {
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
     export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
 
     lttng $quiet start
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
