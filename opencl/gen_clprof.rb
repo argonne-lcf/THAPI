@@ -102,7 +102,7 @@ l_test_d = [
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_stop'],
                ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"clEnqueueReadBuffer"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10] ]
     },
     {"name" => "profiling_inversed",
     "dust"=> [
@@ -115,22 +115,22 @@ l_test_d = [
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_stop'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=5'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"clEnqueueWriteBuffer"'], 10],
-                             [ ['"aurora12.gov"',-1,2,0,'"clEnqueueReadBuffer"'], 5] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueWriteBuffer"'], 10],
+                             [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 5] ]
     },
     {"name" => "profiling_block",
     "dust"=> [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_start'],
                ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_stop'] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"clEnqueueReadBuffer"'], 10 ]  ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10 ]  ]
     },
     {"name" => "profiling_fast",
     "dust"=> [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_start'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_stop'] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"clEnqueueReadBuffer"'], 10]  ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10]  ]
     },
     {"name" => "profiling_interleave_thread",
     "dust"=> [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_start'],
@@ -141,8 +141,8 @@ l_test_d = [
                ['aurora12.gov',-1,3, 'lttng_ust_opencl:clEnqueueWriteBuffer_stop'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
                ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=20'], ['start=0'], ['end=20'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"clEnqueueReadBuffer"'], 10],
-                [ ['"aurora12.gov"',-1,3,0,'"clEnqueueWriteBuffer"'], 20] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10],
+                [ ['"aurora12.gov"',-1,3,0,0,'"clEnqueueWriteBuffer"'], 20] ]
     },
     {"name" => "profiling_interleave_process",
     "dust"=> [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_start'],
@@ -153,8 +153,8 @@ l_test_d = [
                ['aurora12.gov', 1,2, 'lttng_ust_opencl:clEnqueueWriteBuffer_stop'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
                ['aurora12.gov', 1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=20'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"clEnqueueReadBuffer"'], 10],
-                [ ['"aurora12.gov"', 1,2,0,'"clEnqueueWriteBuffer"'], 20] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10],
+                [ ['"aurora12.gov"', 1,2,0,0,'"clEnqueueWriteBuffer"'], 20] ]
     },
     {"name" => "profiling_normal_command_queue",
     "dust"=> [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clCreateCommandQueue_start','device=10'],
@@ -163,7 +163,7 @@ l_test_d = [
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_stop'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,10,'"clEnqueueReadBuffer"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueReadBuffer"'], 10] ]
     },
     {"name" => "profiling_with_error",
     "dust"=> [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clCreateCommandQueue_start','device=10'],
@@ -176,7 +176,7 @@ l_test_d = [
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=20'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueWriteBuffer_stop'] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,10,'"clEnqueueWriteBuffer"'], 20] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueWriteBuffer"'], 20] ]
     },
     {"name" => "profiling_normal_command_queue_created_in_other_thread",
     "dust"=> [ ['aurora12.gov',-1,3, 'lttng_ust_opencl:clCreateCommandQueue_start','device=10'],
@@ -185,7 +185,7 @@ l_test_d = [
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueReadBuffer_stop'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,10,'"clEnqueueReadBuffer"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueReadBuffer"'], 10] ]
     },
     {"name" => "device_name",
      "dust"=> [ ['aurora12.gov',11,0, 'lttng_ust_opencl_devices:device_name', 'device=22', 'name=PVC'] ],
@@ -201,7 +201,7 @@ l_test_d = [
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl:clEnqueueNDRangeKernel_stop'],
                ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,'"__ompoffload"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"__ompoffload"'], 10] ]
     },
     { "name" => "API_call",
       "dust" => [ ['aurora12.gov',-1,2, 'lttng_ust_opencl:clLinkProgram_start'],

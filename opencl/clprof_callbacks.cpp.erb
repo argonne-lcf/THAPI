@@ -104,7 +104,7 @@ static void clprof_<%= dbt_event.name %>_callback(
   <% if dbt_event.name.end_with?("start") and dbt_event.name.include?('clCreateCommandQueue') %>
     start_device[hpt_t(hostname,process_id, thread_id) ] =  (thapi_device_id) device;
   <%elsif dbt_event.name.end_with?("stop") and dbt_event.name.include?('clCreateCommandQueue') %>
-    const thapi_device_id device = start_device[hpt_t(hostname,process_id) ];
+    const thapi_device_id device = start_device[hpt_t(hostname,process_id, thread_id) ];
     const thapi_device_id root_device = device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
     command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(root_device, device) ; 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
@@ -217,7 +217,8 @@ void finalize_callbacks() {
    if (test_path == "<%= test.name %>") {
        std :: cout << "testing <%= test.name %>" << std::endl;
     <% test.device_id_result.each do |assert| %>
-       <% assert[0][-2] = "(thapi_device_id) #{assert[0][-2]}" %>
+        <% assert[0][-2] = "(thapi_device_id) #{assert[0][-2]}" %>
+        <% assert[0][-3] = "(thapi_device_id) #{assert[0][-3]}" %>
        assert(device_id_result[hpt_device_function_name_t(<%= assert[0].join(',') %>)]._time == <%= assert[1] %>);
     <% end %>
     <% test.device_to_name.each do |assert| %>
