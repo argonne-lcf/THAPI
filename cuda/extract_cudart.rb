@@ -1,8 +1,15 @@
 require_relative 'extract_base.rb'
 
-preprocessed_sources_cudart_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
+begin
+  preprocessed_sources_cudart_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
 #include <cuda_runtime_api.h>
 EOF
+rescue
+  C::Preprocessor.command = "gcc -E"
+  preprocessed_sources_cudart_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
+#include <cuda_runtime_api.h>
+EOF
+end
 
 ast = $parser.parse(preprocessed_sources_cudart_api)
 
