@@ -29,6 +29,7 @@ typedef void (opencl_dispatcher_t)
 struct opencl_unique_id {
     uint64_t class_id;
     uint64_t stream_id;
+    uint64_t stream_class_id;
 };
 
 
