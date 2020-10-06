@@ -26,15 +26,8 @@ typedef void (ze_dispatcher_t)
      const bt_event          *message,
      const bt_clock_snapshot *clock);
 
-struct ze_unique_id {
-    uint64_t class_id;
-    uint64_t stream_id;
-    uint64_t stream_class_id;
-};
-
-
 struct ze_callbacks {
-    struct ze_unique_id id;
+    const char* name;
     ze_dispatcher_t *dispatcher;
     UT_array *callbacks;
     UT_hash_handle hh;

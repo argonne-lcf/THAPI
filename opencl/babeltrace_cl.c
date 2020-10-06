@@ -183,20 +183,18 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
         if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
-            const bt_stream_class *stream_class = bt_event_class_borrow_stream_class_const(event_class);
-            const struct opencl_unique_id  id = {
-                bt_event_class_get_id(event_class),
-                bt_stream_get_id(bt_event_borrow_stream_const(event)),
-                bt_stream_class_get_id(stream_class) };
             struct opencl_callbacks *callbacks = NULL;
+            const char * class_name = bt_event_class_get_name(event_class);
 
-            HASH_FIND(hh, opencl_dispatch->callbacks, &id, sizeof(id), callbacks);
+            HASH_FIND_STR(opencl_dispatch->callbacks, class_name, callbacks);
             if (!callbacks) {
-                callbacks = (struct opencl_callbacks *)calloc(1, sizeof(struct opencl_callbacks));
-                callbacks->id = id;
-                HASH_ADD(hh, opencl_dispatch->callbacks, id, sizeof(id), callbacks);
+                const size_t class_name_sz = strlen(class_name);
+                callbacks = (struct opencl_callbacks *)calloc(1, sizeof(struct opencl_callbacks) + class_name_sz + 1);
+                callbacks->name = (const char *)callbacks + class_name_sz;
+                strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
+                HASH_ADD_KEYPTR(hh, opencl_dispatch->callbacks, class_name, class_name_sz, callbacks);
                 struct opencl_event_callbacks *event_callbacks = NULL;
-                HASH_FIND_STR(opencl_dispatch->event_callbacks, bt_event_class_get_name(event_class), event_callbacks);
+                HASH_FIND_STR(opencl_dispatch->event_callbacks, class_name, event_callbacks);
                 if (event_callbacks) {
                     callbacks->dispatcher = event_callbacks->dispatcher;
                     callbacks->callbacks = event_callbacks->callbacks;
