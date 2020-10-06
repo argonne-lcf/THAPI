@@ -184,19 +184,16 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
             const bt_stream_class *stream_class = bt_event_class_borrow_stream_class_const(event_class);
-            struct opencl_unique_id  id;
-            uint64_t class_id = bt_event_class_get_id(event_class);
-            uint64_t stream_id = bt_stream_class_get_id(stream_class);
+            const struct opencl_unique_id  id = {
+                bt_event_class_get_id(event_class),
+                bt_stream_get_id(bt_event_borrow_stream_const(event)),
+                bt_stream_class_get_id(stream_class) };
             struct opencl_callbacks *callbacks = NULL;
-            id.class_id = class_id;
-            id.stream_id = stream_id;
 
             HASH_FIND(hh, opencl_dispatch->callbacks, &id, sizeof(id), callbacks);
             if (!callbacks) {
                 callbacks = (struct opencl_callbacks *)calloc(1, sizeof(struct opencl_callbacks));
-                callbacks->id.class_id = class_id;
-                callbacks->id.stream_id = stream_id;
-                callbacks->dispatcher = NULL;
+                callbacks->id = id;
                 HASH_ADD(hh, opencl_dispatch->callbacks, id, sizeof(id), callbacks);
                 struct opencl_event_callbacks *event_callbacks = NULL;
                 HASH_FIND_STR(opencl_dispatch->event_callbacks, bt_event_class_get_name(event_class), event_callbacks);
