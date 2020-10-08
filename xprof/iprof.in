@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 exec_prefix=@prefix@
 libdir=@libdir@
+bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
 
 display_help() {
@@ -109,8 +110,8 @@ summary() {
 
     if [ -n "$trace" ]; then
         # Todo filter direcly in the babeltrace
-        babeltrace_opencl $lltng_last_session | grep lttng_ust_opencl
-        babeltrace_ze $lltng_last_session | grep lttng_ust_ze
+        $bindir/babeltrace_opencl $lltng_last_session | grep lttng_ust_opencl
+        $bindir/babeltrace_ze $lltng_last_session | grep lttng_ust_ze
     fi
 
 
