@@ -17,6 +17,7 @@ static void _load_tracer(void) {
   }
 
   find_cuda_symbols(handle);
+  find_cuda_extensions();
 }
 
 static inline void _init_tracer(void) {
