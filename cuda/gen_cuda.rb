@@ -38,6 +38,58 @@ puts <<EOF
 
 EOF
 
+export_tables = YAML::load_file(File.join(SRC_DIR,"cuda_export_tables.yaml"))
+
+export_tables.each { |table|
+  table["structures"].each { |struct|
+    puts <<EOF
+typedef #{struct["declaration"].chomp} #{struct["name"]};
+
+EOF
+  }
+  table["functions"].each { |func|
+    puts <<EOF
+#define #{upper_snake_case(func["name"]+"_ptr")} #{func["name"]+"_ptr"}
+typedef #{func["declaration"].sub(func["name"], "(*"+func["name"]+"_t)")};
+static #{func["name"]}_t #{upper_snake_case(func["name"]+"_ptr")} = (void *) 0x0;
+
+EOF
+  }
+}
+
+puts <<EOF
+static void find_cuda_extensions() {
+
+EOF
+export_tables.each { |table|
+  puts <<EOF
+  {
+    CUresult res;
+    const void *pExportTable;
+    CUuuid uuid = { { #{table["uuid"].collect{|e| "0x" << e.to_s(16)}.join(", ")} } };
+    res = CU_GET_EXPORT_TABLE_PTR(&pExportTable, &uuid);
+    if (res == CUDA_SUCCESS) {
+      size_t tableSize = *(size_t*)pExportTable;
+EOF
+  table["functions"].each { |func|
+    puts <<EOF
+      if (0x#{func["offset"].to_s(16)} < tableSize) {
+        #{upper_snake_case(func["name"]+"_ptr")} = (#{func["name"]}_t)((intptr_t)pExportTable + 0x#{func["offset"].to_s(16)});
+      }
+EOF
+  }
+  puts <<EOF
+    }
+  }
+
+EOF
+}
+
+puts <<EOF
+}
+
+EOF
+
 puts File::read(File.join(SRC_DIR,"tracer_cuda_helpers.include.c"))
 
 common_block = lambda { |c, provider|

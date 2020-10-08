@@ -475,4 +475,4 @@ meta_parameters:
     - [InArray, resources, count]
   cuGetExportTable:
     - [InScalar, pExportTableId]
-    - [OutFixedArray, ppExportTable, 3]
+    - [OutScalar, ppExportTable]

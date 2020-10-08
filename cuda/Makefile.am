@@ -125,7 +125,7 @@ EXTRA_DIST += \
 
 BUILT_SOURCES = $(CUDA_PROBES_INCL) $(CUDART_PROBES_INCL)
 
-tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL)
+tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL)
@@ -135,7 +135,8 @@ EXTRA_DIST += \
 	gen_cuda.rb \
 	tracer_cuda_helpers.include.c \
 	gen_cudart.rb \
-	tracer_cudart_helpers.include.c
+	tracer_cudart_helpers.include.c \
+	cuda_export_tables.yaml
 
 CLEANFILES += \
 	tracer_cuda.c \

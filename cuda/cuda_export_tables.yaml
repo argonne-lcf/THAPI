@@ -1,0 +1,19 @@
+---
+- uuid: [0x6e, 0x16, 0x3f, 0xbe, 0xb9, 0x58, 0x44, 0x4d, 0x83, 0x5c, 0xe1, 0x82, 0xaf, 0xf1, 0x99, 0x1e]
+  structures:
+  - name: CUfunction_arg_desc_query
+    declaration: |
+      struct CUfunction_arg_desc_query_st {
+        size_t sz;
+        size_t argSize;
+        size_t argOffset;
+        size_t u1;
+        size_t u2;
+      }
+  functions:
+  - offset: 0x108
+    name: CUfunction_get_arg_count
+    declaration: "CUresult CUfunction_get_arg_count(CUfunction f, size_t * pArgCount)"
+  - offset: 0x110
+    name: CUfunction_get_arg_descriptor
+    declaration: "CUresult CUfunction_get_arg_descriptor(CUfunction f, size_t argIndex, CUfunction_arg_desc_query *pArgDescQuery)"
