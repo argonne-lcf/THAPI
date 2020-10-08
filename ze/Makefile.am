@@ -218,7 +218,7 @@ libZEProf_la_SOURCES = \
 libZEProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libZEProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libZEProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libZEProf_la_LDFLAGS = -lstdc++ $(BABELTRACE2_LIBS) -avoid-version -module
+libZEProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 EXTRA_DIST += $(ZEPROF)
 
