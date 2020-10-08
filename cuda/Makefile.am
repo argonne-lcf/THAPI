@@ -70,13 +70,29 @@ EXTRA_DIST += \
 	cudart_model.rb
 
 CUDA_EXTRA_HDR = \
-	$(srcdir)/include/cuda_runtime_api.h
+	$(srcdir)/include/builtin_types.h \
+	$(srcdir)/include/driver_types.h \
+	$(srcdir)/include/texture_types.h \
+	$(srcdir)/include/surface_types.h \
+	$(srcdir)/include/crt/host_defines.h \
+	$(srcdir)/include/device_types.h \
+	$(srcdir)/include/cuda_device_runtime_api.h \
+	$(srcdir)/include/cuda_runtime_api.h \
+	$(srcdir)/include/vector_types.h
 CUDA_HDR = \
 	$(srcdir)/include/cuda.h \
 	$(CUDA_EXTRA_HDR)
 
 MODIFIED_CUDA_EXTRA_HDR = \
-	modified_include/cuda_runtime_api.h
+	modified_include/builtin_types.h \
+	modified_include/driver_types.h \
+	modified_include/texture_types.h \
+	modified_include/surface_types.h \
+	modified_include/crt/host_defines.h \
+	modified_include/device_types.h \
+	modified_include/cuda_device_runtime_api.h \
+	modified_include/cuda_runtime_api.h \
+	modified_include/vector_types.h
 MODIFIED_CUDA_HDR = \
 	modified_include/cuda.h \
 	$(MODIFIED_CUDA_EXTRA_HDR)
