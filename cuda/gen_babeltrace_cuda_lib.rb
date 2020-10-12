@@ -65,6 +65,8 @@ EOF
         when YAMLCAst::CustomType
           if $objects.include?(p.type.name)
             "s << \"#{p.name}: \#{\"0x%016x\" % defi[\"#{p.name}\"]}\""
+          elsif p.type.name == "CUdeviceptr"
+            "s << \"#{p.name}: \#{\"0x%016x\" % defi[\"#{p.name}\"]}\""
           elsif $all_enum_names.include?(p.type.name)
             "s << \"#{p.name}: \#{CUDA::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil)}\""
           elsif $all_bitfield_names.include?(p.type.name)
