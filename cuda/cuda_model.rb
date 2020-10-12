@@ -753,5 +753,41 @@ dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, extra);
 EOF
 
-register_prologue "cuLaunchKernel", dump_args
-register_prologue "cuLaunchKernel_ptsz", dump_args
+[ "cuLaunchKernel",
+  "cuLaunchKernel_ptsz" ].each { |m|
+  register_prologue m, dump_args
+}
+
+dump_args = <<EOF
+  _dump_kernel_args(f, kernelParams, NULL);
+EOF
+
+[ "cuLaunchCooperativeKernel",
+  "cuLaunchCooperativeKernel_ptsz" ].each { |m|
+  register_prologue m, dump_args
+}
+
+dump_args = <<EOF
+  if (nodeParams) {
+    _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
+  }
+EOF
+
+[ "cuGraphAddKernelNode",
+  "cuGraphExecKernelNodeSetParams" ].each { |m|
+  register_prologue m, dump_args
+}
+
+register_prologue "cuLaunchCooperativeKernelMultiDevice", <<EOF
+  if (launchParamsList) {
+    for( unsigned int _i = 0; _i < numDevices; _i++) {
+      _dump_kernel_args(launchParamsList[_i].function, launchParamsList[_i].kernelParams, NULL);
+    }
+  }
+EOF
+
+register_epilogue "cuGraphKernelNodeGetParams", <<EOF
+  if (_retval == CUDA_SUCCESS && nodeParams) {
+    _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
+  }
+EOF
