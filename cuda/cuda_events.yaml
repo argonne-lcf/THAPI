@@ -11,10 +11,11 @@ lttng_ust_cuda_args:
   - name: arg_value
     args:
     - [ CUfunction, f ]
-    - [ "unsigned int", argIndex ]
+    - [ size_t, argIndex ]
     - [ "void *", kernelParam ]
     - [ size_t, argSize ]
     fields:
     - [ ctf_integer_hex, uintptr_t, f, "(uintptr_t)f" ]
+    - [ ctf_integer, size_t, argIndex, argIndex ]
     - [ ctf_integer_hex, uintptr_t, kernelParam, "(uintptr_t)kernelParam" ]
     - [ ctf_sequence_text, uint8_t, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0" ]
