@@ -30,12 +30,12 @@ lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then
   lttng-relayd --daemonize
-  lttng create my-userspace-ze-session --live
+  lttng create thapi-ze-session --live
 else
-  lttng create my-userspace-ze-session
+  lttng create thapi-ze-session
 fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
-lttng add-context --userspace --channel=blocking-channel -t vtid -t pthread_id
+lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zes:*

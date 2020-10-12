@@ -39,12 +39,12 @@ lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then
   lttng-relayd --daemonize
-  lttng create my-userspace-opencl-session --live
+  lttng create thapi-opencl-session --live
 else
-  lttng create my-userspace-opencl-session
+  lttng create thapi-opencl-session
 fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
-lttng add-context --userspace --channel=blocking-channel -t vtid -t pthread_id
+lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
 if [ -z "$lightweight" ]
 then
