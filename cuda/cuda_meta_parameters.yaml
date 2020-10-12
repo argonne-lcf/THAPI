@@ -226,7 +226,7 @@ meta_parameters:
   cuMipmappedArrayGetLevel:
     - [OutScalar, pLevelArray]
   cuPointerGetAttribute:
-    - [OutLTTng, data, ctf_sequence_text, uint8_t, data, data, size_t, "attribute == CU_POINTER_ATTRIBUTE_CONTEXT ? sizeof(CUcontext) : attribute == CU_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(CUdeviceptr) : attribute == CU_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_P2P_TOKENS ? sizeof(CUDA_POINTER_ATTRIBUTE_P2P_TOKENS) : attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : attribute == CU_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : 0"]
+    - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "attribute == CU_POINTER_ATTRIBUTE_CONTEXT ? sizeof(CUcontext) : attribute == CU_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(CUdeviceptr) : attribute == CU_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_P2P_TOKENS ? sizeof(CUDA_POINTER_ATTRIBUTE_P2P_TOKENS) : attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : attribute == CU_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : 0"]
   cuMemRangeGetAttribute:
     - [OutArray, data, dataSize]
   cuMemRangeGetAttributes:
@@ -234,7 +234,7 @@ meta_parameters:
     - [InArray, dataSizes, numAttributes]
     - [OutArray, data, numAttributes]
   cuPointerSetAttribute:
-    - [InLTTng, value, ctf_sequence_text, uint8_t, value, value, size_t, "attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : 0"]
+    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : 0"]
   cuPointerGetAttributes:
     - [InArray, attributes, numAttributes]
     - [OutArray, data, numAttributes]

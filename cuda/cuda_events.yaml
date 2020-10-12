@@ -1,2 +1,20 @@
 ---
-{}
+lttng_ust_cuda_args:
+  events:
+  - name: arg_count
+    args:
+    - [ CUfunction, f ]
+    - [ size_t, argCount ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, f, "(uintptr_t)f" ]
+    - [ ctf_integer, size_t, argCount, argCount ]
+  - name: arg_value
+    args:
+    - [ CUfunction, f ]
+    - [ "unsigned int", argIndex ]
+    - [ "void *", kernelParam ]
+    - [ size_t, argSize ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, f, "(uintptr_t)f" ]
+    - [ ctf_integer_hex, uintptr_t, kernelParam, "(uintptr_t)kernelParam" ]
+    - [ ctf_sequence_text, uint8_t, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0" ]
