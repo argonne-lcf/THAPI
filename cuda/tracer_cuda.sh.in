@@ -20,7 +20,8 @@ whichlib() {
 while true; do
   case "$1" in
     --cudart) shift; cudart=1;;
-    -v | --visualize) shift; lttng_view=1;;
+    -a | --arguments ) shift; arguments=1;;
+    -v | --visualize ) shift; lttng_view=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -29,16 +30,20 @@ lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then
   lttng-relayd --daemonize
-  lttng create my-userspace-ze-session --live
+  lttng create thapi-cuda-session --live
 else
-  lttng create my-userspace-ze-session
+  lttng create thapi-cuda-session
 fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
-lttng add-context --userspace --channel=blocking-channel -t vtid -t pthread_id
+lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
 if [ ! -z "$cudart" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cudart:*
+fi
+if [ ! -z "$arguments" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_args:*
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then

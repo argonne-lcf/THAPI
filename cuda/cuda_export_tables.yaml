@@ -12,8 +12,8 @@
       }
   functions:
   - offset: 0x108
-    name: CUfunction_get_arg_count
-    declaration: "CUresult CUfunction_get_arg_count(CUfunction f, size_t * pArgCount)"
+    name: cuFunction_get_arg_count
+    declaration: "CUresult cuFunction_get_arg_count(CUfunction f, size_t * pArgCount)"
   - offset: 0x110
-    name: CUfunction_get_arg_descriptor
-    declaration: "CUresult CUfunction_get_arg_descriptor(CUfunction f, size_t argIndex, CUfunction_arg_desc_query *pArgDescQuery)"
+    name: cuFunction_get_arg_descriptor
+    declaration: "CUresult cuFunction_get_arg_descriptor(CUfunction f, size_t argIndex, CUfunction_arg_desc_query *pArgDescQuery)"

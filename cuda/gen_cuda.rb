@@ -5,6 +5,7 @@ puts <<EOF
 #include <cuda.h>
 #include <pthread.h>
 #include "cuda_tracepoints.h"
+#include "cuda_args.h"
 EOF
 
 $cuda_commands.each { |c|
@@ -74,7 +75,7 @@ EOF
   table["functions"].each { |func|
     puts <<EOF
       if (0x#{func["offset"].to_s(16)} < tableSize) {
-        #{upper_snake_case(func["name"]+"_ptr")} = (#{func["name"]}_t)((intptr_t)pExportTable + 0x#{func["offset"].to_s(16)});
+        #{upper_snake_case(func["name"]+"_ptr")} = *(#{func["name"]}_t *)((intptr_t)pExportTable + 0x#{func["offset"].to_s(16)});
       }
 EOF
   }

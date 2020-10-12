@@ -50,7 +50,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /cuInit/
+INIT_FUNCTIONS = /cuInit|cuDriverGetVersion/
 
 FFI_TYPE_MAP =  {
  "unsigned char" => "ffi_type_uint8",
@@ -748,3 +748,46 @@ end
 CUDA_POINTER_NAMES = ($cuda_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
+
+dump_args = <<EOF
+  _dump_kernel_args(f, kernelParams, extra);
+EOF
+
+[ "cuLaunchKernel",
+  "cuLaunchKernel_ptsz" ].each { |m|
+  register_prologue m, dump_args
+}
+
+dump_args = <<EOF
+  _dump_kernel_args(f, kernelParams, NULL);
+EOF
+
+[ "cuLaunchCooperativeKernel",
+  "cuLaunchCooperativeKernel_ptsz" ].each { |m|
+  register_prologue m, dump_args
+}
+
+dump_args = <<EOF
+  if (nodeParams) {
+    _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
+  }
+EOF
+
+[ "cuGraphAddKernelNode",
+  "cuGraphExecKernelNodeSetParams" ].each { |m|
+  register_prologue m, dump_args
+}
+
+register_prologue "cuLaunchCooperativeKernelMultiDevice", <<EOF
+  if (launchParamsList) {
+    for( unsigned int _i = 0; _i < numDevices; _i++) {
+      _dump_kernel_args(launchParamsList[_i].function, launchParamsList[_i].kernelParams, NULL);
+    }
+  }
+EOF
+
+register_epilogue "cuGraphKernelNodeGetParams", <<EOF
+  if (_retval == CUDA_SUCCESS && nodeParams) {
+    _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
+  }
+EOF

@@ -11,6 +11,15 @@ CUDA_PROBES_INCL = \
 CUDA_PROBES_SRC = \
 	cuda_tracepoints.c
 
+CUDA_STATIC_PROBES_TP = \
+	cuda_args.tp
+
+CUDA_STATIC_PROBES_INCL = \
+	cuda_args.h
+
+CUDA_STATIC_PROBES_SRC = \
+	cuda_args.c
+
 CUDART_PROBES_TP = \
 	cudart_tracepoints.tp
 
@@ -24,6 +33,9 @@ CLEANFILES = \
 	$(CUDA_PROBES_TP) \
 	$(CUDA_PROBES_INCL) \
 	$(CUDA_PROBES_SRC) \
+	$(CUDA_STATIC_PROBES_TP) \
+	$(CUDA_STATIC_PROBES_INCL) \
+	$(CUDA_STATIC_PROBES_SRC) \
 	$(CUDART_PROBES_TP) \
 	$(CUDART_PROBES_INCL) \
 	$(CUDART_PROBES_SRC)
@@ -131,17 +143,21 @@ cuda_tracepoints.tp: $(srcdir)/gen_cuda_tracepoints.rb $(CUDA_MODEL) gen_probe_b
 cudart_tracepoints.tp: $(srcdir)/gen_cudart_tracepoints.rb $(CUDART_MODEL) gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cudart_tracepoints.rb > $@
 
+cuda_args.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_custom_probes.rb lttng_ust_cuda_args > $@
+
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
 EXTRA_DIST += \
 	gen_cuda_tracepoints.rb \
 	gen_cudart_tracepoints.rb \
-	gen_probe_base.rb
+	gen_probe_base.rb \
+	gen_cuda_custom_probes.rb
 
-BUILT_SOURCES = $(CUDA_PROBES_INCL) $(CUDART_PROBES_INCL)
+BUILT_SOURCES = $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) $(CUDART_PROBES_INCL)
 
-tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) cuda_export_tables.yaml
+tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL)
@@ -158,13 +174,15 @@ CLEANFILES += \
 	tracer_cuda.c \
 	tracer_cudart.c
 
-bin_SCRIPTS = tracer_cuda.sh
+bin_SCRIPTS = tracer_cuda.sh babeltrace_cuda
 
 noinst_LTLIBRARIES = libcudatracepoints.la libcudarttracepoints.la
 
 nodist_libcudatracepoints_la_SOURCES = \
 	$(CUDA_PROBES_INCL) \
-	$(CUDA_PROBES_SRC)
+	$(CUDA_PROBES_SRC) \
+	$(CUDA_STATIC_PROBES_INCL) \
+	$(CUDA_STATIC_PROBES_SRC)
 
 libcudatracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libcudatracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)

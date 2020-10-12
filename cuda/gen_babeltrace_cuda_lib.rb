@@ -16,6 +16,8 @@ meta_parameter_lambda = lambda { |m, dir|
     when YAMLCAst::CustomType
       if $objects.include?(t.name)
         "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
+      elsif t.name == "CUdeviceptr"
+        "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
       elsif $all_enum_names.include?(t.name)
         "s << \"#{name}: \#{CUDA::#{to_class_name(t.name)}.from_native(defi[\"#{name}\"], nil)}\""
       elsif $all_bitfield_names.include?(t.name)
@@ -56,7 +58,7 @@ EOF
   fields = []
   if dir == :start
     if c.parameters
-      fields += (c.parameters+c.tracepoint_parameters).collect { |p|
+      fields += c.parameters.collect { |p|
         case p.type
         when YAMLCAst::Pointer
           "s << \"#{p.name}: \#{\"0x%016x\" % defi[\"#{p.name}\"]}\""
@@ -133,6 +135,21 @@ EOF
           end
         else
           "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
+        end
+      when :ctf_sequence_text
+        arg = e["args"].find { |type, name|
+          name == field.expression
+        }
+        name = field.name
+        if arg
+          t = arg[0].sub("*","").strip
+          if $all_struct_names.include?(t)
+            "s << \"#{name}: \#{defi[\"#{name}\"].size > 0 ? CUDA::#{to_class_name(t)}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])) : nil}\""
+          else
+            "s << \"#{name}: \#{defi[\"#{name}\"].inspect}\""
+          end
+        else
+          "s << \"#{name}: \#{defi[\"#{name}\"].inspect}\""
         end
       else
         raise "Unsupported LTTng macro #{field.macro}!"

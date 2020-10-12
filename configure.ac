@@ -80,6 +80,7 @@ AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 AC_CONFIG_FILES([ze/babeltrace_ze], [chmod +x ze/babeltrace_ze])
 AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
 AC_CONFIG_FILES([ze/zeprof.sh], [chmod +x ze/zeprof.sh])
+AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([xprof/iprof], [chmod +x xprof/iprof])
 AC_OUTPUT

@@ -20,7 +20,7 @@ whichlib() {
 trace() {
     quiet="--quiet"
     lttng-sessiond $quiet --daemonize
-    lttng $quiet create zeprof
+    lttng $quiet create thapi-ze-session
     #Using blocking more to trace event record loss
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 
@@ -55,7 +55,7 @@ trace_epilogue() {
 
 summary() {
     if [ -z "$path" ]; then
-        lltng_last_session=$(ls -dt $HOME/lttng-traces/zeprof* | head -1)
+        lltng_last_session=$(ls -dt $HOME/lttng-traces/thapi-ze-session* | head -1)
         echo "Trace location:" $lltng_last_session
         echo
     else

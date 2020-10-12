@@ -181,18 +181,18 @@ module CUDA
 
   module UUID
     def to_s
-      a = self[:bytes].to_a
+      a = self[:bytes].to_a.collect { |v| v < 0 ? 0x100 + v : v }
       s = "{ id: "
-      s << "%02x" % a[3]
-      s << "%02x" % a[2]
-      s << "%02x" % a[1]
       s << "%02x" % a[0]
+      s << "%02x" % a[1]
+      s << "%02x" % a[2]
+      s << "%02x" % a[3]
       s << "-"
-      s << "%02x" % a[5]
       s << "%02x" % a[4]
+      s << "%02x" % a[5]
       s << "-"
-      s << "%02x" % a[7]
       s << "%02x" % a[6]
+      s << "%02x" % a[7]
       s << "-"
       s << "%02x" % a[8]
       s << "%02x" % a[9]
