@@ -16,6 +16,8 @@ meta_parameter_lambda = lambda { |m, dir|
     when YAMLCAst::CustomType
       if $objects.include?(t.name)
         "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
+      elsif t.name == "CUdeviceptr"
+        "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
       elsif $all_enum_names.include?(t.name)
         "s << \"#{name}: \#{CUDA::#{to_class_name(t.name)}.from_native(defi[\"#{name}\"], nil)}\""
       elsif $all_bitfield_names.include?(t.name)

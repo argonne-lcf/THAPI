@@ -748,3 +748,10 @@ end
 CUDA_POINTER_NAMES = ($cuda_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
+
+dump_args = <<EOF
+  _dump_kernel_args(f, kernelParams, extra);
+EOF
+
+register_prologue "cuLaunchKernel", dump_args
+register_prologue "cuLaunchKernel_ptsz", dump_args
