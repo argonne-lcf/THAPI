@@ -110,7 +110,7 @@ common_block = lambda { |c, provider|
     puts p.init unless p.after?
   }
   puts <<EOF
-  tracepoint(#{provider}, #{c.name}_start, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 
   c.prologues.each { |p|
@@ -135,7 +135,7 @@ EOF
     tp_params.push "_retval"
   end
   puts <<EOF
-  tracepoint(#{provider}, #{c.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 }
 

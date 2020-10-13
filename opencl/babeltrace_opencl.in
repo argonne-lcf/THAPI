@@ -12,6 +12,9 @@ raise "Trace not found: #{ARGV[0].inspect}, check path." if traces == []
 puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
 
 opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
+SUFFIXES = opencl_model["suffixes"]
+START = SUFFIXES["start"]
+STOP = SUFFIXES["stop"]
 infos = YAML::load_file(File.join(DATADIR,"opencl_infos.yaml"))
 enums_by_type = {}
 enums_by_value = {}
@@ -181,9 +184,9 @@ EOF
   src << v.collect { |name, desc|
     expr =
       if name == "param_value_vals"
-        startn = n.gsub("_stop", "_start")
+        startn = n.gsub("_#{STOP}", "_#{START}")
         type = opencl_model["events"][startn]["param_name"]["type"]
-        if n == "lttng_ust_opencl:clSetKernelExecInfo_start"
+        if n == "lttng_ust_opencl:clSetKernelExecInfo_#{START}"
           "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
         else
           "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"

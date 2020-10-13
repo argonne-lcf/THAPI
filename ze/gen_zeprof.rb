@@ -48,12 +48,12 @@ class DBT_event
    end
 
    def uuid
-     "#{@namespace}_#{@name}_#{@suffix}"
+     "#{@namespace}_#{@name}_#{SUFFIXES[@suffix]}"
    end
 
    def lltng
      if @suffix
-        "#{@namespace}:#{@name}_#{@suffix}"
+        "#{@namespace}:#{@name}_#{SUFFIXES[@suffix]}"
      else
         "#{@namespace}:#{@name}"
      end

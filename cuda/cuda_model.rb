@@ -9,6 +9,10 @@ else
   SRC_DIR = "."
 end
 
+START = "entry"
+STOP = "exit"
+SUFFIXES = { :start => START, :stop => STOP }
+
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 

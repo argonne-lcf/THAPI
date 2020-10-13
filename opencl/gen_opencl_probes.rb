@@ -44,12 +44,12 @@ tracepoint_lambda = lambda { |c, dir|
   event = {}
   event["name"] = c.prototype.name
   args = []
-  unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void" && !((HOST_PROFILE || c.prototype.has_return_type?) && dir == :stop)
+  unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void" && !((HOST_PROFILE || c.prototype.has_return_type?) && dir == "stop")
     args = c.parameters.collect { |p|
       [p.callback? ? "void *" : p.decl_pointer.gsub("[]", "*"),
        p.name]
     } unless c.parameters.size == 1 && c.parameters.first.decl.strip == "void"
-    if dir == :stop
+    if dir == "stop"
       args.push [c.prototype.return_type, "_retval"] if c.prototype.has_return_type?
       args.push ["uint64_t", "_duration"] if HOST_PROFILE
     end
@@ -60,14 +60,14 @@ tracepoint_lambda = lambda { |c, dir|
   event["args"] = args
 
   fields = []
-  if dir == :start
+  if dir == "start"
     c.parameters.collect(&:lttng_in_type).compact.each { |arr|
       fields.push arr
     }
     c.meta_parameters.collect(&:lttng_in_type).compact.each { |arr|
       fields.push arr
     }
-  elsif dir == :stop
+  elsif dir == "stop"
     r = c.prototype.lttng_return_type
     fields.push r if r
     c.meta_parameters.collect(&:lttng_out_type).compact.each { |arr|
@@ -84,14 +84,14 @@ tracepoint_lambda = lambda { |c, dir|
 
 $opencl_commands.each { |c|
   next if c.parameters.length > LTTNG_USABLE_PARAMS
-  tracepoint_lambda.call(c, :start)
-  tracepoint_lambda.call(c, :stop)
+  tracepoint_lambda.call(c, "start")
+  tracepoint_lambda.call(c, "stop")
 }
 
 $opencl_extension_commands.each { |c|
   next if c.parameters.length > LTTNG_USABLE_PARAMS
-  tracepoint_lambda.call(c, :start)
-  tracepoint_lambda.call(c, :stop)
+  tracepoint_lambda.call(c, "start")
+  tracepoint_lambda.call(c, "stop")
 }
 
 puts <<EOF

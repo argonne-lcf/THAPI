@@ -49,9 +49,9 @@ static void clprof_<%= dbt_event.name %>_callback(
   <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
     int64_t ns_from_origin;
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-    <%if dbt_event.name.end_with?("start") %>
+    <%if dbt_event.name.end_with?(START) %>
     api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].start(ns_from_origin);
-    <%elsif dbt_event.name.end_with?("stop") %>
+    <%elsif dbt_event.name.end_with?(STOP) %>
     api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].stop(ns_from_origin);
         <% if dbt_event.fields.key?('errcode_ret_val') %>
     if (errcode_ret_val != 0)
@@ -79,16 +79,16 @@ static void clprof_<%= dbt_event.name %>_callback(
   %>
 
   <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
-  <% if dbt_event.name_unsanitized == "lttng_ust_opencl:clGetDeviceIDs_stop" %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl:clGetDeviceIDs_#{STOP}" %>
       if (devices_vals != nullptr) {
         for (unsigned int i=0; i < num_devices_val; i++ ) {
              const thapi_device_id d = (thapi_device_id) devices_vals[i];
              device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
         }
       }
-  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_start" %>
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{START}" %>
     start_device[hpt_t(hostname,process_id,thread_id) ] =  (thapi_device_id) in_device;
-  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_stop" %>
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{STOP}" %>
     const thapi_device_id device = start_device[hpt_t(hostname,process_id,thread_id) ];
     const thapi_device_id root_device = device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
     if (out_devices_vals != nullptr) {
@@ -100,9 +100,9 @@ static void clprof_<%= dbt_event.name %>_callback(
   <% end%>
  
   <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
-  <% if dbt_event.name.end_with?("start") and dbt_event.name.include?('clCreateCommandQueue') %>
+  <% if dbt_event.name.end_with?(START) and dbt_event.name.include?('clCreateCommandQueue') %>
     start_device[hpt_t(hostname,process_id, thread_id) ] =  (thapi_device_id) device;
-  <%elsif dbt_event.name.end_with?("stop") and dbt_event.name.include?('clCreateCommandQueue') %>
+  <%elsif dbt_event.name.end_with?(STOP) and dbt_event.name.include?('clCreateCommandQueue') %>
     const thapi_device_id device = start_device[hpt_t(hostname,process_id, thread_id) ];
     const thapi_device_id root_device = device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
     command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(root_device, device) ; 
@@ -123,7 +123,7 @@ static void clprof_<%= dbt_event.name %>_callback(
     const std::string hostname    = borrow_hostname(bt_evt);
     const process_id_t process_id = borrow_process_id(bt_evt);
     kernel_to_name[hp_kernel_t(hostname,process_id,kernel)] = std::string{function_name};
-  <% elsif dbt_event.name.end_with?("start") and dbt_event.fields['command_queue'] %>
+  <% elsif dbt_event.name.end_with?(START) and dbt_event.fields['command_queue'] %>
     <% if dbt_event.fields['kernel'] %>
     const thapi_function_name name  = kernel_to_name[hp_kernel_t(hostname,process_id,kernel)];
     <% else %>

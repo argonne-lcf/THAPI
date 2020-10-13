@@ -38,7 +38,7 @@ meta_parameter_lambda = lambda { |m, dir|
 
 gen_event_callback = lambda { |provider, c, dir|
   puts <<EOF
-typedef void (#{provider}_#{c.name}_#{dir}_cb)(
+typedef void (#{provider}_#{c.name}_#{SUFFIXES[dir]}_cb)(
 EOF
   fields = ["const bt_event *bt_evt",
             "const bt_clock_snapshot *bt_clock"]

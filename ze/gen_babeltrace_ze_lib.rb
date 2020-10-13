@@ -51,7 +51,7 @@ meta_parameter_lambda = lambda { |m, dir|
 
 gen_event_lambda = lambda { |provider, c, dir|
   puts <<EOF
-$event_lambdas["#{provider}:#{c.name}_#{dir}"] = lambda { |defi|
+$event_lambdas["#{provider}:#{c.name}_#{SUFFIXES[dir]}"] = lambda { |defi|
   s = "{ "
 EOF
   fields = []

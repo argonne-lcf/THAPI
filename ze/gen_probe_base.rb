@@ -4,7 +4,7 @@ $tracepoint_lambda = lambda { |provider, c, dir|
   puts <<EOF
 TRACEPOINT_EVENT(
   #{provider},
-  #{c.name}_#{dir},
+  #{c.name}_#{SUFFIXES[dir]},
   TP_ARGS(
 EOF
   print "    "

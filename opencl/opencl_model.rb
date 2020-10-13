@@ -7,6 +7,10 @@ else
   SRC_DIR = "."
 end
 
+START = "entry"
+STOP = "exit"
+SUFFIXES = { "start" => START, "stop" => STOP }
+
 MEMBER_SEPARATOR = "__"
 
 GENERATE_ENUMS_TRACEPOINTS = false
@@ -230,7 +234,7 @@ class Declaration < CLXML
 end
 
 class Member < Declaration
-  def initialize(command, member, prefix, dir = :start)
+  def initialize(command, member, prefix, dir = "start")
     super(member)
     name = "#{prefix}#{MEMBER_SEPARATOR}#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
@@ -249,11 +253,11 @@ class Member < Declaration
    end
 
    def lttng_in_type
-     @dir == :start ? @lttng_type : nil
+     @dir == "start" ? @lttng_type : nil
    end
 
    def lttng_out_type
-     @dir == :start ? nil : @lttng_type
+     @dir == "start" ? nil : @lttng_type
    end
 
 end
@@ -1035,7 +1039,7 @@ register_epilogue "clLinkProgram", str
 l = lambda { |func, name: "pfn_notify", extra_conditions: nil|
   register_prologue func, <<EOF
   struct #{func}_callback_payload *_payload = NULL;
-  if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_start)#{extra_conditions ? " || #{extra_conditions.join(" || ")}" : ""}) && #{name}) {
+  if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_#{START})#{extra_conditions ? " || #{extra_conditions.join(" || ")}" : ""}) && #{name}) {
     _payload = (struct #{func}_callback_payload *)malloc(sizeof(struct #{func}_callback_payload));
     _payload->#{name} = #{name};
     _payload->user_data = user_data;
@@ -1161,7 +1165,7 @@ EOF
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_stop, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_#{STOP}, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1174,7 +1178,7 @@ register_prologue "clGetExtensionFunctionAddressForPlatform", str
 str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_stop, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_#{STOP}, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
@@ -1192,13 +1196,13 @@ register_extension_callbacks = lambda { |ext_method|
 EOF
   str << $opencl_extension_commands.collect { |c|
     sstr = <<EOF
-    if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_start) && strcmp(func_name, "#{c.prototype.name}") == 0) {
+    if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_#{START}) && strcmp(func_name, "#{c.prototype.name}") == 0) {
       struct opencl_closure *closure = NULL;
       pthread_mutex_lock(&opencl_closures_mutex);
       HASH_FIND_PTR(opencl_closures, &_retval, closure);
       pthread_mutex_unlock(&opencl_closures_mutex);
       if (closure != NULL) {
-        tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
+        tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP},#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
         return closure->c_ptr;
       }
       closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
@@ -1219,7 +1223,7 @@ EOF
               pthread_mutex_lock(&opencl_closures_mutex);
               HASH_ADD_PTR(opencl_closures, ptr, closure);
               pthread_mutex_unlock(&opencl_closures_mutex);
-              tracepoint(lttng_ust_opencl, #{ext_method}_stop,#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
+              tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP},#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
               return closure->c_ptr;
             }
           }
