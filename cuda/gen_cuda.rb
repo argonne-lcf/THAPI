@@ -6,6 +6,8 @@ puts <<EOF
 #include <pthread.h>
 #include "cuda_tracepoints.h"
 #include "cuda_args.h"
+#include "cuda_profiling.h"
+#include "utlist.h"
 EOF
 
 $cuda_commands.each { |c|
@@ -42,12 +44,14 @@ EOF
 export_tables = YAML::load_file(File.join(SRC_DIR,"cuda_export_tables.yaml"))
 
 export_tables.each { |table|
-  table["structures"].each { |struct|
-    puts <<EOF
+  if table["structures"]
+    table["structures"].each { |struct|
+      puts <<EOF
 typedef #{struct["declaration"].chomp} #{struct["name"]};
 
 EOF
-  }
+    }
+  end
   table["functions"].each { |func|
     puts <<EOF
 #define #{upper_snake_case(func["name"]+"_ptr")} #{func["name"]+"_ptr"}

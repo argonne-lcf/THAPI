@@ -53,6 +53,106 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
   }
 }
 
+static int     _do_profile = 0;
+static pthread_mutex_t _cuda_events_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct _cuda_event_s;
+struct _cuda_event_s {
+  struct _cuda_event_s *prev;
+  struct _cuda_event_s *next;
+  CUevent   start;
+  CUevent   stop;
+  CUcontext context;
+};
+
+struct _cuda_event_s * _events = NULL;
+
+static inline void _register_cuda_event(CUevent hStart, CUevent hStop) {
+  CUcontext context;
+  CUresult status;
+  struct _cuda_event_s *ev;
+
+  status = CU_CTX_GET_CURRENT_PTR(&context);
+  if (status != CUDA_SUCCESS)
+    goto error;
+  ev = (struct _cuda_event_s *)calloc(sizeof(struct _cuda_event_s), 1);
+  if (!ev)
+    goto error;
+
+  ev->start = hStart;
+  ev->stop = hStop;
+  ev->context = context;
+  tracepoint(lttng_ust_cuda_profiling, event_profiling, hStart, hStop);
+  pthread_mutex_lock(&_cuda_events_mutex);
+  DL_APPEND(_events, ev);
+  pthread_mutex_unlock(&_cuda_events_mutex);
+  return;
+error:
+  CU_EVENT_DESTROY_V2_PTR(hStart);
+  CU_EVENT_DESTROY_V2_PTR(hStop);
+}
+
+static inline CUevent _create_record_event(CUstream hStream) {
+  CUevent hEvent;
+  if(CU_EVENT_CREATE_PTR(&hEvent, CU_EVENT_DEFAULT) != CUDA_SUCCESS)
+    hEvent = NULL;
+  else {
+    if(CU_EVENT_RECORD_PTR(hEvent, hStream) != CUDA_SUCCESS) {
+      CU_EVENT_DESTROY_V2_PTR(hEvent);
+      hEvent = NULL;
+    }
+  }
+  return hEvent;
+}
+
+static inline void _event_profile(CUresult status, CUevent hStart, CUstream hStream) {
+  CUevent hStop;
+  if (status != CUDA_SUCCESS) {
+    CU_EVENT_DESTROY_V2_PTR(hStart);
+    return;
+  }
+  if (hStart) {
+    hStop = _create_record_event(hStream);
+    if (!hStop) {
+      CU_EVENT_DESTROY_V2_PTR(hStart);
+      return;
+    }
+    _register_cuda_event(hStart, hStop);
+  }
+}
+
+static void _profile_event_results(struct _cuda_event_s *ev) {
+  float milliseconds;
+  CUresult startStatus, stopStatus, status;
+
+  if (tracepoint_enabled(lttng_ust_cuda_profiling, event_profiling_results)) {
+    startStatus = CU_EVENT_QUERY_PTR(ev->start);
+    stopStatus = CU_EVENT_QUERY_PTR(ev->stop);
+    status = CU_EVENT_ELAPSED_TIME_PTR(&milliseconds, ev->start, ev->stop);
+    do_tracepoint(lttng_ust_cuda_profiling, event_profiling_results,
+                  ev->start, ev->stop, startStatus, stopStatus,
+                  status, milliseconds);
+  }
+}
+
+static void _event_cleanup() {
+  struct _cuda_event_s *ev, *tmp;
+
+  DL_FOREACH_SAFE(_events, ev, tmp) {
+    DL_DELETE(_events, ev);
+    _profile_event_results(ev);
+    CU_EVENT_DESTROY_V2_PTR(ev->start);
+    CU_EVENT_DESTROY_V2_PTR(ev->stop);
+    free(ev);
+  }
+}
+
+static void _lib_cleanup() {
+  if (_do_profile) {
+    _event_cleanup();
+  }
+}
+
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile int _initialized = 0;
@@ -72,7 +172,15 @@ static void _load_tracer(void) {
   }
 
   find_cuda_symbols(handle);
+  CU_INIT_PTR(0);
   find_cuda_extensions();
+
+  s = getenv("LTTNG_UST_CUDA_PROFILE");
+  if (s)
+    _do_profile = 1;
+
+  if (_do_profile)
+    atexit(&_lib_cleanup);
 }
 
 static inline void _init_tracer(void) {

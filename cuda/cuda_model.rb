@@ -54,7 +54,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /cuInit|cuDriverGetVersion/
+INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable/
 
 FFI_TYPE_MAP =  {
  "unsigned char" => "ffi_type_uint8",
@@ -795,3 +795,44 @@ register_epilogue "cuGraphKernelNodeGetParams", <<EOF
     _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
   }
 EOF
+
+profiling_start = lambda { |stream|
+  <<EOF
+  CUevent _hStart = NULL;
+  if (_do_profile)
+    _hStart = _create_record_event(#{stream});
+EOF
+}
+
+profiling_start_no_stream = profiling_start.call("NULL")
+profiling_start_stream = profiling_start.call("hStream")
+
+profiling_stop = lambda { |stream|
+  <<EOF
+  if (_do_profile)
+    _event_profile(_retval, _hStart, #{stream});
+EOF
+}
+
+profiling_stop_no_stream = profiling_stop.call("NULL")
+profiling_stop_stream = profiling_stop.call("hStream")
+
+[ "cuLaunchKernel",
+  "cuLaunchKernel_ptsz" ].each { |m|
+  register_prologue m, profiling_start_stream
+}
+
+[ "cuLaunchKernel",
+  "cuLaunchKernel_ptsz" ].each { |m|
+  register_epilogue m, profiling_stop_stream
+}
+
+[ "cuMemcpyHtoD_v2",
+  "cuMemcpyDtoH_v2" ].each { |m|
+  register_prologue m, profiling_start_no_stream
+}
+
+[ "cuMemcpyHtoD_v2",
+  "cuMemcpyDtoH_v2" ].each { |m|
+  register_epilogue m, profiling_stop_no_stream
+}

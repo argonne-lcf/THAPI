@@ -19,3 +19,27 @@ lttng_ust_cuda_args:
     - [ ctf_integer, size_t, argIndex, argIndex ]
     - [ ctf_integer_hex, uintptr_t, kernelParam, "(uintptr_t)kernelParam" ]
     - [ ctf_sequence_text, uint8_t, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0" ]
+lttng_ust_cuda_profiling:
+  events:
+  - name: event_profiling
+    args:
+    - [ CUevent, hStart ]
+    - [ CUevent, hStop ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hStart, "(uintptr_t)hStart" ]
+    - [ ctf_integer_hex, uintptr_t, hStop, "(uintptr_t)hStop" ]
+  - name: event_profiling_results
+    args:
+    - [ CUevent, hStart ]
+    - [ CUevent, hStop ]
+    - [ CUresult, startStatus ]
+    - [ CUresult, stopStatus ]
+    - [ CUresult, status ]
+    - [ float, milliseconds ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hStart, "(uintptr_t)hStart" ]
+    - [ ctf_integer_hex, uintptr_t, hStop, "(uintptr_t)hStop" ]
+    - [ ctf_integer, CUresult, startStatus, startStatus ]
+    - [ ctf_integer, CUresult, stopStatus, stopStatus ]
+    - [ ctf_integer, CUresult, status, status ]
+    - [ ctf_float, float, milliseconds, milliseconds ]

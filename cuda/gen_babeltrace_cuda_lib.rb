@@ -138,6 +138,8 @@ EOF
         else
           "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
         end
+      when :ctf_float
+        "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
       when :ctf_sequence_text
         arg = e["args"].find { |type, name|
           name == field.expression
