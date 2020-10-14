@@ -135,7 +135,7 @@ static const void * _wrap_buggy_export_table(const void *pExportTable, const CUu
   for(size_t i = 0; i < num_entries; i++) {
     if (entries[i])
       _wrap_export(entries[i], (void *)puuid,
-                   sizeof(size_t) + i * sizeof(void*),
+                   i * sizeof(void*),
                    new_entries + i,
                    (void**)((intptr_t)mem + i * WRAPPER_SIZE));
     else
