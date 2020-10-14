@@ -21,7 +21,7 @@ while true; do
   case "$1" in
     --cudart) shift; cudart=1;;
     -a | --arguments ) shift; arguments=1;;
-    -p | --profiling ) shift; profiling=1; LTTNG_UST_CUDA_PROFILE=1;;
+    -p | --profiling ) shift; profiling=1; export LTTNG_UST_CUDA_PROFILE=1;;
     -v | --visualize ) shift; lttng_view=1;;
     -- ) shift; break ;;
     * ) break ;;
