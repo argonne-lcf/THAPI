@@ -113,6 +113,42 @@ static const void * _wrap_export_table(const void *pExportTable, const CUuuid *p
   return (void*)((intptr_t)mem + WRAPPER_SIZE * num_entries);
 }
 
+static const void * _wrap_buggy_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
+  size_t export_table_sz = 0;
+  while(*(void **)((intptr_t)pExportTable + export_table_sz))
+    export_table_sz += 8;
+
+  size_t num_entries = (export_table_sz)/sizeof(void*);
+  size_t sz = WRAPPER_SIZE * num_entries + export_table_sz + sizeof(CUuuid);
+
+  void *mem = mmap(0, sz, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+  if (mem == MAP_FAILED)
+    return pExportTable;
+
+  char *puuid = (char *)mem + WRAPPER_SIZE * num_entries + export_table_sz;
+  void **entries = (void **)pExportTable;
+  size_t *newExportTable = (size_t *)((intptr_t)mem + WRAPPER_SIZE * num_entries);
+  void **new_entries = (void **)newExportTable;
+
+  memcpy(puuid, pExportTableId, sizeof(CUuuid));
+
+  for(size_t i = 0; i < num_entries; i++) {
+    if (entries[i])
+      _wrap_export(entries[i], (void *)puuid,
+                   sizeof(size_t) + i * sizeof(void*),
+                   new_entries + i,
+                   (void**)((intptr_t)mem + i * WRAPPER_SIZE));
+    else
+      new_entries[i] = entries[i];
+  }
+
+  if (mprotect(mem, sz, PROT_READ|PROT_EXEC)) {
+    munmap(mem, sz);
+    return pExportTable;
+  }
+  return (void*)((intptr_t)mem + WRAPPER_SIZE * num_entries);
+}
+
 static int _do_trace_export_tables = 0;
 static pthread_mutex_t _cuda_export_tables_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -140,7 +176,10 @@ static const void * _wrap_and_cache_export_table(const void *pExportTable, const
     return pExportTable;
   }
   export_table_h->uuid = *pExportTableId;
-  export_table_h->export_table = _wrap_export_table(pExportTable, pExportTableId);
+  if (*(size_t*)pExportTable < 0x1000)
+    export_table_h->export_table = _wrap_export_table(pExportTable, pExportTableId);
+  else
+    export_table_h->export_table = _wrap_buggy_export_table(pExportTable, pExportTableId);
   HASH_ADD(hh, _export_tables, uuid, sizeof(CUuuid), export_table_h);
   pthread_mutex_unlock(&_cuda_export_tables_mutex);
   return export_table_h->export_table;

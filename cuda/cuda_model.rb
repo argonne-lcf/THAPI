@@ -857,6 +857,9 @@ no_stream_commands.each { |m|
 # Export tracing
 register_epilogue "cuGetExportTable", <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
-    _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
+    const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
+    tracepoint(lttng_ust_cuda, cuGetExportTable_exit, ppExportTable, pExportTableId, _retval);
+    *ppExportTable = tmp;
+    return _retval;
   }
 EOF
