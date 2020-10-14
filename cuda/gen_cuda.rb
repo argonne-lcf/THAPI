@@ -4,10 +4,13 @@ puts <<EOF
 #define __CUDA_API_VERSION_INTERNAL 1
 #include <cuda.h>
 #include <pthread.h>
+#include <sys/mman.h>
 #include "cuda_tracepoints.h"
 #include "cuda_args.h"
 #include "cuda_profiling.h"
+#include "cuda_exports.h"
 #include "utlist.h"
+#include "uthash.h"
 EOF
 
 $cuda_commands.each { |c|

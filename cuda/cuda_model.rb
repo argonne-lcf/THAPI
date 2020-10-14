@@ -853,3 +853,10 @@ no_stream_commands.each { |m|
   register_prologue m, profiling_start_no_stream
   register_epilogue m, profiling_stop_no_stream
 }
+
+# Export tracing
+register_epilogue "cuGetExportTable", <<EOF
+  if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
+    _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
+  }
+EOF

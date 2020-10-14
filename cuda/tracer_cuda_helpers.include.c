@@ -1,3 +1,150 @@
+static void _log_export(CUuuid *pExportTableId, size_t exportOffset) {
+  tracepoint(lttng_ust_cuda_exports, export_called, pExportTableId, exportOffset);
+}
+
+#define WRAPPER_SIZE 0x50
+union _ptr_u {
+  intptr_t ptr;
+  unsigned char s[8];
+};
+
+static void _wrap_export(void *func, CUuuid *pExportTableId, size_t offset,
+                         void **pDestTable, void *pDest) {
+  union _ptr_u f = {.ptr = (intptr_t)func };
+  union _ptr_u u = {.ptr = (intptr_t)pExportTableId };
+  union _ptr_u o = {.ptr = (intptr_t)offset };
+  union _ptr_u l = {.ptr = (intptr_t)&_log_export};
+/*
+   0:	57                   	push   %rdi
+   1:	56                   	push   %rsi
+   2:	52                   	push   %rdx
+   3:	51                   	push   %rcx
+   4:	41 50                	push   %r8
+   6:	41 51                	push   %r9
+   8:	41 52                	push   %r10
+   a:	41 53                	push   %r11
+   c:	48 b8 f0 ee db ea 0d 	movabs $0xdeadbeef0,%rax
+  13:	00 00 00
+  16:	48 bf f1 ee db ea 0d 	movabs $0xdeadbeef1,%rdi
+  1d:	00 00 00
+  20:	48 be f2 ee db ea 0d 	movabs $0xdeadbeef2,%rsi
+  27:	00 00 00
+  2a:	ff d0                	callq  *%rax
+  2c:	41 5b                	pop    %r11
+  2e:	41 5a                	pop    %r10
+  30:	41 59                	pop    %r9
+  32:	41 58                	pop    %r8
+  34:	59                   	pop    %rcx
+  35:	5a                   	pop    %rdx
+  36:	5e                   	pop    %rsi
+  37:	5f                   	pop    %rdi
+  38:	48 b8 f4 ee db ea 0d 	movabs $0xdeadbeef4,%rax
+  3f:	00 00 00
+  42:	ff e0                	jmpq   *%rax
+*/
+
+  unsigned char code[] = {
+    /* Saving registers */
+    0x57,
+    0x56,
+    0x52,
+    0x51,
+    0x41, 0x50,
+    0x41, 0x51,
+    0x41, 0x52,
+    0x41, 0x53,
+    /* Calling _log_export */
+    0x48, 0xb8,
+    l.s[0], l.s[1], l.s[2], l.s[3], l.s[4], l.s[5], l.s[6], l.s[7],
+    0x48, 0xbf,
+    u.s[0], u.s[1], u.s[2], u.s[3], u.s[4], u.s[5], u.s[6], u.s[7],
+    0x48, 0xbe,
+    o.s[0], o.s[1], o.s[2], o.s[3], o.s[4], o.s[5], o.s[6], o.s[7],
+    0xff, 0xd0,
+    /* Restoring registers */
+    0x41, 0x5b,
+    0x41, 0x5a,
+    0x41, 0x59,
+    0x41, 0x58,
+    0x59,
+    0x5a,
+    0x5e,
+    0x5f,
+    /* Call original export */
+    0x48, 0xb8,
+    f.s[0], f.s[1], f.s[2], f.s[3], f.s[4], f.s[5], f.s[6], f.s[7],
+    0xff, 0xe0 };
+
+  memcpy(pDest, code, sizeof(code));
+  *pDestTable = pDest;
+}
+
+static const void * _wrap_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
+  size_t export_table_sz = *(size_t*)pExportTable;
+  size_t num_entries = (export_table_sz - sizeof(size_t))/sizeof(void*);
+  size_t sz = WRAPPER_SIZE * num_entries + export_table_sz + sizeof(CUuuid);
+
+  void *mem = mmap(0, sz, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+  if (mem == MAP_FAILED)
+    return pExportTable;
+
+  char *puuid = (char *)mem + WRAPPER_SIZE * num_entries + export_table_sz;
+  void **entries = (void **)((intptr_t)pExportTable + sizeof(size_t));
+  size_t *newExportTable = (size_t *)((intptr_t)mem + WRAPPER_SIZE * num_entries);
+  void **new_entries = (void **)((intptr_t)newExportTable + sizeof(size_t));
+
+  *newExportTable = export_table_sz;
+  memcpy(puuid, pExportTableId, sizeof(CUuuid));
+
+  for(size_t i = 0; i < num_entries; i++) {
+    if (entries[i])
+      _wrap_export(entries[i], (void *)puuid,
+                   sizeof(size_t) + i * sizeof(void*),
+                   new_entries + i,
+                   (void**)((intptr_t)mem + i * WRAPPER_SIZE));
+    else
+      new_entries[i] = entries[i];
+  }
+
+  if (mprotect(mem, sz, PROT_READ|PROT_EXEC)) {
+    munmap(mem, sz);
+    return pExportTable;
+  }
+  return (void*)((intptr_t)mem + WRAPPER_SIZE * num_entries);
+}
+
+static int _do_trace_export_tables = 0;
+static pthread_mutex_t _cuda_export_tables_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct _export_table_h {
+  CUuuid uuid;
+  const void * export_table;
+  UT_hash_handle hh;
+};
+
+static struct _export_table_h *_export_tables = NULL;
+
+static const void * _wrap_and_cache_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
+  if (!pExportTable)
+    return NULL;
+  struct _export_table_h *export_table_h = NULL;
+  pthread_mutex_lock(&_cuda_export_tables_mutex);
+  HASH_FIND(hh, _export_tables, pExportTableId, sizeof(CUuuid), export_table_h);
+  if (export_table_h) {
+    pthread_mutex_unlock(&_cuda_export_tables_mutex);
+    return export_table_h->export_table;
+  }
+  export_table_h = calloc(sizeof(struct _export_table_h), 1);
+  if (!export_table_h) {
+    pthread_mutex_unlock(&_cuda_export_tables_mutex);
+    return pExportTable;
+  }
+  export_table_h->uuid = *pExportTableId;
+  export_table_h->export_table = _wrap_export_table(pExportTable, pExportTableId);
+  HASH_ADD(hh, _export_tables, uuid, sizeof(CUuuid), export_table_h);
+  pthread_mutex_unlock(&_cuda_export_tables_mutex);
+  return export_table_h->export_table;
+}
 
 static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** extra) {
   (void)extra;
@@ -193,6 +340,8 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_CUDA_PROFILE");
   if (s)
     _do_profile = 1;
+  if(tracepoint_enabled(lttng_ust_cuda_exports, export_called))
+    _do_trace_export_tables = 1;
 
   if (_do_profile)
     atexit(&_lib_cleanup);

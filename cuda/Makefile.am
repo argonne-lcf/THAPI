@@ -13,15 +13,18 @@ CUDA_PROBES_SRC = \
 
 CUDA_STATIC_PROBES_TP = \
 	cuda_args.tp \
-	cuda_profiling.tp
+	cuda_profiling.tp \
+	cuda_exports.tp
 
 CUDA_STATIC_PROBES_INCL = \
 	cuda_args.h \
-	cuda_profiling.h
+	cuda_profiling.h \
+	cuda_exports.h
 
 CUDA_STATIC_PROBES_SRC = \
 	cuda_args.c \
-	cuda_profiling.c
+	cuda_profiling.c \
+	cuda_exports.c
 
 CUDART_PROBES_TP = \
 	cudart_tracepoints.tp
@@ -151,6 +154,9 @@ cuda_args.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
 
 cuda_profiling.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_custom_probes.rb lttng_ust_cuda_profiling > $@
+
+cuda_exports.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_custom_probes.rb lttng_ust_cuda_exports > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h

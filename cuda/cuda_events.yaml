@@ -43,3 +43,13 @@ lttng_ust_cuda_profiling:
     - [ ctf_integer, CUresult, stopStatus, stopStatus ]
     - [ ctf_integer, CUresult, status, status ]
     - [ ctf_float, float, milliseconds, milliseconds ]
+lttng_ust_cuda_exports:
+  events:
+  - name: export_called
+    args:
+    - [ CUuuid *, pExportTableId ]
+    - [ size_t, exportOffset ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, pExportTableId, "(uintptr_t)pExportTableId" ]
+    - [ ctf_integer, size_t, exportOffset, exportOffset ]
+    - [ ctf_sequence_text, uint8_t, pExportTableId_val, pExportTableId, size_t, "sizeof(CUuuid)" ]
