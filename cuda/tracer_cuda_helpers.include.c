@@ -67,21 +67,16 @@ struct _cuda_event_s {
 
 struct _cuda_event_s * _events = NULL;
 
-static inline void _register_cuda_event(CUevent hStart, CUevent hStop) {
-  CUcontext context;
-  CUresult status;
+static inline void _register_cuda_event(CUevent hStart, CUevent hStop, CUcontext hContext) {
   struct _cuda_event_s *ev;
 
-  status = CU_CTX_GET_CURRENT_PTR(&context);
-  if (status != CUDA_SUCCESS)
-    goto error;
   ev = (struct _cuda_event_s *)calloc(sizeof(struct _cuda_event_s), 1);
   if (!ev)
     goto error;
 
   ev->start = hStart;
   ev->stop = hStop;
-  ev->context = context;
+  ev->context = hContext;
   tracepoint(lttng_ust_cuda_profiling, event_profiling, hStart, hStop);
   pthread_mutex_lock(&_cuda_events_mutex);
   DL_APPEND(_events, ev);
@@ -94,19 +89,35 @@ error:
 
 static inline CUevent _create_record_event(CUstream hStream) {
   CUevent hEvent;
-  if(CU_EVENT_CREATE_PTR(&hEvent, CU_EVENT_DEFAULT) != CUDA_SUCCESS)
+  CUcontext streamContext;
+  CUcontext currentContext;
+  if (hStream) {
+    if (CU_CTX_GET_CURRENT_PTR(&currentContext) != CUDA_SUCCESS)
+      return NULL;
+    if (CU_STREAM_GET_CTX_PTR(hStream, &streamContext) != CUDA_SUCCESS)
+      return NULL;
+    if (streamContext != currentContext) {
+      if (CU_CTX_PUSH_CURRENT_PTR(streamContext) != CUDA_SUCCESS)
+        return NULL;
+    }
+  }
+  if(CU_EVENT_CREATE_PTR(&hEvent, CU_EVENT_DEFAULT) != CUDA_SUCCESS) {
     hEvent = NULL;
-  else {
+  } else {
     if(CU_EVENT_RECORD_PTR(hEvent, hStream) != CUDA_SUCCESS) {
       CU_EVENT_DESTROY_V2_PTR(hEvent);
       hEvent = NULL;
     }
+  }
+  if (hStream && streamContext != currentContext) {
+    CU_CTX_POP_CURRENT_PTR(&streamContext);
   }
   return hEvent;
 }
 
 static inline void _event_profile(CUresult status, CUevent hStart, CUstream hStream) {
   CUevent hStop;
+  CUcontext hContext;
   if (status != CUDA_SUCCESS) {
     CU_EVENT_DESTROY_V2_PTR(hStart);
     return;
@@ -117,7 +128,11 @@ static inline void _event_profile(CUresult status, CUevent hStart, CUstream hStr
       CU_EVENT_DESTROY_V2_PTR(hStart);
       return;
     }
-    _register_cuda_event(hStart, hStop);
+    if (hStream)
+      CU_STREAM_GET_CTX_PTR(hStream, &hContext);
+    else
+      CU_CTX_GET_CURRENT_PTR(&hContext);
+    _register_cuda_event(hStart, hStop, hContext);
   }
 }
 
