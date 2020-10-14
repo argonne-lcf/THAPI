@@ -749,7 +749,7 @@ def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-CUDA_POINTER_NAMES = ($cuda_commands).collect { |c|
+CUDA_POINTER_NAMES = $cuda_commands.collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
@@ -796,6 +796,8 @@ register_epilogue "cuGraphKernelNodeGetParams", <<EOF
   }
 EOF
 
+# Profiling
+
 profiling_start = lambda { |stream|
   <<EOF
   CUevent _hStart = NULL;
@@ -817,22 +819,37 @@ EOF
 profiling_stop_no_stream = profiling_stop.call("NULL")
 profiling_stop_stream = profiling_stop.call("hStream")
 
-[ "cuLaunchKernel",
-  "cuLaunchKernel_ptsz" ].each { |m|
-  register_prologue m, profiling_start_stream
-}
+stream_commands = []
+no_stream_commands = []
+mem_commands = $cuda_commands.select { |c| c.name.match(/cuMemcpy|cuMemset/) }
+mem_stream_commands = mem_commands.select { |c| c.name.match(/Async/) }
+mem_no_stream_commands = mem_commands - mem_stream_commands
+stream_commands += mem_stream_commands.collect(&:name)
+no_stream_commands += mem_no_stream_commands.collect(&:name)
 
-[ "cuLaunchKernel",
-  "cuLaunchKernel_ptsz" ].each { |m|
+stream_commands += %w(
+  cuMemPrefetchAsync
+  cuMemPrefetchAsync_ptsz
+  cuLaunchGridAsync
+  cuLaunchKernel
+  cuLaunchCooperativeKernel
+  cuLaunchHostFunc
+  cuLaunchKernel_ptsz
+  cuLaunchCooperativeKernel_ptsz
+  cuLaunchHostFunc_ptsz
+)
+
+no_stream_commands += %w(
+  cuLaunch
+  cuLaunchGrid
+)
+
+stream_commands.each { |m|
+  register_prologue m, profiling_start_stream
   register_epilogue m, profiling_stop_stream
 }
 
-[ "cuMemcpyHtoD_v2",
-  "cuMemcpyDtoH_v2" ].each { |m|
+no_stream_commands.each { |m|
   register_prologue m, profiling_start_no_stream
-}
-
-[ "cuMemcpyHtoD_v2",
-  "cuMemcpyDtoH_v2" ].each { |m|
   register_epilogue m, profiling_stop_no_stream
 }
