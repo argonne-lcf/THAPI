@@ -336,9 +336,30 @@ static void _profile_event_results(struct _cuda_event_s *ev) {
   }
 }
 
+static void _context_event_cleanup(CUcontext hContext) {
+  struct _cuda_event_s *ev, *tmp;
+  struct _cuda_event_s *evs = NULL;
+
+  pthread_mutex_lock(&_cuda_events_mutex);
+  DL_FOREACH_SAFE(_events, ev, tmp) {
+    if (ev->context == hContext) {
+      DL_DELETE(_events, ev);
+      DL_APPEND(evs, ev);
+    }
+  }
+  pthread_mutex_unlock(&_cuda_events_mutex);
+
+  DL_FOREACH_SAFE(evs, ev, tmp) {
+    DL_DELETE(evs, ev);
+    _profile_event_results(ev);
+    CU_EVENT_DESTROY_V2_PTR(ev->start);
+    CU_EVENT_DESTROY_V2_PTR(ev->stop);
+    free(ev);
+  }
+}
+
 static void _event_cleanup() {
   struct _cuda_event_s *ev, *tmp;
-
   DL_FOREACH_SAFE(_events, ev, tmp) {
     DL_DELETE(_events, ev);
     _profile_event_results(ev);

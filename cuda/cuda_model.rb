@@ -854,6 +854,13 @@ no_stream_commands.each { |m|
   register_epilogue m, profiling_stop_no_stream
 }
 
+# if a context is to be destroyed we must attempt to get profiling event results
+register_prologue "cuCtxDestroy", <<EOF
+  if (ctx) {
+    _context_event_cleanup(ctx);
+  }
+EOF
+
 # Export tracing
 register_epilogue "cuGetExportTable", <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
