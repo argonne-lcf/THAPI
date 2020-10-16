@@ -1254,7 +1254,7 @@ register_extension_callbacks.call("clGetExtensionFunctionAddressForPlatform")
       c.prologues.push <<EOF
   int _profile_release_event = 0;
   int _event_profiling = 0;
-  cl_event _profiling_event;
+  cl_event _profiling_event = NULL;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     if (event == NULL) {
       event = &_profiling_event;
