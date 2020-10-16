@@ -9,6 +9,10 @@ else
   SRC_DIR = "."
 end
 
+START = "entry"
+STOP = "exit"
+SUFFIXES = { :start => START, :stop => STOP }
+
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
@@ -50,7 +54,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /cuInit|cuDriverGetVersion/
+INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable/
 
 FFI_TYPE_MAP =  {
  "unsigned char" => "ffi_type_uint8",
@@ -745,7 +749,7 @@ def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-CUDA_POINTER_NAMES = ($cuda_commands).collect { |c|
+CUDA_POINTER_NAMES = $cuda_commands.collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
@@ -789,5 +793,80 @@ EOF
 register_epilogue "cuGraphKernelNodeGetParams", <<EOF
   if (_retval == CUDA_SUCCESS && nodeParams) {
     _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
+  }
+EOF
+
+# Profiling
+
+profiling_start = lambda { |stream|
+  <<EOF
+  CUevent _hStart = NULL;
+  if (_do_profile)
+    _hStart = _create_record_event(#{stream});
+EOF
+}
+
+profiling_start_no_stream = profiling_start.call("NULL")
+profiling_start_stream = profiling_start.call("hStream")
+
+profiling_stop = lambda { |stream|
+  <<EOF
+  if (_do_profile)
+    _event_profile(_retval, _hStart, #{stream});
+EOF
+}
+
+profiling_stop_no_stream = profiling_stop.call("NULL")
+profiling_stop_stream = profiling_stop.call("hStream")
+
+stream_commands = []
+no_stream_commands = []
+mem_commands = $cuda_commands.select { |c| c.name.match(/cuMemcpy|cuMemset/) }
+mem_stream_commands = mem_commands.select { |c| c.name.match(/Async/) }
+mem_no_stream_commands = mem_commands - mem_stream_commands
+stream_commands += mem_stream_commands.collect(&:name)
+no_stream_commands += mem_no_stream_commands.collect(&:name)
+
+stream_commands += %w(
+  cuMemPrefetchAsync
+  cuMemPrefetchAsync_ptsz
+  cuLaunchGridAsync
+  cuLaunchKernel
+  cuLaunchCooperativeKernel
+  cuLaunchHostFunc
+  cuLaunchKernel_ptsz
+  cuLaunchCooperativeKernel_ptsz
+  cuLaunchHostFunc_ptsz
+)
+
+no_stream_commands += %w(
+  cuLaunch
+  cuLaunchGrid
+)
+
+stream_commands.each { |m|
+  register_prologue m, profiling_start_stream
+  register_epilogue m, profiling_stop_stream
+}
+
+no_stream_commands.each { |m|
+  register_prologue m, profiling_start_no_stream
+  register_epilogue m, profiling_stop_no_stream
+}
+
+# if a context is to be destroyed we must attempt to get profiling event results
+register_prologue "cuCtxDestroy", <<EOF
+  if (ctx) {
+    _context_event_cleanup(ctx);
+  }
+EOF
+
+# Export tracing
+register_epilogue "cuGetExportTable", <<EOF
+  if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
+    const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
+    tracepoint(lttng_ust_cuda, cuGetExportTable_exit, ppExportTable, pExportTableId, _retval);
+    *ppExportTable = tmp;
+    return _retval;
   }
 EOF

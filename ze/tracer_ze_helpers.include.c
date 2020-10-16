@@ -153,8 +153,8 @@ struct _ze_event_h {
   pthread_mutex_unlock(&_ze_events_mutex); \
 }
 
-struct _ze_event_h *_ze_events = NULL;
-pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct _ze_event_h *_ze_events = NULL;
+static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline void _register_ze_event(
  ze_event_handle_t event,

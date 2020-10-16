@@ -4,8 +4,13 @@ puts <<EOF
 #define __CUDA_API_VERSION_INTERNAL 1
 #include <cuda.h>
 #include <pthread.h>
+#include <sys/mman.h>
 #include "cuda_tracepoints.h"
 #include "cuda_args.h"
+#include "cuda_profiling.h"
+#include "cuda_exports.h"
+#include "utlist.h"
+#include "uthash.h"
 EOF
 
 $cuda_commands.each { |c|
@@ -42,12 +47,14 @@ EOF
 export_tables = YAML::load_file(File.join(SRC_DIR,"cuda_export_tables.yaml"))
 
 export_tables.each { |table|
-  table["structures"].each { |struct|
-    puts <<EOF
+  if table["structures"]
+    table["structures"].each { |struct|
+      puts <<EOF
 typedef #{struct["declaration"].chomp} #{struct["name"]};
 
 EOF
-  }
+    }
+  end
   table["functions"].each { |func|
     puts <<EOF
 #define #{upper_snake_case(func["name"]+"_ptr")} #{func["name"]+"_ptr"}
@@ -110,7 +117,7 @@ common_block = lambda { |c, provider|
     puts p.init unless p.after?
   }
   puts <<EOF
-  tracepoint(#{provider}, #{c.name}_start, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 
   c.prologues.each { |p|
@@ -135,7 +142,7 @@ EOF
     tp_params.push "_retval"
   end
   puts <<EOF
-  tracepoint(#{provider}, #{c.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 }
 

@@ -30,6 +30,15 @@ puts <<EOF
 #include "opencl_build.h"
 #include "opencl_devices.h"
 
+#define CONCAT(c,suf) c ## _ ## suf
+#define STARTEV(command) CONCAT(command, #{START})
+#define STOPEV(command) CONCAT(command, #{STOP})
+#define do_tracepoint_safe(provider, name, ...) \
+        do_tracepoint(provider, name, __VA_ARGS__)
+#define tracepoint_enabled_safe(provider, name) \
+        tracepoint_enabled(provider, name)
+#define tracepoint_safe(provider, name, ...) \
+        tracepoint(provider, name, __VA_ARGS__)
 EOF
 
 $opencl_commands.each { |c|
@@ -101,7 +110,7 @@ common_block = lambda { |c|
     puts p.init
   }
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_start, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES["start"]}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
   c.prologues.each { |p|
     puts p
@@ -141,7 +150,7 @@ EOF
     tp_params.push "_duration"
   end
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_stop, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES["stop"]}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
 }
 

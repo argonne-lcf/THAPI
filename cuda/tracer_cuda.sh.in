@@ -19,8 +19,10 @@ whichlib() {
 
 while true; do
   case "$1" in
-    --cudart) shift; cudart=1;;
+    --cudart         ) shift; cudart=1;;
     -a | --arguments ) shift; arguments=1;;
+    -p | --profiling ) shift; profiling=1; export LTTNG_UST_CUDA_PROFILE=1;;
+    -e | --exports   ) shift; exports=1;;
     -v | --visualize ) shift; lttng_view=1;;
     -- ) shift; break ;;
     * ) break ;;
@@ -44,6 +46,14 @@ fi
 if [ ! -z "$arguments" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_args:*
+fi
+if [ ! -z "$profiling" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
+fi
+if [ ! -z "$exports" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_exports:*
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then

@@ -45,7 +45,7 @@ en.each { |e|
 }
 
 event_lambda = lambda { |c, dir|
-  name = "lttng_ust_opencl:#{c.prototype.name}_#{dir}"
+  name = "lttng_ust_opencl:#{c.prototype.name}_#{SUFFIXES[dir]}"
   fields = {}
   params = {}
   c.parameters.each { |p|
@@ -66,7 +66,7 @@ event_lambda = lambda { |c, dir|
       [m.name, m]
     }.to_h]
   }.to_h
-  if dir == :start
+  if dir == "start"
     c.parameters.select { |p| p.lttng_in_type }.each { |p|
       field = {}
       lttng = p.lttng_in_type
@@ -147,7 +147,7 @@ event_lambda = lambda { |c, dir|
 }
 
 ($opencl_commands+$opencl_extension_commands).each { |c|
-  [:start, :stop].each { |dir|
+  ["start", "stop"].each { |dir|
     name, val = event_lambda.call(c, dir)
     events[name] = val
   }
@@ -156,8 +156,8 @@ event_lambda = lambda { |c, dir|
 YAML::load_file(File.join(SRC_DIR,"opencl_wrapper_events.yaml")).each { |namespace, h|
   h["events"].each { |e|
     ["start", "stop"].each { |dir|
-      event = get_fields(e["args"], e[dir])
-      events["#{namespace}:#{e["name"]}_#{dir}"] = event
+      event = get_fields(e["args"], e[dir.to_s])
+      events["#{namespace}:#{e["name"]}_#{SUFFIXES[dir]}"] = event
     }
   }
 }
@@ -168,5 +168,7 @@ YAML::load_file(File.join(SRC_DIR,"opencl_events.yaml")).each { |namespace, h|
     events["#{namespace}:#{e["name"]}"] = event
   }
 }
+
+res["suffixes"] = SUFFIXES
 
 puts YAML::dump(res)

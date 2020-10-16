@@ -146,9 +146,9 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
    Map [ Tuple [ Hostnane, process, thread, function_name], Tuple [ device, subdevice] ]
   %>
   <%# Save kernel name %>
-    <% if dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_start" %>
+    <% if dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_#{START}" %>
     last_kernel[hpt_t(hostname,process_id,thread_id)] = std::string{desc__pKernelName_val};
-     <% elsif dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_stop" %>
+     <% elsif dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_#{STOP}" %>
     kernel_to_name[hp_kernel_t(hostname,process_id,phKernel_val)] =  last_kernel[hpt_t(hostname,process_id,thread_id)];
  <% end %>
  <% if dbt_event.suffix == :start and  dbt_event.include? "hSignalEvent" %>

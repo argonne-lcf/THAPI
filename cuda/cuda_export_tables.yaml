@@ -17,3 +17,8 @@
   - offset: 0x110
     name: cuFunction_get_arg_descriptor
     declaration: "CUresult cuFunction_get_arg_descriptor(CUfunction f, size_t argIndex, CUfunction_arg_desc_query *pArgDescQuery)"
+- uuid: [0xa3, 0x17, 0x46, 0xd1, 0x54, 0x75, 0xef, 0x4e, 0xae, 0xb6, 0xdf, 0xb1, 0x47, 0x6a, 0xdd, 0x6c]
+  functions:
+  - offset: 0x288
+    name: cuDevice_get_primary_context_refcount
+    declaration: "uint cuDevice_get_primary_context_refcount(CUdevice device)"

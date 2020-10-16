@@ -246,7 +246,7 @@ end
 gen_event_dispatcher = lambda { |provider, c, dir|
   puts <<EOF
 static void
-#{provider}_#{c.name}_#{dir}_dispatcher(
+#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher(
     struct ze_dispatch      *ze_dispatch,
     struct ze_callbacks     *callbacks,
     const bt_event          *bt_evt,
@@ -262,7 +262,7 @@ EOF
   puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{provider}_#{c.name}_#{dir}_cb *)*_p)(
+    ((#{provider}_#{c.name}_#{SUFFIXES[dir]}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + get_fields_names(c, dir)).join(",\n      ")});
   }
 EOF
@@ -349,7 +349,7 @@ ze_events.each { |provider, es|
 
 gen_event_dispatch_init = lambda { |provider, c, dir|
   puts <<EOF
-  ze_register_dispatcher(ze_dispatch, "#{provider}:#{c.name}_#{dir}", &#{provider}_#{c.name}_#{dir}_dispatcher);
+  ze_register_dispatcher(ze_dispatch, "#{provider}:#{c.name}_#{SUFFIXES[dir]}", &#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher);
 EOF
 }
 

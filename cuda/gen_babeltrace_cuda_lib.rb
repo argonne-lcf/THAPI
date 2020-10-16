@@ -52,7 +52,7 @@ meta_parameter_lambda = lambda { |m, dir|
 
 gen_event_lambda = lambda { |provider, c, dir|
   puts <<EOF
-$event_lambdas["#{provider}:#{c.name}_#{dir}"] = lambda { |defi|
+$event_lambdas["#{provider}:#{c.name}_#{SUFFIXES[dir]}"] = lambda { |defi|
   s = "{ "
 EOF
   fields = []
@@ -138,6 +138,8 @@ EOF
         else
           "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
         end
+      when :ctf_float
+        "s << \"#{field.name}: \#{defi[\"#{field.name}\"]}\""
       when :ctf_sequence_text
         arg = e["args"].find { |type, name|
           name == field.expression

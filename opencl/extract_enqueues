@@ -12,6 +12,10 @@ c.add_traces(path: ARGV[0] )
 
 it = c.iter_create
 
+opencl_model = YAML::load_file("opencl_model.yaml")
+SUFFIXES = opencl_model["suffixes"]
+START = SUFFIXES["start"]
+STOP = SUFFIXES["stop"]
 
 def get_enqueues(it)
 
@@ -28,26 +32,26 @@ def get_enqueues(it)
     next unless defi
     v = defi.value
     case ev.name
-    when "lttng_ust_opencl:clCreateProgramWithSource_start"
+    when "lttng_ust_opencl:clCreateProgramWithSource_#{START}"
       program = {}
       program[:context] = v["context"]
-    when "lttng_ust_opencl:clCreateProgramWithIL_start"
+    when "lttng_ust_opencl:clCreateProgramWithIL_#{START}"
       program = {}
       program[:context] = v["context"]
       program[:type] = :il
     when "lttng_ust_opencl_source:program_string", "lttng_ust_opencl_source:program_il"
       program[:source] = v["path"]
-    when "lttng_ust_opencl:clCreateProgramWithIL_stop", "lttng_ust_opencl:clCreateProgramWithSource_stop"
+    when "lttng_ust_opencl:clCreateProgramWithIL_#{STOP}", "lttng_ust_opencl:clCreateProgramWithSource_#{STOP}"
       if v["errcode_ret_val"] == 0
         programs[v["program"]] = program
       end
       program = nil
-    when "lttng_ust_opencl:clCreateKernel_start"
+    when "lttng_ust_opencl:clCreateKernel_#{START}"
       kernel = {}
       kernel[:name] = v["kernel_name_val"]
       kernel[:program] = programs[v["program"]]
       kernel[:arg_infos] = {}
-    when "lttng_ust_opencl:clCreateKernel_stop"
+    when "lttng_ust_opencl:clCreateKernel_#{STOP}"
       if v["errcode_ret_val"] == 0
         kernels[v["kernel"]] = kernel
       end
@@ -62,7 +66,7 @@ def get_enqueues(it)
       else
         r[:buff_out] = v["path"]
       end
-    when "lttng_ust_opencl:clEnqueueNDRangeKernel_start"
+    when "lttng_ust_opencl:clEnqueueNDRangeKernel_#{START}"
       res = {}
       res[:kernel] = kernels[v["kernel"]]
       res[:global_work_size] = v["global_work_size_vals"]
@@ -74,7 +78,7 @@ def get_enqueues(it)
         res2 = enqueues[enqueue_counter]
         res.merge!(res2)
       end
-    when "lttng_ust_opencl:clEnqueueNDRangeKernel_stop"
+    when "lttng_ust_opencl:clEnqueueNDRangeKernel_#{STOP}"
       if v["errcode_ret_val"] == 0
         enqueues[enqueue_counter] = res
       end

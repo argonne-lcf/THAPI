@@ -53,7 +53,7 @@ def print_tracepoint(namespace, tp, dir = nil)
   puts <<EOF
 TRACEPOINT_EVENT(
   #{namespace},
-  #{tp["name"]}#{dir ? "_#{dir}" : ""},
+  #{tp["name"]}#{dir ? "_#{SUFFIXES[dir]}" : ""},
   TP_ARGS(
 EOF
   print "    "
