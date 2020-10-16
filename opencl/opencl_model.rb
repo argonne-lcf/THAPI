@@ -1265,8 +1265,10 @@ register_extension_callbacks.call("clGetExtensionFunctionAddressForPlatform")
 EOF
       c.epilogues.push <<EOF
   if (_event_profiling) {
-    int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(*event, CL_COMPLETE, event_notify, NULL);
-    do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, *event);
+    if (_retval == CL_SUCCESS) {
+      int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(*event, CL_COMPLETE, event_notify, NULL);
+      do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, *event);
+    }
     if(_profile_release_event) {
       #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
       event = NULL;
