@@ -21,24 +21,24 @@ LT_INIT([disable-static])
 AC_PROG_CXX
 AC_PROG_CC
 if test -z "$RUBY"; then
-  AC_CHECK_PROG(RUBY,[ruby],[ruby],[:])
-  test "$RUBY" == ":" && AC_MSG_ERROR([Required program 'ruby' not found.])
+  AC_CHECK_PROG(RUBY,[ruby],[ruby],[no])
+  test "$RUBY" == "no" && AC_MSG_ERROR([Required program 'ruby' not found.])
 fi
 if test -z "$ERB"; then
-  AC_CHECK_PROG(ERB,[erb],[erb],[:])
-  test "$ERB" == ":" && AC_MSG_ERROR([Required program 'erb' not found.])
+  AC_CHECK_PROG(ERB,[erb],[erb],[no])
+  test "$ERB" == "no" && AC_MSG_ERROR([Required program 'erb' not found.])
 fi
 if test -z "$LTTNG_GEN_TP"; then
-  AC_CHECK_PROG(LTTNG_GEN_TP,[lttng-gen-tp],[lttng-gen-tp],[:])
-  test "$LTTNG_GEN_TP" == ":" && AC_MSG_ERROR([Required program 'lttng-gen-tp' not found.])
+  AC_CHECK_PROG(LTTNG_GEN_TP,[lttng-gen-tp],[lttng-gen-tp],[no])
+  test "$LTTNG_GEN_TP" == "no" && AC_MSG_ERROR([Required program 'lttng-gen-tp' not found.])
 fi
 if test -z "$BABELTRACE2_PROG"; then
-  AC_CHECK_PROG(BABELTRACE2_PROG,[babeltrace2],[babeltrace2],[:])
-  test "$BABELTRACE2_PROG" == ":" && AC_MSG_ERROR([Required program 'babeltrace2' not found.])
+  AC_CHECK_PROG(BABELTRACE2_PROG,[babeltrace2],[babeltrace2],[no])
+  test "$BABELTRACE2_PROG" == "no" && AC_MSG_ERROR([Required program 'babeltrace2' not found.])
 fi
 if test -z "$PATCH"; then
-  AC_CHECK_PROG(PATCH,[patch],[patch],[:])
-  test "$PATCH" == ":" && AC_MSG_ERROR([Required program 'patch' not found.])
+  AC_CHECK_PROG(PATCH,[patch],[patch],[no])
+  test "$PATCH" == "no" && AC_MSG_ERROR([Required program 'patch' not found.])
 fi
 
 # Checks for libraries.
