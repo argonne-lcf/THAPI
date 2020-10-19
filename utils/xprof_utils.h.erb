@@ -401,8 +401,9 @@ void print_compact_<%= result %>(){
        }
        <% if type == "hpt_dsd_t" %>
         for (auto element: s_SubDevice_pointers) {
-            auto [_a, _b, d1, d2 ] = element;
-           if ( d1 == d2 ) {
+            auto [ _a, _b, d1, d2 ] = element;
+            (void)_a; (void)_b; <%# Use un-used variable %>
+            if ( d1 == d2 ) {
                 s_SubDevice_pointers.erase(element);
             }
         }
