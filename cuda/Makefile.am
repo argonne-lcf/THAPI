@@ -223,7 +223,7 @@ nodist_libTracerCUDART_la_SOURCES = \
 	tracer_cudart.c
 
 libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
-libTracerCUDART_la_CFLAGS = -Wall -Wextra -Werror
+libTracerCUDART_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDART_la_LDFLAGS += -version-number 10:1:0
 libTracerCUDART_la_LIBADD = libcudarttracepoints.la
