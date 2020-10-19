@@ -175,7 +175,7 @@ nodist_libTracerZE_la_SOURCES = \
 	tracer_ze.c
 
 libTracerZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
-libTracerZE_la_CFLAGS = -Wall -Wextra -Werror
+libTracerZE_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerZE_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerZE_la_LIBADD = libzetracepoints.la
 
