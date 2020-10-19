@@ -18,7 +18,7 @@ EOF
     if c.has_return_type? && dir == :stop
       params.push("#{c.type}, #{RESULT_NAME}")
     end
-    params += c.tracepoint_parameters.collect { |p|
+    params += c.tracepoint_parameters.reject { |p| p.after? && dir == :start }.collect { |p|
       "#{p.type}, #{p.name}"
     }
     puts params.join(",\n    ")

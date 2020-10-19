@@ -116,9 +116,11 @@ common_block = lambda { |c, provider|
   c.tracepoint_parameters.each { |p|
     puts p.init unless p.after?
   }
+  tracepoint_params = c.tracepoint_parameters.reject { |p| p.after? }.collect(&:name)
   puts <<EOF
   tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params+tracepoint_params).join(", ")});
 EOF
+  tracepoint_params = c.tracepoint_parameters.collect(&:name)
 
   c.prologues.each { |p|
     puts p
