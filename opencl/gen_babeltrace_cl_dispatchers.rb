@@ -22,7 +22,23 @@ EOF
     else
       #{name} = (#{type})bt_field_integer_signed_get_value(_field);
 EOF
-  when "ctf_sequence", "ctf_sequence_hex", "ctf_array"
+  when "ctf_array"
+    scalar_type = type.gsub("const","").sub("*", "")
+    puts <<EOF
+    _#{name}_length = bt_field_array_get_length(_field);
+    if (_#{name}_length > 0) {
+      bt_field_class_type _type = bt_field_get_class_type(bt_field_array_borrow_element_field_by_index_const(_field, 0));
+      #{name} = (#{type})malloc(_#{name}_length*sizeof(#{scalar_type}));
+      for (uint64_t _i = 0; _i < _#{name}_length; _i++) {
+        if (bt_field_class_type_is(_type, BT_FIELD_CLASS_TYPE_UNSIGNED_INTEGER))
+          #{name}[_i] = (#{scalar_type})bt_field_integer_unsigned_get_value(bt_field_array_borrow_element_field_by_index_const(_field, _i));
+        else
+          #{name}[_i] = (#{scalar_type})bt_field_integer_signed_get_value(bt_field_array_borrow_element_field_by_index_const(_field, _i));
+      }
+    } else
+      #{name} = NULL;
+EOF
+  when "ctf_sequence", "ctf_sequence_hex"
     scalar_type = type.gsub("const","").sub("*", "")
     puts <<EOF
     uint64_t _sz = bt_field_array_get_length(_field);
@@ -57,7 +73,7 @@ def print_field_members_access(fields)
     type << " *"  if f["array"]
     type << " *"  if f["string"]
     name = n
-    if f["array"]
+    if f["array"] and f["lttng"].match("ctf_sequence")
       arr.push ["ctf_integer", "size_t", "_#{n}_length"]
     end
     arr.push [lttng, type, name]
