@@ -340,6 +340,10 @@ static void _dump_properties() {
   }
 }
 
+#define ZE_LOADER_INIT_PTR zeLoaderInit_ptr
+typedef ze_result_t (*zeLoaderInit_t)();
+static zeLoaderInit_t ZE_LOADER_INIT_PTR = (void *) 0x0;
+
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
@@ -355,6 +359,9 @@ static void _load_tracer(void) {
   }
 
   find_ze_symbols(handle);
+  ZE_LOADER_INIT_PTR = (zeLoaderInit_t)(intptr_t)dlsym(handle, "zeLoaderInit");
+  if (!ZE_LOADER_INIT_PTR)
+    fprintf(stderr, "Missing symbol zeLoaderInit!\n");
 
   //FIX for intel tracing layer that needs to register its callbacks first...
   ZE_INIT_PTR(0);
@@ -383,3 +390,7 @@ static inline void _init_tracer(void) {
   _initialized = 1;
 }
 
+ze_result_t zeLoaderInit() {
+  _init_tracer();
+  return ZE_LOADER_INIT_PTR();
+}
