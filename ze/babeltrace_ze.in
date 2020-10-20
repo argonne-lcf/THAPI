@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
 $:.unshift(DATADIR) if File::directory?(DATADIR)
-$:.unshift("./")
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'yaml'
