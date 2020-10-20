@@ -213,6 +213,7 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
      
      const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
      const uint64_t delta = born_timing_to_ns(hp_device_t(hostname,process_id, device),contextStart,contextEnd);
+     (void)subdevice;
      event_result_to_delta[hp_event]= delta;
      event_to_function_name[hp_event] = t_function_name_t(thread_id, function_name);
   }
