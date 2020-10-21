@@ -2,7 +2,9 @@
 
 A tracing infrastructure for heterogeneous computing applications.
 
-# Building
+# Building and Installation
+
+The build system is a classical autotool based system.
 
 ## Dependencies
 
@@ -18,41 +20,6 @@ Packages:
  - `cast-to-yaml`
  - `nokogiri`
  - `babeltrace`
-
-## Build
-
-For now, each folder (opencl, ze, cuda) has its own folder and makefile.
-
-# Installation
-
-The build system is not done, so installation is manual.
-
-## OpenCL
-
-List of files to install:
- - `bin/tracer_opencl.sh`
- - `lib/tracer_opencl.so`
- - `bin/babeltrace_opencl`
- - `bin/opencl_infos.yaml`
- - `bin/opencl_model.yaml`
- - `bin/cl_prof.sh`
- - `lib/clprof.so`
-
- Two of these are created from templates that need to be copied, edited and made executable:
- - `tracer_opencl.sh.template` => `tracer_opencl.sh`, `PATH_TO_LIB` should be changed to point to `tracer_opencl.so` location,
- - `cl_prof.sh.template` => `cl_prof.sh`, `PATH_TO_LIB` should be change twice to point to `tracer_opencl.so` location and `clprof.so` respectively,
-
- ## Level Zero
-
- List of files to install:
-  - `bin/tracer_ze.sh`
-  - `lib/tracer_ze.so`
-  - `bin/babeltrace_ze`
-  - `bin/ze_library.rb`
-  - `bin/babeltrace_ze_lib.rb`
-
-One of these is created from templates that need to be copied and edited:
- - `tracer_ze.sh.template` => `tracer_ze.sh`, `PATH_TO_LIB` should be changed to point to `tracer_ze.so` location.
 
 # Usage
 
