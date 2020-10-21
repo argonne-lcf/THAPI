@@ -83,3 +83,10 @@ lttng_ust_opencl:
     - [ ctf_integer_hex, uintptr_t, svm_pointers, "(uintptr_t)svm_pointers" ]
     - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
     - [ ctf_sequence_hex, uintptr_t, svm_pointers_vals, svm_pointers, cl_uint, "svm_pointers ? num_svm_pointers : 0" ]
+  - name: clSetContextDestructorCallback_callback
+    args:
+    - [ cl_context, context ]
+    - [ "void *", user_data ]
+    start:
+    - [ ctf_integer_hex, uintptr_t, context, "(uintptr_t)context" ]
+    - [ ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data" ]
