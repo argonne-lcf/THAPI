@@ -1167,9 +1167,9 @@ static void _load_tracer(void) {
 
   s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
   if (s)
-      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
+      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   else
-      handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
+      handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   if( !handle ) {
     printf("Failure: could not load OpenCL library!\n");
     exit(1);
