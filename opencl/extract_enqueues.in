@@ -45,7 +45,7 @@ def get_enqueues(it)
       program = {}
       program[:context] = v["context"]
       program[:type] = :link
-      program[:programs] = v["input_programs_vals"]
+      program[:programs] = v["input_programs_vals"].collect { |prog| programs[prog] }
     when "lttng_ust_opencl_source:program_string", "lttng_ust_opencl_source:program_il"
       program[:source] = v["path"]
     when "lttng_ust_opencl:clCreateProgramWithIL_#{STOP}", "lttng_ust_opencl:clCreateProgramWithSource_#{STOP}", "lttng_ust_opencl:clLinkProgram_#{STOP}"
@@ -106,7 +106,7 @@ def dump_enqueues(enqueues)
     FileUtils.mkdir(kerdir) unless Dir.exist?( kerdir )
     if enqueue[:kernel][:program][:type] == :link
       enqueue[:kernel][:program][:programs].each { |prog|
-        FileUtils.cp(programs[prog][:source], File.join(kerdir, "source"))
+        FileUtils.cp(prog[:source], File.join(kerdir, "source"))
       }
     else
       FileUtils.cp(enqueue[:kernel][:program][:source], File.join(kerdir, "source"))
