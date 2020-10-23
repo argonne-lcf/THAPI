@@ -267,10 +267,13 @@ cl_device_info:
   - name: CL_DEVICE_OPENCL_C_FEATURES
     type: cl_name_version
     array: true
-  - name: CL_DEVICE_DEVICE_ENQUEUE_SUPPORT
-    type: cl_bool
+  - name: CL_DEVICE_DEVICE_ENQUEUE_CAPABILITIES
+    type: cl_device_device_enqueue_capabilities
   - name: CL_DEVICE_PIPE_SUPPORT
     type: cl_bool
+  - name: CL_DEVICE_LATEST_CONFORMANCE_VERSION_PASSED
+    type: char
+    string: true
   cl_khr_spir:
   - name: CL_DEVICE_SPIR_VERSIONS
     type: char
@@ -283,6 +286,23 @@ cl_device_info:
   - name: CL_DEVICE_IL_VERSION_KHR
     type: char
     string: true
+  cl_khr_device_uuid:
+  - name: CL_DEVICE_UUID_KHR
+    type: cl_uchar
+    array: true
+  - name: CL_DRIVER_UUID_KHR
+    type: cl_uchar
+    array: true
+  - name: CL_DEVICE_LUID_VALID_KHR
+    type: cl_bool
+  - name: CL_DEVICE_LUID_KHR
+    type: cl_uchar
+    array: true
+  - name: CL_DEVICE_NODE_MASK_KHR
+    type: cl_uint
+  cl_ext_cxx_for_opencl:
+  - name: CL_DEVICE_CXX_FOR_OPENCL_NUMERIC_VERSION_EXT
+    type: cl_version
 cl_context_info:
   1_0:
   - name: CL_CONTEXT_REFERENCE_COUNT

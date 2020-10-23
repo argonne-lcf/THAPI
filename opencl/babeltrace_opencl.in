@@ -1,9 +1,28 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
+require 'optparse'
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'yaml'
 require 'pp'
+
+$options = {
+  context: false
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: babeltrace_opencl [OPTIONS] target_trace_directory"
+
+  opts.on("-c", "--[no-]context", "Add context information") do |context|
+    $options[:context] = context
+  end
+
+  opts.on("-h", "--help", "Prints this help") do
+    puts opts
+    exit
+  end
+
+end.parse!
 
 c = Babeltrace::Context::new
 traces = c.add_traces(path: ARGV[0])
@@ -187,9 +206,9 @@ EOF
         startn = n.gsub("_#{STOP}", "_#{START}")
         type = opencl_model["events"][startn]["param_name"]["type"]
         if n == "lttng_ust_opencl:clSetKernelExecInfo_#{START}"
-          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
         else
-          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
         end
       elsif desc["array"]
         if enums_by_type[desc["type"]]
@@ -229,13 +248,16 @@ it = c.iter_create
 
 it.each { |ev|
   name, descs = events[ev.handle_id][ev.id]
-  print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{name}: "
+  str = "#{ev.timestamp.strftime("%H:%M:%S.%9L")}"
+  str << " - " << ev.top_level_scope(:STREAM_EVENT_CONTEXT).value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
+  str << " - #{name}: "
   defi = ev.top_level_scope(:EVENT_FIELDS)
   l = event_lambdas[ev.handle_id][ev.id]
   if l
-    puts l.call(defi.value)
+    str << l.call(defi.value).to_s
   else
-    puts defi.value
+    str << defi.value.to_s
   end
+  puts str
 }
 

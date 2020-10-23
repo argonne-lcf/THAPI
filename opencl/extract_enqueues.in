@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+DATADIR = File.join("@prefix@", "share")
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'pp'
@@ -12,14 +13,14 @@ c.add_traces(path: ARGV[0] )
 
 it = c.iter_create
 
-opencl_model = YAML::load_file("opencl_model.yaml")
+opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
 SUFFIXES = opencl_model["suffixes"]
 START = SUFFIXES["start"]
 STOP = SUFFIXES["stop"]
 
 def get_enqueues(it)
 
-  enqueues = Hash::new { |h, k| h[k] = {args: Hash::new {|h2, k2| h2[k2] = {} }, name: nil, source: nil,  type: nil} } 
+  enqueues = Hash::new { |h, k| h[k] = {args: Hash::new {|h2, k2| h2[k2] = {} }, name: nil, source: nil,  type: nil} }
   kernels = {}
   programs = {}
 
@@ -39,9 +40,15 @@ def get_enqueues(it)
       program = {}
       program[:context] = v["context"]
       program[:type] = :il
+    when "lttng_ust_opencl:clLinkProgram_#{START}"
+      #context: 0x210c880, num_devices: 1, device_list: 0x21bd830, options: 0x7ffe538fc169, num_input_programs: 1, input_programs: 0x21bdb90, pfn_notify: 0x0, user_data: 0x0, errcode_ret: 0x7ffe538fc084, device_list_vals: [0x21b9d30], options_val:   -cl-match-sincospi  , input_programs_vals: [0x1f03ae0]
+      program = {}
+      program[:context] = v["context"]
+      program[:type] = :link
+      program[:programs] = v["input_programs_vals"]
     when "lttng_ust_opencl_source:program_string", "lttng_ust_opencl_source:program_il"
       program[:source] = v["path"]
-    when "lttng_ust_opencl:clCreateProgramWithIL_#{STOP}", "lttng_ust_opencl:clCreateProgramWithSource_#{STOP}"
+    when "lttng_ust_opencl:clCreateProgramWithIL_#{STOP}", "lttng_ust_opencl:clCreateProgramWithSource_#{STOP}", "lttng_ust_opencl:clLinkProgram_#{STOP}"
       if v["errcode_ret_val"] == 0
         programs[v["program"]] = program
       end
@@ -97,7 +104,13 @@ def dump_enqueues(enqueues)
   enqueues.each { |enqueue_counter, enqueue|
     kerdir = File.join("enqueue_data", "#{enqueue[:kernel][:name]}")
     FileUtils.mkdir(kerdir) unless Dir.exist?( kerdir )
-    FileUtils.cp(enqueue[:kernel][:program][:source], File.join(kerdir, "source"))
+    if enqueue[:kernel][:program][:type] == :link
+      enqueue[:kernel][:program][:programs].each { |prog|
+        FileUtils.cp(programs[prog][:source], File.join(kerdir, "source"))
+      }
+    else
+      FileUtils.cp(enqueue[:kernel][:program][:source], File.join(kerdir, "source"))
+    end
     dirname = File.join(kerdir, "#{enqueue_counter}")
     FileUtils.mkdir(dirname) unless Dir.exist?( dirname )
     enqueue[:args].each { |arg_index, arg|

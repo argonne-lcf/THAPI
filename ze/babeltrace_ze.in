@@ -1,11 +1,30 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
 $:.unshift(DATADIR) if File::directory?(DATADIR)
+require 'optparse'
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'yaml'
 require 'pp'
 require 'babeltrace_ze_lib'
+
+$options = {
+  context: false
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: babeltrace_ze [OPTIONS] target_trace_directory"
+
+  opts.on("-c", "--[no-]context", "Add context information") do |context|
+    $options[:context] = context
+  end
+
+  opts.on("-h", "--help", "Prints this help") do
+    puts opts
+    exit
+  end
+
+end.parse!
 
 c = Babeltrace::Context::new
 traces = c.add_traces(path: ARGV[0])
@@ -20,13 +39,16 @@ traces.each { |t|
 it = c.iter_create
 it.each { |ev|
   name = events[ev.handle_id][ev.id]
-  print "#{ev.timestamp.strftime("%H:%M:%S.%9L")} - #{name}: "
+  str = "#{ev.timestamp.strftime("%H:%M:%S.%9L")}"
+  str << " - " << ev.top_level_scope(:STREAM_EVENT_CONTEXT).value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
+  str << " - #{name}: "
   defi = ev.top_level_scope(:EVENT_FIELDS)
   l = $event_lambdas[name]
   if l
-    puts l.call(defi.value)
+    str << l.call(defi.value).to_s
   else
-    puts defi.value
+    str << defi.value.to_s
   end
+  puts str
 }
 
