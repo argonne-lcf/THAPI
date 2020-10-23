@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+DATADIR = File.join("@prefix@", "share")
 require 'babeltrace'
 require 'babeltrace/ctf'
 require 'pp'
@@ -12,14 +13,14 @@ c.add_traces(path: ARGV[0] )
 
 it = c.iter_create
 
-opencl_model = YAML::load_file("opencl_model.yaml")
+opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
 SUFFIXES = opencl_model["suffixes"]
 START = SUFFIXES["start"]
 STOP = SUFFIXES["stop"]
 
 def get_enqueues(it)
 
-  enqueues = Hash::new { |h, k| h[k] = {args: Hash::new {|h2, k2| h2[k2] = {} }, name: nil, source: nil,  type: nil} } 
+  enqueues = Hash::new { |h, k| h[k] = {args: Hash::new {|h2, k2| h2[k2] = {} }, name: nil, source: nil,  type: nil} }
   kernels = {}
   programs = {}
 
