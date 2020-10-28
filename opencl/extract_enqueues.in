@@ -182,7 +182,14 @@ def dump_replay(enqueues)
     }
     replay[enqueue[:kernel][:name]] = res
     res["instances"].first["file"] = "./enqueue_data/#{enqueue[:kernel][:name]}/source"
-    res["instances"].first["il"] = true if enqueue[:kernel][:program][:type] == :il
+    case enqueue[:kernel][:program][:type]
+    when :il
+      res["instances"].first["il"] = true
+    when :link
+      enqueue[:kernel][:program][:programs].each { |prog|
+        res["instances"].first["il"] = true if prog[:type] == :il
+      }
+    end
   }
   replay.each { |name, h|
     File::open("#{name}.kernel", "w") { |f|
