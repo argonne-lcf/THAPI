@@ -72,7 +72,7 @@ gen_event_callback_name_fields = lambda { |provider, c, dir|
   fields = ["const bt_event *bt_evt",
             "const bt_clock_snapshot *bt_clock"]
   if dir == :start
-    fields += (c.parameters+c.tracepoint_parameters).collect { |p|
+    fields += ((c.parameters ? c.parameters : [])+c.tracepoint_parameters).collect { |p|
       p.to_s
     }
     fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
@@ -130,6 +130,11 @@ provider = :lttng_ust_zes
 $dbt_events += $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :start) } +
                $zes_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :stop) }
 
+provider = :lttng_ust_zel
+$dbt_events += $zel_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :start) } +
+               $zel_commands.map{ |c| gen_event_callback_name_fields.call(provider, c, :stop) }
+
+ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
 ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
 $dbt_events += ze_events.map{ |provider,es|
     es['events'].map{ |event|

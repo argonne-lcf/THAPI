@@ -1,6 +1,28 @@
-diff -u4 include/ze_api.h modified_include/ze_api.h
---- include/ze_api.h	2020-08-17 14:38:20.309705000 +0000
-+++ modified_include/ze_api.h	2020-08-17 14:46:51.272367000 +0000
+diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
+--- include/loader/ze_loader_api.h	2020-10-28 09:54:27.743787112 -0500
++++ modified_include/loader/ze_loader_api.h	2020-10-28 10:05:26.533385647 -0500
+@@ -7,9 +7,9 @@
+  * @file ze_loader_api.cpp
+  *
+  */
+ 
+-#include "ze_loader.h"
++#include "../ze_api.h"
+ 
+ #if defined(__cplusplus)
+ extern "C" {
+ #endif
+@@ -25,5 +25,5 @@
+ 
+ 
+ #if defined(__cplusplus)
+ }
+-#endif
+\ No newline at end of file
++#endif
+diff -u4 -r include/ze_api.h modified_include/ze_api.h
+--- include/ze_api.h	2020-10-28 09:53:41.847933458 -0500
++++ modified_include/ze_api.h	2020-10-28 09:59:38.258710059 -0500
 @@ -14,10 +14,10 @@
  #pragma once
  #endif
@@ -328,9 +350,9 @@ diff -u4 include/ze_api.h modified_include/ze_api.h
 -#endif // _ZE_API_H
 \ No newline at end of file
 +#endif // _ZE_API_H
-diff -u4 include/zes_api.h modified_include/zes_api.h
---- include/zes_api.h	2020-08-17 14:38:20.316708000 +0000
-+++ modified_include/zes_api.h	2020-08-17 14:50:34.068221000 +0000
+diff -u4 -r include/zes_api.h modified_include/zes_api.h
+--- include/zes_api.h	2020-10-28 09:53:41.847933458 -0500
++++ modified_include/zes_api.h	2020-10-28 09:59:38.258710059 -0500
 @@ -182,249 +182,249 @@
  } zes_base_capability_t;
  
@@ -650,10 +672,9 @@ diff -u4 include/zes_api.h modified_include/zes_api.h
 -#endif // _ZES_API_H
 \ No newline at end of file
 +#endif // _ZES_API_H
-Only in modified_include/: .zes_api.h.swp
-diff -u4 include/zet_api.h modified_include/zet_api.h
---- include/zet_api.h	2020-08-17 14:38:20.322704000 +0000
-+++ modified_include/zet_api.h	2020-08-17 14:46:51.277364000 +0000
+diff -u4 -r include/zet_api.h modified_include/zet_api.h
+--- include/zet_api.h	2020-10-28 09:53:41.851933445 -0500
++++ modified_include/zet_api.h	2020-10-28 09:59:38.258710059 -0500
 @@ -147,81 +147,81 @@
  } zet_typed_value_t;
  

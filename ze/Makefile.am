@@ -5,17 +5,20 @@ LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign
 ZE_PROBES_TP = \
 	ze_tracepoints.tp \
 	zet_tracepoints.tp \
-	zes_tracepoints.tp
+	zes_tracepoints.tp \
+	zel_tracepoints.tp
 
 ZE_PROBES_INCL = \
 	ze_tracepoints.h \
 	zet_tracepoints.h \
-	zes_tracepoints.h
+	zes_tracepoints.h \
+	zel_tracepoints.h
 
 ZE_PROBES_SRC = \
 	ze_tracepoints.c \
 	zet_tracepoints.c \
-	zes_tracepoints.c
+	zes_tracepoints.c \
+	zel_tracepoints.h
 
 ZE_STATIC_PROBES_TP = \
 	ze_profiling.tp \
@@ -40,7 +43,8 @@ CLEANFILES = \
 ML_FILES = \
 	$(srcdir)/ze_meta_parameters.yaml \
 	$(srcdir)/zes_meta_parameters.yaml \
-	$(srcdir)/zet_meta_parameters.yaml
+	$(srcdir)/zet_meta_parameters.yaml \
+	$(srcdir)/zel_meta_parameters.yaml
 
 EXTRA_DIST = $(ML_FILES)
 
@@ -52,7 +56,8 @@ EXTRA_DIST += extract_base.rb
 ZE_EXTRACTED = \
 	ze_api.yaml \
 	zet_api.yaml \
-	zes_api.yaml
+	zes_api.yaml \
+	zel_api.yaml
 
 CLEANFILES += $(ZE_EXTRACTED)
 
@@ -73,7 +78,10 @@ ZE_EXTRA_HDR = \
 	$(srcdir)/include/zes_api.h \
 	$(srcdir)/include/zes_ddi.h \
 	$(srcdir)/include/zet_api.h \
-	$(srcdir)/include/zet_ddi.h
+	$(srcdir)/include/zet_ddi.h \
+	$(srcdir)/include/loader/ze_loader_api.h \
+	$(srcdir)/include/layers/zel_tracing_api.h \
+	$(srcdir)/include/layers/zel_tracing_ddi.h
 ZE_HDR = \
 	$(srcdir)/include/ze_api.h \
 	$(ZE_EXTRA_HDR)
@@ -83,7 +91,10 @@ MODIFIED_ZE_EXTRA_HDR = \
 	modified_include/zes_api.h \
 	modified_include/zes_ddi.h \
 	modified_include/zet_api.h \
-	modified_include/zet_ddi.h
+	modified_include/zet_ddi.h \
+	modified_include/loader/ze_loader_api.h \
+	modified_include/layers/zel_tracing_api.h \
+	modified_include/layers/zel_tracing_ddi.h
 MODIFIED_ZE_HDR = \
 	modified_include/ze_api.h \
 	$(MODIFIED_ZE_EXTRA_HDR)
@@ -106,28 +117,35 @@ clean-local:
 
 EXTRA_DIST += $(srcdir)/include headers.patch
 
-ze_api.yaml: $(MODIFIED_ZE_HDR) $(ZE_EXTRACT) $(srcdir)/extract_ze.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_ze.rb
+ze_api.yaml: $(srcdir)/extract_ze.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
+	SRC_DIR=$(srcdir) $(RUBY) $<
 
-zet_api.yaml: $(MODIFIED_ZE_HDR) $(ZE_EXTRACT) $(srcdir)/extract_zet.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_zet.rb
+zet_api.yaml: $(srcdir)/extract_zet.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
+	SRC_DIR=$(srcdir) $(RUBY) $<
 
-zes_api.yaml: $(MODIFIED_ZE_HDR) $(ZE_EXTRACT) $(srcdir)/extract_zes.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_zes.rb
+zes_api.yaml: $(srcdir)/extract_zes.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
+	SRC_DIR=$(srcdir) $(RUBY) $<
+
+zel_api.yaml: $(srcdir)/extract_zel.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
+	SRC_DIR=$(srcdir) $(RUBY) $<
 
 EXTRA_DIST += \
 	extract_ze.rb \
 	extract_zet.rb \
-	extract_zes.rb
+	extract_zes.rb \
+	extract_zel.rb
 
 ze_tracepoints.tp: $(srcdir)/gen_ze_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_tracepoints.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 zet_tracepoints.tp: $(srcdir)/gen_zet_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zet_tracepoints.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 zes_tracepoints.tp: $(srcdir)/gen_zes_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zes_tracepoints.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+zel_tracepoints.tp: $(srcdir)/gen_zel_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 ze_profiling.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_custom_probes.rb lttng_ust_ze_profiling > $@
@@ -143,6 +161,7 @@ EXTRA_DIST += \
 	gen_ze_tracepoints.rb \
 	gen_zet_tracepoints.rb \
 	gen_zes_tracepoints.rb \
+	gen_zel_tracepoints.rb \
 	gen_probe_base.rb
 
 BUILT_SOURCES = $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) babeltrace_ze_callbacks.h
