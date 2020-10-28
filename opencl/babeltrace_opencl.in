@@ -206,9 +206,9 @@ EOF
         startn = n.gsub("_#{STOP}", "_#{START}")
         type = opencl_model["events"][startn]["param_name"]["type"]
         if n == "lttng_ust_opencl:clSetKernelExecInfo_#{START}"
-          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"].inspect; end; else defi[\"#{name}\"].inspect; end; end"
         else
-          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"].inspect; end; else defi[\"#{name}\"].inspect; end; end"
         end
       elsif desc["array"]
         if enums_by_type[desc["type"]]
