@@ -1,5 +1,5 @@
 --- cl.xml	2020-10-21 09:49:17.390459386 -0500
-+++ cl.xml.patched	2020-10-21 10:32:25.496499193 -0500
++++ cl.xml.patched	2020-10-28 15:32:12.381190730 -0500
 @@ -210,8 +210,10 @@
          <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_atomic_capabilities</name>;</type>
          <type category="define">typedef <type>cl_uint</type>          <name>cl_khronos_vendor_id</name>;</type>
@@ -326,3 +326,14 @@
                  <enum name="CL_MEM_SVM_ATOMICS_ARM"/>
              </require>
              <require>
+@@ -5612,9 +5707,9 @@
+                 <enum name="CL_DEVICE_SINGLE_DEVICE_SHARED_MEM_CAPABILITIES_INTEL"/>
+                 <enum name="CL_DEVICE_CROSS_DEVICE_SHARED_MEM_CAPABILITIES_INTEL"/>
+                 <enum name="CL_DEVICE_SHARED_SYSTEM_MEM_CAPABILITIES_INTEL"/>
+             </require>
+-            <require comment="cl_unified_shared_memory_capabilities_intel - bitfield">
++            <require comment="cl_device_unified_shared_memory_capabilities_intel - bitfield">
+                 <enum name="CL_UNIFIED_SHARED_MEMORY_ACCESS_INTEL"/>
+                 <enum name="CL_UNIFIED_SHARED_MEMORY_ATOMIC_ACCESS_INTEL"/>
+                 <enum name="CL_UNIFIED_SHARED_MEMORY_CONCURRENT_ACCESS_INTEL"/>
+                 <enum name="CL_UNIFIED_SHARED_MEMORY_CONCURRENT_ATOMIC_ACCESS_INTEL"/>

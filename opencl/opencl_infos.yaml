@@ -303,6 +303,17 @@ cl_device_info:
   cl_ext_cxx_for_opencl:
   - name: CL_DEVICE_CXX_FOR_OPENCL_NUMERIC_VERSION_EXT
     type: cl_version
+  cl_intel_unified_shared_memory:
+  - name: CL_DEVICE_HOST_MEM_CAPABILITIES_INTEL
+    type: cl_device_unified_shared_memory_capabilities_intel
+  - name: CL_DEVICE_DEVICE_MEM_CAPABILITIES_INTEL
+    type: cl_device_unified_shared_memory_capabilities_intel
+  - name: CL_DEVICE_SINGLE_DEVICE_SHARED_MEM_CAPABILITIES_INTEL
+    type: cl_device_unified_shared_memory_capabilities_intel
+  - name: CL_DEVICE_CROSS_DEVICE_SHARED_MEM_CAPABILITIES_INTEL
+    type: cl_device_unified_shared_memory_capabilities_intel
+  - name: CL_DEVICE_SHARED_SYSTEM_MEM_CAPABILITIES_INTEL
+    type: cl_device_unified_shared_memory_capabilities_intel
 cl_context_info:
   1_0:
   - name: CL_CONTEXT_REFERENCE_COUNT
