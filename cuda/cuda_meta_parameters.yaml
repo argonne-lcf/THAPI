@@ -21,6 +21,7 @@ meta_parameters:
     - [OutScalar, bytes]
   cuDeviceGetAttribute:
     - [OutScalar, pi]
+#  cuDeviceGetNvSciSyncAttributes
   cuDeviceGetProperties:
     - [OutScalar, prop]
   cuDeviceComputeCapability:
@@ -225,6 +226,27 @@ meta_parameters:
     - [OutScalar, pHandle]
   cuMipmappedArrayGetLevel:
     - [OutScalar, pLevelArray]
+  cuMemAddressReserve:
+    - [OutScalar, ptr]
+  cuMemCreate:
+    - [InScalar,  prop]
+    - [OutScalar, handle]
+  cuMemSetAccess:
+    - [InScalar, desc]
+  cuMemGetAccess:
+    - [InScalar, location]
+    - [OutScalar, flags]
+# cuMemExportToShareableHandle
+  cuMemImportFromShareableHandle:
+    - [OutScalar, handle]
+#   - missing osHandle
+  cuMemGetAllocationGranularity:
+    - [InScalar, prop]
+    - [OutScalar, granularity]
+  cuMemGetAllocationPropertiesFromHandle:
+    - [OutScalar, prop]
+  cuMemRetainAllocationHandle:
+    - [OutScalar, handle]
   cuPointerGetAttribute:
     - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "attribute == CU_POINTER_ATTRIBUTE_CONTEXT ? sizeof(CUcontext) : attribute == CU_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(CUdeviceptr) : attribute == CU_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_P2P_TOKENS ? sizeof(CUDA_POINTER_ATTRIBUTE_P2P_TOKENS) : attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : attribute == CU_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : 0"]
   cuMemRangeGetAttribute:
@@ -242,6 +264,14 @@ meta_parameters:
     - [OutScalar, phStream]
   cuStreamCreateWithPriority:
     - [OutScalar, phStream]
+  cuStreamGetAttribute:
+    - [OutScalar, value]
+  cuStreamGetAttribute_ptsz:
+    - [OutScalar, value_out]
+  cuStreamSetAttribute:
+    - [InScalar, param]
+  cuStreamSetAttribute_ptsz:
+    - [InScalar, value]
   cuStreamGetPriority:
     - [OutScalar, priority]
   cuStreamGetPriority_ptsz:
@@ -305,6 +335,8 @@ meta_parameters:
     - [InArray, paramArray, count]
   cuFuncGetAttribute:
     - [OutScalar, pi]
+  cuFuncGetModule:
+    - [OutScalar, hmod]
   cuLaunchKernel:
     - [InNullArray, extra]
   cuLaunchKernel_ptsz:
@@ -391,6 +423,19 @@ meta_parameters:
     - [OutArray, logBuffer, bufferSize]
   cuGraphExecKernelNodeSetParams:
     - [InScalar, nodeParams]
+  cuGraphExecMemcpyNodeSetParams:
+    - [InScalar, copyParams]
+  cuGraphExecMemsetNodeSetParams:
+    - [InScalar, memsetParams]
+  cuGraphExecHostNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphExecUpdate:
+    - [OutScalar, hErrorNode_out]
+    - [OutScalar, updateResult_out]
+  cuGraphKernelNodeGetAttribute:
+    - [OutScalar, value_out]
+  cuGraphKernelNodeSetAttribute:
+    - [InScalar, value]
   cuOccupancyMaxActiveBlocksPerMultiprocessor:
     - [OutScalar, numBlocks]
   cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
@@ -401,6 +446,8 @@ meta_parameters:
   cuOccupancyMaxPotentialBlockSizeWithFlags:
     - [OutScalar, minGridSize]
     - [OutScalar, blockSize]
+  cuOccupancyAvailableDynamicSMemPerBlock:
+    - [OutScalar, dynamicSmemSize]
   cuTexRefSetAddress:
     - [OutScalar, ByteOffset]
   cuTexRefSetAddress2D:
