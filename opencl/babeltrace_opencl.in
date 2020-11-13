@@ -164,18 +164,18 @@ infos.each { |inf, vers|
       type =
         if i["array"]
           if i["pointer"]
-            ["J*", true]
+            ["J*", true, nil]
           elsif type_map[i["type"]]
-            [type_map[i["type"]] + "*", true]
+            [type_map[i["type"]] + "*", true, i["type"]]
           else
             nil
           end
         elsif i["string"]
-          ["Z*", false]
+          ["Z*", false, nil]
         elsif i["pointer"]
-          ["J", false]
+          ["J", false, nil]
         elsif type_map[i["type"]]
-          [type_map[i["type"]], false]
+          [type_map[i["type"]], false, i["type"]]
         else
           nil
         end
@@ -189,6 +189,34 @@ traces.each { |t|
   events[t.handle_id] = t.get_event_decl_list.collect(&:name).collect { |n|
     [n, opencl_model["events"][n]]
   }
+}
+
+info_str_lambda = lambda { |param_name, name, type|
+          <<EOF
+begin
+  if defi["#{name}"].size > 0 && infos_type["#{type}"]
+    i = infos_type["#{type}"][defi["#{param_name}"]];
+    if i
+      v = defi["#{name}"].unpack(i[0])
+      v.collect! { |j| '0x' << j.to_s(16) } if i[0].match("J")
+      if i[2]
+        if enums_by_type[i[2]]
+          v.collect! { |val| enums_by_type[i[2]][val] }
+        elsif bitfields_by_type[i[2]]
+          v.collect! { |val| bitfields_by_type[i[2]].to_s(val) }
+        end
+      end
+      v = v.first unless i[1]
+      v = "[ \#{v.join(", ")} ]" if i[1]
+      v
+    else
+      defi["#{name}"].inspect
+    end
+  else
+    defi["#{name}"].inspect
+  end
+end
+EOF
 }
 
 event_lambdas = {}
@@ -206,9 +234,9 @@ EOF
         startn = n.gsub("_#{STOP}", "_#{START}")
         type = opencl_model["events"][startn]["param_name"]["type"]
         if n == "lttng_ust_opencl:clSetKernelExecInfo_#{START}"
-          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+          info_str_lambda.call("param_name", name, type)
         else
-          "begin if defi[\"#{name}\"].size > 0 && infos_type[\"#{type}\"] then i = infos_type[\"#{type}\"][defi[\"_param_name\"]]; if i then v = defi[\"#{name}\"].unpack(i[0]); v.collect! { |j| '0x' << j.to_s(16) } if i[0].match(\"J\"); v = v.first unless i[1]; v = \"[ \#{v.join(\", \")} ]\" if v.kind_of?(Array); v; else defi[\"#{name}\"]; end; else defi[\"#{name}\"]; end; end"
+          info_str_lambda.call("_param_name", name, type)
         end
       elsif desc["array"]
         if enums_by_type[desc["type"]]

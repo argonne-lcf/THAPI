@@ -36,8 +36,8 @@ all_types.each { |t|
   end
 }
 
-CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject)
-CUDA_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned int", "unsigned short", "unsigned char" ]
+CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject CUmemGenericAllocationHandle)
+CUDA_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
 CUDA_FLOAT_SCALARS = %w(float double)
 CUDA_SCALARS = CUDA_INT_SCALARS + CUDA_FLOAT_SCALARS
 CUDA_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
@@ -499,7 +499,7 @@ class ScalarMetaParameter < MetaParameter
     super(command, name)
     @type = type
     a = command[name]
-    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    raise "Invalid parameter: #{name} for #{command.name} #{command.parameters}!" unless a
     t = a.type
     raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
     if type

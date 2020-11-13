@@ -6,6 +6,8 @@ puts <<EOF
 #include <zet_ddi.h>
 #include <zes_api.h>
 #include <zes_ddi.h>
+#include <layers/zel_tracing_api.h>
+#include <layers/zel_tracing_ddi.h>
 #include <babeltrace2/babeltrace.h>
 #include "babeltrace_ze.h"
 #include "babeltrace_ze_callbacks.h"
@@ -95,7 +97,7 @@ end
 
 def print_field_members_free(c, dir)
   if dir == :start
-    (c.parameters+c.tracepoint_parameters).each { |p|
+    ((c.parameters ? c.parameters : []) + c.tracepoint_parameters).each { |p|
       lttng = p.lttng_type
       print_field_member_free(lttng.macro.to_s, p.name)
     }
@@ -139,7 +141,7 @@ end
 def print_field_members_access(c, dir)
   if dir == :start
     i = 0
-    (c.parameters+c.tracepoint_parameters).each { |p|
+    ((c.parameters ? c.parameters : []) + c.tracepoint_parameters).each { |p|
       lttng = p.lttng_type
       print_field_member_access(lttng.macro.to_s, p.type, p.name, i)
       i += 1;
@@ -209,7 +211,7 @@ end
 
 def get_fields_decl(c, dir)
   if dir == :start
-    fields = (c.parameters+c.tracepoint_parameters).collect { |p|
+    fields = ((c.parameters ? c.parameters : []) + c.tracepoint_parameters).collect { |p|
       p.to_s + ";"
     }
     fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
@@ -227,7 +229,7 @@ end
 
 def get_fields_names(c, dir)
   if dir == :start
-    fields = (c.parameters+c.tracepoint_parameters).collect { |p|
+    fields = ((c.parameters ? c.parameters : []) + c.tracepoint_parameters).collect { |p|
       p.name.to_s
     }
     fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
@@ -339,6 +341,12 @@ $zes_commands.each { |c|
   gen_event_dispatcher.call(provider, c, :stop)
 }
 
+provider = :lttng_ust_zel
+$zel_commands.each { |c|
+  gen_event_dispatcher.call(provider, c, :start)
+  gen_event_dispatcher.call(provider, c, :stop)
+}
+
 ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
 
 ze_events.each { |provider, es|
@@ -377,6 +385,12 @@ $zet_commands.each { |c|
 
 provider = :lttng_ust_zes
 $zes_commands.each { |c|
+  gen_event_dispatch_init.call(provider, c, :start)
+  gen_event_dispatch_init.call(provider, c, :stop)
+}
+
+provider = :lttng_ust_zel
+$zel_commands.each { |c|
   gen_event_dispatch_init.call(provider, c, :start)
   gen_event_dispatch_init.call(provider, c, :stop)
 }

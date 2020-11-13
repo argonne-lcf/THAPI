@@ -1,0 +1,10 @@
+---
+meta_parameters:
+  zelTracerCreate:
+    - [ InScalar, desc ]
+  zelTracerSetPrologues:
+    - [ InScalar, pCoreCbs ]
+  zelTracerSetEpilogues:
+    - [ InScalar, pCoreCbs ]
+  zelGetTracerApiProcAddrTable:
+    - [ OutScalar, pDdiTable ]

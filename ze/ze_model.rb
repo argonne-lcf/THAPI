@@ -21,21 +21,25 @@ provider = :lttng_ust_ze
 $ze_api_yaml = YAML::load_file("ze_api.yaml")
 $zet_api_yaml = YAML::load_file("zet_api.yaml")
 $zes_api_yaml = YAML::load_file("zes_api.yaml")
+$zel_api_yaml = YAML::load_file("zel_api.yaml")
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
 $zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
 $zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
+$zel_api = YAMLCAst.from_yaml_ast($zel_api_yaml)
 
 ze_funcs_e = $ze_api["functions"]
 zet_funcs_e = $zet_api["functions"]
 zes_funcs_e = $zes_api["functions"]
+zel_funcs_e = $zel_api["functions"]
 
 ze_types_e = $ze_api["typedefs"]
 zet_types_e = $zet_api["typedefs"]
 zes_types_e = $zes_api["typedefs"]
+zel_types_e = $zel_api["typedefs"]
 
-all_types = ze_types_e + zet_types_e + zes_types_e
-all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"]
+all_types = ze_types_e + zet_types_e + zes_types_e + zel_types_e
+all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"]
 
 ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
@@ -54,7 +58,7 @@ all_types.each { |t|
 }
 
 ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t" ]
+ZE_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t", "zel_core_callbacks_t" ]
 ZE_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
 ZE_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
@@ -67,7 +71,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /zeInit/
+INIT_FUNCTIONS = /zeInit|zeLoaderInit/
 
 FFI_TYPE_MAP =  {
  "uint8_t" => "ffi_type_uint8",
@@ -647,6 +651,13 @@ $zes_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
+$zel_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zel_meta_parameters.yaml"))
+$zel_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
+
 $ze_commands = ze_funcs_e.collect { |func|
   Command::new(func)
 }
@@ -659,11 +670,15 @@ $zes_commands = zes_funcs_e.collect { |func|
   Command::new(func)
 }
 
+$zel_commands = zel_funcs_e.collect { |func|
+  Command::new(func)
+}
+
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands).collect { |c|
+ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands + $zel_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 
@@ -677,6 +692,14 @@ register_epilogue "zeDeviceGet", <<EOF
 EOF
 
 register_epilogue "zeCommandListCreate", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
+      _register_ze_command_list(*phCommandList, hContext, hDevice);
+    }
+  }
+EOF
+
+register_epilogue "zeCommandListCreateImmediate", <<EOF
   if (_do_profile) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _register_ze_command_list(*phCommandList, hContext, hDevice);

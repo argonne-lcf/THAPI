@@ -9,6 +9,8 @@ puts <<EOF
 #include <zet_ddi.h>
 #include <zes_api.h>
 #include <zes_ddi.h>
+#include <layers/zel_tracing_api.h>
+#include <layers/zel_tracing_ddi.h>
 #include <dlfcn.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -23,16 +25,17 @@ puts <<EOF
 #include "ze_tracepoints.h"
 #include "zet_tracepoints.h"
 #include "zes_tracepoints.h"
+#include "zel_tracepoints.h"
 #include "ze_profiling.h"
 #include "ze_properties.h"
 
 EOF
-
-($ze_commands + $zet_commands + $zes_commands).each { |c|
+all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands
+(all_commands).each { |c|
   puts "#define #{ZE_POINTER_NAMES[c]} #{c.pointer_name}"
 }
 
-($ze_commands + $zet_commands + $zes_commands).each { |c|
+(all_commands).each { |c|
   puts <<EOF
 
 #{c.decl_pointer(c.pointer_type_name)};
@@ -45,7 +48,7 @@ puts <<EOF
 static void find_ze_symbols(void * handle) {
 EOF
 
-($ze_commands + $zet_commands + $zes_commands).each { |c|
+(all_commands).each { |c|
   puts <<EOF
 
   #{ZE_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
@@ -62,14 +65,18 @@ EOF
 puts File::read(File.join(SRC_DIR,"tracer_ze_helpers.include.c"))
 
 common_block = lambda { |c, provider|
-  params = c.parameters.collect(&:name)
-  tp_params = c.parameters.collect { |p|
-    if p.type.kind_of?(YAMLCAst::Pointer) && p.type.type.kind_of?(YAMLCAst::Function)
-      "(void *)(intptr_t)" + p.name
-    else
-      p.name
-    end
-  }
+  params = c.parameters ? c.parameters.collect(&:name) : []
+  tp_params = if c.parameters
+    c.parameters.collect { |p|
+      if p.type.kind_of?(YAMLCAst::Pointer) && p.type.type.kind_of?(YAMLCAst::Function)
+        "(void *)(intptr_t)" + p.name
+      else
+        p.name
+      end
+    }
+  else
+    []
+  end
   tracepoint_params = c.tracepoint_parameters.collect(&:name)
   c.tracepoint_parameters.each { |p|
     puts "  #{p.type} #{p.name};"
@@ -133,4 +140,7 @@ $zet_commands.each { |c|
 }
 $zes_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zes)
+}
+$zel_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_zel)
 }

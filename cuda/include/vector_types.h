@@ -419,11 +419,13 @@ struct __device_builtin__ dim3
 #if defined(__cplusplus)
 #if __cplusplus >= 201103L
     __host__ __device__ constexpr dim3(unsigned int vx = 1, unsigned int vy = 1, unsigned int vz = 1) : x(vx), y(vy), z(vz) {}
+    __host__ __device__ constexpr dim3(uint3 v) : x(v.x), y(v.y), z(v.z) {}
+    __host__ __device__ constexpr operator uint3(void) const { return uint3{x, y, z}; }
 #else
     __host__ __device__ dim3(unsigned int vx = 1, unsigned int vy = 1, unsigned int vz = 1) : x(vx), y(vy), z(vz) {}
-#endif
     __host__ __device__ dim3(uint3 v) : x(v.x), y(v.y), z(v.z) {}
-    __host__ __device__ operator uint3(void) { uint3 t; t.x = x; t.y = y; t.z = z; return t; }
+    __host__ __device__ operator uint3(void) const { uint3 t; t.x = x; t.y = y; t.z = z; return t; }
+#endif
 #endif /* __cplusplus */
 };
 

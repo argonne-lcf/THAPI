@@ -225,17 +225,17 @@ nodist_libTracerCUDART_la_SOURCES = \
 libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
 libTracerCUDART_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
-libTracerCUDART_la_LDFLAGS += -version-number 10:1:0
+libTracerCUDART_la_LDFLAGS += -version-number 11:0:3
 libTracerCUDART_la_LIBADD = libcudarttracepoints.la
 
 install-exec-hook::
 	mkdir -p $(pkglibdir)
 	mkdir -p $(pkglibdir)/cuda
 	mkdir -p $(pkglibdir)/cudart
-	$(RM) $(pkglibdir)/cudart/libcudart.so.10.1 $(pkglibdir)/cudart/libcudart.so
+	$(RM) $(pkglibdir)/cudart/libcudart.so.11.0 $(pkglibdir)/cudart/libcudart.so
 	$(RM) $(pkglibdir)/cuda/libcuda.so.1 $(pkglibdir)/cuda/libcuda.so
-	ln -s $(libdir)/libTracerCUDART.so.10.1.0 $(pkglibdir)/cudart/libcudart.so.10.1
-	ln -s $(pkglibdir)/cudart/libcudart.so.10.1 $(pkglibdir)/cudart/libcudart.so
+	ln -s $(libdir)/libTracerCUDART.so.11.0.3 $(pkglibdir)/cudart/libcudart.so.11.0
+	ln -s $(pkglibdir)/cudart/libcudart.so.11.0 $(pkglibdir)/cudart/libcudart.so
 	ln -s $(libdir)/libTracerCUDA.so.1.0.0 $(pkglibdir)/cuda/libcuda.so.1
 	ln -s $(pkglibdir)/cuda/libcuda.so.1 $(pkglibdir)/cuda/libcuda.so
 

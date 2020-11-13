@@ -152,7 +152,11 @@ struct __device_builtin__ textureReference
      * Upper end of the mipmap level range to clamp access to
      */
     float                        maxMipmapLevelClamp;
-    int                          __cudaReserved[15];
+    /**
+     * Disable any trilinear filtering optimizations.
+     */
+    int                          disableTrilinearOptimization;
+    int                          __cudaReserved[14];
 };
 
 /**
@@ -204,6 +208,10 @@ struct __device_builtin__ cudaTextureDesc
      * Upper end of the mipmap level range to clamp access to
      */
     float                       maxMipmapLevelClamp;
+    /**
+     * Disable any trilinear filtering optimizations.
+     */
+    int                         disableTrilinearOptimization;
 };
 
 /**

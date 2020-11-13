@@ -6,6 +6,8 @@ puts <<EOF
 #include <zet_ddi.h>
 #include <zes_api.h>
 #include <zes_ddi.h>
+#include <layers/zel_tracing_api.h>
+#include <layers/zel_tracing_ddi.h>
 #include <babeltrace2/babeltrace.h>
 
 EOF
@@ -43,7 +45,7 @@ EOF
   fields = ["const bt_event *bt_evt",
             "const bt_clock_snapshot *bt_clock"]
   if dir == :start
-    fields += (c.parameters+c.tracepoint_parameters).collect { |p|
+    fields += ((c.parameters ? c.parameters : [] )+c.tracepoint_parameters).collect { |p|
       p.to_s
     }
     fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
@@ -110,6 +112,12 @@ $zet_commands.each { |c|
 
 provider = :lttng_ust_zes
 $zes_commands.each { |c|
+  gen_event_callback.call(provider, c, :start)
+  gen_event_callback.call(provider, c, :stop)
+}
+
+provider = :lttng_ust_zel
+$zel_commands.each { |c|
   gen_event_callback.call(provider, c, :start)
   gen_event_callback.call(provider, c, :stop)
 }
