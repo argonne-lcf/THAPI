@@ -699,6 +699,14 @@ register_epilogue "zeCommandListCreate", <<EOF
   }
 EOF
 
+register_epilogue "zeCommandListCreateImmediate", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
+      _register_ze_command_list(*phCommandList, hContext, hDevice);
+    }
+  }
+EOF
+
 register_epilogue "zeCommandListDestroy", <<EOF
   if (_do_profile) {
     if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
