@@ -18,7 +18,7 @@ ZE_PROBES_SRC = \
 	ze_tracepoints.c \
 	zet_tracepoints.c \
 	zes_tracepoints.c \
-	zel_tracepoints.h
+	zel_tracepoints.c
 
 ZE_STATIC_PROBES_TP = \
 	ze_profiling.tp \
