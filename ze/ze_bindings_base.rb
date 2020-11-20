@@ -1066,7 +1066,7 @@ EOF
       count, ph_wait_events = _create_event_list(wait_events)
       size = ptr.size unless size
       pattern_size = pattern.size unless size
-      result = zeCommandListAppendMemoryFill(@handle, ptr, pattern, pattern_size, size, signal_event, count, ph_wait_events)
+      result = ZE.zeCommandListAppendMemoryFill(@handle, ptr, pattern, pattern_size, size, signal_event, count, ph_wait_events)
       ZE.error_check(result)
       self
     end
