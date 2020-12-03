@@ -1065,8 +1065,8 @@ EOF
     def append_memory_fill(ptr, pattern, size: nil, pattern_size: nil, signal_event: nil, wait_events: nil)
       count, ph_wait_events = _create_event_list(wait_events)
       size = ptr.size unless size
-      pattern_size = pattern.size unless size
-      result = zeCommandListAppendMemoryFill(@handle, ptr, pattern, pattern_size, size, signal_event, count, ph_wait_events)
+      pattern_size = pattern.size unless pattern_size
+      result = ZE.zeCommandListAppendMemoryFill(@handle, ptr, pattern, pattern_size, size, signal_event, count, ph_wait_events)
       ZE.error_check(result)
       self
     end
