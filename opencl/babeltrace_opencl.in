@@ -188,7 +188,7 @@ events = {}
 traces.each { |t|
   events[t.handle_id] = t.get_event_decl_list.collect(&:name).collect { |n|
     [n, opencl_model["events"][n]]
-  }
+  }.to_h
 }
 
 info_str_lambda = lambda { |param_name, name, type|
@@ -268,19 +268,20 @@ EOF
   }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
 }
 EOF
-    eval(src)
-  }
+    [n, eval(src)]
+  }.to_h
 }
 
 it = c.iter_create
 
 it.each { |ev|
-  name, descs = events[ev.handle_id][ev.id]
+  name = ev.name
+  descs = events[ev.handle_id][name]
   str = "#{ev.timestamp.strftime("%H:%M:%S.%9L")}"
   str << " - " << ev.top_level_scope(:STREAM_EVENT_CONTEXT).value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
   str << " - #{name}: "
   defi = ev.top_level_scope(:EVENT_FIELDS)
-  l = event_lambdas[ev.handle_id][ev.id]
+  l = event_lambdas[ev.handle_id][name]
   if l
     str << l.call(defi.value).to_s
   else

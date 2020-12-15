@@ -475,7 +475,7 @@ void print_extented_<%= result %>(){
     <% if type == "hpt_dsd_t" %>
      } else { 
     oss <<  "<%= header %>"
-    <% var.map{| _,_, n | n}.filter{ |n| n != 'SubDevice'}.each do |n| %>
+    <% var.map{| _,_, n | n}.select{ |n| n != 'SubDevice'}.each do |n| %>
         << " | <%= n %>: "
         <% if n == 'Device' %>
         << std::hex << std::showbase << std::internal << std::setfill('0')
