@@ -5,7 +5,7 @@ bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
 
 display_help() {
-    echo "$(basename $0): a tracing / summarizer of OpenCL and L0 Calls"
+    echo "$(basename $0): a tracer / summarizer of OpenCL and L0 Calls"
     echo "Usage:"
     echo " $(basename $0) -h | --help "
     echo " $(basename $0) [option]... <application> <application-arguments>"
@@ -15,13 +15,13 @@ display_help() {
     echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace        Display the trace"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
-    echo "  -r, --replay       Allow you to replay an old trace. Take a path as argument ($HOME/lttng-traces/...)"
-    echo "                     If no argument is provided, will use the latest trace available"
+    echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
+    echo "                     If no arguments are provided, will use the latest trace available"
     echo
     echo " Example:"
     echo " $(basename $0) ./a.out"
     echo
-    echo "iprof will save the trace in $HOME/lttng-traces/"
+    echo "$(basename $0) will save the trace in $HOME/lttng-traces/"
     echo " Please tidy up from time to time"
     echo "                                                   __ "
     echo "For complain, praise, bug repport please use:    <(o )___"
@@ -45,6 +45,10 @@ whichlib() {
 }
 
 trace_and_summary() {
+    if [ -z "$@" ]; then
+        display_help
+    fi
+
     lttng-sessiond $quiet --daemonize
     lttng $quiet create iprof
     #Using blocking more to trace event record loss
@@ -91,12 +95,12 @@ trace_epilogue() {
 
 
 summary() {
-    if [ -z "$path" ]; then
+    if [ -z "$@" ]; then
         lltng_last_session=$(ls -dt $HOME/lttng-traces/* | head -1)
         echo "Trace location:" $lltng_last_session
         echo
     else
-        lltng_last_session=$path
+        lltng_last_session=$@
     fi
     # Check that the argument are trace.
     # We don't quote the $lltng_last_session, to be able to loop over hit.
@@ -142,7 +146,7 @@ while (( "$#" )); do
     case "$1" in
         -h | --help)     display_help; exit ;;
         -e | --extented) shift; display="extended"   ;;
-        -r | --replay)   shift; path=$@; replay=true ;;
+        -r | --replay)   shift; replay=true ;;
         -d | --debug)    shift; debug=true ;;
         -a | --asm)      shift; asm=true ;;
         -t | --trace)    shift; trace=true ;;
@@ -164,7 +168,7 @@ if [ -n "$asm" ]; then
 fi
 
 if [ -n "$replay" ]; then
-    summary
+    summary "$@"
 else
     trace_and_summary "$@"
 fi
