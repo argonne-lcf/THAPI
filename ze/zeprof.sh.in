@@ -1,7 +1,34 @@
 #!/usr/bin/env bash
 exec_prefix=@prefix@
 libdir=@libdir@
+bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
+
+display_help() {
+    echo "$(basename $0): a tracer / summarizer of OpenCL and L0 Calls"
+    echo "Usage:"
+    echo " $(basename $0) -h | --help "
+    echo " $(basename $0) [option]... <application> <application-arguments>"
+    echo " $(basename $0) [option]... -r [<trace>]..."
+    echo
+    echo "  -h, --help         Show this screen"
+    echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
+    echo "  -t, --trace        Display the trace"
+    echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
+    echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
+    echo "                     If no arguments are provided, will use the latest trace available"
+    echo
+    echo " Example:"
+    echo " $(basename $0) ./a.out"
+    echo
+    echo "$(basename $0) will save the trace in $HOME/lttng-traces/"
+    echo " Please tidy up from time to time"
+    echo "                                                   __ "
+    echo "For complain, praise, bug repport please use:    <(o )___"
+    echo "   https://xgitlab.cels.anl.gov/heteroflow/tracer ( ._> /"
+    echo "   or send email to {apl,bvideau}@anl.gov          \`---'"
+    exit 1
+}
 
 # Find all location of a `.so`
 whichlib() {
@@ -17,22 +44,25 @@ whichlib() {
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
-trace() {
-    quiet="--quiet"
+trace_and_summary() {
+    if [ -z "$@" ]; then
+        display_help
+    fi
+
     lttng-sessiond $quiet --daemonize
-    lttng $quiet create thapi-ze-session
+    lttng $quiet create iprof
     #Using blocking more to trace event record loss
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zes:*
     export LTTNG_UST_ZE_PROFILE=1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
 
     lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
 
+    #Preventing trace event record loss
     if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
     then
       export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
@@ -53,15 +83,36 @@ trace_epilogue() {
   summary
 }
 
+
 summary() {
-    if [ -z "$path" ]; then
-        lltng_last_session=$(ls -dt $HOME/lttng-traces/thapi-ze-session* | head -1)
+    if [ -z "$@" ]; then
+        lltng_last_session=$(ls -dt $HOME/lttng-traces/* | head -1)
         echo "Trace location:" $lltng_last_session
         echo
     else
-        lltng_last_session=$path
+        lltng_last_session=$@
     fi
-    babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session}
+    # Check that the argument are trace.
+    # We don't quote the $lltng_last_session, to be able to loop over hit.
+    # Should be cleaner to use bash arrays.
+    for f in  $lltng_last_session; do
+        if [ ! -d "$f" ]; then
+            echo "$f is not a trace folder"
+            exit 1
+        fi
+   done
+
+    if [ -n "$trace" ]; then
+        # Todo filter direcly in the babeltrace
+        $bindir/babeltrace_ze $lltng_last_session | grep lttng_ust_ze
+    fi
+
+    ze_output=$(babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session})
+    if [ -n "$ze_output" ]; then
+        echo "== Level0 == "
+        echo "$ze_output"
+    fi
+
 }
 
 #  _
@@ -69,17 +120,37 @@ summary() {
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
 display="compact";
+if [[ $# -eq 0 ]]; then
+    display_help
+fi
+
 while (( "$#" )); do
     case "$1" in
+        -h | --help)     display_help; exit ;;
         -e | --extented) shift; display="extended"   ;;
-        -r | --replay)   shift; path=$@; replay=true ;;
+        -r | --replay)   shift; replay=true ;;
+        -d | --debug)    shift; debug=true ;;
+        -a | --asm)      shift; asm=true ;;
+        -t | --trace)    shift; trace=true ;;
         --)              shift; break ;;
         *)               break  ;;
     esac
 done
 
-if [ -z "$replay" ]; then
-    trace "$@"
+if [ -n "$debug" ]; then
+    export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
+    export BABELTRACE_CLI_LOG_LEVEL=WARNING
+else
+    quiet="--quiet"
 fi
 
-summary $path
+if [ -n "$asm" ]; then
+    export IGC_ShaderDumpEnable=1
+    export IGC_DumpToCurrentDir=1
+fi
+
+if [ -n "$replay" ]; then
+    summary "$@"
+else
+    trace_and_summary "$@"
+fi
