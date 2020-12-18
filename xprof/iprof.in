@@ -5,7 +5,7 @@ bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
 
 display_help() {
-    echo "$(basename $0): a tracer / summarizer of OpenCL and L0 Calls"
+    echo "$(basename $0): a tracer / summarizer of OpenCL and L0 calls"
     echo "Usage:"
     echo " $(basename $0) -h | --help "
     echo " $(basename $0) [option]... <application> <application-arguments>"
@@ -51,6 +51,7 @@ trace_and_summary() {
 
     lttng-sessiond $quiet --daemonize
     lttng $quiet create iprof
+
     #Using blocking more to trace event record loss
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 
@@ -59,7 +60,6 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:device_name
-
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
     export LTTNG_UST_ZE_PROFILE=1
@@ -79,8 +79,10 @@ trace_and_summary() {
     fi
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
-    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$libdir/libTracerZE.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/opencl:$pkglibdir/ze:$LD_LIBRARY_PATH
+    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
+    export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH 
 
     lttng $quiet start
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
@@ -110,7 +112,7 @@ summary() {
             echo "$f is not a trace folder"
             exit 1
         fi
-   done
+    done
 
     if [ -n "$trace" ]; then
         # Todo filter direcly in the babeltrace
@@ -118,19 +120,16 @@ summary() {
         $bindir/babeltrace_ze $lltng_last_session | grep lttng_ust_ze
     fi
 
-
     ocl_output=$(babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lltng_last_session})
     if [ -n "$ocl_output" ]; then
         echo "== OpenCL == "
         echo "$ocl_output"
     fi
-
     ze_output=$(babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lltng_last_session})
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"
     fi
-
 }
 
 #  _
