@@ -70,6 +70,10 @@ opencl_devices.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
+clprof.sh:
+	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
+	chmod a+x $@
+
 BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clprof_callbacks.h clprof.c
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h

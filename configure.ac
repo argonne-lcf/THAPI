@@ -75,18 +75,16 @@ AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strt
 
 AC_CONFIG_FILES([Makefile
                  utils/Makefile
+                 utils/xprof.sh.erb
                  opencl/Makefile
                  ze/Makefile
                  xprof/Makefile
                  cuda/Makefile])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
-AC_CONFIG_FILES([opencl/clprof.sh], [chmod +x opencl/clprof.sh])
 AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
-AC_CONFIG_FILES([ze/babeltrace_ze], [chmod +x ze/babeltrace_ze])
 AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
-AC_CONFIG_FILES([ze/zeprof.sh], [chmod +x ze/zeprof.sh])
+AC_CONFIG_FILES([ze/babeltrace_ze], [chmod +x ze/babeltrace_ze])
 AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
-AC_CONFIG_FILES([xprof/iprof], [chmod +x xprof/iprof])
 AC_OUTPUT
