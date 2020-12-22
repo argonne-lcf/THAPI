@@ -55,6 +55,7 @@ trace_and_summary() {
         display_help
     fi
 
+    mkdir -p ${LTTNG_HOME:-$HOME}
     lttng-sessiond $quiet --daemonize
 <% if languages.include?("opencl") and  languages.include?("ze")%>
     lttng $quiet create iprof
@@ -123,11 +124,11 @@ trace_epilogue() {
 summary() {
     if [ -z "$@" ]; then
 <% if languages.include?("opencl") and  languages.include?("ze")%>
-        lttng_last_session=$(ls -dt $HOME/lttng-traces/* | head -1)
+        lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/* | head -1)
 <% elsif languages.include?("opencl") %>
-        lttng_last_session=$(ls -dt $HOME/lttng-traces/thapi-opencl-session* | head -1)
+        lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session* | head -1)
 <% elsif languages.include?("ze") %>
-        lttng_last_session=$(ls -dt $HOME/lttng-traces/thapi-ze-session* | head -1)
+        lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-ze-session* | head -1)
 <% end %>
         echo "Trace location:" $lttng_last_session
         echo
