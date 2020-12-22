@@ -164,7 +164,7 @@ EXTRA_DIST += \
 	gen_zel_tracepoints.rb \
 	gen_probe_base.rb
 
-zeprof.sh:
+zeprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
