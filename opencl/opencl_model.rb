@@ -1150,14 +1150,28 @@ EOF
 register_prologue "clGetDeviceIDs", <<EOF
   cl_uint n_e;
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && !num_devices && devices) {
-  num_devices = &n_e;
-}
+    num_devices = &n_e;
+  }
+EOF
+
+register_prologue "clGetDeviceIDs", <<EOF
+  if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && !num_devices && devices) {
+    num_devices = &n_e;
+  }
 EOF
 
 register_epilogue "clGetDeviceIDs", <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_name(devices[i]);
+    }
+  }
+EOF
+
+register_epilogue "clGetDeviceIDs", <<EOF
+  if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && _retval == CL_SUCCESS && devices) {
+    for (cl_uint i = 0; i < *num_devices; i++) {
+      dump_device_timer(devices[i]);
     }
   }
 EOF
