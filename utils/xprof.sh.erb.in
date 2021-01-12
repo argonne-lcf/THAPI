@@ -73,7 +73,7 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:device_name
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 <% end %>
 <% if languages.include?("ze") %>
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:*

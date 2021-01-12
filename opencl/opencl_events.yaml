@@ -243,3 +243,12 @@ lttng_ust_opencl_devices:
     fields:
     - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
     - [ ctf_string, name, name ]
+  - name: device_timer
+    args:
+    - [ cl_device_id, device ]
+    - [ cl_ulong, device_timestamp ]
+    - [ cl_ulong, host_timestamp ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, device, "(uintptr_t)device" ]
+    - [ ctf_integer, cl_ulong, device_timestamp, device_timestamp ]
+    - [ ctf_integer, cl_ulong, host_timestamp, host_timestamp ]

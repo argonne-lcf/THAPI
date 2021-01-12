@@ -23,7 +23,7 @@ struct opencl_version {
 //static const struct opencl_version opencl_version_1_1 = {1, 1};
 static const struct opencl_version opencl_version_1_2 = {1, 2};
 //static const struct opencl_version opencl_version_2_0 = {2, 0};
-//static const struct opencl_version opencl_version_2_1 = {2, 1};
+static const struct opencl_version opencl_version_2_1 = {2, 1};
 //static const struct opencl_version opencl_version_2_2 = {2, 2};
 
 static inline int compare_opencl_version(const struct opencl_version *v1, const struct opencl_version *v2) {
@@ -757,6 +757,19 @@ static inline void dump_device_name(cl_device_id device) {
   do_tracepoint(lttng_ust_opencl_devices, device_name, device, name);
 cleanup:
   free(name);
+}
+
+static inline void dump_device_timer(cl_device_id device) {
+  struct opencl_version version = {1, 0};
+
+  get_device_platform_version(device, &version);
+  if (compare_opencl_version(&version, &opencl_version_2_1) >= 0) {
+    cl_ulong device_timestamp;
+    cl_ulong host_timestamp;
+    if (CL_GET_DEVICE_AND_HOST_TIMER_PTR(device, &device_timestamp, &host_timestamp) != CL_SUCCESS)
+      return;
+    do_tracepoint(lttng_ust_opencl_devices, device_timer, device, device_timestamp, host_timestamp);
+  }
 }
 
 static inline void dump_program_device_build_infos(cl_program program, cl_device_id device) {
