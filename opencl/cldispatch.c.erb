@@ -1,9 +1,9 @@
 #include "babeltrace_cl.h"
 <% if $sink_type == 'production' %>
-#include "clprof_callbacks.h"
+#include "cldispatch_callbacks.h"
 const bt_value *display_mode;
 <% elsif $sink_type == 'testing' %>
-#include "testing_clprof_callbacks.h"
+#include "testing_cldispatch_callbacks.h"
 const bt_value *test_type_value;
 <% end %>
 

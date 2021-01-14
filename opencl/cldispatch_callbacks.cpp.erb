@@ -8,10 +8,10 @@
 #include <tuple>
 #include <climits>
 <% if $sink_type == 'production' %>
-#include "clprof_callbacks.h"
+#include "cldispatch_callbacks.h"
 #include <set>
 <% elsif $sink_type == 'testing' %>
-#include "testing_clprof_callbacks.h"
+#include "testing_cldispatch_callbacks.h"
 #include <cassert>
 <% end %>
 

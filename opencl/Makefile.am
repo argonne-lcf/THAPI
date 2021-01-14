@@ -70,16 +70,16 @@ opencl_devices.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
-clprof.sh: $(top_builddir)/utils/xprof.sh.erb
+cldispatch.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
-BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clprof_callbacks.h clprof.c
+BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h cldispatch_callbacks.h cldispatch.c
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
 
-bin_SCRIPTS = tracer_opencl.sh clprof.sh babeltrace_opencl extract_enqueues
+bin_SCRIPTS = tracer_opencl.sh cldispatch.sh babeltrace_opencl extract_enqueues
 
 noinst_LTLIBRARIES = libtracepoints.la
 
@@ -90,7 +90,7 @@ nodist_libtracepoints_la_SOURCES = \
 libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerOpenCL.la libCLProf.la
+lib_LTLIBRARIES = libTracerOpenCL.la libcldispatch.la
 
 nodist_libTracerOpenCL_la_SOURCES = \
         $(OPENCL_PROBES_INCL) \
@@ -110,30 +110,30 @@ install-exec-hook::
 	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
 	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
 
-clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
+cldispatch.c: $(srcdir)/cldispatch_callbacks.cpp.erb $(srcdir)/cldispatch_callbacks.h.erb $(srcdir)/cldispatch.c.erb $(srcdir)/gen_cldispatch.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cldispatch.rb production
 
-clprof_callbacks.cpp clprof_callbacks.h: clprof.c
+cldispatch_callbacks.cpp cldispatch_callbacks.h: cldispatch.c
 	@if test -f $@; then \
 	  touch $@; \
 	else \
-	  rm -f clprof.c; \
-	  $(MAKE) $(AM_MAKEFLAGS) clprof.c; \
+	  rm -f cldispatch.c; \
+	  $(MAKE) $(AM_MAKEFLAGS) cldispatch.c; \
 	fi
 
-nodist_libCLProf_la_SOURCES = \
-	clprof.c \
-	clprof_callbacks.cpp \
-	clprof_callbacks.h \
+nodist_libcldispatch_la_SOURCES = \
+	cldispatch.c \
+	cldispatch_callbacks.cpp \
+	cldispatch_callbacks.h \
 	tracer_opencl.h \
 	babeltrace_cl_dispatchers.c
-libCLProf_la_SOURCES = \
+libcldispatch_la_SOURCES = \
 	babeltrace_cl.h
 
-libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
-libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libcldispatch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libcldispatch_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libcldispatch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libcldispatch_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
@@ -141,7 +141,7 @@ libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingCLProf.la
+tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingcldispatch.la
 install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
@@ -161,38 +161,38 @@ libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-dust.c: $(srcdir)/dust.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb dust
+dust.c: $(srcdir)/dust.c.erb $(srcdir)/gen_cldispatch.rb opencl_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cldispatch.rb dust
 
 nodist_libDust_la_SOURCES = \
 	dust.c
 libDust_la_CFLAGS = $(BABELTRACE2_CFLAGS)
 libDust_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-testing_clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb testing
+testing_cldispatch.c: $(srcdir)/cldispatch_callbacks.cpp.erb $(srcdir)/cldispatch_callbacks.h.erb $(srcdir)/cldispatch.c.erb $(srcdir)/gen_cldispatch.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cldispatch.rb testing
 
-testing_clprof_callbacks.cpp testing_clprof_callbacks.h: testing_clprof.c
+testing_cldispatch_callbacks.cpp testing_cldispatch_callbacks.h: testing_cldispatch.c
 	@if test -f $@; then \
 	  touch $@; \
 	else \
-	  rm -f testing_clprof.c; \
-	  $(MAKE) $(AM_MAKEFLAGS) testing_clprof.c; \
+	  rm -f testing_cldispatch.c; \
+	  $(MAKE) $(AM_MAKEFLAGS) testing_cldispatch.c; \
 	fi
 
-nodist_libTestingCLProf_la_SOURCES = \
-	testing_clprof.c \
-	testing_clprof_callbacks.cpp \
-	testing_clprof_callbacks.h \
+nodist_libTestingcldispatch_la_SOURCES = \
+	testing_cldispatch.c \
+	testing_cldispatch_callbacks.cpp \
+	testing_cldispatch_callbacks.h \
 	tracer_opencl.h \
 	babeltrace_cl_dispatchers.c
-libTestingCLProf_la_SOURCES = \
+libTestingcldispatch_la_SOURCES = \
 	babeltrace_cl.h
 
-libTestingCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
-libTestingCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libTestingCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libTestingcldispatch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libTestingcldispatch_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libTestingcldispatch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libTestingcldispatch_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TEST_FILES = \
 	profiling_normal.dust \
@@ -236,12 +236,12 @@ EXTRA_DIST = \
 	gen_babeltrace_cl_dispatchers.rb \
 	gen_babeltrace_cl_callbacks.rb \
 	dust.c.erb \
-	gen_clprof.rb \
-	clprof_callbacks.cpp.erb \
+	gen_cldispatch.rb \
+	cldispatch_callbacks.cpp.erb \
 	babeltrace_opencl.in \
 	extract_enqueues \
-	clprof.c.erb \
-	clprof_callbacks.h.erb \
+	cldispatch.c.erb \
+	cldispatch_callbacks.h.erb \
 	test_wrapper.sh
 
 CLEANFILES = \
@@ -254,11 +254,11 @@ CLEANFILES = \
 	opencl_model.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
-	clprof.c \
-	clprof_callbacks.cpp \
-	clprof_callbacks.h \
+	cldispatch.c \
+	cldispatch_callbacks.cpp \
+	cldispatch_callbacks.h \
 	dust.c \
-	testing_clprof.c \
-	testing_clprof_callbacks.cpp \
-	testing_clprof_callbacks.h \
+	testing_cldispatch.c \
+	testing_cldispatch_callbacks.cpp \
+	testing_cldispatch_callbacks.h \
 	$(TEST_FILES)
