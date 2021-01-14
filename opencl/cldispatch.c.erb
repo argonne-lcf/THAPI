@@ -40,11 +40,19 @@ void opencl_register_callback(struct opencl_dispatch *opencl_dispatch, const cha
 /*
  * Initializes the sink component.
  */
+<% if $sink_type == 'production' %>
 static
 bt_component_class_initialize_method_status opencl_dispatch_initialize(
         bt_self_component_sink *self_component_sink,
         bt_self_component_sink_configuration *configuration,
         const bt_value *params, void *initialize_method_data)
+<% elsif $sink_type == 'testing' %>
+static
+bt_component_class_initialize_method_status opencl_dispatch_testing_initialize(
+        bt_self_component_sink *self_component_sink,
+        bt_self_component_sink_configuration *configuration,
+        const bt_value *params, void *initialize_method_data)
+<% end %>
 {
 <% if $sink_type == 'testing' %>
     test_type_value = bt_value_map_borrow_entry_value_const(params, "test");
@@ -79,8 +87,12 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
 /*
  * Finalizes the sink component.
  */
+<% if $sink_type == 'production' %>
 static
 void opencl_dispatch_finalize(bt_self_component_sink *self_component_sink)
+<% elsif $sink_type == 'testing' %>
+void opencl_dispatch_testing_finalize(bt_self_component_sink *self_component_sink)
+<% end %>
 {
 
     finalize_callbacks();
@@ -109,9 +121,16 @@ void opencl_dispatch_finalize(bt_self_component_sink *self_component_sink)
  *
  * This is where we can create our upstream message iterator.
  */
-static
+
+<% if $sink_type == 'production' %>
+static        
 bt_component_class_sink_graph_is_configured_method_status
 opencl_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
+<% elsif  $sink_type == 'testing' %>
+static
+bt_component_class_sink_graph_is_configured_method_status
+opencl_dispatch_testing_graph_is_configured(bt_self_component_sink *self_component_sink)
+<% end %>
 {
     /* Retrieve our private data from the component's user data */
     struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
@@ -133,9 +152,17 @@ opencl_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
  * Consumes a batch of messages and writes the corresponding lines to
  * the standard output.
  */
+
+<% if $sink_type == 'production' %>
 static
 bt_component_class_sink_consume_method_status opencl_dispatch_consume(
         bt_self_component_sink *self_component_sink)
+<% elsif  $sink_type == 'testing' %>
+static    
+bt_component_class_sink_consume_method_status opencl_dispatch_testing_consume(
+        bt_self_component_sink *self_component_sink)
+<% end %>
+
 {
     bt_component_class_sink_consume_method_status status =
         BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
@@ -214,10 +241,6 @@ BT_PLUGIN_MODULE();
 /* Define the `clprof` plugin */
 <% if $sink_type == 'production' %>
 BT_PLUGIN(clprof);
-<% elsif $sink_type == 'testing' %>
-BT_PLUGIN(testing_clprof);
-<% end %>
-
 /* Define the `text` sink component class */
 BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, opencl_dispatch_consume);
 
@@ -226,3 +249,14 @@ BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, opencl_dispatch_consume);
 BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch, opencl_dispatch_initialize);
 BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch, opencl_dispatch_finalize);
 BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch, opencl_dispatch_graph_is_configured);
+
+<% elsif $sink_type == 'testing' %>
+BT_PLUGIN(testing_clprof);
+/* Define the `text` sink component class */
+BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch_testing, opencl_dispatch_testing_consume);
+
+/* Set some of the `text` sink component class's optional methods */
+BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch_testing, opencl_dispatch_testing_initialize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch_testing, opencl_dispatch_testing_finalize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch_testing, opencl_dispatch_testing_graph_is_configured);
+<% end %>
