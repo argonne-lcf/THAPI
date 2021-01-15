@@ -243,8 +243,7 @@ CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_PROBES_TP) \
 	$(OPENCL_PROBES_SRC) \
-    clprof.c \
-    tracer_opencl.c \
+	tracer_opencl.c \
 	tracer_opencl.h \
 	cl.xml.patched \
 	opencl_model.yaml \
@@ -252,7 +251,7 @@ CLEANFILES = \
 	babeltrace_cl_callbacks.h \
 	cldispatch.c \
 	cldispatch.h \
-    cldispatch_callbacks.cpp \
+	cldispatch_callbacks.cpp \
 	cldispatch_callbacks.h \
 	dust.c \
 	testing_cldispatch.c \
