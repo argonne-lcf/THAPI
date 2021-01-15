@@ -1,0 +1,19 @@
+#include "cldispatch.h"
+#include "testing_cldispatch.h"
+
+BT_PLUGIN_MODULE();
+
+BT_PLUGIN(clprof);
+
+/* Dispach */
+BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, opencl_dispatch_consume);
+BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch, opencl_dispatch_initialize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch, opencl_dispatch_finalize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch, opencl_dispatch_graph_is_configured);
+
+/* Dispach Testing */
+BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch_testing, opencl_dispatch_testing_consume);
+BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch_testing, opencl_dispatch_testing_initialize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch_testing, opencl_dispatch_testing_finalize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch_testing, opencl_dispatch_testing_graph_is_configured);
+
