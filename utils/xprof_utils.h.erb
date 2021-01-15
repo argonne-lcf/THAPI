@@ -81,27 +81,27 @@ namespace std{
 /*
 Utils function
 */
-const hostname_t borrow_hostname(const bt_event *event){
+static const hostname_t borrow_hostname(const bt_event *event){
     const bt_stream *stream = bt_event_borrow_stream_const(event);
     const bt_trace *trace = bt_stream_borrow_trace_const(stream);
     const bt_value *host_name_str = bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
     return  bt_value_string_get(host_name_str);
 }
 
-process_id_t borrow_process_id(const bt_event *event){
+static process_id_t borrow_process_id(const bt_event *event){
     const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
     const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
     return bt_field_integer_signed_get_value(field);
 }
 
-thread_id_t borrow_thread_id(const bt_event *event){
+static thread_id_t borrow_thread_id(const bt_event *event){
     const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
     const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
     return bt_field_integer_unsigned_get_value(field);
 }
 
 template <typename T>
-std::string to_string_with_precision(const T a_value, const std::string extension, const int n = 2)
+static std::string to_string_with_precision(const T a_value, const std::string extension, const int n = 2)
 {
     std::ostringstream out;
     out.precision(n);
@@ -110,7 +110,7 @@ std::string to_string_with_precision(const T a_value, const std::string extensio
 }
 
 template <typename T>
-std::string format_byte(const T duration) {
+static std::string format_byte(const T duration) {
 <%[  ['TB',  '1e+12'],
      ['GB', '1e+9'],
      ['MB',   '1e+6'],
@@ -126,7 +126,7 @@ std::string format_byte(const T duration) {
 
 
 template <typename T>
-std::string format_time(const T duration) {
+static std::string format_time(const T duration) {
 <% [['h',  '3.6e+12'],
     ['min', '6e+10'],
     ['s', '1e+9'],
@@ -155,16 +155,17 @@ struct StatIprof_string {
     std::string error;
 };
 
+// TODO: Inline manualy inside the struct / class
 class StatIprof {
     uint64_t _start;
 
   public:
     uint64_t _total_time{1};
-    void start(const int64_t);
-    void stop(const int64_t);
-    void delta(const uint64_t);
-    void merge(StatIprof);
-    void set_error(void);
+    inline void start(const int64_t);
+    inline void stop(const int64_t);
+    inline void delta(const uint64_t);
+    inline void merge(StatIprof);
+    inline void set_error(void);
     StatIprof_string to_string(const uint64_t);
 
     //Used in merge
@@ -194,6 +195,7 @@ void StatIprof::stop(const int64_t stop) {
 void StatIprof::set_error() {
     _error++;
 }
+
 void StatIprof::delta(const uint64_t delta) {
    _min = std::min(_min,delta);
    _max = std::max(_max,delta);
@@ -230,16 +232,16 @@ class <%= n %>: public StatIprof {
 
 
 <%# Glolbal variable %>
-std::unordered_map<hpt_device_function_name_t, StatTime> device_id_result;
-std::unordered_map<hpt_function_name_t, StatTime> api_call;
-std::unordered_map<hpt_function_name_t, StatByte> memory_trafic;
-std::unordered_map<hp_device_t, std::string> device_to_name;
-std::unordered_map<hp_device_t, thapi_device_id> device_to_rootdevice;
+static std::unordered_map<hpt_device_function_name_t, StatTime> device_id_result;
+static std::unordered_map<hpt_function_name_t, StatTime> api_call;
+static std::unordered_map<hpt_function_name_t, StatByte> memory_trafic;
+static std::unordered_map<hp_device_t, std::string> device_to_name;
+static std::unordered_map<hp_device_t, thapi_device_id> device_to_rootdevice;
 
-std::unordered_map<hpt_t, thapi_device_id> start_device;
-std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
+static std::unordered_map<hpt_t, thapi_device_id> start_device;
+static std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
 
-std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
+static std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
 <%#
    _
   |_) ._ o ._ _|_    /\  ._ ._ _.
@@ -251,7 +253,8 @@ std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
 <% d_headers = [ ["StatTime","format_time",  [ 'Name', 'Time', 'Time(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ],
                  ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>
 
- <% d_headers.each do | main_type, main_function, l_headers | %>
+<% d_headers.each do | main_type, main_function, l_headers | %>
+static inline    
 void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, std::string header, unsigned int _print_error= 0) {
     <%# print_error = 0 -> Never print error
                     = 1 -> Print only when error
@@ -371,6 +374,7 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    ] %>
 
 <% output.each do |main_type, result,header, error, type, var| %>
+static inline    
 void print_compact_<%= result %>(){
    <% var.each do |t,n,_ | %>
    std::set<<%= t %>> s_<%= n.gsub(' ','_') %>;
@@ -436,7 +440,7 @@ void print_compact_<%= result %>(){
                       ['process_id_t','Processes','Process'],
                       ['thread_id_t','Threads','Thread'] ] ],
    ] %>
-
+static inline
 void print_extented_<%= result %>(){
 
   <% args = var.map{ |t,_,n| n}.join(',') %>

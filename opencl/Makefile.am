@@ -110,7 +110,7 @@ install-exec-hook::
 	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
 	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
 
-cldispatch.c: $(srcdir)/cldispatch_callbacks.cpp.erb $(srcdir)/cldispatch_callbacks.h.erb $(srcdir)/cldispatch.c.erb $(srcdir)/gen_cldispatch.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
+cldispatch.c: $(srcdir)/cldispatch_callbacks.cpp.erb $(srcdir)/cldispatch_callbacks.h.erb $(srcdir)/cldispatch_callbacks.h.erb $(srcdir)/cldispatch.c.erb $(srcdir)/cldispatch.h.erb $(srcdir)/gen_cldispatch.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cldispatch.rb production
 
 cldispatch_callbacks.cpp cldispatch_callbacks.h: cldispatch.c
@@ -121,19 +121,6 @@ cldispatch_callbacks.cpp cldispatch_callbacks.h: cldispatch.c
 	  $(MAKE) $(AM_MAKEFLAGS) cldispatch.c; \
 	fi
 
-nodist_libcldispatch_la_SOURCES = \
-	cldispatch.c \
-	cldispatch_callbacks.cpp \
-	cldispatch_callbacks.h \
-	tracer_opencl.h \
-	babeltrace_cl_dispatchers.c
-libcldispatch_la_SOURCES = \
-	babeltrace_cl.h
-
-libcldispatch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
-libcldispatch_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libcldispatch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libcldispatch_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
@@ -141,7 +128,7 @@ libcldispatch_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingcldispatch.la
+tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la #libTestingcldispatch.la
 install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
@@ -180,19 +167,25 @@ testing_cldispatch_callbacks.cpp testing_cldispatch_callbacks.h: testing_cldispa
 	  $(MAKE) $(AM_MAKEFLAGS) testing_cldispatch.c; \
 	fi
 
-nodist_libTestingcldispatch_la_SOURCES = \
+nodist_libcldispatch_la_SOURCES = \
+	clprof.c \
+	cldispatch.h \
+	cldispatch.c \
+	cldispatch_callbacks.cpp \
+	cldispatch_callbacks.h \
+	testing_cldispatch.h \
 	testing_cldispatch.c \
 	testing_cldispatch_callbacks.cpp \
 	testing_cldispatch_callbacks.h \
 	tracer_opencl.h \
 	babeltrace_cl_dispatchers.c
-libTestingcldispatch_la_SOURCES = \
+libcldispatch_la_SOURCES = \
 	babeltrace_cl.h
 
-libTestingcldispatch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
-libTestingcldispatch_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libTestingcldispatch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libTestingcldispatch_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libcldispatch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libcldispatch_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libcldispatch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libcldispatch_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TEST_FILES = \
 	profiling_normal.dust \
@@ -237,7 +230,9 @@ EXTRA_DIST = \
 	gen_babeltrace_cl_callbacks.rb \
 	dust.c.erb \
 	gen_cldispatch.rb \
+	cldispatch.h.erb \
 	cldispatch_callbacks.cpp.erb \
+	cldispatch_callbacks.h.erb \
 	babeltrace_opencl.in \
 	extract_enqueues \
 	cldispatch.c.erb \
@@ -248,17 +243,20 @@ CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_PROBES_TP) \
 	$(OPENCL_PROBES_SRC) \
-	tracer_opencl.c \
+    clprof.c \
+    tracer_opencl.c \
 	tracer_opencl.h \
 	cl.xml.patched \
 	opencl_model.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
 	cldispatch.c \
-	cldispatch_callbacks.cpp \
+	cldispatch.h \
+    cldispatch_callbacks.cpp \
 	cldispatch_callbacks.h \
 	dust.c \
 	testing_cldispatch.c \
+	testing_cldispatch.h \
 	testing_cldispatch_callbacks.cpp \
 	testing_cldispatch_callbacks.h \
 	$(TEST_FILES)

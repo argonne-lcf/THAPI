@@ -5,14 +5,20 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+<% if $sink_type == 'testing' %>
+extern void
+init_callbacks_testing(struct opencl_dispatch *opencl_dispatch);
+extern void
+finalize_callbacks_testing();    
+extern const bt_value *test_type_value;
+extern void opencl_register_callback_testing(struct opencl_dispatch *opencl_dispatch, const char *name, void *func);
+<% elsif $sink_type == 'production' %>
 extern void
 init_callbacks(struct opencl_dispatch *opencl_dispatch);
 extern void
 finalize_callbacks();
-<% if $sink_type == 'testing' %>
-extern const bt_value *test_type_value;
-<% elsif $sink_type == 'production' %>
 extern const bt_value *display_mode;
+extern void opencl_register_callback(struct opencl_dispatch *opencl_dispatch, const char *name, void *func);
 <% end %>
 #ifdef __cplusplus
 }
