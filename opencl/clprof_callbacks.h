@@ -9,11 +9,7 @@ extern void
 init_callbacks(struct opencl_dispatch *opencl_dispatch);
 extern void
 finalize_callbacks();
-<% if $sink_type == 'testing' %>
-extern const bt_value *test_type_value;
-<% elsif $sink_type == 'production' %>
 extern const bt_value *display_mode;
-<% end %>
 #ifdef __cplusplus
 }
 #endif

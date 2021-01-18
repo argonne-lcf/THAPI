@@ -7,13 +7,8 @@
 #include <unordered_map>
 #include <tuple>
 #include <climits>
-<% if $sink_type == 'production' %>
 #include "clprof_callbacks.h"
 #include <set>
-<% elsif $sink_type == 'testing' %>
-#include "testing_clprof_callbacks.h"
-#include <cassert>
-<% end %>
 
 typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
 typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
@@ -211,33 +206,6 @@ void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
 %>
 
 void finalize_callbacks() {
-<% if $sink_type == 'testing' %>
-   std::string test_path {bt_value_string_get(test_type_value)};
-  <% $l_test.each do | test | %>
-   if (test_path == "<%= test.name %>") {
-       std :: cout << "testing <%= test.name %>" << std::endl;
-    <% test.device_id_result.each do |assert| %>
-        <% assert[0][-2] = "(thapi_device_id) #{assert[0][-2]}" %>
-        <% assert[0][-3] = "(thapi_device_id) #{assert[0][-3]}" %>
-       assert(device_id_result[hpt_device_function_name_t(<%= assert[0].join(',') %>)]._time == <%= assert[1] %>);
-    <% end %>
-    <% test.device_to_name.each do |assert| %>
-       <% assert[0][-1] = "(thapi_device_id) #{assert[0][-1]}" %>
-       assert(device_to_name[hp_device_t(<%= assert[0].join(',') %>)] == <%= assert[1] %>);
-    <% end %>
-    <% test.kernel_to_name.each do |assert| %>
-       <% assert[0][-1] = "(cl_kernel) #{assert[0][-1]}" %>
-       assert(kernel_to_name[hp_kernel_t(<%= assert[0].join(',') %>)] == <%= assert[1] %>);
-    <% end %>
-    <% test.api_call.each do |assert| %>
-       assert(api_call[hpt_function_name_t(<%= assert[0].join(',') %>)]._count    == <%= assert[1][0] %>);
-       assert(api_call[hpt_function_name_t(<%= assert[0].join(',') %>)]._min      == <%= assert[1][1] %>);
-       assert(api_call[hpt_function_name_t(<%= assert[0].join(',') %>)]._max      == <%= assert[1][2] %>);
-    <% end %>
-   }
-  <% end %>
-<% elsif $sink_type == "production" %>
-
    std::string display {bt_value_string_get(display_mode)};
    if (display == "compact" ) {
   <% ['api_call','device_id_result','memory_trafic'].each do |a| %>
@@ -248,5 +216,4 @@ void finalize_callbacks() {
      print_extented_<%= a %>();
   <% end %>
    } 
-<% end %>
 }
