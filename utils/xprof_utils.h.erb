@@ -18,6 +18,10 @@ typedef uintptr_t   thapi_device_id;
 <%# Represent a device and a sub device %>
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
 
+<%# Represent a start and a timestamp %>
+typedef std::tuple<thapi_function_name, size_t> fn_ts_t;
+typedef std::tuple<thread_id_t, thapi_function_name, size_t> tfn_ts_t;
+
 typedef std::tuple<hostname_t, process_id_t> hp_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;
@@ -27,6 +31,7 @@ typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
 
+ 
 // https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 // Hash of std tuple
 namespace std{
@@ -238,6 +243,11 @@ std::unordered_map<hp_device_t, thapi_device_id> device_to_rootdevice;
 
 std::unordered_map<hpt_t, thapi_device_id> start_device;
 std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
+
+
+std::unordered_map<hpt_t, fn_ts_t> profiled_function_name_and_ts;
+
+
 
 std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
 <%#

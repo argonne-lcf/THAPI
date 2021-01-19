@@ -15,50 +15,50 @@
 extern "C" {
 #endif
 
-struct opencl_dispatch;
-struct opencl_callbacks;
+struct babeltrace_cl_dispatch;
+struct babeltrace_cl_callbacks;
 
-extern void init_dispatchers(struct opencl_dispatch *opencl_dispatch);
+extern void init_babeltrace_cl_dispatch(struct babeltrace_cl_dispatch *dispatch);
 
-typedef void (opencl_dispatcher_t)
-    (struct opencl_dispatch   *opencl_dispatch,
-     struct opencl_callbacks *callbacks,
+typedef void (babeltrace_cl_dispatcher_t)
+    (struct babeltrace_cl_dispatch   *dispatch,
+     struct babeltrace_cl_callbacks *callbacks,
      const bt_event          *message,
      const bt_clock_snapshot *clock);
 
-struct opencl_callbacks {
+struct babeltrace_cl_callbacks {
     const char *name;
-    opencl_dispatcher_t *dispatcher;
+    babeltrace_cl_dispatcher_t *dispatcher;
     UT_array *callbacks;
     UT_hash_handle hh;
 };
 
-struct opencl_event_callbacks {
+struct babeltrace_cl_event_callbacks {
     const char *name;
-    opencl_dispatcher_t *dispatcher;
+    babeltrace_cl_dispatcher_t *dispatcher;
     UT_array *callbacks;
     UT_hash_handle hh;
 };
 
 /* Sink component's private data */
-struct opencl_dispatch {
+struct babeltrace_cl_dispatch {
     /* Upstream message iterator (owned by this) */
     bt_message_iterator *message_iterator;
 
     /* Hash table */
-    struct opencl_callbacks *callbacks;
+    struct babeltrace_cl_callbacks *callbacks;
     /* Hash table by name */
-    struct opencl_event_callbacks *event_callbacks;
+    struct babeltrace_cl_event_callbacks *event_callbacks;
 };
 
 
 extern void
-opencl_register_dispatcher(struct opencl_dispatch *opencl_dispatch,
+babeltrace_cl_register_dispatcher(struct babeltrace_cl_dispatch *dispatch,
                            const char *name,
-                           opencl_dispatcher_t *dispatcher);
+                           babeltrace_cl_dispatcher_t *dispatcher);
 
 extern void
-opencl_register_callback(struct opencl_dispatch *opencl_dispatch,
+babeltrace_cl_register_callback(struct babeltrace_cl_dispatch *dispatch,
                          const char *name,
                          void *func);
 #ifdef __cplusplus

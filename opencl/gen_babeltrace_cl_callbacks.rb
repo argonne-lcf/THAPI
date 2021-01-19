@@ -1,9 +1,15 @@
 require 'yaml'
 opencl_model = YAML::load_file("opencl_model.yaml")
 
+if ARGV.empty?
+    namespace = "babeltrace_cl"
+else
+    namespace = ARGV[0]
+end
+
 puts <<EOF
-#ifndef _HEADER_CALLBACKS_H
-#define _HEADER_CALLBACKS_H
+#ifndef #{namespace.upcase}_CALLBACKS_H
+#define #{namespace.upcase}_CALLBACKS_H
 #define CL_TARGET_OPENCL_VERSION 300
 #define CL_USE_DEPRECATED_OPENCL_1_0_APIS
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
@@ -17,13 +23,17 @@ puts <<EOF
 #include <CL/cl_ext_intel.h>
 #include "tracer_opencl.h"
 
-#include "babeltrace_cl.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "#{namespace}.h"
 
 EOF
 
 opencl_model["events"].each { |name, fields|
   puts <<EOF
-typedef void (#{name.gsub(":","_")}_cb)(
+typedef void (#{namespace}_#{name.gsub(":","_")}_cb)(
     #{(["const bt_event *bt_evt", "const bt_clock_snapshot *bt_clock"]+fields.each.collect { |n, f|
   s =  "#{f["type"].gsub("cl_errcode", "cl_int")}"
   s << " *" if f["pointer"]
@@ -41,5 +51,8 @@ EOF
 }
 
 puts <<EOF
+#ifdef __cplusplus
+}
+#endif
 #endif
 EOF

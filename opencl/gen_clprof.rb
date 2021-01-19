@@ -111,19 +111,19 @@ $dbt_events = opencl_model['events'].map { |dbt_event|
         DBT_event.new(name_unsanitized, fields)
 }
 
-def write_file_via_template(file, testing = false)
+def write_file_via_template(file)
     template = File.read(File.join(SRC_DIR, "#{file}.erb"))
     template_rendered = ERB.new(template).result(binding).gsub(/^\s*$\n/,'')
     File.write("#{file}", template_rendered)
 end
 
 $sink_type = ARGV[0]
-$l_file_generated=['clprof_callbacks.cpp']
+$l_file_generated=['clinterval_callbacks.cpp']
 
 if $sink_type == 'dust'
     write_file_via_template('dust.c')
-elsif $sink_type == 'production' or $sink_type == 'testing'
+else
     $l_file_generated.each{ |f|
-        write_file_via_template(f, $sink_type == 'testing' ) 
+        write_file_via_template(f) 
     }
 end

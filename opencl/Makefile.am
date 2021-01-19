@@ -74,7 +74,7 @@ clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
-BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clprof_callbacks.h clprof.c
+BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clinterval_callbacks.h clprof.c
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
@@ -110,7 +110,7 @@ install-exec-hook::
 	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
 	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
 
-clprof_callbacks.cpp: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
+clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
 
 #clprof_callbacks.cpp clprof_callbacks.h: clprof.c
@@ -122,13 +122,16 @@ clprof_callbacks.cpp: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/gen_clprof.rb
 #	fi
 
 nodist_libCLProf_la_SOURCES = \
-	clprof.c \
-	clprof_callbacks.cpp \
-	clprof_callbacks.h \
-	tracer_opencl.h \
-	babeltrace_cl_dispatchers.c
+	clinterval_callbacks.cpp \
+	clinterval_dispatchers.c \
+	clinterval_callbacks.h \
+	tracer_opencl.h
+	
 libCLProf_la_SOURCES = \
-	babeltrace_cl.h
+	clprof.c \
+	clinterval.h \
+	clinterval.c \
+	clinterval_helpers.h
 
 libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
@@ -150,6 +153,12 @@ babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model
 
 babeltrace_cl_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb > babeltrace_cl_dispatchers.c
+
+clinterval_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb clinterval > clinterval_dispatchers.c
+
+clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb clinterval > clinterval_callbacks.h
 
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \
@@ -192,7 +201,7 @@ EXTRA_DIST = \
 	gen_babeltrace_cl_callbacks.rb \
 	dust.c.erb \
 	gen_clprof.rb \
-	clprof_callbacks.cpp.erb \
+	clinterval_callbacks.cpp.erb \
 	babeltrace_opencl.in \
 	extract_enqueues \
 	test_wrapper.sh
@@ -207,8 +216,6 @@ CLEANFILES = \
 	opencl_model.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
-	clprof.c \
-	clprof_callbacks.cpp \
-	clprof_callbacks.h \
+	clinterval_callbacks.cpp \
 	dust.c \
 	$(TEST_FILES)

@@ -1,0 +1,365 @@
+#include "xprof_utils.h"
+#include <iomanip>
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <tuple>
+#include <climits>
+#include <queue>
+#include "clinterval.h" // For self_message_iterator_g
+#include "clinterval_callbacks.h"
+#include "clinterval_helpers.h"
+
+typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
+typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
+typedef std::tuple<hostname_t, process_id_t, cl_kernel> hp_kernel_t;
+typedef std::tuple<uint64_t, uint64_t> sd_t; // Start, Duration
+
+std::unordered_map<hp_command_queue_t, dsd_t> command_queue_to_device;
+std::unordered_map<hpt_function_name_t, cl_device_id> function_name_to_device;
+std::unordered_map<hp_event_t,tfn_ts_t> event_to_function_name_and_ts;
+
+std::unordered_map<hp_event_t, sd_t> event_result_to_start_and_delta;
+std::unordered_map<hp_device_t, int64_t> device_ts_to_llng_ts;
+std::unordered_map<hp_kernel_t, thapi_function_name> kernel_to_name;
+std::unordered_map<hpt_function_name_t, uint64_t> host_start;
+
+std::queue<const bt_message*> downstream_message_queue;
+
+<%#                            _                         
+ |\/|  _   _  _  _.  _   _    /  ._ _   _. _|_ o  _  ._  
+ |  | (/_ _> _> (_| (_| (/_   \_ | (/_ (_|  |_ | (_) | | 
+                     _|                                  
+%>
+
+static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name, 
+                                     const uint64_t ts, const uint64_t duration, const bool err) {
+    
+     /* Message creation */
+     bt_event_class *event_class = clinterval_iter_g->dispatch->host_event_class;
+     bt_message *message = bt_message_event_create(
+        self_message_iterator_g, event_class, clinterval_iter_g->dispatch->stream);
+
+     /* event */
+     bt_event *downstream_event = bt_message_event_borrow_event(message);
+
+     /* Common context */
+     bt_field *context_field = bt_event_borrow_common_context_field(downstream_event);
+
+     // Hostname
+     bt_field *hostname_msg_field = bt_field_structure_borrow_member_field_by_index(context_field,0);
+     bt_field_string_set_value(hostname_msg_field, hostname);
+     // pid
+     bt_field *vpid_field = bt_field_structure_borrow_member_field_by_index(context_field,1);
+     bt_field_integer_signed_set_value(vpid_field, process_id);
+     // vid
+     bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
+     bt_field_integer_signed_set_value(vtid_field, thread_id);
+     // ts
+     bt_field *ts_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
+     bt_field_integer_signed_set_value(ts_field, ts);
+
+     /* Payload */
+     bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
+
+     // name 
+     bt_field *name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 0);
+     bt_field_string_set_value(name_field, name);
+
+     // dur
+     bt_field *dur_field = bt_field_structure_borrow_member_field_by_index(payload_field, 1);
+     bt_field_integer_unsigned_set_value(dur_field, duration);
+
+     // err
+     bt_field *err_field_err = bt_field_structure_borrow_member_field_by_index(payload_field, 2);
+     bt_field_integer_unsigned_set_value(err_field_err, err);
+
+     /* Set message */
+     downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                       const char* name, const uint64_t ts, const uint64_t duration) {
+    
+     /* Message creation */
+     bt_event_class *event_class = clinterval_iter_g->dispatch->device_event_class;
+     bt_message *message = bt_message_event_create(
+       self_message_iterator_g, event_class, clinterval_iter_g->dispatch->stream);
+
+     /* event */
+     bt_event *downstream_event = bt_message_event_borrow_event(message);
+
+     /* Common context */
+     bt_field *context_field = bt_event_borrow_common_context_field(downstream_event);
+
+     // Hostname
+     bt_field *hostname_msg_field = bt_field_structure_borrow_member_field_by_index(context_field,0);
+     bt_field_string_set_value(hostname_msg_field, hostname);
+     // pid
+     bt_field *vpid_field = bt_field_structure_borrow_member_field_by_index(context_field,1);
+     bt_field_integer_signed_set_value(vpid_field, process_id);
+     // vid
+     bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
+     bt_field_integer_signed_set_value(vtid_field, thread_id);
+     // ts
+     bt_field *ts_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
+     bt_field_integer_signed_set_value(ts_field, ts);
+ 
+     /* Payload */
+     bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
+
+     // name
+     bt_field *name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 0);
+     bt_field_string_set_value(name_field, name);
+
+     // dur 
+     bt_field *dur_field = bt_field_structure_borrow_member_field_by_index(payload_field, 1);
+     bt_field_integer_unsigned_set_value(dur_field, duration);
+
+     // did
+     bt_field *device_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
+     bt_field_integer_unsigned_set_value(device_id_field, device_id);
+
+     // sdid
+     bt_field *subdevice_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,3);
+     bt_field_integer_unsigned_set_value(subdevice_id_field, subdevice_id);
+
+     /* Set message */
+     downstream_message_queue.push(message);
+}
+
+<%#
+  _                                         _                          _ ___ 
+ | \  _       ._   _ _|_ ._ _   _. ._ _    / \      _       _     /\  |_) |  
+ |_/ (_) \/\/ | | _>  |_ | (/_ (_| | | |   \_X |_| (/_ |_| (/_   /--\ |  _|_ 
+                                                                             
+%>
+
+bool downstream_message_queue_empty()
+{
+    return downstream_message_queue.empty();
+}
+
+size_t downstream_message_queue_size()
+{
+    return downstream_message_queue.size();
+}
+
+const bt_message* downstream_message_queue_pop()
+{
+    const bt_message* m = downstream_message_queue.front();
+    downstream_message_queue.pop();
+    return m;
+}
+
+<%#
+  _                          
+ /   _. | | |_   _.  _ |   _ 
+ \_ (_| | | |_) (_| (_ |< _> 
+                             
+%>
+// Some of the map used may grow arbitraly large
+// we may do something about it at some point buy remove data we don't need anymore
+
+<% $dbt_events.each do | dbt_event| %>
+static void clinterval_<%= dbt_event.name %>_callback(
+<%= dbt_event.callback_signature %>
+){
+  <%#                             ___      _    
+       |   _   _  _. | o _|_       |  ._ _|_ _  
+       |_ (_) (_ (_| | |  |_ \/   _|_ | | | (_) 
+                             /                  
+  %>
+  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
+    const hostname_t   hostname   = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+  <%end %>
+
+
+  <%#        _ ___                 
+        /\  |_) |     _  _. | |  _ 
+       /--\ |  _|_   (_ (_| | | _> 
+  %>                              
+  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
+    int64_t ns_from_origin;
+    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+    <%if dbt_event.name.end_with?(START) %>
+    host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
+    <%elsif dbt_event.name.end_with?(STOP) %>
+     
+    uint64_t start_g = host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
+      <% if dbt_event.fields.key?('errcode_ret_val') %>
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, errcode_ret_val);
+      <% else %>
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <%#                                                       
+       |\/|  _  ._ _   _  ._      _.  _  _  _   _  _  _   _ 
+       |  | (/_ | | | (_) | \/   (_| (_ (_ (/_ _> _> (/_ _> 
+                            /                               
+  %>
+
+  <%# To do handle Alloc and cl_mem_host_ptr %>
+  <%if dbt_event.name.include?("clEnqueue") and dbt_event.fields.key?("size") %>
+    memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].delta(size);
+  <% end %>
+
+  <%#  ___                                    __         _     
+        | o ._ _   _   _ _|_  _. ._ _  ._    (_  |_  o _|_ _|_ 
+        | | | | | (/_ _>  |_ (_| | | | |_)   __) | | |  |   |_ 
+                                     |                       
+  %>
+  <%if dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_timer"  %>
+    const hostname_t   hostname   = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+          
+    int64_t ns_from_origin;
+    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+    device_ts_to_llng_ts[hp_device_t(hostname,process_id, (thapi_device_id) device)] = ns_from_origin - device_timestamp; 
+  <% end %>
+ 
+  <%#
+    _         _                    _                                   __          _                  
+   |_) ._ _ _|_ o | o ._   _  o   | \  _     o  _  _     _. ._   _|   (_      |_  | \  _     o  _  _  
+   |   | (_) |  | | | | | (_| o   |_/ (/_ \/ | (_ (/_   (_| | | (_|   __) |_| |_) |_/ (/_ \/ | (_ (/_ 
+                           _|                                                                         
+   Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ]
+  %>
+
+  <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl:clGetDeviceIDs_#{STOP}" %>
+    if (devices_vals != nullptr) {
+        for (unsigned int i=0; i < num_devices_val; i++ ) {
+             const thapi_device_id d = (thapi_device_id) devices_vals[i];
+             device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
+        }
+    }
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{START}" %>
+    start_device[hpt_t(hostname,process_id,thread_id) ] =  (thapi_device_id) in_device;
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{STOP}" %>
+    const thapi_device_id device = start_device[hpt_t(hostname,process_id,thread_id) ];
+    const thapi_device_id root_device = device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
+    if (out_devices_vals != nullptr) {
+        for (unsigned int i=0; i < num_devices_ret_val; i++ ) {
+            const thapi_device_id d = (thapi_device_id) out_devices_vals[i];
+            device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = root_device;
+        }
+    }
+  <% end%>
+ 
+  <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
+  <% if dbt_event.name.end_with?(START) and dbt_event.name.include?('clCreateCommandQueue') %>
+    start_device[hpt_t(hostname,process_id, thread_id) ] =  (thapi_device_id) device;
+  <%elsif dbt_event.name.end_with?(STOP) and dbt_event.name.include?('clCreateCommandQueue') %>
+    const thapi_device_id device = start_device[hpt_t(hostname,process_id, thread_id) ];
+    const thapi_device_id root_device = device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
+    command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(root_device, device) ; 
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
+    const hostname_t hostname = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    device_to_name[hp_device_t(hostname,process_id,(thapi_device_id) device)] = hostname_t{name};
+  <% end %>
+
+  <%#
+    _         _                    _
+   |_) ._ _ _|_ o | o ._   _  o   |_    ._   _ _|_ o  _  ._    ._   _. ._ _   _
+   |   | (_) |  | | | | | (_| o   | |_| | | (_  |_ | (_) | |   | | (_| | | | (/_
+                           _|
+   Map [ Tuple [ Hostnane, process, thread, function_name], Tuple [ device, subdevice] ]                   
+  %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl_arguments:kernel_info" %>
+    const hostname_t hostname = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    kernel_to_name[hp_kernel_t(hostname,process_id,kernel)] = hostname_t(function_name);
+  <% elsif dbt_event.name.end_with?(START) and dbt_event.fields['command_queue'] %>
+    <% if dbt_event.fields['kernel'] %>
+    const thapi_function_name name{kernel_to_name[hp_kernel_t(hostname,process_id,kernel)]};
+    <% else %>
+    constexpr char name[] = "<%= dbt_event.name_striped %>";
+    <% end %>
+    profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)] = fn_ts_t(name,ns_from_origin);
+    function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id,name)] = command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)];
+  <% end %>
+  
+  <%#
+    _         _                    _                        ___               
+   |_) ._ _ _|_ o | o ._   _  o   |_ |  _. ._   _  _   _|    | o ._ _   _   _ 
+   |   | (_) |  | | | | | (_| o   |_ | (_| |_) _> (/_ (_|    | | | | | (/_ _> 
+                           _|              |                                  
+   Map [ Tuple[hostname, process, device, subdevice, cl_function_name], elapsed_time ]
+  %>
+
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling" %>
+    const hostname_t hostname = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t thread_id = borrow_thread_id(bt_evt);
+    const hp_event_t hp_event{hostname,process_id, event};
+    const auto [function_name, ts] = profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
+
+    if (!event_to_function_name_and_ts.count(hp_event)){
+        event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
+    } else {
+        const auto [start,delta] = event_result_to_start_and_delta[hp_event];
+        const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+        if (delta != 0)
+            create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta);
+
+        event_to_function_name_and_ts.erase(hp_event);
+    }
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling_results" %>
+
+    const hostname_t hostname = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const hp_event_t hp_event{hostname,process_id, event};
+    
+    //Should we check that end > start?
+    uint64_t delta = end - start;
+    if (queued_status != 0 or submit_status != 0 or start_status != 0) {
+        std::cerr << "Warning: 'lttng_ust_opencl_profiling:event_profiling_results' for event " 
+                  << std::hex << std::showbase << std::internal << std::setfill('0') << event  
+                  << " returned invalid status" << std::endl;
+        delta = 0;
+    }
+
+    if (event_to_function_name_and_ts.count(hp_event)) {
+        const auto [thread_id,function_name,ts] =  event_to_function_name_and_ts[hp_event];
+        const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+       
+        const hp_device_t hp_device{hostname, process_id, device};
+        const uint64_t start_event = device_ts_to_llng_ts.count(hp_device) ? device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        // Check for error 
+        if (delta != 0)
+             create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device, subdevice, function_name.c_str(),start_event,delta);
+
+        event_to_function_name_and_ts.erase(hp_event);
+    } else {
+        const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+        const auto [function_name, ts] = profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
+        const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+
+        const hp_device_t hp_device{hostname, process_id, device};
+        const uint64_t start_event = device_ts_to_llng_ts.count(hp_device) ? device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        
+        event_result_to_start_and_delta[hp_event] = sd_t(start_event,delta);
+        event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
+    }
+  <% end %>
+}
+<% end %>
+
+<%# 
+ ___                            
+  |  ._  o _|_ o  _. | o _   _  
+ _|_ | | |  |_ | (_| | | /_ (/_ 
+                                
+%>
+
+void init_clinterval_callbacks(struct clinterval_dispatch  *opencl_interval) {
+<% $dbt_events.each do | dbt_event| %>
+    clinterval_register_callback(opencl_interval, "<%= dbt_event.name_unsanitized %>", (void *) &clinterval_<%= dbt_event.name %>_callback);
+<% end %>
+}
