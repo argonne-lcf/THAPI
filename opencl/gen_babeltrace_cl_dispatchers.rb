@@ -3,7 +3,6 @@ opencl_model = YAML::load_file("opencl_model.yaml")
 
 if ARGV.empty?
   namespace = "babeltrace_cl"
-
 else
   namespace = ARGV[0]
 end
