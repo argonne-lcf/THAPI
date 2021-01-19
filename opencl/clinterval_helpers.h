@@ -9,9 +9,11 @@ extern "C" {
 
     extern void init_clinterval_callbacks(struct clinterval_dispatch*);
 
-    bool downstream_message_queue_empty();
-    size_t downstream_message_queue_size();
-    const bt_message * downstream_message_queue_pop();
+    extern void* init_clinterval_callbacks_state();
+
+    bool downstream_message_queue_empty(struct clinterval_message_iterator*);
+    size_t downstream_message_queue_size(struct clinterval_message_iterator*);
+    const bt_message * downstream_message_queue_pop(struct clinterval_message_iterator*);
 
 #ifdef __cplusplus
 }

@@ -31,7 +31,11 @@ typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
 
- 
+typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
+typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
+typedef std::tuple<hostname_t, process_id_t, cl_kernel> hp_kernel_t;
+typedef std::tuple<uint64_t, uint64_t> sd_t; // Start, Duration
+
 // https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 // Hash of std tuple
 namespace std{

@@ -62,6 +62,9 @@ struct clinterval_message_iterator {
 
     /* Upstream message iterator (owned by this) */
     bt_message_iterator *message_iterator;
+    /* All the variable need to handle the create of the message */
+    /* It's a C++ struct */
+    void * callbacks_state;
 };
 
 

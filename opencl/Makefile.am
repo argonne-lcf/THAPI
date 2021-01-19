@@ -124,6 +124,7 @@ clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_c
 nodist_libCLProf_la_SOURCES = \
 	clinterval_callbacks.cpp \
 	clinterval_dispatchers.c \
+	clinterval_callbacks.h  \
 	tracer_opencl.h
 	
 libCLProf_la_SOURCES = \
@@ -131,7 +132,7 @@ libCLProf_la_SOURCES = \
 	clinterval.h \
 	clinterval.c \
 	clinterval_helpers.h \
-	clinterval_callbacks.h 
+	clinterval_callbacks_state.h
 
 libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
