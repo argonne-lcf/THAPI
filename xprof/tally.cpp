@@ -1,15 +1,15 @@
-#include "cltally.h"
+#include "tally.h"
 #include <stdlib.h> // calloc
 #include <stdio.h> // printf
 #include <string.h> // strcmp
-bt_component_class_sink_consume_method_status cltally_dispatch_consume(
+bt_component_class_sink_consume_method_status tally_dispatch_consume(
         bt_self_component_sink *self_component_sink)
 {
    bt_component_class_sink_consume_method_status status =
         BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
 
     /* Retrieve our private data from the component's user data */
-    struct cltally_dispatch *dispatch = bt_self_component_get_data(
+    struct tally_dispatch *dispatch = (tally_dispatch*) bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Consume a batch of messages from the upstream message iterator */
@@ -45,10 +45,18 @@ bt_component_class_sink_consume_method_status cltally_dispatch_consume(
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
             const char * class_name = bt_event_class_get_name(event_class);
-            if (strcmp(class_name,"lttng:host") ) {
-                printf("host\n");
-            } else if ( strcmp(class_name,"lttng:device") ) {
+            // I should compare type. Not somme string.
+
+            //const hostname_t   hostname   = borrow_hostname(bt_evt);
+            //const process_id_t process_id = borrow_process_id(bt_evt);
+            //const thread_id_t  thread_id  = borrow_thread_id(bt_evt); 
+ 
+            if (strcmp(class_name,"lttng:host") == 0 ) { 
+                printf("%s, host\n",class_name);
+                //dispatch->tally_host[hpt_function_name_t(hostname,process_id, thread_id, event_name)].delta(duration, error);
+            } else if ( strcmp(class_name,"lttng:device") == 0 ) {
                 printf("device\n");
+                //dispatch->tally_device[hpt_function_name_t(hostname,process_id, thread_id, device, subdevice, function_name)].delta(duration, error);
             }
         }
 
@@ -61,13 +69,13 @@ end:
 /*
  * Initializes the sink component.
  */
-bt_component_class_initialize_method_status cltally_dispatch_initialize(
+bt_component_class_initialize_method_status tally_dispatch_initialize(
         bt_self_component_sink *self_component_sink,
         bt_self_component_sink_configuration *configuration,
         const bt_value *params, void *initialize_method_data)
 {
     /* Allocate a private data structure */
-    struct cltally_dispatch *dispatch = calloc(1, sizeof(struct cltally_dispatch));
+    struct tally_dispatch *dispatch = (tally_dispatch*) calloc(1, sizeof(struct tally_dispatch));
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
@@ -95,10 +103,10 @@ bt_component_class_initialize_method_status cltally_dispatch_initialize(
  * This is where we can create our upstream message iterator.
  */
 bt_component_class_sink_graph_is_configured_method_status
-cltally_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
+tally_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
 {
     /* Retrieve our private data from the component's user data */
-    struct cltally_dispatch *dispatch = bt_self_component_get_data(
+    struct tally_dispatch *dispatch = (tally_dispatch*) bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Borrow our unique port */
