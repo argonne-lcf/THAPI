@@ -1,6 +1,9 @@
 .DELETE_ON_ERROR:
 
-BUILT_SOURCES = xprof.c
+# I put tally_utils.h to force the generation
+# It seem to me that this is an ugly hack...
+
+BUILT_SOURCES = xprof.c tally_utils.h
 
 bin_SCRIPTS = iprof
 
@@ -8,12 +11,21 @@ iprof: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl","ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
+
+tally_utils.h: tally_utils.h.erb
+	SRC_DIR=$(srcdir) ${ERB} $(srcdir)/tally_utils.h.erb > $@
+
 # Library to be packaged
 lib_LTLIBRARIES = libXProf.la
 
 # File to compiled
+nodist_libXProf_la_SOURCES = \
+    tally_utils.h
+
+# File to compiled
 libXProf_la_SOURCES = \
 	xprof.c \
+	tally_callbacks_state.h \
 	tally.h \
 	tally.cpp 
 
@@ -32,3 +44,8 @@ tmplibdir = $(libdir)/tmp
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
+EXTRA_DIST = \
+	tally_utils.h.erb
+
+CLEANFILES = \
+	tally_utils.h

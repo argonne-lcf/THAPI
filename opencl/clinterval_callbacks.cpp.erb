@@ -4,13 +4,11 @@
 #include <unordered_map>
 #include <tuple>
 #include <climits>
-#include <queue>
 #include "clinterval.h" // For self_message_iterator_g
 #include "clinterval_callbacks.h"
 #include "clinterval_helpers.h"
 #include "clinterval_callbacks_state.h"
-
-//std::queue<const bt_message*> downstream_message_queue;
+#include "xprof_utils.h"
 
 void *init_clinterval_callbacks_state() {
     clinterval_callbacks_state *s = new clinterval_callbacks_state;
@@ -62,8 +60,8 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      bt_field_integer_unsigned_set_value(dur_field, duration);
 
      // err
-     bt_field *err_field_err = bt_field_structure_borrow_member_field_by_index(payload_field, 2);
-     bt_field_integer_unsigned_set_value(err_field_err, err);
+     bt_field *err_field = bt_field_structure_borrow_member_field_by_index(payload_field, 2);
+     bt_field_integer_unsigned_set_value(err_field, err);
 
      /* Set message */
      clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
@@ -202,7 +200,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
 
   <%# To do handle Alloc and cl_mem_host_ptr %>
   <%if dbt_event.name.include?("clEnqueue") and dbt_event.fields.key?("size") %>
-    state->memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].delta(size);
+  //   state->memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].delta(size);
   <% end %>
 
   <%#  ___                                    __         _     

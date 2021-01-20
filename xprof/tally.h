@@ -6,11 +6,6 @@
 extern "C" {
 #endif
 
-/* Sink component's private data */
-struct tally_dispatch {
-    bt_message_iterator *message_iterator;
-};
-
 bt_component_class_sink_consume_method_status tally_dispatch_consume(
                 bt_self_component_sink *self_component_sink);
 

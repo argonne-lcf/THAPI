@@ -113,13 +113,6 @@ install-exec-hook::
 clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
 
-#clprof_callbacks.cpp clprof_callbacks.h: clprof.c
-#	@if test -f $@; then \
-#	  touch $@; \
-#	else \
-#	  rm -f clprof.c; \
-#	  $(MAKE) $(AM_MAKEFLAGS) clprof.c; \
-#	fi
 
 nodist_libCLProf_la_SOURCES = \
 	clinterval_callbacks.cpp \

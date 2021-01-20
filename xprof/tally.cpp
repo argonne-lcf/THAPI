@@ -1,4 +1,8 @@
 #include "tally.h"
+#include "xprof_utils.h" //Typedef and hashtuple
+#include "tally_utils.h"
+#include "tally_callbacks_state.h"
+
 #include <stdlib.h> // calloc
 #include <stdio.h> // printf
 #include <string.h> // strcmp
@@ -45,18 +49,42 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
             const char * class_name = bt_event_class_get_name(event_class);
-            // I should compare type. Not somme string.
+            //Common context field
+            const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
 
-            //const hostname_t   hostname   = borrow_hostname(bt_evt);
-            //const process_id_t process_id = borrow_process_id(bt_evt);
-            //const thread_id_t  thread_id  = borrow_thread_id(bt_evt); 
- 
-            if (strcmp(class_name,"lttng:host") == 0 ) { 
-                printf("%s, host\n",class_name);
-                //dispatch->tally_host[hpt_function_name_t(hostname,process_id, thread_id, event_name)].delta(duration, error);
+            const bt_field *hostname_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
+            const hostname_t hostname = std::string{bt_field_string_get_value(hostname_field)};
+
+            const bt_field *process_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
+            const process_id_t process_id = bt_field_integer_signed_get_value(process_id_field);
+
+            const bt_field *thread_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 2);
+            const thread_id_t thread_id = bt_field_integer_unsigned_get_value(thread_id_field);
+
+            //Payload
+            const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
+
+            const bt_field *name_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
+            const std::string name = std::string{bt_field_string_get_value(name_field)};
+
+            const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+            const long dur = bt_field_integer_unsigned_get_value(dur_field);
+
+            // I should compare type. Not somme string.
+            if (strcmp(class_name,"lttng:host") == 0 ) {
+                const bt_field *err_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+                const bool err = bt_field_bool_get_value(err_field);
+
+                //printf("%s %s, host\n",class_name, hostname.c_str() );
+                dispatch->host[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(dur, err);
             } else if ( strcmp(class_name,"lttng:device") == 0 ) {
-                printf("device\n");
-                //dispatch->tally_device[hpt_function_name_t(hostname,process_id, thread_id, device, subdevice, function_name)].delta(duration, error);
+               const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+               const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);  
+
+               const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+               const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
+
+               dispatch->device[hpt_device_function_name_t(hostname,process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
             }
         }
 
@@ -75,7 +103,7 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
         const bt_value *params, void *initialize_method_data)
 {
     /* Allocate a private data structure */
-    struct tally_dispatch *dispatch = (tally_dispatch*) calloc(1, sizeof(struct tally_dispatch));
+    struct tally_dispatch *dispatch = new tally_dispatch;  //(tally_dispatch*) calloc(1, sizeof(struct tally_dispatch));
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
@@ -94,6 +122,18 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
         "in", NULL, NULL);
 
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
+}
+
+/*
+ * Finalizes the sink component.
+ */
+void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
+{
+    struct tally_dispatch  *dispatch = (tally_dispatch*) bt_self_component_get_data(
+        bt_self_component_sink_as_self_component(self_component_sink));
+
+    print_compact_api_call(dispatch->host);
+    print_compact_device_id_result(dispatch->device);
 }
 
 /*
