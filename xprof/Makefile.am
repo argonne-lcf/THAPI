@@ -25,9 +25,12 @@ nodist_libXProf_la_SOURCES = \
 # File to compiled
 libXProf_la_SOURCES = \
 	xprof.c \
-	tally_callbacks_state.h \
+	tally_state.h \
 	tally.h \
-	tally.cpp 
+	tally.cpp \
+	timeline_state.h \
+	timeline.h \
+	timeline.cpp 
 
 # Compiler flags
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
