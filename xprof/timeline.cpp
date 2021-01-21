@@ -47,8 +47,8 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
         const bt_message *message = messages[i];
         if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
             const bt_event *event = bt_message_event_borrow_event_const(message);
-            //const bt_event_class *event_class = bt_event_borrow_class_const(event);
-            //const char * class_name = bt_event_class_get_name(event_class);
+            const bt_event_class *event_class = bt_event_borrow_class_const(event);
+            const char * class_name = bt_event_class_get_name(event_class);
 
             //Common context field
             const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
@@ -74,13 +74,26 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
             const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
             const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
-            std::cout << "{\"pid\": " << process_id 
-                      << ",\"tid\":" <<  thread_id 
-                      << std::fixed << std::setprecision(2) << ",\"ts\":" << ts*1.E-3 
-                      << ",\"dur\":" << dur*1.E-3
-                      << ",\"name\":" << "\"" << name << "\"" 
-                      << ",\"ph\":\"X\""
-                      << "}," << std::endl;
+            if (strcmp(class_name,"lttng:host") == 0 ) {
+                std::cout << "{\"pid\": " <<  "\"" + hostname << "-" << process_id  <<   "\""
+                          << ",\"tid\":" <<  thread_id 
+                          << std::fixed << std::setprecision(2) << ",\"ts\":" << ts*1.E-3 
+                          << ",\"dur\":" << dur*1.E-3
+                          << ",\"name\":" << "\"" << name << "\"" 
+                          << ",\"ph\":\"X\""
+                          << "}," << std::endl;
+            } else if ( strcmp(class_name,"lttng:device") == 0 ) {
+               const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+               const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+ 
+               std::cout << "{\"pid\": " <<  "\"" + hostname << "-" << process_id  <<   "\""
+                         << ",\"tid\":" <<  "\"GPU-"<< did << "\""
+                         << std::fixed << std::setprecision(2) << ",\"ts\":" << ts*1.E-3
+                         << ",\"dur\":" << dur*1.E-3
+                         << ",\"name\":" << "\"" << name << "\""
+                         << ",\"ph\":\"X\""
+                         << "}," << std::endl;
+            }
        }    
     bt_message_put_ref(message);
    }

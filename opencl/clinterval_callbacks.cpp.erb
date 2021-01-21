@@ -215,7 +215,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
       <% end %>
     <% end %>
   <% end %>
-
+  
   <%#                                                       
        |\/|  _  ._ _   _  ._      _.  _  _  _   _  _  _   _ 
        |  | (/_ | | | (_) | \/   (_| (_ (_ (/_ _> _> (/_ _> 
@@ -353,7 +353,9 @@ static void clinterval_<%= dbt_event.name %>_callback(
         const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
        
         const hp_device_t hp_device{hostname, process_id, device};
-        const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        const uint64_t start_event = ts + (start - queued);
+
         // Check for error 
         if (delta != 0)
              create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device, subdevice, function_name.c_str(),start_event,delta);
@@ -365,8 +367,9 @@ static void clinterval_<%= dbt_event.name %>_callback(
         const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
 
         const hp_device_t hp_device{hostname, process_id, device};
-        const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
-        
+        //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        const uint64_t start_event = ts + (start - queued);
+
         state->event_result_to_start_and_delta[hp_event] = sd_t(start_event,delta);
         state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
     }
