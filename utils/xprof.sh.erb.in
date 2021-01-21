@@ -20,6 +20,7 @@ display_help() {
     echo "  -h, --help         Show this screen"
     echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace        Display the trace"
+    echo "  -l, --timeline      Display the timeline (as JSON format)"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
@@ -145,7 +146,11 @@ summary() {
         fi
     done
 
-    if [ -n "$trace" ]; then
+    if [[ "$timeline" ]]; then
+        babeltrace2 --plugin-path=$libdir --component=filter.clprof.interval --component=sink.xprof.timeline ${lttng_last_session}
+    fi
+
+    if [[ "$trace" ]] ; then
         # Todo filter direcly in the babeltrace
 <% if languages.include?("opencl") %>
         $bindir/babeltrace_opencl $lttng_last_session | grep lttng_ust_opencl
@@ -154,9 +159,10 @@ summary() {
         $bindir/babeltrace_ze $lttng_last_session | grep lttng_ust_ze
 <% end %>
     fi
-
+    
+    if [[ -z "$timeline" ]] ; then
 <% if languages.include?("opencl") %>
-    ocl_output=$(babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lttng_last_session})
+    ocl_output=$(babeltrace2 --plugin-path=$libdir --component=filter.clprof.interval --component=sink.xprof.tally  --params="display=$display" ${lttng_last_session})
     if [ -n "$ocl_output" ]; then
         echo "== OpenCL == "
         echo "$ocl_output"
@@ -167,6 +173,8 @@ summary() {
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"
+    fi
+
     fi
 <% end %>
 }
@@ -188,6 +196,7 @@ while (( "$#" )); do
         -d | --debug)    shift; debug=true ;;
         -a | --asm)      shift; asm=true ;;
         -t | --trace)    shift; trace=true ;;
+        -l | --timeline) shift; timeline=true ;;
         --)              shift; break ;;
         *)               break  ;;
     esac

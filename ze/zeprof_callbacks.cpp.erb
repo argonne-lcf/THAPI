@@ -46,6 +46,52 @@ std::unordered_map<hp_command_list_t, dsd_t> command_list_to_device;
 
 std::unordered_map<hp_device_t, timerResolution_kernelTimestampValidBits_t> device_to_timerResolution_kernelTimestampValidBits;
 
+
+//std::unordered_map<hpt_device_function_name_t, StatTime> device_id_result;
+//std::unordered_map<hpt_function_name_t, StatTime> api_call;
+//std::unordered_map<hpt_function_name_t, StatByte> memory_trafic;
+std::unordered_map<hp_device_t, std::string> device_to_name;
+std::unordered_map<hp_device_t, thapi_device_id> device_to_rootdevice;
+
+std::unordered_map<hpt_t, thapi_device_id> start_device;
+std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
+
+std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
+
+
+<%#                            _
+ |\/|  _   _  _  _.  _   _    /  ._ _   _. _|_ o  _  ._
+ |  | (/_ _> _> (_| (_| (/_   \_ | (/_ (_|  |_ | (_) | |
+                     _|
+%>
+/*
+Utils function
+*/
+static
+const hostname_t borrow_hostname(const bt_event *event){
+    const bt_stream *stream = bt_event_borrow_stream_const(event);
+    const bt_trace *trace = bt_stream_borrow_trace_const(stream);
+    const bt_value *host_name_str = bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
+    return  bt_value_string_get(host_name_str);
+}
+
+static
+process_id_t borrow_process_id(const bt_event *event){
+    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
+    return bt_field_integer_signed_get_value(field);
+}
+
+static
+thread_id_t borrow_thread_id(const bt_event *event){
+    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
+    return bt_field_integer_unsigned_get_value(field);
+}
+
+
+
+
 <%# Rely on global variable device_to_timerResolution_kernelTimestampValidBits %>
 inline uint64_t born_timing_to_ns(hp_device_t hp_device, uint64_t start, uint64_t end) {
     const auto [timerResolution,kernelTimestampValidBits] =  device_to_timerResolution_kernelTimestampValidBits[hp_device];
@@ -71,6 +117,7 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
     const hostname_t   hostname   = borrow_hostname(bt_evt);
     const process_id_t process_id = borrow_process_id(bt_evt);
     const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+    printf("%s %ld %ld\n", hostname.c_str(), process_id, thread_id);
   <%end %>
    
   <%#        _ ___
@@ -78,15 +125,15 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
        /--\ |  _|_   (_ (_| | | _>
   %>
   <%if dbt_event.namespace == :lttng_ust_ze or  dbt_event.namespace == :lttng_ust_zet %>
-  int64_t ns_from_origin; 
-  bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-     <%if dbt_event.suffix == :start %>
-  api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].start(ns_from_origin);
+  //int64_t ns_from_origin; 
+  //bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+  //   <%if dbt_event.suffix == :start %>
+  //api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].start(ns_from_origin);
      <%elsif dbt_event.suffix == :stop %>
-  api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].stop(ns_from_origin);
+  //api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].stop(ns_from_origin);
         <% if dbt_event.include?('zeResult') %>
-    if (zeResult != 0)
-        api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].set_error();
+  //if (zeResult != 0)
+  //      api_call[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].set_error();
         <% end %>
      <%end%>
   <%end%>  
@@ -97,7 +144,7 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
                             /
   %>
   <% if (dbt_event.name.include?("Alloc") or dbt_event.name.include?("Memory")) and  dbt_event.include? ("size_t size") %>
-    memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].delta(size);
+  //  memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].delta(size);
   <% end %>
 
   <%#
@@ -187,10 +234,10 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
    if (!event_to_function_name.count(hp_event)){
       event_to_function_name[hp_event] = t_function_name_t(thread_id, function_name);
    } else {
-      const uint64_t delta = event_result_to_delta[hp_event];
-      const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
-      if (delta != 0)
-             device_id_result[hpt_device_function_name_t(hostname,process_id,thread_id, device, subdevice, function_name)].delta(delta);
+      //const uint64_t delta = event_result_to_delta[hp_event];
+      //const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+      //if (delta != 0)
+      //       device_id_result[hpt_device_function_name_t(hostname,process_id,thread_id, device, subdevice, function_name)].delta(delta);
       event_to_function_name.erase(hp_event);
    }
   <% elsif dbt_event.lltng == "lttng_ust_ze_profiling:event_profiling_results" %>
@@ -199,12 +246,12 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
    const hp_event_t hp_event{hostname,process_id, hEvent};
 
    if (event_to_function_name.count(hp_event)) {
-     const auto [thread_id,function_name] =  event_to_function_name[hp_event];
-     const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
-     const uint64_t delta = born_timing_to_ns(hp_device_t(hostname,process_id, device),contextStart,contextEnd);
-     if (delta != 0)
-        device_id_result[hpt_device_function_name_t(hostname,process_id,thread_id, device, subdevice, function_name)].delta(delta);
- 
+     //const auto [thread_id,function_name] =  event_to_function_name[hp_event];
+     //const auto [device,subdevice] = function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+     //const uint64_t delta = born_timing_to_ns(hp_device_t(hostname,process_id, device),contextStart,contextEnd);
+     //if (delta != 0)
+     //   device_id_result[hpt_device_function_name_t(hostname,process_id,thread_id, device, subdevice, function_name)].delta(delta);
+      
      event_to_function_name.erase(hp_event);
    } else {
      <%# Not sure about this one. Need to see when we have native callbacks %>
@@ -242,14 +289,4 @@ void init_callbacks(struct ze_dispatch   *ze_dispatch) {
 %>
 
 void finalize_callbacks() {
-   std::string display {bt_value_string_get(display_mode)};
-   if (display == "compact" ) {
-  <% ['api_call','device_id_result','memory_trafic'].each do |a| %>
-    print_compact_<%= a %>();
-  <% end %>
-   } else if (display == "extended" ) {
-  <% ['api_call','device_id_result','memory_trafic'].each do |a| %>
-     print_extented_<%= a %>();
-  <% end %>
-   }
 }
