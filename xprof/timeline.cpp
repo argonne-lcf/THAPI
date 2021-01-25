@@ -1,10 +1,9 @@
 #include "timeline.h"
-#include "timeline_state.h"
-#include "xprof_utils.h" // typedef
+#include "timeline.hpp"
+#include "xprof_utils.hpp" // typedef
 
 #include <iomanip> // set precision
 #include <iostream> // stdcout
-#include <stdio.h> // printf
 #include <string.h> // strcmp
 bt_component_class_sink_consume_method_status timeline_dispatch_consume(
         bt_self_component_sink *self_component_sink)

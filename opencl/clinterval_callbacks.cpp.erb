@@ -4,11 +4,23 @@
 #include <unordered_map>
 #include <tuple>
 #include <climits>
-#include "clinterval.h" // For self_message_iterator_g
-#include "clinterval_callbacks.h"
-#include "clinterval_helpers.h"
-#include "clinterval_callbacks_state.h"
-#include "xprof_utils.h"
+#include "clinterval.h"
+#include "clinterval_callbacks.hpp"
+#include "xprof_utils.hpp"
+#include <babeltrace2/babeltrace.h>
+
+#define CL_TARGET_OPENCL_VERSION 300
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_2_APIS
+#include <CL/opencl.h>
+#include <CL/cl_gl_ext.h>
+#include <CL/cl_egl.h>
+#include <CL/cl_ext_intel.h>
+#include "tracer_opencl.h"
 
 void *init_clinterval_callbacks_state() {
     clinterval_callbacks_state *s = new clinterval_callbacks_state;

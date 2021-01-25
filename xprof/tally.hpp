@@ -1,7 +1,7 @@
 #pragma once
 
-#include "xprof_utils.h"
-#include "tally_utils.h"
+#include "xprof_utils.hpp"
+#include "tally_utils.hpp"
 
 /* Sink component's private data */
 struct tally_dispatch {

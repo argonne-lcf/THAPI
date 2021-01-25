@@ -1,11 +1,12 @@
-#ifndef CLINTERVAL_CALLBACKS_STATE_H
-#define CLINTERVAL_CALLBACKS_STATE_H
+#pragma once 
 
-#include "xprof_utils.h"
+#include "xprof_utils.hpp"
 #include <queue>
 #include <babeltrace2/babeltrace.h>
 #include <unordered_map>
 
+#define CL_TARGET_OPENCL_VERSION 300
+#include <CL/opencl.h>
 
 typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_t;
 typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
@@ -30,4 +31,3 @@ struct clinterval_callbacks_state {
     std::queue<const bt_message*> downstream_message_queue;
 };
 
-#endif

@@ -12,23 +12,23 @@ iprof: $(top_builddir)/utils/xprof.sh.erb
 	chmod a+x $@
 
 
-tally_utils.h: tally_utils.h.erb
-	SRC_DIR=$(srcdir) ${ERB} $(srcdir)/tally_utils.h.erb > $@
+tally_utils.hpp: tally_utils.hpp.erb
+	SRC_DIR=$(srcdir) ${ERB} $(srcdir)/tally_utils.hpp.erb > $@
 
 # Library to be packaged
 lib_LTLIBRARIES = libXProf.la
 
 # File to compiled
 nodist_libXProf_la_SOURCES = \
-    tally_utils.h
+    tally_utils.hpp
 
 # File to compiled
 libXProf_la_SOURCES = \
 	xprof.c \
-	tally_state.h \
+	tally.hpp \
 	tally.h \
 	tally.cpp \
-	timeline_state.h \
+	timeline.hpp \
 	timeline.h \
 	timeline.cpp 
 
@@ -48,7 +48,7 @@ install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 EXTRA_DIST = \
-	tally_utils.h.erb
+	tally_utils.hpp.erb
 
 CLEANFILES = \
-	tally_utils.h
+	tally_utils.hpp

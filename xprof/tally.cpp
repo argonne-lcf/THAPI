@@ -1,7 +1,7 @@
 #include "tally.h"
-#include "xprof_utils.h" //Typedef and hashtuple
-#include "tally_utils.h"
-#include "tally_state.h"
+#include "tally.hpp"
+#include "xprof_utils.hpp" //Typedef and hashtuple
+#include "tally_utils.hpp"
 
 #include <string.h> // strcmp
 bt_component_class_sink_consume_method_status tally_dispatch_consume(

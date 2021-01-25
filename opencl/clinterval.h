@@ -1,15 +1,13 @@
-#ifndef _CLINTERVAL_H
-#define _CLINTERVAL_H
+#pragma once
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <string.h>
-#include <stdbool.h>
 #include <babeltrace2/babeltrace.h>
 #include "uthash.h"
 #include "utarray.h"
+#include <stdbool.h> 
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,6 +66,20 @@ struct clinterval_message_iterator {
 };
 
 
+
+// To talk to the callbacks
+extern void init_clinterval_callbacks(struct clinterval_dispatch*);
+extern void* init_clinterval_callbacks_state();
+
+bool downstream_message_queue_empty(struct clinterval_message_iterator*);
+size_t downstream_message_queue_size(struct clinterval_message_iterator*);
+const bt_message * downstream_message_queue_pop(struct clinterval_message_iterator*);
+
+// Global state for the downstream message
+extern struct clinterval_message_iterator *clinterval_iter_g;
+extern bt_self_message_iterator *self_message_iterator_g;
+
+
 extern
 bt_component_class_initialize_method_status clinterval_dispatch_initialize(
         bt_self_component_filter *self_component_filter,
@@ -105,12 +117,7 @@ extern
 void clinterval_dispatch_message_iterator_finalize(
         bt_self_message_iterator *self_message_iterator);
 
-// Global state for the downstream message
-extern struct clinterval_message_iterator *clinterval_iter_g;
-extern bt_self_message_iterator *self_message_iterator_g;
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
