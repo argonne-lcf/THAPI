@@ -123,8 +123,9 @@ libCLProf_la_SOURCES = \
 	clprof.c \
 	clinterval.h \
 	clinterval.c \
-	clinterval_callbacks.hpp
-	
+	clinterval_callbacks.hpp \
+	xprof_utils.cpp
+
 libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)

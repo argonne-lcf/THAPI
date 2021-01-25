@@ -76,3 +76,17 @@ namespace std{
 
     };
 }
+
+
+const hostname_t borrow_hostname(const bt_event *event);
+process_id_t borrow_process_id(const bt_event *event);
+thread_id_t borrow_thread_id(const bt_event *event);
+
+bt_message* create_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                const uint64_t ts, const uint64_t duration, const bool err, bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream);
+
+
+bt_message* create_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                               const char* name, const uint64_t ts,
+                                                   const uint64_t duration, bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream);
+

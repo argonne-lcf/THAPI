@@ -27,79 +27,15 @@ void *init_clinterval_callbacks_state() {
     return (void*) s;
 }
 
-<%#                            _                         
- |\/|  _   _  _  _.  _   _    /  ._ _   _. _|_ o  _  ._  
- |  | (/_ _> _> (_| (_| (/_   \_ | (/_ (_|  |_ | (_) | | 
-                     _|                                  
-%>
-/*
-Utils function
-*/
-static
-const hostname_t borrow_hostname(const bt_event *event){
-    const bt_stream *stream = bt_event_borrow_stream_const(event);
-    const bt_trace *trace = bt_stream_borrow_trace_const(stream);
-    const bt_value *host_name_str = bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
-    return  bt_value_string_get(host_name_str);
-}
-
-static
-process_id_t borrow_process_id(const bt_event *event){
-    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
-    return bt_field_integer_signed_get_value(field);
-}
-
-static
-thread_id_t borrow_thread_id(const bt_event *event){
-    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
-    return bt_field_integer_unsigned_get_value(field);
-}
-
 static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name, 
                                      const uint64_t ts, const uint64_t duration, const bool err) {
 
      /* Message creation */
-     bt_event_class *event_class = clinterval_iter_g->dispatch->host_event_class;
-     bt_message *message = bt_message_event_create(
-        self_message_iterator_g, event_class, clinterval_iter_g->dispatch->stream);
+     bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err, 
+                            clinterval_iter_g->dispatch->host_event_class,
+                            self_message_iterator_g,
+                            clinterval_iter_g->dispatch->stream);
 
-     /* event */
-     bt_event *downstream_event = bt_message_event_borrow_event(message);
-
-     /* Common context */
-     bt_field *context_field = bt_event_borrow_common_context_field(downstream_event);
-
-     // Hostname
-     bt_field *hostname_msg_field = bt_field_structure_borrow_member_field_by_index(context_field,0);
-     bt_field_string_set_value(hostname_msg_field, hostname);
-     // pid
-     bt_field *vpid_field = bt_field_structure_borrow_member_field_by_index(context_field,1);
-     bt_field_integer_signed_set_value(vpid_field, process_id);
-     // vid
-     bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
-     bt_field_integer_signed_set_value(vtid_field, thread_id);
-     // ts
-     bt_field *ts_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
-     bt_field_integer_signed_set_value(ts_field, ts);
-
-     /* Payload */
-     bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
-
-     // name 
-     bt_field *name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 0);
-     bt_field_string_set_value(name_field, name);
-
-     // dur
-     bt_field *dur_field = bt_field_structure_borrow_member_field_by_index(payload_field, 1);
-     bt_field_integer_unsigned_set_value(dur_field, duration);
-
-     // err
-     bt_field *err_field = bt_field_structure_borrow_member_field_by_index(payload_field, 2);
-     bt_field_integer_unsigned_set_value(err_field, err);
-
-     /* Set message */
      clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
 }
@@ -108,48 +44,12 @@ static void create_and_enqueue_device_message(const char* hostname, const proces
                                        const char* name, const uint64_t ts, const uint64_t duration) {
     
      /* Message creation */
-     bt_event_class *event_class = clinterval_iter_g->dispatch->device_event_class;
-     bt_message *message = bt_message_event_create(
-       self_message_iterator_g, event_class, clinterval_iter_g->dispatch->stream);
-
-     /* event */
-     bt_event *downstream_event = bt_message_event_borrow_event(message);
-
-     /* Common context */
-     bt_field *context_field = bt_event_borrow_common_context_field(downstream_event);
-
-     // Hostname
-     bt_field *hostname_msg_field = bt_field_structure_borrow_member_field_by_index(context_field,0);
-     bt_field_string_set_value(hostname_msg_field, hostname);
-     // pid
-     bt_field *vpid_field = bt_field_structure_borrow_member_field_by_index(context_field,1);
-     bt_field_integer_signed_set_value(vpid_field, process_id);
-     // vid
-     bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
-     bt_field_integer_signed_set_value(vtid_field, thread_id);
-     // ts
-     bt_field *ts_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
-     bt_field_integer_signed_set_value(ts_field, ts);
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration,
+                            clinterval_iter_g->dispatch->device_event_class,
+                            self_message_iterator_g,
+                            clinterval_iter_g->dispatch->stream);
  
-     /* Payload */
-     bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
-
-     // name
-     bt_field *name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 0);
-     bt_field_string_set_value(name_field, name);
-
-     // dur 
-     bt_field *dur_field = bt_field_structure_borrow_member_field_by_index(payload_field, 1);
-     bt_field_integer_unsigned_set_value(dur_field, duration);
-
-     // did
-     bt_field *device_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
-     bt_field_integer_unsigned_set_value(device_id_field, device_id);
-
-     // sdid
-     bt_field *subdevice_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,3);
-     bt_field_integer_unsigned_set_value(subdevice_id_field, subdevice_id);
-
+ 
      /* Set message */
      clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
