@@ -1,6 +1,6 @@
 #include "xprof_utils.hpp"
 
-const hostname_t borrow_hostname(const bt_event *event){
+const char* borrow_hostname(const bt_event *event){
     const bt_stream *stream = bt_event_borrow_stream_const(event);
     const bt_trace *trace = bt_stream_borrow_trace_const(stream);
     const bt_value *host_name_str = bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");

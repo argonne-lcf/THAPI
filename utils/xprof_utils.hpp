@@ -77,7 +77,7 @@ namespace std{
     };
 }
 
-const hostname_t borrow_hostname(const bt_event*);
+const char* borrow_hostname(const bt_event*);
 process_id_t borrow_process_id(const bt_event*);
 thread_id_t borrow_thread_id(const bt_event*);
 

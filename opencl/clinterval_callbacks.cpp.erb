@@ -101,7 +101,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
                              /                  
   %>
   <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
-    const hostname_t   hostname   = borrow_hostname(bt_evt);
+    const hostname_t   hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
@@ -145,7 +145,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
                                      |                       
   %>
   <%if dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_timer"  %>
-    const hostname_t   hostname   = borrow_hostname(bt_evt);
+      const hostname_t  hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
 
@@ -192,7 +192,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
     state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(root_device, device) ; 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;       
-    const hostname_t hostname = borrow_hostname(bt_evt);
+    const hostname_t hostname{ borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     state->device_to_name[hp_device_t(hostname,process_id,(thapi_device_id) device)] = hostname_t{name};
   <% end %>
@@ -206,7 +206,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
   %>
   <% if dbt_event.name_unsanitized == "lttng_ust_opencl_arguments:kernel_info" %>
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;  
-    const hostname_t hostname = borrow_hostname(bt_evt);
+    const hostname_t hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     state->kernel_to_name[hp_kernel_t(hostname,process_id,kernel)] = hostname_t(function_name);
   <% elsif dbt_event.name.end_with?(START) and dbt_event.fields['command_queue'] %>
@@ -229,7 +229,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
 
   <% if dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling" %>
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;  
-    const hostname_t hostname = borrow_hostname(bt_evt);
+    const hostname_t hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     const thread_id_t thread_id = borrow_thread_id(bt_evt);
     const hp_event_t hp_event{hostname,process_id, event};
@@ -247,7 +247,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
     }
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling_results" %>
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state; 
-    const hostname_t hostname = borrow_hostname(bt_evt);
+    const hostname_t hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     const hp_event_t hp_event{hostname,process_id, event};
     
