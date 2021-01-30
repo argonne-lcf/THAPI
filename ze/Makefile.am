@@ -298,7 +298,9 @@ ZE_BINDINGS = \
 	ze_refinements.rb \
 	ze_bindings.rb
 
-data_DATA = $(ZE_BINDINGS)
+data_DATA = \
+	$(ZE_BINDINGS) \
+	ze_bindings_base.rb
 
 EXTRA_DIST += \
 	gen_ze_library.rb \
