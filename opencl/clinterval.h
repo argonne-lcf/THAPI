@@ -1,9 +1,5 @@
 #pragma once
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include <babeltrace2/babeltrace.h>
 #include "uthash.h"
 #include "utarray.h"
@@ -21,7 +17,7 @@ struct clinterval_dispatch;
 struct clinterval_callbacks;
 
 // Implement by `clinterval_dispatchers.c`
-extern void init_clinterval_dispatch(struct clinterval_dispatch *dispatch);
+extern void init_clinterval_dispatcher(struct clinterval_dispatch *dispatch);
 
 // `clinterval_dispatcher_t` is a alias to a function we return void and take those list as arguments
 // `Dispacher` are a thin wrapper arround `callbacks`. They unpacks llng-parameters and give back ocl object

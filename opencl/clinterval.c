@@ -1,10 +1,5 @@
 #include "clinterval.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <string.h>
 #include <stdbool.h>
 #include <babeltrace2/babeltrace.h>
 #include "uthash.h"
@@ -214,7 +209,7 @@ bt_component_class_initialize_method_status clinterval_dispatch_initialize(
 
     /* Will call clinterval_register_dispatcher */
     /* For each dispacther automaticaly generated */
-    init_clinterval_dispatch(dispatch);
+    init_clinterval_dispatcher(dispatch);
 
     /*
     clinterval_dispatch ->  clinterval_callbacks
