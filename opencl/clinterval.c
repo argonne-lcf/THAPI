@@ -212,8 +212,17 @@ bt_component_class_initialize_method_status clinterval_dispatch_initialize(
     bt_stream_class_put_ref(stream_class);
     bt_trace_class_put_ref(trace_class);
 
-    /* Initizale call backs and all */
+    /* Will call clinterval_register_dispatcher */
+    /* For each dispacther automaticaly generated */
     init_clinterval_dispatch(dispatch);
+
+    /*
+    clinterval_dispatch ->  clinterval_callbacks
+    clinterval_callbacks -> {clinterval_dispatcher, UT_array callbacks}
+    */
+
+    /* Will call `clinterval_register_callback` for each callback functions implemented in `clinterval_callbacks` */
+    /* Hence will populate clinterval_dispatch ->  clinterval_eventcallbacks -> UT_array callbacks */
     init_clinterval_callbacks(dispatch);
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
