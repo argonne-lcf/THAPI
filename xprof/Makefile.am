@@ -3,7 +3,7 @@
 # I put tally_utils.h to force the generation
 # It seem to me that this is an ugly hack...
 
-BUILT_SOURCES = xprof.c tally_utils.h
+BUILT_SOURCES = xprof.c tally_utils.hpp
 
 bin_SCRIPTS = iprof
 
