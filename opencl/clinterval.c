@@ -26,24 +26,24 @@ struct clinterval_event_callbacks * opencl_create_event_callbacks(const char *na
     return callbacks;
 }
 
-void clinterval_register_dispatcher(struct clinterval_dispatch *opencl_dispatch, const char *name, clinterval_dispatcher_t *dispatcher) {
+// `clinterval_dispatch -> clinterval_eventcallbacks -> clinterval_dispatcher`
+void clinterval_register_dispatcher(struct clinterval_dispatch *dispatch, const char *name, clinterval_dispatcher_t *dispatcher) {
     struct clinterval_event_callbacks *callbacks = NULL;
-    HASH_FIND_STR(opencl_dispatch->event_callbacks, name, callbacks);
+    HASH_FIND_STR(dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = opencl_create_event_callbacks(name);
-        HASH_ADD_KEYPTR(hh, opencl_dispatch->event_callbacks, callbacks->name, strlen(callbacks->name), callbacks);
+        HASH_ADD_KEYPTR(hh, dispatch->event_callbacks, callbacks->name, strlen(callbacks->name), callbacks);
     }
     callbacks->dispatcher = dispatcher;
 }
 
-
-
-void clinterval_register_callback(struct clinterval_dispatch *clinterval_dispatch, const char *name, void *func) {
+// `clinterval_dispatch -> clinterval_eventcallbacks`
+void clinterval_register_callback(struct clinterval_dispatch *dispatch, const char *name, void *func) {
     struct clinterval_event_callbacks *callbacks;
-    HASH_FIND_STR(clinterval_dispatch->event_callbacks, name, callbacks);
+    HASH_FIND_STR(dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = opencl_create_event_callbacks(name);
-        HASH_ADD_STR(clinterval_dispatch->event_callbacks, name, callbacks);
+        HASH_ADD_STR(dispatch->event_callbacks, name, callbacks);
     }
     if (func){
         utarray_push_back(callbacks->callbacks, &func);
@@ -253,7 +253,7 @@ clinterval_dispatch_message_iterator_initialize(
 {
 
     /* Allocate a private data structure */
-    struct clinterval_message_iterator *clinterval_dispatch_iter =
+    struct clinterval_message_iterator *dispatch_iter =
         malloc(sizeof(struct clinterval_message_iterator));
 
     /* Retrieve the component's private data from its user data */
@@ -261,17 +261,17 @@ clinterval_dispatch_message_iterator_initialize(
         bt_self_message_iterator_borrow_component(self_message_iterator));
 
     /* Keep a link to the component's private data */
-    clinterval_dispatch_iter->dispatch = clinterval_dispatch;
+    dispatch_iter->dispatch = clinterval_dispatch;
 
     /* Initliaze the value */
-    clinterval_dispatch_iter->callbacks_state = init_clinterval_callbacks_state();
+    dispatch_iter->callbacks_state = init_clinterval_callbacks_state();
 
     /* Create the uptream message iterator */
     bt_message_iterator_create_from_message_iterator(self_message_iterator,
-        clinterval_dispatch->in_port, &clinterval_dispatch_iter->message_iterator);
+        clinterval_dispatch->in_port, &dispatch_iter->message_iterator);
 
     /* Set the message iterator's user data to our private data structure */
-    bt_self_message_iterator_set_data(self_message_iterator, clinterval_dispatch_iter);
+    bt_self_message_iterator_set_data(self_message_iterator, dispatch_iter);
     return BT_MESSAGE_ITERATOR_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
@@ -282,11 +282,11 @@ void clinterval_dispatch_message_iterator_finalize(
         bt_self_message_iterator *self_message_iterator)
 {
     /* Retrieve our private data from the message iterator's user data */
-    struct clinterval_dispatch_message_iterator *clinterval_dispatch_iter =
+    struct clinterval_dispatch_message_iterator *dispatch_iter =
         bt_self_message_iterator_get_data(self_message_iterator);
 
     /* Free the allocated structure */
-    free(clinterval_dispatch_iter);
+    free(dispatch_iter);
 }
 
 /*
@@ -304,7 +304,7 @@ bt_message_iterator_class_next_method_status clinterval_dispatch_message_iterato
 {
 
    /* Retrieve our private data from the message iterator's user data */
-    struct clinterval_message_iterator *clinterval_dispatch_iter =
+    struct clinterval_message_iterator *dispatch_iter =
         bt_self_message_iterator_get_data(self_message_iterator);
 
     /* Consume a batch of messages from the upstream message iterator */
@@ -313,20 +313,20 @@ bt_message_iterator_class_next_method_status clinterval_dispatch_message_iterato
     bt_message_iterator_next_status next_status;
 
     /* Set global variable */
-    clinterval_iter_g = clinterval_dispatch_iter;
+    clinterval_iter_g = dispatch_iter;
     self_message_iterator_g = self_message_iterator;
 
 consume_upstream_messages:
 
-    next_status = bt_message_iterator_next(clinterval_dispatch_iter->message_iterator,
+    next_status = bt_message_iterator_next(dispatch_iter->message_iterator,
         &upstream_messages, &upstream_message_count);
 
     /* Initialize the return status to a success */
     bt_message_iterator_class_next_method_status status =
         BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_OK;
      
-    if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && downstream_message_queue_empty(clinterval_dispatch_iter) ) {
-       bt_message_iterator_put_ref(clinterval_dispatch_iter->message_iterator);
+    if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && downstream_message_queue_empty(dispatch_iter) ) {
+       bt_message_iterator_put_ref(dispatch_iter->message_iterator);
        status = BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_END;
        goto end;
     }
@@ -357,15 +357,15 @@ consume_upstream_messages:
             struct clinterval_callbacks *callbacks = NULL;
             const char * class_name = bt_event_class_get_name(event_class);
             
-            HASH_FIND_STR(clinterval_dispatch_iter->dispatch->callbacks, class_name, callbacks);
+            HASH_FIND_STR(dispatch_iter->dispatch->callbacks, class_name, callbacks);
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
                 callbacks = (struct clinterval_callbacks *)calloc(1, sizeof(struct clinterval_callbacks) + class_name_sz + 1);
                 callbacks->name = (const char *)callbacks + class_name_sz;
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
-                HASH_ADD_KEYPTR(hh, clinterval_dispatch_iter->dispatch->callbacks, class_name, class_name_sz, callbacks);
+                HASH_ADD_KEYPTR(hh, dispatch_iter->dispatch->callbacks, class_name, class_name_sz, callbacks);
                 struct clinterval_event_callbacks *event_callbacks = NULL;
-                HASH_FIND_STR(clinterval_dispatch_iter->dispatch->event_callbacks, class_name, event_callbacks);
+                HASH_FIND_STR(dispatch_iter->dispatch->event_callbacks, class_name, event_callbacks);
                 if (event_callbacks) {
                     callbacks->dispatcher = event_callbacks->dispatcher;
                     callbacks->callbacks = event_callbacks->callbacks;
@@ -373,13 +373,13 @@ consume_upstream_messages:
             }
             if (callbacks->dispatcher) {
                 // Will add message to `downstream_message_queue` global variable.
-                callbacks->dispatcher(clinterval_dispatch_iter->dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(upstream_message));
+                callbacks->dispatcher(dispatch_iter->dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(upstream_message));
             }
         }
         /* Discard upstream message: put its reference */
        bt_message_put_ref(upstream_message);
     }
-    if ( downstream_message_queue_empty(clinterval_dispatch_iter) ) {
+    if ( downstream_message_queue_empty(dispatch_iter) ) {
         /*
          * We discarded all the upstream messages: get a new batch of
          * messages, because this method _cannot_ return
@@ -392,10 +392,10 @@ consume_upstream_messages:
    /*
     * Pop the maximun number of message allowed to be sended downstream
     */
-    const uint64_t N = downstream_message_queue_size(clinterval_dispatch_iter);
+    const uint64_t N = downstream_message_queue_size(dispatch_iter);
     const uint64_t N_message_to_send = capacity < N ? capacity : N;
     for (uint64_t i = 0; i < N_message_to_send; i++) {
-        messages[i] = downstream_message_queue_pop(clinterval_dispatch_iter);
+        messages[i] = downstream_message_queue_pop(dispatch_iter);
     }
     *count = N_message_to_send;
 end:

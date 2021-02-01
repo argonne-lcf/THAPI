@@ -13,11 +13,19 @@
 extern "C" {
 #endif
 
+
+// Dispacher are a light wrapper arrround calbacks to unpack the arguments
+// and call the list of callbaks.
+
 struct clinterval_dispatch;
 struct clinterval_callbacks;
 
+// Implement by `clinterval_dispatchers.c`
 extern void init_clinterval_dispatch(struct clinterval_dispatch *dispatch);
 
+// `clinterval_dispatcher_t` is a alias to a function we return void and take those list as arguments
+// `Dispacher` are a thin wrapper arround `callbacks`. They unpacks llng-parameters and give back ocl object
+// It's not clear why dispacher need a `clinterval_dispatch`
 typedef void (clinterval_dispatcher_t)
     (struct clinterval_dispatch   *dispatch,
      struct clinterval_callbacks *callbacks,
@@ -38,13 +46,16 @@ struct clinterval_event_callbacks {
     UT_hash_handle hh;
 };
 
-/* Sink component's private data */
+
+/* A dispach is the Filter component's private data */
 struct clinterval_dispatch {
     /* Hash table */
     struct clinterval_callbacks *callbacks;
     /* Hash table by name */
     struct clinterval_event_callbacks *event_callbacks;
 
+    
+    /* Downstream message */
     bt_stream *stream;
     bt_event_class *host_event_class;
     bt_event_class *device_event_class;
@@ -71,15 +82,17 @@ struct clinterval_message_iterator {
 extern void init_clinterval_callbacks(struct clinterval_dispatch*);
 extern void* init_clinterval_callbacks_state();
 
+/* Implemented in clinterval_callbacks.cpp.erb */
 bool downstream_message_queue_empty(struct clinterval_message_iterator*);
 size_t downstream_message_queue_size(struct clinterval_message_iterator*);
 const bt_message * downstream_message_queue_pop(struct clinterval_message_iterator*);
 
 // Global state for the downstream message
+// If we want to get rid of them, need to update the dispatcher signature
 extern struct clinterval_message_iterator *clinterval_iter_g;
 extern bt_self_message_iterator *self_message_iterator_g;
 
-
+// Symbol used by clprof.c
 extern
 bt_component_class_initialize_method_status clinterval_dispatch_initialize(
         bt_self_component_filter *self_component_filter,
