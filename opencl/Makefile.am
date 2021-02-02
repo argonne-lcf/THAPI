@@ -93,9 +93,9 @@ libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 lib_LTLIBRARIES = libTracerOpenCL.la libCLProf.la
 
 nodist_libTracerOpenCL_la_SOURCES = \
-        $(OPENCL_PROBES_INCL) \
-        tracer_opencl.h \
-	tracer_opencl.c
+    $(OPENCL_PROBES_INCL) \
+    tracer_opencl.h \
+    tracer_opencl.c
 
 libTracerOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
 libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
@@ -115,16 +115,15 @@ clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_c
 
 
 nodist_libCLProf_la_SOURCES = \
-	clinterval_callbacks.cpp \
-	clinterval_dispatchers.c \
-	tracer_opencl.h
+    clinterval_callbacks.cpp \
+    clinterval_dispatchers.c \
+    clinterval.h \
+    clinterval.c \
+    tracer_opencl.h
 	
 libCLProf_la_SOURCES = \
-	clprof.c \
-	clinterval.h \
-	clinterval.c \
-	clinterval_callbacks.hpp \
-	xprof_utils.cpp
+    clprof.c \
+    xprof_utils.cpp
 
 libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
@@ -147,11 +146,17 @@ babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model
 babeltrace_cl_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb > babeltrace_cl_dispatchers.c
 
+clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb clinterval > clinterval_callbacks.h
+
 clinterval_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb clinterval > clinterval_dispatchers.c
 
-clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb clinterval > clinterval_callbacks.h
+clinterval.h: $(srcdir)/interval.h.erb
+	$(ERB) namespace="clinterval" $(srcdir)/interval.h.erb > $(srcdir)/clinterval.h
+
+clinterval.c: $(srcdir)/interval.c.erb
+	$(ERB) namespace="clinterval"  $(srcdir)/interval.c.erb > $(srcdir)/clinterval.c
 
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \

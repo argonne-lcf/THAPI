@@ -5,3 +5,6 @@
 tracer_opencl.sh
 cl.xml.patched
 opencl_model.yaml
+
+clinterval.c
+clinterval.h
