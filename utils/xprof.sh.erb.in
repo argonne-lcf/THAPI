@@ -148,10 +148,10 @@ summary() {
     if [ -n "$trace" ]; then
         # Todo filter direcly in the babeltrace
 <% if languages.include?("opencl") %>
-        $bindir/babeltrace_opencl $lttng_last_session | grep lttng_ust_opencl
+        $bindir/babeltrace_opencl $lttng_last_session | grep --binary-files=text lttng_ust_opencl
 <% end %>
 <% if languages.include?("ze") %>
-        $bindir/babeltrace_ze $lttng_last_session | grep lttng_ust_ze
+        $bindir/babeltrace_ze $lttng_last_session | grep --binary-files=text lttng_ust_ze
 <% end %>
     fi
 
