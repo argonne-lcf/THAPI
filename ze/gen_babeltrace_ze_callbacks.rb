@@ -1,4 +1,11 @@
 require_relative 'gen_ze_library_base.rb'
+
+if ARGV.empty?
+    namespace = "babeltrace_ze"
+else
+    namespace = ARGV[0]
+end
+
 puts <<EOF
 #include <ze_api.h>
 #include <ze_ddi.h>
@@ -40,7 +47,7 @@ meta_parameter_lambda = lambda { |m, dir|
 
 gen_event_callback = lambda { |provider, c, dir|
   puts <<EOF
-typedef void (#{provider}_#{c.name}_#{SUFFIXES[dir]}_cb)(
+typedef void (#{namespace}_#{provider}_#{c.name}_#{SUFFIXES[dir]}_cb)(
 EOF
   fields = ["const bt_event *bt_evt",
             "const bt_clock_snapshot *bt_clock"]
@@ -71,7 +78,7 @@ EOF
 
 gen_extra_event_callback =lambda { |provider, event|
     puts <<EOF
-typedef void (#{provider}_#{event["name"]}_cb)(
+typedef void (#{namespace}_#{provider}_#{event["name"]}_cb)(
 EOF
     fields = ["const bt_event *bt_evt",
               "const bt_clock_snapshot *bt_clock"]

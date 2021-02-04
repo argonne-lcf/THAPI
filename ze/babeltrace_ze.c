@@ -5,7 +5,7 @@
  * standard output.
  */
 //static
-//void print_event(struct ze_dispatch *ze_dispatch, struct ze_callbacks *ze_callbacks, const bt_event *event)
+//void print_event(struct babeltrace_ze_dispatch *babeltrace_ze_dispatch, struct babeltrace_ze_callbacks *babeltrace_ze_callbacks, const bt_event *event)
 //{
 //    const bt_event_class *event_class = bt_event_borrow_class_const(event);
 //
@@ -22,31 +22,31 @@
 //        member_count, member_count == 1 ? "" : "s");
 //}
 
-struct ze_event_callbacks * ze_create_event_callbacks(const char *name) {
-    intptr_t mem = (intptr_t)calloc(1, sizeof(struct ze_event_callbacks) + strlen(name) + 1);
-    struct ze_event_callbacks * callbacks = (struct ze_event_callbacks *)mem;
-    callbacks->name = (const char *)(mem + sizeof(struct ze_event_callbacks));
+struct babeltrace_ze_event_callbacks * ze_create_event_callbacks(const char *name) {
+    intptr_t mem = (intptr_t)calloc(1, sizeof(struct babeltrace_ze_event_callbacks) + strlen(name) + 1);
+    struct babeltrace_ze_event_callbacks * callbacks = (struct babeltrace_ze_event_callbacks *)mem;
+    callbacks->name = (const char *)(mem + sizeof(struct babeltrace_ze_event_callbacks));
     strcpy((char *)(callbacks->name), name);
     utarray_new(callbacks->callbacks, &ut_ptr_icd);
     return callbacks;
 }
 
-void ze_register_dispatcher(struct ze_dispatch *ze_dispatch, const char *name, ze_dispatcher_t *dispatcher) {
-    struct ze_event_callbacks *callbacks = NULL;
-    HASH_FIND_STR(ze_dispatch->event_callbacks, name, callbacks);
+void babeltrace_ze_register_dispatcher(struct babeltrace_ze_dispatch *babeltrace_ze_dispatch, const char *name, babeltrace_ze_dispatcher_t *dispatcher) {
+    struct babeltrace_ze_event_callbacks *callbacks = NULL;
+    HASH_FIND_STR(babeltrace_ze_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = ze_create_event_callbacks(name);
-        HASH_ADD_KEYPTR(hh, ze_dispatch->event_callbacks, callbacks->name, strlen(callbacks->name), callbacks);
+        HASH_ADD_KEYPTR(hh, babeltrace_ze_dispatch->event_callbacks, callbacks->name, strlen(callbacks->name), callbacks);
     }
     callbacks->dispatcher = dispatcher;
 }
 
-void ze_register_callback(struct ze_dispatch *ze_dispatch, const char *name, void *func) {
-    struct ze_event_callbacks *callbacks;
-    HASH_FIND_STR(ze_dispatch->event_callbacks, name, callbacks);
+void ze_register_callback(struct babeltrace_ze_dispatch *babeltrace_ze_dispatch, const char *name, void *func) {
+    struct babeltrace_ze_event_callbacks *callbacks;
+    HASH_FIND_STR(babeltrace_ze_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = ze_create_event_callbacks(name);
-        HASH_ADD_STR(ze_dispatch->event_callbacks, name, callbacks);
+        HASH_ADD_STR(babeltrace_ze_dispatch->event_callbacks, name, callbacks);
     }
     if (func)
         utarray_push_back(callbacks->callbacks, &func);
@@ -56,18 +56,18 @@ void ze_register_callback(struct ze_dispatch *ze_dispatch, const char *name, voi
  * Initializes the sink component.
  */
 static
-bt_component_class_initialize_method_status ze_dispatch_initialize(
+bt_component_class_initialize_method_status babeltrace_ze_dispatch_initialize(
         bt_self_component_sink *self_component_sink,
         bt_self_component_sink_configuration *configuration,
         const bt_value *params, void *initialize_method_data)
 {
     /* Allocate a private data structure */
-    struct ze_dispatch *ze_dispatch = calloc(1, sizeof(struct ze_dispatch));
+    struct babeltrace_ze_dispatch *babeltrace_ze_dispatch = calloc(1, sizeof(struct babeltrace_ze_dispatch));
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
         bt_self_component_sink_as_self_component(self_component_sink),
-        ze_dispatch);
+        babeltrace_ze_dispatch);
 
     /*
      * Add an input port named `in` to the sink component.
@@ -80,7 +80,7 @@ bt_component_class_initialize_method_status ze_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    init_dispatchers(ze_dispatch);
+    init_babeltrace_ze_dispatch(babeltrace_ze_dispatch);
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
@@ -88,25 +88,25 @@ bt_component_class_initialize_method_status ze_dispatch_initialize(
  * Finalizes the sink component.
  */
 static
-void ze_dispatch_finalize(bt_self_component_sink *self_component_sink)
+void babeltrace_ze_dispatch_finalize(bt_self_component_sink *self_component_sink)
 {
     /* Retrieve our private data from the component's user data */
-    struct ze_dispatch *ze_dispatch = bt_self_component_get_data(
+    struct babeltrace_ze_dispatch *babeltrace_ze_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
-    struct ze_callbacks *s, *tmp;
-    HASH_ITER(hh, ze_dispatch->callbacks, s, tmp) {
-      HASH_DEL(ze_dispatch->callbacks, s);
+    struct babeltrace_ze_callbacks *s, *tmp;
+    HASH_ITER(hh, babeltrace_ze_dispatch->callbacks, s, tmp) {
+      HASH_DEL(babeltrace_ze_dispatch->callbacks, s);
       free(s);
     }
-    struct ze_event_callbacks *s2, *tmp2;
-    HASH_ITER(hh, ze_dispatch->event_callbacks, s2, tmp2) {
-      HASH_DEL(ze_dispatch->event_callbacks, s2);
+    struct babeltrace_ze_event_callbacks *s2, *tmp2;
+    HASH_ITER(hh, babeltrace_ze_dispatch->event_callbacks, s2, tmp2) {
+      HASH_DEL(babeltrace_ze_dispatch->event_callbacks, s2);
       utarray_free(s2->callbacks);
       free(s2);
     }
     /* Free the allocated structure */
-    free(ze_dispatch);
+    free(babeltrace_ze_dispatch);
 }
 
 /*
@@ -117,10 +117,10 @@ void ze_dispatch_finalize(bt_self_component_sink *self_component_sink)
  */
 static
 bt_component_class_sink_graph_is_configured_method_status
-ze_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
+babeltrace_ze_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
 {
     /* Retrieve our private data from the component's user data */
-    struct ze_dispatch *ze_dispatch = bt_self_component_get_data(
+    struct babeltrace_ze_dispatch *babeltrace_ze_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Borrow our unique port */
@@ -130,7 +130,7 @@ ze_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
 
     /* Create the uptream message iterator */
     bt_message_iterator_create_from_sink_component(self_component_sink,
-        in_port, &ze_dispatch->message_iterator);
+        in_port, &babeltrace_ze_dispatch->message_iterator);
 
     return BT_COMPONENT_CLASS_SINK_GRAPH_IS_CONFIGURED_METHOD_STATUS_OK;
 }
@@ -140,27 +140,27 @@ ze_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
  * the standard output.
  */
 static
-bt_component_class_sink_consume_method_status ze_dispatch_consume(
+bt_component_class_sink_consume_method_status babeltrace_ze_dispatch_consume(
         bt_self_component_sink *self_component_sink)
 {
     bt_component_class_sink_consume_method_status status =
         BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
 
     /* Retrieve our private data from the component's user data */
-    struct ze_dispatch *ze_dispatch = bt_self_component_get_data(
+    struct babeltrace_ze_dispatch *babeltrace_ze_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Consume a batch of messages from the upstream message iterator */
     bt_message_array_const messages;
     uint64_t message_count;
     bt_message_iterator_next_status next_status =
-        bt_message_iterator_next(ze_dispatch->message_iterator, &messages,
+        bt_message_iterator_next(babeltrace_ze_dispatch->message_iterator, &messages,
             &message_count);
 
     switch (next_status) {
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_END:
         /* End of iteration: put the message iterator's reference */
-        bt_message_iterator_put_ref(ze_dispatch->message_iterator);
+        bt_message_iterator_put_ref(babeltrace_ze_dispatch->message_iterator);
         status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_END;
         goto end;
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
@@ -183,18 +183,18 @@ bt_component_class_sink_consume_method_status ze_dispatch_consume(
         if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
-            struct ze_callbacks *callbacks = NULL;
+            struct babeltrace_ze_callbacks *callbacks = NULL;
             const char * class_name = bt_event_class_get_name(event_class);
 
-            HASH_FIND_STR(ze_dispatch->callbacks, class_name, callbacks);
+            HASH_FIND_STR(babeltrace_ze_dispatch->callbacks, class_name, callbacks);
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
-                callbacks = (struct ze_callbacks *)calloc(1, sizeof(struct ze_callbacks) + class_name_sz + 1);
+                callbacks = (struct babeltrace_ze_callbacks *)calloc(1, sizeof(struct babeltrace_ze_callbacks) + class_name_sz + 1);
                 callbacks->name = (const char *)callbacks + class_name_sz;
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
-                HASH_ADD_KEYPTR(hh, ze_dispatch->callbacks, class_name, class_name_sz, callbacks);
-                struct ze_event_callbacks *event_callbacks = NULL;
-                HASH_FIND_STR(ze_dispatch->event_callbacks, class_name, event_callbacks);
+                HASH_ADD_KEYPTR(hh, babeltrace_ze_dispatch->callbacks, class_name, class_name_sz, callbacks);
+                struct babeltrace_ze_event_callbacks *event_callbacks = NULL;
+                HASH_FIND_STR(babeltrace_ze_dispatch->event_callbacks, class_name, event_callbacks);
                 if (event_callbacks) {
                     callbacks->dispatcher = event_callbacks->dispatcher;
                     callbacks->callbacks = event_callbacks->callbacks;
@@ -202,7 +202,7 @@ bt_component_class_sink_consume_method_status ze_dispatch_consume(
             }
             /* Print line for current message if it's an event message */
             if (callbacks->dispatcher)
-                callbacks->dispatcher(ze_dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(message));
+                callbacks->dispatcher(babeltrace_ze_dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(message));
 
             /* Put this message's reference */
 	}
@@ -221,10 +221,10 @@ BT_PLUGIN_MODULE();
 BT_PLUGIN(ze);
 
 /* Define the `text` sink component class */
-BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, ze_dispatch_consume);
+BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, babeltrace_ze_dispatch_consume);
 
 /* Set some of the `text` sink component class's optional methods */
 
-BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch, ze_dispatch_initialize);
-BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch, ze_dispatch_finalize);
-BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch, ze_dispatch_graph_is_configured);
+BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch, babeltrace_ze_dispatch_initialize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch, babeltrace_ze_dispatch_finalize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch, babeltrace_ze_dispatch_graph_is_configured);

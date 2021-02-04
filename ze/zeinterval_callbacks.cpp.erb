@@ -1,34 +1,28 @@
+#include <iomanip>
+#include <iostream>
+#include "zeinterval.h"
+#include "zeinterval_callbacks.hpp"
+#include "xprof_utils.hpp"
+#include <babeltrace2/babeltrace.h>
+
 #include <ze_api.h>
 #include <ze_ddi.h>
 #include <zet_api.h>
 #include <zet_ddi.h>
 #include <zes_api.h>
 #include <zes_ddi.h>
-#include "babeltrace2/babeltrace.h"
-#include "babeltrace_ze.h"
-#include "xprof_utils.h"
-#include <iomanip>
+#include <zel_tracepoints.h>
+#
 #include <vector>
 #include <algorithm>
 #include <iostream>
 #include <unordered_map>
 #include <tuple>
 #include <climits>
-#include "zeprof_callbacks.h"
 #include <set>
 
 /* Callback */
-
-typedef std::tuple<hostname_t, process_id_t, ze_event_handle_t> hp_event_t;
-typedef std::tuple<hostname_t, process_id_t, ze_kernel_handle_t> hp_kernel_t;
-
-typedef std::tuple<hostname_t, process_id_t, ze_command_list_handle_t> hp_command_list_t; 
-typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_command_queue_t;
-
-
-typedef std::tuple<uint64_t, uint64_t> timerResolution_kernelTimestampValidBits_t;
-
-
+// Need to be moved in `zeinterval_callbacks.hpp`
 std::unordered_map<hpt_t, thapi_function_name> last_command;
 std::unordered_map<hpt_t, thapi_function_name> last_kernel;
 
@@ -47,9 +41,6 @@ std::unordered_map<hp_command_list_t, dsd_t> command_list_to_device;
 std::unordered_map<hp_device_t, timerResolution_kernelTimestampValidBits_t> device_to_timerResolution_kernelTimestampValidBits;
 
 
-//std::unordered_map<hpt_device_function_name_t, StatTime> device_id_result;
-//std::unordered_map<hpt_function_name_t, StatTime> api_call;
-//std::unordered_map<hpt_function_name_t, StatByte> memory_trafic;
 std::unordered_map<hp_device_t, std::string> device_to_name;
 std::unordered_map<hp_device_t, thapi_device_id> device_to_rootdevice;
 
@@ -57,40 +48,6 @@ std::unordered_map<hpt_t, thapi_device_id> start_device;
 std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
 
 std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
-
-
-<%#                            _
- |\/|  _   _  _  _.  _   _    /  ._ _   _. _|_ o  _  ._
- |  | (/_ _> _> (_| (_| (/_   \_ | (/_ (_|  |_ | (_) | |
-                     _|
-%>
-/*
-Utils function
-*/
-static
-const hostname_t borrow_hostname(const bt_event *event){
-    const bt_stream *stream = bt_event_borrow_stream_const(event);
-    const bt_trace *trace = bt_stream_borrow_trace_const(stream);
-    const bt_value *host_name_str = bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
-    return  bt_value_string_get(host_name_str);
-}
-
-static
-process_id_t borrow_process_id(const bt_event *event){
-    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
-    return bt_field_integer_signed_get_value(field);
-}
-
-static
-thread_id_t borrow_thread_id(const bt_event *event){
-    const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-    const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
-    return bt_field_integer_unsigned_get_value(field);
-}
-
-
-
 
 <%# Rely on global variable device_to_timerResolution_kernelTimestampValidBits %>
 inline uint64_t born_timing_to_ns(hp_device_t hp_device, uint64_t start, uint64_t end) {
@@ -104,8 +61,76 @@ inline uint64_t born_timing_to_ns(hp_device_t hp_device, uint64_t start, uint64_
     }
 }
 
+void *init_zeinterval_callbacks_state() {
+    zeinterval_callbacks_state *s = new zeinterval_callbacks_state;
+    return (void*) s;
+}
+
+static __attribute__ ((unused)) void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                     const uint64_t ts, const uint64_t duration, const bool err) {
+
+     /* Message creation */
+     bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
+                            zeinterval_iter_g->dispatch->host_event_class,
+                            self_message_iterator_g,
+                            zeinterval_iter_g->dispatch->stream);
+
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static __attribute__ ((unused)) void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                       const char* name, const uint64_t ts, const uint64_t duration) {
+
+     /* Message creation */
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration,
+                            zeinterval_iter_g->dispatch->device_event_class,
+                            self_message_iterator_g,
+                            zeinterval_iter_g->dispatch->stream);
+
+
+     /* Set message */
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+<%#
+  _                                         _                          _ ___
+ | \  _       ._   _ _|_ ._ _   _. ._ _    / \      _       _     /\  |_) |
+ |_/ (_) \/\/ | | _>  |_ | (/_ (_| | | |   \_X |_| (/_ |_| (/_   /--\ |  _|_
+
+%>
+
+bool downstream_message_queue_empty(struct zeinterval_message_iterator *interval_dispatch_iter)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.empty();
+}
+
+size_t downstream_message_queue_size(struct zeinterval_message_iterator *interval_dispatch_iter)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.size();
+}
+
+const bt_message* downstream_message_queue_pop(struct zeinterval_message_iterator *interval_dispatch_iter)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    const bt_message* m = state->downstream_message_queue.front();
+    state->downstream_message_queue.pop();
+    return m;
+}
+
+
+<%#
+  _
+ /   _. | | |_   _.  _ |   _
+ \_ (_| | | |_) (_| (_ |< _>
+
+%>
+
 <% $dbt_events.each do | dbt_event | %>
-static void zeprof_<%= dbt_event.uuid %>_callback(
+static void zeinterval_<%= dbt_event.uuid %>_callback(
    <%= dbt_event.fields.join(",\n  ") %>
 ){
   <%#                             ___      _
@@ -275,9 +300,9 @@ static void zeprof_<%= dbt_event.uuid %>_callback(
 
 %>
 
-void init_callbacks(struct ze_dispatch   *ze_dispatch) {
+void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
-  ze_register_callback(ze_dispatch, "<%= dbt_event.lltng %>", (void *) &zeprof_<%= dbt_event.uuid %>_callback);
+  zeinterval_register_callback(ze_dispatch, "<%= dbt_event.lltng %>", (void *) &zeinterval_<%= dbt_event.uuid %>_callback);
 <% end %>
 }
 
@@ -287,6 +312,4 @@ void init_callbacks(struct ze_dispatch   *ze_dispatch) {
  |  | | | (_| | | /_ (/_
 
 %>
-
-void finalize_callbacks() {
-}
+//void finalize_zeinterval_callbacks() {}

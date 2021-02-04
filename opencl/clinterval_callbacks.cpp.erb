@@ -58,21 +58,21 @@ static void create_and_enqueue_device_message(const char* hostname, const proces
                                                                              
 %>
 
-bool downstream_message_queue_empty(struct clinterval_message_iterator *clinterval_dispatch_iter)
+bool downstream_message_queue_empty(struct clinterval_message_iterator *interval_dispatch_iter)
 {
-    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  clinterval_dispatch_iter->callbacks_state;
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     return state->downstream_message_queue.empty();
 }
 
-size_t downstream_message_queue_size(struct clinterval_message_iterator *clinterval_dispatch_iter)
+size_t downstream_message_queue_size(struct clinterval_message_iterator *interval_dispatch_iter)
 {
-    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  clinterval_dispatch_iter->callbacks_state;
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     return state->downstream_message_queue.size();
 }
 
-const bt_message* downstream_message_queue_pop(struct clinterval_message_iterator *clinterval_dispatch_iter)
+const bt_message* downstream_message_queue_pop(struct clinterval_message_iterator *interval_dispatch_iter)
 {
-    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  clinterval_dispatch_iter->callbacks_state;
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
     const bt_message* m = state->downstream_message_queue.front();
     state->downstream_message_queue.pop();
     return m;
@@ -84,8 +84,6 @@ const bt_message* downstream_message_queue_pop(struct clinterval_message_iterato
  \_ (_| | | |_) (_| (_ |< _> 
                              
 %>
-// Some of the map used may grow arbitraly large
-// we may do something about it at some point buy remove data we don't need anymore
 
 <% $dbt_events.each do | dbt_event| %>
 static void clinterval_<%= dbt_event.name %>_callback(
@@ -297,3 +295,12 @@ void init_clinterval_callbacks(struct clinterval_dispatch  *opencl_interval) {
     clinterval_register_callback(opencl_interval, "<%= dbt_event.name_unsanitized %>", (void *) &clinterval_<%= dbt_event.name %>_callback);
 <% end %>
 }
+
+<%#
+  _
+ |_ o ._   _. | o _   _
+ |  | | | (_| | | /_ (/_
+
+%>
+//void finalize_zeinterval_callbacks() {}
+

@@ -208,32 +208,28 @@ install-exec-hook::
 	ln -s $(libdir)/libTracerZE.so.0.0.0 $(pkglibdir)/ze/libze_loader.so.1
 	ln -s $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
 
-ZEPROF = \
-	$(srcdir)/zeprof_callbacks.cpp.erb \
-	$(srcdir)/zeprof_callbacks.h.erb \
-	$(srcdir)/zeprof.c.erb \
-	$(srcdir)/gen_zeprof.rb
 
-zeprof.c: $(ZEPROF) babeltrace_ze_callbacks.h
+zeinterval_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_ze_dispatchers.rb "zeinterval" > $(srcdir)/clinterval_dispatchers.c
+
+zeinterval_callbacks.cpp: $(srcdir)/gen_zeprof.rb $(ZEPROF) babeltrace_ze_callbacks.h $(srcdir)/zeinterval_callbacks.cpp.erb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeprof.rb
 
-zeprof_callbacks.cpp zeprof_callbacks.h: zeprof.c
-	@if test -f $@; then \
-	  touch $@; \
-	else \
-	  rm -f zeprof.c; \
-	  $(MAKE) $(AM_MAKEFLAGS) zeprof.c; \
-	fi
+zeinterval.h: $(srcdir)/interval.h.erb
+	$(ERB) namespace="zeinterval" $(srcdir)/interval.h.erb > $(srcdir)/zeinterval.h
+
+zeinterval.c: $(srcdir)/interval.c.erb
+	$(ERB) namespace="zeinterval" $(srcdir)/interval.c.erb > $(srcdir)/zeinterval.c
 
 CLEANFILES += \
 	zeprof.c \
-	zeprof_callbacks.cpp \
-	zeprof_callbacks.h
+	zeinterval_callbacks.cpp \
+	zeinterval_callbacks.h
 
 nodist_libZEProf_la_SOURCES = \
 	zeprof.c \
-	zeprof_callbacks.cpp \
-	zeprof_callbacks.h \
+	zeinterval_callbacks.cpp \
+	zeinterval_callbacks.h \
 	babeltrace_ze_dispatchers.c
 libZEProf_la_SOURCES = \
 	babeltrace_ze.h

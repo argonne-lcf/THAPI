@@ -49,7 +49,6 @@ struct clinterval_dispatch {
     struct clinterval_callbacks *callbacks;
     /* Hash table by name */
     struct clinterval_event_callbacks *event_callbacks;
-
     
     /* Downstream message */
     bt_stream *stream;
@@ -71,8 +70,6 @@ struct clinterval_message_iterator {
     /* It's a C++ struct */
     void * callbacks_state;
 };
-
-
 
 // To talk to the callbacks
 extern void init_clinterval_callbacks(struct clinterval_dispatch*);
