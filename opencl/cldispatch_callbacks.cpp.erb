@@ -8,10 +8,10 @@
 #include <tuple>
 #include <climits>
 <% if $sink_type == 'production' %>
-#include "clprof_callbacks.h"
+#include "cldispatch_callbacks.h"
 #include <set>
 <% elsif $sink_type == 'testing' %>
-#include "testing_clprof_callbacks.h"
+#include "testing_cldispatch_callbacks.h"
 #include <cassert>
 <% end %>
 
@@ -19,12 +19,12 @@ typedef std::tuple<hostname_t, process_id_t, cl_command_queue> hp_command_queue_
 typedef std::tuple<hostname_t, process_id_t, cl_event> hp_event_t;
 typedef std::tuple<hostname_t, process_id_t, cl_kernel> hp_kernel_t;
 
-std::unordered_map<hp_command_queue_t, dsd_t> command_queue_to_device;
-std::unordered_map<hpt_function_name_t, cl_device_id> function_name_to_device;
-std::unordered_map<hp_event_t,t_function_name_t> event_to_function_name;
+static std::unordered_map<hp_command_queue_t, dsd_t> command_queue_to_device;
+static std::unordered_map<hpt_function_name_t, cl_device_id> function_name_to_device;
+static std::unordered_map<hp_event_t,t_function_name_t> event_to_function_name;
 
-std::unordered_map<hp_event_t, uint64_t> event_result_to_delta;
-std::unordered_map<hp_kernel_t, std::string> kernel_to_name;
+static std::unordered_map<hp_event_t, uint64_t> event_result_to_delta;
+static std::unordered_map<hp_kernel_t, std::string> kernel_to_name;
 
 <% $dbt_events.each do | dbt_event| %>
 static void clprof_<%= dbt_event.name %>_callback(
@@ -196,10 +196,18 @@ static void clprof_<%= dbt_event.name %>_callback(
  _|_ | | |  |_ | (_| | | /_ (/_ 
                                 
 %>
-
+<% if $sink_type == 'production' %>
 void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
+<% elsif $sink_type == 'testing' %>
+void init_callbacks_testing(struct opencl_dispatch   *opencl_dispatch) {
+<% end %>
+
 <% $dbt_events.each do | dbt_event| %>
+<% if $sink_type == 'production' %>
         opencl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
+<% elsif $sink_type == 'testing' %>
+        opencl_register_callback_testing(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
+<% end %>
 <% end %>
 }
 
@@ -210,7 +218,12 @@ void init_callbacks(struct opencl_dispatch   *opencl_dispatch) {
                          
 %>
 
+<% if $sink_type == 'production' %>
 void finalize_callbacks() {
+<% elsif $sink_type == 'testing' %>
+void finalize_callbacks_testing() {
+<% end %>
+
 <% if $sink_type == 'testing' %>
    std::string test_path {bt_value_string_get(test_type_value)};
   <% $l_test.each do | test | %>
