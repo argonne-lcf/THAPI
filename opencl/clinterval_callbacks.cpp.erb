@@ -230,7 +230,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
     const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
 
     if (!state->event_to_function_name_and_ts.count(hp_event)){
-        state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
+        state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name, ts);
     } else {
         const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
         const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
