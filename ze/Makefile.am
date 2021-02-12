@@ -210,10 +210,13 @@ install-exec-hook::
 
 
 zeinterval_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB_GEN) $(ZE_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_ze_dispatchers.rb "zeinterval" > $(srcdir)/clinterval_dispatchers.c
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_ze_dispatchers.rb "zeinterval" > zeinterval_dispatchers.c
 
 zeinterval_callbacks.cpp: $(srcdir)/gen_zeprof.rb $(ZEPROF) babeltrace_ze_callbacks.h $(srcdir)/zeinterval_callbacks.cpp.erb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeprof.rb
+
+zeinterval_callbacks.h:
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_ze_callbacks.rb "zeinterval" > zeinterval_callbacks.h
 
 zeinterval.h: $(srcdir)/interval.h.erb
 	$(ERB) namespace="zeinterval" $(srcdir)/interval.h.erb > $(srcdir)/zeinterval.h
@@ -223,16 +226,18 @@ zeinterval.c: $(srcdir)/interval.c.erb
 
 CLEANFILES += \
 	zeprof.c \
-	zeinterval_callbacks.cpp \
-	zeinterval_callbacks.h
+	zeinterval_callbacks.cpp
 
 nodist_libZEProf_la_SOURCES = \
-	zeprof.c \
+	zeprof.h \
 	zeinterval_callbacks.cpp \
-	zeinterval_callbacks.h \
-	babeltrace_ze_dispatchers.c
+	zeinterval_dispatchers.c \
+	zeinterval.c 
+
 libZEProf_la_SOURCES = \
-	babeltrace_ze.h
+	babeltrace_ze.h \
+	zeprof.c \
+	xprof_utils.cpp
 
 libZEProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libZEProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)

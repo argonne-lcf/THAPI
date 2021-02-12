@@ -18,7 +18,7 @@ extern "C" {
 struct babeltrace_ze_dispatch;
 struct babeltrace_ze_callbacks;
 
-extern void init_babeltrace_ze_dispatch(struct babeltrace_ze_dispatch *ze_dispatch);
+extern void init_babeltrace_ze_dispatcher(struct babeltrace_ze_dispatch *ze_dispatch);
 
 typedef void (babeltrace_ze_dispatcher_t)
     (struct babeltrace_ze_dispatch   *ze_dispatch,

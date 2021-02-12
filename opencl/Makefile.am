@@ -110,10 +110,6 @@ install-exec-hook::
 	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
 	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
 
-clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
-
-
 nodist_libCLProf_la_SOURCES = \
     clinterval_callbacks.cpp \
     clinterval_dispatchers.c \
@@ -146,6 +142,9 @@ babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model
 babeltrace_cl_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb > babeltrace_cl_dispatchers.c
 
+clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
+
 clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb clinterval > clinterval_callbacks.h
 
@@ -157,6 +156,8 @@ clinterval.h: $(srcdir)/interval.h.erb
 
 clinterval.c: $(srcdir)/interval.c.erb
 	$(ERB) namespace="clinterval"  $(srcdir)/interval.c.erb > $(srcdir)/clinterval.c
+
+
 
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \

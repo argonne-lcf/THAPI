@@ -140,7 +140,7 @@ EOF
 }
 
 puts <<EOF
-void init_#{namespace}_dispatchers(struct #{namespace}_dispatch *dispatch) {
+void init_#{namespace}_dispatcher(struct #{namespace}_dispatch *dispatch) {
 EOF
 opencl_model["events"].each_key { |name|
   puts <<EOF

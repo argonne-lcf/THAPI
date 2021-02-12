@@ -365,18 +365,18 @@ ze_events.each { |provider, es|
 
 gen_event_dispatch_init = lambda { |provider, c, dir|
   puts <<EOF
-  #{namespace}_register_dispatcher(dispatch, "#{namespace}_#{provider}:#{c.name}_#{SUFFIXES[dir]}", &#{namespace}_#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher);
+  #{namespace}_register_dispatcher(dispatch, "#{provider}:#{c.name}_#{SUFFIXES[dir]}", &#{namespace}_#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher);
 EOF
 }
 
 gen_extra_event_dispatch_init = lambda { |provider, e|
   puts <<EOF
-  #{namespace}_register_dispatcher(dispatch, "#{namespace}_#{provider}:#{e["name"]}", &#{namespace}_#{provider}_#{e["name"]}_dispatcher);
+  #{namespace}_register_dispatcher(dispatch, "#{provider}:#{e["name"]}", &#{namespace}_#{provider}_#{e["name"]}_dispatcher);
 EOF
 }
 
 puts <<EOF
-void init_#{namespace}_dispatchers(struct #{namespace}_dispatch *dispatch) {
+void init_#{namespace}_dispatcher(struct #{namespace}_dispatch *dispatch) {
 EOF
 
 provider = :lttng_ust_ze
