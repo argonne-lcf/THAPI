@@ -116,7 +116,7 @@ nodist_libCLProf_la_SOURCES = \
     clinterval.h \
     clinterval.c \
     tracer_opencl.h
-	
+
 libCLProf_la_SOURCES = \
     clprof.c \
     xprof_utils.cpp
@@ -151,11 +151,11 @@ clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.ya
 clinterval_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb clinterval > clinterval_dispatchers.c
 
-clinterval.h: $(srcdir)/interval.h.erb
-	$(ERB) namespace="clinterval" $(srcdir)/interval.h.erb > $(srcdir)/clinterval.h
+clinterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > $(srcdir)/clinterval.h
 
-clinterval.c: $(srcdir)/interval.c.erb
-	$(ERB) namespace="clinterval"  $(srcdir)/interval.c.erb > $(srcdir)/clinterval.c
+clinterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > $(srcdir)/clinterval.c
 
 
 

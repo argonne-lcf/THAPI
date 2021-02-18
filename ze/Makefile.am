@@ -232,6 +232,7 @@ nodist_libZEProf_la_SOURCES = \
 	zeprof.h \
 	zeinterval_callbacks.cpp \
 	zeinterval_dispatchers.c \
+	zeinterval.h \
 	zeinterval.c 
 
 libZEProf_la_SOURCES = \
