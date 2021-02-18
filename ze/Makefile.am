@@ -215,30 +215,45 @@ zeinterval_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB_GE
 zeinterval_callbacks.cpp: $(srcdir)/gen_zeprof.rb $(ZEPROF) babeltrace_ze_callbacks.h $(srcdir)/zeinterval_callbacks.cpp.erb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeprof.rb
 
-zeinterval_callbacks.h:
+zeinterval_callbacks.h: $(srcdir)/gen_babeltrace_ze_callbacks.rb $(ZE_MODEL) 
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_ze_callbacks.rb "zeinterval" > zeinterval_callbacks.h
 
-zeinterval.h: $(srcdir)/interval.h.erb
-	$(ERB) namespace="zeinterval" $(srcdir)/interval.h.erb > $(srcdir)/zeinterval.h
+zeinterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="zeinterval" $(top_srcdir)/xprof/interval.h.erb > zeinterval.h
 
-zeinterval.c: $(srcdir)/interval.c.erb
-	$(ERB) namespace="zeinterval" $(srcdir)/interval.c.erb > $(srcdir)/zeinterval.c
+zeinterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="zeinterval" $(top_srcdir)/xprof/interval.c.erb > zeinterval.c
+
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	ln -s $(top_srcdir)/utils/xprof_utils.cpp  xprof_utils.cpp
 
 CLEANFILES += \
 	zeprof.c \
-	zeinterval_callbacks.cpp
-
-nodist_libZEProf_la_SOURCES = \
-	zeprof.h \
 	zeinterval_callbacks.cpp \
+	zeinterval_callbacks.h \
 	zeinterval_dispatchers.c \
 	zeinterval.h \
-	zeinterval.c 
+	zeinterval.c \
+	xprof_utils.cpp 
+
+BUILT_SOURCES += \
+	zeinterval.h \
+	babeltrace_ze.h \
+	zeinterval_callbacks.h \
+	xprof_utils.cpp 
+
+# For a strange reason we should not put `xprof_utils.cpp` neither in the `sources`
+
+nodist_libZEProf_la_SOURCES = \
+	zeinterval_callbacks.cpp \
+	zeinterval_callbacks.h \
+	zeinterval_dispatchers.c \
+	zeinterval.c \
+    zeinterval.h \
+    babeltrace_ze.h
 
 libZEProf_la_SOURCES = \
-	babeltrace_ze.h \
-	zeprof.c \
-	xprof_utils.cpp
+	zeprof.c
 
 libZEProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libZEProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)

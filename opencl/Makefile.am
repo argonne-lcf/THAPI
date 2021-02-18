@@ -74,7 +74,7 @@ clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
-BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clinterval_callbacks.h clprof.c
+BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h 
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
@@ -110,16 +110,31 @@ install-exec-hook::
 	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
 	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
 
-nodist_libCLProf_la_SOURCES = \
+CLEANFILES = \
+    clprof.c \
     clinterval_callbacks.cpp \
+    clinterval_callbacks.h \
     clinterval_dispatchers.c \
     clinterval.h \
     clinterval.c \
+    xprof_utils.cpp
+
+BUILT_SOURCES += \
+    clinterval.h \
+    babeltrace_cl.h \
+    clinterval_callbacks.h \
+    xprof_utils.cpp
+
+nodist_libCLProf_la_SOURCES = \
+    clinterval_callbacks.cpp \
+    clinterval_callbacks.h \
+    clinterval_dispatchers.c \
+    clinterval.c \
+    clinterval.h \
     tracer_opencl.h
 
 libCLProf_la_SOURCES = \
-    clprof.c \
-    xprof_utils.cpp
+    clprof.c
 
 libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
@@ -152,12 +167,13 @@ clinterval_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_mode
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb clinterval > clinterval_dispatchers.c
 
 clinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > $(srcdir)/clinterval.h
+	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > clinterval.h
 
 clinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > $(srcdir)/clinterval.c
+	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > clinterval.c
 
-
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	ln -s $(top_srcdir)/utils/xprof_utils.cpp  xprof_utils.cpp
 
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \
@@ -205,7 +221,7 @@ EXTRA_DIST = \
 	extract_enqueues \
 	test_wrapper.sh
 
-CLEANFILES = \
+CLEANFILES += \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_PROBES_TP) \
 	$(OPENCL_PROBES_SRC) \
@@ -215,6 +231,5 @@ CLEANFILES = \
 	opencl_model.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
-	clinterval_callbacks.cpp \
 	dust.c \
 	$(TEST_FILES)
