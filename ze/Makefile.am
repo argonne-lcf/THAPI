@@ -225,7 +225,7 @@ zeinterval.c: $(top_srcdir)/xprof/interval.c.erb
 	$(ERB) namespace="zeinterval" $(top_srcdir)/xprof/interval.c.erb > zeinterval.c
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	ln -s $(top_srcdir)/utils/xprof_utils.cpp  xprof_utils.cpp
+	ln -s $(top_srcdir)/utils/xprof_utils.cpp xprof_utils.cpp
 
 CLEANFILES += \
 	zeprof.c \
@@ -242,15 +242,14 @@ BUILT_SOURCES += \
 	zeinterval_callbacks.h \
 	xprof_utils.cpp 
 
-# For a strange reason we should not put `xprof_utils.cpp` neither in the `sources`
-
 nodist_libZEProf_la_SOURCES = \
 	zeinterval_callbacks.cpp \
 	zeinterval_callbacks.h \
 	zeinterval_dispatchers.c \
 	zeinterval.c \
     zeinterval.h \
-    babeltrace_ze.h
+	babeltrace_ze.h \
+	xprof_utils.cpp 
 
 libZEProf_la_SOURCES = \
 	zeprof.c

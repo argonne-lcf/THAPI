@@ -117,7 +117,7 @@ CLEANFILES = \
     clinterval_dispatchers.c \
     clinterval.h \
     clinterval.c \
-    xprof_utils.cpp
+	xprof_utils.cpp
 
 BUILT_SOURCES += \
     clinterval.h \
@@ -131,7 +131,8 @@ nodist_libCLProf_la_SOURCES = \
     clinterval_dispatchers.c \
     clinterval.c \
     clinterval.h \
-    tracer_opencl.h
+    tracer_opencl.h \
+	xprof_utils.cpp
 
 libCLProf_la_SOURCES = \
     clprof.c
