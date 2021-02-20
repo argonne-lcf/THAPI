@@ -234,17 +234,17 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
                                   /
 %>
 
-   <% output = [ ['StatTime', 'std::unordered_map<hpt_function_name_t, StatTime>', 'api_call', 'API calls', '1', 'hpt_t',
+   <% output = [ ['StatTime', 'std::unordered_map<hpt_function_name_t, StatTime>', 'host', 'API calls', '1', 'hpt_t',
                     [ ['hostname_t','Hostnames','Hostname'],
                       ['process_id_t','Processes','Process'],
                       ['thread_id_t','Threads','Thread'] ] ],
-   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device_id_result','Device profiling', '0', 'hpt_dsd_t',
+   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device','Device profiling', '0', 'hpt_dsd_t',
                     [ ['hostname_t','Hostnames','Hostname'],
                       ['hp_t','Processes','Process'],
                       ['hpt_t','Threads','Thread'] ,
                       ['hp_device_t','Device pointers','Device'],
                       ['hp_dsd_t','SubDevice pointers','SubDevice'] ] ],
-   ['StatByte', 'std::unordered_map<hpt_function_name_t, StatByte>', 'memory_trafic', 'Explicit memory trafic', '0', 'hpt_t',
+   ['StatByte', 'std::unordered_map<hpt_function_name_t, StatByte>', 'traffic', 'Explicit memory traffic', '0', 'hpt_t',
                     [ ['hostname_t','Hostnames','Hostname'],
                       ['process_id_t','Processes','Process'],
                       ['thread_id_t','Threads','Thread'] ] ],

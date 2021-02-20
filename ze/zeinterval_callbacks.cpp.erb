@@ -51,7 +51,8 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      state->downstream_message_queue.push(message);
 }
 
-static __attribute__ ((unused)) void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device_id, const thapi_device_id subdevice_id,
+void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, 
+									   const thapi_device_id device_id, const thapi_device_id subdevice_id,
                                        const char* name, const uint64_t ts, const uint64_t duration) {
 
      /* Message creation */
@@ -62,6 +63,19 @@ static __attribute__ ((unused)) void create_and_enqueue_device_message(const cha
 
 
      /* Set message */
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                                                  zeinterval_iter_g->dispatch->traffic_event_class,
+                                                  self_message_iterator_g,
+                                                  zeinterval_iter_g->dispatch->stream);
+
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
 }
@@ -142,7 +156,7 @@ static void zeinterval_<%= dbt_event.uuid %>_callback(
                             /
   %>
   <% if (dbt_event.name.include?("Alloc") or dbt_event.name.include?("Memory")) and  dbt_event.include? ("size_t size") %>
-  //  memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")].delta(size);
+    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name %>",size);  
   <% end %>
 
   <%#

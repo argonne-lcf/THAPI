@@ -65,9 +65,10 @@ bt_message* create_host_message(const char* hostname, const process_id_t process
 }
 
 
-bt_message* create_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device_id, const thapi_device_id subdevice_id,
-                                       const char* name, const uint64_t ts,
-    const uint64_t duration, bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
+bt_message* create_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, 
+								  const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                  const char* name, const uint64_t ts, const uint64_t duration, 
+									bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -115,4 +116,40 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
     return message;
 }
 
+bt_message* create_traffic_message(const char *hostname, const process_id_t process_id , const thread_id_t thread_id,
+                                   const char *name, const uint64_t size,
+                                   bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
 
+     /* Message creation */
+     bt_message *message = bt_message_event_create(
+                             message_iterator, event_class, stream);
+
+     /* event */
+     bt_event *downstream_event = bt_message_event_borrow_event(message);
+
+     /* Common context */
+     bt_field *context_field = bt_event_borrow_common_context_field(downstream_event);
+
+     // Hostname
+     bt_field *hostname_msg_field = bt_field_structure_borrow_member_field_by_index(context_field,0);
+     bt_field_string_set_value(hostname_msg_field, hostname);
+     // pid
+     bt_field *vpid_field = bt_field_structure_borrow_member_field_by_index(context_field,1);
+     bt_field_integer_signed_set_value(vpid_field, process_id);
+     // vid
+     bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
+     bt_field_integer_signed_set_value(vtid_field, thread_id);
+
+     /* Payload */
+     bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
+
+     // name
+     bt_field *name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 0);
+     bt_field_string_set_value(name_field, name);
+
+     // size
+     bt_field *dur_field = bt_field_structure_borrow_member_field_by_index(payload_field, 1);
+     bt_field_integer_unsigned_set_value(dur_field, size);
+
+     return message;
+}

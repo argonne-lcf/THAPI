@@ -24,7 +24,7 @@ void *init_clinterval_callbacks_state() {
 }
 
 static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name, 
-                                     const uint64_t ts, const uint64_t duration, const bool err) {
+                                            const uint64_t ts, const uint64_t duration, const bool err) {
 
      /* Message creation */
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err, 
@@ -36,8 +36,9 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      state->downstream_message_queue.push(message);
 }
 
-static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device_id, const thapi_device_id subdevice_id,
-                                       const char* name, const uint64_t ts, const uint64_t duration) {
+static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, 
+                                              const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                              const char* name, const uint64_t ts, const uint64_t duration) {
     
      /* Message creation */
      bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration,
@@ -47,6 +48,19 @@ static void create_and_enqueue_device_message(const char* hostname, const proces
  
  
      /* Set message */
+     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                            				      clinterval_iter_g->dispatch->traffic_event_class,
+                            				      self_message_iterator_g,
+                            					  clinterval_iter_g->dispatch->stream);
+
      clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
 }
@@ -130,7 +144,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
 
   <%# To do handle Alloc and cl_mem_host_ptr %>
   <%if dbt_event.name.include?("clEnqueue") and dbt_event.fields.key?("size") %>
-  //   state->memory_trafic[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")].delta(size);
+	create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",size);
   <% end %>
 
   <%#  ___                                    __         _     
@@ -139,7 +153,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
                                      |                       
   %>
   <%if dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_timer"  %>
-      const hostname_t  hostname{borrow_hostname(bt_evt)};
+    const hostname_t  hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
 

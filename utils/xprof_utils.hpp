@@ -88,3 +88,8 @@ bt_message* create_host_message(const char *hostname, const process_id_t, const 
 bt_message* create_device_message(const char *hostname, const process_id_t, const thread_id_t,  const thapi_device_id, const thapi_device_id, 
                                   const char *name, const uint64_t ts, const uint64_t duration, 
                                   bt_event_class*, bt_self_message_iterator*, bt_stream*);
+
+bt_message* create_traffic_message(const char *hostname, const process_id_t, const thread_id_t,
+                                   const char *name, const uint64_t size,
+                                   bt_event_class*, bt_self_message_iterator*, bt_stream*);
+
