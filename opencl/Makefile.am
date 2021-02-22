@@ -218,9 +218,10 @@ EXTRA_DIST = \
 	dust.c.erb \
 	gen_clprof.rb \
 	clinterval_callbacks.cpp.erb \
+	clinterval_callbacks.hpp \
 	babeltrace_opencl.in \
 	extract_enqueues \
-	test_wrapper.sh
+	test_wrapper.sh 
 
 CLEANFILES += \
 	$(OPENCL_PROBES_INCL) \

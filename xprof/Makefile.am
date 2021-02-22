@@ -1,10 +1,5 @@
 .DELETE_ON_ERROR:
 
-# I put tally_utils.h to force the generation
-# It seem to me that this is an ugly hack...
-
-BUILT_SOURCES = xprof.c tally_utils.hpp
-
 bin_SCRIPTS = iprof
 
 iprof: $(top_builddir)/utils/xprof.sh.erb
@@ -28,6 +23,7 @@ libXProf_la_SOURCES = \
 	tally.hpp \
 	tally.h \
 	tally.cpp \
+	tally_utils.hpp \
 	timeline.hpp \
 	timeline.h \
 	timeline.cpp 
@@ -48,7 +44,9 @@ install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 EXTRA_DIST = \
-	tally_utils.hpp.erb
+	tally_utils.hpp.erb \
+	interval.h.erb \
+    interval.c.erb 
 
 CLEANFILES = \
 	tally_utils.hpp

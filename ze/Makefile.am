@@ -280,7 +280,10 @@ babeltrace_ze_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB
 
 EXTRA_DIST += \
 	gen_babeltrace_ze_callbacks.rb \
-	gen_babeltrace_ze_dispatchers.rb
+	gen_babeltrace_ze_dispatchers.rb \
+	gen_zeprof.rb \
+	zeinterval_callbacks.cpp.erb  \
+	zeinterval_callbacks.hpp 
 
 CLEANFILES += \
 	babeltrace_ze_callbacks.h \
