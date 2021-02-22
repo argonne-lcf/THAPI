@@ -276,11 +276,12 @@ static void zeinterval_<%= dbt_event.uuid %>_callback(
      const thread_id_t thread_id = borrow_thread_id(bt_evt);
      const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
      const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+     (void) subdevice;
 
      const hp_device_t hp_device{hostname, process_id, device};
      //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
      const uint64_t start = ts + (globalStart - contextStart);
-     const uint64_t delta = born_timing_to_ns(state, hp_device_t(hostname,process_id, device),contextStart,contextEnd);
+     const uint64_t delta = born_timing_to_ns(state, hp_device, contextStart,contextEnd);
      state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
      state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
   }
