@@ -84,8 +84,8 @@ bin_SCRIPTS = tracer_opencl.sh clprof.sh babeltrace_opencl extract_enqueues
 noinst_LTLIBRARIES = libtracepoints.la
 
 nodist_libtracepoints_la_SOURCES = \
-	$(OPENCL_PROBES_INCL) \
-	$(OPENCL_PROBES_SRC)
+    $(OPENCL_PROBES_INCL) \
+    $(OPENCL_PROBES_SRC)
 
 libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
@@ -117,7 +117,7 @@ CLEANFILES = \
     clinterval_dispatchers.c \
     clinterval.h \
     clinterval.c \
-	xprof_utils.cpp
+    xprof_utils.cpp
 
 BUILT_SOURCES += \
     clinterval.h \
@@ -132,7 +132,7 @@ nodist_libCLProf_la_SOURCES = \
     clinterval.c \
     clinterval.h \
     tracer_opencl.h \
-	xprof_utils.cpp
+    xprof_utils.cpp
 
 libCLProf_la_SOURCES = \
     clprof.c
@@ -177,11 +177,11 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	ln -s $(top_srcdir)/utils/xprof_utils.cpp  xprof_utils.cpp
 
 nodist_libBabeltraceCL_la_SOURCES = \
-	babeltrace_cl_dispatchers.c \
-	babeltrace_cl_callbacks.h
+    babeltrace_cl_dispatchers.c \
+    babeltrace_cl_callbacks.h
 libBabeltraceCL_la_SOURCES = \
-	babeltrace_cl.c \
-	babeltrace_cl.h
+    babeltrace_cl.c \
+    babeltrace_cl.h
 libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -190,48 +190,49 @@ dust.c: $(srcdir)/dust.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb dust
 
 nodist_libDust_la_SOURCES = \
-	dust.c
+    dust.c
+
 libDust_la_CFLAGS = $(BABELTRACE2_CFLAGS)
 libDust_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 data_DATA = \
-	opencl_model.yaml \
-	opencl_infos.yaml
+    opencl_model.yaml \
+    opencl_infos.yaml
 
 EXTRA_DIST = \
-	cl.xml \
-	cl.xml.patch \
-	$(ML_FILES) \
-	opencl_infos.yaml \
-	opencl_wrapper_events.yaml \
-	$(TRACEPOINT_GEN) \
-	include \
-	tracer_opencl.map \
-	tracer_opencl_helpers.include.c \
-	gen_opencl.rb \
-	gen_opencl_probes.rb \
-	gen_opencl_header.rb \
-	gen_opencl_model.rb \
-	gen_opencl_custom_probes.rb \
-	gen_babeltrace_cl_dispatchers.rb \
-	gen_babeltrace_cl_callbacks.rb \
-	dust.c.erb \
-	gen_clprof.rb \
-	clinterval_callbacks.cpp.erb \
-	clinterval_callbacks.hpp \
-	babeltrace_opencl.in \
-	extract_enqueues \
-	test_wrapper.sh 
+    cl.xml \
+    cl.xml.patch \
+    $(ML_FILES) \
+    opencl_infos.yaml \
+    opencl_wrapper_events.yaml \
+    $(TRACEPOINT_GEN) \
+    include \
+    tracer_opencl.map \
+    tracer_opencl_helpers.include.c \
+    gen_opencl.rb \
+    gen_opencl_probes.rb \
+    gen_opencl_header.rb \
+    gen_opencl_model.rb \
+    gen_opencl_custom_probes.rb \
+    gen_babeltrace_cl_dispatchers.rb \
+    gen_babeltrace_cl_callbacks.rb \
+    dust.c.erb \
+    gen_clprof.rb \
+    clinterval_callbacks.cpp.erb \
+    clinterval_callbacks.hpp \
+    babeltrace_opencl.in \
+    extract_enqueues \
+    test_wrapper.sh 
 
 CLEANFILES += \
-	$(OPENCL_PROBES_INCL) \
-	$(OPENCL_PROBES_TP) \
-	$(OPENCL_PROBES_SRC) \
-	tracer_opencl.c \
-	tracer_opencl.h \
-	cl.xml.patched \
-	opencl_model.yaml \
-	babeltrace_cl_dispatchers.c \
-	babeltrace_cl_callbacks.h \
-	dust.c \
-	$(TEST_FILES)
+    $(OPENCL_PROBES_INCL) \
+    $(OPENCL_PROBES_TP) \
+    $(OPENCL_PROBES_SRC) \
+    tracer_opencl.c \
+    tracer_opencl.h \
+    cl.xml.patched \
+    opencl_model.yaml \
+    babeltrace_cl_dispatchers.c \
+    babeltrace_cl_callbacks.h \
+    dust.c \
+    $(TEST_FILES)

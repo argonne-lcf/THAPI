@@ -1,5 +1,7 @@
 .DELETE_ON_ERROR:
 
+BUILT_SOURCES = tally_utils.hpp
+
 bin_SCRIPTS = iprof
 
 iprof: $(top_builddir)/utils/xprof.sh.erb
@@ -15,7 +17,7 @@ lib_LTLIBRARIES = libXProf.la
 
 # File to compiled
 nodist_libXProf_la_SOURCES = \
-    tally_utils.hpp
+	tally_utils.hpp
 
 # File to compiled
 libXProf_la_SOURCES = \
@@ -46,7 +48,7 @@ install-data-hook:
 EXTRA_DIST = \
 	tally_utils.hpp.erb \
 	interval.h.erb \
-    interval.c.erb 
+	interval.c.erb 
 
 CLEANFILES = \
 	tally_utils.hpp
