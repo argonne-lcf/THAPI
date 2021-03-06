@@ -52,7 +52,7 @@ whichlib() {
 }
 
 trace_and_summary() {
-    if [ -z "$@" ]; then
+    if [[ -z "$@" ]]; then
         display_help
     fi
 
