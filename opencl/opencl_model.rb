@@ -390,7 +390,7 @@ class Prototype < CLXML
 end
 
 class MetaParameter
-  def initialize(command, name)
+  def initialize(command, name, nocheck: false)
     @command = command
     @name = name
   end
@@ -448,23 +448,23 @@ class InMetaParameter < MetaParameter
 end
 
 class OutScalar < OutMetaParameter
-  def initialize(command, name)
+  def initialize(command, name, nocheck: false)
     super
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
     type = command[name].type.gsub("*", "")
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     if ENUM_PARAM_NAME_MAP[name]
-      @lttng_out_type = ["ctf_enum", "lttng_ust_opencl", ENUM_PARAM_NAME_MAP[name], type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+      @lttng_out_type = ["ctf_enum", "lttng_ust_opencl", ENUM_PARAM_NAME_MAP[name], type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
       case type
       when *CL_OBJECTS, *CL_EXT_OBJECTS
-        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val", "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val", nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       when *CL_INT_SCALARS
-        @lttng_out_type = ["ctf_integer", type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+        @lttng_out_type = ["ctf_integer", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
       when *CL_FLOAT_SCALARS
-        @lttng_out_type = ["ctf_float", type, name+"_val", "#{name} == NULL ? 0 : *#{name}"]
+        @lttng_out_type = ["ctf_float", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
       when "void"
-        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val", "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val",  nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
       end
@@ -573,13 +573,13 @@ class EventWaitList < AutoMetaParameter
 end
 
 class AutoOutScalar
-  def self.create(name)
+  def self.create(name, nocheck: false)
     str = <<EOF
     Class::new(AutoMetaParameter) do
       def self.create_if_match(command)
         par = command.parameters.find { |p| p.name == "#{name}" && p.pointer? }
         if par
-          return OutScalar::new(command, "#{name}")
+          return OutScalar::new(command, "#{name}", nocheck: #{nocheck})
         end
         nil
       end
@@ -614,7 +614,7 @@ end
 
 ErrCodeRet = AutoOutScalar::create("errcode_ret")
 
-ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret")
+ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret", nocheck: true)
 
 Event = AutoOutScalar::create("event")
 
