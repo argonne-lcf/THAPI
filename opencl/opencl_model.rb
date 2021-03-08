@@ -612,7 +612,7 @@ class TracepointParameter
   end
 end
 
-ErrCodeRet = AutoOutScalar::create("errcode_ret")
+ErrCodeRet = AutoOutScalar::create("errcode_ret", nocheck: true)
 
 ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret", nocheck: true)
 
@@ -752,6 +752,16 @@ OPENCL_POINTER_NAMES = ($opencl_commands.collect { |c|
 } + $opencl_extension_commands.collect { |c|
   [c, c.prototype.pointer_name]
 }).to_h
+
+($opencl_commands+$opencl_extension_commands).select { |c|
+  c.parameters.find { |p| p.name == "errcode_ret" && p.pointer? }
+}.each { |c|
+  c.prologues.push <<EOF
+  cl_int _errcode_ret_force;
+  if (!errcode_ret)
+    errcode_ret = &_errcode_ret_force;
+EOF
+}
 
 ($opencl_commands+$opencl_extension_commands).select { |c|
    c.parameters.find { |p| p.name == "param_value_size_ret" && p.pointer? }
