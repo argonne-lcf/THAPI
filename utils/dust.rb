@@ -1,8 +1,5 @@
-require 'delegate'
 require 'babeltrace2'
 require 'yaml'
-
-thapi_root = ENV["THAPI_ROOT"]
 
 def create_datastructure(trace_class, l)
 
@@ -75,6 +72,7 @@ end
 
 USR_DATA_LOCATION = ARGV[0]
 
+
 BOTTOM_CLASS_DEFAULT = {BT_FIELD_CLASS_TYPE_SIGNED_INTEGER: 0, 
                         BT_FIELD_CLASS_TYPE_BOOL: false,
                         BT_FIELD_CLASS_TYPE_STRING: "" }
@@ -93,12 +91,13 @@ def be_populate_struc_field(struct, field_value)
 end 
     
 def populate_field(field, field_value)  
-    c = field.get_class_type
     case field.get_class_type
     when :BT_FIELD_CLASS_TYPE_STRING
-      n = field.get_class.user_attributes[:be_class].value
+      be_class = field.get_class.user_attributes[:be_class]
+      n = be_class.nil? ? nil : be_class.value 
       if n
         if n.start_with?("ZE")
+          thapi_root = ENV["THAPI_ROOT"]
           require "/#{thapi_root}/share/ze_bindings"
           struct = ZE.const_get(n.to_sym).new()
         elsif n.star_with?("CL")
@@ -111,17 +110,27 @@ def populate_field(field, field_value)
         value = struct.to_ptr.read_bytes(struct.size)
         field.append(value, length: value.size)
       else
-        value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[c] : field_value
+        value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[field.get_class_type] : field_value
         field.set_value(value)
       end 
     when :BT_FIELD_CLASS_TYPE_STRUCTURE
       field.field_names.each { |name| populate_field(field[name], field_value.nil? ? nil :  field_value[name] ) }
     when :BT_FIELD_CLASS_TYPE_STATIC_ARRAY
-      element_field_class_type = get_class.element_field_class.get_type 
-      value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[element_field_class_type] : field_value
+      element_field_class_type = field.get_class.element_field_class.get_type 
       field.length.times{ |i| populate_field(field[i], field_value.nil? ? nil :  field_value[i] ) }
+    when :BT_FIELD_CLASS_TYPE_DYNAMIC_ARRAY_WITHOUT_LENGTH_FIELD
+       element_field_class_type = field.get_class.element_field_class.get_type
+       if field_value.nil?
+          length = 0
+       elsif field_value[:length]
+           length = field_value[:length]
+       elsif field_value[:values]
+           length = field_value[:values].length
+       end
+       field.length = length
+       field.length.times{ |i| populate_field(field[i], field_value[:values].nil? ? nil :  field_value[:values][i] ) }
     else
-      value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[c] : field_value 
+      value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[field.get_class_type] : field_value 
       field.set_value(value)
     end  
 end
@@ -161,7 +170,7 @@ dust_in_message_iterator_initialize_method = lambda { |self_message_iterator, co
 dust_in_initialize_method = lambda { |self_component, _configuration, _params, _data|
   # Should read command line option via babeltrace API
   in_data = YAML.load_file(USR_DATA_LOCATION)
- 
+  schema_in_data =  in_data[:schema_path] ? YAML.load_file(in_data[:schema_path]): in_data
 
   self_component.add_output_port('op0')
   clock_class = self_component.create_clock_class 
@@ -169,7 +178,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   trace_class = self_component.create_trace_class 
   trace = trace_class.create_trace
 
-  d_stream_class = in_data[:schema_streams].map { |schema|
+  d_stream_class = schema_in_data[:schema_streams].map { |schema|
     stream_class = trace_class.create_stream_class
     stream_id = schema[:name]
 
@@ -178,7 +187,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
     [stream_id, stream_class]
   }.to_h
 
-  d_event = in_data[:schema_events].map { |schema|
+  d_event = schema_in_data[:schema_events].map { |schema|
     stream_class_id = schema[:stream]
     stream_class = d_stream_class[stream_class_id]
 

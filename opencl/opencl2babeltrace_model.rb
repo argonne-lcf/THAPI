@@ -20,7 +20,7 @@ def parse_field(field)
     case field["lttng"]
     when "ctf_integer", "ctf_integer_hex", "ctf_enum"
       d[:class] = is_unsigned(field["type"]) ? "unsigned" : "signed"
-      d[:class_properties] = {preferred_display_base: 2} if field["lttng"] == "ctf_integer_hex"
+      d[:class_properties] = {preferred_display_base: 16} if field["lttng"] == "ctf_integer_hex"
     when "ctf_string", "ctf_sequence_text"
       d[:class] = "string"
     when "ctf_sequence","ctf_array"
