@@ -3,6 +3,7 @@ require 'yaml'
 
 def create_datastructure(trace_class, l)
 
+  # Utils functions
   def create_callback_aliases(aliases, root)
     aliases.each { |new|
       singleton_class.send(:alias_method, "callback_create_#{new}", "callback_create_#{root}")
@@ -13,14 +14,20 @@ def create_datastructure(trace_class, l)
     field.preferred_display_base = d[:preferred_display_base] if d[:preferred_display_base]
     field.field_value_range = d[:field_value_range] if d[:field_value_range]
   end 
+   
+  def populate_enumeration_class(field,d)
+    populate_integer_field_class(field,d)
+    d[:mapping].each{ |f| field.add_mapping(f[:label],  f[:interger_range_set]) }
+  end
 
+  # Callbacks
   def callback_create_field_class_integer_unsigned(trace_class, d)
     s = trace_class.create_field_class_integer_unsigned
     populate_integer_field_class(s, d[:class_properties]) if d[:class_properties]
     s
   end
   create_callback_aliases(['integer_unsigned','unsigned'], 'field_class_integer_unsigned')
-  
+ 
   def callback_create_field_class_integer_signed(trace_class, d)
     s = trace_class.create_field_class_integer_signed
     populate_integer_field_class(s, d[:class_properties]) if d[:class_properties]
@@ -32,6 +39,18 @@ def create_datastructure(trace_class, l)
     s = trace_class.create_structure
     d[:fields].each { |f| s.append(f[:name], callback(trace_class, f)) }
     s
+  end
+
+  def callback_create_enumeration_unsigned(trace_class, d)
+    s = trace_class.create_unsigned_enumeration_class
+    populate_enumeration_class(s, d)
+    s
+  end
+
+  def callback_create_enumeration_signed(trace_class, d)
+    s = trace_class.create_signed_enumeration_class
+    populate_enumeration_class(s, d)
+    s  
   end
 
   def callback_create_static_array(trace_class, d)
@@ -55,16 +74,17 @@ def create_datastructure(trace_class, l)
   end
   bottom_aliases = ['bool',
    'bit_array',
-   'enumeration_unsigned',
    'enumeration_signed',
    'real_single_precision','real_single', 'single','single_precision',
    'real_double_precision','read_double', 'double','double_precision']
   create_callback_aliases(bottom_aliases, "bottom") 
-
+  
+  # Callback dispatcher
   def callback(trace_class, d)
     send("callback_create_#{d[:class]}",trace_class, d)
   end 
-  
+
+  # Call the callbacks. Start the recursion  
   d = {:class => "structure", :fields => l}
   callback(trace_class, d)
 
@@ -90,7 +110,7 @@ def be_populate_struc_field(struct, field_value)
   }
 end 
     
-def populate_field(field, field_value)  
+def populate_field(field, field_value)
     case field.get_class_type
     when :BT_FIELD_CLASS_TYPE_STRING
       be_class = field.get_class.user_attributes[:be_class]
@@ -129,6 +149,7 @@ def populate_field(field, field_value)
        end
        field.length = length
        field.length.times{ |i| populate_field(field[i], field_value[:values].nil? ? nil :  field_value[:values][i] ) }
+    # Integers, floating points and enum
     else
       value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[field.get_class_type] : field_value 
       field.set_value(value)
@@ -197,7 +218,6 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
     event_class.payload_field_class = create_datastructure(trace_class, schema[:payload]) if schema[:payload]
     [[stream_class_id, name], event_class]
   }.to_h
-
 
   d_stream = in_data[:streams].map { |fields|
      stream_class_id  = fields[:class]
