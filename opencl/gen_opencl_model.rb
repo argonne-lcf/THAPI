@@ -10,6 +10,7 @@ enums = {}
 objects = CL_OBJECTS + CL_EXT_OBJECTS
 int_scalars = CL_INT_SCALARS
 float_scalars = CL_FLOAT_SCALARS
+lttng_enums = {}
 events = {}
 
 res = {
@@ -19,6 +20,7 @@ res = {
   "int_scalars" => int_scalars,
   "float_scalars" => float_scalars,
   "type_map" => CL_TYPE_MAP,
+  "lttng_enums" => lttng_enums,
   "events" => events
 }
 
@@ -163,6 +165,13 @@ YAML::load_file(File.join(SRC_DIR,"opencl_wrapper_events.yaml")).each { |namespa
 }
 
 YAML::load_file(File.join(SRC_DIR,"opencl_events.yaml")).each { |namespace, h|
+  if h["enums"]
+    h["enums"].each { |e|
+      lttng_enums[e["name"]] = {
+        values: e["values"].collect { |v| { type: v[0], name: v[1], value: v[2] }}
+      }
+    }
+  end
   h["events"].each { |e|
     event = get_fields(e["args"], e["fields"])
     events["#{namespace}:#{e["name"]}"] = event
