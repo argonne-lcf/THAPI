@@ -3,16 +3,6 @@ require 'babeltrace2'
 require 'yaml'
 
 thapi_root = ENV["THAPI_ROOT"]
-require "/#{thapi_root}/share/ze_bindings"
-
-module FooExtensions
-  attr_accessor :be_class
-end
-
-class BT2::BTFieldClass::String
-  prepend FooExtensions
-end
-
 
 def create_datastructure(trace_class, l)
 
@@ -24,7 +14,7 @@ def create_datastructure(trace_class, l)
 
   def populate_integer_field_class(field, d)
     field.preferred_display_base = d[:preferred_display_base] if d[:preferred_display_base]
-    field.field_value_range = sd[:field_value_range] if sd[:field_value_range]
+    field.field_value_range = d[:field_value_range] if d[:field_value_range]
   end 
 
   def callback_create_field_class_integer_unsigned(trace_class, d)
@@ -48,12 +38,18 @@ def create_datastructure(trace_class, l)
   end
 
   def callback_create_static_array(trace_class, d)
-    trace_class.create_static_array(callback(trace_class,d[:field]), d[:length])
+    trace_class.create_dynamic_array(callback(trace_class,d[:field]), d[:length])
   end
+  create_callback_aliases(['array_static'], 'static_array')
+
+  def callback_create_dynamic_array(trace_class, d)
+    trace_class.create_dynamic_array(callback(trace_class,d[:field]))
+  end
+  create_callback_aliases(['array_dynamic'], 'dynamic_array')
 
   def callback_create_string(trace_class, d)
     s = trace_class.create_string
-    s.user_attributes = { be_class: d[:be_class] }
+    s.user_attributes = { be_class: d[:be_class] } if d[:be_class]
     s
   end
 
@@ -97,12 +93,13 @@ def be_populate_struc_field(struct, field_value)
 end 
     
 def populate_field(field, field_value)  
-    
     c = field.get_class_type
-    if c == :BT_FIELD_CLASS_TYPE_STRING
+    case field.get_class_type
+    when :BT_FIELD_CLASS_TYPE_STRING
       n = field.get_class.user_attributes[:be_class].value
       if n
         if n.start_with?("ZE")
+          require "/#{thapi_root}/share/ze_bindings"
           struct = ZE.const_get(n.to_sym).new()
         elsif n.star_with?("CL")
           struct = OpenCL.const_get(n.to_sym).new()
@@ -117,10 +114,11 @@ def populate_field(field, field_value)
         value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[c] : field_value
         field.set_value(value)
       end 
-    elsif c == :BT_FIELD_CLASS_TYPE_STRUCTURE
+    when :BT_FIELD_CLASS_TYPE_STRUCTURE
       field.field_names.each { |name| populate_field(field[name], field_value.nil? ? nil :  field_value[name] ) }
-    elsif c ==:BT_FIELD_CLASS_TYPE_STATIC_ARRAY 
-      value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[field.get_element_field_class_type] : field_value
+    when :BT_FIELD_CLASS_TYPE_STATIC_ARRAY
+      element_field_class_type = get_class.element_field_class.get_type 
+      value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[element_field_class_type] : field_value
       field.length.times{ |i| populate_field(field[i], field_value.nil? ? nil :  field_value[i] ) }
     else
       value = field_value.nil? ? BOTTOM_CLASS_DEFAULT[c] : field_value 
@@ -143,7 +141,7 @@ dust_in_message_iterator_next_method = lambda { |self_message_iterator, capacity
       m = self_message_iterator.create_message_event(event_class, stream, 
                                                      clock_snapshot_value: clock_snapshot_value) 
 
-      populate_field(m.event.common_context_field, common_context)  
+      populate_field(m.event.common_context_field, common_context) if m.event.common_context_field  
       populate_field(m.event.payload_field, payload)    
 
       m
@@ -175,10 +173,9 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
     stream_class = trace_class.create_stream_class
     stream_id = schema[:name]
 
-    stream_class.event_common_context_field_class = create_datastructure(trace_class, schema[:common_context])
+    stream_class.event_common_context_field_class = create_datastructure(trace_class, schema[:common_context]) if schema[:common_context]
     stream_class.default_clock_class = clock_class if schema[:clock_snapshot_value]
-
-    [stream_id, stream_class] #, stream_class.create_stream(trace)] ]
+    [stream_id, stream_class]
   }.to_h
 
   d_event = in_data[:schema_events].map { |schema|
@@ -188,10 +185,10 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
     name = schema[:name]
     event_class = stream_class.create_event_class
     event_class.name = name
-    event_class.payload_field_class = create_datastructure(trace_class, schema[:payload])
-
+    event_class.payload_field_class = create_datastructure(trace_class, schema[:payload]) if schema[:payload]
     [[stream_class_id, name], event_class]
   }.to_h
+
 
   d_stream = in_data[:streams].map { |fields|
      stream_class_id  = fields[:class]
