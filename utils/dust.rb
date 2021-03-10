@@ -3,15 +3,17 @@ require 'yaml'
 require 'optparse'
 
 $options = {
-  text: 'details',
+  sink: 'text:details',
   schemas: []
 }
 
 OptionParser.new do |opts|
   opts.banner = "Usage: dust.rb [options] trace_file"
-  opts.on("--text TEXT_PLUGIN", %w[pretty details], "Select output type (pretty, details)")
+  opts.on("--sink PLUGIN", "Select sink plugin")
   opts.on("-s", "--schemas x,y,z", Array, "List of schemas files to load")
 end.parse!(into: $options)
+
+$options[:sink] = $options[:sink].split(":")
 
 $options[:schemas] = $options[:schemas].collect { |path|
   schema = YAML.load_file(path)
@@ -313,13 +315,13 @@ dust_in_class = BT2::BTComponentClass::Source.new(name: 'repeat',
 dust_in_class.initialize_method = dust_in_initialize_method
 
 # Sink details
-sink_text_details = BT2::BTPlugin.find('text').get_sink_component_class_by_name($options[:text])
+sink_text_details = BT2::BTPlugin.find($options[:sink][0]).get_sink_component_class_by_name($options[:sink][1])
 # Graph creation
 
 graph = BT2::BTGraph.new
 
 comp1 = graph.add(dust_in_class, 'dust')
-comp2 = graph.add(sink_text_details, $options[:text])
+comp2 = graph.add(sink_text_details, $options[:sink].join(":"))
 
 op = comp1.output_port(0)
 ip = comp2.input_port(0)
