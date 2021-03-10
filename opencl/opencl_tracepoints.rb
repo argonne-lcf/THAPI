@@ -18,6 +18,10 @@ class LTTng
     args[0].match("string")
   end
 
+  def self.enum?(*args)
+    args[0].match("enum")
+  end
+
   def self.expression(*args)
     case args[0]
     when "ctf_string"
@@ -106,6 +110,9 @@ def get_field(args, field)
   if LTTng.string?(*field)
     res["string"] = true
     res.delete("pointer")
+  end
+  if LTTng.enum?(*field)
+    res["enum_type"] = field[2]
   end
   res["lttng"] = field[0]
   [ name, res ]
