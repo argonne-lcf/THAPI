@@ -195,67 +195,67 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   trace_class = self_component.create_trace_class
   trace = trace_class.create_trace
 
-  d_stream_class = schema_in_data[:schema_streams].map { |schema|
-    stream_class = trace_class.create_stream_class
-    stream_id = schema[:name]
+  d_stream_class = schema_in_data[:stream_classes].map { |stream_class|
+    bt_stream_class = trace_class.create_stream_class
+    stream_id = stream_class[:name]
 
-    if schema[:common_context]
-      stream_class.event_common_context_field_class = create_datastructure(trace_class,
-                                                                           schema[:common_context])
+    if stream_class[:common_context]
+      bt_stream_class.event_common_context_field_class =
+        create_datastructure(trace_class, stream_class[:common_context])
     end
-    stream_class.default_clock_class = clock_class if schema[:clock_snapshot_value]
-    [stream_id, stream_class]
+    bt_stream_class.default_clock_class = clock_class if stream_class[:clock_snapshot_value]
+    [stream_id, bt_stream_class]
   }.to_h
 
-  d_event = schema_in_data[:schema_events].map { |schema|
-    stream_class_id = schema[:stream]
-    stream_class = d_stream_class[stream_class_id]
+  d_event = schema_in_data[:event_classes].map { |event_class|
+    stream_class_id = event_class[:stream_class]
+    bt_stream_class = d_stream_class[stream_class_id]
 
-    name = schema[:name]
-    event_class = stream_class.create_event_class
-    event_class.name = name
-    event_class.payload_field_class = create_datastructure(trace_class, schema[:payload]) if schema[:payload]
-    [[stream_class_id, name], event_class]
+    name = event_class[:name]
+    bt_event_class = bt_stream_class.create_event_class
+    bt_event_class.name = name
+    bt_event_class.payload_field_class = create_datastructure(trace_class, event_class[:payload]) if event_class[:payload]
+    [[stream_class_id, name], bt_event_class]
   }.to_h
 
-  d_stream = in_data[:streams].map { |fields|
-    stream_class_id = fields[:class]
-    stream_class = d_stream_class[stream_class_id]
-    [fields[:name], [stream_class_id, fields[:common_context], stream_class.create_stream(trace)]]
+  d_stream = in_data[:streams].map { |stream|
+    stream_class_id = stream[:class]
+    bt_stream_class = d_stream_class[stream_class_id]
+    [stream[:name], [stream_class_id, stream[:common_context], bt_stream_class.create_stream(trace)]]
   }.to_h
 
   # Stream begin
-  downstream_messages = in_data[:streams].map { |fields|
-    stream_id = fields[:name]
-    stream = d_stream[stream_id].last
-    [stream, 'stream_beginning']
+  downstream_messages = in_data[:streams].map { |stream|
+    stream_id = stream[:name]
+    bt_stream = d_stream[stream_id].last
+    [bt_stream, 'stream_beginning']
   }
 
   # Actual Message
   clock_snapshot_values = Hash.new(0)
-  downstream_messages += in_data[:events].map { |fields|
-    name = fields[:name]
-    stream_id = fields[:stream]
+  downstream_messages += in_data[:events].map { |event|
+    name = event[:name]
+    stream_id = event[:stream]
     stream_class_id, common_context, stream = d_stream[stream_id]
 
     event_class = d_event[[stream_class_id, name]]
     if stream.get_class.default_clock_class.nil?
       clock_snapshot_value = nil
-    elsif fields[:clock_snapshot_value]
-      clock_snapshot_value = fields[:clock_snapshot_value]
-      clock_snapshot_values[stream] = fields[:clock_snapshot_value] + 1
+    elsif event[:clock_snapshot_value]
+      clock_snapshot_value = event[:clock_snapshot_value]
+      clock_snapshot_values[stream] = event[:clock_snapshot_value] + 1
     else
       clock_snapshot_value = clock_snapshot_values[stream]
       clock_snapshot_values[stream] += 1
     end
-    [stream, event_class, common_context, fields[:payload], clock_snapshot_value, 'message']
+    [stream, event_class, common_context, event[:payload], clock_snapshot_value, 'message']
   }
 
   # Stream end
-  downstream_messages += in_data[:streams].map { |fields|
-    stream_id = fields[:name]
-    stream = d_stream[stream_id].last
-    [stream, 'stream_end']
+  downstream_messages += in_data[:streams].map { |stream|
+    stream_id = stream[:name]
+    bt_stream = d_stream[stream_id].last
+    [bt_stream, 'stream_end']
   }
 
   # self_component.set_data(downstream_messages)
