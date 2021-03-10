@@ -189,6 +189,10 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   in_data = YAML.load_file(USR_DATA_LOCATION)
   schema_in_data = in_data[:schema_path] ? YAML.load_file(in_data[:schema_path]) : in_data
 
+  unless schema_in_data[:stream_classes]
+    schema_in_data[:stream_classes] = [{ name: 'default_stream_class' }]
+  end
+
   self_component.add_output_port('op0')
   clock_class = self_component.create_clock_class
 
@@ -208,7 +212,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   }.to_h
 
   d_event = schema_in_data[:event_classes].map { |event_class|
-    stream_class_id = event_class[:stream_class]
+    stream_class_id = event_class.fetch(:stream_class, 'default_stream_class')
     bt_stream_class = d_stream_class[stream_class_id]
 
     name = event_class[:name]
@@ -219,7 +223,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   }.to_h
 
   d_stream = in_data[:streams].map { |stream|
-    stream_class_id = stream[:class]
+    stream_class_id = stream.fetch(:class, 'default_stream_class')
     bt_stream_class = d_stream_class[stream_class_id]
     [stream[:name], [stream_class_id, stream[:common_context], bt_stream_class.create_stream(trace)]]
   }.to_h

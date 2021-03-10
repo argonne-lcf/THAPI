@@ -47,8 +47,7 @@ schema_event = OPENCL_MODEL['events'].map { |name, fields|
     end
   }.flatten
 
-  { name: name, stream_class: 'stream_class0', payload: payload_fields }
+  { name: name, payload: payload_fields }
 }
 
-puts YAML.dump({ stream_classes: [{ name: 'stream_class0' }],
-                 event_classes: schema_event })
+puts YAML.dump({ event_classes: schema_event })
