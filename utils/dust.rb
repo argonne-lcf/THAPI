@@ -17,7 +17,7 @@ def create_datastructure(trace_class, l)
    
   def populate_enumeration_class(field,d)
     populate_integer_field_class(field,d)
-    d[:mapping].each{ |f| field.add_mapping(f[:label],  f[:interger_range_set]) }
+    d[:mapping].each{ |f| field.add_mapping(f[:label],  f[:integer_range_set]) }
   end
 
   # Callbacks
@@ -74,7 +74,6 @@ def create_datastructure(trace_class, l)
   end
   bottom_aliases = ['bool',
    'bit_array',
-   'enumeration_signed',
    'real_single_precision','real_single', 'single','single_precision',
    'real_double_precision','read_double', 'double','double_precision']
   create_callback_aliases(bottom_aliases, "bottom") 
@@ -141,11 +140,11 @@ def populate_field(field, field_value)
     when :BT_FIELD_CLASS_TYPE_DYNAMIC_ARRAY_WITHOUT_LENGTH_FIELD
        element_field_class_type = field.get_class.element_field_class.get_type
        if field_value.nil?
-          length = 0
+         length = 0
        elsif field_value[:length]
-           length = field_value[:length]
+         length = field_value[:length]
        elsif field_value[:values]
-           length = field_value[:values].length
+         length = field_value[:values].length
        end
        field.length = length
        field.length.times{ |i| populate_field(field[i], field_value[:values].nil? ? nil :  field_value[:values][i] ) }

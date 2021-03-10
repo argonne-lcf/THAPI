@@ -5,20 +5,16 @@ OPENCL_MODEL = YAML::load_file(OPENCL_MODEL_LOCATION)
 
 def is_unsigned(type)
   # object are size_t
-  if OPENCL_MODEL["objects"].include?(type)
-     return true
-  end
+  return true if OPENCL_MODEL["objects"].include?(type)
   bottom = OPENCL_MODEL["type_map"].fetch(type, type)
   ["unsigned int","uintptr_t", "size_t","cl_uint","cl_ulong", "cl_ushort"].include?(bottom)
 end 
 
 def parse_field(field)
     d= {}
-    # This is ugly, we should change the opencl_model format
-    # to handle struct and ctf_struct properly
     d[:name] = field["name"] if field["name"] 
     case field["lttng"]
-    when "ctf_integer", "ctf_integer_hex", "ctf_enum"
+    when "ctf_integer", "ctf_integer_hex"
       d[:class] = is_unsigned(field["type"]) ? "unsigned" : "signed"
       d[:class_properties] = {preferred_display_base: 16} if field["lttng"] == "ctf_integer_hex"
     when "ctf_string", "ctf_sequence_text"
@@ -26,9 +22,14 @@ def parse_field(field)
     when "ctf_sequence","ctf_array"
       d[:class] = "array_dynamic"
       d[:field] = parse_field( {"lttng" => "ctf_integer", "type" => d["type"]}) 
-   when "ctf_sequence_hex"
+    when "ctf_sequence_hex"
       d[:class] = "array_dynamic"
       d[:field] = parse_field( {"lttng" => "ctf_integer_hex", "type" => d["type"] })
+    when "ctf_enum"
+      d[:class] = is_unsigned(field["type"]) ? "enumeration_unsigned" : "enumeration_signed"
+      enum_type = field["enum_type"]
+      d[:mapping] =  OPENCL_MODEL["lttng_enums"][enum_type][:values].map { 
+        |f| {label: f[:name], integer_range_set: f[:value] } }
     end
 
     d
