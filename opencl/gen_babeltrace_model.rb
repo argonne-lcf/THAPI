@@ -1,7 +1,5 @@
 require "yaml"
-
-OPENCL_MODEL_LOCATION = ARGV[0]
-OPENCL_MODEL = YAML::load_file(OPENCL_MODEL_LOCATION)
+OPENCL_MODEL = YAML::load_file("opencl_model.yaml")
 
 def is_unsigned(type)
   # object are size_t
