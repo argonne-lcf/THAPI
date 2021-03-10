@@ -50,4 +50,6 @@ schema_event = OPENCL_MODEL['events'].map { |name, fields|
   { name: name, payload: payload_fields }
 }
 
-puts YAML.dump({ event_classes: schema_event })
+puts YAML.dump({
+  name: 'thapi_opencl',
+  event_classes: schema_event })

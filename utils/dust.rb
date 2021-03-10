@@ -1,5 +1,22 @@
 require 'babeltrace2'
 require 'yaml'
+require 'optparse'
+
+$options = {
+  text: 'details',
+  schemas: []
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: dust.rb [options] trace_file"
+  opts.on("--text TEXT_PLUGIN", %w[pretty details], "Select output type (pretty, details)")
+  opts.on("-s", "--schemas x,y,z", Array, "List of schemas files to load")
+end.parse!(into: $options)
+
+$options[:schemas] = $options[:schemas].collect { |path|
+  schema = YAML.load_file(path)
+  [schema[:name], schema]
+}.to_h
 
 def create_datastructure(trace_class, l)
   # Utils functions
@@ -87,7 +104,7 @@ def create_datastructure(trace_class, l)
   callback(trace_class, d)
 end
 
-USR_DATA_LOCATION = ARGV[0]
+$trace_file = ARGV[0]
 
 BOTTOM_CLASS_DEFAULT = { BT_FIELD_CLASS_TYPE_SIGNED_INTEGER: 0,
                          BT_FIELD_CLASS_TYPE_BOOL: false,
@@ -164,8 +181,8 @@ dust_in_message_iterator_next_method = lambda { |self_message_iterator, capacity
     when downstream_message
       stream, event_class, common_context, payload, clock_snapshot_value, = m0
 
-      m = self_message_iterator.create_message_event(event_class, stream,
-                                                     clock_snapshot_value: clock_snapshot_value)
+      m = self_message_iterator.create_message_event(
+            event_class, stream, clock_snapshot_value: clock_snapshot_value)
 
       populate_field(m.event.common_context_field, common_context) if m.event.common_context_field
       populate_field(m.event.payload_field, payload)
@@ -184,48 +201,70 @@ dust_in_message_iterator_next_method = lambda { |self_message_iterator, capacity
 dust_in_message_iterator_initialize_method = lambda { |self_message_iterator, configuration, port|
 }
 
+def create_bt_event_class(bt_trace_class, bt_stream_class, event_class)
+  name = event_class[:name]
+  bt_event_class = bt_stream_class.create_event_class
+  bt_event_class.name = name
+  if event_class[:payload]
+    bt_event_class.payload_field_class =
+      create_datastructure(bt_trace_class, event_class[:payload])
+  end
+  [name, bt_event_class]
+end
+
+def create_bt_stream_class(bt_trace_class, bt_clock_class, stream_class)
+  bt_stream_class = bt_trace_class.create_stream_class
+  stream_id = stream_class[:name]
+  if stream_class[:common_context]
+    bt_stream_class.event_common_context_field_class =
+      create_datastructure(bt_trace_class, stream_class[:common_context])
+  end
+  if stream_class[:clock_snapshot_value]
+    bt_stream_class.default_clock_class = bt_clock_class
+  end
+  [stream_id, bt_stream_class]
+end
+
 dust_in_initialize_method = lambda { |self_component, _configuration, _params, _data|
   # Should read command line option via babeltrace API
-  in_data = YAML.load_file(USR_DATA_LOCATION)
-  schema_in_data = in_data[:schema_path] ? YAML.load_file(in_data[:schema_path]) : in_data
+  in_data = YAML.load_file($trace_file)
+  schema_in_data = in_data
+  $options[:schemas]['default_schema'] = schema_in_data if schema_in_data[:event_classes]
 
   unless schema_in_data[:stream_classes]
     schema_in_data[:stream_classes] = [{ name: 'default_stream_class' }]
   end
 
   self_component.add_output_port('op0')
-  clock_class = self_component.create_clock_class
+  bt_clock_class = self_component.create_clock_class
 
-  trace_class = self_component.create_trace_class
-  trace = trace_class.create_trace
+  bt_trace_class = self_component.create_trace_class
+  bt_trace = bt_trace_class.create_trace
 
   d_stream_class = schema_in_data[:stream_classes].map { |stream_class|
-    bt_stream_class = trace_class.create_stream_class
-    stream_id = stream_class[:name]
-
-    if stream_class[:common_context]
-      bt_stream_class.event_common_context_field_class =
-        create_datastructure(trace_class, stream_class[:common_context])
-    end
-    bt_stream_class.default_clock_class = clock_class if stream_class[:clock_snapshot_value]
-    [stream_id, bt_stream_class]
+    create_bt_stream_class(bt_trace_class, bt_clock_class, stream_class)
   }.to_h
 
-  d_event = schema_in_data[:event_classes].map { |event_class|
-    stream_class_id = event_class.fetch(:stream_class, 'default_stream_class')
+  d_event_class = schema_in_data[:stream_classes].collect { |stream_class|
+    stream_class_id = stream_class[:name]
     bt_stream_class = d_stream_class[stream_class_id]
-
-    name = event_class[:name]
-    bt_event_class = bt_stream_class.create_event_class
-    bt_event_class.name = name
-    bt_event_class.payload_field_class = create_datastructure(trace_class, event_class[:payload]) if event_class[:payload]
-    [[stream_class_id, name], bt_event_class]
-  }.to_h
+    schemas = stream_class[:schemas]
+    schemas = ['default_schema'] if !schemas || schemas.empty?
+    schemas.collect { |schema_name|
+      schema = $options[:schemas][schema_name]
+      raise "schema: #{schema_name} was not found" unless schema
+      schema[:event_classes].collect { |event_class|
+        name, bt_event_class =
+          create_bt_event_class(bt_trace_class, bt_stream_class, event_class)
+        [[stream_class_id, name], bt_event_class]
+      }
+    }
+  }.flatten(2).to_h
 
   d_stream = in_data[:streams].map { |stream|
     stream_class_id = stream.fetch(:class, 'default_stream_class')
     bt_stream_class = d_stream_class[stream_class_id]
-    [stream[:name], [stream_class_id, stream[:common_context], bt_stream_class.create_stream(trace)]]
+    [stream[:name], [stream_class_id, stream[:common_context], bt_stream_class.create_stream(bt_trace)]]
   }.to_h
 
   # Stream begin
@@ -242,7 +281,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
     stream_id = event[:stream]
     stream_class_id, common_context, stream = d_stream[stream_id]
 
-    event_class = d_event[[stream_class_id, name]]
+    event_class = d_event_class[[stream_class_id, name]]
     if stream.get_class.default_clock_class.nil?
       clock_snapshot_value = nil
     elsif event[:clock_snapshot_value]
@@ -274,13 +313,13 @@ dust_in_class = BT2::BTComponentClass::Source.new(name: 'repeat',
 dust_in_class.initialize_method = dust_in_initialize_method
 
 # Sink details
-sink_text_details = BT2::BTPlugin.find('text').get_sink_component_class_by_name('details')
+sink_text_details = BT2::BTPlugin.find('text').get_sink_component_class_by_name($options[:text])
 # Graph creation
 
 graph = BT2::BTGraph.new
 
 comp1 = graph.add(dust_in_class, 'dust')
-comp2 = graph.add(sink_text_details, 'pretty')
+comp2 = graph.add(sink_text_details, $options[:text])
 
 op = comp1.output_port(0)
 ip = comp2.input_port(0)
