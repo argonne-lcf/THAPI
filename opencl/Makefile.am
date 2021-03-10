@@ -49,6 +49,9 @@ opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(srcdir)/opencl_model.rb $(ML_
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_model.rb > $@
 
+opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
+
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(srcdir)/opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched $(srcdir)/opencl_tracepoints.rb $(srcdir)/opencl_wrapper_events.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_probes.rb > $@
 
@@ -198,24 +201,29 @@ libTestingCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -W
 libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TEST_FILES = \
-	profiling_normal.dust \
-	profiling_inversed.dust \
-	profiling_block.dust \
-	profiling_fast.dust \
-	profiling_interleave_thread.dust \
-	profiling_interleave_process.dust \
-	profiling_normal_command_queue.dust \
-	profiling_with_error.dust \
-	profiling_normal_command_queue_created_in_other_thread.dust \
-	device_name.dust \
-	kernel_name.dust \
-	profiling_normal_nd_range_kernel_name.dust \
-	API_call.dust
+	tests/opencl_dummy_trace.dust \
+	tests/trace.dust
+#	profiling_normal.dust \
+#	profiling_inversed.dust \
+#	profiling_block.dust \
+#	profiling_fast.dust \
+#	profiling_interleave_thread.dust \
+#	profiling_interleave_process.dust \
+#	profiling_normal_command_queue.dust \
+#	profiling_with_error.dust \
+#	profiling_normal_command_queue_created_in_other_thread.dust \
+#	device_name.dust \
+#	kernel_name.dust \
+#	profiling_normal_nd_range_kernel_name.dust \
+#	API_call.dust
 
 TESTS = $(TEST_FILES)
-	
+
 TEST_EXTENSIONS = .dust
-DUST_LOG_COMPILER = $(srcdir)/test_wrapper.sh
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	opencl_dummy_trace.yaml
 
 data_DATA = \
 	opencl_model.yaml \
@@ -256,6 +264,7 @@ CLEANFILES = \
 	cl.xml.patched \
 	opencl_model.yaml \
 	opencl_babeltrace_model.yaml \
+	opencl_dummy_trace.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
 	clprof.c \

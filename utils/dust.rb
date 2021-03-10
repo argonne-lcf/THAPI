@@ -4,21 +4,37 @@ require 'optparse'
 
 $options = {
   sink: 'text:details',
-  schemas: []
+  schemas: [],
+  trace: nil
 }
 
 OptionParser.new do |opts|
   opts.banner = "Usage: dust.rb [options] trace_file"
-  opts.on("--sink PLUGIN", "Select sink plugin")
-  opts.on("-s", "--schemas x,y,z", Array, "List of schemas files to load")
-end.parse!(into: $options)
-
-$options[:sink] = $options[:sink].split(":")
-
-$options[:schemas] = $options[:schemas].collect { |path|
-  schema = YAML.load_file(path)
-  [schema[:name], schema]
-}.to_h
+  opts.on("--sink PLUGIN", "Select sink plugin") do |sink|
+    $options[:sink] = sink.split(":")
+  end
+  opts.on("-s", "--schemas x,y,z", Array, "List of schemas files to load") do |schemas|
+    $options[:schemas] = schemas.collect { |path|
+      schema = YAML.load_file(path)
+      [schema[:name], schema]
+    }.to_h
+  end
+  opts.on("-f", "--file FILENAME", "Configuration file Name") do |path|
+    dust_schema = YAML.load_file(path)
+    trace = dust_schema[:trace]
+    plugins = dust_schema[:plugins]
+    sink = plugins.select { |p| p.match(/^sink/) }.last
+    if sink
+      $options[:sink] = sink.split(":")[1..2]
+    end
+    $options[:trace] = trace
+  end
+end.parse!
+$trace_file = ARGV[0] ? ARGV[0] : $options[:trace]
+raise "trace file not specified" unless $trace_file
+unless File.exist?($trace_file)
+  $trace_file = File.join(ENV["DUST_TRACE_DIR"], $trace_file)
+end
 
 def create_datastructure(trace_class, l)
   # Utils functions
@@ -106,7 +122,6 @@ def create_datastructure(trace_class, l)
   callback(trace_class, d)
 end
 
-$trace_file = ARGV[0]
 
 BOTTOM_CLASS_DEFAULT = { BT_FIELD_CLASS_TYPE_SIGNED_INTEGER: 0,
                          BT_FIELD_CLASS_TYPE_BOOL: false,

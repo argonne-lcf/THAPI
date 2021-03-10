@@ -1,0 +1,4 @@
+---
+:trace: trace.yaml
+:plugins:
+  - sink:opencl:dispatch

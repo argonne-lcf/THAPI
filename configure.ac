@@ -83,6 +83,7 @@ AC_CONFIG_FILES([Makefile
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
+AC_CONFIG_FILES([opencl/test_wrapper.sh], [chmod +x opencl/test_wrapper.sh])
 AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
 AC_CONFIG_FILES([ze/babeltrace_ze], [chmod +x ze/babeltrace_ze])
 AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
