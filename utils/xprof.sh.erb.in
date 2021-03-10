@@ -20,6 +20,7 @@ display_help() {
     echo "  -h, --help         Show this screen"
     echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace        Display the trace"
+    echo "  -l, --timeline      Display the timeline (as JSON format)"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
@@ -51,7 +52,7 @@ whichlib() {
 }
 
 trace_and_summary() {
-    if [ -z "$@" ]; then
+    if [[ -z "$@" ]]; then
         display_help
     fi
 
@@ -145,7 +146,18 @@ summary() {
         fi
     done
 
-    if [ -n "$trace" ]; then
+    if [[ "$timeline" ]]; then
+<% if languages.include?("opencl") %>
+    echo "Generating ${lttng_last_session}/timeline_cl.json"
+    babeltrace2 --plugin-path=$libdir --component=filter.clprof.interval --component=sink.xprof.timeline ${lttng_last_session} > ${lttng_last_session}/timeline_cl.json
+<% end %>
+<% if languages.include?("ze") %>
+    echo "Generating ${lttng_last_session}/timeline_ze.json"
+    babeltrace2 --plugin-path=$libdir --component=filter.zeprof.interval --component=sink.xprof.timeline ${lttng_last_session} > ${lttng_last_session}/timeline_ze.json
+<% end %>
+    fi
+
+    if [[ "$trace" ]] ; then
         # Todo filter direcly in the babeltrace
 <% if languages.include?("opencl") %>
         $bindir/babeltrace_opencl $lttng_last_session | grep --binary-files=text lttng_ust_opencl
@@ -154,19 +166,22 @@ summary() {
         $bindir/babeltrace_ze $lttng_last_session | grep --binary-files=text lttng_ust_ze
 <% end %>
     fi
-
+    
+    if [[ -z "$timeline" ]] ; then
 <% if languages.include?("opencl") %>
-    ocl_output=$(babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lttng_last_session})
+    ocl_output=$(babeltrace2 --plugin-path=$libdir --component=filter.clprof.interval --component=sink.xprof.tally --params="display=$display" ${lttng_last_session})
     if [ -n "$ocl_output" ]; then
         echo "== OpenCL == "
         echo "$ocl_output"
     fi
 <% end %>
 <% if languages.include?("ze") %>
-    ze_output=$(babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lttng_last_session})
+    ze_output=$(babeltrace2 --plugin-path=$libdir --component=filter.zeprof.interval --component=sink.xprof.tally --params="display=$display" ${lttng_last_session})
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"
+    fi
+
     fi
 <% end %>
 }
@@ -188,6 +203,7 @@ while (( "$#" )); do
         -d | --debug)    shift; debug=true ;;
         -a | --asm)      shift; asm=true ;;
         -t | --trace)    shift; trace=true ;;
+        -l | --timeline) shift; timeline=true ;;
         --)              shift; break ;;
         *)               break  ;;
     esac

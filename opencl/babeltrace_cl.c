@@ -22,17 +22,17 @@
 //        member_count, member_count == 1 ? "" : "s");
 //}
 
-struct opencl_event_callbacks * opencl_create_event_callbacks(const char *name) {
-    intptr_t mem = (intptr_t)calloc(1, sizeof(struct opencl_event_callbacks) + strlen(name) + 1);
-    struct opencl_event_callbacks * callbacks = (struct opencl_event_callbacks *)mem;
-    callbacks->name = (const char *)(mem + sizeof(struct opencl_event_callbacks));
+struct babeltrace_cl_event_callbacks * opencl_create_event_callbacks(const char *name) {
+    intptr_t mem = (intptr_t)calloc(1, sizeof(struct babeltrace_cl_event_callbacks) + strlen(name) + 1);
+    struct babeltrace_cl_event_callbacks * callbacks = (struct babeltrace_cl_event_callbacks *)mem;
+    callbacks->name = (const char *)(mem + sizeof(struct babeltrace_cl_event_callbacks));
     strcpy((char *)(callbacks->name), name);
     utarray_new(callbacks->callbacks, &ut_ptr_icd);
     return callbacks;
 }
 
-void opencl_register_dispatcher(struct opencl_dispatch *opencl_dispatch, const char *name, opencl_dispatcher_t *dispatcher) {
-    struct opencl_event_callbacks *callbacks = NULL;
+void babeltrace_cl_register_dispatcher(struct babeltrace_cl_dispatch *opencl_dispatch, const char *name, babeltrace_cl_dispatcher_t *dispatcher) {
+    struct babeltrace_cl_event_callbacks *callbacks = NULL;
     HASH_FIND_STR(opencl_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = opencl_create_event_callbacks(name);
@@ -41,8 +41,8 @@ void opencl_register_dispatcher(struct opencl_dispatch *opencl_dispatch, const c
     callbacks->dispatcher = dispatcher;
 }
 
-void opencl_register_callback(struct opencl_dispatch *opencl_dispatch, const char *name, void *func) {
-    struct opencl_event_callbacks *callbacks;
+void babeltrace_cl_register_callback(struct babeltrace_cl_dispatch *opencl_dispatch, const char *name, void *func) {
+    struct babeltrace_cl_event_callbacks *callbacks;
     HASH_FIND_STR(opencl_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = opencl_create_event_callbacks(name);
@@ -62,7 +62,7 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
         const bt_value *params, void *initialize_method_data)
 {
     /* Allocate a private data structure */
-    struct opencl_dispatch *opencl_dispatch = calloc(1, sizeof(struct opencl_dispatch));
+    struct babeltrace_cl_dispatch *opencl_dispatch = calloc(1, sizeof(struct babeltrace_cl_dispatch));
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
@@ -80,7 +80,7 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    init_dispatchers(opencl_dispatch);
+    init_babeltrace_cl_dispatcher(opencl_dispatch);
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
@@ -91,15 +91,15 @@ static
 void opencl_dispatch_finalize(bt_self_component_sink *self_component_sink)
 {
     /* Retrieve our private data from the component's user data */
-    struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
+    struct babeltrace_cl_dispatch *opencl_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
-    struct opencl_callbacks *s, *tmp;
+    struct babeltrace_cl_callbacks *s, *tmp;
     HASH_ITER(hh, opencl_dispatch->callbacks, s, tmp) {
       HASH_DEL(opencl_dispatch->callbacks, s);
       free(s);
     }
-    struct opencl_event_callbacks *s2, *tmp2;
+    struct babeltrace_cl_event_callbacks *s2, *tmp2;
     HASH_ITER(hh, opencl_dispatch->event_callbacks, s2, tmp2) {
       HASH_DEL(opencl_dispatch->event_callbacks, s2);
       utarray_free(s2->callbacks);
@@ -120,7 +120,7 @@ bt_component_class_sink_graph_is_configured_method_status
 opencl_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
 {
     /* Retrieve our private data from the component's user data */
-    struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
+    struct babeltrace_cl_dispatch *opencl_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Borrow our unique port */
@@ -147,7 +147,7 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
         BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
 
     /* Retrieve our private data from the component's user data */
-    struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
+    struct babeltrace_cl_dispatch *opencl_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Consume a batch of messages from the upstream message iterator */
@@ -183,17 +183,17 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
         if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
-            struct opencl_callbacks *callbacks = NULL;
+            struct babeltrace_cl_callbacks *callbacks = NULL;
             const char * class_name = bt_event_class_get_name(event_class);
 
             HASH_FIND_STR(opencl_dispatch->callbacks, class_name, callbacks);
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
-                callbacks = (struct opencl_callbacks *)calloc(1, sizeof(struct opencl_callbacks) + class_name_sz + 1);
+                callbacks = (struct babeltrace_cl_callbacks *)calloc(1, sizeof(struct babeltrace_cl_callbacks) + class_name_sz + 1);
                 callbacks->name = (const char *)callbacks + class_name_sz;
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
                 HASH_ADD_KEYPTR(hh, opencl_dispatch->callbacks, class_name, class_name_sz, callbacks);
-                struct opencl_event_callbacks *event_callbacks = NULL;
+                struct babeltrace_cl_event_callbacks *event_callbacks = NULL;
                 HASH_FIND_STR(opencl_dispatch->event_callbacks, class_name, event_callbacks);
                 if (event_callbacks) {
                     callbacks->dispatcher = event_callbacks->dispatcher;

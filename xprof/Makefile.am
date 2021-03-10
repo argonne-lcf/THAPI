@@ -1,5 +1,54 @@
-bin_SCRIPTS = iprof 
+.DELETE_ON_ERROR:
+
+BUILT_SOURCES = tally_utils.hpp
+
+bin_SCRIPTS = iprof
 
 iprof: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl","ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
+
+
+tally_utils.hpp: tally_utils.hpp.erb
+	SRC_DIR=$(srcdir) ${ERB} $(srcdir)/tally_utils.hpp.erb > $@
+
+# Library to be packaged
+lib_LTLIBRARIES = libXProf.la
+
+# File to compiled
+nodist_libXProf_la_SOURCES = \
+	tally_utils.hpp
+
+# File to compiled
+libXProf_la_SOURCES = \
+	xprof.c \
+	tally.hpp \
+	tally.h \
+	tally.cpp \
+	tally_utils.hpp \
+	timeline.hpp \
+	timeline.h \
+	timeline.cpp 
+
+# Compiler flags
+libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+# Cannot use check_LTLIBRARIES because we need the shared version of those
+# Thanks Vincent Danjean
+#   noinst_LTLIBRARIES would be the correct thing but then libtool
+#   only built non shared version :-( So, declaring the libs as
+#   pkglib_LTLIBRARIES and using an install hook to remove them.
+tmplibdir = $(libdir)/tmp
+install-data-hook:
+	$(RM) -r $(DESTDIR)$(tmplibdir)
+
+EXTRA_DIST = \
+	tally_utils.hpp.erb \
+	interval.h.erb \
+	interval.c.erb 
+
+CLEANFILES = \
+	tally_utils.hpp

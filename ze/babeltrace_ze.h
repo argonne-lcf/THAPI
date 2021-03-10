@@ -15,50 +15,50 @@
 extern "C" {
 #endif
 
-struct ze_dispatch;
-struct ze_callbacks;
+struct babeltrace_ze_dispatch;
+struct babeltrace_ze_callbacks;
 
-extern void init_dispatchers(struct ze_dispatch *ze_dispatch);
+extern void init_babeltrace_ze_dispatcher(struct babeltrace_ze_dispatch *ze_dispatch);
 
-typedef void (ze_dispatcher_t)
-    (struct ze_dispatch   *ze_dispatch,
-     struct ze_callbacks *callbacks,
+typedef void (babeltrace_ze_dispatcher_t)
+    (struct babeltrace_ze_dispatch   *ze_dispatch,
+     struct babeltrace_ze_callbacks *callbacks,
      const bt_event          *message,
      const bt_clock_snapshot *clock);
 
-struct ze_callbacks {
+struct babeltrace_ze_callbacks {
     const char* name;
-    ze_dispatcher_t *dispatcher;
+    babeltrace_ze_dispatcher_t *dispatcher;
     UT_array *callbacks;
     UT_hash_handle hh;
 };
 
-struct ze_event_callbacks {
+struct babeltrace_ze_event_callbacks {
     const char *name;
-    ze_dispatcher_t *dispatcher;
+    babeltrace_ze_dispatcher_t *dispatcher;
     UT_array *callbacks;
     UT_hash_handle hh;
 };
 
 /* Sink component's private data */
-struct ze_dispatch {
+struct babeltrace_ze_dispatch {
     /* Upstream message iterator (owned by this) */
     bt_message_iterator *message_iterator;
 
     /* Hash table */
-    struct ze_callbacks *callbacks;
+    struct babeltrace_ze_callbacks *callbacks;
     /* Hash table by name */
-    struct ze_event_callbacks *event_callbacks;
+    struct babeltrace_ze_event_callbacks *event_callbacks;
 };
 
 
 extern void
-ze_register_dispatcher(struct ze_dispatch *ze_dispatch,
+babeltrace_ze_register_dispatcher(struct babeltrace_ze_dispatch *ze_dispatch,
                        const char *name,
-                       ze_dispatcher_t *dispatcher);
+                       babeltrace_ze_dispatcher_t *dispatcher);
 
 extern void
-ze_register_callback(struct ze_dispatch *ze_dispatch,
+babeltrace_ze_register_callback(struct babeltrace_ze_dispatch *ze_dispatch,
                      const char *name,
                      void *func);
 #ifdef __cplusplus

@@ -1,3 +1,11 @@
+if ARGV.empty?
+      namespace = "babeltrace_ze"
+else
+      namespace = ARGV[0]
+end
+
+
+
 require_relative 'gen_ze_library_base.rb'
 puts <<EOF
 #include <ze_api.h>
@@ -9,8 +17,8 @@ puts <<EOF
 #include <layers/zel_tracing_api.h>
 #include <layers/zel_tracing_ddi.h>
 #include <babeltrace2/babeltrace.h>
-#include "babeltrace_ze.h"
-#include "babeltrace_ze_callbacks.h"
+#include "#{namespace}.h"
+#include "#{namespace}_callbacks.h"
 
 EOF
 
@@ -248,9 +256,9 @@ end
 gen_event_dispatcher = lambda { |provider, c, dir|
   puts <<EOF
 static void
-#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher(
-    struct ze_dispatch      *ze_dispatch,
-    struct ze_callbacks     *callbacks,
+#{namespace}_#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher(
+    struct #{namespace}_dispatch      *dispatch,
+    struct #{namespace}_callbacks     *callbacks,
     const bt_event          *bt_evt,
     const bt_clock_snapshot *bt_clock) {
 EOF
@@ -264,7 +272,7 @@ EOF
   puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{provider}_#{c.name}_#{SUFFIXES[dir]}_cb *)*_p)(
+    ((#{namespace}_#{provider}_#{c.name}_#{SUFFIXES[dir]}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + get_fields_names(c, dir)).join(",\n      ")});
   }
 EOF
@@ -299,9 +307,9 @@ gen_extra_event_dispatcher = lambda { |provider, event|
     }
     puts <<EOF
 static void
-#{provider}_#{event["name"]}_dispatcher(
-    struct ze_dispatch      *ze_dispatch,
-    struct ze_callbacks     *callbacks,
+#{namespace}_#{provider}_#{event["name"]}_dispatcher(
+    struct #{namespace}_dispatch      *dispatch,
+    struct #{namespace}_callbacks     *callbacks, 
     const bt_event          *bt_evt,
     const bt_clock_snapshot *bt_clock) {
   const bt_field *payload_field = bt_event_borrow_payload_field_const(bt_evt);
@@ -313,7 +321,7 @@ EOF
     puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{provider}_#{event["name"]}_cb *)*_p)(
+    ((#{namespace}_#{provider}_#{event["name"]}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + param_fields.collect { |param_field| param_field[2] }).join(",\n      ")});
   }
 EOF
@@ -357,18 +365,18 @@ ze_events.each { |provider, es|
 
 gen_event_dispatch_init = lambda { |provider, c, dir|
   puts <<EOF
-  ze_register_dispatcher(ze_dispatch, "#{provider}:#{c.name}_#{SUFFIXES[dir]}", &#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher);
+  #{namespace}_register_dispatcher(dispatch, "#{provider}:#{c.name}_#{SUFFIXES[dir]}", &#{namespace}_#{provider}_#{c.name}_#{SUFFIXES[dir]}_dispatcher);
 EOF
 }
 
 gen_extra_event_dispatch_init = lambda { |provider, e|
   puts <<EOF
-  ze_register_dispatcher(ze_dispatch, "#{provider}:#{e["name"]}", &#{provider}_#{e["name"]}_dispatcher);
+  #{namespace}_register_dispatcher(dispatch, "#{provider}:#{e["name"]}", &#{namespace}_#{provider}_#{e["name"]}_dispatcher);
 EOF
 }
 
 puts <<EOF
-void init_dispatchers(struct ze_dispatch *ze_dispatch) {
+void init_#{namespace}_dispatcher(struct #{namespace}_dispatch *dispatch) {
 EOF
 
 provider = :lttng_ust_ze

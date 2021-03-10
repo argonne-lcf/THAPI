@@ -48,7 +48,6 @@ $cl_type_to_bl_type = {
   'cl_errcode' => 'integer_signed',
   'string' => 'string'
 }
-
 class DBT_event
 
     def initialize(name_unsanitized, fields)
@@ -106,186 +105,25 @@ class DBT_event
     end
 end
 
-l_test_d = [
-    {"name" => "profiling_normal",
-    "dust"=> [
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10] ]
-    },
-    {"name" => "profiling_inversed",
-    "dust"=> [
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueWriteBuffer_#{START}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueWriteBuffer_#{STOP}"],
-
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=5'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueWriteBuffer"'], 10],
-                             [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 5] ]
-    },
-    {"name" => "profiling_block",
-    "dust"=> [ ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}"],
-               ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10 ]  ]
-    },
-    {"name" => "profiling_fast",
-    "dust"=> [ ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10]  ]
-    },
-    {"name" => "profiling_interleave_thread",
-    "dust"=> [ ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}"],
-               ['aurora12.gov',-1,3, "lttng_ust_opencl:clEnqueueWriteBuffer_#{START}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling', ['event=20'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov',-1,3, "lttng_ust_opencl:clEnqueueWriteBuffer_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
-               ['aurora12.gov',-1,3, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=20'], ['start=0'], ['end=20'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10],
-                [ ['"aurora12.gov"',-1,3,0,0,'"clEnqueueWriteBuffer"'], 20] ]
-    },
-    {"name" => "profiling_interleave_process",
-    "dust"=> [ ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}"],
-               ['aurora12.gov', 1,2, "lttng_ust_opencl:clEnqueueWriteBuffer_#{START}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov', 1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov', 1,2, "lttng_ust_opencl:clEnqueueWriteBuffer_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ],
-               ['aurora12.gov', 1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=20'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10],
-                [ ['"aurora12.gov"', 1,2,0,0,'"clEnqueueWriteBuffer"'], 20] ]
-    },
-    {"name" => "profiling_normal_command_queue",
-    "dust"=> [ ['aurora12.gov',-1,2, "lttng_ust_opencl:clCreateCommandQueue_#{START}",'device=10'],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clCreateCommandQueue_#{STOP}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueReadBuffer"'], 10] ]
-    },
-    {"name" => "profiling_with_error",
-    "dust"=> [ ['aurora12.gov',-1,2, "lttng_ust_opencl:clCreateCommandQueue_#{START}",'device=10'],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clCreateCommandQueue_#{STOP}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'], ['queued_status=-58'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueWriteBuffer_#{START}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=20'] ],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueWriteBuffer_#{STOP}"] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueWriteBuffer"'], 20] ]
-    },
-    {"name" => "profiling_normal_command_queue_created_in_other_thread",
-    "dust"=> [ ['aurora12.gov',-1,3, "lttng_ust_opencl:clCreateCommandQueue_#{START}",'device=10'],
-               ['aurora12.gov',-1,3, "lttng_ust_opencl:clCreateCommandQueue_#{STOP}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{START}", 'command_queue=23'],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueReadBuffer_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueReadBuffer"'], 10] ]
-    },
-    {"name" => "device_name",
-     "dust"=> [ ['aurora12.gov',11,0, 'lttng_ust_opencl_devices:device_name', 'device=22', 'name=PVC'] ],
-     "device_to_name" => [ [ ['"aurora12.gov"', 11, 22], '"PVC"'] ]
-    },
-    {"name" => "kernel_name",
-     "dust"=> [ ['aurora24.gov',666,0, 'lttng_ust_opencl_arguments:kernel_info', 'kernel=12', 'function_name=__ompoffload'] ],
-     "kernel_to_name" => [ [ ['"aurora24.gov"',666, 12], '"__ompoffload"'] ]
-    },
-    {"name" => "profiling_normal_nd_range_kernel_name",
-    "dust"=> [ ['aurora24.gov',-1,3, 'lttng_ust_opencl_arguments:kernel_info', 'function_name=__ompoffload','kernel=12'],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueNDRangeKernel_#{START}",'kernel=12'],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling', ['event=12'] ],
-               ['aurora12.gov',-1,2, "lttng_ust_opencl:clEnqueueNDRangeKernel_#{STOP}"],
-               ['aurora12.gov',-1,2, 'lttng_ust_opencl_profiling:event_profiling_results', ['event=12'], ['start=0'], ['end=10'] ] ],
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"__ompoffload"'], 10] ]
-    },
-    { "name" => "API_call",
-      "dust" => [ ["aurora12.gov",-1,2, "lttng_ust_opencl:clLinkProgram_#{START}"],
-                  ["aurora12.gov",-1,2, "lttng_ust_opencl:clLinkProgram_#{STOP}"],
-                  ["aurora12.gov",-1,2, "lttng_ust_opencl:clLinkProgram_#{START}"],
-                  ["aurora12.gov",-1,2, "lttng_ust_opencl:clLinkProgram_#{STOP}"] ],
-     "api_call" => [ [ ['"aurora12.gov"',-1,2, '"clLinkProgram"'], [2,1,1,1.0]  ] ]
-    }
-]
-
-class Test_clprof
-    def initialize(d)
-        @d =  d
-    end
-
-    def dust
-        @d['dust'].each_with_index.map{ |l,i| "#{i} #{l.push('foo').join(' ')} \n"}.join
-    end
-
-    def api_call
-        @d.fetch('api_call', [] )
-    end
-
-    def device_id_result
-        @d.fetch('device_id_result',[])
-    end 
-
-    def device_to_name
-        @d.fetch('device_to_name',[])
-    end 
-
-    def kernel_to_name
-        @d.fetch('kernel_to_name',[])
-    end
-
-    def name
-        @d['name']
-    end
-
-    def path
-        "#{name}.dust"
-    end
-
-end
 
 $dbt_events = opencl_model['events'].map { |dbt_event|
         name_unsanitized, fields = dbt_event
         DBT_event.new(name_unsanitized, fields)
 }
 
-def write_file_via_template(file, testing = false)
+def write_file_via_template(file)
     template = File.read(File.join(SRC_DIR, "#{file}.erb"))
     template_rendered = ERB.new(template).result(binding).gsub(/^\s*$\n/,'')
-    if testing
-        File.write("testing_#{file}", template_rendered)
-    else
-        File.write("#{file}", template_rendered)
-    end
+    File.write("#{file}", template_rendered)
 end
 
 $sink_type = ARGV[0]
-$l_file_generated=['clprof_callbacks.cpp','clprof_callbacks.h','clprof.c']
-$l_test = l_test_d.map{ |  d | Test_clprof.new(d) }
+$l_file_generated=['clinterval_callbacks.cpp']
 
 if $sink_type == 'dust'
     write_file_via_template('dust.c')
-elsif $sink_type == 'production' or $sink_type == 'testing'
-    if $sink_type == 'testing'
-       $l_test.each{ | test | File.write(test.path, test.dust) }
-    end
+else
     $l_file_generated.each{ |f|
-        write_file_via_template(f, $sink_type == 'testing' ) 
+        write_file_via_template(f) 
     }
-elsif $sink_type == 'testing_makefile'
-    write_file_via_template('testing.mk')
 end

@@ -142,7 +142,7 @@ $dbt_events += ze_events.map{ |provider,es|
     }
 }.flatten
 
-write_file_via_template("zeprof_callbacks.cpp")
-write_file_via_template("zeprof_callbacks.h")
-write_file_via_template("zeprof.c")
+write_file_via_template("zeinterval_callbacks.cpp")
+#write_file_via_template("zeprof_callbacks.h")
+#write_file_via_template("zeprof.c")
 

@@ -1,0 +1,320 @@
+#include <iomanip>
+#include <iostream>
+#include "clinterval.h"
+#include "clinterval_callbacks.hpp"
+#include "xprof_utils.hpp"
+#include <babeltrace2/babeltrace.h>
+
+#define CL_TARGET_OPENCL_VERSION 300
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_2_APIS
+#include <CL/opencl.h>
+#include <CL/cl_gl_ext.h>
+#include <CL/cl_egl.h>
+#include <CL/cl_ext_intel.h>
+#include "tracer_opencl.h"
+
+void *init_clinterval_callbacks_state() {
+    clinterval_callbacks_state *s = new clinterval_callbacks_state;
+    return (void*) s;
+}
+
+static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name, 
+                                            const uint64_t ts, const uint64_t duration, const bool err) {
+
+     /* Message creation */
+     bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err, 
+                            clinterval_iter_g->dispatch->host_event_class,
+                            self_message_iterator_g,
+                            clinterval_iter_g->dispatch->stream);
+
+     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, 
+                                              const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                              const char* name, const uint64_t ts, const uint64_t duration) {
+    
+     /* Message creation */
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration,
+                            clinterval_iter_g->dispatch->device_event_class,
+                            self_message_iterator_g,
+                            clinterval_iter_g->dispatch->stream);
+ 
+ 
+     /* Set message */
+     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                            				      clinterval_iter_g->dispatch->traffic_event_class,
+                            				      self_message_iterator_g,
+                            					  clinterval_iter_g->dispatch->stream);
+
+     clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+<%#
+  _                                         _                          _ ___ 
+ | \  _       ._   _ _|_ ._ _   _. ._ _    / \      _       _     /\  |_) |  
+ |_/ (_) \/\/ | | _>  |_ | (/_ (_| | | |   \_X |_| (/_ |_| (/_   /--\ |  _|_ 
+                                                                             
+%>
+
+bool downstream_message_queue_empty(struct clinterval_message_iterator *interval_dispatch_iter)
+{
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.empty();
+}
+
+size_t downstream_message_queue_size(struct clinterval_message_iterator *interval_dispatch_iter)
+{
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.size();
+}
+
+const bt_message* downstream_message_queue_pop(struct clinterval_message_iterator *interval_dispatch_iter)
+{
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    const bt_message* m = state->downstream_message_queue.front();
+    state->downstream_message_queue.pop();
+    return m;
+}
+
+<%#
+  _                          
+ /   _. | | |_   _.  _ |   _ 
+ \_ (_| | | |_) (_| (_ |< _> 
+                             
+%>
+
+<% $dbt_events.each do | dbt_event| %>
+static void clinterval_<%= dbt_event.name %>_callback(
+<%= dbt_event.callback_signature %>
+){
+  <%#                             ___      _    
+       |   _   _  _. | o _|_       |  ._ _|_ _  
+       |_ (_) (_ (_| | |  |_ \/   _|_ | | | (_) 
+                             /                  
+  %>
+  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
+    const hostname_t   hostname{borrow_hostname(bt_evt)};
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
+ <%end %>
+
+
+  <%#        _ ___                 
+        /\  |_) |     _  _. | |  _ 
+       /--\ |  _|_   (_ (_| | | _> 
+  %>                              
+  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_opencl:') %>
+    int64_t ns_from_origin;
+    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+   
+    <%if dbt_event.name.end_with?(START) %>
+    state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
+    <%elsif dbt_event.name.end_with?(STOP) %>
+    const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
+      <% if dbt_event.fields.key?('errcode_ret_val') %>
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, errcode_ret_val);
+      <% else %>
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
+      <% end %>
+    <% end %>
+  <% end %>
+  
+  <%#                                                       
+       |\/|  _  ._ _   _  ._      _.  _  _  _   _  _  _   _ 
+       |  | (/_ | | | (_) | \/   (_| (_ (_ (/_ _> _> (/_ _> 
+                            /                               
+  %>
+
+  <%# To do handle Alloc and cl_mem_host_ptr %>
+  <%if dbt_event.name.include?("clEnqueue") and dbt_event.fields.key?("size") %>
+	create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",size);
+  <% end %>
+
+  <%#  ___                                    __         _     
+        | o ._ _   _   _ _|_  _. ._ _  ._    (_  |_  o _|_ _|_ 
+        | | | | | (/_ _>  |_ (_| | | | |_)   __) | | |  |   |_ 
+                                     |                       
+  %>
+  <%if dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_timer"  %>
+    const hostname_t  hostname{borrow_hostname(bt_evt)};
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
+
+    int64_t ns_from_origin;
+    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+    state->device_ts_to_llng_ts[hp_device_t(hostname,process_id, (thapi_device_id) device)] = ns_from_origin - device_timestamp; 
+  <% end %>
+ 
+  <%#
+    _         _                    _                                   __          _                  
+   |_) ._ _ _|_ o | o ._   _  o   | \  _     o  _  _     _. ._   _|   (_      |_  | \  _     o  _  _  
+   |   | (_) |  | | | | | (_| o   |_/ (/_ \/ | (_ (/_   (_| | | (_|   __) |_| |_) |_/ (/_ \/ | (_ (/_ 
+                           _|                                                                         
+   Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ]
+  %>
+
+  <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl:clGetDeviceIDs_#{STOP}" %>
+    if (devices_vals != nullptr) {
+        for (unsigned int i=0; i < num_devices_val; i++ ) {
+             const thapi_device_id d = (thapi_device_id) devices_vals[i];
+             state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
+        }
+    }
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{START}" %>
+    state->start_device[hpt_t(hostname,process_id,thread_id) ] =  (thapi_device_id) in_device;
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{STOP}" %>
+    const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
+    const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
+    if (out_devices_vals != nullptr) {
+        for (unsigned int i=0; i < num_devices_ret_val; i++ ) {
+            const thapi_device_id d = (thapi_device_id) out_devices_vals[i];
+            state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = root_device;
+        }
+    }
+  <% end%>
+ 
+  <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
+  <% if dbt_event.name.end_with?(START) and dbt_event.name.include?('clCreateCommandQueue') %>
+    state->start_device[hpt_t(hostname,process_id, thread_id) ] =  (thapi_device_id) device;
+  <%elsif dbt_event.name.end_with?(STOP) and dbt_event.name.include?('clCreateCommandQueue') %>
+    const thapi_device_id device = state->start_device[hpt_t(hostname,process_id, thread_id) ];
+    const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
+    state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(root_device, device) ; 
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;       
+    const hostname_t hostname{ borrow_hostname(bt_evt)};
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    state->device_to_name[hp_device_t(hostname,process_id,(thapi_device_id) device)] = hostname_t{name};
+  <% end %>
+
+  <%#
+    _         _                    _
+   |_) ._ _ _|_ o | o ._   _  o   |_    ._   _ _|_ o  _  ._    ._   _. ._ _   _
+   |   | (_) |  | | | | | (_| o   | |_| | | (_  |_ | (_) | |   | | (_| | | | (/_
+                           _|
+   Map [ Tuple [ Hostnane, process, thread, function_name], Tuple [ device, subdevice] ]                   
+  %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl_arguments:kernel_info" %>
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;  
+    const hostname_t hostname{borrow_hostname(bt_evt)};
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    state->kernel_to_name[hp_kernel_t(hostname,process_id,kernel)] = hostname_t(function_name);
+  <% elsif dbt_event.name.end_with?(START) and dbt_event.fields['command_queue'] %>
+    <% if dbt_event.fields['kernel'] %>
+    const thapi_function_name name{ state->kernel_to_name[hp_kernel_t(hostname,process_id,kernel)]};
+    <% else %>
+    constexpr char name[] = "<%= dbt_event.name_striped %>";
+    <% end %>
+    state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)] = fn_ts_t(name,ns_from_origin);
+    state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id,name)] = state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)];
+  <% end %>
+  
+  <%#
+    _         _                    _                        ___               
+   |_) ._ _ _|_ o | o ._   _  o   |_ |  _. ._   _  _   _|    | o ._ _   _   _ 
+   |   | (_) |  | | | | | (_| o   |_ | (_| |_) _> (/_ (_|    | | | | | (/_ _> 
+                           _|              |                                  
+   Map [ Tuple[hostname, process, device, subdevice, cl_function_name], elapsed_time ]
+  %>
+
+  <% if dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling" %>
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;  
+    const hostname_t hostname{borrow_hostname(bt_evt)};
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t thread_id = borrow_thread_id(bt_evt);
+    const hp_event_t hp_event{hostname,process_id, event};
+    const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
+
+    if (!state->event_to_function_name_and_ts.count(hp_event)){
+        state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name, ts);
+    } else {
+        const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
+        const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+        if (delta != 0)
+            create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta);
+
+        state->event_to_function_name_and_ts.erase(hp_event);
+    }
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling_results" %>
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state; 
+    const hostname_t hostname{borrow_hostname(bt_evt)};
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const hp_event_t hp_event{hostname,process_id, event};
+    
+    //Should we check that end > start?
+    uint64_t delta = end - start;
+    if (queued_status != 0 or submit_status != 0 or start_status != 0) {
+        std::cerr << "Warning: 'lttng_ust_opencl_profiling:event_profiling_results' for event " 
+                  << std::hex << std::showbase << std::internal << std::setfill('0') << event  
+                  << " returned invalid status" << std::endl;
+        delta = 0;
+    }
+
+    if (state->event_to_function_name_and_ts.count(hp_event)) {
+        const auto [thread_id,function_name,ts] = state->event_to_function_name_and_ts[hp_event];
+        const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+       
+        const hp_device_t hp_device{hostname, process_id, device};
+        //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        const uint64_t start_event = ts + (start - queued);
+
+        // Check for error 
+        if (delta != 0)
+             create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device, subdevice, function_name.c_str(),start_event,delta);
+
+        state->event_to_function_name_and_ts.erase(hp_event);
+    } else {
+        const thread_id_t thread_id = borrow_thread_id(bt_evt);
+        const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
+        
+        //const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+        //const hp_device_t hp_device{hostname, process_id, device};
+        //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+        const uint64_t start_event = ts + (start - queued);
+
+        state->event_result_to_start_and_delta[hp_event] = sd_t(start_event,delta);
+        state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
+    }
+  <% end %>
+}
+<% end %>
+
+<%# 
+ ___                            
+  |  ._  o _|_ o  _. | o _   _  
+ _|_ | | |  |_ | (_| | | /_ (/_ 
+                                
+%>
+
+void init_clinterval_callbacks(struct clinterval_dispatch  *opencl_interval) {
+<% $dbt_events.each do | dbt_event| %>
+    clinterval_register_callback(opencl_interval, "<%= dbt_event.name_unsanitized %>", (void *) &clinterval_<%= dbt_event.name %>_callback);
+<% end %>
+}
+
+<%#
+  _
+ |_ o ._   _. | o _   _
+ |  | | | (_| | | /_ (/_
+
+%>
+//void finalize_zeinterval_callbacks() {}
+
