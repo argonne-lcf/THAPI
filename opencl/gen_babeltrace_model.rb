@@ -1,12 +1,35 @@
 require 'yaml'
 OPENCL_MODEL = YAML.load_file('opencl_model.yaml')
 
-def unsigned?(type)
-  # object are size_t
-  return true if OPENCL_MODEL['objects'].include?(type)
+def get_bottom(type)
+  type = type.gsub("cl_errcode","cl_int")
+  OPENCL_MODEL['type_map'].fetch(type, type)
+end
 
-  bottom = OPENCL_MODEL['type_map'].fetch(type, type)
-  ['unsigned int', 'uintptr_t', 'size_t', 'cl_uint', 'cl_ulong', 'cl_ushort'].include?(bottom)
+def unsigned?(type, pointer = false)
+  # object are size_t
+  return true if pointer || type.match(/\*/)
+  return true if OPENCL_MODEL['objects'].include?(type)
+  bottom = get_bottom(type)
+  ['unsigned int', 'uintptr_t', 'size_t', 'cl_uint', 'cl_ulong', 'cl_ushort', 'uint64_t'].include?(bottom)
+end
+
+def integer_size(type, pointer = false)
+  return 64 if pointer || type.match(/\*/)
+  return 64 if OPENCL_MODEL['objects'].include?(type)
+  bottom = get_bottom(type)
+  case bottom
+  when 'cl_char', 'cl_uchar'
+    8
+  when 'cl_ushort', 'cl_short'
+    16
+  when 'cl_int', 'cl_uint', 'unsigned int', 'int'
+    32
+  when 'uintptr_t', 'intptr_t', 'size_t', 'cl_long', 'cl_ulong', 'uint64_t'
+    64
+  else
+    raise "unknown integer base type: #{bottom}"
+  end
 end
 
 def parse_field(field)
@@ -15,15 +38,18 @@ def parse_field(field)
   case field['lttng']
   when 'ctf_integer', 'ctf_integer_hex'
     d[:class] = unsigned?(field['type']) ? 'unsigned' : 'signed'
-    d[:class_properties] = { preferred_display_base: 16 } if field['lttng'] == 'ctf_integer_hex'
+    props = {}
+    props[:field_value_range] = integer_size(field['type'], field['pointer'])
+    props[:preferred_display_base] = 16 if field['lttng'] == 'ctf_integer_hex'
+    d[:class_properties] = props
   when 'ctf_string', 'ctf_sequence_text'
     d[:class] = 'string'
   when 'ctf_sequence', 'ctf_array'
     d[:class] = 'array_dynamic'
-    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => d['type'] })
+    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
   when 'ctf_sequence_hex'
     d[:class] = 'array_dynamic'
-    d[:field] = parse_field({ 'lttng' => 'ctf_integer_hex', 'type' => d['type'] })
+    d[:field] = parse_field({ 'lttng' => 'ctf_integer_hex', 'type' => field['type'], 'pointer' => field['pointer'] })
   when 'ctf_enum'
     d[:class] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
     enum_type = field['enum_type']
