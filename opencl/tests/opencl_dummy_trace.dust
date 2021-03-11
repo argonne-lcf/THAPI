@@ -1,4 +1,4 @@
 ---
 :trace: opencl_dummy_trace.yaml
 :plugins:
-  - sink:opencl:dispatch
+  - :name: sink:opencl:dispatch

@@ -202,8 +202,8 @@ libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TEST_FILES = \
 	tests/opencl_dummy_trace.dust \
+	tests/profiling_normal.dust \
 	tests/trace.dust
-#	profiling_normal.dust \
 #	profiling_inversed.dust \
 #	profiling_block.dust \
 #	profiling_fast.dust \

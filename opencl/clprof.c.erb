@@ -48,8 +48,10 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
 {
 <% if $sink_type == 'testing' %>
     test_type_value = bt_value_map_borrow_entry_value_const(params, "test");
+    bt_value_get_ref(test_type_value);
 <% elsif $sink_type == 'production' %>
     display_mode = bt_value_map_borrow_entry_value_const(params, "display");
+    bt_value_get_ref(display_mode);
 <% end %>
 
     /* Allocate a private data structure */
@@ -99,6 +101,11 @@ void opencl_dispatch_finalize(bt_self_component_sink *self_component_sink)
       utarray_free(s2->callbacks);
       free(s2);
     }
+<% if $sink_type == 'testing' %>
+    bt_value_put_ref(test_type_value);
+<% elsif $sink_type == 'production' %>
+    bt_value_put_ref(display_mode);
+<% end %>
     /* Free the allocated structure */
     free(opencl_dispatch);
 }

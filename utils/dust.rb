@@ -4,6 +4,7 @@ require 'optparse'
 
 $options = {
   sink: 'text:details',
+  sink_params: {},
   schemas: [],
   trace: nil
 }
@@ -23,9 +24,10 @@ OptionParser.new do |opts|
     dust_schema = YAML.load_file(path)
     trace = dust_schema[:trace]
     plugins = dust_schema[:plugins]
-    sink = plugins.select { |p| p.match(/^sink/) }.last
+    sink = plugins.select { |p| p[:name].match(/^sink/) }.last
     if sink
-      $options[:sink] = sink.split(":")[1..2]
+      $options[:sink_params] = sink[:params] if sink[:params]
+      $options[:sink] = sink[:name].split(":")[1..2]
     end
     $options[:trace] = trace
   end
@@ -257,6 +259,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
 
   bt_trace_class = self_component.create_trace_class
   bt_trace = bt_trace_class.create_trace
+  bt_trace.set_environment_entry_string("hostname", in_data[:hostname]) if in_data[:hostname]
 
   d_stream_class = schema_in_data[:stream_classes].map { |stream_class|
     create_bt_stream_class(bt_trace_class, bt_clock_class, stream_class)
@@ -308,6 +311,13 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
       clock_snapshot_value = clock_snapshot_values[stream]
       clock_snapshot_values[stream] += 1
     end
+    if event[:common_context]
+      if common_context
+        common_context = common_context.merge(event[:common_context])
+      else
+        common_context = event[:common_context]
+      end
+    end
     [stream, event_class, common_context, event[:payload], clock_snapshot_value, 'message']
   }
 
@@ -336,10 +346,11 @@ sink_text_details = BT2::BTPlugin.find($options[:sink][0]).get_sink_component_cl
 graph = BT2::BTGraph.new
 
 comp1 = graph.add(dust_in_class, 'dust')
-comp2 = graph.add(sink_text_details, $options[:sink].join(":"))
+comp2 = graph.add(sink_text_details, $options[:sink].join(":"), params: $options[:sink_params])
 
 op = comp1.output_port(0)
 ip = comp2.input_port(0)
 graph.connect_ports(op, ip)
 
 graph.run
+
