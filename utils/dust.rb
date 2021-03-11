@@ -299,6 +299,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   downstream_messages += in_data[:events].map { |event|
     name = event[:name]
     stream_id = event[:stream]
+    stream_id = in_data[:default_stream] if !stream_id
     stream_class_id, common_context, stream = d_stream[stream_id]
 
     event_class = d_event_class[[stream_class_id, name]]
