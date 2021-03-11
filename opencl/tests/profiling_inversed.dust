@@ -1,0 +1,6 @@
+---
+:trace: profiling_inversed.yaml
+:plugins:
+  - :name: sink:testing_clprof:dispatch
+    :params:
+      test: profiling_inversed

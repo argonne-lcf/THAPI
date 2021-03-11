@@ -203,19 +203,19 @@ libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 TEST_FILES = \
 	tests/opencl_dummy_trace.dust \
 	tests/profiling_normal.dust \
+	tests/profiling_inversed.dust \
+	tests/profiling_block.dust \
+	tests/profiling_fast.dust \
+	tests/profiling_interleave_thread.dust \
+	tests/profiling_interleave_process.dust \
+	tests/profiling_normal_command_queue.dust \
+	tests/profiling_with_error.dust \
+	tests/profiling_normal_command_queue_created_in_other_thread.dust \
 	tests/trace.dust
-#	profiling_inversed.dust \
-#	profiling_block.dust \
-#	profiling_fast.dust \
-#	profiling_interleave_thread.dust \
-#	profiling_interleave_process.dust \
-#	profiling_normal_command_queue.dust \
-#	profiling_with_error.dust \
-#	profiling_normal_command_queue_created_in_other_thread.dust \
-#	device_name.dust \
-#	kernel_name.dust \
-#	profiling_normal_nd_range_kernel_name.dust \
-#	API_call.dust
+#	tests/device_name.dust \
+#	tests/kernel_name.dust \
+#	tests/profiling_normal_nd_range_kernel_name.dust \
+#	tests/API_call.dust
 
 TESTS = $(TEST_FILES)
 
