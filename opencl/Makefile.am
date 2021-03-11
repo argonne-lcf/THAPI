@@ -211,11 +211,11 @@ TEST_FILES = \
 	tests/profiling_normal_command_queue.dust \
 	tests/profiling_with_error.dust \
 	tests/profiling_normal_command_queue_created_in_other_thread.dust \
+	tests/device_name.dust \
+	tests/kernel_name.dust \
+	tests/profiling_normal_nd_range_kernel_name.dust \
+	tests/API_call.dust \
 	tests/trace.dust
-#	tests/device_name.dust \
-#	tests/kernel_name.dust \
-#	tests/profiling_normal_nd_range_kernel_name.dust \
-#	tests/API_call.dust
 
 TESTS = $(TEST_FILES)
 
