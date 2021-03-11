@@ -227,7 +227,21 @@ check_DATA = \
 
 data_DATA = \
 	opencl_model.yaml \
-	opencl_infos.yaml
+	opencl_infos.yaml \
+	tests/profiling_normal.yaml \
+	tests/profiling_inversed.yaml \
+	tests/profiling_block.yaml \
+	tests/profiling_fast.yaml \
+	tests/profiling_interleave_thread.yaml \
+	tests/profiling_interleave_process.yaml \
+	tests/profiling_normal_command_queue.yaml \
+	tests/profiling_with_error.yaml \
+	tests/profiling_normal_command_queue_created_in_other_thread.yaml \
+	tests/device_name.yaml \
+	tests/kernel_name.yaml \
+	tests/profiling_normal_nd_range_kernel_name.yaml \
+	tests/API_call.yaml \
+	tests/trace.yaml
 
 EXTRA_DIST = \
 	cl.xml \
