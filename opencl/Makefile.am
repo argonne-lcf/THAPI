@@ -147,7 +147,7 @@ libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingCLProf.la
+tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la
 install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
@@ -166,14 +166,6 @@ libBabeltraceCL_la_SOURCES = \
 libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-dust.c: $(srcdir)/dust.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb dust
-
-nodist_libDust_la_SOURCES = \
-	dust.c
-libDust_la_CFLAGS = $(BABELTRACE2_CFLAGS)
-libDust_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 testing_clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb testing
