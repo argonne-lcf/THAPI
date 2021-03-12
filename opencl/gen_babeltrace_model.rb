@@ -44,7 +44,11 @@ def parse_field(field)
     d[:class_properties] = props
   when 'ctf_string', 'ctf_sequence_text'
     d[:class] = 'string'
-  when 'ctf_sequence', 'ctf_array'
+  when 'ctf_array'
+    d[:class] = 'array_static'
+    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer'=> field['pointer'] })
+    d[:length] = field['length']
+  when 'ctf_sequence'
     d[:class] = 'array_dynamic'
     d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
   when 'ctf_sequence_hex'

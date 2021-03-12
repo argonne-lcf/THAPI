@@ -90,7 +90,7 @@ def create_datastructure(trace_class, l)
   end
 
   def callback_create_static_array(trace_class, d)
-    trace_class.create_dynamic_array(callback(trace_class, d[:field]), d[:length])
+    trace_class.create_static_array(callback(trace_class, d[:field]), d[:length])
   end
   create_callback_aliases(['array_static'], 'static_array')
 

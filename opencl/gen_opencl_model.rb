@@ -105,6 +105,7 @@ event_lambda = lambda { |c, dir|
       meta_field["array"] = true if LTTng.array?(*lttng)
       meta_field["string"] = true if LTTng.string?(*lttng)
       meta_field["lttng"] = lttng[0]
+      meta_field["length"] = lttng[4] if meta_field["lttng"].match("ctf_array")
       fields[fname] = meta_field
     }
   else
@@ -142,6 +143,7 @@ event_lambda = lambda { |c, dir|
       meta_field["array"] = true if LTTng.array?(*lttng)
       meta_field["string"] = true if LTTng.string?(*lttng)
       meta_field["lttng"] = lttng[0]
+      meta_field["length"] = lttng[4] if meta_field["lttng"].match("ctf_array")
       fields[fname] = meta_field
     }
   end
