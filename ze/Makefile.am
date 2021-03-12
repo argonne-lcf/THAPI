@@ -306,7 +306,8 @@ EXTRA_DIST += \
 	gen_ze_library.rb \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
-	gen_ze_bindings.rb
+	gen_ze_bindings.rb \
+	ze_bindings_base.rb
 
 CLEANFILES += $(ZE_BINDINGS)
 

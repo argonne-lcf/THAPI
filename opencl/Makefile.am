@@ -209,17 +209,7 @@ TEST_FILES = \
 	tests/API_call.dust \
 	tests/trace.dust
 
-TESTS = $(TEST_FILES)
-
-TEST_EXTENSIONS = .dust
-DUST_LOG_COMPILER = ./test_wrapper.sh
-check_DATA = \
-	test_wrapper.sh \
-	opencl_dummy_trace.yaml
-
-data_DATA = \
-	opencl_model.yaml \
-	opencl_infos.yaml \
+TRACE_FILES = \
 	tests/profiling_normal.yaml \
 	tests/profiling_inversed.yaml \
 	tests/profiling_block.yaml \
@@ -235,6 +225,19 @@ data_DATA = \
 	tests/API_call.yaml \
 	tests/trace.yaml
 
+TESTS = $(TEST_FILES)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	opencl_dummy_trace.yaml
+
+data_DATA = \
+	opencl_model.yaml \
+	opencl_infos.yaml \
+        $(TRACE_FILES)
+
 EXTRA_DIST = \
 	cl.xml \
 	cl.xml.patch \
@@ -249,17 +252,19 @@ EXTRA_DIST = \
 	gen_opencl_probes.rb \
 	gen_opencl_header.rb \
 	gen_opencl_model.rb \
+	gen_babeltrace_model.rb \
 	gen_opencl_custom_probes.rb \
 	gen_babeltrace_cl_dispatchers.rb \
 	gen_babeltrace_cl_callbacks.rb \
-	dust.c.erb \
 	gen_clprof.rb \
 	clprof_callbacks.cpp.erb \
 	babeltrace_opencl.in \
 	extract_enqueues \
 	clprof.c.erb \
 	clprof_callbacks.h.erb \
-	test_wrapper.sh
+	test_wrapper.sh \
+	$(TRACE_FILES) \
+	$(TEST_FILES)
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
@@ -276,8 +281,6 @@ CLEANFILES = \
 	clprof.c \
 	clprof_callbacks.cpp \
 	clprof_callbacks.h \
-	dust.c \
 	testing_clprof.c \
 	testing_clprof_callbacks.cpp \
-	testing_clprof_callbacks.h \
-	$(TEST_FILES)
+	testing_clprof_callbacks.h
