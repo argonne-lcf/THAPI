@@ -68,9 +68,15 @@ schema_event = OPENCL_MODEL['events'].map { |name, fields|
   payload_fields = fields.map { |sub_name, field|
     field['name'] = sub_name
     parsed_field = parse_field(field)
+    cast_type = "#{field['type'].gsub('cl_errcode', 'cl_int')}"
+    cast_type << ' *' if field['pointer']
+    cast_type << ' *' if field['array']
+    cast_type << ' *' if field['string']
+    parsed_field[:cast_type] = cast_type
     if field['array'] && field['lttng'].match('ctf_sequence')
       additional_parsed_field = parse_field({ 'name' => "_#{sub_name}_length",
                                               'lttng' => 'ctf_integer', 'type' => 'size_t' })
+      additional_parsed_field[:cast_type] = 'size_t'
       [additional_parsed_field, parsed_field]
     else
       parsed_field
