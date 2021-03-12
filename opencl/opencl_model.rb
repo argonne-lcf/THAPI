@@ -447,6 +447,33 @@ class InMetaParameter < MetaParameter
   end
 end
 
+class InScalar < InMetaParameter
+  def initialize(command, name, nocheck: false)
+    super
+    raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
+    type = command[name].type.gsub("*", "")
+    type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
+    if ENUM_PARAM_NAME_MAP[name]
+      @lttng_in_type = ["ctf_enum", "lttng_ust_opencl", ENUM_PARAM_NAME_MAP[name], type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    else
+      case type
+      when *CL_OBJECTS, *CL_EXT_OBJECTS
+        @lttng_in_type = ["ctf_integer_hex", "uintptr_t", name+"_val", nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+      when *CL_INT_SCALARS
+        @lttng_in_type = ["ctf_integer", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+      when *CL_FLOAT_SCALARS
+        @lttng_in_type = ["ctf_float", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+      when *CL_STRUCTS
+        @lttng_in_type = ["ctf_sequence_text", "uint8_t", name+"_val", "(uint8_t *)#{name}", "size_t", "#{name} == NULL ? 0 : sizeof(#{type})"]
+      when "void"
+        @lttng_in_type = ["ctf_integer_hex", "uintptr_t", name+"_val",  nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+      else
+        raise "Unknown Type: #{type.inspect}!"
+      end
+    end
+  end
+end
+
 class OutScalar < OutMetaParameter
   def initialize(command, name, nocheck: false)
     super
@@ -623,15 +650,6 @@ def register_meta_parameter(method, type, *args)
   META_PARAMETERS[method].push [type, args]
 end
 
-def register_meta_struct(method, name, type)
-  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-  raise "Unknown struct: #{type}!" unless CL_STRUCTS.include?(type)
-  CL_STRUCT_MAP[type].each { |m|
-    META_PARAMETERS[method].push [Member, [m, name]]
-  }
-end
-
-
 def register_prologue(method, code)
   raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
   PROLOGUES[method].push(code)
@@ -718,12 +736,6 @@ $meta_parameters = YAML::load_file(File.join(SRC_DIR,"opencl_meta_parameters.yam
 $meta_parameters["meta_parameters"].each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
-
-$meta_parameters["meta_structs"].each { |func, list|
-  list.each { |args|
-    register_meta_struct func, *args
   }
 }
 

@@ -105,6 +105,13 @@ meta_parameters:
     - [ InArray, input_programs, num_input_programs ]
   clEnqueueFillBuffer:
     - [ InArray, pattern, pattern_size ]
+  clCreateImage2D:
+    - [ InScalar, image_format ]
+  clCreateImage3D:
+    - [ InScalar, image_format ]
+  clCreateImage:
+    - [ InScalar, image_format ]
+    - [ InScalar, image_desc ]
   clEnqueueFillImage:
     - [ InFixedArray, origin, 3 ]
     - [ InFixedArray, region, 3 ]
@@ -152,11 +159,17 @@ meta_parameters:
     - [ InNullArray, properties ]
   clCreateImageWithProperties:
     - [ InNullArray, properties ]
+    - [ InScalar, image_format ]
+    - [ InScalar, image_desc ]
   clCreateBufferWithPropertiesINTEL:
     - [ InNullArray, properties ]
   clCreateImageWithPropertiesINTEL:
     - [ InNullArray, properties ]
+    - [ InScalar, image_format ]
+    - [ InScalar, image_desc ]
   clGetImageParamsINTEL:
+    - [ InScalar, image_format ]
+    - [ InScalar, image_desc ]
     - [ OutScalar, image_row_pitch ]
     - [ OutScalar, image_slice_pitch ]
   clAddCommentINTEL:
@@ -187,20 +200,3 @@ meta_parameters:
     - [ InArray, global_work_offset, work_dim ]
     - [ InArray, work_group_count, work_dim ]
     - [ InArray, local_work_size, work_dim ]
-meta_structs:
-  clCreateImage2D:
-    - [ image_format, cl_image_format ]
-  clCreateImage3D:
-    - [ image_format, cl_image_format ]
-  clCreateImage:
-    - [ image_format, cl_image_format ]
-    - [ image_desc, cl_image_desc ]
-  clCreateImageWithProperties:
-    - [ image_format, cl_image_format ]
-    - [ image_desc, cl_image_desc ]
-  clCreateImageWithPropertiesINTEL:
-    - [ image_format, cl_image_format ]
-    - [ image_desc, cl_image_desc ]
-  clGetImageParamsINTEL:
-    - [ image_format, cl_image_format ]
-    - [ image_desc, cl_image_desc ]

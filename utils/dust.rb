@@ -152,10 +152,16 @@ def populate_field(field, field_value)
         thapi_root = ENV['THAPI_ROOT']
         require "/#{thapi_root}/share/ze_bindings"
         struct = ZE.const_get(n.to_sym).new
-      elsif n.star_with?('CL')
-        struct = OpenCL.const_get(n.to_sym).new
+      elsif n.start_with?('CL::')
+        require 'opencl_ruby_ffi/opencl_types'
+        require 'opencl_ruby_ffi/opencl_arithmetic_gen'
+        require 'opencl_ruby_ffi/opencl_ruby_ffi_base_gen'
+        require 'opencl_ruby_ffi/opencl_ruby_ffi_base'
+        struct = OpenCL.const_get(n[4..-1].to_sym).new
       elsif n.start_with?('CU')
         struct = CU.const_get(n.to_sym).new
+      else
+        raise "unsupported be_class structure #{n}"
       end
       be_populate_struc_field(struct, field_value) if field_value
 

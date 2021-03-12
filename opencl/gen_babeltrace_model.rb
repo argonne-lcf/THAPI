@@ -32,6 +32,10 @@ def integer_size(type, pointer = false)
   end
 end
 
+def cl_to_class(type)
+  "CL::" + type.sub(/\Acl_/,"").split("_").collect(&:capitalize).join
+end
+
 def parse_field(field)
   d = {}
   d[:name] = field['name'] if field['name']
@@ -44,6 +48,7 @@ def parse_field(field)
     d[:class_properties] = props
   when 'ctf_string', 'ctf_sequence_text'
     d[:class] = 'string'
+    d[:be_class] = cl_to_class(field['type']) if field['structure']
   when 'ctf_array'
     d[:class] = 'array_static'
     d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer'=> field['pointer'] })
@@ -72,8 +77,9 @@ schema_event = OPENCL_MODEL['events'].map { |name, fields|
     cast_type << ' *' if field['pointer']
     cast_type << ' *' if field['array']
     cast_type << ' *' if field['string']
+    cast_type << ' *' if field['structure']
     parsed_field[:cast_type] = cast_type
-    if field['array'] && field['lttng'].match('ctf_sequence')
+    if (field['array'] || field['structure']) && field['lttng'].match('ctf_sequence')
       additional_parsed_field = parse_field({ 'name' => "_#{sub_name}_length",
                                               'lttng' => 'ctf_integer', 'type' => 'size_t' })
       additional_parsed_field[:cast_type] = 'size_t'
