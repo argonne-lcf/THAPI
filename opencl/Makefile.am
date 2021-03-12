@@ -46,8 +46,8 @@ tracer_opencl.h: $(srcdir)/gen_opencl_header.rb
 opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/opencl_wrapper_events.yaml $(srcdir)/opencl_tracepoints.rb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_model.rb > $@
 
-opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_model.rb opencl_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_model.rb > $@
+opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
 
 opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
@@ -252,7 +252,7 @@ EXTRA_DIST = \
 	gen_opencl_probes.rb \
 	gen_opencl_header.rb \
 	gen_opencl_model.rb \
-	gen_babeltrace_model.rb \
+	gen_babeltrace_cl_model.rb \
 	gen_opencl_custom_probes.rb \
 	gen_babeltrace_cl_dispatchers.rb \
 	gen_babeltrace_cl_callbacks.rb \
