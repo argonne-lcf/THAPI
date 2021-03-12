@@ -255,6 +255,7 @@ dust_in_initialize_method = lambda { |self_component, _configuration, _params, _
   in_data = YAML.load_file($trace_file)
   schema_in_data = in_data
   $options[:schemas]['default_schema'] = schema_in_data if schema_in_data[:event_classes]
+  $options[:schemas].merge!(in_data[:schemas]) if in_data[:shcemas]
 
   unless schema_in_data[:stream_classes]
     schema_in_data[:stream_classes] = [{ name: 'default_stream_class' }]
