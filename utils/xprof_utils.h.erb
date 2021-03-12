@@ -174,7 +174,7 @@ class StatIprof {
     uint64_t _time{0};
     bool _finished{true};
     uint64_t _error{0};
-    
+
 };
 
 void StatIprof::start(const int64_t start) {
@@ -309,7 +309,7 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    if (print_error)
     <% end %>
    std::cout << std::setw(len_max_<%= v %>) << std::right << "<%= n %>" << " | ";
-    
+
 <% end %>
    std::cout << std::endl;
 
@@ -341,7 +341,7 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
                 <% end %>
             <% end %>
             ;
- }           
+ }
  std::cout << std::endl;
 }
 
@@ -393,22 +393,27 @@ void print_compact_<%= result %>(){
        <%# This is apporixmation. Maybe two sub device alias to the same pointer. We cannot post-process that. But good enought to give a name %>
        s_SubDevice_pointers.insert(hp_dsd_t{Hostnames,Processes,Device_pointers,SubDevice_pointers} ) ;
     <% else %>
-    <% var.each do | _, n,_ | %>
+      <% var.each do | _, n,_ | %>
        s_<%=  n.gsub(' ','_') %>.insert(<%= n.gsub(' ','_') %>) ;
-    <% end %>
+      <% end %>
     <% end %>
        aggregated[function_name].merge(time);
+     }
+     <% if type == "hpt_dsd_t" %>
+   {
+     std::set<hp_dsd_t> s_ToDelete;
+     for (auto element: s_SubDevice_pointers) {
+       auto [ _a, _b, d1, d2 ] = element;
+       (void)_a; (void)_b; <%# Use un-used variable %>
+       if ( d1 == d2 ) {
+         s_ToDelete.insert(element);
        }
-       <% if type == "hpt_dsd_t" %>
-        for (auto element: s_SubDevice_pointers) {
-            auto [ _a, _b, d1, d2 ] = element;
-            (void)_a; (void)_b; <%# Use un-used variable %>
-            if ( d1 == d2 ) {
-                s_SubDevice_pointers.erase(element);
-            }
-        }
-        
-   <% end %>
+     }
+     for (auto element: s_ToDelete) {
+       s_SubDevice_pointers.erase(element);
+     }
+   }
+     <% end %>
    std::ostringstream oss;
    oss << "<%= header %>";
    <% var.each do | _, n,_ | %>
@@ -456,13 +461,13 @@ void print_extented_<%= result %>(){
   for (auto[s, aggregated]: array_sorted) {
     auto [ <%= args %> ] = s;
     std::ostringstream oss;
-    
+
     <% if type == "hpt_dsd_t" %>
     if  (Device != SubDevice) {
-    <% end %> 
+    <% end %>
     oss <<  "<%= header %>"
     <% var.each do | _,_, n | %>
-        << " | <%= n %>: " 
+        << " | <%= n %>: "
         <% if n.include?('Device') %>
         << std::hex << std::showbase << std::internal << std::setfill('0')
         <% end %>
@@ -473,7 +478,7 @@ void print_extented_<%= result %>(){
     <% end %>
         << std::endl;
     <% if type == "hpt_dsd_t" %>
-     } else { 
+     } else {
     oss <<  "<%= header %>"
     <% var.map{| _,_, n | n}.filter{ |n| n != 'SubDevice'}.each do |n| %>
         << " | <%= n %>: "
