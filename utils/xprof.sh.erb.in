@@ -51,7 +51,7 @@ whichlib() {
 }
 
 trace_and_summary() {
-    if [ -z "$@" ]; then
+    if [ "$#" -eq 0 ]; then
         display_help
     fi
 
