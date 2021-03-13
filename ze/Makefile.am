@@ -129,6 +129,9 @@ zes_api.yaml: $(srcdir)/extract_zes.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 zel_api.yaml: $(srcdir)/extract_zel.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
+ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
 EXTRA_DIST += \
 	extract_ze.rb \
 	extract_zet.rb \
