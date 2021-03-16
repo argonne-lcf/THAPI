@@ -1,3 +1,4 @@
+---
 :components:
 - :plugin: source.ruby.dust
   :name: dust
