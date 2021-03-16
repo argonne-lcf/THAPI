@@ -50,6 +50,7 @@ opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
 
 tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
+	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
 
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(srcdir)/opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched $(srcdir)/opencl_tracepoints.rb $(srcdir)/opencl_wrapper_events.yaml
