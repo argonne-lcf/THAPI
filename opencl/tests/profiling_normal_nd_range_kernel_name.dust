@@ -1,7 +1,15 @@
 ---
-:trace: profiling_normal_nd_range_kernel_name.yaml
-:plugins:
-  - :name: sink:testing_clprof:dispatch
+:graph_plugins:
+  :components:
+  - :plugin: source.ruby.dust
+    :name: dust
     :params:
-      test: profiling_normal_nd_range_kernel_name
+       schemas: [opencl_babeltrace_model.yaml]
+       trace: profiling_normal_nd_range_kernel_name.yaml
+  - :plugin: sink.testing_clprof.dispatch
+    :name: testing_clprof
+    :params:
+       test: profiling_normal_nd_range_kernel_name
+  :connections:
+  - dust:testing_clprof
 

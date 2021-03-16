@@ -1,6 +1,15 @@
 ---
-:trace: profiling_interleave_thread.yaml
-:plugins:
-  - :name: sink:testing_clprof:dispatch
+:graph_plugins:
+  :components:
+  - :plugin: source.ruby.dust
+    :name: dust
     :params:
-      test: profiling_interleave_thread
+       schemas: [opencl_babeltrace_model.yaml]
+       trace: profiling_interleave_thread.yaml
+  - :plugin: sink.testing_clprof.dispatch
+    :name: testing_clprof
+    :params:
+       test: profiling_interleave_thread
+  :connections:
+  - dust:testing_clprof
+

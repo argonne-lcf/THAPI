@@ -15,4 +15,6 @@ EXTRA_DIST = \
 	yaml_ast.rb \
 	xprof_utils.h.erb \
 	gen_dummy_trace.rb \
-	dust.rb
+	bt2.rb \
+	bt_plugins/dust.rb \
+	bt_plugins/comparator.rb

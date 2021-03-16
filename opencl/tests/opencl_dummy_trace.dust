@@ -1,4 +1,12 @@
 ---
-:trace: opencl_dummy_trace.yaml
-:plugins:
-  - :name: sink:opencl:dispatch
+:graph_plugins:
+  :components:
+  - :plugin: source.ruby.dust
+    :name: dust
+    :params:
+       schemas: [opencl_babeltrace_model.yaml]
+       trace: opencl_dummy_trace.yaml
+  - :plugin: sink.text.details
+    :name: details
+  :connections:
+  - dust:details

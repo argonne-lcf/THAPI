@@ -1,4 +1,13 @@
 ---
-:trace: trace.yaml
-:plugins:
-  - :name: sink:text:pretty
+:graph_plugins:
+  :components:
+  - :plugin: source.ruby.dust
+    :name: dust
+    :params:
+       schemas: [opencl_babeltrace_model.yaml]
+       trace: trace.yaml
+  - :plugin:  sink.text.pretty
+    :name: pretty
+  :connections:
+  - dust:pretty
+

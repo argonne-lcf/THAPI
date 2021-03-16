@@ -49,7 +49,7 @@ opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(srcdir)/opencl_model.rb $(ML_
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
 
-opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
+tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
 
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(srcdir)/opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched $(srcdir)/opencl_tracepoints.rb $(srcdir)/opencl_wrapper_events.yaml
@@ -231,7 +231,7 @@ TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
 check_DATA = \
 	test_wrapper.sh \
-	opencl_dummy_trace.yaml
+	tests/opencl_dummy_trace.yaml
 
 data_DATA = \
 	opencl_model.yaml \
@@ -275,7 +275,7 @@ CLEANFILES = \
 	cl.xml.patched \
 	opencl_model.yaml \
 	opencl_babeltrace_model.yaml \
-	opencl_dummy_trace.yaml \
+	tests/opencl_dummy_trace.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
 	clprof.c \

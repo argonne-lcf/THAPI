@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-name="$(basename $1 .dust)"
-echo BABELTRACE_PLUGIN_PATH=@builddir@/.libs/ DUST_TRACE_DIR=@srcdir@/tests @RUBY@ @top_srcdir@/utils/dust.rb -s @builddir@/opencl_babeltrace_model.yaml -f $1
-BABELTRACE_PLUGIN_PATH=@builddir@/.libs/ DUST_TRACE_DIR=@srcdir@/tests @RUBY@ @top_srcdir@/utils/dust.rb -s @builddir@/opencl_babeltrace_model.yaml -f $1
-
+set -o xtrace
+DUST_MODELS_DIR=@abs_builddir@/ \
+BABELTRACE_PLUGIN_PATH=@builddir@/.libs/ \
+DUST_TRACE_DIR=@abs_srcdir@/tests:@abs_builddir@/tests \
+@RUBY@ @top_srcdir@/utils/bt2.rb -f $1
