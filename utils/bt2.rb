@@ -50,6 +50,6 @@ def connect_ports(graph, bt_components, connections)
 end
 
 graph = BT2::BTGraph.new
-bt_components = create_bt_components(graph, $dust_schema[:graph_plugins][:components])
-connect_ports(graph, bt_components, $dust_schema[:graph_plugins][:connections])
+bt_components = create_bt_components(graph, $dust_schema[:components])
+connect_ports(graph, bt_components, $dust_schema[:connections])
 graph.run
