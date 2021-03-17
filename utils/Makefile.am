@@ -1,4 +1,8 @@
-noinst_HEADERS = lttng/tracepoint.h utarray.h uthash.h utlist.h
+noinst_HEADERS = \
+	lttng/tracepoint.h \
+	include/utarray.h \
+	include/uthash.h \
+	include/utlist.h
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof_utils.h xprof.sh.erb
 
 lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
