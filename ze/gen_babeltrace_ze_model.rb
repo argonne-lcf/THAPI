@@ -105,6 +105,21 @@ def get_fields_types_name(c, dir)
   fields
 end
 
+def get_extra_fields_types_name(event)
+  event["fields"].collect { |field|
+    lttng = LTTng::TracepointField.new(*field)
+    name = lttng.name.to_s
+    type = event["args"].find { |t, n| n == name || n == name.gsub(/_val\z/, "") }[0]
+    case lttng.macro.to_s
+    when /ctf_sequence/
+      [["ctf_integer", "size_t", "_#{name}_length", nil],
+       [lttng.macro.to_s, type, name, lttng]]
+    else
+      [[lttng.macro.to_s, type, name, lttng]]
+    end
+  }.flatten(1)
+end
+
 def gen_bt_field_model(lttng_name, type, name, lttng)
   field = { name: name, cast_type: type}
   case lttng_name
@@ -160,9 +175,21 @@ def gen_event_fields_bt_model(c, dir)
   }
 end
 
+def gen_extra_event_fields_bt_model(event)
+  types_name = get_extra_fields_types_name(event)
+  types_name.collect { |lttng_name, type, name, lttng|
+    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ""), name, lttng)
+  }
+end
+
 def gen_event_bt_model(provider, c, dir)
   { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}",
     payload: gen_event_fields_bt_model(c, dir) }
+end
+
+def gen_extra_event_bt_model(provider, event)
+  { name: "#{provider}:#{event["name"]}",
+    payload: gen_extra_event_fields_bt_model(event) }
 end
 
 event_classes = 
@@ -176,14 +203,12 @@ event_classes =
   }
 }.flatten(2)
 
+ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
+event_classes += ze_events.collect { |provider, es|
+  es["events"].collect { |event|
+    gen_extra_event_bt_model(provider, event)
+  }
+}.flatten
+
 puts YAML.dump({ name: "thapi_ze", event_classes: event_classes })
-
-#ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
-#
-#ze_events.each { |provider, es|
-#  es["events"].each { |event|
-#    gen_extra_event_bt_model.call(provider, event)
-#  }
-#}
-
 
