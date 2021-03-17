@@ -313,6 +313,8 @@ tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
 	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
 
+CLEANFILES += tests/ze_dummy_trace.yaml
+
 TEST_FILES = \
 	tests/ze_dummy_trace.dust
 
