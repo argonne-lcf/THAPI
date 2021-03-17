@@ -109,10 +109,9 @@ def populate_field(field, field_value)
     be_class = field.get_class.user_attributes[:be_class]
     n = be_class.nil? ? nil : be_class.value
     if n
-      if n.start_with?('ZE')
-        thapi_root = ENV['THAPI_ROOT']
-        require "/#{thapi_root}/share/ze_bindings"
-        struct = ZE.const_get(n.to_sym).new
+      if n.start_with?('ZE::')
+        require "#{ENV["BINDING_DIR"]}/ze_library"
+        struct = eval(n).new
       elsif n.start_with?('CL::')
         require 'opencl_ruby_ffi/opencl_types'
         require 'opencl_ruby_ffi/opencl_arithmetic_gen'

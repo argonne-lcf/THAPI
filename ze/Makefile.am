@@ -133,6 +133,8 @@ zel_api.yaml: $(srcdir)/extract_zel.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
+CLEANFILES += ze_babeltrace_model.yaml
+
 EXTRA_DIST += \
 	extract_ze.rb \
 	extract_zet.rb \
@@ -307,6 +309,21 @@ ZE_BINDINGS = \
 	ze_refinements.rb \
 	ze_bindings.rb
 
+tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
+
+TEST_FILES = \
+	tests/ze_dummy_trace.dust
+
+TESTS = $(TEST_FILES)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	tests/ze_dummy_trace.yaml
+
 data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb
@@ -316,7 +333,9 @@ EXTRA_DIST += \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
 	gen_ze_bindings.rb \
-	ze_bindings_base.rb
+	ze_bindings_base.rb \
+	test_wrapper.sh \
+	$(TEST_FILES)
 
 CLEANFILES += $(ZE_BINDINGS)
 
