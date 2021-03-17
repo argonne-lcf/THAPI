@@ -25,6 +25,14 @@ EOF
     puts <<EOF
     #{name} = (#{type})bt_field_integer_unsigned_get_value(_field);
 EOF
+  when 'float'
+    puts <<EOF
+    #{name} = (#{type})bt_field_real_single_precision_get_value(_field);
+EOF
+  when 'double'
+    puts <<EOF
+    #{name} = (#{type})bt_field_real_double_precision_get_value(_field);
+EOF
   when 'array_static'
     scalar_type = type.gsub("const","").sub("*", "")
     puts <<EOF
@@ -113,18 +121,22 @@ static void
 EOF
 print_field_members_access(fields)
 puts <<EOF
-  void **p = NULL;
-  while( (p = utarray_next(callbacks->callbacks, p)) ) {
-    ((#{name.gsub(":","_")}_cb *)*p)(
+  void **_p = NULL;
+  while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
+    ((#{name.gsub(":","_")}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + decls.collect { |f| f[1] }).join(",\n      ")});
   }
+EOF
+puts <<EOF if fields.find { |f| f[:class].match('array') }
   #{fields.each.collect { |f|
     if f[:class].match('array')
-      "if (#{f[:name]}) free((void *)#{f[:name]})"
+      "free((void *)#{f[:name]})"
     else
       nil
     end
   }.compact.join(";\n  ")};
+EOF
+puts <<EOF
 }
 
 EOF
