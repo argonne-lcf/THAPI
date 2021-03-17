@@ -102,6 +102,7 @@ MODIFIED_ZE_HDR = \
 modified_include/ze_api.h: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
+	chmod -R u+w modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 $(MODIFIED_ZE_EXTRA_HDR): modified_include/ze_api.h
@@ -171,6 +172,8 @@ zeprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
+CLEANFILES += zeprof.sh
+
 BUILT_SOURCES = $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) babeltrace_ze_callbacks.h
 
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
@@ -205,11 +208,14 @@ libTracerZE_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAG
 libTracerZE_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerZE_la_LIBADD = libzetracepoints.la
 
-install-exec-hook::
-	mkdir -p $(pkglibdir)/ze
-	$(RM) $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
-	ln -s $(libdir)/libTracerZE.so.0.0.0 $(pkglibdir)/ze/libze_loader.so.1
-	ln -s $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ze
+	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerZE.so.0.0.0 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+	-rmdir $(DESTDIR)$(pkglibdir)/ze
 
 ZEPROF = \
 	$(srcdir)/zeprof_callbacks.cpp.erb \
