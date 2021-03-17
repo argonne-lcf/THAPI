@@ -5,7 +5,7 @@
   :params:
     schemas: [opencl_babeltrace_model.yaml]
     trace: opencl_dummy_trace.yaml
-- :plugin: sink.text.details
-  :name: details
+- :plugin: sink.opencl.dispatch
+  :name: dispatch
 :connections:
-- dust:details
+- dust:dispatch

@@ -5,7 +5,7 @@
   :params:
     schemas: [ze_babeltrace_model.yaml]
     trace: ze_dummy_trace.yaml
-- :plugin: sink.text.details
-  :name: details
+- :plugin: sink.ze.dispatch
+  :name: dispatch
 :connections:
-- dust:details
+- dust:dispatch
