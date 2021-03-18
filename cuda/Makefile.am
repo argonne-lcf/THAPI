@@ -248,11 +248,42 @@ uninstall-hook:
 	-rmdir $(DESTDIR)$(pkglibdir)/cudart
 	-rmdir $(DESTDIR)$(pkglibdir)/cuda
 
+tmplibdir = $(libdir)/tmp
+tmplib_LTLIBRARIES = libBabeltraceCUDA.la
+install-data-hook::
+	$(RM) -r $(DESTDIR)$(tmplibdir)
+
 CUDA_LIB_GEN = \
 	$(srcdir)/gen_cuda_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
 EXTRA_DIST += $(CUDA_LIB_GEN)
+
+babeltrace_cuda_callbacks.h: $(srcdir)/gen_babeltrace_cuda_callbacks.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+BUILT_SOURCES += babeltrace_cuda_callbacks.h
+
+babeltrace_cuda_dispatchers.c: $(srcdir)/gen_babeltrace_cuda_dispatchers.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+EXTRA_DIST += \
+	gen_babeltrace_cuda_callbacks.rb \
+	gen_babeltrace_cuda_dispatchers.rb
+
+CLEANFILES += \
+	babeltrace_cuda_callbacks.h \
+	babeltrace_cuda_dispatchers.c
+
+nodist_libBabeltraceCUDA_la_SOURCES = \
+	babeltrace_cuda_callbacks.h \
+	babeltrace_cuda_dispatchers.c
+libBabeltraceCUDA_la_SOURCES = \
+	babeltrace_cuda.c \
+	babeltrace_cuda.h
+libBabeltraceCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
