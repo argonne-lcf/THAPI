@@ -1,21 +1,41 @@
-require_relative 'gen_ze_library_base.rb'
+require_relative 'gen_cuda_library_base.rb'
 
 
 $integer_sizes = {
+  "unsigned char" => 8,
+  "char" => 8,
   "uint8_t" => 8,
   "int8_t" =>  8,
+  "unsigned short" => 16,
+  "unsigned short int" => 16,
+  "short" => 16,
   "uint16_t" => 16,
   "int16_t" => 16,
+  "unsigned int" => 32,
+  "int" => 32,
   "uint32_t" => 32,
+  "cuuint32_t" => 32,
   "int32_t" => 32,
+  "CUdevice" => 32,
+  "CUdeviceptr_v1" => 32,
+  "unsigned long long" => 64,
+  "unsigned long long int" => 64,
+  "long long" => 64,
   "uint64_t" => 64,
+  "cuuuint64_t" => 64,
   "int64_t" => 64,
   "uintptr_t" => 64,
   "size_t" => 64,
-  "ze_bool_t" => 8
+  "CUtexObject" => 64,
+  "CUsurfObject" => 64,
+  "CUdeviceptr" => 64,
+  "CUmemGenericAllocationHandle" => 64,
+  "CUstreamCallback" => 64,
+  "CUhostFn" => 64,
+  "CUoccupancyB2DSize" => 64
 }
 
-ZE_ENUM_SCALARS.each { |t|
+CUDA_ENUM_SCALARS.each { |t|
   $integer_sizes[t] = 32
 }
 
@@ -24,20 +44,40 @@ $int_scalars.each { |t, v|
 }
 
 $integer_signed = {
-  "int8_t" =>  true,
+  "char" => true,
+  "int8_t" => true,
+  "short" => true,
   "int16_t" => true,
+  "int" => true,
   "int32_t" => true,
+  "long long" => true,
   "int64_t" => true,
+  "unsigned char" => false,
   "uint8_t" => false,
+  "unsigned short" => false,
+  "unsigned short int" => false,
   "uint16_t" => false,
+  "unsigned int" => false,
   "uint32_t" => false,
+  "cuuint32_t" => false,
+  "unsigned long long" => false,
+  "unsigned long long int" => false,
   "uint64_t" => false,
+  "cuuint64_t" => false,
   "uintptr_t" => false,
   "size_t" => false,
-  "ze_bool_t" => false
+  "CUdevice" => false,
+  "CUdeviceptr" => false,
+  "CUdeviceptr_v1" => false,
+  "CUtexObject" => false,
+  "CUsurfObject" => false,
+  "CUmemGenericAllocationHandle" => false,
+  "CUstreamCallback" => false,
+  "CUhostFn" => false,
+  "CUoccupancyB2DSize" => false
 }
 
-ZE_ENUM_SCALARS.each { |t|
+CUDA_ENUM_SCALARS.each { |t|
   $integer_signed[t] = true
 }
 
@@ -78,13 +118,19 @@ def meta_parameter_types_name(m, dir)
     else
       [[lttng.macro.to_s, "#{t}", "#{name}", lttng]]
     end
-  when ArrayMetaParameter, InString, OutString
+  when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng
     if lttng.macro.to_s == "ctf_string"
       [["ctf_string", "#{t} *", "#{name}", lttng]]
     else
       [["ctf_integer", "size_t", "_#{name}_length", nil],
        [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
     end
+  when FixedArrayMetaParameter
+    [[lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+  when OutPtrString
+    [["ctf_string", "#{t}", "#{name}", lttng]]
+  else
+    raise "unsupported meta parameter class #{m.class} #{lttng.call_string} #{t}"
   end
 end
 
@@ -97,7 +143,12 @@ def get_fields_types_name(c, dir)
       meta_parameter_types_name(m, :start)
     }.flatten(1)
   else
-    fields = [["ctf_integer", "ze_result_t", "#{RESULT_NAME}"]]
+    r = c.type.lttng_type
+    fields = if r
+        [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]]
+      else
+        []
+    end
     fields += c.meta_parameters.select { |m| m.kind_of?(Out) }.collect { |m|
       meta_parameter_types_name(m, :stop)
     }.flatten(1)
@@ -152,12 +203,20 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
       { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
         class_properties: { field_value_range: integer_size(array_type) } }
     field[:length] = lttng.length
+  when 'ctf_array_hex'
+    array_type = lttng.type.to_s
+    field[:class] = 'array_static'
+    field[:field] =
+      { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
+        class_properties: { field_value_range: integer_size(array_type),
+                            preferred_display_base: 16 } }
+    field[:length] = lttng.length
   when 'ctf_string'
     field[:class] = 'string'
   when 'ctf_sequence_text'
     field[:class] = 'string'
     if $all_struct_names.include?(type.sub(" *", ""))
-      field[:be_class] = "ZE::#{to_class_name(type.sub(" *", ""))}"
+      field[:be_class] = "CUDA::#{to_class_name(type.sub(" *", ""))}"
     end
   when 'ctf_array_text'
     field[:class] = 'string'
@@ -193,22 +252,19 @@ def gen_extra_event_bt_model(provider, event)
 end
 
 event_classes = 
-[[:lttng_ust_ze, $ze_commands],
- [:lttng_ust_zet, $zet_commands],
- [:lttng_ust_zes, $zes_commands],
- [:lttng_ust_zel, $zel_commands]].collect { |provider, commands|
+[[:lttng_ust_cuda, $cuda_commands]].collect { |provider, commands|
   commands.collect { |c|
     [gen_event_bt_model(provider, c, :start),
     gen_event_bt_model(provider, c, :stop)]
   }
 }.flatten(2)
 
-ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
+ze_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
 event_classes += ze_events.collect { |provider, es|
   es["events"].collect { |event|
     gen_extra_event_bt_model(provider, event)
   }
 }.flatten
 
-puts YAML.dump({ name: "thapi_ze", event_classes: event_classes })
+puts YAML.dump({ name: "thapi_cuda", event_classes: event_classes })
 

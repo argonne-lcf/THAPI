@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils  -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 CUDA_PROBES_TP = \
 	cuda_tracepoints.tp
@@ -139,6 +139,11 @@ cuda_api.yaml: modified_include/cuda.h $(CUDA_EXTRACT) $(srcdir)/extract_cuda.rb
 
 cudart_api.yaml: modified_include/cuda_runtime_api.h $(CUDA_EXTRACT) $(srcdir)/extract_cudart.rb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_cudart.rb
+
+cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+CLEANFILES += cuda_babeltrace_model.yaml
 
 EXTRA_DIST += \
 	extract_cuda.rb \

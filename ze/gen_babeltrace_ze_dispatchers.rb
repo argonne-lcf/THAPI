@@ -9,7 +9,7 @@ EOF
 
 print_signed = lambda { |_, name, type|
   puts <<EOF
-  #{name} = (#{type})bt_field_integer_signed_get_value(_field);
+    #{name} = (#{type})bt_field_integer_signed_get_value(_field);
 EOF
 }
 

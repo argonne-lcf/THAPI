@@ -130,7 +130,7 @@ zes_api.yaml: $(srcdir)/extract_zes.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 zel_api.yaml: $(srcdir)/extract_zel.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
-ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_MODEL)
+ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += ze_babeltrace_model.yaml
@@ -267,10 +267,10 @@ ZE_LIB_GEN = \
 
 EXTRA_DIST += $(ZE_LIB_GEN)
 
-babeltrace_ze_callbacks.h: $(srcdir)/gen_babeltrace_ze_callbacks.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+babeltrace_ze_callbacks.h: $(srcdir)/gen_babeltrace_ze_callbacks.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_ze_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+babeltrace_ze_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
