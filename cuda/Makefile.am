@@ -312,11 +312,11 @@ check_DATA = \
 	test_wrapper.sh \
 	tests/cuda_dummy_trace.yaml
 
-
 data_DATA = $(CUDA_BINDINGS)
 
 EXTRA_DIST += \
 	gen_cuda_library.rb \
-	gen_babeltrace_cuda_lib.rb
+	gen_babeltrace_cuda_lib.rb \
+	$(TEST_FILES)
 
 CLEANFILES += $(CUDA_BINDINGS)
