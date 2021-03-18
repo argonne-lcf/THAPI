@@ -1,0 +1,24 @@
+---
+:hostname: aurora12.gov
+:default_stream: stream0
+:stream_classes:
+- :name: cl_stream_class
+  :schemas:
+  - thapi_opencl
+  :clock_snapshot_value: true
+  :common_context:
+  - :name: vpid
+    :class: signed
+  - :name: vtid
+    :class: unsigned
+:streams:
+- :name: stream0
+  :class: cl_stream_class
+  :common_context:
+    vpid: -1
+    vtid: 2
+:events:
+- :name: lttng_ust_opencl:clLinkProgram_entry
+- :name: lttng_ust_opencl:clLinkProgram_exit
+- :name: lttng_ust_opencl:clLinkProgram_entry
+- :name: lttng_ust_opencl:clLinkProgram_exit

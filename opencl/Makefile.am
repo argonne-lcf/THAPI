@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 OPENCL_PROBES_TP = \
                      opencl_tracepoints.tp\
@@ -45,6 +45,13 @@ tracer_opencl.h: $(srcdir)/gen_opencl_header.rb
 
 opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/opencl_wrapper_events.yaml $(srcdir)/opencl_tracepoints.rb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_model.rb > $@
+
+opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
+
+tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
 
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(srcdir)/opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched $(srcdir)/opencl_tracepoints.rb $(srcdir)/opencl_wrapper_events.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_probes.rb > $@
@@ -97,18 +104,24 @@ nodist_libTracerOpenCL_la_SOURCES = \
         tracer_opencl.h \
 	tracer_opencl.c
 
-libTracerOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+libTracerOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerOpenCL_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -version-info 1:0:0
 libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
 libTracerOpenCL_la_LIBADD = libtracepoints.la
 
-install-exec-hook::
-	mkdir -p $(pkglibdir)/opencl
-	$(RM) $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
-	ln -s $(libdir)/libTracerOpenCL.so.1.0.0 $(pkglibdir)/opencl/libOpenCL.so.1
-	ln -s $(pkglibdir)/opencl/libOpenCL.so.1 $(pkglibdir)/opencl/libOpenCL.so
+thapi_session: libTracerOpenCL.la
+	$(top_srcdir)/utils/lttng_dummy_trace.sh ./.libs/libTracerOpenCL.so lttng_ust_opencl:\*,lttng_ust_opencl_build:\*,lttng_ust_opencl_arguments:\*,lttng_ust_opencl_dump:\*,lttng_ust_opencl_profiling:\*,lttng_ust_opencl_source:\*,lttng_ust_opencl_devices:\*
+
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/opencl
+	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerOpenCL.so.1.0.0 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so
+	-rmdir $(DESTDIR)$(pkglibdir)/opencl
 
 clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb production
@@ -130,7 +143,7 @@ nodist_libCLProf_la_SOURCES = \
 libCLProf_la_SOURCES = \
 	babeltrace_cl.h
 
-libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -141,14 +154,14 @@ libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la libDust.la libTestingCLProf.la
+tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la
 install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_model.yaml
+babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb > babeltrace_cl_callbacks.h
 
-babeltrace_cl_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_model.yaml
+babeltrace_cl_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb > babeltrace_cl_dispatchers.c
 
 nodist_libBabeltraceCL_la_SOURCES = \
@@ -157,17 +170,9 @@ nodist_libBabeltraceCL_la_SOURCES = \
 libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl.c \
 	babeltrace_cl.h
-libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-dust.c: $(srcdir)/dust.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb dust
-
-nodist_libDust_la_SOURCES = \
-	dust.c
-libDust_la_CFLAGS = $(BABELTRACE2_CFLAGS)
-libDust_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 testing_clprof.c: $(srcdir)/clprof_callbacks.cpp.erb $(srcdir)/clprof_callbacks.h.erb $(srcdir)/clprof.c.erb $(srcdir)/gen_clprof.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clprof.rb testing
@@ -189,34 +194,56 @@ nodist_libTestingCLProf_la_SOURCES = \
 libTestingCLProf_la_SOURCES = \
 	babeltrace_cl.h
 
-libTestingCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libTestingCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libTestingCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libTestingCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TEST_FILES = \
-	profiling_normal.dust \
-	profiling_inversed.dust \
-	profiling_block.dust \
-	profiling_fast.dust \
-	profiling_interleave_thread.dust \
-	profiling_interleave_process.dust \
-	profiling_normal_command_queue.dust \
-	profiling_with_error.dust \
-	profiling_normal_command_queue_created_in_other_thread.dust \
-	device_name.dust \
-	kernel_name.dust \
-	profiling_normal_nd_range_kernel_name.dust \
-	API_call.dust
+	tests/opencl_dummy_trace.dust \
+	tests/profiling_normal.dust \
+	tests/profiling_inversed.dust \
+	tests/profiling_block.dust \
+	tests/profiling_fast.dust \
+	tests/profiling_interleave_thread.dust \
+	tests/profiling_interleave_process.dust \
+	tests/profiling_normal_command_queue.dust \
+	tests/profiling_with_error.dust \
+	tests/profiling_normal_command_queue_created_in_other_thread.dust \
+	tests/device_name.dust \
+	tests/kernel_name.dust \
+	tests/profiling_normal_nd_range_kernel_name.dust \
+	tests/API_call.dust \
+	tests/trace.dust
+
+TRACE_FILES = \
+	tests/profiling_normal.yaml \
+	tests/profiling_inversed.yaml \
+	tests/profiling_block.yaml \
+	tests/profiling_fast.yaml \
+	tests/profiling_interleave_thread.yaml \
+	tests/profiling_interleave_process.yaml \
+	tests/profiling_normal_command_queue.yaml \
+	tests/profiling_with_error.yaml \
+	tests/profiling_normal_command_queue_created_in_other_thread.yaml \
+	tests/device_name.yaml \
+	tests/kernel_name.yaml \
+	tests/profiling_normal_nd_range_kernel_name.yaml \
+	tests/API_call.yaml \
+	tests/trace.yaml
 
 TESTS = $(TEST_FILES)
-	
+
 TEST_EXTENSIONS = .dust
-DUST_LOG_COMPILER = $(srcdir)/test_wrapper.sh
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	tests/opencl_dummy_trace.yaml
 
 data_DATA = \
 	opencl_model.yaml \
-	opencl_infos.yaml
+	opencl_infos.yaml \
+        $(TRACE_FILES)
 
 EXTRA_DIST = \
 	cl.xml \
@@ -232,17 +259,18 @@ EXTRA_DIST = \
 	gen_opencl_probes.rb \
 	gen_opencl_header.rb \
 	gen_opencl_model.rb \
+	gen_babeltrace_cl_model.rb \
 	gen_opencl_custom_probes.rb \
 	gen_babeltrace_cl_dispatchers.rb \
 	gen_babeltrace_cl_callbacks.rb \
-	dust.c.erb \
 	gen_clprof.rb \
 	clprof_callbacks.cpp.erb \
 	babeltrace_opencl.in \
 	extract_enqueues \
 	clprof.c.erb \
 	clprof_callbacks.h.erb \
-	test_wrapper.sh
+	$(TRACE_FILES) \
+	$(TEST_FILES)
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
@@ -252,13 +280,14 @@ CLEANFILES = \
 	tracer_opencl.h \
 	cl.xml.patched \
 	opencl_model.yaml \
+	opencl_babeltrace_model.yaml \
+	tests/opencl_dummy_trace.yaml \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h \
 	clprof.c \
 	clprof_callbacks.cpp \
 	clprof_callbacks.h \
-	dust.c \
 	testing_clprof.c \
 	testing_clprof_callbacks.cpp \
 	testing_clprof_callbacks.h \
-	$(TEST_FILES)
+	clprof.sh

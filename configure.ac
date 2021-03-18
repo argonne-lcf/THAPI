@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([thapi], [0.0.6], [bvideau@anl.gov])
+AC_INIT([thapi], [0.0.7], [bvideau@anl.gov])
 AC_CONFIG_SRCDIR([opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
@@ -18,6 +18,8 @@ AM_PROG_AR
 LT_INIT([disable-static])
 
 # Checks for programs.
+AC_PROG_LN_S
+AC_PROG_MKDIR_P
 AC_PROG_CXX
 AC_PROG_CC
 if test -z "$RUBY"; then
@@ -83,8 +85,11 @@ AC_CONFIG_FILES([Makefile
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
+AC_CONFIG_FILES([opencl/test_wrapper.sh], [chmod +x opencl/test_wrapper.sh])
 AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
 AC_CONFIG_FILES([ze/babeltrace_ze], [chmod +x ze/babeltrace_ze])
+AC_CONFIG_FILES([ze/test_wrapper.sh], [chmod +x ze/test_wrapper.sh])
 AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
+AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
 AC_OUTPUT

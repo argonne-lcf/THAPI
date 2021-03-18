@@ -23,6 +23,13 @@ $all_types.each { |t|
   end
 }
 
+$int_scalars = {}
+$all_types.each { |t|
+  if t.type.kind_of?(YAMLCAst::CustomType) && CUDA_INT_SCALARS.include?(t.type.name)
+    $int_scalars[t.name] = t.type.name
+  end
+}
+
 def to_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
 end

@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 CUDA_PROBES_TP = \
 	cuda_tracepoints.tp
@@ -118,6 +118,7 @@ MODIFIED_CUDA_HDR = \
 modified_include/cuda.h: $(CUDA_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
+	chmod -R u+w modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 $(MODIFIED_CUDA_EXTRA_HDR): modified_include/cuda.h
@@ -138,6 +139,11 @@ cuda_api.yaml: modified_include/cuda.h $(CUDA_EXTRACT) $(srcdir)/extract_cuda.rb
 
 cudart_api.yaml: modified_include/cuda_runtime_api.h $(CUDA_EXTRACT) $(srcdir)/extract_cudart.rb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_cudart.rb
+
+cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+CLEANFILES += cuda_babeltrace_model.yaml
 
 EXTRA_DIST += \
 	extract_cuda.rb \
@@ -212,7 +218,7 @@ nodist_libTracerCUDA_la_SOURCES = \
 	$(CUDA_PROBES_INCL) \
 	tracer_cuda.c
 
-libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 libTracerCUDA_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDA_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDA_la_LDFLAGS += -version-info 1:0:0
@@ -222,28 +228,62 @@ nodist_libTracerCUDART_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	tracer_cudart.c
 
-libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 libTracerCUDART_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDART_la_LDFLAGS += -version-number 11:0:3
 libTracerCUDART_la_LIBADD = libcudarttracepoints.la
 
-install-exec-hook::
-	mkdir -p $(pkglibdir)
-	mkdir -p $(pkglibdir)/cuda
-	mkdir -p $(pkglibdir)/cudart
-	$(RM) $(pkglibdir)/cudart/libcudart.so.11.0 $(pkglibdir)/cudart/libcudart.so
-	$(RM) $(pkglibdir)/cuda/libcuda.so.1 $(pkglibdir)/cuda/libcuda.so
-	ln -s $(libdir)/libTracerCUDART.so.11.0.3 $(pkglibdir)/cudart/libcudart.so.11.0
-	ln -s $(pkglibdir)/cudart/libcudart.so.11.0 $(pkglibdir)/cudart/libcudart.so
-	ln -s $(libdir)/libTracerCUDA.so.1.0.0 $(pkglibdir)/cuda/libcuda.so.1
-	ln -s $(pkglibdir)/cuda/libcuda.so.1 $(pkglibdir)/cuda/libcuda.so
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/cudart
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/cuda
+	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerCUDART.so.11.0.3 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.11.0
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.11.0 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so
+	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerCUDA.so.1.0.0 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.11.0 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so
+	$(RM) -f $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so
+	-rmdir $(DESTDIR)$(pkglibdir)/cudart
+	-rmdir $(DESTDIR)$(pkglibdir)/cuda
+
+tmplibdir = $(libdir)/tmp
+tmplib_LTLIBRARIES = libBabeltraceCUDA.la
+install-data-hook::
+	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 CUDA_LIB_GEN = \
 	$(srcdir)/gen_cuda_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
 EXTRA_DIST += $(CUDA_LIB_GEN)
+
+babeltrace_cuda_callbacks.h: $(srcdir)/gen_babeltrace_cuda_callbacks.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+BUILT_SOURCES += babeltrace_cuda_callbacks.h
+
+babeltrace_cuda_dispatchers.c: $(srcdir)/gen_babeltrace_cuda_dispatchers.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+EXTRA_DIST += \
+	gen_babeltrace_cuda_callbacks.rb \
+	gen_babeltrace_cuda_dispatchers.rb
+
+CLEANFILES += \
+	babeltrace_cuda_callbacks.h \
+	babeltrace_cuda_dispatchers.c
+
+nodist_libBabeltraceCUDA_la_SOURCES = \
+	babeltrace_cuda_callbacks.h \
+	babeltrace_cuda_dispatchers.c
+libBabeltraceCUDA_la_SOURCES = \
+	babeltrace_cuda.c \
+	babeltrace_cuda.h
+libBabeltraceCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -255,10 +295,28 @@ CUDA_BINDINGS = \
 	cuda_library.rb \
 	babeltrace_cuda_lib.rb
 
+tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
+
+CLEANFILES += tests/cuda_dummy_trace.yaml
+
+TEST_FILES = \
+	tests/cuda_dummy_trace.dust
+
+TESTS = $(TEST_FILES)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	tests/cuda_dummy_trace.yaml
+
 data_DATA = $(CUDA_BINDINGS)
 
 EXTRA_DIST += \
 	gen_cuda_library.rb \
-	gen_babeltrace_cuda_lib.rb
+	gen_babeltrace_cuda_lib.rb \
+	$(TEST_FILES)
 
 CLEANFILES += $(CUDA_BINDINGS)

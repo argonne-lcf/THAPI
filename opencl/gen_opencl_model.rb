@@ -20,6 +20,7 @@ res = {
   "int_scalars" => int_scalars,
   "float_scalars" => float_scalars,
   "type_map" => CL_TYPE_MAP,
+  "structures" => CL_STRUCTS,
   "lttng_enums" => lttng_enums,
   "events" => events
 }
@@ -56,18 +57,6 @@ event_lambda = lambda { |c, dir|
     param["type"] = ( (p.callback? || p.type == '') ? "void" : p.type == '*' ? "void*" : p.type)
     param["pointer"] = true if p.pointer?
   }
-  meta_structs = []
-  if $meta_parameters["meta_structs"][c.prototype.name]
-    meta_structs = $meta_parameters["meta_structs"][c.prototype.name]
-  end
-  meta_structs = meta_structs.to_h
-  meta_structs = meta_structs.collect { |pname, type|
-    [pname, CL_STRUCT_MAP[type].collect { |m|
-      Member::new(c, m, pname)
-    }.collect { |m|
-      [m.name, m]
-    }.to_h]
-  }.to_h
   if dir == "start"
     c.parameters.select { |p| p.lttng_in_type }.each { |p|
       field = {}
@@ -87,16 +76,7 @@ event_lambda = lambda { |c, dir|
         pname = fname.gsub(/_val\z/, "")
         meta_field["type"] = params[pname]["type"]
       else
-        begin
-          meta_field["type"] = params[LTTng.expression(*lttng)]["type"]
-        rescue #must be a struct member
-          pname = LTTng.expression(*lttng).match(/(\w+) != NULL/)[1]
-          m = meta_structs[pname][fname.gsub(/\A#{pname}#{MEMBER_SEPARATOR}/,"")]
-          meta_field["name"] = m.name
-          meta_field["type"] = m.type
-          meta_field["pointer"] = m.pointer? if m.pointer?
-          meta_field["struct"] = pname
-        end
+        meta_field["type"] = params[LTTng.expression(*lttng)]["type"]
       end
       if meta_field["type"].match(/\*\z/)
         meta_field["type"] = meta_field["type"].sub(/\*\z/, "")
@@ -105,6 +85,13 @@ event_lambda = lambda { |c, dir|
       meta_field["array"] = true if LTTng.array?(*lttng)
       meta_field["string"] = true if LTTng.string?(*lttng)
       meta_field["lttng"] = lttng[0]
+      meta_field["length"] = lttng[4] if meta_field["lttng"].match("ctf_array")
+      if  meta_field["array"] &&
+         !meta_field["pointer"] &&
+          CL_STRUCTS.include?(meta_field["type"])
+        meta_field.delete("array")
+        meta_field["structure"] = true
+      end
       fields[fname] = meta_field
     }
   else
@@ -142,6 +129,13 @@ event_lambda = lambda { |c, dir|
       meta_field["array"] = true if LTTng.array?(*lttng)
       meta_field["string"] = true if LTTng.string?(*lttng)
       meta_field["lttng"] = lttng[0]
+      meta_field["length"] = lttng[4] if meta_field["lttng"].match("ctf_array")
+      if  meta_field["array"] &&
+         !meta_field["pointer"] &&
+          CL_STRUCTS.include?(meta_field["type"])
+        meta_field.delete("array")
+        meta_field["structure"] = true
+      end
       fields[fname] = meta_field
     }
   end

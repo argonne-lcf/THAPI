@@ -1,9 +1,9 @@
 require 'yaml'
-ze_babeltrace_model = YAML::load_file("ze_babeltrace_model.yaml")
+cuda_babeltrace_model = YAML::load_file("cuda_babeltrace_model.yaml")
 
 puts <<EOF
-#include "babeltrace_ze.h"
-#include "babeltrace_ze_callbacks.h"
+#include "babeltrace_cuda.h"
+#include "babeltrace_cuda_callbacks.h"
 
 EOF
 
@@ -46,11 +46,20 @@ print_array_access = lambda { |length, field, name, type|
 EOF
   case field[:field][:class]
   when 'unsigned'
-    puts <<EOF
+    if scalar_type.match('float')
+      scalar_type = 'uint32_t'
+      puts <<EOF
+        ((#{scalar_type} *)#{name})[_i] =
+          (#{scalar_type})bt_field_integer_unsigned_get_value(
+            bt_field_array_borrow_element_field_by_index_const(_field, _i));
+EOF
+    else
+      puts <<EOF
         #{voidp ? "((#{scalar_type} *)#{name})" :  name}[_i] =
           (#{scalar_type})bt_field_integer_unsigned_get_value(
             bt_field_array_borrow_element_field_by_index_const(_field, _i));
 EOF
+    end
   when 'signed'
     puts <<EOF
         #{voidp ? "((#{scalar_type} *)#{name})" :  name}[_i] =
@@ -157,14 +166,14 @@ def print_field_members_free(fields)
 EOF
 end
 
-ze_babeltrace_model[:event_classes].each { |klass|
+cuda_babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   fields = klass[:payload]
   puts <<EOF
 static void
 #{name.gsub(":","_")}_dispatcher(
-    struct ze_dispatch      *ze_dispatch,
-    struct ze_callbacks     *callbacks,
+    struct cuda_dispatch      *cuda_dispatch,
+    struct cuda_callbacks     *callbacks,
     const bt_event          *bt_evt,
     const bt_clock_snapshot *bt_clock) {
 EOF
@@ -185,12 +194,12 @@ EOF
 }
 
 puts <<EOF
-void init_dispatchers(struct ze_dispatch   *ze_dispatch) {
+void init_dispatchers(struct cuda_dispatch   *cuda_dispatch) {
 EOF
-ze_babeltrace_model[:event_classes].each { |klass|
+cuda_babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   puts <<EOF
-  ze_register_dispatcher(ze_dispatch, "#{name}", &#{name.gsub(":","_")}_dispatcher);
+  cuda_register_dispatcher(cuda_dispatch, "#{name}", &#{name.gsub(":","_")}_dispatcher);
 EOF
 }
 puts <<EOF

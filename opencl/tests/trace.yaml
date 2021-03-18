@@ -1,0 +1,15 @@
+---
+:stream_classes:
+- :name: cl_stream_class
+  :schemas:
+  - thapi_opencl
+  :clock_snapshot_value: true
+:streams:
+- :name: stream0
+  :class: cl_stream_class
+:events:
+- :name: lttng_ust_opencl:clCreateEventFromEGLSyncKHR_entry
+  :stream: stream0
+  :clock_snapshot_value: 20
+- :name: lttng_ust_opencl:clCreateEventFromEGLSyncKHR_exit
+  :stream: stream0

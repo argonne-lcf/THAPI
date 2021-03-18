@@ -1,23 +1,17 @@
 require 'yaml'
-ze_babeltrace_model = YAML::load_file("ze_babeltrace_model.yaml")
+cuda_babeltrace_model = YAML::load_file("cuda_babeltrace_model.yaml")
 
 puts <<EOF
-#ifndef _BABELTRACE_ZE_CALLBACKS_H
-#define _BABELTRACE_ZE_CALLBACKS_H
-#include <ze_api.h>
-#include <ze_ddi.h>
-#include <zet_api.h>
-#include <zet_ddi.h>
-#include <zes_api.h>
-#include <zes_ddi.h>
-#include <layers/zel_tracing_api.h>
-#include <layers/zel_tracing_ddi.h>
+#ifndef _BABELTRACE_CUDA_CALLBACKS_H
+#define _BABELTRACE_CUDA_CALLBACKS_H
+#define __CUDA_API_VERSION_INTERNAL 1
+#include <cuda.h>
 #include <babeltrace2/babeltrace.h>
 
 EOF
 
 
-ze_babeltrace_model[:event_classes].each { |klass|
+cuda_babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   fields = klass[:payload]
   decls = []

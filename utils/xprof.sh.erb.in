@@ -51,7 +51,7 @@ whichlib() {
 }
 
 trace_and_summary() {
-    if [ -z "$@" ]; then
+    if [ "$#" -eq 0 ]; then
         display_help
     fi
 
@@ -122,7 +122,7 @@ trace_epilogue() {
 
 
 summary() {
-    if [ -z "$@" ]; then
+    if [ "$#" -eq 0 ]; then
 <% if languages.include?("opencl") and  languages.include?("ze")%>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/* | head -1)
 <% elsif languages.include?("opencl") %>
@@ -176,7 +176,7 @@ summary() {
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
 display="compact";
-if [[ $# -eq 0 ]]; then
+if [ "$#" -eq 0 ]; then
     display_help
 fi
 
