@@ -269,7 +269,6 @@ EXTRA_DIST = \
 	extract_enqueues \
 	clprof.c.erb \
 	clprof_callbacks.h.erb \
-	test_wrapper.sh \
 	$(TRACE_FILES) \
 	$(TEST_FILES)
 

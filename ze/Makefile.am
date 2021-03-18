@@ -336,7 +336,6 @@ EXTRA_DIST += \
 	gen_ze_refinements.rb \
 	gen_ze_bindings.rb \
 	ze_bindings_base.rb \
-	test_wrapper.sh \
 	$(TEST_FILES)
 
 CLEANFILES += $(ZE_BINDINGS)
