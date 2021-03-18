@@ -23,7 +23,6 @@ $all_types.each { |t|
   end
 }
 
-
 $int_scalars = {}
 $all_types.each { |t|
   if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)

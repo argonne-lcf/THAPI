@@ -1,0 +1,13 @@
+---
+:components:
+- :plugin: souce.ruby.dust
+  :name: dust
+  :params:
+    schemas: [opencl_babeltrace_model.yaml]
+    trace: API_call.yaml
+- :plugin: sink.testing_clprof.dispatch
+  :name: testing_clprof
+  :params:
+    test: API_call
+:connections:
+- dust:testing_clprof

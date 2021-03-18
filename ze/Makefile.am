@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 ZE_PROBES_TP = \
 	ze_tracepoints.tp \
@@ -102,6 +102,7 @@ MODIFIED_ZE_HDR = \
 modified_include/ze_api.h: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
+	chmod -R u+w modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 $(MODIFIED_ZE_EXTRA_HDR): modified_include/ze_api.h
@@ -128,6 +129,11 @@ zes_api.yaml: $(srcdir)/extract_zes.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 
 zel_api.yaml: $(srcdir)/extract_zel.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
 	SRC_DIR=$(srcdir) $(RUBY) $<
+
+ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+CLEANFILES += ze_babeltrace_model.yaml
 
 EXTRA_DIST += \
 	extract_ze.rb \
@@ -168,6 +174,8 @@ zeprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
+CLEANFILES += zeprof.sh
+
 BUILT_SOURCES = $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) babeltrace_ze_callbacks.h
 
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
@@ -197,16 +205,19 @@ nodist_libTracerZE_la_SOURCES = \
 	$(ZE_STATIC_PROBES_INCL) \
 	tracer_ze.c
 
-libTracerZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I../utils -I./
+libTracerZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 libTracerZE_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerZE_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerZE_la_LIBADD = libzetracepoints.la
 
-install-exec-hook::
-	mkdir -p $(pkglibdir)/ze
-	$(RM) $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
-	ln -s $(libdir)/libTracerZE.so.0.0.0 $(pkglibdir)/ze/libze_loader.so.1
-	ln -s $(pkglibdir)/ze/libze_loader.so.1 $(pkglibdir)/ze/libze_loader.so
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ze
+	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerZE.so.0.0.0 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+	-rmdir $(DESTDIR)$(pkglibdir)/ze
 
 ZEPROF = \
 	$(srcdir)/zeprof_callbacks.cpp.erb \
@@ -238,7 +249,7 @@ nodist_libZEProf_la_SOURCES = \
 libZEProf_la_SOURCES = \
 	babeltrace_ze.h
 
-libZEProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libZEProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libZEProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libZEProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libZEProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -256,10 +267,10 @@ ZE_LIB_GEN = \
 
 EXTRA_DIST += $(ZE_LIB_GEN)
 
-babeltrace_ze_callbacks.h: $(srcdir)/gen_babeltrace_ze_callbacks.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+babeltrace_ze_callbacks.h: $(srcdir)/gen_babeltrace_ze_callbacks.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_ze_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+babeltrace_ze_dispatchers.c: $(srcdir)/gen_babeltrace_ze_dispatchers.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
@@ -276,7 +287,7 @@ nodist_libBabeltraceZE_la_SOURCES = \
 libBabeltraceZE_la_SOURCES = \
 	babeltrace_ze.c \
 	babeltrace_ze.h
-libBabeltraceZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libBabeltraceZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libBabeltraceZE_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceZE_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
@@ -298,6 +309,23 @@ ZE_BINDINGS = \
 	ze_refinements.rb \
 	ze_bindings.rb
 
+tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
+
+CLEANFILES += tests/ze_dummy_trace.yaml
+
+TEST_FILES = \
+	tests/ze_dummy_trace.dust
+
+TESTS = $(TEST_FILES)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	tests/ze_dummy_trace.yaml
+
 data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb
@@ -306,7 +334,9 @@ EXTRA_DIST += \
 	gen_ze_library.rb \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
-	gen_ze_bindings.rb
+	gen_ze_bindings.rb \
+	ze_bindings_base.rb \
+	$(TEST_FILES)
 
 CLEANFILES += $(ZE_BINDINGS)
 

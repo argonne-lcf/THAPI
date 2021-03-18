@@ -1,0 +1,11 @@
+---
+:components:
+- :plugin: source.ruby.dust
+  :name: dust
+  :params:
+    schemas: [ze_babeltrace_model.yaml]
+    trace: ze_dummy_trace.yaml
+- :plugin: sink.ze.dispatch
+  :name: dispatch
+:connections:
+- dust:dispatch

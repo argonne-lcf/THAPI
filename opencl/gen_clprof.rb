@@ -280,9 +280,6 @@ $l_test = l_test_d.map{ |  d | Test_clprof.new(d) }
 if $sink_type == 'dust'
     write_file_via_template('dust.c')
 elsif $sink_type == 'production' or $sink_type == 'testing'
-    if $sink_type == 'testing'
-       $l_test.each{ | test | File.write(test.path, test.dust) }
-    end
     $l_file_generated.each{ |f|
         write_file_via_template(f, $sink_type == 'testing' ) 
     }

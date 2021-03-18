@@ -1,0 +1,38 @@
+---
+:hostname: aurora12.gov
+:default_stream: stream0
+:stream_classes:
+- :name: cl_stream_class
+  :schemas:
+  - thapi_opencl
+  :clock_snapshot_value: true
+  :common_context:
+  - :name: vpid
+    :class: signed
+  - :name: vtid
+    :class: unsigned
+:streams:
+- :name: stream0
+  :class: cl_stream_class
+  :common_context:
+    vpid: -1
+    vtid: 2
+:events:
+- :name: lttng_ust_opencl_arguments:kernel_info
+  :payload:
+    kernel: 12
+    function_name: __ompoffload
+  :common_context:
+    vtid: 3
+- :name: lttng_ust_opencl:clEnqueueNDRangeKernel_entry
+  :payload:
+    kernel: 12
+- :name: lttng_ust_opencl_profiling:event_profiling
+  :payload:
+    event: 12
+- :name: lttng_ust_opencl:clEnqueueNDRangeKernel_exit
+- :name: lttng_ust_opencl_profiling:event_profiling_results
+  :payload:
+    event: 12
+    start: 0
+    end: 10

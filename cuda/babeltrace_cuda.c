@@ -1,37 +1,30 @@
-#include "babeltrace_cl.h"
-<% if $sink_type == 'production' %>
-#include "clprof_callbacks.h"
-const bt_value *display_mode;
-<% elsif $sink_type == 'testing' %>
-#include "testing_clprof_callbacks.h"
-const bt_value *test_type_value;
-<% end %>
+#include "babeltrace_cuda.h"
 
-struct opencl_event_callbacks * opencl_create_event_callbacks(const char *name) {
-    intptr_t mem = (intptr_t)calloc(1, sizeof(struct opencl_event_callbacks) + strlen(name) + 1);
-    struct opencl_event_callbacks * callbacks = (struct opencl_event_callbacks *)mem;
-    callbacks->name = (const char *)(mem + sizeof(struct opencl_event_callbacks));
+struct cuda_event_callbacks * cuda_create_event_callbacks(const char *name) {
+    intptr_t mem = (intptr_t)calloc(1, sizeof(struct cuda_event_callbacks) + strlen(name) + 1);
+    struct cuda_event_callbacks * callbacks = (struct cuda_event_callbacks *)mem;
+    callbacks->name = (const char *)(mem + sizeof(struct cuda_event_callbacks));
     strcpy((char *)(callbacks->name), name);
     utarray_new(callbacks->callbacks, &ut_ptr_icd);
     return callbacks;
 }
 
-void opencl_register_dispatcher(struct opencl_dispatch *opencl_dispatch, const char *name, opencl_dispatcher_t *dispatcher) {
-    struct opencl_event_callbacks *callbacks = NULL;
-    HASH_FIND_STR(opencl_dispatch->event_callbacks, name, callbacks);
+void cuda_register_dispatcher(struct cuda_dispatch *cuda_dispatch, const char *name, cuda_dispatcher_t *dispatcher) {
+    struct cuda_event_callbacks *callbacks = NULL;
+    HASH_FIND_STR(cuda_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
-        callbacks = opencl_create_event_callbacks(name);
-        HASH_ADD_KEYPTR(hh, opencl_dispatch->event_callbacks, callbacks->name, strlen(callbacks->name), callbacks);
+        callbacks = cuda_create_event_callbacks(name);
+        HASH_ADD_KEYPTR(hh, cuda_dispatch->event_callbacks, callbacks->name, strlen(callbacks->name), callbacks);
     }
     callbacks->dispatcher = dispatcher;
 }
 
-void opencl_register_callback(struct opencl_dispatch *opencl_dispatch, const char *name, void *func) {
-    struct opencl_event_callbacks *callbacks;
-    HASH_FIND_STR(opencl_dispatch->event_callbacks, name, callbacks);
+void cuda_register_callback(struct cuda_dispatch *cuda_dispatch, const char *name, void *func) {
+    struct cuda_event_callbacks *callbacks;
+    HASH_FIND_STR(cuda_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
-        callbacks = opencl_create_event_callbacks(name);
-        HASH_ADD_STR(opencl_dispatch->event_callbacks, name, callbacks);
+        callbacks = cuda_create_event_callbacks(name);
+        HASH_ADD_STR(cuda_dispatch->event_callbacks, name, callbacks);
     }
     if (func)
         utarray_push_back(callbacks->callbacks, &func);
@@ -41,26 +34,18 @@ void opencl_register_callback(struct opencl_dispatch *opencl_dispatch, const cha
  * Initializes the sink component.
  */
 static
-bt_component_class_initialize_method_status opencl_dispatch_initialize(
+bt_component_class_initialize_method_status cuda_dispatch_initialize(
         bt_self_component_sink *self_component_sink,
         bt_self_component_sink_configuration *configuration,
         const bt_value *params, void *initialize_method_data)
 {
-<% if $sink_type == 'testing' %>
-    test_type_value = bt_value_map_borrow_entry_value_const(params, "test");
-    bt_value_get_ref(test_type_value);
-<% elsif $sink_type == 'production' %>
-    display_mode = bt_value_map_borrow_entry_value_const(params, "display");
-    bt_value_get_ref(display_mode);
-<% end %>
-
     /* Allocate a private data structure */
-    struct opencl_dispatch *opencl_dispatch = calloc(1, sizeof(struct opencl_dispatch));
+    struct cuda_dispatch *cuda_dispatch = calloc(1, sizeof(struct cuda_dispatch));
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
         bt_self_component_sink_as_self_component(self_component_sink),
-        opencl_dispatch);
+        cuda_dispatch);
 
     /*
      * Add an input port named `in` to the sink component.
@@ -73,8 +58,7 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    init_dispatchers(opencl_dispatch);
-    init_callbacks(opencl_dispatch);
+    init_dispatchers(cuda_dispatch);
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
@@ -82,32 +66,25 @@ bt_component_class_initialize_method_status opencl_dispatch_initialize(
  * Finalizes the sink component.
  */
 static
-void opencl_dispatch_finalize(bt_self_component_sink *self_component_sink)
+void cuda_dispatch_finalize(bt_self_component_sink *self_component_sink)
 {
-
-    finalize_callbacks();
     /* Retrieve our private data from the component's user data */
-    struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
+    struct cuda_dispatch *cuda_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
-    struct opencl_callbacks *s, *tmp;
-    HASH_ITER(hh, opencl_dispatch->callbacks, s, tmp) {
-      HASH_DEL(opencl_dispatch->callbacks, s);
+    struct cuda_callbacks *s, *tmp;
+    HASH_ITER(hh, cuda_dispatch->callbacks, s, tmp) {
+      HASH_DEL(cuda_dispatch->callbacks, s);
       free(s);
     }
-    struct opencl_event_callbacks *s2, *tmp2;
-    HASH_ITER(hh, opencl_dispatch->event_callbacks, s2, tmp2) {
-      HASH_DEL(opencl_dispatch->event_callbacks, s2);
+    struct cuda_event_callbacks *s2, *tmp2;
+    HASH_ITER(hh, cuda_dispatch->event_callbacks, s2, tmp2) {
+      HASH_DEL(cuda_dispatch->event_callbacks, s2);
       utarray_free(s2->callbacks);
       free(s2);
     }
-<% if $sink_type == 'testing' %>
-    bt_value_put_ref(test_type_value);
-<% elsif $sink_type == 'production' %>
-    bt_value_put_ref(display_mode);
-<% end %>
     /* Free the allocated structure */
-    free(opencl_dispatch);
+    free(cuda_dispatch);
 }
 
 /*
@@ -118,10 +95,10 @@ void opencl_dispatch_finalize(bt_self_component_sink *self_component_sink)
  */
 static
 bt_component_class_sink_graph_is_configured_method_status
-opencl_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
+cuda_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
 {
     /* Retrieve our private data from the component's user data */
-    struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
+    struct cuda_dispatch *cuda_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Borrow our unique port */
@@ -131,7 +108,7 @@ opencl_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
 
     /* Create the uptream message iterator */
     bt_message_iterator_create_from_sink_component(self_component_sink,
-        in_port, &opencl_dispatch->message_iterator);
+        in_port, &cuda_dispatch->message_iterator);
 
     return BT_COMPONENT_CLASS_SINK_GRAPH_IS_CONFIGURED_METHOD_STATUS_OK;
 }
@@ -141,27 +118,27 @@ opencl_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink)
  * the standard output.
  */
 static
-bt_component_class_sink_consume_method_status opencl_dispatch_consume(
+bt_component_class_sink_consume_method_status cuda_dispatch_consume(
         bt_self_component_sink *self_component_sink)
 {
     bt_component_class_sink_consume_method_status status =
         BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
 
     /* Retrieve our private data from the component's user data */
-    struct opencl_dispatch *opencl_dispatch = bt_self_component_get_data(
+    struct cuda_dispatch *cuda_dispatch = bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
     /* Consume a batch of messages from the upstream message iterator */
     bt_message_array_const messages;
     uint64_t message_count;
     bt_message_iterator_next_status next_status =
-        bt_message_iterator_next(opencl_dispatch->message_iterator, &messages,
+        bt_message_iterator_next(cuda_dispatch->message_iterator, &messages,
             &message_count);
 
     switch (next_status) {
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_END:
         /* End of iteration: put the message iterator's reference */
-        bt_message_iterator_put_ref(opencl_dispatch->message_iterator);
+        bt_message_iterator_put_ref(cuda_dispatch->message_iterator);
         status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_END;
         goto end;
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
@@ -184,18 +161,18 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
         if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
-            struct opencl_callbacks *callbacks = NULL;
+            struct cuda_callbacks *callbacks = NULL;
             const char * class_name = bt_event_class_get_name(event_class);
 
-            HASH_FIND_STR(opencl_dispatch->callbacks, class_name, callbacks);
+            HASH_FIND_STR(cuda_dispatch->callbacks, class_name, callbacks);
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
-                callbacks = (struct opencl_callbacks *)calloc(1, sizeof(struct opencl_callbacks) + class_name_sz + 1);
+                callbacks = (struct cuda_callbacks *)calloc(1, sizeof(struct cuda_callbacks) + class_name_sz + 1);
                 callbacks->name = (const char *)callbacks + class_name_sz;
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
-                HASH_ADD_KEYPTR(hh, opencl_dispatch->callbacks, class_name, class_name_sz, callbacks);
-                struct opencl_event_callbacks *event_callbacks = NULL;
-                HASH_FIND_STR(opencl_dispatch->event_callbacks, class_name, event_callbacks);
+                HASH_ADD_KEYPTR(hh, cuda_dispatch->callbacks, class_name, class_name_sz, callbacks);
+                struct cuda_event_callbacks *event_callbacks = NULL;
+                HASH_FIND_STR(cuda_dispatch->event_callbacks, class_name, event_callbacks);
                 if (event_callbacks) {
                     callbacks->dispatcher = event_callbacks->dispatcher;
                     callbacks->callbacks = event_callbacks->callbacks;
@@ -203,7 +180,7 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
             }
             /* Print line for current message if it's an event message */
             if (callbacks->dispatcher)
-                callbacks->dispatcher(opencl_dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(message));
+                callbacks->dispatcher(cuda_dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(message));
 
             /* Put this message's reference */
 	}
@@ -218,18 +195,14 @@ end:
 /* Mandatory */
 BT_PLUGIN_MODULE();
 
-/* Define the `clprof` plugin */
-<% if $sink_type == 'production' %>
-BT_PLUGIN(clprof);
-<% elsif $sink_type == 'testing' %>
-BT_PLUGIN(testing_clprof);
-<% end %>
+/* Define the `cuda` plugin */
+BT_PLUGIN(cuda);
 
 /* Define the `text` sink component class */
-BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, opencl_dispatch_consume);
+BT_PLUGIN_SINK_COMPONENT_CLASS(dispatch, cuda_dispatch_consume);
 
 /* Set some of the `text` sink component class's optional methods */
 
-BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch, opencl_dispatch_initialize);
-BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch, opencl_dispatch_finalize);
-BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch, opencl_dispatch_graph_is_configured);
+BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(dispatch, cuda_dispatch_initialize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(dispatch, cuda_dispatch_finalize);
+BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(dispatch, cuda_dispatch_graph_is_configured);

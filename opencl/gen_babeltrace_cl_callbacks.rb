@@ -1,5 +1,5 @@
 require 'yaml'
-opencl_model = YAML::load_file("opencl_model.yaml")
+opencl_babeltrace_model = YAML::load_file("opencl_babeltrace_model.yaml")
 
 puts <<EOF
 #ifndef _HEADER_CALLBACKS_H
@@ -21,21 +21,18 @@ puts <<EOF
 
 EOF
 
-opencl_model["events"].each { |name, fields|
+opencl_babeltrace_model[:event_classes].each { |klass|
+  name = klass[:name]
+  fields = klass[:payload]
+  decls = []
+  fields.each { |f|
+    decls.push ['size_t', "_#{f[:name]}_length"] if f[:class] == 'array_static'
+    decls.push [f[:cast_type], f[:name]]
+  }
   puts <<EOF
 typedef void (#{name.gsub(":","_")}_cb)(
-    #{(["const bt_event *bt_evt", "const bt_clock_snapshot *bt_clock"]+fields.each.collect { |n, f|
-  s =  "#{f["type"].gsub("cl_errcode", "cl_int")}"
-  s << " *" if f["pointer"]
-  s << " *" if f["array"]
-  s << " *" if f["string"]
-  s << " #{n}"
-  if f["array"]
-    ["size_t _#{n}_length", s]
-  else
-    s
-  end
-}).flatten.join(",\n    ")});
+    #{(["const bt_event *bt_evt", "const bt_clock_snapshot *bt_clock"]+
+      decls.collect { |t, n| "#{t} #{n}" }).join(",\n    ")});
 
 EOF
 }
