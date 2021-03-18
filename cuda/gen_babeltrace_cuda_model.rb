@@ -175,7 +175,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   field = { name: name, cast_type: type}
   case lttng_name
   when 'ctf_float'
-    field[:class] = type
+    field[:class] = type == 'float' ? 'single' : type
   when 'ctf_integer'
     field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
     field[:class_properties] = { field_value_range: integer_size(type) }

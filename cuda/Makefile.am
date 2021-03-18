@@ -264,6 +264,24 @@ CUDA_BINDINGS = \
 	cuda_library.rb \
 	babeltrace_cuda_lib.rb
 
+tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
+
+CLEANFILES += tests/cuda_dummy_trace.yaml
+
+TEST_FILES = \
+	tests/cuda_dummy_trace.dust
+
+TESTS = $(TEST_FILES)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+check_DATA = \
+	test_wrapper.sh \
+	tests/cuda_dummy_trace.yaml
+
+
 data_DATA = $(CUDA_BINDINGS)
 
 EXTRA_DIST += \

@@ -112,6 +112,9 @@ def populate_field(field, field_value)
       if n.start_with?('ZE::')
         require "#{ENV["BINDING_DIR"]}/ze_library"
         struct = eval(n).new
+      elsif n.start_with?('CUDA::')
+        require "#{ENV["BINDING_DIR"]}/cuda_library"
+        struct = eval(n).new
       elsif n.start_with?('CL::')
         require 'opencl_ruby_ffi/opencl_types'
         require 'opencl_ruby_ffi/opencl_arithmetic_gen'
