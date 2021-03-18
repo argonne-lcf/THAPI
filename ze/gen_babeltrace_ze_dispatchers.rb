@@ -7,93 +7,78 @@ puts <<EOF
 
 EOF
 
-def print_field_member_access(f, i)
-  klass = f[:class]
-  name = f[:name]
-  type = f[:cast_type]
+print_signed = lambda { |_, name, type|
   puts <<EOF
-  {
-    const bt_field *_field = NULL;
-    _field = bt_field_structure_borrow_member_field_by_index_const(payload_field, #{i});
+  #{name} = (#{type})bt_field_integer_signed_get_value(_field);
 EOF
-  case klass
-  when 'signed', 'enumeration_signed'
-    puts <<EOF
-    #{name} = (#{type})bt_field_integer_signed_get_value(_field);
-EOF
-  when 'unsigned', 'enumeration_unsigned'
-    puts <<EOF
+}
+
+print_unsigned = lambda { |_, name, type|
+  puts <<EOF
     #{name} = (#{type})bt_field_integer_unsigned_get_value(_field);
 EOF
-  when 'float'
-    puts <<EOF
+}
+
+print_single = lambda { |_, name, type|
+  puts <<EOF
     #{name} = (#{type})bt_field_real_single_precision_get_value(_field);
 EOF
-  when 'double'
-    puts <<EOF
+}
+
+print_double = lambda { |_, name, type|
+  puts <<EOF
     #{name} = (#{type})bt_field_real_double_precision_get_value(_field);
 EOF
-  when 'array_static'
-    scalar_type = type.gsub("const","").sub("*", "")
-    voidp = false
-    if scalar_type.strip == "void"
-      voidp = true
-      scalar_type = "uint8_t"
-    end
+}
+
+print_array_access = lambda { |length, field, name, type|
+  scalar_type = type.gsub("const","").sub("*", "")
+  voidp = false
+  if scalar_type.strip == "void"
+    voidp = true
+    scalar_type = "uint8_t"
+  end
+  puts <<EOF
+    #{length} = bt_field_array_get_length(_field);
+    if (#{length} > 0) {
+      #{name} = (#{type})malloc(#{length}*sizeof(#{scalar_type}));
+      for (uint64_t _i = 0; _i < #{length}; _i++) {
+EOF
+  case field[:field][:class]
+  when 'unsigned'
     puts <<EOF
-    _#{name}_length = bt_field_array_get_length(_field);
-    if (_#{name}_length > 0) {
-      #{name} = (#{type})malloc(_#{name}_length*sizeof(#{scalar_type}));
-      for (uint64_t _i = 0; _i < _#{name}_length; _i++) {
+        #{voidp ? "((#{scalar_type} *)#{name})" :  name}[_i] =
+          (#{scalar_type})bt_field_integer_unsigned_get_value(
+            bt_field_array_borrow_element_field_by_index_const(_field, _i));
 EOF
-    case f[:field][:class]
-    when 'unsigned'
-      puts <<EOF
-        #{voidp ? "((uint8_t *)#{name})" :  name}[_i] = (#{scalar_type})bt_field_integer_unsigned_get_value(bt_field_array_borrow_element_field_by_index_const(_field, _i));
-EOF
-    when 'signed'
-      puts <<EOF
-        #{voidp ? "((uint8_t *)#{name})" :  name}[_i] = (#{scalar_type})bt_field_integer_signed_get_value(bt_field_array_borrow_element_field_by_index_const(_field, _i));
-EOF
-    else
-      raise "unsupported array element #{f[:field][:class]}"
-    end
+  when 'signed'
     puts <<EOF
+        #{voidp ? "((#{scalar_type} *)#{name})" :  name}[_i] =
+          (#{scalar_type})bt_field_integer_signed_get_value(
+            bt_field_array_borrow_element_field_by_index_const(_field, _i));
+EOF
+  else
+    raise "unsupported array element #{field[:field][:class]}"
+  end
+  puts <<EOF
       }
     } else
       #{name} = NULL;
 EOF
-  when 'array_dynamic'
-    scalar_type = type.gsub("const","").sub("*", "")
-    voidp = false
-    if scalar_type.strip == "void"
-      voidp = true
-      scalar_type = "uint8_t"
-    end
-    puts <<EOF
-    uint64_t _sz = bt_field_array_get_length(_field);
-    if (_sz > 0) {
-      #{name} = (#{type})malloc(_sz*sizeof(#{scalar_type}));
-      for (uint64_t _i = 0; _i < _sz; _i++) {
+}
+
+print_array_static = lambda { |field, name, type|
+  print_array_access["_#{name}_length", field, name, type]
+}
+
+print_array_dynamic = lambda { |field, name, type|
+  puts <<EOF
+    size_t _sz;
 EOF
-    case f[:field][:class]
-    when 'unsigned'
-      puts <<EOF
-        #{voidp ? "((uint8_t *)#{name})" :  name}[_i] = (#{scalar_type})bt_field_integer_unsigned_get_value(bt_field_array_borrow_element_field_by_index_const(_field, _i));
-EOF
-    when 'signed'
-      puts <<EOF
-        #{voidp ? "((uint8_t *)#{name})" :  name}[_i] = (#{scalar_type})bt_field_integer_signed_get_value(bt_field_array_borrow_element_field_by_index_const(_field, _i));
-EOF
-    else
-      raise "unsupported array element #{f[:field][:class]}"
-    end
-    puts <<EOF
-      }
-    } else
-      #{name} = NULL;
-EOF
-  when 'string'
+  print_array_access["_sz", field, name, type]
+}
+
+print_string = lambda { |field, name, type|
     if !type.to_s.match(/\*/)
        puts <<EOF
     if (bt_field_string_get_value(_field))
@@ -104,12 +89,51 @@ EOF
     #{name} = (#{type})bt_field_string_get_value(_field);
 EOF
     end
-  else
-    raise "unsupported babeltrace_type: #{klass}"
-  end
+}
+
+default_access = lambda { |field, name, type|
+    raise "unsupported babeltrace_type: #{f[:class]}"
+}
+
+$print_accessors = Hash.new { |h, k| h[k] = default_access }
+$print_accessors.merge!({
+  'signed' => print_signed,
+  'enumeration_signed' => print_signed,
+  'unsigned' => print_unsigned,
+  'enumeration_unsigned' => print_unsigned,
+  'float' => print_single,
+  'double' => print_double,
+  'array_static' => print_array_static,
+  'array_dynamic' => print_array_dynamic,
+  'string' => print_string
+})
+
+def print_field_member_access(f, i)
+  klass = f[:class]
+  name = f[:name]
+  type = f[:cast_type]
+  puts <<EOF
+  {
+    const bt_field *_field = NULL;
+    _field = bt_field_structure_borrow_member_field_by_index_const(payload_field, #{i});
+EOF
+  $print_accessors[klass][f, name, type]
   puts <<EOF
   }
 EOF
+end
+
+
+def print_field_members_decl(fields)
+  decls = []
+  fields.each { |f|
+    decls.push ['size_t', "_#{f[:name]}_length"] if f[:class] == 'array_static'
+    decls.push [f[:cast_type], f[:name]]
+  }
+  puts <<EOF unless decls.empty?
+  #{decls.each.collect { |f| "#{f[0]} #{f[1]}" }.join(";\n  ")};
+EOF
+  decls
 end
 
 def print_field_members_access(fields)
@@ -121,32 +145,8 @@ EOF
   }
 end
 
-ze_babeltrace_model[:event_classes].each { |klass|
-  name = klass[:name]
-  fields = klass[:payload]
-  decls = []
-  fields.each { |f|
-    decls.push ['size_t', "_#{f[:name]}_length"] if f[:class] == 'array_static'
-    decls.push [f[:cast_type], f[:name]]
-  }
-  puts <<EOF
-static void
-#{name.gsub(":","_")}_dispatcher(
-    struct ze_dispatch      *ze_dispatch,
-    struct ze_callbacks     *callbacks,
-    const bt_event          *bt_evt,
-    const bt_clock_snapshot *bt_clock) {
-  #{decls.each.collect { |f| "#{f[0]} #{f[1]}" }.join(";\n  ")};
-EOF
-print_field_members_access(fields)
-puts <<EOF
-  void **_p = NULL;
-  while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{name.gsub(":","_")}_cb *)*_p)(
-      #{(["bt_evt", "bt_clock"] + decls.collect { |f| f[1] }).join(",\n      ")});
-  }
-EOF
-puts <<EOF if fields.find { |f| f[:class].match('array') }
+def print_field_members_free(fields)
+  puts <<EOF if fields.find { |f| f[:class].match('array') }
   #{fields.each.collect { |f|
     if f[:class].match('array')
       "free((void *)#{f[:name]})"
@@ -155,6 +155,29 @@ puts <<EOF if fields.find { |f| f[:class].match('array') }
     end
   }.compact.join(";\n  ")};
 EOF
+end
+
+ze_babeltrace_model[:event_classes].each { |klass|
+  name = klass[:name]
+  fields = klass[:payload]
+  puts <<EOF
+static void
+#{name.gsub(":","_")}_dispatcher(
+    struct ze_dispatch      *ze_dispatch,
+    struct ze_callbacks     *callbacks,
+    const bt_event          *bt_evt,
+    const bt_clock_snapshot *bt_clock) {
+EOF
+decls = print_field_members_decl(fields)
+print_field_members_access(fields)
+puts <<EOF
+  void **_p = NULL;
+  while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
+    ((#{name.gsub(":","_")}_cb *)*_p)(
+      #{(["bt_evt", "bt_clock"] + decls.collect { |f| f[1] }).join(",\n      ")});
+  }
+EOF
+print_field_members_free(fields)
 puts <<EOF
 }
 
