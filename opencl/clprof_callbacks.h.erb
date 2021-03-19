@@ -6,9 +6,9 @@
 extern "C" {
 #endif
 extern void
-init_callbacks(struct opencl_dispatch *opencl_dispatch);
+init_babeltrace_cl_callbacks(struct babeltrace_cl_dispatch *opencl_dispatch);
 extern void
-finalize_callbacks();
+finalize_babeltrace_cl_callbacks();
 <% if $sink_type == 'testing' %>
 extern const bt_value *test_type_value;
 <% elsif $sink_type == 'production' %>

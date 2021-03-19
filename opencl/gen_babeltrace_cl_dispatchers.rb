@@ -1,9 +1,17 @@
 require 'yaml'
+
+if ARGV.empty?
+  namespace = "babeltrace_cl"
+else
+  namespace = ARGV[0]
+end
+
+
 opencl_babeltrace_model = YAML::load_file("opencl_babeltrace_model.yaml")
 
 puts <<EOF
-#include "babeltrace_cl.h"
-#include "babeltrace_cl_callbacks.h"
+#include "#{namespace}.h"
+#include "#{namespace}_callbacks.h"
 
 EOF
 
@@ -113,8 +121,8 @@ opencl_babeltrace_model[:event_classes].each { |klass|
   puts <<EOF
 static void
 #{name.gsub(":","_")}_dispatcher(
-    struct opencl_dispatch  *opencl_dispatch,
-    struct opencl_callbacks *callbacks,
+    struct #{namespace}_dispatch  *dispatch,
+    struct #{namespace}_callbacks *callbacks,
     const bt_event          *bt_evt,
     const bt_clock_snapshot *bt_clock) {
   #{decls.each.collect { |f| "#{f[0]} #{f[1]}" }.join(";\n  ")};
@@ -123,7 +131,7 @@ print_field_members_access(fields)
 puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{name.gsub(":","_")}_cb *)*_p)(
+    ((#{namespace}_#{name.gsub(":","_")}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + decls.collect { |f| f[1] }).join(",\n      ")});
   }
 EOF
@@ -143,12 +151,12 @@ EOF
 }
 
 puts <<EOF
-void init_dispatchers(struct opencl_dispatch   *opencl_dispatch) {
+void init_#{namespace}_dispatchers(struct #{namespace}_dispatch *dispatch) {
 EOF
 opencl_babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   puts <<EOF
-  opencl_register_dispatcher(opencl_dispatch, "#{name}", &#{name.gsub(":","_")}_dispatcher);
+  #{namespace}_register_dispatcher(dispatch, "#{name}", &#{name.gsub(":","_")}_dispatcher);
 EOF
 }
 puts <<EOF
