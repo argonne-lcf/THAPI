@@ -216,16 +216,15 @@ clinterval.c: $(top_srcdir)/xprof/interval.c.erb
 	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > clinterval.c
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	ln -s $(top_srcdir)/utils/xprof_utils.cpp xprof_utils.cpp
+	cp $< $@
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
-	ln -s $(top_srcdir)/utils/xprof_utils.hpp xprof_utils.hpp
+	cp $< $@
 
 BUILT_SOURCES += \
 	clinterval.h \
 	babeltrace_cl.h \
 	clinterval_callbacks.h \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 nodist_libCLInterval_la_SOURCES = \
@@ -234,8 +233,12 @@ nodist_libCLInterval_la_SOURCES = \
 	clinterval_callbacks.h \
 	clinterval_dispatchers.c \
 	clinterval_callbacks.cpp \
-	clinterval_callbacks.hpp \
-	tracer_opencl.h 
+	tracer_opencl.h \
+	xprof_utils.hpp \
+	xprof_utils.cpp
+
+libCLInterval_la_SOURCES = \
+	clinterval_callbacks.hpp
 
 libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
@@ -275,7 +278,9 @@ TRACE_FILES = \
 	tests/kernel_name.yaml \
 	tests/profiling_normal_nd_range_kernel_name.yaml \
 	tests/API_call.yaml \
-	tests/trace.yaml
+	tests/trace.yaml \
+	tests/interval_host_simple.in.yaml \
+	tests/interval_host_simple.out.yaml
 
 TESTS = $(TEST_FILES)
 
@@ -341,4 +346,6 @@ CLEANFILES = \
 	testing_clprof_callbacks.cpp \
 	testing_clprof_callbacks.h \
 	clprof.sh \
+	xprof_utils.cpp \
+	xprof_utils.hpp \
 	$(nodist_libCLInterval_la_SOURCES)

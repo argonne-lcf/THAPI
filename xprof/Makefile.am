@@ -8,4 +8,5 @@ CLEANFILES = iprof
 
 EXTRA_DIST = \
 	interval.c.erb \
-	interval.h.erb
+	interval.h.erb \
+	interval_model.yaml
