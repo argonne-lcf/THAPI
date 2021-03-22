@@ -81,7 +81,7 @@ clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
-BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clprof_callbacks.h clprof.c
+BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clprof_callbacks.h clprof.c clinterval.h clinterval_callbacks.h clinterval.c
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
@@ -97,11 +97,11 @@ nodist_libtracepoints_la_SOURCES = \
 libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerOpenCL.la libCLProf.la
+lib_LTLIBRARIES = libTracerOpenCL.la libCLProf.la libCLInterval.la
 
 nodist_libTracerOpenCL_la_SOURCES = \
-        $(OPENCL_PROBES_INCL) \
-        tracer_opencl.h \
+	$(OPENCL_PROBES_INCL) \
+	tracer_opencl.h \
 	tracer_opencl.c
 
 libTracerOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
@@ -154,7 +154,7 @@ libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la
+tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la 
 install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
@@ -198,6 +198,47 @@ libTestingCLProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/inclu
 libTestingCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libTestingCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+
+clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clinterval.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clinterval.rb 
+
+clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb clinterval > clinterval_callbacks.h
+
+clinterval_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb clinterval > clinterval_dispatchers.c
+
+clinterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > clinterval.h
+
+clinterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > clinterval.c
+
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	ln -s $(top_srcdir)/utils/xprof_utils.cpp xprof_utils.cpp
+
+
+BUILT_SOURCES += \
+	clinterval.h \
+	babeltrace_cl.h \
+	clinterval_callbacks.h \
+	xprof_utils.cpp
+
+nodist_libCLInterval_la_SOURCES = \
+	clinterval.c \
+	clinterval.h \
+	clinterval_callbacks.h \
+	clinterval_dispatchers.c \
+	clinterval_callbacks.cpp \
+	xprof_utils.cpp \
+	tracer_opencl.h 
+
+libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
 
 TEST_FILES = \
 	tests/opencl_dummy_trace.dust \
@@ -243,7 +284,7 @@ check_DATA = \
 data_DATA = \
 	opencl_model.yaml \
 	opencl_infos.yaml \
-        $(TRACE_FILES)
+	$(TRACE_FILES)
 
 EXTRA_DIST = \
 	cl.xml \
@@ -290,4 +331,5 @@ CLEANFILES = \
 	testing_clprof.c \
 	testing_clprof_callbacks.cpp \
 	testing_clprof_callbacks.h \
-	clprof.sh
+	clprof.sh \
+	$(nodist_libCLInterval_la_SOURCES)
