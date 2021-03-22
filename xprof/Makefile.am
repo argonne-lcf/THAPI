@@ -5,3 +5,7 @@ iprof: $(top_builddir)/utils/xprof.sh.erb
 	chmod a+x $@
 
 CLEANFILES = iprof
+
+EXTRA_DIST = \
+	interval.c.erb \
+	interval.h.erb

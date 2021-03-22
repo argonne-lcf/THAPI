@@ -218,12 +218,15 @@ clinterval.c: $(top_srcdir)/xprof/interval.c.erb
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	ln -s $(top_srcdir)/utils/xprof_utils.cpp xprof_utils.cpp
 
+xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
+	ln -s $(top_srcdir)/utils/xprof_utils.hpp xprof_utils.hpp
 
 BUILT_SOURCES += \
 	clinterval.h \
 	babeltrace_cl.h \
 	clinterval_callbacks.h \
-	xprof_utils.cpp
+	xprof_utils.cpp \
+	xprof_utils.hpp
 
 nodist_libCLInterval_la_SOURCES = \
 	clinterval.c \
@@ -231,7 +234,7 @@ nodist_libCLInterval_la_SOURCES = \
 	clinterval_callbacks.h \
 	clinterval_dispatchers.c \
 	clinterval_callbacks.cpp \
-	xprof_utils.cpp \
+	clinterval_callbacks.hpp \
 	tracer_opencl.h 
 
 libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
@@ -307,12 +310,17 @@ EXTRA_DIST = \
 	gen_babeltrace_cl_callbacks.rb \
 	gen_clprof.rb \
 	clprof_callbacks.cpp.erb \
+	clprof_callbacks.h.erb \
 	babeltrace_opencl.in \
 	extract_enqueues \
 	clprof.c.erb \
-	clprof_callbacks.h.erb \
+	gen_clinterval.rb \
+	clinterval_callbacks.cpp.erb \
+	clinterval_callbacks.hpp\
 	$(TRACE_FILES) \
-	$(TEST_FILES)
+	$(TEST_FILES) \
+	xprof_utils.hpp \
+	xprof_utils.cpp 
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
