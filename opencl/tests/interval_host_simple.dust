@@ -1,0 +1,20 @@
+:components:
+- :plugin: source.ruby.dust
+  :name: dust_in
+  :params:
+    schemas: [opencl_babeltrace_model.yaml]
+    trace: interval_host_simple.in.yaml
+- :plugin: filter.clinterval.interval
+  :name: interval
+- :plugin: source.ruby.dust
+  :name: dust_out
+  :params:
+    schemas: [interval_model.yaml]
+    trace: interval_host_simple.out.yaml
+- :plugin: sink.ruby.comparator
+  :name: comp
+
+:connections:
+- dust_in:interval
+- interval:comp
+- dust_out:comp

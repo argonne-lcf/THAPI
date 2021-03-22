@@ -255,7 +255,8 @@ TEST_FILES = \
 	tests/kernel_name.dust \
 	tests/profiling_normal_nd_range_kernel_name.dust \
 	tests/API_call.dust \
-	tests/trace.dust
+	tests/trace.dust \
+	tests/interval_host_simple.dust
 
 TRACE_FILES = \
 	tests/profiling_normal.yaml \
