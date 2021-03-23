@@ -108,25 +108,24 @@ end
 
 l_test_d = [
     {"name" => "profiling_normal",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,0,'"clEnqueueReadBuffer"'], 8] ]
     },
     {"name" => "profiling_inversed",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueWriteBuffer"'], 10],
-                             [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 5] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,0,'"clEnqueueWriteBuffer"'], 10] ]
     },
     {"name" => "profiling_block",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10 ]  ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,0,'"clEnqueueReadBuffer"'], 10 ]  ]
     },
     {"name" => "profiling_fast",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10]  ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,0,'"clEnqueueReadBuffer"'], 10]  ]
     },
     {"name" => "profiling_interleave_thread",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10],
-                [ ['"aurora12.gov"',-1,3,0,0,'"clEnqueueWriteBuffer"'], 20] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,2,0,0,'"clEnqueueSVMFree"'], 10],
+                [ ['"aurora12.gov"',0,3,0,0,'"clEnqueueSVMFree"'], 20] ]
     },
     {"name" => "profiling_interleave_process",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"clEnqueueReadBuffer"'], 10],
-                [ ['"aurora12.gov"', 1,2,0,0,'"clEnqueueWriteBuffer"'], 20] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',-1,0,0,0,'"clEnqueueSVMFree"'], 10],
+                [ ['"aurora12.gov"', 0,0,0,0,'"clEnqueueSVMFree"'], 20] ]
     },
     {"name" => "profiling_normal_command_queue",
      "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,10,'"clEnqueueReadBuffer"'], 65] ]

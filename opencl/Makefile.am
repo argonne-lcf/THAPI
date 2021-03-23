@@ -247,7 +247,14 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
+	tests/interval_profiling_normal.dust \
+	tests/interval_profiling_inversed.dust \
+	tests/interval_profiling_block.dust \
+	tests/interval_profiling_fast.dust \
+	tests/interval_profiling_interleave_thread.dust \
+	tests/interval_profiling_interleave_process.dust \
 	tests/interval_profiling_normal_command_queue.dust \
+	tests/interval_profiling_with_error.dust \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust
 
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
@@ -274,12 +281,6 @@ CLPROF_DUST_FILES = \
 $(CLPROF_DUST_FILES): tests/%.dust: tests/clprof.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/clprof.dust.erb > $@
 
-TEST_FILES = \
-	tests/opencl_dummy_trace.dust \
-	tests/trace.dust \
-	$(CLPROF_DUST_FILES) \
-	$(INTERVAL_DUST_FILES)
-
 TRACE_FILES = \
 	tests/profiling_normal.yaml \
 	tests/profiling_inversed.yaml \
@@ -295,10 +296,21 @@ TRACE_FILES = \
 	tests/profiling_normal_nd_range_kernel_name.yaml \
 	tests/API_call.yaml \
 	tests/trace.yaml \
+	tests/interval_profiling_normal.yaml \
+	tests/interval_profiling_inversed.yaml \
+	tests/interval_profiling_block.yaml \
+	tests/interval_profiling_fast.yaml \
+	tests/interval_profiling_interleave_thread.yaml \
+	tests/interval_profiling_interleave_process.yaml \
 	tests/interval_profiling_normal_command_queue.yaml \
+	tests/interval_profiling_with_error.dust \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml
 
-TESTS = $(TEST_FILES)
+TESTS = \
+	tests/opencl_dummy_trace.dust \
+	tests/trace.dust \
+	$(CLPROF_DUST_FILES) \
+	$(INTERVAL_DUST_FILES)
 
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
