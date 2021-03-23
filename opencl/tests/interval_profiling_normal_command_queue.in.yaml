@@ -1,0 +1,31 @@
+---
+:hostname: aurora12.gov
+:default_stream: stream0
+:stream_classes:
+- :name: cl_stream_class
+  :schemas:
+  - thapi_opencl
+  :clock_snapshot_value: true
+  :common_context:
+  - :name: vpid
+    :class: signed
+  - :name: vtid
+    :class: unsigned
+:streams:
+- :name: stream0
+  :class: cl_stream_class
+:events:
+- :name: lttng_ust_opencl:clCreateCommandQueue_entry
+  :payload:
+    device: 10
+- :name: lttng_ust_opencl:clCreateCommandQueue_exit
+  :payload:
+    command_queue: 23
+- :name: lttng_ust_opencl:clEnqueueReadBuffer_entry
+  :payload:
+    command_queue: 23
+- :name: lttng_ust_opencl_profiling:event_profiling
+- :name: lttng_ust_opencl:clEnqueueReadBuffer_exit
+- :name: lttng_ust_opencl_profiling:event_profiling_results
+  :payload:
+    end: 65

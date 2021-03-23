@@ -245,6 +245,13 @@ libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+INTERVAL_DUST_FILES = tests/interval_host_simple.dust tests/interval_profiling_normal_command_queue.dust
+$(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
+	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
+
+nodist_libCLInterval_la_SOURCES+= \
+	$(INTERVAL_DUST_FILES)
 
 TEST_FILES = \
 	tests/opencl_dummy_trace.dust \
@@ -262,7 +269,7 @@ TEST_FILES = \
 	tests/profiling_normal_nd_range_kernel_name.dust \
 	tests/API_call.dust \
 	tests/trace.dust \
-	tests/interval_host_simple.dust
+	$(INTERVAL_DUST_FILES)
 
 TRACE_FILES = \
 	tests/profiling_normal.yaml \
@@ -325,7 +332,8 @@ EXTRA_DIST = \
 	$(TRACE_FILES) \
 	$(TEST_FILES) \
 	xprof_utils.hpp \
-	xprof_utils.cpp 
+	xprof_utils.cpp \
+	tests/interval.dust.erb 
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
@@ -348,4 +356,5 @@ CLEANFILES = \
 	clprof.sh \
 	xprof_utils.cpp \
 	xprof_utils.hpp \
-	$(nodist_libCLInterval_la_SOURCES)
+	$(nodist_libCLInterval_la_SOURCES) \
+	$(INTERVAL_DUST_FILES)

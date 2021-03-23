@@ -22,6 +22,7 @@
     vpid: -1
     vtid: 3
 :events:
+#Test interleave pid
 - :name: lttng_ust_opencl:clSetKernelArg_entry
   :stream: stream0
   :clock_snapshot_value: 0
@@ -34,3 +35,10 @@
 - :name: lttng_ust_opencl:clSetKernelArg_exit
   :stream: stream0
   :clock_snapshot_value: 3
+#Test false
+- :name: lttng_ust_opencl:clSetKernelArg_entry
+  :stream: stream0
+- :name: lttng_ust_opencl:clSetKernelArg_exit
+  :stream: stream0 
+  :payload:
+      errcode_ret_val: 1
