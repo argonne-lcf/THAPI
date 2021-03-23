@@ -247,7 +247,6 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
-	tests/interval_host_simple.dust \
 	tests/interval_profiling_normal_command_queue.dust
 
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
@@ -295,8 +294,7 @@ TRACE_FILES = \
 	tests/profiling_normal_nd_range_kernel_name.yaml \
 	tests/API_call.yaml \
 	tests/trace.yaml \
-	tests/interval_host_simple.in.yaml \
-	tests/interval_host_simple.out.yaml
+	tests/interval_profiling_normal_command_queue.yaml
 
 TESTS = $(TEST_FILES)
 

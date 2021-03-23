@@ -180,7 +180,7 @@ def create_bt_stream_class(bt_trace_class, bt_clock_class, stream_class)
 end
 
 def find_file_in_envfolder(str, target)
-    Find.find(*str.split(':')).find { |f| File.file?(f) && f.end_with?(target) }
+    Find.find(*str.split(':')).find { |f| File.file?(f) && File.basename(f) == target }
 end
 
 class Dust
@@ -222,8 +222,8 @@ class Dust
   def initialize_method(self_component, _configuration, params, _data)
     trace = params.get_entry_value('trace') ? params.get_entry_value('trace').value : @trace
     schemas = params.get_entry_value('schemas') ? params.get_entry_value('schemas').value : @schemas
-
     @in_data = YAML.load_file(find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace))
+    pp @in_data[:stream_classes]
     @schemas = schemas.map do |path|
       schema = YAML.load_file(find_file_in_envfolder(ENV['DUST_MODELS_DIR'],path))
       [schema[:name], schema]

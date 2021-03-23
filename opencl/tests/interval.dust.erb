@@ -3,14 +3,14 @@
   :name: dust_in
   :params:
     schemas: [opencl_babeltrace_model.yaml]
-    trace: <%= namespace[/tests\/(.*).dust/,1] %>.in.yaml
+    trace: <%= namespace[/interval_(.*).dust/,1] %>.yaml
 - :plugin: filter.clinterval.interval
   :name: interval
 - :plugin: source.ruby.dust
   :name: dust_out
   :params:
     schemas: [interval_model.yaml]
-    trace: <%= namespace[/tests\/(.*).dust/,1] %>.out.yaml
+    trace: interval_<%= namespace[/interval_(.*).dust/,1] %>.yaml
 - :plugin: sink.ruby.comparator
   :name: comp
 
