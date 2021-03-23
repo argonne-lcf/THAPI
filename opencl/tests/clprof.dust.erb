@@ -1,0 +1,13 @@
+---
+:components:
+- :plugin: source.ruby.dust
+  :name: dust
+  :params:
+    schemas: [opencl_babeltrace_model.yaml]
+    trace: <%= namespace[/tests\/(.*).dust/,1] %>.yaml
+- :plugin: sink.testing_clprof.dispatch
+  :name: testing_clprof
+  :params:
+    test: <%= namespace[/tests\/(.*).dust/,1] %>
+:connections:
+- dust:testing_clprof
