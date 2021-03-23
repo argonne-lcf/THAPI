@@ -246,15 +246,17 @@ libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werr
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-INTERVAL_DUST_FILES = tests/interval_host_simple.dust tests/interval_profiling_normal_command_queue.dust
+INTERVAL_DUST_FILES = \
+	tests/interval_host_simple.dust \
+	tests/interval_profiling_normal_command_queue.dust
+
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
 
 nodist_libCLInterval_la_SOURCES+= \
 	$(INTERVAL_DUST_FILES)
 
-TEST_FILES = \
-	tests/opencl_dummy_trace.dust \
+CLPROF_DUST_FILES = \
 	tests/profiling_normal.dust \
 	tests/profiling_inversed.dust \
 	tests/profiling_block.dust \
@@ -267,8 +269,15 @@ TEST_FILES = \
 	tests/device_name.dust \
 	tests/kernel_name.dust \
 	tests/profiling_normal_nd_range_kernel_name.dust \
-	tests/API_call.dust \
+	tests/API_call.dust 
+
+$(CLPROF_DUST_FILES): tests/%.dust: tests/clprof.dust.erb
+	$(ERB) namespace="$@" $(srcdir)/tests/clprof.dust.erb > $@
+
+TEST_FILES = \
+	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \
+	$(CLPROF_DUST_FILES) \
 	$(INTERVAL_DUST_FILES)
 
 TRACE_FILES = \
@@ -329,11 +338,13 @@ EXTRA_DIST = \
 	gen_clinterval.rb \
 	clinterval_callbacks.cpp.erb \
 	clinterval_callbacks.hpp\
-	$(TRACE_FILES) \
-	$(TEST_FILES) \
 	xprof_utils.hpp \
 	xprof_utils.cpp \
-	tests/interval.dust.erb 
+	$(TRACE_FILES) \
+	tests/trace.dust \
+	tests/opencl_dummy_trace.dust \
+	tests/interval.dust.erb \
+	tests/clprof.dust.erb
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
@@ -357,4 +368,5 @@ CLEANFILES = \
 	xprof_utils.cpp \
 	xprof_utils.hpp \
 	$(nodist_libCLInterval_la_SOURCES) \
-	$(INTERVAL_DUST_FILES)
+␉···$(CLPROF_DUST_FILES) \
+␉···$(INTERVAL_DUST_FILES)
