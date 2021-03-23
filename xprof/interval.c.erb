@@ -135,6 +135,9 @@ bt_event_class* create_device_event_class_message(bt_trace_class *trace_class, b
     bt_field_class *subdevice_id_field_class= bt_field_class_integer_unsigned_create(trace_class);
     bt_field_class_structure_append_member(payload_field_class, "sdid", subdevice_id_field_class);
 
+    // Error code */
+    bt_field_class *err_field_class = bt_field_class_bool_create(trace_class);
+    bt_field_class_structure_append_member(payload_field_class, "err", err_field_class);
 
     // Put the ref and clean
     bt_event_class_set_payload_field_class(event_class, payload_field_class);

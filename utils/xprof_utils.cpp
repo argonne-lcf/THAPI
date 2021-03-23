@@ -67,7 +67,7 @@ bt_message* create_host_message(const char* hostname, const process_id_t process
 
 bt_message* create_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, 
                                   const thapi_device_id device_id, const thapi_device_id subdevice_id,
-                                  const char* name, const uint64_t ts, const uint64_t duration, 
+                                  const char* name, const uint64_t ts, const uint64_t duration, const bool err, 
                                   bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
 
      /* Message creation */
@@ -112,6 +112,10 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
      // sdid
      bt_field *subdevice_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,3);
      bt_field_integer_unsigned_set_value(subdevice_id_field, subdevice_id);
+
+     // err
+     bt_field *err_field = bt_field_structure_borrow_member_field_by_index(payload_field, 4);
+     bt_field_integer_unsigned_set_value(err_field, err);
 
     return message;
 }

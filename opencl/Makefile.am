@@ -255,7 +255,8 @@ INTERVAL_DUST_FILES = \
 	tests/interval_profiling_interleave_process.dust \
 	tests/interval_profiling_normal_command_queue.dust \
 	tests/interval_profiling_with_error.dust \
-	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust
+	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust \
+	tests/interval_profiling_normal_nd_range_kernel_name.dust
 
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
@@ -304,8 +305,8 @@ TRACE_FILES = \
 	tests/interval_profiling_interleave_process.yaml \
 	tests/interval_profiling_normal_command_queue.yaml \
 	tests/interval_profiling_with_error.dust \
-	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml
-
+	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml \
+	tests/interval_profiling_normal_nd_range_kernel_name.yaml
 TESTS = \
 	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \

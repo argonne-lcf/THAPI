@@ -131,7 +131,7 @@ l_test_d = [
      "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,10,'"clEnqueueReadBuffer"'], 65] ]
     },
     {"name" => "profiling_with_error",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueWriteBuffer"'], 20] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,0,'"clEnqueueSVMFree"'], 0] ] 
     },
     {"name" => "profiling_normal_command_queue_created_in_other_thread",
      "device_id_result" => [ [ ['"aurora12.gov"',0,1,0,0,'"clEnqueueReadBuffer"'], 10] ]
@@ -143,7 +143,7 @@ l_test_d = [
      "kernel_to_name" => [ [ ['"aurora24.gov"',666, 12], '"__ompoffload"'] ]
     },
     {"name" => "profiling_normal_nd_range_kernel_name",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,0,'"__ompoffload"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,0,0,0,'"foo"'], 10] ]
     },
     { "name" => "API_call",
      "api_call" => [ [ ['"aurora12.gov"',-1,2, '"clLinkProgram"'], [2,1,1,1.0]  ] ]

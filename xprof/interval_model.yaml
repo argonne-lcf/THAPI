@@ -16,8 +16,14 @@
         :class: unsigned
       - :name: did
         :class: unsigned
+        :class_properties:
+          :preferred_display_base: 16
       - :name: sdid
-        :class: unsigned
+        :class: unsigned      
+        :class_properties:
+          :preferred_display_base: 16
+      - :name: err
+        :class: bool
 - :name: lttng:traffic
   :payload:
       - :name: name
