@@ -295,7 +295,8 @@ TRACE_FILES = \
 	tests/profiling_normal_nd_range_kernel_name.yaml \
 	tests/API_call.yaml \
 	tests/trace.yaml \
-	tests/interval_profiling_normal_command_queue.yaml
+	tests/interval_profiling_normal_command_queue.yaml \
+	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml
 
 TESTS = $(TEST_FILES)
 
@@ -367,5 +368,5 @@ CLEANFILES = \
 	xprof_utils.cpp \
 	xprof_utils.hpp \
 	$(nodist_libCLInterval_la_SOURCES) \
-␉···$(CLPROF_DUST_FILES) \
-␉···$(INTERVAL_DUST_FILES)
+	$(CLPROF_DUST_FILES) \
+	$(INTERVAL_DUST_FILES)
