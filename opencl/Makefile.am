@@ -304,7 +304,7 @@ TRACE_FILES = \
 	tests/interval_profiling_interleave_thread.yaml \
 	tests/interval_profiling_interleave_process.yaml \
 	tests/interval_profiling_normal_command_queue.yaml \
-	tests/interval_profiling_with_error.dust \
+	tests/interval_profiling_with_error.yaml \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml \
 	tests/interval_profiling_normal_nd_range_kernel_name.yaml
 TESTS = \
