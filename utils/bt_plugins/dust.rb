@@ -223,7 +223,6 @@ class Dust
     trace = params.get_entry_value('trace') ? params.get_entry_value('trace').value : @trace
     schemas = params.get_entry_value('schemas') ? params.get_entry_value('schemas').value : @schemas
     @in_data = YAML.load_file(find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace))
-    pp @in_data[:stream_classes]
     @schemas = schemas.map do |path|
       schema = YAML.load_file(find_file_in_envfolder(ENV['DUST_MODELS_DIR'],path))
       [schema[:name], schema]

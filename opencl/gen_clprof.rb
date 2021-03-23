@@ -135,7 +135,7 @@ l_test_d = [
      "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueWriteBuffer"'], 20] ]
     },
     {"name" => "profiling_normal_command_queue_created_in_other_thread",
-     "device_id_result" => [ [ ['"aurora12.gov"',-1,2,0,10,'"clEnqueueReadBuffer"'], 10] ]
+     "device_id_result" => [ [ ['"aurora12.gov"',0,1,0,0,'"clEnqueueReadBuffer"'], 10] ]
     },
     {"name" => "device_name",
      "device_to_name" => [ [ ['"aurora12.gov"', 11, 22], '"PVC"'] ]

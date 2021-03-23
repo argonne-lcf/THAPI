@@ -247,7 +247,8 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
-	tests/interval_profiling_normal_command_queue.dust
+	tests/interval_profiling_normal_command_queue.dust \
+	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust
 
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
