@@ -43,7 +43,10 @@ def to_class_name(name)
   end
   mod = to_name_space(name)
   mod = "" unless mod
-  n = name.gsub(/_t\z/, "").gsub(/\A#{mod}/, "").split("_").collect(&:capitalize).join
+  n = name.gsub(/_t\z/, "").gsub(/\A#{mod}/, "").split("_").collect { |s|
+    s[0] = s[0].capitalize if s.length > 0
+    s
+  }.join
   mod << n.gsub("Uuid","UUID").gsub("Ipc", "IPC").gsub("P2p", "P2P")
 end
 
