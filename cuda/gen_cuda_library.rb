@@ -179,6 +179,14 @@ end
 module CUDA
   extend FFI::Library
 
+  module Handle
+    def to_s
+      s = '{ reserved: "'
+      s << self[:reserved].to_a.collect { |v| "\\\\x%02x" % ((v + 256)%256) }.join
+      s << '" }'
+    end
+  end
+
   module UUID
     def to_s
       a = self[:bytes].to_a.collect { |v| v < 0 ? 0x100 + v : v }
@@ -245,6 +253,9 @@ def print_struct(name, struct)
 EOF
   puts <<EOF if to_class_name(name).match("UUID")
     prepend UUID
+EOF
+  puts <<EOF if to_class_name(name).match(/Handle\z/)
+    prepend Handle
 EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}

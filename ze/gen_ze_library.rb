@@ -224,7 +224,7 @@ module ZE
   module Handle
     def to_s
       s = '{ data: "'
-      s << self[:data].to_a.collect { |v| "%02x" % ((v + 256)%256) }.join(" ")
+      s << self[:data].to_a.collect { |v| "\\\\x%02x" % ((v + 256)%256) }.join
       s << '" }'
     end
   end
