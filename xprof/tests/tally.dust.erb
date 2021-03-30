@@ -1,0 +1,12 @@
+:components:
+- :plugin: source.ruby.dust
+  :name: dust_out
+  :params:
+    schemas: [interval_model.yaml]
+    trace: interval_<%= namespace[/interval_(.*).dust/,1] %>.yaml
+    
+- :plugin: sink.xprof.tally
+  :name: tally
+
+:connections:
+- dust_out:tally
