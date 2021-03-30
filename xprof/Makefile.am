@@ -57,6 +57,9 @@ $(TALLY_DUST_FILES): tests/%.dust: tests/tally.dust.erb
 TESTS = \
 	$(TALLY_DUST_FILES)
 
+TRACE_FILES = \
+	tests/interval_profiling_normal.yaml
+
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
 check_DATA = \
@@ -70,7 +73,9 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	interval_model.yaml \
-	xprof_utils.hpp
+	xprof_utils.hpp \
+	$(TRACE_FILES) \
+	tests/tally.dust.erb 
 
 CLEANFILES = \
 	iprof \
