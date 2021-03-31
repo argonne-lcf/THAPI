@@ -1,4 +1,4 @@
-babeltrace_require 'yaml'
+require 'yaml'
 model = ARGV[0]
 namespace = ARGV[1]
 babeltrace_model = YAML::load_file(model)

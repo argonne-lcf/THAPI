@@ -168,11 +168,13 @@ tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb > babeltrace_cl_callbacks.h
+babeltrace_cl_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
 
-babeltrace_cl_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb > babeltrace_cl_dispatchers.c
+babeltrace_cl_dispatchers.c:  $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
+
+EXTRA_DIST = cl.h.include
 
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \
@@ -213,11 +215,12 @@ libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 babeltrace_clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clinterval_callbacks.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clinterval_callbacks.rb  > babeltrace_clinterval_callbacks.cpp
 
-babeltrace_clinterval_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_callbacks.rb clinterval > babeltrace_clinterval_callbacks.h
+babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
 
-babeltrace_clinterval_dispatchers.c: $(srcdir)/gen_babeltrace_cl_dispatchers.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_dispatchers.rb clinterval > babeltrace_clinterval_dispatchers.c
+babeltrace_clinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
+
 
 babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > babeltrace_clinterval.h
@@ -336,7 +339,7 @@ data_DATA = \
 	opencl_model.yaml \
 	opencl_infos.yaml
 
-EXTRA_DIST = \
+EXTRA_DIST += \
 	cl.xml \
 	cl.xml.patch \
 	$(ML_FILES) \
@@ -352,8 +355,6 @@ EXTRA_DIST = \
 	gen_opencl_model.rb \
 	gen_babeltrace_cl_model.rb \
 	gen_opencl_custom_probes.rb \
-	gen_babeltrace_cl_dispatchers.rb \
-	gen_babeltrace_cl_callbacks.rb \
 	gen_clprof.rb \
 	clprof_callbacks.cpp.erb \
 	clprof_callbacks.h.erb \
