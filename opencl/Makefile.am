@@ -88,9 +88,9 @@ BUILT_SOURCES = \
 	babeltrace_cl_callbacks.h \
 	clprof_callbacks.h \
 	clprof.c \
-	clinterval.h \
+	babeltrace_clinterval.h \
 	babeltrace_clinterval_callbacks.h \
-	clinterval.c
+	babeltrace_clinterval.c
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
@@ -221,7 +221,6 @@ babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.
 babeltrace_clinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
 
-
 babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > babeltrace_clinterval.h
 
@@ -251,7 +250,7 @@ nodist_libCLInterval_la_SOURCES = \
 	xprof_utils.cpp
 
 libCLInterval_la_SOURCES = \
-	babeltrace_clinterval_callbacks.hpp
+	clinterval_callbacks.hpp
 
 libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
@@ -363,7 +362,7 @@ EXTRA_DIST += \
 	clprof.c.erb \
 	gen_clinterval_callbacks.rb \
 	clinterval_callbacks.cpp.erb \
-	babeltrace_clinterval_callbacks.hpp\
+	clinterval_callbacks.hpp\
 	xprof_utils.hpp \
 	xprof_utils.cpp \
 	$(TRACE_FILES) \
