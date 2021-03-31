@@ -23,4 +23,5 @@ EXTRA_DIST = \
 	bt_plugins/dust.rb \
 	bt_plugins/comparator.rb \
 	xprof_utils.h.erb \
-	gen_babeltrace_dispatchers.rb
+	gen_babeltrace_dispatchers.rb \
+	gen_babeltrace_callbacks.rb

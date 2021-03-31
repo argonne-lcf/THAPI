@@ -1,23 +1,22 @@
 require 'yaml'
-ze_babeltrace_model = YAML::load_file("ze_babeltrace_model.yaml")
+namespace = ARGV[0]
+babeltrace_model = YAML::load_file("#{namespace}_babeltrace_model.yaml")
 
 puts <<EOF
-#ifndef _BABELTRACE_ZE_CALLBACKS_H
-#define _BABELTRACE_ZE_CALLBACKS_H
-#include <ze_api.h>
-#include <ze_ddi.h>
-#include <zet_api.h>
-#include <zet_ddi.h>
-#include <zes_api.h>
-#include <zes_ddi.h>
-#include <layers/zel_tracing_api.h>
-#include <layers/zel_tracing_ddi.h>
+#ifndef _BABELTRACE_#{namespace.upcase}_CALLBACKS_H
+#define _BABELTRACE_#{namespace.upcase}_CALLBACKS_H
+EOF
+
+header = File.join(ENV["SRC_DIR"], "#{namespace}.h.include")
+puts File.read(header) if File.exist?(header)
+
+puts <<EOF
 #include <babeltrace2/babeltrace.h>
 
 EOF
 
 
-ze_babeltrace_model[:event_classes].each { |klass|
+babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   fields = klass[:payload]
   decls = []

@@ -1,0 +1,2 @@
+#define __CUDA_API_VERSION_INTERNAL 1
+#include <cuda.h>
