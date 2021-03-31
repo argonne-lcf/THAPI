@@ -197,9 +197,9 @@ static void clprof_<%= dbt_event.name %>_callback(
                                 
 %>
 
-void init_babeltrace_cl_callbacks(struct babeltrace_cl_dispatch   *opencl_dispatch) {
+void init_cl_callbacks(struct cl_dispatch   *opencl_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
-    babeltrace_cl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
+    cl_register_callback(opencl_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &clprof_<%= dbt_event.name %>_callback);
 <% end %>
 }
 
@@ -210,7 +210,7 @@ void init_babeltrace_cl_callbacks(struct babeltrace_cl_dispatch   *opencl_dispat
                          
 %>
 
-void finalize_babeltrace_cl_callbacks() {
+void finalize_cl_callbacks() {
 <% if $sink_type == 'testing' %>
    std::string test_path {bt_value_string_get(test_type_value)};
   <% $l_test.each do | test | %>

@@ -1,7 +1,7 @@
 require 'yaml'
 
 if ARGV.empty?
-  namespace = "babeltrace_cl"
+  namespace = "cl"
 else
   namespace = ARGV[0]
 end
@@ -10,8 +10,8 @@ end
 opencl_babeltrace_model = YAML::load_file("opencl_babeltrace_model.yaml")
 
 puts <<EOF
-#include "#{namespace}.h"
-#include "#{namespace}_callbacks.h"
+#include "babeltrace_#{namespace}.h"
+#include "babeltrace_#{namespace}_callbacks.h"
 
 EOF
 
