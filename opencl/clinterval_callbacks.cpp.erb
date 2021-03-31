@@ -124,11 +124,11 @@ static void clinterval_<%= dbt_event.name %>_callback(
     int64_t ns_from_origin;
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
    
-    <%if dbt_event.name.end_with?(START) %>
+    <%if dbt_event.name_unsanitized.end_with?(START) %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
-    <%elsif dbt_event.name.end_with?(STOP) %>
+    <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
     const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
-      <% if dbt_event.fields.key?('errcode_ret_val') %>
+      <% if dbt_event.fields_name.include?('errcode_ret_val') %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, errcode_ret_val);
       <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
@@ -143,7 +143,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
   %>
 
   <%# To do handle Alloc and cl_mem_host_ptr %>
-  <%if dbt_event.name.include?("clEnqueue") and dbt_event.fields.key?("size") %>
+  <%if dbt_event.name_striped.include?("clEnqueue") and dbt_event.fields_name.include?("size") %>
    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",size);
   <% end %>
 
@@ -192,9 +192,9 @@ static void clinterval_<%= dbt_event.name %>_callback(
   <% end%>
  
   <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
-  <% if dbt_event.name.end_with?(START) and dbt_event.name.include?('clCreateCommandQueue') %>
+  <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.name_striped.include?('clCreateCommandQueue') %>
     state->start_device[hpt_t(hostname,process_id, thread_id) ] =  (thapi_device_id) device;
-  <%elsif dbt_event.name.end_with?(STOP) and dbt_event.name.include?('clCreateCommandQueue') %>
+  <%elsif dbt_event.name_unsanitized.end_with?(STOP) and dbt_event.name_striped.include?('clCreateCommandQueue') %>
     const thapi_device_id device = state->start_device[hpt_t(hostname,process_id, thread_id) ];
     const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
     if (root_device != 0) {
@@ -221,8 +221,8 @@ static void clinterval_<%= dbt_event.name %>_callback(
     const hostname_t hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     state->kernel_to_name[hp_kernel_t(hostname,process_id,kernel)] = hostname_t(function_name);
-  <% elsif dbt_event.name.end_with?(START) and dbt_event.fields['command_queue'] %>
-    <% if dbt_event.fields['kernel'] %>
+  <% elsif dbt_event.name.end_with?(START) and dbt_event.fields_name.include?('command_queue') %>
+    <% if dbt_event.fields_name.include?('kernel') %>
     const thapi_function_name name{ state->kernel_to_name[hp_kernel_t(hostname,process_id,kernel)]};
     <% else %>
     constexpr char name[] = "<%= dbt_event.name_striped %>";
