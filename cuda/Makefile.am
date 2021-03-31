@@ -266,12 +266,11 @@ babeltrace_cuda_callbacks.h: $(srcdir)/gen_babeltrace_cuda_callbacks.rb cuda_bab
 
 BUILT_SOURCES += babeltrace_cuda_callbacks.h
 
-babeltrace_cuda_dispatchers.c: $(srcdir)/gen_babeltrace_cuda_dispatchers.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+babeltrace_cuda_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< cuda > $@
 
 EXTRA_DIST += \
-	gen_babeltrace_cuda_callbacks.rb \
-	gen_babeltrace_cuda_dispatchers.rb
+	gen_babeltrace_cuda_callbacks.rb
 
 CLEANFILES += \
 	babeltrace_cuda_callbacks.h \
