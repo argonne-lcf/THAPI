@@ -66,4 +66,3 @@ babeltrace_cl_register_callback(struct babeltrace_cl_dispatch *dispatch,
 #endif
 
 #endif
-

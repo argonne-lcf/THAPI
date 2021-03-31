@@ -3,39 +3,41 @@
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 OPENCL_PROBES_TP = \
-                     opencl_tracepoints.tp\
-                     opencl_profiling.tp\
-                     opencl_source.tp\
-                     opencl_dump.tp\
-                     opencl_arguments.tp\
-                     opencl_build.tp\
-                     opencl_devices.tp
+	opencl_tracepoints.tp \
+	opencl_profiling.tp \
+	opencl_source.tp \
+	opencl_dump.tp \
+	opencl_arguments.tp \
+	opencl_build.tp \
+	opencl_devices.tp
 
 OPENCL_PROBES_INCL = \
-                     opencl_tracepoints.h\
-                     opencl_profiling.h\
-                     opencl_source.h\
-                     opencl_dump.h\
-                     opencl_arguments.h\
-                     opencl_build.h\
-                     opencl_devices.h
+	opencl_tracepoints.h \
+	opencl_profiling.h \
+	opencl_source.h \
+	opencl_dump.h \
+	opencl_arguments.h \
+	opencl_build.h \
+	opencl_devices.h
 
 OPENCL_PROBES_SRC = \
-                     opencl_tracepoints.c\
-                     opencl_profiling.c\
-                     opencl_source.c\
-                     opencl_dump.c\
-                     opencl_arguments.c\
-                     opencl_build.c\
-                     opencl_devices.c
+	opencl_tracepoints.c \
+	opencl_profiling.c \
+	opencl_source.c \
+	opencl_dump.c \
+	opencl_arguments.c \
+	opencl_build.c \
+	opencl_devices.c
 
-ML_FILES = $(srcdir)/opencl_meta_parameters.yaml\
-           $(srcdir)/supported_extensions.yaml\
-           $(srcdir)/supported_enums.yaml
+ML_FILES = \
+	$(srcdir)/opencl_meta_parameters.yaml \
+	$(srcdir)/supported_extensions.yaml \
+	$(srcdir)/supported_enums.yaml
 
-TRACEPOINT_GEN = $(srcdir)/opencl_model.rb\
-                 $(srcdir)/opencl_tracepoints.rb\
-                 $(srcdir)/opencl_events.yaml
+TRACEPOINT_GEN = \
+	$(srcdir)/opencl_model.rb \
+	$(srcdir)/opencl_tracepoints.rb \
+	$(srcdir)/opencl_events.yaml
 
 cl.xml.patched: $(srcdir)/cl.xml $(srcdir)/cl.xml.patch
 	$(PATCH) $(srcdir)/cl.xml $(srcdir)/cl.xml.patch -o cl.xml.patched
@@ -199,7 +201,6 @@ libTestingCLProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABEL
 libTestingCLProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libTestingCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-
 clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clinterval.rb opencl_model.yaml babeltrace_cl_callbacks.h tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clinterval.rb 
 
@@ -307,6 +308,7 @@ TRACE_FILES = \
 	tests/interval_profiling_with_error.yaml \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml \
 	tests/interval_profiling_normal_nd_range_kernel_name.yaml
+
 TESTS = \
 	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \
@@ -315,6 +317,7 @@ TESTS = \
 
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
+
 check_DATA = \
 	test_wrapper.sh \
 	tests/opencl_dummy_trace.yaml
