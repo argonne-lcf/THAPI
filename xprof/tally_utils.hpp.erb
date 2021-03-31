@@ -276,13 +276,19 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
        aggregated[function_name].merge(time);
        }
        <% if type == "hpt_dsd_t" %>
-        for (auto element: s_SubDevice_pointers) {
-            auto [ _a, _b, d1, d2 ] = element;
-            (void)_a; (void)_b; <%# Use un-used variable %>
-            if ( d1 == d2 ) {
-                s_SubDevice_pointers.erase(element);
-            }
-        }
+       {
+         std::set<hp_dsd_t> s_ToDelete;
+         for (auto element: s_SubDevice_pointers) {
+           auto [ _a, _b, d1, d2 ] = element;
+           (void)_a; (void)_b; <%# Use un-used variable %>
+           if ( d1 == d2 ) {
+             s_ToDelete.insert(element);
+           }
+          }
+          for (auto element: s_ToDelete) {
+           s_SubDevice_pointers.erase(element);
+          }
+       }
         
    <% end %>
    std::ostringstream oss;
