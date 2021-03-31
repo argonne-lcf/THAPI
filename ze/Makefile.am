@@ -271,7 +271,7 @@ babeltrace_ze_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_ba
 	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
 
 babeltrace_ze_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< ze > $@
+	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
 
 EXTRA_DIST += ze.h.include
 

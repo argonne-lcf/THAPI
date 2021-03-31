@@ -1,6 +1,7 @@
 require 'yaml'
-namespace = ARGV[0]
-babeltrace_model = YAML::load_file("#{namespace}_babeltrace_model.yaml")
+model = ARGV[0]
+namespace = ARGV[1]
+babeltrace_model = YAML::load_file(model)
 
 puts <<EOF
 #include "babeltrace_#{namespace}.h"

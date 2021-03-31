@@ -267,7 +267,7 @@ babeltrace_cuda_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cud
 BUILT_SOURCES += babeltrace_cuda_callbacks.h
 
 babeltrace_cuda_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< cuda > $@
+	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
 
 EXTRA_DIST += cuda.h.include
 
