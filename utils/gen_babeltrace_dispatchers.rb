@@ -183,7 +183,7 @@ print_field_members_access(fields)
 puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{name.gsub(":","_")}_cb *)*_p)(
+    ((#{namespace}_#{name.gsub(":","_")}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + decls.collect { |f| f[1] }).join(",\n      ")});
   }
 EOF

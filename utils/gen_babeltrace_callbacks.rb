@@ -27,7 +27,7 @@ babeltrace_model[:event_classes].each { |klass|
     decls.push [f[:cast_type], f[:name]]
   }
   puts <<EOF
-typedef void (#{name.gsub(":","_")}_cb)(
+typedef void (#{namespace}_#{name.gsub(":","_")}_cb)(
   #{(["const bt_event *bt_evt", "const bt_clock_snapshot *bt_clock"]+
     decls.collect { |t, n| "#{t} #{n}" }).join(",\n  ")}
 );
