@@ -1,13 +1,15 @@
 require 'yaml'
-namespace = ARGV[0]
-babeltrace_model = YAML::load_file("#{namespace}_babeltrace_model.yaml")
+model = ARGV[0]
+header = ARGV[1]
+namespace = ARGV[2]
+
+babeltrace_model = YAML::load_file(model)
 
 puts <<EOF
 #ifndef _BABELTRACE_#{namespace.upcase}_CALLBACKS_H
 #define _BABELTRACE_#{namespace.upcase}_CALLBACKS_H
 EOF
 
-header = File.join(ENV["SRC_DIR"], "#{namespace}.h.include")
 puts File.read(header) if File.exist?(header)
 
 puts <<EOF

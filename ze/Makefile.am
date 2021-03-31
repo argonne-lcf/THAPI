@@ -268,7 +268,7 @@ ZE_LIB_GEN = \
 EXTRA_DIST += $(ZE_LIB_GEN)
 
 babeltrace_ze_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $< ze > $@
+	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
 
 babeltrace_ze_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< ze > $@

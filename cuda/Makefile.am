@@ -262,7 +262,7 @@ CUDA_LIB_GEN = \
 EXTRA_DIST += $(CUDA_LIB_GEN)
 
 babeltrace_cuda_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $< cuda > $@
+	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
 
 BUILT_SOURCES += babeltrace_cuda_callbacks.h
 
