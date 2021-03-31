@@ -273,6 +273,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
         const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
        
         const hp_device_t hp_device{hostname, process_id, device};
+        // This need to be commented due to intel bugs where clGetEventProfilingInfo return host time
         //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
         const uint64_t start_event = ts + (start - queued);
 
@@ -283,7 +284,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
     } else {
         const thread_id_t thread_id = borrow_thread_id(bt_evt);
         const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
-        
+        // This need to be commented due to intel bugs where clGetEventProfilingInfo return host time
         //const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
         //const hp_device_t hp_device{hostname, process_id, device};
         //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
@@ -308,11 +309,3 @@ void init_clinterval_callbacks(struct clinterval_dispatch  *opencl_interval) {
     clinterval_register_callback(opencl_interval, "<%= dbt_event.name_unsanitized %>", (void *) &clinterval_<%= dbt_event.name %>_callback);
 <% end %>
 }
-
-<%#
-  _
- |_ o ._   _. | o _   _
- |  | | | (_| | | /_ (/_
-
-%>
-//void finalize_zeinterval_callbacks() {}
