@@ -69,6 +69,8 @@ CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
 
 CUDA_MODEL = \
 	$(srcdir)/cuda_model.rb \
+	$(srcdir)/gen_cuda_library_base.rb \
+	$(srcdir)/gen_probe_base.rb \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
