@@ -195,7 +195,7 @@ EOF
 }
 
 puts <<EOF
-void init_dispatchers(struct #{namespace}_dispatch   *#{namespace}_dispatch) {
+void init_#{namespace}_dispatchers(struct #{namespace}_dispatch   *#{namespace}_dispatch) {
 EOF
 babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]

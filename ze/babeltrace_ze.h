@@ -18,7 +18,7 @@ extern "C" {
 struct ze_dispatch;
 struct ze_callbacks;
 
-extern void init_dispatchers(struct ze_dispatch *ze_dispatch);
+extern void init_ze_dispatchers(struct ze_dispatch *ze_dispatch);
 
 typedef void (ze_dispatcher_t)
     (struct ze_dispatch   *ze_dispatch,

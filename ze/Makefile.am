@@ -225,7 +225,7 @@ ZEPROF = \
 	$(srcdir)/zeprof.c.erb \
 	$(srcdir)/gen_zeprof.rb
 
-zeprof.c: $(ZEPROF) babeltrace_ze_callbacks.h
+zeprof.c: $(ZEPROF) babeltrace_ze_callbacks.h 
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeprof.rb
 
 zeprof_callbacks.cpp zeprof_callbacks.h: zeprof.c
