@@ -83,7 +83,14 @@ clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
-BUILT_SOURCES = $(OPENCL_PROBES_INCL) babeltrace_cl_callbacks.h clprof_callbacks.h clprof.c clinterval.h clinterval_callbacks.h clinterval.c
+BUILT_SOURCES = \
+	$(OPENCL_PROBES_INCL) \
+	babeltrace_cl_callbacks.h \
+	clprof_callbacks.h \
+	clprof.c \
+	clinterval.h \
+	clinterval_callbacks.h \
+	clinterval.c
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
@@ -156,8 +163,9 @@ libCLProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la 
-install-data-hook::
+tmplib_LTLIBRARIES = libBabeltraceCL.la libTestingCLProf.la
+
+install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 babeltrace_cl_callbacks.h: $(srcdir)/gen_babeltrace_cl_callbacks.rb opencl_babeltrace_model.yaml
@@ -320,12 +328,12 @@ DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
-	tests/opencl_dummy_trace.yaml
+	tests/opencl_dummy_trace.yaml \
+	$(TRACE_FILES)
 
 data_DATA = \
 	opencl_model.yaml \
-	opencl_infos.yaml \
-	$(TRACE_FILES)
+	opencl_infos.yaml
 
 EXTRA_DIST = \
 	cl.xml \
