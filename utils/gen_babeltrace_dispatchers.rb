@@ -1,9 +1,11 @@
 require 'yaml'
-ze_babeltrace_model = YAML::load_file("ze_babeltrace_model.yaml")
+model = ARGV[0]
+namespace = ARGV[1]
+babeltrace_model = YAML::load_file(model)
 
 puts <<EOF
-#include "babeltrace_ze.h"
-#include "babeltrace_ze_callbacks.h"
+#include "babeltrace_#{namespace}.h"
+#include "babeltrace_#{namespace}_callbacks.h"
 
 EOF
 
@@ -46,11 +48,20 @@ print_array_access = lambda { |length, field, name, type|
 EOF
   case field[:field][:class]
   when 'unsigned'
-    puts <<EOF
+    if scalar_type.match('float')
+      scalar_type = 'uint32_t'
+      puts <<EOF
+        ((#{scalar_type} *)#{name})[_i] =
+          (#{scalar_type})bt_field_integer_unsigned_get_value(
+            bt_field_array_borrow_element_field_by_index_const(_field, _i));
+EOF
+    else
+      puts <<EOF
         #{voidp ? "((#{scalar_type} *)#{name})" :  name}[_i] =
           (#{scalar_type})bt_field_integer_unsigned_get_value(
             bt_field_array_borrow_element_field_by_index_const(_field, _i));
 EOF
+    end
   when 'signed'
     puts <<EOF
         #{voidp ? "((#{scalar_type} *)#{name})" :  name}[_i] =
@@ -157,14 +168,14 @@ def print_field_members_free(fields)
 EOF
 end
 
-ze_babeltrace_model[:event_classes].each { |klass|
+babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   fields = klass[:payload]
   puts <<EOF
 static void
 #{name.gsub(":","_")}_dispatcher(
-    struct ze_dispatch      *ze_dispatch,
-    struct ze_callbacks     *callbacks,
+    struct #{namespace}_dispatch      *#{namespace}_dispatch,
+    struct #{namespace}_callbacks     *callbacks,
     const bt_event          *bt_evt,
     const bt_clock_snapshot *bt_clock) {
 EOF
@@ -173,7 +184,7 @@ print_field_members_access(fields)
 puts <<EOF
   void **_p = NULL;
   while( (_p = utarray_next(callbacks->callbacks, _p)) ) {
-    ((#{name.gsub(":","_")}_cb *)*_p)(
+    ((#{namespace}_#{name.gsub(":","_")}_cb *)*_p)(
       #{(["bt_evt", "bt_clock"] + decls.collect { |f| f[1] }).join(",\n      ")});
   }
 EOF
@@ -185,12 +196,12 @@ EOF
 }
 
 puts <<EOF
-void init_dispatchers(struct ze_dispatch   *ze_dispatch) {
+void init_#{namespace}_dispatchers(struct #{namespace}_dispatch   *#{namespace}_dispatch) {
 EOF
-ze_babeltrace_model[:event_classes].each { |klass|
+babeltrace_model[:event_classes].each { |klass|
   name = klass[:name]
   puts <<EOF
-  ze_register_dispatcher(ze_dispatch, "#{name}", &#{name.gsub(":","_")}_dispatcher);
+  #{namespace}_register_dispatcher(#{namespace}_dispatch, "#{name}", &#{name.gsub(":","_")}_dispatcher);
 EOF
 }
 puts <<EOF

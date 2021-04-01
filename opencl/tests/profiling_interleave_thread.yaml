@@ -14,13 +14,11 @@
 :streams:
 - :name: stream0
   :class: cl_stream_class
-  :common_context:
-    vpid: -1
 :events:
-- :name: lttng_ust_opencl:clEnqueueReadBuffer_entry
+- :name: lttng_ust_opencl:clEnqueueSVMFree_entry
   :common_context:
     vtid: 2
-- :name: lttng_ust_opencl:clEnqueueWriteBuffer_entry
+- :name: lttng_ust_opencl:clEnqueueSVMFree_entry
   :common_context:
     vtid: 3
 - :name: lttng_ust_opencl_profiling:event_profiling
@@ -33,23 +31,21 @@
     event: 20
   :common_context:
     vtid: 3
-- :name: lttng_ust_opencl:clEnqueueReadBuffer_exit
+- :name: lttng_ust_opencl:clEnqueueSVMFree_exit
   :common_context:
     vtid: 2
-- :name: lttng_ust_opencl:clEnqueueWriteBuffer_exit
+- :name: lttng_ust_opencl:clEnqueueSVMFree_exit
   :common_context:
     vtid: 3
 - :name: lttng_ust_opencl_profiling:event_profiling_results
   :payload:
     event: 12
-    start: 0
     end: 10
   :common_context:
     vtid: 2
 - :name: lttng_ust_opencl_profiling:event_profiling_results
   :payload:
     event: 20
-    start: 0
     end: 20
   :common_context:
     vtid: 3

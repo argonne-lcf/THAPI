@@ -14,9 +14,6 @@
 :streams:
 - :name: stream0
   :class: cl_stream_class
-  :common_context:
-    vpid: -1
-    vtid: 2
 :events:
 - :name: lttng_ust_opencl:clEnqueueReadBuffer_entry
 - :name: lttng_ust_opencl_profiling:event_profiling
@@ -24,9 +21,9 @@
     event: 12
 - :name: lttng_ust_opencl:clEnqueueReadBuffer_exit
 - :name: lttng_ust_opencl_profiling:event_profiling_results
+  :common_context:
+    vtid: 1
   :payload:
     event: 12
-    start: 0
+    start: 2
     end: 10
-  :common_context:
-    vtid: 3

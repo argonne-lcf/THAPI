@@ -69,6 +69,8 @@ EOF
             "s << \"#{p.name}: \#{ZE::#{to_class_name(t)}.from_native(defi[\"#{p.name}\"], nil)}\""
           elsif $all_bitfield_names.include?(t)
             "s << \"#{p.name}: [ \#{ZE::#{to_class_name(t)}.from_native(defi[\"#{p.name}\"], nil).join(\", \")} ]\""
+          elsif $all_struct_names.include?(t)
+            "s << \"#{p.name}: \#{ZE::#{to_class_name(t)}.new(FFI::MemoryPointer.from_string(defi[\"#{p.name}\"]))}\""
           else
             "s << \"#{p.name}: \#{defi[\"#{p.name}\"]}\""
           end

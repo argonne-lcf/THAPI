@@ -1,0 +1,38 @@
+:name: thapi_interval
+:event_classes:
+- :name: lttng:host
+  :payload:
+      - :name: name
+        :class: string
+      - :name: dur
+        :class: unsigned
+      - :name: err
+        :class: bool
+- :name: lttng:device
+  :payload:
+      - :name: name
+        :class: string
+      - :name: dur
+        :class: unsigned
+      - :name: did
+        :class: unsigned
+        :class_properties:
+          :preferred_display_base: 16
+      - :name: sdid
+        :class: unsigned      
+        :class_properties:
+          :preferred_display_base: 16
+      - :name: err
+        :class: bool
+- :name: lttng:device_name
+  :payload:
+      - :name: name
+        :class: string
+      - :name: did
+        :class: unsigned
+- :name: lttng:traffic
+  :payload:
+      - :name: name
+        :class: string
+      - :name: size
+        :class: unsigned 

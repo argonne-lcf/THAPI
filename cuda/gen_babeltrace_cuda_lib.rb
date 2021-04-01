@@ -71,6 +71,8 @@ EOF
             "s << \"#{p.name}: \#{CUDA::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil)}\""
           elsif $all_bitfield_names.include?(p.type.name)
             "s << \"#{p.name}: [ \#{CUDA::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil).join(\", \")} ]\""
+          elsif $all_struct_names.include?(p.type.name)
+            "s << \"#{p.name}: \#{CUDA::#{to_class_name(p.type.name)}.new(FFI::MemoryPointer.from_string(defi[\"#{p.name}\"]))}\""
           else
             "s << \"#{p.name}: \#{defi[\"#{p.name}\"]}\""
           end

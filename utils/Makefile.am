@@ -21,4 +21,7 @@ EXTRA_DIST = \
 	gen_dummy_trace.rb \
 	bt2.rb \
 	bt_plugins/dust.rb \
-	bt_plugins/comparator.rb
+	bt_plugins/comparator.rb \
+	xprof_utils.h.erb \
+	gen_babeltrace_dispatchers.rb \
+	gen_babeltrace_callbacks.rb

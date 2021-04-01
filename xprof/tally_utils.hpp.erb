@@ -1,0 +1,362 @@
+#pragma once
+
+#include <string>
+#include <iomanip>
+#include <climits>
+#include <unordered_map>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+
+#include "xprof_utils.hpp"
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const std::string extension, const int n = 2)
+{
+   std::ostringstream out;
+   out.precision(n);
+   out << std::fixed << a_value << extension;
+   return out.str();
+}
+
+template <typename T>
+std::string format_byte(const T duration) {
+<%[  ['TB', '1e+12'],
+     ['GB', '1e+9'],
+     ['MB', '1e+6'],
+     ['kB', '1e+3'],
+     ['B', '1']].each do | unit, factor |  %>
+   const double <%= unit %> = duration / <%= factor %>;
+   if (<%= unit %> >= 1.) {
+      return to_string_with_precision(<%= unit %>, "<%= unit %>");
+   }
+<% end %>
+   return "";
+}
+
+
+template <typename T>
+std::string format_time(const T duration) {
+<% [['h', '3.6e+12'],
+    ['min', '6e+10'],
+    ['s', '1e+9'],
+    ['ms', '1e+6'],
+    ['us', '1e+3'],
+    ['ns', '1']].each do | unit, factor |  %>
+   const double <%= unit %> = duration / <%= factor %>;
+   if (<%= unit %> >= 1.) {
+      return to_string_with_precision(<%= unit %>, "<%= unit %>");
+   }
+<% end %>
+   return "";
+}
+
+/*
+Class for time
+ */
+
+struct StatIprof_string {
+   std::string time;
+   std::string time_ratio;
+   std::string count;
+   std::string avg;
+   std::string min;
+   std::string max;
+   std::string error;
+};
+
+class StatIprof {
+   uint64_t _start;
+
+  public:
+    void delta(const uint64_t, const bool);
+    void merge(StatIprof);
+    StatIprof_string to_string(const uint64_t);
+
+    //Used in merge
+    uint64_t _count{0};
+    uint64_t _min{ULONG_MAX};
+    uint64_t _max{0};
+    uint64_t _time{0};
+    uint64_t _error{0};
+    
+};
+
+void StatIprof::delta(const uint64_t delta,const bool error) {
+   _min = std::min(_min,delta);
+   _max = std::max(_max,delta);
+   _count++;
+   // total can overflow. Need to handle that correctly at some point...
+   _time += delta;
+   if (error) {
+       _error += 1;
+   }
+}
+
+void StatIprof::merge(StatIprof st) {
+   _min = std::min(_min,st._min);
+   _max = std::max(_max,st._max);
+   // total can overflow. Need to handle that correctly at some point...
+   _count += st._count;
+   _time += st._time;
+   _error += st._error;
+}
+
+<% { "StatTime" => "format_time",
+     "StatByte" => "format_byte" }.each do |n,t| %>
+class <%= n %>: public StatIprof {
+   public:
+     StatIprof_string to_string(const uint64_t total_time){
+        const double avg = _count ? _time / _count : 0.;
+        return StatIprof_string{<%= t %>(_time), // Time
+                                to_string_with_precision( (100.*_time / total_time), "%"), // Percent
+                                to_string_with_precision(_count,"",0), // Count
+                                <%= t %>(avg),
+                                <%= t %>(_min != ULONG_MAX ? _min : 0),
+                                <%= t %>(_max),
+                                to_string_with_precision(_error,"",0)};
+    }
+};
+<% end %>
+
+<%#
+   _
+  |_) ._ o ._ _|_    /\  ._ ._ _.
+  |   |  | | | |_   /--\ |  | (_| \/
+                                  /
+%>
+
+<% l_menbers = ['function_name', 'time','time_ratio','count','avg','min','max','error'] %>
+<% d_headers = [ ["StatTime","format_time",  [ 'Name', 'Time', 'Time(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ],
+                 ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>
+
+  <% d_headers.each do | main_type, main_function, l_headers | %>
+void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
+                 std::string header, 
+                 unsigned int _print_error= 0) {
+    <%# print_error = 0 -> Never print error
+                    = 1 -> Print only when error
+                    >= 2 -> Always print error
+    %>
+
+    uint64_t total_time{0};
+    uint64_t total_count{0};
+    uint64_t total_error{0};
+    for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
+        total_time += element.second._time;
+        total_count += element.second._count;
+        total_error += element.second._error;
+   }
+   if (!total_count) {
+        return;
+   }
+   std::cout << header << std::endl;
+
+   bool print_error;
+   if (_print_error == 0)
+        print_error = false;
+   else if (_print_error == 1)
+    print_error = total_error != 0;
+   else
+        print_error = true;
+
+<%# Need to be bigger than the header %>
+<% l_menbers.zip(l_headers).each do |v, n| %>
+   uint64_t len_max_<%= v %> = <%= n.size() %>;
+<% end %>
+
+<%# Need to be bigger than the footer %>
+   len_max_function_name = std::max(len_max_function_name,  uint64_t{<%= "Total".size() %>} );
+   len_max_time = std::max(len_max_time, <%= main_function %>(total_time).size());
+   len_max_count = std::max(len_max_count, to_string_with_precision(total_count,"",0).size() );
+   len_max_error = std::max(len_max_error, to_string_with_precision(total_error,"",0).size() );
+
+<%# Need to be bigger than the body %>
+   for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
+       len_max_function_name =  std::max(len_max_function_name,  element.first.size());
+       const auto [time, time_ratio, count, avg, min, max, error ] = element.second.to_string(total_time);
+  <% l_menbers.drop(1).each do |v| %>
+       len_max_<%= v %> = std::max(len_max_<%= v %>, <%= v %>.size());
+<% end %>
+   }
+
+<%# Sort the table %>
+   std::vector<std::pair<thapi_function_name,  <%= main_type %> >> array_sorted(aggregated.begin(), aggregated.end());
+   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
+
+<%# Print Header %>
+<% l_menbers.zip(l_headers).each do |v, n| %>
+    <% if v == "error" %>
+   if (print_error)
+    <% end %>
+   std::cout << std::setw(len_max_<%= v %>) << std::right << "<%= n %>" << " | ";
+    
+<% end %>
+   std::cout << std::endl;
+
+<%# Print Body %>
+   for (std::pair<thapi_function_name,  <%= main_type %> > element: array_sorted) {
+        const thapi_function_name function_name = element.first;
+        const auto [time, time_ratio, count, avg, min, max, error ] = element.second.to_string(total_time);
+<% l_menbers.each do |v | %>
+    <% if v == "error" %>
+        if (print_error)
+    <% end %>
+        std::cout << std::setw(len_max_<%= v %>) << std::right << <%= v %> << " | ";
+<% end %>
+        std::cout << std::endl;
+    }
+
+<%# Print footer %>
+   std::cout << std::setw(len_max_function_name) << std::right << "Total" << " | "
+             << std::setw(len_max_time) << std::right << <%= main_function %>(total_time) << " | "
+             << std::setw(len_max_time_ratio) << std::right << "100.00%" << " | "
+             << std::setw(len_max_count) << std::right <<  to_string_with_precision(total_count,"",0) << " | ";
+ if (print_error) {
+    std::cout
+         <% l_menbers.zip(l_headers).drop(4).each do |v,n| %>
+                <% if v == "error" %>
+                    << std::setw(len_max_error) << std::right <<  to_string_with_precision(total_error,"",0) << " | "
+                <% else %>
+                    << std::setw(len_max_<%= v %>) << "" << "   "
+                <% end %>
+            <% end %>
+            ;
+ }           
+ std::cout << std::endl;
+}
+
+<% end %>
+
+<%#
+   _
+  |_) ._ o ._ _|_    /\  ._ ._ _.
+  |   |  | | | |_   /--\ |  | (_| \/
+                                  /
+%>
+
+   <% output = [ ['StatTime', 'std::unordered_map<hpt_function_name_t, StatTime>', 'host', 'API calls', '1', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device','Device profiling', '0', 'hpt_dsd_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['hp_t','Processes','Process'],
+                      ['hpt_t','Threads','Thread'] ,
+                      ['hp_device_t','Device pointers','Device'],
+                      ['hp_dsd_t','SubDevice pointers','SubDevice'] ] ],
+   ['StatByte', 'std::unordered_map<hpt_function_name_t, StatByte>', 'traffic', 'Explicit memory traffic', '0', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+   ] %>
+
+<% output.each do |main_type, tuple_typle, result,header, error, type, var| %>
+void print_compact_<%= result %>( <%=tuple_typle %>   <%=result%> ){
+   <% var.each do |t,n,_ | %>
+   std::set<<%= t %>> s_<%= n.gsub(' ','_') %>;
+   <% end %>
+   <%# Agreagate API Call Result and compute total time spend %>
+   std::unordered_map<thapi_function_name, <%= main_type %> > aggregated;
+   for (auto element: <%= result %>)
+   {
+       auto [ <%= var.map{ |t,n| n.gsub(' ','_')}.join(',') %>,function_name ] = element.first;
+       const <%= main_type %> time = element.second;
+    <% if type == "hpt_dsd_t" %>
+       s_Hostnames.insert(hostname_t{Hostnames} ) ;
+       s_Processes.insert(hp_t{Hostnames,Processes} ) ;
+       s_Threads.insert(hpt_t{Hostnames,Processes,Threads} ) ;
+       s_Device_pointers.insert(hp_device_t{Hostnames,Processes,Device_pointers} ) ;
+       <%# This is apporixmation. Maybe two sub device alias to the same pointer. We cannot post-process that. But good enought to give a name %>
+       s_SubDevice_pointers.insert(hp_dsd_t{Hostnames,Processes,Device_pointers,SubDevice_pointers} ) ;
+    <% else %>
+    <% var.each do | _, n,_ | %>
+       s_<%=  n.gsub(' ','_') %>.insert(<%= n.gsub(' ','_') %>) ;
+    <% end %>
+    <% end %>
+       aggregated[function_name].merge(time);
+   }
+    <% if type == "hpt_dsd_t" %>
+   {
+       std::set<hp_dsd_t> s_ToDelete;
+       for (auto element: s_SubDevice_pointers) {
+           auto [ _a, _b, d1, d2 ] = element;
+           (void)_a; (void)_b; <%# Use un-used variable %>
+           if ( d1 == d2 ) {
+             s_ToDelete.insert(element);
+           }
+       }
+       for (auto element: s_ToDelete)
+           s_SubDevice_pointers.erase(element);
+   }
+        
+   <% end %>
+   std::ostringstream oss;
+   oss << "<%= header %>";
+   <% var.each do | _, n,_ | %>
+   if (s_<%= n.gsub(' ','_') %>.size() != 0)
+       oss << " | " << s_<%=  n.gsub(' ','_') %>.size() << " <%= n %>";
+   <% end %>
+   oss << std::endl;
+   print_array(aggregated,oss.str(), <%= error %>);
+   std::cout << std::endl;
+};
+
+<% if result == 'device' %>
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name ){
+<% else %>
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
+<% end  %>
+
+  <% args = var.map{ |t,_,n| n}.join(',') %>
+  std::unordered_map< <%= type %>, std::unordered_map<thapi_function_name, <%= main_type %> >> d;
+  for (auto [s, time]: <%= result %> ) {
+    auto [<%= args %>, function_name] = s;
+    d[ <%= type %>( <%= args %> )][function_name].merge(time);
+  }
+
+  std::vector<std::pair< <%= type %> , std::unordered_map<thapi_function_name,  <%= main_type %> >>> array_sorted(d.begin(), d.end());
+  std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
+
+  for (auto[s, aggregated]: array_sorted) {
+    auto [ <%= args %> ] = s;
+    std::ostringstream oss;
+    
+    <% if type == "hpt_dsd_t" %>
+    if (Device != SubDevice) {
+    <% end %> 
+    oss <<  "<%= header %>"
+    <% var.each do | _,_, n | %>
+        << " | <%= n %>: " 
+        <% if n.include?('Device') %>
+        << std::hex << std::showbase << std::internal << std::setfill('0')
+        <% end %>
+        << <%= n %>
+        <% if n =='Device' and result == 'device' %>
+        <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
+        <% end %>
+    <% end %>
+        << std::endl;
+    <% if type == "hpt_dsd_t" %>
+    } else { 
+    oss <<  "<%= header %>"
+    <% var.map{| _,_, n | n}.filter{ |n| n != 'SubDevice'}.each do |n| %>
+        << " | <%= n %>: "
+        <% if n == 'Device' %>
+        << std::hex << std::showbase << std::internal << std::setfill('0')
+        <% end %>
+        << <%= n %>
+        <% if n =='Device' and result == 'device' %>
+        <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
+        <% end %>
+     <% end %>
+        << std::endl;
+    }
+    <% end %>
+    print_array(aggregated, oss.str(), <%= error %>);
+    std::cout << std::endl;
+  }
+};
+<% end %>
+

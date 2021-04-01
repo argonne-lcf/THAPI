@@ -15,28 +15,17 @@
 - :name: stream0
   :class: cl_stream_class
   :common_context:
-    vpid: -1
-    vtid: 2
+    vtid: 1
 :events:
 - :name: lttng_ust_opencl:clCreateCommandQueue_entry
-  :payload:
-    device: 10
   :common_context:
-    vtid: 3
+    vtid: 0
 - :name: lttng_ust_opencl:clCreateCommandQueue_exit
-  :payload:
-    command_queue: 23
   :common_context:
-    vtid: 3
+    vtid: 0
 - :name: lttng_ust_opencl:clEnqueueReadBuffer_entry
-  :payload:
-    command_queue: 23
 - :name: lttng_ust_opencl_profiling:event_profiling
-  :payload:
-    event: 12
 - :name: lttng_ust_opencl:clEnqueueReadBuffer_exit
 - :name: lttng_ust_opencl_profiling:event_profiling_results
   :payload:
-    event: 12
-    start: 0
     end: 10

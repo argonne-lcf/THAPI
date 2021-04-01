@@ -14,39 +14,11 @@
 :streams:
 - :name: stream0
   :class: cl_stream_class
-  :common_context:
-    vpid: -1
-    vtid: 2
 :events:
-- :name: lttng_ust_opencl:clCreateCommandQueue_entry
-  :payload:
-    device: 10
-- :name: lttng_ust_opencl:clCreateCommandQueue_exit
-  :payload:
-    command_queue: 23
-- :name: lttng_ust_opencl:clEnqueueReadBuffer_entry
-  :payload:
-    command_queue: 23
+- :name: lttng_ust_opencl:clEnqueueSVMFree_entry
 - :name: lttng_ust_opencl_profiling:event_profiling_results
   :payload:
-    event: 12
-    start: 0
-    end: 10
     queued_status: -58
-- :name: lttng_ust_opencl:clEnqueueReadBuffer_exit
+- :name: lttng_ust_opencl:clEnqueueSVMFree_exit
 - :name: lttng_ust_opencl_profiling:event_profiling
-  :payload:
-    event: 12
-- :name: lttng_ust_opencl:clEnqueueWriteBuffer_entry
-  :payload:
-    command_queue: 23
-- :name: lttng_ust_opencl_profiling:event_profiling_results
-  :payload:
-    event: 12
-    start: 0
-    end: 20
-- :name: lttng_ust_opencl_profiling:event_profiling
-  :payload:
-    event: 12
-- :name: lttng_ust_opencl:clEnqueueWriteBuffer_exit
 

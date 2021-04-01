@@ -156,7 +156,10 @@ summary() {
     fi
 
 <% if languages.include?("opencl") %>
-    ocl_output=$(babeltrace2 --plugin-path=$libdir --component=sink.clprof.dispatch  --params="display=$display" ${lttng_last_session})
+    ocl_output=$(babeltrace2 --plugin-path=$libdir \
+                             ${lttng_last_session} \
+                             --component=filter.clinterval.interval \
+                             --component=sink.xprof.tally --params="display=$display")
     if [ -n "$ocl_output" ]; then
         echo "== OpenCL == "
         echo "$ocl_output"

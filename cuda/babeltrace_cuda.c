@@ -58,7 +58,7 @@ bt_component_class_initialize_method_status cuda_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    init_dispatchers(cuda_dispatch);
+    init_cuda_dispatchers(cuda_dispatch);
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
