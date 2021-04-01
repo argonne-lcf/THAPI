@@ -21,7 +21,6 @@ struct clinterval_callbacks_state {
     std::unordered_map<hp_kernel_t, thapi_function_name> kernel_to_name;
     std::unordered_map<hpt_function_name_t, uint64_t> host_start;
 
-    std::unordered_map<hp_device_t, std::string> device_to_name;
     std::unordered_map<hp_device_t, thapi_device_id> device_to_rootdevice;
     std::unordered_map<hpt_t, thapi_device_id> start_device;
     std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;

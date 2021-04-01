@@ -132,7 +132,9 @@ class <%= n %>: public StatIprof {
                  ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>
 
   <% d_headers.each do | main_type, main_function, l_headers | %>
-void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, std::string header, unsigned int _print_error= 0) {
+void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
+                 std::string header, 
+                 unsigned int _print_error= 0) {
     <%# print_error = 0 -> Never print error
                     = 1 -> Print only when error
                     >= 2 -> Always print error
@@ -251,11 +253,11 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    ] %>
 
 <% output.each do |main_type, tuple_typle, result,header, error, type, var| %>
-    void print_compact_<%= result %>( <%=tuple_typle %>   <%=result%> ){
+void print_compact_<%= result %>( <%=tuple_typle %>   <%=result%> ){
    <% var.each do |t,n,_ | %>
    std::set<<%= t %>> s_<%= n.gsub(' ','_') %>;
-    <% end %>
-    <%# Agreagate API Call Result and compute total time spend %>
+   <% end %>
+   <%# Agreagate API Call Result and compute total time spend %>
    std::unordered_map<thapi_function_name, <%= main_type %> > aggregated;
    for (auto element: <%= result %>)
    {
@@ -274,21 +276,20 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
     <% end %>
     <% end %>
        aggregated[function_name].merge(time);
-       }
-       <% if type == "hpt_dsd_t" %>
-       {
-         std::set<hp_dsd_t> s_ToDelete;
-         for (auto element: s_SubDevice_pointers) {
+   }
+    <% if type == "hpt_dsd_t" %>
+   {
+       std::set<hp_dsd_t> s_ToDelete;
+       for (auto element: s_SubDevice_pointers) {
            auto [ _a, _b, d1, d2 ] = element;
            (void)_a; (void)_b; <%# Use un-used variable %>
            if ( d1 == d2 ) {
              s_ToDelete.insert(element);
            }
-          }
-          for (auto element: s_ToDelete) {
-           s_SubDevice_pointers.erase(element);
-          }
        }
+       for (auto element: s_ToDelete)
+           s_SubDevice_pointers.erase(element);
+   }
         
    <% end %>
    std::ostringstream oss;
@@ -302,10 +303,10 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    std::cout << std::endl;
 };
 
-<% if result == 'device_id_result' %>
-    void print_extented_<%= result %>(  <%=tuple_typle %>   <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name ){
+<% if result == 'device' %>
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name ){
 <% else %>
-void print_extented_<%= result %>(  <%=tuple_typle %>   <%=result%> ){
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
 <% end  %>
 
   <% args = var.map{ |t,_,n| n}.join(',') %>
@@ -323,7 +324,7 @@ void print_extented_<%= result %>(  <%=tuple_typle %>   <%=result%> ){
     std::ostringstream oss;
     
     <% if type == "hpt_dsd_t" %>
-    if  (Device != SubDevice) {
+    if (Device != SubDevice) {
     <% end %> 
     oss <<  "<%= header %>"
     <% var.each do | _,_, n | %>
@@ -332,13 +333,13 @@ void print_extented_<%= result %>(  <%=tuple_typle %>   <%=result%> ){
         << std::hex << std::showbase << std::internal << std::setfill('0')
         <% end %>
         << <%= n %>
-        <% if n =='Device' and result == 'device_id_result' %>
+        <% if n =='Device' and result == 'device' %>
         <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
         <% end %>
     <% end %>
         << std::endl;
     <% if type == "hpt_dsd_t" %>
-     } else { 
+    } else { 
     oss <<  "<%= header %>"
     <% var.map{| _,_, n | n}.filter{ |n| n != 'SubDevice'}.each do |n| %>
         << " | <%= n %>: "
@@ -346,16 +347,16 @@ void print_extented_<%= result %>(  <%=tuple_typle %>   <%=result%> ){
         << std::hex << std::showbase << std::internal << std::setfill('0')
         <% end %>
         << <%= n %>
-        <% if n =='Device' and result == 'device_id_result' %>
+        <% if n =='Device' and result == 'device' %>
         <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
         <% end %>
      <% end %>
         << std::endl;
     }
     <% end %>
-     print_array(aggregated, oss.str(), <%= error %>);
-     std::cout << std::endl;
-   }
+    print_array(aggregated, oss.str(), <%= error %>);
+    std::cout << std::endl;
+  }
 };
 <% end %>
 

@@ -63,7 +63,7 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
             const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
 
             const bt_field *name_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
-            const std::string name = std::string{bt_field_string_get_value(name_field)};
+            const std::string name(bt_field_string_get_value(name_field));
 
             // I should compare type. Not somme string.
             if (strcmp(class_name,"lttng:host") == 0 ) {
@@ -87,11 +87,18 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
                dispatch->device[hpt_device_function_name_t(hostname,process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
             } else if ( strcmp(class_name,"lttng:traffic") == 0 ) {
     
-                const bt_field *size_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-                const long size = bt_field_integer_unsigned_get_value(size_field);
+               const bt_field *size_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+               const long size = bt_field_integer_unsigned_get_value(size_field);
 
-                dispatch->traffic[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(size, false);
+               dispatch->traffic[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(size, false);
+           }  else if ( strcmp(class_name,"lttng:device_name") == 0 ) {
+
+               const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+               const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+
+               dispatch->device_name[hp_device_t(hostname,process_id, (thapi_device_id) did)] = name;
             }
+
         }
         bt_message_put_ref(message);
     }
@@ -107,8 +114,13 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
         bt_self_component_sink_configuration *configuration,
         const bt_value *params, void *initialize_method_data)
 {
+    /*Read env variable */
+    const std::string display_mode(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "display")));
+
     /* Allocate a private data structure */
-    struct tally_dispatch *dispatch = new tally_dispatch;  //(tally_dispatch*) calloc(1, sizeof(struct tally_dispatch));
+    struct tally_dispatch *dispatch = new tally_dispatch;  
+
+    dispatch->display_compact = (display_mode == "compact");
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
@@ -137,9 +149,15 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
     struct tally_dispatch  *dispatch = (tally_dispatch*) bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
-    print_compact_host(dispatch->host);
-    print_compact_device(dispatch->device);
-    print_compact_traffic(dispatch->traffic);
+    if (dispatch->display_compact) {
+       print_compact_host(dispatch->host);
+       print_compact_device(dispatch->device);
+       print_compact_traffic(dispatch->traffic);
+    } else {
+       print_extented_host(dispatch->host);
+       print_extented_device(dispatch->device, dispatch->device_name);
+       print_extented_traffic(dispatch->traffic);
+    }
 }
 
 /*

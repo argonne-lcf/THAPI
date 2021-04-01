@@ -24,6 +24,12 @@
           :preferred_display_base: 16
       - :name: err
         :class: bool
+- :name: lttng:device_name
+  :payload:
+      - :name: name
+        :class: string
+      - :name: did
+        :class: unsigned
 - :name: lttng:traffic
   :payload:
       - :name: name
