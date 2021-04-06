@@ -386,15 +386,15 @@ TRACE_FILES = \
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
 	$(nodist_libCLInterval_la_SOURCES) 
+	$(INTERVAL_DUST_FILES)
 
-TEST_FILES = \
+TESTS = \
 	tests/ze_dummy_trace.dust \
 	$(INTERVAL_DUST_FILES)
 
-TESTS = $(TEST_FILES)
-
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
+
 check_DATA = \
 	test_wrapper.sh \
 	tests/ze_dummy_trace.yaml \
@@ -410,7 +410,12 @@ EXTRA_DIST += \
 	gen_ze_refinements.rb \
 	gen_ze_bindings.rb \
 	ze_bindings_base.rb \
+	gen_zeinterval_callbacks.rb \
+	zeinterval_callbacks.cpp.erb \
+	zeinterval_callbacks.hpp \
+	xprof_utils.hpp \
+	xprof_utils.cpp \
 	$(TRACE_FILES) \
 	tests/interval.dust.erb
 
-CLEANFILES += $(ZE_BINDINGS) 
+CLEANFILES += $(ZE_BINDINGS)

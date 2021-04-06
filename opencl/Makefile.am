@@ -287,7 +287,7 @@ EXTRA_DIST += \
 	extract_enqueues \
 	gen_clinterval_callbacks.rb \
 	clinterval_callbacks.cpp.erb \
-	clinterval_callbacks.hpp\
+	clinterval_callbacks.hpp \
 	xprof_utils.hpp \
 	xprof_utils.cpp \
 	$(TRACE_FILES) \
