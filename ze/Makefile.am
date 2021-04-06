@@ -311,7 +311,6 @@ tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
 	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
 
-
 babeltrace_zeinterval_callbacks.cpp: $(srcdir)/zeinterval_callbacks.cpp.erb $(srcdir)/gen_zeinterval_callbacks.rb ze_events.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeinterval_callbacks.rb  > $@
 
@@ -416,6 +415,7 @@ EXTRA_DIST += \
 	xprof_utils.hpp \
 	xprof_utils.cpp \
 	$(TRACE_FILES) \
+	tests/ze_dummy_trace.dust \
 	tests/interval.dust.erb
 
 CLEANFILES += $(ZE_BINDINGS)
