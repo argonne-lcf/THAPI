@@ -357,6 +357,17 @@ libZEInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libZEInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libZEInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+CLEANFILES += \
+	gen_zeinterval_callbacks.rb \
+	zeinterval_callbacks.cpp.erb \
+	zeinterval_callbacks.hpp \
+	xprof_utils.hpp \
+	xprof_utils.cpp \
+	babeltrace_zeinterval.c \
+	babeltrace_zeinterval.h \
+	babeltrace_zeinterval_callbacks.cpp \
+	babeltrace_zeinterval_callbacks.h \
+	babeltrace_zeinterval_dispatchers.c
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
@@ -402,5 +413,4 @@ EXTRA_DIST += \
 	$(TRACE_FILES) \
 	tests/interval.dust.erb
 
-CLEANFILES += $(ZE_BINDINGS)
-
+CLEANFILES += $(ZE_BINDINGS) 
