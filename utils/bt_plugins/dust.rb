@@ -180,7 +180,9 @@ def create_bt_stream_class(bt_trace_class, bt_clock_class, stream_class)
 end
 
 def find_file_in_envfolder(str, target)
-    Find.find(*str.split(':')).find { |f| File.file?(f) && File.basename(f) == target }
+    r = Find.find(*str.split(':')).find { |f| File.file?(f) && File.basename(f) == target }
+    raise "Cannot find #{target} in #{str}" if r.nil?
+    r
 end
 
 class Dust

@@ -198,7 +198,7 @@ nodist_libzetracepoints_la_SOURCES = \
 libzetracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerZE.la libZEProf.la
+lib_LTLIBRARIES = libTracerZE.la libZEProf.la libZEInterval.la
 
 nodist_libTracerZE_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
@@ -311,10 +311,74 @@ tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
 	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
 
-CLEANFILES += tests/ze_dummy_trace.yaml
+
+babeltrace_zeinterval_callbacks.cpp: $(srcdir)/zeinterval_callbacks.cpp.erb $(srcdir)/gen_zeinterval_callbacks.rb ze_events.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeinterval_callbacks.rb  > $@
+
+babeltrace_zeinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
+
+babeltrace_zeinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
+
+babeltrace_zeinterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="zeinterval" $(top_srcdir)/xprof/interval.h.erb > $@
+
+babeltrace_zeinterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="zeinterval"  $(top_srcdir)/xprof/interval.c.erb > $@
+
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	cp $< $@
+
+xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
+	cp $< $@
+
+BUILT_SOURCES += \
+	babeltrace_zeinterval.h \
+	babeltrace_ze.h \
+	babeltrace_zeinterval_callbacks.h \
+	xprof_utils.hpp
+
+nodist_libZEInterval_la_SOURCES = \
+	babeltrace_zeinterval.c \
+	babeltrace_zeinterval.h \
+	babeltrace_zeinterval_callbacks.h \
+	babeltrace_zeinterval_dispatchers.c \
+	babeltrace_zeinterval_callbacks.cpp \
+	tracer_opencl.h \
+	xprof_utils.hpp \
+	xprof_utils.cpp
+
+libZEInterval_la_SOURCES = \
+	zeinterval_callbacks.hpp
+
+libZEInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libZEInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libZEInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libZEInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+
+#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+INTERVAL_DUST_FILES = \
+	tests/interval_API_call.dust
+
+$(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
+	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
+
+nodist_libZEInterval_la_SOURCES+= \
+	$(INTERVAL_DUST_FILES)
+
+TRACE_FILES = \
+	tests/API_call.yaml \
+	tests/interval_API_call.yaml
+
+CLEANFILES += \
+	tests/ze_dummy_trace.yaml \
+	$(nodist_libCLInterval_la_SOURCES) 
 
 TEST_FILES = \
-	tests/ze_dummy_trace.dust
+	tests/ze_dummy_trace.dust \
+	$(INTERVAL_DUST_FILES)
 
 TESTS = $(TEST_FILES)
 
@@ -322,7 +386,8 @@ TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
 check_DATA = \
 	test_wrapper.sh \
-	tests/ze_dummy_trace.yaml
+	tests/ze_dummy_trace.yaml \
+	$(TRACE_FILES)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
@@ -334,7 +399,8 @@ EXTRA_DIST += \
 	gen_ze_refinements.rb \
 	gen_ze_bindings.rb \
 	ze_bindings_base.rb \
-	$(TEST_FILES)
+	$(TRACE_FILES) \
+	tests/interval.dust.erb
 
 CLEANFILES += $(ZE_BINDINGS)
 

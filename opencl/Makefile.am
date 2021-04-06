@@ -161,7 +161,7 @@ libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELT
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 babeltrace_clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clinterval_callbacks.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clinterval_callbacks.rb  > babeltrace_clinterval_callbacks.cpp
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clinterval_callbacks.rb  > $@
 
 babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
@@ -170,10 +170,10 @@ babeltrace_clinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatch
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
 
 babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > babeltrace_clinterval.h
+	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > $@
 
 babeltrace_clinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > babeltrace_clinterval.c
+	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@

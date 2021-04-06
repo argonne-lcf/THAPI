@@ -116,7 +116,7 @@ const bt_message* downstream_message_queue_pop(struct clinterval_message_iterato
                              
 %>
 
-<% $dbt_events.each do | dbt_event| %>
+<% $dbt_events.each do | dbt_event | %>
 static void clinterval_<%= dbt_event.name %>_callback(
 <%= dbt_event.callback_signature %>
 ){

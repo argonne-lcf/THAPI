@@ -1,0 +1,301 @@
+#include <iomanip>
+#include <iostream>
+#include "babeltrace_zeinterval.h"
+#include "zeinterval_callbacks.hpp"
+#include "xprof_utils.hpp"
+#include <babeltrace2/babeltrace.h>
+
+#include <ze_api.h>
+#include <ze_ddi.h>
+#include <zet_api.h>
+#include <zet_ddi.h>
+#include <zes_api.h>
+#include <zes_ddi.h>
+#include <zel_tracepoints.h>
+
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <tuple>
+#include <climits>
+#include <set>
+
+<%# Should pass device_to_timerResolution_kernelTimestampValidBits %>
+static inline uint64_t born_timing_to_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t end) {
+    const auto [timerResolution,kernelTimestampValidBits] =  state->device_to_timerResolution_kernelTimestampValidBits[hp_device];
+    if (end >= start) {
+        return (end - start) * timerResolution;
+    } else {
+       <%# We cycle (don't know how many time. Lets assume one) %>
+       const uint64_t max_val = (1 << kernelTimestampValidBits) - 1;
+       return (max_val - start + end ) * timerResolution;
+    }
+}
+
+void *init_zeinterval_callbacks_state() {
+    zeinterval_callbacks_state *s = new zeinterval_callbacks_state;
+    return (void*) s;
+}
+
+static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                            const uint64_t ts, const uint64_t duration, const bool err) {
+
+     /* Message creation */
+     bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
+                            zeinterval_iter_g->dispatch->host_event_class,
+                            self_message_iterator_g,
+                            zeinterval_iter_g->dispatch->stream);
+
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, 
+                                       const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                       const char* name, const uint64_t ts, const uint64_t duration, const bool err) {
+
+     /* Message creation */
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err,
+                            zeinterval_iter_g->dispatch->device_event_class,
+                            self_message_iterator_g,
+                            zeinterval_iter_g->dispatch->stream);
+
+
+     /* Set message */
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                                                  zeinterval_iter_g->dispatch->traffic_event_class,
+                                                  self_message_iterator_g,
+                                                  zeinterval_iter_g->dispatch->stream);
+
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+<%#
+  _                                         _                          _ ___
+ | \  _       ._   _ _|_ ._ _   _. ._ _    / \      _       _     /\  |_) |
+ |_/ (_) \/\/ | | _>  |_ | (/_ (_| | | |   \_X |_| (/_ |_| (/_   /--\ |  _|_
+
+%>
+
+bool downstream_message_queue_empty(struct zeinterval_message_iterator *interval_dispatch_iter)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.empty();
+}
+
+size_t downstream_message_queue_size(struct zeinterval_message_iterator *interval_dispatch_iter)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.size();
+}
+
+const bt_message* downstream_message_queue_pop(struct zeinterval_message_iterator *interval_dispatch_iter)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    const bt_message* m = state->downstream_message_queue.front();
+    state->downstream_message_queue.pop();
+    return m;
+}
+
+
+<%#
+  _
+ /   _. | | |_   _.  _ |   _
+ \_ (_| | | |_) (_| (_ |< _>
+
+%>
+
+<% $dbt_events.each do | dbt_event | %>
+static void zeinterval_<%= dbt_event.uuid %>_callback(
+   <%= dbt_event.fields.join(",\n  ") %>
+){
+  <%#                             ___      _
+       |   _   _  _. | o _|_       |  ._ _|_ _
+       |_ (_) (_ (_| | |  |_ \/   _|_ | | | (_)
+                             /
+  %>
+  <%if dbt_event.namespace == :'lttng_ust_ze' or  dbt_event.namespace == :lttng_ust_zet %>
+    const hostname_t   hostname   = borrow_hostname(bt_evt);
+    const process_id_t process_id = borrow_process_id(bt_evt);
+    const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+  <%end %>
+   
+  <%#        _ ___
+        /\  |_) |     _  _. | |  _
+       /--\ |  _|_   (_ (_| | | _>
+  %>
+  <%if dbt_event.namespace == :lttng_ust_ze or  dbt_event.namespace == :lttng_ust_zet %>
+  int64_t ns_from_origin; 
+  bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+    <%if dbt_event.suffix == :start %>
+  state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name %>")] = ns_from_origin;
+    <%elsif dbt_event.suffix == :stop %>
+  const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name  %>")];
+      <% if dbt_event.include?('zeResult') %>
+  create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name %>", start_g, ns_from_origin-start_g, zeResult);
+      <% else %>
+  create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name %>", start_g, ns_from_origin-start_g, 0);
+      <% end %>
+    <%end%>
+  <%end%>  
+
+  <%#
+       |\/|  _  ._ _   _  ._      _.  _  _  _   _  _  _   _
+       |  | (/_ | | | (_) | \/   (_| (_ (_ (/_ _> _> (/_ _>
+                            /
+  %>
+  <% if (dbt_event.name.include?("Alloc") or dbt_event.name.include?("Memory")) and  dbt_event.include? ("size_t size") %>
+    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name %>",size);  
+  <% end %>
+
+  <%#
+    _         _                    _                                   __          _
+   |_) ._ _ _|_ o | o ._   _  o   | \  _     o  _  _     _. ._   _|   (_      |_  | \  _     o  _  _
+   |   | (_) |  | | | | | (_| o   |_/ (/_ \/ | (_ (/_   (_| | | (_|   __) |_| |_) |_/ (/_ \/ | (_ (/_
+                           _|
+   Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ]
+  %>
+
+  <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
+  <% if  dbt_event.name == 'zeDeviceGet' and dbt_event.suffix == :stop %>
+    if (phDevices_vals != nullptr) {  
+        for (unsigned int i=0; i < pCount_val; i++ ) {
+            const thapi_device_id d = (thapi_device_id) phDevices_vals[i];
+            state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
+        }
+    }
+  <% elsif dbt_event.name == "zeDeviceGetSubDevices" and dbt_event.suffix == :start %>
+    state->start_device[hpt_t(hostname,process_id,thread_id) ] =  (thapi_device_id) hDevice;
+  <% elsif dbt_event.name == "zeDeviceGetSubDevices" and dbt_event.suffix == :stop %>
+    const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
+    const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
+    if (phSubdevices_vals != nullptr) {  
+        for (unsigned int i=0; i < pCount_val; i++ ) {
+            const thapi_device_id d = (thapi_device_id) phSubdevices_vals[i];
+            state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = root_device;
+        }
+    }
+  <% end %>
+
+  <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
+  <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include? dbt_event.name and dbt_event.suffix == :start %>
+    state->start_device[hpt_t(hostname,process_id,thread_id) ] =  (thapi_device_id) hDevice;
+  <%elsif ['zeCommandListCreate','zeCommandListCreateImmediate'].include? dbt_event.name and dbt_event.suffix == :stop %>
+    const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
+    const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
+    state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(root_device, device);
+  <% end %>
+  
+  <%#
+    _         _                    _
+   |_) ._ _ _|_ o | o ._   _  o   |_    ._   _ _|_ o  _  ._    ._   _. ._ _   _
+   |   | (_) |  | | | | | (_| o   | |_| | | (_  |_ | (_) | |   | | (_| | | | (/_
+                           _|
+   Map [ Tuple [ Hostnane, process, thread, function_name], Tuple [ device, subdevice] ]
+  %>
+  <%# Save kernel name %>
+  <% if dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_#{START}" %>
+    state->last_kernel[hpt_t(hostname,process_id,thread_id)] = std::string{desc__pKernelName_val};
+  <% elsif dbt_event.lltng == "lttng_ust_ze:zeKernelCreate_#{STOP}" %>
+    state->kernel_to_name[hp_kernel_t(hostname,process_id,phKernel_val)] = state->last_kernel[hpt_t(hostname,process_id,thread_id)];
+ <% end %>
+ <% if dbt_event.suffix == :start and  dbt_event.include? "hSignalEvent" %>
+   <%if  dbt_event.include? " hKernel" %>
+    const thapi_function_name name  = state->kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)];
+   <% else %>
+    constexpr char name[] = "<%= dbt_event.name %>";
+   <% end %>
+    state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)] = fn_ts_t(name,ns_from_origin);
+   <% if dbt_event.suffix == :start and dbt_event.include? 'hCommandList' %>
+    state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id,name)] = state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
+   <% end %>
+ <% end %>
+    
+  <%#
+    _         _                    _                        ___
+   |_) ._ _ _|_ o | o ._   _  o   |_ |  _. ._   _  _   _|    | o ._ _   _   _
+   |   | (_) |  | | | | | (_| o   |_ | (_| |_) _> (/_ (_|    | | | | | (/_ _>
+                           _|              |
+   Map [ Tuple[hostname, process, device, subdevice, cl_function_name], elapsed_time ]
+  %>
+  
+  <%# Getting timer resultion of each device %>
+  <%if dbt_event.lltng == "lttng_ust_ze_properties:device" %>
+   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+   const hostname_t hostname    = borrow_hostname(bt_evt);
+   const process_id_t process_id = borrow_process_id(bt_evt);
+   const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val -> timerResolution, 64);
+   state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hDevice)] = t ;
+
+  <%elsif dbt_event.lltng == "lttng_ust_ze_profiling:event_profiling" %>
+   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+   const hostname_t hostname    = borrow_hostname(bt_evt);
+   const process_id_t process_id = borrow_process_id(bt_evt);
+   const thread_id_t thread_id   = borrow_thread_id(bt_evt);
+   const hp_event_t hp_event{hostname,process_id, hEvent};
+   const auto [function_name,ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
+   if (!state->event_to_function_name_and_ts.count(hp_event)){
+      state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name, ts);
+   } else {
+      const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
+      const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+      create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
+      state->event_to_function_name_and_ts.erase(hp_event);
+   }
+  <% elsif dbt_event.lltng == "lttng_ust_ze_profiling:event_profiling_results" %>
+   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+   const std::string hostname    = borrow_hostname(bt_evt);
+   const process_id_t process_id = borrow_process_id(bt_evt);
+   const hp_event_t hp_event{hostname,process_id, hEvent};
+
+   if (state->event_to_function_name_and_ts.count(hp_event)) {
+      const auto [thread_id,function_name,ts] =  state->event_to_function_name_and_ts[hp_event];
+      const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+      const uint64_t delta = born_timing_to_ns(state, hp_device_t(hostname,process_id, device),contextStart,contextEnd);
+      
+      const uint64_t start = ts + (globalStart - contextStart);
+      create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
+
+      state->event_to_function_name_and_ts.erase(hp_event);
+   } else {
+     <%# Not sure about this one. Need to see when we have native callbacks %>
+     const thread_id_t thread_id = borrow_thread_id(bt_evt);
+     const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
+     const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+     (void) subdevice;
+
+     const hp_device_t hp_device{hostname, process_id, device};
+     //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+     const uint64_t start = ts + (globalStart - contextStart);
+     const uint64_t delta = born_timing_to_ns(state, hp_device, contextStart,contextEnd);
+     state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
+     state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
+  }
+  <% end %>
+};
+<% end %>
+
+<%#
+ ___
+  |  ._  o _|_ o  _. | o _   _
+ _|_ | | |  |_ | (_| | | /_ (/_
+
+%>
+
+void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
+<% $dbt_events.each do | dbt_event| %>
+  zeinterval_register_callback(ze_dispatch, "<%= dbt_event.lltng %>", (void *) &zeinterval_<%= dbt_event.uuid %>_callback);
+<% end %>
+}
+
