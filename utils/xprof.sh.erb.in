@@ -166,7 +166,10 @@ summary() {
     fi
 <% end %>
 <% if languages.include?("ze") %>
-    ze_output=$(babeltrace2 --plugin-path=$libdir --component=sink.zeprof.dispatch  --params="display=$display" ${lttng_last_session})
+    ze_output=$(babeltrace2 --plugin-path=$libdir \
+                            ${lttng_last_session} \
+                            --component=filter.zeinterval.interval \
+                            --component=sink.xprof.tally --params="display=$display")
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"

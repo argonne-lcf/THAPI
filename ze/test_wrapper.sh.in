@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 set -o xtrace
+BINDING_DIR=@abs_builddir@ \
 DUST_MODELS_DIR=@abs_builddir@/:@abs_top_srcdir@/xprof/ \
 BABELTRACE_PLUGIN_PATH=@builddir@/.libs/ \
 DUST_TRACE_DIR=@abs_srcdir@/tests:@abs_builddir@/tests \

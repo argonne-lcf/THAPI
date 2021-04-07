@@ -396,6 +396,7 @@ DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
+	ze_library.rb \
 	tests/ze_dummy_trace.yaml \
 	$(TRACE_FILES)
 
