@@ -384,7 +384,7 @@ TRACE_FILES = \
 
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
-	$(nodist_libCLInterval_la_SOURCES) 
+	$(nodist_libCLInterval_la_SOURCES) \
 	$(INTERVAL_DUST_FILES)
 
 TESTS = \
