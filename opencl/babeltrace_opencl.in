@@ -255,7 +255,7 @@ EOF
           "(tmp = enums_by_type[\"#{desc["type"]}\"][defi[\"#{name}\"]]) ? tmp : defi[\"#{name}\"]"
         elsif bitfields_by_type[desc["type"]]
           "bitfields_by_type[\"#{desc["type"]}\"].to_s(defi[\"#{name}\"])"
-        elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
+        elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] ) || desc["type"].match("void *")
           "\"0x\#{defi[\"#{name}\"].to_s(16)}\""
         else
           "defi[\"#{name}\"].inspect"
