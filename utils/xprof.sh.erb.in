@@ -20,6 +20,7 @@ display_help() {
     echo "  -h, --help         Show this screen"
     echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace        Display the trace"
+    echo "  -l, --line         Dump the timeline"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
@@ -155,6 +156,23 @@ summary() {
 <% end %>
     fi
 
+    if [ -n "$timeline" ]; then
+<% if languages.include?("opencl") %>
+    echo "Generating timeline_cl.json"
+    babeltrace2 --plugin-path=$libdir \
+                ${lttng_last_session} \
+                --component=filter.clinterval.interval \
+                --component=sink.xprof.timeline > timeline_cl.json
+<% end %>
+<% if languages.include?("ze") %>
+    echo "Generating timeline_ze.json"
+    babeltrace2 --plugin-path=$libdir \
+                ${lttng_last_session} \
+                --component=filter.zeinterval.interval \
+                --component=sink.xprof.timeline > timeline_ze.json
+<% end %>
+    fi
+
 <% if languages.include?("opencl") %>
     ocl_output=$(babeltrace2 --plugin-path=$libdir \
                              ${lttng_last_session} \
@@ -194,6 +212,7 @@ while (( "$#" )); do
         -d | --debug)    shift; debug=true ;;
         -a | --asm)      shift; asm=true ;;
         -t | --trace)    shift; trace=true ;;
+        -l | --timeline) shift; timeline=true ;;
         --)              shift; break ;;
         *)               break  ;;
     esac

@@ -30,7 +30,10 @@ libXProf_la_SOURCES = \
 	tally.hpp \
 	tally.h \
 	tally.cpp \
-	tally_utils.hpp 
+	tally_utils.hpp \
+	timeline.hpp \
+	timeline.h \
+	timeline.cpp
 
 # Compiler flags
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
