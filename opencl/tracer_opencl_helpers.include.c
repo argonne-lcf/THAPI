@@ -29,11 +29,11 @@ static const struct opencl_version opencl_version_2_1 = {2, 1};
 static inline int compare_opencl_version(const struct opencl_version *v1, const struct opencl_version *v2) {
   if (v1->major > v2->major)
     return 1;
-  if (v1->major > v2->major)
+  if (v1->major < v2->major)
     return -1;
   if (v1->minor > v2->minor)
     return 1;
-  if (v1->minor > v2->minor)
+  if (v1->minor < v2->minor)
     return -1;
   return 0;
 }
