@@ -15,8 +15,8 @@ void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status
 }
 
 struct opencl_version {
-  cl_uint minor;
   cl_uint major;
+  cl_uint minor;
 };
 
 //static const struct opencl_version opencl_version_1_0 = {1, 0};
@@ -761,7 +761,8 @@ cleanup:
 
 static inline void dump_device_timer(cl_device_id device) {
   struct opencl_version version = {1, 0};
-
+  if (CL_GET_DEVICE_AND_HOST_TIMER_PTR != NULL)
+    return;
   get_device_platform_version(device, &version);
   if (compare_opencl_version(&version, &opencl_version_2_1) >= 0) {
     cl_ulong device_timestamp;
