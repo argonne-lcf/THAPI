@@ -45,6 +45,7 @@ fi
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
+AC_CHECK_LIB([iberty], [cplus_demangle])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])

@@ -84,7 +84,7 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
                const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
                const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
 
-               dispatch->device[hpt_device_function_name_t(hostname,process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
+               dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
             } else if ( strcmp(class_name,"lttng:traffic") == 0 ) {
     
                const bt_field *size_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
@@ -116,11 +116,13 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
 {
     /*Read env variable */
     const std::string display_mode(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "display")));
+    const std::string display_name(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "name")));
 
     /* Allocate a private data structure */
     struct tally_dispatch *dispatch = new tally_dispatch;  
 
     dispatch->display_compact = (display_mode == "compact");
+    dispatch->demangle_name = (display_name == "demangle");
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(

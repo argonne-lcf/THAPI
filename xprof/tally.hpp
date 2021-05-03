@@ -7,6 +7,7 @@
 struct tally_dispatch {
     bt_message_iterator *message_iterator;
     bool display_compact;
+    bool demangle_name;
     std::unordered_map<hpt_function_name_t, StatTime> host;
     std::unordered_map<hpt_device_function_name_t, StatTime> device;
     std::unordered_map<hpt_function_name_t, StatByte> traffic;
