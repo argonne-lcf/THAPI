@@ -177,7 +177,7 @@ summary() {
     ocl_output=$(babeltrace2 --plugin-path=$libdir \
                              ${lttng_last_session} \
                              --component=filter.clinterval.interval \
-                             --component=sink.xprof.tally --params="display=$display")
+                             --component=sink.xprof.tally --params="display=$display,name=demangle")
     if [ -n "$ocl_output" ]; then
         echo "== OpenCL == "
         echo "$ocl_output"
@@ -187,7 +187,7 @@ summary() {
     ze_output=$(babeltrace2 --plugin-path=$libdir \
                             ${lttng_last_session} \
                             --component=filter.zeinterval.interval \
-                            --component=sink.xprof.tally --params="display=$display")
+                            --component=sink.xprof.tally --params="display=$display,name=demangle")
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"

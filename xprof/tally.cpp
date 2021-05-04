@@ -2,8 +2,6 @@
 #include "tally.hpp"
 #include "xprof_utils.hpp" //Typedef and hashtuple
 #include "tally_utils.hpp"
-
-#include <string.h> // strcmp
 bt_component_class_sink_consume_method_status tally_dispatch_consume(
         bt_self_component_sink *self_component_sink)
 {
@@ -66,7 +64,7 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
             const std::string name(bt_field_string_get_value(name_field));
 
             // I should compare type. Not somme string.
-            if (strcmp(class_name,"lttng:host") == 0 ) {
+            if (std::string(class_name) == "lttng:host") {
                const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
                const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
@@ -74,7 +72,7 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
                const bool err = bt_field_bool_get_value(err_field);
 
                dispatch->host[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(dur, err);
-            } else if ( strcmp(class_name,"lttng:device") == 0 ) {
+            } else if (std::string(class_name) == "lttng:device") {
                const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
                const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
@@ -85,7 +83,7 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
                const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
 
                dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
-            } else if ( strcmp(class_name,"lttng:traffic") == 0 ) {
+            } else if ( std::string(class_name) == "lttng:traffic") {
     
                const bt_field *size_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
                const long size = bt_field_integer_unsigned_get_value(size_field);
@@ -117,7 +115,6 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
     /*Read env variable */
     const std::string display_mode(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "display")));
     const std::string display_name(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "name")));
-
     /* Allocate a private data structure */
     struct tally_dispatch *dispatch = new tally_dispatch;  
 
@@ -153,7 +150,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
 
     if (dispatch->display_compact) {
        print_compact_host(dispatch->host);
-       print_compact_device(dispatch->device);
+       print_compact_device(dispatch->device, dispatch->demangle_name);
        print_compact_traffic(dispatch->traffic);
     } else {
        print_extented_host(dispatch->host);

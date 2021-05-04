@@ -4,7 +4,6 @@
 
 #include <iomanip> // set precision
 #include <iostream> // stdcout
-#include <string.h> // strcmp
 bt_component_class_sink_consume_method_status timeline_dispatch_consume(
         bt_self_component_sink *self_component_sink)
 {
@@ -73,7 +72,7 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
             const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
             const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
-            if (strcmp(class_name,"lttng:host") == 0 ) {
+            if (std::string(class_name) == "lttng:host") {
                 std::cout << "{\"pid\": " <<  "\"" + hostname << "-" << process_id  <<   "\""
                           << ",\"tid\":" <<  thread_id 
                           << std::fixed << std::setprecision(2) << ",\"ts\":" << ts*1.E-3 
@@ -81,7 +80,7 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                           << ",\"name\":" << "\"" << name << "\"" 
                           << ",\"ph\":\"X\""
                           << "}," << std::endl;
-            } else if ( strcmp(class_name,"lttng:device") == 0 ) {
+            } else if ( std::string(class_name) == "lttng:device" )  {
                const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
                const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
  

@@ -33,7 +33,8 @@ libXProf_la_SOURCES = \
 	tally_utils.hpp \
 	timeline.hpp \
 	timeline.h \
-	timeline.cpp
+	timeline.cpp \
+	my_demangle.c
 
 # Compiler flags
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./

@@ -8,8 +8,9 @@
 #include <vector>
 #include <algorithm>
 #include <set>
-
+#include <regex>
 #include "xprof_utils.hpp"
+#include "my_demangle.h"
 
 template <typename T>
 std::string to_string_with_precision(const T a_value, const std::string extension, const int n = 2)
@@ -127,6 +128,19 @@ class <%= n %>: public StatIprof {
                                   /
 %>
 
+thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
+    // C++ don't handle PCRE...
+    const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_[^_]+$");
+    std::smatch base_match;
+    if (std::regex_match(mangle_name, base_match, base_regex)) {
+        if (base_match.size() == 2) {
+          const char* result = my_demangle(base_match[1].str().c_str());          
+          return thapi_function_name{result};    
+    }}
+  
+    return mangle_name;
+};
+
 <% l_menbers = ['function_name', 'time','time_ratio','count','avg','min','max','error'] %>
 <% d_headers = [ ["StatTime","format_time",  [ 'Name', 'Time', 'Time(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ],
                  ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>
@@ -134,7 +148,8 @@ class <%= n %>: public StatIprof {
   <% d_headers.each do | main_type, main_function, l_headers | %>
 void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
                  std::string header, 
-                 unsigned int _print_error= 0) {
+                 unsigned int _print_error = 0,
+                 bool demangle_name = false) {
     <%# print_error = 0 -> Never print error
                     = 1 -> Print only when error
                     >= 2 -> Always print error
@@ -157,7 +172,7 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    if (_print_error == 0)
         print_error = false;
    else if (_print_error == 1)
-    print_error = total_error != 0;
+        print_error = total_error != 0;
    else
         print_error = true;
 
@@ -174,7 +189,11 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
 
 <%# Need to be bigger than the body %>
    for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
-       len_max_function_name =  std::max(len_max_function_name,  element.first.size());
+       if (demangle_name) {
+          len_max_function_name = std::max(len_max_function_name, f_demangle_name(element.first).size());
+       } else {
+          len_max_function_name = std::max(len_max_function_name, element.first.size());
+       }
        const auto [time, time_ratio, count, avg, min, max, error ] = element.second.to_string(total_time);
   <% l_menbers.drop(1).each do |v| %>
        len_max_<%= v %> = std::max(len_max_<%= v %>, <%= v %>.size());
@@ -182,9 +201,17 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    }
 
 <%# Sort the table %>
-   std::vector<std::pair<thapi_function_name,  <%= main_type %> >> array_sorted(aggregated.begin(), aggregated.end());
-   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
+   std::vector<std::pair<thapi_function_name, <%= main_type %> >> array_sorted;
+   for (std::pair<thapi_function_name, <%= main_type %> > element: aggregated) {
+      if (demangle_name) {
+         array_sorted.push_back(std::make_pair(f_demangle_name(element.first), element.second));
+      } else {
+         array_sorted.push_back(element);
+      }
+   }
 
+   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );   
+   
 <%# Print Header %>
 <% l_menbers.zip(l_headers).each do |v, n| %>
     <% if v == "error" %>
@@ -253,7 +280,12 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    ] %>
 
 <% output.each do |main_type, tuple_typle, result,header, error, type, var| %>
-void print_compact_<%= result %>( <%=tuple_typle %>   <%=result%> ){
+   <% if result != 'device' %>
+void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%> ){
+   <% else %>
+void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, bool demangle_name ){
+   <% end %>
+
    <% var.each do |t,n,_ | %>
    std::set<<%= t %>> s_<%= n.gsub(' ','_') %>;
    <% end %>
@@ -299,7 +331,12 @@ void print_compact_<%= result %>( <%=tuple_typle %>   <%=result%> ){
        oss << " | " << s_<%=  n.gsub(' ','_') %>.size() << " <%= n %>";
    <% end %>
    oss << std::endl;
-   print_array(aggregated,oss.str(), <%= error %>);
+<% if result != 'device' %>
+    print_array(aggregated, oss.str(), <%= error %>);
+<% else %>
+    print_array(aggregated, oss.str(), <%= error %>, demangle_name);
+<% end %>
+
    std::cout << std::endl;
 };
 
