@@ -34,7 +34,8 @@ libXProf_la_SOURCES = \
 	timeline.hpp \
 	timeline.h \
 	timeline.cpp \
-	my_demangle.c
+	my_demangle.c \
+	my_demangle.h
 
 # Compiler flags
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
@@ -77,7 +78,6 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	interval_model.yaml \
-	xprof_utils.hpp \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb 
 

@@ -198,7 +198,7 @@ nodist_libzetracepoints_la_SOURCES = \
 libzetracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerZE.la libZEProf.la libZEInterval.la
+lib_LTLIBRARIES = libTracerZE.la libZEInterval.la
 
 nodist_libTracerZE_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
@@ -218,43 +218,6 @@ install-exec-hook:
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
 	-rmdir $(DESTDIR)$(pkglibdir)/ze
-
-ZEPROF = \
-	$(srcdir)/zeprof_callbacks.cpp.erb \
-	$(srcdir)/zeprof_callbacks.h.erb \
-	$(srcdir)/zeprof.c.erb \
-	$(srcdir)/gen_zeprof.rb
-
-zeprof.c: $(ZEPROF) babeltrace_ze_callbacks.h 
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeprof.rb
-
-zeprof_callbacks.cpp zeprof_callbacks.h: zeprof.c
-	@if test -f $@; then \
-	  touch $@; \
-	else \
-	  rm -f zeprof.c; \
-	  $(MAKE) $(AM_MAKEFLAGS) zeprof.c; \
-	fi
-
-CLEANFILES += \
-	zeprof.c \
-	zeprof_callbacks.cpp \
-	zeprof_callbacks.h
-
-nodist_libZEProf_la_SOURCES = \
-	zeprof.c \
-	zeprof_callbacks.cpp \
-	zeprof_callbacks.h \
-	babeltrace_ze_dispatchers.c
-libZEProf_la_SOURCES = \
-	babeltrace_ze.h
-
-libZEProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libZEProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libZEProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libZEProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-EXTRA_DIST += $(ZEPROF)
 
 tmplibdir = $(libdir)/tmp
 tmplib_LTLIBRARIES = libBabeltraceZE.la
@@ -311,7 +274,7 @@ tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
 	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
 
-babeltrace_zeinterval_callbacks.cpp: $(srcdir)/zeinterval_callbacks.cpp.erb $(srcdir)/gen_zeinterval_callbacks.rb ze_events.yaml
+babeltrace_zeinterval_callbacks.cpp: $(srcdir)/zeinterval_callbacks.cpp.erb $(srcdir)/gen_zeinterval_callbacks.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeinterval_callbacks.rb  > $@
 
 babeltrace_zeinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
