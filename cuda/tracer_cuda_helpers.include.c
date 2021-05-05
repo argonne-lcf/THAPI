@@ -185,6 +185,35 @@ static const void * _wrap_and_cache_export_table(const void *pExportTable, const
   return export_table_h->export_table;
 }
 
+static inline void _dump_device_properties() {
+  int count = 0;
+  CUresult res;
+  res = CU_DEVICE_GET_COUNT_PTR(&count);
+  if (res != CUDA_SUCCESS)
+    return;
+  for (int ordinal = 0; ordinal < count; ordinal++) {
+    CUdevice device;
+    CUuuid   uuid;
+    char name[256];
+    res = CU_DEVICE_GET_PTR(&device, ordinal);
+    if (res != CUDA_SUCCESS)
+      continue;
+    res = CU_DEVICE_GET_NAME_PTR(name, 256, device);
+    if (res != CUDA_SUCCESS)
+      continue;
+    res = CU_DEVICE_GET_UUID_PTR(&uuid, device);
+    if (res != CUDA_SUCCESS)
+      continue;
+    do_tracepoint(lttng_ust_cuda_properties, device, ordinal, device, name, &uuid);
+  }
+}
+
+static void _dump_properties() {
+  if (tracepoint_enabled(lttng_ust_cuda_properties, device)) {
+    _dump_device_properties();
+  }
+}
+
 static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** extra) {
   (void)extra;
   size_t argCount;
@@ -396,6 +425,8 @@ static void _load_tracer(void) {
   find_cuda_symbols(handle);
   CU_INIT_PTR(0);
   find_cuda_extensions();
+
+  _dump_properties();
 
   s = getenv("LTTNG_UST_CUDA_PROFILE");
   if (s)

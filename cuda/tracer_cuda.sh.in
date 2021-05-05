@@ -24,6 +24,7 @@ while true; do
     -p | --profiling ) shift; profiling=1; export LTTNG_UST_CUDA_PROFILE=1;;
     -e | --exports   ) shift; exports=1;;
     -v | --visualize ) shift; lttng_view=1;;
+    --properties ) shift; properties=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -54,6 +55,10 @@ fi
 if [ ! -z "$exports" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_exports:*
+fi
+if [ ! -z "$properties" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then
