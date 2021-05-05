@@ -214,7 +214,7 @@ nodist_libcudarttracepoints_la_SOURCES = \
 libcudarttracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libcudarttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la
+lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la libCUDAInterval.la
 
 nodist_libTracerCUDA_la_SOURCES = \
 	$(CUDA_PROBES_INCL) \
@@ -320,3 +320,56 @@ EXTRA_DIST += \
 	$(TEST_FILES)
 
 CLEANFILES += $(CUDA_BINDINGS)
+
+babeltrace_cudainterval_callbacks.cpp: $(srcdir)/cudainterval_callbacks.cpp.erb $(srcdir)/gen_cudainterval_callbacks.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cudainterval_callbacks.rb  > $@
+
+babeltrace_cudainterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
+
+babeltrace_cudainterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
+
+babeltrace_cudainterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="cudainterval" $(top_srcdir)/xprof/interval.h.erb > $@
+
+babeltrace_cudainterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="cudainterval"  $(top_srcdir)/xprof/interval.c.erb > $@
+
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	cp $< $@
+
+xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
+	cp $< $@
+
+BUILT_SOURCES += \
+	$(OPENCL_PROBES_INCL) \
+	babeltrace_cudainterval.h \
+	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval.c \
+	xprof_utils.hpp 
+
+nodist_libCUDAInterval_la_SOURCES = \
+	babeltrace_cudainterval.c \
+	babeltrace_cudainterval.h \
+	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval_dispatchers.c \
+	babeltrace_cudainterval_callbacks.cpp \
+	tracer_cuda.h \
+	xprof_utils.hpp \
+	xprof_utils.cpp
+
+EXTRA_DIST += \
+	gen_cudainterval_callbacks.rb \
+	cudainterval_callbacks.cpp.erb
+
+libCUDAInterval_la_SOURCES = \
+	cudainterval_callbacks.hpp
+
+libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+CLEANFILES += \
+	$(nodist_libCUDAInterval_la_SOURCES)

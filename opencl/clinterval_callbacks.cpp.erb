@@ -158,7 +158,6 @@ static void clinterval_<%= dbt_event.name %>_callback(
        |  | (/_ | | | (_) | \/   (_| (_ (_ (/_ _> _> (/_ _> 
                             /                               
   %>
-
   <%# To do handle Alloc and cl_mem_host_ptr %>
   <%if dbt_event.name_striped.include?("clEnqueue") and dbt_event.fields_name.include?("size") %>
    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",size);
