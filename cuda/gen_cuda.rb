@@ -9,6 +9,7 @@ puts <<EOF
 #include "cuda_args.h"
 #include "cuda_profiling.h"
 #include "cuda_exports.h"
+#include "cuda_properties.h"
 #include "utlist.h"
 #include "uthash.h"
 EOF
