@@ -101,7 +101,8 @@ CUDA_EXTRA_HDR = \
 	$(srcdir)/include/device_types.h \
 	$(srcdir)/include/cuda_device_runtime_api.h \
 	$(srcdir)/include/cuda_runtime_api.h \
-	$(srcdir)/include/vector_types.h
+	$(srcdir)/include/vector_types.h \
+	$(srcdir)/include/cudaVDPAU.h
 CUDA_HDR = \
 	$(srcdir)/include/cuda.h \
 	$(CUDA_EXTRA_HDR)
@@ -115,7 +116,8 @@ MODIFIED_CUDA_EXTRA_HDR = \
 	modified_include/device_types.h \
 	modified_include/cuda_device_runtime_api.h \
 	modified_include/cuda_runtime_api.h \
-	modified_include/vector_types.h
+	modified_include/vector_types.h \
+	modified_include/cudaVDPAU.h
 MODIFIED_CUDA_HDR = \
 	modified_include/cuda.h \
 	$(MODIFIED_CUDA_EXTRA_HDR)

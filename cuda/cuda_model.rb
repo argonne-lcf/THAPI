@@ -36,7 +36,9 @@ all_types.each { |t|
   end
 }
 
-CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject CUmemGenericAllocationHandle)
+CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char
+                      CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject CUmemGenericAllocationHandle
+                      VdpDevice VdpFuncId VdpVideoSurface VdpOutputSurface VdpStatus)
 CUDA_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
 CUDA_FLOAT_SCALARS = %w(float double)
 CUDA_SCALARS = CUDA_INT_SCALARS + CUDA_FLOAT_SCALARS

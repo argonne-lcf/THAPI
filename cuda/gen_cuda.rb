@@ -1,8 +1,6 @@
 require_relative 'cuda_model'
 
 puts <<EOF
-#define __CUDA_API_VERSION_INTERNAL 1
-#include <cuda.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include "cuda_tracepoints.h"

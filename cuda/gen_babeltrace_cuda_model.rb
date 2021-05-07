@@ -32,7 +32,7 @@ $integer_sizes = {
   "CUmemGenericAllocationHandle" => 64,
   "CUstreamCallback" => 64,
   "CUhostFn" => 64,
-  "CUoccupancyB2DSize" => 64
+  "CUoccupancyB2DSize" => 64,
 }
 
 CUDA_ENUM_SCALARS.each { |t|
@@ -74,7 +74,7 @@ $integer_signed = {
   "CUmemGenericAllocationHandle" => false,
   "CUstreamCallback" => false,
   "CUhostFn" => false,
-  "CUoccupancyB2DSize" => false
+  "CUoccupancyB2DSize" => false,
 }
 
 CUDA_ENUM_SCALARS.each { |t|
