@@ -252,15 +252,19 @@ def gen_extra_event_bt_model(provider, event)
 end
 
 event_classes = 
-[[:lttng_ust_cuda, $cuda_commands]].collect { |provider, commands|
+[[:lttng_ust_cuda, $cuda_commands],
+ [:lttng_ust_cuda_exports, $cuda_exports_commands]
+].collect { |provider, commands|
   commands.collect { |c|
     [gen_event_bt_model(provider, c, :start),
     gen_event_bt_model(provider, c, :stop)]
   }
 }.flatten(2)
 
-ze_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
-event_classes += ze_events.collect { |provider, es|
+cuda_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
+event_classes += cuda_events.reject { |provider, _|
+  provider == "lttng_ust_cuda_exports"
+}.collect { |provider, es|
   es["events"].collect { |event|
     gen_extra_event_bt_model(provider, event)
   }

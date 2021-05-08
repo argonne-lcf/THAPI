@@ -13,4 +13,5 @@ typedef VdpStatus  VdpGetProcAddress(
 typedef uint32_t VdpVideoSurface;
 typedef uint32_t VdpOutputSurface;
 #include <cudaVDPAU.h>
+#include "cuda_exports.h.include"
 #endif

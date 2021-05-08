@@ -97,12 +97,16 @@ static const void * _wrap_export_table(const void *pExportTable, const CUuuid *p
   memcpy(puuid, pExportTableId, sizeof(CUuuid));
 
   for(size_t i = 0; i < num_entries; i++) {
-    if (entries[i])
-      _wrap_export(entries[i], (void *)puuid,
-                   sizeof(size_t) + i * sizeof(void*),
-                   new_entries + i,
-                   (void**)((intptr_t)mem + i * WRAPPER_SIZE));
-    else
+    if (entries[i]) {
+      void * wrap;
+      if ((wrap = cuda_extension_dispatcher(pExportTableId, sizeof(size_t) + i * sizeof(void*))))
+        new_entries[i] = wrap;
+      else
+        _wrap_export(entries[i], (void *)puuid,
+                     sizeof(size_t) + i * sizeof(void*),
+                     new_entries + i,
+                     (void**)((intptr_t)mem + i * WRAPPER_SIZE));
+    } else
       new_entries[i] = entries[i];
   }
 
@@ -133,13 +137,14 @@ static const void * _wrap_buggy_export_table(const void *pExportTable, const CUu
   memcpy(puuid, pExportTableId, sizeof(CUuuid));
 
   for(size_t i = 0; i < num_entries; i++) {
-    if (entries[i])
+    void * wrap;
+    if ((wrap = cuda_extension_dispatcher(pExportTableId, i * sizeof(void*))))
+      new_entries[i] = wrap;
+    else
       _wrap_export(entries[i], (void *)puuid,
                    i * sizeof(void*),
                    new_entries + i,
                    (void**)((intptr_t)mem + i * WRAPPER_SIZE));
-    else
-      new_entries[i] = entries[i];
   }
 
   if (mprotect(mem, sz, PROT_READ|PROT_EXEC)) {

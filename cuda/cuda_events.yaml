@@ -51,7 +51,7 @@ lttng_ust_cuda_exports:
     - [ size_t, exportOffset ]
     fields:
     - [ ctf_integer_hex, uintptr_t, pExportTableId, "(uintptr_t)pExportTableId" ]
-    - [ ctf_integer, size_t, exportOffset, exportOffset ]
+    - [ ctf_integer_hex, size_t, exportOffset, exportOffset ]
     - [ ctf_sequence_text, uint8_t, pExportTableId_val, pExportTableId, size_t, "sizeof(CUuuid)" ]
 lttng_ust_cuda_properties:
   events:
