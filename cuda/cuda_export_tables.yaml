@@ -21,4 +21,9 @@
   functions:
   - offset: 0x288
     name: cuDevice_get_primary_context_refcount
-    declaration: "uint cuDevice_get_primary_context_refcount(CUdevice device)"
+    declaration: "unsigned int cuDevice_get_primary_context_refcount(CUdevice device)"
+- uuid: [0x42, 0xd8, 0x5a, 0x81, 0x23, 0xf6, 0xcb, 0x47, 0x82, 0x98, 0xf6, 0xe7, 0x8a, 0x3a, 0xec, 0xdc]
+  functions:
+  - offset: 0x10
+    name: cu_get_thread_context
+    declaration: "CUresult cu_get_thread_context(CUcontext *phContext)"
