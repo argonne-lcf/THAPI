@@ -262,9 +262,7 @@ event_classes =
 }.flatten(2)
 
 cuda_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
-event_classes += cuda_events.reject { |provider, _|
-  provider == "lttng_ust_cuda_exports"
-}.collect { |provider, es|
+event_classes += cuda_events.collect { |provider, es|
   es["events"].collect { |event|
     gen_extra_event_bt_model(provider, event)
   }

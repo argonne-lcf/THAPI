@@ -121,9 +121,7 @@ $cuda_exports_commands.each { |c|
 
 extra_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
 
-extra_events.reject { |provider, _|
-  provider == "lttng_ust_cuda_exports"
-}.each { |provider, h|
+extra_events.each { |provider, h|
   h["events"].each { |e|
     puts <<EOF
 $event_lambdas["#{provider}:#{e["name"]}"] = lambda { |defi|
