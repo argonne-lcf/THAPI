@@ -1,0 +1,4 @@
+---
+meta_parameters:
+  cu_get_thread_context:
+    - [OutScalar, phContext]

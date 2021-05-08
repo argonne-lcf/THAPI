@@ -746,6 +746,12 @@ $cuda_meta_parameters["meta_parameters"].each  { |func, list|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
+$cuda_exports_meta_parameters = YAML::load_file(File.join(SRC_DIR,"cuda_exports_meta_parameters.yaml"))
+$cuda_exports_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
 
 $cuda_commands = cuda_funcs_e.collect { |func|
   Command::new(func)

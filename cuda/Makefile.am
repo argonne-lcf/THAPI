@@ -50,7 +50,8 @@ CLEANFILES = \
 	$(CUDART_PROBES_SRC)
 
 ML_CUDA_FILES = \
-	$(srcdir)/cuda_meta_parameters.yaml
+	$(srcdir)/cuda_meta_parameters.yaml \
+	$(srcdir)/cuda_exports_meta_parameters.yaml
 
 ML_CUDART_FILES = \
 	$(srcdir)/cudart_meta_parameters.yaml
