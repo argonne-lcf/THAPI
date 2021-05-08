@@ -165,7 +165,7 @@ CLEANFILES += \
 
 EXTRA_DIST += \
 	extract_cuda.rb \
-	extract_coda_exports.rb \
+	extract_cuda_exports.rb \
 	extract_cudart.rb
 
 cuda_tracepoints.tp: $(srcdir)/gen_cuda_tracepoints.rb $(CUDA_MODEL) gen_probe_base.rb
@@ -191,6 +191,7 @@ cuda_properties.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
 
 EXTRA_DIST += \
 	gen_cuda_tracepoints.rb \
+	gen_cuda_exports_tracepoints.rb \
 	gen_cudart_tracepoints.rb \
 	gen_probe_base.rb \
 	gen_cuda_custom_probes.rb
