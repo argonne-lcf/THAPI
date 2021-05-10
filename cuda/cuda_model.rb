@@ -60,7 +60,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable/
+INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount/
 
 FFI_TYPE_MAP =  {
  "unsigned char" => "ffi_type_uint8",
