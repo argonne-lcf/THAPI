@@ -386,3 +386,5 @@ cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	chmod a+x $@
 
 bin_SCRIPTS += cuprof.sh
+
+CLEANFILES += cuprof.sh
