@@ -25,8 +25,11 @@ struct clinterval_callbacks_state {
     std::unordered_map<hpt_t, thapi_device_id> start_device;
     std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
     std::unordered_map<hpt_t, fn_ts_t> profiled_function_name_and_ts;
-    std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
 
+    std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
+    std::unordered_map<hp_event_t, thapi_function_name> event_generator;
+
+    std::unordered_map<hpt_t, thapi_function_name> clWaitForEvents_name;
     std::queue<const bt_message*> downstream_message_queue;
 };
 

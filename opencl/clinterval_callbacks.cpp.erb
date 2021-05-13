@@ -143,9 +143,24 @@ static void clinterval_<%= dbt_event.name %>_callback(
    
     <%if dbt_event.name_unsanitized.end_with?(START) %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
+      <% if dbt_event.name_striped == "clWaitForEvents" %>
+    std::stringstream ss;
+    ss << " clWaitForEvents (" ;
+    for (cl_uint i=0; i < num_events; i++)
+        ss << ( i ? "," : "" ) << state->event_generator[hp_event_t(hostname, process_id, event_list_vals[i]) ] ;
+    ss << ")";
+    state->clWaitForEvents_name[hpt_t(hostname,process_id, thread_id)] = ss.str();
+      <% end %>
     <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
+      <% if dbt_event.fields_name.include?("event_val") %>
+    state->event_generator[hp_event_t(hostname, process_id, event_val) ] = "<%= dbt_event.name_striped %>";
+      <% end %>
+
     const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
-      <% if dbt_event.fields_name.include?('errcode_ret_val') %>
+      <% if dbt_event.name_striped == "clWaitForEvents" %>
+         create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id,
+                      state->clWaitForEvents_name[hpt_t(hostname,process_id, thread_id)].c_str(), start_g, ns_from_origin-start_g, 0);
+      <% elsif dbt_event.fields_name.include?('errcode_ret_val') %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, errcode_ret_val);
       <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
