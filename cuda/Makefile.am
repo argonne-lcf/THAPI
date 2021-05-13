@@ -284,6 +284,7 @@ CLEANFILES += \
 nodist_libBabeltraceCUDA_la_SOURCES = \
 	babeltrace_cuda_callbacks.h \
 	babeltrace_cuda_dispatchers.c
+
 libBabeltraceCUDA_la_SOURCES = \
 	babeltrace_cuda.c \
 	babeltrace_cuda.h
@@ -379,3 +380,9 @@ libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 CLEANFILES += \
 	$(nodist_libCUDAInterval_la_SOURCES)
+
+cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
+	$(ERB) -T 1 languages=["cuda"] $(top_builddir)/utils/xprof.sh.erb  > $@
+	chmod a+x $@
+
+bin_SCRIPTS += cuprof.sh

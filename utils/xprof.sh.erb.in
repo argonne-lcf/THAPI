@@ -5,12 +5,14 @@ bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
 
 display_help() {
-<% if languages.include?("opencl") and  languages.include?("ze")%>
+<% if languages.include?("opencl") and languages.include?("ze")%>
     echo "$(basename $0): a tracer / summarizer of OpenCL and L0 calls"
 <% elsif languages.include?("opencl") %>
     echo "$(basename $0): a tracer / summarizer of OpenCL calls"
 <% elsif languages.include?("ze") %>
     echo "$(basename $0): a tracer / summarizer of L0 calls"
+<% elsif languages.include?("cuda") %>
+    echo "$(basename $0): a tracer / summarizer of CUDA calls"
 <% end %>
     echo "Usage:"
     echo " $(basename $0) -h | --help "
@@ -64,6 +66,8 @@ trace_and_summary() {
     lttng $quiet create thapi-opencl-session
 <% elsif languages.include?("ze") %>
     lttng $quiet create thapi-ze-session
+<% elsif languages.include?("cuda") %>
+    lttng $quiet create thapi-cuda-session
 <% end %>
 
     #Using blocking more to trace event record loss
@@ -83,7 +87,11 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
 <% end %>
-
+<% if languages.include?("cuda") %>
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
+<% end %>
     lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
 
     #Preventing trace event record loss
@@ -99,6 +107,12 @@ trace_and_summary() {
       export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
     fi
 <% end %>
+<% if languages.include?("cuda") %>
+    if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
+    then
+      export LTTNG_UST_CUDA_LIBCUDA=$(whichlib libcuda.so | head -n 1)
+    fi
+<% end %>
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
 <% if languages.include?("opencl") %>
@@ -109,7 +123,10 @@ trace_and_summary() {
     export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH 
 <% end %>
-
+<% if languages.include?("cuda") %>
+    export LD_PRELOAD=$libdir/libTracerCuda.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
+<% end %>
     lttng $quiet start
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
     "$@"
@@ -130,6 +147,8 @@ summary() {
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session* | head -1)
 <% elsif languages.include?("ze") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-ze-session* | head -1)
+ <% elsif languages.include?("cuda") %>
+        lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-cuda-session* | head -1)
 <% end %>
         echo "Trace location:" $lttng_last_session
         echo
@@ -154,6 +173,9 @@ summary() {
 <% if languages.include?("ze") %>
         $bindir/babeltrace_ze $lttng_last_session | grep --binary-files=text lttng_ust_ze
 <% end %>
+<% if languages.include?("cuda") %>
+        $bindir/babeltrace_cuda $lttng_last_session | grep --binary-files=text lttng_ust_cuda
+<% end %>
     fi
 
     if [ -n "$timeline" ]; then
@@ -171,7 +193,14 @@ summary() {
                 --component=filter.zeinterval.interval \
                 --component=sink.xprof.timeline > timeline_ze.json
 <% end %>
-    fi
+<% if languages.include?("cuda") %>
+    echo "Generating timeline_cuda.json"
+    babeltrace2 --plugin-path=$libdir \
+                ${lttng_last_session} \
+                --component=filter.cudainterval.interval \
+                --component=sink.xprof.timeline > timeline_cuda.json
+<% end %>
+   fi
 
 <% if languages.include?("opencl") %>
     ocl_output=$(babeltrace2 --plugin-path=$libdir \
@@ -191,6 +220,16 @@ summary() {
     if [ -n "$ze_output" ]; then
         echo "== Level0 == "
         echo "$ze_output"
+    fi
+<% end %>
+<% if languages.include?("cuda") %>
+    cuda_output=$(babeltrace2 --plugin-path=$libdir \
+                              ${lttng_last_session} \
+                              --component=filter.cudainterval.interval \
+                              --component=sink.xprof.tally --params="display=$display,name=demangle")
+    if [ -n "$cuda_output" ]; then
+        echo "== CUDA == "
+        echo "$cuda_output"
     fi
 <% end %>
 }

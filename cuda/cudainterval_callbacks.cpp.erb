@@ -144,6 +144,72 @@ static void cudainterval_<%= dbt_event.name %>_callback(
   <% end %>
 
   <%#
+    _         _                    _                                   __          _
+   |_) ._ _ _|_ o | o ._   _  o   | \  _     o  _  _     _. ._   _|   (_      |_  | \  _     o  _  _
+   |   | (_) |  | | | | | (_| o   |_/ (/_ \/ | (_ (/_   (_| | | (_|   __) |_| |_) |_/ (/_ \/ | (_ (/_
+                           _|
+   Map [ Tuple [ Hostnane, process, stream ], device ]
+  %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_cuda_properties:device" %>
+    const hostname_t   _hostname   = borrow_hostname(bt_evt);
+    const process_id_t _process_id = borrow_process_id(bt_evt);
+    cudainterval_callbacks_state* _state = (cudainterval_callbacks_state*) cudainterval_iter_g->callbacks_state;
+    _state->device_to_name[hp_device_t(_hostname, _process_id, device)] = std::string{name} ;
+  <% end %>     
+  <% if dbt_event.name_unsanitized == "lttng_ust_cuda:cuCtxSetCurrent_#{START}" %>
+    if (!_state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].empty())
+       _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].pop();
+    _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].push(ctx);
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_cuda:cuCtxPushCurrent_#{START}" %>
+    _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].push(ctx);
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_cuda:cuCtxPopCurrent_#{START}" %>
+    if (!_state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].empty())
+      _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].pop();
+  <% end %>
+
+  <% if dbt_event.name_unsanitized.end_with?(STOP) and dbt_event.name_unsanitized.match(/cuStreamCreate/) %>
+    _state->stream_to_context[hp_stream_t(_hostname,_process_id,phStream_val)] = _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].top();
+ <%end%>
+
+  <% if dbt_event.name_unsanitized == "lttng_ust_cuda:cuDevicePrimaryCtxRetain_#{START}" %>
+    _state->last_device[hpt_t(_hostname,_process_id,_thread_id)] = dev; 
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_cuda:cuDevicePrimaryCtxRetain_#{STOP}" %>
+    if (cuResult != CUDA_SUCCESS)
+       _state->context_to_device[hp_context_t(_hostname,_process_id, pctx_val) ] = _state->last_device[hpt_t(_hostname,_process_id,_thread_id)]; 
+  <% end %>
+
+  <%#
+    _         _                    _
+   |_) ._ _ _|_ o | o ._   _  o   |_    ._   _ _|_ o  _  ._    ._   _. ._ _   _
+   |   | (_) |  | | | | | (_| o   | |_| | | (_  |_ | (_) | |   | | (_| | | | (/_
+                           _|
+   Map [ Tuple [ Hostnane, process, thread, function_name], Tuple [ device, subdevice] ]
+  %>
+  <%# Save kernel name %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_cuda:cuModuleGetFunction_#{START}" %>
+    _state->last_kernel[hpt_t(_hostname,_process_id,_thread_id)] = std::string{name_val};
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_cuda:cuModuleGetFunction_#{STOP}" %>
+    _state->kernel_to_name[hp_kernel_t(_hostname,_process_id,hfunc_val)] = _state->last_kernel[hpt_t(_hostname,_process_id,_thread_id)];
+  <% end %>
+  
+  <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.name_unsanitized.match(/cuMemcpy|cuMemset|cuLaunch|cuMemPrefetch/) %>
+     <%if dbt_event.fields_name.include?('f') %>
+    const thapi_function_name _name = _state->kernel_to_name[hp_kernel_t(_hostname,_process_id,f)];
+     <% else %> 
+    constexpr char _name[] = "<%= dbt_event.name_striped %>";
+     <% end %>
+    _state->profiled_function_name_and_ts[hpt_t(_hostname,_process_id,_thread_id)] = fn_ts_t(_name,_ns_from_origin);
+
+    <% if dbt_event.fields_name.include?('hStream') %>
+    CUcontext _ctx = hStream ? _state->stream_to_context[hp_stream_t(_hostname,_process_id,hStream)] : _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].top();
+    <% else %>
+    CUcontext _ctx = _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].top();
+    <% end %>
+    CUdevice _device = _state->context_to_device[hp_context_t(_hostname,_process_id, _ctx) ];
+    _state->function_name_to_d[hpt_function_name_t(_hostname,_process_id,_thread_id, _name)] = _device;
+  <% end %>
+
+  <%#
     _         _                    _                        ___
    |_) ._ _ _|_ o | o ._   _  o   |_ |  _. ._   _  _   _|    | o ._ _   _   _
    |   | (_) |  | | | | | (_| o   |_ | (_| |_) _> (/_ (_|    | | | | | (/_ _>
@@ -159,10 +225,10 @@ static void cudainterval_<%= dbt_event.name %>_callback(
     const hp_event_t _hp_event{_hostname, _process_id, hStart, hStop};
     const auto [_function_name, _ts] = _state->profiled_function_name_and_ts[hpt_t(_hostname, _process_id, _thread_id)];
     if (!_state->event_to_function_name_and_ts.count(_hp_event)){
-        _state->event_to_function_name_and_ts[_hp_event] = tfn_ts_t(_thread_id, _function_name, _ts);
+       _state->event_to_function_name_and_ts[_hp_event] = tfn_ts_t(_thread_id, _function_name, _ts);
     } else {
-       const auto [_start, _delta] = _state->event_result_to_start_and_delta[_hp_event];
-       const auto _device = _state->function_name_to_d[hpt_function_name_t(_hostname,_process_id,_thread_id, _function_name)];
+      const auto [_start, _delta] = _state->event_result_to_start_and_delta[_hp_event];
+      const auto _device = _state->function_name_to_d[hpt_function_name_t(_hostname,_process_id,_thread_id, _function_name)];
       create_and_enqueue_device_message(_hostname.c_str(),_process_id,_thread_id,_device,_device,_function_name.c_str(), _start, _delta, _delta == 0 );
    }
 

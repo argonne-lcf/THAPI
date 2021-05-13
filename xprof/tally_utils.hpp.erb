@@ -129,16 +129,19 @@ class <%= n %>: public StatIprof {
 %>
 
 thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
-    // C++ don't handle PCRE...
-    const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_[^_]+$");
-    std::smatch base_match;
-    if (std::regex_match(mangle_name, base_match, base_regex)) {
-        if (base_match.size() == 2) {
-          const char* result = my_demangle(base_match[1].str().c_str());          
-          return thapi_function_name{result};    
-    }}
-  
-    return mangle_name;
+   const char* result = mangle_name.c_str();
+
+   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
+   const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_[^_]+$");
+   std::smatch base_match;
+   if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 2)
+      result = base_match[1].str().c_str();
+
+   const char* demangle = my_demangle(result);
+   if (demangle)
+      return thapi_function_name{demangle};
+   else
+      return mangle_name;
 };
 
 <% l_menbers = ['function_name', 'time','time_ratio','count','avg','min','max','error'] %>
