@@ -23,7 +23,20 @@
 
 <%# Should pass device_to_timerResolution_kernelTimestampValidBits %>
 static inline uint64_t born_timing_to_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t end) {
-    const auto [timerResolution,kernelTimestampValidBits] =  state->device_to_timerResolution_kernelTimestampValidBits[hp_device];
+    static bool is_ns = true;
+    uint64_t timerResolution = 1;
+    uint64_t kernelTimestampValidBits = 64;
+    if (state->device_to_timerResolution_kernelTimestampValidBits.count(hp_device) == 0) {
+        if (is_ns) {
+            std::cerr << "No timerResolution have been found for a device."
+                      << "Data will be displayed as cycle" << std::endl;
+            is_ns = false;
+        }
+    } else {
+        const auto [timerResolution_,kernelTimestampValidBits_] = state->device_to_timerResolution_kernelTimestampValidBits[hp_device];
+        timerResolution = timerResolution_;
+        kernelTimestampValidBits = kernelTimestampValidBits_;
+    }
     if (end >= start) {
         return (end - start) * timerResolution;
     } else {
@@ -279,7 +292,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
       const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
       const uint64_t delta = born_timing_to_ns(state, hp_device_t(hostname,process_id, device),contextStart,contextEnd);
       
-      const uint64_t start = ts + (globalStart - contextStart);
+      const uint64_t start = ts + (contextStart - globalStart);
       create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
 
       state->event_to_function_name_and_ts.erase(hp_event);
@@ -292,7 +305,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
 
      const hp_device_t hp_device{hostname, process_id, device};
      //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
-     const uint64_t start = ts + (globalStart - contextStart);
+     const uint64_t start = ts + (contextStart - globalStart);
      const uint64_t delta = born_timing_to_ns(state, hp_device, contextStart,contextEnd);
      state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
      state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);

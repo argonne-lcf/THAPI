@@ -333,7 +333,8 @@ CLEANFILES += \
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
-	tests/interval_API_call.dust
+	tests/interval_API_call.dust \
+	tests/interval_profiling_normal.dust
 
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
@@ -343,7 +344,9 @@ nodist_libZEInterval_la_SOURCES+= \
 
 TRACE_FILES = \
 	tests/API_call.yaml \
-	tests/interval_API_call.yaml
+	tests/profiling_normal.yaml \
+	tests/interval_API_call.yaml \
+	tests/interval_profiling_normal.yaml 
 
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
