@@ -229,9 +229,9 @@ static void clinterval_<%= dbt_event.name %>_callback(
     const thapi_device_id device = state->start_device[hpt_t(hostname,process_id, thread_id) ];
     const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
     if (root_device != 0) {
-        state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(root_device, device) ;
+        state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] = dsd_t(root_device, device) ;
     } else { 
-        state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] =   dsd_t(device, 0) ;
+        state->command_queue_to_device[hp_command_queue_t(hostname,process_id,command_queue)] = dsd_t(device, 0) ;
     }
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_devices:device_name" %>
     const hostname_t hostname{ borrow_hostname(bt_evt)};
