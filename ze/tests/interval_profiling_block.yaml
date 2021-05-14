@@ -1,0 +1,31 @@
+:default_stream: stream0
+:stream_classes:
+- :name: interval_class
+  :schemas:
+  - thapi_interval
+  :common_context:
+  - :name: hostname
+    :class: string
+  - :name: vpid
+    :class: signed
+  - :name: vtid
+    :class: unsigned
+  - :name: ts
+    :class: unsigned
+:streams:
+- :name: stream0
+  :class: interval_class
+:events:
+- :name: lttng:device
+  :common_context:
+    hostname: aurora12.gov
+    ts: 2
+  :payload:
+    name: zeCommandListAppendBarrier
+    dur: 8
+- :name: lttng:host
+  :common_context:
+    hostname: aurora12.gov
+  :payload:
+    name: zeCommandListAppendBarrier
+    dur: 3
