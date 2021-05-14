@@ -23,7 +23,6 @@
   :payload:
     name: clEnqueueSVMFree
     dur: 4
-
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
@@ -31,7 +30,6 @@
   :payload:
     name: clEnqueueSVMFree
     dur: 4
-
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
@@ -39,7 +37,6 @@
   :payload:
     name: clEnqueueSVMFree
     dur: 10
-
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
