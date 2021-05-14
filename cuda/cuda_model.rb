@@ -123,6 +123,12 @@ module YAMLCAst
     end
   end
 
+  class Void
+    def lttng_type
+      nil
+    end
+  end
+
   class Int
     def lttng_type
       ev = LTTng::TracepointField::new
