@@ -32,7 +32,7 @@ $integer_sizes = {
   "CUmemGenericAllocationHandle" => 64,
   "CUstreamCallback" => 64,
   "CUhostFn" => 64,
-  "CUoccupancyB2DSize" => 64
+  "CUoccupancyB2DSize" => 64,
 }
 
 CUDA_ENUM_SCALARS.each { |t|
@@ -74,7 +74,7 @@ $integer_signed = {
   "CUmemGenericAllocationHandle" => false,
   "CUstreamCallback" => false,
   "CUhostFn" => false,
-  "CUoccupancyB2DSize" => false
+  "CUoccupancyB2DSize" => false,
 }
 
 CUDA_ENUM_SCALARS.each { |t|
@@ -252,15 +252,17 @@ def gen_extra_event_bt_model(provider, event)
 end
 
 event_classes = 
-[[:lttng_ust_cuda, $cuda_commands]].collect { |provider, commands|
+[[:lttng_ust_cuda, $cuda_commands],
+ [:lttng_ust_cuda_exports, $cuda_exports_commands]
+].collect { |provider, commands|
   commands.collect { |c|
     [gen_event_bt_model(provider, c, :start),
     gen_event_bt_model(provider, c, :stop)]
   }
 }.flatten(2)
 
-ze_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
-event_classes += ze_events.collect { |provider, es|
+cuda_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
+event_classes += cuda_events.collect { |provider, es|
   es["events"].collect { |event|
     gen_extra_event_bt_model(provider, event)
   }

@@ -112,6 +112,13 @@ $cuda_commands.each { |c|
   gen_event_lambda.call(provider, c, :stop)
 }
 
+provider = :lttng_ust_cuda_exports
+
+$cuda_exports_commands.each { |c|
+  gen_event_lambda.call(provider, c, :start)
+  gen_event_lambda.call(provider, c, :stop)
+}
+
 extra_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
 
 extra_events.each { |provider, h|

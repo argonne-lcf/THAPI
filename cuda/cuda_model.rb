@@ -19,15 +19,19 @@ LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 provider = :lttng_ust_cuda
 
 $cuda_api_yaml = YAML::load_file("cuda_api.yaml")
+$cuda_exports_api_yaml = YAML::load_file("cuda_exports_api.yaml")
 
 $cuda_api = YAMLCAst.from_yaml_ast($cuda_api_yaml)
+$cuda_exports_api = YAMLCAst.from_yaml_ast($cuda_exports_api_yaml)
 
 cuda_funcs_e = $cuda_api["functions"]
+cuda_exports_funcs_e = $cuda_exports_api["functions"]
 
 cuda_types_e = $cuda_api["typedefs"]
+cuda_exports_type_e = $cuda_exports_api["typedefs"]
 
-all_types = cuda_types_e
-all_structs = $cuda_api["structs"]
+all_types = cuda_types_e + cuda_exports_type_e
+all_structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
 
 CUDA_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
@@ -36,7 +40,9 @@ all_types.each { |t|
   end
 }
 
-CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject CUmemGenericAllocationHandle)
+CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char
+                      CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject CUmemGenericAllocationHandle
+                      VdpDevice VdpFuncId VdpVideoSurface VdpOutputSurface VdpStatus)
 CUDA_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
 CUDA_FLOAT_SCALARS = %w(float double)
 CUDA_SCALARS = CUDA_INT_SCALARS + CUDA_FLOAT_SCALARS
@@ -54,7 +60,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable/
+INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount/
 
 FFI_TYPE_MAP =  {
  "unsigned char" => "ffi_type_uint8",
@@ -114,6 +120,12 @@ module YAMLCAst
   class Type
     def lttng_type
       raise "Unsupported type #{self}!"
+    end
+  end
+
+  class Void
+    def lttng_type
+      nil
     end
   end
 
@@ -740,8 +752,18 @@ $cuda_meta_parameters["meta_parameters"].each  { |func, list|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
+$cuda_exports_meta_parameters = YAML::load_file(File.join(SRC_DIR,"cuda_exports_meta_parameters.yaml"))
+$cuda_exports_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
 
 $cuda_commands = cuda_funcs_e.collect { |func|
+  Command::new(func)
+}
+
+$cuda_exports_commands = cuda_exports_funcs_e.collect { |func|
   Command::new(func)
 }
 
@@ -749,7 +771,8 @@ def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-CUDA_POINTER_NAMES = $cuda_commands.collect { |c|
+CUDA_POINTER_NAMES = ($cuda_commands +
+                      $cuda_exports_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 

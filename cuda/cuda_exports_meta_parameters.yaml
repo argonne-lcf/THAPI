@@ -1,0 +1,23 @@
+---
+meta_parameters:
+  cu_get_thread_context:
+    - [OutScalar, phContext]
+  cu_a094798c_08:
+    - [InScalar, b]
+    - [OutScalar, b]
+  cu_a094798c_10:
+    - [OutScalar, a]
+    - [OutScalar, b]
+  cu_a094798c_18:
+    - [OutScalar, b]
+  cu_a094798c_20:
+    - [OutScalar, b]
+  cu_a094798c_30:
+    - [OutScalar, a]
+    - [OutScalar, b]
+  cuContext_kvstore_get:
+    - [OutScalar, value]
+  cu_get_primary_context:
+    - [OutScalar, phContext]
+  cu_register_module:
+    - [OutScalar, phModule]

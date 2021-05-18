@@ -1,24 +1,23 @@
 require_relative 'cuda_model'
 
 puts <<EOF
-#define __CUDA_API_VERSION_INTERNAL 1
-#include <cuda.h>
 #include <pthread.h>
 #include <sys/mman.h>
+#include <string.h>
 #include "cuda_tracepoints.h"
+#include "cuda_exports_tracepoints.h"
 #include "cuda_args.h"
 #include "cuda_profiling.h"
-#include "cuda_exports.h"
 #include "cuda_properties.h"
 #include "utlist.h"
 #include "uthash.h"
 EOF
 
-$cuda_commands.each { |c|
+($cuda_commands + $cuda_exports_commands).each { |c|
   puts "#define #{CUDA_POINTER_NAMES[c]} #{c.pointer_name}"
 }
 
-$cuda_commands.each { |c|
+($cuda_commands + $cuda_exports_commands).each { |c|
   puts <<EOF
 
 #{c.decl_pointer(c.pointer_type_name)};
@@ -47,26 +46,9 @@ EOF
 
 export_tables = YAML::load_file(File.join(SRC_DIR,"cuda_export_tables.yaml"))
 
-export_tables.each { |table|
-  if table["structures"]
-    table["structures"].each { |struct|
-      puts <<EOF
-typedef #{struct["declaration"].chomp} #{struct["name"]};
-
-EOF
-    }
-  end
-  table["functions"].each { |func|
-    puts <<EOF
-#define #{upper_snake_case(func["name"]+"_ptr")} #{func["name"]+"_ptr"}
-typedef #{func["declaration"].sub(func["name"], "(*"+func["name"]+"_t)")};
-static #{func["name"]}_t #{upper_snake_case(func["name"]+"_ptr")} = (void *) 0x0;
-
-EOF
-  }
-}
-
 puts <<EOF
+static void * cuda_extension_dispatcher(const CUuuid *uuid, size_t offset);
+
 static void find_cuda_extensions() {
 
 EOF
@@ -173,3 +155,40 @@ EOF
 $cuda_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_cuda)
 }
+
+$cuda_exports_commands.each { |c|
+  c.function.instance_variable_set(:@storage, "static")
+  normal_wrapper.call(c, :lttng_ust_cuda_exports)
+}
+
+puts <<EOF
+
+static void * cuda_extension_dispatcher(const CUuuid *uuid, size_t offset) {
+EOF
+
+export_tables.each { |table|
+puts <<EOF
+  {
+    CUuuid ref = {{ #{table["uuid"].collect{|e| "0x" << e.to_s(16)}.join(", ")} }};
+    if (!memcmp(uuid, &ref, sizeof(CUuuid))) {
+      switch(offset) {
+EOF
+    table["functions"].each { |func|
+puts <<EOF
+      case 0x#{func["offset"].to_s(16)}:
+        return &#{func["name"]};
+EOF
+    }
+puts <<EOF
+      default:
+        return NULL;
+      }
+    }
+  }
+EOF
+}
+
+puts <<EOF
+  return NULL;
+}
+EOF

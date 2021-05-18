@@ -21,4 +21,51 @@
   functions:
   - offset: 0x288
     name: cuDevice_get_primary_context_refcount
-    declaration: "uint cuDevice_get_primary_context_refcount(CUdevice device)"
+    declaration: "unsigned int cuDevice_get_primary_context_refcount(CUdevice device)"
+- uuid: [0x42, 0xd8, 0x5a, 0x81, 0x23, 0xf6, 0xcb, 0x47, 0x82, 0x98, 0xf6, 0xe7, 0x8a, 0x3a, 0xec, 0xdc]
+  functions:
+  - offset: 0x10
+    name: cu_get_thread_context
+    declaration: "CUresult cu_get_thread_context(CUcontext *phContext)"
+- uuid: [0xa0, 0x94, 0x79, 0x8c, 0x2e, 0x74, 0x2e, 0x74, 0x93, 0xf2, 0x08, 0x00, 0x20, 0x0c, 0x0a, 0x66]
+  functions:
+  - offset: 0x8
+    name: cu_a094798c_08
+    declaration: "CUresult cu_a094798c_08(unsigned int a, void **b)"
+  - offset: 0x10
+    name: cu_a094798c_10
+    declaration: "void cu_a094798c_10(void **a, size_t *b)"
+  - offset: 0x18
+    name: cu_a094798c_18
+    declaration: "CUresult cu_a094798c_18(CUcontext hContext, void *a, void **b)"
+  - offset: 0x20
+    name: cu_a094798c_20
+    declaration: "CUresult cu_a094798c_20(CUcontext hContext, uint64_t *b)"
+  - offset: 0x28
+    name: cu_a094798c_28
+    declaration: "CUresult cu_a094798c_28(unsigned int a, void *b)"
+  - offset: 0x30
+    name: cu_a094798c_30
+    declaration: "void cu_a094798c_30(void **a, size_t *b)"
+- uuid: [0xc6, 0x93, 0x33, 0x6e, 0x11, 0x21, 0xdf, 0x11, 0xa8, 0xc3, 0x68, 0xf3, 0x55, 0xd8, 0x95, 0x93]
+  functions:
+  - offset: 0x0
+    name: cuContext_kvstore_add
+    declaration: "CUresult cuContext_kvstore_add(CUcontext hContext, void *handle, void* value, void *unknown)"
+  - offset: 0x8
+    name: cuContext_kvstore_delete
+    declaration: "CUresult cuContext_kvstore_delete(CUcontext hContext, void *handle)"
+  - offset: 0x10
+    name: cuContext_kvstore_get
+    declaration: "CUresult cuContext_kvstore_get(void **value, CUcontext hContext, void *handle)"
+- uuid: [0x6b, 0xd5, 0xfb, 0x6c, 0x5b, 0xf4, 0xe7, 0x4a, 0x89, 0x87, 0xd9, 0x39, 0x12, 0xfd, 0x9d, 0xf9]
+  functions:
+  - offset: 0x10
+    name: cu_get_primary_context
+    declaration: "CUresult cu_get_primary_context(CUcontext *phContext, unsigned int ordinal)"
+  - offset: 0x30
+    name: cu_register_module
+    declaration: "CUresult cu_register_module(CUmodule* phModule, int* fatBinary, void *a, void *b, unsigned int ordinal)"
+  - offset: 0x38
+    name: cu_unregister_module
+    declaration: "void cu_unregister_module(int *fatBinary)"
