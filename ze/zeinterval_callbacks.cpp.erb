@@ -57,7 +57,7 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      /* Message creation */
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
                             zeinterval_iter_g->dispatch->host_event_class,
-                            self_message_iterator_g,
+                            zeinterval_self_message_iterator_g,
                             zeinterval_iter_g->dispatch->stream);
 
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
@@ -71,7 +71,7 @@ void create_and_enqueue_device_message(const char* hostname, const process_id_t 
      /* Message creation */
      bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err,
                             zeinterval_iter_g->dispatch->device_event_class,
-                            self_message_iterator_g,
+                            zeinterval_self_message_iterator_g,
                             zeinterval_iter_g->dispatch->stream);
 
 
@@ -86,7 +86,7 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
      /* Message creation */
      bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
                                                   zeinterval_iter_g->dispatch->traffic_event_class,
-                                                  self_message_iterator_g,
+                                                  zeinterval_self_message_iterator_g,
                                                   zeinterval_iter_g->dispatch->stream);
 
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
@@ -100,19 +100,19 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
 
 %>
 
-bool downstream_message_queue_empty(struct zeinterval_message_iterator *interval_dispatch_iter)
+bool zeinterval_downstream_message_queue_empty(struct zeinterval_message_iterator *interval_dispatch_iter)
 {
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
     return state->downstream_message_queue.empty();
 }
 
-size_t downstream_message_queue_size(struct zeinterval_message_iterator *interval_dispatch_iter)
+size_t zeinterval_downstream_message_queue_size(struct zeinterval_message_iterator *interval_dispatch_iter)
 {
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     return state->downstream_message_queue.size();
 }
 
-const bt_message* downstream_message_queue_pop(struct zeinterval_message_iterator *interval_dispatch_iter)
+const bt_message* zeinterval_downstream_message_queue_pop(struct zeinterval_message_iterator *interval_dispatch_iter)
 {
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
     const bt_message* m = state->downstream_message_queue.front();
@@ -120,6 +120,11 @@ const bt_message* downstream_message_queue_pop(struct zeinterval_message_iterato
     return m;
 }
 
+void zeinterval_downstream_message_queue_push(struct zeinterval_message_iterator *interval_dispatch_iter, const bt_message *message)
+{
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    state->downstream_message_queue.push(message);
+}
 
 <%#
   _

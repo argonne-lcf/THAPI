@@ -9,7 +9,7 @@
 // Global variable used to path some handle from the 
 // <%= namespace %>_dispatch_message_iterator_next to the callbacks
 struct <%= namespace %>_message_iterator *<%= namespace %>_iter_g = NULL;
-bt_self_message_iterator *self_message_iterator_g = NULL;
+bt_self_message_iterator *<%= namespace %>_self_message_iterator_g = NULL;
 
 static
 struct <%= namespace %>_event_callbacks * opencl_create_event_callbacks(const char *name) {
@@ -383,7 +383,7 @@ bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_i
 
     /* Set global variable */
     <%= namespace %>_iter_g = dispatch_iter;
-    self_message_iterator_g = self_message_iterator;
+    <%= namespace %>_self_message_iterator_g = self_message_iterator;
 
 consume_upstream_messages:
 
@@ -394,7 +394,7 @@ consume_upstream_messages:
     bt_message_iterator_class_next_method_status status =
         BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_OK;
      
-    if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && downstream_message_queue_empty(dispatch_iter) ) {
+    if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && <%= namespace %>_downstream_message_queue_empty(dispatch_iter) ) {
        bt_message_iterator_put_ref(dispatch_iter->message_iterator);
        status = BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_END;
        goto end;
@@ -415,8 +415,7 @@ consume_upstream_messages:
     }
 
     /* For each consumed message */
-    for (uint64_t upstream_i = 0; upstream_i < upstream_message_count;
-            upstream_i++) {
+    for (uint64_t upstream_i = 0; upstream_i < upstream_message_count; upstream_i++) {
         /* Current message */
         const bt_message *upstream_message = upstream_messages[upstream_i];
 
@@ -430,7 +429,7 @@ consume_upstream_messages:
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
                 callbacks = (struct <%= namespace %>_callbacks *)calloc(1, sizeof(struct <%= namespace %>_callbacks) + class_name_sz + 1);
-                callbacks->name = (const char *)callbacks + class_name_sz;
+                callbacks->name = (const char *)callbacks + sizeof(struct <%= namespace %>_callbacks);
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
                 HASH_ADD_KEYPTR(hh, dispatch_iter->dispatch->callbacks, class_name, class_name_sz, callbacks);
                 struct <%= namespace %>_event_callbacks *event_callbacks = NULL;
@@ -441,14 +440,17 @@ consume_upstream_messages:
                 }
             }
             if (callbacks->dispatcher) {
-                // Will add message to `downstream_message_queue` global variable.
+                // Will add new messages to `downstream_message_queue` variable.
                 callbacks->dispatcher(dispatch_iter->dispatch, callbacks, event, bt_message_event_borrow_default_clock_snapshot_const(upstream_message));
+                bt_message_put_ref(upstream_message);
+            } else {
+               // Will forward the message as is to `downstream_message_queue` variable.
+               <%= namespace %>_downstream_message_queue_push(dispatch_iter, upstream_message);
             }
         }
         /* Discard upstream message: put its reference */
-       bt_message_put_ref(upstream_message);
     }
-    if ( downstream_message_queue_empty(dispatch_iter) ) {
+    if ( <%= namespace %>_downstream_message_queue_empty(dispatch_iter) ) {
         /*
          * We discarded all the upstream messages: get a new batch of
          * messages, because this method _cannot_ return
@@ -461,10 +463,10 @@ consume_upstream_messages:
    /*
     * Pop the maximun number of message allowed to be sended downstream
     */
-    const uint64_t N = downstream_message_queue_size(dispatch_iter);
+    const uint64_t N = <%= namespace %>_downstream_message_queue_size(dispatch_iter);
     const uint64_t N_message_to_send = capacity < N ? capacity : N;
     for (uint64_t i = 0; i < N_message_to_send; i++) {
-        messages[i] = downstream_message_queue_pop(dispatch_iter);
+        messages[i] = <%= namespace %>_downstream_message_queue_pop(dispatch_iter);
     }
     *count = N_message_to_send;
 end:

@@ -29,7 +29,7 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      /* Message creation */
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err, 
                                                clinterval_iter_g->dispatch->host_event_class,
-                                               self_message_iterator_g,
+                                               clinterval_self_message_iterator_g,
                                                clinterval_iter_g->dispatch->stream);
 
      clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
@@ -43,7 +43,7 @@ static void create_and_enqueue_device_message(const char* hostname, const proces
      /* Message creation */
      bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err,
                                                  clinterval_iter_g->dispatch->device_event_class,
-                                                 self_message_iterator_g,
+                                                 clinterval_self_message_iterator_g,
                                                  clinterval_iter_g->dispatch->stream);
  
      /* Set message */
@@ -58,7 +58,7 @@ static void create_and_enqueue_device_name_message(const char* hostname, const p
      /* Message creation */
      bt_message *message = create_device_name_message(hostname, process_id, device_id, name,
                                                       clinterval_iter_g->dispatch->device_name_event_class,
-                                                      self_message_iterator_g,
+                                                      clinterval_self_message_iterator_g,
                                                       clinterval_iter_g->dispatch->stream);
 
      /* Set message */
@@ -73,7 +73,7 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
      /* Message creation */
      bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
                                                   clinterval_iter_g->dispatch->traffic_event_class,
-                                                  self_message_iterator_g,
+                                                  clinterval_self_message_iterator_g,
                                                   clinterval_iter_g->dispatch->stream);
 
      clinterval_callbacks_state* state = (clinterval_callbacks_state*) clinterval_iter_g->callbacks_state;
@@ -89,24 +89,30 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
                                                                              
 %>
 
-bool downstream_message_queue_empty(struct clinterval_message_iterator *interval_dispatch_iter)
+bool clinterval_downstream_message_queue_empty(struct clinterval_message_iterator *interval_dispatch_iter)
 {
     clinterval_callbacks_state* state = (clinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     return state->downstream_message_queue.empty();
 }
 
-size_t downstream_message_queue_size(struct clinterval_message_iterator *interval_dispatch_iter)
+size_t clinterval_downstream_message_queue_size(struct clinterval_message_iterator *interval_dispatch_iter)
 {
     clinterval_callbacks_state* state = (clinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     return state->downstream_message_queue.size();
 }
 
-const bt_message* downstream_message_queue_pop(struct clinterval_message_iterator *interval_dispatch_iter)
+const bt_message* clinterval_downstream_message_queue_pop(struct clinterval_message_iterator *interval_dispatch_iter)
 {
     clinterval_callbacks_state* state = (clinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
     const bt_message* m = state->downstream_message_queue.front();
     state->downstream_message_queue.pop();
     return m;
+}
+
+void clinterval_downstream_message_queue_push(struct clinterval_message_iterator *interval_dispatch_iter, const bt_message *message)
+{
+    clinterval_callbacks_state* state = (clinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    state->downstream_message_queue.push(message);
 }
 
 <%#

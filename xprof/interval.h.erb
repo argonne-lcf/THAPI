@@ -78,14 +78,15 @@ extern void init_<%= namespace %>_callbacks(struct <%= namespace %>_dispatch*);
 extern void* init_<%= namespace %>_callbacks_state();
 
 /* Implemented in <%= namespace %>_callbacks.cpp.erb */
-bool downstream_message_queue_empty(struct <%= namespace %>_message_iterator*);
-size_t downstream_message_queue_size(struct <%= namespace %>_message_iterator*);
-const bt_message * downstream_message_queue_pop(struct <%= namespace %>_message_iterator*);
+bool <%= namespace %>_downstream_message_queue_empty(struct <%= namespace %>_message_iterator*);
+size_t <%= namespace %>_downstream_message_queue_size(struct <%= namespace %>_message_iterator*);
+const bt_message * <%= namespace %>_downstream_message_queue_pop(struct <%= namespace %>_message_iterator*);
+void <%= namespace %>_downstream_message_queue_push(struct <%= namespace %>_message_iterator*, const bt_message*);
 
 // Global state for the downstream message
 // If we want to get rid of them, need to update the dispatcher signature
 extern struct <%= namespace %>_message_iterator *<%= namespace %>_iter_g;
-extern bt_self_message_iterator *self_message_iterator_g;
+extern bt_self_message_iterator *<%= namespace %>_self_message_iterator_g;
 
 // Symbol used by clprof.c
 extern

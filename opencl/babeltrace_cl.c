@@ -168,7 +168,7 @@ bt_component_class_sink_consume_method_status opencl_dispatch_consume(
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
                 callbacks = (struct cl_callbacks *)calloc(1, sizeof(struct cl_callbacks) + class_name_sz + 1);
-                callbacks->name = (const char *)callbacks + class_name_sz;
+                callbacks->name = (const char *)callbacks + sizeof(struct cl_callbacks);
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
                 HASH_ADD_KEYPTR(hh, opencl_dispatch->callbacks, class_name, class_name_sz, callbacks);
                 struct cl_event_callbacks *event_callbacks = NULL;

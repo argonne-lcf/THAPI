@@ -113,8 +113,11 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
         const bt_value *params, void *initialize_method_data)
 {
     /*Read env variable */
-    const std::string display_mode(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "display")));
-    const std::string display_name(bt_value_string_get(bt_value_map_borrow_entry_value_const(params, "name")));
+    const bt_value *val;
+    val = bt_value_map_borrow_entry_value_const(params, "display");
+    const std::string display_mode(val ? bt_value_string_get(val) : "compact");
+    val = bt_value_map_borrow_entry_value_const(params, "name");
+    const std::string display_name(val ? bt_value_string_get(val) : "mangle");
     /* Allocate a private data structure */
     struct tally_dispatch *dispatch = new tally_dispatch;  
 
