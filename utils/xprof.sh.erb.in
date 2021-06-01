@@ -122,7 +122,7 @@ trace_and_summary() {
 <% end %>
 <% if languages.include?("ze") %>
     export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH 
+    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
 <% end %>
 <% if languages.include?("cuda") %>
     export LD_PRELOAD=$libdir/libTracerCuda.so:$LD_PRELOAD
@@ -180,59 +180,33 @@ summary() {
     fi
 
     if [ -n "$timeline" ]; then
-<% if languages.include?("opencl") %>
-    echo "Generating timeline_cl.json"
-    babeltrace2 --plugin-path=$libdir \
-                ${lttng_last_session} \
-                --component=filter.clinterval.interval \
-                --component=sink.xprof.timeline > timeline_cl.json
-<% end %>
-<% if languages.include?("ze") %>
-    echo "Generating timeline_ze.json"
-    babeltrace2 --plugin-path=$libdir \
-                ${lttng_last_session} \
-                --component=filter.zeinterval.interval \
-                --component=sink.xprof.timeline > timeline_ze.json
-<% end %>
-<% if languages.include?("cuda") %>
-    echo "Generating timeline_cuda.json"
-    babeltrace2 --plugin-path=$libdir \
-                ${lttng_last_session} \
-                --component=filter.cudainterval.interval \
-                --component=sink.xprof.timeline > timeline_cuda.json
-<% end %>
-   fi
 
-<% if languages.include?("opencl") %>
-    ocl_output=$(babeltrace2 --plugin-path=$libdir \
-                             ${lttng_last_session} \
-                             --component=filter.clinterval.interval \
-                             --component=sink.xprof.tally --params="display=$display,name=$mangling")
-    if [ -n "$ocl_output" ]; then
-        echo "== OpenCL == "
-        echo "$ocl_output"
+       babeltrace2 --plugin-path=$libdir \
+                   ${lttng_last_session} \
+    <% if languages.include?("opencl") %>
+                   --component=filter.clinterval.interval \
+    <% end %>
+    <% if languages.include?("ze") %>
+                   --component=filter.zeinterval.interval \
+    <% end %>
+    <% if languages.include?("cuda") %>
+                   --component=filter.cudainterval.interval \
+    <% end %>
+                   --component=sink.xprof.timeline > timeline.json
     fi
-<% end %>
-<% if languages.include?("ze") %>
-    ze_output=$(babeltrace2 --plugin-path=$libdir \
-                            ${lttng_last_session} \
-                            --component=filter.zeinterval.interval \
-                            --component=sink.xprof.tally --params="display=$display,name=$mangling")
-    if [ -n "$ze_output" ]; then
-        echo "== Level0 == "
-        echo "$ze_output"
-    fi
-<% end %>
-<% if languages.include?("cuda") %>
-    cuda_output=$(babeltrace2 --plugin-path=$libdir \
-                              ${lttng_last_session} \
-                              --component=filter.cudainterval.interval \
-                              --component=sink.xprof.tally --params="display=$display,name=$mangling")
-    if [ -n "$cuda_output" ]; then
-        echo "== CUDA == "
-        echo "$cuda_output"
-    fi
-<% end %>
+
+    babeltrace2 --plugin-path=$libdir \
+                ${lttng_last_session} \
+    <% if languages.include?("opencl") %>
+                --component=filter.clinterval.interval \
+    <% end %>
+    <% if languages.include?("ze") %>
+                --component=filter.zeinterval.interval \
+    <% end %>
+    <% if languages.include?("cuda") %>
+                --component=filter.cudainterval.interval \
+    <% end %>
+                --component=sink.xprof.tally --params="display=$display,name=$mangling"
 }
 
 #  _
