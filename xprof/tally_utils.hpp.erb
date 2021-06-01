@@ -344,10 +344,10 @@ void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, bool demangle_
       std::cout << std::endl;
 };
 
-<% if result == 'device' %>
-void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name ){
-<% else %>
+<% if result != 'device' %>
 void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
+<% else %>
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name, bool demangle_name ){
 <% end  %>
 
   <% args = var.map{ |t,_,n| n}.join(',') %>
@@ -395,7 +395,11 @@ void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
         << std::endl;
     }
     <% end %>
+<% if result != 'device' %>
     const bool empty = print_array(aggregated, oss.str(), <%= error %>);
+<% else %>
+    const bool empty = print_array(aggregated, oss.str(), <%= error %>, demangle_name);
+<% end %>
     if (!empty)
        std::cout << std::endl;
   }

@@ -157,7 +157,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
        print_compact_traffic(dispatch->traffic);
     } else {
        print_extented_host(dispatch->host);
-       print_extented_device(dispatch->device, dispatch->device_name);
+       print_extented_device(dispatch->device, dispatch->device_name, dispatch->demangle_name);
        print_extented_traffic(dispatch->traffic);
     }
 }
