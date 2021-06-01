@@ -125,7 +125,7 @@ trace_and_summary() {
     export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
 <% end %>
 <% if languages.include?("cuda") %>
-    export LD_PRELOAD=$libdir/libTracerCuda.so:$LD_PRELOAD
+    export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
 <% end %>
     lttng $quiet start
