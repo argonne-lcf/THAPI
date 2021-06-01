@@ -149,7 +149,7 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
                  ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>
 
   <% d_headers.each do | main_type, main_function, l_headers | %>
-void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
+bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
                  std::string header, 
                  unsigned int _print_error = 0,
                  bool demangle_name = false) {
@@ -166,9 +166,9 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
         total_count += element.second._count;
         total_error += element.second._error;
    }
-   if (!total_count) {
-        return;
-   }
+   if (!total_count)
+        return true;
+
    std::cout << header << std::endl;
 
    bool print_error;
@@ -255,6 +255,7 @@ void print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
             ;
  }           
  std::cout << std::endl;
+ return false;
 }
 
 <% end %>
@@ -335,12 +336,12 @@ void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, bool demangle_
    <% end %>
    oss << std::endl;
 <% if result != 'device' %>
-    print_array(aggregated, oss.str(), <%= error %>);
+   const bool empty = print_array(aggregated, oss.str(), <%= error %>);
 <% else %>
-    print_array(aggregated, oss.str(), <%= error %>, demangle_name);
+   const bool empty = print_array(aggregated, oss.str(), <%= error %>, demangle_name);
 <% end %>
-
-   std::cout << std::endl;
+   if (!empty)
+      std::cout << std::endl;
 };
 
 <% if result == 'device' %>
@@ -394,8 +395,9 @@ void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
         << std::endl;
     }
     <% end %>
-    print_array(aggregated, oss.str(), <%= error %>);
-    std::cout << std::endl;
+    const bool empty = print_array(aggregated, oss.str(), <%= error %>);
+    if (!empty)
+       std::cout << std::endl;
   }
 };
 <% end %>
