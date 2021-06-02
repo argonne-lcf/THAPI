@@ -118,11 +118,14 @@ bt_component_class_initialize_method_status tally_dispatch_initialize(
     const std::string display_mode(val ? bt_value_string_get(val) : "compact");
     val = bt_value_map_borrow_entry_value_const(params, "name");
     const std::string display_name(val ? bt_value_string_get(val) : "mangle");
+    val = bt_value_map_borrow_entry_value_const(params, "display_mode");
+    const std::string display_human(val ? bt_value_string_get(val) : "human");
     /* Allocate a private data structure */
     struct tally_dispatch *dispatch = new tally_dispatch;  
 
-    dispatch->display_compact = (display_mode == "compact");
-    dispatch->demangle_name = (display_name == "demangle");
+    dispatch->display_compact = (display_mode == "compact"); // Compact or Extented
+    dispatch->demangle_name = (display_name == "demangle"); // Demangle or mangle
+    dispatch->display_human = (display_human == "human"); // Human or JSON
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
@@ -151,14 +154,25 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
     struct tally_dispatch  *dispatch = (tally_dispatch*) bt_self_component_get_data(
         bt_self_component_sink_as_self_component(self_component_sink));
 
-    if (dispatch->display_compact) {
-       print_compact_host(dispatch->host);
-       print_compact_device(dispatch->device, dispatch->demangle_name);
-       print_compact_traffic(dispatch->traffic);
+    if (dispatch->display_human) {
+      if (dispatch->display_compact) {
+         print_compact_host(dispatch->host);
+         print_compact_device(dispatch->device, dispatch->demangle_name);
+         print_compact_traffic(dispatch->traffic);
+      } else {
+         print_extented_host(dispatch->host);
+         print_extented_device(dispatch->device, dispatch->device_name, dispatch->demangle_name);
+         print_extented_traffic(dispatch->traffic);
+      }
     } else {
-       print_extented_host(dispatch->host);
-       print_extented_device(dispatch->device, dispatch->device_name, dispatch->demangle_name);
-       print_extented_traffic(dispatch->traffic);
+      json j;
+      if (!dispatch->host.empty())
+        j["host"] =  json_compact_host(dispatch->host);
+      if (!dispatch->device.empty())
+        j["device"] =  json_compact_device(dispatch->device);
+      if (!dispatch->traffic.empty())
+        j["traffic"] =  json_compact_traffic(dispatch->traffic);
+      std::cout << j << std::endl;
     }
 }
 

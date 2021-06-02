@@ -35,7 +35,8 @@ libXProf_la_SOURCES = \
 	timeline.h \
 	timeline.cpp \
 	my_demangle.c \
-	my_demangle.h
+	my_demangle.h \
+	json.hpp # Right now we harcode it. We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./

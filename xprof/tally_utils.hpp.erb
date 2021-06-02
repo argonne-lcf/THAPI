@@ -11,6 +11,9 @@
 #include <regex>
 #include "xprof_utils.hpp"
 #include "my_demangle.h"
+#include <json.hpp>
+
+using nlohmann::json;
 
 template <typename T>
 std::string to_string_with_precision(const T a_value, const std::string extension, const int n = 2)
@@ -36,7 +39,6 @@ std::string format_byte(const T duration) {
    return "";
 }
 
-
 template <typename T>
 std::string format_time(const T duration) {
 <% [['h', '3.6e+12'],
@@ -53,6 +55,22 @@ std::string format_time(const T duration) {
    return "";
 }
 
+thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
+   std::string result = mangle_name;
+
+   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
+   const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_[^_]+$");
+   std::smatch base_match;
+   if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 2)
+      result = base_match[1].str();
+
+   const char* demangle = my_demangle(result.c_str());
+   if (demangle)
+      return thapi_function_name{demangle};
+   else
+      return mangle_name;
+};
+
 /*
 Class for time
  */
@@ -68,20 +86,22 @@ struct StatIprof_string {
 };
 
 class StatIprof {
-   uint64_t _start;
 
   public:
     void delta(const uint64_t, const bool);
     void merge(StatIprof);
     StatIprof_string to_string(const uint64_t);
+    void finalize(const uint64_t total_time);
 
     //Used in merge
+    uint64_t _start;
     uint64_t _count{0};
     uint64_t _min{ULONG_MAX};
     uint64_t _max{0};
     uint64_t _time{0};
     uint64_t _error{0};
-    
+    double _time_ratio{0};
+    double _avg{0};
 };
 
 void StatIprof::delta(const uint64_t delta,const bool error) {
@@ -104,23 +124,125 @@ void StatIprof::merge(StatIprof st) {
    _error += st._error;
 }
 
+void StatIprof::finalize(const uint64_t total_time){
+    _avg = _count ? static_cast<double>(_time) / _count : 0.;
+    _time_ratio = static_cast<double>(_time) / total_time;
+}
+
 <% { "StatTime" => "format_time",
      "StatByte" => "format_byte" }.each do |n,t| %>
 class <%= n %>: public StatIprof {
    public:
      StatIprof_string to_string(const uint64_t total_time){
-        const double avg = _count ? _time / _count : 0.;
+        finalize(total_time);
         return StatIprof_string{<%= t %>(_time), // Time
-                                to_string_with_precision( (100.*_time / total_time), "%"), // Percent
+                                to_string_with_precision( (100.*_time_ratio), "%"), // Percent
                                 to_string_with_precision(_count,"",0), // Count
-                                <%= t %>(avg),
+                                <%= t %>(_avg),
                                 <%= t %>(_min != ULONG_MAX ? _min : 0),
                                 <%= t %>(_max),
                                 to_string_with_precision(_error,"",0)};
     }
 };
+
+void to_json(json& j, const <%= n %>& p) {
+    //Assume already finalized
+    <% if n == "StatTime" %>
+   j = json{{"time", p._time}, {"call", p._count},
+            {"min", p._min}, {"max", p._max} };
+   <% else %>
+   j = json{{"size", p._time}, {"call", p._count},
+            {"min", p._min}, {"max", p._max} };
+   <% end %>
+   if (p._error != 0)
+     j["error"] = p._error; 
+}
+
 <% end %>
 
+<%#
+   _                              _   
+  /   _  ._ _  ._   _.  _ _|_ o _|_   
+  \_ (_) | | | |_) (_| (_  |_ |  | \/ 
+               |                   /  
+%>
+// `2 Hostnames | 2 Processes | 9 Threads | 0 Device | 0 SubDevice`
+typedef std::tuple<int,int,int, int, int> condensed_header_t;
+
+void to_json(json& j, const condensed_header_t& h) {
+   j = json{ {"hostname", std::get<0>(h) },
+             {"process",  std::get<1>(h) },
+             {"thread",   std::get<2>(h) } };
+   if (std::get<3>(h) != 0)
+      j["device"] = std::get<3>(h);
+   if (std::get<4>(h) != 0)
+      j["subdevice"] = std::get<4>(h);
+}
+
+   <% output = [ ['StatTime', 'std::unordered_map<hpt_function_name_t, StatTime>', 'host', 'API calls', '1', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device','Device profiling', '0', 'hpt_dsd_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['hp_t','Processes','Process'],
+                      ['hpt_t','Threads','Thread'] ,
+                      ['hp_device_t','Device pointers','Device'],
+                      ['hp_dsd_t','SubDevice pointers','SubDevice'] ] ],
+   ['StatByte', 'std::unordered_map<hpt_function_name_t, StatByte>', 'traffic', 'Explicit memory traffic', '0', 'hpt_t',
+                    [ ['hostname_t','Hostnames','Hostname'],
+                      ['process_id_t','Processes','Process'],
+                      ['thread_id_t','Threads','Thread'] ] ],
+   ] %>
+
+<% output.each do |main_type, tuple_typle, result,header, error, type, var| %>
+std::pair<condensed_header_t, std::unordered_map<thapi_function_name, <%= main_type %>> >  condensed_tally_<%= result %>( <%=tuple_typle %>  <%=result%> ){
+   condensed_header_t count;
+   <% var.each do |t,n,_ | %>
+   std::set<<%= t %>> s_<%= n.gsub(' ','_') %>;
+   <% end %>
+   <%# Agreagate API Call Result and compute total time spend %>
+   std::unordered_map<thapi_function_name, <%= main_type %> > aggregated;
+   for (auto element: <%= result %>)
+   {
+       auto [ <%= var.map{ |t,n| n.gsub(' ','_')}.join(',') %>,function_name ] = element.first;
+       const <%= main_type %> time = element.second;
+    <% if type == "hpt_dsd_t" %>
+       s_Hostnames.insert(hostname_t{Hostnames} ) ;
+       s_Processes.insert(hp_t{Hostnames,Processes} ) ;
+       s_Threads.insert(hpt_t{Hostnames,Processes,Threads} ) ;
+       s_Device_pointers.insert(hp_device_t{Hostnames,Processes,Device_pointers} ) ;
+       <%# This is apporixmation. Maybe two sub device alias to the same pointer. We cannot post-process that. But good enought to give a name %>
+       s_SubDevice_pointers.insert(hp_dsd_t{Hostnames,Processes,Device_pointers,SubDevice_pointers} ) ;
+    <% else %>
+    <% var.each do | _, n,_ | %>
+       s_<%=  n.gsub(' ','_') %>.insert(<%= n.gsub(' ','_') %>) ;
+    <% end %>
+    <% end %>
+       aggregated[function_name].merge(time);
+   }
+    <% if type == "hpt_dsd_t" %>
+   {
+       std::set<hp_dsd_t> s_ToDelete;
+       for (auto element: s_SubDevice_pointers) {
+           auto [ _a, _b, d1, d2 ] = element;
+           (void)_a; (void)_b; <%# Use un-used variable %>
+           if ( d1 == d2 ) {
+             s_ToDelete.insert(element);
+           }
+       }
+       for (auto element: s_ToDelete)
+           s_SubDevice_pointers.erase(element);
+   }
+    <% end%>
+
+    <% var.each_with_index do |(_,n,_),i | %>
+      std::get<<%= i%>>(count) = s_<%= n.gsub(' ','_') %>.size();
+    <% end %>
+    return std::make_pair(count, aggregated);
+}
+<% end %>
+   
 <%#
    _
   |_) ._ o ._ _|_    /\  ._ ._ _.
@@ -128,27 +250,11 @@ class <%= n %>: public StatIprof {
                                   /
 %>
 
-thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
-   std::string result = mangle_name;
-
-   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
-   const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_[^_]+$");
-   std::smatch base_match;
-   if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 2)
-      result = base_match[1].str();
-      
-   const char* demangle = my_demangle(result.c_str());
-   if (demangle)
-      return thapi_function_name{demangle};
-   else
-      return mangle_name;
-};
-
 <% l_menbers = ['function_name', 'time','time_ratio','count','avg','min','max','error'] %>
 <% d_headers = [ ["StatTime","format_time",  [ 'Name', 'Time', 'Time(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ],
                  ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>
 
-  <% d_headers.each do | main_type, main_function, l_headers | %>
+<% d_headers.each do | main_type, main_function, l_headers | %>
 bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
                  std::string header, 
                  unsigned int _print_error = 0,
@@ -260,28 +366,24 @@ bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
 
 <% end %>
 
-<%#
-   _
-  |_) ._ o ._ _|_    /\  ._ ._ _.
-  |   |  | | | |_   /--\ |  | (_| \/
-                                  /
-%>
+<% d_headers.each do | main_type, main_function, l_headers | %>
+void to_json(json& j, const std::unordered_map<thapi_function_name, <%= main_type %> > aggregated) {
+   uint64_t total_time{0};
+   for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
+        total_time += element.second._time;
+   }
 
-   <% output = [ ['StatTime', 'std::unordered_map<hpt_function_name_t, StatTime>', 'host', 'API calls', '1', 'hpt_t',
-                    [ ['hostname_t','Hostnames','Hostname'],
-                      ['process_id_t','Processes','Process'],
-                      ['thread_id_t','Threads','Thread'] ] ],
-   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device','Device profiling', '0', 'hpt_dsd_t',
-                    [ ['hostname_t','Hostnames','Hostname'],
-                      ['hp_t','Processes','Process'],
-                      ['hpt_t','Threads','Thread'] ,
-                      ['hp_device_t','Device pointers','Device'],
-                      ['hp_dsd_t','SubDevice pointers','SubDevice'] ] ],
-   ['StatByte', 'std::unordered_map<hpt_function_name_t, StatByte>', 'traffic', 'Explicit memory traffic', '0', 'hpt_t',
-                    [ ['hostname_t','Hostnames','Hostname'],
-                      ['process_id_t','Processes','Process'],
-                      ['thread_id_t','Threads','Thread'] ] ],
-   ] %>
+   for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated)
+   {
+     // conversion: person -> json
+     auto [name, info] = element;
+     info.finalize(total_time);
+     json j_array = info;
+     j_array["name"] = name;
+     j.push_back(j_array);
+   } 
+}
+<% end %>
 
 <% output.each do |main_type, tuple_typle, result,header, error, type, var| %>
    <% if result != 'device' %>
@@ -290,77 +392,73 @@ void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%> ){
 void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, bool demangle_name ){
    <% end %>
 
-   <% var.each do |t,n,_ | %>
-   std::set<<%= t %>> s_<%= n.gsub(' ','_') %>;
-   <% end %>
-   <%# Agreagate API Call Result and compute total time spend %>
-   std::unordered_map<thapi_function_name, <%= main_type %> > aggregated;
-   for (auto element: <%= result %>)
-   {
-       auto [ <%= var.map{ |t,n| n.gsub(' ','_')}.join(',') %>,function_name ] = element.first;
-       const <%= main_type %> time = element.second;
-    <% if type == "hpt_dsd_t" %>
-       s_Hostnames.insert(hostname_t{Hostnames} ) ;
-       s_Processes.insert(hp_t{Hostnames,Processes} ) ;
-       s_Threads.insert(hpt_t{Hostnames,Processes,Threads} ) ;
-       s_Device_pointers.insert(hp_device_t{Hostnames,Processes,Device_pointers} ) ;
-       <%# This is apporixmation. Maybe two sub device alias to the same pointer. We cannot post-process that. But good enought to give a name %>
-       s_SubDevice_pointers.insert(hp_dsd_t{Hostnames,Processes,Device_pointers,SubDevice_pointers} ) ;
-    <% else %>
-    <% var.each do | _, n,_ | %>
-       s_<%=  n.gsub(' ','_') %>.insert(<%= n.gsub(' ','_') %>) ;
-    <% end %>
-    <% end %>
-       aggregated[function_name].merge(time);
-   }
-    <% if type == "hpt_dsd_t" %>
-   {
-       std::set<hp_dsd_t> s_ToDelete;
-       for (auto element: s_SubDevice_pointers) {
-           auto [ _a, _b, d1, d2 ] = element;
-           (void)_a; (void)_b; <%# Use un-used variable %>
-           if ( d1 == d2 ) {
-             s_ToDelete.insert(element);
-           }
-       }
-       for (auto element: s_ToDelete)
-           s_SubDevice_pointers.erase(element);
-   }
-        
-   <% end %>
+   auto [header_count, aggregated] = condensed_tally_<%= result %>(<%=result%>);
+  
    std::ostringstream oss;
    oss << "<%= header %>";
-   <% var.each do | _, n,_ | %>
-   if (s_<%= n.gsub(' ','_') %>.size() != 0)
-       oss << " | " << s_<%=  n.gsub(' ','_') %>.size() << " <%= n %>";
+   <% var.each_with_index do | (_,n,_),i | %>
+   if (std::get< <%= i %> >(header_count) != 0)
+       oss << " | " << std::get< <%= i %> >(header_count) << " <%= n %>";
    <% end %>
+
    oss << std::endl;
-<% if result != 'device' %>
+   <% if result != 'device' %>
    const bool empty = print_array(aggregated, oss.str(), <%= error %>);
-<% else %>
+   <% else %>
    const bool empty = print_array(aggregated, oss.str(), <%= error %>, demangle_name);
-<% end %>
+    <% end %>
    if (!empty)
       std::cout << std::endl;
-};
+}
 
-<% if result != 'device' %>
+json json_compact_<%= result %>( <%=tuple_typle %>  <%=result%> ) {
+   auto [header_count, aggregated] = condensed_tally_<%= result %>(<%=result%>);
+
+   uint64_t total_time{0};
+   uint64_t total_count{0};
+   uint64_t total_error{0};
+   for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
+        total_time += element.second._time;
+        total_count += element.second._count;
+        total_error += element.second._error;
+   }
+
+   json j;
+   j["data"] = aggregated;
+
+   //Automatic to_json doesn't work with typedef.
+   json j2;
+   to_json(j2, header_count);
+   j["aggregate"] = j2;
+   <% if main_type == "StatTime" %>
+   j["aggregate"]["time"] = total_time;
+   <% else %>
+   j["aggregate"]["size"] = total_time;
+   <% end %>
+   j["aggregate"]["call"] = total_count;
+   if (total_error != 0)
+      j["aggregate"]["error"] = total_error;
+
+   return j;
+}
+
+   <% if result != 'device' %>
 void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
-<% else %>
+   <% else %>
 void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name, bool demangle_name ){
-<% end  %>
+   <% end  %>
 
-  <% args = var.map{ |t,_,n| n}.join(',') %>
-  std::unordered_map< <%= type %>, std::unordered_map<thapi_function_name, <%= main_type %> >> d;
-  for (auto [s, time]: <%= result %> ) {
-    auto [<%= args %>, function_name] = s;
-    d[ <%= type %>( <%= args %> )][function_name].merge(time);
-  }
+   <% args = var.map{ |t,_,n| n}.join(',') %>
+   std::unordered_map< <%= type %>, std::unordered_map<thapi_function_name, <%= main_type %> >> d;
+   for (auto [s, time]: <%= result %> ) {
+     auto [<%= args %>, function_name] = s;
+     d[ <%= type %>( <%= args %> )][function_name].merge(time);
+   }
 
-  std::vector<std::pair< <%= type %> , std::unordered_map<thapi_function_name,  <%= main_type %> >>> array_sorted(d.begin(), d.end());
-  std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
+   std::vector<std::pair< <%= type %> , std::unordered_map<thapi_function_name,  <%= main_type %> >>> array_sorted(d.begin(), d.end());
+   std::sort(array_sorted.begin(), array_sorted.end(),   [](auto a, auto b) { return a.first > b.first ; } );
 
-  for (auto[s, aggregated]: array_sorted) {
+   for (auto[s, aggregated]: array_sorted) {
     auto [ <%= args %> ] = s;
     std::ostringstream oss;
     

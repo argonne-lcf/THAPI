@@ -5,8 +5,8 @@ bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
 
 display_help() {
-<% if languages.include?("opencl") and languages.include?("ze")%>
-    echo "$(basename $0): a tracer / summarizer of OpenCL and L0 calls"
+<% if languages.include?("opencl") and languages.include?("ze") and  languages.include?("cuda") %>
+    echo "$(basename $0): a tracer / summarizer of OpenCL,L0 and CUDA driver calls"
 <% elsif languages.include?("opencl") %>
     echo "$(basename $0): a tracer / summarizer of OpenCL calls"
 <% elsif languages.include?("ze") %>
@@ -24,6 +24,7 @@ display_help() {
     echo "  -t, --trace        Display the trace"
     echo "  -l, --line         Dump the timeline"
     echo "  -m, --mangle       Display mangled name"
+    echo "  -j, --json         The summary will be prrinted as json"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
@@ -34,8 +35,8 @@ display_help() {
     echo "$(basename $0) will save the trace in $HOME/lttng-traces/"
     echo " Please tidy up from time to time"
     echo "                                                   __ "
-    echo "For complain, praise, bug repport please use:    <(o )___"
-    echo "   https://xgitlab.cels.anl.gov/heteroflow/tracer ( ._> /"
+    echo "For complain, praise, or bug reports please use: <(o )___"
+    echo "   https://github.com/argonne-lcf/THAPI           ( ._> /"
     echo "   or send email to {apl,bvideau}@anl.gov          \`---'"
     exit 1
 }
@@ -206,7 +207,7 @@ summary() {
     <% if languages.include?("cuda") %>
                 --component=filter.cudainterval.interval \
     <% end %>
-                --component=sink.xprof.tally --params="display=$display,name=$mangling"
+                --component=sink.xprof.tally --params="display=$display,name=$mangling,display_mode=${display_mode}"
 }
 
 #  _
@@ -215,6 +216,7 @@ summary() {
 #                    _|           _|
 display="compact";
 mangling="demangle";
+display_mode="human"
 
 if [ "$#" -eq 0 ]; then
     display_help
@@ -223,13 +225,14 @@ fi
 while (( "$#" )); do
     case "$1" in
         -h | --help)     display_help; exit ;;
-        -e | --extented) shift; display="extended"   ;;
+        -e | --extented) shift; display="extended" ;;
         -r | --replay)   shift; replay=true ;;
         -d | --debug)    shift; debug=true ;;
         -a | --asm)      shift; asm=true ;;
         -t | --trace)    shift; trace=true ;;
         -l | --timeline) shift; timeline=true ;;
         -m | --mangle)   shift; mangling="mangle" ;;
+        -j | --json)     shift; display_mode="json";;
         --)              shift; break ;;
         *)               break  ;;
     esac
