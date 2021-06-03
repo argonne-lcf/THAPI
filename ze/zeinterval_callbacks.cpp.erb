@@ -161,7 +161,6 @@ static void zeinterval_<%= dbt_event.name %>_callback(
        dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
        dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
        dbt_event.name_unsanitized.start_with?('lttng_ust_zel:')  %>
-  
     int64_t ns_from_origin; 
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
    <%if dbt_event.name_unsanitized.end_with?(START) %>
@@ -169,7 +168,12 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
     const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
      <% if dbt_event.fields_name.include?('zeResult') %>
+       <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
+       <% if dbt_event.name_striped.include? ('Synchronize') or dbt_event.name_striped.include? ('Query')  %>
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY);
+       <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, zeResult);
+       <% end %>
      <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
      <% end %>
@@ -224,7 +228,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
     state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(root_device, device);
        <% else %>
-           <% raise "Dont what kind of commandListCreate events this is"%>
+           <% raise "Dont know what kind of commandListCreate events this is"%>
        <% end %>
   <% end %>
   
