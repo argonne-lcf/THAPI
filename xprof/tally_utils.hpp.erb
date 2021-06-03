@@ -154,7 +154,6 @@ class <%= n %>: public StatIprof {
 };
 
 void to_json(json& j, const <%= n %>& p) {
-    //Assume already finalized
     <% if n == "StatTime" %>
    j = json{{"time", p._time}, {"call", p._count},
             {"min", p._min}, {"max", p._max} };
@@ -376,19 +375,10 @@ bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
 
 <% d_headers.each do | main_type, main_function, l_headers | %>
 void to_json(json& j, const std::unordered_map<thapi_function_name, <%= main_type %> > aggregated) {
-   uint64_t total_time{0};
-   for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
-        total_time += element.second._time;
-   }
-
    for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated)
    {
-     // conversion: person -> json
      auto [name, info] = element;
-     info.finalize(total_time);
-     json j_array = info;
-     j_array["name"] = name;
-     j.push_back(j_array);
+     j[name] = info;
    } 
 }
 <% end %>

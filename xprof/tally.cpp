@@ -166,6 +166,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
       }
     } else {
       json j;
+      j["units"] = { {"time","ns"}, {"size", "bytes"} };
       if (!dispatch->host.empty())
         j["host"] =  json_compact_host(dispatch->host);
       if (!dispatch->device.empty())
