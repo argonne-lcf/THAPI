@@ -65,10 +65,18 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
       result = base_match[1].str();
 
    const char* demangle = my_demangle(result.c_str());
-   if (demangle)
-      return thapi_function_name{demangle};
-   else
-      return mangle_name;
+   if (demangle) {
+       thapi_function_name s{demangle};
+       /* We name the kernels after the type that gets passed in the first 
+          template parameter to the sycl_kernel function in order to prevent 
+          it from conflicting with any actual function name.  
+          The result is the demangling will always be something like, “typeinfo for...”. 
+       */
+       if (s.rfind("typeinfo name for ") == 0) 
+           return s.substr(<%= "typeinfo name for ".size %>, s.size());
+       return s;
+   }
+   return mangle_name;
 };
 
 /*
