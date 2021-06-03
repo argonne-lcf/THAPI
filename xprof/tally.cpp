@@ -167,12 +167,21 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink)
     } else {
       json j;
       j["units"] = { {"time","ns"}, {"size", "bytes"} };
-      if (!dispatch->host.empty())
-        j["host"] =  json_compact_host(dispatch->host);
-      if (!dispatch->device.empty())
-        j["device"] =  json_compact_device(dispatch->device);
-      if (!dispatch->traffic.empty())
-        j["traffic"] =  json_compact_traffic(dispatch->traffic);
+      if (dispatch->display_compact) {
+        if (!dispatch->host.empty())
+            j["host"] =  json_compact_host(dispatch->host);
+        if (!dispatch->device.empty())
+            j["device"] =  json_compact_device(dispatch->device);
+        if (!dispatch->traffic.empty())
+            j["traffic"] =  json_compact_traffic(dispatch->traffic);
+      } else {
+        if (!dispatch->host.empty())
+            j["host"] =  json_extented_host(dispatch->host);
+        if (!dispatch->device.empty())
+            j["device"] =  json_extented_device(dispatch->device, dispatch->device_name);
+        if (!dispatch->traffic.empty())
+            j["traffic"] =  json_extented_traffic(dispatch->traffic);
+      }
       std::cout << j << std::endl;
     }
 }

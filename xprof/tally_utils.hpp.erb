@@ -476,7 +476,7 @@ void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered
     <% if type == "hpt_dsd_t" %>
     } else { 
     oss <<  "<%= header %>"
-    <% var.map{| _,_, n | n}.filter{ |n| n != 'SubDevice'}.each do |n| %>
+      <% var.map{| _,_, n | n}.filter{ |n| n != 'SubDevice'}.each do |n| %>
         << " | <%= n %>: "
         <% if n == 'Device' %>
         << std::hex << std::showbase << std::internal << std::setfill('0')
@@ -485,18 +485,48 @@ void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered
         <% if n =='Device' and result == 'device' %>
         <<  " (" << device_to_name[hp_device_t(Hostname,Process,Device)] << ")"
         <% end %>
-     <% end %>
+      <% end %>
         << std::endl;
     }
     <% end %>
-<% if result != 'device' %>
+    <% if result != 'device' %>
     const bool empty = print_array(aggregated, oss.str(), <%= error %>);
-<% else %>
+    <% else %>
     const bool empty = print_array(aggregated, oss.str(), <%= error %>, demangle_name);
-<% end %>
+    <% end %>
     if (!empty)
        std::cout << std::endl;
   }
-};
+}
+
+    <% if result != 'device' %>
+json json_extented_<%= result %>( <%=tuple_typle %> <%=result%>){
+    <% else %>
+json json_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name) {
+    <% end %>
+    json j_full;
+    for (auto[s, aggregated]: <%=result%>) {
+        auto [ <%= args %>,function_name ] = s;
+        json j = aggregated; 
+        j["name"] = function_name;
+    <% if result != 'device' %>
+        <% var.each do | _,_, n | %>
+        j["<%= n.downcase %>"] = <%= n %>;
+        <% end %>
+    <% else %>
+        j["hostname"] = Hostname;
+        j["process"] = Process;
+        j["thread"] = Thread;
+        j["device"] = Device;
+        hp_device_t key = hp_device_t{Hostname,Process,Device};
+        if (device_to_name.count(key))
+          j["device_name"] = device_to_name[key];
+        if (Device != SubDevice)
+           j["subdevice"] = SubDevice;
+    <% end %>
+        j_full.push_back(j);
+    };
+    return j_full;
+}
 <% end %>
 
