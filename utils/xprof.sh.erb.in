@@ -22,10 +22,11 @@ display_help() {
     echo "  -h, --help         Show this screen"
     echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace        Display the trace"
-    echo "  -l, --line         Dump the timeline"
+    echo "  -l, --timeline     Dump the timeline"
     echo "  -m, --mangle       Display mangled name"
     echo "  -j, --json         The summary will be prrinted as json"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
+    echo "  -f, --full         All the API call will be traced. By default and for performance raison, some of them will be ignored"
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
     echo
@@ -76,14 +77,22 @@ trace_and_summary() {
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 
 <% if languages.include?("opencl") %>
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:*
+    opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*"
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x ${opencl_disable_events}
+    if [ -n "$full" ]; then
+      lttng $quiet enable-event --channel=blocking-channel --userspace ${opencl_disable_events}
+    fi
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 <% end %>
 <% if languages.include?("ze") %>
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
+    ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:zeDriverGetExtensionProperties*"
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events}
+    if [ -n "$full" ]; then
+       lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
+    fi
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
     export LTTNG_UST_ZE_PROFILE=1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
@@ -233,6 +242,7 @@ while (( "$#" )); do
         -l | --timeline) shift; timeline=true ;;
         -m | --mangle)   shift; mangling="mangle" ;;
         -j | --json)     shift; display_mode="json";;
+        -f | --full)     shift; full=true ;;
         --)              shift; break ;;
         *)               break  ;;
     esac
