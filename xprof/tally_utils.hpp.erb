@@ -295,6 +295,7 @@ bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    <%# Sort the table by time %>
    <%# Need to do map -> vector for that... %>
    std::vector<std::pair<thapi_function_name, <%= main_type %> >> array_sorted;
+   array_sorted.reserve(aggregated.size());
    for (std::pair<thapi_function_name, <%= main_type %> > element: aggregated) {
       if (demangle_name) {
          array_sorted.push_back(std::make_pair(f_demangle_name(element.first), element.second));
