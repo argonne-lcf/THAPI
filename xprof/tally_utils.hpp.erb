@@ -519,8 +519,9 @@ json json_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_
         j["thread"] = Thread;
         j["device"] = Device;
         hp_device_t key = hp_device_t{Hostname,Process,Device};
-        if (device_to_name.count(key))
-          j["device_name"] = device_to_name[key];
+        auto it = device_to_name.find(key);  
+        if (it != device_to_name.end()) 
+          j["device_name"] = it -> second;
         if (Device != SubDevice)
            j["subdevice"] = SubDevice;
     <% end %>
