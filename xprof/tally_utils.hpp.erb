@@ -292,6 +292,19 @@ bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    else
         print_error = true;
 
+   <%# Sort the table by time %>
+   <%# Need to do map -> vector for that... %>
+   std::vector<std::pair<thapi_function_name, <%= main_type %> >> array_sorted;
+   for (std::pair<thapi_function_name, <%= main_type %> > element: aggregated) {
+      if (demangle_name) {
+         array_sorted.push_back(std::make_pair(f_demangle_name(element.first), element.second));
+      } else {
+         array_sorted.push_back(element);
+      }
+   }
+   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
+
+
 <%# Need to be bigger than the header %>
 <% l_menbers.zip(l_headers).each do |v, n| %>
    uint64_t len_max_<%= v %> = <%= n.size() %>;
@@ -304,30 +317,14 @@ bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    len_max_error = std::max(len_max_error, to_string_with_precision(total_error,"",0).size() );
 
 <%# Need to be bigger than the body %>
-   for (std::pair<thapi_function_name,  <%= main_type %> > element: aggregated) {
-       if (demangle_name) {
-          len_max_function_name = std::max(len_max_function_name, f_demangle_name(element.first).size());
-       } else {
-          len_max_function_name = std::max(len_max_function_name, element.first.size());
-       }
+   for (std::pair<thapi_function_name,  <%= main_type %> > element: array_sorted) {
+       len_max_function_name = std::max(len_max_function_name, element.first.size());
        const auto [time, time_ratio, count, avg, min, max, error ] = element.second.to_string(total_time);
   <% l_menbers.drop(1).each do |v| %>
        len_max_<%= v %> = std::max(len_max_<%= v %>, <%= v %>.size());
 <% end %>
    }
 
-<%# Sort the table %>
-   std::vector<std::pair<thapi_function_name, <%= main_type %> >> array_sorted;
-   for (std::pair<thapi_function_name, <%= main_type %> > element: aggregated) {
-      if (demangle_name) {
-         array_sorted.push_back(std::make_pair(f_demangle_name(element.first), element.second));
-      } else {
-         array_sorted.push_back(element);
-      }
-   }
-
-   std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );   
-   
 <%# Print Header %>
 <% l_menbers.zip(l_headers).each do |v, n| %>
     <% if v == "error" %>
