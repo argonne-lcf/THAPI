@@ -1,0 +1,10 @@
+TRACEPOINT_EVENT(
+  lttng_ust_thapi,
+  metadata,
+  TP_ARGS(
+    char *, value
+  ),
+  TP_FIELDS(
+    ctf_string(value, value)
+  )
+)
