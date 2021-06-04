@@ -45,58 +45,62 @@ bt_component_class_sink_consume_method_status tally_dispatch_consume(
             const bt_event *event = bt_message_event_borrow_event_const(message);
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
             const char * class_name = bt_event_class_get_name(event_class);
-            //Common context field
-            const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
 
-            const bt_field *hostname_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
-            const hostname_t hostname = std::string{bt_field_string_get_value(hostname_field)};
+            if (std::string{class_name} == "lttng:host" or
+                std::string{class_name} == "lttng:device" or
+                std::string{class_name} == "lttng:traffic") {
 
-            const bt_field *process_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
-            const process_id_t process_id = bt_field_integer_signed_get_value(process_id_field);
+              //Common context field
+              const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
 
-            const bt_field *thread_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 2);
-            const thread_id_t thread_id = bt_field_integer_unsigned_get_value(thread_id_field);
+              const bt_field *hostname_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
+              const hostname_t hostname = std::string{bt_field_string_get_value(hostname_field)};
 
-            //Payload
-            const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
+              const bt_field *process_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
+              const process_id_t process_id = bt_field_integer_signed_get_value(process_id_field);
 
-            const bt_field *name_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
-            const std::string name(bt_field_string_get_value(name_field));
+              const bt_field *thread_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 2);
+              const thread_id_t thread_id = bt_field_integer_unsigned_get_value(thread_id_field);
 
-            // I should compare type. Not somme string.
-            if (std::string(class_name) == "lttng:host") {
-               const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-               const long dur = bt_field_integer_unsigned_get_value(dur_field);
+              //Payload
+              const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
 
-               const bt_field *err_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-               const bool err = bt_field_bool_get_value(err_field);
+              const bt_field *name_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
+              const std::string name(bt_field_string_get_value(name_field));
 
-               dispatch->host[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(dur, err);
-            } else if (std::string(class_name) == "lttng:device") {
-               const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-               const long dur = bt_field_integer_unsigned_get_value(dur_field);
+              if (std::string(class_name) == "lttng:host") {
+                 const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+                 const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
-               const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-               const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);  
+                 const bt_field *err_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+                 const bool err = bt_field_bool_get_value(err_field);
 
-               const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
-               const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
+                 dispatch->host[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(dur, err);
+              } else if (std::string(class_name) == "lttng:device") {
+                 const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+                 const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
-               dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
-            } else if ( std::string(class_name) == "lttng:traffic") {
-    
-               const bt_field *size_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-               const long size = bt_field_integer_unsigned_get_value(size_field);
+                 const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+                 const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
 
-               dispatch->traffic[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(size, false);
-           }  else if ( strcmp(class_name,"lttng:device_name") == 0 ) {
+                 const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+                 const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
 
-               const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-               const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+                 dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, (thapi_function_name) name)].delta(dur, false);
+              } else if ( std::string(class_name) == "lttng:traffic") {
 
-               dispatch->device_name[hp_device_t(hostname,process_id, (thapi_device_id) did)] = name;
-            }
+                 const bt_field *size_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+                 const long size = bt_field_integer_unsigned_get_value(size_field);
 
+                 dispatch->traffic[hpt_function_name_t(hostname,process_id, thread_id, name)].delta(size, false);
+             }  else if ( strcmp(class_name,"lttng:device_name") == 0 ) {
+
+                 const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+                 const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+
+                 dispatch->device_name[hp_device_t(hostname,process_id, (thapi_device_id) did)] = name;
+              }
+          }
         }
         bt_message_put_ref(message);
     }
