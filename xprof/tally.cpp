@@ -83,7 +83,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
       const bt_field *payload_field =
           bt_event_borrow_payload_field_const(event);
-      if (std::string(class_name) == "lttng:host") {
+      if (strcmp(class_name,"lttng:host") == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
         const bt_field *dur_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field,
@@ -98,7 +98,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         dispatch
             ->host[hpt_function_name_t(hostname, process_id, thread_id, name)]
             .delta(dur, err);
-      } else if (std::string(class_name) == "lttng:device") {
+      } else if (strcmp(class_name,"lttng:device") == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
 
         const bt_field *dur_field =
@@ -123,7 +123,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
                                                 did, sdid,
                                                 (thapi_function_name)name)]
             .delta(dur, false);
-      } else if (std::string(class_name) == "lttng:traffic") {
+      } else if (strcmp(class_name,"lttng:traffic")  == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
 
         const bt_field *size_field =
@@ -146,6 +146,9 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
         dispatch->device_name[hp_device_t(hostname, process_id,
                                           (thapi_device_id)did)] = name;
+      } else if (strcmp(class_name, "lttng_ust_thapi:metadata") == 0) {
+        const bt_field *value_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
+        dispatch->metadata.push_back(std::string{bt_field_string_get_value(value_field)});
       }
     }
     bt_message_put_ref(message);
@@ -165,19 +168,22 @@ tally_dispatch_initialize(bt_self_component_sink *self_component_sink,
   /*Read env variable */
   const bt_value *val;
   val = bt_value_map_borrow_entry_value_const(params, "display");
-  const std::string display_mode(val ? bt_value_string_get(val) : "compact");
+  const std::string display_mode(val && bt_value_is_string(val) ? bt_value_string_get(val) : "compact");
   val = bt_value_map_borrow_entry_value_const(params, "name");
-  const std::string display_name(val ? bt_value_string_get(val) : "mangle");
+  const std::string display_name(val && bt_value_is_string(val) ? bt_value_string_get(val) : "mangle");
   val = bt_value_map_borrow_entry_value_const(params, "display_mode");
-  const std::string display_human(val ? bt_value_string_get(val) : "human");
+  const std::string display_human(val && bt_value_is_string(val) ? bt_value_string_get(val) : "human");
+  val = bt_value_map_borrow_entry_value_const(params, "display_metadata");
+  const bool display_metadata = (val && bt_value_is_bool(val) ? bt_value_bool_get(val) : false);
+  
   /* Allocate a private data structure */
   struct tally_dispatch *dispatch = new tally_dispatch;
 
-  dispatch->display_compact =
-      (display_mode == "compact");                        // Compact or Extented
+  dispatch->display_compact = (display_mode == "compact"); // Compact or Extented
   dispatch->demangle_name = (display_name == "demangle"); // Demangle or mangle
   dispatch->display_human = (display_human == "human");   // Human or JSON
-
+  dispatch->display_metadata = display_metadata;
+  
   /* Set the component's user data to our private data structure */
   bt_self_component_set_data(
       bt_self_component_sink_as_self_component(self_component_sink), dispatch);
@@ -202,8 +208,11 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
   struct tally_dispatch *dispatch =
       (tally_dispatch *)bt_self_component_get_data(
           bt_self_component_sink_as_self_component(self_component_sink));
-
+ 
   if (dispatch->display_human) {
+    if (dispatch->display_metadata) 
+      print_metadata(dispatch->metadata);
+
     if (dispatch->display_compact) {
       print_compact_host(dispatch->host);
       print_compact_device(dispatch->device, dispatch->demangle_name);
@@ -217,6 +226,8 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
   } else {
     json j;
     j["units"] = {{"time", "ns"}, {"size", "bytes"}};
+    if (dispatch->display_metadata)
+      j["metadata"] = dispatch->metadata;
     if (dispatch->display_compact) {
       if (!dispatch->host.empty())
         j["host"] = json_compact_host(dispatch->host);

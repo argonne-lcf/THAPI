@@ -257,6 +257,18 @@ std::pair<condensed_header_t, std::unordered_map<thapi_function_name, <%= main_t
                                   /
 %>
 
+bool print_metadata(std::vector<std::string> metadata) {
+  if (metadata.empty())
+     return false;
+
+  std::cout << "Metadata" << std::endl;
+  std::cout << std::endl;
+  for (std::string value: metadata)
+      std::cout << value << std::endl;
+  return true;
+}
+
+
 <% l_menbers = ['function_name', 'time','time_ratio','count','avg','min','max','error'] %>
 <% d_headers = [ ["StatTime","format_time",  [ 'Name', 'Time', 'Time(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ],
                  ["StatByte", "format_byte", [ 'Name', 'Byte', 'Byte(%)', 'Calls', 'Average', 'Min', 'Max', 'Failed'] ] ]  %>

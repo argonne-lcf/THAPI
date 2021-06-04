@@ -27,6 +27,7 @@ display_help() {
     echo "  -j, --json         The summary will be prrinted as json"
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -f, --full         All the API call will be traced. By default and for performance raison, some of them will be ignored"
+    echo "  --metadata         Display metadata"
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
     echo
@@ -167,8 +168,8 @@ summary() {
  <% elsif languages.include?("cuda") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-cuda-session* | head -1)
 <% end %>
-        echo "Trace location:" $lttng_last_session
-        echo
+        >&2 echo "Trace location:" $lttng_last_session
+        >&2 echo
     else
         lttng_last_session=$@
     fi
@@ -222,16 +223,17 @@ summary() {
     <% if languages.include?("cuda") %>
                 --component=filter.cudainterval.interval \
     <% end %>
-                --component=sink.xprof.tally --params="display=$display,name=$mangling,display_mode=${display_mode}"
+                --component=sink.xprof.tally --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata}"
 }
 
 #  _
 # |_) _. ._ _ o ._   _     /\  ._ _
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
-display="compact";
-mangling="demangle";
-display_mode="human"
+display=compact
+mangling=demangle
+display_mode=human
+display_metadata=false
 
 if [ "$#" -eq 0 ]; then
     display_help
@@ -240,15 +242,16 @@ fi
 while (( "$#" )); do
     case "$1" in
         -h | --help)     display_help; exit ;;
-        -e | --extented) shift; display="extended" ;;
+        -e | --extented) shift; display=extended ;;
         -r | --replay)   shift; replay=true ;;
         -d | --debug)    shift; debug=true ;;
         -a | --asm)      shift; asm=true ;;
         -t | --trace)    shift; trace=true ;;
         -l | --timeline) shift; timeline=true ;;
-        -m | --mangle)   shift; mangling="mangle" ;;
-        -j | --json)     shift; display_mode="json";;
+        -m | --mangle)   shift; mangling=mangle ;;
+        -j | --json)     shift; display_mode=json;;
         -f | --full)     shift; full=true ;;
+        --metadata)      shift; display_metadata=true ;;
         --)              shift; break ;;
         *)               break  ;;
     esac
