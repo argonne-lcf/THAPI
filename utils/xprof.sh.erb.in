@@ -103,42 +103,48 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 <% end %>
+    # Add thapi metadata
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_thapi:*
+
+    #Add vpid/vtid to avoid race condition
     lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
 
     #Preventing trace event record loss
+    export LTTNG_UST_ALLOW_BLOCKING=1
+
+    #Find libs and preload
 <% if languages.include?("opencl") %>
     if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
     then
       export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
     fi
+    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
 <% end %>
 <% if languages.include?("ze") %>
     if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
     then
       export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
     fi
+    export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
+    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
 <% end %>
 <% if languages.include?("cuda") %>
     if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
     then
       export LTTNG_UST_CUDA_LIBCUDA=$(whichlib libcuda.so | head -n 1)
     fi
-<% end %>
-    #Preventing trace event record loss
-    export LTTNG_UST_ALLOW_BLOCKING=1
-<% if languages.include?("opencl") %>
-    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
-<% end %>
-<% if languages.include?("ze") %>
-    export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
-<% end %>
-<% if languages.include?("cuda") %>
     export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
 <% end %>
+    # Start collection
     lttng $quiet start
+
+    #Create the metadata.
+    #read and dump `$LTTNG_UST_THAPI_METADATA` env
+    $bindir/thapi_metadata
+
+    # Run the binary
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
     "$@"
 }
@@ -171,7 +177,7 @@ summary() {
     # Should be cleaner to use bash arrays.
     for f in  $lttng_last_session; do
         if [ ! -d "$f" ]; then
-            echo "$f is not a trace folder"
+            echo "$f is not a trace folder, cannot replay. Exiting..."
             exit 1
         fi
     done
