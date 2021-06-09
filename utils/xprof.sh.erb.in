@@ -209,21 +209,25 @@ summary() {
     <% if languages.include?("cuda") %>
                    --component=filter.cudainterval.interval \
     <% end %>
-                   --component=sink.xprof.timeline > timeline.json
+                   --component=sink.xprof.timeline
     fi
 
-    babeltrace2 --plugin-path=$libdir \
+    if [ -z "$timeline" ]; then
+
+       babeltrace2 --plugin-path=$libdir \
                 ${lttng_last_session} \
     <% if languages.include?("opencl") %>
-                --component=filter.clinterval.interval \
+                  --component=filter.clinterval.interval \
     <% end %>
     <% if languages.include?("ze") %>
-                --component=filter.zeinterval.interval \
+                  --component=filter.zeinterval.interval \
     <% end %>
     <% if languages.include?("cuda") %>
-                --component=filter.cudainterval.interval \
+                  --component=filter.cudainterval.interval \
     <% end %>
-                --component=sink.xprof.tally --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata}"
+                  --component=sink.xprof.tally \
+                  --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata}"
+    fi
 }
 
 #  _
