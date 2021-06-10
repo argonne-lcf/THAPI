@@ -78,7 +78,10 @@ trace_and_summary() {
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 
 <% if languages.include?("opencl") %>
-    opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*,lttng_ust_opencl:clGetMemAllocInfoINTEL*"
+    opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,"
+    opencl_disable_events+="lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*,"
+    opencl_disable_events+="lttng_ust_opencl:clGetMemAllocInfoINTEL*"
+
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x ${opencl_disable_events}
     if [ -n "$full" ]; then
       lttng $quiet enable-event --channel=blocking-channel --userspace ${opencl_disable_events}
@@ -89,7 +92,7 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 <% end %>
 <% if languages.include?("ze") %>
-    ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:zeDriverGetExtensionProperties*,lttng_ust_ze:zeMemGetAllocProperties*"
+    ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*"
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events}
     if [ -n "$full" ]; then
        lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
