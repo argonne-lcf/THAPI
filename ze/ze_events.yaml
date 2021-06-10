@@ -41,3 +41,12 @@ lttng_ust_ze_properties:
     - [ ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver" ]
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
+  - name: device_timer
+    args:
+    - [ ze_device_handle_t, hDevice ]
+    - [ uint64_t, hostTimestamp ]
+    - [ uint64_t, deviceTimestamp ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer, uint64_t, hostTimestamp, hostTimestamp ]
+    - [ ctf_integer, uint64_t, deviceTimestamp, deviceTimestamp ]
