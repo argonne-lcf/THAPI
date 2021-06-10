@@ -15,6 +15,7 @@ typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_comma
 
 typedef std::tuple<uint64_t, uint64_t> timerResolution_kernelTimestampValidBits_t;
 
+typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
 struct zeinterval_callbacks_state {
     std::unordered_map<hp_event_t,tfn_ts_t> event_to_function_name_and_ts;
@@ -22,6 +23,8 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hpt_function_name_t, ze_device_handle_t> function_name_to_device;
     std::unordered_map<hp_command_list_t, dsd_t> command_list_to_device;
     std::unordered_map<hp_device_t, timerResolution_kernelTimestampValidBits_t> device_to_timerResolution_kernelTimestampValidBits;
+
+    std::unordered_map<hp_device_t, clock_lttng_device_t> sync_clock_lttng_device;
 
     std::unordered_map<hpt_t, thapi_function_name> last_kernel;
 
@@ -36,6 +39,7 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hpt_t, thapi_function_name> profiled_function_name;
     std::unordered_map<hpt_t, fn_ts_t> profiled_function_name_and_ts;
     std::unordered_map<hpt_function_name_t, dsd_t> function_name_to_dsd;
+
 
     std::queue<const bt_message*> downstream_message_queue;
 
