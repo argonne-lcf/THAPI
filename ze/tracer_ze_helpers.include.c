@@ -184,7 +184,7 @@ static inline void _register_ze_event(
   ADD_ZE_EVENT(_ze_event);
 }
 
-ze_event_handle_t _get_profiling_event(
+static ze_event_handle_t _get_profiling_event(
  ze_command_list_handle_t command_list,
  ze_event_pool_handle_t *pool_ret) {
   struct _ze_obj_h *o_h = NULL;
@@ -243,7 +243,7 @@ static void _profile_event_results(ze_event_handle_t event) {
   }
 }
 
-void _event_cleanup() {
+static void _event_cleanup() {
   struct _ze_event_h *ze_event = NULL;
   struct _ze_event_h *tmp = NULL;
 
