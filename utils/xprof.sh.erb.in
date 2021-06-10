@@ -215,7 +215,7 @@ summary() {
                    --component=sink.xprof.timeline
     fi
 
-    if [ -z "$timeline" ]; then
+    if [ -z "$timeline" ] && [ -z "$trace" ]; then
 
        babeltrace2 --plugin-path=$libdir \
                 ${lttng_last_session} \
