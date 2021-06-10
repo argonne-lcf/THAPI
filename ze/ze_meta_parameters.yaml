@@ -12,6 +12,9 @@ meta_parameters:
   zeDriverGetExtensionProperties:
     - [ InOutScalar, pCount ]
     - [ OutArray, pExtensionProperties, pCount ]
+  zeDriverGetExtensionFunctionAddress:
+    - [ InString, name ]
+    - [ OutScalar, ppFunctionAddress ]
   zeDeviceGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phDevices, pCount ]
@@ -43,8 +46,15 @@ meta_parameters:
     - [ OutScalar, pP2PProperties ]
   zeDeviceCanAccessPeer:
     - [ OutScalar, value ]
+  zeDeviceGetGlobalTimestamps:
+    - [ OutScalar, hostTimestamp ]
+    - [ OutScalar, deviceTimestamp ]
   zeContextCreate:
     - [ InScalar, desc ]
+    - [ OutScalar, phContext ]
+  zeContextCreateEx:
+    - [ InScalar, desc ]
+    - [ InArray, phDevices, numDevices ]
     - [ OutScalar, phContext ]
   zeCommandQueueCreate:
     - [ InScalar, desc ]
@@ -235,6 +245,8 @@ meta_parameters:
   zeGetModuleBuildLogProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetKernelProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetKernelExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetSamplerProcAddrTable:
     - [ OutScalar, pDdiTable ]

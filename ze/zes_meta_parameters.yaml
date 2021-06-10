@@ -37,6 +37,10 @@ meta_parameters:
     - [ InArray, phDevices, count ]
     - [ OutScalar, pNumDeviceEvents ]
     - [ OutArray, pEvents, count ]
+  zesDriverEventListenEx:
+    - [ InArray, phDevices, count ]
+    - [ OutScalar, pNumDeviceEvents ]
+    - [ OutArray, pEvents, count ]
   zesDeviceEnumFabricPorts:
     - [ InOutScalar, pCount ]
     - [ OutArray, phPort, pCount ]

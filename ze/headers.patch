@@ -1,6 +1,20 @@
+diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing_api.h
+--- include/layers/zel_tracing_api.h	2021-06-09 19:11:15.478287882 -0500
++++ modified_include/layers/zel_tracing_api.h	2021-06-09 20:23:06.122105114 -0500
+@@ -54,9 +54,9 @@
+ {
+     ZEL_STRUCTURE_TYPE_TRACER_DESC = 0x1  ,///< ::zel_tracer_desc_t
+     // This enumeration value is deprecated.
+     // Pluse use ZEL_STRUCTURE_TYPE_TRACER_DESC.
+-    ZEL_STRUCTURE_TYPE_TRACER_EXP_DESC = 0x1  ,///< ::zel_tracer_desc_t
++    //ZEL_STRUCTURE_TYPE_TRACER_EXP_DESC = 0x1  ,///< ::zel_tracer_desc_t
+     ZEL_STRUCTURE_TYPE_FORCE_UINT32 = 0x7fffffff
+ 
+ } zel_structure_type_t;
+ 
 diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
---- include/loader/ze_loader_api.h	2020-10-28 09:54:27.743787112 -0500
-+++ modified_include/loader/ze_loader_api.h	2020-10-28 10:05:26.533385647 -0500
+--- include/loader/ze_loader_api.h	2021-04-14 14:00:18.987910312 -0500
++++ modified_include/loader/ze_loader_api.h	2021-06-09 20:23:06.122105114 -0500
 @@ -7,9 +7,9 @@
   * @file ze_loader_api.cpp
   *
@@ -12,17 +26,9 @@ diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api
  #if defined(__cplusplus)
  extern "C" {
  #endif
-@@ -25,5 +25,5 @@
- 
- 
- #if defined(__cplusplus)
- }
--#endif
-\ No newline at end of file
-+#endif
 diff -u4 -r include/ze_api.h modified_include/ze_api.h
---- include/ze_api.h	2020-10-28 09:53:41.847933458 -0500
-+++ modified_include/ze_api.h	2020-10-28 09:59:38.258710059 -0500
+--- include/ze_api.h	2021-06-09 20:17:06.808399570 -0500
++++ modified_include/ze_api.h	2021-06-09 20:23:06.122105114 -0500
 @@ -14,10 +14,10 @@
  #pragma once
  #endif
@@ -86,7 +92,7 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Defines Return/Error codes
  typedef enum _ze_result_t
-@@ -304,205 +304,205 @@
+@@ -308,221 +308,221 @@
  /// @brief Forces all shared allocations into device memory
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -325,6 +331,16 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
 +//typedef struct _ze_group_count_t ze_group_count_t;
  
  ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_module_program_exp_desc_t
+-typedef struct _ze_module_program_exp_desc_t ze_module_program_exp_desc_t;
++//typedef struct _ze_module_program_exp_desc_t ze_module_program_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_raytracing_ext_properties_t
+-typedef struct _ze_device_raytracing_ext_properties_t ze_device_raytracing_ext_properties_t;
++//typedef struct _ze_device_raytracing_ext_properties_t ze_device_raytracing_ext_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare ze_raytracing_mem_alloc_ext_desc_t
 -typedef struct _ze_raytracing_mem_alloc_ext_desc_t ze_raytracing_mem_alloc_ext_desc_t;
 +//typedef struct _ze_raytracing_mem_alloc_ext_desc_t ze_raytracing_mem_alloc_ext_desc_t;
@@ -339,20 +355,22 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
 -typedef struct _ze_physical_mem_desc_t ze_physical_mem_desc_t;
 +//typedef struct _ze_physical_mem_desc_t ze_physical_mem_desc_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_float_atomic_ext_properties_t
+-typedef struct _ze_float_atomic_ext_properties_t ze_float_atomic_ext_properties_t;
++//typedef struct _ze_float_atomic_ext_properties_t ze_float_atomic_ext_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_relaxed_allocation_limits_exp_desc_t
+-typedef struct _ze_relaxed_allocation_limits_exp_desc_t ze_relaxed_allocation_limits_exp_desc_t;
++//typedef struct _ze_relaxed_allocation_limits_exp_desc_t ze_relaxed_allocation_limits_exp_desc_t;
+ 
  
  #if !defined(__GNUC__)
  #pragma endregion
-@@ -8914,5 +8914,5 @@
- #if defined(__cplusplus)
- } // extern "C"
- #endif
- 
--#endif // _ZE_API_H
-\ No newline at end of file
-+#endif // _ZE_API_H
 diff -u4 -r include/zes_api.h modified_include/zes_api.h
---- include/zes_api.h	2020-10-28 09:53:41.847933458 -0500
-+++ modified_include/zes_api.h	2020-10-28 09:59:38.258710059 -0500
+--- include/zes_api.h	2021-06-09 20:17:11.704427911 -0500
++++ modified_include/zes_api.h	2021-06-09 20:23:06.118105099 -0500
 @@ -182,249 +182,249 @@
  } zes_base_capability_t;
  
@@ -664,18 +682,10 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
  
  #if !defined(__GNUC__)
  #pragma endregion
-@@ -4583,5 +4583,5 @@
- #if defined(__cplusplus)
- } // extern "C"
- #endif
- 
--#endif // _ZES_API_H
-\ No newline at end of file
-+#endif // _ZES_API_H
 diff -u4 -r include/zet_api.h modified_include/zet_api.h
---- include/zet_api.h	2020-10-28 09:53:41.851933445 -0500
-+++ modified_include/zet_api.h	2020-10-28 09:59:38.258710059 -0500
-@@ -147,81 +147,81 @@
+--- include/zet_api.h	2021-06-09 19:11:15.482287897 -0500
++++ modified_include/zet_api.h	2021-06-09 20:23:06.122105114 -0500
+@@ -147,85 +147,85 @@
  } zet_typed_value_t;
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -717,6 +727,11 @@ diff -u4 -r include/zet_api.h modified_include/zet_api.h
  /// @brief Forward-declare zet_debug_event_info_thread_stopped_t
 -typedef struct _zet_debug_event_info_thread_stopped_t zet_debug_event_info_thread_stopped_t;
 +//typedef struct _zet_debug_event_info_thread_stopped_t zet_debug_event_info_thread_stopped_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_debug_event_info_page_fault_t
+-typedef struct _zet_debug_event_info_page_fault_t zet_debug_event_info_page_fault_t;
++//typedef struct _zet_debug_event_info_page_fault_t zet_debug_event_info_page_fault_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zet_debug_event_t
@@ -776,11 +791,3 @@ diff -u4 -r include/zet_api.h modified_include/zet_api.h
  
  #if !defined(__GNUC__)
  #pragma endregion
-@@ -1644,5 +1644,5 @@
- #if defined(__cplusplus)
- } // extern "C"
- #endif
- 
--#endif // _ZET_API_H
-\ No newline at end of file
-+#endif // _ZET_API_H
