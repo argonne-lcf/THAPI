@@ -44,15 +44,17 @@ static inline uint64_t corrected_l1(const uint64_t d1, const uint64_t l0, const 
 static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t end) {
     static bool is_ns = true;
     uint64_t timerResolution = 1;
-    uint64_t kernelTimestampValidBits = 64;
-    if (state->device_to_timerResolution_kernelTimestampValidBits.count(hp_device) == 0) {
+    uint64_t kernelTimestampValidBits = 32;
+    auto map = state->device_to_timerResolution_kernelTimestampValidBits;
+    auto it = map.find(hp_device);
+    if (it == map.end()) {
         if (is_ns) {
             std::cerr << "No timerResolution have been found for a device."
                       << "Data will be displayed as cycle" << std::endl;
             is_ns = false;
         }
     } else {
-        const auto [timerResolution_,kernelTimestampValidBits_] = state->device_to_timerResolution_kernelTimestampValidBits[hp_device];
+        const auto [timerResolution_,kernelTimestampValidBits_] = it->second;
         timerResolution = timerResolution_;
         kernelTimestampValidBits = kernelTimestampValidBits_;
     }
@@ -66,10 +68,23 @@ static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_dev
 }
 
 static inline uint64_t start_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t born_min) {
-    const auto [l0,d0] = state->sync_clock_lttng_device[hp_device];
-    const auto [_timerResolution, _kernelTimestampValidBits] = state->device_to_timerResolution_kernelTimestampValidBits[hp_device];
-    const uint64_t start_ns = start * _timerResolution;
-    return corrected_l1(start_ns, l0, d0, born_min, _kernelTimestampValidBits);
+
+    auto map_sync = state->sync_clock_lttng_device;
+    auto it_sync = map_sync.find(hp_device);
+
+    auto map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
+    auto it_timer = map_timer.find(hp_device);
+
+    if (it_timer != map_timer.end() && it_sync != map_sync.end()) {
+        const auto [l0,d0] = it_sync->second;
+        const auto [_timerResolution, _kernelTimestampValidBits] = it_timer->second;
+        const uint64_t start_ns = start * _timerResolution;
+        return corrected_l1(start_ns, l0, d0, born_min, _kernelTimestampValidBits);
+    } else {
+        std::cerr << "No host-device clock synchronization have been found. "
+                  << "Will use the lower bound"<< std::endl;
+        return born_min;
+    }
 }
 
 void *init_zeinterval_callbacks_state() {
@@ -189,9 +204,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
        dbt_event.name_unsanitized.start_with?('lttng_ust_zel:')  %>
     int64_t ns_from_origin;
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-   <%if dbt_event.name_unsanitized.end_with?(START) %>
+    <%if dbt_event.name_unsanitized.end_with?(START) %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
-   <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
+    <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
     const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
      <% if dbt_event.fields_name.include?('zeResult') %>
        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
@@ -230,9 +245,15 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
 
     hp_device_t hp_device{hostname,process_id, (thapi_device_id) hDevice};
-    const auto [_timerResolution, _kernelTimestampValidBits] = state->device_to_timerResolution_kernelTimestampValidBits[hp_device];
-    const uint64_t mask = ((uint64_t) 1 << _kernelTimestampValidBits) - 1;
-    state->sync_clock_lttng_device[hp_device] = clock_lttng_device_t{ns_from_origin, (deviceTimestamp & mask )*_timerResolution};
+
+    auto map = state->device_to_timerResolution_kernelTimestampValidBits;
+    auto it = map.find(hp_device);
+
+    if (it != map.end()) {
+        const auto [_timerResolution, _kernelTimestampValidBits] = it->second;
+        const uint64_t mask = ((uint64_t) 1 << _kernelTimestampValidBits) - 1;
+        state->sync_clock_lttng_device[hp_device] = clock_lttng_device_t{ns_from_origin, (deviceTimestamp & mask )*_timerResolution};
+    }
   <% end %>
 
 
@@ -345,9 +366,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    if (state->event_to_function_name_and_ts.count(hp_event)) {
       const auto [thread_id,function_name,ts] =  state->event_to_function_name_and_ts[hp_event];
       const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
-
       const hp_device_t hp_device{hostname, process_id, device};
-
 
       const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
       const uint64_t start = start_time_ns(state, hp_device, globalStart,ts);

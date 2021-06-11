@@ -19,13 +19,14 @@
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
+    ts: 20
   :payload:
     name: zeCommandListAppendBarrier
     dur: 2
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
-    ts: 2
+    ts: 20
   :payload:
     name: zeCommandListAppendBarrier
     dur: 8

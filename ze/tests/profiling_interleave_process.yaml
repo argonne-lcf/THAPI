@@ -29,9 +29,9 @@
 - :name: lttng_ust_ze:zeCommandListAppendBarrier_exit
 - :name: lttng_ust_ze_profiling:event_profiling_results
   :payload:
-    contextEnd: 10
+    globalEnd: 10
   :common_context:
     vpid: -1
 - :name: lttng_ust_ze_profiling:event_profiling_results
   :payload:
-    contextEnd: 20
+    globalEnd: 20

@@ -22,6 +22,6 @@
 - :name: lttng_ust_ze_profiling:event_profiling_results
   :payload:
     hEvent: 12
-    contextStart: 2
-    contextEnd: 10
+    globalStart: 2
+    globalEnd: 10
 - :name: lttng_ust_ze:zeCommandListAppendBarrier_exit

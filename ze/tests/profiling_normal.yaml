@@ -16,6 +16,7 @@
   :class: ze_stream_class
 :events:
 - :name: lttng_ust_ze:zeCommandListAppendBarrier_entry
+  :clock_snapshot_value: 20
 - :name: lttng_ust_ze_profiling:event_profiling
   :payload:
     hEvent: 12
@@ -25,5 +26,5 @@
     vtid: 1
   :payload:
     hEvent: 12
-    contextStart: 2
-    contextEnd: 10
+    globalStart: 2
+    globalEnd: 10
