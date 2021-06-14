@@ -376,11 +376,18 @@ EOF
       end
     end
 
-    def context_create(flags: 0)
+    def context_create(flags: 0, devices: nil)
       desc = ZEContextDesc::new()
       desc[:flags] = flags
       ph_context = MemoryPointer::new(:ze_context_handle_t)
-      result = ZE.zeContextCreate(@handle, desc, ph_context)
+      if devices
+        result = ZE.zeContextCreate(@handle, desc, ph_context)
+      else
+        count = devices.length
+        ph_devices = MemoryPointer::new(:ze_device_handle_t, count)
+        ph_devices.write_array_of_ze_device_handle_t(devices.collect(&:handle).collect(&:address))
+        result = ZE.zeContextCreateEx(@handle, desc, count, ph_devices, ph_context)
+      end
       ZE.error_check(result)
       Context::new(ph_context.read_ze_context_handle_t, self)
     end
