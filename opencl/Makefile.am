@@ -206,10 +206,11 @@ libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werr
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TESTS_COMMON_TEMPLATE = \
-	tests/interval_profiling_block.yaml
+	tests/interval_profiling_block.yaml \
+	tests/profiling_block.yaml
 
 $(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
-	$(ERB) profiled_call="clEnqueueReadBuffer" $< > $@
+	$(ERB) profiled_call="clEnqueueSVMFree" be="opencl" $< > $@
 
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
@@ -318,4 +319,5 @@ CLEANFILES = \
 	xprof_utils.hpp \
 	$(nodist_libCLInterval_la_SOURCES) \
 	$(CLPROF_DUST_FILES) \
-	$(INTERVAL_DUST_FILES)
+	$(INTERVAL_DUST_FILES) \
+	$(TESTS_COMMON_TEMPLATE) 

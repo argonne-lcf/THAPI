@@ -51,7 +51,7 @@ EXTRA_DIST = $(ML_FILES)
 ZE_EXTRACT = \
 	$(srcdir)/extract_base.rb
 
-EXTRA_DIST += extract_base.rb 
+EXTRA_DIST += extract_base.rb
 
 ZE_EXTRACTED = \
 	ze_api.yaml \
@@ -331,6 +331,13 @@ CLEANFILES += \
 	babeltrace_zeinterval_callbacks.h \
 	babeltrace_zeinterval_dispatchers.c
 
+TESTS_COMMON_TEMPLATE = \
+	tests/interval_profiling_block.yaml \
+	tests/profiling_block.yaml
+
+$(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+	$(ERB) profiled_call="zeCommandListAppendBarrier" be="ze" $< > $@
+
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
 	tests/interval_API_call.dust \
@@ -360,7 +367,8 @@ TRACE_FILES = \
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
 	$(nodist_libCLInterval_la_SOURCES) \
-	$(INTERVAL_DUST_FILES)
+	$(INTERVAL_DUST_FILES) \
+	$(TESTS_COMMON_TEMPLATE)
 
 TESTS = \
 	tests/ze_dummy_trace.dust \
