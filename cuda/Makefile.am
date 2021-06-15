@@ -318,29 +318,57 @@ CUDA_BINDINGS = \
 	cuda_library.rb \
 	babeltrace_cuda_lib.rb
 
+TESTS_COMMON_TEMPLATE = \
+	tests/interval_profiling_block.yaml \
+	tests/profiling_block.yaml
+
+$(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+	$(ERB) profiled_call="cuLaunchHostFunc" be="cuda" $< > $@
+
+#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+INTERVAL_DUST_FILES = \
+	tests/interval_profiling_block.dust
+
+$(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
+	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
+
+nodist_libCUDAInterval_la_SOURCES = \
+	$(INTERVAL_DUST_FILES)
+
+TRACE_FILES = \
+	tests/profiling_block.yaml \
+	tests/interval_profiling_block.yaml
+
 tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
 	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
 
 CLEANFILES += tests/cuda_dummy_trace.yaml
 
-TEST_FILES = \
-	tests/cuda_dummy_trace.dust
+CLEANFILES += \
+	$(nodist_libCUDAInterval_la_SOURCES) \
+	$(INTERVAL_DUST_FILES) \
+	$(TESTS_COMMON_TEMPLATE)
 
-TESTS = $(TEST_FILES)
+TESTS = \
+	tests/cuda_dummy_trace.dust \
+	$(INTERVAL_DUST_FILES)
 
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
+
 check_DATA = \
 	test_wrapper.sh \
-	tests/cuda_dummy_trace.yaml
+	tests/cuda_dummy_trace.yaml \
+	$(TRACE_FILES)
 
 data_DATA = $(CUDA_BINDINGS)
 
 EXTRA_DIST += \
 	gen_cuda_library.rb \
 	gen_babeltrace_cuda_lib.rb \
-	$(TEST_FILES)
+	$(TRACE_FILES) \
+	tests/interval.dust.erb 
 
 CLEANFILES += $(CUDA_BINDINGS)
 
@@ -372,7 +400,7 @@ BUILT_SOURCES += \
 	babeltrace_cudainterval.c \
 	xprof_utils.hpp 
 
-nodist_libCUDAInterval_la_SOURCES = \
+nodist_libCUDAInterval_la_SOURCES += \
 	babeltrace_cudainterval.c \
 	babeltrace_cudainterval.h \
 	babeltrace_cudainterval_callbacks.h \

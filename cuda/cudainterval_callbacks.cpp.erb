@@ -247,7 +247,7 @@ static void cudainterval_<%= dbt_event.name %>_callback(
       const auto _device = _state->function_name_to_d[hpt_function_name_t(_hostname, _process_id, _thread_id, _function_name)];
 
       const uint64_t _start = _ts;
-      const uint64_t _delta = uint64_t (milliseconds * 1E3);
+      const uint64_t _delta = uint64_t (milliseconds * 1E6);
       create_and_enqueue_device_message(_hostname.c_str(),_process_id, _thread_id, _device, _device, _function_name.c_str(), _start, _delta, _delta == 0 );
 
       _state->event_to_function_name_and_ts.erase(_hp_event);
@@ -258,7 +258,7 @@ static void cudainterval_<%= dbt_event.name %>_callback(
 
       const hp_device_t hp_device{_hostname, _process_id, _device};
       const uint64_t _start = _ts;
-      const uint64_t _delta = uint64_t (milliseconds * 1E3);
+      const uint64_t _delta = uint64_t (milliseconds * 1E6);
       _state->event_result_to_start_and_delta[_hp_event] = sd_t(_start, _delta);
       _state->event_to_function_name_and_ts[_hp_event] = tfn_ts_t(_thread_id, _function_name, _ts);
     }

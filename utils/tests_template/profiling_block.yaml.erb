@@ -1,17 +1,16 @@
 ---
 <% event = "event" if be == "opencl" %>
 <% event = "hEvent" if be == "ze" %>
-
-<% prof_start = "start" if be == "opencl" %>
-<% prof_start = "globalStart" if be == "ze" %>
+<% event = "hStop" if be == "cuda" %>
 
 <% prof_end = "end" if be == "opencl" %>
 <% prof_end = "globalEnd" if be == "ze" %>
+<% prof_end = "milliseconds" if be == "cuda" %>
 
 :hostname: aurora12.gov
 :default_stream: stream0
 :stream_classes:
-- :name: cl_stream_class
+- :name: stream_class
   :schemas:
   - thapi_<%= be %>
   :clock_snapshot_value: true
@@ -22,7 +21,7 @@
     :class: unsigned
 :streams:
 - :name: stream0
-  :class: cl_stream_class
+  :class: stream_class
 :events:
 - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
 - :name: lttng_ust_<%= be %>_profiling:event_profiling_results

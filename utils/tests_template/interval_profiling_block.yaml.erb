@@ -1,3 +1,8 @@
+<% dur = 10 if be == "opencl" %> 
+<% dur = 10 if be == "ze" %>
+<% dur = 10000000 if be == "cuda" %>
+
+
 :default_stream: stream0
 :stream_classes:
 - :name: interval_class
@@ -21,7 +26,7 @@
     hostname: aurora12.gov
   :payload:
     name: <%= profiled_call %>
-    dur: 10
+    dur: <%= dur %>
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
