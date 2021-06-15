@@ -367,6 +367,7 @@ data_DATA = $(CUDA_BINDINGS)
 EXTRA_DIST += \
 	gen_cuda_library.rb \
 	gen_babeltrace_cuda_lib.rb \
+	tests/cuda_dummy_trace.dust \
 	$(TRACE_FILES) \
 	tests/interval.dust.erb 
 
