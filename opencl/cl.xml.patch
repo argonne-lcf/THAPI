@@ -1,26 +1,33 @@
---- cl.xml	2020-10-21 09:49:17.390459386 -0500
-+++ cl.xml.patched	2020-10-28 15:32:12.381190730 -0500
-@@ -210,8 +210,10 @@
-         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_atomic_capabilities</name>;</type>
-         <type category="define">typedef <type>cl_uint</type>          <name>cl_khronos_vendor_id</name>;</type>
-         <type category="define">typedef <type>cl_uint</type>          <name>cl_version</name>;</type>
-         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_device_enqueue_capabilities</name>;</type>
+--- cl.xml	2021-06-15 11:31:42.828893536 -0500
++++ cl.xml.patched	2021-06-15 11:44:41.960594081 -0500
+@@ -128,8 +128,9 @@
+         <type category="define">typedef <type>void</type>*            <name>CLeglDisplayKHR</name>;</type>
+         <type category="define">typedef <type>void</type>*            <name>CLeglSyncKHR</name>;</type>
+         <type category="define">typedef <type>intptr_t</type>         <name>cl_egl_image_properties_khr</name>;</type>
+         <type category="define">typedef <type>cl_ulong</type>         <name>cl_device_partition_property_ext</name>;</type>
++        <type category="define">typedef <type>cl_ulong</type>         <name>cl_affinity_domain_ext</name>;</type>
+         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_mem_migration_flags_ext</name>;</type>
+         <type category="define">typedef <type>cl_uint</type>          <name>cl_image_pitch_info_qcom</name>;</type>
+         <type category="define">typedef <type>cl_uint</type>          <name>cl_queue_priority_khr</name>;</type>
+         <type category="define">typedef <type>cl_uint</type>          <name>cl_queue_throttle_khr</name>;</type>
+@@ -219,8 +220,10 @@
+         <type category="define">typedef struct _cl_icd_dispatch       <name>cl_icd_dispatch</name>;</type>
+         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_scheduling_controls_capabilities_arm</name>;</type>
+         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_device_controlled_termination_capabilities_arm</name>;</type>
+         <type category="define">typedef <type>cl_bitfield</type>      <name>cl_command_queue_capabilities_intel</name>;</type>
 +        <type category="define">typedef <type>cl_uint</type>          <name>cl_icdl_info</name>;</type>
 +        <type category="define">typedef <type>cl_uint</type>          <name>cl_execution_info_intel</name>;</type>
  
              <comment>Structure types</comment>
          <type category="struct" name="cl_dx9_surface_info_khr">
              <member><type>IDirect3DSurface9</type>*  <name>resource</name></member>
-@@ -249,16 +251,9 @@
+@@ -258,13 +261,9 @@
              <member><type>size_t</type>              <name>image_row_pitch</name></member>
              <member><type>size_t</type>              <name>image_slice_pitch</name></member>
              <member><type>cl_uint</type>             <name>num_mip_levels</name></member>
              <member><type>cl_uint</type>             <name>num_samples</name></member>
 -            <!-- Can't properly express this in XML schema yet - use name/ tag to align? -->
--            <member>#ifdef __GNUC__
--    __extension__   /* Prevents warnings about anonymous union in -pedantic builds */
--#endif
--    union {
+-            <member>union {
 -        cl_mem buffer;
 -        cl_mem mem_object;
 -    }</member>
@@ -29,7 +36,7 @@
          <type category="struct" name="cl_buffer_region">
              <member><type>size_t</type>              <name>origin</name></member>
              <member><type>size_t</type>              <name>size</name></member>
-@@ -552,13 +547,13 @@
+@@ -606,13 +605,13 @@
          <enum value="CL_FALSE"      name="CL_NON_BLOCKING"/>
      </enums>
  
@@ -48,7 +55,7 @@
  
      <enums name="cl_affinity_domain_ext" vendor="IBM" comment="Property names for CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT. This is not a bitfield.">
          <enum value="0x1"           name="CL_AFFINITY_DOMAIN_L1_CACHE_EXT"/>
-@@ -568,8 +563,15 @@
+@@ -622,8 +621,15 @@
          <enum value="0x10"          name="CL_AFFINITY_DOMAIN_NUMA_EXT"/>
          <enum value="0x100"         name="CL_AFFINITY_DOMAIN_NEXT_FISSIONABLE_EXT"/>
      </enums>
@@ -64,19 +71,60 @@
          <enum value="0"             name="CL_BUILD_SUCCESS"/>
          <enum value="-1"            name="CL_BUILD_NONE"/>
          <enum value="-2"            name="CL_BUILD_ERROR"/>
-@@ -2344,8 +2346,99 @@
+@@ -1180,11 +1186,9 @@
+         <enum value="0x0902"        name="CL_PLATFORM_NAME"/>
+         <enum value="0x0903"        name="CL_PLATFORM_VENDOR"/>
+         <enum value="0x0904"        name="CL_PLATFORM_EXTENSIONS"/>
+         <enum value="0x0905"        name="CL_PLATFORM_HOST_TIMER_RESOLUTION"/>
+-        <enum value="0x0906"        name="CL_PLATFORM_NUMERIC_VERSION_KHR"/>
+         <enum value="0x0906"        name="CL_PLATFORM_NUMERIC_VERSION"/>
+-        <enum value="0x0907"        name="CL_PLATFORM_EXTENSIONS_WITH_VERSION_KHR"/>
+         <enum value="0x0907"        name="CL_PLATFORM_EXTENSIONS_WITH_VERSION"/>
+             <unused start="0x0908" end="0x091F" comment="Reserved to Khronos"/>
+         <enum value="0x0920"        name="CL_PLATFORM_ICD_SUFFIX_KHR"/>
+             <unused start="0x0921" end="0x09FF" comment="Vendor extensions"/>
+@@ -1266,11 +1270,9 @@
+         <enum value="0x1047"        name="CL_DEVICE_REFERENCE_COUNT"/>
+         <enum value="0x1048"        name="CL_DEVICE_PREFERRED_INTEROP_USER_SYNC"/>
+         <enum value="0x1049"        name="CL_DEVICE_PRINTF_BUFFER_SIZE"/>
+         <enum value="0x104A"        name="CL_DEVICE_IMAGE_PITCH_ALIGNMENT"/>
+-        <enum value="0x104A"        name="CL_DEVICE_IMAGE_PITCH_ALIGNMENT_KHR"/>
+         <enum value="0x104B"        name="CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT"/>
+-        <enum value="0x104B"        name="CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT_KHR"/>
+         <enum value="0x104C"        name="CL_DEVICE_MAX_READ_WRITE_IMAGE_ARGS"/>
+         <enum value="0x104D"        name="CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE"/>
+         <enum value="0x104E"        name="CL_DEVICE_QUEUE_ON_DEVICE_PROPERTIES"/>
+         <enum value="0x104F"        name="CL_DEVICE_QUEUE_ON_DEVICE_PREFERRED_SIZE"/>
+@@ -1288,16 +1290,12 @@
+         <enum value="0x105B"        name="CL_DEVICE_IL_VERSION"/>
+         <enum value="0x105B"        name="CL_DEVICE_IL_VERSION_KHR"/>
+         <enum value="0x105C"        name="CL_DEVICE_MAX_NUM_SUB_GROUPS"/>
+         <enum value="0x105D"        name="CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS"/>
+-        <enum value="0x105E"        name="CL_DEVICE_NUMERIC_VERSION_KHR"/>
+         <enum value="0x105E"        name="CL_DEVICE_NUMERIC_VERSION"/>
+         <enum value="0x105F"        name="CL_DEVICE_OPENCL_C_NUMERIC_VERSION_KHR"/>
+-        <enum value="0x1060"        name="CL_DEVICE_EXTENSIONS_WITH_VERSION_KHR"/>
+         <enum value="0x1060"        name="CL_DEVICE_EXTENSIONS_WITH_VERSION"/>
+-        <enum value="0x1061"        name="CL_DEVICE_ILS_WITH_VERSION_KHR"/>
+         <enum value="0x1061"        name="CL_DEVICE_ILS_WITH_VERSION"/>
+-        <enum value="0x1062"        name="CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION_KHR"/>
+         <enum value="0x1062"        name="CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION"/>
+         <enum value="0x1063"        name="CL_DEVICE_ATOMIC_MEMORY_CAPABILITIES"/>
+         <enum value="0x1064"        name="CL_DEVICE_ATOMIC_FENCE_CAPABILITIES"/>
+         <enum value="0x1065"        name="CL_DEVICE_NON_UNIFORM_WORK_GROUP_SUPPORT"/>
+@@ -2511,8 +2509,99 @@
              <param><type>cl_GLint</type>                   <name>miplevel</name></param>
              <param><type>cl_GLuint</type>                  <name>texture</name></param>
              <param><type>cl_int</type>*                    <name>errcode_ret</name></param>
          </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_int</type>                     <name>clGetICDLoaderInfoOCLICD</name></proto>
 +            <param><type>cl_icdl_info</type>               <name>param_name</name></param>
 +            <param><type>size_t</type>                     <name>param_value_size</name></param>
 +            <param><type>void</type>*                      <name>param_value</name></param>
 +            <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_1_0">
++        <command suffix="CL_API_SUFFIX__VERSION_1_0">
 +            <proto><type>cl_mem</type>                          <name>clCreateImageWithPropertiesINTEL</name></proto>
 +            <param><type>cl_context</type>                      <name>context</name></param>
 +            <param>const <type>cl_mem_properties_intel</type>*  <name>properties</name></param>
@@ -85,7 +133,7 @@
 +            <param><type>void</type>*                           <name>host_ptr</name></param>
 +            <param><type>cl_int</type>*                         <name>errcode_ret</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_1_1">
++        <command suffix="CL_API_SUFFIX__VERSION_1_1">
 +            <proto><type>cl_int</type>                     <name>clGetImageParamsINTEL</name></proto>
 +            <param><type>cl_context</type>                 <name>context</name></param>
 +            <param>const <type>cl_image_format</type>*     <name>image_format</name></param>
@@ -93,7 +141,7 @@
 +            <param><type>size_t</type>*                    <name>image_row_pitch</name></param>
 +            <param><type>size_t</type>*                    <name>image_slice_pitch</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_0">
++        <command suffix="CL_API_SUFFIX__VERSION_2_0">
 +            <proto><type>cl_int</type>                     <name>clEnqueueVerifyMemoryINTEL</name></proto>
 +            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
 +            <param>const <type>void</type>*                <name>allocation_ptr</name></param>
@@ -101,12 +149,12 @@
 +            <param><type>size_t</type>                     <name>size_of_comparison</name></param>
 +            <param><type>cl_uint</type>                    <name>comparison_mode</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_0">
++        <command suffix="CL_API_SUFFIX__VERSION_2_0">
 +            <proto><type>cl_int</type>                     <name>clAddCommentINTEL</name></proto>
 +            <param><type>cl_device_id</type>               <name>device</name></param>
 +            <param>const <type>char</type>*                <name>comment</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_command_queue</type>             <name>clCreatePerfCountersCommandQueueINTEL</name></proto>
 +            <param><type>cl_context</type>                   <name>context</name></param>
 +            <param><type>cl_device_id</type>                 <name>device</name></param>
@@ -114,21 +162,21 @@
 +            <param><type>cl_uint</type>                      <name>configuration</name></param>
 +            <param><type>cl_int</type>*                      <name>errcode_ret</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_int</type>                     <name>clSetPerformanceConfigurationINTEL</name></proto>
 +            <param><type>cl_device_id</type>               <name>device</name></param>
 +            <param><type>cl_uint</type>                    <name>count</name></param>
 +            <param><type>cl_uint</type>*                   <name>offsets</name></param>
 +            <param><type>cl_uint</type>*                   <name>values</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_int</type>                     <name>clGetDeviceFunctionPointerINTEL</name></proto>
 +            <param><type>cl_device_id</type>               <name>device</name></param>
 +            <param><type>cl_program</type>                 <name>program</name></param>
 +            <param>const <type>char</type>*                <name>function_name</name></param>
 +            <param><type>cl_ulong</type>*                  <name>function_pointer_ret</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_int</type>                     <name>clGetDeviceGlobalVariablePointerINTEL</name></proto>
 +            <param><type>cl_device_id</type>               <name>device</name></param>
 +            <param><type>cl_program</type>                 <name>program</name></param>
@@ -136,7 +184,7 @@
 +            <param><type>size_t</type>*                    <name>global_variable_size_ret</name></param>
 +            <param><type>void</type>**                     <name>global_variable_pointer_ret</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_int</type>                     <name>clGetExecutionInfoINTEL</name></proto>
 +            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
 +            <param><type>cl_kernel</type>                  <name>kernel</name></param>
@@ -148,7 +196,7 @@
 +            <param><type>void</type>*                      <name>param_value</name></param>
 +            <param><type>size_t</type>*                    <name>param_value_size_ret</name></param>
 +        </command>
-+        <command suffix="CL_EXT_SUFFIX__VERSION_2_1">
++        <command suffix="CL_API_SUFFIX__VERSION_2_1">
 +            <proto><type>cl_int</type>                     <name>clEnqueueNDRangeKernelINTEL</name></proto>
 +            <param><type>cl_command_queue</type>           <name>command_queue</name></param>
 +            <param><type>cl_kernel</type>                  <name>kernel</name></param>
@@ -160,11 +208,11 @@
 +            <param>const <type>cl_event</type>*            <name>event_wait_list</name></param>
 +            <param><type>cl_event</type>*                  <name>event</name></param>
 +        </command>
-         <command suffix="CL_EXT_SUFFIX__VERSION_1_2">
+         <command suffix="CL_API_SUFFIX__VERSION_1_2">
              <proto><type>cl_int</type>                     <name>clGetDeviceIDsFromVA_APIMediaAdapterINTEL</name></proto>
              <param><type>cl_platform_id</type>             <name>platform</name></param>
              <param><type>cl_va_api_device_source_intel</type> <name>media_adapter_type</name></param>
-@@ -4074,9 +4167,9 @@
+@@ -4255,9 +4344,9 @@
              <enum name="CL_DEVICE_PARTITION_BY_COUNTS"/>
              <enum name="CL_DEVICE_PARTITION_BY_COUNTS_LIST_END"/>
              <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN"/>
@@ -175,7 +223,7 @@
              <enum name="CL_DEVICE_AFFINITY_DOMAIN_L4_CACHE"/>
              <enum name="CL_DEVICE_AFFINITY_DOMAIN_L3_CACHE"/>
              <enum name="CL_DEVICE_AFFINITY_DOMAIN_L2_CACHE"/>
-@@ -4140,9 +4233,9 @@
+@@ -4321,9 +4410,9 @@
              <enum name="CL_KERNEL_ARG_ACCESS_WRITE_ONLY"/>
              <enum name="CL_KERNEL_ARG_ACCESS_READ_WRITE"/>
              <enum name="CL_KERNEL_ARG_ACCESS_NONE"/>
@@ -186,7 +234,7 @@
              <enum name="CL_KERNEL_ARG_TYPE_CONST"/>
              <enum name="CL_KERNEL_ARG_TYPE_RESTRICT"/>
              <enum name="CL_KERNEL_ARG_TYPE_VOLATILE"/>
-@@ -4219,9 +4312,9 @@
+@@ -4400,9 +4489,9 @@
          <require comment="cl_command_queue_properties - bitfield">
              <enum name="CL_QUEUE_ON_DEVICE"/>
              <enum name="CL_QUEUE_ON_DEVICE_DEFAULT"/>
@@ -197,7 +245,7 @@
              <enum name="CL_DEVICE_SVM_FINE_GRAIN_BUFFER"/>
              <enum name="CL_DEVICE_SVM_FINE_GRAIN_SYSTEM"/>
              <enum name="CL_DEVICE_SVM_ATOMICS"/>
-@@ -4259,9 +4352,9 @@
+@@ -4440,9 +4529,9 @@
          </require>
          <require comment="cl_program_build_info">
              <enum name="CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE"/>
@@ -208,7 +256,7 @@
          </require>
          <require comment="cl_kernel_exec_info">
              <enum name="CL_KERNEL_EXEC_INFO_SVM_PTRS"/>
-@@ -4361,9 +4454,9 @@
+@@ -4542,9 +4631,9 @@
          </require>
          <require comment="OpenCL 2.2 Program Object APIs that were deprecated in OpenCL 3.0">
              <command name="clSetProgramReleaseCallback"/>
@@ -219,7 +267,7 @@
              <enum name="CL_PROGRAM_SCOPE_GLOBAL_DTORS_PRESENT"/>
          </require>
      </feature>
-@@ -4588,14 +4681,14 @@
+@@ -4769,14 +4858,14 @@
          <extension name="cl_khr_egl_image" supported="opencl">
              <require>
                  <type name="CL/cl.h"/>
@@ -236,23 +284,20 @@
                  <enum name="CL_EGL_RESOURCE_NOT_ACQUIRED_KHR"/>
              </require>
              <require comment="CLeglImageKHR is an opaque handle to an EGLImage">
-@@ -4679,10 +4772,12 @@
+@@ -5010,9 +5099,9 @@
+                 <enum name="CL_DEVICE_PARTITION_BY_COUNTS_EXT"/>
+                 <enum name="CL_DEVICE_PARTITION_BY_NAMES_EXT"/>
+                 <enum name="CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT"/>
              </require>
-             <require comment="cl_device_info">
-                 <enum name="CL_DEVICE_IL_VERSION_KHR"/>
+-            <require comment="cl_device_partition_property_ext - affinity domains">
++            <require comment="cl_affinity_domain_ext - affinity domains">
+                 <enum name="CL_AFFINITY_DOMAIN_L1_CACHE_EXT"/>
+                 <enum name="CL_AFFINITY_DOMAIN_L2_CACHE_EXT"/>
+                 <enum name="CL_AFFINITY_DOMAIN_L3_CACHE_EXT"/>
+                 <enum name="CL_AFFINITY_DOMAIN_L4_CACHE_EXT"/>
+@@ -5036,9 +5125,9 @@
              </require>
--            <require comment="Program Object APIs">
-+            <require comment="cl_program_info">
-                 <enum name="CL_PROGRAM_IL_KHR"/>
-+            </require>
-+            <require>
-                 <command name="clCreateProgramWithILKHR" comment="No EXT_SUFFIX?"/>
-             </require>
-         </extension>
-         <extension name="cl_khr_image2D_buffer" supported="opencl">
-@@ -4840,9 +4935,9 @@
-             </require>
-             <require comment="cl_device_partition_property_ext">
+             <require>
                  <type name="cl_mem_migration_flags_ext"/>
              </require>
 -            <require comment="cl_mem_migration_flags_ext">
@@ -261,72 +306,18 @@
              </require>
              <require comment="cl_command_type">
                  <enum name="CL_COMMAND_MIGRATE_MEM_OBJECT_EXT"/>
-@@ -4927,12 +5022,12 @@
-         <extension name="cl_img_use_gralloc_ptr" supported="opencl">
-             <require>
-                 <type name="CL/cl.h"/>
-             </require>
--            <require comment="Flag values used by clCreateBuffer">
-+            <require comment="cl_mem_flags Flag values used by clCreateBuffer">
-                 <enum name="CL_MEM_USE_GRALLOC_PTR_IMG"/>
-             </require>
--            <require comment="To be used by clGetEventInfo">
-+            <require comment="cl_command_type To be used by clGetEventInfo">
-                 <enum name="CL_COMMAND_ACQUIRE_GRALLOC_OBJECTS_IMG"/>
-                 <enum name="CL_COMMAND_RELEASE_GRALLOC_OBJECTS_IMG"/>
-             </require>
-             <require comment="Error codes">
-@@ -5004,9 +5099,9 @@
-             </require>
-             <require comment="To be used by clGetEventInfo">
-                 <type name="cl_import_properties_arm"/>
-             </require>
--            <require comment="default and valid properties name for cl_arm_import_memory">
-+            <require comment="cl_import_properties_arm default and valid properties name for cl_arm_import_memory">
-                 <enum name="CL_IMPORT_TYPE_ARM"/>
-                 <enum name="CL_IMPORT_TYPE_HOST_ARM"/>
-                 <enum name="CL_IMPORT_TYPE_DMA_BUF_ARM"/>
-                 <enum name="CL_IMPORT_TYPE_PROTECTED_ARM"/>
-@@ -5039,32 +5134,32 @@
-                 <type name="cl_svm_mem_flags_arm"/>
-                 <type name="cl_kernel_exec_info_arm"/>
-                 <type name="cl_device_svm_capabilities_arm"/>
-             </require>
--            <require comment="Used by clGetEventInfo">
-+            <require comment="cl_event_info Used by clGetEventInfo">
-                 <enum name="CL_DEVICE_SVM_CAPABILITIES_ARM"/>
-             </require>
--            <require comment="Used by clGetMemObjectInfo">
-+            <require comment="cl_mem_info Used by clGetMemObjectInfo">
-                 <enum name="CL_MEM_USES_SVM_POINTER_ARM"/>
-             </require>
--            <require comment="Used by clSetKernelExecInfoARM">
-+            <require comment="cl_kernel_exec_info_arm Used by clSetKernelExecInfoARM">
-                 <enum name="CL_KERNEL_EXEC_INFO_SVM_PTRS_ARM"/>
-                 <enum name="CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM_ARM"/>
-             </require>
--            <require comment="Used by clGetEventInfo">
-+            <require comment="cl_command_type Used by clGetEventInfo">
-                 <enum name="CL_COMMAND_SVM_FREE_ARM"/>
-                 <enum name="CL_COMMAND_SVM_MEMCPY_ARM"/>
+@@ -5272,9 +5361,9 @@
                  <enum name="CL_COMMAND_SVM_MEMFILL_ARM"/>
                  <enum name="CL_COMMAND_SVM_MAP_ARM"/>
                  <enum name="CL_COMMAND_SVM_UNMAP_ARM"/>
              </require>
--            <require comment="Returned by clGetDeviceInfo with CL_DEVICE_SVM_CAPABILITIES_ARM">
-+            <require comment="cl_device_svm_capabilities_arm - bitfield Returned by clGetDeviceInfo with CL_DEVICE_SVM_CAPABILITIES_ARM">
+-            <require comment="cl_device_svm_capabilities_arm">
++            <require comment="cl_device_svm_capabilities_arm - bitfield">
                  <enum name="CL_DEVICE_SVM_COARSE_GRAIN_BUFFER_ARM"/>
                  <enum name="CL_DEVICE_SVM_FINE_GRAIN_BUFFER_ARM"/>
                  <enum name="CL_DEVICE_SVM_FINE_GRAIN_SYSTEM_ARM"/>
                  <enum name="CL_DEVICE_SVM_ATOMICS_ARM"/>
-             </require>
--            <require comment="Flag values used by clSVMAllocARM">
-+            <require comment="cl_svm_mem_flags_arm Flag values used by clSVMAllocARM">
-                 <enum name="CL_MEM_SVM_FINE_GRAIN_BUFFER_ARM"/>
-                 <enum name="CL_MEM_SVM_ATOMICS_ARM"/>
-             </require>
-             <require>
-@@ -5612,9 +5707,9 @@
+@@ -5849,9 +5938,9 @@
                  <enum name="CL_DEVICE_SINGLE_DEVICE_SHARED_MEM_CAPABILITIES_INTEL"/>
                  <enum name="CL_DEVICE_CROSS_DEVICE_SHARED_MEM_CAPABILITIES_INTEL"/>
                  <enum name="CL_DEVICE_SHARED_SYSTEM_MEM_CAPABILITIES_INTEL"/>

@@ -72,12 +72,12 @@ meta_parameters:
   clEnqueueReleaseGLObjects:
     - [ InArray, mem_objects, num_objects ]
   clEnqueueReadBufferRect:
-    - [ InFixedArray, buffer_offset, 3 ]
-    - [ InFixedArray, host_offset, 3 ]
+    - [ InFixedArray, buffer_origin, 3 ]
+    - [ InFixedArray, host_origin, 3 ]
     - [ InFixedArray, region, 3 ]
   clEnqueueWriteBufferRect:
-    - [ InFixedArray, buffer_offset, 3 ]
-    - [ InFixedArray, host_offset, 3 ]
+    - [ InFixedArray, buffer_origin, 3 ]
+    - [ InFixedArray, host_origin, 3 ]
     - [ InFixedArray, region, 3 ]
   clEnqueueCopyBufferRect:
     - [ InFixedArray, src_origin, 3 ]
