@@ -17,6 +17,15 @@ whichlib() {
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
+whichlib64() {
+  for lib in $(whichlib $1)
+  do
+    if objdump -a $lib | grep 64 > /dev/null; then
+      echo $lib
+    fi
+  done
+}
+
 while true; do
   case "$1" in
     -l | --lightweight ) shift; lightweight=1;;
@@ -76,7 +85,7 @@ then
 fi
 if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
 then
-  export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
+  export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib64 libOpenCL.so | head -n 1)
 fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD

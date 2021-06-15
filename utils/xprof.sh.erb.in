@@ -57,6 +57,15 @@ whichlib() {
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
+whichlib64() {
+  for lib in $(whichlib $1)
+  do
+    if objdump -a $lib | grep 64 > /dev/null; then
+      echo $lib
+    fi
+  done
+}
+
 trace_and_summary() {
     if [ "$#" -eq 0 ]; then
         display_help
@@ -120,7 +129,7 @@ trace_and_summary() {
 <% if languages.include?("opencl") %>
     if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
     then
-      export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib libOpenCL.so | head -n 1)
+      export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib64 libOpenCL.so | head -n 1)
     fi
     export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
@@ -128,7 +137,7 @@ trace_and_summary() {
 <% if languages.include?("ze") %>
     if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
     then
-      export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
+      export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib64 libze_loader.so | head -n 1)
     fi
     export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
@@ -136,7 +145,7 @@ trace_and_summary() {
 <% if languages.include?("cuda") %>
     if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
     then
-      export LTTNG_UST_CUDA_LIBCUDA=$(whichlib libcuda.so | head -n 1)
+      export LTTNG_UST_CUDA_LIBCUDA=$(whichlib64 libcuda.so | head -n 1)
     fi
     export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH

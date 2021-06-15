@@ -17,6 +17,15 @@ whichlib() {
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
+whichlib64() {
+  for lib in $(whichlib $1)
+  do
+    if objdump -a $lib | grep 64 > /dev/null; then
+      echo $lib
+    fi
+  done
+}
+
 while true; do
   case "$1" in
     --cudart         ) shift; cudart=1;;
@@ -62,7 +71,7 @@ then
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then
-  export LTTNG_UST_CUDA_LIBCUDA=$(whichlib libcuda.so | head -n 1)
+  export LTTNG_UST_CUDA_LIBCUDA=$(whichlib64 libcuda.so | head -n 1)
 fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
@@ -71,7 +80,7 @@ if [ ! -z "$cudart" ]
 then
   if [ -z "$LTTNG_UST_CUDA_LIBCUDART" ]
   then
-    export LTTNG_UST_CUDART_LIBCUDART=$(whichlib libcudart.so | head -n 1)
+    export LTTNG_UST_CUDART_LIBCUDART=$(whichlib64 libcudart.so | head -n 1)
   fi
   export LD_PRELOAD=$libdir/libTracerCUDART.so:$LD_PRELOAD
   export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
