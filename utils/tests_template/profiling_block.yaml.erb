@@ -23,7 +23,11 @@
 - :name: stream0
   :class: stream_class
 :events:
+<% if be == "cuda" %>
+- :name: lttng_ust_cuda:cuCtxSetCurrent_entry
+<% end %>
 - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
+  :clock_snapshot_value: 0
 - :name: lttng_ust_<%= be %>_profiling:event_profiling_results
   :payload:
     <%= event %>: 12
@@ -32,3 +36,4 @@
   :payload:
     <%= event %>: 12
 - :name: lttng_ust_<%= be %>:<%= profiled_call %>_exit
+  :clock_snapshot_value: 3
