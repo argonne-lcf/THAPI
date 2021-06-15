@@ -20,16 +20,16 @@
   :common_context:
     hostname: aurora12.gov
   :payload:
-    name: clEnqueueReadBuffer
+    name: <%= profiled_call %>
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
   :payload:
-    name: clEnqueueReadBuffer
+    name: <%= profiled_call %>
     dur: 10
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
   :payload:
-    name: clEnqueueReadBuffer
+    name: <%= profiled_call %>
     dur: 3

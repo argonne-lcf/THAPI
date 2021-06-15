@@ -205,6 +205,12 @@ libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+TESTS_COMMON_TEMPLATE = \
+	tests/interval_profiling_block.yaml
+
+$(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+	$(ERB) profiled_call="clEnqueueReadBuffer" $< > $@
+
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 INTERVAL_DUST_FILES = \
 	tests/interval_profiling_normal.dust \

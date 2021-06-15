@@ -2,7 +2,9 @@ noinst_HEADERS = \
 	lttng/tracepoint.h \
 	include/utarray.h \
 	include/uthash.h \
-	include/utlist.h
+	include/utlist.h \
+	tests_template/interval_profiling_block.yaml.erb 
+
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof_utils.h xprof.sh.erb
 
 lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
