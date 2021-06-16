@@ -205,36 +205,31 @@ libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-TESTS_COMMON_TEMPLATE = \
+# To run test we need to catageory of file:
+# - One are the `yaml` file who containt the traces
+# - The other is the `dust` file who containt the babeltrace processing graph
+ 
+# Test by themself are splited into two type:
+# - The one who are common to each backend.
+# - The specificf on
+
+# We generate lot of file using:
+#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+
+TRACE_COMMON = \
 	tests/interval_profiling_block.yaml 
 
-$(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
 	$(ERB) profiled_call="clEnqueueSVMFree" be="opencl" $< > $@
 
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-INTERVAL_DUST_FILES = \
-	tests/interval_profiling_normal.dust \
-	tests/interval_profiling_inversed.dust \
-	tests/interval_profiling_fast.dust \
-	tests/interval_profiling_interleave_thread.dust \
-	tests/interval_profiling_interleave_process.dust \
-	tests/interval_profiling_normal_command_queue.dust \
-	tests/interval_profiling_with_error.dust \
-	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust \
-	tests/interval_profiling_normal_nd_range_kernel_name.dust
+# One can use pathsub $(FILES_IN:.doc=.docx) but this is a gnu make extension...
+DUST_COMMON = \
+	tests/interval_profiling_block.dust
 
-INTERVAL_DUST_FILES_COMMON = $(TESTS_COMMON_TEMPLATE:.yaml=.dust)
-
-$(INTERVAL_DUST_FILES_COMMON): tests/interval_%.dust: tests/interval_common.dust.erb
+$(DUST_COMMON): tests/interval_%.dust: tests/interval_common.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval_common.dust.erb > $@
 
-$(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
-	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
-
-nodist_libCLInterval_la_SOURCES+= \
-	$(INTERVAL_DUST_FILES)
-
-TRACE_FILES = \
+TRACE_SPECIFC = \
 	tests/profiling_normal.yaml \
 	tests/profiling_inversed.yaml \
 	tests/profiling_fast.yaml \
@@ -250,20 +245,37 @@ TRACE_FILES = \
 	tests/trace.yaml \
 	tests/interval_profiling_normal.yaml \
 	tests/interval_profiling_inversed.yaml \
-	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_fast.yaml \
 	tests/interval_profiling_interleave_thread.yaml \
 	tests/interval_profiling_interleave_process.yaml \
 	tests/interval_profiling_normal_command_queue.yaml \
 	tests/interval_profiling_with_error.yaml \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml \
-	tests/interval_profiling_normal_nd_range_kernel_name.yaml
+	tests/interval_profiling_normal_nd_range_kernel_name.yaml 
+
+DUST_SPECIFIC = \
+	tests/interval_profiling_normal.dust \
+	tests/interval_profiling_inversed.dust \
+	tests/interval_profiling_fast.dust \
+	tests/interval_profiling_interleave_thread.dust \
+	tests/interval_profiling_interleave_process.dust \
+	tests/interval_profiling_normal_command_queue.dust \
+	tests/interval_profiling_with_error.dust \
+	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust \
+	tests/interval_profiling_normal_nd_range_kernel_name.dust
+
+$(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
+	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
+
+nodist_libCLInterval_la_SOURCES+= \
+	$(DUST_COMMON) \
+	$(DUST_SPECIFIC)
 
 TESTS = \
 	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \
-	$(INTERVAL_DUST_FILES) \
-	$(INTERVAL_DUST_FILES_COMMON)
+	$(DUST_COMMON) \
+	$(DUST_SPECIFIC)
 
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
@@ -271,7 +283,8 @@ DUST_LOG_COMPILER = ./test_wrapper.sh
 check_DATA = \
 	test_wrapper.sh \
 	tests/opencl_dummy_trace.yaml \
-	$(TRACE_FILES)
+	$(TRACE_COMMON) \
+	$(TRACE_SPECIFC)
 
 data_DATA = \
 	opencl_model.yaml \
@@ -300,7 +313,8 @@ EXTRA_DIST += \
 	clinterval_callbacks.hpp \
 	xprof_utils.hpp \
 	xprof_utils.cpp \
-	$(TRACE_FILES) \
+	$(TRACE_COMMON) \
+	$(TRACE_SPECIFC) \
 	tests/trace.dust \
 	tests/opencl_dummy_trace.dust \
 	tests/interval.dust.erb \
@@ -322,6 +336,7 @@ CLEANFILES = \
 	xprof_utils.cpp \
 	xprof_utils.hpp \
 	$(nodist_libCLInterval_la_SOURCES) \
-	$(CLPROF_DUST_FILES) \
+	$(TRACE_COMMON) \
 	$(INTERVAL_DUST_FILES) \
-	$(TESTS_COMMON_TEMPLATE) 
+	$(INTERVAL_DUST_FILES_COMMON)
+
