@@ -1,23 +1,47 @@
 ---
 meta_parameters:
-  cu_get_thread_context:
+  cuexp_6e163fbe_d8:
+    - [OutScalar, pB]
+  cuexpFunction_get_arg_count:
+    - [OutScalar, pArgCount]
+  cuexp_6e163fbe_130:
+    - [OutScalar, pA]
+  cuexp_6e163fbe_1a8:
+    - [OutScalar, pB]
+  cuexp_get_thread_context:
     - [OutScalar, phContext]
-  cu_a094798c_08:
+  cuexp_a094798c_08:
     - [InScalar, b]
     - [OutScalar, b]
-  cu_a094798c_10:
+  cuexp_a094798c_10:
     - [OutScalar, a]
     - [OutScalar, b]
-  cu_a094798c_18:
+  cuexp_a094798c_18:
     - [OutScalar, b]
-  cu_a094798c_20:
+  cuexp_a094798c_20:
     - [OutScalar, b]
-  cu_a094798c_30:
+  cuexp_a094798c_30:
     - [OutScalar, a]
     - [OutScalar, b]
-  cuContext_kvstore_get:
+  cuexpContext_kvstore_get:
     - [OutScalar, value]
-  cu_get_primary_context:
+  cuexp_get_primary_context:
     - [OutScalar, phContext]
-  cu_register_module:
+  cuexp_register_module:
     - [OutScalar, phModule]
+  cuexpContext_getDevice:
+    - [OutScalar, pDevice]
+  cuexp_21318c60_20:
+    - [OutScalar, pB]
+  cuexp_21318c60_138:
+    - [OutScalar, pC]
+  cuexpDevice_get:
+    - [OutScalar, pDevice]
+  cuexpDevice_getAttribute:
+    - [OutScalar, pl]
+  cuexp_a6b1ff99_28:
+    - [OutScalar, a]
+  cuexp_127d4831_28:
+    - [InOutScalar, pB]
+  cuexp_127d4831_30:
+    - [InOutScalar, pB]
