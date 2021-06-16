@@ -208,6 +208,7 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces
 # - The other is the `dust` file who containt the babeltrace processing graph
+#   The dust file will use the `yaml` file. 
  
 # Test by themself are splited into two type:
 # - The one who are common to each backend.
@@ -227,7 +228,7 @@ DUST_COMMON = \
 	tests/interval_profiling_block.dust
 
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
-	$(ERB) be="opencl" namespace="$@" $(srcdir)/tests/interval_common.dust.erb > $@
+	$(ERB) be="opencl" namespace="$@" $< > $@
 
 TRACE_SPECIFC = \
 	tests/profiling_normal.yaml \
