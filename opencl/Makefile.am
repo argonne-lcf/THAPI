@@ -206,8 +206,7 @@ libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werr
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 TESTS_COMMON_TEMPLATE = \
-	tests/interval_profiling_block.yaml \
-	tests/profiling_block.yaml
+	tests/interval_profiling_block.yaml 
 
 $(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
 	$(ERB) profiled_call="clEnqueueSVMFree" be="opencl" $< > $@
@@ -216,7 +215,6 @@ $(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yam
 INTERVAL_DUST_FILES = \
 	tests/interval_profiling_normal.dust \
 	tests/interval_profiling_inversed.dust \
-	tests/interval_profiling_block.dust \
 	tests/interval_profiling_fast.dust \
 	tests/interval_profiling_interleave_thread.dust \
 	tests/interval_profiling_interleave_process.dust \
@@ -224,6 +222,12 @@ INTERVAL_DUST_FILES = \
 	tests/interval_profiling_with_error.dust \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust \
 	tests/interval_profiling_normal_nd_range_kernel_name.dust
+
+INTERVAL_DUST_FILES_COMMON = \
+	tests/interval_profiling_block.dust
+
+$(INTERVAL_DUST_FILES_COMMON): tests/interval_%.dust: tests/interval_common.dust.erb
+	$(ERB) namespace="$@" $(srcdir)/tests/interval_common.dust.erb > $@
 
 $(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
@@ -234,7 +238,6 @@ nodist_libCLInterval_la_SOURCES+= \
 TRACE_FILES = \
 	tests/profiling_normal.yaml \
 	tests/profiling_inversed.yaml \
-	tests/profiling_block.yaml \
 	tests/profiling_fast.yaml \
 	tests/profiling_interleave_thread.yaml \
 	tests/profiling_interleave_process.yaml \
@@ -260,7 +263,8 @@ TRACE_FILES = \
 TESTS = \
 	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \
-	$(INTERVAL_DUST_FILES)
+	$(INTERVAL_DUST_FILES) \
+	$(INTERVAL_DUST_FILES_COMMON)
 
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
@@ -300,7 +304,8 @@ EXTRA_DIST += \
 	$(TRACE_FILES) \
 	tests/trace.dust \
 	tests/opencl_dummy_trace.dust \
-	tests/interval.dust.erb 
+	tests/interval.dust.erb \
+	tests/interval_common.dust.erb
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \

@@ -223,8 +223,14 @@ class Dust
 
   def initialize_method(self_component, _configuration, params, _data)
     trace = params.get_entry_value('trace') ? params.get_entry_value('trace').value : @trace
+    
     schemas = params.get_entry_value('schemas') ? params.get_entry_value('schemas').value : @schemas
+
     @in_data = YAML.load_file(find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace))
+    if params.get_entry_value('trace_key')
+        @in_data = @in_data[params.get_entry_value('trace_key').value]
+    end
+    
     @schemas = schemas.map do |path|
       schema = YAML.load_file(find_file_in_envfolder(ENV['DUST_MODELS_DIR'],path))
       [schema[:name], schema]
