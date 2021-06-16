@@ -223,8 +223,7 @@ INTERVAL_DUST_FILES = \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust \
 	tests/interval_profiling_normal_nd_range_kernel_name.dust
 
-INTERVAL_DUST_FILES_COMMON = \
-	tests/interval_profiling_block.dust
+INTERVAL_DUST_FILES_COMMON = $(TESTS_COMMON_TEMPLATE:.yaml=.dust)
 
 $(INTERVAL_DUST_FILES_COMMON): tests/interval_%.dust: tests/interval_common.dust.erb
 	$(ERB) namespace="$@" $(srcdir)/tests/interval_common.dust.erb > $@
