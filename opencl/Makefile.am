@@ -211,7 +211,7 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
  
 # Test by themself are splited into two type:
 # - The one who are common to each backend.
-# - The specificf on
+# - The specific for this backend
 
 # We generate lot of file using:
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
@@ -226,8 +226,8 @@ $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
 DUST_COMMON = \
 	tests/interval_profiling_block.dust
 
-$(DUST_COMMON): tests/interval_%.dust: tests/interval_common.dust.erb
-	$(ERB) namespace="$@" $(srcdir)/tests/interval_common.dust.erb > $@
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
+	$(ERB) be="opencl" namespace="$@" $(srcdir)/tests/interval_common.dust.erb > $@
 
 TRACE_SPECIFC = \
 	tests/profiling_normal.yaml \
@@ -317,8 +317,7 @@ EXTRA_DIST += \
 	$(TRACE_SPECIFC) \
 	tests/trace.dust \
 	tests/opencl_dummy_trace.dust \
-	tests/interval.dust.erb \
-	tests/interval_common.dust.erb
+	tests/interval.dust.erb
 
 CLEANFILES = \
 	$(OPENCL_PROBES_INCL) \
