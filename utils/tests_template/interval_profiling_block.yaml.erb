@@ -3,14 +3,17 @@
      event = "event"
      prof_end = "end"
      dur = 10
+     profiled_call = "clEnqueueSVMFree"
    when "ze"
      event = "hEvent"
      prof_end = "globalEnd"
      dur = 10
+     profiled_call = "zeCommandListAppendBarrier"
    when "cuda"
      event = "hStop"
      prof_end = "milliseconds"
-     dur = 100000
+     dur = 10000000
+     profiled_call = "cuLaunchHostFunc"
    end %>
 
 in:

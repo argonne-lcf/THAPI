@@ -136,7 +136,7 @@ uninstall-hook:
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la 
+tmplib_LTLIBRARIES = libBabeltraceCL.la
 
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
@@ -205,11 +205,26 @@ libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+CLEANFILES = \
+	$(OPENCL_PROBES_INCL) \
+	$(OPENCL_PROBES_TP) \
+	$(OPENCL_PROBES_SRC) \
+	tracer_opencl.c \
+	tracer_opencl.h \
+	cl.xml.patched \
+	opencl_model.yaml \
+	opencl_babeltrace_model.yaml \
+	babeltrace_cl_dispatchers.c \
+	babeltrace_cl_callbacks.h \
+	clprof.sh \
+	xprof_utils.cpp \
+	xprof_utils.hpp
+
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces
 # - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file. 
- 
+#   The dust file will use the `yaml` file.
+
 # Test by themself are splited into two type:
 # - The one who are common to each backend.
 # - The specific for this backend
@@ -218,17 +233,15 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_block.yaml 
+	tests/interval_profiling_block.yaml
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
-	$(ERB) profiled_call="clEnqueueSVMFree" be="opencl" $< > $@
+	$(ERB) be="opencl" $< > $@
 
-# One can use pathsub $(FILES_IN:.doc=.docx) but this is a gnu make extension...
-DUST_COMMON = \
-	tests/interval_profiling_block.dust
+DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
 
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
-	$(ERB) be="opencl" namespace="$@" $< > $@
+	$(ERB) be="opencl" interval="clinterval" namespace="$@" $< > $@
 
 TRACE_SPECIFC = \
 	tests/profiling_normal.yaml \
@@ -252,7 +265,7 @@ TRACE_SPECIFC = \
 	tests/interval_profiling_normal_command_queue.yaml \
 	tests/interval_profiling_with_error.yaml \
 	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml \
-	tests/interval_profiling_normal_nd_range_kernel_name.yaml 
+	tests/interval_profiling_normal_nd_range_kernel_name.yaml
 
 DUST_SPECIFIC = \
 	tests/interval_profiling_normal.dust \
@@ -266,7 +279,7 @@ DUST_SPECIFIC = \
 	tests/interval_profiling_normal_nd_range_kernel_name.dust
 
 $(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
-	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
+	$(ERB) namespace="$@" $< > $@
 
 nodist_libCLInterval_la_SOURCES+= \
 	$(DUST_COMMON) \
@@ -320,23 +333,7 @@ EXTRA_DIST += \
 	tests/opencl_dummy_trace.dust \
 	tests/interval.dust.erb
 
-CLEANFILES = \
-	$(OPENCL_PROBES_INCL) \
-	$(OPENCL_PROBES_TP) \
-	$(OPENCL_PROBES_SRC) \
-	tracer_opencl.c \
-	tracer_opencl.h \
-	cl.xml.patched \
-	opencl_model.yaml \
-	opencl_babeltrace_model.yaml \
+CLEANFILES += \
 	tests/opencl_dummy_trace.yaml \
-	babeltrace_cl_dispatchers.c \
-	babeltrace_cl_callbacks.h \
-	clprof.sh \
-	xprof_utils.cpp \
-	xprof_utils.hpp \
 	$(nodist_libCLInterval_la_SOURCES) \
-	$(TRACE_COMMON) \
-	$(INTERVAL_DUST_FILES) \
-	$(INTERVAL_DUST_FILES_COMMON)
-
+	$(TRACE_COMMON) 

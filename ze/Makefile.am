@@ -331,48 +331,58 @@ CLEANFILES += \
 	babeltrace_zeinterval_callbacks.h \
 	babeltrace_zeinterval_dispatchers.c
 
-TESTS_COMMON_TEMPLATE = \
-	tests/interval_profiling_block.yaml \
-	tests/profiling_block.yaml
+CLEANFILES += $(ZE_BINDINGS)
 
-$(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
-	$(ERB) profiled_call="zeCommandListAppendBarrier" be="ze" $< > $@
+# To run test we need to catageory of file:
+# - One are the `yaml` file who containt the traces
+# - The other is the `dust` file who containt the babeltrace processing graph
+#   The dust file will use the `yaml` file.
 
+# Test by themself are splited into two type:
+# - The one who are common to each backend.
+# - The specific for this backend
+
+# We generate lot of file using:
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-INTERVAL_DUST_FILES = \
-	tests/interval_API_call.dust \
-	tests/interval_profiling_normal.dust \
-	tests/interval_profiling_block.dust \
-	tests/interval_profiling_fast.dust \
-	tests/interval_profiling_interleave_process.dust
 
-$(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
-	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
+TRACE_COMMON = \
+	tests/interval_profiling_block.yaml
 
-nodist_libZEInterval_la_SOURCES+= \
-	$(INTERVAL_DUST_FILES)
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+	$(ERB) be="ze" $< > $@
 
-TRACE_FILES = \
+DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
+
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
+	$(ERB) be="ze" interval="zeinterval" namespace="$@" $< > $@
+
+TRACE_SPECIFC = \
 	tests/API_call.yaml \
 	tests/profiling_normal.yaml \
-	tests/profiling_block.yaml \
 	tests/profiling_fast.yaml \
 	tests/profiling_interleave_process.yaml \
 	tests/interval_API_call.yaml \
 	tests/interval_profiling_normal.yaml \
-	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_fast.yaml \
 	tests/interval_profiling_interleave_process.yaml
 
-CLEANFILES += \
-	tests/ze_dummy_trace.yaml \
-	$(nodist_libCLInterval_la_SOURCES) \
-	$(INTERVAL_DUST_FILES) \
-	$(TESTS_COMMON_TEMPLATE)
+DUST_SPECIFIC = \
+	tests/interval_API_call.dust \
+	tests/interval_profiling_normal.dust \
+	tests/interval_profiling_fast.dust \
+	tests/interval_profiling_interleave_process.dust
+
+$(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
+	$(ERB) namespace="$@" $< > $@
+
+nodist_libZEInterval_la_SOURCES+= \
+	$(DUST_COMMON) \
+	$(DUST_SPECIFIC)
 
 TESTS = \
 	tests/ze_dummy_trace.dust \
-	$(INTERVAL_DUST_FILES)
+	$(DUST_COMMON) \
+	$(DUST_SPECIFIC)
 
 TEST_EXTENSIONS = .dust
 DUST_LOG_COMPILER = ./test_wrapper.sh
@@ -381,7 +391,8 @@ check_DATA = \
 	test_wrapper.sh \
 	ze_library.rb \
 	tests/ze_dummy_trace.yaml \
-	$(TRACE_FILES)
+	$(TRACE_COMMON) \
+	$(TRACE_SPECIFC)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
@@ -398,8 +409,12 @@ EXTRA_DIST += \
 	zeinterval_callbacks.hpp \
 	xprof_utils.hpp \
 	xprof_utils.cpp \
-	$(TRACE_FILES) \
+	$(TRACE_COMMON) \
+	$(TRACE_SPECIFC) \
 	tests/ze_dummy_trace.dust \
 	tests/interval.dust.erb
 
-CLEANFILES += $(ZE_BINDINGS)
+CLEANFILES += \
+	tests/ze_dummy_trace.yaml \
+	$(nodist_libZEInterval_la_SOURCES) \
+	$(TRACE_COMMON) 

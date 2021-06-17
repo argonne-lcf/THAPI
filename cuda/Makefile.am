@@ -318,61 +318,6 @@ CUDA_BINDINGS = \
 	cuda_library.rb \
 	babeltrace_cuda_lib.rb
 
-TESTS_COMMON_TEMPLATE = \
-	tests/interval_profiling_block.yaml \
-	tests/profiling_block.yaml
-
-$(TESTS_COMMON_TEMPLATE): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
-	$(ERB) profiled_call="cuLaunchHostFunc" be="cuda" $< > $@
-
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-INTERVAL_DUST_FILES = \
-	tests/interval_profiling_block.dust
-
-$(INTERVAL_DUST_FILES): tests/interval_%.dust: tests/interval.dust.erb
-	$(ERB) namespace="$@" $(srcdir)/tests/interval.dust.erb > $@
-
-nodist_libCUDAInterval_la_SOURCES = \
-	$(INTERVAL_DUST_FILES)
-
-TRACE_FILES = \
-	tests/profiling_block.yaml \
-	tests/interval_profiling_block.yaml
-
-tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
-	mkdir -p tests
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
-
-CLEANFILES += tests/cuda_dummy_trace.yaml
-
-CLEANFILES += \
-	$(nodist_libCUDAInterval_la_SOURCES) \
-	$(INTERVAL_DUST_FILES) \
-	$(TESTS_COMMON_TEMPLATE)
-
-TESTS = \
-	tests/cuda_dummy_trace.dust \
-	$(INTERVAL_DUST_FILES)
-
-TEST_EXTENSIONS = .dust
-DUST_LOG_COMPILER = ./test_wrapper.sh
-
-check_DATA = \
-	test_wrapper.sh \
-	tests/cuda_dummy_trace.yaml \
-	$(TRACE_FILES)
-
-data_DATA = $(CUDA_BINDINGS)
-
-EXTRA_DIST += \
-	gen_cuda_library.rb \
-	gen_babeltrace_cuda_lib.rb \
-	tests/cuda_dummy_trace.dust \
-	$(TRACE_FILES) \
-	tests/interval.dust.erb 
-
-CLEANFILES += $(CUDA_BINDINGS)
-
 babeltrace_cudainterval_callbacks.cpp: $(srcdir)/cudainterval_callbacks.cpp.erb $(srcdir)/gen_cudainterval_callbacks.rb cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cudainterval_callbacks.rb  > $@
 
@@ -399,9 +344,9 @@ BUILT_SOURCES += \
 	babeltrace_cudainterval.h \
 	babeltrace_cudainterval_callbacks.h \
 	babeltrace_cudainterval.c \
-	xprof_utils.hpp 
+	xprof_utils.hpp
 
-nodist_libCUDAInterval_la_SOURCES += \
+nodist_libCUDAInterval_la_SOURCES = \
 	babeltrace_cudainterval.c \
 	babeltrace_cudainterval.h \
 	babeltrace_cudainterval_callbacks.h \
@@ -423,9 +368,6 @@ libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELT
 libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-CLEANFILES += \
-	$(nodist_libCUDAInterval_la_SOURCES)
-
 cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["cuda"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
@@ -433,3 +375,60 @@ cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
 bin_SCRIPTS += cuprof.sh
 
 CLEANFILES += cuprof.sh
+
+tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
+
+# To run test we need to catageory of file:
+# - One are the `yaml` file who containt the traces
+# - The other is the `dust` file who containt the babeltrace processing graph
+#   The dust file will use the `yaml` file.
+
+# Test by themself are splited into two type:
+# - The one who are common to each backend.
+# - The specific for this backend
+
+# We generate lot of file using:
+#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+
+TRACE_COMMON = \
+	tests/interval_profiling_block.yaml
+
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+	$(ERB) be="cuda" $< > $@
+
+DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
+
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
+	$(ERB) be="cuda" interval="cudainterval" namespace="$@" $< > $@
+
+nodist_libCUDAInterval_la_SOURCES += \
+	$(DUST_COMMON)
+
+TESTS = \
+	tests/cuda_dummy_trace.dust \
+	$(DUST_COMMON)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+
+check_DATA = \
+	test_wrapper.sh \
+	tests/cuda_dummy_trace.yaml \
+	$(TRACE_COMMON)
+
+data_DATA = $(CUDA_BINDINGS)
+
+EXTRA_DIST += \
+	gen_cuda_library.rb \
+	gen_babeltrace_cuda_lib.rb \
+	tests/cuda_dummy_trace.dust \
+	$(TRACE_COMMON) \
+	tests/interval.dust.erb
+
+CLEANFILES += \
+	tests/cuda_dummy_trace.yaml \
+	$(nodist_libCUDAInterval_la_SOURCES) \
+	$(TRACE_COMMON) \
+	$(CUDA_BINDINGS)
