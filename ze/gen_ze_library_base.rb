@@ -6,6 +6,7 @@ $all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + 
 $all_unions = $zet_api["unions"]
 $all_enums = $ze_api["enums"] + $zet_api["enums"] + $zes_api["enums"] + $zel_api["enums"]
 $all_funcs = $ze_api["functions"] + $zet_api["functions"] + $zes_api["functions"] + $zel_api["functions"]
+$all_types_map = $all_types.collect { |t| [t.name, t.type] }.to_h
 
 $all_enum_names = []
 $all_bitfield_names = []

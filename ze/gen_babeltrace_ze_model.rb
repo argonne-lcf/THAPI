@@ -48,6 +48,7 @@ $int_scalars.each { |t, v|
 def integer_size(t)
   return 64 if t.match(/\*/)
   return 64 if $objects.include?(t)
+  return 64 if $all_types_map[t].kind_of?(YAMLCAst::Pointer)
   r = $integer_sizes[t]
   raise "unknown integer type #{t}" if r.nil?
   r
@@ -56,6 +57,7 @@ end
 def integer_signed?(t)
   return false if t.match(/\*/)
   return false if $objects.include?(t)
+  return false if $all_types_map[t].kind_of?(YAMLCAst::Pointer)
   r = $integer_signed[t]
   raise "unknown integer type #{t}" if r.nil?
   r

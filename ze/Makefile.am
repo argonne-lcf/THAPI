@@ -81,7 +81,8 @@ ZE_EXTRA_HDR = \
 	$(srcdir)/include/zet_ddi.h \
 	$(srcdir)/include/loader/ze_loader_api.h \
 	$(srcdir)/include/layers/zel_tracing_api.h \
-	$(srcdir)/include/layers/zel_tracing_ddi.h
+	$(srcdir)/include/layers/zel_tracing_ddi.h \
+	$(srcdir)/include/layers/zel_tracing_register_cb.h
 ZE_HDR = \
 	$(srcdir)/include/ze_api.h \
 	$(ZE_EXTRA_HDR)
@@ -94,7 +95,8 @@ MODIFIED_ZE_EXTRA_HDR = \
 	modified_include/zet_ddi.h \
 	modified_include/loader/ze_loader_api.h \
 	modified_include/layers/zel_tracing_api.h \
-	modified_include/layers/zel_tracing_ddi.h
+	modified_include/layers/zel_tracing_ddi.h \
+	modified_include/layers/zel_tracing_register_cb.h
 MODIFIED_ZE_HDR = \
 	modified_include/ze_api.h \
 	$(MODIFIED_ZE_EXTRA_HDR)

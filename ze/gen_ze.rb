@@ -11,6 +11,9 @@ puts <<EOF
 #include <zes_ddi.h>
 #include <layers/zel_tracing_api.h>
 #include <layers/zel_tracing_ddi.h>
+#include <layers/zel_tracing_register_cb.h>
+#include <loader/ze_loader.h>
+#include <loader/ze_loader_api.h>
 #include <dlfcn.h>
 #include <dlfcn.h>
 #include <stdio.h>

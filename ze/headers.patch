@@ -1,6 +1,6 @@
 diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing_api.h
---- include/layers/zel_tracing_api.h	2021-06-09 19:11:15.478287882 -0500
-+++ modified_include/layers/zel_tracing_api.h	2021-06-09 20:23:06.122105114 -0500
+--- include/layers/zel_tracing_api.h	2021-06-09 20:31:07.139669164 -0500
++++ modified_include/layers/zel_tracing_api.h	2021-06-17 17:12:58.581078073 -0500
 @@ -54,9 +54,9 @@
  {
      ZEL_STRUCTURE_TYPE_TRACER_DESC = 0x1  ,///< ::zel_tracer_desc_t
@@ -12,9 +12,23 @@ diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing
  
  } zel_structure_type_t;
  
+diff -u4 -r include/layers/zel_tracing_register_cb.h modified_include/layers/zel_tracing_register_cb.h
+--- include/layers/zel_tracing_register_cb.h	2021-06-17 16:28:11.692143702 -0500
++++ modified_include/layers/zel_tracing_register_cb.h	2021-06-17 17:12:58.581078073 -0500
+@@ -21,9 +21,9 @@
+ #endif
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Handle of tracer object
+-typedef struct _zel_tracer_handle_t *zel_tracer_handle_t;
++//typedef struct _zel_tracer_handle_t *zel_tracer_handle_t;
+ 
+ /// Callback definitions for all API released in LevelZero spec 1.1 or newer
+ /// Callbacks for APIs included in spec 1.0 are contained in ze_api.helper
+ 
 diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
 --- include/loader/ze_loader_api.h	2021-04-14 14:00:18.987910312 -0500
-+++ modified_include/loader/ze_loader_api.h	2021-06-09 20:23:06.122105114 -0500
++++ modified_include/loader/ze_loader_api.h	2021-06-17 17:12:58.581078073 -0500
 @@ -7,9 +7,9 @@
   * @file ze_loader_api.cpp
   *
@@ -27,8 +41,8 @@ diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api
  extern "C" {
  #endif
 diff -u4 -r include/ze_api.h modified_include/ze_api.h
---- include/ze_api.h	2021-06-09 20:17:06.808399570 -0500
-+++ modified_include/ze_api.h	2021-06-09 20:23:06.122105114 -0500
+--- include/ze_api.h	2021-06-09 20:31:07.139669164 -0500
++++ modified_include/ze_api.h	2021-06-17 17:12:58.581078073 -0500
 @@ -14,10 +14,10 @@
  #pragma once
  #endif
@@ -369,8 +383,8 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  #if !defined(__GNUC__)
  #pragma endregion
 diff -u4 -r include/zes_api.h modified_include/zes_api.h
---- include/zes_api.h	2021-06-09 20:17:11.704427911 -0500
-+++ modified_include/zes_api.h	2021-06-09 20:23:06.118105099 -0500
+--- include/zes_api.h	2021-06-09 20:31:07.139669164 -0500
++++ modified_include/zes_api.h	2021-06-17 17:12:58.581078073 -0500
 @@ -182,249 +182,249 @@
  } zes_base_capability_t;
  
@@ -683,8 +697,8 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
  #if !defined(__GNUC__)
  #pragma endregion
 diff -u4 -r include/zet_api.h modified_include/zet_api.h
---- include/zet_api.h	2021-06-09 19:11:15.482287897 -0500
-+++ modified_include/zet_api.h	2021-06-09 20:23:06.122105114 -0500
+--- include/zet_api.h	2021-06-09 20:31:07.143669175 -0500
++++ modified_include/zet_api.h	2021-06-17 17:12:58.581078073 -0500
 @@ -147,85 +147,85 @@
  } zet_typed_value_t;
  
