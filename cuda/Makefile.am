@@ -393,7 +393,8 @@ tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_block.yaml
+	tests/interval_profiling_block.yaml \
+	tests/interval_profiling_normal.yaml
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
 	$(ERB) be="cuda" $< > $@

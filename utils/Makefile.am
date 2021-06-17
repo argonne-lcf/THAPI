@@ -4,6 +4,7 @@ noinst_HEADERS = \
 	include/uthash.h \
 	include/utlist.h \
 	tests_template/interval_profiling_block.yaml.erb \
+	tests_template/interval_profiling_normal.yaml.erb \
 	tests_template/interval_common.dust.erb
 
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof_utils.h xprof.sh.erb

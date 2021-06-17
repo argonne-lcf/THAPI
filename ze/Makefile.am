@@ -346,7 +346,8 @@ CLEANFILES += $(ZE_BINDINGS)
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_block.yaml
+	tests/interval_profiling_block.yaml \
+	tests/interval_profiling_normal.yaml
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
 	$(ERB) be="ze" $< > $@
@@ -358,7 +359,6 @@ $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interv
 
 TRACE_SPECIFC = \
 	tests/API_call.yaml \
-	tests/profiling_normal.yaml \
 	tests/profiling_fast.yaml \
 	tests/profiling_interleave_process.yaml \
 	tests/interval_API_call.yaml \
@@ -368,7 +368,6 @@ TRACE_SPECIFC = \
 
 DUST_SPECIFIC = \
 	tests/interval_API_call.dust \
-	tests/interval_profiling_normal.dust \
 	tests/interval_profiling_fast.dust \
 	tests/interval_profiling_interleave_process.dust
 

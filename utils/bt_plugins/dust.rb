@@ -226,11 +226,16 @@ class Dust
     
     schemas = params.get_entry_value('schemas') ? params.get_entry_value('schemas').value : @schemas
 
-    @in_data = YAML.load_file(find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace))
+    path = find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace)
+    @in_data = YAML.load_file(path)
     if params.get_entry_value('trace_key')
         @in_data = @in_data[params.get_entry_value('trace_key').value]
     end
-    
+
+    unless @in_data  
+        warn "The trace read #{path} is empty"  
+    end 
+
     @schemas = schemas.map do |path|
       schema = YAML.load_file(find_file_in_envfolder(ENV['DUST_MODELS_DIR'],path))
       [schema[:name], schema]

@@ -2,17 +2,17 @@
    when "opencl"
      event = "event"
      prof_end = "end"
-     dur = 10
+     mulfactor = 1
      profiled_call = "clEnqueueSVMFree"
    when "ze"
      event = "hEvent"
      prof_end = "globalEnd"
-     dur = 10
+     mulfactor = 1
      profiled_call = "zeCommandListAppendBarrier"
    when "cuda"
      event = "hStop"
      prof_end = "milliseconds"
-     dur = 10000000
+     mulfactor = 1000000
      profiled_call = "cuLaunchHostFunc"
    end %>
 
@@ -71,7 +71,7 @@ ref:
       hostname: aurora12.gov
     :payload:
       name: <%= profiled_call %>
-      dur: <%= dur %>
+      dur: <%= 10 * mulfactor %>
   - :name: lttng:host
     :common_context:
       hostname: aurora12.gov

@@ -233,7 +233,8 @@ CLEANFILES = \
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_block.yaml
+	tests/interval_profiling_block.yaml \
+	tests/interval_profiling_normal.yaml
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
 	$(ERB) be="opencl" $< > $@
@@ -244,7 +245,6 @@ $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interv
 	$(ERB) be="opencl" interval="clinterval" namespace="$@" $< > $@
 
 TRACE_SPECIFC = \
-	tests/profiling_normal.yaml \
 	tests/profiling_inversed.yaml \
 	tests/profiling_fast.yaml \
 	tests/profiling_interleave_thread.yaml \
@@ -257,7 +257,6 @@ TRACE_SPECIFC = \
 	tests/profiling_normal_nd_range_kernel_name.yaml \
 	tests/API_call.yaml \
 	tests/trace.yaml \
-	tests/interval_profiling_normal.yaml \
 	tests/interval_profiling_inversed.yaml \
 	tests/interval_profiling_fast.yaml \
 	tests/interval_profiling_interleave_thread.yaml \
@@ -268,7 +267,6 @@ TRACE_SPECIFC = \
 	tests/interval_profiling_normal_nd_range_kernel_name.yaml
 
 DUST_SPECIFIC = \
-	tests/interval_profiling_normal.dust \
 	tests/interval_profiling_inversed.dust \
 	tests/interval_profiling_fast.dust \
 	tests/interval_profiling_interleave_thread.dust \
