@@ -4,6 +4,8 @@ meta_parameters:
     - [OutScalar, pB]
   cuexpFunction_get_arg_count:
     - [OutScalar, pArgCount]
+  cuexpFunction_get_arg_descriptor:
+    - [OutScalar, pArgDescQuery]
   cuexp_6e163fbe_130:
     - [OutScalar, pA]
   cuexp_6e163fbe_1a8:
@@ -31,17 +33,31 @@ meta_parameters:
     - [OutScalar, phModule]
   cuexpContext_getDevice:
     - [OutScalar, pDevice]
-  cuexp_21318c60_20:
+  cuexpContext_getContextNumber:
+    - [OutScalar, contextNumber]
+  cuexp_21318c60_80:
     - [OutScalar, pB]
   cuexp_21318c60_138:
     - [OutScalar, pC]
   cuexpDevice_get:
     - [OutScalar, pDevice]
+  cuexpDevice_getCount:
+    - [OutScalar, pCount]
   cuexpDevice_getAttribute:
     - [OutScalar, pl]
+  cuexp_b10541e1_30:
+    - [OutScalar, pB]
+  cuexp_b10541e1_40:
+    - [OutScalar, pRes]
   cuexp_a6b1ff99_28:
     - [OutScalar, a]
   cuexp_127d4831_28:
     - [InOutScalar, pB]
   cuexp_127d4831_30:
     - [InOutScalar, pB]
+  cuexp_7cb63f9b_1e0:
+    - [InOutScalar, b]
+  cuexp_2c8e0ad8_18:
+    - [OutScalar, pRes]
+  cuexp_getCudaState:
+    - [OutScalar, pState]

@@ -224,7 +224,7 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
   size_t argCount;
   CUresult res;
   int    count = 0;
-  CUfunction_arg_desc_query q;
+  cuexp_function_arg_desc_query q;
 
   if (tracepoint_enabled(lttng_ust_cuda_args, arg_count)) {
     res = CUEXP_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
