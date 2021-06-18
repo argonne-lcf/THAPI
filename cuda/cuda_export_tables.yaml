@@ -11,21 +11,33 @@
         size_t u2;
       }
   functions:
+  - offset: 0x28
+    name: cuexp_function_get_name
+    declaration: "CUresult cuexp_function_get_name(CUcontext hContext, CUfunction hFunction, char **pName)"
+  - offset: 0x90
+    name: cuexpFunction_setCacheConfig
+    declaration: "CUresult cuexpFunction_setCacheConfig(CUfunction hFunction,CUfunc_cache config)"
   - offset: 0xd8
     name: cuexp_6e163fbe_d8
     declaration: "CUresult cuexp_6e163fbe_d8(CUmodule hModule, int *pB)"
   - offset: 0x108
     name: cuexpFunction_get_arg_count
-    declaration: "CUresult cuexpFunction_get_arg_count(CUfunction f, size_t *pArgCount)"
+    declaration: "CUresult cuexpFunction_get_arg_count(CUfunction hFunction, size_t *pArgCount)"
   - offset: 0x110
     name: cuexpFunction_get_arg_descriptor
-    declaration: "CUresult cuexpFunction_get_arg_descriptor(CUfunction f, size_t argIndex, cuexp_function_arg_desc_query *pArgDescQuery)"
+    declaration: "CUresult cuexpFunction_get_arg_descriptor(CUfunction hFunction, size_t argIndex, cuexp_function_arg_desc_query *pArgDescQuery)"
   - offset: 0x130
     name: cuexp_6e163fbe_130
-    declaration: "CUresult cuexp_6e163fbe_130(void **pA, void *b)"
+    declaration: "CUresult cuexp_6e163fbe_130(void **pA, CUfunction hFunction)"
+  - offset: 0x150
+    name: cuexp_module_iterate_on_functions
+    declaration: "CUresult cuexp_module_iterate_on_functions(CUcontext hContext, CUmodule hModule, void *pFunc, void *userData)"
   - offset: 0x1a8
     name: cuexp_6e163fbe_1a8
-    declaration: "CUresult cuexp_6e163fbe_1a8(void *a,int *pB)"
+    declaration: "CUresult cuexp_6e163fbe_1a8(CUfunction hFunction, int *pB)"
+  - offset: 0x1b8
+    name: cuexp_6e163fbe_1b8
+    declaration: "CUresult cuexp_6e163fbe_1b8(CUfunction hFunction, unsigned long *pB)"
 - uuid: [0xa3, 0x17, 0x46, 0xd1, 0x54, 0x75, 0xef, 0x4e, 0xae, 0xb6, 0xdf, 0xb1, 0x47, 0x6a, 0xdd, 0x6c]
   functions:
   - offset: 0x288

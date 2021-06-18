@@ -1,5 +1,8 @@
 ---
 meta_parameters:
+  cuexp_function_get_name:
+    - [OutScalar, pName]
+    - [OutPtrString, pName]
   cuexp_6e163fbe_d8:
     - [OutScalar, pB]
   cuexpFunction_get_arg_count:
@@ -9,6 +12,8 @@ meta_parameters:
   cuexp_6e163fbe_130:
     - [OutScalar, pA]
   cuexp_6e163fbe_1a8:
+    - [OutScalar, pB]
+  cuexp_6e163fbe_1b8:
     - [OutScalar, pB]
   cuexp_get_thread_context:
     - [OutScalar, phContext]
