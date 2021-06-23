@@ -111,7 +111,13 @@ module YAMLCAst
 
   class Function
     def to_ffi
-      t = to_ffi_name(type.name)
+      if type.respond_to?(:name)
+        t = to_ffi_name(type.name)
+      elsif type.kind_of?(Pointer)
+        t = ":pointer"
+      else
+        raise "unknown return type: #{type}"
+      end
       p = if params
         params.collect { |par|
           if par.type.kind_of?(Pointer)

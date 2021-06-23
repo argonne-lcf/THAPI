@@ -380,6 +380,8 @@ EOF
       if(args.length == 0)
 EOF
     case to_ffi_name(name)
+    when /ze_image_memory_properties_exp_t/
+      puts "        self[:stype] = -999 #Ugly fix for https://github.com/oneapi-src/level-zero/issues/64"
     when /\A:ze_/
       puts "        self[:stype] = :ZE_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[4..-3].upcase}"
     when /\A:zet_/

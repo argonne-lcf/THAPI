@@ -220,6 +220,16 @@ meta_parameters:
   zeVirtualMemGetAccessAttribute:
     - [ OutScalar, access ]
     - [ OutScalar, outSize ]
+  zeEventQueryTimestampsExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pTimestamps, pCount ]
+  zeImageGetMemoryPropertiesExp:
+    - [ OutScalar, pMemoryProperties ]
+  zeImageViewCreateExp:
+    - [ InScalar, desc ]
+    - [ OutScalar, phImageView ]
+  zeKernelSchedulingHintExp:
+    - [ InScalar, pHint ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
@@ -238,7 +248,11 @@ meta_parameters:
     - [ OutScalar, pDdiTable ]
   zeGetEventProcAddrTable:
     - [ OutScalar, pDdiTable ]
+  zeGetEventExpProcAddrTable:
+    - [ OutScalar, pDdiTable ]
   zeGetImageProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetImageExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetModuleProcAddrTable:
     - [ OutScalar, pDdiTable ]
