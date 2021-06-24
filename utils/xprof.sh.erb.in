@@ -281,6 +281,10 @@ else
 fi
 
 if [ -n "$asm" ]; then
+    export SYCL_CACHE_PERSISTENT=0
+    #This is a workarround for the fact that `SYCL_CACHE_PERSISTENT` doesn't work yet.
+    rm -rf "$USER"/libsycl_cache/.cache/
+
     export IGC_ShaderDumpEnable=1
     export IGC_DumpToCurrentDir=1
 fi
