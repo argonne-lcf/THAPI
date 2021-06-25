@@ -161,6 +161,10 @@ meta_parameters:
     - [ InNullArray, properties ]
     - [ InScalar, image_format ]
     - [ InScalar, image_desc ]
+  clGetKernelSuggestedLocalWorkSizeKHR:
+    - [ InArray, global_work_offset, work_dim]
+    - [ InArray, global_work_size, work_dim]
+    - [ OutArray, suggested_local_work_size, work_dim]
   clCreateBufferWithPropertiesINTEL:
     - [ InNullArray, properties ]
   clCreateImageWithPropertiesINTEL:
