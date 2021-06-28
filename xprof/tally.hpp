@@ -10,6 +10,8 @@ struct tally_dispatch {
     bool demangle_name;
     bool display_human;
     bool display_metadata;
+    int  display_name_max_size;
+
     std::unordered_map<hpt_function_name_t, StatTime> host;
     std::unordered_map<hpt_device_function_name_t, StatTime> device;
     std::unordered_map<hpt_function_name_t, StatByte> traffic;

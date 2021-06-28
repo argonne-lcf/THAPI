@@ -4,6 +4,9 @@ libdir=@libdir@
 bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
 
+<%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
+Option names are typically one to three words long, with hyphens to separate words %>
+
 display_help() {
 <% if languages.include?("opencl") and languages.include?("ze") and  languages.include?("cuda") %>
     echo "$(basename $0): a tracer / summarizer of OpenCL,L0 and CUDA driver calls"
@@ -28,6 +31,7 @@ display_help() {
     echo "  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -f, --full         All the API call will be traced. By default and for performance raison, some of them will be ignored"
     echo "  --metadata         Display metadata"
+    echo "  --max-name-size    Maximun size allowed for names"
     echo "  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                     If no arguments are provided, will use the latest trace available"
     echo
@@ -238,7 +242,7 @@ summary() {
                   --component=filter.cudainterval.interval \
     <% end %>
                   --component=sink.xprof.tally \
-                  --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata}"
+                  --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata},display_name_max_size=${display_name_max_size}"
     fi
 }
 
@@ -250,6 +254,7 @@ display=compact
 mangling=demangle
 display_mode=human
 display_metadata=false
+display_name_max_size=80
 
 if [ "$#" -eq 0 ]; then
     display_help
@@ -268,6 +273,7 @@ while (( "$#" )); do
         -j | --json)     shift; display_mode=json;;
         -f | --full)     shift; full=true ;;
         --metadata)      shift; display_metadata=true ;;
+        --max-name-size) shift; display_name_max_size=$1; shift ;; 
         --)              shift; break ;;
         *)               break  ;;
     esac

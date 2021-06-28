@@ -175,6 +175,9 @@ tally_dispatch_initialize(bt_self_component_sink *self_component_sink,
   const std::string display_human(val && bt_value_is_string(val) ? bt_value_string_get(val) : "human");
   val = bt_value_map_borrow_entry_value_const(params, "display_metadata");
   const bool display_metadata = (val && bt_value_is_bool(val) ? bt_value_bool_get(val) : false);
+
+  val = bt_value_map_borrow_entry_value_const(params, "display_name_max_size");
+  const int display_name_max_size = (val && bt_value_is_signed_integer(val) ? bt_value_integer_signed_get(val) : -1);
   
   /* Allocate a private data structure */
   struct tally_dispatch *dispatch = new tally_dispatch;
@@ -183,7 +186,8 @@ tally_dispatch_initialize(bt_self_component_sink *self_component_sink,
   dispatch->demangle_name = (display_name == "demangle"); // Demangle or mangle
   dispatch->display_human = (display_human == "human");   // Human or JSON
   dispatch->display_metadata = display_metadata;
-  
+  dispatch->display_name_max_size = display_name_max_size;
+
   /* Set the component's user data to our private data structure */
   bt_self_component_set_data(
       bt_self_component_sink_as_self_component(self_component_sink), dispatch);
@@ -212,16 +216,19 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
   if (dispatch->display_human) {
     if (dispatch->display_metadata) 
       print_metadata(dispatch->metadata);
+   
+    const int max_name_size = dispatch->display_name_max_size;
 
     if (dispatch->display_compact) {
-      print_compact_host(dispatch->host);
-      print_compact_device(dispatch->device, dispatch->demangle_name);
-      print_compact_traffic(dispatch->traffic);
+      print_compact_host(dispatch->host, max_name_size);
+      print_compact_device(dispatch->device, max_name_size, dispatch->demangle_name);
+      print_compact_traffic(dispatch->traffic, max_name_size);
     } else {
-      print_extented_host(dispatch->host);
+      print_extented_host(dispatch->host,max_name_size);
       print_extented_device(dispatch->device, dispatch->device_name,
+                            max_name_size,
                             dispatch->demangle_name);
-      print_extented_traffic(dispatch->traffic);
+      print_extented_traffic(dispatch->traffic, max_name_size);
     }
   } else {
     json j;

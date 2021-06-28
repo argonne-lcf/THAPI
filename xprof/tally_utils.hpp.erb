@@ -79,6 +79,22 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
    return mangle_name;
 };
 
+inline std::string limit_string_size(std::string original, int u_size, std::string j="[...]") {
+    if ( (u_size < 0 ) || ( (uint) u_size >= original.length()))
+       return original;
+   
+    if ( (uint) u_size <= j.length() ) 
+       return j.substr(0,u_size);
+ 
+    const unsigned size = u_size - j.length();
+    const unsigned half = size/2;
+    const unsigned half_up = half + size%2;
+
+    const std::string prefix = original.substr (0, half);
+    const std::string suffix = original.substr (original.length()-half_up, half_up);
+    return prefix + j + suffix;
+}
+
 /*
 Class for time
  */
@@ -276,7 +292,8 @@ bool print_metadata(std::vector<std::string> metadata) {
 <% d_headers.each do | main_type, main_function, l_headers | %>
 bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggregated, 
                  std::string header, 
-                 unsigned int _print_error = 0,
+                 unsigned int _print_error,
+                 int max_name_size,
                  bool demangle_name = false) {
     <%# print_error = 0 -> Never print error
                     = 1 -> Print only when error
@@ -309,11 +326,12 @@ bool print_array(std::unordered_map<thapi_function_name, <%= main_type %> > aggr
    std::vector<std::pair<thapi_function_name, <%= main_type %> >> array_sorted;
    array_sorted.reserve(aggregated.size());
    for (std::pair<thapi_function_name, <%= main_type %> > element: aggregated) {
+      auto[name, other_data] = element;
       if (demangle_name) {
-         array_sorted.push_back(std::make_pair(f_demangle_name(element.first), element.second));
-      } else {
-         array_sorted.push_back(element);
+        name = f_demangle_name(name);
       }
+      name = limit_string_size(name, max_name_size); 
+      array_sorted.push_back(std::make_pair(name, other_data));
    }
    std::sort(array_sorted.begin(), array_sorted.end(), [](auto a, auto b) { return a.second._time > b.second._time;} );
 
@@ -395,9 +413,9 @@ void to_json(json& j, const std::unordered_map<thapi_function_name, <%= main_typ
 
 <% output.each do |main_type, tuple_typle, result,header, error, type, var| %>
    <% if result != 'device' %>
-void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%> ){
+void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, int max_name_size ){
    <% else %>
-void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, bool demangle_name ){
+void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, int max_name_size, bool demangle_name ){
    <% end %>
 
    auto [header_count, aggregated] = condensed_tally_<%= result %>(<%=result%>);
@@ -411,9 +429,9 @@ void print_compact_<%= result %>( <%=tuple_typle %>  <%=result%>, bool demangle_
 
    oss << std::endl;
    <% if result != 'device' %>
-   const bool empty = print_array(aggregated, oss.str(), <%= error %>);
+   const bool empty = print_array(aggregated, oss.str(), <%= error %>, max_name_size);
    <% else %>
-   const bool empty = print_array(aggregated, oss.str(), <%= error %>, demangle_name);
+   const bool empty = print_array(aggregated, oss.str(), <%= error %>, max_name_size, demangle_name);
     <% end %>
    if (!empty)
       std::cout << std::endl;
@@ -451,9 +469,9 @@ json json_compact_<%= result %>( <%=tuple_typle %>  <%=result%> ) {
 }
 
    <% if result != 'device' %>
-void print_extented_<%= result %>( <%=tuple_typle %> <%=result%> ){
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, int max_name_size){
    <% else %>
-void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name, bool demangle_name ){
+void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered_map<hp_device_t, std::string> device_to_name, int max_name_size, bool demangle_name ){
    <% end  %>
 
    <% args = var.map{ |t,_,n| n}.join(',') %>
@@ -502,9 +520,9 @@ void print_extented_<%= result %>( <%=tuple_typle %> <%=result%>, std::unordered
     }
     <% end %>
     <% if result != 'device' %>
-    const bool empty = print_array(aggregated, oss.str(), <%= error %>);
+    const bool empty = print_array(aggregated, oss.str(), <%= error %>, max_name_size);
     <% else %>
-    const bool empty = print_array(aggregated, oss.str(), <%= error %>, demangle_name);
+    const bool empty = print_array(aggregated, oss.str(), <%= error %>, max_name_size, demangle_name);
     <% end %>
     if (!empty)
        std::cout << std::endl;
