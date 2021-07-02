@@ -281,7 +281,7 @@ EOF
           "defi[\"#{name}\"].inspect"
         end
       elsif desc["string"]
-        "defi[\"#{name}\"]"
+        "defi[\"#{name}\"].inspect"
       else
         if enums_by_type[desc["type"]]
           "(tmp = enums_by_type[\"#{desc["type"]}\"][defi[\"#{name}\"]]) ? tmp : defi[\"#{name}\"]"
