@@ -1,10 +1,20 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
 require 'optparse'
-require 'babeltrace'
-require 'babeltrace/ctf'
+require 'babeltrace2'
+require 'find'
 require 'yaml'
 require 'pp'
+
+begin
+require 'opencl_ruby_ffi/opencl_types'
+require 'opencl_ruby_ffi/opencl_arithmetic_gen'
+require 'opencl_ruby_ffi/opencl_ruby_ffi_base_gen'
+require 'opencl_ruby_ffi/opencl_ruby_ffi_base'
+rescue Exception
+module OpenCL
+end
+end
 
 $options = {
   context: false
@@ -24,11 +34,21 @@ OptionParser.new do |opts|
 
 end.parse!
 
-c = Babeltrace::Context::new
-traces = c.add_traces(path: ARGV[0])
-raise "Trace not found: #{ARGV[0].inspect}, check path." if traces == []
+ctf_fs = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("fs")
+utils_muxer = BT2::BTPlugin.find("utils").get_filter_component_class_by_name("muxer")
+text_pretty = BT2::BTPlugin.find("text").get_sink_component_class_by_name("pretty")
 
-puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
+trace_locations = Find.find(*ARGV).reject { |path|
+    FileTest.directory?(path)
+  }.select { |path|
+    File.basename(path) == "metadata"
+  }.collect { |path|
+    File.dirname(path)
+  }.select { |path|
+    qe = BT2::BTQueryExecutor.new( component_class: ctf_fs, object_name: "babeltrace.support-info", params: { "input" => path,  "type" => "directory" } )
+    qe.query.value["weight"] > 0.5
+  }
+raise "Could not find lttng trace" if trace_locations.size == 0
 
 opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
 SUFFIXES = opencl_model["suffixes"]
@@ -39,6 +59,7 @@ enums_by_type = {}
 enums_by_value = {}
 enums_by_name = {}
 bitfields_by_type = {}
+structs_by_type = {}
 
 class Bitfield
   def self.to_s(v)
@@ -126,6 +147,13 @@ bifields = opencl_model["bitfields"].collect { |k, v|
   bitfields_by_type[k] = klass
 }
 
+structs = opencl_model["structures"].collect { |n|
+  sname = n.sub(/\Acl_/,"").split("_").collect(&:capitalize).join
+  next unless OpenCL.const_defined?(sname)
+  t = OpenCL.const_get(sname)
+  structs_by_type[n] = t
+}
+
 infos_type = {}
 
 type_map = {
@@ -167,6 +195,8 @@ infos.each { |inf, vers|
             ["J*", true, nil]
           elsif type_map[i["type"]]
             [type_map[i["type"]] + "*", true, i["type"]]
+          elsif structs_by_type[i["type"]]
+            ["Z*", true, i["type"]]
           else
             nil
           end
@@ -176,18 +206,13 @@ infos.each { |inf, vers|
           ["J", false, nil]
         elsif type_map[i["type"]]
           [type_map[i["type"]], false, i["type"]]
+        elsif structs_by_type[i["type"]]
+          ["Z*", false, i["type"]]
         else
           nil
         end
       infos_type[inf][enums_by_value[inf][i["name"]]] = type
     }
-  }
-}
-
-events = {}
-traces.each { |t|
-  events[t.handle_id] = t.get_event_decl_list.collect(&:name).collect { |n|
-    [n, opencl_model["events"][n]]
   }
 }
 
@@ -204,9 +229,15 @@ begin
           v.collect! { |val| enums_by_type[i[2]][val] }
         elsif bitfields_by_type[i[2]]
           v.collect! { |val| bitfields_by_type[i[2]].to_s(val) }
+        elsif structs_by_type[i[2]]
+          p = FFI::MemoryPointer.from_string(defi["#{name}"])
+          struct = structs_by_type[i[2]]
+          sz = struct.size
+          v = (p.size / sz).times.collect { |i| struct.new(p.slice(i*sz, sz)) }
         end
       end
       v = v.first unless i[1]
+      v = v.inspect if i[0].match("Z*") && !i[2]
       v = "[ \#{v.join(", ")} ]" if i[1]
       v
     else
@@ -220,10 +251,9 @@ EOF
 }
 
 event_lambdas = {}
-events.each { |handle, arr|
-  event_lambdas[handle] = arr.collect { |(n, v)|
-    next if !v
-    src = <<EOF
+
+opencl_model["events"].each { |n, v|
+  src = <<EOF
 lambda { |defi|
   {
 EOF
@@ -245,6 +275,8 @@ EOF
           "defi[\"#{name}\"].collect { |v| bitfields_by_type[\"#{desc["type"]}\"].to_s(v) }"
         elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
           "\"[\#{defi[\"#{name}\"].collect { |v| \"0x\#{v.to_s(16)}\" }.join(\", \")}]\""
+        elsif structs_by_type[desc["type"]]
+          "#{structs_by_type[desc["type"]]}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])).to_s"
         else
           "defi[\"#{name}\"].inspect"
         end
@@ -257,6 +289,8 @@ EOF
           "bitfields_by_type[\"#{desc["type"]}\"].to_s(defi[\"#{name}\"])"
         elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] ) || desc["type"].match("void *")
           "\"0x\#{defi[\"#{name}\"].to_s(16)}\""
+        elsif structs_by_type[desc["type"]]
+          "#{structs_by_type[desc["type"]]}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])).to_s"
         else
           "defi[\"#{name}\"].inspect"
         end
@@ -268,24 +302,44 @@ EOF
   }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
 }
 EOF
-    eval(src)
+  event_lambdas[n] = eval(src)
+}
+
+consume = lambda { |iterator, _|
+  mess = iterator.next_messages
+  mess.each { |m|
+    if m.type == :BT_MESSAGE_TYPE_EVENT
+      e = m.event
+      str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime("%H:%M:%S.%9L")}"
+      str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}" if $options[:context]
+      str << " - " << e.get_common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
+      str << " - #{e.name}: "
+      l = event_lambdas[e.name]
+      if l
+        str << l.call(e.payload_field.value)
+      else
+        str << e.payload_field.to_s
+      end
+      puts str
+    end
   }
 }
 
-it = c.iter_create
-
-it.each { |ev|
-  name, descs = events[ev.handle_id][ev.id]
-  str = "#{ev.timestamp.strftime("%H:%M:%S.%9L")}"
-  str << " - " << ev.top_level_scope(:STREAM_EVENT_CONTEXT).value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
-  str << " - #{name}: "
-  defi = ev.top_level_scope(:EVENT_FIELDS)
-  l = event_lambdas[ev.handle_id][ev.id]
-  if l
-    str << l.call(defi.value).to_s
-  else
-    str << defi.value.to_s
-  end
-  puts str
+graph = BT2::BTGraph.new
+comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+comp2 = graph.add_component(utils_muxer, "mux")
+comp3 = graph.add_simple_sink("babeltrace_opencl", consume)
+i = 0
+comps.each { |comp|
+  ops = comp.output_ports
+  ops.each { |op|
+    ip = comp2.input_port(i)
+    i += 1
+    graph.connect_ports(op, ip)
+  }
 }
 
+op = comp2.output_port(0)
+ip = comp3.input_port(0)
+graph.connect_ports(op, ip)
+graph.run
