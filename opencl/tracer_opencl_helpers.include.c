@@ -638,25 +638,27 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
 
 static void dump_kernel_info(cl_kernel kernel) {
   cl_int error = CL_SUCCESS;
-  char *function_name = NULL;
+  char *function_name = "";
   size_t function_name_sz = 0;
+  int free_function_name = 0;
   cl_uint num_args;
   cl_context context = NULL;
   cl_program program = NULL;
-  char *attributes = NULL;
+  char *attributes = "";
   size_t attributes_sz = 0;
+  int free_attributes = 0;
 
   error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL);
   if (error != CL_SUCCESS)
     return;
   error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, 0, NULL, &function_name_sz);
   if (error == CL_SUCCESS && function_name_sz > 0) {
-    char *function_name = (char *)calloc(function_name_sz + 1, 1);
-    if (function_name) {
-      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz, function_name, NULL);
-      if (error != CL_SUCCESS) {
-        free(function_name);
-        function_name = NULL;
+    char *new_function_name = (char *)calloc(function_name_sz + 1, 1);
+    if (new_function_name) {
+      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz, new_function_name, NULL);
+      if (error == CL_SUCCESS) {
+        function_name = new_function_name;
+        free_function_name = 1;
       }
     }
   }
@@ -664,19 +666,19 @@ static void dump_kernel_info(cl_kernel kernel) {
   CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_PROGRAM, sizeof(program), &program, NULL);
   error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, 0, NULL, &attributes_sz);
   if (error == CL_SUCCESS && attributes_sz > 0) {
-    char *attributes = (char *)calloc(attributes_sz + 1, 1);
-    if (attributes) {
-      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, attributes, NULL);
-      if (error != CL_SUCCESS) {
-        free(attributes);
-        attributes = NULL;
+    char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
+    if (new_attributes) {
+      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, new_attributes, NULL);
+      if (error == CL_SUCCESS) {
+        attributes = new_attributes;
+        free_attributes = 1;
       }
     }
   }
   do_tracepoint(lttng_ust_opencl_arguments, kernel_info, kernel, function_name, num_args, context, program, attributes);
-  if (function_name)
+  if (free_function_name)
     free(function_name);
-  if (attributes)
+  if (free_attributes)
     free(attributes);
 }
 
