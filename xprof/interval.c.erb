@@ -6,7 +6,7 @@
 #include "utarray.h"
 
 
-// Global variable used to path some handle from the 
+// Global variable used to path some handle from the
 // <%= namespace %>_dispatch_message_iterator_next to the callbacks
 struct <%= namespace %>_message_iterator *<%= namespace %>_iter_g = NULL;
 bt_self_message_iterator *<%= namespace %>_self_message_iterator_g = NULL;
@@ -48,7 +48,7 @@ void <%= namespace %>_register_callback(struct <%= namespace %>_dispatch *dispat
 
 /*
  * Create downstream message event class
- */ 
+ */
 bt_event_class* create_host_event_class_message(bt_trace_class *trace_class, bt_stream_class *stream_class)
 {
     bt_event_class *event_class = bt_event_class_create(stream_class);
@@ -113,7 +113,7 @@ bt_event_class* create_device_event_class_message(bt_trace_class *trace_class, b
 
     // No need to set the common field,
     // Already set by `create_host_event_class_message`
-    
+
     /* Payload */
     bt_field_class *payload_field_class = bt_field_class_structure_create(trace_class);
 
@@ -131,7 +131,7 @@ bt_event_class* create_device_event_class_message(bt_trace_class *trace_class, b
     bt_field_class *device_id_field_class= bt_field_class_integer_unsigned_create(trace_class);
     bt_field_class_structure_append_member(payload_field_class, "did", device_id_field_class);
 
-    // sdid (subdevice) 
+    // sdid (subdevice)
     bt_field_class *subdevice_id_field_class= bt_field_class_integer_unsigned_create(trace_class);
     bt_field_class_structure_append_member(payload_field_class, "sdid", subdevice_id_field_class);
 
@@ -252,7 +252,7 @@ bt_component_class_initialize_method_status <%= namespace %>_dispatch_initialize
     /* Create a stream trace class within `trace_class` */
     bt_stream_class *stream_class = bt_stream_class_create(trace_class);
 
-    // We don't create a clock, because we ensure monotonic order for the downstream messages. 
+    // We don't create a clock, because we ensure monotonic order for the downstream messages.
     dispatch->host_event_class = create_host_event_class_message(trace_class,stream_class);
     dispatch->device_event_class = create_device_event_class_message(trace_class, stream_class);
     dispatch->traffic_event_class = create_traffic_event_class_message(trace_class, stream_class);
@@ -351,11 +351,13 @@ void <%= namespace %>_dispatch_message_iterator_finalize(
         bt_self_message_iterator *self_message_iterator)
 {
     /* Retrieve our private data from the message iterator's user data */
-    struct <%= namespace %>_dispatch_message_iterator *dispatch_iter =
+    struct <%= namespace %>_dispatch *<%= namespace %>_dispatch =
         bt_self_message_iterator_get_data(self_message_iterator);
 
+    finalize_<%= namespace %>_callbacks(<%= namespace %>_iter_g);
+
     /* Free the allocated structure */
-    free(dispatch_iter);
+    free(<%= namespace %>_dispatch);
 }
 
 /*
@@ -363,7 +365,7 @@ void <%= namespace %>_dispatch_message_iterator_finalize(
  *
  * This method can fill the `messages` array with up to `capacity`
  * messages.
- * 
+ *
  * We handle the case, where we generate more message than we consume.
  */
 bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_iterator_next(
@@ -393,13 +395,13 @@ consume_upstream_messages:
     /* Initialize the return status to a success */
     bt_message_iterator_class_next_method_status status =
         BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_OK;
-     
+
     if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && <%= namespace %>_downstream_message_queue_empty(dispatch_iter) ) {
        bt_message_iterator_put_ref(dispatch_iter->message_iterator);
        status = BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_END;
        goto end;
     }
- 
+
     switch (next_status) {
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
         status = BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_AGAIN;
@@ -424,7 +426,7 @@ consume_upstream_messages:
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
             struct <%= namespace %>_callbacks *callbacks = NULL;
             const char * class_name = bt_event_class_get_name(event_class);
-            
+
             HASH_FIND_STR(dispatch_iter->dispatch->callbacks, class_name, callbacks);
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);

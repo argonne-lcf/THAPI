@@ -207,7 +207,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <%if dbt_event.name_unsanitized.end_with?(START) %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
     <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    const uint64_t start_g = state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")];
+    uint64_t start_g = state->host_start.at(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
      <% if dbt_event.fields_name.include?('zeResult') %>
        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
        <% if dbt_event.name_striped.include? ('Synchronize') or dbt_event.name_striped.include? ('Query')  %>
@@ -218,6 +218,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
      <% end %>
+    start_g = 0;
    <%end%>
   <%end%>
 
@@ -405,3 +406,16 @@ void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
 <% end %>
 }
 
+void finalize_zeinterval_callbacks(zeinterval_message_iterator *interval_dispatch_iter) {
+    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    auto map = state->host_start;
+    for (auto const [function_name, ts] : map) {
+        if (ts != 0) {
+            const auto [hostname,process_id, thread_id, f ]  = function_name;
+            std::cerr << "Warning: " << hostname
+                      << " PID " << process_id
+                      << " TID " << thread_id
+                      << " " << f << " was called but never returned" << std::endl;
+        }
+    }
+}

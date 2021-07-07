@@ -128,12 +128,13 @@ static void cudainterval_<%= dbt_event.name %>_callback(
       <%if dbt_event.name_unsanitized.end_with?(START) %>
     _state->host_start[hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped %>")] = _ns_from_origin;
       <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    const uint64_t _start_g = _state->host_start[hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped  %>")];
+    uint64_t _start_g = _state->host_start.at(hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped  %>"));
       <% if dbt_event.fields_name.include?('cuResult') %>
     create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, cuResult);
       <% else %>
     create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, 0);
       <% end %>
+    _start_g = 0;
     <%end%>
   <%end%>  
 
@@ -280,3 +281,16 @@ void init_cudainterval_callbacks(struct cudainterval_dispatch *ze_dispatch) {
 <% end %>
 }
 
+void finalize_cudainterval_callbacks(cudainterval_message_iterator *interval_dispatch_iter) {
+    cudainterval_callbacks_state* state = (cudainterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    auto map = state->host_start;
+    for (auto const [function_name, ts] : map) {
+        if (ts != 0) {
+            const auto [hostname,process_id, thread_id, f ]  = function_name;
+            std::cerr << "Warning: " << hostname
+                      << " PID " << process_id
+                      << " TID " << thread_id
+                      << " " << f << " was called but never returned" << std::endl;
+        }
+    }
+}

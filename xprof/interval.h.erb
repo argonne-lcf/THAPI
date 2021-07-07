@@ -75,6 +75,7 @@ struct <%= namespace %>_message_iterator {
 
 // To talk to the callbacks
 extern void init_<%= namespace %>_callbacks(struct <%= namespace %>_dispatch*);
+extern void finalize_<%= namespace %>_callbacks(struct <%= namespace %>_message_iterator*);
 extern void* init_<%= namespace %>_callbacks_state();
 
 /* Implemented in <%= namespace %>_callbacks.cpp.erb */
