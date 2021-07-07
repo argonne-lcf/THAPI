@@ -112,6 +112,7 @@ trace_and_summary() {
     fi
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
     export LTTNG_UST_ZE_PROFILE=1
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
 <% end %>
