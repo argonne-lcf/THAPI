@@ -28,6 +28,7 @@ whichlib64() {
 
 while true; do
   case "$1" in
+    -b | --build ) shift; build=1;;
     -p | --profiling ) shift; profiling=1; export LTTNG_UST_ZE_PROFILE=1;;
     -v | --visualize ) shift; lttng_view=1;;
     --properties ) shift; properties=1;;
@@ -55,6 +56,10 @@ fi
 if [ ! -z "$properties" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
+fi
+if [ ! -z "$build" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:*
 fi
 if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
 then

@@ -32,6 +32,7 @@ puts <<EOF
 #include "zel_tracepoints.h"
 #include "ze_profiling.h"
 #include "ze_properties.h"
+#include "ze_build.h"
 
 EOF
 all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands

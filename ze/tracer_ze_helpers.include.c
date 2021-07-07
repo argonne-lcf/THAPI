@@ -346,6 +346,23 @@ static void _dump_properties() {
   }
 }
 
+static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
+  size_t       size;
+  char        *buildLog;
+  ze_result_t  res;
+
+  res = zeModuleBuildLogGetString(hBuildLog, &size, NULL);
+  if (res != ZE_RESULT_SUCCESS)
+    return;
+  buildLog = (char *)malloc(size);
+  if (!buildLog)
+    return;
+  res = zeModuleBuildLogGetString(hBuildLog, &size, buildLog);
+  if (res == ZE_RESULT_SUCCESS)
+    do_tracepoint(lttng_ust_ze_build, log, buildLog);
+  free(buildLog);
+}
+
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;

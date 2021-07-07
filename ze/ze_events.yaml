@@ -50,3 +50,10 @@ lttng_ust_ze_properties:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer, uint64_t, hostTimestamp, hostTimestamp ]
     - [ ctf_integer, uint64_t, deviceTimestamp, deviceTimestamp ]
+lttng_ust_ze_build:
+  events:
+  - name: log
+    args:
+    - [ const char *, buildLog ]
+    fields:
+    - [ ctf_string, buildLog, buildLog ]

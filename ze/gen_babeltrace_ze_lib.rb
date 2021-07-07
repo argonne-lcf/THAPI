@@ -172,6 +172,8 @@ EOF
         else
           "s << \"#{name}: \#{defi[\"#{name}\"].inspect}\""
         end
+      when :ctf_string
+        "s << \"#{field.name}: \#{defi[\"#{field.name}\"].inspect}\""
       else
         raise "Unsupported LTTng macro #{field.macro}!"
       end

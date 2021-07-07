@@ -22,15 +22,18 @@ ZE_PROBES_SRC = \
 
 ZE_STATIC_PROBES_TP = \
 	ze_profiling.tp \
-	ze_properties.tp
+	ze_properties.tp \
+	ze_build.tp
 
 ZE_STATIC_PROBES_INCL = \
 	ze_profiling.h \
-	ze_properties.h
+	ze_properties.h \
+	ze_build.h
 
 ZE_STATIC_PROBES_SRC = \
 	ze_profiling.c \
-	ze_properties.c
+	ze_properties.c \
+	ze_build.c
 
 CLEANFILES = \
 	$(ZE_PROBES_TP) \
@@ -162,6 +165,9 @@ ze_profiling.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
 
 ze_properties.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_custom_probes.rb lttng_ust_ze_properties > $@
+
+ze_build.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_custom_probes.rb lttng_ust_ze_build > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h

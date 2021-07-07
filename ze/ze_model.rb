@@ -791,3 +791,41 @@ EOF
 #WARNING
 # zeModuleGetKernelNames, returns an array of strings.
 # This is problematic for lttng.
+
+register_prologue "zeModuleCreate", <<EOF
+  int _build_log_release = 0;
+  ze_module_build_log_handle_t _hBuildLog = NULL;
+  if (tracepoint_enabled(lttng_ust_ze_build, log)) {
+    if (phBuildLog == NULL) {
+      phBuildLog = &_hBuildLog;
+      _build_log_release = 1;
+    }
+  }
+EOF
+
+register_epilogue "zeModuleCreate", <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_BUILD_FAILURE) && *phBuildLog) {
+    _dump_build_log(*phBuildLog);
+    if (_build_log_release)
+      ZE_MODULE_BUILD_LOG_DESTROY_PTR(*phBuildLog);
+  }
+EOF
+
+register_prologue "zeModuleDynamicLink", <<EOF
+  int _link_log_release = 0;
+  ze_module_build_log_handle_t _hLinkLog = NULL;
+  if (tracepoint_enabled(lttng_ust_ze_build, log)) {
+    if (phLinkLog == NULL) {
+      phLinkLog = &_hLinkLog;
+      _link_log_release = 1;
+    }
+  }
+EOF
+
+register_epilogue "zeModuleDynamicLink", <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_LINK_FAILURE) && *phLinkLog) {
+    _dump_build_log(*phLinkLog);
+    if (_link_log_release)
+      ZE_MODULE_BUILD_LOG_DESTROY_PTR(*phLinkLog);
+  }
+EOF
