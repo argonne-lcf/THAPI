@@ -351,13 +351,13 @@ static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
   char        *buildLog;
   ze_result_t  res;
 
-  res = zeModuleBuildLogGetString(hBuildLog, &size, NULL);
+  res = ZE_MODULE_BUILD_LOG_GET_STRING_PTR(hBuildLog, &size, NULL);
   if (res != ZE_RESULT_SUCCESS)
     return;
   buildLog = (char *)malloc(size);
   if (!buildLog)
     return;
-  res = zeModuleBuildLogGetString(hBuildLog, &size, buildLog);
+  res = ZE_MODULE_BUILD_LOG_GET_STRING_PTR(hBuildLog, &size, buildLog);
   if (res == ZE_RESULT_SUCCESS)
     do_tracepoint(lttng_ust_ze_build, log, buildLog);
   free(buildLog);
