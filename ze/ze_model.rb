@@ -806,8 +806,10 @@ EOF
 register_epilogue "zeModuleCreate", <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_BUILD_FAILURE) && *phBuildLog) {
     _dump_build_log(*phBuildLog);
-    if (_build_log_release)
+    if (_build_log_release) {
       ZE_MODULE_BUILD_LOG_DESTROY_PTR(*phBuildLog);
+      phBuildLog = NULL;
+    }
   }
 EOF
 
@@ -825,7 +827,9 @@ EOF
 register_epilogue "zeModuleDynamicLink", <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_LINK_FAILURE) && *phLinkLog) {
     _dump_build_log(*phLinkLog);
-    if (_link_log_release)
+    if (_link_log_release) {
       ZE_MODULE_BUILD_LOG_DESTROY_PTR(*phLinkLog);
+      phLinkLog = NULL;
+    }
   }
 EOF
