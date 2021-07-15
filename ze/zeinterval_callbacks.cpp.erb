@@ -69,6 +69,8 @@ static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_dev
 
 static inline uint64_t start_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t born_min) {
 
+    static bool WarningOnce= true;
+
     auto map_sync = state->sync_clock_lttng_device;
     auto it_sync = map_sync.find(hp_device);
 
@@ -81,8 +83,11 @@ static inline uint64_t start_time_ns(zeinterval_callbacks_state* state, hp_devic
         const uint64_t start_ns = start * _timerResolution;
         return corrected_l1(start_ns, l0, d0, born_min, _kernelTimestampValidBits);
     } else {
-        std::cerr << "No host-device clock synchronization have been found. "
-                  << "Will use the lower bound"<< std::endl;
+        if (WarningOnce) {
+            std::cerr << "THAPI::Warning No host-device clock synchronization have been found. "
+                      << "Kernel start time will be a lowerbound"<< std::endl;
+            WarningOnce = false;
+        }
         return born_min;
     }
 }
@@ -207,7 +212,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <%if dbt_event.name_unsanitized.end_with?(START) %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
     <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    uint64_t start_g = state->host_start.at(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
+    uint64_t &start_g = state->host_start.at(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
      <% if dbt_event.fields_name.include?('zeResult') %>
        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
        <% if dbt_event.name_striped.include? ('Synchronize') or dbt_event.name_striped.include? ('Query')  %>
@@ -412,7 +417,7 @@ void finalize_zeinterval_callbacks(zeinterval_message_iterator *interval_dispatc
     for (auto const [function_name, ts] : map) {
         if (ts != 0) {
             const auto [hostname,process_id, thread_id, f ]  = function_name;
-            std::cerr << "Warning: " << hostname
+            std::cerr << "THAPI::Warning: " << hostname
                       << " PID " << process_id
                       << " TID " << thread_id
                       << " " << f << " was called but never returned" << std::endl;

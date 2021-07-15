@@ -128,7 +128,7 @@ static void cudainterval_<%= dbt_event.name %>_callback(
       <%if dbt_event.name_unsanitized.end_with?(START) %>
     _state->host_start[hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped %>")] = _ns_from_origin;
       <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    uint64_t _start_g = _state->host_start.at(hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped  %>"));
+    uint64_t &_start_g = _state->host_start.at(hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped  %>"));
       <% if dbt_event.fields_name.include?('cuResult') %>
     create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, cuResult);
       <% else %>
