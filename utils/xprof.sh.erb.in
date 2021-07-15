@@ -155,7 +155,6 @@ trace_and_summary() {
     fi
     export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
     export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
-    export LTTNG_UST_CUDA_PROFILE=1
 <% end %>
     # Start collection
     lttng $quiet start
