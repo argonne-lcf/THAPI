@@ -118,6 +118,7 @@ trace_and_summary() {
 <% end %>
 <% if languages.include?("cuda") %>
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
+    export LTTNG_UST_CUDA_PROFILE=1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 <% end %>
