@@ -1,8 +1,8 @@
 require_relative 'cuda_model'
 require_relative 'gen_probe_base.rb'
 
-$all_types = $cuda_api["typedefs"]
-$all_structs = $cuda_api["structs"]
+$all_types = $cuda_api["typedefs"] + $cuda_exports_api["typedefs"]
+$all_structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
 $all_unions = $cuda_api["unions"]
 $all_enums = $cuda_api["enums"]
 $all_funcs = $cuda_api["functions"]

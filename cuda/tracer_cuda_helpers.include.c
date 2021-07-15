@@ -224,10 +224,10 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
   size_t argCount;
   CUresult res;
   int    count = 0;
-  CUfunction_arg_desc_query q;
+  cuexp_function_arg_desc_query q;
 
   if (tracepoint_enabled(lttng_ust_cuda_args, arg_count)) {
-    res = CU_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
+    res = CUEXP_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
     if (res != CUDA_SUCCESS)
       return;
     count = 1;
@@ -235,14 +235,14 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
   }
   if (tracepoint_enabled(lttng_ust_cuda_args, arg_value)) {
     if (!count) {
-      res = CU_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
+      res = CUEXP_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
       if (res != CUDA_SUCCESS)
         return;
     }
     if (kernelParams) {
       for (size_t i = 0; i < argCount; i++) {
         q.sz = 0x28;
-        res = CU_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
+        res = CUEXP_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
         if (res == CUDA_SUCCESS) {
           do_tracepoint(lttng_ust_cuda_args, arg_value, f, i, kernelParams[i], q.argSize);
         }
@@ -263,7 +263,7 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
       if (argBuffer && argBufferSize) {
         for (size_t i = 0; i < argCount; i++) {
           q.sz = 0x28;
-          res = CU_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
+          res = CUEXP_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
           if (res == CUDA_SUCCESS && argBufferSize >= q.argOffset + q.argSize) {
             do_tracepoint(lttng_ust_cuda_args, arg_value, f, i, (void *)((intptr_t)argBuffer + q.argOffset), q.argSize);
           }
