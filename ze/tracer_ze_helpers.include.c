@@ -7,6 +7,7 @@ enum _ze_obj_type {
 
 struct _ze_device_obj_data {
   ze_driver_handle_t driver;
+  ze_device_handle_t parent;
   ze_device_properties_t properties;
 };
 
@@ -58,7 +59,8 @@ static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
 
 static inline void _register_ze_device(
  ze_device_handle_t device,
- ze_driver_handle_t driver) {
+ ze_driver_handle_t driver,
+ ze_device_handle_t parent) {
   struct _ze_obj_h *o_h = NULL;
   struct _ze_device_obj_data *d_data = NULL;
 
@@ -77,6 +79,7 @@ static inline void _register_ze_device(
   o_h->ptr = (void *)device;
   o_h->type = DEVICE;
   d_data->driver = driver;
+  d_data->parent = parent;
   o_h->obj_data = (void *)d_data;
 
   d_data->properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;

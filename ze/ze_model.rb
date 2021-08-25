@@ -686,7 +686,16 @@ register_epilogue "zeDeviceGet", <<EOF
   if (_do_profile) {
     if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
       for (uint32_t i = 0; i < *pCount; i++)
-        _register_ze_device(phDevices[i], hDriver);
+        _register_ze_device(phDevices[i], hDriver, NULL);
+    }
+  }
+EOF
+
+register_epilogue "zeDeviceGetSubDevices", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && phSubdevices && pCount) {
+      for (uint32_t i = 0; i < *pCount; i++)
+        _register_ze_device(phSubdevices[i], NULL, hDevice);
     }
   }
 EOF
