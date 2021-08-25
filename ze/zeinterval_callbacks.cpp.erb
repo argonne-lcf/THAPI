@@ -325,10 +325,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    <% else %>
     constexpr char name[] = "<%= dbt_event.name_striped %>";
    <% end %>
-    state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)] = fn_ts_t(name,ns_from_origin);
-   <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hCommandList') %>
-    state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id,name)] = state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
-   <% end %>
+    //Everything we profile have a command list
+    const auto [device, subdevice] =  state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
+    state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)] = fn_dsd_ts_t(name, device, subdevice, ns_from_origin);
   <% end %>
 
   <%#
@@ -353,14 +352,13 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const process_id_t process_id = borrow_process_id(bt_evt);
    const thread_id_t thread_id   = borrow_thread_id(bt_evt);
    const hp_event_t hp_event{hostname,process_id, hEvent};
-   const auto [function_name,ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
-   if (!state->event_to_function_name_and_ts.count(hp_event)){
-      state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name, ts);
+   const auto [function_name, device, subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+   if (!state->event_to_function_name_dsd_and_ts.count(hp_event)){
+      state->event_to_function_name_dsd_and_ts[hp_event] = tfn_dsd_ts_t(thread_id, function_name, device, subdevice, ts);
    } else {
       const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
-      const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
       create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
-      state->event_to_function_name_and_ts.erase(hp_event);
+      state->event_to_function_name_dsd_and_ts.erase(hp_event);
    }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
@@ -369,9 +367,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const process_id_t process_id = borrow_process_id(bt_evt);
    const hp_event_t hp_event{hostname,process_id, hEvent};
 
-   if (state->event_to_function_name_and_ts.count(hp_event)) {
-      const auto [thread_id,function_name,ts] =  state->event_to_function_name_and_ts[hp_event];
-      const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+   if (state->event_to_function_name_dsd_and_ts.count(hp_event)) {
+      const auto [thread_id, function_name, device, subdevice, ts] =  state->event_to_function_name_dsd_and_ts[hp_event];
       const hp_device_t hp_device{hostname, process_id, device};
 
       const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
@@ -379,12 +376,11 @@ static void zeinterval_<%= dbt_event.name %>_callback(
 
       create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
 
-      state->event_to_function_name_and_ts.erase(hp_event);
+      state->event_to_function_name_dsd_and_ts.erase(hp_event);
    } else {
      <%# Not sure about this one. Need to see when we have native callbacks %>
      const thread_id_t thread_id = borrow_thread_id(bt_evt);
-     const auto [function_name, ts] = state->profiled_function_name_and_ts[hpt_t(hostname,process_id,thread_id)];
-     const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
+     const auto [function_name, device,subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
      (void) subdevice;
 
      const hp_device_t hp_device{hostname, process_id, device};
@@ -392,7 +388,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
 
      state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
-     state->event_to_function_name_and_ts[hp_event] = tfn_ts_t(thread_id, function_name,ts);
+     state->event_to_function_name_dsd_and_ts[hp_event] = tfn_dsd_ts_t(thread_id, function_name, device, subdevice, ts);
   }
   <% end %>
 };
