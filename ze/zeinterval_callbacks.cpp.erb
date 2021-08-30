@@ -273,7 +273,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
 
   <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze:zeDeviceGet_#{STOP}" %>
-    if (phDevices_vals != nullptr) {
+    if ((phDevices_vals != nullptr) && (zeResult == ZE_RESULT_SUCCESS) ) {
         for (unsigned int i=0; i < pCount_val; i++ ) {
             const thapi_device_id d = (thapi_device_id) phDevices_vals[i];
             state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
@@ -284,7 +284,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeDeviceGetSubDevices_#{STOP}" %>
     const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
     const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
-    if (phSubdevices_vals != nullptr) {
+    if ((phSubdevices_vals != nullptr) && (zeResult == ZE_RESULT_SUCCESS)) {
         for (unsigned int i=0; i < pCount_val; i++ ) {
             const thapi_device_id d = (thapi_device_id) phSubdevices_vals[i];
             state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = root_device;

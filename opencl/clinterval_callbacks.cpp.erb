@@ -196,7 +196,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
 
   <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
   <% if dbt_event.name_unsanitized == "lttng_ust_opencl:clGetDeviceIDs_#{STOP}" %>
-    if ((devices_vals != nullptr) && (errcode_ret_val != -1)) {
+    if ((devices_vals != nullptr) && (errcode_ret_val == CL_SUCCESS)) {
         for (unsigned int i=0; i < num_devices_val; i++ ) {
              const thapi_device_id d = (thapi_device_id) devices_vals[i];
              state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
@@ -207,7 +207,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl:clCreateSubDevices_#{STOP}" %>
     const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
     const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
-    if ((out_devices_vals != nullptr) && (errcode_ret_val != -1)) {
+    if ((out_devices_vals != nullptr) && (errcode_ret_val == CL_SUCCESS)) {
         for (unsigned int i=0; i < num_devices_ret_val; i++ ) {
             const thapi_device_id d = (thapi_device_id) out_devices_vals[i];
             state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = root_device;
