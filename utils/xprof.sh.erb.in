@@ -105,7 +105,7 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 <% end %>
 <% if languages.include?("ze") %>
-    ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*"
+    ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events}
     if [ -n "$full" ]; then
        lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
