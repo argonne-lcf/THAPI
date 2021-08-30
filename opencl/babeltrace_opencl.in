@@ -237,7 +237,7 @@ begin
         end
       end
       v = v.first unless i[1]
-      v = v.inspect if i[0].match("Z*") && !i[2]
+      v = v.inspect if i[0].match("Z\\\\*") && !i[2]
       v = "[ \#{v.join(", ")} ]" if i[1]
       v
     else
