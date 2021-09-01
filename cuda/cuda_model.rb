@@ -884,6 +884,30 @@ register_prologue "cuCtxDestroy", <<EOF
   }
 EOF
 
+register_epilogue "cuDevicePrimaryCtxRetain", <<EOF
+  if (_do_profile && _retval == CUDA_SUCCESS && *pctx) {
+    _primary_context_retain(dev, *pctx);
+  }
+EOF
+
+[ "cuDevicePrimaryCtxRelease_v2",
+  "cuDevicePrimaryCtxRelease" ].each { |m|
+  register_prologue m, <<EOF
+  if (_do_profile) {
+    _primary_context_release(dev);
+  }
+EOF
+}
+
+[ "cuDevicePrimaryCtxReset_v2",
+  "cuDevicePrimaryCtxReset" ].each { |m|
+  register_prologue m, <<EOF
+  if (_do_profile) {
+    _primary_context_reset(dev);
+  }
+EOF
+}
+
 # Export tracing
 register_epilogue "cuGetExportTable", <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {

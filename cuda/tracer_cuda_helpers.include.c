@@ -403,6 +403,63 @@ static void _event_cleanup() {
   }
 }
 
+static pthread_mutex_t _primary_contexts_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct _primary_contexts_s {
+  CUdevice dev;
+  UT_hash_handle hh;
+  CUcontext ctx;
+  unsigned int refcount;
+};
+
+struct _primary_contexts_s * _primary_contexts = NULL;
+
+static inline void _primary_context_retain(CUdevice dev, CUcontext ctx) {
+  struct _primary_contexts_s * p_c = NULL;
+
+  pthread_mutex_lock(&_primary_contexts_mutex);
+  HASH_FIND_INT(_primary_contexts, &dev, p_c);
+  if (p_c != NULL && ctx == p_c->ctx) {
+    p_c->refcount++;
+  } else {
+    p_c = (struct _primary_contexts_s *)calloc(1, sizeof(struct _primary_contexts_s));
+    p_c->dev = dev;
+    p_c->ctx = ctx;
+    p_c->refcount = 1;
+    HASH_ADD_INT(_primary_contexts, dev, p_c);
+  }
+  pthread_mutex_unlock(&_primary_contexts_mutex);
+}
+
+static inline void _primary_context_release(CUdevice dev) {
+  struct _primary_contexts_s * p_c = NULL;
+
+  pthread_mutex_lock(&_primary_contexts_mutex);
+  HASH_FIND_INT(_primary_contexts, &dev, p_c);
+  if (p_c != NULL) {
+    p_c->refcount--;
+    if (0 == p_c->refcount) {
+      HASH_DEL(_primary_contexts, p_c);
+      _context_event_cleanup(p_c->ctx);
+      pthread_mutex_unlock(&_primary_contexts_mutex);
+      free(p_c);
+    } else
+      pthread_mutex_unlock(&_primary_contexts_mutex);
+  } else
+    pthread_mutex_unlock(&_primary_contexts_mutex);
+}
+
+static inline void _primary_context_reset(CUdevice dev) {
+  struct _primary_contexts_s * p_c = NULL;
+
+  pthread_mutex_lock(&_primary_contexts_mutex);
+  HASH_FIND_INT(_primary_contexts, &dev, p_c);
+  if (p_c != NULL) {
+    _context_event_cleanup(p_c->ctx);
+  }
+  pthread_mutex_unlock(&_primary_contexts_mutex);
+}
+
 static void _lib_cleanup() {
   if (_do_profile) {
     _event_cleanup();
