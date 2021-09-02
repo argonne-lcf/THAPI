@@ -118,11 +118,16 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const thapi_device_id sdid =
             bt_field_integer_unsigned_get_value(sdid_field);
 
+        const bt_field *err_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field,
+                                                                  4);
+        const bool err = bt_field_bool_get_value(err_field);
+
         dispatch
             ->device[hpt_device_function_name_t(hostname, process_id, thread_id,
                                                 did, sdid,
                                                 (thapi_function_name)name)]
-            .delta(dur, false);
+            .delta(dur, err);
       } else if (strcmp(class_name,"lttng:traffic")  == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
 

@@ -7,14 +7,11 @@ noinst_HEADERS = \
 	tests_template/interval_profiling_normal.yaml.erb \
 	tests_template/interval_common.dust.erb
 
-nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof_utils.h xprof.sh.erb
+nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof.sh.erb
 
 lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
 	mkdir -p lttng
 	$(RUBY) $(srcdir)/tracepoint_gen.rb 25 > lttng/tracepoint_gen.h
-
-xprof_utils.h: $(srcdir)/xprof_utils.h.erb
-	$(ERB) $(srcdir)/xprof_utils.h.erb > xprof_utils.h
 
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./
 
@@ -39,19 +36,16 @@ bin_PROGRAMS = thapi_metadata
 
 CLEANFILES = \
 	lttng/tracepoint_gen.h \
-	xprof_utils.h \
 	$(BUILT_SOURCES)
 
 EXTRA_DIST = \
 	LTTng.rb \
 	tracepoint_gen.rb \
 	yaml_ast.rb \
-	xprof_utils.h.erb \
 	gen_dummy_trace.rb \
 	bt2.rb \
 	bt_plugins/dust.rb \
 	bt_plugins/comparator.rb \
-	xprof_utils.h.erb \
 	gen_babeltrace_dispatchers.rb \
 	gen_babeltrace_callbacks.rb \
 	thapi_metadata_tracepoints.tp

@@ -206,7 +206,7 @@ void to_json(json& j, const condensed_header_t& h) {
                     [ ['hostname_t','Hostnames','Hostname'],
                       ['process_id_t','Processes','Process'],
                       ['thread_id_t','Threads','Thread'] ] ],
-   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device','Device profiling', '0', 'hpt_dsd_t',
+   ['StatTime', 'std::unordered_map<hpt_device_function_name_t, StatTime>', 'device','Device profiling', '1', 'hpt_dsd_t',
                     [ ['hostname_t','Hostnames','Hostname'],
                       ['hp_t','Processes','Process'],
                       ['hpt_t','Threads','Thread'] ,
@@ -235,7 +235,7 @@ std::pair<condensed_header_t, std::unordered_map<thapi_function_name, <%= main_t
        s_Processes.insert(hp_t{Hostnames,Processes} ) ;
        s_Threads.insert(hpt_t{Hostnames,Processes,Threads} ) ;
        s_Device_pointers.insert(hp_device_t{Hostnames,Processes,Device_pointers} ) ;
-       <%# This is apporixmation. Maybe two sub device alias to the same pointer. We cannot post-process that. But good enought to give a name %>
+       <%# This is approximation. Maybe two sub device alias to the same pointer. We cannot post-process that. But good enought to give a name %>
        s_SubDevice_pointers.insert(hp_dsd_t{Hostnames,Processes,Device_pointers,SubDevice_pointers} ) ;
     <% else %>
     <% var.each do | _, n,_ | %>

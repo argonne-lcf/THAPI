@@ -287,7 +287,7 @@ static void clinterval_<%= dbt_event.name %>_callback(
 
     //Should we check that end > start?
     uint64_t delta = end - start;
-    if (queued_status != 0 or submit_status != 0 or start_status != 0) {
+    if (queued_status != CL_SUCCESS or submit_status != CL_SUCCESS or start_status != CL_SUCCESS) {
         delta = 0;
     }
 
