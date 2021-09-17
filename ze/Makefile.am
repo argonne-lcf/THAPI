@@ -173,12 +173,25 @@ ze_build.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
 EXTRA_DIST += \
-	gen_ze_custom_probes.rb \
+	gen_probe_base.rb \
 	gen_ze_tracepoints.rb \
 	gen_zet_tracepoints.rb \
 	gen_zes_tracepoints.rb \
 	gen_zel_tracepoints.rb \
-	gen_probe_base.rb
+	gen_ze_custom_probes.rb
+
+BUILT_SOURCES = \
+	$(ZE_PROBES_INCL) \
+	$(ZE_STATIC_PROBES_INCL)
+
+tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+EXTRA_DIST += \
+	gen_ze.rb \
+	tracer_ze_helpers.include.c
+
+CLEANFILES += tracer_ze.c
 
 zeprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
@@ -186,16 +199,10 @@ zeprof.sh: $(top_builddir)/utils/xprof.sh.erb
 
 CLEANFILES += zeprof.sh
 
-BUILT_SOURCES = $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) babeltrace_ze_callbacks.h
-
-tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-EXTRA_DIST += gen_ze.rb tracer_ze_helpers.include.c
-
-CLEANFILES += tracer_ze.c
-
-bin_SCRIPTS = tracer_ze.sh babeltrace_ze zeprof.sh
+bin_SCRIPTS = \
+	tracer_ze.sh \
+	babeltrace_ze \
+	zeprof.sh
 
 noinst_LTLIBRARIES = libzetracepoints.la
 
@@ -243,6 +250,8 @@ EXTRA_DIST += $(ZE_LIB_GEN)
 babeltrace_ze_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
 
+BUILT_SOURCES += babeltrace_ze_callbacks.h
+
 babeltrace_ze_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
 
@@ -255,9 +264,11 @@ CLEANFILES += \
 nodist_libBabeltraceZE_la_SOURCES = \
 	babeltrace_ze_callbacks.h \
 	babeltrace_ze_dispatchers.c
+
 libBabeltraceZE_la_SOURCES = \
 	babeltrace_ze.c \
 	babeltrace_ze.h
+
 libBabeltraceZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libBabeltraceZE_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceZE_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -280,9 +291,18 @@ ZE_BINDINGS = \
 	ze_refinements.rb \
 	ze_bindings.rb
 
-tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
-	mkdir -p tests
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
+EXTRA_DIST += \
+	ze_bindings_base.rb \
+	gen_ze_library.rb \
+	gen_babeltrace_ze_lib.rb \
+	gen_ze_refinements.rb \
+	gen_ze_bindings.rb
+
+CLEANFILES += $(ZE_BINDINGS)
+
+data_DATA = \
+	$(ZE_BINDINGS) \
+	ze_bindings_base.rb
 
 babeltrace_zeinterval_callbacks.cpp: $(srcdir)/zeinterval_callbacks.cpp.erb $(srcdir)/gen_zeinterval_callbacks.rb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeinterval_callbacks.rb  > $@
@@ -305,10 +325,22 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
-BUILT_SOURCES += \
-	babeltrace_zeinterval.h \
-	babeltrace_ze.h \
+EXTRA_DIST += \
+	gen_zeinterval_callbacks.rb \
+	zeinterval_callbacks.cpp.erb
+
+CLEANFILES += \
+	babeltrace_zeinterval_callbacks.cpp \
 	babeltrace_zeinterval_callbacks.h \
+	babeltrace_zeinterval_dispatchers.c \
+	babeltrace_zeinterval.h \
+	babeltrace_zeinterval.c \
+	xprof_utils.hpp \
+	xprof_utils.cpp
+
+BUILT_SOURCES += \
+	babeltrace_zeinterval_callbacks.h \
+	babeltrace_zeinterval.h \
 	xprof_utils.hpp
 
 nodist_libZEInterval_la_SOURCES = \
@@ -317,7 +349,6 @@ nodist_libZEInterval_la_SOURCES = \
 	babeltrace_zeinterval_callbacks.h \
 	babeltrace_zeinterval_dispatchers.c \
 	babeltrace_zeinterval_callbacks.cpp \
-	tracer_opencl.h \
 	xprof_utils.hpp \
 	xprof_utils.cpp
 
@@ -329,19 +360,9 @@ libZEInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libZEInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libZEInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-CLEANFILES += \
-	gen_zeinterval_callbacks.rb \
-	zeinterval_callbacks.cpp.erb \
-	zeinterval_callbacks.hpp \
-	xprof_utils.hpp \
-	xprof_utils.cpp \
-	babeltrace_zeinterval.c \
-	babeltrace_zeinterval.h \
-	babeltrace_zeinterval_callbacks.cpp \
-	babeltrace_zeinterval_callbacks.h \
-	babeltrace_zeinterval_dispatchers.c
-
-CLEANFILES += $(ZE_BINDINGS)
+tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
+	mkdir -p tests
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
 
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces
@@ -384,10 +405,6 @@ DUST_SPECIFIC = \
 $(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $< > $@
 
-nodist_libZEInterval_la_SOURCES+= \
-	$(DUST_COMMON) \
-	$(DUST_SPECIFIC)
-
 TESTS = \
 	tests/ze_dummy_trace.dust \
 	$(DUST_COMMON) \
@@ -403,27 +420,13 @@ check_DATA = \
 	$(TRACE_COMMON) \
 	$(TRACE_SPECIFC)
 
-data_DATA = \
-	$(ZE_BINDINGS) \
-	ze_bindings_base.rb
-
 EXTRA_DIST += \
-	gen_ze_library.rb \
-	gen_babeltrace_ze_lib.rb \
-	gen_ze_refinements.rb \
-	gen_ze_bindings.rb \
-	ze_bindings_base.rb \
-	gen_zeinterval_callbacks.rb \
-	zeinterval_callbacks.cpp.erb \
-	zeinterval_callbacks.hpp \
-	xprof_utils.hpp \
-	xprof_utils.cpp \
-	$(TRACE_COMMON) \
 	$(TRACE_SPECIFC) \
 	tests/ze_dummy_trace.dust \
 	tests/interval.dust.erb
 
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
-	$(nodist_libZEInterval_la_SOURCES) \
+	$(DUST_COMMON) \
+	$(DUST_SPECIFIC) \
 	$(TRACE_COMMON) 

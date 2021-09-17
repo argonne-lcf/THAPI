@@ -197,7 +197,10 @@ EXTRA_DIST += \
 	gen_probe_base.rb \
 	gen_cuda_custom_probes.rb
 
-BUILT_SOURCES = $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) $(CUDART_PROBES_INCL)
+BUILT_SOURCES = \
+	$(CUDA_PROBES_INCL) \
+	$(CUDA_STATIC_PROBES_INCL) \
+	$(CUDART_PROBES_INCL)
 
 tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -216,7 +219,16 @@ CLEANFILES += \
 	tracer_cuda.c \
 	tracer_cudart.c
 
-bin_SCRIPTS = tracer_cuda.sh babeltrace_cuda
+cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
+	$(ERB) -T 1 languages=["cuda"] $(top_builddir)/utils/xprof.sh.erb  > $@
+	chmod a+x $@
+
+CLEANFILES += cuprof.sh
+
+bin_SCRIPTS = \
+	tracer_cuda.sh \
+	babeltrace_cuda \
+	cuprof.sh
 
 noinst_LTLIBRARIES = libcudatracepoints.la libcudarttracepoints.la
 
@@ -304,6 +316,7 @@ nodist_libBabeltraceCUDA_la_SOURCES = \
 libBabeltraceCUDA_la_SOURCES = \
 	babeltrace_cuda.c \
 	babeltrace_cuda.h
+
 libBabeltraceCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -317,6 +330,14 @@ babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_LIB_GEN) $(C
 CUDA_BINDINGS = \
 	cuda_library.rb \
 	babeltrace_cuda_lib.rb
+
+EXTRA_DIST += \
+	gen_cuda_library.rb \
+	gen_babeltrace_cuda_lib.rb
+
+CLEANFILES += $(CUDA_BINDINGS)
+
+data_DATA = $(CUDA_BINDINGS)
 
 babeltrace_cudainterval_callbacks.cpp: $(srcdir)/cudainterval_callbacks.cpp.erb $(srcdir)/gen_cudainterval_callbacks.rb cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cudainterval_callbacks.rb  > $@
@@ -339,11 +360,22 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
+EXTRA_DIST += \
+	gen_cudainterval_callbacks.rb \
+	cudainterval_callbacks.cpp.erb
+
+CLEANFILES += \
+	babeltrace_cudainterval_callbacks.cpp \
+	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval_dispatchers.c \
+	babeltrace_cudainterval.h \
+	babeltrace_cudainterval.c \
+	xprof_utils.cpp \
+	xprof_utils.hpp
+
 BUILT_SOURCES += \
-	$(OPENCL_PROBES_INCL) \
 	babeltrace_cudainterval.h \
 	babeltrace_cudainterval_callbacks.h \
-	babeltrace_cudainterval.c \
 	xprof_utils.hpp
 
 nodist_libCUDAInterval_la_SOURCES = \
@@ -352,13 +384,8 @@ nodist_libCUDAInterval_la_SOURCES = \
 	babeltrace_cudainterval_callbacks.h \
 	babeltrace_cudainterval_dispatchers.c \
 	babeltrace_cudainterval_callbacks.cpp \
-	tracer_cuda.h \
 	xprof_utils.hpp \
 	xprof_utils.cpp
-
-EXTRA_DIST += \
-	gen_cudainterval_callbacks.rb \
-	cudainterval_callbacks.cpp.erb
 
 libCUDAInterval_la_SOURCES = \
 	cudainterval_callbacks.hpp
@@ -367,14 +394,6 @@ libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/includ
 libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
-	$(ERB) -T 1 languages=["cuda"] $(top_builddir)/utils/xprof.sh.erb  > $@
-	chmod a+x $@
-
-bin_SCRIPTS += cuprof.sh
-
-CLEANFILES += cuprof.sh
 
 tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
 	mkdir -p tests
@@ -404,9 +423,6 @@ DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
 	$(ERB) be="cuda" interval="cudainterval" namespace="$@" $< > $@
 
-nodist_libCUDAInterval_la_SOURCES += \
-	$(DUST_COMMON)
-
 TESTS = \
 	tests/cuda_dummy_trace.dust \
 	$(DUST_COMMON)
@@ -419,17 +435,11 @@ check_DATA = \
 	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON)
 
-data_DATA = $(CUDA_BINDINGS)
-
 EXTRA_DIST += \
-	gen_cuda_library.rb \
-	gen_babeltrace_cuda_lib.rb \
 	tests/cuda_dummy_trace.dust \
-	$(TRACE_COMMON) \
 	tests/interval.dust.erb
 
 CLEANFILES += \
 	tests/cuda_dummy_trace.yaml \
-	$(nodist_libCUDAInterval_la_SOURCES) \
 	$(TRACE_COMMON) \
-	$(CUDA_BINDINGS)
+	$(DUST_COMMON)

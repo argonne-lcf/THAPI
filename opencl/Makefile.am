@@ -84,14 +84,50 @@ clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	chmod a+x $@
 
 BUILT_SOURCES = \
+	tracer_opencl.h \
 	$(OPENCL_PROBES_INCL) \
 	babeltrace_cl_callbacks.h \
 	babeltrace_clinterval.h \
 	babeltrace_clinterval_callbacks.h \
 	babeltrace_clinterval.c
 
+EXTRA_DIST = \
+	cl.xml \
+	cl.xml.patch \
+	$(ML_FILES) \
+	opencl_infos.yaml \
+	opencl_wrapper_events.yaml \
+	$(TRACEPOINT_GEN) \
+	include \
+	tracer_opencl.map \
+	tracer_opencl_helpers.include.c \
+	gen_opencl.rb \
+	gen_opencl_probes.rb \
+	gen_opencl_header.rb \
+	gen_opencl_model.rb \
+	gen_babeltrace_cl_model.rb \
+	gen_opencl_custom_probes.rb
+
+CLEANFILES = \
+	cl.xml.patched \
+	tracer_opencl.h \
+	opencl_model.yaml \
+	opencl_babeltrace_model.yaml \
+	tests/opencl_dummy_trace.yaml \
+	$(OPENCL_PROBES_INCL) \
+	$(OPENCL_PROBES_TP) \
+	$(OPENCL_PROBES_SRC) \
+	clprof.sh
+
+data_DATA = \
+	opencl_model.yaml \
+	opencl_infos.yaml
+
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
+
+CLEANFILES += \
+	tracer_opencl.c
 
 bin_SCRIPTS = tracer_opencl.sh clprof.sh babeltrace_opencl extract_enqueues
 
@@ -147,7 +183,11 @@ babeltrace_cl_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb openc
 babeltrace_cl_dispatchers.c:  $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
 
-EXTRA_DIST = cl.h.include
+EXTRA_DIST += cl.h.include
+
+CLEANFILES += \
+	babeltrace_cl_callbacks.h \
+	babeltrace_cl_dispatchers.c
 
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \
@@ -181,6 +221,19 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
+EXTRA_DIST += \
+	clinterval_callbacks.cpp.erb \
+	gen_clinterval_callbacks.rb
+
+CLEANFILES += \
+	babeltrace_clinterval_callbacks.cpp \
+	babeltrace_clinterval_callbacks.h \
+	babeltrace_clinterval_dispatchers.c \
+	babeltrace_clinterval.h \
+	babeltrace_clinterval.c \
+	xprof_utils.cpp \
+	xprof_utils.hpp
+
 BUILT_SOURCES += \
 	babeltrace_clinterval.h \
 	babeltrace_cl.h \
@@ -204,21 +257,6 @@ libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include 
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-CLEANFILES = \
-	$(OPENCL_PROBES_INCL) \
-	$(OPENCL_PROBES_TP) \
-	$(OPENCL_PROBES_SRC) \
-	tracer_opencl.c \
-	tracer_opencl.h \
-	cl.xml.patched \
-	opencl_model.yaml \
-	opencl_babeltrace_model.yaml \
-	babeltrace_cl_dispatchers.c \
-	babeltrace_cl_callbacks.h \
-	clprof.sh \
-	xprof_utils.cpp \
-	xprof_utils.hpp
 
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces
@@ -279,10 +317,6 @@ DUST_SPECIFIC = \
 $(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $< > $@
 
-nodist_libCLInterval_la_SOURCES+= \
-	$(DUST_COMMON) \
-	$(DUST_SPECIFIC)
-
 TESTS = \
 	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \
@@ -298,40 +332,15 @@ check_DATA = \
 	$(TRACE_COMMON) \
 	$(TRACE_SPECIFC)
 
-data_DATA = \
-	opencl_model.yaml \
-	opencl_infos.yaml
-
 EXTRA_DIST += \
-	cl.xml \
-	cl.xml.patch \
-	$(ML_FILES) \
-	opencl_infos.yaml \
-	opencl_wrapper_events.yaml \
-	$(TRACEPOINT_GEN) \
-	include \
-	tracer_opencl.map \
-	tracer_opencl_helpers.include.c \
-	gen_opencl.rb \
-	gen_opencl_probes.rb \
-	gen_opencl_header.rb \
-	gen_opencl_model.rb \
-	gen_babeltrace_cl_model.rb \
-	gen_opencl_custom_probes.rb \
 	babeltrace_opencl.in \
 	extract_enqueues \
-	gen_clinterval_callbacks.rb \
-	clinterval_callbacks.cpp.erb \
-	clinterval_callbacks.hpp \
-	xprof_utils.hpp \
-	xprof_utils.cpp \
-	$(TRACE_COMMON) \
 	$(TRACE_SPECIFC) \
 	tests/trace.dust \
 	tests/opencl_dummy_trace.dust \
 	tests/interval.dust.erb
 
 CLEANFILES += \
-	tests/opencl_dummy_trace.yaml \
-	$(nodist_libCLInterval_la_SOURCES) \
+	$(DUST_COMMON) \
+	$(DUST_SPECIFIC) \
 	$(TRACE_COMMON) 
