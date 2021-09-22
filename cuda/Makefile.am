@@ -167,7 +167,9 @@ CLEANFILES += \
 EXTRA_DIST += \
 	extract_cuda.rb \
 	extract_cuda_exports.rb \
-	extract_cudart.rb
+	extract_cudart.rb \
+	gen_babeltrace_cuda_model.rb \
+	gen_cude_exports_include.rb
 
 cuda_tracepoints.tp: $(srcdir)/gen_cuda_tracepoints.rb $(CUDA_MODEL) gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_tracepoints.rb > $@
@@ -395,8 +397,13 @@ libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELT
 libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
+tests/.tag:
 	mkdir -p tests
+	touch tests/.tag
+
+CLEANFILES += tests/.tag
+
+tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml tests/.tag
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
 
 # To run test we need to catageory of file:
@@ -415,12 +422,12 @@ TRACE_COMMON = \
 	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_normal.yaml
 
-$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
 	$(ERB) be="cuda" $< > $@
 
 DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
 
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
 	$(ERB) be="cuda" interval="cudainterval" namespace="$@" $< > $@
 
 TESTS = \

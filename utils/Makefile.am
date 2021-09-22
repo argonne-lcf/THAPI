@@ -5,7 +5,9 @@ noinst_HEADERS = \
 	include/utlist.h \
 	tests_template/interval_profiling_block.yaml.erb \
 	tests_template/interval_profiling_normal.yaml.erb \
-	tests_template/interval_common.dust.erb
+	tests_template/interval_common.dust.erb \
+	xprof_utils.cpp \
+	xprof_utils.hpp
 
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof.sh.erb
 
@@ -39,6 +41,7 @@ CLEANFILES = \
 	$(BUILT_SOURCES)
 
 EXTRA_DIST = \
+	lttng_dummy_trace.sh \
 	LTTng.rb \
 	tracepoint_gen.rb \
 	yaml_ast.rb \
@@ -46,6 +49,7 @@ EXTRA_DIST = \
 	bt2.rb \
 	bt_plugins/dust.rb \
 	bt_plugins/comparator.rb \
+	dump_trace_format.rb \
 	gen_babeltrace_dispatchers.rb \
 	gen_babeltrace_callbacks.rb \
 	thapi_metadata_tracepoints.tp

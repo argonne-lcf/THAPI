@@ -146,7 +146,8 @@ EXTRA_DIST += \
 	extract_ze.rb \
 	extract_zet.rb \
 	extract_zes.rb \
-	extract_zel.rb
+	extract_zel.rb \
+	gen_babeltrace_ze_model.rb
 
 ze_tracepoints.tp: $(srcdir)/gen_ze_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -360,7 +361,13 @@ libZEInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libZEInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libZEInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml
+tests/.tag:
+	mkdir -p tests
+	touch tests/.tag
+
+CLEANFILES += tests/.tag
+
+tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml tests/.tag
 	mkdir -p tests
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
 
@@ -380,12 +387,12 @@ TRACE_COMMON = \
 	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_normal.yaml
 
-$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
 	$(ERB) be="ze" $< > $@
 
 DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
 
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
 	$(ERB) be="ze" interval="zeinterval" namespace="$@" $< > $@
 
 TRACE_SPECIFC = \

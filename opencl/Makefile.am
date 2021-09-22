@@ -51,8 +51,7 @@ opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(srcdir)/opencl_model.rb $(ML_
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
 
-tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml
-	mkdir -p tests
+tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml tests/.tag
 	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
 
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(srcdir)/opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched $(srcdir)/opencl_tracepoints.rb $(srcdir)/opencl_wrapper_events.yaml
@@ -85,11 +84,7 @@ clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 
 BUILT_SOURCES = \
 	tracer_opencl.h \
-	$(OPENCL_PROBES_INCL) \
-	babeltrace_cl_callbacks.h \
-	babeltrace_clinterval.h \
-	babeltrace_clinterval_callbacks.h \
-	babeltrace_clinterval.c
+	$(OPENCL_PROBES_INCL)
 
 EXTRA_DIST = \
 	cl.xml \
@@ -189,6 +184,9 @@ CLEANFILES += \
 	babeltrace_cl_callbacks.h \
 	babeltrace_cl_dispatchers.c
 
+BUILT_SOURCES += \
+	babeltrace_cl_callbacks.h
+
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h
@@ -235,9 +233,8 @@ CLEANFILES += \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	babeltrace_clinterval.h \
-	babeltrace_cl.h \
 	babeltrace_clinterval_callbacks.h \
+	babeltrace_clinterval.h \
 	xprof_utils.hpp
 
 nodist_libCLInterval_la_SOURCES = \
@@ -274,12 +271,18 @@ TRACE_COMMON = \
 	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_normal.yaml
 
-$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb
+tests/.tag:
+	mkdir -p tests
+	touch tests/.tag
+
+CLEANFILES += tests/.tag
+
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
 	$(ERB) be="opencl" $< > $@
 
 DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
 
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
 	$(ERB) be="opencl" interval="clinterval" namespace="$@" $< > $@
 
 TRACE_SPECIFC = \
@@ -320,6 +323,7 @@ $(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
 TESTS = \
 	tests/opencl_dummy_trace.dust \
 	tests/trace.dust \
+	tests/test_interval.dust \
 	$(DUST_COMMON) \
 	$(DUST_SPECIFIC)
 
@@ -337,6 +341,7 @@ EXTRA_DIST += \
 	extract_enqueues \
 	$(TRACE_SPECIFC) \
 	tests/trace.dust \
+	tests/test_interval.dust \
 	tests/opencl_dummy_trace.dust \
 	tests/interval.dust.erb
 
