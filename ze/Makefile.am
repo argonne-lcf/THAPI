@@ -2,79 +2,7 @@
 
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
-ZE_PROBES_TP = \
-	ze_tracepoints.tp \
-	zet_tracepoints.tp \
-	zes_tracepoints.tp \
-	zel_tracepoints.tp
-
-ZE_PROBES_INCL = \
-	ze_tracepoints.h \
-	zet_tracepoints.h \
-	zes_tracepoints.h \
-	zel_tracepoints.h
-
-ZE_PROBES_SRC = \
-	ze_tracepoints.c \
-	zet_tracepoints.c \
-	zes_tracepoints.c \
-	zel_tracepoints.c
-
-ZE_STATIC_PROBES_TP = \
-	ze_profiling.tp \
-	ze_properties.tp \
-	ze_build.tp
-
-ZE_STATIC_PROBES_INCL = \
-	ze_profiling.h \
-	ze_properties.h \
-	ze_build.h
-
-ZE_STATIC_PROBES_SRC = \
-	ze_profiling.c \
-	ze_properties.c \
-	ze_build.c
-
-CLEANFILES = \
-	$(ZE_PROBES_TP) \
-	$(ZE_PROBES_INCL) \
-	$(ZE_PROBES_SRC) \
-	$(ZE_STATIC_PROBES_TP) \
-	$(ZE_STATIC_PROBES_INCL) \
-	$(ZE_STATIC_PROBES_SRC)
-
-ML_FILES = \
-	$(srcdir)/ze_meta_parameters.yaml \
-	$(srcdir)/zes_meta_parameters.yaml \
-	$(srcdir)/zet_meta_parameters.yaml \
-	$(srcdir)/zel_meta_parameters.yaml
-
-EXTRA_DIST = $(ML_FILES)
-
-ZE_EXTRACT = \
-	$(srcdir)/extract_base.rb
-
-EXTRA_DIST += extract_base.rb
-
-ZE_EXTRACTED = \
-	ze_api.yaml \
-	zet_api.yaml \
-	zes_api.yaml \
-	zel_api.yaml
-
-CLEANFILES += $(ZE_EXTRACTED)
-
-ZE_MODEL = \
-	$(srcdir)/ze_model.rb \
-	$(ML_FILES) \
-	$(srcdir)/ze_events.yaml \
-	$(ZE_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/LTTng.rb
-
-EXTRA_DIST += \
-	ze_model.rb \
-	ze_events.yaml
+ZE_NAMESPACES = ze zet zes zel
 
 ZE_EXTRA_HDR = \
 	$(srcdir)/include/ze_ddi.h \
@@ -87,6 +15,7 @@ ZE_EXTRA_HDR = \
 	$(srcdir)/include/layers/zel_tracing_ddi.h \
 	$(srcdir)/include/layers/zel_tracing_register_cb.h \
 	$(srcdir)/include/loader/ze_loader.h
+
 ZE_HDR = \
 	$(srcdir)/include/ze_api.h \
 	$(ZE_EXTRA_HDR)
@@ -102,6 +31,7 @@ MODIFIED_ZE_EXTRA_HDR = \
 	modified_include/layers/zel_tracing_ddi.h \
 	modified_include/layers/zel_tracing_register_cb.h \
 	modified_include/loader/ze_loader.h
+
 MODIFIED_ZE_HDR = \
 	modified_include/ze_api.h \
 	$(MODIFIED_ZE_EXTRA_HDR)
@@ -122,20 +52,33 @@ $(MODIFIED_ZE_EXTRA_HDR): modified_include/ze_api.h
 
 clean-local:
 	$(RM) -r modified_include
+	$(RM) -r tests
 
-EXTRA_DIST += $(srcdir)/include headers.patch
+EXTRA_DIST = $(srcdir)/include headers.patch
 
-ze_api.yaml: $(srcdir)/extract_ze.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
+ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
+
+$(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
-zet_api.yaml: $(srcdir)/extract_zet.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
-	SRC_DIR=$(srcdir) $(RUBY) $<
+CLEANFILES = $(ZE_EXTRACTED)
 
-zes_api.yaml: $(srcdir)/extract_zes.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
-	SRC_DIR=$(srcdir) $(RUBY) $<
+EXTRA_DIST += \
+	extract_base.rb \
+	$(ZE_NAMESPACES:%=extract_%.rb)
 
-zel_api.yaml: $(srcdir)/extract_zel.rb $(MODIFIED_ZE_HDR) $(ZE_EXTRACT)
-	SRC_DIR=$(srcdir) $(RUBY) $<
+ML_FILES = \
+	$(ZE_NAMESPACES:=_meta_parameters.yaml) \
+	$(srcdir)/ze_events.yaml
+
+EXTRA_DIST += $(ML_FILES)
+
+ZE_MODEL = \
+	$(srcdir)/ze_model.rb \
+	$(ML_FILES) \
+	$(ZE_EXTRACTED) \
+	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/LTTng.rb
 
 ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -143,42 +86,50 @@ ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(Z
 CLEANFILES += ze_babeltrace_model.yaml
 
 EXTRA_DIST += \
-	extract_ze.rb \
-	extract_zet.rb \
-	extract_zes.rb \
-	extract_zel.rb \
+	ze_model.rb \
 	gen_babeltrace_ze_model.rb
 
-ze_tracepoints.tp: $(srcdir)/gen_ze_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
+ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints)
+
+ZE_PROBES_TP = $(ZE_PROBES:=.tp)
+
+ZE_PROBES_INCL = $(ZE_PROBES:=.h)
+
+ZE_PROBES_SRC = $(ZE_PROBES:=.c)
+
+ZE_STATIC_PROBES = \
+	ze_profiling \
+	ze_properties \
+	ze_build
+
+ZE_STATIC_PROBES_TP = $(ZE_STATIC_PROBES:=.tp)
+
+ZE_STATIC_PROBES_INCL = $(ZE_STATIC_PROBES:=.h)
+
+ZE_STATIC_PROBES_SRC = $(ZE_STATIC_PROBES:=.c)
+
+ZE_GEN_TRACEPOINTS = $(ZE_PROBES:%=gen_%.rb)
+
+$(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-zet_tracepoints.tp: $(srcdir)/gen_zet_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-zes_tracepoints.tp: $(srcdir)/gen_zes_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-zel_tracepoints.tp: $(srcdir)/gen_zel_tracepoints.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-ze_profiling.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_custom_probes.rb lttng_ust_ze_profiling > $@
-
-ze_properties.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_custom_probes.rb lttng_ust_ze_properties > $@
-
-ze_build.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_ze_custom_probes.rb lttng_ust_ze_build > $@
+$(ZE_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
+CLEANFILES += \
+	$(ZE_PROBES_TP) \
+	$(ZE_PROBES_INCL) \
+	$(ZE_PROBES_SRC) \
+	$(ZE_STATIC_PROBES_TP) \
+	$(ZE_STATIC_PROBES_INCL) \
+	$(ZE_STATIC_PROBES_SRC)
+
 EXTRA_DIST += \
 	gen_probe_base.rb \
-	gen_ze_tracepoints.rb \
-	gen_zet_tracepoints.rb \
-	gen_zes_tracepoints.rb \
-	gen_zel_tracepoints.rb \
+	$(ZE_GEN_TRACEPOINTS) \
 	gen_ze_custom_probes.rb
 
 BUILT_SOURCES = \

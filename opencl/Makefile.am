@@ -2,32 +2,24 @@
 
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
-OPENCL_PROBES_TP = \
-	opencl_tracepoints.tp \
-	opencl_profiling.tp \
-	opencl_source.tp \
-	opencl_dump.tp \
-	opencl_arguments.tp \
-	opencl_build.tp \
-	opencl_devices.tp
+cl.xml.patched: $(srcdir)/cl.xml $(srcdir)/cl.xml.patch
+	$(PATCH) $(srcdir)/cl.xml $(srcdir)/cl.xml.patch -o cl.xml.patched
 
-OPENCL_PROBES_INCL = \
-	opencl_tracepoints.h \
-	opencl_profiling.h \
-	opencl_source.h \
-	opencl_dump.h \
-	opencl_arguments.h \
-	opencl_build.h \
-	opencl_devices.h
+CLEANFILES = \
+	cl.xml.patched
 
-OPENCL_PROBES_SRC = \
-	opencl_tracepoints.c \
-	opencl_profiling.c \
-	opencl_source.c \
-	opencl_dump.c \
-	opencl_arguments.c \
-	opencl_build.c \
-	opencl_devices.c
+EXTRA_DIST = \
+	cl.xml \
+	cl.xml.patch
+
+tracer_opencl.h: $(srcdir)/gen_opencl_header.rb
+	$(RUBY) $(srcdir)/gen_opencl_header.rb > $@
+
+BUILT_SOURCES = tracer_opencl.h
+
+CLEANFILES += tracer_opencl.h
+
+EXTRA_DIST += gen_opencl_header.rb
 
 ML_FILES = \
 	$(srcdir)/opencl_meta_parameters.yaml \
@@ -37,100 +29,115 @@ ML_FILES = \
 TRACEPOINT_GEN = \
 	$(srcdir)/opencl_model.rb \
 	$(srcdir)/opencl_tracepoints.rb \
+	$(srcdir)/opencl_wrapper_events.yaml \
 	$(srcdir)/opencl_events.yaml
 
-cl.xml.patched: $(srcdir)/cl.xml $(srcdir)/cl.xml.patch
-	$(PATCH) $(srcdir)/cl.xml $(srcdir)/cl.xml.patch -o cl.xml.patched
+OPENCL_MODEL = \
+	$(TRACEPOINT_GEN) \
+	$(ML_FILES) \
+	cl.xml.patched
 
-tracer_opencl.h: $(srcdir)/gen_opencl_header.rb
-	$(RUBY) $(srcdir)/gen_opencl_header.rb > $@
-
-opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/opencl_wrapper_events.yaml $(srcdir)/opencl_tracepoints.rb
+opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_model.rb > $@
 
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
 
-tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml tests/.tag
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
+data_DATA = opencl_model.yaml
 
-opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(srcdir)/opencl_model.rb tracer_opencl.h $(ML_FILES) cl.xml.patched $(srcdir)/opencl_tracepoints.rb $(srcdir)/opencl_wrapper_events.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_probes.rb > $@
+CLEANFILES += \
+	opencl_model.yaml \
+	opencl_babeltrace_model.yaml
 
-opencl_build.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_custom_probes.rb lttng_ust_opencl_build > $@
+EXTRA_DIST += \
+	$(TRACEPOINT_GEN) \
+	$(ML_FILES) \
+	gen_opencl_model.rb \
+	gen_babeltrace_cl_model.rb
 
-opencl_arguments.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_custom_probes.rb lttng_ust_opencl_arguments > $@
+OPENCL_PROBES = \
+	opencl_tracepoints
 
-opencl_dump.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_custom_probes.rb lttng_ust_opencl_dump > $@
+OPENCL_PROBES_TP = $(OPENCL_PROBES:=.tp)
 
-opencl_profiling.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_custom_probes.rb lttng_ust_opencl_profiling > $@
+OPENCL_PROBES_INCL = $(OPENCL_PROBES:=.h)
 
-opencl_source.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_custom_probes.rb lttng_ust_opencl_source > $@
+OPENCL_PROBES_SRC = $(OPENCL_PROBES:=.c)
 
-opencl_devices.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_custom_probes.rb lttng_ust_opencl_devices > $@
+OPENCL_STATIC_PROBES = \
+	opencl_profiling \
+	opencl_source \
+	opencl_dump \
+	opencl_arguments \
+	opencl_build \
+	opencl_devices
+
+OPENCL_STATIC_PROBES_TP = $(OPENCL_STATIC_PROBES:=.tp)
+
+OPENCL_STATIC_PROBES_INCL = $(OPENCL_STATIC_PROBES:=.h)
+
+OPENCL_STATIC_PROBES_SRC =  $(OPENCL_STATIC_PROBES:=.c)
+
+opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+$(OPENCL_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
+	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
+
+CLEANFILES += \
+	$(OPENCL_PROBES_INCL) \
+	$(OPENCL_PROBES_TP) \
+	$(OPENCL_PROBES_SRC) \
+	$(OPENCL_STATIC_PROBES_INCL) \
+	$(OPENCL_STATIC_PROBES_TP) \
+	$(OPENCL_STATIC_PROBES_SRC)
+
+EXTRA_DIST += \
+	include \
+	tracer_opencl.map \
+	gen_opencl_probes.rb \
+	gen_opencl_custom_probes.rb
+
+BUILT_SOURCES += \
+	$(OPENCL_PROBES_INCL) \
+	$(OPENCL_STATIC_PROBES_INCL)
 
 clprof.sh: $(top_builddir)/utils/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
 	chmod a+x $@
 
-BUILT_SOURCES = \
-	tracer_opencl.h \
-	$(OPENCL_PROBES_INCL)
+CLEANFILES += clprof.sh
 
-EXTRA_DIST = \
-	cl.xml \
-	cl.xml.patch \
-	$(ML_FILES) \
-	opencl_infos.yaml \
-	opencl_wrapper_events.yaml \
-	$(TRACEPOINT_GEN) \
-	include \
-	tracer_opencl.map \
-	tracer_opencl_helpers.include.c \
-	gen_opencl.rb \
-	gen_opencl_probes.rb \
-	gen_opencl_header.rb \
-	gen_opencl_model.rb \
-	gen_babeltrace_cl_model.rb \
-	gen_opencl_custom_probes.rb
+EXTRA_DIST += opencl_infos.yaml
 
-CLEANFILES = \
-	cl.xml.patched \
-	tracer_opencl.h \
-	opencl_model.yaml \
-	opencl_babeltrace_model.yaml \
-	tests/opencl_dummy_trace.yaml \
-	$(OPENCL_PROBES_INCL) \
-	$(OPENCL_PROBES_TP) \
-	$(OPENCL_PROBES_SRC) \
-	clprof.sh
-
-data_DATA = \
-	opencl_model.yaml \
+data_DATA += \
 	opencl_infos.yaml
 
-tracer_opencl.c: $(srcdir)/gen_opencl.rb $(srcdir)/opencl_model.rb $(ML_FILES) cl.xml.patched $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) tracer_opencl.h
+bin_SCRIPTS = \
+	tracer_opencl.sh \
+	clprof.sh \
+	babeltrace_opencl \
+	extract_enqueues
+
+tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
 
-CLEANFILES += \
-	tracer_opencl.c
+CLEANFILES += tracer_opencl.c
 
-bin_SCRIPTS = tracer_opencl.sh clprof.sh babeltrace_opencl extract_enqueues
+EXTRA_DIST += \
+	tracer_opencl_helpers.include.c \
+	gen_opencl.rb
 
 noinst_LTLIBRARIES = libtracepoints.la
 
 nodist_libtracepoints_la_SOURCES = \
 	$(OPENCL_PROBES_INCL) \
-	$(OPENCL_PROBES_SRC)
+	$(OPENCL_PROBES_SRC) \
+	$(OPENCL_STATIC_PROBES_INCL) \
+	$(OPENCL_STATIC_PROBES_SRC)
 
 libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
@@ -139,6 +146,7 @@ lib_LTLIBRARIES = libTracerOpenCL.la libCLInterval.la
 
 nodist_libTracerOpenCL_la_SOURCES = \
 	$(OPENCL_PROBES_INCL) \
+	$(OPENCL_STATIC_PROBES_INCL) \
 	tracer_opencl.h \
 	tracer_opencl.c
 
@@ -190,6 +198,7 @@ BUILT_SOURCES += \
 nodist_libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl_dispatchers.c \
 	babeltrace_cl_callbacks.h
+
 libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl.c \
 	babeltrace_cl.h
@@ -255,6 +264,18 @@ libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRA
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+tests/.tag:
+	mkdir -p tests
+	touch tests/.tag
+
+clean-local:
+	$(RM) -r tests
+
+CLEANFILES += tests/.tag
+
+tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml tests/.tag
+	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
+
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces
 # - The other is the `dust` file who containt the babeltrace processing graph
@@ -270,12 +291,6 @@ libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 TRACE_COMMON = \
 	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_normal.yaml
-
-tests/.tag:
-	mkdir -p tests
-	touch tests/.tag
-
-CLEANFILES += tests/.tag
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
 	$(ERB) be="opencl" $< > $@
@@ -346,6 +361,7 @@ EXTRA_DIST += \
 	tests/interval.dust.erb
 
 CLEANFILES += \
+	tests/opencl_dummy_trace.yaml \
 	$(DUST_COMMON) \
 	$(DUST_SPECIFIC) \
 	$(TRACE_COMMON) 
