@@ -75,6 +75,8 @@ meta_parameters:
     - [ OutScalar, pDdiTable]
   zetGetMetricGroupProcAddrTable:
     - [ OutScalar, pDdiTable]
+  zetGetMetricGroupExpProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zetGetMetricProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricStreamerProcAddrTable:
