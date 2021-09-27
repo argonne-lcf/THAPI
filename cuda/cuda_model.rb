@@ -878,11 +878,14 @@ no_stream_commands.each { |m|
 }
 
 # if a context is to be destroyed we must attempt to get profiling event results
-register_prologue "cuCtxDestroy", <<EOF
+[ "cuCtxDestroy",
+  "cuCtxDestroy_v2" ].each { |m|
+  register_prologue m, <<EOF
   if (ctx) {
     _context_event_cleanup(ctx);
   }
 EOF
+}
 
 register_epilogue "cuDevicePrimaryCtxRetain", <<EOF
   if (_do_profile && _retval == CUDA_SUCCESS && *pctx) {
