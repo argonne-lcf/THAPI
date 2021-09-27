@@ -161,6 +161,15 @@ static void cudainterval_<%= dbt_event.name %>_callback(
     cudainterval_callbacks_state* _state = (cudainterval_callbacks_state*) cudainterval_iter_g->callbacks_state;
     _state->device_to_name[hp_device_t(_hostname, _process_id, device)] = std::string{name} ;
   <% end %>
+
+  <%# TODO check error code. Create last_context and handle accordingly %> 
+  <%# Handle / put an warning for legacy /cuCtxCreate/ who is per global %> 
+
+  <% if dbt_event.name_unsanitized.end_with?(STOP) and dbt_event.name_unsanitized.match(/cuCtxCreate/) %>
+    if (cuResult == CUDA_SUCCESS)
+       _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].push(pctx_val);
+  <% end %>
+
   <% if dbt_event.name_unsanitized == "lttng_ust_cuda:cuCtxSetCurrent_#{START}" %>
     if (!_state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].empty())
        _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].pop();
@@ -174,12 +183,12 @@ static void cudainterval_<%= dbt_event.name %>_callback(
 
   <% if dbt_event.name_unsanitized.end_with?(STOP) and dbt_event.name_unsanitized.match(/cuStreamCreate/) %>
     _state->stream_to_context[hp_stream_t(_hostname,_process_id,phStream_val)] = _state->context_stack[hpt_t(_hostname,_process_id,_thread_id)].top();
- <%end%>
+  <%end%>
 
   <% if dbt_event.name_unsanitized == "lttng_ust_cuda:cuDevicePrimaryCtxRetain_#{START}" %>
     _state->last_device[hpt_t(_hostname,_process_id,_thread_id)] = dev;
   <% elsif dbt_event.name_unsanitized == "lttng_ust_cuda:cuDevicePrimaryCtxRetain_#{STOP}" %>
-    if (cuResult != CUDA_SUCCESS)
+    if (cuResult == CUDA_SUCCESS)
        _state->context_to_device[hp_context_t(_hostname,_process_id, pctx_val) ] = _state->last_device[hpt_t(_hostname,_process_id,_thread_id)];
   <% end %>
 
