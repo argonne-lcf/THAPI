@@ -25,6 +25,12 @@ meta_parameters:
     - [ InArray, pRawData, rawDataSize ]
     - [ InOutScalar, pMetricValueCount ]
     - [ OutArray, pMetricValues, pMetricValueCount ]
+  zetMetricGroupCalculateMultipleMetricValuesExp:
+    - [ InArray, pRawData, rawDataSize ]
+    - [ InOutScalar, pSetCount ]
+    - [ InOutScalar, pTotalMetricValueCount ]
+    - [ OutArray, pMetricCounts, pSetCount ]
+    - [ OutArray, pMetricValues, pTotalMetricValueCount ]
   zetMetricGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetrics, pCount ]
