@@ -16,6 +16,9 @@ Packages:
  - `ruby`, `ruby-dev`
  - `libffi`, `libffi-dev`
 
+Optional packages:
+ - `binutils-dev` or `libiberty-dev` for demangling depending on platforms (`demangle.h`)
+
  Ruby Gems:
  - `cast-to-yaml`
  - `nokogiri`
