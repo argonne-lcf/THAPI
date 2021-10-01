@@ -206,6 +206,9 @@ module YAMLCAst
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = "uintptr_t"
+      when "CUdeviceptr"
+        ev.macro = :ctf_integer_hex
+        ev.type = name
       when *CUDA_INT_SCALARS
         ev.macro = :ctf_integer
         ev.type = name
