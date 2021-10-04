@@ -105,8 +105,8 @@ BUILT_SOURCES += \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_INCL)
 
-clprof.sh: $(top_builddir)/utils/xprof.sh.erb
-	$(ERB) -T 1 languages=["opencl"] $(top_builddir)/utils/xprof.sh.erb  > $@
+clprof.sh: $(top_builddir)/xprof/xprof.sh.erb
+	$(ERB) -T 1 languages=["opencl"] $<  > $@
 	chmod a+x $@
 
 CLEANFILES += clprof.sh

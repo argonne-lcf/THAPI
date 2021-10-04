@@ -9,7 +9,7 @@ noinst_HEADERS = \
 	xprof_utils.cpp \
 	xprof_utils.hpp
 
-nodist_noinst_HEADERS = lttng/tracepoint_gen.h xprof.sh.erb
+nodist_noinst_HEADERS = lttng/tracepoint_gen.h
 
 lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
 	mkdir -p lttng

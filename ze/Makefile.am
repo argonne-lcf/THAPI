@@ -145,8 +145,8 @@ EXTRA_DIST += \
 
 CLEANFILES += tracer_ze.c
 
-zeprof.sh: $(top_builddir)/utils/xprof.sh.erb
-	$(ERB) -T 1 languages=["ze"] $(top_builddir)/utils/xprof.sh.erb  > $@
+zeprof.sh: $(top_builddir)/xprof/xprof.sh.erb
+	$(ERB) -T 1 languages=["ze"] $<  > $@
 	chmod a+x $@
 
 CLEANFILES += zeprof.sh

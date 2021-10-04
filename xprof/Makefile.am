@@ -2,9 +2,11 @@
 
 bin_SCRIPTS = iprof 
 
-iprof: $(top_builddir)/utils/xprof.sh.erb
-	$(ERB) -T 1 languages=["opencl","ze","cuda"] $(top_builddir)/utils/xprof.sh.erb  > $@
+iprof: $(top_builddir)/xprof/xprof.sh.erb
+	$(ERB) -T 1 languages=["opencl","ze","cuda"] $<  > $@
 	chmod a+x $@
+
+nodist_noinst_HEADERS = xprof.sh.erb
 
 tally_utils.hpp: tally_utils.hpp.erb
 	SRC_DIR=$(srcdir) ${ERB} $(srcdir)/tally_utils.hpp.erb > $@

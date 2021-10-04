@@ -214,8 +214,8 @@ CLEANFILES += \
 	tracer_cuda.c \
 	tracer_cudart.c
 
-cuprof.sh: $(top_builddir)/utils/xprof.sh.erb
-	$(ERB) -T 1 languages=["cuda"] $(top_builddir)/utils/xprof.sh.erb  > $@
+cuprof.sh: $(top_builddir)/xprof/xprof.sh.erb
+	$(ERB) -T 1 languages=["cuda"] $< > $@
 	chmod a+x $@
 
 CLEANFILES += cuprof.sh
