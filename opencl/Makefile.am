@@ -13,7 +13,7 @@ EXTRA_DIST = \
 	cl.xml.patch
 
 tracer_opencl.h: $(srcdir)/gen_opencl_header.rb
-	$(RUBY) $(srcdir)/gen_opencl_header.rb > $@
+	$(RUBY) $< > $@
 
 BUILT_SOURCES = tracer_opencl.h
 
@@ -38,10 +38,10 @@ OPENCL_MODEL = \
 	cl.xml.patched
 
 opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl_model.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_babeltrace_cl_model.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 data_DATA = opencl_model.yaml
 
@@ -123,7 +123,7 @@ bin_SCRIPTS = \
 	extract_enqueues
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_opencl.rb > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += tracer_opencl.c
 
@@ -207,8 +207,8 @@ libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/includ
 libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-babeltrace_clinterval_callbacks.cpp: $(srcdir)/clinterval_callbacks.cpp.erb $(srcdir)/gen_clinterval_callbacks.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_clinterval_callbacks.rb  > $@
+babeltrace_clinterval_callbacks.cpp: $(srcdir)/gen_clinterval_callbacks.rb $(srcdir)/clinterval_callbacks.cpp.erb opencl_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $<  > $@
 
 babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
@@ -217,10 +217,10 @@ babeltrace_clinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatch
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
 
 babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="clinterval" $(top_srcdir)/xprof/interval.h.erb > $@
+	$(ERB) namespace="clinterval" $< > $@
 
 babeltrace_clinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="clinterval"  $(top_srcdir)/xprof/interval.c.erb > $@
+	$(ERB) namespace="clinterval"  $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
@@ -273,8 +273,8 @@ clean-local:
 
 CLEANFILES += tests/.tag
 
-tests/opencl_dummy_trace.yaml: opencl_babeltrace_model.yaml tests/.tag
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml > $@
+tests/opencl_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml tests/.tag
+	$(RUBY) $< opencl_babeltrace_model.yaml > $@
 
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces

@@ -328,8 +328,8 @@ CLEANFILES += $(CUDA_BINDINGS)
 
 data_DATA = $(CUDA_BINDINGS)
 
-babeltrace_cudainterval_callbacks.cpp: $(srcdir)/cudainterval_callbacks.cpp.erb $(srcdir)/gen_cudainterval_callbacks.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cudainterval_callbacks.rb  > $@
+babeltrace_cudainterval_callbacks.cpp: $(srcdir)/gen_cudainterval_callbacks.rb $(srcdir)/cudainterval_callbacks.cpp.erb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $<  > $@
 
 babeltrace_cudainterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
@@ -338,10 +338,10 @@ babeltrace_cudainterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispat
 	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
 
 babeltrace_cudainterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="cudainterval" $(top_srcdir)/xprof/interval.h.erb > $@
+	$(ERB) namespace="cudainterval" $< > $@
 
 babeltrace_cudainterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="cudainterval"  $(top_srcdir)/xprof/interval.c.erb > $@
+	$(ERB) namespace="cudainterval"  $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
@@ -390,8 +390,8 @@ tests/.tag:
 
 CLEANFILES += tests/.tag
 
-tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml tests/.tag
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
+tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml tests/.tag
+	$(RUBY) $< cuda_babeltrace_model.yaml > $@
 
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces

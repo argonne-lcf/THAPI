@@ -256,8 +256,8 @@ data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb
 
-babeltrace_zeinterval_callbacks.cpp: $(srcdir)/zeinterval_callbacks.cpp.erb $(srcdir)/gen_zeinterval_callbacks.rb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_zeinterval_callbacks.rb  > $@
+babeltrace_zeinterval_callbacks.cpp: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $<  > $@
 
 babeltrace_zeinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
@@ -266,10 +266,10 @@ babeltrace_zeinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatch
 	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
 
 babeltrace_zeinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="zeinterval" $(top_srcdir)/xprof/interval.h.erb > $@
+	$(ERB) namespace="zeinterval" $< > $@
 
 babeltrace_zeinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="zeinterval"  $(top_srcdir)/xprof/interval.c.erb > $@
+	$(ERB) namespace="zeinterval"  $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
@@ -318,9 +318,9 @@ tests/.tag:
 
 CLEANFILES += tests/.tag
 
-tests/ze_dummy_trace.yaml: ze_babeltrace_model.yaml tests/.tag
+tests/ze_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml tests/.tag
 	mkdir -p tests
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml > $@
+	$(RUBY) $< ze_babeltrace_model.yaml > $@
 
 # To run test we need to catageory of file:
 # - One are the `yaml` file who containt the traces

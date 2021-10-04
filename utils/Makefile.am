@@ -13,7 +13,7 @@ nodist_noinst_HEADERS = lttng/tracepoint_gen.h
 
 lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
 	mkdir -p lttng
-	$(RUBY) $(srcdir)/tracepoint_gen.rb 25 > lttng/tracepoint_gen.h
+	$(RUBY) $< 25 > $@
 
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./
 

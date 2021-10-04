@@ -8,8 +8,8 @@ iprof: $(top_builddir)/xprof/xprof.sh.erb
 
 nodist_noinst_HEADERS = xprof.sh.erb
 
-tally_utils.hpp: tally_utils.hpp.erb
-	SRC_DIR=$(srcdir) ${ERB} $(srcdir)/tally_utils.hpp.erb > $@
+tally_utils.hpp: $(srcdir)/tally_utils.hpp.erb
+	SRC_DIR=$(srcdir) ${ERB} $< > $@
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
@@ -59,7 +59,7 @@ TALLY_DUST_FILES = \
 
 $(TALLY_DUST_FILES): tests/%.dust: tests/tally.dust.erb
 	mkdir -p tests/
-	$(ERB) namespace="$@" $(srcdir)/tests/tally.dust.erb > $@
+	$(ERB) namespace="$@" $< > $@
 
 TESTS = \
 	$(TALLY_DUST_FILES)
