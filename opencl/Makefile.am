@@ -76,7 +76,7 @@ OPENCL_STATIC_PROBES_TP = $(OPENCL_STATIC_PROBES:=.tp)
 
 OPENCL_STATIC_PROBES_INCL = $(OPENCL_STATIC_PROBES:=.h)
 
-OPENCL_STATIC_PROBES_SRC =  $(OPENCL_STATIC_PROBES:=.c)
+OPENCL_STATIC_PROBES_SRC = $(OPENCL_STATIC_PROBES:=.c)
 
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -106,7 +106,7 @@ BUILT_SOURCES += \
 	$(OPENCL_STATIC_PROBES_INCL)
 
 clprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages=["opencl"] $<  > $@
+	$(ERB) -T 1 languages=["opencl"] $< > $@
 	chmod a+x $@
 
 CLEANFILES += clprof.sh
@@ -183,7 +183,7 @@ install-data-hook:
 babeltrace_cl_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
 
-babeltrace_cl_dispatchers.c:  $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
+babeltrace_cl_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
 
 EXTRA_DIST += cl.h.include
@@ -208,7 +208,7 @@ libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELT
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 babeltrace_clinterval_callbacks.cpp: $(srcdir)/gen_clinterval_callbacks.rb $(srcdir)/clinterval_callbacks.cpp.erb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $<  > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
@@ -220,7 +220,7 @@ babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="clinterval" $< > $@
 
 babeltrace_clinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="clinterval"  $< > $@
+	$(ERB) namespace="clinterval" $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@

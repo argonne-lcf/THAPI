@@ -146,7 +146,7 @@ EXTRA_DIST += \
 CLEANFILES += tracer_ze.c
 
 zeprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages=["ze"] $<  > $@
+	$(ERB) -T 1 languages=["ze"] $< > $@
 	chmod a+x $@
 
 CLEANFILES += zeprof.sh
@@ -257,7 +257,7 @@ data_DATA = \
 	ze_bindings_base.rb
 
 babeltrace_zeinterval_callbacks.cpp: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $<  > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 babeltrace_zeinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
@@ -269,7 +269,7 @@ babeltrace_zeinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="zeinterval" $< > $@
 
 babeltrace_zeinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="zeinterval"  $< > $@
+	$(ERB) namespace="zeinterval" $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@

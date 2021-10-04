@@ -329,7 +329,7 @@ CLEANFILES += $(CUDA_BINDINGS)
 data_DATA = $(CUDA_BINDINGS)
 
 babeltrace_cudainterval_callbacks.cpp: $(srcdir)/gen_cudainterval_callbacks.rb $(srcdir)/cudainterval_callbacks.cpp.erb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $<  > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 babeltrace_cudainterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
@@ -341,7 +341,7 @@ babeltrace_cudainterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="cudainterval" $< > $@
 
 babeltrace_cudainterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="cudainterval"  $< > $@
+	$(ERB) namespace="cudainterval" $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
