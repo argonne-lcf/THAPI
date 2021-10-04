@@ -186,7 +186,7 @@ summary() {
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session* | head -1)
 <% elsif languages.include?("ze") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-ze-session* | head -1)
- <% elsif languages.include?("cuda") %>
+<% elsif languages.include?("cuda") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-cuda-session* | head -1)
 <% end %>
         >&2 echo "Trace location:" $lttng_last_session
@@ -221,15 +221,15 @@ summary() {
 
        babeltrace2 --plugin-path=$libdir \
                    ${lttng_last_session} \
-    <% if languages.include?("opencl") %>
+<% if languages.include?("opencl") %>
                    --component=filter.clinterval.interval \
-    <% end %>
-    <% if languages.include?("ze") %>
+<% end %>
+<% if languages.include?("ze") %>
                    --component=filter.zeinterval.interval \
-    <% end %>
-    <% if languages.include?("cuda") %>
+<% end %>
+<% if languages.include?("cuda") %>
                    --component=filter.cudainterval.interval \
-    <% end %>
+<% end %>
                    --component=sink.xprof.timeline
     fi
 
@@ -237,15 +237,15 @@ summary() {
 
        babeltrace2 --plugin-path=$libdir \
                 ${lttng_last_session} \
-    <% if languages.include?("opencl") %>
+<% if languages.include?("opencl") %>
                   --component=filter.clinterval.interval \
-    <% end %>
-    <% if languages.include?("ze") %>
+<% end %>
+<% if languages.include?("ze") %>
                   --component=filter.zeinterval.interval \
-    <% end %>
-    <% if languages.include?("cuda") %>
+<% end %>
+<% if languages.include?("cuda") %>
                   --component=filter.cudainterval.interval \
-    <% end %>
+<% end %>
                   --component=sink.xprof.tally \
                   --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata},display_name_max_size=${display_name_max_size}"
     fi
