@@ -23,6 +23,7 @@ Optional packages:
  - `cast-to-yaml`
  - `nokogiri`
  - `babeltrace`
+ - `babeltrace2`
 
 # Usage
 
