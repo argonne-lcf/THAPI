@@ -16,6 +16,9 @@ Packages:
  - `ruby`, `ruby-dev`
  - `libffi`, `libffi-dev`
 
+babletrace2 should be patched before install, see:
+https://github.com/Kerilk/spack/tree/develop/var/spack/repos/builtin/packages/babeltrace2
+
 Optional packages:
  - `binutils-dev` or `libiberty-dev` for demangling depending on platforms (`demangle.h`)
 
