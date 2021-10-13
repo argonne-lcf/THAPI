@@ -2,6 +2,8 @@
 exec_prefix=@prefix@
 libdir=@libdir@
 pkglibdir=$libdir/@PACKAGE@
+prefix=@prefix@
+datadir=@datadir@
 
 # Find all location of a `.so`
 whichlib() {
@@ -26,8 +28,14 @@ whichlib64() {
   done
 }
 
+display_version() {
+    cat $datadir/version
+    exit 1
+}
+
 while true; do
   case "$1" in
+    --version ) display_version; exit;;
     -l | --lightweight ) shift; lightweight=1;;
     -p | --profiling ) shift; profiling=1;;
     -s | --source ) shift; src=1;;

@@ -32,6 +32,11 @@ OptionParser.new do |opts|
     exit
   end
 
+  opts.on("-v", "--version", "Print the version string") do
+    puts File.read(File.join(DATADIR, "version"))
+    exit
+  end
+
 end.parse!
 
 ctf_fs = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("fs")

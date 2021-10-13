@@ -3,6 +3,8 @@ exec_prefix=@prefix@
 libdir=@libdir@
 bindir=@bindir@
 pkglibdir=$libdir/@PACKAGE@
+prefix=@prefix@
+datadir=@datadir@
 
 <%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 Option names are typically one to three words long, with hyphens to separate words %>
@@ -23,6 +25,7 @@ display_help() {
     echo " $(basename $0) [option]... -r [<trace>]..."
     echo
     echo "  -h, --help         Show this screen"
+    echo "  -v, --version      Print the version string"
     echo "  -e, --extended     Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace        Display trace"
     echo "  -l, --timeline     Dump the timeline"
@@ -44,6 +47,11 @@ display_help() {
     echo "For complain, praise, or bug reports please use: <(o )___"
     echo "   https://github.com/argonne-lcf/THAPI           ( ._> /"
     echo "   or send email to {apl,bvideau}@anl.gov          \`---'"
+    exit 1
+}
+
+display_version() {
+    cat $datadir/version
     exit 1
 }
 
@@ -268,6 +276,7 @@ fi
 while (( "$#" )); do
     case "$1" in
         -h | --help)     display_help; exit ;;
+        -v | --version)  display_version; exit ;;
         -e | --extented) shift; display=extended ;;
         -r | --replay)   shift; replay=true ;;
         -d | --debug)    shift; debug=true ;;

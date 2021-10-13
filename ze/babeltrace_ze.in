@@ -24,6 +24,11 @@ OptionParser.new do |opts|
     exit
   end
 
+  opts.on("-v", "--version", "Print the version string") do
+    puts File.read(File.join(DATADIR, "version"))
+    exit
+  end
+
 end.parse!
 
 c = Babeltrace::Context::new

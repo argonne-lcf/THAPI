@@ -2,6 +2,8 @@
 exec_prefix=@prefix@
 libdir=@libdir@
 pkglibdir=$libdir/@PACKAGE@
+prefix=@prefix@
+datadir=@datadir@
 
 # Find all location of a `.so`
 whichlib() {
@@ -26,8 +28,14 @@ whichlib64() {
   done
 }
 
+display_version() {
+    cat $datadir/version
+    exit 1
+}
+
 while true; do
   case "$1" in
+    --version ) display_version; exit;;
     -b | --build ) shift; build=1;;
     -p | --profiling ) shift; profiling=1; export LTTNG_UST_ZE_PROFILE=1;;
     -v | --visualize ) shift; lttng_view=1;;
