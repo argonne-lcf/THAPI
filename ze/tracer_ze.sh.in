@@ -31,6 +31,18 @@ whichlib64_head() {
   done
 }
 
+display_help() {
+    echo "Usage:"
+    echo " $(basename $0) [options] [--] <application> <application-arguments>"
+    echo "  --help                        Show this screen"
+    echo "  --version                     Print the version string"
+    echo "  -b, --build                   Dump module build infos"
+    echo "  -p, --profiling               Enable profiling"
+    echo "  -v, --visualize               Visualize trace on thefly"
+    echo "  --properties                  Dump drivers and devices properties"
+    exit 1
+}
+
 display_version() {
     cat $datadir/version
     exit 1
@@ -38,6 +50,7 @@ display_version() {
 
 while true; do
   case "$1" in
+    --help ) display_help; exit;;
     --version ) display_version; exit;;
     -b | --build ) shift; build=1;;
     -p | --profiling ) shift; profiling=1; export LTTNG_UST_ZE_PROFILE=1;;
@@ -47,6 +60,11 @@ while true; do
     * ) break ;;
   esac
 done
+
+if [ "$#" -eq 0 ]; then
+    display_help
+fi
+
 lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then

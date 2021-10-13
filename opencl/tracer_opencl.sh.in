@@ -31,6 +31,26 @@ whichlib64_head() {
   done
 }
 
+display_help() {
+    echo "Usage:"
+    echo " $(basename $0) [options] [--] <application> <application-arguments>"
+    echo "  --help                        Show this screen"
+    echo "  --version                     Print the version string"
+    echo "  -l, --lightweight             Filter out som high traffic functions"
+    echo "  -p, --profiling               Enable profiling"
+    echo "  -s, --source                  Dump program sources to disk"
+    echo "  -a, --arguments               Dump argument and kernel infos"
+    echo "  -b, --build                   Dump program build infos"
+    echo "  -h, --host-profile            Gather precise host profiling information"
+    echo "  -d, --dump                    Dump kernels input and output to disk"
+    echo "  -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE"
+    echo "  -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE"
+    echo "  -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE"
+    echo "  -v, --visualize               Visualize trace on thefly"
+    echo "  --devices                     Dump devices information"
+    exit 1
+}
+
 display_version() {
     cat $datadir/version
     exit 1
@@ -38,6 +58,7 @@ display_version() {
 
 while true; do
   case "$1" in
+    --help ) display_help; exit;;
     --version ) display_version; exit;;
     -l | --lightweight ) shift; lightweight=1;;
     -p | --profiling ) shift; profiling=1;;
@@ -55,6 +76,11 @@ while true; do
     * ) break ;;
   esac
 done
+
+if [ "$#" -eq 0 ]; then
+    display_help
+fi
+
 lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then

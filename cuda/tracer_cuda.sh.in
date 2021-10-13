@@ -31,6 +31,20 @@ whichlib64_head() {
   done
 }
 
+display_help() {
+    echo "Usage:"
+    echo " $(basename $0) [options] [--] <application> <application-arguments>"
+    echo "  --help                        Show this screen"
+    echo "  --version                     Print the version string"
+    echo "  --cudart                      Trace CUDA runtime on top of CUDA driver"
+    echo "  -a, --arguments               Extract argument infos and values"
+    echo "  -p, --profiling               Enable profiling"
+    echo "  -e, --exports                 Trace export functions"
+    echo "  -v, --visualize               Visualize trace on thefly"
+    echo "  --properties                  Dump devices infos"
+    exit 1
+}
+
 display_version() {
     cat $datadir/version
     exit 1
@@ -38,6 +52,7 @@ display_version() {
 
 while true; do
   case "$1" in
+    --help           ) display_help; exit;;
     --version        ) display_version; exit;;
     --cudart         ) shift; cudart=1;;
     -a | --arguments ) shift; arguments=1;;
@@ -49,6 +64,11 @@ while true; do
     * ) break ;;
   esac
 done
+
+if [ "$#" -eq 0 ]; then
+    display_help
+fi
+
 lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then
