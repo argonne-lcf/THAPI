@@ -3,6 +3,7 @@ exec_prefix=@prefix@
 libdir=@libdir@
 pkglibdir=$libdir/@PACKAGE@
 prefix=@prefix@
+datarootdir=@datarootdir@
 datadir=@datadir@
 
 # Find all location of a `.so`
