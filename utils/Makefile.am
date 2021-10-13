@@ -36,12 +36,15 @@ thapi_metadata_LDFLAGS = $(LTTNG_UST_LIBS)
 
 bin_PROGRAMS = thapi_metadata
 
+.PHONY: version
+
 version:
 	git describe --abbrev=7 --dirty --always --tags > version || echo $(PACKAGE_VERSION) > version
 
 data_DATA = version
 
 CLEANFILES = \
+	version \
 	lttng/tracepoint_gen.h \
 	$(BUILT_SOURCES)
 
