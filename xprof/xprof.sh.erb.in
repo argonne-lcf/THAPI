@@ -12,7 +12,7 @@ Option names are typically one to three words long, with hyphens to separate wor
 
 display_help() {
 <% if languages.include?("opencl") and languages.include?("ze") and  languages.include?("cuda") %>
-    echo "$(basename $0): a tracer / summarizer of OpenCL,L0 and CUDA driver calls"
+    echo "$(basename $0): a tracer / summarizer of OpenCL, L0, and CUDA driver calls"
 <% elsif languages.include?("opencl") %>
     echo "$(basename $0): a tracer / summarizer of OpenCL calls"
 <% elsif languages.include?("ze") %>
