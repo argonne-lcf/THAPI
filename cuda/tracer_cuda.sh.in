@@ -19,11 +19,14 @@ whichlib() {
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
-whichlib64() {
+whichlib64_head() {
+  # This function return only the first lib found
+  # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
   for lib in $(whichlib $1)
   do
     if objdump -a $lib | grep 64 > /dev/null; then
       echo $lib
+      break
     fi
   done
 }
@@ -79,7 +82,7 @@ then
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then
-  export LTTNG_UST_CUDA_LIBCUDA=$(whichlib64 libcuda.so | head -n 1)
+  export LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
 fi
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
@@ -88,7 +91,7 @@ if [ ! -z "$cudart" ]
 then
   if [ -z "$LTTNG_UST_CUDA_LIBCUDART" ]
   then
-    export LTTNG_UST_CUDART_LIBCUDART=$(whichlib64 libcudart.so | head -n 1)
+    export LTTNG_UST_CUDART_LIBCUDART=$(whichlib64_head libcudart.so)
   fi
   export LD_PRELOAD=$libdir/libTracerCUDART.so:$LD_PRELOAD
   export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
