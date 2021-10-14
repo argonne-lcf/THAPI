@@ -1,6 +1,6 @@
 # THAPI (Tracing Heterogeneous APIs)
 
-A tracing infrastructure for heterogeneous computing applications.
+A tracing infrastructure for heterogeneous computing applications. We curently have backend for OpenCL, CUDA and L0.
 
 # Building and Installation
 
