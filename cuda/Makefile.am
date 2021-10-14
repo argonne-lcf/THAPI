@@ -1,6 +1,11 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+if STRICT
+  WERROR = -Werror
+else
+  WERROR =
+endif
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 CUDA_EXTRA_HDR = \
 	$(srcdir)/include/builtin_types.h \
@@ -250,7 +255,7 @@ nodist_libTracerCUDA_la_SOURCES = \
 	tracer_cuda.c
 
 libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-libTracerCUDA_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libTracerCUDA_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDA_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDA_la_LDFLAGS += -version-info 1:0:0
 libTracerCUDA_la_LIBADD = libcudatracepoints.la
@@ -260,7 +265,7 @@ nodist_libTracerCUDART_la_SOURCES = \
 	tracer_cudart.c
 
 libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-libTracerCUDART_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libTracerCUDART_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDART_la_LDFLAGS += -version-number 11:0:3
 libTracerCUDART_la_LIBADD = libcudarttracepoints.la
@@ -307,7 +312,7 @@ libBabeltraceCUDA_la_SOURCES = \
 	babeltrace_cuda.h
 
 libBabeltraceCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
@@ -380,8 +385,8 @@ libCUDAInterval_la_SOURCES = \
 	cudainterval_callbacks.hpp
 
 libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 tests/.tag:

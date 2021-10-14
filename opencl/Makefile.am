@@ -1,6 +1,11 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+if STRICT
+  WERROR = -Werror
+else
+  WERROR =
+endif
+LTTNG_FLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 cl.xml.patched: $(srcdir)/cl.xml $(srcdir)/cl.xml.patch
 	$(PATCH) $(srcdir)/cl.xml $(srcdir)/cl.xml.patch -o cl.xml.patched
@@ -151,7 +156,7 @@ nodist_libTracerOpenCL_la_SOURCES = \
 	tracer_opencl.c
 
 libTracerOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerOpenCL_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -version-info 1:0:0
 libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
@@ -204,7 +209,7 @@ libBabeltraceCL_la_SOURCES = \
 	babeltrace_cl.h
 
 libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 babeltrace_clinterval_callbacks.cpp: $(srcdir)/gen_clinterval_callbacks.rb $(srcdir)/clinterval_callbacks.cpp.erb opencl_babeltrace_model.yaml
@@ -260,8 +265,8 @@ libCLInterval_la_SOURCES = \
 	clinterval_callbacks.hpp
 
 libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
-libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 tests/.tag:

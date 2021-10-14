@@ -50,6 +50,9 @@ AC_CHECK_HEADERS([demangle.h], [using_demangle=yes], [using_demangle=no])
 AS_IF([test "x$using_demangle" != xyes],
   [AC_CHECK_HEADERS([libiberty/demangle.h], [], [AC_MSG_WARN([Couldn't find demangle.h, demangling will be deactivated...])])])
 
+AC_ARG_ENABLE([strict], AS_HELP_STRING([--enable-strict], [Enable -Werror]), [], [enable_strict=yes])
+AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
+
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])

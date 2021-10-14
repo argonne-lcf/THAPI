@@ -1,3 +1,9 @@
+if STRICT
+  WERROR = -Werror
+else
+  WERROR =
+endif
+
 noinst_HEADERS = \
 	lttng/tracepoint.h \
 	include/utarray.h \
@@ -15,7 +21,7 @@ lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
 	mkdir -p lttng
 	$(RUBY) $< 25 > $@
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./
 
 %.h %.c: %.tp lttng/tracepoint_gen.h
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
