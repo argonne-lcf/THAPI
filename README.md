@@ -22,11 +22,14 @@ https://github.com/Kerilk/spack/tree/develop/var/spack/repos/builtin/packages/ba
 Optional packages:
  - `binutils-dev` or `libiberty-dev` for demangling depending on platforms (`demangle.h`)
 
- Ruby Gems:
+Ruby Gems:
  - `cast-to-yaml`
  - `nokogiri`
  - `babeltrace`
  - `babeltrace2`
+
+Optional Gem:
+ - `opencl_ruby_ffi`
 
 # Usage
 
