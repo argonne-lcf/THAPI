@@ -6,7 +6,7 @@ A tracing infrastructure for heterogeneous computing applications.
 
 The build system is a classical autotool based system.
 
-As a alternative one case use [spack](https://github.com/spack/spack) to install THAPI.  
+As a alternative, one can use [spack](https://github.com/spack/spack) to install THAPI.  
 THAPI package is not in upstream spack, so in the mean time please use https://github.com/argonne-lcf/THAPI-spack.
 
 ## Dependencies
@@ -126,3 +126,54 @@ For complain, praise, or bug reports please use: <(o )___
 ```
 
 Programming model specific variants exist: clprof.sh, zeprof.sh, and cuprof.sh.
+
+### Example of iprof output when tracing cuda code
+
+```
+tapplencourt> iprof ./a.out
+API calls | 1 Hostnames | 1 Processes | 1 Threads
+
+                         Name |     Time | Time(%) | Calls |  Average |      Min |      Max | Failed |
+     cuDevicePrimaryCtxRetain |  54.64ms |  51.77% |     1 |  54.64ms |  54.64ms |  54.64ms |      0 |
+         cuMemcpyDtoHAsync_v2 |  24.11ms |  22.85% |     1 |  24.11ms |  24.11ms |  24.11ms |      0 |
+ cuDevicePrimaryCtxRelease_v2 |  18.16ms |  17.20% |     1 |  18.16ms |  18.16ms |  18.16ms |      0 |
+           cuModuleLoadDataEx |   4.73ms |   4.48% |     1 |   4.73ms |   4.73ms |   4.73ms |      0 |
+               cuModuleUnload |   1.30ms |   1.23% |     1 |   1.30ms |   1.30ms |   1.30ms |      0 |
+               cuLaunchKernel |   1.05ms |   0.99% |     1 |   1.05ms |   1.05ms |   1.05ms |      0 |
+                cuMemAlloc_v2 | 970.60us |   0.92% |     1 | 970.60us | 970.60us | 970.60us |      0 |
+               cuStreamCreate | 402.21us |   0.38% |    32 |  12.57us |   1.58us | 183.49us |      0 |
+           cuStreamDestroy_v2 | 103.36us |   0.10% |    32 |   3.23us |   2.81us |   8.80us |      0 |
+              cuMemcpyDtoH_v2 |  36.17us |   0.03% |     1 |  36.17us |  36.17us |  36.17us |      0 |
+         cuMemcpyHtoDAsync_v2 |  13.11us |   0.01% |     1 |  13.11us |  13.11us |  13.11us |      0 |
+          cuStreamSynchronize |   8.77us |   0.01% |     1 |   8.77us |   8.77us |   8.77us |      0 |
+              cuCtxSetCurrent |   5.47us |   0.01% |     9 | 607.78ns | 220.00ns |   1.74us |      0 |
+         cuDeviceGetAttribute |   2.71us |   0.00% |     3 | 903.33ns | 490.00ns |   1.71us |      0 |
+   cuDevicePrimaryCtxGetState |   2.70us |   0.00% |     1 |   2.70us |   2.70us |   2.70us |      0 |
+                cuCtxGetLimit |   2.30us |   0.00% |     2 |   1.15us | 510.00ns |   1.79us |      0 |
+         cuModuleGetGlobal_v2 |   2.24us |   0.00% |     2 |   1.12us | 440.00ns |   1.80us |      1 |
+                       cuInit |   1.65us |   0.00% |     1 |   1.65us |   1.65us |   1.65us |      0 |
+          cuModuleGetFunction |   1.61us |   0.00% |     1 |   1.61us |   1.61us |   1.61us |      0 |
+           cuFuncGetAttribute |   1.00us |   0.00% |     1 |   1.00us |   1.00us |   1.00us |      0 |
+               cuCtxGetDevice | 850.00ns |   0.00% |     1 | 850.00ns | 850.00ns | 850.00ns |      0 |
+cuDevicePrimaryCtxSetFlags_v2 | 670.00ns |   0.00% |     1 | 670.00ns | 670.00ns | 670.00ns |      0 |
+                  cuDeviceGet | 640.00ns |   0.00% |     1 | 640.00ns | 640.00ns | 640.00ns |      0 |
+             cuDeviceGetCount | 460.00ns |   0.00% |     1 | 460.00ns | 460.00ns | 460.00ns |      0 |
+                        Total | 105.54ms | 100.00% |    98 |                                       1 |
+
+Device profiling | 1 Hostnames | 1 Processes | 1 Threads | 1 Device pointers
+
+                Name |    Time | Time(%) | Calls | Average |     Min |     Max |
+  test_target__teams | 25.14ms |  99.80% |     1 | 25.14ms | 25.14ms | 25.14ms |
+     cuMemcpyDtoH_v2 | 24.35us |   0.10% |     1 | 24.35us | 24.35us | 24.35us |
+cuMemcpyDtoHAsync_v2 | 18.14us |   0.07% |     1 | 18.14us | 18.14us | 18.14us |
+cuMemcpyHtoDAsync_v2 |  8.77us |   0.03% |     1 |  8.77us |  8.77us |  8.77us |
+               Total | 25.19ms | 100.00% |     4 |
+
+Explicit memory traffic | 1 Hostnames | 1 Processes | 1 Threads
+
+                Name |  Byte | Byte(%) | Calls | Average |   Min |   Max |
+cuMemcpyHtoDAsync_v2 | 4.00B |  44.44% |     1 |   4.00B | 4.00B | 4.00B |
+cuMemcpyDtoHAsync_v2 | 4.00B |  44.44% |     1 |   4.00B | 4.00B | 4.00B |
+     cuMemcpyDtoH_v2 | 1.00B |  11.11% |     1 |   1.00B | 1.00B | 1.00B |
+               Total | 9.00B | 100.00% |     3 |
+```
