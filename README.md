@@ -6,6 +6,9 @@ A tracing infrastructure for heterogeneous computing applications.
 
 The build system is a classical autotool based system.
 
+As a alternative one case use [spack](https://github.com/spack/spack) to install THAPI.  
+THAPI package is not in upstream spack, so in the mean time please use https://github.com/argonne-lcf/THAPI-spack.
+
 ## Dependencies
 
 Packages:
