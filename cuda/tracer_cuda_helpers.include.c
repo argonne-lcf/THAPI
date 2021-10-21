@@ -476,9 +476,17 @@ static void _load_tracer(void) {
 
   s = getenv("LTTNG_UST_CUDA_LIBCUDA");
   if (s)
-      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  else
-      handle = dlopen("libcuda.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  else {
+    handle = dlopen("libcuda.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    if (handle) {
+      void* ptr = dlsym(handle, "cuInit");
+      if (ptr == (void*)&cuInit) { //opening oneself
+        dlclose(handle);
+        handle = NULL;
+      }
+    }
+  }
   if( !handle ) {
     fprintf(stderr, "Failure: could not load cuda library!\n");
     exit(1);
