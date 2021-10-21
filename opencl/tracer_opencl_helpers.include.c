@@ -1182,16 +1182,16 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
   if (s)
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  else {
+  else
     handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-    if (handle) {
-      void* ptr = dlsym(handle, "clGetPlatformIDs");
-      if (ptr == (void*)&clGetPlatformIDs) { //opening oneself
-        dlclose(handle);
-        handle = NULL;
-      }
+  if (handle) {
+    void* ptr = dlsym(handle, "clGetPlatformIDs");
+    if (ptr == (void*)&clGetPlatformIDs) { //opening oneself
+      dlclose(handle);
+      handle = NULL;
     }
   }
+
   if( !handle ) {
     printf("Failure: could not load OpenCL library!\n");
     exit(1);
