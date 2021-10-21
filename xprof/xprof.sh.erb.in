@@ -6,7 +6,24 @@ pkglibdir=$libdir/@PACKAGE@
 prefix=@prefix@
 datarootdir=@datarootdir@
 datadir=@datadir@
-
+<%def print_loader_logic (language, library, libtracer)
+env_var="LTTNG_UST_#{language.upcase}_#{library.upcase}"
+directory=language.downcase
+<<EOF
+    if [ -z "$#{env_var}" ]
+    then
+      #{env_var}=$(whichlib64_head #{library}.so)
+      if [ -n "$#{env_var}" ]
+      then
+        export #{env_var}="$#{env_var}"
+        export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
+      fi
+    else
+      export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
+    fi
+    export LD_PRELOAD=$libdir/#{libtracer}.so:$LD_PRELOAD
+EOF
+end%>
 <%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 Option names are typically one to three words long, with hyphens to separate words %>
 
@@ -145,46 +162,13 @@ trace_and_summary() {
 
     #Find libs and preload
 <% if languages.include?("opencl") %>
-    if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
-    then
-      LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib64_head libOpenCL.so)
-      if [ -n "$LTTNG_UST_OPENCL_LIBOPENCL" ]
-      then
-        export LTTNG_UST_OPENCL_LIBOPENCL="$LTTNG_UST_OPENCL_LIBOPENCL"
-        export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH      
-      fi
-    else
-        export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
-    fi
-    export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
+<%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
 <% end %>
 <% if languages.include?("ze") %>
-    if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
-    then
-      LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib64_head libze_loader.so)
-      if [ -n "LTTNG_UST_ZE_LIBZE_LOADER" ]
-      then
-        export LTTNG_UST_ZE_LIBZE_LOADER="$LTTNG_UST_ZE_LIBZE_LOADER"
-        export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
-      fi
-    else
-      export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
-    fi
-    export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
+<%= print_loader_logic("ze","libze_loader","libTracerZE")%>
 <% end %>
 <% if languages.include?("cuda") %>
-    if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
-    then
-      LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
-      if [ -n "$LTTNG_UST_CUDA_LIBCUDA" ]
-      then 
-        export LTTNG_UST_CUDA_LIBCUDA="$LTTNG_UST_CUDA_LIBCUDA"
-        export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
-      fi
-    else
-      export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
-    fi
-    export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
+<%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
     # Start collection
     lttng $quiet start
