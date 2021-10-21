@@ -300,7 +300,7 @@ void init_cudainterval_callbacks(struct cudainterval_dispatch *ze_dispatch) {
 void finalize_cudainterval_callbacks(cudainterval_message_iterator *interval_dispatch_iter) {
     cudainterval_callbacks_state* state = (cudainterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     auto map = state->host_start;
-    for (auto const [function_name, ts] : map) {
+    for (auto const &[function_name, ts] : map) {
         if (ts != 0) {
             const auto [hostname,process_id, thread_id, f ]  = function_name;
             std::cerr << "Warning: " << hostname

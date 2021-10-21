@@ -410,7 +410,7 @@ void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
 void finalize_zeinterval_callbacks(zeinterval_message_iterator *interval_dispatch_iter) {
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
     auto map = state->host_start;
-    for (auto const [function_name, ts] : map) {
+    for (auto const &[function_name, ts] : map) {
         if (ts != 0) {
             const auto [hostname,process_id, thread_id, f ]  = function_name;
             std::cerr << "THAPI::Warning: " << hostname
