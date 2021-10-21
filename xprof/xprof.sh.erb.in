@@ -147,26 +147,44 @@ trace_and_summary() {
 <% if languages.include?("opencl") %>
     if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
     then
-      export LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib64_head libOpenCL.so)
+      LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib64_head libOpenCL.so)
+      if [ -n "$LTTNG_UST_OPENCL_LIBOPENCL" ]
+      then
+        export LTTNG_UST_OPENCL_LIBOPENCL="$LTTNG_UST_OPENCL_LIBOPENCL"
+        export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH      
+      fi
+    else
+        export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
     fi
     export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
 <% end %>
 <% if languages.include?("ze") %>
     if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
     then
-      export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib64_head libze_loader.so)
+      LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib64_head libze_loader.so)
+      if [ -n "LTTNG_UST_ZE_LIBZE_LOADER" ]
+      then
+        export LTTNG_UST_ZE_LIBZE_LOADER="$LTTNG_UST_ZE_LIBZE_LOADER"
+        export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
+      fi
+    else
+      export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
     fi
     export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
 <% end %>
 <% if languages.include?("cuda") %>
     if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
     then
-      export LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
+      LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
+      if [ -n "$LTTNG_UST_CUDA_LIBCUDA" ]
+      then 
+        export LTTNG_UST_CUDA_LIBCUDA="$LTTNG_UST_CUDA_LIBCUDA"
+        export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
+      fi
+    else
+      export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
     fi
     export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
-    export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
 <% end %>
     # Start collection
     lttng $quiet start
