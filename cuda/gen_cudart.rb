@@ -86,12 +86,8 @@ EOF
 normal_wrapper = lambda { |c, provider|
   puts <<EOF
 #{c.decl} {
-EOF
-  if c.init?
-    puts <<EOF
   _init_tracer();
 EOF
-  end
   common_block.call(c, provider)
   if c.has_return_type?
     puts <<EOF

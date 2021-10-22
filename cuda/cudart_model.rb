@@ -54,8 +54,6 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   end
 }
 
-INIT_FUNCTIONS = /cuInit/
-
 FFI_TYPE_MAP =  {
  "uint8_t" => "ffi_type_uint8",
  "int8_t" => "ffi_type_sint8",
@@ -310,7 +308,6 @@ class Command
     @meta_parameters += META_PARAMETERS[@function.name].collect { |type, args|
       type::new(self, *args)
     }
-    @init      = @function.name.match(INIT_FUNCTIONS)
     @prologues = PROLOGUES[@function.name]
     @epilogues = EPILOGUES[@function.name]
   end
@@ -341,10 +338,6 @@ class Command
 
   def parameters
     @function.type.params
-  end
-
-  def init?
-    name.match(INIT_FUNCTIONS)
   end
 
   def has_return_type?
