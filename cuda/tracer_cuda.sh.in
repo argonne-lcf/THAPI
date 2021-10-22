@@ -103,19 +103,31 @@ then
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then
-  export LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
+  LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
+  if [ -n "$LTTNG_UST_CUDA_LIBCUDA" ]
+  then
+    export LTTNG_UST_CUDA_LIBCUDA="$LTTNG_UST_CUDA_LIBCUDA"
+    export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
+  fi
+else
+  export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
 fi
-export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerCUDA.so:$LD_PRELOAD
-export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
+export LTTNG_UST_ALLOW_BLOCKING=1
 if [ ! -z "$cudart" ]
 then
   if [ -z "$LTTNG_UST_CUDA_LIBCUDART" ]
   then
-    export LTTNG_UST_CUDART_LIBCUDART=$(whichlib64_head libcudart.so)
+    LTTNG_UST_CUDA_LIBCUDART=$(whichlib64_head libcudart.so)
+    if [ -n "$LTTNG_UST_CUDA_LIBCUDART" ]
+    then
+      export LTTNG_UST_CUDA_LIBCUDART="$LTTNG_UST_CUDA_LIBCUDART"
+      export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
+    fi
+  else
+    export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
   fi
   export LD_PRELOAD=$libdir/libTracerCUDART.so:$LD_PRELOAD
-  export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
 fi
 lttng start
 

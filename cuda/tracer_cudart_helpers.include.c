@@ -11,6 +11,14 @@ static void _load_tracer(void) {
       handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
   else
       handle = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
+  if (handle) {
+    void* ptr = dlsym(handle, "cudaSetDevice");
+    if (ptr == (void*)&cudaSetDevice) { //opening oneself
+      dlclose(handle);
+      handle = NULL;
+    }
+  }
+
   if( !handle ) {
     fprintf(stderr, "Failure: could not load cudart library!\n");
     exit(1);
