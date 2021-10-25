@@ -13,9 +13,13 @@ EOF
 $all_funcs.each { |f|
   type, params = f.type.to_ffi
   puts <<EOF
-  attach_function #{to_ffi_name(f.name)},
-                  [ #{params.join(",\n"+" "*20)} ],
-                  #{type}
+  begin
+    attach_function #{to_ffi_name(f.name)},
+                    [ #{params.join(",\n"+" "*20)} ],
+                    #{type}
+  rescue FFI::NotFoundError
+    warn "Missing #{f.name} in libze_loader.so"
+  end
 
 EOF
 }
