@@ -36,7 +36,9 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   return mangle_name;
 };
 
-template <typename T> std::string to_string_with_precision2(const T a_value, const std::string extension, const int n = 2) {
+template <typename T>
+std::string to_string_with_precision2(const T a_value, const std::string extension,
+                                      const int n = 2) {
   std::ostringstream out;
   out.precision(n);
   out << std::fixed << a_value << extension;
@@ -191,20 +193,29 @@ private:
  * 1/ to understand the problem
  * 2/ To fix it
  */
-template <class... Args, std::size_t... Is> auto make_tuple_cuted(std::tuple<Args...> tp, std::index_sequence<Is...>) { return std::tuple{std::get<Is>(tp)...}; }
+template <class... Args, std::size_t... Is>
+auto make_tuple_cuted(std::tuple<Args...> tp, std::index_sequence<Is...>) {
+  return std::tuple{std::get<Is>(tp)...};
+}
 
-template <class... Args> auto make_tuple_cuted(std::tuple<Args...> tp) { return make_tuple_cuted(tp, std::make_index_sequence<sizeof...(Args) - 1>{}); }
+template <class... Args> auto make_tuple_cuted(std::tuple<Args...> tp) {
+  return make_tuple_cuted(tp, std::make_index_sequence<sizeof...(Args) - 1>{});
+}
 /* Aggreate a map of <std::tuple<...>, any>  using the index of the tuple as the new key
  * this index is an `std::index_sequence`
  */
-template <typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> auto aggregate_by_name(std::unordered_map<std::tuple<T...>, TC> &m) {
+template <typename TC, class... T,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+auto aggregate_by_name(std::unordered_map<std::tuple<T...>, TC> &m) {
   std::unordered_map<thapi_function_name, TC> aggregated{};
   for (auto const &[key, val] : m)
     aggregated[std::get<sizeof...(T) - 1>(key)] += val;
   return aggregated;
 }
 
-template <typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> auto aggregate_nested(std::unordered_map<std::tuple<T...>, TC> &m) {
+template <typename TC, class... T,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+auto aggregate_nested(std::unordered_map<std::tuple<T...>, TC> &m) {
   // https://stackoverflow.com/a/42043006/7674852
   // REALY?!
   typedef decltype(make_tuple_cuted(std::declval<std::tuple<T...>>())) Minusone;
@@ -217,10 +228,14 @@ template <typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v
 }
 
 // Add the elements of the tuple (t) in the set elements (s)
-template <class... T, class... T2, size_t... I> void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I...>) { (std::get<I>(s).insert(std::get<I>(t)), ...); }
+template <class... T, class... T2, size_t... I>
+void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I...>) {
+  (std::get<I>(s).insert(std::get<I>(t)), ...);
+}
 
 // Loop over the map keys and return a tuple correspoding to the uniq elements
-template <template <typename...> class Map, typename... K, typename V> auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
+template <template <typename...> class Map, typename... K, typename V>
+auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
   auto tuple_set = std::make_tuple(std::set<K>{}...);
   constexpr auto s = std::make_index_sequence<sizeof...(K)>();
 
@@ -229,7 +244,8 @@ template <template <typename...> class Map, typename... K, typename V> auto get_
   return tuple_set;
 }
 
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
 
   // Create the final Tally
   TC tot{};
@@ -251,7 +267,8 @@ template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBa
  * sorted by original map values
  */
 
-template <template <typename...> class Map, typename K, typename V> auto sort_by_value(Map<K, V> &m) {
+template <template <typename...> class Map, typename K, typename V>
+auto sort_by_value(Map<K, V> &m) {
   std::vector<std::pair<K, V>> v;
   std::copy(m.begin(), m.end(), std::back_inserter<std::vector<std::pair<K, V>>>(v));
   std::sort(v.begin(), v.end(), [=](auto &a, auto &b) { return a.second > b.second; });
@@ -274,7 +291,8 @@ inline std::string limit_string_size(std::string original, int u_size, std::stri
   return prefix + j + suffix;
 }
 
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> void apply_sizelimit(std::vector<std::pair<thapi_function_name, TC>> &m, int max_name_size) {
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void apply_sizelimit(std::vector<std::pair<thapi_function_name, TC>> &m, int max_name_size) {
   for (auto &[k, v] : m) {
     k = limit_string_size(k, max_name_size);
   }
@@ -285,14 +303,18 @@ template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBa
 //   |  | (_| >< | | | | |_| | |   __) |_ |  | | | (_|   __) | /_ (/_
 //                                                  _|
 // TallyCoreHeader tuple of str
-template <std::size_t SIZE, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-auto max_string_size2(std::vector<std::pair<thapi_function_name, TC>> &m, const std::pair<std::string, std::array<const char *, SIZE>> header) {
+template <std::size_t SIZE, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+auto max_string_size2(std::vector<std::pair<thapi_function_name, TC>> &m,
+                      const std::pair<std::string, std::array<const char *, SIZE>> header) {
 
   auto &[header_name, header_tallycore] = header;
   long name_max = header_name.size();
 
   // Know at compile time
-  auto tallycore_max = std::apply([](auto &&...e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; }, header_tallycore);
+  auto tallycore_max =
+      std::apply([](auto &&...e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
+                 header_tallycore);
 
   for (auto &[name, tallycore] : m) {
     name_max = std::max(static_cast<long>(name.size()), name_max);
@@ -310,13 +332,15 @@ auto max_string_size2(std::vector<std::pair<thapi_function_name, TC>> &m, const 
 //   \_| |_| |_ (/_ | | |_) (/_ |  | /_ (_|  |_ | (_) | |
 //
 
-// Our base datastructor is a pair of either tuple / TalyCore and a vector of int correspond to the collumn size.
-// We print each tuple menber with the correct width, and joined with a `|`
+// Our base datastructor is a pair of either tuple / TalyCore and a vector of int correspond to the
+// collumn size. We print each tuple menber with the correct width, and joined with a `|`
 // /!\ Ugly: If the collumn with is negative, that mean we should print a empty collumn of abs(size)
 // This is usefull for the footer or for hiding the `error` collumn
 
 // We use 3 function, because my template skill are poor...
-template <std::size_t SIZE> std::ostream &operator<<(std::ostream &os, const std::pair<std::array<const char *, SIZE>, std::vector<long>> &_tup) {
+template <std::size_t SIZE>
+std::ostream &operator<<(std::ostream &os,
+                         const std::pair<std::array<const char *, SIZE>, std::vector<long>> &_tup) {
   auto &[c, column_width] = _tup;
   for (auto i = 0U; i < c.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
@@ -329,7 +353,8 @@ template <std::size_t SIZE> std::ostream &operator<<(std::ostream &os, const std
 }
 
 // Print the TallyCore
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tup) {
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tup) {
   auto &[c, column_width] = _tup;
   const std::vector<std::string> v = c.to_string();
   for (auto i = 0U; i < v.size(); i++) {
@@ -348,11 +373,17 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 }
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
-template <class... T, class... T2, size_t... I> void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h, std::index_sequence<I...>) {
-  (((std::get<I>(s).size()) ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | " : os << ""), ...);
+template <class... T, class... T2, size_t... I>
+void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+                 std::index_sequence<I...>) {
+  (((std::get<I>(s).size()) ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
+                            : os << ""),
+   ...);
 }
 
-template <class... T, class... T2> void print_tally(std::ostream &os, const std::string &header, const std::tuple<T...> &s, const std::tuple<T2...> &h) {
+template <class... T, class... T2>
+void print_tally(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
+                 const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
   print_tally(os, s, h, seq);
@@ -360,20 +391,25 @@ template <class... T, class... T2> void print_tally(std::ostream &os, const std:
 }
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
-template <class... T, class... T2, size_t... I> void print_named_tuple(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h, std::index_sequence<I...>) {
+template <class... T, class... T2, size_t... I>
+void print_named_tuple(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+                       std::index_sequence<I...>) {
   ((os << std::get<I>(h) << ": " << std::get<I>(s) << " | "), ...);
 }
 
-template <class... T, class... T2> void print_named_tuple(std::ostream &os, const std::string &header, const std::tuple<T...> &s, const std::tuple<T2...> &h) {
+template <class... T, class... T2>
+void print_named_tuple(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
+                       const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
   print_named_tuple(os, s, h, seq);
   os << std::endl;
 }
 
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call name,
-// and the value are TallyCore
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> void print_tally2(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
+// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// name, and the value are TallyCore
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void print_tally2(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
 
   auto sorted_by_value = sort_by_value(m);
   add_footer(sorted_by_value);
@@ -401,10 +437,12 @@ template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBa
   }
   std::cout << std::endl;
 }
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call name,
-// and the value are TallyCore
-template <typename K, typename T, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_string, int display_name_max_size) {
+// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// name, and the value are TallyCore
+template <typename K, typename T, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_string,
+                   int display_name_max_size) {
 
   if (m.empty())
     return;
@@ -419,10 +457,12 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
   print_tally2(aggregated_by_name, display_name_max_size);
 }
 
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call name,
-// and the value are TallyCore
-template <typename K, typename T, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_string, int display_name_max_size) {
+// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// name, and the value are TallyCore
+template <typename K, typename T, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_string,
+                    int display_name_max_size) {
 
   // Now working of the body of the table
   auto aggregated_nested = aggregate_nested(m);
@@ -451,25 +491,32 @@ void to_json(nlohmann::json &j, const TallyCoreByte &tc) {
     j["error"] = tc.error;
 }
 
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name, TC>> &aggregated) {
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name, TC>> &aggregated) {
   for (auto const &[key, val] : aggregated)
     j[key] = val;
 }
 
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call name,
-// and the value are TallyCore
-template <typename K, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> nlohmann::json json_compact(std::unordered_map<K, TC> &m) {
+// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// name, and the value are TallyCore
+template <typename K, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+nlohmann::json json_compact(std::unordered_map<K, TC> &m) {
   auto aggregated_by_name = aggregate_by_name(m);
   auto sorted_by_value = sort_by_value(aggregated_by_name);
   add_footer(sorted_by_value);
   return {{"data", sorted_by_value}};
 }
 
-template <class... T, class... T2, size_t... I> void json_populate(nlohmann::json &j, const std::tuple<T...> &h, const std::tuple<T2...> &s, std::index_sequence<I...>) {
+template <class... T, class... T2, size_t... I>
+void json_populate(nlohmann::json &j, const std::tuple<T...> &h, const std::tuple<T2...> &s,
+                   std::index_sequence<I...>) {
   ((j[std::get<I>(h)] = std::get<I>(s)), ...);
 }
 
-template <typename K, typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>> nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h) {
+template <typename K, typename TC, class... T,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h) {
   nlohmann::json j;
   auto aggregated_nested = aggregate_nested(m);
   for (auto &[k, aggregated_by_name] : aggregated_nested) {
