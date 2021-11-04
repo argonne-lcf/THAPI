@@ -1,6 +1,5 @@
 #include "tally.h"
 #include "tally.hpp"
-#include "tally_utils.hpp"
 #include "xprof_utils.hpp" //Typedef and hashtuple
 
 static inline void get_common_lltng(const bt_event *event, hostname_t &hostname,
@@ -95,9 +94,11 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
                                                                   2);
         const bool err = bt_field_bool_get_value(err_field);
 
+        TallyCoreTime a{(uint64_t) dur, err};
         dispatch
-            ->host[hpt_function_name_t(hostname, process_id, thread_id, name)]
-            .delta(dur, err);
+            ->host2[hpt_function_name_t(hostname, process_id, thread_id,
+                                                 (thapi_function_name)name)]+=a;
+
       } else if (strcmp(class_name,"lttng:device") == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
 
@@ -123,11 +124,19 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
                                                                   4);
         const bool err = bt_field_bool_get_value(err_field);
 
+        if (dispatch->demangle_name)
+            /*Should fucking cache this function */
+            name = f_demangle_name(name);
+        // Will add if statements
+        name = name + " ( [0,0,0])";
+        // Should handle Datatransder, and kernel in different event
+        
+        TallyCoreTime a{(uint64_t) dur, err};
         dispatch
-            ->device[hpt_device_function_name_t(hostname, process_id, thread_id,
-                                                did, sdid,
-                                                (thapi_function_name)name)]
-            .delta(dur, err);
+            ->device2[hpt_device_function_name_t(hostname, process_id, thread_id,
+                                                 did, sdid,
+                                                 (thapi_function_name)name)]+=a;
+
       } else if (strcmp(class_name,"lttng:traffic")  == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
 
@@ -135,11 +144,11 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
             bt_field_structure_borrow_member_field_by_index_const(payload_field,
                                                                   1);
         const long size = bt_field_integer_unsigned_get_value(size_field);
-
+        TallyCoreByte a{(uint64_t) size, false};
         dispatch
-            ->traffic[hpt_function_name_t(hostname, process_id, thread_id,
-                                          name)]
-            .delta(size, false);
+            ->traffic2[hpt_function_name_t(hostname, process_id, thread_id,
+                                          name)] += a;
+
       } else if (strcmp(class_name, "lttng:device_name") == 0) {
         get_common_lltng(event, hostname, process_id, thread_id, name);
 
@@ -217,44 +226,73 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
   struct tally_dispatch *dispatch =
       (tally_dispatch *)bt_self_component_get_data(
           bt_self_component_sink_as_self_component(self_component_sink));
+
+  const int max_name_size = dispatch->display_name_max_size;
  
   if (dispatch->display_human) {
     if (dispatch->display_metadata) 
       print_metadata(dispatch->metadata);
    
-    const int max_name_size = dispatch->display_name_max_size;
 
     if (dispatch->display_compact) {
-      print_compact_host(dispatch->host, max_name_size);
-      print_compact_device(dispatch->device, max_name_size, dispatch->demangle_name);
-      print_compact_traffic(dispatch->traffic, max_name_size);
+
+      print_compact("API calls",
+                    dispatch->host2,
+                    std::make_tuple( "Hostnames", "Processes", "Threads"),
+                    max_name_size);
+
+      print_compact("Device profiling", 
+                    dispatch->device2, 
+                    std::make_tuple( "Hostnames", "Processes", "Threads",
+                                        "Device pointers", "Subdevice pointers"),
+                    max_name_size);
+      print_compact("Explicit memory traffic",
+                    dispatch->traffic2,
+                    std::make_tuple( "Hostnames", "Processes", "Threads"),
+                    max_name_size);
+
     } else {
-      print_extented_host(dispatch->host,max_name_size);
-      print_extented_device(dispatch->device, dispatch->device_name,
-                            max_name_size,
-                            dispatch->demangle_name);
-      print_extented_traffic(dispatch->traffic, max_name_size);
+
+      print_extended("API calls",
+                     dispatch->host2,
+                     std::make_tuple("Hostname", "Process", "Thread"),
+                     max_name_size);
+
+
+      print_extended("Device profiling",
+                        dispatch->device2,
+                        std::make_tuple( "Hostname", "Process", "Thread", 
+                                         "Device pointer", "Subdevice pointer"),
+                        max_name_size);
+
+      print_extended("Explicit memory traffic",
+                        dispatch->traffic2,
+                        std::make_tuple( "Hostname", "Process", "Thread"),
+                        max_name_size);
     }
   } else {
-    json j;
+    nlohmann::json j;
     j["units"] = {{"time", "ns"}, {"size", "bytes"}};
     if (dispatch->display_metadata)
       j["metadata"] = dispatch->metadata;
     if (dispatch->display_compact) {
-      if (!dispatch->host.empty())
-        j["host"] = json_compact_host(dispatch->host);
-      if (!dispatch->device.empty())
-        j["device"] = json_compact_device(dispatch->device);
-      if (!dispatch->traffic.empty())
-        j["traffic"] = json_compact_traffic(dispatch->traffic);
+        if (!dispatch->host2.empty()) 
+            j["host"] = json_compact(dispatch->host2);
+        if (!dispatch->device2.empty())
+            j["device"] = json_compact(dispatch->device2);
+        if (!dispatch->traffic2.empty())
+            j["trafic"] = json_compact(dispatch->traffic2);
     } else {
-      if (!dispatch->host.empty())
-        j["host"] = json_extented_host(dispatch->host);
-      if (!dispatch->device.empty())
-        j["device"] =
-            json_extented_device(dispatch->device, dispatch->device_name);
-      if (!dispatch->traffic.empty())
-        j["traffic"] = json_extented_traffic(dispatch->traffic);
+      if (!dispatch->host2.empty())
+        j["host"] = json_extented(dispatch->host2, 
+                                  std::make_tuple("Hostname", "Process", "Thread"));
+      if (!dispatch->device2.empty())
+        j["device"] = json_extented(dispatch->device2,
+                                    std::make_tuple("Hostname", "Process", "Thread",
+                                                    "Device pointer", "Subdevice pointer"));
+      if (!dispatch->traffic2.empty())
+        j["traffic"] = json_extented(dispatch->traffic2,
+                                    std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;
   }

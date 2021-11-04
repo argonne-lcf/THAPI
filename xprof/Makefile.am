@@ -14,9 +14,6 @@ iprof: $(top_builddir)/xprof/xprof.sh.erb
 
 nodist_noinst_HEADERS = xprof.sh.erb
 
-tally_utils.hpp: $(srcdir)/tally_utils.hpp.erb
-	SRC_DIR=$(srcdir) ${ERB} $< > $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
@@ -49,7 +46,7 @@ libXProf_la_SOURCES = \
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
 libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module 
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
@@ -82,7 +79,6 @@ data_DATA = \
 	$(TRACE_FILES)
 
 EXTRA_DIST = \
-	tally_utils.hpp.erb \
 	interval.c.erb \
 	interval.h.erb \
 	interval_model.yaml \
@@ -91,6 +87,5 @@ EXTRA_DIST = \
 
 CLEANFILES = \
 	iprof \
-	tally_utils.hpp \
 	xprof_utils.hpp \
 	$(TALLY_DUST_FILES)

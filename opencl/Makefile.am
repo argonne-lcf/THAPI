@@ -227,6 +227,8 @@ babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
 babeltrace_clinterval.c: $(top_srcdir)/xprof/interval.c.erb
 	$(ERB) namespace="clinterval" $< > $@
 
+# opencl/Makefile.am:248: warning: source file '$(top_srcdir)/utils/xprof_utils.cpp' is in a subdirectory,
+# opencl/Makefile.am:248: but option 'subdir-objects' is disabled
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
 
