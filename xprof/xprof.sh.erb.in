@@ -218,13 +218,13 @@ summary() {
     if [ -n "$trace" ]; then
         # Todo filter direcly in the babeltrace
 <% if languages.include?("opencl") %>
-        $bindir/babeltrace_opencl $lttng_last_session | grep --binary-files=text lttng_ust_opencl
+        $bindir/babeltrace_opencl -c $lttng_last_session | grep --binary-files=text lttng_ust_opencl
 <% end %>
 <% if languages.include?("ze") %>
-        $bindir/babeltrace_ze $lttng_last_session | grep --binary-files=text lttng_ust_ze
+        $bindir/babeltrace_ze -c $lttng_last_session | grep --binary-files=text lttng_ust_ze
 <% end %>
 <% if languages.include?("cuda") %>
-        $bindir/babeltrace_cuda $lttng_last_session | grep --binary-files=text lttng_ust_cuda
+        $bindir/babeltrace_cuda -c $lttng_last_session | grep --binary-files=text lttng_ust_cuda
 <% end %>
     fi
 
