@@ -2,34 +2,20 @@
 #include "tally.hpp"
 #include "xprof_utils.hpp" //Typedef and hashtuple
 
-static inline void get_common_lltng(const bt_event *event, hostname_t &hostname,
-                                    process_id_t &process_id,
-                                    thread_id_t &thread_id, std::string &name) {
-  // Common context field
+auto inline get_common_context_field(const bt_event *event) {
+
+  auto dur_tuple0 =
+      std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                      (hostname_t) ""), // hostname
+                      std::make_tuple(1, &bt_field_integer_signed_get_value,
+                                      (process_id_t)0), // process
+                      std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                                      (thread_id_t)0)); // thread
+
   const bt_field *common_context_field =
       bt_event_borrow_common_context_field_const(event);
 
-  const bt_field *hostname_field =
-      bt_field_structure_borrow_member_field_by_index_const(
-          common_context_field, 0);
-  hostname = std::string{bt_field_string_get_value(hostname_field)};
-
-  const bt_field *process_id_field =
-      bt_field_structure_borrow_member_field_by_index_const(
-          common_context_field, 1);
-  process_id = bt_field_integer_signed_get_value(process_id_field);
-
-  const bt_field *thread_id_field =
-      bt_field_structure_borrow_member_field_by_index_const(
-          common_context_field, 2);
-  thread_id = bt_field_integer_unsigned_get_value(thread_id_field);
-
-  // Payload
-  const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
-
-  const bt_field *name_field =
-      bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
-  name = std::string{bt_field_string_get_value(name_field)};
+  return thapi_bt2_getter(common_context_field, dur_tuple0);
 }
 
 bt_component_class_sink_consume_method_status
@@ -75,91 +61,81 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
       const bt_event_class *event_class = bt_event_borrow_class_const(event);
       const char *class_name = bt_event_class_get_name(event_class);
 
-      hostname_t hostname;
-      process_id_t process_id;
-      thread_id_t thread_id;
-      std::string name;
-
       const bt_field *payload_field =
           bt_event_borrow_payload_field_const(event);
       if (strcmp(class_name, "lttng:host") == 0) {
-        get_common_lltng(event, hostname, process_id, thread_id, name);
-
         auto dur_tuple0 = std::make_tuple(
-            std::make_tuple(1, &bt_field_integer_unsigned_get_value, (uint64_t) 0),
-            std::make_tuple(2, &bt_field_bool_get_value, (bool) 0));
+            std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
+            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
+                            (uint64_t)0),
+            std::make_tuple(2, &bt_field_bool_get_value, (bool)0));
 
-        const auto [dur, err] = thapi_bt2_getter(payload_field, dur_tuple0);
+        const auto &[hostname, process_id, thread_id] =
+            get_common_context_field(event);
+        const auto &[name, dur, err] =
+            thapi_bt2_getter(payload_field, dur_tuple0);
 
         TallyCoreTime a{dur, err};
         dispatch->host2[hpt_function_name_t(hostname, process_id, thread_id,
-                                            (thapi_function_name)name)] += a;
+                                            name)] += a;
 
       } else if (strcmp(class_name, "lttng:device") == 0) {
-        get_common_lltng(event, hostname, process_id, thread_id, name);
+        auto dur_tuple0 = std::make_tuple(
+            std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
+            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
+                            (uint64_t)0), // dur
+            std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                            (uint64_t)0), // device
+            std::make_tuple(3, &bt_field_integer_unsigned_get_value,
+                            (uint64_t)0), // subdevice
+            std::make_tuple(4, &bt_field_bool_get_value, (bool)0)); // Error
 
-        const bt_field *dur_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  1);
-        const long dur = bt_field_integer_unsigned_get_value(dur_field);
-
-        const bt_field *did_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  2);
-        const thapi_device_id did =
-            bt_field_integer_unsigned_get_value(did_field);
-
-        const bt_field *sdid_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  3);
-        const thapi_device_id sdid =
-            bt_field_integer_unsigned_get_value(sdid_field);
-
-        const bt_field *err_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  4);
-        const bool err = bt_field_bool_get_value(err_field);
-
-        if (dispatch->demangle_name)
-          /*Should fucking cache this function */
-          name = f_demangle_name(name);
+        const auto &[hostname, process_id, thread_id] =
+            get_common_context_field(event);
+        const auto &[name, dur, did, sdid, err] =
+            thapi_bt2_getter(payload_field, dur_tuple0);
+        /*Should fucking cache this function */
+        const auto name_demangle =
+            (dispatch->demangle_name) ? f_demangle_name(name) : name;
         // Will add if statements
         // name = name + " ( [0,0,0])";
         // Should handle Datatransder, and kernel in different event
 
-        TallyCoreTime a{(uint64_t)dur, err};
+        TallyCoreTime a{dur, err};
         dispatch->device2[hpt_device_function_name_t(
-            hostname, process_id, thread_id, did, sdid,
-            (thapi_function_name)name)] += a;
+            hostname, process_id, thread_id, did, sdid, name)] += a;
 
       } else if (strcmp(class_name, "lttng:traffic") == 0) {
-        get_common_lltng(event, hostname, process_id, thread_id, name);
+        auto dur_tuple0 = std::make_tuple(
+            std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
+            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
+                            (uint64_t)0)); // size
 
-        const bt_field *size_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  1);
-        const long size = bt_field_integer_unsigned_get_value(size_field);
+        const auto &[hostname, process_id, thread_id] =
+            get_common_context_field(event);
+        const auto &[name, size] = thapi_bt2_getter(payload_field, dur_tuple0);
         TallyCoreByte a{(uint64_t)size, false};
         dispatch->traffic2[hpt_function_name_t(hostname, process_id, thread_id,
                                                name)] += a;
 
       } else if (strcmp(class_name, "lttng:device_name") == 0) {
-        get_common_lltng(event, hostname, process_id, thread_id, name);
+        auto dur_tuple0 = std::make_tuple(
+            std::make_tuple(0, &bt_field_string_get_value, (std::string) ""),
+            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
+                            (thapi_device_id)0)); // device
 
-        const bt_field *did_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  1);
-        const thapi_device_id did =
-            bt_field_integer_unsigned_get_value(did_field);
+        const auto &[hostname, process_id, thread_id] =
+            get_common_context_field(event);
+        const auto &[name, did] = thapi_bt2_getter(payload_field, dur_tuple0);
 
-        dispatch->device_name[hp_device_t(hostname, process_id,
-                                          (thapi_device_id)did)] = name;
+        dispatch->device_name[hp_device_t(hostname, process_id, did)] = name;
       } else if (strcmp(class_name, "lttng_ust_thapi:metadata") == 0) {
-        const bt_field *value_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field,
-                                                                  0);
-        dispatch->metadata.push_back(
-            std::string{bt_field_string_get_value(value_field)});
+
+        auto dur_tuple0 = std::make_tuple(std::make_tuple(
+            0, &bt_field_string_get_value, (std::string) "")); // device
+
+        const auto [metadata] = thapi_bt2_getter(payload_field, dur_tuple0);
+        dispatch->metadata.push_back(metadata);
       }
     }
     bt_message_put_ref(message);
