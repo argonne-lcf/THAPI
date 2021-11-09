@@ -95,7 +95,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto &[name, dur, did, sdid, err] =
             thapi_bt2_getter(payload_field, dur_tuple0);
         /*Should fucking cache this function */
-        const auto name_demangle =
+        const auto name_demangled =
             (dispatch->demangle_name) ? f_demangle_name(name) : name;
         // Will add if statements
         // name = name + " ( [0,0,0])";
@@ -103,7 +103,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
         TallyCoreTime a{dur, err};
         dispatch->device2[hpt_device_function_name_t(
-            hostname, process_id, thread_id, did, sdid, name)] += a;
+            hostname, process_id, thread_id, did, sdid, name_demangled)] += a;
 
       } else if (strcmp(class_name, "lttng:traffic") == 0) {
         auto dur_tuple0 = std::make_tuple(

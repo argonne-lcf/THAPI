@@ -301,6 +301,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val->timerResolution, pDeviceProperties_val->kernelTimestampValidBits);
 
    state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hSubDevice)] = t ;
+   //Need to pach UUID to be at least different between tile...
    state->device_to_uuid[h_device_t(hostname, (thapi_device_id) hSubDevice) ] = pDeviceProperties_val->uuid ;
 
    state->device_to_rootdevice[hp_device_t(hostname,process_id,  (thapi_device_id) hSubDevice) ] =  (thapi_device_id) hDevice;
