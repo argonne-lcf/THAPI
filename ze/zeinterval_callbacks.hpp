@@ -20,6 +20,9 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hp_event_t,tfn_dsd_ts_t> event_to_function_name_dsd_and_ts;
     std::unordered_map<hpt_t, fn_dsd_ts_t> profiled_function_name_dsd_and_ts;
 
+    // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
+    std::unordered_map<h_device_t, ze_device_uuid_t> device_to_uuid;
+
     std::unordered_map<hp_command_list_t, dsd_t> command_list_to_device;
     std::unordered_map<hp_device_t, timerResolution_kernelTimestampValidBits_t> device_to_timerResolution_kernelTimestampValidBits;
 

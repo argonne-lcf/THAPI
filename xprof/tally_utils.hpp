@@ -233,6 +233,11 @@ void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I.
   (std::get<I>(s).insert(std::get<I>(t)), ...);
 }
 
+template <class... T, size_t... I>
+void remove_neutral(std::tuple<std::set<T>...> &s, std::index_sequence<I...>) {
+  (std::get<I>(s).erase (T{}), ...);
+}
+
 // Loop over the map keys and return a tuple correspoding to the uniq elements
 template <template <typename...> class Map, typename... K, typename V>
 auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
@@ -241,6 +246,8 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
 
   for (auto &m : input)
     add_to_set(tuple_set, m.first, s);
+
+  remove_neutral(tuple_set, s);
   return tuple_set;
 }
 
@@ -345,7 +352,7 @@ std::ostream &operator<<(std::ostream &os,
   for (auto i = 0U; i < c.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
-      os << "   ";
+      os << "" << "   ";
     else
       os << c[i] << " | ";
   }
@@ -360,7 +367,7 @@ std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tu
   for (auto i = 0U; i < v.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
-      os << "   ";
+      os << "" << "   ";
     else
       os << v[i] << " | ";
   }
@@ -376,7 +383,7 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 template <class... T, class... T2, size_t... I>
 void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
                  std::index_sequence<I...>) {
-  (((std::get<I>(s).size()) ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
+  ((std::get<I>(s).size() ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
                             : os << ""),
    ...);
 }
@@ -394,7 +401,9 @@ void print_tally(std::ostream &os, const std::string &header, const std::tuple<T
 template <class... T, class... T2, size_t... I>
 void print_named_tuple(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
                        std::index_sequence<I...>) {
-  ((os << std::get<I>(h) << ": " << std::get<I>(s) << " | "), ...);
+  (((std::get<I>(s) != T{}) ? os << std::get<I>(h) << ": " << std::get<I>(s) << " | "
+                            : os << ""),
+   ...);
 }
 
 template <class... T, class... T2>
@@ -428,7 +437,7 @@ void print_tally2(std::unordered_map<thapi_function_name, TC> &m, int display_na
     if (std::next(it) == sorted_by_value.end()) {
       s2[3] *= -1;
       s2[4] *= -1;
-      s2[5] = -1;
+      s2[5] *= -1;
     }
     const auto &[name, tallycore] = *it;
     auto f = std::make_pair(name, s1);
@@ -567,6 +576,6 @@ auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a, std::i
 template<class ...T>
 auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a){
    constexpr auto seq = std::make_index_sequence<sizeof...(T)>();
-   return thapi_bt2_getter(payload_field,a,seq);     
+   return thapi_bt2_getter(payload_field,a,seq);
 }
 

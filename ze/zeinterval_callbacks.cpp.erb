@@ -49,8 +49,8 @@ static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_dev
     auto it = map.find(hp_device);
     if (it == map.end()) {
         if (is_ns) {
-            std::cerr << "No timerResolution have been found for a device."
-                      << "Data will be displayed as cycle" << std::endl;
+            std::cerr << "No timerResolution have been found for a device. "
+                      << "Data will be displayed as cycles." << std::endl;
             is_ns = false;
         }
     } else {
@@ -90,6 +90,21 @@ static inline uint64_t start_time_ns(zeinterval_callbacks_state* state, hp_devic
         }
         return born_min;
     }
+}
+
+// Hash UUID
+uintptr_t hash_device(zeinterval_callbacks_state* state, const hostname_t hostname, thapi_device_id device) {
+    if (!device)
+        return 0;
+
+    auto device_uuid = state->device_to_uuid[h_device_t(hostname, device)];
+
+    // Right now we store `ptr` and not `uuid`.
+    // we cast `uiid` to `ptr`. This should to the oposite
+    uintptr_t device_uuid_hash[2];
+    memcpy(&device_uuid_hash[0], &device_uuid, sizeof(device_uuid));
+    device_uuid_hash[0]+= device_uuid_hash[1];
+    return device_uuid_hash[0];
 }
 
 void *init_zeinterval_callbacks_state() {
@@ -250,7 +265,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     int64_t ns_from_origin;
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
 
-    hp_device_t hp_device{hostname,process_id, (thapi_device_id) hDevice};
+    hp_device_t hp_device{hostname, process_id, (thapi_device_id) hDevice};
 
     auto map = state->device_to_timerResolution_kernelTimestampValidBits;
     auto it = map.find(hp_device);
@@ -261,8 +276,6 @@ static void zeinterval_<%= dbt_event.name %>_callback(
         state->sync_clock_lttng_device[hp_device] = clock_lttng_device_t{ns_from_origin, (deviceTimestamp & mask )*_timerResolution};
     }
   <% end %>
-
-
   <%#
     _         _                    _                                   __          _
    |_) ._ _ _|_ o | o ._   _  o   | \  _     o  _  _     _. ._   _|   (_      |_  | \  _     o  _  _
@@ -271,35 +284,41 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ]
   %>
 
-  <%# Map [ Tuple [hostname, process, device_or_subdevice], device] ] %>
-  <% if dbt_event.name_unsanitized == "lttng_ust_ze:zeDeviceGet_#{STOP}" %>
-    if ((phDevices_vals != nullptr) && (zeResult == ZE_RESULT_SUCCESS) ) {
-        for (unsigned int i=0; i < pCount_val; i++ ) {
-            const thapi_device_id d = (thapi_device_id) phDevices_vals[i];
-            state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = d;
-        }
-    }
-  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeDeviceGetSubDevices_#{START}" %>
-    state->start_device[hpt_t(hostname,process_id,thread_id) ] = (thapi_device_id) hDevice;
-  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeDeviceGetSubDevices_#{STOP}" %>
-    const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
-    const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
-    if ((phSubdevices_vals != nullptr) && (zeResult == ZE_RESULT_SUCCESS)) {
-        for (unsigned int i=0; i < pCount_val; i++ ) {
-            const thapi_device_id d = (thapi_device_id) phSubdevices_vals[i];
-            state->device_to_rootdevice[hp_device_t(hostname,process_id, d) ] = root_device;
-        }
-    }
+  <%# Save devices information. Device UUID and device timer resolution %>
+  <%if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
+   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+   const hostname_t hostname    = borrow_hostname(bt_evt);
+   const process_id_t process_id = borrow_process_id(bt_evt);
+   const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val->timerResolution, pDeviceProperties_val->kernelTimestampValidBits);
+   state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hDevice)] = t ;
+   state->device_to_uuid[h_device_t(hostname, (thapi_device_id) hDevice) ] = pDeviceProperties_val->uuid ;
+
+
+  <%elsif dbt_event.name_unsanitized == "lttng_ust_ze_properties:subdevice" %>
+   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+   const hostname_t hostname    = borrow_hostname(bt_evt);
+   const process_id_t process_id = borrow_process_id(bt_evt);
+   const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val->timerResolution, pDeviceProperties_val->kernelTimestampValidBits);
+
+   state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hSubDevice)] = t ;
+   state->device_to_uuid[h_device_t(hostname, (thapi_device_id) hSubDevice) ] = pDeviceProperties_val->uuid ;
+
+   state->device_to_rootdevice[hp_device_t(hostname,process_id,  (thapi_device_id) hSubDevice) ] =  (thapi_device_id) hDevice;
+
   <% end %>
 
   <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
   <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include? dbt_event.name_striped %>
        <% if dbt_event.name_unsanitized.end_with?(START) %>
-    state->start_device[hpt_t(hostname,process_id,thread_id) ] =  (thapi_device_id) hDevice;
+    state->start_device[hpt_t(hostname,process_id,thread_id) ] = (thapi_device_id) hDevice;
        <% elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    const thapi_device_id device = state->start_device[hpt_t(hostname,process_id,thread_id) ];
-    const thapi_device_id root_device = state->device_to_rootdevice[hp_device_t(hostname,process_id, device) ];
-    state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(root_device, device);
+    const auto device_or_subdevice = state->start_device[hpt_t(hostname, process_id,thread_id) ];
+    auto it = state->device_to_rootdevice.find(hp_device_t(hostname, process_id, device_or_subdevice));
+    if (it == state->device_to_rootdevice.end()) { // A device
+       state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(device_or_subdevice, NULL);
+    } else {
+        state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(it->second, device_or_subdevice);
+    }
        <% else %>
            <% raise "Dont know what kind of commandListCreate events this is"%>
        <% end %>
@@ -338,15 +357,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    Map [ Tuple[hostname, process, device, subdevice, cl_function_name], elapsed_time ]
   %>
 
-  <%# Getting timer resultion of each device %>
-  <%if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
-   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-   const hostname_t hostname    = borrow_hostname(bt_evt);
-   const process_id_t process_id = borrow_process_id(bt_evt);
-   const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val->timerResolution, pDeviceProperties_val->kernelTimestampValidBits);
-   state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hDevice)] = t ;
-
-  <%elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
+  <%if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
    const hostname_t hostname    = borrow_hostname(bt_evt);
    const process_id_t process_id = borrow_process_id(bt_evt);
@@ -357,7 +368,11 @@ static void zeinterval_<%= dbt_event.name %>_callback(
       state->event_to_function_name_dsd_and_ts[hp_event] = tfn_dsd_ts_t(thread_id, function_name, device, subdevice, ts);
    } else {
       const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
-      create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
+
+      create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
+                                        hash_device(state, hostname, device),
+                                        hash_device(state, hostname, subdevice),
+                                        function_name.c_str(), start, delta, delta == 0 );
       state->event_to_function_name_dsd_and_ts.erase(hp_event);
    }
 
@@ -374,7 +389,10 @@ static void zeinterval_<%= dbt_event.name %>_callback(
       const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
       const uint64_t start = start_time_ns(state, hp_device, globalStart,ts);
 
-      create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0 );
+      create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
+                                        hash_device(state, hostname, device),
+                                        hash_device(state, hostname, subdevice),
+                                        function_name.c_str(),start,delta, delta == 0 );
 
       state->event_to_function_name_dsd_and_ts.erase(hp_event);
    } else {

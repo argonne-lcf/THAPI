@@ -304,13 +304,37 @@ static void _lib_cleanup() {
   }
 }
 
+static void _dump_driver_subdevice_properties(ze_driver_handle_t hDriver, ze_device_handle_t hDevice) {
+  if (!tracepoint_enabled(lttng_ust_ze_properties, subdevice))
+    return;
+
+  uint32_t subDeviceCount = 0;
+  if (ZE_DEVICE_GET_SUB_DEVICES_PTR(hDevice, &subDeviceCount, NULL ) != ZE_RESULT_SUCCESS || subDeviceCount == 0)
+    return;
+  ze_device_handle_t* phSubDevices = (ze_device_handle_t*) alloca(subDeviceCount * sizeof(ze_device_handle_t));
+
+  if (ZE_DEVICE_GET_SUB_DEVICES_PTR(hDevice, &subDeviceCount, phSubDevices) != ZE_RESULT_SUCCESS)
+    return;
+
+  for (uint32_t j = 0; j < subDeviceCount; j++) {
+    ze_device_properties_t props = {0};
+    props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
+    props.pNext = NULL;
+    if (ZE_DEVICE_GET_PROPERTIES_PTR(phSubDevices[j], &props) == ZE_RESULT_SUCCESS)
+      do_tracepoint(lttng_ust_ze_properties, subdevice, hDriver, hDevice, phSubDevices[j], &props);
+  }
+  return;
+}
+
 static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
   uint32_t deviceCount = 0;
   if (ZE_DEVICE_GET_PTR(hDriver, &deviceCount, NULL) != ZE_RESULT_SUCCESS || deviceCount == 0)
     return;
   ze_device_handle_t* phDevices = (ze_device_handle_t*)alloca(deviceCount * sizeof(ze_device_handle_t));
+
   if (ZE_DEVICE_GET_PTR(hDriver, &deviceCount, phDevices) != ZE_RESULT_SUCCESS)
     return;
+
   for (uint32_t i = 0; i < deviceCount; i++) {
     if (tracepoint_enabled(lttng_ust_ze_properties, device)) {
       ze_device_properties_t props = {0};
@@ -325,6 +349,7 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
       if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR(phDevices[i], &hostTimestamp, &deviceTimestamp) == ZE_RESULT_SUCCESS)
         do_tracepoint(lttng_ust_ze_properties, device_timer, phDevices[i], hostTimestamp, deviceTimestamp);
     }
+    _dump_driver_subdevice_properties(hDriver, phDevices[i]);
   }
 }
 
@@ -393,7 +418,7 @@ static void _load_tracer(void) {
   //FIX for intel tracing layer that needs to register its callbacks first...
   ZE_INIT_PTR(0);
 
-  if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device))
+  if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device) || tracepoint_enabled(lttng_ust_ze_properties, subdevice))
     _dump_properties();
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
