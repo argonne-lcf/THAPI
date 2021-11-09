@@ -4,10 +4,7 @@ require_relative 'gen_probe_base.rb'
 provider = :lttng_ust_zel
 
 puts <<EOF
-#include <layers/zel_tracing_api.h>
-#include <layers/zel_tracing_ddi.h>
-#include <layers/zel_tracing_register_cb.h>
-#include <loader/ze_loader.h>
+#include "ze.h.include"
 EOF
 
 $zel_commands.each { |c|

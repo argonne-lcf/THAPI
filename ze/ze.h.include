@@ -1,3 +1,6 @@
+#ifndef ZE_H_INCLUDE__
+#define ZE_H_INCLUDE__
+#include <stdbool.h>
 #include <ze_api.h>
 #include <ze_ddi.h>
 #include <zet_api.h>
@@ -10,3 +13,4 @@
 #include <loader/ze_loader.h>
 #define HMODULE void *
 #include <loader/ze_loader_api.h>
+#endif

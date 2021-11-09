@@ -230,6 +230,22 @@ meta_parameters:
     - [ OutScalar, phImageView ]
   zeKernelSchedulingHintExp:
     - [ InScalar, pHint ]
+  zeDevicePciGetPropertiesExt:
+    - [ OutScalar, pProperties ]
+  zeCommandListAppendImageCopyToMemoryExt:
+    - [ InScalar, pSrcRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendImageCopyFromMemoryExt:
+    - [ InScalar, pDstRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeImageGetAllocPropertiesExt:
+    - [ OutScalar, pImageAllocProperties ]
+  zeModuleInspectLinkageExt:
+    - [ InScalar, pInspectDesc ]
+    - [ InArray, phModules, numModules ]
+    - [ OutScalar, phLog ]
+  zeMemFreeExt:
+    - [ InScalar, desc ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
