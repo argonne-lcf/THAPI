@@ -553,29 +553,3 @@ void print_metadata(std::vector<std::string> metadata) {
   for (std::string value : metadata)
     std::cout << value << std::endl;
 }
-
-//. Getter
-//
-//
-// Explanation of magic number
-// 0 == Idx
-// 1 == GetterFunction
-// 2 == Setting function
-template<class T>
-auto populate_tuple(const bt_field* payload_field, T t) {
-  const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(payload_field, std::get<0>(t));
-  //Decltype return a reference
-  return static_cast<typename std::remove_reference<decltype(std::get<2>(t))>::type>(std::get<1>(t)(field));
-}
-
-template<class ...T, size_t ...I>
-auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a, std::index_sequence<I...>){
-   return std::tuple{populate_tuple(payload_field, std::get<I>(a))...};
-}
-
-template<class ...T>
-auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a){
-   constexpr auto seq = std::make_index_sequence<sizeof...(T)>();
-   return thapi_bt2_getter(payload_field,a,seq);
-}
-

@@ -48,21 +48,17 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
             const bt_event_class *event_class = bt_event_borrow_class_const(event);
             const char * class_name = bt_event_class_get_name(event_class);
 
-            //Common context field
+            auto dur_tuple0 = std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                                                 (hostname_t) ""), // hostname
+                                              std::make_tuple(1, &bt_field_integer_signed_get_value,
+                                                                 (process_id_t)0), // process
+                                              std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                                                                 (thread_id_t)0), // thread
+                                              std::make_tuple(3, &bt_field_integer_unsigned_get_value,
+                                                                  (long) 0));
+
             const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-
-            const bt_field *hostname_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 0);
-            const hostname_t hostname = std::string{bt_field_string_get_value(hostname_field)};
-
-            const bt_field *process_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 1);
-            const process_id_t process_id = bt_field_integer_signed_get_value(process_id_field);
-
-            const bt_field *thread_id_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 2);
-            const thread_id_t thread_id = bt_field_integer_unsigned_get_value(thread_id_field);
-
-            const bt_field *ts_field = bt_field_structure_borrow_member_field_by_index_const(common_context_field, 3);
-            const long ts = bt_field_integer_unsigned_get_value(ts_field);
-
+            const auto& [hostname, process_id, thread_id, ts] = thapi_bt2_getter(common_context_field, dur_tuple0);
             //Payload
             const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
 

@@ -221,6 +221,9 @@ babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.
 babeltrace_clinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
 
+babeltrace_clinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
+
 babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="clinterval" $< > $@
 
@@ -243,6 +246,7 @@ CLEANFILES += \
 	babeltrace_clinterval_callbacks.cpp \
 	babeltrace_clinterval_callbacks.h \
 	babeltrace_clinterval_dispatchers.c \
+	babeltrace_clinterval_emitter.h \
 	babeltrace_clinterval.h \
 	babeltrace_clinterval.c \
 	xprof_utils.cpp \
@@ -251,6 +255,7 @@ CLEANFILES += \
 BUILT_SOURCES += \
 	babeltrace_clinterval_callbacks.h \
 	babeltrace_clinterval.h \
+	babeltrace_clinterval_emitter.h \
 	xprof_utils.hpp
 
 nodist_libCLInterval_la_SOURCES = \
@@ -259,6 +264,7 @@ nodist_libCLInterval_la_SOURCES = \
 	babeltrace_clinterval_callbacks.h \
 	babeltrace_clinterval_dispatchers.c \
 	babeltrace_clinterval_callbacks.cpp \
+	babeltrace_clinterval_emitter.h \
 	tracer_opencl.h \
 	xprof_utils.hpp \
 	xprof_utils.cpp

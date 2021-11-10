@@ -342,6 +342,9 @@ babeltrace_cudainterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callback
 babeltrace_cudainterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
 
+babeltrace_cudainterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
+
 babeltrace_cudainterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="cudainterval" $< > $@
 
@@ -362,6 +365,7 @@ CLEANFILES += \
 	babeltrace_cudainterval_callbacks.cpp \
 	babeltrace_cudainterval_callbacks.h \
 	babeltrace_cudainterval_dispatchers.c \
+	babeltrace_cudainterval_emitter.h \
 	babeltrace_cudainterval.h \
 	babeltrace_cudainterval.c \
 	xprof_utils.cpp \
@@ -370,6 +374,7 @@ CLEANFILES += \
 BUILT_SOURCES += \
 	babeltrace_cudainterval.h \
 	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval_emitter.h \
 	xprof_utils.hpp
 
 nodist_libCUDAInterval_la_SOURCES = \
@@ -378,6 +383,7 @@ nodist_libCUDAInterval_la_SOURCES = \
 	babeltrace_cudainterval_callbacks.h \
 	babeltrace_cudainterval_dispatchers.c \
 	babeltrace_cudainterval_callbacks.cpp \
+	babeltrace_cudainterval_emitter.h \
 	xprof_utils.hpp \
 	xprof_utils.cpp
 

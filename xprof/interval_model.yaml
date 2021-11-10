@@ -1,4 +1,18 @@
 :name: thapi_interval
+:stream_classes:
+- :name: ze_stream_class
+  :schemas:
+  - thapi_ze
+  :clock_snapshot_value: true
+  :common_context:
+  - :name: hostname
+    :class: string
+  - :name: vpid
+    :class: signed
+  - :name: vtid
+    :class: unsigned
+  - :name: ts
+    :class: signed
 :event_classes:
 - :name: lttng:host
   :payload:

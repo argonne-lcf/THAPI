@@ -1,4 +1,5 @@
 #include "babeltrace_<%= namespace %>.h"
+#include "babeltrace_<%= namespace %>_emitter.h"
 
 #include <stdbool.h>
 #include <babeltrace2/babeltrace.h>
@@ -45,170 +46,6 @@ void <%= namespace %>_register_callback(struct <%= namespace %>_dispatch *dispat
    }
 }
 
-
-/*
- * Create downstream message event class
- */
-bt_event_class* create_host_event_class_message(bt_trace_class *trace_class, bt_stream_class *stream_class)
-{
-    bt_event_class *event_class = bt_event_class_create(stream_class);
-    bt_event_class_set_name(event_class, "lttng:host");
-
-    /* Common field */
-    bt_field_class *context_field_class = bt_field_class_structure_create(trace_class);
-
-    // Host Name
-    bt_field_class *hostname_field_class = bt_field_class_string_create(trace_class);
-    bt_field_class_structure_append_member(context_field_class, "hostname", hostname_field_class);
-
-    // vpid
-    bt_field_class *vpid_context_class= bt_field_class_integer_signed_create(trace_class);
-    bt_field_class_structure_append_member(context_field_class, "vpid", vpid_context_class);
-
-    // vtid
-    bt_field_class *pthread_id_context_class= bt_field_class_integer_signed_create(trace_class);
-    bt_field_class_structure_append_member(context_field_class, "vtid", pthread_id_context_class);
-
-    // ts
-    bt_field_class *ts_context_class= bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(context_field_class, "ts", ts_context_class);
-
-    // Put the ref and clean
-    bt_stream_class_set_event_common_context_field_class(stream_class, context_field_class);
-    bt_field_class_put_ref(vpid_context_class);
-    bt_field_class_put_ref(pthread_id_context_class);
-    bt_field_class_put_ref(context_field_class);
-
-
-    /* Payload */
-    bt_field_class *payload_field_class = bt_field_class_structure_create(trace_class);
-
-    // Name
-    bt_field_class *name_field_class = bt_field_class_string_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "name", name_field_class);
-
-    // Duration */
-    bt_field_class *dur_field_class = bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "dur", dur_field_class);
-
-    // Error code */
-    bt_field_class *err_field_class = bt_field_class_bool_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "err", err_field_class);
-
-    // Put the ref and clean
-    bt_event_class_set_payload_field_class(event_class, payload_field_class);
-    bt_field_class_put_ref(payload_field_class);
-    bt_field_class_put_ref(hostname_field_class);
-    bt_field_class_put_ref(name_field_class);
-    bt_field_class_put_ref(dur_field_class);
-    bt_field_class_put_ref(err_field_class);
-
-    return event_class;
-}
-
-bt_event_class* create_device_event_class_message(bt_trace_class *trace_class, bt_stream_class *stream_class)
-{
-    bt_event_class *event_class = bt_event_class_create(stream_class);
-    bt_event_class_set_name(event_class, "lttng:device");
-
-    // No need to set the common field,
-    // Already set by `create_host_event_class_message`
-
-    /* Payload */
-    bt_field_class *payload_field_class = bt_field_class_structure_create(trace_class);
-
-    // Name
-    bt_field_class *name_field_class = bt_field_class_string_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "name", name_field_class);
-
-    // Duration
-    bt_field_class *dur_field_class = bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "dur", dur_field_class);
-
-    // Would like to put `did` and `sdid` in the `specific context field`, but I don't know how to them afterward in `create_and_enqueue_device_message`
-
-    // did (device)
-    bt_field_class *device_id_field_class= bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "did", device_id_field_class);
-
-    // sdid (subdevice)
-    bt_field_class *subdevice_id_field_class= bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "sdid", subdevice_id_field_class);
-
-    // Error code */
-    bt_field_class *err_field_class = bt_field_class_bool_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "err", err_field_class);
-
-    // Put the ref and clean
-    bt_event_class_set_payload_field_class(event_class, payload_field_class);
-    bt_field_class_put_ref(payload_field_class);
-    bt_field_class_put_ref(name_field_class);
-    bt_field_class_put_ref(dur_field_class);
-    bt_field_class_put_ref(device_id_field_class);
-    bt_field_class_put_ref(subdevice_id_field_class);
-
-    return event_class;
-}
-
-bt_event_class* create_traffic_event_class_message(bt_trace_class *trace_class, bt_stream_class *stream_class)
-{
-    bt_event_class *event_class = bt_event_class_create(stream_class);
-    bt_event_class_set_name(event_class, "lttng:traffic");
-
-    // No need to set the common field,
-    // Already set by `create_host_event_class_message`
-
-    /* Payload */
-    bt_field_class *payload_field_class = bt_field_class_structure_create(trace_class);
-
-    // Name
-    bt_field_class *name_field_class = bt_field_class_string_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "name", name_field_class);
-
-    // Duration
-    bt_field_class *size_field_class = bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "size", size_field_class);
-
-
-    // Put the ref and clean
-    bt_event_class_set_payload_field_class(event_class, payload_field_class);
-    bt_field_class_put_ref(payload_field_class);
-    bt_field_class_put_ref(name_field_class);
-    bt_field_class_put_ref(size_field_class);
-
-    return event_class;
-}
-
-
-bt_event_class* create_device_name_event_class_message(bt_trace_class *trace_class, bt_stream_class *stream_class)
-{
-    bt_event_class *event_class = bt_event_class_create(stream_class);
-    bt_event_class_set_name(event_class, "lttng:device_name");
-
-    // No need to set the common field,
-    // Already set by `create_host_event_class_message`
-
-    /* Payload */
-    bt_field_class *payload_field_class = bt_field_class_structure_create(trace_class);
-
-    // Name
-    bt_field_class *name_field_class = bt_field_class_string_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "name", name_field_class);
-
-    // Did
-    bt_field_class *device_id_field_class= bt_field_class_integer_unsigned_create(trace_class);
-    bt_field_class_structure_append_member(payload_field_class, "did", device_id_field_class);
-
-
-    // Put the ref and clean
-    bt_event_class_set_payload_field_class(event_class, payload_field_class);
-    bt_field_class_put_ref(payload_field_class);
-    bt_field_class_put_ref(name_field_class);
-    bt_field_class_put_ref(device_id_field_class);
-
-    return event_class;
-}
-
 /*
  * Initializes the filter component.
  */
@@ -253,10 +90,12 @@ bt_component_class_initialize_method_status <%= namespace %>_dispatch_initialize
     bt_stream_class *stream_class = bt_stream_class_create(trace_class);
 
     // We don't create a clock, because we ensure monotonic order for the downstream messages.
-    dispatch->host_event_class = create_host_event_class_message(trace_class,stream_class);
-    dispatch->device_event_class = create_device_event_class_message(trace_class, stream_class);
-    dispatch->traffic_event_class = create_traffic_event_class_message(trace_class, stream_class);
-    dispatch->device_name_event_class = create_device_name_event_class_message(trace_class, stream_class);
+    populate_ze_stream_class_common_context(trace_class, stream_class);
+
+    dispatch->host_event_class = create_lttng_host_event_class_message(trace_class,stream_class);
+    dispatch->device_event_class = create_lttng_device_event_class_message(trace_class, stream_class);
+    dispatch->traffic_event_class = create_lttng_traffic_event_class_message(trace_class, stream_class);
+    dispatch->device_name_event_class = create_lttng_device_name_event_class_message(trace_class, stream_class);
 
     /* Create a default trace from (instance of `trace_class`) */
     bt_trace *trace = bt_trace_create(trace_class);
