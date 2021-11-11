@@ -9,8 +9,7 @@ h = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))[namespace]
 raise "Invalid namespace!" unless h
 
 puts <<EOF
-#include <ze_api.h>
-#include <ze_ddi.h>
+#include "ze.h.include"
 
 EOF
 enums = h["enums"]

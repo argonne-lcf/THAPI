@@ -3,18 +3,7 @@ require_relative 'ze_model'
 puts <<EOF
 #include <stdint.h>
 #include <stddef.h>
-#include <ze_api.h>
-#include <ze_ddi.h>
-#include <zet_api.h>
-#include <zet_ddi.h>
-#include <zes_api.h>
-#include <zes_ddi.h>
-#include <layers/zel_tracing_api.h>
-#include <layers/zel_tracing_ddi.h>
-#include <layers/zel_tracing_register_cb.h>
-#include <loader/ze_loader.h>
-#define HMODULE void *
-#include <loader/ze_loader_api.h>
+#include "ze.h.include"
 #include <dlfcn.h>
 #include <dlfcn.h>
 #include <stdio.h>
