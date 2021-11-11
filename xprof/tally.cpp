@@ -88,22 +88,25 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
                             (uint64_t)0), // device
             std::make_tuple(3, &bt_field_integer_unsigned_get_value,
                             (uint64_t)0), // subdevice
-            std::make_tuple(4, &bt_field_bool_get_value, (bool)0)); // Error
+            std::make_tuple(4, &bt_field_bool_get_value, (bool)0), // Error
+            std::make_tuple(5, &bt_field_string_get_value, (std::string) "") ); // Metadata
 
         const auto &[hostname, process_id, thread_id] =
             get_common_context_field(event);
-        const auto &[name, dur, did, sdid, err] =
+        const auto &[name, dur, did, sdid, err, metadata] =
             thapi_bt2_getter(payload_field, dur_tuple0);
-        /*Should fucking cache this function */
-        const auto name_demangled =
-            (dispatch->demangle_name) ? f_demangle_name(name) : name;
+
+         /*Should fucking cache this function */
+        const auto name_demangled = (dispatch->demangle_name) ? f_demangle_name(name) : name;
+        const auto name_with_metadata = (!metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
+
         // Will add if statements
         // name = name + " ( [0,0,0])";
         // Should handle Datatransder, and kernel in different event
 
         TallyCoreTime a{dur, err};
         dispatch->device2[hpt_device_function_name_t(
-            hostname, process_id, thread_id, did, sdid, name_demangled)] += a;
+            hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
 
       } else if (strcmp(class_name, "lttng:traffic") == 0) {
         auto dur_tuple0 = std::make_tuple(

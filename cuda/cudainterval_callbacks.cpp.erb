@@ -38,7 +38,7 @@ void create_and_enqueue_device_message(const char* hostname, const process_id_t 
                                        const char* name, const uint64_t ts, const uint64_t duration, const bool err) {
 
      // Message creation
-     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err,
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err, "",
                             cudainterval_iter_g->dispatch->device_event_class,
                             cudainterval_self_message_iterator_g,
                             cudainterval_iter_g->dispatch->stream);

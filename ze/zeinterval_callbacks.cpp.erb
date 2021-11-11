@@ -22,6 +22,8 @@
 #include <set>
 #include <assert.h>     /* assert */
 
+#define THAPI_SENTINEL "__thapi42"
+
 <%# Should pass device_to_timerResolution_kernelTimestampValidBits %>
 static inline uint64_t corrected_l1(const uint64_t d1, const uint64_t l0, const uint64_t d0, const uint64_t l1_min, const uint64_t valid_bits) {
     /*
@@ -127,10 +129,10 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
 
 void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
                                        const thapi_device_id device_id, const thapi_device_id subdevice_id,
-                                       const char* name, const uint64_t ts, const uint64_t duration, const bool err) {
+                                       const char* name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata) {
 
      /* Message creation */
-     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err,
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err, metadata,
                             zeinterval_iter_g->dispatch->device_event_class,
                             zeinterval_self_message_iterator_g,
                             zeinterval_iter_g->dispatch->stream);
@@ -338,12 +340,34 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelCreate_#{STOP}" %>
     state->kernel_to_name[hp_kernel_t(hostname,process_id,phKernel_val)] = state->last_kernel[hpt_t(hostname,process_id,thread_id)];
   <% end %>
+  <%# Save GroupSize %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelSetGroupSize_#{START}" %>
+     std::stringstream groupsize;
+     groupsize << "{" << groupSizeX << ","
+                      << groupSizeY << ","
+                      << groupSizeZ << "}";
+
+     state->kernel_to_groupsize[hp_kernel_t(hostname,process_id,hKernel)] = groupsize.str();
+  <% end %>
+
 
   <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hSignalEvent') %>
    <%if dbt_event.fields_name.include?('hKernel') %>
-    const thapi_function_name name = state->kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)];
+    std::stringstream name_;
+    name_ << state->kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)];
+    <% if dbt_event.fields_name.include?('pLaunchFuncArgs') %>
+    name_ << THAPI_SENTINEL <<  "{" << pLaunchFuncArgs_val->groupCountX << ","
+                                    << pLaunchFuncArgs_val->groupCountY << ","
+                                    << pLaunchFuncArgs_val->groupCountZ << "}";
+
+    //# All the kernel should have a GroupSize
+    name_ << ", ";
+    name_ << state->kernel_to_groupsize[hp_kernel_t(hostname,process_id,hKernel)];
+
+    <% end %>
+    const thapi_function_name name = name_.str();
    <% else %>
-    constexpr char name[] = "<%= dbt_event.name_striped %>";
+    constexpr char name[] = "<%= dbt_event.name_striped %>" THAPI_SENTINEL;
    <% end %>
     //Everything we profile have a command list
     const auto [device, subdevice] =  state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
@@ -364,16 +388,26 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const process_id_t process_id = borrow_process_id(bt_evt);
    const thread_id_t thread_id   = borrow_thread_id(bt_evt);
    const hp_event_t hp_event{hostname,process_id, hEvent};
-   const auto [function_name, device, subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+   auto [function_name2, device, subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+
    if (!state->event_to_function_name_dsd_and_ts.count(hp_event)){
-      state->event_to_function_name_dsd_and_ts[hp_event] = tfn_dsd_ts_t(thread_id, function_name, device, subdevice, ts);
+      state->event_to_function_name_dsd_and_ts[hp_event] = tfn_dsd_ts_t(thread_id, function_name2, device, subdevice, ts);
    } else {
       const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
+
+      // This is horrible. Shoulb be fixed
+      // Extraction of metadata. (https://stackoverflow.com/a/14266139/7674852)
+      size_t pos =  function_name2.find(THAPI_SENTINEL);
+      const std::string function_name = function_name2.substr(0, pos);
+      function_name2.erase(0, pos + strlen(THAPI_SENTINEL));
+      const std::string metadata = function_name2;
 
       create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
                                         hash_device(state, hostname, device),
                                         hash_device(state, hostname, subdevice),
-                                        function_name.c_str(), start, delta, delta == 0 );
+                                        function_name.c_str(), start, delta, delta == 0,
+                                        metadata.c_str());
+
       state->event_to_function_name_dsd_and_ts.erase(hp_event);
    }
 
@@ -384,7 +418,14 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const hp_event_t hp_event{hostname,process_id, hEvent};
 
    if (state->event_to_function_name_dsd_and_ts.count(hp_event)) {
-      const auto [thread_id, function_name, device, subdevice, ts] =  state->event_to_function_name_dsd_and_ts[hp_event];
+      auto [thread_id, function_name2, device, subdevice, ts] =  state->event_to_function_name_dsd_and_ts[hp_event];
+
+      // Extraction of metadata. (https://stackoverflow.com/a/14266139/7674852)
+      size_t pos =  function_name2.find(THAPI_SENTINEL);
+      const std::string function_name = function_name2.substr(0, pos);
+      function_name2.erase(0, pos + strlen(THAPI_SENTINEL));
+      const std::string metadata = function_name2;
+
       const hp_device_t hp_device{hostname, process_id, device};
 
       const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
@@ -393,7 +434,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
       create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
                                         hash_device(state, hostname, device),
                                         hash_device(state, hostname, subdevice),
-                                        function_name.c_str(),start,delta, delta == 0 );
+                                        function_name.c_str(),start,delta, delta == 0, metadata.c_str() );
 
       state->event_to_function_name_dsd_and_ts.erase(hp_event);
    } else {

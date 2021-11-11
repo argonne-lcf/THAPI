@@ -33,6 +33,8 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hp_event_t, sd_t> event_result_to_start_and_delta;
     std::unordered_map<hp_device_t, int64_t> device_ts_to_llng_ts;
     std::unordered_map<hp_kernel_t, thapi_function_name> kernel_to_name;
+    std::unordered_map<hp_kernel_t, thapi_function_name> kernel_to_groupsize;
+
     std::unordered_map<hpt_function_name_t, uint64_t> host_start;
 
     std::unordered_map<hp_device_t, std::string> device_to_name;

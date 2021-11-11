@@ -38,6 +38,9 @@
           :preferred_display_base: 16
       - :name: err
         :class: bool
+      - :name: metadata
+        :class: string
+
 - :name: lttng:device_name
   :payload:
       - :name: name

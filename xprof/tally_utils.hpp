@@ -14,16 +14,22 @@
 
 thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   std::string result = mangle_name;
+  std::string line_num;  
 
   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
-  const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_[^_]+$");
+  const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
   std::smatch base_match;
-  if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 2)
+  if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 3) {
     result = base_match[1].str();
+    line_num = base_match[2].str();
+  }
 
   const char *demangle = my_demangle(result.c_str());
   if (demangle) {
     thapi_function_name s{demangle};
+    if (!line_num.empty())
+       s += "_" + line_num;
+
     /* We name the kernels after the type that gets passed in the first
        template parameter to the sycl_kernel function in order to prevent
        it from conflicting with any actual function name.
