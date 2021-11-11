@@ -354,11 +354,11 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hSignalEvent') %>
    <%if dbt_event.fields_name.include?('hKernel') %>
     std::stringstream name_;
-    name_ << state->kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)];
+    name_ << state->kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)] << THAPI_SENTINEL;
     <% if dbt_event.fields_name.include?('pLaunchFuncArgs') %>
-    name_ << THAPI_SENTINEL <<  "{" << pLaunchFuncArgs_val->groupCountX << ","
-                                    << pLaunchFuncArgs_val->groupCountY << ","
-                                    << pLaunchFuncArgs_val->groupCountZ << "}";
+    name_ <<  "{" << pLaunchFuncArgs_val->groupCountX << ","
+                  << pLaunchFuncArgs_val->groupCountY << ","
+                  << pLaunchFuncArgs_val->groupCountZ << "}";
 
     //# All the kernel should have a GroupSize
     name_ << ", ";

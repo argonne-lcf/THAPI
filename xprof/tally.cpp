@@ -224,7 +224,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
 
       print_compact("Device profiling", dispatch->device2,
                     std::make_tuple("Hostnames", "Processes", "Threads",
-                                    "Device pointers", "Subdevice pointers"),
+                                    "Devices", "Subdevices"),
                     max_name_size);
 
       print_compact("Explicit memory traffic", dispatch->traffic2,
