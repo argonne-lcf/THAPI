@@ -11,6 +11,7 @@ struct tally_dispatch {
     bool display_human;
     bool display_metadata;
     int  display_name_max_size;
+    bool display_kernel_verbose;
 
     std::unordered_map<hpt_function_name_t, TallyCoreTime> host2;
     std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device2;

@@ -98,11 +98,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
          /*Should fucking cache this function */
         const auto name_demangled = (dispatch->demangle_name) ? f_demangle_name(name) : name;
-        const auto name_with_metadata = (!metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
-
-        // Will add if statements
-        // name = name + " ( [0,0,0])";
-        // Should handle Datatransder, and kernel in different event
+        const auto name_with_metadata = (dispatch->display_kernel_verbose && !metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
         TallyCoreTime a{dur, err};
         dispatch->device2[hpt_device_function_name_t(
@@ -175,6 +171,10 @@ tally_dispatch_initialize(bt_self_component_sink *self_component_sink,
       (val && bt_value_is_signed_integer(val) ? bt_value_integer_signed_get(val)
                                               : -1);
 
+  val = bt_value_map_borrow_entry_value_const(params, "display_kernel_verbose");
+  const bool display_kernel_verbose =
+      (val && bt_value_is_bool(val) ? bt_value_bool_get(val) : false);
+
   /* Allocate a private data structure */
   struct tally_dispatch *dispatch = new tally_dispatch;
 
@@ -184,6 +184,7 @@ tally_dispatch_initialize(bt_self_component_sink *self_component_sink,
   dispatch->display_human = (display_human == "human");   // Human or JSON
   dispatch->display_metadata = display_metadata;
   dispatch->display_name_max_size = display_name_max_size;
+  dispatch->display_kernel_verbose = display_kernel_verbose;
 
   /* Set the component's user data to our private data structure */
   bt_self_component_set_data(

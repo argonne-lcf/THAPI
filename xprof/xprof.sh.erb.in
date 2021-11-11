@@ -43,16 +43,17 @@ display_help() {
     echo " $(basename $0) [option]... -r [<trace>]..."
     echo
     echo "  -h, --help               Show this screen"
-    echo "  -v, --version            Print the version string"
+    echo "  -k, --kernel-verbose     Report kernels execution time with SIMD width and global/local sizes"
     echo "  -e, --extended           Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace              Display trace"
     echo "  -l, --timeline           Dump the timeline"
     echo "  -j, --json               Summary will be printed as json"
-    echo "  -a, --asm                Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  -f, --full               All API calls will be traced. By default and for performance raison, some of them will be ignored"
-    echo "  -m, --mangle             Use mangled name"
+    echo "  --asm                    Dump in your current directory low level kernels informations (asm,isa,visa,...)."
+    echo "  --mangle                 Use mangled name"
     echo "  --metadata               Display metadata"
     echo "  --max-name-size <size>   Maximun size allowed for kernels names (default -1)"
+    echo "  -v, --version            Print the version string"
     echo "  -r, --replay    [path]   <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                           If no arguments are provided, will use the latest trace available"
     echo
@@ -258,7 +259,12 @@ summary() {
                   --component=filter.cudainterval.interval \
 <% end %>
                   --component=sink.xprof.tally \
-                  --params="display=$display,name=$mangling,display_mode=${display_mode},display_metadata=${display_metadata},display_name_max_size=${display_name_max_size}"
+                  --params="display=$display,                               \
+                            name=$mangling,                                 \
+                            display_mode=${display_mode},                   \
+                            display_metadata=${display_metadata},           \
+                            display_name_max_size=${display_name_max_size}, \
+                            display_kernel_verbose=${display_kernel_verbose}"
     fi
 }
 
@@ -271,6 +277,7 @@ mangling=demangle
 display_mode=human
 display_metadata=false
 display_name_max_size=80
+display_kernel_verbose=false
 
 if [ "$#" -eq 0 ]; then
     display_help
@@ -278,21 +285,22 @@ fi
 
 while (( "$#" )); do
     case "$1" in
-        -h | --help)     display_help; exit ;;
-        -v | --version)  display_version; exit ;;
-        -e | --extented) shift; display=extended ;;
-        -r | --replay)   shift; replay=true ;;
-        -d | --debug)    shift; debug=true ;;
-        -a | --asm)      shift; asm=true ;;
-        -t | --trace)    shift; trace=true ;;
-        -l | --timeline) shift; timeline=true ;;
-        -m | --mangle)   shift; mangling=mangle ;;
-        -j | --json)     shift; display_mode=json;;
-        -f | --full)     shift; full=true ;;
-        --metadata)      shift; display_metadata=true ;;
-        --max-name-size) shift; display_name_max_size=$1; shift ;; 
-        --)              shift; break ;;
-        *)               break  ;;
+        -h | --help)            display_help; exit ;;
+        -v | --version)         display_version; exit ;;
+        -k | --kernel-verbose)  shift; display_kernel_verbose=true;;
+        -e | --extented)        shift; display=extended ;;
+        -r | --replay)          shift; replay=true ;;
+        -t | --trace)           shift; trace=true ;;
+        -l | --timeline)        shift; timeline=true ;;
+        -j | --json)            shift; display_mode=json;;
+        -f | --full)            shift; full=true ;;
+        --asm)                  shift; asm=true ;;
+        --metadata)             shift; display_metadata=true ;;
+        --max-name-size)        shift; display_name_max_size=$1; shift ;;
+        --mangle)               shift; mangling=mangle ;;
+        --debug)                shift; debug=true ;;
+        --)                     shift; break ;;
+        *)                      break  ;;
     esac
 done
 
