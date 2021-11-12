@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
+$:.unshift(DATADIR) if File::directory?(DATADIR)
 require 'optparse'
 require 'babeltrace2'
 require 'find'
