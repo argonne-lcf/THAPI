@@ -307,9 +307,8 @@ inline std::string limit_string_size(std::string original, int u_size, std::stri
 
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void apply_sizelimit(std::vector<std::pair<thapi_function_name, TC>> &m, int max_name_size) {
-  for (auto &[k, v] : m) {
-    k = limit_string_size(k, max_name_size);
-  }
+  for (auto &kv : m)
+    kv.first = limit_string_size(kv.first, max_name_size);
 }
 
 //                                  __                    __

@@ -123,8 +123,8 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
             std::make_tuple(1, &bt_field_integer_unsigned_get_value,
                             (thapi_device_id)0)); // device
 
-        const auto &[hostname, process_id, thread_id] =
-            get_common_context_field(event);
+        const auto &[hostname, process_id, thread_id] = get_common_context_field(event);
+        (void) thread_id;
         const auto &[name, did] = thapi_bt2_getter(payload_field, dur_tuple0);
 
         dispatch->device_name[hp_device_t(hostname, process_id, did)] = name;

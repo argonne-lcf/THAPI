@@ -18,7 +18,6 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 BUILT_SOURCES = \
-	tally_utils.hpp \
 	xprof_utils.hpp
 
 # Library to be packaged
@@ -26,13 +25,13 @@ lib_LTLIBRARIES = libXProf.la
 
 # File to compiled
 nodist_libXProf_la_SOURCES = \
-	tally_utils.hpp \
 	xprof_utils.hpp
 
 # File to compiled
 libXProf_la_SOURCES = \
 	xprof.c \
 	tally.hpp \
+	tally_utils.hpp \
 	tally.h \
 	tally.cpp \
 	timeline.hpp \
