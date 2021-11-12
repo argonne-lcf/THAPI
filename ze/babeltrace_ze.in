@@ -71,7 +71,7 @@ consume = lambda { |iterator, _|
 graph = BT2::BTGraph.new
 comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
 comp2 = graph.add_component(utils_muxer, "mux")
-comp3 = graph.add_simple_sink("babeltrace_opencl", consume)
+comp3 = graph.add_simple_sink("babeltrace_ze", consume)
 i = 0
 comps.each { |comp|
   ops = comp.output_ports
