@@ -48,7 +48,9 @@ opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-data_DATA = opencl_model.yaml
+data_DATA = \
+	opencl_model.yaml \
+	babeltrace_opencl_lib.rb
 
 CLEANFILES += \
 	opencl_model.yaml \
@@ -58,6 +60,7 @@ EXTRA_DIST += \
 	$(TRACEPOINT_GEN) \
 	$(ML_FILES) \
 	gen_opencl_model.rb \
+	babeltrace_opencl_lib.rb \
 	gen_babeltrace_cl_model.rb
 
 OPENCL_PROBES = \
