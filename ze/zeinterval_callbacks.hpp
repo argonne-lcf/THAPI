@@ -4,7 +4,6 @@
 #include <queue>
 #include <babeltrace2/babeltrace.h>
 #include <unordered_map>
-
 #include <ze_api.h>
 
 typedef std::tuple<hostname_t, process_id_t, ze_event_handle_t> hp_event_t;
@@ -17,8 +16,8 @@ typedef std::tuple<uint64_t, uint64_t> timerResolution_kernelTimestampValidBits_
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
 struct zeinterval_callbacks_state {
-    std::unordered_map<hp_event_t,tfn_dsd_ts_t> event_to_function_name_dsd_and_ts;
-    std::unordered_map<hpt_t, fn_dsd_ts_t> profiled_function_name_dsd_and_ts;
+    std::unordered_map<hp_event_t,tfnm_dsd_ts_t> event_to_function_name_dsd_and_ts;
+    std::unordered_map<hpt_t, fnm_dsd_ts_t> profiled_function_name_dsd_and_ts;
 
     // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
     std::unordered_map<h_device_t, ze_device_uuid_t> device_to_uuid;
@@ -44,4 +43,9 @@ struct zeinterval_callbacks_state {
 
     std::queue<const bt_message*> downstream_message_queue;
 
+    std::unordered_map<hpt_t, size_t> last_alloc;
+    std::unordered_map<hpt_t, size_t> last_free;
+    std::unordered_map<hp_t, MemoryInterval> rangeset_memory_device;
+    std::unordered_map<hp_t, MemoryInterval> rangeset_memory_host;
+    std::unordered_map<hp_t, MemoryInterval> rangeset_memory_shared;
 };

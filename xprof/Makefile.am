@@ -6,7 +6,7 @@ else
   WERROR =
 endif
 
-bin_SCRIPTS = iprof 
+bin_SCRIPTS = iprof
 
 iprof: $(top_builddir)/xprof/xprof.sh.erb
 	$(ERB) -T 1 languages=["opencl","ze","cuda"] $< > $@
@@ -40,13 +40,14 @@ libXProf_la_SOURCES = \
 	timeline.cpp \
 	my_demangle.c \
 	my_demangle.h \
-	json.hpp # Right now we harcode it. We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
+	$(top_srcdir)/utils/include/json.hpp
+# Right now we harcode it. We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
-libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(srcdir)/include -I./
+libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module 
+libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
@@ -83,7 +84,7 @@ EXTRA_DIST = \
 	interval.h.erb \
 	interval_model.yaml \
 	$(TRACE_FILES) \
-	tests/tally.dust.erb 
+	tests/tally.dust.erb
 
 CLEANFILES = \
 	iprof \

@@ -313,7 +313,7 @@ nodist_libZEInterval_la_SOURCES = \
 	babeltrace_zeinterval_callbacks.cpp \
 	babeltrace_zeinterval_emitter.h \
 	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.cpp 
 
 libZEInterval_la_SOURCES = \
 	zeinterval_callbacks.hpp

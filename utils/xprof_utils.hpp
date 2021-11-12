@@ -1,15 +1,16 @@
 #pragma once
 
+#include <map>
 #include <tuple>
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
-typedef intptr_t    process_id_t;
-typedef uintptr_t   thread_id_t;
-typedef std::string hostname_t;
-typedef std::string thapi_function_name;
-typedef uintptr_t   thapi_device_id;
-
+typedef intptr_t                       process_id_t;
+typedef uintptr_t                      thread_id_t;
+typedef std::string                    hostname_t;
+typedef std::string                    thapi_function_name;
+typedef uintptr_t                      thapi_device_id;
+typedef std::map<uintptr_t, uintptr_t> MemoryInterval;
 
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
@@ -28,6 +29,9 @@ typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
 typedef std::tuple<thapi_function_name, thapi_device_id, thapi_device_id, long> fn_dsd_ts_t;
 typedef std::tuple<thread_id_t, thapi_function_name, thapi_device_id, thapi_device_id, long> tfn_dsd_ts_t;
+
+typedef std::tuple<thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> fnm_dsd_ts_t;
+typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> tfnm_dsd_ts_t;
 
 
 
@@ -128,3 +132,12 @@ auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a){
    return thapi_bt2_getter(payload_field,a,seq);
 }
 
+
+//Memory interval
+template<class T>
+bool contains(const MemoryInterval& m, const T val) {
+    const auto it = m.lower_bound(val);
+    if (it == m.cend())
+        return false;
+    return (val < it->second);
+}
