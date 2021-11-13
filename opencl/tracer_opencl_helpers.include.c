@@ -1178,6 +1178,7 @@ static volatile cl_uint _initialized = 0;
 static void _load_tracer(void) {
   char *s = NULL;
   void * handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
   if (s)
@@ -1210,7 +1211,11 @@ static void _load_tracer(void) {
   if (s)
     dump_end = atoll(s);
 
-  find_opencl_symbols(handle);
+  s = getenv("LTTNG_UST_OPENCL_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_opencl_symbols(handle, verbose);
 }
 
 static inline void _init_tracer(void) {

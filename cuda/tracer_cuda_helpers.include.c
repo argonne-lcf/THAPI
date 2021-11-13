@@ -473,6 +473,7 @@ static volatile int _initialized = 0;
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_CUDA_LIBCUDA");
   if (s)
@@ -492,7 +493,11 @@ static void _load_tracer(void) {
     exit(1);
   }
 
-  find_cuda_symbols(handle);
+  s = getenv("LTTNG_UST_CUDA_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_cuda_symbols(handle, verbose);
   CU_INIT_PTR(0);
   find_cuda_extensions();
 

@@ -394,6 +394,7 @@ static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
   if (s)
@@ -413,7 +414,11 @@ static void _load_tracer(void) {
     exit(1);
   }
 
-  find_ze_symbols(handle);
+  s = getenv("LTTNG_UST_ZE_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_ze_symbols(handle, verbose);
 
   //FIX for intel tracing layer that needs to register its callbacks first...
   ZE_INIT_PTR(0);

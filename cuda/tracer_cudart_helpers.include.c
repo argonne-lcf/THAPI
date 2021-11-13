@@ -5,6 +5,7 @@ static volatile int _initialized = 0;
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_CUDART_LIBCUDART");
   if (s)
@@ -24,7 +25,11 @@ static void _load_tracer(void) {
     exit(1);
   }
 
-  find_cudart_symbols(handle);
+  s = getenv("LTTNG_UST_CUDART_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_cudart_symbols(handle, verbose);
 }
 
 static inline void _init_tracer(void) {

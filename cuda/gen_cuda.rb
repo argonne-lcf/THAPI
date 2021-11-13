@@ -27,14 +27,14 @@ EOF
 
 puts <<EOF
 
-static void find_cuda_symbols(void * handle) {
+static void find_cuda_symbols(void * handle, int verbose) {
 EOF
 
 $cuda_commands.each { |c|
   puts <<EOF
 
   #{CUDA_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{CUDA_POINTER_NAMES[c]})
+  if (!#{CUDA_POINTER_NAMES[c]} && verbose)
     fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
 }

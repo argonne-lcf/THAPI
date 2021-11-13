@@ -63,7 +63,7 @@ EOF
 
 puts <<EOF
 
-static void find_opencl_symbols(void * handle) {
+static void find_opencl_symbols(void * handle, int verbose) {
 EOF
 
 $opencl_commands.each { |c|
@@ -71,7 +71,7 @@ $opencl_commands.each { |c|
     puts <<EOF
 
   #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)dlsym(handle, "#{c.prototype.name}") ;
-  if (!#{OPENCL_POINTER_NAMES[c]})
+  if (!#{OPENCL_POINTER_NAMES[c]} && verbose)
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
   end
