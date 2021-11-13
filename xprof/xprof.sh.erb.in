@@ -192,7 +192,7 @@ trace_epilogue() {
 
 summary() {
     if [ "$#" -eq 0 ]; then
-<% if languages.include?("opencl") and  languages.include?("ze")%>
+<% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/* | head -1)
 <% elsif languages.include?("opencl") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session* | head -1)
@@ -218,13 +218,13 @@ summary() {
 
     if [ -n "$trace" ]; then
         # Todo filter direcly in the babeltrace
-<% if languages.include?("opencl") %>
+<% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
+        $bindir/babeltrace_thapi -r -c $lttng_last_session
+<% elsif languages.include?("opencl") %>
         $bindir/babeltrace_opencl -r -c $lttng_last_session
-<% end %>
-<% if languages.include?("ze") %>
+<% elsif languages.include?("ze") %>
         $bindir/babeltrace_ze -r -c $lttng_last_session
-<% end %>
-<% if languages.include?("cuda") %>
+<% elsif languages.include?("cuda") %>
         $bindir/babeltrace_cuda -r -c $lttng_last_session
 <% end %>
     fi

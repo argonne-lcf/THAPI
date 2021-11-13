@@ -105,4 +105,5 @@ AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
 AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
+AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x opencl/babeltrace_thapi])
 AC_OUTPUT

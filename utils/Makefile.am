@@ -43,6 +43,8 @@ thapi_metadata_LDFLAGS = $(LTTNG_UST_LIBS)
 
 bin_PROGRAMS = thapi_metadata
 
+bin_SCRIPTS = babeltrace_thapi
+
 .PHONY: version
 
 version:

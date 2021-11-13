@@ -99,8 +99,6 @@ EOF
 
 puts <<EOF
 require_relative 'ze_library.rb'
-
-$event_lambdas = {}
 EOF
 
 provider = :lttng_ust_ze
