@@ -59,7 +59,6 @@ PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
 
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
-AX_RUBY_EXTENSION([babeltrace], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 
 # Checks for header files.
