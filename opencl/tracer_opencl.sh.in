@@ -134,6 +134,7 @@ else
 fi
 export LD_PRELOAD=$libdir/libTracerOpenCL.so:$LD_PRELOAD
 export LTTNG_UST_ALLOW_BLOCKING=1
+export LLTNG_UST_OPENCL_VERBOSE=1
 lttng start
 
 ctrl_c() {

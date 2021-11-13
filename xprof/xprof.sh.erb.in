@@ -287,7 +287,7 @@ while (( "$#" )); do
     case "$1" in
         -h | --help)            display_help; exit ;;
         -v | --version)         display_version; exit ;;
-        -k | --kernel-verbose)  shift; display_kernel_verbose=true;;
+        -k | --kernel-verbose)  shift; display_kernel_verbose=true ;;
         -e | --extented)        shift; display=extended ;;
         -r | --replay)          shift; replay=true ;;
         -t | --trace)           shift; trace=true ;;
