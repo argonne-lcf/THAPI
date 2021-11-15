@@ -10,7 +10,6 @@ typedef uintptr_t                      thread_id_t;
 typedef std::string                    hostname_t;
 typedef std::string                    thapi_function_name;
 typedef uintptr_t                      thapi_device_id;
-typedef std::map<uintptr_t, uintptr_t> MemoryInterval;
 
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
@@ -130,14 +129,4 @@ template<class ...T>
 auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a){
    constexpr auto seq = std::make_index_sequence<sizeof...(T)>();
    return thapi_bt2_getter(payload_field,a,seq);
-}
-
-
-//Memory interval
-template<class T>
-bool contains(const MemoryInterval& m, const T val) {
-    const auto it = m.lower_bound(val);
-    if (it == m.cend())
-        return false;
-    return (val < it->second);
 }

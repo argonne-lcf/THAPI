@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <ze_api.h>
 
+typedef std::map<uintptr_t, uintptr_t> MemoryInterval;
+
 typedef std::tuple<hostname_t, process_id_t, ze_event_handle_t> hp_event_t;
 typedef std::tuple<hostname_t, process_id_t, ze_kernel_handle_t> hp_kernel_t;
 
@@ -49,3 +51,12 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hp_t, MemoryInterval> rangeset_memory_host;
     std::unordered_map<hp_t, MemoryInterval> rangeset_memory_shared;
 };
+
+//Memory interval
+template<class T>
+bool contains(const MemoryInterval& m, const T val) {
+    const auto it = m.lower_bound(val);
+    if (it == m.cend())
+        return false;
+    return (val < it->second);
+}

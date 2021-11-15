@@ -188,32 +188,31 @@ void zeinterval_downstream_message_queue_push(struct zeinterval_message_iterator
 }
 
 <%#
-                    ___                       
-   |\/|  _  ._ _     |  ._ _|_  _  ._    _. | 
-   |  | (/_ | | |   _|_ | | |_ (/_ | \/ (_| | 
-                                              
+                    ___
+   |\/|  _  ._ _     |  ._ _|_  _  ._    _. |
+   |  | (/_ | | |   _|_ | | |_ (/_ | \/ (_| |
+
 %>
 
 void remove_memory(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
-       
-    auto &s = state->rangeset_memory_device[hp];
-    auto it = s.find(ptr);
-    if (it != s.cend()) {
-         s.erase(it);
+
+    auto &rs = state->rangeset_memory_shared[hp];
+    auto its = rs.find(ptr);
+    if (its != rs.end()) {
+         rs.erase(its);
+         return;
+    }
+    auto &rd = state->rangeset_memory_device[hp];
+    auto itd = rd.find(ptr);
+    if (itd != rd.end()) {
+         rd.erase(itd);
          return;
     }
 
-    s = state->rangeset_memory_shared[hp];
-    it = s.find(ptr);
-    if (it != s.cend()) {
-        s.erase(it);
-        return;
-    }
-
-    s = state->rangeset_memory_host[hp];
-    it = s.find(ptr);
-    if (it != s.cend()) {
-         s.erase(it);
+    auto &rh = state->rangeset_memory_host[hp];
+    auto ith = rh.find(ptr);
+    if (ith != rh.end()) {
+         rh.erase(ith);
          return;
     }
 
@@ -221,17 +220,16 @@ void remove_memory(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t p
 }
 
 const char* memory_location(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
-
-    auto &s = state->rangeset_memory_shared[hp];
-    if (contains(s, ptr))
+    const auto &rs = state->rangeset_memory_shared[hp];
+    if (contains(rs, ptr))
         return "S";
 
-    s = state->rangeset_memory_device[hp];
-    if (contains(s, ptr))
+    const auto &rd = state->rangeset_memory_device[hp];
+    if (contains(rd, ptr))
         return "D";
 
-    s = state->rangeset_memory_host[hp];
-    if (contains(s, ptr))
+    const auto &rh = state->rangeset_memory_host[hp];
+    if (contains(rh, ptr))
         return "H";
 
     return "M";
