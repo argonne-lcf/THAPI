@@ -336,10 +336,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
 
     hp_device_t hp_device{hostname, process_id, (thapi_device_id) hDevice};
 
-    auto map = state->device_to_timerResolution_kernelTimestampValidBits;
-    auto it = map.find(hp_device);
-
-    if (it != map.end()) {
+    const auto& map = state->device_to_timerResolution_kernelTimestampValidBits;
+    const auto it = map.find(hp_device);
+    if (it != map.cend()) {
         const auto [_timerResolution, _kernelTimestampValidBits] = it->second;
         const uint64_t mask = ((uint64_t) 1 << _kernelTimestampValidBits) - 1;
         //Mapping from lltng time to device time
@@ -451,19 +450,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
          dbt_event.fields_name.include? ("size") %>
     create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(),size);
    <% end %>
-
     //Everything we profile have a command list
     const auto [device, subdevice] =  state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
-
-    const hp_device_t hp_device{hostname,process_id,device};
-    // Take the current sync and pass it
-    const auto& map_ld = state->sync_clock_lttng_device;
-    const auto it = map_ld.find(hp_device);
-    clock_lttng_device_t l0d0;
-    if (it != map_ld.cend() )
-        l0d0 = it->second;
-
-    state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)] = fnm_dsd_ts_ld_t(name, metadata.str(), device, subdevice, ns_from_origin, l0d0);
+    state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)] = fnm_dsd_ts_t(name, metadata.str(), device, subdevice, ns_from_origin);
   <% end %>
 
   <%#
@@ -480,19 +469,20 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const process_id_t process_id = borrow_process_id(bt_evt);
    const thread_id_t thread_id   = borrow_thread_id(bt_evt);
    const hp_event_t hp_event{hostname,process_id, hEvent};
-   auto [function_name, metadata, device, subdevice, ts, l0d0] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+   auto& [function_name, metadata, device, subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+
+   // No callback. Update L0 in the event_profiling
+   const auto& map_ld = state->sync_clock_lttng_device;
+   const auto it = map_ld.find(hp_device_t(hostname,process_id,device));
+   clock_lttng_device_t l0d0;
+   if (it != map_ld.cend())
+      l0d0 = it->second;
 
    if (!state->event_to_function_name_dsd_and_ts.count(hp_event)){
       state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_ld_t(thread_id, function_name, metadata, device, subdevice, ts, l0d0);
    } else {
-      const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
-      create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
-                                        hash_device(state, hostname, device),
-                                        hash_device(state, hostname, subdevice),
-                                        function_name.c_str(), start, delta, delta == 0,
-                                        metadata.c_str());
-
-      state->event_to_function_name_dsd_and_ts.erase(hp_event);
+      std::cout<< "Error. Event have not yet be processed. It cannot be reused." << std::endl;
+      std::exit(1);
    }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
@@ -508,9 +498,11 @@ static void zeinterval_<%= dbt_event.name %>_callback(
 
       const auto& map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
       const auto it_timer = map_timer.find(hp_device);
+      // Handle the case whre people didn't enable the host/device sync
+      // We should potential put a warning...
       uint64_t start = globalStart;
       if (std::get<0>(l0d0) != 0  && it_timer != map_timer.cend())
-        start = start_time_ns(l0d0, it_timer->second, globalStart, ts);
+        start = start_time_ns(it_timer->second, l0d0, globalStart, ts);
 
       create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
                                         hash_device(state, hostname, device),
@@ -519,22 +511,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
 
       state->event_to_function_name_dsd_and_ts.erase(hp_event);
    } else {
-     <%# Not sure about this one. Need to see when we have native callbacks %>
-      const thread_id_t thread_id = borrow_thread_id(bt_evt);
-      const auto [function_name, metadata, device,subdevice, ts, l0d0] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
-      (void) subdevice;
-
-      const hp_device_t hp_device{hostname, process_id, device};
-      const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
-
-      const auto& map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
-      const auto it_timer = map_timer.find(hp_device);
-      uint64_t start = globalStart;
-      if (std::get<0>(l0d0) != 0  && it_timer != map_timer.cend())
-        start = start_time_ns(l0d0, it_timer->second, globalStart, ts);
-
-      state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
-      state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_ld_t(thread_id, function_name, metadata, device, subdevice, ts, l0d0);
+      std::cout<< "Error. 'event_profiling_results' received be 'event_profiling' and we don't have callbacks..." << std::endl;
+      std::exit(1);
   }
   <% end %>
 };
