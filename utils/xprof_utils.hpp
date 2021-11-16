@@ -32,8 +32,6 @@ typedef std::tuple<thread_id_t, thapi_function_name, thapi_device_id, thapi_devi
 typedef std::tuple<thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> fnm_dsd_ts_t;
 typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> tfnm_dsd_ts_t;
 
-
-
 // https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 // Hash of std tuple
 namespace std{

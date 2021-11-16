@@ -32,13 +32,14 @@ static inline uint64_t corrected_l1(const uint64_t d1, const uint64_t l0, const 
     lttng timer (l*) is assumed to be monotonic, where the device term can overflow and loop arround
     */
 
-    const int64_t l1_nocycle = d1 + l0 - d0;
-    return l1_nocycle;
+    const uint64_t l1  = d1 + l0 - d0;
+    if (l1 >= l1_min)
+        return l1;
 
     assert (valid_bits <= 64);
     const uint64_t max_val = (uint64_t) 1 << valid_bits;
-    const unsigned n = ( (l1_min - l1_nocycle) >> valid_bits ) + 1 ;
-    return max_val*n + l1_nocycle;
+    const unsigned n = ( (l1_min - l1) >> valid_bits ) + 1 ;
+    return max_val*n + l1;
 }
 
 static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t end) {
@@ -67,29 +68,19 @@ static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_dev
     }
 }
 
-static inline uint64_t start_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t born_min) {
-
-    static bool WarningOnce= true;
-
-    auto map_sync = state->sync_clock_lttng_device;
-    auto it_sync = map_sync.find(hp_device);
-
-    auto map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
-    auto it_timer = map_timer.find(hp_device);
-
-    if (it_timer != map_timer.end() && it_sync != map_sync.end()) {
-        const auto [l0,d0] = it_sync->second;
-        const auto [_timerResolution, _kernelTimestampValidBits] = it_timer->second;
-        const uint64_t start_ns = start * _timerResolution;
-        return corrected_l1(start_ns, l0, d0, born_min, _kernelTimestampValidBits);
-    } else {
-        if (WarningOnce) {
-            std::cerr << "THAPI::Warning No host-device clock synchronization have been found. "
-                      << "Kernel start time will be a lowerbound"<< std::endl;
-            WarningOnce = false;
-        }
-        return born_min;
-    }
+static inline uint64_t start_time_ns(timerResolution_kernelTimestampValidBits_t a, clock_lttng_device_t ld, uint64_t d1_cycle, uint64_t l1_min) {
+    // d is device time
+    // l is lltng time
+    // Start is a device time in cycle
+    // l0, d0 are in nano-second
+    // l1_min , is a lowerboub
+    const auto [l0,d0] = ld;
+    //No masking. assuming `_timerResolution` is correct
+    const auto [_timerResolution, _kernelTimestampValidBits] = a;
+    // Convert cycle in `ns`
+    const uint64_t d1 = d1_cycle * _timerResolution;
+    // Handle cycle
+    return corrected_l1(d1, l0, d0, l1_min, _kernelTimestampValidBits);
 }
 
 // Hash UUID
@@ -351,6 +342,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     if (it != map.end()) {
         const auto [_timerResolution, _kernelTimestampValidBits] = it->second;
         const uint64_t mask = ((uint64_t) 1 << _kernelTimestampValidBits) - 1;
+        //Mapping from lltng time to device time
         state->sync_clock_lttng_device[hp_device] = clock_lttng_device_t{ns_from_origin, (deviceTimestamp & mask )*_timerResolution};
     }
   <% end %>
@@ -460,10 +452,18 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(),size);
    <% end %>
 
-
     //Everything we profile have a command list
     const auto [device, subdevice] =  state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
-    state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)] = fnm_dsd_ts_t(name, metadata.str(), device, subdevice, ns_from_origin);
+
+    const hp_device_t hp_device{hostname,process_id,device};
+    // Take the current sync and pass it
+    const auto& map_ld = state->sync_clock_lttng_device;
+    const auto it = map_ld.find(hp_device);
+    clock_lttng_device_t l0d0;
+    if (it != map_ld.cend() )
+        l0d0 = it->second;
+
+    state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)] = fnm_dsd_ts_ld_t(name, metadata.str(), device, subdevice, ns_from_origin, l0d0);
   <% end %>
 
   <%#
@@ -480,10 +480,10 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const process_id_t process_id = borrow_process_id(bt_evt);
    const thread_id_t thread_id   = borrow_thread_id(bt_evt);
    const hp_event_t hp_event{hostname,process_id, hEvent};
-   auto [function_name, metadata, device, subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+   auto [function_name, metadata, device, subdevice, ts, l0d0] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
 
    if (!state->event_to_function_name_dsd_and_ts.count(hp_event)){
-      state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_t(thread_id, function_name, metadata, device, subdevice, ts);
+      state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_ld_t(thread_id, function_name, metadata, device, subdevice, ts, l0d0);
    } else {
       const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
       create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
@@ -502,10 +502,15 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    const hp_event_t hp_event{hostname,process_id, hEvent};
 
    if (state->event_to_function_name_dsd_and_ts.count(hp_event)) {
-      auto [thread_id, function_name, metadata, device, subdevice, ts] =  state->event_to_function_name_dsd_and_ts[hp_event];
+      auto [thread_id, function_name, metadata, device, subdevice, ts, l0d0] =  state->event_to_function_name_dsd_and_ts[hp_event];
       const hp_device_t hp_device{hostname, process_id, device};
       const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
-      const uint64_t start = start_time_ns(state, hp_device, globalStart,ts);
+
+      const auto& map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
+      const auto it_timer = map_timer.find(hp_device);
+      uint64_t start = globalStart;
+      if (std::get<0>(l0d0) != 0  && it_timer != map_timer.cend())
+        start = start_time_ns(l0d0, it_timer->second, globalStart, ts);
 
       create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
                                         hash_device(state, hostname, device),
@@ -515,16 +520,21 @@ static void zeinterval_<%= dbt_event.name %>_callback(
       state->event_to_function_name_dsd_and_ts.erase(hp_event);
    } else {
      <%# Not sure about this one. Need to see when we have native callbacks %>
-     const thread_id_t thread_id = borrow_thread_id(bt_evt);
-     const auto [function_name, metadata, device,subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
-     (void) subdevice;
+      const thread_id_t thread_id = borrow_thread_id(bt_evt);
+      const auto [function_name, metadata, device,subdevice, ts, l0d0] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+      (void) subdevice;
 
-     const hp_device_t hp_device{hostname, process_id, device};
-     const uint64_t start = start_time_ns(state, hp_device, globalStart,ts);
-     const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
+      const hp_device_t hp_device{hostname, process_id, device};
+      const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
 
-     state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
-     state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_t(thread_id, function_name, metadata, device, subdevice, ts);
+      const auto& map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
+      const auto it_timer = map_timer.find(hp_device);
+      uint64_t start = globalStart;
+      if (std::get<0>(l0d0) != 0  && it_timer != map_timer.cend())
+        start = start_time_ns(l0d0, it_timer->second, globalStart, ts);
+
+      state->event_result_to_start_and_delta[hp_event] = sd_t(start,delta);
+      state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_ld_t(thread_id, function_name, metadata, device, subdevice, ts, l0d0);
   }
   <% end %>
 };

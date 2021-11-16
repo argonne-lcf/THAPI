@@ -17,9 +17,13 @@ typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_comma
 typedef std::tuple<uint64_t, uint64_t> timerResolution_kernelTimestampValidBits_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
+
+typedef std::tuple<thapi_function_name, std::string, thapi_device_id, thapi_device_id, long, clock_lttng_device_t> fnm_dsd_ts_ld_t;
+typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, thapi_device_id, long, clock_lttng_device_t> tfnm_dsd_ts_ld_t;
+
 struct zeinterval_callbacks_state {
-    std::unordered_map<hp_event_t,tfnm_dsd_ts_t> event_to_function_name_dsd_and_ts;
-    std::unordered_map<hpt_t, fnm_dsd_ts_t> profiled_function_name_dsd_and_ts;
+    std::unordered_map<hp_event_t,tfnm_dsd_ts_ld_t> event_to_function_name_dsd_and_ts;
+    std::unordered_map<hpt_t, fnm_dsd_ts_ld_t> profiled_function_name_dsd_and_ts;
 
     // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
     std::unordered_map<h_device_t, ze_device_uuid_t> device_to_uuid;
