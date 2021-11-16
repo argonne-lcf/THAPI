@@ -756,6 +756,17 @@ EOF
 # not very cleanly is used....
 profiling_prologue = lambda { |event_name|
   <<EOF
+  if (_paranoid_drift &&
+      ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
+      tracepoint_enabled(lttng_ust_ze_properties, device_timer)) {
+    struct _ze_obj_h *o_h = NULL;
+    FIND_ZE_OBJ(&hCommandList, o_h);
+    if (o_h) {
+      ze_device_handle_t hDevice =
+        ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
+      _dump_device_timer(hDevice);
+    }
+  }
   ze_event_pool_handle_t _pool = NULL;
   if (_do_profile && !#{event_name}) {
     #{event_name} = _get_profiling_event(hCommandList, &_pool);
