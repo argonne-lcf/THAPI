@@ -1,6 +1,8 @@
 #include "timeline.h"
 #include "timeline.hpp"
 #include "xprof_utils.hpp" // typedef
+#include "json.hpp"
+#include <set>
 
 #include <iomanip> // set precision
 #include <iostream> // stdcout
@@ -9,6 +11,9 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
 {
    bt_component_class_sink_consume_method_status status =
         BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
+
+    // Internal datatrastruct to convern hostname process to Google trace format process
+    // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview
 
     /* Retrieve our private data from the component's user data */
     struct timeline_dispatch *dispatch = (timeline_dispatch*) bt_self_component_get_data(
@@ -20,6 +25,8 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
     bt_message_iterator_next_status next_status =
         bt_message_iterator_next(dispatch->message_iterator, &messages,
             &message_count);
+
+
 
     switch (next_status) {
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_END:
@@ -39,6 +46,7 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
     default:
         break;
     }
+
 
     /* For each consumed message */
     for (uint64_t i = 0; i < message_count; i++) {
@@ -68,27 +76,73 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
             const bt_field *dur_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
             const long dur = bt_field_integer_unsigned_get_value(dur_field);
 
+            auto &s_gtf_pid = dispatch->s_gtf_pid;
+            auto &s_gtf_pid_gpu = dispatch->s_gtf_pid_gpu;
+
             if (std::string(class_name) == "lttng:host") {
-                std::cout << "{\"pid\": " <<  "\"" + hostname << "-" << process_id  <<   "\""
-                          << ",\"tid\":" <<  thread_id 
-                          << std::fixed << std::setprecision(2) << ",\"ts\":" << ts*1.E-3 
-                          << ",\"dur\":" << dur*1.E-3
-                          << ",\"name\":" << "\"" << name << "\"" 
-                          << ",\"ph\":\"X\""
-                          << "}," << std::endl;
+
+                const auto thapi_pid  = hp_t(hostname, process_id);
+                auto it = s_gtf_pid.find(thapi_pid);
+                int gtf_pid;
+
+                if (it == s_gtf_pid.end() ) {
+                    gtf_pid = s_gtf_pid.size() + s_gtf_pid_gpu.size();
+                    s_gtf_pid[thapi_pid] = gtf_pid;
+                    std::cout << nlohmann::json{ {"name", "process_name"},
+                                                 {"ph", "M"},
+                                                 {"pid", gtf_pid},
+                                                 {"args", { {"name",  hostname  + ", pid " + std::to_string(process_id) + " |"} } },
+                                                 // Double "{" to generate a dict and not array
+                                               }
+                              << "," << std::endl;
+                } else {
+                    gtf_pid = s_gtf_pid[thapi_pid];
+                }
+
+                std::cout << nlohmann::json{ {"pid", gtf_pid},
+                                             {"tid", thread_id},
+                                             {"ts", static_cast<long unsigned>(ts*1E-3)},
+                                             {"dur", static_cast<long unsigned>(dur*1E-3)},
+                                             {"name", name},
+                                             {"ph", "X"}
+                                           }
+                          << "," << std::endl;
             } else if ( std::string(class_name) == "lttng:device" )  {
+
+
                const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
                const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
- 
-               std::cout << "{\"pid\": " <<  "\"" + hostname << "-" << process_id  <<   "\""
-                         << ",\"tid\":" <<  "\"GPU-"<< did << "\""
-                         << std::fixed << std::setprecision(2) << ",\"ts\":" << ts*1.E-3
-                         << ",\"dur\":" << dur*1.E-3
-                         << ",\"name\":" << "\"" << name << "\""
-                         << ",\"ph\":\"X\""
-                         << "}," << std::endl;
+
+               const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+               const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
+
+
+                const auto thapi_pid  = hp_dsd_t(hostname, process_id, did, sdid);
+                auto it = s_gtf_pid_gpu.find(thapi_pid);
+                int gtf_pid;
+                if (it == s_gtf_pid_gpu.end() ) {
+                    gtf_pid = s_gtf_pid.size() + s_gtf_pid_gpu.size();
+                    s_gtf_pid_gpu[thapi_pid] =  gtf_pid;
+                    std::cout << nlohmann::json{ {"name", "process_name"},
+                                                 {"ph", "M"},
+                                                 {"pid", gtf_pid},
+                                                 {"args", { {"name", "GPU " + hostname  + ", pid " + std::to_string(process_id) + "|"} } },
+                                               }
+                              << "," << std::endl;
+                } else {
+                    gtf_pid = s_gtf_pid_gpu[thapi_pid];
+                }
+                std::cout << nlohmann::json{ {"pid", gtf_pid},
+                                             {"tid", thread_id},
+                                             {"ts", static_cast<long unsigned>(ts*1E-3)},
+                                             {"dur", static_cast<long unsigned>(dur*1E-3)},
+                                             {"name", name},
+                                             {"ph", "X"}
+                                           }
+                          << "," << std::endl;
+
             }
-       }    
+       }
     bt_message_put_ref(message);
    }
 end:
@@ -104,7 +158,7 @@ bt_component_class_initialize_method_status timeline_dispatch_initialize(
         const bt_value *params, void *initialize_method_data)
 {
     /* Allocate a private data structure */
-    struct timeline_dispatch *dispatch = new timeline_dispatch;  
+    struct timeline_dispatch *dispatch = new timeline_dispatch;
 
     /* Set the component's user data to our private data structure */
     bt_self_component_set_data(
@@ -121,9 +175,9 @@ bt_component_class_initialize_method_status timeline_dispatch_initialize(
      */
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
-   
+
     /* Print the begining of the json */
-    std::cout << "{\"traceEvents\":[" << std::endl; 
+    std::cout << "{\"traceEvents\":[" << std::endl;
 
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
@@ -133,12 +187,11 @@ bt_component_class_initialize_method_status timeline_dispatch_initialize(
  */
 void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink)
 {
-    
-    // JSTON is stupornd, it doesn't allow trailling comma. 
-    // To avoid creating yet anothing state, we will create a dummy/empty object at the end. 
+
+    // JSTON is stupornd, it doesn't allow trailling comma.
+    // To avoid creating yet anothing state, we will create a dummy/empty object at the end.
     // This only work because chrome::tracing doesn't parse such event.
     std::cout << "{}]}" << std::endl;
-
 }
 
 /*
