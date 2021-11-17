@@ -298,6 +298,7 @@ static __thread volatile int in_init = 0;
 static volatile unsigned int _initialized = 0;
 static int _do_profile = 0;
 static int _paranoid_drift = 0;
+
 static void _lib_cleanup() {
   if (_do_profile) {
     _event_cleanup();
