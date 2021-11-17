@@ -333,6 +333,15 @@ static void _dump_device_timer(ze_device_handle_t hDevice) {
     do_tracepoint(lttng_ust_ze_properties, device_timer, hDevice, hostTimestamp, deviceTimestamp);
 }
 
+static void _dump_command_list_device_timer(ze_command_list_handle_t hCommandList) {
+  struct _ze_obj_h *o_h = NULL;
+  FIND_ZE_OBJ(&hCommandList, o_h);
+  if (o_h) {
+    ze_device_handle_t hDevice = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
+    _dump_device_timer(hDevice);
+  }
+}
+
 static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
   uint32_t deviceCount = 0;
   if (ZE_DEVICE_GET_PTR(hDriver, &deviceCount, NULL) != ZE_RESULT_SUCCESS || deviceCount == 0)
