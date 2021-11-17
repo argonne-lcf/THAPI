@@ -41,6 +41,7 @@ display_help() {
     echo "  -p, --profiling               Enable profiling"
     echo "  -v, --visualize               Visualize trace on thefly"
     echo "  --properties                  Dump drivers and devices properties"
+    echo "  --memory                      Dump memory properties"
     exit 1
 }
 
@@ -57,6 +58,7 @@ while true; do
     -p | --profiling ) shift; profiling=1; export LTTNG_UST_ZE_PROFILE=1;;
     -v | --visualize ) shift; lttng_view=1;;
     --properties ) shift; properties=1;;
+    --memory ) shift; memory=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -83,9 +85,14 @@ if [ ! -z "$profiling" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
 fi
+ze_disable_events_memory="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
 if [ ! -z "$properties" ]
 then
-  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_events_memory}
+fi
+if [ ! -z "$memory" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace ${ze_disable_events_memory}
 fi
 if [ ! -z "$build" ]
 then

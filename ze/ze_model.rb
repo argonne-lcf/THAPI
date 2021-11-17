@@ -683,7 +683,7 @@ ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands + $zel_commands
 }.to_h
 
 register_epilogue "zeDeviceGet", <<EOF
-  if (_do_profile) {
+  if (_do_profile || tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
     if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
       for (uint32_t i = 0; i < *pCount; i++)
         _register_ze_device(phDevices[i], hDriver, NULL);
@@ -692,7 +692,7 @@ register_epilogue "zeDeviceGet", <<EOF
 EOF
 
 register_epilogue "zeDeviceGetSubDevices", <<EOF
-  if (_do_profile) {
+  if (_do_profile || tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
     if (_retval == ZE_RESULT_SUCCESS && phSubdevices && pCount) {
       for (uint32_t i = 0; i < *pCount; i++)
         _register_ze_device(phSubdevices[i], NULL, hDevice);
@@ -701,7 +701,7 @@ register_epilogue "zeDeviceGetSubDevices", <<EOF
 EOF
 
 register_epilogue "zeCommandListCreate", <<EOF
-  if (_do_profile) {
+  if (_do_profile || tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _register_ze_command_list(*phCommandList, hContext, hDevice);
     }
@@ -709,7 +709,7 @@ register_epilogue "zeCommandListCreate", <<EOF
 EOF
 
 register_epilogue "zeCommandListCreateImmediate", <<EOF
-  if (_do_profile) {
+  if (_do_profile || tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _register_ze_command_list(*phCommandList, hContext, hDevice);
     }
@@ -717,7 +717,7 @@ register_epilogue "zeCommandListCreateImmediate", <<EOF
 EOF
 
 register_epilogue "zeCommandListDestroy", <<EOF
-  if (_do_profile) {
+  if (_do_profile || tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
     if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
       _unregister_ze_command_list(hCommandList);
     }
