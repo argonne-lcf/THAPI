@@ -51,7 +51,7 @@ ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uin
 ZE_FLOAT_SCALARS = %w(float double)
 ZE_SCALARS = ZE_INT_SCALARS + ZE_FLOAT_SCALARS
 
-all_types.each { |t| 
+all_types.each { |t|
   if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
     ZE_INT_SCALARS.push t.name
   end
@@ -757,9 +757,8 @@ EOF
 profiling_prologue = lambda { |event_name|
   <<EOF
   ze_event_pool_handle_t _pool = NULL;
-  if (_do_profile && !#{event_name}) {
+  if (_do_profile && !#{event_name})
     #{event_name} = _get_profiling_event(hCommandList, &_pool);
-  }
 EOF
 }
 
@@ -777,6 +776,13 @@ profiling_epilogue = lambda { |event_name|
 EOF
 }
 
+paranoid_drift_prologue = <<EOF
+  if (_paranoid_drift &&
+      ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
+      tracepoint_enabled(lttng_ust_ze_properties, device_timer))
+    _dump_command_list_device_timer(hCommandList);
+EOF
+
 [ "zeCommandListAppendLaunchKernel",
   "zeCommandListAppendBarrier",
   "zeCommandListAppendLaunchCooperativeKernel",
@@ -793,6 +799,7 @@ EOF
   "zeCommandListAppendImageCopyFromMemory",
   "zeCommandListAppendQueryKernelTimestamps",
   "zeCommandListAppendWriteGlobalTimestamp" ].each { |c|
+    register_prologue c, paranoid_drift_prologue
     register_prologue c, profiling_prologue.call("hSignalEvent")
     register_epilogue c, profiling_epilogue.call("hSignalEvent")
 }

@@ -296,7 +296,8 @@ static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile unsigned int _initialized = 0;
-static int     _do_profile = 0;
+static int _do_profile = 0;
+static int _paranoid_drift = 0;
 
 static void _lib_cleanup() {
   if (_do_profile) {
@@ -326,6 +327,21 @@ static void _dump_driver_subdevice_properties(ze_driver_handle_t hDriver, ze_dev
   return;
 }
 
+static void _dump_device_timer(ze_device_handle_t hDevice) {
+  uint64_t hostTimestamp, deviceTimestamp;
+  if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR(hDevice, &hostTimestamp, &deviceTimestamp) == ZE_RESULT_SUCCESS)
+    do_tracepoint(lttng_ust_ze_properties, device_timer, hDevice, hostTimestamp, deviceTimestamp);
+}
+
+static void _dump_command_list_device_timer(ze_command_list_handle_t hCommandList) {
+  struct _ze_obj_h *o_h = NULL;
+  FIND_ZE_OBJ(&hCommandList, o_h);
+  if (o_h) {
+    ze_device_handle_t hDevice = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
+    _dump_device_timer(hDevice);
+  }
+}
+
 static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
   uint32_t deviceCount = 0;
   if (ZE_DEVICE_GET_PTR(hDriver, &deviceCount, NULL) != ZE_RESULT_SUCCESS || deviceCount == 0)
@@ -344,11 +360,8 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
         do_tracepoint(lttng_ust_ze_properties, device, hDriver, phDevices[i], &props);
     }
     if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
-        tracepoint_enabled(lttng_ust_ze_properties, device_timer)) {
-      uint64_t hostTimestamp, deviceTimestamp;
-      if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR(phDevices[i], &hostTimestamp, &deviceTimestamp) == ZE_RESULT_SUCCESS)
-        do_tracepoint(lttng_ust_ze_properties, device_timer, phDevices[i], hostTimestamp, deviceTimestamp);
-    }
+        tracepoint_enabled(lttng_ust_ze_properties, device_timer))
+      _dump_device_timer(phDevices[i]);
     _dump_driver_subdevice_properties(hDriver, phDevices[i]);
   }
 }
@@ -369,9 +382,8 @@ static void _dump_properties() {
         do_tracepoint(lttng_ust_ze_properties, driver, phDrivers[i], &props);
     }
   }
-  for (uint32_t i = 0; i < driverCount; i++) {
+  for (uint32_t i = 0; i < driverCount; i++)
     _dump_driver_device_properties(phDrivers[i]);
-  }
 }
 
 static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
@@ -428,7 +440,13 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
     _do_profile = 1;
-
+  s = getenv("LTTNG_UST_ZE_PARANOID_DRIFT");
+  if (s) {
+    if (_do_profile)
+      _paranoid_drift = 1;
+    else if (verbose)
+      fprintf(stderr, "Warning: LTTNG_UST_ZE_PARANOID_DRIFT not activated without LTTNG_UST_ZE_PROFILE\n");
+  }
   if (_do_profile)
     atexit(&_lib_cleanup);
 }
