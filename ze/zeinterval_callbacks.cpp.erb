@@ -23,6 +23,19 @@
 #include <assert.h>     /* assert */
 
 <%# Should pass device_to_timerResolution_kernelTimestampValidBits %>
+//Memory interval
+static bool contains(const MemoryInterval& m, const uintptr_t val) {
+    if (m.empty())
+        return false;
+
+    const auto it = m.upper_bound(val);
+    if (it == m.cbegin())
+        return false;
+
+    return (val < (std::prev(it)->second));
+}
+
+
 static inline uint64_t corrected_l1(const uint64_t d1, const uint64_t l0, const uint64_t d0, const uint64_t l1_min, const uint64_t valid_bits) {
     /*
     d1 is the device time we want to convert to the lttng time (l1)
@@ -84,7 +97,7 @@ static inline uint64_t start_time_ns(timerResolution_kernelTimestampValidBits_t 
 }
 
 // Hash UUID
-uintptr_t hash_device(zeinterval_callbacks_state* state, const hostname_t hostname, thapi_device_id device) {
+static uintptr_t hash_device(zeinterval_callbacks_state* state, const hostname_t hostname, thapi_device_id device) {
     if (!device)
         return 0;
 
@@ -116,9 +129,9 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      state->downstream_message_queue.push(message);
 }
 
-void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                       const thapi_device_id device_id, const thapi_device_id subdevice_id,
-                                       const char* name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata) {
+static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
+                                              const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                              const char* name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata) {
 
      /* Message creation */
      bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err, metadata,
@@ -286,6 +299,24 @@ static void zeinterval_<%= dbt_event.name %>_callback(
        |  | (/_ | | | (_) | \/   (_| (_ (_ (/_ _> _> (/_ _>
                             /
   %>
+  <%# Global variable %>
+  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer"  and dbt_event.name_unsanitized.end_with?(START) %>
+    state->last_module[hpt_t(hostname.c_str(),process_id,thread_id)] = hModule;
+  <% elsif dbt_event.name_striped == "zeModuleGetGlobalPointer"  and dbt_event.name_unsanitized.end_with?(STOP) %>
+    if ( zeResult == ZE_RESULT_SUCCESS ) {
+        ze_module_handle_t hModule = state->last_module[hpt_t(hostname.c_str(),process_id,thread_id)];
+        state->module_to_module_globals[hp_module_t(hostname.c_str(), process_id, hModule)].insert((uintptr_t)pptr_val);
+        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
+    }
+  <% elsif dbt_event.name_striped == "zeModulelDestroy" and dbt_event.name_unsanitized.end_with?(START) %>
+    auto& s = state->module_to_module_globals;
+    auto it = s.find(hp_module_t(hostname.c_str(), process_id, hModule));
+    if (it != s.end()) {
+        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)].erase(it->second.begin());
+        s.erase(it);
+    }
+  <% end %>
+
   <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include? dbt_event.name_striped and dbt_event.name_unsanitized.end_with?(START) %>
     state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)] = size;
   <% end %>
@@ -293,26 +324,26 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% if dbt_event.name_striped == "zeMemAllocHost" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto size = state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->rangeset_memory_host[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = ((uintptr_t) (pptr_val) + size);
+        state->rangeset_memory_host[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemAllocDevice" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto size = state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->rangeset_memory_device[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = ((uintptr_t) (pptr_val) + size);
+        state->rangeset_memory_device[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemAllocShared" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto size = state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = ((uintptr_t) (pptr_val) + size);
+        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemFree" and dbt_event.name_unsanitized.end_with?(START) %>
-    state->last_free[hpt_t(hostname.c_str(),process_id,thread_id)] = (uintptr_t) ptr;
+    state->last_free[hpt_t(hostname.c_str(),process_id,thread_id)] = (uintptr_t)ptr;
   <% end %>
   <% if dbt_event.name_striped == "zeMemFree" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
