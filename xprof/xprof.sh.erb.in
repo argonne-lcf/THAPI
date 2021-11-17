@@ -145,7 +145,8 @@ trace_and_summary() {
     export LTTNG_UST_ZE_PARANOID_DRIFT=1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
+    ze_disable_events_memory="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_events_memory}
 <% end %>
 <% if languages.include?("cuda") %>
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
