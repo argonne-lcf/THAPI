@@ -61,6 +61,28 @@ lttng_ust_ze_properties:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer, uint64_t, hostTimestamp, hostTimestamp ]
     - [ ctf_integer, uint64_t, deviceTimestamp, deviceTimestamp ]
+  - name: memory_info_properties
+    args:
+    - [ ze_context_handle_t, hContext ]
+    - [ const void *, ptr ]
+    - [ ze_memory_allocation_properties_t *, pMemAllocProperties]
+    - [ ze_device_handle_t, hDevice ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hContext, "(uintptr_t)hContext" ]
+    - [ ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr" ]
+    - [ ctf_sequence_text, uint8_t, pMemAllocProperties_val, pMemAllocProperties, size_t, "sizeof(ze_memory_allocation_properties_t)" ]
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+  - name: memory_info_range
+    args:
+    - [ ze_context_handle_t, hContext ]
+    - [ const void *, ptr ]
+    - [ const void *, base ]
+    - [ size_t, size ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hContext, "(uintptr_t)hContext" ]
+    - [ ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr" ]
+    - [ ctf_integer_hex, uintptr_t, base, "(uintptr_t)base" ]
+    - [ ctf_integer, size_t, size, size ]
 lttng_ust_ze_build:
   events:
   - name: log

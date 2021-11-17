@@ -403,6 +403,32 @@ static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
   free(buildLog);
 }
 
+static inline void _dump_memory_info_ctx(ze_context_handle_t hContext, const void *ptr) {
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties)) {
+    ze_memory_allocation_properties_t memAllocProperties;
+    memAllocProperties.stype = ZE_STRUCTURE_TYPE_MEMORY_ALLOCATION_PROPERTIES;
+    memAllocProperties.pNext = NULL;
+    ze_device_handle_t hDevice = NULL;
+    if (ZE_MEM_GET_ALLOC_PROPERTIES_PTR(hContext, ptr, &memAllocProperties, &hDevice) == ZE_RESULT_SUCCESS)
+      do_tracepoint(lttng_ust_ze_properties, memory_info_properties, hContext, ptr, &memAllocProperties, hDevice);
+  }
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+    void *base = NULL;
+    size_t size = 0;
+    if (ZE_MEM_GET_ADDRESS_RANGE_PTR(hContext, ptr, &base, &size) == ZE_RESULT_SUCCESS)
+      do_tracepoint(lttng_ust_ze_properties, memory_info_range, hContext, ptr, base, size);
+  }
+}
+
+static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, const void *ptr) {
+  struct _ze_obj_h *o_h = NULL;
+  FIND_ZE_OBJ(&hCommandList, o_h);
+  if (o_h) {
+    ze_context_handle_t hContext = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
+    _dump_memory_info_ctx(hContext, ptr);
+  }
+}
+
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;

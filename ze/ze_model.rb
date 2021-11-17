@@ -751,6 +751,48 @@ register_epilogue "zeContextDestroy", <<EOF
   }
 EOF
 
+# Dump memory info if required
+memory_info_dump = lambda { |ptr_name|
+  "_dump_memory_info(hCommandList, #{ptr_name})"
+}
+
+memory_info_prologue = lambda { |ptr_names|
+  s = <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+    #{ptr_names.collect { |ptr_name| memory_info_dump.call(ptr_name) }.join(";\n    ")};
+  }
+EOF
+}
+
+register_prologue "zeCommandListAppendMemoryRangesBarrier", <<EOF
+  if ((tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+       tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) &&
+      numRanges && pRangeSizes && pRanges && hCommandList)
+    for (uint32_t _i = 0; _i < numRanges; _i++)
+      _dump_memory_info(hCommandList, "pRanges[_i]");
+EOF
+
+register_prologue "zeCommandListAppendMemoryCopy", memory_info_prologue.call(["dstptr", "srcptr"])
+register_prologue "zeCommandListAppendMemoryFill", memory_info_prologue.call(["ptr"])
+register_prologue "zeCommandListAppendMemoryCopyRegion", memory_info_prologue.call(["dstptr", "srcptr"])
+register_prologue "zeCommandListAppendMemoryCopyFromContext", <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+      tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+    if (hCommandList)
+      _dump_memory_info(hCommandList, dstptr);
+    if (hContextSrc)
+      _dump_memory_info_ctx(hContextSrc, srcptr);
+  }
+EOF
+register_prologue "zeCommandListAppendImageCopyToMemory", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendImageCopyFromMemory", memory_info_prologue.call(["srcptr"])
+register_prologue "zeCommandListAppendMemoryPrefetch", memory_info_prologue.call(["ptr"])
+register_prologue "zeCommandListAppendMemAdvise", memory_info_prologue.call(["ptr"])
+register_prologue "zeCommandListAppendQueryKernelTimestamps", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendWriteGlobalTimestamp", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendImageCopyToMemoryExt", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendImageCopyFromMemoryExt", memory_info_prologue.call(["srcptr"])
+
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
 # not very cleanly is used....
@@ -791,8 +833,8 @@ EOF
   "zeCommandListAppendMemoryRangesBarrier",
   "zeCommandListAppendMemoryCopy",
   "zeCommandListAppendMemoryFill",
-  "zeCommandListAppendMemoryCopyFromContext",
   "zeCommandListAppendMemoryCopyRegion",
+  "zeCommandListAppendMemoryCopyFromContext",
   "zeCommandListAppendImageCopy",
   "zeCommandListAppendImageCopyRegion",
   "zeCommandListAppendImageCopyToMemory",
@@ -801,8 +843,8 @@ EOF
   "zeCommandListAppendWriteGlobalTimestamp",
   "zeCommandListAppendImageCopyToMemoryExt",
   "zeCommandListAppendImageCopyFromMemoryExt" ].each { |c|
-    register_prologue c, paranoid_drift_prologue
     register_prologue c, profiling_prologue.call("hSignalEvent")
+    register_prologue c, paranoid_drift_prologue
     register_epilogue c, profiling_epilogue.call("hSignalEvent")
 }
 
