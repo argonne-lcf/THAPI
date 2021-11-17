@@ -798,7 +798,9 @@ EOF
   "zeCommandListAppendImageCopyToMemory",
   "zeCommandListAppendImageCopyFromMemory",
   "zeCommandListAppendQueryKernelTimestamps",
-  "zeCommandListAppendWriteGlobalTimestamp" ].each { |c|
+  "zeCommandListAppendWriteGlobalTimestamp",
+  "zeCommandListAppendImageCopyToMemoryExt",
+  "zeCommandListAppendImageCopyFromMemoryExt" ].each { |c|
     register_prologue c, paranoid_drift_prologue
     register_prologue c, profiling_prologue.call("hSignalEvent")
     register_epilogue c, profiling_epilogue.call("hSignalEvent")
