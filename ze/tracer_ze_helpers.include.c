@@ -373,10 +373,8 @@ static void _dump_properties() {
         do_tracepoint(lttng_ust_ze_properties, driver, phDrivers[i], &props);
     }
   }
-  for (uint32_t i = 0; i < driverCount; i++) {
+  for (uint32_t i = 0; i < driverCount; i++)
     _dump_driver_device_properties(phDrivers[i]);
-  }
-
 }
 
 static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
