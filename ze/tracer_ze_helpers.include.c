@@ -432,8 +432,12 @@ static void _load_tracer(void) {
   if (s)
     _do_profile = 1;
   s = getenv("LTTNG_UST_ZE_PARANOID_DRIFT");
-  if (s)
-    _paranoid_drift = 1;
+  if (s) {
+    if (_do_profile)
+      _paranoid_drift = 1;
+    else if (verbose)
+      fprintf(stderr, "Warning: LTTNG_UST_ZE_PARANOID_DRIFT not activated without LTTNG_UST_ZE_PROFILE\n");
+  }
   if (_do_profile)
     atexit(&_lib_cleanup);
 }
