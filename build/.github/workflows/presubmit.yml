@@ -1,0 +1,43 @@
+name: Presubmit
+on: [push, pull_request]
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          concurrent_skipping: 'same_content'
+          skip_after_successful_duplicate: 'true'
+          paths_ignore: '["**/README.md"]'
+          do_not_skip: '["pull_request"]'
+
+  build-and-check:
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Build and Check ubuntu-latest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tool liblttng-ust-dev ruby ruby-dev libffi libffi-dev
+      - run: sudo apt build-dep libbabeltrace2-dev babeltrace2
+      - run: gem install --user-install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi
+      - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.4.tar.bz2
+      - run: tar -xjvf babeltrace2-2.0.4.tar.bz2
+      - run: |
+          wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/d2d2e6cc.patch
+          wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/0db1832.patch
+          patch -p1 < d2d2e6cc.patch
+          patch -p1 < 0db1832.patch
+        working-directory: babeltrace2-2.0.4
+      - run: mkdir -p babeltrace2-2.0.4/build
+      - run: ../configure --prefix=$HOME/babeltrace2/2.0.4
+        working-directory: babeltrace2-2.0.4/build
+      - run: make
+        working-directory: babeltrace2-2.0.4/build
+      - run: make install
+        working-directory: babeltrace2-2.0.4/build
