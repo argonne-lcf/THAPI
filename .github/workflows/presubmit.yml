@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tool liblttng-ust-dev ruby ruby-dev libffi libffi-dev
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev
       - run: sudo apt build-dep libbabeltrace2-dev babeltrace2
       - run: gem install --user-install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi
       - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.4.tar.bz2
