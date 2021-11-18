@@ -180,10 +180,12 @@ static inline void _register_ze_event(
     return;
 
   struct _ze_obj_h *o_h = NULL;
+  struct _ze_command_list_obj_data *cl_data = NULL;
   FIND_ZE_OBJ(&command_list, o_h);
-  if (o_h)
-    context = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
-
+  if (o_h) {
+    cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+    context = cl_data->context;
+  }
   _ze_event = (struct _ze_event_h *)calloc(1, sizeof(struct _ze_event_h));
   if (!_ze_event)
     return;
@@ -193,6 +195,11 @@ static inline void _register_ze_event(
   _ze_event->event_pool = event_pool;
   _ze_event->context = context;
 
+  if (_do_profile && cl_data) {
+    pthread_mutex_lock(&cl_data->mutex);
+    utarray_push_back(cl_data->events, &event);
+    pthread_mutex_unlock(&cl_data->mutex);
+  }
   ADD_ZE_EVENT(_ze_event);
 }
 
