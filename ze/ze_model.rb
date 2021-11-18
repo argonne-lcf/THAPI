@@ -716,6 +716,11 @@ register_epilogue "zeCommandListCreateImmediate", <<EOF
   }
 EOF
 
+register_epilogue "zeCommandListReset", <<EOF
+  if (_do_profile && hCommandList)
+    _reset_ze_command_list(hCommandList);
+EOF
+
 register_epilogue "zeCommandListDestroy", <<EOF
   if (_do_profile || tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
     if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
@@ -735,13 +740,13 @@ EOF
 
 register_prologue "zeEventDestroy", <<EOF
   if (_do_profile && hEvent) {
-    _unregister_ze_event(hEvent);
+    _unregister_ze_event(hEvent, 1);
   }
 EOF
 
 register_prologue "zeEventHostReset", <<EOF
   if (_do_profile && hEvent) {
-    _unregister_ze_event(hEvent);
+    _unregister_ze_event(hEvent, 1);
   }
 EOF
 

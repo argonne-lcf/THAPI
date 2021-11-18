@@ -14,6 +14,7 @@ puts <<EOF
 #include <sys/mman.h>
 #include <ffi.h>
 #include "uthash.h"
+#include "utarray.h"
 
 #include "ze_tracepoints.h"
 #include "zet_tracepoints.h"
