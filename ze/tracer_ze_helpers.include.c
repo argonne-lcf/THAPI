@@ -361,6 +361,12 @@ static __thread volatile int in_init = 0;
 static volatile unsigned int _initialized = 0;
 static int _paranoid_drift = 0;
 
+static inline int _do_state() {
+  return _do_profile ||
+         tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+         tracepoint_enabled(lttng_ust_ze_properties, memory_info_range);
+}
+
 static void _lib_cleanup() {
   if (_do_profile) {
     _event_cleanup();
