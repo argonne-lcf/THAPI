@@ -242,6 +242,12 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) 
     return;
 
   _profile_event_results(event);
+  if (ze_event->event_pool) {
+    if (ze_event->event)
+      ZE_EVENT_DESTROY_PTR(ze_event->event);
+    ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
+  }
+
   if (remove_cl) {
     struct _ze_obj_h *o_h = NULL;
 
