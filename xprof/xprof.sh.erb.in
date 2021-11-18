@@ -76,28 +76,28 @@ display_version() {
 
 # Find all location of a `.so`
 whichlib() {
-  # Output of ldconfig:
-  #/usr/lib32:
-  #       libstdc++.so.6 -> libstdc++.so.6.0.26
-  # After the awk:
-  # -> /usr/lib32/libstdc++.so.6
+    # Output of ldconfig:
+    #/usr/lib32:
+    #       libstdc++.so.6 -> libstdc++.so.6.0.26
+    # After the awk:
+    # -> /usr/lib32/libstdc++.so.6
 
-  # In OpenSUSE ldconfig, is in '/sbin'.
-  PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
-  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
-               match($1, "^lib") && match($1, p) { print header "/" $1}'
+    # In OpenSUSE ldconfig, is in '/sbin'.
+    PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+    awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+                 match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
 whichlib64_head() {
-  # This function return only the first lib found
-  # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
-  for lib in $(whichlib $1)
-  do
-    if objdump -a $lib | grep 64 > /dev/null; then
-      echo $lib
-      break
-    fi
-  done
+    # This function return only the first lib found
+    # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
+    for lib in $(whichlib $1)
+    do
+        if objdump -a $lib | grep 64 > /dev/null; then
+            echo $lib
+            break
+        fi
+    done
 }
 
 trace_and_summary() {
@@ -108,14 +108,15 @@ trace_and_summary() {
     mkdir -p ${LTTNG_HOME:-$HOME}
     lttng-sessiond $quiet --daemonize
 <% if languages.include?("opencl") and  languages.include?("ze")%>
-    lttng $quiet create iprof
+    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("opencl") %>
-    lttng $quiet create thapi-opencl-session
+    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("ze") %>
-    lttng $quiet create thapi-ze-session
+    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("cuda") %>
-    lttng $quiet create thapi-cuda-session
+    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
 <% end %>
+    lttng $quiet create -o $THAPI_LTTNG_O
 
     #Using blocking more to trace event record loss
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
@@ -127,7 +128,7 @@ trace_and_summary() {
 
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x ${opencl_disable_events}
     if [ -n "$full" ]; then
-      lttng $quiet enable-event --channel=blocking-channel --userspace ${opencl_disable_events}
+        lttng $quiet enable-event --channel=blocking-channel --userspace ${opencl_disable_events}
     fi
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
@@ -138,7 +139,7 @@ trace_and_summary() {
     ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events}
     if [ -n "$full" ]; then
-       lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
+        lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
     fi
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
     export LTTNG_UST_ZE_PROFILE=1
@@ -186,14 +187,18 @@ trace_and_summary() {
 }
 
 trace_epilogue() {
-  lttng $quiet stop
-  lttng $quiet destroy
-  summary
+    lttng $quiet stop
+    lttng $quiet destroy
+    summary
 }
 
 
 summary() {
-    if [ "$#" -eq 0 ]; then
+    if [ -n "THAPI_LTTNG_O" ]; then
+        lttng_last_session=$THAPI_LTTNG_O
+        >&2 echo "Trace location:" $lttng_last_session
+        >&2 echo
+    elif [ "$#" -eq 0 ]; then
 <% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/* | head -1)
 <% elsif languages.include?("opencl") %>
