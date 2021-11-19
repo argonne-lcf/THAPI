@@ -11,14 +11,23 @@ struct _ze_device_obj_data {
   ze_device_properties_t properties;
 };
 
-UT_icd ze_event_icd = {sizeof(ze_event_handle_t), NULL, NULL, NULL};
 static int _do_profile = 0;
+
+struct _ze_event_h {
+  ze_event_handle_t event;
+  UT_hash_handle hh;
+  ze_command_list_handle_t command_list;
+  ze_event_pool_handle_t event_pool;
+  ze_context_handle_t context;
+  /* to remember events in command lists */
+  struct _ze_event_h *next, *prev;
+};
 
 struct _ze_command_list_obj_data {
   ze_device_handle_t device;
   ze_context_handle_t context;
   ze_driver_handle_t driver;
-  UT_array *events;
+  struct _ze_event_h *events;
 };
 
 struct _ze_obj_h {
@@ -126,20 +135,10 @@ static inline void _register_ze_command_list(
   cl_data->device = device;
   cl_data->context = context;
   cl_data->driver = driver;
-  if (_do_profile)
-    utarray_new(cl_data->events, &ze_event_icd);
   o_h->obj_data = (void *)cl_data;
 
   ADD_ZE_OBJ(o_h);
 }
-
-struct _ze_event_h {
-  ze_event_handle_t event;
-  UT_hash_handle hh;
-  ze_command_list_handle_t command_list;
-  ze_event_pool_handle_t event_pool;
-  ze_context_handle_t context;
-};
 
 #define FIND_ZE_EVENT(key, val) { \
   pthread_mutex_lock(&_ze_events_mutex); \
@@ -192,9 +191,8 @@ static inline void _register_ze_event(
   _ze_event->event_pool = event_pool;
   _ze_event->context = context;
 
-  if (_do_profile && cl_data) {
-    utarray_push_back(cl_data->events, &event);
-  }
+  if (_do_profile && cl_data)
+    DL_APPEND(cl_data->events, _ze_event);
   ADD_ZE_EVENT(_ze_event);
 cleanup:
   if (o_h)
@@ -255,12 +253,9 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) 
     FIND_AND_DEL_ZE_OBJ(ze_event->command_list, o_h);
     if (o_h) {
       struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-      ze_event_handle_t *ptr = NULL;
-      while ((ptr = (ze_event_handle_t *)utarray_next(cl_data->events, ptr)))
-        if (*ptr == event) {
-          utarray_erase(cl_data->events, utarray_eltidx(cl_data->events, ptr), 1);
-          break;
-        }
+      /* Should not be necessary, just being paranoid of user having race conditions in their code */
+      if (cl_data->events && ze_event->prev)
+        DL_DELETE(cl_data->events, ze_event);
       ADD_ZE_OBJ(o_h);
     }
   }
@@ -328,11 +323,10 @@ static void _reset_ze_command_list(ze_command_list_handle_t command_list) {
   if (!o_h)
     return;
   struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-  ze_event_handle_t *ptr = NULL;
-  while ((ptr = (ze_event_handle_t *)utarray_back(cl_data->events))) {
-    ze_event_handle_t hEvent = *ptr;
-    utarray_pop_back(cl_data->events);
-    _unregister_ze_event(hEvent, 0);
+  struct _ze_event_h *elt = NULL, *tmp = NULL;
+  DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
+    DL_DELETE(cl_data->events, elt);
+    _unregister_ze_event(elt->event, 0);
   }
   ADD_ZE_OBJ(o_h);
 }
@@ -345,13 +339,11 @@ static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
     return;
   if (_do_profile) {
     struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    ze_event_handle_t *ptr = NULL;
-    while ((ptr = (ze_event_handle_t *)utarray_back(cl_data->events))) {
-      ze_event_handle_t hEvent = *ptr;
-      utarray_pop_back(cl_data->events);
-      _unregister_ze_event(hEvent, 0);
+    struct _ze_event_h *elt = NULL, *tmp = NULL;
+    DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
+      DL_DELETE(cl_data->events, elt);
+      _unregister_ze_event(elt->event, 0);
     }
-    utarray_free(cl_data->events);
   }
   free(o_h);
 }
