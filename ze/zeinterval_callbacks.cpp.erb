@@ -22,82 +22,45 @@
 #include <set>
 #include <assert.h>     /* assert */
 
-<%# Should pass device_to_timerResolution_kernelTimestampValidBits %>
 //Memory interval
 static bool contains(const MemoryInterval& m, const uintptr_t val) {
-    if (m.empty())
-        return false;
-
+    // if m empty, bein == end	
     const auto it = m.upper_bound(val);
     if (it == m.cbegin())
         return false;
-
     return (val < (std::prev(it)->second));
 }
 
+static uint64_t convert_device_cycle(uint64_t device_cycle, 
+				     timestamp_pair_t timestamp_pair_ref, 
+				     uint64_t lltng_min, 
+				     hDeviceProperty device_property) {
 
-static inline uint64_t corrected_l1(uint64_t device,
-                                    const uint64_t lttng_ref,
-                                    const uint64_t device_ref, const uint64_t lttng_min,
-                                    const uint64_t valid_bits) {
-    /*
-    device is the device time we want to convert to the lttng time
-    lttng_ref and device_ref are a lttng and device timestamp who are synchronized
-    lttng_min is the minimun approximation of the lttng time
-
-    lttng timer (l*) is assumed to be monotonic, where the device term can overflow and loop arround
-    */
-
+    const auto& [lttng_ref, device_cycle_ref] = timestamp_pair_ref;
+ 
     assert (valid_bits <= 64);
-    const uint64_t max_val_device = (uint64_t) 1 << valid_bits;
+    const uint64_t max_val_device = (uint64_t) 1 << device_property->valid_bits - 1;
 
     uint64_t lttng;
     do {
+       const uint64_t device = device_cyle * device_property->timerResolution;     
        lttng = device + ( lttng_ref - device_ref )
-       device += max_val_device;
-    } while (lttng < lttng_ref)
+       device_cycle += max_val_device;
+
+    } while (lttng < lttng_min)
     return lttng;
+
 }
 
-static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t end) {
-    static bool is_ns = true;
-    uint64_t timerResolution = 1;
-    uint64_t kernelTimestampValidBits = 32;
-    auto map = state->device_to_timerResolution_kernelTimestampValidBits;
-    auto it = map.find(hp_device);
-    if (it == map.end()) {
-        if (is_ns) {
-            std::cerr << "No timerResolution have been found for a device. "
-                      << "Data will be displayed as cycles." << std::endl;
-            is_ns = false;
-        }
-    } else {
-        const auto [timerResolution_,kernelTimestampValidBits_] = it->second;
-        timerResolution = timerResolution_;
-        kernelTimestampValidBits = kernelTimestampValidBits_;
-    }
+static uint64_t compute_and_convert_delta(uint64_t start, uint64_t end, hDeviceProperty device_property) {
+
     if (end >= start) {
-        return (end - start) * timerResolution;
+        return (end - start) * device_property->timerResolution;
     } else {
        <%# We cycle (don't know how many time. Lets assume one) %>
-       const uint64_t max_val = ((uint64_t) 1 << kernelTimestampValidBits) - 1;
+       const uint64_t max_val = ((uint64_t) 1 << device_property->kernelTimestampValidBits) - 1;
        return (max_val - start + end ) * timerResolution;
     }
-}
-
-static inline uint64_t start_time_ns(timerResolution_kernelTimestampValidBits_t a, clock_lttng_device_t ld, uint64_t d1_cycle, uint64_t l1_min) {
-    // d is device time
-    // l is lltng time
-    // Start is a device time in cycle
-    // l0, d0 are in nano-second
-    // l1_min , is a lowerboub
-    const auto [l0,d0] = ld;
-    //No masking. assuming `_timerResolution` is correct
-    const auto [_timerResolution, _kernelTimestampValidBits] = a;
-    // Convert cycle in `ns`
-    const uint64_t d1 = d1_cycle * _timerResolution;
-    // Handle cycle
-    return corrected_l1(d1, l0, d0, l1_min, _kernelTimestampValidBits);
 }
 
 // Hash UUID
@@ -133,16 +96,37 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      state->downstream_message_queue.push(message);
 }
 
-static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                              const thapi_device_id device_id, const thapi_device_id subdevice_id,
-                                              const char* name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata) {
+          create_and_enqueue_device_message(hostname, process_id, thread_id, device,
+                                            commandname, metadata,
+                                            globalStart, globalEnd, lltng_min, timestamp_pair_ref,
+                                            state->device_properties, state->subdevice_parent);
+
+static void create_and_enqueue_device_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const thapi_device_id device,
+					      const char* commandname, const char* metadata,
+					      const uint64_t globalStart,  const uint64_t globalEnd, const uint64_t lltng_min, timestamp_pair_t timestamp_pair_ref,
+ 					      std::map<hpd_t, deviceproperty> device_properties, 
+					      std::map<hp, hDevice> subdevice_parent);
+
+     const hpd_t hpd(hostname,process_id_t, device);
+     const auto dp = device_properties[hpd];
+
+     const auto delta = compute_and_convert_delta(globalStart, globalEnd, dp);
+     const bool err = (delta != 0);
+     const auto start = convert_device_cycle(globalStart, timestamp_pair_ref, lltng_min, dp);
+
+     thapi_device subdevice;
+     const auto it1 = subdevice_parent.find(hpd);
+     if (it1 != subdevice_parent.cend()) {
+         subdevice = device;
+         device = it->second;
+     }
+     // Need to convert the pointer into UUID
 
      /* Message creation */
-     bt_message *message = create_device_message(hostname, process_id, thread_id, device_id, subdevice_id, name, ts, duration, err, metadata,
-                            zeinterval_iter_g->dispatch->device_event_class,
-                            zeinterval_self_message_iterator_g,
-                            zeinterval_iter_g->dispatch->stream);
-
+     bt_message *message = create_device_message(hostname, process_id, thread_id, device, subdevice, commandname, start, delta, err, metadata,
+                                                 zeinterval_iter_g->dispatch->device_event_class,
+                                                 zeinterval_self_message_iterator_g,
+                                                 zeinterval_iter_g->dispatch->stream);
 
      /* Set message */
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
@@ -386,48 +370,76 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    |_) ._ _ _|_ o | o ._   _  o   | \  _     o  _  _     _. ._   _|   (_      |_  | \  _     o  _  _
    |   | (_) |  | | | | | (_| o   |_/ (/_ \/ | (_ (/_   (_| | | (_|   __) |_| |_) |_/ (/_ \/ | (_ (/_
                            _|
-   Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ]
-  %>
 
-  <%# Save devices information. Device UUID and device timer resolution %>
+                                        | in      | out
+```
+1. thread_X: zeCommandListAppend        | hDevice |      
+2. lttng_ust_ze_properties:device_timer | hDevice | lltngTimestamp, deviceTimestamp
+3. thread_X: event_profiling            |         | hEvent
+4. thread_Y: event_profiling_result     | hEvent  | globalStart, globalEnd
+```
+```
+1. thread_X: zeCommandListAppend        | hDevice |
+2. lttng_ust_ze_properties:device_timer | hDevice | lltngTimestamp, deviceTimestamp
+3. thread_Y: event_profiling_result     | hEvent  | globalStart, globalEnd
+4. thread_X: event_profiling            |         | hEvent
+```
+
+# If the CommandListAppend fail, no event_proffiling will be enable
+# Check case where lttng timestamp <= lltngTimestamp (other thread updated it)
+
+Case A:
+
+1. command_partial_payload (contain device, name of the command, lttng timestamp...)
+2. device_timestamp_pair[hp_d] = [lltngTimestamp, deviceTimestamp]
+3. event_payload[hp_e] = [ command_partial_payload[hpt] (M), 
+                           device_timestamp_pair[hp_d], 
+                           thread_id ]
+
+4. event_payload[hp_e] (M)
+   subdevice_parent[hp_d]
+   device_properties[hp_d]	
+   [globalStart, globalEnd]
+
+Case B:
+
+1. command_partial_payload (contain device, name of the command, lttng timestamp...)
+2. device_timestamp_pair[hp_d] = [lltngTimestamp, deviceTimestamp]
+3. event_timer[hp_e] = [globalStart, globalEnd]
+4. command_partial_payload[hpt] (M)
+   device_timestamp_pair[hpd]
+   subdevice_parent[hpd]
+   device_properties[hpd]
+   event_timer[hp_e] (M)
+   %>
+
+  <%# Save devices informations. 
+      Map subdevices to their parents %>
   <%if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
-   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-   const hostname_t hostname    = borrow_hostname(bt_evt);
-   const process_id_t process_id = borrow_process_id(bt_evt);
-   const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val->timerResolution, pDeviceProperties_val->kernelTimestampValidBits);
-   state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hDevice)] = t ;
-   state->device_to_uuid[h_device_t(hostname, (thapi_device_id) hDevice) ] = pDeviceProperties_val->uuid ;
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     const h_t hostname = borrow_hostname(bt_evt);
+     const p_t process_id = borrow_process_id(bt_evt);
+     const hpd_t hpd (hostname, process_id, hDevice);
 
-
+     state->device_properties[hpd] = pDeviceProperties_val;
   <%elsif dbt_event.name_unsanitized == "lttng_ust_ze_properties:subdevice" %>
-   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-   const hostname_t hostname    = borrow_hostname(bt_evt);
-   const process_id_t process_id = borrow_process_id(bt_evt);
-   const auto t = timerResolution_kernelTimestampValidBits_t( pDeviceProperties_val->timerResolution, pDeviceProperties_val->kernelTimestampValidBits);
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     const h_t hostname = borrow_hostname(bt_evt);
+     const p_t process_id = borrow_process_id(bt_evt);
+     const hpd_t hpd (hostname, process_id, hSubDevice);
 
-   state->device_to_timerResolution_kernelTimestampValidBits[hp_device_t(hostname,process_id, (thapi_device_id) hSubDevice)] = t ;
-   //Need to pach UUID to be at least different between tile...
-   state->device_to_uuid[h_device_t(hostname, (thapi_device_id) hSubDevice) ] = pDeviceProperties_val->uuid ;
-
-   state->device_to_rootdevice[hp_device_t(hostname,process_id,  (thapi_device_id) hSubDevice) ] =  (thapi_device_id) hDevice;
-
+     state->device_properties[hpd] = pDeviceProperties_val;
+     state->subdevice_parent[hpd] = hDevice;
   <% end %>
 
-  <%# Map [ Tuple [ Hostnane, process, cl_command_queue ], Tuple [ device, subdevice] ] %>
+  <%# Map command list to it device %>
   <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include? dbt_event.name_striped %>
-       <% if dbt_event.name_unsanitized.end_with?(START) %>
-    state->start_device[hpt_t(hostname,process_id,thread_id) ] = (thapi_device_id) hDevice;
-       <% elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    const auto device_or_subdevice = state->start_device[hpt_t(hostname, process_id,thread_id) ];
-    auto it = state->device_to_rootdevice.find(hp_device_t(hostname, process_id, device_or_subdevice));
-    if (it == state->device_to_rootdevice.end()) { // A device
-       state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(device_or_subdevice, NULL);
-    } else {
-        state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)]=  dsd_t(it->second, device_or_subdevice);
-    }
-       <% else %>
-           <% raise "Dont know what kind of commandListCreate events this is"%>
-       <% end %>
+    <% if dbt_event.name_unsanitized.end_with?(START) %>
+     state->start_device[hpt_t(hostname,process_id,thread_id) ] = hDevice;
+    <% elsif dbt_event.name_unsanitized.end_with?(STOP) %>
+     const auto device = state->start_device[hpt_t(hostname, process_id,thread_id) ];
+     state->command_list_device[hp_command_list_t(hostname,process_id,phCommandList_val)] = device;
+    <% end %>
   <% end %>
 
   <%#
@@ -435,120 +447,107 @@ static void zeinterval_<%= dbt_event.name %>_callback(
    |_) ._ _ _|_ o | o ._   _  o   |_    ._   _ _|_ o  _  ._    ._   _. ._ _   _
    |   | (_) |  | | | | | (_| o   | |_| | | (_  |_ | (_) | |   | | (_| | | | (/_
                            _|
-   Map [ Tuple [ Hostnane, process, thread, function_name], Tuple [ device, subdevice] ]
   %>
-  <%# Save kernel name %>
+  <%# Map kernel to name and group size %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelCreate_#{START}" %>
-    state->last_kernel[hpt_t(hostname,process_id,thread_id)] = std::string{desc__pKernelName_val};
+     state->last_kernel[hpt_t(hostname,process_id,thread_id)] = std::string{desc__pKernelName_val};
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelCreate_#{STOP}" %>
-    state->kernel_to_name[hp_kernel_t(hostname,process_id,phKernel_val)] = state->last_kernel[hpt_t(hostname,process_id,thread_id)];
-  <% end %>
-  <%# Save GroupSize %>
-  <% if dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelSetGroupSize_#{START}" %>
+     state->kernel_name[hpk_t(hostname,process_id,phKernel_val)] = state->last_kernel[hpt_t(hostname,process_id,thread_id)];
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelSetGroupSize_#{START}" %>
      std::stringstream groupsize;
      groupsize << "{" << groupSizeX << ","
                       << groupSizeY << ","
                       << groupSizeZ << "}";
-
-     state->kernel_to_groupsize[hp_kernel_t(hostname,process_id,hKernel)] = groupsize.str();
-  <% end %>
-
-
-  <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hSignalEvent') %>
-    std::stringstream metadata;
-   <%if dbt_event.fields_name.include?('hKernel') %>
-    std::string name  = state->kernel_to_name[hp_kernel_t(hostname,process_id,hKernel)];
-    <% if dbt_event.fields_name.include?('pLaunchFuncArgs') %>
-    metadata <<  "{" << pLaunchFuncArgs_val->groupCountX << ","
-                  << pLaunchFuncArgs_val->groupCountY << ","
-                  << pLaunchFuncArgs_val->groupCountZ << "}";
-    //# All the kernel should have a GroupSize
-    metadata << ", ";
-    metadata << state->kernel_to_groupsize[hp_kernel_t(hostname,process_id,hKernel)];
-    <% end %>
-   <% else %>
-    <% if dbt_event.name_striped == "zeCommandListAppendMemoryCopy" %>
-    std::stringstream name_;
-    name_ << "<%= dbt_event.name_striped %>";
-    name_ << "(";
-    name_ << memory_location(state, hp_t(hostname.c_str(), process_id), (uintptr_t) srcptr);
-    name_ << memory_location(state, hp_t(hostname.c_str(), process_id), (uintptr_t) dstptr);
-    name_ << ")";
-    std::string name = name_.str();
-    <% else %>
-    const std::string name{"<%= dbt_event.name_striped %>"};
-    <% end %>
-
-   <% end %>
-    //Copy the datatranfer
-    <% if (dbt_event.name_striped.include?("Alloc") or dbt_event.name_striped.include?("Memory")) and
-         dbt_event.fields_name.include? ("size") %>
-    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(),size);
-   <% end %>
-    //Everything we profile have a command list
-    const auto [device, subdevice] =  state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
-    state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)] = fnm_dsd_ts_t(name, metadata.str(), device, subdevice, ns_from_origin);
+     state->kernel_groupsize_str[hp_kernel_t(hostname,process_id,hKernel)] = groupsize.str();
   <% end %>
 
   <%#
-    _         _                    _                        ___
-   |_) ._ _ _|_ o | o ._   _  o   |_ |  _. ._   _  _   _|    | o ._ _   _   _
-   |   | (_) |  | | | | | (_| o   |_ | (_| |_) _> (/_ (_|    | | | | | (/_ _>
-                           _|              |
-   Map [ Tuple[hostname, process, device, subdevice, cl_function_name], elapsed_time ]
+    _         _                    _                             
+   |_) ._ _ _|_ o | o ._   _  o   /   _  ._ _  ._ _   _. ._   _| 
+   |   | (_) |  | | | | | (_| o   \_ (_) | | | | | | (_| | | (_| 
+                           _|                                    
   %>
+  <%# Map last command partial payload %>
+  <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hSignalEvent') %>
+     std::stringstream metadata;
+    <%if dbt_event.fields_name.include?('hKernel') %>
+     const auto hpk hpk_t(hostname,process_id,hKernel);	    
+     std::string name  = state->kernel_to_name[hpk];
+      <% if dbt_event.fields_name.include?('pLaunchFuncArgs') %>
+     metadata <<  "{" << pLaunchFuncArgs_val->groupCountX << ","
+                      << pLaunchFuncArgs_val->groupCountY << ","
+		      << pLaunchFuncArgs_val->groupCountZ << "}";
+      <% end %>
+     metadata << ", ";
+     metadata << state->kernel_groupsize_str[hpk];
+    <% elsif dbt_event.name_striped == "zeCommandListAppendMemoryCopy" %>
+     const hp_t hp((hostname, process_id);
+     std::stringstream name_;
+     name_ << "<%= dbt_event.name_striped %>";
+     name_ << "(";
+     name_ << memory_location(state, hp, (uintptr_t) srcptr);
+     name_ << memory_location(state, hp, (uintptr_t) dstptr);
+     name_ << ")";
+     std::string name = name_.str();
+    <% else %>
+     const std::string name{"<%= dbt_event.name_striped %>"};
+    <% end %>
+     const auto device = state->command_list_device[hp_command_list_t(hostname,process_id,hCommandList)];
+     state->command_partial_payload[hpt_t(hostname,process_id,thread_id)] = fnm_dsd_ts_t(name, metadata.str(), device, ns_from_origin);
+  <% end %>
 
+  <%#
+    _         _                    _                 
+   |_) ._ _ _|_ o | o ._   _  o   |_     _  ._ _|_   
+   |   | (_) |  | | | | | (_| o   |_ \/ (/_ | | |_   
+                           _|                        
+  %>
   <%if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
-   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-   const hostname_t hostname    = borrow_hostname(bt_evt);
-   const process_id_t process_id = borrow_process_id(bt_evt);
-   const thread_id_t thread_id   = borrow_thread_id(bt_evt);
-   const hp_event_t hp_event{hostname,process_id, hEvent};
-   auto& [function_name, metadata, device, subdevice, ts] = state->profiled_function_name_dsd_and_ts[hpt_t(hostname,process_id,thread_id)];
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     const hostname_t hostname = borrow_hostname(bt_evt);
+     const process_id_t process_id = borrow_process_id(bt_evt);
+     const thread_id_t thread_id = borrow_thread_id(bt_evt);
+     const hpe_t hpe(hostname, process_id, hEvent);
+     const hpt_t hpt(hostname, process_id, thread_id);
+   
+     const auto& partial_payload = state->command_partial_payload[hpt];
+     const hpd_t hpd(hostname, process_id, std::get<2>(partial_payload));
 
-   // No callback. Update L0 in the event_profiling
-   const auto& map_ld = state->sync_clock_lttng_device;
-   const auto it = map_ld.find(hp_device_t(hostname,process_id,device));
-   clock_lttng_device_t l0d0;
-   if (it != map_ld.cend())
-      l0d0 = it->second;
+     // Got the timestamp pair referance
+     timestamp_pair_t timestamp_pair_ref;
+     const auto& m0 = state->device_timestamps_pair_ref;
+     const auto it0 = m0.find(hpd);
+     if (it0 != m0.cend())
+          timestamp_pair_ref = it->second;
 
-   if (!state->event_to_function_name_dsd_and_ts.count(hp_event)){
-      state->event_to_function_name_dsd_and_ts[hp_event] = tfnm_dsd_ts_ld_t(thread_id, function_name, metadata, device, subdevice, ts, l0d0);
-   } else {
-      std::cout<< "Error. Event have not yet be processed. It cannot be reused." << std::endl;
-      std::exit(1);
-   }
+     if (!state->event_device_timers.count(hp_event)){
+          // The `event_profiling_results` didn't generate populate the `>event_device_timers` we are the first to use it.
+          state->event_payload[hp_event] = std::tuple_cat(thread_id, partial_payload, timestamp_pair_ref);
+     } else {
+	  auto& [commandname, metadata, device, lltng_min] = partial_payload;
+	  const auto& [globalStart, globalEnd] = state->event_timestamp_pair[hp_event];
 
+          create_and_enqueue_device_message(hostname, process_id, thread_id, device,
+					    commandname, metadata,
+                                            globalStart, globalEnd, lltng_min, timestamp_pair_ref,
+                                            state->device_properties, state->subdevice_parent);
+     }
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
-   zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-   const hostname_t hostname    = borrow_hostname(bt_evt);
-   const process_id_t process_id = borrow_process_id(bt_evt);
-   const hp_event_t hp_event{hostname,process_id, hEvent};
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     const hostname_t hostname = borrow_hostname(bt_evt);
+     const process_id_t process_id = borrow_process_id(bt_evt);
+     const hpe_t hpe(hostname,process_id, hEvent);
 
-   if (state->event_to_function_name_dsd_and_ts.count(hp_event)) {
-      auto [thread_id, function_name, metadata, device, subdevice, ts, l0d0] =  state->event_to_function_name_dsd_and_ts[hp_event];
-      const hp_device_t hp_device{hostname, process_id, device};
-      const uint64_t delta = elapsed_time_ns(state, hp_device, globalStart, globalEnd);
+     if (state->event_payload.count(hp_event)) {
+          const auto [thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref] = state->event_payload[hpe];
+	  create_and_enqueue_device_message(hostname, process_id, thread_id, device,
+                                            commandname, metadata, 
+ 					    globalStart, globalEnd, lltng_min, timestamp_pair_ref,
+				            state->device_properties, state->subdevice_parent); 
+     } else {
+          state->event_timestamp_pair[hpe] = timestamp_pair_t(globalStart,globalEnd);
+     }
 
-      const auto& map_timer = state->device_to_timerResolution_kernelTimestampValidBits;
-      const auto it_timer = map_timer.find(hp_device);
-      // Handle the case whre people didn't enable the host/device sync
-      // We should potential put a warning...
-      uint64_t start = globalStart;
-      if (std::get<0>(l0d0) != 0  && it_timer != map_timer.cend())
-        start = start_time_ns(it_timer->second, l0d0, globalStart, ts);
-
-      create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id,
-                                        hash_device(state, hostname, device),
-                                        hash_device(state, hostname, subdevice),
-                                        function_name.c_str(),start,delta, delta == 0, metadata.c_str() );
-
-      state->event_to_function_name_dsd_and_ts.erase(hp_event);
-   } else {
-      std::cout<< "Error. 'event_profiling_results' received be 'event_profiling' and we don't have callbacks..." << std::endl;
-      std::exit(1);
-  }
   <% end %>
 };
 <% end %>
