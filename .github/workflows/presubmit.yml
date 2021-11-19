@@ -20,7 +20,6 @@ jobs:
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-latest
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
       - name: cache Babaltrace2
