@@ -54,3 +54,17 @@ jobs:
       - run: make install
         if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
+      - run: |
+          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - run: mkdir -p build
+      - run: ./autogen.sh
+      - run: ../configure
+        working-directory: build
+      - run: make
+        working-directory: build
+      - run: make test
+        working-directory: build
