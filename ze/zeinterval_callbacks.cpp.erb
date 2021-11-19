@@ -36,23 +36,27 @@ static bool contains(const MemoryInterval& m, const uintptr_t val) {
 }
 
 
-static inline uint64_t corrected_l1(const uint64_t d1, const uint64_t l0, const uint64_t d0, const uint64_t l1_min, const uint64_t valid_bits) {
+static inline uint64_t corrected_l1(uint64_t device,
+                                    const uint64_t lttng_ref,
+                                    const uint64_t device_ref, const uint64_t lttng_min,
+                                    const uint64_t valid_bits) {
     /*
-    d1 is the device time we want to convert to the lttng time (l1)
-    l0 and d0 are a lttng and device timestamp who are synchronized
-    l1_min is the minimun approximation of l1
+    device is the device time we want to convert to the lttng time
+    lttng_ref and device_ref are a lttng and device timestamp who are synchronized
+    lttng_min is the minimun approximation of the lttng time
 
     lttng timer (l*) is assumed to be monotonic, where the device term can overflow and loop arround
     */
 
-    const uint64_t l1  = d1 + l0 - d0;
-    if (l1 >= l1_min)
-        return l1;
-
     assert (valid_bits <= 64);
-    const uint64_t max_val = (uint64_t) 1 << valid_bits;
-    const unsigned n = ( (l1_min - l1) >> valid_bits ) + 1 ;
-    return max_val*n + l1;
+    const uint64_t max_val_device = (uint64_t) 1 << valid_bits;
+
+    uint64_t lttng;
+    do {
+       lttng = device + ( lttng_ref - device_ref )
+       device += max_val_device;
+    } while (lttng < lttng_ref)
+    return lttng;
 }
 
 static inline uint64_t elapsed_time_ns(zeinterval_callbacks_state* state, hp_device_t hp_device, uint64_t start, uint64_t end) {

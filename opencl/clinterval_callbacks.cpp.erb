@@ -276,7 +276,6 @@ static void clinterval_<%= dbt_event.name %>_callback(
         const auto [start,delta] = state->event_result_to_start_and_delta[hp_event];
         const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
         create_and_enqueue_device_message(hostname.c_str(),process_id,thread_id,device,subdevice,function_name.c_str(),start,delta, delta == 0);
-
         state->event_to_function_name_and_ts.erase(hp_event);
     }
   <% elsif dbt_event.name_unsanitized == "lttng_ust_opencl_profiling:event_profiling_results" %>
