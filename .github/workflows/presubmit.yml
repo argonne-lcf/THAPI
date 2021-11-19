@@ -142,13 +142,13 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure
         working-directory: build
-      - run: make distcheck
+      - run: make distcheck -j
         working-directory: build
 
   dist-check:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Distcheck ubuntu-latest
+    name: Dist and Check ubuntu-latest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -174,15 +174,18 @@ jobs:
         working-directory: build
       - run: make dist
         working-directory: build
-      - run: tar -xzvf thapi-*
+      - name: extract
+        run: tar -xzvf thapi-*
         working-directory: build
-      - run: |
+      - name: configure
+        run: |
           cd `find . -type d -name "thapi-*"`
           mkdir -p build
           cd build
           ../configure
         working-directory: build
-      - run: |
+      - name: make -j check
+        run: |
           cd `find . -type d -name "thapi-*"`
           cd build
           make -j check
