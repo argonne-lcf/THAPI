@@ -48,10 +48,10 @@ jobs:
       - run: ../configure --prefix=$HOME/babeltrace2/2.0.4
         if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
-      - run: make
+      - run: make -j
         if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
-      - run: make install
+      - run: make -j install
         if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
       - run: |
