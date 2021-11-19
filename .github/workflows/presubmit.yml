@@ -23,20 +23,35 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: cache Babaltrace2
+        uses: actions/cache@v2
+        id: babeltrace2
+        env:
+          cache-name: cache-babeltrace2
+        whith:
+          path: ~/babeltrace2/2.0.4
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev
       - run: gem install --user-install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi
       - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.4.tar.bz2
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: tar -xjvf babeltrace2-2.0.4.tar.bz2
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
           wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/d2d2e6cc.patch
           wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/0db1832.patch
           patch -p1 < d2d2e6cc.patch
           patch -p1 < 0db1832.patch
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4
       - run: mkdir -p babeltrace2-2.0.4/build
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: ../configure --prefix=$HOME/babeltrace2/2.0.4
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
       - run: make
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
       - run: make install
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.4/build
