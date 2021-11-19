@@ -64,7 +64,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure
         working-directory: build
-      - run: make
+      - run: make -j
         working-directory: build
-      - run: make test
+      - run: make check
         working-directory: build
