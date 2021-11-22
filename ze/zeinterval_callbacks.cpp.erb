@@ -271,7 +271,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
     auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
     const uint64_t start_g = it_start->second;
-     <% if dbt_event.fields_name.include?('zeResult') %>
+    state->host_start.erase(it_start);
+      <% if dbt_event.fields_name.include?('zeResult') %>
        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
        <% if dbt_event.name_striped.include? ('Synchronize') or dbt_event.name_striped.include? ('Query')  %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY);
@@ -281,7 +282,6 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
      <% end %>
-    state->host_start.erase(it_start);
    <%end%>
   <%end%>
 
@@ -507,8 +507,9 @@ Case B:
      const hpt_t hpt(hostname, process_id, thread_id);
 
      auto it_pp = state->command_partial_payload.find(hpt);
-     const auto& [commandname, metadata, device, lltng_min] = it_pp->second; 
-
+     const auto [commandname, metadata, device, lltng_min] = it_pp->second;
+     state->command_partial_payload.erase(it_pp);
+ 
      // Got the timestamp pair referance
      clock_lttng_device_t timestamp_pair_ref;
      const auto& m0 = state->device_timestamps_pair_ref;
@@ -531,7 +532,6 @@ Case B:
                                             device_to_properties, subdevice_parent);
           state->event_to_profiling_result.erase(it);
      }
-     state->command_partial_payload.erase(it_pp);
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
