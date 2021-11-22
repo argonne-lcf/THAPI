@@ -58,12 +58,8 @@ static uint64_t compute_and_convert_delta(uint64_t start, uint64_t end, const ze
     const uint64_t max_val = ((uint64_t)1 << device_property.kernelTimestampValidBits) - 1;
     start &= max_val;
     end &= max_val;
-    if (end >= start) {
-        return (end - start) * device_property.timerResolution;
-    } else {
-       <%# We cycle (don't know how many time. Lets assume one) %>
-       return (max_val - start + end ) * device_property.timerResolution;
-    }
+    const uint64_t delta = (end >= start) ? (end - start) : (max_val + (end - start) );
+    return delta * device_property.timerResolution;
 }
 
 // Hash UUID
@@ -106,9 +102,11 @@ static void create_and_enqueue_device_message(
 
      const hpd_t hpd(hostname, process_id, device);
 
-     uint64_t delta = 0;
+     // No device information. No convertion to ns, to looping
+     uint64_t delta = globalEnd-globalStart;
      uint64_t start = 0;
      const auto it0 = device_to_properties.find(hpd);
+
      uintptr_t device_hash = 0;
      if (it0 != device_to_properties.cend() && !err) {
          delta = compute_and_convert_delta(globalStart, globalEnd, it0->second);
