@@ -458,10 +458,10 @@ Case B:
   <% end %>
 
   <%#
-    _         _                    _                             
-   |_) ._ _ _|_ o | o ._   _  o   /   _  ._ _  ._ _   _. ._   _| 
-   |   | (_) |  | | | | | (_| o   \_ (_) | | | | | | (_| | | (_| 
-                           _|                                    
+    _         _                    _
+   |_) ._ _ _|_ o | o ._   _  o   /   _  ._ _  ._ _   _. ._   _|
+   |   | (_) |  | | | | | (_| o   \_ (_) | | | | | | (_| | | (_|
+                           _|
   %>
   <%# Map last command partial payload %>
   <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hSignalEvent') %>
@@ -493,10 +493,10 @@ Case B:
   <% end %>
 
   <%#
-    _         _                    _                 
-   |_) ._ _ _|_ o | o ._   _  o   |_     _  ._ _|_   
-   |   | (_) |  | | | | | (_| o   |_ \/ (/_ | | |_   
-                           _|                        
+    _         _                    _
+   |_) ._ _ _|_ o | o ._   _  o   |_     _  ._ _|_
+   |   | (_) |  | | | | | (_| o   |_ \/ (/_ | | |_
+                           _|
   %>
   <%if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
@@ -513,7 +513,7 @@ Case B:
           return;
      const auto [commandname, metadata, device, lltng_min] = it_pp->second;
      state->command_partial_payload.erase(it_pp);
- 
+
      // Got the timestamp pair referance
      clock_lttng_device_t timestamp_pair_ref;
      const auto& m0 = state->device_timestamps_pair_ref;
@@ -524,11 +524,11 @@ Case B:
 
      auto it = state->event_to_profiling_result.find(hpe);
      if (it == state->event_to_profiling_result.end()){
-	  //Creeate the payload who will be used by event_profiling_results
+          //Creeate the payload who will be used by event_profiling_results
           state->event_payload[hpe] = t_tfnm_m_d_ts_cld_t(thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref);
      } else {
           // Handle the callbacks case, where `event_profiling_results` was called before `event_profiling`.
-	  const auto& [err, globalStart, globalEnd] = it->second;
+          const auto& [err, globalStart, globalEnd] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
           create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
