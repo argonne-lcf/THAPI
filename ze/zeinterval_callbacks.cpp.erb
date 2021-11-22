@@ -104,7 +104,7 @@ static void create_and_enqueue_device_message(
 
      // No device information. No convertion to ns, to looping
      uint64_t delta = globalEnd-globalStart;
-     uint64_t start = 0;
+     uint64_t start = timestamp_pair_ref;
      const auto it0 = device_to_properties.find(hpd);
 
      uintptr_t device_hash = 0;
