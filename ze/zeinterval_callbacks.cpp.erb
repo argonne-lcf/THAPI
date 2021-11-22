@@ -507,6 +507,10 @@ Case B:
      const hpt_t hpt(hostname, process_id, thread_id);
 
      auto it_pp = state->command_partial_payload.find(hpt);
+     // We didn't find the command who initiated this even_profiling,
+     // Best we can do is to bailout
+     if (it_pp == state->command_partial_payload.end())
+          return;
      const auto [commandname, metadata, device, lltng_min] = it_pp->second;
      state->command_partial_payload.erase(it_pp);
  
@@ -520,9 +524,10 @@ Case B:
 
      auto it = state->event_to_profiling_result.find(hpe);
      if (it == state->event_to_profiling_result.end()){
-          // The `event_profiling_results` didn't generate populate the `>event_device_timers` we are the first to use it.
+	  //Creeate the payload who will be used by event_profiling_results
           state->event_payload[hpe] = t_tfnm_m_d_ts_cld_t(thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref);
      } else {
+          // Handle the callbacks case, where `event_profiling_results` was called before `event_profiling`.
 	  const auto& [err, globalStart, globalEnd] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
