@@ -269,7 +269,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <%if dbt_event.name_unsanitized.end_with?(START) %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
     <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
-    uint64_t &start_g = state->host_start.at(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
+    auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
+    const uint64_t start_g = it_start->second;
      <% if dbt_event.fields_name.include?('zeResult') %>
        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
        <% if dbt_event.name_striped.include? ('Synchronize') or dbt_event.name_striped.include? ('Query')  %>
@@ -280,7 +281,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      <% else %>
     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
      <% end %>
-    start_g = 0;
+    state->host_start.erase(it_start);
    <%end%>
   <%end%>
 
@@ -290,55 +291,55 @@ static void zeinterval_<%= dbt_event.name %>_callback(
                             /
   %>
   <%# Global variable %>
-  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer"  and dbt_event.name_unsanitized.end_with?(START) %>
-    state->last_module[hpt_t(hostname.c_str(),process_id,thread_id)] = hModule;
-  <% elsif dbt_event.name_striped == "zeModuleGetGlobalPointer"  and dbt_event.name_unsanitized.end_with?(STOP) %>
+  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer" and dbt_event.name_unsanitized.end_with?(START) %>
+    state->last_module[hpt_t(hostname, process_id, thread_id)] = hModule;
+  <% elsif dbt_event.name_striped == "zeModuleGetGlobalPointer" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
-        ze_module_handle_t hModule = state->last_module[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->module_to_module_globals[hp_module_t(hostname.c_str(), process_id, hModule)].insert((uintptr_t)pptr_val);
-        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
+        ze_module_handle_t hModule = state->last_module[hpt_t(hostname, process_id,thread_id)];
+        state->module_to_module_globals[hp_module_t(hostname, process_id, hModule)].insert((uintptr_t)pptr_val);
+        state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
     }
   <% elsif dbt_event.name_striped == "zeModulelDestroy" and dbt_event.name_unsanitized.end_with?(START) %>
     auto& s = state->module_to_module_globals;
-    auto it = s.find(hp_module_t(hostname.c_str(), process_id, hModule));
+    auto it = s.find(hp_module_t(hostname, process_id, hModule));
     if (it != s.end()) {
-        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)].erase(it->second.begin());
+        state->rangeset_memory_shared[hp_t(hostname, process_id)].erase(it->second.begin());
         s.erase(it);
     }
   <% end %>
 
   <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include? dbt_event.name_striped and dbt_event.name_unsanitized.end_with?(START) %>
-    state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)] = size;
+    state->last_alloc[hpt_t(hostname, process_id,thread_id)] = size;
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemAllocHost" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto size = state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->rangeset_memory_host[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+        const auto size = state->last_alloc[hpt_t(hostname, process_id, thread_id)];
+        state->rangeset_memory_host[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemAllocDevice" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto size = state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->rangeset_memory_device[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+        const auto size = state->last_alloc[hpt_t(hostname, process_id, thread_id)];
+        state->rangeset_memory_device[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemAllocShared" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto size = state->last_alloc[hpt_t(hostname.c_str(),process_id,thread_id)];
-        state->rangeset_memory_shared[hp_t(hostname.c_str(), process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+        const auto size = state->last_alloc[hpt_t(hostname, process_id, thread_id)];
+        state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
   <% end %>
 
   <% if dbt_event.name_striped == "zeMemFree" and dbt_event.name_unsanitized.end_with?(START) %>
-    state->last_free[hpt_t(hostname.c_str(),process_id,thread_id)] = (uintptr_t)ptr;
+    state->last_free[hpt_t(hostname, process_id, thread_id)] = (uintptr_t)ptr;
   <% end %>
   <% if dbt_event.name_striped == "zeMemFree" and dbt_event.name_unsanitized.end_with?(STOP) %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto ptr = state->last_free[hpt_t(hostname.c_str(),process_id,thread_id)];
-        remove_memory(state, hp_t(hostname.c_str(), process_id), ptr);
+        const auto ptr = state->last_free[hpt_t(hostname, process_id, thread_id)];
+        remove_memory(state, hp_t(hostname, process_id), ptr);
     }
   <% end %>
 
@@ -505,30 +506,33 @@ Case B:
      const hpe_t hpe(hostname, process_id, hEvent);
      const hpt_t hpt(hostname, process_id, thread_id);
 
-     const auto& partial_payload = state->command_partial_payload[hpt];
-     const hpd_t hpd(hostname, process_id, std::get<2>(partial_payload));
+     auto it_pp = state->command_partial_payload.find(hpt);
+     const auto& [commandname, metadata, device, lltng_min] = it_pp->second; 
 
      // Got the timestamp pair referance
      clock_lttng_device_t timestamp_pair_ref;
      const auto& m0 = state->device_timestamps_pair_ref;
+     const hpd_t hpd(hostname, process_id, device);
      const auto it0 = m0.find(hpd);
      if (it0 != m0.cend())
           timestamp_pair_ref = it0->second;
 
-     if (!state->event_to_profiling_result.count(hpe)){
+     auto it = state->event_to_profiling_result.find(hpe);
+     if (it == state->event_to_profiling_result.end()){
           // The `event_profiling_results` didn't generate populate the `>event_device_timers` we are the first to use it.
-          const auto &[a, b, c, d] = partial_payload;
-          state->event_payload[hpe] = t_tfnm_m_d_ts_cld_t(thread_id, a, b, c, d, timestamp_pair_ref);
+          state->event_payload[hpe] = t_tfnm_m_d_ts_cld_t(thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref);
      } else {
-          auto& [commandname, metadata, device, lltng_min] = partial_payload;
-          const auto& [err, globalStart, globalEnd] = state->event_to_profiling_result[hpe];
+	  const auto& [err, globalStart, globalEnd] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
           create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
                                             device_to_properties, subdevice_parent);
+          state->event_to_profiling_result.erase(it);
      }
+     state->command_partial_payload(it_pp);
+
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      const hostname_t hostname = borrow_hostname(bt_evt);
@@ -536,14 +540,16 @@ Case B:
      const hpe_t hpe(hostname, process_id, hEvent);
      const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
 
-     if (state->event_payload.count(hpe)) {
-          const auto& [thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref] = state->event_payload[hpe];
+     auto it = state->event_payload.find(hpe);
+     if (it != state->event_payload.end()) {
+          const auto& [thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
           create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
-                                            device_to_properties, subdevice_parent);
+					    device_to_properties, subdevice_parent);
+	  state->event_payload.erase(it);
      } else {
           state->event_to_profiling_result[hpe] = event_profiling_result_t(err, globalStart,globalEnd);
      }
@@ -567,14 +573,11 @@ void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
 
 void finalize_zeinterval_callbacks(zeinterval_message_iterator *interval_dispatch_iter) {
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
-    auto map = state->host_start;
-    for (auto const &[function_name, ts] : map) {
-        if (ts != 0) {
+    for (auto const &[function_name, ts] :  state->host_start) {
             const auto [hostname,process_id, thread_id, f ]  = function_name;
             std::cerr << "THAPI::Warning: " << hostname
                       << " PID " << process_id
                       << " TID " << thread_id
                       << " " << f << " was called but never returned" << std::endl;
-        }
     }
 }
