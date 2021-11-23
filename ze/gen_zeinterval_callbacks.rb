@@ -23,6 +23,14 @@ class DBT_event
     @name_unsanitized.gsub(':', '_')
   end
 
+  def start?
+    @name_unsanitized.end_with?(START)
+  end
+ 
+  def stop?
+    @name_unsanitized.end_with?(STOP)
+  end
+
   def name_striped
     # #{namespace}:#{foo}_#{START} -> #{foo}
     # #{namespace}:#{foo} -> #{foo}

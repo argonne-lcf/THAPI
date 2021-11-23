@@ -56,15 +56,14 @@ struct zeinterval_callbacks_state {
 template <class K,
           typename = std::enable_if_t<std::is_trivially_copyable_v<K> || std::is_same_v<K, std::string>>>
 static inline void save_start(zeinterval_callbacks_state* state, hpt_t hpt, K v){
-    std::vector<std::byte> b((std::byte*)&v,(std::byte*)&v + sizeof(v));
-    state->last_command[hpt] = b;
+    const auto b = (std::byte*) &v;
+    state->last_command[hpt] = std::vector<std::byte>(b, b+sizeof(K));
 }
 
 template <>
-void save_start(zeinterval_callbacks_state* state, hpt_t hpt, std::string s){
-    auto b = (std::byte*) s.data();
-    std::vector<std::byte> v(b, b + s.size() + 1);
-    state->last_command[hpt] = v;
+void save_start(zeinterval_callbacks_state* state, hpt_t hpt, const std::string s){
+    const auto b = (std::byte*) s.data();
+    state->last_command[hpt] = std::vector<std::byte>(b, b + s.size() + 1);
 }
 
 template <class K,
@@ -75,7 +74,5 @@ static inline K retrieve_start(zeinterval_callbacks_state* state, hpt_t hpt){
 
 template <>
 std::string retrieve_start(zeinterval_callbacks_state* state, hpt_t hpt){
-    auto &v = state->last_command[hpt];
-    auto c = (char*) v.data();
-    return std::string(c);
+    return std::string( (char*) state->last_command[hpt].data());
 }

@@ -135,18 +135,18 @@ static void create_and_enqueue_device_message(
      state->downstream_message_queue.push(message);
 }
 
-//static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
-//                                               const uint64_t size) {
-//
-//     /* Message creation */
-//     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
-//                                                  zeinterval_iter_g->dispatch->traffic_event_class,
-//                                                  zeinterval_self_message_iterator_g,
-//                                                  zeinterval_iter_g->dispatch->stream);
-//
-//     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-//     state->downstream_message_queue.push(message);
-//}
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                                                  zeinterval_iter_g->dispatch->traffic_event_class,
+                                                  zeinterval_self_message_iterator_g,
+                                                  zeinterval_iter_g->dispatch->stream);
+
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
 
 <%#
   _                                         _                          _ ___
@@ -245,45 +245,50 @@ static void zeinterval_<%= dbt_event.name %>_callback(
        |_ (_) (_ (_| | |  |_ \/   _|_ | | | (_)
                              /
   %>
-  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
-       dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
-       dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
-       dbt_event.name_unsanitized.start_with?('lttng_ust_zel:')  %>
+  <% if dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
+        dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
+        dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
+        dbt_event.name_unsanitized.start_with?('lttng_ust_zel:') %>
 
     const hostname_t   hostname   = borrow_hostname(bt_evt);
     const process_id_t process_id = borrow_process_id(bt_evt);
     const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-  <%end %>
+  <% end %>
 
-  <%#        _ ___
-        /\  |_) |     _  _. | |  _
-       /--\ |  _|_   (_ (_| | | _>
+  <%#                   ___
+       |_|  _   _ _|_    | ._ _.  _ o ._   _
+       | | (_) _>  |_    | | (_| (_ | | | (_|
+                                           _|
   %>
-  <%if dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
-       dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
-       dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
-       dbt_event.name_unsanitized.start_with?('lttng_ust_zel:')  %>
+
+  <% if dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
+        dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
+        dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
+        dbt_event.name_unsanitized.start_with?('lttng_ust_zel:') %>
     int64_t ns_from_origin;
     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-    <%if dbt_event.name_unsanitized.end_with?(START) %>
+    <% if dbt_event.start? %>
     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
-    <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
+    <% elsif dbt_event.stop? %>
     auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
     const uint64_t start_g = it_start->second;
     state->host_start.erase(it_start);
       <% if dbt_event.fields_name.include?('zeResult') %>
        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
-       <% if dbt_event.name_striped.include? ('Synchronize') or dbt_event.name_striped.include? ('Query')  %>
-    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY);
+       <% if dbt_event.name_striped.include?('Synchronize') or dbt_event.name_striped.include?('Query') %>
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+                                    start_g, ns_from_origin-start_g, zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY);
        <% else %>
-    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, zeResult);
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+                                    start_g, ns_from_origin-start_g, zeResult);
        <% end %>
      <% else %>
-    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", start_g, ns_from_origin-start_g, 0);
+    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+                                    start_g, ns_from_origin-start_g, 0);
      <% end %>
-   <%end%>
-  <%end%>
+   <% end %>
+  <% end %>
 
   <%#
        |\/|  _  ._ _   _  ._      _.  _  _  _   _  _  _   _
@@ -291,15 +296,17 @@ static void zeinterval_<%= dbt_event.name %>_callback(
                             /
   %>
   <%# Global variable %>
-  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer" and dbt_event.name_unsanitized.end_with?(START) %>
+  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer" %> 
+    <% if dbt_event.start? %>
     save_start(state, hpt_t(hostname, process_id, thread_id), hModule);
-  <% elsif dbt_event.name_striped == "zeModuleGetGlobalPointer" and dbt_event.name_unsanitized.end_with?(STOP) %>
+    <% else dbt_event.stop? %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto hModule = retrieve_start<ze_module_handle_t>(state, hpt_t(hostname, process_id,thread_id));
         state->module_to_module_globals[hp_module_t(hostname, process_id, hModule)].insert((uintptr_t)pptr_val);
         state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
     }
-  <% elsif dbt_event.name_striped == "zeModulelDestroy" and dbt_event.name_unsanitized.end_with?(START) %>
+    <% end %>
+  <% elsif dbt_event.name_striped == "zeModulelDestroy" and dbt_event.start? %>
     auto& s = state->module_to_module_globals;
     auto it = s.find(hp_module_t(hostname, process_id, hModule));
     if (it != s.end()) {
@@ -308,35 +315,27 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     }
   <% end %>
 
-  <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include? dbt_event.name_striped and dbt_event.name_unsanitized.end_with?(START) %>
+  <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and 
+        dbt_event.start? %>
     save_start(state, hpt_t(hostname, process_id, thread_id), size);
-  <% end %>
-
-  <% if dbt_event.name_striped == "zeMemAllocHost" and dbt_event.name_unsanitized.end_with?(STOP) %>
+  <% elsif dbt_event.name_striped == "zeMemAllocHost" and dbt_event.stop? %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
         state->rangeset_memory_host[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
-  <% end %>
-
-  <% if dbt_event.name_striped == "zeMemAllocDevice" and dbt_event.name_unsanitized.end_with?(STOP) %>
+  <% elsif dbt_event.name_striped == "zeMemAllocDevice" and dbt_event.stop? %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
         state->rangeset_memory_device[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
-  <% end %>
-
-  <% if dbt_event.name_striped == "zeMemAllocShared" and dbt_event.name_unsanitized.end_with?(STOP) %>
+  <% elsif dbt_event.name_striped == "zeMemAllocShared" and dbt_event.stop? %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
         state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
     }
-  <% end %>
-
-  <% if dbt_event.name_striped == "zeMemFree" and dbt_event.name_unsanitized.end_with?(START) %>
+  <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.start? %>
     save_start(state, hpt_t(hostname, process_id, thread_id), ptr);
-  <% end %>
-  <% if dbt_event.name_striped == "zeMemFree" and dbt_event.name_unsanitized.end_with?(STOP) %>
+  <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.stop? %>
     if ( zeResult == ZE_RESULT_SUCCESS ) {
         const auto ptr = retrieve_start<uintptr_t>(state, hpt_t(hostname, process_id, thread_id));
         remove_memory(state, hp_t(hostname, process_id), ptr);
@@ -348,7 +347,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
         | | | | | (/_ _>  |_ (_| | | | |_)   __) | | |  |   |_
                                      |
   %>
-  <%if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device_timer"  %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device_timer" %>
     const hostname_t  hostname{borrow_hostname(bt_evt)};
     const process_id_t process_id = borrow_process_id(bt_evt);
     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
@@ -411,14 +410,14 @@ Case B:
 
   <%# Save devices informations.
       Map subdevices to their parents %>
-  <%if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      const hostname_t hostname = borrow_hostname(bt_evt);
      const process_id_t process_id = borrow_process_id(bt_evt);
      const hpd_t hpd (hostname, process_id, (thapi_device_id)hDevice);
 
      state->device_to_properties[hpd] = *pDeviceProperties_val;
-  <%elsif dbt_event.name_unsanitized == "lttng_ust_ze_properties:subdevice" %>
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_properties:subdevice" %>
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      const hostname_t hostname = borrow_hostname(bt_evt);
      const process_id_t process_id = borrow_process_id(bt_evt);
@@ -429,10 +428,10 @@ Case B:
   <% end %>
 
   <%# Map command list to it device %>
-  <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include? dbt_event.name_striped %>
-    <% if dbt_event.name_unsanitized.end_with?(START) %>
+  <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include?(dbt_event.name_striped) %>
+    <% if dbt_event.start? %>
      save_start(state, hpt_t(hostname,process_id,thread_id), hDevice);
-    <% elsif dbt_event.name_unsanitized.end_with?(STOP) %>
+    <% elsif dbt_event.stop? %>
      const auto device = retrieve_start<thapi_device_id>(state, hpt_t(hostname, process_id,thread_id));
      state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)] = device;
     <% end %>
@@ -445,11 +444,11 @@ Case B:
                            _|
   %>
   <%# Map kernel to name and group size %>
-  <% if dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelCreate_#{START}" %>
+  <% if dbt_event.name_striped == "zeKernelCreate" and dbt_event.start? %>
      save_start(state, hpt_t(hostname,process_id,thread_id), std::string{desc__pKernelName_val});
-  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelCreate_#{STOP}" %>
+  <% elsif dbt_event.name_striped == "zeKernelCreate" and dbt_event.stop? %>
      state->kernel_to_name[hpk_t(hostname,process_id,phKernel_val)] = retrieve_start<std::string>(state, hpt_t(hostname,process_id,thread_id));
-  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze:zeKernelSetGroupSize_#{START}" %>
+  <% elsif dbt_event.name_striped == "zeKernelSetGroupSize" and dbt_event.start? %>
      std::stringstream groupsize;
      groupsize << "{" << groupSizeX << ","
                       << groupSizeY << ","
@@ -464,9 +463,9 @@ Case B:
                            _|
   %>
   <%# Map last command partial payload %>
-  <% if dbt_event.name_unsanitized.end_with?(START) and dbt_event.fields_name.include?('hSignalEvent') %>
+  <% if dbt_event.start? and dbt_event.fields_name.include?('hSignalEvent') %>
      std::stringstream metadata;
-    <%if dbt_event.fields_name.include?('hKernel') %>
+    <% if dbt_event.fields_name.include?('hKernel') %>
      const hpk_t hpk(hostname, process_id, hKernel);
      std::string name = state->kernel_to_name[hpk];
       <% if dbt_event.fields_name.include?('pLaunchFuncArgs') %>
@@ -498,7 +497,7 @@ Case B:
    |   | (_) |  | | | | | (_| o   |_ \/ (/_ | | |_
                            _|
   %>
-  <%if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
+  <% if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      const hostname_t hostname = borrow_hostname(bt_evt);
      const process_id_t process_id = borrow_process_id(bt_evt);
@@ -558,8 +557,25 @@ Case B:
      } else {
           state->event_to_profiling_result[hpe] = event_profiling_result_t(err, globalStart,globalEnd);
      }
-
   <% end %>
+
+  <%#
+                             ___        _   _
+   |\/|  _  ._ _   _  ._      | ._ _. _|_ _|_ o  _
+   |  | (/_ | | | (_) | \/    | | (_|  |   |  | (_
+                        /
+  %>
+  <% if dbt_event.start? and
+        dbt_event.name_striped.include?("Memory") and
+        dbt_event.fields_name.include?("size") %>
+     <% if !dbt_event.fields_name.include?('hSignalEvent') %>
+    //Name is set by the profiling, but some function transfert memory but cannot be profiled
+    //ie, prefetch, maxing memory resident...
+    const std::string name{"<%= dbt_event.name_striped %>"};
+     <% end %>
+    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(), size);
+  <% end %>
+
 };
 <% end %>
 
@@ -570,7 +586,7 @@ Case B:
 
 %>
 
-void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
+void init_zeinterval_callbacks(struct zeinterval_dispatch *ze_dispatch) {
 <% $dbt_events.each do | dbt_event| %>
      zeinterval_register_callback(ze_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &zeinterval_<%= dbt_event.name %>_callback);
 <% end %>
@@ -578,8 +594,8 @@ void init_zeinterval_callbacks(struct zeinterval_dispatch   *ze_dispatch) {
 
 void finalize_zeinterval_callbacks(zeinterval_message_iterator *interval_dispatch_iter) {
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
-     for (auto const &[function_name, ts] :  state->host_start) {
-            const auto [hostname,process_id, thread_id, f ]  = function_name;
+     for (auto const &[function_name, ts] : state->host_start) {
+            const auto [hostname,process_id, thread_id, f ] = function_name;
             std::cerr << "THAPI::Warning: " << hostname
                       << " PID " << process_id
                       << " TID " << thread_id
