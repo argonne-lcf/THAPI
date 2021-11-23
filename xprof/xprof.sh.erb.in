@@ -194,7 +194,7 @@ trace_epilogue() {
 
 
 summary() {
-    if [ -n "THAPI_LTTNG_O" ]; then
+    if [ -n "$THAPI_LTTNG_O" ]; then
         lttng_last_session=$THAPI_LTTNG_O
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
