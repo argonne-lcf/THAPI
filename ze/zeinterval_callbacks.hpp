@@ -53,7 +53,8 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hpt_t, std::vector<std::byte>> last_command;
 };
 
-template <class K>
+template <class K,
+          typename = std::enable_if_t<std::is_trivially_copyable_v<K> || std::is_same_v<K, std::string>>>
 static inline void save_start(zeinterval_callbacks_state* state, hpt_t hpt, K v){
     std::vector<std::byte> b((std::byte*)&v,(std::byte*)&v + sizeof(v));
     state->last_command[hpt] = b;
@@ -66,7 +67,8 @@ void save_start(zeinterval_callbacks_state* state, hpt_t hpt, std::string s){
     state->last_command[hpt] = v;
 }
 
-template <class K>
+template <class K,
+         typename = std::enable_if_t<std::is_trivially_copyable_v<K> || std::is_same_v<K, std::string>>>
 static inline K retrieve_start(zeinterval_callbacks_state* state, hpt_t hpt){
     return *(K*)(state->last_command[hpt].data());
 }
@@ -77,5 +79,3 @@ std::string retrieve_start(zeinterval_callbacks_state* state, hpt_t hpt){
     auto c = (char*) v.data();
     return std::string(c);
 }
-
-
