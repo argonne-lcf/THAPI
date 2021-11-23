@@ -189,44 +189,41 @@ void zeinterval_downstream_message_queue_push(struct zeinterval_message_iterator
 %>
 
 void remove_memory(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
-
-    auto &rs = state->rangeset_memory_shared[hp];
-    auto its = rs.find(ptr);
-    if (its != rs.end()) {
-         rs.erase(its);
-         return;
-    }
-    auto &rd = state->rangeset_memory_device[hp];
-    auto itd = rd.find(ptr);
-    if (itd != rd.end()) {
-         rd.erase(itd);
-         return;
-    }
-
-    auto &rh = state->rangeset_memory_host[hp];
-    auto ith = rh.find(ptr);
-    if (ith != rh.end()) {
-         rh.erase(ith);
-         return;
-    }
-
-    return;
+     auto &rs = state->rangeset_memory_shared[hp];
+     auto its = rs.find(ptr);
+     if (its != rs.end()) {
+          rs.erase(its);
+          return;
+     }
+     auto &rd = state->rangeset_memory_device[hp];
+     auto itd = rd.find(ptr);
+     if (itd != rd.end()) {
+          rd.erase(itd);
+          return;
+     }
+     auto &rh = state->rangeset_memory_host[hp];
+     auto ith = rh.find(ptr);
+     if (ith != rh.end()) {
+          rh.erase(ith);
+          return;
+     }
+     return;
 }
 
 const char* memory_location(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
-    const auto &rs = state->rangeset_memory_shared[hp];
-    if (contains(rs, ptr))
-        return "S";
+     const auto &rs = state->rangeset_memory_shared[hp];
+     if (contains(rs, ptr))
+         return "S";
 
-    const auto &rd = state->rangeset_memory_device[hp];
-    if (contains(rd, ptr))
-        return "D";
+     const auto &rd = state->rangeset_memory_device[hp];
+     if (contains(rd, ptr))
+         return "D";
 
-    const auto &rh = state->rangeset_memory_host[hp];
-    if (contains(rh, ptr))
-        return "H";
+     const auto &rh = state->rangeset_memory_host[hp];
+     if (contains(rh, ptr))
+         return "H";
 
-    return "M";
+     return "M";
 }
 
 <%#
@@ -250,11 +247,20 @@ static void zeinterval_<%= dbt_event.name %>_callback(
         dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
         dbt_event.name_unsanitized.start_with?('lttng_ust_zel:') %>
 
-    const hostname_t   hostname   = borrow_hostname(bt_evt);
-    const process_id_t process_id = borrow_process_id(bt_evt);
-    const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
-    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-  <% end %>
+     const hostname_t   hostname   = borrow_hostname(bt_evt);
+     const process_id_t process_id = borrow_process_id(bt_evt);
+     const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+     auto* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+  <% elsif ["lttng_ust_ze_properties:device",
+            "lttng_ust_ze_properties:subdevice",
+            "lttng_ust_ze_properties:device_timer",
+            "lttng_ust_ze_profiling:event_profiling",
+            "lttng_ust_ze_profiling:event_profiling_results"].include?(dbt_event.name_unsanitized) %>
+
+     const hostname_t hostname     = borrow_hostname(bt_evt);
+     const process_id_t process_id = borrow_process_id(bt_evt);
+     auto* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+ <% end %>
 
   <%#                   ___
        |_|  _   _ _|_    | ._ _.  _ o ._   _
@@ -266,28 +272,28 @@ static void zeinterval_<%= dbt_event.name %>_callback(
         dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
         dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
         dbt_event.name_unsanitized.start_with?('lttng_ust_zel:') %>
-    int64_t ns_from_origin;
-    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+     int64_t ns_from_origin;
+     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
     <% if dbt_event.start? %>
-    state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
+     state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
     <% elsif dbt_event.stop? %>
-    auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
-    const uint64_t start_g = it_start->second;
-    state->host_start.erase(it_start);
+     auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
+     const uint64_t start_g = it_start->second;
+     state->host_start.erase(it_start);
       <% if dbt_event.fields_name.include?('zeResult') %>
-       <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
-       <% if dbt_event.name_striped.include?('Synchronize') or dbt_event.name_striped.include?('Query') %>
-    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
-                                    start_g, ns_from_origin-start_g, zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY);
-       <% else %>
-    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
-                                    start_g, ns_from_origin-start_g, zeResult);
-       <% end %>
-     <% else %>
-    create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
-                                    start_g, ns_from_origin-start_g, 0);
-     <% end %>
-   <% end %>
+        <%# In level0 1.0-rev-3  only those use `ZE_RESULT_NOT_READY` %>
+        <% if dbt_event.name_striped.include?('Synchronize') or dbt_event.name_striped.include?('Query') %>
+     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+                                     start_g, ns_from_origin-start_g, zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY);
+        <% else %>
+     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+                                     start_g, ns_from_origin-start_g, zeResult);
+        <% end %>
+      <% else %>
+     create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+                                     start_g, ns_from_origin-start_g, 0);
+      <% end %>
+    <% end %>
   <% end %>
 
   <%#
@@ -296,50 +302,50 @@ static void zeinterval_<%= dbt_event.name %>_callback(
                             /
   %>
   <%# Global variable %>
-  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer" %> 
+  <% if dbt_event.name_striped == "zeModuleGetGlobalPointer" %>
     <% if dbt_event.start? %>
-    save_start(state, hpt_t(hostname, process_id, thread_id), hModule);
+     save_start(state, hpt_t(hostname, process_id, thread_id), hModule);
     <% else dbt_event.stop? %>
-    if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto hModule = retrieve_start<ze_module_handle_t>(state, hpt_t(hostname, process_id,thread_id));
-        state->module_to_module_globals[hp_module_t(hostname, process_id, hModule)].insert((uintptr_t)pptr_val);
-        state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
-    }
+     if ( zeResult == ZE_RESULT_SUCCESS ) {
+          const auto hModule = retrieve_start<ze_module_handle_t>(state, hpt_t(hostname, process_id,thread_id));
+          state->module_to_module_globals[hp_module_t(hostname, process_id, hModule)].insert((uintptr_t)pptr_val);
+          state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
+     }
     <% end %>
   <% elsif dbt_event.name_striped == "zeModulelDestroy" and dbt_event.start? %>
-    auto& s = state->module_to_module_globals;
-    auto it = s.find(hp_module_t(hostname, process_id, hModule));
-    if (it != s.end()) {
-        state->rangeset_memory_shared[hp_t(hostname, process_id)].erase(it->second.begin());
-        s.erase(it);
-    }
+     auto& s = state->module_to_module_globals;
+     auto it = s.find(hp_module_t(hostname, process_id, hModule));
+     if (it != s.end()) {
+          state->rangeset_memory_shared[hp_t(hostname, process_id)].erase(it->second.begin());
+          s.erase(it);
+     }
   <% end %>
 
-  <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and 
+  <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and
         dbt_event.start? %>
-    save_start(state, hpt_t(hostname, process_id, thread_id), size);
+          save_start(state, hpt_t(hostname, process_id, thread_id), size);
   <% elsif dbt_event.name_striped == "zeMemAllocHost" and dbt_event.stop? %>
-    if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
-        state->rangeset_memory_host[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
-    }
+     if ( zeResult == ZE_RESULT_SUCCESS ) {
+          const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
+          state->rangeset_memory_host[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+     }
   <% elsif dbt_event.name_striped == "zeMemAllocDevice" and dbt_event.stop? %>
-    if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
-        state->rangeset_memory_device[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
-    }
+     if ( zeResult == ZE_RESULT_SUCCESS ) {
+          const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
+          state->rangeset_memory_device[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+     }
   <% elsif dbt_event.name_striped == "zeMemAllocShared" and dbt_event.stop? %>
-    if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
-        state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
-    }
+     if ( zeResult == ZE_RESULT_SUCCESS ) {
+          const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
+          state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+     }
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.start? %>
-    save_start(state, hpt_t(hostname, process_id, thread_id), ptr);
+     save_start(state, hpt_t(hostname, process_id, thread_id), ptr);
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.stop? %>
-    if ( zeResult == ZE_RESULT_SUCCESS ) {
-        const auto ptr = retrieve_start<uintptr_t>(state, hpt_t(hostname, process_id, thread_id));
-        remove_memory(state, hp_t(hostname, process_id), ptr);
-    }
+     if ( zeResult == ZE_RESULT_SUCCESS ) {
+          const auto ptr = retrieve_start<uintptr_t>(state, hpt_t(hostname, process_id, thread_id));
+          remove_memory(state, hp_t(hostname, process_id), ptr);
+     }
   <% end %>
 
   <%#  ___                                    __         _
@@ -348,16 +354,10 @@ static void zeinterval_<%= dbt_event.name %>_callback(
                                      |
   %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device_timer" %>
-    const hostname_t  hostname{borrow_hostname(bt_evt)};
-    const process_id_t process_id = borrow_process_id(bt_evt);
-    zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-
-    int64_t ns_from_origin;
-    bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-
-    hp_device_t hp_device{hostname, process_id, (thapi_device_id) hDevice};
-
-    state->device_timestamps_pair_ref[hp_device] = clock_lttng_device_t(ns_from_origin, deviceTimestamp);
+     const hp_device_t  hp_device{hostname, process_id, (thapi_device_id) hDevice};
+     int64_t ns_from_origin;
+     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+     state->device_timestamps_pair_ref[hp_device] = clock_lttng_device_t(ns_from_origin, deviceTimestamp);
   <% end %>
 
   <%#
@@ -411,23 +411,15 @@ Case B:
   <%# Save devices informations.
       Map subdevices to their parents %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
-     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-     const hostname_t hostname = borrow_hostname(bt_evt);
-     const process_id_t process_id = borrow_process_id(bt_evt);
      const hpd_t hpd (hostname, process_id, (thapi_device_id)hDevice);
-
      state->device_to_properties[hpd] = *pDeviceProperties_val;
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_properties:subdevice" %>
-     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-     const hostname_t hostname = borrow_hostname(bt_evt);
-     const process_id_t process_id = borrow_process_id(bt_evt);
      const hpd_t hpd (hostname, process_id, (thapi_device_id)hSubDevice);
-
      state->device_to_properties[hpd] = *pDeviceProperties_val;
      state->subdevice_parent[hpd] = (thapi_device_id)hDevice;
   <% end %>
 
-  <%# Map command list to it device %>
+  <%# Map command list to device %>
   <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include?(dbt_event.name_striped) %>
     <% if dbt_event.start? %>
      save_start(state, hpt_t(hostname,process_id,thread_id), hDevice);
@@ -473,16 +465,18 @@ Case B:
                       << pLaunchFuncArgs_val->groupCountY << ","
                       << pLaunchFuncArgs_val->groupCountZ << "}";
       <% end %>
-     metadata << ", ";
-     metadata << state->kernel_to_groupsize_str[hpk];
-    <% elsif dbt_event.name_striped == "zeCommandListAppendMemoryCopy" %>
-     const hp_t hp(hostname, process_id);
-     std::stringstream name_;
-     name_ << "zeMemoryCopy";
-     name_ << "(";
-     name_ << memory_location(state, hp, (uintptr_t) srcptr);
-     name_ << memory_location(state, hp, (uintptr_t) dstptr);
-     name_ << ")";
+     metadata << ", "
+              << state->kernel_to_groupsize_str[hpk];
+    <% elsif dbt_event.name_unsanitized.include?("Memory") and
+             dbt_event.fields_name.any?{ |n| n.include?('ptr') } %>
+      const hp_t hp(hostname, process_id);
+      std::stringstream name_;
+      name_ << "<%= dbt_event.name_striped.sub("CommandListAppend",'') %>"
+            << "("
+      <% dbt_event.fields_name.filter { |n| n.include?('ptr') }.each do |n| %>
+            << memory_location(state, hp, (uintptr_t) <%= n %>)
+      <% end %>
+            << ")";
      std::string name = name_.str();
     <% else %>
      const std::string name{"<%= dbt_event.name_striped %>"};
@@ -498,9 +492,6 @@ Case B:
                            _|
   %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
-     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-     const hostname_t hostname = borrow_hostname(bt_evt);
-     const process_id_t process_id = borrow_process_id(bt_evt);
      const thread_id_t thread_id = borrow_thread_id(bt_evt);
      const hpe_t hpe(hostname, process_id, hEvent);
      const hpt_t hpt(hostname, process_id, thread_id);
@@ -538,9 +529,6 @@ Case B:
      }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
-     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-     const hostname_t hostname = borrow_hostname(bt_evt);
-     const process_id_t process_id = borrow_process_id(bt_evt);
      const hpe_t hpe(hostname, process_id, hEvent);
      const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
 
@@ -568,12 +556,12 @@ Case B:
   <% if dbt_event.start? and
         dbt_event.name_striped.include?("Memory") and
         dbt_event.fields_name.include?("size") %>
-     <% if !dbt_event.fields_name.include?('hSignalEvent') %>
-    //Name is set by the profiling, but some function transfert memory but cannot be profiled
-    //ie, prefetch, maxing memory resident...
-    const std::string name{"<%= dbt_event.name_striped %>"};
-     <% end %>
-    create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(), size);
+    <% if !dbt_event.fields_name.include?('hSignalEvent') %>
+     //Name is set by the profiling, but some function transfert memory but cannot be profiled
+     //ie, prefetch, maxing memory resident...
+     const std::string name{"<%= dbt_event.name_striped %>"};
+    <% end %>
+     create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(), size);
   <% end %>
 
 };
@@ -595,10 +583,10 @@ void init_zeinterval_callbacks(struct zeinterval_dispatch *ze_dispatch) {
 void finalize_zeinterval_callbacks(zeinterval_message_iterator *interval_dispatch_iter) {
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
      for (auto const &[function_name, ts] : state->host_start) {
-            const auto [hostname,process_id, thread_id, f ] = function_name;
-            std::cerr << "THAPI::Warning: " << hostname
-                      << " PID " << process_id
-                      << " TID " << thread_id
-                      << " " << f << " was called but never returned" << std::endl;
+          const auto [hostname,process_id, thread_id, f ] = function_name;
+          std::cerr << "THAPI::Warning: " << hostname
+                    << " PID " << process_id
+                    << " TID " << thread_id
+                    << " " << f << " was called but never returned" << std::endl;
      }
 }
