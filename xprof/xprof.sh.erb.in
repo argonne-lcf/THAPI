@@ -53,6 +53,7 @@ display_help() {
     echo "  --mangle                 Use mangled name"
     echo "  --metadata               Display metadata"
     echo "  --max-name-size <size>   Maximun size allowed for kernels names (default -1)"
+    echo "  --live                   Don't store the trace and process on the fly"
     echo "  -v, --version            Print the version string"
     echo "  -r, --replay    [path]   <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                           If no arguments are provided, will use the latest trace available"
