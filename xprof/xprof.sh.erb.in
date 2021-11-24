@@ -240,9 +240,13 @@ trace_and_summary() {
     $bindir/thapi_metadata
 
     if [ -n "$live" ]; then
-        bt2_all --component=source.ctf.lttng-live \
-                --params="inputs=[\"net://localhost/host/$(hostname)/iprof\"],
-                          session-not-found-action=end" &
+        if [ -n "$trace" ]; then
+            bt2_all --live net://localhost/host/$(hostname)/iprof &
+        else
+            bt2_all --component=source.ctf.lttng-live \
+                    --params="inputs=[\"net://localhost/host/$(hostname)/iprof\"],
+                              session-not-found-action=end" &
+        fi
         pid=$!
     fi
 
