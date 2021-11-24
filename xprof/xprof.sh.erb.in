@@ -100,6 +100,58 @@ whichlib64_head() {
     done
 }
 
+bt2_all() {
+    if [ -n "$trace" ]; then
+        # Todo filter direcly in the babeltrace
+<% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
+        $bindir/babeltrace_thapi -r -c "$@"
+<% elsif languages.include?("opencl") %>
+        $bindir/babeltrace_opencl -r -c "$@"
+<% elsif languages.include?("ze") %>
+        $bindir/babeltrace_ze -r -c "$@"
+<% elsif languages.include?("cuda") %>
+        $bindir/babeltrace_cuda -r -c  "$@"
+<% end %>
+    fi
+
+    if [ -n "$timeline" ]; then
+
+       babeltrace2 --plugin-path=$libdir \
+                   "$@" \
+<% if languages.include?("opencl") %>
+                   --component=filter.clinterval.interval \
+<% end %>
+<% if languages.include?("ze") %>
+                   --component=filter.zeinterval.interval \
+<% end %>
+<% if languages.include?("cuda") %>
+                   --component=filter.cudainterval.interval \
+<% end %>
+                   --component=sink.xprof.timeline
+    fi
+
+    if [ -z "$timeline" ] && [ -z "$trace" ]; then
+
+       babeltrace2 --plugin-path=$libdir \
+                   "$@" \
+<% if languages.include?("opencl") %>
+                   --component=filter.clinterval.interval \
+<% end %>
+<% if languages.include?("ze") %>
+                   --component=filter.zeinterval.interval \
+<% end %>
+<% if languages.include?("cuda") %>
+                   --component=filter.cudainterval.interval \
+<% end %>
+                   --component=sink.xprof.tally \
+                   --params="display=$display, \
+                            name=$mangling, \
+                            display_mode=${display_mode}, \
+                            display_metadata=${display_metadata}, \
+                            display_name_max_size=${display_name_max_size}, \
+                            display_kernel_verbose=${display_kernel_verbose}"
+    fi
+}
 trace_and_summary() {
     if [ "$#" -eq 0 ]; then
         display_help
@@ -107,16 +159,21 @@ trace_and_summary() {
 
     mkdir -p ${LTTNG_HOME:-$HOME}
     lttng-sessiond $quiet --daemonize
+    if [ -n "$live" ]; then
+        lttng-relayd --daemonize
+        lttng $quiet create iprof --live
+   else
 <% if languages.include?("opencl") and  languages.include?("ze")%>
-    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
+        THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("opencl") %>
-    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
+        THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("ze") %>
-    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
+        THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("cuda") %>
-    THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
+        THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
 <% end %>
-    lttng $quiet create -o $THAPI_LTTNG_O
+        lttng $quiet create -o $THAPI_LTTNG_O
+    fi
 
     #Using blocking more to trace event record loss
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
@@ -181,6 +238,13 @@ trace_and_summary() {
     #read and dump `$LTTNG_UST_THAPI_METADATA` env
     $bindir/thapi_metadata
 
+    if [ -n "$live" ]; then
+        bt2_all --component=source.ctf.lttng-live \
+                --params="inputs=[\"net://localhost/host/$(hostname)/iprof\"],
+                          session-not-found-action=end" &
+        pid=$!
+    fi
+
     # Run the binary
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
     "$@"
@@ -189,7 +253,11 @@ trace_and_summary() {
 trace_epilogue() {
     lttng $quiet stop
     lttng $quiet destroy
-    summary
+    if [ -n "$live" ]; then
+        wait $pid
+    else
+        summary
+    fi
 }
 
 
@@ -222,57 +290,7 @@ summary() {
             exit 1
         fi
     done
-
-    if [ -n "$trace" ]; then
-        # Todo filter direcly in the babeltrace
-<% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
-        $bindir/babeltrace_thapi -r -c $lttng_last_session
-<% elsif languages.include?("opencl") %>
-        $bindir/babeltrace_opencl -r -c $lttng_last_session
-<% elsif languages.include?("ze") %>
-        $bindir/babeltrace_ze -r -c $lttng_last_session
-<% elsif languages.include?("cuda") %>
-        $bindir/babeltrace_cuda -r -c $lttng_last_session
-<% end %>
-    fi
-
-    if [ -n "$timeline" ]; then
-
-       babeltrace2 --plugin-path=$libdir \
-                   ${lttng_last_session} \
-<% if languages.include?("opencl") %>
-                   --component=filter.clinterval.interval \
-<% end %>
-<% if languages.include?("ze") %>
-                   --component=filter.zeinterval.interval \
-<% end %>
-<% if languages.include?("cuda") %>
-                   --component=filter.cudainterval.interval \
-<% end %>
-                   --component=sink.xprof.timeline
-    fi
-
-    if [ -z "$timeline" ] && [ -z "$trace" ]; then
-
-       babeltrace2 --plugin-path=$libdir \
-                ${lttng_last_session} \
-<% if languages.include?("opencl") %>
-                  --component=filter.clinterval.interval \
-<% end %>
-<% if languages.include?("ze") %>
-                  --component=filter.zeinterval.interval \
-<% end %>
-<% if languages.include?("cuda") %>
-                  --component=filter.cudainterval.interval \
-<% end %>
-                  --component=sink.xprof.tally \
-                  --params="display=$display,                               \
-                            name=$mangling,                                 \
-                            display_mode=${display_mode},                   \
-                            display_metadata=${display_metadata},           \
-                            display_name_max_size=${display_name_max_size}, \
-                            display_kernel_verbose=${display_kernel_verbose}"
-    fi
+    bt2_all "${lttng_last_session}"
 }
 
 #  _
@@ -306,6 +324,7 @@ while (( "$#" )); do
         --max-name-size)        shift; display_name_max_size=$1; shift ;;
         --mangle)               shift; mangling=mangle ;;
         --debug)                shift; debug=true ;;
+        --live)                 shift; live=true ;;
         --)                     shift; break ;;
         *)                      break  ;;
     esac
