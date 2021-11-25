@@ -101,8 +101,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto name_with_metadata = (dispatch->display_kernel_verbose && !metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
         TallyCoreTime a{dur, err};
-        dispatch->device2[hpt_device_function_name_t(
-            hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
+        dispatch->device2[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
 
       } else if (strcmp(class_name, "lttng:traffic") == 0) {
         auto dur_tuple0 = std::make_tuple(

@@ -473,7 +473,7 @@ Case B:
       std::stringstream name_;
       name_ << "<%= dbt_event.name_striped.sub("CommandListAppend",'') %>"
             << "("
-      <% dbt_event.fields_name.filter { |n| n.include?('ptr') }.each do |n| %>
+      <% dbt_event.fields_name.filter { |n| n.include?('ptr') }.reverse.each do |n| %>
             << memory_location(state, hp, (uintptr_t) <%= n %>)
       <% end %>
             << ")";

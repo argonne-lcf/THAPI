@@ -161,9 +161,8 @@ trace_and_summary() {
     mkdir -p ${LTTNG_HOME:-$HOME}
     lttng-sessiond $quiet --daemonize
     if [ -n "$live" ]; then
-        lttng-relayd --daemonize
         lttng $quiet create iprof --live
-   else
+    else
 <% if languages.include?("opencl") and  languages.include?("ze")%>
         THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("opencl") %>
@@ -177,8 +176,13 @@ trace_and_summary() {
     fi
 
     #Using blocking more to trace event record loss
-    lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
-
+    if [ -n "$live" ]; then
+        lttng $quiet enable-channel --userspace --blocking-timeout=inf \
+                                    --tracefile-size=524288 --tracefile-count=32 \
+                                    blocking-channel
+    else
+        lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
+    fi
 <% if languages.include?("opencl") %>
     opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,"
     opencl_disable_events+="lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*,"

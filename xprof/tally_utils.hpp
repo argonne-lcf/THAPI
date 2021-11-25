@@ -18,7 +18,7 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   std::string line_num;  
 
   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
-  const std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
+  const static std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
   std::smatch base_match;
   if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 3) {
     result = base_match[1].str();
