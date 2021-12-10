@@ -250,7 +250,7 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) 
   if (remove_cl) {
     struct _ze_obj_h *o_h = NULL;
 
-    FIND_AND_DEL_ZE_OBJ(ze_event->command_list, o_h);
+    FIND_AND_DEL_ZE_OBJ(&ze_event->command_list, o_h);
     if (o_h) {
       struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
       /* Should not be necessary, just being paranoid of user having race conditions in their code */
