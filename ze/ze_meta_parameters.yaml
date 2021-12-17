@@ -231,7 +231,7 @@ meta_parameters:
   zeKernelSchedulingHintExp:
     - [ InScalar, pHint ]
   zeDevicePciGetPropertiesExt:
-    - [ OutScalar, pProperties ]
+    - [ OutScalar, pPciProperties ]
   zeCommandListAppendImageCopyToMemoryExt:
     - [ InScalar, pSrcRegion ]
     - [ InArray, phWaitEvents, numWaitEvents ]
@@ -245,7 +245,7 @@ meta_parameters:
     - [ InArray, phModules, numModules ]
     - [ OutScalar, phLog ]
   zeMemFreeExt:
-    - [ InScalar, desc ]
+    - [ InScalar, pMemFreeDesc ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
