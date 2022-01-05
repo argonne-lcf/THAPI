@@ -380,7 +380,7 @@ EOF
       desc = ZEContextDesc::new()
       desc[:flags] = flags
       ph_context = MemoryPointer::new(:ze_context_handle_t)
-      if devices
+      unless devices
         result = ZE.zeContextCreate(@handle, desc, ph_context)
       else
         count = devices.length
