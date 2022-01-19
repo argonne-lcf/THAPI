@@ -354,7 +354,7 @@ EOF
           result = ZE.zeDriverGetExtensionProperties(@handle, pCount, pArr)
           ZE.error_check(result)
           sz = ZEDriverExtensionProperties.size
-          count.times.collect { |i| ZEDriverExtensionProperties::new(pArr.slice(sz * i, sz)) } 
+          count.times.collect { |i| ZEDriverExtensionProperties::new(pArr.slice(sz * i, sz)) }
         end
       end
     end
@@ -376,11 +376,18 @@ EOF
       end
     end
 
-    def context_create(flags: 0)
+    def context_create(flags: 0, devices: nil)
       desc = ZEContextDesc::new()
       desc[:flags] = flags
       ph_context = MemoryPointer::new(:ze_context_handle_t)
-      result = ZE.zeContextCreate(@handle, desc, ph_context)
+      unless devices
+        result = ZE.zeContextCreate(@handle, desc, ph_context)
+      else
+        count = devices.length
+        ph_devices = MemoryPointer::new(:ze_device_handle_t, count)
+        ph_devices.write_array_of_ze_device_handle_t(devices.collect(&:handle).collect(&:address))
+        result = ZE.zeContextCreateEx(@handle, desc, count, ph_devices, ph_context)
+      end
       ZE.error_check(result)
       Context::new(ph_context.read_ze_context_handle_t, self)
     end
@@ -936,6 +943,19 @@ EOF
       self
     end
 
+    def global_timestamps
+      hostTimestamp = MemoryPointer::new(:uint64)
+      deviceTimestamp = MemoryPointer::new(:uint64)
+      result = ZE.zeDeviceGetGlobalTimestamps(@handle, hostTimestamp, deviceTimestamp)
+      return [hostTimestamp.read_uint64, deviceTimestamp.read_uint64]
+    end
+
+    def global_timestamps_ns
+      hostTimestamp, deviceTimestamp = global_timestamps
+      deviceTimestamp &= (1 << properties[:kernelTimestampValidBits]) - 1 
+      return [hostTimestamp, deviceTimestamp * properties[:timerResolution]]
+    end
+
     private
     def _get_image_type(width, height, depth, arraylevels)
       if arraylevels > 0
@@ -1186,8 +1206,7 @@ EOF
         p_offsets.write_array_of_size_t(offsets)
         offsets = p_offsets
       end
-      result = ZE.zeCommandListAppendQueryKernelTimestamps(@handle, num, ph_events, dstptr, 
-offsets, signal_event, count, ph_wait_events)
+      result = ZE.zeCommandListAppendQueryKernelTimestamps(@handle, num, ph_events, dstptr, offsets, signal_event, count, ph_wait_events)
       ZE.error_check(result)
       self
     end

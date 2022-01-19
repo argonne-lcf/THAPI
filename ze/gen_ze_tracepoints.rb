@@ -4,8 +4,7 @@ require_relative 'gen_probe_base.rb'
 provider = :lttng_ust_ze
 
 puts <<EOF
-#include <ze_api.h>
-#include <ze_ddi.h>
+#include "ze.h.include"
 EOF
 
 $ze_commands.each { |c|

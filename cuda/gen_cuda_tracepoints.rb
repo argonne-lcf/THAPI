@@ -4,8 +4,7 @@ require_relative 'gen_probe_base.rb'
 provider = :lttng_ust_cuda
 
 puts <<EOF
-#define __CUDA_API_VERSION_INTERNAL 1
-#include <cuda.h>
+#include <cuda.h.include>
 EOF
 
 $cuda_commands.each { |c|

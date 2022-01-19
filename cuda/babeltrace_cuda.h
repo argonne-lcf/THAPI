@@ -18,7 +18,7 @@ extern "C" {
 struct cuda_dispatch;
 struct cuda_callbacks;
 
-extern void init_dispatchers(struct cuda_dispatch *cuda_dispatch);
+extern void init_cuda_dispatchers(struct cuda_dispatch *cuda_dispatch);
 
 typedef void (cuda_dispatcher_t)
     (struct cuda_dispatch   *cuda_dispatch,

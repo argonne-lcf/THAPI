@@ -45,10 +45,21 @@ fi
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
+AC_CHECK_LIB([iberty], [cplus_demangle])
+AC_CHECK_HEADERS([demangle.h], [using_demangle=yes], [using_demangle=no])
+AS_IF([test "x$using_demangle" != xyes],
+  [AC_CHECK_HEADERS([libiberty/demangle.h], [], [AC_MSG_WARN([Couldn't find demangle.h, demangling will be deactivated...])])])
+
+AC_ARG_ENABLE([strict], AS_HELP_STRING([--enable-strict], [Enable -Werror]), [], [enable_strict=yes])
+AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
+
+AX_RUBY_EXTENSION([cast-to-yaml], [yes])
+AX_RUBY_EXTENSION([nokogiri], [yes])
+AX_RUBY_EXTENSION([babeltrace2], [yes])
 
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stddef.h stdint.h stdlib.h string.h unistd.h])
@@ -77,7 +88,7 @@ AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strt
 
 AC_CONFIG_FILES([Makefile
                  utils/Makefile
-                 utils/xprof.sh.erb
+                 xprof/xprof.sh.erb
                  opencl/Makefile
                  ze/Makefile
                  xprof/Makefile
@@ -92,4 +103,6 @@ AC_CONFIG_FILES([ze/test_wrapper.sh], [chmod +x ze/test_wrapper.sh])
 AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
+AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
+AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_OUTPUT

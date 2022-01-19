@@ -2,6 +2,9 @@
 exec_prefix=@prefix@
 libdir=@libdir@
 pkglibdir=$libdir/@PACKAGE@
+prefix=@prefix@
+datarootdir=@datarootdir@
+datadir=@datadir@
 
 # Find all location of a `.so`
 whichlib() {
@@ -17,15 +20,54 @@ whichlib() {
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
+whichlib64_head() {
+  # This function return only the first lib found
+  # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
+  for lib in $(whichlib $1)
+  do
+    if objdump -a $lib | grep 64 > /dev/null; then
+      echo $lib
+      break
+    fi
+  done
+}
+
+display_help() {
+    echo "Usage:"
+    echo " $(basename $0) [options] [--] <application> <application-arguments>"
+    echo "  --help                        Show this screen"
+    echo "  --version                     Print the version string"
+    echo "  -b, --build                   Dump module build infos"
+    echo "  -p, --profiling               Enable profiling"
+    echo "  -v, --visualize               Visualize trace on thefly"
+    echo "  --properties                  Dump drivers and devices properties"
+    echo "  --memory                      Dump memory properties"
+    exit 1
+}
+
+display_version() {
+    cat $datadir/version
+    exit 1
+}
+
 while true; do
   case "$1" in
+    --help ) display_help; exit;;
+    --version ) display_version; exit;;
+    -b | --build ) shift; build=1;;
     -p | --profiling ) shift; profiling=1; export LTTNG_UST_ZE_PROFILE=1;;
     -v | --visualize ) shift; lttng_view=1;;
     --properties ) shift; properties=1;;
+    --memory ) shift; memory=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
+
+if [ "$#" -eq 0 ]; then
+    display_help
+fi
+
 lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]
 then
@@ -43,17 +85,33 @@ if [ ! -z "$profiling" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
 fi
+ze_disable_events_memory="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
 if [ ! -z "$properties" ]
 then
-  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:*
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_events_memory}
+fi
+if [ ! -z "$memory" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace ${ze_disable_events_memory}
+fi
+if [ ! -z "$build" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:*
 fi
 if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
 then
-  export LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib libze_loader.so | head -n 1)
+  LTTNG_UST_ZE_LIBZE_LOADER=$(whichlib64_head libze_loader.so)
+  if [ -n "$LTTNG_UST_ZE_LIBZE_LOADER" ]
+  then
+    export LTTNG_UST_ZE_LIBZE_LOADER="$LTTNG_UST_ZE_LIBZE_LOADER"
+    export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
+  fi
+else
+  export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
 fi
-export LTTNG_UST_ALLOW_BLOCKING=1
 export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
-export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
+export LTTNG_UST_ALLOW_BLOCKING=1
+export LTTNG_UST_ZE_VERBOSE=1
 lttng start
 
 ctrl_c() {
@@ -66,7 +124,7 @@ trap ctrl_c INT
 
 if [ ! -z "$lttng_view" ]
 then
-  lttng view &
+  lttng view --viewer="babeltrace_ze --context --live" &
   PID=$!
 fi
 "$@"

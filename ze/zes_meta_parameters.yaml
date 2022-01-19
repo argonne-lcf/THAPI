@@ -37,6 +37,10 @@ meta_parameters:
     - [ InArray, phDevices, count ]
     - [ OutScalar, pNumDeviceEvents ]
     - [ OutArray, pEvents, count ]
+  zesDriverEventListenEx:
+    - [ InArray, phDevices, count ]
+    - [ OutScalar, pNumDeviceEvents ]
+    - [ OutArray, pEvents, count ]
   zesDeviceEnumFabricPorts:
     - [ InOutScalar, pCount ]
     - [ OutArray, phPort, pCount ]
@@ -127,6 +131,8 @@ meta_parameters:
   zesDeviceEnumPowerDomains:
     - [ InOutScalar, pCount ]
     - [ OutArray, phPower, pCount ]
+  zesDeviceGetCardPowerDomain:
+    - [ OutScalar, phPower ]
   zesPowerGetProperties:
     - [ OutScalar, pProperties ]
   zesPowerGetEnergyCounter:

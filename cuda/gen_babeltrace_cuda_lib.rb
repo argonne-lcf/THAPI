@@ -71,6 +71,8 @@ EOF
             "s << \"#{p.name}: \#{CUDA::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil)}\""
           elsif $all_bitfield_names.include?(p.type.name)
             "s << \"#{p.name}: [ \#{CUDA::#{to_class_name(p.type.name)}.from_native(defi[\"#{p.name}\"], nil).join(\", \")} ]\""
+          elsif $all_struct_names.include?(p.type.name)
+            "s << \"#{p.name}: \#{CUDA::#{to_class_name(p.type.name)}.new(FFI::MemoryPointer.from_string(defi[\"#{p.name}\"]))}\""
           else
             "s << \"#{p.name}: \#{defi[\"#{p.name}\"]}\""
           end
@@ -99,13 +101,18 @@ EOF
 
 puts <<EOF
 require_relative 'cuda_library.rb'
-
-$event_lambdas = {}
 EOF
 
 provider = :lttng_ust_cuda
 
 $cuda_commands.each { |c|
+  gen_event_lambda.call(provider, c, :start)
+  gen_event_lambda.call(provider, c, :stop)
+}
+
+provider = :lttng_ust_cuda_exports
+
+$cuda_exports_commands.each { |c|
   gen_event_lambda.call(provider, c, :start)
   gen_event_lambda.call(provider, c, :stop)
 }
@@ -155,6 +162,8 @@ EOF
         else
           "s << \"#{name}: \#{defi[\"#{name}\"].inspect}\""
         end
+      when :ctf_string
+        "s << \"#{field.name}: \#{defi[\"#{field.name}\"].inspect}\""
       else
         raise "Unsupported LTTng macro #{field.macro}!"
       end

@@ -180,7 +180,9 @@ def create_bt_stream_class(bt_trace_class, bt_clock_class, stream_class)
 end
 
 def find_file_in_envfolder(str, target)
-    Find.find(*str.split(':')).find { |f| File.file?(f) && f.end_with?(target) }
+    r = Find.find(*str.split(':')).find { |f| File.file?(f) && File.basename(f) == target }
+    raise "Cannot find #{target} in #{str}" if r.nil?
+    r
 end
 
 class Dust
@@ -221,19 +223,28 @@ class Dust
 
   def initialize_method(self_component, _configuration, params, _data)
     trace = params.get_entry_value('trace') ? params.get_entry_value('trace').value : @trace
+    
     schemas = params.get_entry_value('schemas') ? params.get_entry_value('schemas').value : @schemas
 
-    @in_data = YAML.load_file(find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace))
+    path = find_file_in_envfolder(ENV['DUST_TRACE_DIR'],trace)
+    @in_data = YAML.load_file(path)
+    if params.get_entry_value('trace_key')
+        @in_data = @in_data[params.get_entry_value('trace_key').value]
+    end
+
+    unless @in_data  
+        warn "The trace read #{path} is empty"  
+    end 
+
     @schemas = schemas.map do |path|
       schema = YAML.load_file(find_file_in_envfolder(ENV['DUST_MODELS_DIR'],path))
       [schema[:name], schema]
     end.to_h
-
     # Should read command line option via babeltrace API
     schema_in_data = @in_data
     @schemas['default_schema'] = schema_in_data if schema_in_data[:event_classes]
     @schemas.merge!(@in_data[:schemas]) if @in_data[:schemas]
-
+    
     schema_in_data[:stream_classes] = [{ name: 'default_stream_class' }] unless schema_in_data[:stream_classes]
 
     self_component.add_output_port('op0')
@@ -255,7 +266,6 @@ class Dust
       schemas.collect do |schema_name|
         schema = @schemas[schema_name]
         raise "schema: #{schema_name} was not found" unless schema
-
         schema[:event_classes].collect do |event_class|
           name, bt_event_class =
             create_bt_event_class(bt_trace_class, bt_stream_class, event_class)

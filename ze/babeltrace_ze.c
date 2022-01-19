@@ -80,7 +80,7 @@ bt_component_class_initialize_method_status ze_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    init_dispatchers(ze_dispatch);
+    init_ze_dispatchers(ze_dispatch);
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
@@ -190,7 +190,7 @@ bt_component_class_sink_consume_method_status ze_dispatch_consume(
             if (!callbacks) {
                 const size_t class_name_sz = strlen(class_name);
                 callbacks = (struct ze_callbacks *)calloc(1, sizeof(struct ze_callbacks) + class_name_sz + 1);
-                callbacks->name = (const char *)callbacks + class_name_sz;
+                callbacks->name = (const char *)callbacks + sizeof(struct ze_callbacks);
                 strncpy((char *)(callbacks->name), class_name, class_name_sz + 1);
                 HASH_ADD_KEYPTR(hh, ze_dispatch->callbacks, class_name, class_name_sz, callbacks);
                 struct ze_event_callbacks *event_callbacks = NULL;

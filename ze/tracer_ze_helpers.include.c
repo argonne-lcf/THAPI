@@ -7,13 +7,27 @@ enum _ze_obj_type {
 
 struct _ze_device_obj_data {
   ze_driver_handle_t driver;
+  ze_device_handle_t parent;
   ze_device_properties_t properties;
+};
+
+static int _do_profile = 0;
+
+struct _ze_event_h {
+  ze_event_handle_t event;
+  UT_hash_handle hh;
+  ze_command_list_handle_t command_list;
+  ze_event_pool_handle_t event_pool;
+  ze_context_handle_t context;
+  /* to remember events in command lists */
+  struct _ze_event_h *next, *prev;
 };
 
 struct _ze_command_list_obj_data {
   ze_device_handle_t device;
   ze_context_handle_t context;
   ze_driver_handle_t driver;
+  struct _ze_event_h *events;
 };
 
 struct _ze_obj_h {
@@ -58,7 +72,8 @@ static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
 
 static inline void _register_ze_device(
  ze_device_handle_t device,
- ze_driver_handle_t driver) {
+ ze_driver_handle_t driver,
+ ze_device_handle_t parent) {
   struct _ze_obj_h *o_h = NULL;
   struct _ze_device_obj_data *d_data = NULL;
 
@@ -77,6 +92,7 @@ static inline void _register_ze_device(
   o_h->ptr = (void *)device;
   o_h->type = DEVICE;
   d_data->driver = driver;
+  d_data->parent = parent;
   o_h->obj_data = (void *)d_data;
 
   d_data->properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
@@ -124,14 +140,6 @@ static inline void _register_ze_command_list(
   ADD_ZE_OBJ(o_h);
 }
 
-struct _ze_event_h {
-  ze_event_handle_t event;
-  UT_hash_handle hh;
-  ze_command_list_handle_t command_list;
-  ze_event_pool_handle_t event_pool;
-  ze_context_handle_t context;
-};
-
 #define FIND_ZE_EVENT(key, val) { \
   pthread_mutex_lock(&_ze_events_mutex); \
   HASH_FIND_PTR(_ze_events, key, val); \
@@ -168,28 +176,35 @@ static inline void _register_ze_event(
     return;
 
   struct _ze_obj_h *o_h = NULL;
-  FIND_ZE_OBJ(&command_list, o_h);
-  if (o_h)
-    context = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
-
+  struct _ze_command_list_obj_data *cl_data = NULL;
+  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
+  if (o_h) {
+    cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+    context = cl_data->context;
+  }
   _ze_event = (struct _ze_event_h *)calloc(1, sizeof(struct _ze_event_h));
   if (!_ze_event)
-    return;
+    goto cleanup;
 
   _ze_event->event = event;
   _ze_event->command_list = command_list;
   _ze_event->event_pool = event_pool;
   _ze_event->context = context;
 
+  if (_do_profile && cl_data)
+    DL_APPEND(cl_data->events, _ze_event);
   ADD_ZE_EVENT(_ze_event);
+cleanup:
+  if (o_h)
+    ADD_ZE_OBJ(o_h);
 }
 
-ze_event_handle_t _get_profiling_event(
+static ze_event_handle_t _get_profiling_event(
  ze_command_list_handle_t command_list,
  ze_event_pool_handle_t *pool_ret) {
   struct _ze_obj_h *o_h = NULL;
 
-  FIND_ZE_OBJ(&command_list, o_h);
+  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
   if (!o_h)
     return NULL;
   ze_context_handle_t context =
@@ -200,22 +215,25 @@ ze_event_handle_t _get_profiling_event(
   ze_event_pool_handle_t event_pool = NULL;
   ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, 1};
   ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 1, &device, &event_pool);
+  ze_event_handle_t event = NULL;
   if (res != ZE_RESULT_SUCCESS)
-    return NULL;
-  ze_event_handle_t event;
+    goto cleanup;
   ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, 0, 0};
   res = ZE_EVENT_CREATE_PTR(event_pool, &e_desc, &event);
   if (res != ZE_RESULT_SUCCESS) {
     ZE_EVENT_POOL_DESTROY_PTR(event_pool);
-    return NULL;
+    event = NULL;
+    goto cleanup;
   }
   *pool_ret = event_pool;
+cleanup:
+  ADD_ZE_OBJ(o_h);
   return event;
 }
 
 static void _profile_event_results(ze_event_handle_t event);
 
-static inline void _unregister_ze_event(ze_event_handle_t event) {
+static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) {
   struct _ze_event_h *ze_event = NULL;
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
@@ -223,6 +241,24 @@ static inline void _unregister_ze_event(ze_event_handle_t event) {
     return;
 
   _profile_event_results(event);
+  if (ze_event->event_pool) {
+    if (ze_event->event)
+      ZE_EVENT_DESTROY_PTR(ze_event->event);
+    ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
+  }
+
+  if (remove_cl) {
+    struct _ze_obj_h *o_h = NULL;
+
+    FIND_AND_DEL_ZE_OBJ(&ze_event->command_list, o_h);
+    if (o_h) {
+      struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+      /* Should not be necessary, just being paranoid of user having race conditions in their code */
+      if (cl_data->events && ze_event->prev)
+        DL_DELETE(cl_data->events, ze_event);
+      ADD_ZE_OBJ(o_h);
+    }
+  }
   free(ze_event);
 }
 
@@ -243,7 +279,7 @@ static void _profile_event_results(ze_event_handle_t event) {
   }
 }
 
-void _event_cleanup() {
+static void _event_cleanup() {
   struct _ze_event_h *ze_event = NULL;
   struct _ze_event_h *tmp = NULL;
 
@@ -280,24 +316,89 @@ static void _context_cleanup(ze_context_handle_t context){
   pthread_mutex_unlock(&_ze_events_mutex);
 }
 
+static void _reset_ze_command_list(ze_command_list_handle_t command_list) {
+  struct _ze_obj_h *o_h = NULL;
+
+  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
+  if (!o_h)
+    return;
+  struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+  struct _ze_event_h *elt = NULL, *tmp = NULL;
+  DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
+    DL_DELETE(cl_data->events, elt);
+    _unregister_ze_event(elt->event, 0);
+  }
+  ADD_ZE_OBJ(o_h);
+}
+
 static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
   struct _ze_obj_h *o_h = NULL;
 
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
   if (!o_h)
     return;
-
+  if (_do_profile) {
+    struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+    struct _ze_event_h *elt = NULL, *tmp = NULL;
+    DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
+      DL_DELETE(cl_data->events, elt);
+      _unregister_ze_event(elt->event, 0);
+    }
+  }
   free(o_h);
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile unsigned int _initialized = 0;
-static int     _do_profile = 0;
+static int _paranoid_drift = 0;
+
+static inline int _do_state() {
+  return _do_profile ||
+         tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+         tracepoint_enabled(lttng_ust_ze_properties, memory_info_range);
+}
 
 static void _lib_cleanup() {
   if (_do_profile) {
     _event_cleanup();
+  }
+}
+
+static void _dump_driver_subdevice_properties(ze_driver_handle_t hDriver, ze_device_handle_t hDevice) {
+  if (!tracepoint_enabled(lttng_ust_ze_properties, subdevice))
+    return;
+
+  uint32_t subDeviceCount = 0;
+  if (ZE_DEVICE_GET_SUB_DEVICES_PTR(hDevice, &subDeviceCount, NULL ) != ZE_RESULT_SUCCESS || subDeviceCount == 0)
+    return;
+  ze_device_handle_t* phSubDevices = (ze_device_handle_t*) alloca(subDeviceCount * sizeof(ze_device_handle_t));
+
+  if (ZE_DEVICE_GET_SUB_DEVICES_PTR(hDevice, &subDeviceCount, phSubDevices) != ZE_RESULT_SUCCESS)
+    return;
+
+  for (uint32_t j = 0; j < subDeviceCount; j++) {
+    ze_device_properties_t props = {0};
+    props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
+    props.pNext = NULL;
+    if (ZE_DEVICE_GET_PROPERTIES_PTR(phSubDevices[j], &props) == ZE_RESULT_SUCCESS)
+      do_tracepoint(lttng_ust_ze_properties, subdevice, hDriver, hDevice, phSubDevices[j], &props);
+  }
+  return;
+}
+
+static void _dump_device_timer(ze_device_handle_t hDevice) {
+  uint64_t hostTimestamp, deviceTimestamp;
+  if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR(hDevice, &hostTimestamp, &deviceTimestamp) == ZE_RESULT_SUCCESS)
+    do_tracepoint(lttng_ust_ze_properties, device_timer, hDevice, hostTimestamp, deviceTimestamp);
+}
+
+static void _dump_command_list_device_timer(ze_command_list_handle_t hCommandList) {
+  struct _ze_obj_h *o_h = NULL;
+  FIND_ZE_OBJ(&hCommandList, o_h);
+  if (o_h) {
+    ze_device_handle_t hDevice = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
+    _dump_device_timer(hDevice);
   }
 }
 
@@ -306,14 +407,22 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
   if (ZE_DEVICE_GET_PTR(hDriver, &deviceCount, NULL) != ZE_RESULT_SUCCESS || deviceCount == 0)
     return;
   ze_device_handle_t* phDevices = (ze_device_handle_t*)alloca(deviceCount * sizeof(ze_device_handle_t));
+
   if (ZE_DEVICE_GET_PTR(hDriver, &deviceCount, phDevices) != ZE_RESULT_SUCCESS)
     return;
+
   for (uint32_t i = 0; i < deviceCount; i++) {
-    ze_device_properties_t props = {0};
-    props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-    props.pNext = NULL;
-    if (ZE_DEVICE_GET_PROPERTIES_PTR(phDevices[i], &props) == ZE_RESULT_SUCCESS)
-      do_tracepoint(lttng_ust_ze_properties, device, hDriver, phDevices[i], &props);
+    if (tracepoint_enabled(lttng_ust_ze_properties, device)) {
+      ze_device_properties_t props = {0};
+      props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
+      props.pNext = NULL;
+      if (ZE_DEVICE_GET_PROPERTIES_PTR(phDevices[i], &props) == ZE_RESULT_SUCCESS)
+        do_tracepoint(lttng_ust_ze_properties, device, hDriver, phDevices[i], &props);
+    }
+    if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
+        tracepoint_enabled(lttng_ust_ze_properties, device_timer))
+      _dump_device_timer(phDevices[i]);
+    _dump_driver_subdevice_properties(hDriver, phDevices[i]);
   }
 }
 
@@ -333,38 +442,97 @@ static void _dump_properties() {
         do_tracepoint(lttng_ust_ze_properties, driver, phDrivers[i], &props);
     }
   }
-  if (tracepoint_enabled(lttng_ust_ze_properties, device)) {
-    for (uint32_t i = 0; i < driverCount; i++) {
-      _dump_driver_device_properties(phDrivers[i]);
-    }
+  for (uint32_t i = 0; i < driverCount; i++)
+    _dump_driver_device_properties(phDrivers[i]);
+}
+
+static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
+  size_t       size;
+  char        *buildLog;
+  ze_result_t  res;
+
+  res = ZE_MODULE_BUILD_LOG_GET_STRING_PTR(hBuildLog, &size, NULL);
+  if (res != ZE_RESULT_SUCCESS)
+    return;
+  buildLog = (char *)malloc(size);
+  if (!buildLog)
+    return;
+  res = ZE_MODULE_BUILD_LOG_GET_STRING_PTR(hBuildLog, &size, buildLog);
+  if (res == ZE_RESULT_SUCCESS)
+    do_tracepoint(lttng_ust_ze_build, log, buildLog);
+  free(buildLog);
+}
+
+static inline void _dump_memory_info_ctx(ze_context_handle_t hContext, const void *ptr) {
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties)) {
+    ze_memory_allocation_properties_t memAllocProperties;
+    memAllocProperties.stype = ZE_STRUCTURE_TYPE_MEMORY_ALLOCATION_PROPERTIES;
+    memAllocProperties.pNext = NULL;
+    ze_device_handle_t hDevice = NULL;
+    if (ZE_MEM_GET_ALLOC_PROPERTIES_PTR(hContext, ptr, &memAllocProperties, &hDevice) == ZE_RESULT_SUCCESS)
+      do_tracepoint(lttng_ust_ze_properties, memory_info_properties, hContext, ptr, &memAllocProperties, hDevice);
+  }
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+    void *base = NULL;
+    size_t size = 0;
+    if (ZE_MEM_GET_ADDRESS_RANGE_PTR(hContext, ptr, &base, &size) == ZE_RESULT_SUCCESS)
+      do_tracepoint(lttng_ust_ze_properties, memory_info_range, hContext, ptr, base, size);
+  }
+}
+
+static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, const void *ptr) {
+  struct _ze_obj_h *o_h = NULL;
+  FIND_ZE_OBJ(&hCommandList, o_h);
+  if (o_h) {
+    ze_context_handle_t hContext = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
+    _dump_memory_info_ctx(hContext, ptr);
   }
 }
 
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
   if (s)
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   else
     handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  if (handle) {
+    void* ptr = dlsym(handle, "zeInit");
+    if (ptr == (void*)&zeInit) { //opening oneself
+      dlclose(handle);
+      handle = NULL;
+    }
+  }
+
   if( !handle ) {
     fprintf(stderr, "Failure: could not load ze library!\n");
     exit(1);
   }
 
-  find_ze_symbols(handle);
+  s = getenv("LTTNG_UST_ZE_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_ze_symbols(handle, verbose);
 
   //FIX for intel tracing layer that needs to register its callbacks first...
   ZE_INIT_PTR(0);
 
-  if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device))
+  if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device) || tracepoint_enabled(lttng_ust_ze_properties, subdevice))
     _dump_properties();
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
     _do_profile = 1;
-
+  s = getenv("LTTNG_UST_ZE_PARANOID_DRIFT");
+  if (s) {
+    if (_do_profile)
+      _paranoid_drift = 1;
+    else if (verbose)
+      fprintf(stderr, "Warning: LTTNG_UST_ZE_PARANOID_DRIFT not activated without LTTNG_UST_ZE_PROFILE\n");
+  }
   if (_do_profile)
     atexit(&_lib_cleanup);
 }

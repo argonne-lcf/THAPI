@@ -21,7 +21,7 @@ WINDOWS = /D3D|DX9/
 
 VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$/
 
-ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clEnqueueMigrateMemObjectEXT$/
+ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clGetKernelSuggestedLocalWorkSizeKHR$|^clEnqueueMigrateMemObjectEXT$|^clGetLayerInfo$|^clInitLayer$/
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 

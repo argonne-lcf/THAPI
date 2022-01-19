@@ -666,14 +666,14 @@ static void dump_kernel_info(cl_kernel kernel) {
   CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_PROGRAM, sizeof(program), &program, NULL);
   error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, 0, NULL, &attributes_sz);
   if (error == CL_SUCCESS && attributes_sz > 0) {
-     char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
-     if (new_attributes) {
-       error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, new_attributes, NULL);
-       if (error == CL_SUCCESS) {
-         attributes = new_attributes;
-         free_attributes = 1;
-       }
-     }
+    char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
+    if (new_attributes) {
+      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, new_attributes, NULL);
+      if (error == CL_SUCCESS) {
+        attributes = new_attributes;
+        free_attributes = 1;
+      }
+    }
   }
   do_tracepoint(lttng_ust_opencl_arguments, kernel_info, kernel, function_name, num_args, context, program, attributes);
   if (free_function_name)
@@ -744,7 +744,7 @@ static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
 
 static inline void dump_device_name(cl_device_id device) {
   size_t  name_sz = 0;
-  char   *name = "";
+  char   *name = NULL;
   if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_NAME, 0, NULL, &name_sz) != CL_SUCCESS)
     return;
   if (name_sz > 0) {
@@ -1178,12 +1178,21 @@ static volatile cl_uint _initialized = 0;
 static void _load_tracer(void) {
   char *s = NULL;
   void * handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
   if (s)
-      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   else
-      handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  if (handle) {
+    void* ptr = dlsym(handle, "clGetPlatformIDs");
+    if (ptr == (void*)&clGetPlatformIDs) { //opening oneself
+      dlclose(handle);
+      handle = NULL;
+    }
+  }
+
   if( !handle ) {
     printf("Failure: could not load OpenCL library!\n");
     exit(1);
@@ -1202,7 +1211,11 @@ static void _load_tracer(void) {
   if (s)
     dump_end = atoll(s);
 
-  find_opencl_symbols(handle);
+  s = getenv("LTTNG_UST_OPENCL_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_opencl_symbols(handle, verbose);
 }
 
 static inline void _init_tracer(void) {

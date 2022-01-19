@@ -12,6 +12,9 @@ meta_parameters:
   zeDriverGetExtensionProperties:
     - [ InOutScalar, pCount ]
     - [ OutArray, pExtensionProperties, pCount ]
+  zeDriverGetExtensionFunctionAddress:
+    - [ InString, name ]
+    - [ OutScalar, ppFunctionAddress ]
   zeDeviceGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phDevices, pCount ]
@@ -43,8 +46,15 @@ meta_parameters:
     - [ OutScalar, pP2PProperties ]
   zeDeviceCanAccessPeer:
     - [ OutScalar, value ]
+  zeDeviceGetGlobalTimestamps:
+    - [ OutScalar, hostTimestamp ]
+    - [ OutScalar, deviceTimestamp ]
   zeContextCreate:
     - [ InScalar, desc ]
+    - [ OutScalar, phContext ]
+  zeContextCreateEx:
+    - [ InScalar, desc ]
+    - [ InArray, phDevices, numDevices ]
     - [ OutScalar, phContext ]
   zeCommandQueueCreate:
     - [ InScalar, desc ]
@@ -210,6 +220,32 @@ meta_parameters:
   zeVirtualMemGetAccessAttribute:
     - [ OutScalar, access ]
     - [ OutScalar, outSize ]
+  zeEventQueryTimestampsExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pTimestamps, pCount ]
+  zeImageGetMemoryPropertiesExp:
+    - [ OutScalar, pMemoryProperties ]
+  zeImageViewCreateExp:
+    - [ InScalar, desc ]
+    - [ OutScalar, phImageView ]
+  zeKernelSchedulingHintExp:
+    - [ InScalar, pHint ]
+  zeDevicePciGetPropertiesExt:
+    - [ OutScalar, pPciProperties ]
+  zeCommandListAppendImageCopyToMemoryExt:
+    - [ InScalar, pSrcRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendImageCopyFromMemoryExt:
+    - [ InScalar, pDstRegion ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeImageGetAllocPropertiesExt:
+    - [ OutScalar, pImageAllocProperties ]
+  zeModuleInspectLinkageExt:
+    - [ InScalar, pInspectDesc ]
+    - [ InArray, phModules, numModules ]
+    - [ OutScalar, phLog ]
+  zeMemFreeExt:
+    - [ InScalar, pMemFreeDesc ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
@@ -228,13 +264,19 @@ meta_parameters:
     - [ OutScalar, pDdiTable ]
   zeGetEventProcAddrTable:
     - [ OutScalar, pDdiTable ]
+  zeGetEventExpProcAddrTable:
+    - [ OutScalar, pDdiTable ]
   zeGetImageProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetImageExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetModuleProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetModuleBuildLogProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetKernelProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetKernelExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetSamplerProcAddrTable:
     - [ OutScalar, pDdiTable ]

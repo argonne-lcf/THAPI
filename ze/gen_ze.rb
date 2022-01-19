@@ -3,14 +3,7 @@ require_relative 'ze_model'
 puts <<EOF
 #include <stdint.h>
 #include <stddef.h>
-#include <ze_api.h>
-#include <ze_ddi.h>
-#include <zet_api.h>
-#include <zet_ddi.h>
-#include <zes_api.h>
-#include <zes_ddi.h>
-#include <layers/zel_tracing_api.h>
-#include <layers/zel_tracing_ddi.h>
+#include "ze.h.include"
 #include <dlfcn.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -21,6 +14,7 @@ puts <<EOF
 #include <sys/mman.h>
 #include <ffi.h>
 #include "uthash.h"
+#include "utlist.h"
 
 #include "ze_tracepoints.h"
 #include "zet_tracepoints.h"
@@ -28,6 +22,7 @@ puts <<EOF
 #include "zel_tracepoints.h"
 #include "ze_profiling.h"
 #include "ze_properties.h"
+#include "ze_build.h"
 
 EOF
 all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands
@@ -45,14 +40,14 @@ EOF
 
 puts <<EOF
 
-static void find_ze_symbols(void * handle) {
+static void find_ze_symbols(void * handle, int verbose) {
 EOF
 
 (all_commands).each { |c|
   puts <<EOF
 
   #{ZE_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{ZE_POINTER_NAMES[c]})
+  if (!#{ZE_POINTER_NAMES[c]} && verbose)
     fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
 }

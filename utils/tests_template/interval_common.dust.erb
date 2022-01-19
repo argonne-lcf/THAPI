@@ -1,0 +1,21 @@
+:components:
+- :plugin: source.ruby.dust
+  :name: dust_in
+  :params:
+    schemas: [<%= be %>_babeltrace_model.yaml]
+    trace: interval_<%= namespace[/interval_(.*).dust/,1] %>.yaml
+    trace_key: in
+- :plugin: filter.<%= interval %>.interval
+  :name: interval
+- :plugin: source.ruby.dust
+  :name: dust_out
+  :params:
+    schemas: [interval_model.yaml]
+    trace: interval_<%= namespace[/interval_(.*).dust/,1] %>.yaml
+    trace_key: ref
+- :plugin: sink.ruby.comparator
+  :name: comp
+:connections:
+- dust_in:interval
+- interval:comp
+- dust_out:comp

@@ -51,7 +51,7 @@ ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uin
 ZE_FLOAT_SCALARS = %w(float double)
 ZE_SCALARS = ZE_INT_SCALARS + ZE_FLOAT_SCALARS
 
-all_types.each { |t| 
+all_types.each { |t|
   if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
     ZE_INT_SCALARS.push t.name
   end
@@ -683,16 +683,25 @@ ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands + $zel_commands
 }.to_h
 
 register_epilogue "zeDeviceGet", <<EOF
-  if (_do_profile) {
+  if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
       for (uint32_t i = 0; i < *pCount; i++)
-        _register_ze_device(phDevices[i], hDriver);
+        _register_ze_device(phDevices[i], hDriver, NULL);
+    }
+  }
+EOF
+
+register_epilogue "zeDeviceGetSubDevices", <<EOF
+  if (_do_state()) {
+    if (_retval == ZE_RESULT_SUCCESS && phSubdevices && pCount) {
+      for (uint32_t i = 0; i < *pCount; i++)
+        _register_ze_device(phSubdevices[i], NULL, hDevice);
     }
   }
 EOF
 
 register_epilogue "zeCommandListCreate", <<EOF
-  if (_do_profile) {
+  if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _register_ze_command_list(*phCommandList, hContext, hDevice);
     }
@@ -700,15 +709,20 @@ register_epilogue "zeCommandListCreate", <<EOF
 EOF
 
 register_epilogue "zeCommandListCreateImmediate", <<EOF
-  if (_do_profile) {
+  if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _register_ze_command_list(*phCommandList, hContext, hDevice);
     }
   }
 EOF
 
+register_epilogue "zeCommandListReset", <<EOF
+  if (_do_profile && hCommandList)
+    _reset_ze_command_list(hCommandList);
+EOF
+
 register_epilogue "zeCommandListDestroy", <<EOF
-  if (_do_profile) {
+  if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
       _unregister_ze_command_list(hCommandList);
     }
@@ -726,13 +740,13 @@ EOF
 
 register_prologue "zeEventDestroy", <<EOF
   if (_do_profile && hEvent) {
-    _unregister_ze_event(hEvent);
+    _unregister_ze_event(hEvent, 1);
   }
 EOF
 
 register_prologue "zeEventHostReset", <<EOF
   if (_do_profile && hEvent) {
-    _unregister_ze_event(hEvent);
+    _unregister_ze_event(hEvent, 1);
   }
 EOF
 
@@ -742,15 +756,56 @@ register_epilogue "zeContextDestroy", <<EOF
   }
 EOF
 
+# Dump memory info if required
+memory_info_dump = lambda { |ptr_name|
+  "_dump_memory_info(hCommandList, #{ptr_name})"
+}
+
+memory_info_prologue = lambda { |ptr_names|
+  s = <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+    #{ptr_names.collect { |ptr_name| memory_info_dump.call(ptr_name) }.join(";\n    ")};
+  }
+EOF
+}
+
+register_prologue "zeCommandListAppendMemoryRangesBarrier", <<EOF
+  if ((tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+       tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) &&
+      numRanges && pRangeSizes && pRanges && hCommandList)
+    for (uint32_t _i = 0; _i < numRanges; _i++)
+      _dump_memory_info(hCommandList, "pRanges[_i]");
+EOF
+
+register_prologue "zeCommandListAppendMemoryCopy", memory_info_prologue.call(["dstptr", "srcptr"])
+register_prologue "zeCommandListAppendMemoryFill", memory_info_prologue.call(["ptr"])
+register_prologue "zeCommandListAppendMemoryCopyRegion", memory_info_prologue.call(["dstptr", "srcptr"])
+register_prologue "zeCommandListAppendMemoryCopyFromContext", <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+      tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+    if (hCommandList)
+      _dump_memory_info(hCommandList, dstptr);
+    if (hContextSrc)
+      _dump_memory_info_ctx(hContextSrc, srcptr);
+  }
+EOF
+register_prologue "zeCommandListAppendImageCopyToMemory", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendImageCopyFromMemory", memory_info_prologue.call(["srcptr"])
+register_prologue "zeCommandListAppendMemoryPrefetch", memory_info_prologue.call(["ptr"])
+register_prologue "zeCommandListAppendMemAdvise", memory_info_prologue.call(["ptr"])
+register_prologue "zeCommandListAppendQueryKernelTimestamps", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendWriteGlobalTimestamp", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendImageCopyToMemoryExt", memory_info_prologue.call(["dstptr"])
+register_prologue "zeCommandListAppendImageCopyFromMemoryExt", memory_info_prologue.call(["srcptr"])
+
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
 # not very cleanly is used....
 profiling_prologue = lambda { |event_name|
   <<EOF
   ze_event_pool_handle_t _pool = NULL;
-  if (_do_profile && !#{event_name}) {
+  if (_do_profile && !#{event_name})
     #{event_name} = _get_profiling_event(hCommandList, &_pool);
-  }
 EOF
 }
 
@@ -768,6 +823,13 @@ profiling_epilogue = lambda { |event_name|
 EOF
 }
 
+paranoid_drift_prologue = <<EOF
+  if (_paranoid_drift &&
+      ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
+      tracepoint_enabled(lttng_ust_ze_properties, device_timer))
+    _dump_command_list_device_timer(hCommandList);
+EOF
+
 [ "zeCommandListAppendLaunchKernel",
   "zeCommandListAppendBarrier",
   "zeCommandListAppendLaunchCooperativeKernel",
@@ -776,18 +838,63 @@ EOF
   "zeCommandListAppendMemoryRangesBarrier",
   "zeCommandListAppendMemoryCopy",
   "zeCommandListAppendMemoryFill",
-  "zeCommandListAppendMemoryCopyFromContext",
   "zeCommandListAppendMemoryCopyRegion",
+  "zeCommandListAppendMemoryCopyFromContext",
   "zeCommandListAppendImageCopy",
   "zeCommandListAppendImageCopyRegion",
   "zeCommandListAppendImageCopyToMemory",
   "zeCommandListAppendImageCopyFromMemory",
   "zeCommandListAppendQueryKernelTimestamps",
-  "zeCommandListAppendWriteGlobalTimestamp" ].each { |c|
+  "zeCommandListAppendWriteGlobalTimestamp",
+  "zeCommandListAppendImageCopyToMemoryExt",
+  "zeCommandListAppendImageCopyFromMemoryExt" ].each { |c|
     register_prologue c, profiling_prologue.call("hSignalEvent")
+    register_prologue c, paranoid_drift_prologue
     register_epilogue c, profiling_epilogue.call("hSignalEvent")
 }
 
 #WARNING
 # zeModuleGetKernelNames, returns an array of strings.
 # This is problematic for lttng.
+
+register_prologue "zeModuleCreate", <<EOF
+  int _build_log_release = 0;
+  ze_module_build_log_handle_t _hBuildLog = NULL;
+  if (tracepoint_enabled(lttng_ust_ze_build, log)) {
+    if (phBuildLog == NULL) {
+      phBuildLog = &_hBuildLog;
+      _build_log_release = 1;
+    }
+  }
+EOF
+
+register_epilogue "zeModuleCreate", <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_BUILD_FAILURE) && *phBuildLog) {
+    _dump_build_log(*phBuildLog);
+    if (_build_log_release) {
+      ZE_MODULE_BUILD_LOG_DESTROY_PTR(*phBuildLog);
+      phBuildLog = NULL;
+    }
+  }
+EOF
+
+register_prologue "zeModuleDynamicLink", <<EOF
+  int _link_log_release = 0;
+  ze_module_build_log_handle_t _hLinkLog = NULL;
+  if (tracepoint_enabled(lttng_ust_ze_build, log)) {
+    if (phLinkLog == NULL) {
+      phLinkLog = &_hLinkLog;
+      _link_log_release = 1;
+    }
+  }
+EOF
+
+register_epilogue "zeModuleDynamicLink", <<EOF
+  if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_LINK_FAILURE) && *phLinkLog) {
+    _dump_build_log(*phLinkLog);
+    if (_link_log_release) {
+      ZE_MODULE_BUILD_LOG_DESTROY_PTR(*phLinkLog);
+      phLinkLog = NULL;
+    }
+  }
+EOF

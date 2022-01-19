@@ -97,12 +97,16 @@ static const void * _wrap_export_table(const void *pExportTable, const CUuuid *p
   memcpy(puuid, pExportTableId, sizeof(CUuuid));
 
   for(size_t i = 0; i < num_entries; i++) {
-    if (entries[i])
-      _wrap_export(entries[i], (void *)puuid,
-                   sizeof(size_t) + i * sizeof(void*),
-                   new_entries + i,
-                   (void**)((intptr_t)mem + i * WRAPPER_SIZE));
-    else
+    if (entries[i]) {
+      void * wrap;
+      if ((wrap = cuda_extension_dispatcher(pExportTableId, sizeof(size_t) + i * sizeof(void*))))
+        new_entries[i] = wrap;
+      else
+        _wrap_export(entries[i], (void *)puuid,
+                     sizeof(size_t) + i * sizeof(void*),
+                     new_entries + i,
+                     (void**)((intptr_t)mem + i * WRAPPER_SIZE));
+    } else
       new_entries[i] = entries[i];
   }
 
@@ -133,13 +137,14 @@ static const void * _wrap_buggy_export_table(const void *pExportTable, const CUu
   memcpy(puuid, pExportTableId, sizeof(CUuuid));
 
   for(size_t i = 0; i < num_entries; i++) {
-    if (entries[i])
+    void * wrap;
+    if ((wrap = cuda_extension_dispatcher(pExportTableId, i * sizeof(void*))))
+      new_entries[i] = wrap;
+    else
       _wrap_export(entries[i], (void *)puuid,
                    i * sizeof(void*),
                    new_entries + i,
                    (void**)((intptr_t)mem + i * WRAPPER_SIZE));
-    else
-      new_entries[i] = entries[i];
   }
 
   if (mprotect(mem, sz, PROT_READ|PROT_EXEC)) {
@@ -185,15 +190,44 @@ static const void * _wrap_and_cache_export_table(const void *pExportTable, const
   return export_table_h->export_table;
 }
 
+static inline void _dump_device_properties() {
+  int count = 0;
+  CUresult res;
+  res = CU_DEVICE_GET_COUNT_PTR(&count);
+  if (res != CUDA_SUCCESS)
+    return;
+  for (int ordinal = 0; ordinal < count; ordinal++) {
+    CUdevice device;
+    CUuuid   uuid;
+    char name[256];
+    res = CU_DEVICE_GET_PTR(&device, ordinal);
+    if (res != CUDA_SUCCESS)
+      continue;
+    res = CU_DEVICE_GET_NAME_PTR(name, 256, device);
+    if (res != CUDA_SUCCESS)
+      continue;
+    res = CU_DEVICE_GET_UUID_PTR(&uuid, device);
+    if (res != CUDA_SUCCESS)
+      continue;
+    do_tracepoint(lttng_ust_cuda_properties, device, ordinal, device, name, &uuid);
+  }
+}
+
+static void _dump_properties() {
+  if (tracepoint_enabled(lttng_ust_cuda_properties, device)) {
+    _dump_device_properties();
+  }
+}
+
 static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** extra) {
   (void)extra;
   size_t argCount;
   CUresult res;
   int    count = 0;
-  CUfunction_arg_desc_query q;
+  cuexp_function_arg_desc_query q;
 
   if (tracepoint_enabled(lttng_ust_cuda_args, arg_count)) {
-    res = CU_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
+    res = CUEXP_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
     if (res != CUDA_SUCCESS)
       return;
     count = 1;
@@ -201,14 +235,14 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
   }
   if (tracepoint_enabled(lttng_ust_cuda_args, arg_value)) {
     if (!count) {
-      res = CU_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
+      res = CUEXP_FUNCTION_GET_ARG_COUNT_PTR(f, &argCount);
       if (res != CUDA_SUCCESS)
         return;
     }
     if (kernelParams) {
       for (size_t i = 0; i < argCount; i++) {
         q.sz = 0x28;
-        res = CU_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
+        res = CUEXP_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
         if (res == CUDA_SUCCESS) {
           do_tracepoint(lttng_ust_cuda_args, arg_value, f, i, kernelParams[i], q.argSize);
         }
@@ -229,7 +263,7 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
       if (argBuffer && argBufferSize) {
         for (size_t i = 0; i < argCount; i++) {
           q.sz = 0x28;
-          res = CU_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
+          res = CUEXP_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
           if (res == CUDA_SUCCESS && argBufferSize >= q.argOffset + q.argSize) {
             do_tracepoint(lttng_ust_cuda_args, arg_value, f, i, (void *)((intptr_t)argBuffer + q.argOffset), q.argSize);
           }
@@ -369,6 +403,63 @@ static void _event_cleanup() {
   }
 }
 
+static pthread_mutex_t _primary_contexts_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct _primary_contexts_s {
+  CUdevice dev;
+  UT_hash_handle hh;
+  CUcontext ctx;
+  unsigned int refcount;
+};
+
+struct _primary_contexts_s * _primary_contexts = NULL;
+
+static inline void _primary_context_retain(CUdevice dev, CUcontext ctx) {
+  struct _primary_contexts_s * p_c = NULL;
+
+  pthread_mutex_lock(&_primary_contexts_mutex);
+  HASH_FIND_INT(_primary_contexts, &dev, p_c);
+  if (p_c != NULL && ctx == p_c->ctx) {
+    p_c->refcount++;
+  } else {
+    p_c = (struct _primary_contexts_s *)calloc(1, sizeof(struct _primary_contexts_s));
+    p_c->dev = dev;
+    p_c->ctx = ctx;
+    p_c->refcount = 1;
+    HASH_ADD_INT(_primary_contexts, dev, p_c);
+  }
+  pthread_mutex_unlock(&_primary_contexts_mutex);
+}
+
+static inline void _primary_context_release(CUdevice dev) {
+  struct _primary_contexts_s * p_c = NULL;
+
+  pthread_mutex_lock(&_primary_contexts_mutex);
+  HASH_FIND_INT(_primary_contexts, &dev, p_c);
+  if (p_c != NULL) {
+    p_c->refcount--;
+    if (0 == p_c->refcount) {
+      HASH_DEL(_primary_contexts, p_c);
+      _context_event_cleanup(p_c->ctx);
+      pthread_mutex_unlock(&_primary_contexts_mutex);
+      free(p_c);
+    } else
+      pthread_mutex_unlock(&_primary_contexts_mutex);
+  } else
+    pthread_mutex_unlock(&_primary_contexts_mutex);
+}
+
+static inline void _primary_context_reset(CUdevice dev) {
+  struct _primary_contexts_s * p_c = NULL;
+
+  pthread_mutex_lock(&_primary_contexts_mutex);
+  HASH_FIND_INT(_primary_contexts, &dev, p_c);
+  if (p_c != NULL) {
+    _context_event_cleanup(p_c->ctx);
+  }
+  pthread_mutex_unlock(&_primary_contexts_mutex);
+}
+
 static void _lib_cleanup() {
   if (_do_profile) {
     _event_cleanup();
@@ -382,20 +473,35 @@ static volatile int _initialized = 0;
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
+  int verbose = 0;
 
   s = getenv("LTTNG_UST_CUDA_LIBCUDA");
   if (s)
-      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   else
-      handle = dlopen("libcuda.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen("libcuda.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  if (handle) {
+    void* ptr = dlsym(handle, "cuInit");
+    if (ptr == (void*)&cuInit) { //opening oneself
+      dlclose(handle);
+      handle = NULL;
+    }
+  }
+
   if( !handle ) {
     fprintf(stderr, "Failure: could not load cuda library!\n");
     exit(1);
   }
 
-  find_cuda_symbols(handle);
+  s = getenv("LTTNG_UST_CUDA_VERBOSE");
+  if (s)
+    verbose = 1;
+
+  find_cuda_symbols(handle, verbose);
   CU_INIT_PTR(0);
   find_cuda_extensions();
+
+  _dump_properties();
 
   s = getenv("LTTNG_UST_CUDA_PROFILE");
   if (s)

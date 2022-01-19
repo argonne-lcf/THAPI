@@ -1,0 +1,134 @@
+#pragma once
+
+#include <babeltrace2/babeltrace.h>
+#include "uthash.h"
+#include "utarray.h"
+#include <stdbool.h> 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+// Dispacher are a light wrapper arrround calbacks to unpack the arguments
+// and call the list of callbaks.
+
+struct <%= namespace %>_dispatch;
+struct <%= namespace %>_callbacks;
+
+// Implement by `<%= namespace %>_dispatchers.c`
+extern void init_<%= namespace %>_dispatchers(struct <%= namespace %>_dispatch *dispatch);
+
+// `<%= namespace %>_dispatcher_t` is a alias to a function we return void and take those list as arguments
+// `Dispacher` are a thin wrapper arround `callbacks`. They unpacks llng-parameters and give back ocl object
+// It's not clear why dispacher need a `<%= namespace %>_dispatch`
+typedef void (<%= namespace %>_dispatcher_t)
+    (struct <%= namespace %>_dispatch   *dispatch,
+     struct <%= namespace %>_callbacks *callbacks,
+     const bt_event          *message,
+     const bt_clock_snapshot *clock);
+
+struct <%= namespace %>_callbacks {
+    const char *name;
+    <%= namespace %>_dispatcher_t *dispatcher;
+    UT_array *callbacks;
+    UT_hash_handle hh;
+};
+
+struct <%= namespace %>_event_callbacks {
+    const char *name;
+    <%= namespace %>_dispatcher_t *dispatcher;
+    UT_array *callbacks;
+    UT_hash_handle hh;
+};
+
+
+/* A dispach is the Filter component's private data */
+struct <%= namespace %>_dispatch {
+    /* Hash table */
+    struct <%= namespace %>_callbacks *callbacks;
+    /* Hash table by name */
+    struct <%= namespace %>_event_callbacks *event_callbacks;
+    
+    /* Downstream message */
+    bt_stream *stream;
+    bt_event_class *host_event_class;
+    bt_event_class *device_event_class;
+    bt_event_class *traffic_event_class;
+    bt_event_class *device_name_event_class;
+
+    /* Component's input port (weak) */
+    bt_self_component_port_input *in_port;
+};
+
+/* Message iterator's private data */
+struct <%= namespace %>_message_iterator {
+    /* (Weak) link to the component's private data */
+    struct <%= namespace %>_dispatch *dispatch;
+
+    /* Upstream message iterator (owned by this) */
+    bt_message_iterator *message_iterator;
+    /* All the variable need to handle the create of the message */
+    /* It's a C++ struct */
+    void * callbacks_state;
+};
+
+// To talk to the callbacks
+extern void init_<%= namespace %>_callbacks(struct <%= namespace %>_dispatch*);
+extern void finalize_<%= namespace %>_callbacks(struct <%= namespace %>_message_iterator*);
+extern void* init_<%= namespace %>_callbacks_state();
+
+/* Implemented in <%= namespace %>_callbacks.cpp.erb */
+bool <%= namespace %>_downstream_message_queue_empty(struct <%= namespace %>_message_iterator*);
+size_t <%= namespace %>_downstream_message_queue_size(struct <%= namespace %>_message_iterator*);
+const bt_message * <%= namespace %>_downstream_message_queue_pop(struct <%= namespace %>_message_iterator*);
+void <%= namespace %>_downstream_message_queue_push(struct <%= namespace %>_message_iterator*, const bt_message*);
+
+// Global state for the downstream message
+// If we want to get rid of them, need to update the dispatcher signature
+extern struct <%= namespace %>_message_iterator *<%= namespace %>_iter_g;
+extern bt_self_message_iterator *<%= namespace %>_self_message_iterator_g;
+
+// Symbol used by clprof.c
+extern
+bt_component_class_initialize_method_status <%= namespace %>_dispatch_initialize(
+        bt_self_component_filter *self_component_filter,
+        bt_self_component_filter_configuration *configuration,
+        const bt_value *params, void *initialize_method_data);
+
+extern
+void <%= namespace %>_dispatch_finalize(bt_self_component_filter *self_component_filter);
+
+extern void
+<%= namespace %>_register_dispatcher(struct <%= namespace %>_dispatch *dispatch,
+                           const char *name,
+                           <%= namespace %>_dispatcher_t *dispatcher);
+
+extern void
+<%= namespace %>_register_callback(struct <%= namespace %>_dispatch *dispatch,
+                         const char *name,
+                         void *func);
+
+extern
+bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_iterator_next(
+        bt_self_message_iterator *self_message_iterator,
+        bt_message_array_const messages, uint64_t capacity,
+        uint64_t *count);
+
+
+extern
+bt_message_iterator_class_initialize_method_status
+<%= namespace %>_dispatch_message_iterator_initialize(
+        bt_self_message_iterator *self_message_iterator,
+        bt_self_message_iterator_configuration *configuration,
+        bt_self_component_port_output *self_port);
+
+extern
+void <%= namespace %>_dispatch_message_iterator_finalize(
+        bt_self_message_iterator *self_message_iterator);
+
+
+#ifdef __cplusplus
+}
+#endif
+

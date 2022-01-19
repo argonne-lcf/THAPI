@@ -1,13 +1,19 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
+$:.unshift(DATADIR) if File::directory?(DATADIR)
 require 'optparse'
-require 'babeltrace'
-require 'babeltrace/ctf'
+require 'babeltrace2'
+require 'find'
 require 'yaml'
 require 'pp'
 
+$event_lambdas = {}
+require 'babeltrace_opencl_lib'
+
 $options = {
-  context: false
+  context: false,
+  restrict: false,
+  live: false
 }
 
 OptionParser.new do |opts|
@@ -17,275 +23,93 @@ OptionParser.new do |opts|
     $options[:context] = context
   end
 
+  opts.on("-r", "--[no-]restrict", "Restrict output to recognized events") do |restrict|
+    $options[:restrict] = restrict
+  end
+
   opts.on("-h", "--help", "Prints this help") do
     puts opts
     exit
   end
 
+  opts.on("--live", "Enable live display of the trace") do
+    $options[:live] = true
+  end
+
+  opts.on("-v", "--version", "Print the version string") do
+    puts File.read(File.join(DATADIR, "version"))
+    exit
+  end
+
 end.parse!
 
-c = Babeltrace::Context::new
-traces = c.add_traces(path: ARGV[0])
-raise "Trace not found: #{ARGV[0].inspect}, check path." if traces == []
+$restrict = $options[:restrict]
+$context = $options[:context]
+$live = $options[:live]
 
-puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
+ctf_fs = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("fs")
+ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
+utils_muxer = BT2::BTPlugin.find("utils").get_filter_component_class_by_name("muxer")
+text_pretty = BT2::BTPlugin.find("text").get_sink_component_class_by_name("pretty")
 
-opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
-SUFFIXES = opencl_model["suffixes"]
-START = SUFFIXES["start"]
-STOP = SUFFIXES["stop"]
-infos = YAML::load_file(File.join(DATADIR,"opencl_infos.yaml"))
-enums_by_type = {}
-enums_by_value = {}
-enums_by_name = {}
-bitfields_by_type = {}
-
-class Bitfield
-  def self.to_s(v)
-    res = []
-    if v == 0
-      default = self.const_get(:DEFAULT)
-      res.push default if default
-    else
-      s = self.const_get(:SPECIAL)
-      if s
-        n, s = s
-        if v & s == s
-          res.push n
-          v ^= s
-        end
-      end
-      self.const_get(:FLAGS).each { |n, f|
-        if f & v == f
-          res.push(n)
-          v ^= f
-        end
-      }
-      if v != 0
-        res.push(v)
-      end
-    end
-    res
-    "[#{res.join(", ")}]"
-  end
-end
-
-enums = opencl_model["enums"].collect { |k, v|
-  hash = {}
-  v["values"].each { |n, str|
-    int =
-      begin
-        eval(str)
-      rescue
-        nil
-      end
-    hash[int] = n if int
-  }
-  k = v["type_name"] if v["type_name"]
-  enums_by_type[k] = hash
-  enums_by_value[k] = hash.invert
-  enums_by_name[v["trace_name"]] = hash if v["trace_name"]
-}
-
-bifields = opencl_model["bitfields"].collect { |k, v|
-  hash = {}
-  default = nil
-  special = nil
-  v["values"].each { |n, str|
-    int =
-      begin
-        eval(str)
-      rescue
-        nil
-      end
-    if int
-      if int > 0
-        if int.to_s(2).count("1") > 1
-          special = [n, int]
-        else
-          hash[n] = int
-        end
-      else
-        default = n
-      end
-    end
-  }
-  klass = Class::new(Bitfield) {
-    if default
-      self.const_set(:DEFAULT, default)
-    else
-      self.const_set(:DEFAULT, nil)
-    end
-    if special
-      self.const_set(:SPECIAL, special)
-    else
-      self.const_set(:SPECIAL, nil)
-    end
-    self.const_set(:FLAGS, hash)
-  }
-  bitfields_by_type[k] = klass
-}
-
-infos_type = {}
-
-type_map = {
-  "unsigned int" => "L",
-  "int" => "l",
-  "intptr_t" => "j",
-  "uintptr_t" => "J",
-  "size_t" => "Q",
-  "cl_bool" => "l",
-  "cl_int" => "l",
-  "cl_uint" => "L",
-  "cl_long" => "q",
-  "cl_ulong" => "Q",
-  "cl_short" => "s",
-  "cl_ushort" => "S",
-  "cl_char" => "c",
-  "cl_uchar" => "C",
-  "cl_half" => "S",
-  "cl_float" => "f",
-  "cl_double" => "d"
-}
-opencl_model["objects"].each { |n|
-  type_map[n] = "J"
-}
-enums_by_type.keys.each { |n|
-  type_map[n] = "l"
-}
-bitfields_by_type.keys.each { |n|
-  type_map[n] = "Q"
-}
-
-infos.each { |inf, vers|
-  infos_type[inf] = {}
-  vers.each { |vername, list|
-    list.each { |i|
-      type =
-        if i["array"]
-          if i["pointer"]
-            ["J*", true, nil]
-          elsif type_map[i["type"]]
-            [type_map[i["type"]] + "*", true, i["type"]]
-          else
-            nil
-          end
-        elsif i["string"]
-          ["Z*", false, nil]
-        elsif i["pointer"]
-          ["J", false, nil]
-        elsif type_map[i["type"]]
-          [type_map[i["type"]], false, i["type"]]
-        else
-          nil
-        end
-      infos_type[inf][enums_by_value[inf][i["name"]]] = type
+if !$live
+  trace_locations = Find.find(*ARGV).reject { |path|
+      FileTest.directory?(path)
+    }.select { |path|
+      File.basename(path) == "metadata"
+    }.collect { |path|
+      File.dirname(path)
+    }.select { |path|
+      qe = BT2::BTQueryExecutor.new( component_class: ctf_fs, object_name: "babeltrace.support-info", params: { "input" => path,  "type" => "directory" } )
+      qe.query.value["weight"] > 0.5
     }
-  }
-}
-
-events = {}
-traces.each { |t|
-  events[t.handle_id] = t.get_event_decl_list.collect(&:name).collect { |n|
-    [n, opencl_model["events"][n]]
-  }
-}
-
-info_str_lambda = lambda { |param_name, name, type|
-          <<EOF
-begin
-  if defi["#{name}"].size > 0 && infos_type["#{type}"]
-    i = infos_type["#{type}"][defi["#{param_name}"]];
-    if i
-      v = defi["#{name}"].unpack(i[0])
-      v.collect! { |j| '0x' << j.to_s(16) } if i[0].match("J")
-      if i[2]
-        if enums_by_type[i[2]]
-          v.collect! { |val| enums_by_type[i[2]][val] }
-        elsif bitfields_by_type[i[2]]
-          v.collect! { |val| bitfields_by_type[i[2]].to_s(val) }
-        end
-      end
-      v = v.first unless i[1]
-      v = "[ \#{v.join(", ")} ]" if i[1]
-      v
-    else
-      defi["#{name}"].inspect
-    end
-  else
-    defi["#{name}"].inspect
-  end
+else
+  trace_locations = ARGV
 end
-EOF
-}
+raise "Could not find lttng trace" if trace_locations.size == 0
 
-event_lambdas = {}
-events.each { |handle, arr|
-  event_lambdas[handle] = arr.collect { |(n, v)|
-    next if !v
-    src = <<EOF
-lambda { |defi|
-  {
-EOF
-  src << "  "
-  src << v.collect { |name, desc|
-    expr =
-      if name == "param_value_vals"
-        startn = n.gsub("_#{STOP}", "_#{START}")
-        type = opencl_model["events"][startn]["param_name"]["type"]
-        if n == "lttng_ust_opencl:clSetKernelExecInfo_#{START}"
-          info_str_lambda.call("param_name", name, type)
+
+consume = lambda { |iterator, _|
+  mess = iterator.next_messages
+  mess.each { |m|
+    if m.type == :BT_MESSAGE_TYPE_EVENT
+      e = m.event
+      l = $event_lambdas[e.name]
+      if l || !$restrict
+        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime("%H:%M:%S.%9L")}"
+        str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}" if $context
+        str << " - " << e.get_common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $context
+        str << " - #{e.name}: "
+        if l
+          str << l.call(e.payload_field.value)
         else
-          info_str_lambda.call("_param_name", name, type)
+          str << e.payload_field.to_s
         end
-      elsif desc["array"]
-        if enums_by_type[desc["type"]]
-          "defi[\"#{name}\"].collect { |v| (tmp = enums_by_type[\"#{desc["type"]}\"][v]) ? tmp : v }"
-        elsif bitfields_by_type[desc["type"]]
-          "defi[\"#{name}\"].collect { |v| bitfields_by_type[\"#{desc["type"]}\"].to_s(v) }"
-        elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
-          "\"[\#{defi[\"#{name}\"].collect { |v| \"0x\#{v.to_s(16)}\" }.join(\", \")}]\""
-        else
-          "defi[\"#{name}\"].inspect"
-        end
-      elsif desc["string"]
-        "defi[\"#{name}\"]"
-      else
-        if enums_by_type[desc["type"]]
-          "(tmp = enums_by_type[\"#{desc["type"]}\"][defi[\"#{name}\"]]) ? tmp : defi[\"#{name}\"]"
-        elsif bitfields_by_type[desc["type"]]
-          "bitfields_by_type[\"#{desc["type"]}\"].to_s(defi[\"#{name}\"])"
-        elsif desc["pointer"] || opencl_model["objects"].include?( desc["type"] )
-          "\"0x\#{defi[\"#{name}\"].to_s(16)}\""
-        else
-          "defi[\"#{name}\"].inspect"
-        end
+        puts str
       end
-    "\"#{name}\" => (#{expr})"
-  }.join(",\n  ")
-  src << "\n"
-    src << <<EOF
-  }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
-}
-EOF
-    eval(src)
+    end
   }
 }
 
-it = c.iter_create
-
-it.each { |ev|
-  name, descs = events[ev.handle_id][ev.id]
-  str = "#{ev.timestamp.strftime("%H:%M:%S.%9L")}"
-  str << " - " << ev.top_level_scope(:STREAM_EVENT_CONTEXT).value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
-  str << " - #{name}: "
-  defi = ev.top_level_scope(:EVENT_FIELDS)
-  l = event_lambdas[ev.handle_id][ev.id]
-  if l
-    str << l.call(defi.value).to_s
-  else
-    str << defi.value.to_s
-  end
-  puts str
+graph = BT2::BTGraph.new
+if !$live
+  comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+else
+  comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+end
+comp2 = graph.add_component(utils_muxer, "mux")
+comp3 = graph.add_simple_sink("babeltrace_opencl", consume)
+i = 0
+comps.each { |comp|
+  ops = comp.output_ports
+  ops.each { |op|
+    ip = comp2.input_port(i)
+    i += 1
+    graph.connect_ports(op, ip)
+  }
 }
 
+op = comp2.output_port(0)
+ip = comp3.input_port(0)
+graph.connect_ports(op, ip)
+graph.run

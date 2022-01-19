@@ -1,91 +1,11 @@
 .DELETE_ON_ERROR:
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare -Werror -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-
-CUDA_PROBES_TP = \
-	cuda_tracepoints.tp
-
-CUDA_PROBES_INCL = \
-	cuda_tracepoints.h
-
-CUDA_PROBES_SRC = \
-	cuda_tracepoints.c
-
-CUDA_STATIC_PROBES_TP = \
-	cuda_args.tp \
-	cuda_profiling.tp \
-	cuda_exports.tp
-
-CUDA_STATIC_PROBES_INCL = \
-	cuda_args.h \
-	cuda_profiling.h \
-	cuda_exports.h
-
-CUDA_STATIC_PROBES_SRC = \
-	cuda_args.c \
-	cuda_profiling.c \
-	cuda_exports.c
-
-CUDART_PROBES_TP = \
-	cudart_tracepoints.tp
-
-CUDART_PROBES_INCL = \
-	cudart_tracepoints.h
-
-CUDART_PROBES_SRC = \
-	cudart_tracepoints.c
-
-CLEANFILES = \
-	$(CUDA_PROBES_TP) \
-	$(CUDA_PROBES_INCL) \
-	$(CUDA_PROBES_SRC) \
-	$(CUDA_STATIC_PROBES_TP) \
-	$(CUDA_STATIC_PROBES_INCL) \
-	$(CUDA_STATIC_PROBES_SRC) \
-	$(CUDART_PROBES_TP) \
-	$(CUDART_PROBES_INCL) \
-	$(CUDART_PROBES_SRC)
-
-ML_CUDA_FILES = \
-	$(srcdir)/cuda_meta_parameters.yaml
-
-ML_CUDART_FILES = \
-	$(srcdir)/cudart_meta_parameters.yaml
-
-EXTRA_DIST = $(ML_CUDA_FILES) $(ML_CUDART_FILES)
-
-CUDA_EXTRACT = \
-	$(srcdir)/extract_base.rb
-
-EXTRA_DIST += extract_base.rb
-
-CUDA_EXTRACTED = \
-	cuda_api.yaml
-
-CUDART_EXTRACTED = \
-	cudart_api.yaml
-
-CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
-
-CUDA_MODEL = \
-	$(srcdir)/cuda_model.rb \
-	$(ML_CUDA_FILES) \
-	$(srcdir)/cuda_events.yaml \
-	$(CUDA_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/LTTng.rb
-
-CUDART_MODEL = \
-	$(srcdir)/cudart_model.rb \
-	$(ML_CUDART_FILES) \
-	$(CUDART_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/LTTng.rb
-
-EXTRA_DIST += \
-	cuda_model.rb \
-	cuda_events.yaml \
-	cudart_model.rb
+if STRICT
+  WERROR = -Werror
+else
+  WERROR =
+endif
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 CUDA_EXTRA_HDR = \
 	$(srcdir)/include/builtin_types.h \
@@ -96,7 +16,8 @@ CUDA_EXTRA_HDR = \
 	$(srcdir)/include/device_types.h \
 	$(srcdir)/include/cuda_device_runtime_api.h \
 	$(srcdir)/include/cuda_runtime_api.h \
-	$(srcdir)/include/vector_types.h
+	$(srcdir)/include/vector_types.h \
+	$(srcdir)/include/cudaVDPAU.h
 CUDA_HDR = \
 	$(srcdir)/include/cuda.h \
 	$(CUDA_EXTRA_HDR)
@@ -110,7 +31,8 @@ MODIFIED_CUDA_EXTRA_HDR = \
 	modified_include/device_types.h \
 	modified_include/cuda_device_runtime_api.h \
 	modified_include/cuda_runtime_api.h \
-	modified_include/vector_types.h
+	modified_include/vector_types.h \
+	modified_include/cudaVDPAU.h
 MODIFIED_CUDA_HDR = \
 	modified_include/cuda.h \
 	$(MODIFIED_CUDA_EXTRA_HDR)
@@ -131,49 +53,154 @@ $(MODIFIED_CUDA_EXTRA_HDR): modified_include/cuda.h
 
 clean-local:
 	$(RM) -r modified_include
+	$(RM) -r tests
 
-EXTRA_DIST += $(srcdir)/include headers.patch
+EXTRA_DIST = $(srcdir)/include headers.patch
 
-cuda_api.yaml: modified_include/cuda.h $(CUDA_EXTRACT) $(srcdir)/extract_cuda.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_cuda.rb
+CUDA_EXTRACT = \
+	$(srcdir)/extract_base.rb
 
-cudart_api.yaml: modified_include/cuda_runtime_api.h $(CUDA_EXTRACT) $(srcdir)/extract_cudart.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/extract_cudart.rb
+cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
+	SRC_DIR=$(srcdir) $(RUBY) $<
+
+cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb $(CUDA_EXTRACT) modified_include/cuda.h cuda_export_tables.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $<
+
+cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cuda_runtime_api.h
+	SRC_DIR=$(srcdir) $(RUBY) $<
+
+CUDA_EXTRACTED = \
+	cuda_api.yaml \
+	cuda_exports_api.yaml
+
+CUDART_EXTRACTED = \
+	cudart_api.yaml
+
+CLEANFILES = $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
+
+EXTRA_DIST += \
+	extract_base.rb \
+	extract_cuda.rb \
+	extract_cuda_exports.rb \
+	extract_cudart.rb
+
+cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+CLEANFILES += \
+	cuda_exports.h.include
+
+EXTRA_DIST += \
+	gen_cude_exports_include.rb
+
+ML_CUDA_FILES = \
+	$(srcdir)/cuda_meta_parameters.yaml \
+	$(srcdir)/cuda_exports_meta_parameters.yaml
+
+ML_CUDART_FILES = \
+	$(srcdir)/cudart_meta_parameters.yaml
+
+EXTRA_DIST += $(ML_CUDA_FILES) $(ML_CUDART_FILES)
+
+CUDA_MODEL = \
+	$(srcdir)/cuda_model.rb \
+	$(srcdir)/gen_cuda_library_base.rb \
+	$(srcdir)/gen_probe_base.rb \
+	$(ML_CUDA_FILES) \
+	$(srcdir)/cuda_events.yaml \
+	$(CUDA_EXTRACTED) \
+	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/LTTng.rb \
+	$(srcdir)/cuda.h.include \
+	cuda_exports.h.include
+
+CUDART_MODEL = \
+	$(srcdir)/cudart_model.rb \
+	$(ML_CUDART_FILES) \
+	$(CUDART_EXTRACTED) \
+	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/LTTng.rb
 
 cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-CLEANFILES += cuda_babeltrace_model.yaml
+CLEANFILES += \
+	cuda_babeltrace_model.yaml
 
 EXTRA_DIST += \
-	extract_cuda.rb \
-	extract_cudart.rb
+	cuda_model.rb \
+	gen_cuda_library_base.rb \
+	gen_probe_base.rb \
+	cuda_events.yaml \
+	cudart_model.rb \
+	cuda_model.rb \
+	cuda_events.yaml \
+	cudart_model.rb \
+	gen_babeltrace_cuda_model.rb
 
-cuda_tracepoints.tp: $(srcdir)/gen_cuda_tracepoints.rb $(CUDA_MODEL) gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_tracepoints.rb > $@
+CUDA_PROBES = \
+	cuda_tracepoints \
+	cuda_exports_tracepoints
 
-cudart_tracepoints.tp: $(srcdir)/gen_cudart_tracepoints.rb $(CUDART_MODEL) gen_probe_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cudart_tracepoints.rb > $@
+CUDA_PROBES_TP = $(CUDA_PROBES:=.tp)
 
-cuda_args.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_custom_probes.rb lttng_ust_cuda_args > $@
+CUDA_PROBES_INCL = $(CUDA_PROBES:=.h)
 
-cuda_profiling.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_custom_probes.rb lttng_ust_cuda_profiling > $@
+CUDA_PROBES_SRC = $(CUDA_PROBES:=.c)
 
-cuda_exports.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $(srcdir)/gen_cuda_custom_probes.rb lttng_ust_cuda_exports > $@
+CUDA_STATIC_PROBES = \
+	cuda_args \
+	cuda_profiling \
+	cuda_properties
+
+CUDA_STATIC_PROBES_TP = $(CUDA_STATIC_PROBES:=.tp)
+
+CUDA_STATIC_PROBES_INCL = $(CUDA_STATIC_PROBES:=.h)
+
+CUDA_STATIC_PROBES_SRC = $(CUDA_STATIC_PROBES:=.c)
+
+CUDART_PROBES = \
+	cudart_tracepoints
+
+CUDART_PROBES_TP = $(CUDART_PROBES:=.tp)
+
+CUDART_PROBES_INCL = $(CUDART_PROBES:=.h)
+
+CUDART_PROBES_SRC = $(CUDART_PROBES:=.c)
+
+$(CUDA_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDA_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+$(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+$(CUDA_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
+CLEANFILES += \
+	$(CUDA_PROBES_TP) \
+	$(CUDA_PROBES_INCL) \
+	$(CUDA_PROBES_SRC) \
+	$(CUDA_STATIC_PROBES_TP) \
+	$(CUDA_STATIC_PROBES_INCL) \
+	$(CUDA_STATIC_PROBES_SRC) \
+	$(CUDART_PROBES_TP) \
+	$(CUDART_PROBES_INCL) \
+	$(CUDART_PROBES_SRC)
+
 EXTRA_DIST += \
 	gen_cuda_tracepoints.rb \
+	gen_cuda_exports_tracepoints.rb \
 	gen_cudart_tracepoints.rb \
-	gen_probe_base.rb \
 	gen_cuda_custom_probes.rb
 
-BUILT_SOURCES = $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) $(CUDART_PROBES_INCL)
+BUILT_SOURCES = \
+	$(CUDA_PROBES_INCL) \
+	$(CUDA_STATIC_PROBES_INCL) \
+	$(CUDART_PROBES_INCL)
 
 tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -184,15 +211,24 @@ tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include
 EXTRA_DIST += \
 	gen_cuda.rb \
 	tracer_cuda_helpers.include.c \
+	cuda_export_tables.yaml \
 	gen_cudart.rb \
-	tracer_cudart_helpers.include.c \
-	cuda_export_tables.yaml
+	tracer_cudart_helpers.include.c
 
 CLEANFILES += \
 	tracer_cuda.c \
 	tracer_cudart.c
 
-bin_SCRIPTS = tracer_cuda.sh babeltrace_cuda
+cuprof.sh: $(top_builddir)/xprof/xprof.sh.erb
+	$(ERB) -T 1 languages=["cuda"] $< > $@
+	chmod a+x $@
+
+CLEANFILES += cuprof.sh
+
+bin_SCRIPTS = \
+	tracer_cuda.sh \
+	babeltrace_cuda \
+	cuprof.sh
 
 noinst_LTLIBRARIES = libcudatracepoints.la libcudarttracepoints.la
 
@@ -212,14 +248,14 @@ nodist_libcudarttracepoints_la_SOURCES = \
 libcudarttracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libcudarttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la
+lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la libCUDAInterval.la
 
 nodist_libTracerCUDA_la_SOURCES = \
 	$(CUDA_PROBES_INCL) \
 	tracer_cuda.c
 
 libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-libTracerCUDA_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libTracerCUDA_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDA_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDA_la_LDFLAGS += -version-info 1:0:0
 libTracerCUDA_la_LIBADD = libcudatracepoints.la
@@ -229,7 +265,7 @@ nodist_libTracerCUDART_la_SOURCES = \
 	tracer_cudart.c
 
 libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-libTracerCUDART_la_CFLAGS = -Wall -Wextra -Werror $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libTracerCUDART_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libTracerCUDART_la_LDFLAGS += -version-number 11:0:3
 libTracerCUDART_la_LIBADD = libcudarttracepoints.la
@@ -253,23 +289,15 @@ tmplib_LTLIBRARIES = libBabeltraceCUDA.la
 install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-CUDA_LIB_GEN = \
-	$(srcdir)/gen_cuda_library_base.rb \
-	$(srcdir)/gen_probe_base.rb
-
-EXTRA_DIST += $(CUDA_LIB_GEN)
-
-babeltrace_cuda_callbacks.h: $(srcdir)/gen_babeltrace_cuda_callbacks.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+babeltrace_cuda_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
 
 BUILT_SOURCES += babeltrace_cuda_callbacks.h
 
-babeltrace_cuda_dispatchers.c: $(srcdir)/gen_babeltrace_cuda_dispatchers.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+babeltrace_cuda_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
 
-EXTRA_DIST += \
-	gen_babeltrace_cuda_callbacks.rb \
-	gen_babeltrace_cuda_dispatchers.rb
+EXTRA_DIST += cuda.h.include
 
 CLEANFILES += \
 	babeltrace_cuda_callbacks.h \
@@ -278,45 +306,145 @@ CLEANFILES += \
 nodist_libBabeltraceCUDA_la_SOURCES = \
 	babeltrace_cuda_callbacks.h \
 	babeltrace_cuda_dispatchers.c
+
 libBabeltraceCUDA_la_SOURCES = \
 	babeltrace_cuda.c \
 	babeltrace_cuda.h
+
 libBabeltraceCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -Werror $(BABELTRACE2_CFLAGS)
+libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
+cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
+babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CUDA_BINDINGS = \
 	cuda_library.rb \
 	babeltrace_cuda_lib.rb
 
-tests/cuda_dummy_trace.yaml: cuda_babeltrace_model.yaml
-	mkdir -p tests
-	$(RUBY) $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml > $@
+EXTRA_DIST += \
+	gen_cuda_library.rb \
+	gen_babeltrace_cuda_lib.rb
 
-CLEANFILES += tests/cuda_dummy_trace.yaml
-
-TEST_FILES = \
-	tests/cuda_dummy_trace.dust
-
-TESTS = $(TEST_FILES)
-
-TEST_EXTENSIONS = .dust
-DUST_LOG_COMPILER = ./test_wrapper.sh
-check_DATA = \
-	test_wrapper.sh \
-	tests/cuda_dummy_trace.yaml
+CLEANFILES += $(CUDA_BINDINGS)
 
 data_DATA = $(CUDA_BINDINGS)
 
-EXTRA_DIST += \
-	gen_cuda_library.rb \
-	gen_babeltrace_cuda_lib.rb \
-	$(TEST_FILES)
+babeltrace_cudainterval_callbacks.cpp: $(srcdir)/gen_cudainterval_callbacks.rb $(srcdir)/cudainterval_callbacks.cpp.erb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-CLEANFILES += $(CUDA_BINDINGS)
+babeltrace_cudainterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
+
+babeltrace_cudainterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
+
+babeltrace_cudainterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
+
+babeltrace_cudainterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="cudainterval" $< > $@
+
+babeltrace_cudainterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="cudainterval" $< > $@
+
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	cp $< $@
+
+xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
+	cp $< $@
+
+EXTRA_DIST += \
+	gen_cudainterval_callbacks.rb \
+	cudainterval_callbacks.cpp.erb
+
+CLEANFILES += \
+	babeltrace_cudainterval_callbacks.cpp \
+	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval_dispatchers.c \
+	babeltrace_cudainterval_emitter.h \
+	babeltrace_cudainterval.h \
+	babeltrace_cudainterval.c \
+	xprof_utils.cpp \
+	xprof_utils.hpp
+
+BUILT_SOURCES += \
+	babeltrace_cudainterval.h \
+	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval_emitter.h \
+	xprof_utils.hpp
+
+nodist_libCUDAInterval_la_SOURCES = \
+	babeltrace_cudainterval.c \
+	babeltrace_cudainterval.h \
+	babeltrace_cudainterval_callbacks.h \
+	babeltrace_cudainterval_dispatchers.c \
+	babeltrace_cudainterval_callbacks.cpp \
+	babeltrace_cudainterval_emitter.h \
+	xprof_utils.hpp \
+	xprof_utils.cpp
+
+libCUDAInterval_la_SOURCES = \
+	cudainterval_callbacks.hpp
+
+libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+tests/.tag:
+	mkdir -p tests
+	touch tests/.tag
+
+CLEANFILES += tests/.tag
+
+tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml tests/.tag
+	$(RUBY) $< cuda_babeltrace_model.yaml > $@
+
+# To run test we need to catageory of file:
+# - One are the `yaml` file who containt the traces
+# - The other is the `dust` file who containt the babeltrace processing graph
+#   The dust file will use the `yaml` file.
+
+# Test by themself are splited into two type:
+# - The one who are common to each backend.
+# - The specific for this backend
+
+# We generate lot of file using:
+#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
+
+TRACE_COMMON = \
+	tests/interval_profiling_block.yaml \
+	tests/interval_profiling_normal.yaml
+
+$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
+	$(ERB) be="cuda" $< > $@
+
+DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
+
+$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
+	$(ERB) be="cuda" interval="cudainterval" namespace="$@" $< > $@
+
+TESTS = \
+	tests/cuda_dummy_trace.dust \
+	$(DUST_COMMON)
+
+TEST_EXTENSIONS = .dust
+DUST_LOG_COMPILER = ./test_wrapper.sh
+
+check_DATA = \
+	test_wrapper.sh \
+	tests/cuda_dummy_trace.yaml \
+	$(TRACE_COMMON)
+
+EXTRA_DIST += \
+	tests/cuda_dummy_trace.dust \
+	tests/interval.dust.erb
+
+CLEANFILES += \
+	tests/cuda_dummy_trace.yaml \
+	$(TRACE_COMMON) \
+	$(DUST_COMMON)

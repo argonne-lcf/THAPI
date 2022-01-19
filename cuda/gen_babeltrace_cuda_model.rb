@@ -20,7 +20,12 @@ $integer_sizes = {
   "CUdeviceptr_v1" => 32,
   "unsigned long long" => 64,
   "unsigned long long int" => 64,
+  "long" => 64,
+  "long int" => 64,
+  "unsigned long" => 64,
+  "unsigned long int" => 64,
   "long long" => 64,
+  "long long int" => 64,
   "uint64_t" => 64,
   "cuuuint64_t" => 64,
   "int64_t" => 64,
@@ -32,7 +37,7 @@ $integer_sizes = {
   "CUmemGenericAllocationHandle" => 64,
   "CUstreamCallback" => 64,
   "CUhostFn" => 64,
-  "CUoccupancyB2DSize" => 64
+  "CUoccupancyB2DSize" => 64,
 }
 
 CUDA_ENUM_SCALARS.each { |t|
@@ -50,7 +55,10 @@ $integer_signed = {
   "int16_t" => true,
   "int" => true,
   "int32_t" => true,
+  "long" => true,
+  "long int" => true,
   "long long" => true,
+  "long long int" => true,
   "int64_t" => true,
   "unsigned char" => false,
   "uint8_t" => false,
@@ -60,6 +68,8 @@ $integer_signed = {
   "unsigned int" => false,
   "uint32_t" => false,
   "cuuint32_t" => false,
+  "unsigned long" => false,
+  "unsigned long int" => false,
   "unsigned long long" => false,
   "unsigned long long int" => false,
   "uint64_t" => false,
@@ -74,7 +84,7 @@ $integer_signed = {
   "CUmemGenericAllocationHandle" => false,
   "CUstreamCallback" => false,
   "CUhostFn" => false,
-  "CUoccupancyB2DSize" => false
+  "CUoccupancyB2DSize" => false,
 }
 
 CUDA_ENUM_SCALARS.each { |t|
@@ -252,15 +262,17 @@ def gen_extra_event_bt_model(provider, event)
 end
 
 event_classes = 
-[[:lttng_ust_cuda, $cuda_commands]].collect { |provider, commands|
+[[:lttng_ust_cuda, $cuda_commands],
+ [:lttng_ust_cuda_exports, $cuda_exports_commands]
+].collect { |provider, commands|
   commands.collect { |c|
     [gen_event_bt_model(provider, c, :start),
     gen_event_bt_model(provider, c, :stop)]
   }
 }.flatten(2)
 
-ze_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
-event_classes += ze_events.collect { |provider, es|
+cuda_events = YAML::load_file(File.join(SRC_DIR,"cuda_events.yaml"))
+event_classes += cuda_events.collect { |provider, es|
   es["events"].collect { |event|
     gen_extra_event_bt_model(provider, event)
   }

@@ -1,9 +1,9 @@
 ---
 - uuid: [0x6e, 0x16, 0x3f, 0xbe, 0xb9, 0x58, 0x44, 0x4d, 0x83, 0x5c, 0xe1, 0x82, 0xaf, 0xf1, 0x99, 0x1e]
   structures:
-  - name: CUfunction_arg_desc_query
+  - name: cuexp_function_arg_desc_query
     declaration: |
-      struct CUfunction_arg_desc_query_st {
+      struct cuexp_function_arg_desc_query_st {
         size_t sz;
         size_t argSize;
         size_t argOffset;
@@ -11,14 +11,157 @@
         size_t u2;
       }
   functions:
+  - offset: 0x28
+    name: cuexp_function_get_name
+    declaration: "CUresult cuexp_function_get_name(CUcontext hContext, CUfunction hFunction, char **pName)"
+  - offset: 0x90
+    name: cuexpFunction_setCacheConfig
+    declaration: "CUresult cuexpFunction_setCacheConfig(CUfunction hFunction,CUfunc_cache config)"
+  - offset: 0xd8
+    name: cuexp_6e163fbe_d8
+    declaration: "CUresult cuexp_6e163fbe_d8(CUmodule hModule, int *pB)"
   - offset: 0x108
-    name: cuFunction_get_arg_count
-    declaration: "CUresult cuFunction_get_arg_count(CUfunction f, size_t * pArgCount)"
+    name: cuexpFunction_get_arg_count
+    declaration: "CUresult cuexpFunction_get_arg_count(CUfunction hFunction, size_t *pArgCount)"
   - offset: 0x110
-    name: cuFunction_get_arg_descriptor
-    declaration: "CUresult cuFunction_get_arg_descriptor(CUfunction f, size_t argIndex, CUfunction_arg_desc_query *pArgDescQuery)"
+    name: cuexpFunction_get_arg_descriptor
+    declaration: "CUresult cuexpFunction_get_arg_descriptor(CUfunction hFunction, size_t argIndex, cuexp_function_arg_desc_query *pArgDescQuery)"
+  - offset: 0x130
+    name: cuexp_6e163fbe_130
+    declaration: "CUresult cuexp_6e163fbe_130(void **pA, CUfunction hFunction)"
+  - offset: 0x150
+    name: cuexp_module_iterate_on_functions
+    declaration: "CUresult cuexp_module_iterate_on_functions(CUcontext hContext, CUmodule hModule, void *pFunc, void *userData)"
+  - offset: 0x1a8
+    name: cuexp_6e163fbe_1a8
+    declaration: "CUresult cuexp_6e163fbe_1a8(CUfunction hFunction, int *pB)"
+  - offset: 0x1b8
+    name: cuexp_6e163fbe_1b8
+    declaration: "CUresult cuexp_6e163fbe_1b8(CUfunction hFunction, unsigned long *pB)"
 - uuid: [0xa3, 0x17, 0x46, 0xd1, 0x54, 0x75, 0xef, 0x4e, 0xae, 0xb6, 0xdf, 0xb1, 0x47, 0x6a, 0xdd, 0x6c]
   functions:
   - offset: 0x288
-    name: cuDevice_get_primary_context_refcount
-    declaration: "uint cuDevice_get_primary_context_refcount(CUdevice device)"
+    name: cuexpDevice_get_primary_context_refcount
+    declaration: "unsigned int cuexpDevice_get_primary_context_refcount(CUdevice device)"
+- uuid: [0x42, 0xd8, 0x5a, 0x81, 0x23, 0xf6, 0xcb, 0x47, 0x82, 0x98, 0xf6, 0xe7, 0x8a, 0x3a, 0xec, 0xdc]
+  functions:
+  - offset: 0x10
+    name: cuexp_get_thread_context
+    declaration: "CUresult cuexp_get_thread_context(CUcontext *phContext)"
+- uuid: [0xa0, 0x94, 0x79, 0x8c, 0x2e, 0x74, 0x2e, 0x74, 0x93, 0xf2, 0x08, 0x00, 0x20, 0x0c, 0x0a, 0x66]
+  functions:
+  - offset: 0x8
+    name: cuexp_a094798c_08
+    declaration: "CUresult cuexp_a094798c_08(unsigned int a, void **b)"
+  - offset: 0x10
+    name: cuexp_a094798c_10
+    declaration: "void cuexp_a094798c_10(void **a, size_t *b)"
+  - offset: 0x18
+    name: cuexp_a094798c_18
+    declaration: "CUresult cuexp_a094798c_18(CUcontext hContext, void *a, void **b)"
+  - offset: 0x20
+    name: cuexp_a094798c_20
+    declaration: "CUresult cuexp_a094798c_20(CUcontext hContext, uint64_t *b)"
+  - offset: 0x28
+    name: cuexp_a094798c_28
+    declaration: "CUresult cuexp_a094798c_28(unsigned int a, void *b)"
+  - offset: 0x30
+    name: cuexp_a094798c_30
+    declaration: "void cuexp_a094798c_30(void **a, size_t *b)"
+- uuid: [0xc6, 0x93, 0x33, 0x6e, 0x11, 0x21, 0xdf, 0x11, 0xa8, 0xc3, 0x68, 0xf3, 0x55, 0xd8, 0x95, 0x93]
+  functions:
+  - offset: 0x0
+    name: cuexpContext_kvstore_add
+    declaration: "CUresult cuexpContext_kvstore_add(CUcontext hContext, void *handle, void* value, void *unknown)"
+  - offset: 0x8
+    name: cuexpContext_kvstore_delete
+    declaration: "CUresult cuexpContext_kvstore_delete(CUcontext hContext, void *handle)"
+  - offset: 0x10
+    name: cuexpContext_kvstore_get
+    declaration: "CUresult cuexpContext_kvstore_get(void **value, CUcontext hContext, void *handle)"
+- uuid: [0x6b, 0xd5, 0xfb, 0x6c, 0x5b, 0xf4, 0xe7, 0x4a, 0x89, 0x87, 0xd9, 0x39, 0x12, 0xfd, 0x9d, 0xf9]
+  functions:
+  - offset: 0x10
+    name: cuexp_get_primary_context
+    declaration: "CUresult cuexp_get_primary_context(CUcontext *phContext, unsigned int ordinal)"
+  - offset: 0x30
+    name: cuexp_register_module
+    declaration: "CUresult cuexp_register_module(CUmodule* phModule, int* fatBinary, void *a, void *b, unsigned int ordinal)"
+  - offset: 0x38
+    name: cuexp_unregister_module
+    declaration: "void cuexp_unregister_module(int *fatBinary)"
+- uuid: [0x21, 0x31, 0x8c, 0x60, 0x97, 0x14, 0x32, 0x48, 0x8c, 0xa6, 0x41, 0xff, 0x73, 0x24, 0xc8, 0xf2]
+  functions:
+  - offset: 0x18
+    name: cuexpContext_getDevice
+    declaration: "CUresult cuexpContext_getDevice(CUcontext hContext, CUdevice *pDevice)"
+  - offset: 0x20
+    name: cuexpContext_getContextNumber
+    declaration: "CUresult cuexpContext_getContextNumber(CUcontext hContext, unsigned long *contextNumber)"
+  - offset: 0x80
+    name: cuexp_21318c60_80
+    declaration: "CUresult cuexp_21318c60_80(void *a,void **pB)"
+  - offset: 0x138
+    name: cuexp_21318c60_138
+    declaration: "CUresult cuexp_21318c60_138(CUcontext hContext, void *b, void **pC)"
+- uuid: [0xb1, 0x05, 0x41, 0xe1, 0xf7, 0xc7, 0xc7, 0x4a, 0x9f, 0x64, 0xf2, 0x23, 0xbe, 0x99, 0xf1, 0xe2]
+  functions:
+  - offset: 0x8
+    name: cuexpDevice_get
+    declaration: "CUresult cuexpDevice_get(CUdevice *pDevice, int ordinal)"
+  - offset: 0x10
+    name: cuexpDevice_getCount
+    declaration: "CUresult cuexpDevice_getCount(unsigned int *pCount)"
+  - offset: 0x28
+    name: cuexpDevice_getAttribute
+    declaration: "CUresult cuexpDevice_getAttribute(int ordinal,CUdevice_attribute attrib,int flag,long *pl)"
+  - offset: 0x30
+    name: cuexp_b10541e1_30
+    declaration: "CUresult cuexp_b10541e1_30(CUdevice device, void **pB)"
+  - offset: 0x40
+    name: cuexp_b10541e1_40
+    declaration: "CUresult cuexp_b10541e1_40(unsigned int *pRes, CUdevice device)"
+- uuid: [0xa6, 0xb1, 0xff, 0x99, 0xec, 0xc4, 0xc9, 0x4f, 0x92, 0xf9, 0x19, 0x28, 0x66, 0x3d, 0x55, 0x85]
+  functions:
+  - offset: 0x28
+    name: cuexp_a6b1ff99_28
+    declaration: "CUresult cuexp_a6b1ff99_28(void **a, CUcontext hContext)"
+- uuid: [0x12, 0x7d, 0x48, 0x31, 0xee, 0x33, 0x57, 0x44, 0x97, 0x42, 0xb8, 0x44, 0x7b, 0x7a, 0x23, 0x64]
+  functions:
+  - offset: 0x28
+    name: cuexp_127d4831_28
+    declaration: "CUresult cuexp_127d4831_28(void *h, int a, void **pB, void *param_4)"
+  - offset: 0x30
+    name: cuexp_127d4831_30
+    declaration: "CUresult cuexp_127d4831_30(void *h, int a, void **pB)"
+- uuid: [0x7c, 0xb6, 0x3f, 0x9b, 0x9c, 0xa4, 0x8e, 0x42, 0xa4, 0x84, 0xbe, 0xb6, 0x6e, 0x6a, 0xed, 0x7f]
+  structures:
+  - name: cuexp_7cb63f9b_1e0_struct
+    declaration: |
+      struct cuexp_7cb63f9b_1e0_struct_st {
+        int unknown;
+        unsigned int stride;
+        unsigned int countOut;
+        unsigned int capacity;
+        void *data;
+      }
+  functions:
+  - offset: 0x100
+    name: cuexpCUPTI_init
+    declaration: "CUresult cuexpCUPTI_init(void)"
+  - offset: 0x1e0
+    name: cuexp_7cb63f9b_1e0
+    declaration: "CUresult cuexp_7cb63f9b_1e0(CUdevice device, cuexp_7cb63f9b_1e0_struct *b)"
+- uuid: [0x2c, 0x8e, 0x0a, 0xd8, 0x07, 0x10, 0xab, 0x4e, 0x90, 0xdd, 0x54, 0x71, 0x9f, 0xe5, 0xf7, 0x4b]
+  functions:
+  - offset: 0x18
+    name: cuexp_2c8e0ad8_18
+    declaration: "CUresult cuexp_2c8e0ad8_18(int *pRes,void *a,void *b)"
+  - offset: 0x38
+    name: cuexp_2c8e0ad8_38
+    declaration: "CUresult cuexp_2c8e0ad8_38(int a, int b, unsigned int c)"
+- uuid: [0xd7, 0xbd, 0x8a, 0xf8, 0xe7, 0xac, 0xca, 0x4a, 0xbd, 0xbc, 0xfb, 0x1f, 0x1b, 0x3f, 0xcf, 0x33]
+  functions:
+  - offset: 0x18
+    name: cuexp_getCudaState
+    declaration: "CUresult cuexp_getCudaState(int *pState)"

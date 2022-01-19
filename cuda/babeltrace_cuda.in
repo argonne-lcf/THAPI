@@ -2,14 +2,18 @@
 DATADIR = File.join("@prefix@", "share")
 $:.unshift(DATADIR) if File::directory?(DATADIR)
 require 'optparse'
-require 'babeltrace'
-require 'babeltrace/ctf'
+require 'babeltrace2'
+require 'find'
 require 'yaml'
 require 'pp'
+
+$event_lambdas = {}
 require 'babeltrace_cuda_lib'
 
 $options = {
-  context: false
+  context: false,
+  restrict: false,
+  live: false
 }
 
 OptionParser.new do |opts|
@@ -19,36 +23,93 @@ OptionParser.new do |opts|
     $options[:context] = context
   end
 
+  opts.on("-r", "--[no-]restrict", "Restrict output to recognized events") do |restrict|
+    $options[:restrict] = restrict
+  end
+
   opts.on("-h", "--help", "Prints this help") do
     puts opts
     exit
   end
 
+  opts.on("--live", "Enable live display of the trace") do
+    $options[:live] = true
+  end
+
+  opts.on("-v", "--version", "Print the version string") do
+    puts File.read(File.join(DATADIR, "version"))
+    exit
+  end
+
 end.parse!
 
-c = Babeltrace::Context::new
-traces = c.add_traces(path: ARGV[0])
+$restrict = $options[:restrict]
+$context = $options[:context]
+$live = $options[:live]
 
-puts "#{c.get_timestamp_begin.strftime("%Y-%m-%d %H:%M:%S.%9L %z")} -- #{c.get_timestamp_end.strftime("%Y-%m-%d %H:%M:%S.%9L %z")}"
+ctf_fs = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("fs")
+ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
+utils_muxer = BT2::BTPlugin.find("utils").get_filter_component_class_by_name("muxer")
+text_pretty = BT2::BTPlugin.find("text").get_sink_component_class_by_name("pretty")
 
-events = {}
-traces.each { |t|
-  events[t.handle_id] = t.get_event_decl_list.collect(&:name)
+if !$live
+  trace_locations = Find.find(*ARGV).reject { |path|
+      FileTest.directory?(path)
+    }.select { |path|
+      File.basename(path) == "metadata"
+    }.collect { |path|
+      File.dirname(path)
+    }.select { |path|
+      qe = BT2::BTQueryExecutor.new( component_class: ctf_fs, object_name: "babeltrace.support-info", params: { "input" => path,  "type" => "directory" } )
+      qe.query.value["weight"] > 0.5
+    }
+else
+  trace_locations = ARGV
+end
+raise "Could not find lttng trace" if trace_locations.size == 0
+
+
+consume = lambda { |iterator, _|
+  mess = iterator.next_messages
+  mess.each { |m|
+    if m.type == :BT_MESSAGE_TYPE_EVENT
+      e = m.event
+      l = $event_lambdas[e.name]
+      if l || !$restrict
+        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime("%H:%M:%S.%9L")}"
+        str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}" if $context
+        str << " - " << e.get_common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $context
+        str << " - #{e.name}: "
+        if l
+          str << l.call(e.payload_field.value)
+        else
+          str << e.payload_field.to_s
+        end
+        puts str
+      end
+    end
+  }
 }
 
-it = c.iter_create
-it.each { |ev|
-  name = events[ev.handle_id][ev.id]
-  str = "#{ev.timestamp.strftime("%H:%M:%S.%9L")}"
-  str << " - " << ev.top_level_scope(:STREAM_EVENT_CONTEXT).value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $options[:context]
-  str << " - #{name}: "
-  defi = ev.top_level_scope(:EVENT_FIELDS)
-  l = $event_lambdas[name]
-  if l
-    str << l.call(defi.value).to_s
-  else
-    str << defi.value.to_s
-  end
-  puts str
+graph = BT2::BTGraph.new
+if !$live
+  comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+else
+  comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+end
+comp2 = graph.add_component(utils_muxer, "mux")
+comp3 = graph.add_simple_sink("babeltrace_cuda", consume)
+i = 0
+comps.each { |comp|
+  ops = comp.output_ports
+  ops.each { |op|
+    ip = comp2.input_port(i)
+    i += 1
+    graph.connect_ports(op, ip)
+  }
 }
 
+op = comp2.output_port(0)
+ip = comp3.input_port(0)
+graph.connect_ports(op, ip)
+graph.run

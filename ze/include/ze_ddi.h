@@ -1,11 +1,11 @@
 /*
  *
- * Copyright (C) 2019 Intel Corporation
+ * Copyright (C) 2019-2021 Intel Corporation
  *
  * SPDX-License-Identifier: MIT
  *
  * @file ze_ddi.h
- * @version v1.0-r1.0.4.8
+ * @version v1.3-r1.3.7
  *
  */
 #ifndef _ZE_DDI_H
@@ -91,6 +91,14 @@ typedef ze_result_t (ZE_APICALL *ze_pfnDriverGetExtensionProperties_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeDriverGetExtensionFunctionAddress 
+typedef ze_result_t (ZE_APICALL *ze_pfnDriverGetExtensionFunctionAddress_t)(
+    ze_driver_handle_t,
+    const char*,
+    void**
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of Driver functions pointers
 typedef struct _ze_driver_dditable_t
 {
@@ -99,6 +107,7 @@ typedef struct _ze_driver_dditable_t
     ze_pfnDriverGetProperties_t                                 pfnGetProperties;
     ze_pfnDriverGetIpcProperties_t                              pfnGetIpcProperties;
     ze_pfnDriverGetExtensionProperties_t                        pfnGetExtensionProperties;
+    ze_pfnDriverGetExtensionFunctionAddress_t                   pfnGetExtensionFunctionAddress;
 } ze_driver_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -228,6 +237,38 @@ typedef ze_result_t (ZE_APICALL *ze_pfnDeviceGetStatus_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeDeviceGetGlobalTimestamps 
+typedef ze_result_t (ZE_APICALL *ze_pfnDeviceGetGlobalTimestamps_t)(
+    ze_device_handle_t,
+    uint64_t*,
+    uint64_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeDeviceReserveCacheExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnDeviceReserveCacheExt_t)(
+    ze_device_handle_t,
+    size_t,
+    size_t
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeDeviceSetCacheAdviceExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnDeviceSetCacheAdviceExt_t)(
+    ze_device_handle_t,
+    void*,
+    size_t,
+    ze_cache_ext_region_t
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeDevicePciGetPropertiesExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnDevicePciGetPropertiesExt_t)(
+    ze_device_handle_t,
+    ze_pci_ext_properties_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of Device functions pointers
 typedef struct _ze_device_dditable_t
 {
@@ -245,6 +286,10 @@ typedef struct _ze_device_dditable_t
     ze_pfnDeviceGetP2PProperties_t                              pfnGetP2PProperties;
     ze_pfnDeviceCanAccessPeer_t                                 pfnCanAccessPeer;
     ze_pfnDeviceGetStatus_t                                     pfnGetStatus;
+    ze_pfnDeviceGetGlobalTimestamps_t                           pfnGetGlobalTimestamps;
+    ze_pfnDeviceReserveCacheExt_t                               pfnReserveCacheExt;
+    ze_pfnDeviceSetCacheAdviceExt_t                             pfnSetCacheAdviceExt;
+    ze_pfnDevicePciGetPropertiesExt_t                           pfnPciGetPropertiesExt;
 } ze_device_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -331,6 +376,16 @@ typedef ze_result_t (ZE_APICALL *ze_pfnContextEvictImage_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeContextCreateEx 
+typedef ze_result_t (ZE_APICALL *ze_pfnContextCreateEx_t)(
+    ze_driver_handle_t,
+    const ze_context_desc_t*,
+    uint32_t,
+    ze_device_handle_t*,
+    ze_context_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of Context functions pointers
 typedef struct _ze_context_dditable_t
 {
@@ -342,6 +397,7 @@ typedef struct _ze_context_dditable_t
     ze_pfnContextEvictMemory_t                                  pfnEvictMemory;
     ze_pfnContextMakeImageResident_t                            pfnMakeImageResident;
     ze_pfnContextEvictImage_t                                   pfnEvictImage;
+    ze_pfnContextCreateEx_t                                     pfnCreateEx;
 } ze_context_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -699,6 +755,34 @@ typedef ze_result_t (ZE_APICALL *ze_pfnCommandListAppendLaunchMultipleKernelsInd
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeCommandListAppendImageCopyToMemoryExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnCommandListAppendImageCopyToMemoryExt_t)(
+    ze_command_list_handle_t,
+    void*,
+    ze_image_handle_t,
+    const ze_image_region_t*,
+    uint32_t,
+    uint32_t,
+    ze_event_handle_t,
+    uint32_t,
+    ze_event_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeCommandListAppendImageCopyFromMemoryExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnCommandListAppendImageCopyFromMemoryExt_t)(
+    ze_command_list_handle_t,
+    ze_image_handle_t,
+    const void*,
+    const ze_image_region_t*,
+    uint32_t,
+    uint32_t,
+    ze_event_handle_t,
+    uint32_t,
+    ze_event_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of CommandList functions pointers
 typedef struct _ze_command_list_dditable_t
 {
@@ -728,6 +812,8 @@ typedef struct _ze_command_list_dditable_t
     ze_pfnCommandListAppendLaunchCooperativeKernel_t            pfnAppendLaunchCooperativeKernel;
     ze_pfnCommandListAppendLaunchKernelIndirect_t               pfnAppendLaunchKernelIndirect;
     ze_pfnCommandListAppendLaunchMultipleKernelsIndirect_t      pfnAppendLaunchMultipleKernelsIndirect;
+    ze_pfnCommandListAppendImageCopyToMemoryExt_t               pfnAppendImageCopyToMemoryExt;
+    ze_pfnCommandListAppendImageCopyFromMemoryExt_t             pfnAppendImageCopyFromMemoryExt;
 } ze_command_list_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -750,6 +836,116 @@ zeGetCommandListProcAddrTable(
 typedef ze_result_t (ZE_APICALL *ze_pfnGetCommandListProcAddrTable_t)(
     ze_api_version_t,
     ze_command_list_dditable_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeImageGetProperties 
+typedef ze_result_t (ZE_APICALL *ze_pfnImageGetProperties_t)(
+    ze_device_handle_t,
+    const ze_image_desc_t*,
+    ze_image_properties_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeImageCreate 
+typedef ze_result_t (ZE_APICALL *ze_pfnImageCreate_t)(
+    ze_context_handle_t,
+    ze_device_handle_t,
+    const ze_image_desc_t*,
+    ze_image_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeImageDestroy 
+typedef ze_result_t (ZE_APICALL *ze_pfnImageDestroy_t)(
+    ze_image_handle_t
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeImageGetAllocPropertiesExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnImageGetAllocPropertiesExt_t)(
+    ze_context_handle_t,
+    ze_image_handle_t,
+    ze_image_allocation_ext_properties_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Table of Image functions pointers
+typedef struct _ze_image_dditable_t
+{
+    ze_pfnImageGetProperties_t                                  pfnGetProperties;
+    ze_pfnImageCreate_t                                         pfnCreate;
+    ze_pfnImageDestroy_t                                        pfnDestroy;
+    ze_pfnImageGetAllocPropertiesExt_t                          pfnGetAllocPropertiesExt;
+} ze_image_dditable_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Exported function for filling application's Image table
+///        with current process' addresses
+///
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
+ZE_DLLEXPORT ze_result_t ZE_APICALL
+zeGetImageProcAddrTable(
+    ze_api_version_t version,                       ///< [in] API version requested
+    ze_image_dditable_t* pDdiTable                  ///< [in,out] pointer to table of DDI function pointers
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeGetImageProcAddrTable
+typedef ze_result_t (ZE_APICALL *ze_pfnGetImageProcAddrTable_t)(
+    ze_api_version_t,
+    ze_image_dditable_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeImageGetMemoryPropertiesExp 
+typedef ze_result_t (ZE_APICALL *ze_pfnImageGetMemoryPropertiesExp_t)(
+    ze_image_handle_t,
+    ze_image_memory_properties_exp_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeImageViewCreateExp 
+typedef ze_result_t (ZE_APICALL *ze_pfnImageViewCreateExp_t)(
+    ze_context_handle_t,
+    ze_device_handle_t,
+    const ze_image_desc_t*,
+    ze_image_handle_t,
+    ze_image_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Table of ImageExp functions pointers
+typedef struct _ze_image_exp_dditable_t
+{
+    ze_pfnImageGetMemoryPropertiesExp_t                         pfnGetMemoryPropertiesExp;
+    ze_pfnImageViewCreateExp_t                                  pfnViewCreateExp;
+} ze_image_exp_dditable_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Exported function for filling application's ImageExp table
+///        with current process' addresses
+///
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
+ZE_DLLEXPORT ze_result_t ZE_APICALL
+zeGetImageExpProcAddrTable(
+    ze_api_version_t version,                       ///< [in] API version requested
+    ze_image_exp_dditable_t* pDdiTable              ///< [in,out] pointer to table of DDI function pointers
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeGetImageExpProcAddrTable
+typedef ze_result_t (ZE_APICALL *ze_pfnGetImageExpProcAddrTable_t)(
+    ze_api_version_t,
+    ze_image_exp_dditable_t*
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -970,39 +1166,23 @@ typedef ze_result_t (ZE_APICALL *ze_pfnGetEventProcAddrTable_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zeImageGetProperties 
-typedef ze_result_t (ZE_APICALL *ze_pfnImageGetProperties_t)(
+/// @brief Function-pointer for zeEventQueryTimestampsExp 
+typedef ze_result_t (ZE_APICALL *ze_pfnEventQueryTimestampsExp_t)(
+    ze_event_handle_t,
     ze_device_handle_t,
-    const ze_image_desc_t*,
-    ze_image_properties_t*
+    uint32_t*,
+    ze_kernel_timestamp_result_t*
     );
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zeImageCreate 
-typedef ze_result_t (ZE_APICALL *ze_pfnImageCreate_t)(
-    ze_context_handle_t,
-    ze_device_handle_t,
-    const ze_image_desc_t*,
-    ze_image_handle_t*
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zeImageDestroy 
-typedef ze_result_t (ZE_APICALL *ze_pfnImageDestroy_t)(
-    ze_image_handle_t
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Table of Image functions pointers
-typedef struct _ze_image_dditable_t
+/// @brief Table of EventExp functions pointers
+typedef struct _ze_event_exp_dditable_t
 {
-    ze_pfnImageGetProperties_t                                  pfnGetProperties;
-    ze_pfnImageCreate_t                                         pfnCreate;
-    ze_pfnImageDestroy_t                                        pfnDestroy;
-} ze_image_dditable_t;
+    ze_pfnEventQueryTimestampsExp_t                             pfnQueryTimestampsExp;
+} ze_event_exp_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Exported function for filling application's Image table
+/// @brief Exported function for filling application's EventExp table
 ///        with current process' addresses
 ///
 /// @returns
@@ -1011,16 +1191,16 @@ typedef struct _ze_image_dditable_t
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
-zeGetImageProcAddrTable(
+zeGetEventExpProcAddrTable(
     ze_api_version_t version,                       ///< [in] API version requested
-    ze_image_dditable_t* pDdiTable                  ///< [in,out] pointer to table of DDI function pointers
+    ze_event_exp_dditable_t* pDdiTable              ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zeGetImageProcAddrTable
-typedef ze_result_t (ZE_APICALL *ze_pfnGetImageProcAddrTable_t)(
+/// @brief Function-pointer for zeGetEventExpProcAddrTable
+typedef ze_result_t (ZE_APICALL *ze_pfnGetEventExpProcAddrTable_t)(
     ze_api_version_t,
-    ze_image_dditable_t*
+    ze_event_exp_dditable_t*
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1088,6 +1268,15 @@ typedef ze_result_t (ZE_APICALL *ze_pfnModuleGetFunctionPointer_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeModuleInspectLinkageExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnModuleInspectLinkageExt_t)(
+    ze_linkage_inspection_ext_desc_t*,
+    uint32_t,
+    ze_module_handle_t*,
+    ze_module_build_log_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of Module functions pointers
 typedef struct _ze_module_dditable_t
 {
@@ -1099,6 +1288,7 @@ typedef struct _ze_module_dditable_t
     ze_pfnModuleGetKernelNames_t                                pfnGetKernelNames;
     ze_pfnModuleGetProperties_t                                 pfnGetProperties;
     ze_pfnModuleGetFunctionPointer_t                            pfnGetFunctionPointer;
+    ze_pfnModuleInspectLinkageExt_t                             pfnInspectLinkageExt;
 } ze_module_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1303,6 +1493,52 @@ typedef ze_result_t (ZE_APICALL *ze_pfnGetKernelProcAddrTable_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeKernelSetGlobalOffsetExp 
+typedef ze_result_t (ZE_APICALL *ze_pfnKernelSetGlobalOffsetExp_t)(
+    ze_kernel_handle_t,
+    uint32_t,
+    uint32_t,
+    uint32_t
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeKernelSchedulingHintExp 
+typedef ze_result_t (ZE_APICALL *ze_pfnKernelSchedulingHintExp_t)(
+    ze_kernel_handle_t,
+    ze_scheduling_hint_exp_desc_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Table of KernelExp functions pointers
+typedef struct _ze_kernel_exp_dditable_t
+{
+    ze_pfnKernelSetGlobalOffsetExp_t                            pfnSetGlobalOffsetExp;
+    ze_pfnKernelSchedulingHintExp_t                             pfnSchedulingHintExp;
+} ze_kernel_exp_dditable_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Exported function for filling application's KernelExp table
+///        with current process' addresses
+///
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
+ZE_DLLEXPORT ze_result_t ZE_APICALL
+zeGetKernelExpProcAddrTable(
+    ze_api_version_t version,                       ///< [in] API version requested
+    ze_kernel_exp_dditable_t* pDdiTable             ///< [in,out] pointer to table of DDI function pointers
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeGetKernelExpProcAddrTable
+typedef ze_result_t (ZE_APICALL *ze_pfnGetKernelExpProcAddrTable_t)(
+    ze_api_version_t,
+    ze_kernel_exp_dditable_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Function-pointer for zeSamplerCreate 
 typedef ze_result_t (ZE_APICALL *ze_pfnSamplerCreate_t)(
     ze_context_handle_t,
@@ -1477,6 +1713,14 @@ typedef ze_result_t (ZE_APICALL *ze_pfnMemCloseIpcHandle_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zeMemFreeExt 
+typedef ze_result_t (ZE_APICALL *ze_pfnMemFreeExt_t)(
+    ze_context_handle_t,
+    const ze_memory_free_ext_desc_t*,
+    void*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of Mem functions pointers
 typedef struct _ze_mem_dditable_t
 {
@@ -1489,6 +1733,7 @@ typedef struct _ze_mem_dditable_t
     ze_pfnMemGetIpcHandle_t                                     pfnGetIpcHandle;
     ze_pfnMemOpenIpcHandle_t                                    pfnOpenIpcHandle;
     ze_pfnMemCloseIpcHandle_t                                   pfnCloseIpcHandle;
+    ze_pfnMemFreeExt_t                                          pfnFreeExt;
 } ze_mem_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1622,13 +1867,16 @@ typedef struct _ze_dditable_t
     ze_context_dditable_t               Context;
     ze_command_queue_dditable_t         CommandQueue;
     ze_command_list_dditable_t          CommandList;
+    ze_image_dditable_t                 Image;
+    ze_image_exp_dditable_t             ImageExp;
     ze_fence_dditable_t                 Fence;
     ze_event_pool_dditable_t            EventPool;
     ze_event_dditable_t                 Event;
-    ze_image_dditable_t                 Image;
+    ze_event_exp_dditable_t             EventExp;
     ze_module_dditable_t                Module;
     ze_module_build_log_dditable_t      ModuleBuildLog;
     ze_kernel_dditable_t                Kernel;
+    ze_kernel_exp_dditable_t            KernelExp;
     ze_sampler_dditable_t               Sampler;
     ze_physical_mem_dditable_t          PhysicalMem;
     ze_mem_dditable_t                   Mem;

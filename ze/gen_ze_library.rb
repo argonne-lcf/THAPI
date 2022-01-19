@@ -221,6 +221,14 @@ module ZE
     ver & 0x0000ffff
   end
 
+  module Handle
+    def to_s
+      s = '{ data: "'
+      s << self[:data].to_a.collect { |v| "\\\\x%02x" % ((v + 256)%256) }.join
+      s << '" }'
+    end
+  end
+
   module UUID
     def to_s
       a = self[:id].to_a
@@ -356,6 +364,10 @@ EOF
     prepend UUID
 EOF
     end
+  elsif to_class_name(name).match(/Handle\z/)
+puts <<EOF
+    prepend Handle
+EOF
   end
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
@@ -368,6 +380,8 @@ EOF
       if(args.length == 0)
 EOF
     case to_ffi_name(name)
+    when /ze_image_memory_properties_exp_t/
+      puts "        self[:stype] = -999 #Ugly fix for https://github.com/oneapi-src/level-zero/issues/64"
     when /\A:ze_/
       puts "        self[:stype] = :ZE_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[4..-3].upcase}"
     when /\A:zet_/

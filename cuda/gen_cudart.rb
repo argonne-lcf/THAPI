@@ -21,14 +21,14 @@ EOF
 
 puts <<EOF
 
-static void find_cudart_symbols(void * handle) {
+static void find_cudart_symbols(void * handle, int verbose) {
 EOF
 
 $cudart_commands.each { |c|
   puts <<EOF
 
   #{CUDART_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{CUDART_POINTER_NAMES[c]})
+  if (!#{CUDART_POINTER_NAMES[c]} && verbose)
     fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
 }
@@ -86,12 +86,8 @@ EOF
 normal_wrapper = lambda { |c, provider|
   puts <<EOF
 #{c.decl} {
-EOF
-  if c.init?
-    puts <<EOF
   _init_tracer();
 EOF
-  end
   common_block.call(c, provider)
   if c.has_return_type?
     puts <<EOF

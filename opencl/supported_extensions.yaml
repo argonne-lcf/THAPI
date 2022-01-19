@@ -2,6 +2,7 @@
 - clCreateProgramWithILKHR
 - clTerminateContextKHR
 - clCreateCommandQueueWithPropertiesKHR
+- clGetKernelSuggestedLocalWorkSizeKHR
 - clEnqueueMigrateMemObjectEXT
 - clGetICDLoaderInfoOCLICD
 - clCreateBufferWithPropertiesINTEL

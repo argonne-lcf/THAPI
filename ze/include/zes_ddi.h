@@ -1,11 +1,11 @@
 /*
  *
- * Copyright (C) 2019 Intel Corporation
+ * Copyright (C) 2019-2021 Intel Corporation
  *
  * SPDX-License-Identifier: MIT
  *
  * @file zes_ddi.h
- * @version v1.0-r1.0.4.8
+ * @version v1.3-r1.3.7
  *
  */
 #ifndef _ZES_DDI_H
@@ -31,10 +31,22 @@ typedef ze_result_t (ZE_APICALL *zes_pfnDriverEventListen_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zesDriverEventListenEx 
+typedef ze_result_t (ZE_APICALL *zes_pfnDriverEventListenEx_t)(
+    ze_driver_handle_t,
+    uint64_t,
+    uint32_t,
+    zes_device_handle_t*,
+    uint32_t*,
+    zes_event_type_flags_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of Driver functions pointers
 typedef struct _zes_driver_dditable_t
 {
     zes_pfnDriverEventListen_t                                  pfnEventListen;
+    zes_pfnDriverEventListenEx_t                                pfnEventListenEx;
 } zes_driver_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -205,6 +217,13 @@ typedef ze_result_t (ZE_APICALL *zes_pfnDeviceEnumPowerDomains_t)(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zesDeviceGetCardPowerDomain 
+typedef ze_result_t (ZE_APICALL *zes_pfnDeviceGetCardPowerDomain_t)(
+    zes_device_handle_t,
+    zes_pwr_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Function-pointer for zesDeviceEnumPsus 
 typedef ze_result_t (ZE_APICALL *zes_pfnDeviceEnumPsus_t)(
     zes_device_handle_t,
@@ -267,6 +286,7 @@ typedef struct _zes_device_dditable_t
     zes_pfnDeviceEnumMemoryModules_t                            pfnEnumMemoryModules;
     zes_pfnDeviceEnumPerformanceFactorDomains_t                 pfnEnumPerformanceFactorDomains;
     zes_pfnDeviceEnumPowerDomains_t                             pfnEnumPowerDomains;
+    zes_pfnDeviceGetCardPowerDomain_t                           pfnGetCardPowerDomain;
     zes_pfnDeviceEnumPsus_t                                     pfnEnumPsus;
     zes_pfnDeviceEnumRasErrorSets_t                             pfnEnumRasErrorSets;
     zes_pfnDeviceEnumSchedulers_t                               pfnEnumSchedulers;
