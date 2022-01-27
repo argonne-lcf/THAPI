@@ -1073,7 +1073,7 @@ EOF
       unless size
         size = [dstptr.size, srcptr.size].min
       end
-      if context
+      if context_src
         result = ZE.zeCommandListAppendMemoryCopyFromContext(@handle, dstptr, context_src, srcptr, size, signal_event, count, ph_wait_events)
       else
         result = ZE.zeCommandListAppendMemoryCopy(@handle, dstptr, srcptr, size, signal_event, count, ph_wait_events)
