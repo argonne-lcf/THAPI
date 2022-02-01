@@ -1359,8 +1359,8 @@ EOF
     end
 
     def global_pointer(name)
-      pptr = MemoryPointer::(:pointer)
-      p_size = MemoryPointer::(:size_t)
+      pptr = MemoryPointer::new(:pointer)
+      p_size = MemoryPointer::new(:size_t)
       p_name = MemoryPointer::from_string(name)
       result = ZE.zeModuleGetGlobalPointer(@handle, p_name, p_size, pptr)
       ZE.error_check(result)
