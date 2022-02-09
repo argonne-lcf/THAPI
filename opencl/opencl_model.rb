@@ -865,7 +865,7 @@ str = <<EOF
     cl_command_queue_properties properties;
     #{OPENCL_POINTER_NAMES[$clGetCommandQueueInfo]}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
     _dump_release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, properties, &num_events_in_wait_list, (cl_event **)&event_wait_list);
-    if (properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE && event == NULL) {
+    if ((properties & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) && event == NULL) {
       event = &extra_event;
       _dump_release_event = 1;
     }
