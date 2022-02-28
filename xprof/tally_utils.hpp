@@ -44,7 +44,7 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
 };
 
 template <typename T>
-std::string to_string_with_precision2(const T a_value, const std::string extension,
+std::string to_string_with_precision(const T a_value, const std::string extension,
                                       const int n = 2) {
   std::ostringstream out;
   out.precision(n);
@@ -99,9 +99,8 @@ public:
 
   void update_max_size(std::vector<long> &m) {
     const auto current_size = to_string_size();
-    for (auto i = 0U; i < current_size.size(); i++) {
+    for (auto i = 0U; i < current_size.size(); i++)
       m[i] = std::max(m[i], current_size[i]);
-    }
   }
 };
 
@@ -111,39 +110,39 @@ public:
 
   using TallyCoreBase::TallyCoreBase;
   virtual const std::vector<std::string> to_string() {
-    return std::vector<std::string>{format_time2(duration),
-                                    to_string_with_precision2(100. * duration_ratio, "%"),
-                                    to_string_with_precision2(count, "", 0),
-                                    format_time2(average),
-                                    format_time2(min),
-                                    format_time2(max),
-                                    to_string_with_precision2(error, "", 0)};
+    return std::vector<std::string>{format_time(duration),
+                                    to_string_with_precision(100. * duration_ratio, "%"),
+                                    to_string_with_precision(count, "", 0),
+                                    format_time(average),
+                                    format_time(min),
+                                    format_time(max),
+                                    to_string_with_precision(error, "", 0)};
   }
 
 private:
-  template <typename T> std::string format_time2(const T duration) {
+  template <typename T> std::string format_time(const T duration) {
 
     const double h = duration / 3.6e+12;
     if (h >= 1.)
-      return to_string_with_precision2(h, "h");
+      return to_string_with_precision(h, "h");
 
     const double min = duration / 6e+10;
     if (min >= 1.)
-      return to_string_with_precision2(min, "min");
+      return to_string_with_precision(min, "min");
 
     const double s = duration / 1e+9;
     if (s >= 1.)
-      return to_string_with_precision2(s, "s");
+      return to_string_with_precision(s, "s");
 
     const double ms = duration / 1e+6;
     if (ms >= 1.)
-      return to_string_with_precision2(ms, "ms");
+      return to_string_with_precision(ms, "ms");
 
     const double us = duration / 1e+3;
     if (us >= 1.)
-      return to_string_with_precision2(us, "us");
+      return to_string_with_precision(us, "us");
 
-    return to_string_with_precision2(duration, "ns");
+    return to_string_with_precision(duration, "ns");
   }
 };
 
@@ -153,38 +152,38 @@ public:
 
   using TallyCoreBase::TallyCoreBase;
   virtual const std::vector<std::string> to_string() {
-    return std::vector<std::string>{format_byte2(duration),
-                                    to_string_with_precision2(100. * duration_ratio, "%"),
-                                    to_string_with_precision2(count, "", 0),
-                                    format_byte2(average),
-                                    format_byte2(min),
-                                    format_byte2(max),
-                                    to_string_with_precision2(error, "", 0)};
+    return std::vector<std::string>{format_byte(duration),
+                                    to_string_with_precision(100. * duration_ratio, "%"),
+                                    to_string_with_precision(count, "", 0),
+                                    format_byte(average),
+                                    format_byte(min),
+                                    format_byte(max),
+                                    to_string_with_precision(error, "", 0)};
   }
 
 private:
-  template <typename T> std::string format_byte2(const T duration) {
+  template <typename T> std::string format_byte(const T duration) {
     const double PB = duration / 1e+15;
     if (PB >= 1.)
-      return to_string_with_precision2(PB, "PB");
+      return to_string_with_precision(PB, "PB");
 
     const double TB = duration / 1e+12;
     if (TB >= 1.)
-      return to_string_with_precision2(TB, "TB");
+      return to_string_with_precision(TB, "TB");
 
     const double GB = duration / 1e+9;
     if (GB >= 1.)
-      return to_string_with_precision2(GB, "GB");
+      return to_string_with_precision(GB, "GB");
 
     const double MB = duration / 1e+6;
     if (MB >= 1.)
-      return to_string_with_precision2(MB, "MB");
+      return to_string_with_precision(MB, "MB");
 
     const double kB = duration / 1e+3;
     if (kB >= 1.)
-      return to_string_with_precision2(kB, "kB");
+      return to_string_with_precision(kB, "kB");
 
-    return to_string_with_precision2(duration, "B");
+    return to_string_with_precision(duration, "B");
   }
 };
 
@@ -317,7 +316,7 @@ void apply_sizelimit(std::vector<std::pair<thapi_function_name, TC>> &m, int max
 // TallyCoreHeader tuple of str
 template <std::size_t SIZE, typename TC,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-auto max_string_size2(std::vector<std::pair<thapi_function_name, TC>> &m,
+auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
                       const std::pair<std::string, std::array<const char *, SIZE>> header) {
 
   auto &[header_name, header_tallycore] = header;
@@ -423,7 +422,7 @@ void print_named_tuple(std::ostream &os, const std::string &header, const std::t
 // orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_tally2(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
+void print_tally(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
 
   auto sorted_by_value = sort_by_value(m);
   add_footer(sorted_by_value);
@@ -431,7 +430,7 @@ void print_tally2(std::unordered_map<thapi_function_name, TC> &m, int display_na
 
   const auto header = std::make_pair(std::string("Name"), TC::headers);
 
-  auto &&[s1, s2] = max_string_size2(sorted_by_value, header);
+  auto &&[s1, s2] = max_string_size(sorted_by_value, header);
 
   auto f1_header = std::make_pair(header.first, s1);
   const auto f2_header = std::make_pair(header.second, s2);
@@ -468,7 +467,7 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
   std::cout << std::endl;
 
   auto aggregated_by_name = aggregate_by_name(m);
-  print_tally2(aggregated_by_name, display_name_max_size);
+  print_tally(aggregated_by_name, display_name_max_size);
 }
 
 // orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
@@ -483,7 +482,7 @@ void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_str
   for (auto &[k, aggregated_by_name] : aggregated_nested) {
     print_named_tuple(std::cout, title, k, keys_string);
     std::cout << std::endl;
-    print_tally2(aggregated_by_name, display_name_max_size);
+    print_tally(aggregated_by_name, display_name_max_size);
   }
 }
 
