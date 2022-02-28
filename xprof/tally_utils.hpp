@@ -54,8 +54,6 @@ std::string to_string_with_precision2(const T a_value, const std::string extensi
 
 class TallyCoreBase {
 public:
-  // This should be computed staticaly
-  static constexpr auto num_menbers = 7U;
   TallyCoreBase() {}
 
   TallyCoreBase(uint64_t _dur, bool _err) : duration{_dur}, error{_err} {
@@ -91,6 +89,7 @@ public:
     this->error += rhs.error;
     return *this;
   }
+
   void finalize(const TallyCoreBase &rhs) {
     average = count ? static_cast<double>(duration) / count : 0.;
     duration_ratio = static_cast<double>(duration) / rhs.duration;
