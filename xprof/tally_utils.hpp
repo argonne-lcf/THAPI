@@ -63,7 +63,7 @@ public:
   }
 
   uint64_t duration{0};
-  bool error{0};
+  uint64_t error{0};
   uint64_t min{ULONG_MAX};
   uint64_t max{0};
   uint64_t count{0};
