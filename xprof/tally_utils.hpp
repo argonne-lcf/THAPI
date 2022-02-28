@@ -494,14 +494,9 @@ void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_str
 //
 // https://github.com/nlohmann/json
 //
-void to_json(nlohmann::json &j, const TallyCoreTime &tc) {
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void to_json(nlohmann::json &j, const TC &tc) {
   j = nlohmann::json{{"time", tc.duration}, {"call", tc.count}, {"min", tc.min}, {"max", tc.max}};
-  if (tc.error != 0)
-    j["error"] = tc.error;
-}
-
-void to_json(nlohmann::json &j, const TallyCoreByte &tc) {
-  j = nlohmann::json{{"size", tc.duration}, {"call", tc.count}, {"min", tc.min}, {"max", tc.max}};
   if (tc.error != 0)
     j["error"] = tc.error;
 }
