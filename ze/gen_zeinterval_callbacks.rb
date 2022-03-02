@@ -1,5 +1,6 @@
 require 'erb'
 require 'yaml'
+require 'set'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 START = 'entry'
@@ -31,6 +32,10 @@ class DBT_event
     @name_unsanitized.end_with?(STOP)
   end
 
+  def name_prefix
+    @name_unsanitized.gsub(/_?(?:#{START}|#{STOP})?$/, '')   
+  end 
+
   def name_striped
     # #{namespace}:#{foo}_#{START} -> #{foo}
     # #{namespace}:#{foo} -> #{foo}
@@ -53,5 +58,16 @@ $dbt_events = ze_babeltrace_model[:event_classes].map { |klass|
   DBT_event.new(klass)
 }
 
+$profiling_apis = Set.new
+
 template = File.read(File.join(SRC_DIR, "zeinterval_callbacks.cpp.erb"))
-puts ERB.new(template).result(binding).gsub(/^\s*$\n/, '')
+
+t = ERB.new(template).result(binding)
+
+if ARGV[0] == "callbacks"
+  puts t.gsub(/^\s*$\n/, '')
+elsif ARGV[0] == "apis"
+  puts $profiling_apis.to_a.join(',')
+else
+  raise "Invalid argument #{ARGV[0]}"
+end

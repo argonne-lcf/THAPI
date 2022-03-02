@@ -411,9 +411,11 @@ Case B:
   <%# Save devices informations.
       Map subdevices to their parents %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:device" %>
+     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      const hpd_t hpd (hostname, process_id, (thapi_device_id)hDevice);
      state->device_to_properties[hpd] = *pDeviceProperties_val;
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_properties:subdevice" %>
+     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      const hpd_t hpd (hostname, process_id, (thapi_device_id)hSubDevice);
      state->device_to_properties[hpd] = *pDeviceProperties_val;
      state->subdevice_parent[hpd] = (thapi_device_id)hDevice;
@@ -421,6 +423,7 @@ Case B:
 
   <%# Map command list to device %>
   <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include?(dbt_event.name_striped) %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
     <% if dbt_event.start? %>
      save_start(state, hpt_t(hostname,process_id,thread_id), hDevice);
     <% elsif dbt_event.stop? %>
@@ -437,8 +440,10 @@ Case B:
   %>
   <%# Map kernel to name and group size %>
   <% if dbt_event.name_striped == "zeKernelCreate" and dbt_event.start? %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      save_start(state, hpt_t(hostname,process_id,thread_id), std::string{desc__pKernelName_val});
   <% elsif dbt_event.name_striped == "zeKernelCreate" and dbt_event.stop? %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      state->kernel_to_name[hpk_t(hostname,process_id,phKernel_val)] = retrieve_start<std::string>(state, hpt_t(hostname,process_id,thread_id));
   <% elsif dbt_event.name_striped == "zeKernelSetGroupSize" and dbt_event.start? %>
      std::stringstream groupsize;
@@ -456,6 +461,8 @@ Case B:
   %>
   <%# Map last command partial payload %>
   <% if dbt_event.start? and dbt_event.fields_name.include?('hSignalEvent') %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
      std::stringstream metadata;
     <% if dbt_event.fields_name.include?('hKernel') %>
      const hpk_t hpk(hostname, process_id, hKernel);
@@ -484,7 +491,6 @@ Case B:
      const auto device = state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
      state->command_partial_payload[hpt_t(hostname,process_id,thread_id)] = tfnm_m_d_ts_t(name, metadata.str(), device, ns_from_origin);
   <% end %>
-
   <%#
     _         _                    _
    |_) ._ _ _|_ o | o ._   _  o   |_     _  ._ _|_
@@ -492,6 +498,7 @@ Case B:
                            _|
   %>
   <% if dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling" %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      const thread_id_t thread_id = borrow_thread_id(bt_evt);
      const hpe_t hpe(hostname, process_id, hEvent);
      const hpt_t hpt(hostname, process_id, thread_id);
@@ -529,6 +536,7 @@ Case B:
      }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      const hpe_t hpe(hostname, process_id, hEvent);
      const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
 
@@ -560,6 +568,8 @@ Case B:
      //Name is set by the profiling, but some function transfert memory but cannot be profiled
      //ie, prefetch, maxing memory resident...
      const std::string name{"<%= dbt_event.name_striped %>"};
+    <% else %>
+       <% $profiling_apis.add(dbt_event.name_unsanitized) %>
     <% end %>
      create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, name.c_str(), size);
   <% end %>
