@@ -6,6 +6,7 @@ pkglibdir=$libdir/@PACKAGE@
 prefix=@prefix@
 datarootdir=@datarootdir@
 datadir=@datadir@
+
 <%def print_loader_logic (language, library, libtracer)
 env_var="LTTNG_UST_#{language.upcase}_#{library.upcase}"
 directory=language.downcase
@@ -48,7 +49,7 @@ display_help() {
     echo "  -t, --trace              Display trace"
     echo "  -l, --timeline           Dump the timeline"
     echo "  -j, --json               Summary will be printed as json"
-    echo "  -f, --full               All API calls will be traced. By default and for performance raison, some of them will be ignored"
+    echo "  -m, --mode <mode>        (minimal, default, full)"
     echo "  --asm                    Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  --mangle                 Use mangled name"
     echo "  --metadata               Display metadata"
@@ -189,7 +190,7 @@ trace_and_summary() {
     opencl_disable_events+="lttng_ust_opencl:clGetMemAllocInfoINTEL*"
 
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x ${opencl_disable_events}
-    if [ -n "$full" ]; then
+    if [ $mode = "full" ]; then
         lttng $quiet enable-event --channel=blocking-channel --userspace ${opencl_disable_events}
     fi
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
@@ -198,18 +199,25 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 <% end %>
 <% if languages.include?("ze") %>
-    ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events}
-    if [ -n "$full" ]; then
-        lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
-    fi
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
+
     export LTTNG_UST_ZE_PROFILE=1
     export LTTNG_UST_ZE_PARANOID_DRIFT=1
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
-    ze_disable_events_memory="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_events_memory}
+
+    if [ $mode = "minimal" ]; then
+        lttng $quiet enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
+    else
+        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
+        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+        ze_disable_properties="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
+        ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
+        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_properties}
+        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events}
+
+        if [ $mode = "full" ]; then
+            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events} 
+            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_properties}
+        fi
+    fi
 <% end %>
 <% if languages.include?("cuda") %>
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
@@ -312,6 +320,7 @@ display_mode=human
 display_metadata=false
 display_name_max_size=80
 display_kernel_verbose=false
+mode=default
 
 if [ "$#" -eq 0 ]; then
     display_help
@@ -327,7 +336,7 @@ while (( "$#" )); do
         -t | --trace)           shift; trace=true ;;
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; display_mode=json;;
-        -f | --full)            shift; full=true ;;
+        -m | --mode)            shift; mode=$1; shift ;;
         --asm)                  shift; asm=true ;;
         --metadata)             shift; display_metadata=true ;;
         --max-name-size)        shift; display_name_max_size=$1; shift ;;

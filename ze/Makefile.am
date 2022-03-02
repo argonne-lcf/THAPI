@@ -259,10 +259,14 @@ CLEANFILES += $(ZE_BINDINGS)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
-	ze_bindings_base.rb
+	ze_bindings_base.rb \
+	babeltrace_zeprofiling_apis.txt
 
 babeltrace_zeinterval_callbacks.cpp: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< callbacks > $@
+
+babeltrace_zeprofiling_apis.txt: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< apis > $@
 
 babeltrace_zeinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
@@ -291,6 +295,7 @@ EXTRA_DIST += \
 
 CLEANFILES += \
 	babeltrace_zeinterval_callbacks.cpp \
+	babeltrace_zeprofiling_apis.txt \
 	babeltrace_zeinterval_callbacks.h \
 	babeltrace_zeinterval_dispatchers.c \
 	babeltrace_zeinterval_emitter.h \
