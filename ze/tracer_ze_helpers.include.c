@@ -49,26 +49,26 @@ static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
   free(o_h);
 }
 
-#define FIND_ZE_OBJ(key, val) { \
+#define FIND_ZE_OBJ(key, val) do { \
   pthread_mutex_lock(&_ze_objs_mutex); \
   HASH_FIND_PTR(_ze_objs, key, val); \
   pthread_mutex_unlock(&_ze_objs_mutex); \
-}
+} while (0)
 
-#define ADD_ZE_OBJ(val) { \
+#define ADD_ZE_OBJ(val) do { \
   pthread_mutex_lock(&_ze_objs_mutex); \
   HASH_ADD_PTR(_ze_objs, ptr, val); \
   pthread_mutex_unlock(&_ze_objs_mutex); \
-}
+} while (0)
 
-#define FIND_AND_DEL_ZE_OBJ(key, val) { \
+#define FIND_AND_DEL_ZE_OBJ(key, val) do { \
   pthread_mutex_lock(&_ze_objs_mutex); \
   HASH_FIND_PTR(_ze_objs, key, val); \
   if (val) { \
     HASH_DEL(_ze_objs, val); \
   } \
   pthread_mutex_unlock(&_ze_objs_mutex); \
-}
+} while (0)
 
 static inline void _register_ze_device(
  ze_device_handle_t device,
@@ -140,26 +140,26 @@ static inline void _register_ze_command_list(
   ADD_ZE_OBJ(o_h);
 }
 
-#define FIND_ZE_EVENT(key, val) { \
+#define FIND_ZE_EVENT(key, val) do { \
   pthread_mutex_lock(&_ze_events_mutex); \
   HASH_FIND_PTR(_ze_events, key, val); \
   pthread_mutex_unlock(&_ze_events_mutex); \
-}
+} while (0)
 
-#define ADD_ZE_EVENT(val) { \
+#define ADD_ZE_EVENT(val) do { \
   pthread_mutex_lock(&_ze_events_mutex); \
   HASH_ADD_PTR(_ze_events, event, val); \
   pthread_mutex_unlock(&_ze_events_mutex); \
-}
+} while (0)
 
-#define FIND_AND_DEL_ZE_EVENT(key, val) { \
+#define FIND_AND_DEL_ZE_EVENT(key, val) do { \
   pthread_mutex_lock(&_ze_events_mutex); \
   HASH_FIND_PTR(_ze_events, key, val); \
   if (val) { \
     HASH_DEL(_ze_events, val); \
   } \
   pthread_mutex_unlock(&_ze_events_mutex); \
-}
+} while (0)
 
 static struct _ze_event_h *_ze_events = NULL;
 static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
