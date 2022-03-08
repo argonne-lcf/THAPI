@@ -522,23 +522,35 @@ EOF
     end
 
     # missing support for raytracing
-    def mem_alloc_shared(size, device: nil, alignment: 0, ordinal: 0, host_flags: 0, device_flags: 0)
+    def mem_alloc_shared(size, device: nil, alignment: 0, ordinal: 0, host_flags: 0, device_flags: 0, relaxed_allocation_limits_exp_flags: nil)
       pptr = MemoryPointer::new(:pointer)
       host_desc = ZEHostMemAllocDesc::new
       device_desc = ZEDeviceMemAllocDesc::new
       host_desc[:flags] = host_flags
       device_desc[:flags] = device_flags
       device_desc[:ordinal] = ordinal
+      limits_desc = nil
+      if relaxed_allocation_limits_exp_flags
+        limits_desc = ZERelaxedAllocationLimitsExpDesc::new
+        limits_desc[:flags] = relaxed_allocation_limits_exp_flags
+        device_desc[:pNext] = limits_desc.to_ptr
+      end
       result = ZE.zeMemAllocShared(@handle, device_desc, host_desc, size, alignment, device, pptr)
       pptr.read_pointer.slice(0, size)
     end
 
     # missing support for file descriptor
-    def mem_alloc_device(size, device, alignment: 0, ordinal: 0, flags: 0)
+    def mem_alloc_device(size, device, alignment: 0, ordinal: 0, flags: 0, relaxed_allocation_limits_exp_flags: nil)
       pptr = MemoryPointer::new(:pointer)
       desc = ZEDeviceMemAllocDesc::new
       desc[:flags] = flags
       desc[:ordinal] = ordinal
+      limits_desc = nil
+      if relaxed_allocation_limits_exp_flags
+        limits_desc = ZERelaxedAllocationLimitsExpDesc::new
+        limits_desc[:flags] = relaxed_allocation_limits_exp_flags
+        desc[:pNext] = limits_desc.to_ptr
+      end
       result = ZE.zeMemAllocDevice(@handle, desc, size, alignment, device, pptr)
       ZE.error_check(result)
       pptr.read_pointer.slice(0, size)
