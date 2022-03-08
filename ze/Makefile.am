@@ -8,6 +8,7 @@ endif
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 ZE_NAMESPACES = ze zet zes zel
+ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
 ZE_EXTRA_HDR = \
 	$(srcdir)/include/ze_ddi.h \
@@ -94,12 +95,9 @@ EXTRA_DIST += \
 	ze_model.rb \
 	gen_babeltrace_ze_model.rb
 
-ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints)
-
+ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints) $(ZE_STRUCTS_NAMESPACES:=_tracepoints)
 ZE_PROBES_TP = $(ZE_PROBES:=.tp)
-
 ZE_PROBES_INCL = $(ZE_PROBES:=.h)
-
 ZE_PROBES_SRC = $(ZE_PROBES:=.c)
 
 ZE_STATIC_PROBES = \
@@ -108,11 +106,8 @@ ZE_STATIC_PROBES = \
 	ze_build
 
 ZE_STATIC_PROBES_TP = $(ZE_STATIC_PROBES:=.tp)
-
 ZE_STATIC_PROBES_INCL = $(ZE_STATIC_PROBES:=.h)
-
 ZE_STATIC_PROBES_SRC = $(ZE_STATIC_PROBES:=.c)
-
 ZE_GEN_TRACEPOINTS = $(ZE_PROBES:%=gen_%.rb)
 
 $(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb $(srcdir)/ze.h.include
