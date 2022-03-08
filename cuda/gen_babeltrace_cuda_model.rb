@@ -186,40 +186,27 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   case lttng_name
   when 'ctf_float'
     field[:class] = type == 'float' ? 'single' : type
-  when 'ctf_integer'
+  when 'ctf_integer', 'ctf_integer_hex'
     field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
     field[:class_properties] = { field_value_range: integer_size(type) }
-  when 'ctf_integer_hex'
-    field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
-    field[:class_properties] =
-      { field_value_range: integer_size(type), preferred_display_base: 16 }
-  when 'ctf_sequence'
+    field[:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
+    if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
+      field[:be_class] = "CUDA::#{to_class_name(type)}"
+    end
+  when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s
     field[:class] = 'array_dynamic'
     field[:field] =
       { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
         class_properties: { field_value_range: integer_size(array_type) } }
-  when 'ctf_sequence_hex'
-    array_type = lttng.type.to_s
-    field[:class] = 'array_dynamic'
-    field[:field] =
-      { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
-        class_properties: { field_value_range: integer_size(array_type),
-                            preferred_display_base: 16 } }
-  when 'ctf_array'
+    field[:field][:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
+  when 'ctf_array', 'ctf_array_hex'
     array_type = lttng.type.to_s
     field[:class] = 'array_static'
     field[:field] =
       { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
         class_properties: { field_value_range: integer_size(array_type) } }
-    field[:length] = lttng.length
-  when 'ctf_array_hex'
-    array_type = lttng.type.to_s
-    field[:class] = 'array_static'
-    field[:field] =
-      { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
-        class_properties: { field_value_range: integer_size(array_type),
-                            preferred_display_base: 16 } }
+    field[:field][:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
     field[:length] = lttng.length
   when 'ctf_string'
     field[:class] = 'string'
@@ -231,6 +218,9 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   when 'ctf_array_text'
     field[:class] = 'string'
     field[:length] = lttng.length
+    if $all_struct_names.include?(type.sub(" *", ""))
+      field[:be_class] = "CUDA::#{to_class_name(type.sub(" *", ""))}"
+    end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
   end

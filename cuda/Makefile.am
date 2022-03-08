@@ -318,7 +318,7 @@ libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_MODEL)
+babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_MODEL) cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CUDA_BINDINGS = \

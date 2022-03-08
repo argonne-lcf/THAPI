@@ -1,5 +1,8 @@
 ---
 meta_parameters:
+  cuGetErrorName:
+    - [OutScalar, pStr]
+    - [OutPtrString, pStr]
   cuGetErrorString:
     - [OutScalar, pStr]
     - [OutPtrString, pStr]
