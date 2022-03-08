@@ -131,9 +131,8 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
     field[:class_properties] = { field_value_range: integer_size(type) }
     field[:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
-    t = type.sub(/_flags_t\Z/, "_flag_t")
-    if $all_enum_names.include?(t) || $all_bitfield_names.include?(t)
-      field[:be_class] = "ZE::#{to_class_name(t)}"
+    if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
+      field[:be_class] = "ZE::#{to_class_name(type)}"
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s

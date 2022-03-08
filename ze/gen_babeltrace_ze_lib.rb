@@ -16,8 +16,7 @@ EOF
     case f[:class]
     when "signed", "unsigned"
       if f[:be_class]
-        tname = f[:cast_type].sub(/_flags_t\Z/, "_flag_t")
-        if $all_bitfield_names.include?(tname)
+        if $all_bitfield_names.include?(f[:cast_type])
           "s << \"#{name}: [ \#{#{f[:be_class]}.from_native(defi[\"#{name}\"], nil).join(\", \")} ]\""
         else
           "s << \"#{name}: \#{#{f[:be_class]}.from_native(defi[\"#{name}\"], nil)}\""

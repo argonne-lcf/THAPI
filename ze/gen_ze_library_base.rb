@@ -60,6 +60,8 @@ $all_types.each { |t|
   end
 }
 
+$all_bitfield_names += $all_bitfield_names.select { |n| n.end_with?("_flag_t") }.map { |n| n.gsub("_flag_t", "_flags_t") }
+
 module YAMLCAst
   class Struct
     def to_ffi
