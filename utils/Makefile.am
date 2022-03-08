@@ -61,6 +61,7 @@ EXTRA_DIST = \
 	lttng_dummy_trace.sh \
 	LTTng.rb \
 	gen_babeltrace_lib_helper.rb \
+	gen_babeltrace_model_helper.rb \
 	tracepoint_gen.rb \
 	yaml_ast.rb \
 	gen_dummy_trace.rb \

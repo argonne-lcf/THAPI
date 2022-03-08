@@ -37,6 +37,10 @@ def to_class_name(name)
   mod << n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("P2p", "P2P")
 end
 
+def to_scoped_class_name(name)
+  "ZE::#{to_class_name(name)}"
+end
+
 def to_ffi_name(name)
   name.to_sym.inspect
 end
