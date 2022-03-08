@@ -1,5 +1,5 @@
 require_relative 'gen_ze_library_base.rb'
-
+require 'set'
 
 $integer_sizes = {
   "uint8_t" => 8,
@@ -204,6 +204,53 @@ event_classes =
     gen_event_bt_model(provider, c, :stop)]
   }
 }.flatten(2)
+
+def get_structs_types(namespace, types, structs)
+  types.select { |t|
+    t.type.kind_of?(YAMLCAst::Struct) && (struct = structs.find { |s| t.type.name == s.name }) && struct.members.first.name == "stype"
+  }.reject { |t|
+    t.name.start_with?("#{namespace}_base_")
+  }.map(&:name).to_set
+end
+
+def gen_struct_event_bt_model(provider, struct)
+  {
+    name: "#{provider}:#{struct}",
+    payload: [
+      {
+        name: "p",
+        cast_type: "#{struct} *",
+        class: "unsigned",
+        class_properties: {
+          field_value_range: 64,
+          preferred_display_base: 16 }
+      },
+      {
+        name: "_p_val_length",
+        cast_type: "size_t",
+        class: "unsigned",
+        class_properties: {
+          field_value_range: 64 }
+      },
+      {
+        name: "p_val",
+        cast_type: "#{struct} *",
+        class: "string",
+        be_class: "ZE::#{to_class_name(struct)}"
+      }
+    ]
+  }
+end
+
+event_classes +=
+[[:lttng_ust_ze_structs, get_structs_types(:ze, $ze_api["typedefs"], $ze_api["structs"])],
+ [:lttng_ust_zet_structs, get_structs_types(:zet, $zet_api["typedefs"], $zet_api["structs"])],
+ [:lttng_ust_zes_structs, get_structs_types(:zes, $zes_api["typedefs"], $zes_api["structs"])],
+ [:lttng_ust_zel_structs, get_structs_types(:zel, $zel_api["typedefs"], $zel_api["structs"])]].collect { |provider, structs|
+  structs.collect { |struct|
+    gen_struct_event_bt_model(provider, struct)
+  }
+}.flatten
 
 ze_events = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))
 event_classes += ze_events.collect { |provider, es|
