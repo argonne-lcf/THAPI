@@ -47,7 +47,7 @@ EOF
           "s << \"#{name}: \#{defi[\"#{name}\"]}\""
         end
       else
-        "Unsupported field type: #{f}"
+        raise "Unsupported field type: #{f}"
       end
     else
       raise "Unsupported field type: #{f}"
