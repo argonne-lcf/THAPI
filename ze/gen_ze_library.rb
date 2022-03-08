@@ -340,6 +340,13 @@ def print_union(name, union)
 EOF
 end
 
+$struct_type_conversion_table = {
+  "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP" => "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES",
+  "ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC" => "ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC",
+  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32",
+  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32",
+}
+
 def print_struct(name, struct)
   members = struct.to_ffi
   print_lambda = lambda { |m|
@@ -379,17 +386,22 @@ EOF
       super(*args)
       if(args.length == 0)
 EOF
-    case to_ffi_name(name)
-    when /ze_image_memory_properties_exp_t/
-      puts "        self[:stype] = -999 #Ugly fix for https://github.com/oneapi-src/level-zero/issues/64"
-    when /\A:ze_/
-      puts "        self[:stype] = :ZE_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[4..-3].upcase}"
-    when /\A:zet_/
-      puts "        self[:stype] = :ZET_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[5..-3].upcase}"
-    when /\A:zes_/
-      puts "        self[:stype] = :ZES_STRUCTURE_TYPE_#{to_ffi_name(name).to_s[5..-3].upcase}"
-    end
+    ename = to_ffi_name(name)
+    ename = case ename
+      when /\A:ze_/
+        "ZE_STRUCTURE_TYPE_#{ename.to_s[4..-3]}"
+      when /\A:zet_/
+        "ZET_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
+      when /\A:zes_/
+        "ZES_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
+      when /\A:zel_/
+        "ZEL_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
+      else
+        raise "Unrecognized namespace for #{ename}"
+      end.upcase
+    ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
     puts <<EOF
+        self[:stype] = :#{ename}
       end
     end
 EOF

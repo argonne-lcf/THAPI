@@ -55,3 +55,20 @@ EOF
 
 EOF
 }
+
+$struct_tracepoint_lambda = lambda { |provider, t|
+  puts <<EOF
+TRACEPOINT_EVENT(
+  #{provider},
+  #{t},
+  TP_ARGS(
+    #{t} *, p
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(uintptr_t, p, (uintptr_t)(p))
+    ctf_sequence_text(uint8_t, p_val, p, size_t, (p ? sizeof(#{t}) : 0))
+  )
+)
+
+EOF
+}

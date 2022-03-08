@@ -81,6 +81,9 @@ lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zes:*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_structs:*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet_structs:*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_zes_structs:*
 if [ ! -z "$profiling" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*

@@ -208,6 +208,7 @@ trace_and_summary() {
     else
         lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
         lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+
         ze_disable_properties="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
         ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
         lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_properties}
@@ -216,6 +217,10 @@ trace_and_summary() {
         if [ $mode = "full" ]; then
             lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events} 
             lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_properties}
+
+            lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_structs:*
+            lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet_structs:*
+            lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zes_structs:*
         fi
     fi
 <% end %>
