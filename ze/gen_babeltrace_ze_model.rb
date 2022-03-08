@@ -164,6 +164,9 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   when 'ctf_array_text'
     field[:class] = 'string'
     field[:length] = lttng.length
+    if $all_struct_names.include?(type.sub(" *", ""))
+      field[:be_class] = "ZE::#{to_class_name(type.sub(" *", ""))}"
+    end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
   end
