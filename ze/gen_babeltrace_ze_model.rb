@@ -211,9 +211,9 @@ event_classes =
 def get_structs_types(namespace, types, structs)
   types.select { |t|
     t.type.kind_of?(YAMLCAst::Struct) && (struct = structs.find { |s| t.type.name == s.name }) && struct.members.first.name == "stype"
-  }.reject { |t|
-    t.name.start_with?("#{namespace}_base_")
-  }.map(&:name).to_set
+  }.map(&:name).reject { |n|
+    n.start_with?("#{namespace}_base_")
+  }.to_set
 end
 
 def gen_struct_event_bt_model(provider, struct)
