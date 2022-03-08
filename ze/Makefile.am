@@ -228,7 +228,7 @@ libBabeltraceZE_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 ze_library.rb: $(srcdir)/gen_ze_library.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_ze_lib.rb: $(srcdir)/gen_babeltrace_ze_lib.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+babeltrace_ze_lib.rb: $(srcdir)/gen_babeltrace_ze_lib.rb $(ZE_LIB_GEN) $(ZE_MODEL) ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 ze_refinements.rb: $(srcdir)/gen_ze_refinements.rb $(ZE_LIB_GEN) $(ZE_MODEL)
