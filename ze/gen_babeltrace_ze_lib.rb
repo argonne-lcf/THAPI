@@ -15,11 +15,13 @@ EOF
     name = f[:name]
     case f[:class]
     when "signed", "unsigned"
-      tname = f[:cast_type].sub(/_flags_t\Z/, "_flag_t")
-      if $all_enum_names.include?(tname)
-        "s << \"#{name}: \#{ZE::#{to_class_name(tname)}.from_native(defi[\"#{name}\"], nil)}\""
-      elsif $all_bitfield_names.include?(tname)
-        "s << \"#{name}: [ \#{ZE::#{to_class_name(tname)}.from_native(defi[\"#{name}\"], nil).join(\", \")} ]\""
+      if f[:be_class]
+        tname = f[:cast_type].sub(/_flags_t\Z/, "_flag_t")
+        if $all_bitfield_names.include?(tname)
+          "s << \"#{name}: [ \#{#{f[:be_class]}.from_native(defi[\"#{name}\"], nil).join(\", \")} ]\""
+        else
+          "s << \"#{name}: \#{#{f[:be_class]}.from_native(defi[\"#{name}\"], nil)}\""
+        end
       elsif f[:class_properties][:preferred_display_base] == 16
         "s << \"#{name}: \#{\"0x%016x\" % defi[\"#{name}\"]}\""
       else

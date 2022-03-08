@@ -127,26 +127,21 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   case lttng_name
   when 'ctf_float'
     field[:class] = type == 'float' ? 'single' : type
-  when 'ctf_integer'
+  when 'ctf_integer', 'ctf_integer_hex'
     field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
     field[:class_properties] = { field_value_range: integer_size(type) }
-  when 'ctf_integer_hex'
-    field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
-    field[:class_properties] =
-      { field_value_range: integer_size(type), preferred_display_base: 16 }
-  when 'ctf_sequence'
+    field[:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
+    t = type.sub(/_flags_t\Z/, "_flag_t")
+    if $all_enum_names.include?(t) || $all_bitfield_names.include?(t)
+      field[:be_class] = "ZE::#{to_class_name(t)}"
+    end
+  when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s
     field[:class] = 'array_dynamic'
     field[:field] =
       { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
         class_properties: { field_value_range: integer_size(array_type) } }
-  when 'ctf_sequence_hex'
-    array_type = lttng.type.to_s
-    field[:class] = 'array_dynamic'
-    field[:field] =
-      { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
-        class_properties: { field_value_range: integer_size(array_type),
-                            preferred_display_base: 16 } }
+    field[:field][:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
   when 'ctf_array'
     array_type = lttng.type.to_s
     field[:class] = 'array_static'
