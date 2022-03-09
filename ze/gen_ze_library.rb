@@ -69,6 +69,7 @@ EOF
 EOF
   end
   if to_ffi_name(name).match("_flag_t")
+    puts "  #{to_class_name(name)}s = #{to_class_name(name)}"
     puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub("_flag_t", "_flags_t")}"
   end
   puts "\n"

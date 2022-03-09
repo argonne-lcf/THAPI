@@ -37,6 +37,10 @@ def to_class_name(name)
   mod << n.gsub("Uuid","UUID").gsub("Dditable", "DDITable").gsub(/\AFp/, "FP").gsub("P2p", "P2P")
 end
 
+def to_scoped_class_name(name)
+  "ZE::#{to_class_name(name)}"
+end
+
 def to_ffi_name(name)
   name.to_sym.inspect
 end
@@ -59,6 +63,8 @@ $all_types.each { |t|
     $all_union_names.push t.name
   end
 }
+
+$all_bitfield_names += $all_bitfield_names.select { |n| n.end_with?("_flag_t") }.map { |n| n.gsub("_flag_t", "_flags_t") }
 
 module YAMLCAst
   class Struct

@@ -50,6 +50,10 @@ def to_class_name(name)
   mod << n.gsub("Uuid","UUID").gsub("Ipc", "IPC").gsub("P2p", "P2P")
 end
 
+def to_scoped_class_name(name)
+  "CUDA::#{to_class_name(name)}"
+end
+
 def to_ffi_name(name)
   case name
   when nil
