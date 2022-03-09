@@ -205,6 +205,7 @@ trace_and_summary() {
 
     if [ $mode = "minimal" ]; then
         lttng $quiet enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
+        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
     else
         lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
         lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
