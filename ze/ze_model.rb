@@ -803,9 +803,12 @@ register_prologue "zeCommandListAppendImageCopyFromMemoryExt", memory_info_prolo
 # not very cleanly is used....
 profiling_prologue = lambda { |event_name|
   <<EOF
-  ze_event_pool_handle_t _pool = NULL;
-  if (_do_profile && !#{event_name})
-    #{event_name} = _get_profiling_event(hCommandList, &_pool);
+  struct _ze_event_h * _ewrapper = NULL;
+  if (_do_profile && !#{event_name}) {
+    _ewrapper = _get_profiling_event(hCommandList);
+    if (_ewrapper)
+      #{event_name} = _ewrapper->event;
+  }
 EOF
 }
 
@@ -813,12 +816,10 @@ profiling_epilogue = lambda { |event_name|
   <<EOF
   if (_do_profile && #{event_name}) {
     if (_retval == ZE_RESULT_SUCCESS) {
-      _register_ze_event(#{event_name}, hCommandList, _pool);
+      _register_ze_event(#{event_name}, hCommandList, _ewrapper);
       tracepoint(lttng_ust_ze_profiling, event_profiling, #{event_name});
-    } else if (_pool) {
-      ZE_EVENT_DESTROY_PTR(#{event_name});
-      ZE_EVENT_POOL_DESTROY_PTR(_pool);
-    }
+    } else if (_ewrapper)
+      PUT_ZE_EVENT(_ewrapper);
   }
 EOF
 }
