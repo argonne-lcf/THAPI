@@ -164,7 +164,7 @@ EOF
     types.include?(a.type.type.name)
   }.each { |p|
     puts <<EOF
-  if (#{p.name})
+  if (_do_chained_structs && #{p.name})
     _print_#{provider}_structs(#{p.name}->pNext);
 EOF
   }
@@ -197,7 +197,7 @@ EOF
     types.include?(a.type.type.name)
   }.each { |p|
     puts <<EOF
-  if (#{p.name})
+  if (_do_chained_structs && #{p.name})
     _print_#{provider}_structs(#{p.name}->pNext);
 EOF
   }

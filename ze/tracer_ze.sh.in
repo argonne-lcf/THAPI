@@ -42,6 +42,7 @@ display_help() {
     echo "  -v, --visualize               Visualize trace on thefly"
     echo "  --properties                  Dump drivers and devices properties"
     echo "  --memory                      Dump memory properties"
+    echo "  --structs                     Dump chained structs"
     exit 1
 }
 
@@ -59,6 +60,7 @@ while true; do
     -v | --visualize ) shift; lttng_view=1;;
     --properties ) shift; properties=1;;
     --memory ) shift; memory=1;;
+    --structs ) shift; structs=1; export LTTNG_UST_ZE_CHAINED_STRUCTS=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -81,9 +83,12 @@ lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet:*
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_zes:*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_structs:*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet_structs:*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_zes_structs:*
+if [ ! -z "$structs" ]
+then
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_structs:*
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_zet_structs:*
+  lttng enable-event --channel=blocking-channel --userspace lttng_ust_zes_structs:*
+fi
 if [ ! -z "$profiling" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
