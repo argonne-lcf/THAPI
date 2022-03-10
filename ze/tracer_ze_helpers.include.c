@@ -12,6 +12,7 @@ struct _ze_device_obj_data {
 };
 
 static int _do_profile = 0;
+static int _do_chained_structs = 0;
 
 struct _ze_event_h {
   ze_event_handle_t event;
@@ -515,6 +516,10 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_ZE_VERBOSE");
   if (s)
     verbose = 1;
+
+  s = getenv("LTTNG_UST_ZE_CHAINED_STRUCTS");
+  if (s)
+    _do_chained_structs = 1;
 
   find_ze_symbols(handle, verbose);
 

@@ -218,10 +218,6 @@ trace_and_summary() {
         if [ $mode = "full" ]; then
             lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events} 
             lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_properties}
-
-            lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_structs:*
-            lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zet_structs:*
-            lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_zes_structs:*
         fi
     fi
 <% end %>
