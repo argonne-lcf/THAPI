@@ -703,7 +703,7 @@ EOF
 register_epilogue "zeCommandListCreate", <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _register_ze_command_list(*phCommandList, hContext, hDevice);
+      _register_ze_command_list(*phCommandList, hContext, hDevice, 0);
     }
   }
 EOF
@@ -711,7 +711,7 @@ EOF
 register_epilogue "zeCommandListCreateImmediate", <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _register_ze_command_list(*phCommandList, hContext, hDevice);
+      _register_ze_command_list(*phCommandList, hContext, hDevice, 1);
     }
   }
 EOF
@@ -725,6 +725,14 @@ register_epilogue "zeCommandListDestroy", <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
       _unregister_ze_command_list(hCommandList);
+    }
+  }
+EOF
+
+register_epilogue "zeCommandQueueExecuteCommandLists", <<EOF
+  if (_do_profile) {
+    if (_retval == ZE_RESULT_SUCCESS && numCommandLists > 0) {
+      _execute_ze_command_lists(numCommandLists, phCommandLists);
     }
   }
 EOF
@@ -750,13 +758,13 @@ EOF
 
 register_prologue "zeEventDestroy", <<EOF
   if (_do_profile && hEvent) {
-    _unregister_ze_event(hEvent, 1);
+    _unregister_ze_event(hEvent, 1, 1);
   }
 EOF
 
 register_prologue "zeEventHostReset", <<EOF
   if (_do_profile && hEvent) {
-    _unregister_ze_event(hEvent, 1);
+    _dump_and_reset_event(hEvent);
   }
 EOF
 
