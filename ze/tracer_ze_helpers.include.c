@@ -14,20 +14,33 @@ struct _ze_device_obj_data {
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
 
+typedef enum _ze_event_flag {
+  _ZE_PROFILED = ZE_BIT(0)
+} _ze_event_flag_t;
+typedef _ze_event_flag_t _ze_event_flags_t;
+
 struct _ze_event_h {
   ze_event_handle_t event;
   UT_hash_handle hh;
   ze_command_list_handle_t command_list;
   ze_event_pool_handle_t event_pool;
   ze_context_handle_t context;
+  _ze_event_flags_t flags;
   /* to remember events in command lists */
   struct _ze_event_h *next, *prev;
 };
+
+typedef enum _ze_command_list_flag {
+  _ZE_IMMEDIATE = ZE_BIT(0),
+  _ZE_EXECUTED  = ZE_BIT(1)
+} _ze_command_list_flag_t;
+typedef _ze_command_list_flag_t _ze_command_list_flags_t;
 
 struct _ze_command_list_obj_data {
   ze_device_handle_t device;
   ze_context_handle_t context;
   ze_driver_handle_t driver;
+  _ze_command_list_flags_t flags;
   struct _ze_event_h *events;
 };
 
@@ -109,7 +122,8 @@ static inline void _register_ze_device(
 static inline void _register_ze_command_list(
  ze_command_list_handle_t command_list,
  ze_context_handle_t context,
- ze_device_handle_t device) {
+ ze_device_handle_t device,
+ int immediate) {
   struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
   ze_driver_handle_t driver;
@@ -136,6 +150,8 @@ static inline void _register_ze_command_list(
   cl_data->device = device;
   cl_data->context = context;
   cl_data->driver = driver;
+  if (immediate)
+    cl_data->flags |= _ZE_IMMEDIATE;
   o_h->obj_data = (void *)cl_data;
 
   ADD_ZE_OBJ(o_h);
@@ -203,6 +219,7 @@ struct _ze_event_pool_entry {
     HASH_ADD_PTR(_ze_event_pools, context, pool); \
   } \
   val->command_list = NULL; \
+  val->flags = 0; \
   DL_PREPEND(pool->events, val); \
   pthread_mutex_unlock(&_ze_event_pools_mutex); \
 } while (0)
@@ -246,6 +263,7 @@ static inline void _register_ze_event(
     _ze_event->event = event;
     _ze_event->command_list = command_list;
     _ze_event->event_pool = NULL;
+    _ze_event->flags = 0;
   }
 
   struct _ze_obj_h *o_h = NULL;
@@ -305,14 +323,12 @@ cleanup:
 
 static void _profile_event_results(ze_event_handle_t event);
 
-static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) {
+static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl, int get_results) {
   struct _ze_event_h *ze_event = NULL;
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
   if (!ze_event)
     return;
-
-  _profile_event_results(event);
 
   if (remove_cl) {
     struct _ze_obj_h *o_h = NULL;
@@ -323,13 +339,71 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) 
       /* Should not be necessary, just being paranoid of user having race conditions in their code */
       if (cl_data->events && ze_event->prev)
         DL_DELETE(cl_data->events, ze_event);
+      if (!(cl_data->flags & _ZE_IMMEDIATE) && !(cl_data->flags & _ZE_EXECUTED))
+        get_results = 0;
       ADD_ZE_OBJ(o_h);
     }
   }
+
+  if (get_results && !(ze_event->flags & _ZE_PROFILED))
+    _profile_event_results(event);
   if (ze_event->event_pool)
     PUT_ZE_EVENT(ze_event);
   else
     PUT_ZE_EVENT_WRAPPER(ze_event);
+}
+
+static inline void _dump_and_reset_event(ze_event_handle_t event) {
+  struct _ze_event_h *ze_event = NULL;
+
+  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
+  if (!ze_event)
+    return;
+
+  struct _ze_obj_h *o_h = NULL;
+  int to_add = 0;
+
+  pthread_mutex_lock(&_ze_objs_mutex);
+  HASH_FIND_PTR(_ze_objs, &ze_event->command_list, o_h);
+  if (o_h) {
+    int to_profile = 0;
+    struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+    if ((cl_data->flags & _ZE_IMMEDIATE) && cl_data->events && ze_event->prev)
+      DL_DELETE(cl_data->events, ze_event);
+    if (((cl_data->flags & _ZE_IMMEDIATE) ||
+         (cl_data->flags & _ZE_EXECUTED)) &&
+        !(ze_event->flags & _ZE_PROFILED))
+      to_profile = 1;
+    if (!(cl_data->flags & _ZE_IMMEDIATE))
+      to_add = 1;
+    pthread_mutex_unlock(&_ze_objs_mutex);
+
+    if (to_profile) {
+      _profile_event_results(event);
+      ze_event->flags |= _ZE_PROFILED;
+    }
+  } else
+    pthread_mutex_unlock(&_ze_objs_mutex);
+
+  if (to_add)
+    ADD_ZE_EVENT(ze_event);
+  else
+    PUT_ZE_EVENT_WRAPPER(ze_event);
+}
+
+static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
+  struct _ze_event_h *ze_event = NULL;
+
+  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
+  if (!ze_event)
+    return;
+
+  if (ze_event->event_pool) { /* one of ours */
+    /* dump events that are ours, the other should have been reset by the user */
+    _profile_event_results(event);
+    ZE_EVENT_HOST_RESET_PTR(event);
+  }
+  ze_event->flags &= ~_ZE_PROFILED;
 }
 
 static void _profile_event_results(ze_event_handle_t event) {
@@ -355,7 +429,7 @@ static void _event_cleanup() {
 
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     HASH_DEL(_ze_events, ze_event);
-    if (ze_event->event)
+    if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
       _profile_event_results(ze_event->event);
     if (ze_event->event_pool) {
       if (ze_event->event)
@@ -373,7 +447,7 @@ static void _context_cleanup(ze_context_handle_t context){
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     if (ze_event->context == context) {
       HASH_DEL(_ze_events, ze_event);
-      if (ze_event->event)
+      if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
         _profile_event_results(ze_event->event);
       if (ze_event->event_pool) {
         if (ze_event->event)
@@ -411,9 +485,29 @@ static void _reset_ze_command_list(ze_command_list_handle_t command_list) {
   struct _ze_event_h *elt = NULL, *tmp = NULL;
   DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
     DL_DELETE(cl_data->events, elt);
-    _unregister_ze_event(elt->event, 0);
+    _unregister_ze_event(elt->event, 0, cl_data->flags & _ZE_EXECUTED);
   }
+  cl_data->flags &= ~_ZE_EXECUTED;
   ADD_ZE_OBJ(o_h);
+}
+
+static void _execute_ze_command_lists(uint32_t numCommandLists, ze_command_list_handle_t *phCommandLists) {
+  for (uint32_t i = 0; i < numCommandLists; i++) {
+    struct _ze_obj_h *o_h = NULL;
+    FIND_AND_DEL_ZE_OBJ(phCommandLists + i, o_h);
+    if (o_h) {
+      struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+      /* dump events if they were executed */
+      if (cl_data->flags & _ZE_EXECUTED) {
+        struct _ze_event_h *elt = NULL;
+        DL_FOREACH(cl_data->events, elt) {
+          _dump_and_reset_our_event(elt->event);
+        }
+      } else
+        cl_data->flags |= _ZE_EXECUTED;
+      ADD_ZE_OBJ(o_h);
+    }
+  }
 }
 
 static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
@@ -427,7 +521,7 @@ static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
       DL_DELETE(cl_data->events, elt);
-      _unregister_ze_event(elt->event, 0);
+      _unregister_ze_event(elt->event, 0, (cl_data->flags & _ZE_IMMEDIATE) || (cl_data->flags & _ZE_EXECUTED));
     }
   }
   free(o_h);
