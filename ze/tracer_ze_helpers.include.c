@@ -165,71 +165,142 @@ static inline void _register_ze_command_list(
 static struct _ze_event_h *_ze_events = NULL;
 static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+struct _ze_event_pool_entry {
+  ze_context_handle_t context;
+  UT_hash_handle hh;
+  struct _ze_event_h *events;
+};
+
+#define GET_ZE_EVENT(key, val) do { \
+  struct _ze_event_pool_entry *pool = NULL; \
+  pthread_mutex_lock(&_ze_event_pools_mutex); \
+  HASH_FIND_PTR(_ze_event_pools, key, pool); \
+  if (pool && pool->events) { \
+    val = pool->events; \
+    DL_DELETE(pool->events, val); \
+  } else \
+    val = NULL; \
+  pthread_mutex_unlock(&_ze_event_pools_mutex); \
+} while (0)
+
+#define PUT_ZE_EVENT(val) do { \
+  struct _ze_event_pool_entry *pool = NULL; \
+  pthread_mutex_lock(&_ze_event_pools_mutex); \
+  HASH_FIND_PTR(_ze_event_pools, &(val->context), pool); \
+  if (!pool) { \
+    pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(struct _ze_event_pool_entry)); \
+    if (!pool) { \
+      pthread_mutex_unlock(&_ze_event_pools_mutex); \
+      if (val->event_pool) { \
+        if (val->event) \
+          ZE_EVENT_DESTROY_PTR(val->event); \
+        ZE_EVENT_POOL_DESTROY_PTR(val->event_pool); \
+      } \
+      free(val); \
+      break; \
+    } \
+    pool->context = val->context; \
+    HASH_ADD_PTR(_ze_event_pools, context, pool); \
+  } \
+  val->command_list = NULL; \
+  DL_PREPEND(pool->events, val); \
+  pthread_mutex_unlock(&_ze_event_pools_mutex); \
+} while (0)
+
+struct _ze_event_pool_entry *_ze_event_pools = NULL;
+static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#define GET_ZE_EVENT_WRAPPER(val) do { \
+  pthread_mutex_lock(&_ze_event_wrappers_mutex); \
+  if (_ze_event_wrappers) { \
+    val = _ze_event_wrappers; \
+    DL_DELETE(_ze_event_wrappers, val); \
+  } else { \
+    val = calloc(1, sizeof(struct _ze_event_h)); \
+  } \
+  pthread_mutex_unlock(&_ze_event_wrappers_mutex); \
+ } while (0)
+
+#define PUT_ZE_EVENT_WRAPPER(val) do { \
+  memset(val, 0, sizeof(struct _ze_event_h)); \
+  pthread_mutex_lock(&_ze_event_wrappers_mutex); \
+  DL_PREPEND(_ze_event_wrappers, val); \
+  pthread_mutex_unlock(&_ze_event_wrappers_mutex); \
+} while(0)
+
+struct _ze_event_h *_ze_event_wrappers = NULL;
+static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static inline void _register_ze_event(
  ze_event_handle_t event,
  ze_command_list_handle_t command_list,
- ze_event_pool_handle_t event_pool) {
-  struct _ze_event_h *_ze_event = NULL;
-  ze_context_handle_t context = NULL;
+ struct _ze_event_h * _ze_event) {
 
-  FIND_ZE_EVENT(&event, _ze_event);
-  if (_ze_event)
-    return;
+  if (!_ze_event) {
+    FIND_ZE_EVENT(&event, _ze_event);
+    if (_ze_event)
+      return;
+    GET_ZE_EVENT_WRAPPER(_ze_event);
+    if (!_ze_event)
+      return;
+    _ze_event->event = event;
+    _ze_event->command_list = command_list;
+    _ze_event->event_pool = NULL;
+  }
 
   struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
   if (o_h) {
     cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    context = cl_data->context;
+    _ze_event->context = cl_data->context;
   }
-  _ze_event = (struct _ze_event_h *)calloc(1, sizeof(struct _ze_event_h));
-  if (!_ze_event)
-    goto cleanup;
-
-  _ze_event->event = event;
-  _ze_event->command_list = command_list;
-  _ze_event->event_pool = event_pool;
-  _ze_event->context = context;
 
   if (_do_profile && cl_data)
     DL_APPEND(cl_data->events, _ze_event);
   ADD_ZE_EVENT(_ze_event);
-cleanup:
   if (o_h)
     ADD_ZE_OBJ(o_h);
 }
 
-static ze_event_handle_t _get_profiling_event(
- ze_command_list_handle_t command_list,
- ze_event_pool_handle_t *pool_ret) {
+static struct _ze_event_h * _get_profiling_event(
+ ze_command_list_handle_t command_list) {
   struct _ze_obj_h *o_h = NULL;
+  struct _ze_event_h *e_w;
 
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
   if (!o_h)
     return NULL;
   ze_context_handle_t context =
     ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
-  ze_device_handle_t device =
-    ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
-
-  ze_event_pool_handle_t event_pool = NULL;
-  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, 1};
-  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 1, &device, &event_pool);
-  ze_event_handle_t event = NULL;
-  if (res != ZE_RESULT_SUCCESS)
-    goto cleanup;
-  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, 0, 0};
-  res = ZE_EVENT_CREATE_PTR(event_pool, &e_desc, &event);
-  if (res != ZE_RESULT_SUCCESS) {
-    ZE_EVENT_POOL_DESTROY_PTR(event_pool);
-    event = NULL;
+  GET_ZE_EVENT(&context, e_w);
+  if (e_w) {
+    e_w->command_list = command_list;
     goto cleanup;
   }
-  *pool_ret = event_pool;
+
+  GET_ZE_EVENT_WRAPPER(e_w);
+  if (!e_w)
+    goto cleanup;
+
+  e_w->command_list = command_list;
+  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, 1};
+  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
+  if (res != ZE_RESULT_SUCCESS)
+    goto cleanup_wrapper;
+  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, 0, 0};
+  res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
+  if (res != ZE_RESULT_SUCCESS)
+    goto cleanup_ep;
+  goto cleanup;
+cleanup_ep:
+  ZE_EVENT_POOL_DESTROY_PTR(e_w->event_pool);
+cleanup_wrapper:
+  PUT_ZE_EVENT_WRAPPER(e_w);
+  e_w = NULL;
 cleanup:
   ADD_ZE_OBJ(o_h);
-  return event;
+  return e_w;
 }
 
 static void _profile_event_results(ze_event_handle_t event);
@@ -242,11 +313,6 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) 
     return;
 
   _profile_event_results(event);
-  if (ze_event->event_pool) {
-    if (ze_event->event)
-      ZE_EVENT_DESTROY_PTR(ze_event->event);
-    ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
-  }
 
   if (remove_cl) {
     struct _ze_obj_h *o_h = NULL;
@@ -260,7 +326,10 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl) 
       ADD_ZE_OBJ(o_h);
     }
   }
-  free(ze_event);
+  if (ze_event->event_pool)
+    PUT_ZE_EVENT(ze_event);
+  else
+    PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
 static void _profile_event_results(ze_event_handle_t event) {
@@ -315,6 +384,21 @@ static void _context_cleanup(ze_context_handle_t context){
     }
   }
   pthread_mutex_unlock(&_ze_events_mutex);
+  pthread_mutex_lock(&_ze_event_pools_mutex);
+  struct _ze_event_pool_entry *pool = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &context, pool);
+  if (pool) {
+    HASH_DEL(_ze_event_pools, pool);
+    struct _ze_event_h *elt = NULL, *tmp = NULL;
+    DL_FOREACH_SAFE(pool->events, elt, tmp) {
+      DL_DELETE(pool->events, elt);
+      ZE_EVENT_DESTROY_PTR(elt->event);
+      ZE_EVENT_POOL_DESTROY_PTR(elt->event_pool);
+      PUT_ZE_EVENT_WRAPPER(elt);
+    }
+    free(pool);
+  }
+  pthread_mutex_unlock(&_ze_event_pools_mutex);
 }
 
 static void _reset_ze_command_list(ze_command_list_handle_t command_list) {
