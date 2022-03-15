@@ -554,22 +554,35 @@ Case B:
           state->event_to_profiling_result[hpe] = event_profiling_result_t(err, globalStart,globalEnd);
      }
   <% end %>
- <%# Cleanup state for profiling %>
- <%# When the command list are destroyed or reset, we can delete all the states related to those command list %>
- <% if ["zeCommandListDestroy", "zeCommandListReset" ].include?(dbt_event.name_striped)%> 
-   <%if dbt_event.start? %>
+  <%# Cleanup state for profiling %>
+  <%# When the command list are destroyed or reset, we can delete all the states related to those command list %>
+  <% if ["zeCommandListDestroy", "zeCommandListReset" ].include?(dbt_event.name_striped)%>
+    <%if dbt_event.start? %>
      save_start(state, hpt_t(hostname, process_id, thread_id), hCommandList);
-   <% else %>
-     const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, hpt_t(hostname, process_id, thread_id));
-     const hp_command_list_t hpl(hostname, process_id, hCommandList);
-     auto it_e = state->command_list_to_events.find(hpl);
-     if (it_e != state->command_list_to_events.end()) {
-        for (auto& hEvent: it_e->second) {
-           const hpe_t hpe(hostname, process_id, hEvent);
-           state->event_to_profiling_result.erase(hpe);
-           state->event_payload.erase(hpe);
-        }
-        state->command_list_to_events.erase(it_e);
+    <% else %>
+     if (zeResult == ZE_RESULT_SUCCESS) {
+          const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, hpt_t(hostname, process_id, thread_id));
+          const hp_command_list_t hpl(hostname, process_id, hCommandList);
+          auto it_e = state->command_list_to_events.find(hpl);
+          if (it_e != state->command_list_to_events.end()) {
+               for (auto& hEvent: it_e->second) {
+                  const hpe_t hpe(hostname, process_id, hEvent);
+                  state->event_to_profiling_result.erase(hpe);
+                  state->event_payload.erase(hpe);
+               }
+               state->command_list_to_events.erase(it_e);
+          }
+     }
+    <% end %>
+  <% elsif ["zeEventDestroy", "zeEventHostReset"].include?(dbt_event.name_striped)%>
+    <%if dbt_event.start? %>
+     save_start(state, hpt_t(hostname, process_id, thread_id), hEvent);
+    <% else %>
+     if (zeResult == ZE_RESULT_SUCCESS) {
+        const auto hEvent = retrieve_start<ze_event_handle_t>(state, hpt_t(hostname, process_id, thread_id));
+        const hpe_t hpe(hostname, process_id, hEvent);
+        state->event_to_profiling_result.erase(hpe);
+        state->event_payload.erase(hpe);
      }
     <% end %>
   <% end %>
