@@ -221,6 +221,7 @@ struct _ze_event_pool_entry {
   } \
   val->command_list = NULL; \
   val->flags = 0; \
+  ZE_EVENT_HOST_RESET_PTR(val->event); \
   DL_PREPEND(pool->events, val); \
   pthread_mutex_unlock(&_ze_event_pools_mutex); \
 } while (0)
