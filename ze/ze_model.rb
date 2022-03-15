@@ -738,6 +738,16 @@ register_prologue "zeEventPoolCreate", <<EOF
   }
 EOF
 
+register_prologue "zeEventCreate", <<EOF
+  ze_event_desc_t _new_desc;
+  if (_do_profile && desc) {
+    _new_desc = *desc;
+    _new_desc.signal |= ZE_EVENT_SCOPE_FLAG_HOST;
+    _new_desc.wait |= ZE_EVENT_SCOPE_FLAG_HOST;
+    desc = &_new_desc;
+  }
+EOF
+
 register_prologue "zeEventDestroy", <<EOF
   if (_do_profile && hEvent) {
     _unregister_ze_event(hEvent, 1);

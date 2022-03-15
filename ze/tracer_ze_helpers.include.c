@@ -288,7 +288,7 @@ static struct _ze_event_h * _get_profiling_event(
   ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
   if (res != ZE_RESULT_SUCCESS)
     goto cleanup_wrapper;
-  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, 0, 0};
+  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
   res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
   if (res != ZE_RESULT_SUCCESS)
     goto cleanup_ep;
