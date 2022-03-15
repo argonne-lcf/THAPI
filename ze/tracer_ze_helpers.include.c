@@ -151,7 +151,8 @@ static inline void _register_ze_command_list(
   cl_data->context = context;
   cl_data->driver = driver;
   if (immediate)
-    cl_data->flags |= _ZE_IMMEDIATE;
+    cl_data->flags = _ZE_IMMEDIATE;
+
   o_h->obj_data = (void *)cl_data;
 
   ADD_ZE_OBJ(o_h);
@@ -404,6 +405,7 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
     ZE_EVENT_HOST_RESET_PTR(event);
   }
   ze_event->flags &= ~_ZE_PROFILED;
+  ADD_ZE_EVENT(ze_event);
 }
 
 static void _profile_event_results(ze_event_handle_t event) {
