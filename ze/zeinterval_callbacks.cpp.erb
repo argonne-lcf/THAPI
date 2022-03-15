@@ -489,8 +489,9 @@ Case B:
      const std::string name{"<%= dbt_event.name_striped %>"};
     <% end %>
      const auto device = state->command_list_to_device[hp_command_list_t(hostname,process_id,hCommandList)];
-     state->command_partial_payload[hpt_t(hostname,process_id,thread_id)] = tfnm_m_d_ts_t(name, metadata.str(), device, ns_from_origin);
+     state->command_partial_payload[hpt_t(hostname,process_id,thread_id)] = l_tfnm_m_d_ts_t(hCommandList, name, metadata.str(), device, ns_from_origin);
   <% end %>
+
   <%#
     _         _                    _
    |_) ._ _ _|_ o | o ._   _  o   |_     _  ._ _|_
@@ -508,8 +509,9 @@ Case B:
      // Best we can do is to bailout
      if (it_pp == state->command_partial_payload.end())
           return;
-     const auto [commandname, metadata, device, lltng_min] = it_pp->second;
+     const auto [hCommandList, commandname, metadata, device, lltng_min] = it_pp->second;
      state->command_partial_payload.erase(it_pp);
+     state->command_list_to_events[hp_command_list_t(hostname, process_id, hCommandList)].insert(hEvent);
 
      // Got the timestamp pair referance
      clock_lttng_device_t timestamp_pair_ref;
@@ -532,7 +534,6 @@ Case B:
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
                                             device_to_properties, subdevice_parent);
-          state->event_to_profiling_result.erase(it);
      }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
@@ -549,10 +550,28 @@ Case B:
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
                                             device_to_properties, subdevice_parent);
-          state->event_payload.erase(it);
      } else {
           state->event_to_profiling_result[hpe] = event_profiling_result_t(err, globalStart,globalEnd);
      }
+  <% end %>
+ <%# Cleanup state for profiling %>
+ <%# When the command list are destroyed or reset, we can delete all the states related to those command list %>
+ <% if ["zeCommandListDestroy", "zeCommandListReset" ].include?(dbt_event.name_striped)%> 
+   <%if dbt_event.start? %>
+     save_start(state, hpt_t(hostname, process_id, thread_id), hCommandList);
+   <% else %>
+     const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, hpt_t(hostname, process_id, thread_id));
+     const hp_command_list_t hpl(hostname, process_id, hCommandList);
+     auto it_e = state->command_list_to_events.find(hpl);
+     if (it_e != state->command_list_to_events.end()) {
+        for (auto& hEvent: it_e->second) {
+           const hpe_t hpe(hostname, process_id, hEvent);
+           state->event_to_profiling_result.erase(hpe);
+           state->event_payload.erase(hpe);
+        }
+        state->command_list_to_events.erase(it_e);
+     }
+    <% end %>
   <% end %>
 
   <%#

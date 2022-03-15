@@ -151,7 +151,8 @@ static inline void _register_ze_command_list(
   cl_data->context = context;
   cl_data->driver = driver;
   if (immediate)
-    cl_data->flags |= _ZE_IMMEDIATE;
+    cl_data->flags = _ZE_IMMEDIATE;
+
   o_h->obj_data = (void *)cl_data;
 
   ADD_ZE_OBJ(o_h);
@@ -306,7 +307,7 @@ static struct _ze_event_h * _get_profiling_event(
   ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
   if (res != ZE_RESULT_SUCCESS)
     goto cleanup_wrapper;
-  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, 0, 0};
+  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
   res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
   if (res != ZE_RESULT_SUCCESS)
     goto cleanup_ep;
@@ -404,6 +405,7 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
     ZE_EVENT_HOST_RESET_PTR(event);
   }
   ze_event->flags &= ~_ZE_PROFILED;
+  ADD_ZE_EVENT(ze_event);
 }
 
 static void _profile_event_results(ze_event_handle_t event) {
