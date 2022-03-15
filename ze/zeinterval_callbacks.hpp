@@ -22,13 +22,14 @@ typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
 typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_t;
-typedef std::tuple<thapi_function_name, std::string, thapi_device_id, uint64_t> tfnm_m_d_ts_t;
+typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t> l_tfnm_m_d_ts_t;
 
 typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
 
 struct zeinterval_callbacks_state {
     // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
     std::unordered_map<hp_command_list_t, thapi_device_id>  command_list_to_device;
+    std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>>  command_list_to_events;
     std::unordered_map<hp_device_t, ze_device_properties_t> device_to_properties;
     std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_name;
     std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_groupsize_str;
@@ -45,7 +46,7 @@ struct zeinterval_callbacks_state {
     /* Handle variable */
     std::unordered_map<hpe_t, event_profiling_result_t> event_to_profiling_result;
     std::unordered_map<hpd_t, clock_lttng_device_t>     device_timestamps_pair_ref;
-    std::unordered_map<hpt_t, tfnm_m_d_ts_t>            command_partial_payload;
+    std::unordered_map<hpt_t, l_tfnm_m_d_ts_t>          command_partial_payload;
     std::unordered_map<hpe_t, t_tfnm_m_d_ts_cld_t>      event_payload;
     std::unordered_map<hpd_t, thapi_device_id>          subdevice_parent;
 
