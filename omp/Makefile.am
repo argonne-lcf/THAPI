@@ -42,7 +42,8 @@ OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
 	$(srcdir)/gen_probe_base.rb \
 	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/LTTng.rb
+	$(srcdir)/../utils/LTTng.rb \
+	$(OMP_EXTRACTED)
 
 OMP_PROBES = ompt_tracepoints
 OMP_PROBES_TP = $(OMP_PROBES:=.tp)
