@@ -19,7 +19,6 @@ LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 provider = :lttng_ust_ompt
 
 $ompt_api_yaml = YAML::load_file("ompt_api.yaml")
-
 $ompt_api = YAMLCAst.from_yaml_ast($ompt_api_yaml)
 
 ompt_funcs_e = $ompt_api["functions"]
@@ -27,8 +26,8 @@ ompt_types_e = $ompt_api["typedefs"]
 
 all_types = ompt_types_e
 all_structs = $ompt_api["structs"]
-
-OMPT_OBJECTS = ["ompt_device_t", "ompt_buffer_t"]
+OMPT_OBJECTS = ["ompt_device_t", "ompt_buffer_t","ompd_address_space_handle_t", "ompd_thread_handle_t", "ompd_parallel_handle_t", 
+                "ompd_task_handle_t","ompd_address_space_context_t", "ompd_thread_context_t"]
 OMPT_INT_SCALARS = %w(int size_t uint8_t int64_t uint64_t char) + ["unsigned int"] 
 OMPT_FLOAT_SCALARS = ["double"]
 OMPT_SCALARS = OMPT_INT_SCALARS + OMPT_FLOAT_SCALARS
@@ -43,9 +42,11 @@ OMPT_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.coll
 OMPT_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } 
 OMPT_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
 OMPT_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+OMPT_CALLBACKS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/) }
+                          .collect { |t| YAMLCAst::Declaration.new(name: t.name.gsub(/_t\z/,"")+"_func", type: t.type.type)}
 
 OMPT_STRUCT_MAP = {}
-all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
+all_types.select { |t| t.type.kind_of?(YAMLCAst::Struct) && !OMPT_OBJECTS.include?(t.name) }.each { |t|
   if t.type.members
     OMPT_STRUCT_MAP[t.name] = t.type.members
   else
@@ -74,6 +75,8 @@ OMPT_ENUM_SCALARS.each { |e|
 }
 
 OMPT_FLOAT_SCALARS_MAP = {"double" => "uint64_t"}
+
+INIT_FUNCTIONS=/None/
 
 module YAMLCAst
   class Declaration
@@ -273,5 +276,108 @@ module YAMLCAst
   end
 end
 
+class Command
+  attr_reader :tracepoint_parameters
+  attr_reader :meta_parameters
+  attr_reader :prologues
+  attr_reader :epilogues
+  attr_reader :function
 
- 
+  def initialize(function)
+    @function = function
+    @tracepoint_parameters = []
+    @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
+    @meta_parameters += META_PARAMETERS[@function.name].collect { |type, args|
+      type::new(self, *args)
+    }
+    @init      = @function.name.match(INIT_FUNCTIONS)
+    @prologues = PROLOGUES[@function.name]
+    @epilogues = EPILOGUES[@function.name]
+  end
+
+  def name
+    @function.name
+  end
+
+  def decl_pointer(name = pointer_name)
+    YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
+  end
+
+  def decl
+    @function.to_s
+  end
+
+  def pointer_name
+    name + "_ptr"
+  end
+
+  def pointer_type_name
+    name + "_t"
+  end
+
+  def type
+    @function.type.type
+  end
+
+  def parameters
+    @function.type.params
+  end
+
+  def init?
+    name.match(INIT_FUNCTIONS)
+  end
+
+  def has_return_type?
+    if type && !type.kind_of?(YAMLCAst::Void)
+      true
+    else
+      false
+    end
+  end
+
+  def [](name)
+    path = name.split(/->/)
+    if path.length == 1
+      res = parameters.find { |p| p.name == name }
+      return res if res
+      @tracepoint_parameters.find { |p| p.name == name }
+    else
+      param_name = path.shift
+      res = parameters.find { |p| p.name == param_name }
+      return nil unless res
+      path.each { |n|
+        res = OMPT_STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
+        return nil unless res
+      }
+      return res
+    end
+  end
+
+end
+
+def register_prologue(method, code)
+  PROLOGUES[method].push(code)
+end
+
+def register_epilogue(method, code)
+  EPILOGUES[method].push(code)
+end
+
+AUTO_META_PARAMETERS = []
+META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
+PROLOGUES = Hash::new { |h, k| h[k] = [] }
+EPILOGUES = Hash::new { |h, k| h[k] = [] }
+
+$ompt_commands = OMPT_CALLBACKS.collect { |func|
+  Command::new(func)
+}
+
+def upper_snake_case(str)
+  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
+end
+
+OMPT_POINTER_NAMES = $ompt_commands.collect { |c|
+  [c, upper_snake_case(c.pointer_name)]
+}.to_h
+
+

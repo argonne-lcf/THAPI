@@ -341,7 +341,8 @@ module YAMLCAst
     "enum" => Enum,
     "pointer" => Pointer,
     "array" => Array,
-    "function" => Function
+    "function" => Function,
+    "declaration" => Declaration
   }
 
   def self.from_yaml_ast(ast)

@@ -5,7 +5,7 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I../utils -I./
 
 OMP_HDR = \
 	$(srcdir)/include/omp-tools.h
@@ -32,8 +32,71 @@ OMP_EXTRACTED = $(OMP_NAMESPACES:=_api.yaml)
 $(OMP_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_OMP_HDR) $(srcdir)/extract_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
-CLEANFILES = $(ZE_EXTRACTED)
+CLEANFILES = $(OMP_EXTRACTED)
 
 EXTRA_DIST += \
 	extract_base.rb \
 	$(OMP_NAMESPACES:%=extract_%.rb)
+
+OMP_MODEL = \
+	$(srcdir)/ompt_model.rb \
+	$(srcdir)/gen_probe_base.rb \
+	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/LTTng.rb
+
+OMP_PROBES = ompt_tracepoints
+OMP_PROBES_TP = $(OMP_PROBES:=.tp)
+OMP_PROBES_INCL = $(OMP_PROBES:=.h)
+OMP_PROBES_SRC = $(OMP_PROBES:=.c)
+
+$(OMP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(OMP_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+%.h %.c: %.tp
+	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
+
+CLEANFILES += \
+	OMP_PROBES_TP \
+	OMP_PROBES_INCL \
+	OMP_PROBES_SRC
+
+EXTRA_DIST += \
+	gen_ompt_tracepoints.rb
+
+BUILT_SOURCES = \
+	$(MODIFIED_OMP_HDR) \
+	$(OMP_PROBES_INCL)
+
+tracer_ompt.c: $(srcdir)/gen_ompt.rb $(srcdir)/tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL) 
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+bin_SCRIPTS = \
+	tracer_omp.sh
+
+noinst_LTLIBRARIES = libompttracepoints.la
+
+nodist_libompttracepoints_la_SOURCES = \
+	$(OMP_PROBES_INCL) \
+	$(OMP_PROBES_SRC)
+
+libompttracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libompttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
+
+lib_LTLIBRARIES = libTracerOMPT.la
+
+nodist_libTracerOMPT_la_SOURCES = \
+	$(OMP_PROBES_INCL) \
+	tracer_ompt.c
+
+libTracerOMPT_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I../utils -I./
+libTracerOMPT_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+libTracerOMPT_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module
+libTracerOMPT_la_LIBADD = libompttracepoints.la
+
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ompt
+	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerOMPT.so $(DESTDIR)$(pkglibdir)/ompt/libompt.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/ompt/libompt.so
+	-rmdir $(DESTDIR)$(pkglibdir)/ompt
