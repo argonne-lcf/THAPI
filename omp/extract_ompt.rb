@@ -5,6 +5,6 @@ preprocessed_sources_omp_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
 EOF
 
 ast = $parser.parse(preprocessed_sources_omp_api)
-File::open("omp_tools_api.yaml", "w") { |f|
+File::open("ompt_api.yaml", "w") { |f|
   f.puts ast.extract_declarations.to_yaml
 }

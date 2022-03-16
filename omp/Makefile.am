@@ -25,7 +25,7 @@ clean-local:
 
 EXTRA_DIST = $(srcdir)/include 
 
-OMP_NAMESPACES = omp_tools
+OMP_NAMESPACES = ompt
 
 OMP_EXTRACTED = $(OMP_NAMESPACES:=_api.yaml)
 
