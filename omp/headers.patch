@@ -1,0 +1,27 @@
+diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
+--- include/omp-tools.h	2022-03-16 15:42:42.820332000 +0000
++++ modified_include/omp-tools.h	2022-03-16 16:16:12.682271000 +0000
+@@ -798,11 +798,8 @@
+ 
+ ompt_start_tool_result_t *ompt_start_tool(unsigned int omp_version,
+                                           const char *runtime_version);
+ 
+-ompd_rc_t ompd_initialize(ompd_word_t api_version,
+-                          const ompd_callbacks_t *callbacks);
+-
+ ompd_rc_t ompd_get_api_version(ompd_word_t *version);
+ 
+ ompd_rc_t ompd_get_version_string(const char **string);
+ 
+@@ -980,8 +977,11 @@
+   ompd_callback_get_thread_context_for_thread_id_fn_t
+       get_thread_context_for_thread_id;
+ } ompd_callbacks_t;
+ 
++ompd_rc_t ompd_initialize(ompd_word_t api_version,
++                          const ompd_callbacks_t *callbacks);
++
+ void ompd_bp_parallel_begin(void);
+ 
+ void ompd_bp_parallel_end(void);
+ 

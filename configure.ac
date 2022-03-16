@@ -92,7 +92,8 @@ AC_CONFIG_FILES([Makefile
                  opencl/Makefile
                  ze/Makefile
                  xprof/Makefile
-                 cuda/Makefile])
+                 cuda/Makefile
+                 omp/Makefile])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
