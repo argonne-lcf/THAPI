@@ -1,3 +1,5 @@
+RESULT_NAME = "ompResult"
+
 $tracepoint_lambda = lambda { |provider, c|
   puts <<EOF
 TRACEPOINT_EVENT(
@@ -13,6 +15,9 @@ EOF
     params.concat c.parameters.collect { |p|
       "#{p.type}, #{p.name}"
     } unless c.parameters.nil? || c.parameters.empty?
+    if c.has_return_type?
+      params.push("#{c.type}, #{RESULT_NAME}")
+    end
     params += c.tracepoint_parameters.collect { |p|
       "#{p.type}, #{p.name}"
     }

@@ -45,6 +45,19 @@ OMP_MODEL = \
 	$(srcdir)/../utils/LTTng.rb \
 	$(OMP_EXTRACTED)
 
+OMP_LIB_GEN = \
+	$(srcdir)/gen_omp_library_base.rb \
+	$(srcdir)/gen_probe_base.rb
+
+omp_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_omp_model.rb $(OMP_LIB_GEN) $(OMP_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+CLEANFILES += ze_babeltrace_model.yaml
+
+EXTRA_DIST += \
+␉···omp_model.rb \
+␉···gen_babeltrace_omp_model.rb
+
 OMP_PROBES = ompt_tracepoints
 OMP_PROBES_TP = $(OMP_PROBES:=.tp)
 OMP_PROBES_INCL = $(OMP_PROBES:=.h)
@@ -101,3 +114,17 @@ install-exec-hook:
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/ompt/libompt.so
 	-rmdir $(DESTDIR)$(pkglibdir)/ompt
+
+
+babeltrace_ompinterval.h: $(top_srcdir)/xprof/interval.h.erb
+	$(ERB) namespace="ompinterval" $< > $@
+
+babeltrace_ompinterval.c: $(top_srcdir)/xprof/interval.c.erb
+	$(ERB) namespace="ompinterval" $< > $@
+
+xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
+	cp $< $@
+
+xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
+	cp $< $@
+
