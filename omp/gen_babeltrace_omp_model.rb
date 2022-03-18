@@ -119,12 +119,8 @@ def integer_signed?(t)
   r
 end
 
-def meta_parameter_types_name(m, dir)
-  if dir == :start
-    lttng = m.lttng_in_type
-  else
-    lttng = m.lttng_out_type
-  end
+def meta_parameter_types_name(m)
+  lttng = m.lttng_in_type
   name = lttng.name
   t = m.command[m.name].type.type
 
@@ -152,33 +148,34 @@ def meta_parameter_types_name(m, dir)
   end
 end
 
-def get_fields_types_name(c, dir)
-   if dir == :start
-    fields = (c.parameters ? c.parameters : []).collect { |p|
-      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
-    }
-    fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
-      meta_parameter_types_name(m, :start)
-    }.flatten(1)
-  else
-    r = c.type.lttng_type
-    fields = if r
-        [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]]
-      else
-        []
-    end
-    fields += c.meta_parameters.select { |m| m.kind_of?(Out) }.collect { |m|
-      meta_parameter_types_name(m, :stop)
-    }.flatten(1)
-  end
+def get_fields_types_name(c)
+  fields = (c.parameters ? c.parameters : []).collect { |p|
+    [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
+  }
+  fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
+    meta_parameter_types_name(m, :start)
+  }.flatten(1)
   fields
+end
+
+def gen_event_fields_bt_model(c)
+  types_name = get_fields_types_name(c)
+  types_name.collect { |lttng_name, type, name, lttng|
+    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ""), name, lttng)
+  }
+end
+
+
+def gen_event_bt_model(provider, c)
+  { name: "#{provider}:#{c.name.gsub(/_func\z/,'')}",
+    payload: gen_event_fields_bt_model(c) }
 end
 
 event_classes = 
 [[:lttng_ust_ompt, $ompt_commands],
 ].collect { |provider, commands|
   commands.collect { |c|
-    [gen_event_bt_model(provider, c, :start)]
+    [gen_event_bt_model(provider, c)]
   }
 }.flatten(2)
 

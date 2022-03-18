@@ -96,7 +96,7 @@ nodist_libompttracepoints_la_SOURCES = \
 libompttracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libompttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerOMPT.la
+lib_LTLIBRARIES = libTracerOMPT.la libOMPInterval.la
 
 nodist_libTracerOMPT_la_SOURCES = \
 	$(OMP_PROBES_INCL) \
@@ -116,6 +116,18 @@ uninstall-hook:
 	-rmdir $(DESTDIR)$(pkglibdir)/ompt
 
 
+babeltrace_ompinterval_callbacks.cpp: $(srcdir)/gen_ompinterval_callbacks.rb $(srcdir)/ompinterval_callbacks.cpp.erb omp_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+babeltrace_ompinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb omp_babeltrace_model.yaml ompt.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
+
+babeltrace_ompinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb omp_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
+
+babeltrace_ompinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
+
 babeltrace_ompinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="ompinterval" $< > $@
 
@@ -127,4 +139,39 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
+
+EXTRA_DIST += \
+	gen_ompinterval_callbacks.rb \
+	ompinterval_callbacks.cpp.erb
+
+CLEANFILES += \
+	babeltrace_ompinterval_callbacks.cpp \
+	babeltrace_ompinterval_callbacks.h \
+	babeltrace_ompinterval_dispatchers.c \
+	babeltrace_ompinterval_emitter.h \
+	babeltrace_ompinterval.h \
+	babeltrace_ompinterval.c \
+	xprof_utils.cpp \
+	xprof_utils.hpp
+
+BUILT_SOURCES += \
+	babeltrace_ompinterval.h \
+	babeltrace_ompinterval_callbacks.h \
+	babeltrace_ompinterval_emitter.h \
+	xprof_utils.hpp
+
+nodist_libOMPInterval_la_SOURCES = \
+	babeltrace_ompinterval.c \
+	babeltrace_ompinterval.h \
+	babeltrace_ompinterval_callbacks.h \
+	babeltrace_ompinterval_dispatchers.c \
+	babeltrace_ompinterval_callbacks.cpp \
+	babeltrace_ompinterval_emitter.h \
+	xprof_utils.hpp \
+	xprof_utils.cpp
+
+libOMPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./
+libOMPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libOMPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libOMPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
