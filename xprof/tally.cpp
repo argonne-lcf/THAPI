@@ -76,7 +76,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
             thapi_bt2_getter(payload_field, dur_tuple0);
 
         TallyCoreTime a{dur, err};
-        dispatch->host2[hpt_function_name_t(hostname, process_id, thread_id,
+        dispatch->host[hpt_function_name_t(hostname, process_id, thread_id,
                                             name)] += a;
 
       } else if (strcmp(class_name, "lttng:device") == 0) {
@@ -101,7 +101,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto name_with_metadata = (dispatch->display_kernel_verbose && !metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
         TallyCoreTime a{dur, err};
-        dispatch->device2[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
+        dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
 
       } else if (strcmp(class_name, "lttng:traffic") == 0) {
         auto dur_tuple0 = std::make_tuple(
@@ -113,7 +113,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
             get_common_context_field(event);
         const auto &[name, size] = thapi_bt2_getter(payload_field, dur_tuple0);
         TallyCoreByte a{(uint64_t)size, false};
-        dispatch->traffic2[hpt_function_name_t(hostname, process_id, thread_id,
+        dispatch->traffic[hpt_function_name_t(hostname, process_id, thread_id,
                                                name)] += a;
 
       } else if (strcmp(class_name, "lttng:device_name") == 0) {
@@ -218,31 +218,31 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
 
     if (dispatch->display_compact) {
 
-      print_compact("API calls", dispatch->host2,
+      print_compact("API calls", dispatch->host,
                     std::make_tuple("Hostnames", "Processes", "Threads"),
                     max_name_size);
 
-      print_compact("Device profiling", dispatch->device2,
+      print_compact("Device profiling", dispatch->device,
                     std::make_tuple("Hostnames", "Processes", "Threads",
                                     "Devices", "Subdevices"),
                     max_name_size);
 
-      print_compact("Explicit memory traffic", dispatch->traffic2,
+      print_compact("Explicit memory traffic", dispatch->traffic,
                     std::make_tuple("Hostnames", "Processes", "Threads"),
                     max_name_size);
 
     } else {
 
-      print_extended("API calls", dispatch->host2,
+      print_extended("API calls", dispatch->host,
                      std::make_tuple("Hostname", "Process", "Thread"),
                      max_name_size);
 
-      print_extended("Device profiling", dispatch->device2,
+      print_extended("Device profiling", dispatch->device,
                      std::make_tuple("Hostname", "Process", "Thread",
                                      "Device pointer", "Subdevice pointer"),
                      max_name_size);
 
-      print_extended("Explicit memory traffic", dispatch->traffic2,
+      print_extended("Explicit memory traffic", dispatch->traffic,
                      std::make_tuple("Hostname", "Process", "Thread"),
                      max_name_size);
     }
@@ -252,24 +252,24 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
     if (dispatch->display_metadata)
       j["metadata"] = dispatch->metadata;
     if (dispatch->display_compact) {
-      if (!dispatch->host2.empty())
-        j["host"] = json_compact(dispatch->host2);
-      if (!dispatch->device2.empty())
-        j["device"] = json_compact(dispatch->device2);
-      if (!dispatch->traffic2.empty())
-        j["trafic"] = json_compact(dispatch->traffic2);
+      if (!dispatch->host.empty())
+        j["host"] = json_compact(dispatch->host);
+      if (!dispatch->device.empty())
+        j["device"] = json_compact(dispatch->device);
+      if (!dispatch->traffic.empty())
+        j["trafic"] = json_compact(dispatch->traffic);
     } else {
-      if (!dispatch->host2.empty())
+      if (!dispatch->host.empty())
         j["host"] = json_extented(
-            dispatch->host2, std::make_tuple("Hostname", "Process", "Thread"));
-      if (!dispatch->device2.empty())
-        j["device"] = json_extented(dispatch->device2,
+            dispatch->host, std::make_tuple("Hostname", "Process", "Thread"));
+      if (!dispatch->device.empty())
+        j["device"] = json_extented(dispatch->device,
                                     std::make_tuple("Hostname", "Process",
                                                     "Thread", "Device pointer",
                                                     "Subdevice pointer"));
-      if (!dispatch->traffic2.empty())
+      if (!dispatch->traffic.empty())
         j["traffic"] =
-            json_extented(dispatch->traffic2,
+            json_extented(dispatch->traffic,
                           std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;
