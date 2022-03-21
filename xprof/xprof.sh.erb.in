@@ -29,8 +29,10 @@ end%>
 Option names are typically one to three words long, with hyphens to separate words %>
 
 display_help() {
-<% if languages.include?("opencl") and languages.include?("ze") and  languages.include?("cuda") %>
+<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
     echo "$(basename $0): a tracer / summarizer of OpenCL, L0, and CUDA driver calls"
+<% elsif languages.include?("omp") %>
+    echo "$(basename $0): a tracer / summarizer of OMP calls"
 <% elsif languages.include?("opencl") %>
     echo "$(basename $0): a tracer / summarizer of OpenCL calls"
 <% elsif languages.include?("ze") %>
@@ -105,7 +107,7 @@ whichlib64_head() {
 bt2_all() {
     if [ -n "$trace" ]; then
         # Todo filter direcly in the babeltrace
-<% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
+<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
         $bindir/babeltrace_thapi -r -c "$@"
 <% elsif languages.include?("opencl") %>
         $bindir/babeltrace_opencl -r -c "$@"
@@ -129,6 +131,9 @@ bt2_all() {
 <% if languages.include?("cuda") %>
                    --component=filter.cudainterval.interval \
 <% end %>
+<% if languages.include?("omp") %>
+                   --component=filter.ompinterval.interval \
+<% end %>
                    --component=sink.xprof.timeline
     fi
 
@@ -144,6 +149,9 @@ bt2_all() {
 <% end %>
 <% if languages.include?("cuda") %>
                    --component=filter.cudainterval.interval \
+<% end %>
+<% if languages.include?("omp") %>
+                   --component=filter.ompinterval.interval \
 <% end %>
                    --component=sink.xprof.tally \
                    --params="display=$display, \
@@ -164,7 +172,7 @@ trace_and_summary() {
     if [ -n "$live" ]; then
         lttng $quiet create iprof --live
     else
-<% if languages.include?("opencl") and  languages.include?("ze")%>
+<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
         THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("opencl") %>
         THAPI_LTTNG_O=${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
@@ -184,6 +192,9 @@ trace_and_summary() {
     else
         lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
     fi
+<% if languages.include?("omp") %>
+    lttng enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
+<% end %>
 <% if languages.include?("opencl") %>
     opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,"
     opencl_disable_events+="lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*,"
@@ -237,6 +248,11 @@ trace_and_summary() {
     export LTTNG_UST_ALLOW_BLOCKING=1
 
     #Find libs and preload
+<% if languages.include?("omp") %>
+    if [ -z "$OMP_TOOL_LIBRARIES" ]; then 
+        export OMP_TOOL_LIBRARIES=$libdir/libTracerOMPT.so
+    fi
+<% end %>
 <% if languages.include?("opencl") %>
 <%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
 <% end %>
@@ -286,8 +302,8 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
-<% if languages.include?("opencl") and languages.include?("ze") and languages.include?("cuda")%>
-        lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/* | head -1)
+<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
+        lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/iprof-* | head -1)
 <% elsif languages.include?("opencl") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME:-$HOME}/lttng-traces/thapi-opencl-session* | head -1)
 <% elsif languages.include?("ze") %>
