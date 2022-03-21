@@ -24,6 +24,20 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      state->downstream_message_queue.push(message);
 }
 
+
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                                                  ompinterval_iter_g->dispatch->traffic_event_class,
+                                                  ompinterval_self_message_iterator_g,
+                                                  ompinterval_iter_g->dispatch->stream);
+
+     ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
 <%#
   _                                         _                          _ ___
  | \  _       ._   _ _|_ ._ _   _. ._ _    / \      _       _     /\  |_) |
@@ -58,34 +72,76 @@ void ompinterval_downstream_message_queue_push(struct ompinterval_message_iterat
 }
 
 <%#
+    _
+   /   _. | | |_   _.  _ |   _   |\ |  _. ._ _   _
+   \_ (_| | | |_) (_| (_ |< _>   | \| (_| | | | (/_
+%>
+
+<% $dbt_events.each do | dbt_event | %>
+   <% if dbt_event.have_enum? && ["ompt_callback_target", "ompt_callback_target_data_op_intel"].include?(dbt_event.name_striped) %>
+static const char* <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_t %> <%= dbt_event.enum_name %>) {
+   switch (<%= dbt_event.enum_name %>) {
+    <% dbt_event.enum_fields.each do | fields | %>
+   case <%= fields %> :
+        return "<%= fields %>";
+        //return "<%= dbt_event.name_striped.gsub(/_callback/,'') %>:<%= fields[/ompt_(.*)\z/,1] %>"; %>
+    <% end %>
+   }
+   return "<%= dbt_event.name_striped.gsub(/_callback/,'') %>";
+}
+    <% end %>
+<% end %>
+<%#
   _
  /   _. | | |_   _.  _ |   _
  \_ (_| | | |_) (_| (_ |< _>
 
 %>
 
+
 <% $dbt_events.each do | dbt_event | %>
 static void ompinterval_<%= dbt_event.name %>_callback(
    <%= dbt_event.callback_signature %>
 ){
-    <%if dbt_event.name_striped == "ompt_callback_target" %>
+
      int64_t ns_from_origin;
      bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
 
      const hostname_t   hostname   = borrow_hostname(bt_evt);
      const process_id_t process_id = borrow_process_id(bt_evt);
      const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+
+    <%if dbt_event.name_striped == "ompt_callback_target" %>
+     const char* _name = <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_name %>);
      auto* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
      if (endpoint == ompt_scope_begin) {
-        state->host_start[hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>")] = ns_from_origin;
+        state->host_start[hpt_function_name_t(hostname,process_id, thread_id, _name)] = ns_from_origin;
      } else if (endpoint == ompt_scope_end) {
-        auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"));
+        auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, _name));
         const uint64_t start_g = it_start->second;
         state->host_start.erase(it_start);
-        create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>",
+        create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, _name,
                                      start_g, ns_from_origin-start_g, 0);
 
      }
+    <%elsif dbt_event.name_striped == "ompt_callback_target_data_op_intel" %>
+     const char* _name = <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_name %>);
+     auto* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     if (endpoint == ompt_scope_begin) {
+        state->host_start[hpt_function_name_t(hostname,process_id, thread_id, _name)] = ns_from_origin;
+     } else if (endpoint == ompt_scope_end) {
+        auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, _name));
+        const uint64_t start_g = it_start->second;
+        state->host_start.erase(it_start);
+        create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, _name,
+                                     start_g, ns_from_origin-start_g, 0);
+        create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, _name, bytes);
+     }
+    <% else %>
+        (void) ns_from_origin;
+        (void) hostname;
+        (void) process_id;
+        (void) thread_id;
     <% end %>
 };
 <% end %>

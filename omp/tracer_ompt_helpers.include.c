@@ -29,6 +29,9 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
 */
     _OMP_CALLBACKS_WARNING("ompt_callback_target",
                        ompt_set_callback(ompt_callback_target, (ompt_callback_t) (uintptr_t) ompt_callback_target_func));
+
+    _OMP_CALLBACKS_WARNING("ompt_callback_target_data_op",
+                        ompt_set_callback(ompt_callback_target_data_op, (ompt_callback_t) (uintptr_t) ompt_callback_target_data_op_intel_func));
     return 1;
 }
 

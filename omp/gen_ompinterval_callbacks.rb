@@ -2,8 +2,8 @@ require 'erb'
 require 'yaml'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
-START = 'entry'
-STOP = 'exit'
+
+OMP_MODEL_ENUMS = YAML.load_file('ompt_api.yaml')["enums"]
 
 class DBT_event
   attr_reader :fields, :name_unsanitized
@@ -23,9 +23,32 @@ class DBT_event
     @name_unsanitized.gsub(':', '_')
   end
 
+  def enum
+    @enums ||= @fields.filter_map{ |f|
+        next if (f[:cast_type] == "ompt_scope_endpoint_t")
+        OMP_MODEL_ENUMS.lazy.filter_map { |e| [f,e] if e["name"] == f[:cast_type] }.first
+    }
+    raise if @enums.size > 1
+    @enums.first
+  end
+
+  def have_enum?
+    !(enum.nil?)
+  end
+
+  def enum_t
+    enum[0][:cast_type]
+  end
+
+  def enum_name
+    enum[0][:name]
+  end
+
+  def enum_fields
+    enum[1]["members"].map { |f| f["name"] }
+  end
+
   def name_striped
-    # #{namespace}:#{foo}_#{START} -> #{foo}
-    # #{namespace}:#{foo} -> #{foo}
     @name_unsanitized[/:(.*?)\z/, 1]
   end
 
@@ -39,9 +62,8 @@ class DBT_event
   end
 end
 
-cu_babeltrace_model = YAML.load_file('omp_babeltrace_model.yaml')
-
-$dbt_events = cu_babeltrace_model[:event_classes].map { |klass|
+omp_babeltrace_model = YAML.load_file('omp_babeltrace_model.yaml')
+$dbt_events = omp_babeltrace_model[:event_classes].map { |klass|
   DBT_event.new(klass)
 }
 
