@@ -2,6 +2,7 @@
 
 #include "xprof_utils.hpp" // typedef
 #include <unordered_map>
+#include <babeltrace2/babeltrace.h>
 
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, int> hptl_t;
 
