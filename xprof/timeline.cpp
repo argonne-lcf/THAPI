@@ -46,6 +46,8 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
         break;
     }
 
+    static bool first = false;
+    static uint64_t begin_ts = 0;
 
     /* For each consumed message */
     for (uint64_t i = 0; i < message_count; i++) {
@@ -62,11 +64,16 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                                               std::make_tuple(2, &bt_field_integer_unsigned_get_value,
                                                                  (thread_id_t)0), // thread
                                               std::make_tuple(3, &bt_field_integer_unsigned_get_value,
-                                                                  (long) 0));
+                                                                  (uint64_t) 0));
 
             const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
             const auto& [hostname, process_id, thread_id, ts] = thapi_bt2_getter(common_context_field, dur_tuple0);
             //Payload
+            if (!first) {
+                begin_ts = ts;
+                first = true;
+            }
+            //
             const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
 
             const bt_field *name_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
@@ -77,8 +84,7 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
 
             auto &s_gtf_pid = dispatch->s_gtf_pid;
             auto &s_gtf_pid_gpu = dispatch->s_gtf_pid_gpu;
-            auto &s_gtf_tid = dispatch->s_gtf_tid;
-
+            //auto &s_gtf_tid = dispatch->s_gtf_tid;
             if (std::string(class_name) == "lttng:host") {
 
                 int gtf_pid;
@@ -102,9 +108,11 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                 }
 
                 int gtf_tid;
-                {
+/*                {
+
                     int level = 0;
                     std::string prefix;
+
                     //Lower numbers are displayed higher in Trace Viewer. I
                     if (name.rfind("ompt_", 0) == 0) {
                         level = 0;
@@ -145,10 +153,12 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                         gtf_tid = it->second;
                     }
                 }
+*/
+                gtf_tid = thread_id;
                 std::cout << nlohmann::json{ {"pid", gtf_pid},
                                              {"tid", gtf_tid},
-                                             {"ts", static_cast<long unsigned>(ts*1E-3)},
-                                             {"dur", static_cast<long unsigned>(dur*1E-3)},
+                                             {"ts", static_cast<double>((ts-begin_ts)*1E-3)},
+                                             {"dur", static_cast<double>(dur*1E-3)},
                                              {"name", name},
                                              {"ph", "X"}
                                            }
@@ -180,8 +190,8 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                 }
                 std::cout << nlohmann::json{ {"pid", gtf_pid},
                                              {"tid", thread_id},
-                                             {"ts", static_cast<long unsigned>(ts*1E-3)},
-                                             {"dur", static_cast<long unsigned>(dur*1E-3)},
+                                             {"ts", static_cast<double>((ts-begin_ts)*1E-3)},
+                                             {"dur", static_cast<double>(dur*1E-3)},
                                              {"name", name},
                                              {"ph", "X"}
                                            }
@@ -222,8 +232,8 @@ bt_component_class_initialize_method_status timeline_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    /* Print the begining of the json */
-    std::cout << "{\"traceEvents\":[" << std::endl;
+    std::cout << "{" << std::endl;
+    std::cout << "\"traceEvents\":[" << std::endl;
 
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
