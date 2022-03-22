@@ -23,7 +23,7 @@ clean-local:
 	$(RM) -r modified_include
 	$(RM) -r tests
 
-EXTRA_DIST = $(srcdir)/include 
+EXTRA_DIST = $(srcdir)/include headers.patch 
 
 OMP_NAMESPACES = ompt
 
@@ -49,14 +49,16 @@ OMP_LIB_GEN = \
 	$(srcdir)/gen_omp_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
+EXTRA_DIST += $(OMP_LIB_GEN)
+
 omp_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_omp_model.rb $(OMP_LIB_GEN) $(OMP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-CLEANFILES += ze_babeltrace_model.yaml
+CLEANFILES += omp_babeltrace_model.yaml
 
 EXTRA_DIST += \
-␉···omp_model.rb \
-␉···gen_babeltrace_omp_model.rb
+	ompt_model.rb \
+	gen_babeltrace_omp_model.rb
 
 OMP_PROBES = ompt_tracepoints
 OMP_PROBES_TP = $(OMP_PROBES:=.tp)
@@ -70,9 +72,9 @@ $(OMP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(OMP_MODEL)
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
 CLEANFILES += \
-	OMP_PROBES_TP \
-	OMP_PROBES_INCL \
-	OMP_PROBES_SRC
+	$(OMP_PROBES_TP) \
+	$(OMP_PROBES_INCL) \
+	$(OMP_PROBES_SRC)
 
 EXTRA_DIST += \
 	gen_ompt_tracepoints.rb
@@ -84,8 +86,21 @@ BUILT_SOURCES = \
 tracer_ompt.c: $(srcdir)/gen_ompt.rb $(srcdir)/tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL) 
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
+EXTRA_DIST += \
+	gen_ompt.rb \
+	tracer_ompt_helpers.include.c
+
+CLEANFILES += tracer_ompt.c
+
+ompprof.sh: $(top_builddir)/xprof/xprof.sh.erb
+	$(ERB) -T 1 languages=["omp"] $< > $@
+	chmod a+x $@
+
+CLEANFILES += ompprof.sh
+
 bin_SCRIPTS = \
-	tracer_omp.sh
+	tracer_omp.sh \
+	ompprof.sh
 
 noinst_LTLIBRARIES = libompttracepoints.la
 
@@ -140,6 +155,8 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
+EXTRA_DIST += ompt.h.include
+
 EXTRA_DIST += \
 	gen_ompinterval_callbacks.rb \
 	ompinterval_callbacks.cpp.erb
@@ -169,6 +186,9 @@ nodist_libOMPInterval_la_SOURCES = \
 	babeltrace_ompinterval_emitter.h \
 	xprof_utils.hpp \
 	xprof_utils.cpp
+
+libOMPInterval_la_SOURCES = \
+	ompinterval_callbacks.hpp
 
 libOMPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./
 libOMPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
