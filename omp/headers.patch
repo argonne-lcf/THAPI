@@ -1,6 +1,6 @@
 diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
 --- include/omp-tools.h	2022-03-21 21:52:54.137081000 +0000
-+++ modified_include/omp-tools.h	2022-03-21 21:52:47.601960000 +0000
++++ modified_include/omp-tools.h	2022-03-24 20:08:01.841925000 +0000
 @@ -688,8 +688,29 @@
  
  typedef void (*ompt_callback_device_unload_t)(int device_num,
@@ -50,7 +50,24 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
                                         ompt_scope_endpoint_t endpoint,
                                         int device_num, ompt_data_t *task_data,
                                         ompt_id_t target_id,
-@@ -798,11 +829,8 @@
+@@ -741,8 +772,16 @@
+ typedef void (*ompt_callback_target_submit_t)(ompt_id_t target_id,
+                                               ompt_id_t host_op_id,
+                                               unsigned int requested_num_teams);
+ 
++typedef void (*ompt_callback_target_submit_intel_t) (
++    ompt_scope_endpoint_t endpoint,
++    ompt_id_t target_id,
++    ompt_id_t host_op_id,
++    unsigned int requested_num_teams
++);
++
++
+ typedef struct ompt_record_target_kernel_t {
+   ompt_id_t host_op_id;
+   unsigned int requested_num_teams;
+   unsigned int granted_num_teams;
+@@ -798,11 +837,8 @@
  
  ompt_start_tool_result_t *ompt_start_tool(unsigned int omp_version,
                                            const char *runtime_version);
@@ -62,7 +79,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  
  ompd_rc_t ompd_get_version_string(const char **string);
  
-@@ -980,8 +1008,11 @@
+@@ -980,8 +1016,11 @@
    ompd_callback_get_thread_context_for_thread_id_fn_t
        get_thread_context_for_thread_id;
  } ompd_callbacks_t;
