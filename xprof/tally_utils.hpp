@@ -5,6 +5,7 @@
 #include <iostream>
 #include "json.hpp"
 
+#include <cmath>
 #include <regex>
 #include <set>
 #include <string>
@@ -15,7 +16,7 @@
 
 thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   std::string result = mangle_name;
-  std::string line_num;  
+  std::string line_num;
 
   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
   const static std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
@@ -44,11 +45,11 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
 };
 
 template <typename T>
-std::string to_string_with_precision(const T a_value, const std::string extension,
+std::string to_string_with_precision(const T a_value, const std::string units,
                                      const int n = 2) {
   std::ostringstream out;
   out.precision(n);
-  out << std::fixed << a_value << extension;
+  out << std::fixed << a_value << units;
   return out.str();
 }
 
@@ -114,7 +115,7 @@ public:
   using TallyCoreBase::TallyCoreBase;
   virtual const std::vector<std::string> to_string() {
     return std::vector<std::string>{format_time(duration),
-                                    to_string_with_precision(100. * duration_ratio, "%"),
+                                    std::isnan(duration_ratio) ? "" : to_string_with_precision(100. * duration_ratio, "%"),
                                     to_string_with_precision(count, "", 0),
                                     format_time(average),
                                     format_time(min),
@@ -123,7 +124,10 @@ public:
   }
 
 private:
-  template <typename T> std::string format_time(const T duration) {
+  template <typename T>
+  std::string format_time(const T duration) {
+    if (duration == std::numeric_limits<T>::max() || duration == T{0})
+        return "";
 
     const double h = duration / 3.6e+12;
     if (h >= 1.)
@@ -269,6 +273,10 @@ void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
   // Finalize (compute ratio)
   for (auto &keyval : m)
     keyval.second.finalize(tot);
+
+  if (tot.error == tot.count)
+    tot.duration_ratio = NAN;
+
   m.push_back(std::make_pair(std::string("Total"), tot));
 }
 
