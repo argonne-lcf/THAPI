@@ -1,6 +1,6 @@
 #include "my_demangle.h"
 #include <algorithm>
-#include <climits>
+#include <limits>
 #include <iomanip>
 #include <iostream>
 #include "json.hpp"
@@ -45,7 +45,7 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
 
 template <typename T>
 std::string to_string_with_precision(const T a_value, const std::string extension,
-                                      const int n = 2) {
+                                     const int n = 2) {
   std::ostringstream out;
   out.precision(n);
   out << std::fixed << a_value << extension;
@@ -58,13 +58,16 @@ public:
 
   TallyCoreBase(uint64_t _dur, bool _err) : duration{_dur}, error{_err} {
     count = 1;
-    min = _dur;
-    max = _dur;
+    if (!error) {
+      min = duration;
+      max = duration;
+    } else
+      duration = 0;
   }
 
   uint64_t duration{0};
   uint64_t error{0};
-  uint64_t min{ULONG_MAX};
+  uint64_t min{std::numeric_limits<uint64_t>::max()};
   uint64_t max{0};
   uint64_t count{0};
   double duration_ratio{1.};
@@ -91,7 +94,7 @@ public:
   }
 
   void finalize(const TallyCoreBase &rhs) {
-    average = count ? static_cast<double>(duration) / count : 0.;
+    average = ( count && count != error ) ? static_cast<double>(duration) / (count-error) : 0.;
     duration_ratio = static_cast<double>(duration) / rhs.duration;
   }
 
