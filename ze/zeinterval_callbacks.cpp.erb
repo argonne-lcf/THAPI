@@ -108,9 +108,11 @@ static void create_and_enqueue_device_message(
      const auto it0 = device_to_properties.find(hpd);
 
      uintptr_t device_hash = 0;
-     if (it0 != device_to_properties.cend() && !err) {
-         delta = compute_and_convert_delta(globalStart, globalEnd, it0->second);
-         start = convert_device_cycle(globalStart, timestamp_pair_ref, lltng_min, it0->second);
+     if (it0 != device_to_properties.cend()) {
+         if (!err) {
+            delta = compute_and_convert_delta(globalStart, globalEnd, it0->second);
+            start = convert_device_cycle(globalStart, timestamp_pair_ref, lltng_min, it0->second);
+         }
          device_hash = hash_device(it0->second);
      }
      uintptr_t subdevice_hash = 0;

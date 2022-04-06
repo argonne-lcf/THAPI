@@ -108,14 +108,16 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                                            }
                           << "," << std::endl;
             } else if ( std::string(class_name) == "lttng:device" )  {
+                const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+                const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
 
+                const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+                const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
 
-               const bt_field *did_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-               const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
-
-               const bt_field *sdid_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
-               const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
-
+                const bt_field *err_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 4);
+                const bool err = bt_field_bool_get_value(err_field);
+                if (err)
+                    continue;
 
                 const auto thapi_pid  = hp_dsd_t(hostname, process_id, did, sdid);
                 auto it = s_gtf_pid_gpu.find(thapi_pid);
