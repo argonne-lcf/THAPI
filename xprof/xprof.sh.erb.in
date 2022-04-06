@@ -53,7 +53,7 @@ display_help() {
     echo "  --asm                    Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  --mangle                 Use mangled name"
     echo "  --metadata               Display metadata"
-    echo "  --max-name-size <size>   Maximun size allowed for kernels names (default -1)"
+    echo "  --max-name-size <size>   Maximun size allowed for kernels names (default ${display_name_max_size_default})"
     echo "  --live                   Don't store the trace and process on the fly"
     echo "  -v, --version            Print the version string"
     echo "  -r, --replay    [path]   <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
@@ -320,7 +320,8 @@ display=compact
 mangling=demangle
 display_mode=human
 display_metadata=false
-display_name_max_size=80
+display_name_max_size_default=80
+display_name_max_size=$display_name_max_size_default
 display_kernel_verbose=false
 mode=default
 
