@@ -83,6 +83,13 @@ lttng_ust_ze_properties:
     - [ ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr" ]
     - [ ctf_integer_hex, uintptr_t, base, "(uintptr_t)base" ]
     - [ ctf_integer, size_t, size, size ]
+  - name: kernel
+    args:
+    - [ ze_kernel_handle_t, hKernel ]
+    - [ ze_kernel_properties_t *, pKernelProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hKernel, "(uintptr_t)hKernel" ]
+    - [ ctf_sequence_text, uint8_t, pKernelProperties_val, pKernelProperties, size_t, "sizeof(ze_kernel_properties_t)" ]
 lttng_ust_ze_build:
   events:
   - name: log

@@ -27,15 +27,17 @@ typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, t
 typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
 
 struct zeinterval_callbacks_state {
+    std::queue<const bt_message*>                           downstream_message_queue;
     // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
     std::unordered_map<hp_command_list_t, thapi_device_id>  command_list_to_device;
     std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>>  command_list_to_events;
     std::unordered_map<hp_device_t, ze_device_properties_t> device_to_properties;
+    // Kernel name & metadata
     std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_name;
-    std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_groupsize_str;
+    std::unordered_map<hp_kernel_t, std::string>            kernel_to_groupsize_str;
+    std::unordered_map<hp_kernel_t, std::string>            kernel_to_simdsize_str;
     std::unordered_map<hpt_function_name_t, uint64_t>       host_start;
     std::unordered_map<hpt_t, thapi_function_name>          profiled_function_name;
-    std::queue<const bt_message*>                           downstream_message_queue;
 
     /* Handle memory copy */
     std::unordered_map<hp_module_t, std::unordered_set<uint64_t> > module_to_module_globals;

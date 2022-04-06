@@ -608,6 +608,14 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
   }
 }
 
+static void _dump_kernel_properties(ze_kernel_handle_t hKernel) {
+  ze_kernel_properties_t kernelProperties;
+  kernelProperties.stype=ZE_STRUCTURE_TYPE_KERNEL_PROPERTIES;
+  kernelProperties.pNext=NULL;
+  if (zeKernelGetProperties(hKernel, &kernelProperties) == ZE_RESULT_SUCCESS)
+    tracepoint(lttng_ust_ze_properties, kernel, hKernel, &kernelProperties);
+}
+
 static void _dump_properties() {
   uint32_t driverCount = 0;
   if(ZE_DRIVER_GET_PTR(&driverCount, NULL) != ZE_RESULT_SUCCESS || driverCount == 0)

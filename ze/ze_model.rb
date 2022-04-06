@@ -917,3 +917,9 @@ register_epilogue "zeModuleDynamicLink", <<EOF
     }
   }
 EOF
+
+register_epilogue "zeKernelCreate", <<EOF
+ if (tracepoint_enabled(lttng_ust_ze_properties, kernel) && (_retval == ZE_RESULT_SUCCESS)) {
+    _dump_kernel_properties(*phKernel);
+ }
+EOF

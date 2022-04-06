@@ -256,6 +256,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% elsif ["lttng_ust_ze_properties:device",
             "lttng_ust_ze_properties:subdevice",
             "lttng_ust_ze_properties:device_timer",
+            "lttng_ust_ze_properties:kernel",
             "lttng_ust_ze_profiling:event_profiling",
             "lttng_ust_ze_profiling:event_profiling_results"].include?(dbt_event.name_unsanitized) %>
 
@@ -455,6 +456,11 @@ Case B:
      state->kernel_to_groupsize_str[hp_kernel_t(hostname,process_id,hKernel)] = groupsize.str();
   <% end %>
 
+  <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:kernel" %>
+     //Not sure why SIMD size == maxSubgroupSize, but this is what Intel Tool are doing
+     state->kernel_to_simdsize_str[hp_kernel_t(hostname,process_id,hKernel)] = "SIMD" + std::to_string(pKernelProperties_val->maxSubgroupSize);
+  <% end %>
+
   <%#
     _         _                    _
    |_) ._ _ _|_ o | o ._   _  o   /   _  ._ _  ._ _   _. ._   _|
@@ -469,6 +475,7 @@ Case B:
     <% if dbt_event.fields_name.include?('hKernel') %>
      const hpk_t hpk(hostname, process_id, hKernel);
      std::string name = state->kernel_to_name[hpk];
+     metadata << state->kernel_to_simdsize_str[hpk] << ", ";
       <% if dbt_event.fields_name.include?('pLaunchFuncArgs') %>
      metadata <<  "{" << pLaunchFuncArgs_val->groupCountX << ","
                       << pLaunchFuncArgs_val->groupCountY << ","
