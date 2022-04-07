@@ -46,4 +46,4 @@ $ompt_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_ompt)
 }
 
-puts File::read(File.join(SRC_DIR,"tracer_ompt_helpers.include.c"))
+puts File::read("tracer_ompt_helpers.include.c")

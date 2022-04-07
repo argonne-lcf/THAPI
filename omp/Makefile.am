@@ -23,7 +23,7 @@ clean-local:
 	$(RM) -r modified_include
 	$(RM) -r tests
 
-EXTRA_DIST = $(srcdir)/include headers.patch 
+EXTRA_DIST = $(srcdir)/include headers.patch
 
 OMP_NAMESPACES = ompt
 
@@ -83,14 +83,20 @@ BUILT_SOURCES = \
 	$(MODIFIED_OMP_HDR) \
 	$(OMP_PROBES_INCL)
 
-tracer_ompt.c: $(srcdir)/gen_ompt.rb $(srcdir)/tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL) 
+tracer_ompt.c: $(srcdir)/gen_ompt.rb tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+tracer_ompt_helpers.include.c: $(srcdir)/tracer_ompt_helpers.include.c.erb ompt_callbacks.yaml
+	SRC_DIR=$(srcdir) $(ERB) $< > $@
 
 EXTRA_DIST += \
 	gen_ompt.rb \
-	tracer_ompt_helpers.include.c
+	ompt_callbacks.yaml \
+	tracer_ompt_helpers.include.c.erb
 
-CLEANFILES += tracer_ompt.c
+CLEANFILES += \
+	tracer_ompt.c \
+	tracer_ompt_helpers.include.c
 
 ompprof.sh: $(top_builddir)/xprof/xprof.sh.erb
 	$(ERB) -T 1 languages=["omp"] $< > $@

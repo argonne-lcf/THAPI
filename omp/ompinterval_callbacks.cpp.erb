@@ -84,7 +84,6 @@ static const char* <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_t %> <%
     <% dbt_event.enum_fields.each do | fields | %>
    case <%= fields %> :
         return "<%= fields %>";
-        //return "<%= dbt_event.name_striped.gsub(/_callback/,'') %>:<%= fields[/ompt_(.*)\z/,1] %>"; %>
     <% end %>
    }
    return "<%= dbt_event.name_striped.gsub(/_callback/,'') %>";
