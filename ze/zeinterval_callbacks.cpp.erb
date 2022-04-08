@@ -1,5 +1,3 @@
-#include <iomanip>
-#include <iostream>
 #include "babeltrace_zeinterval.h"
 #include "zeinterval_callbacks.hpp"
 #include "xprof_utils.hpp"
@@ -13,6 +11,7 @@
 #include <zes_ddi.h>
 #include <zel_tracepoints.h>
 
+#include <iomanip>
 #include <vector>
 #include <algorithm>
 #include <iostream>
@@ -86,7 +85,7 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
                             zeinterval_iter_g->dispatch->host_event_class,
                             zeinterval_self_message_iterator_g,
-                            zeinterval_iter_g->dispatch->stream);
+                            zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
 
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);

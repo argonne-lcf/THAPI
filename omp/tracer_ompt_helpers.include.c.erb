@@ -55,7 +55,6 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     return 1;
 }
 
-
 static ompt_start_tool_result_t _ompt_start_tool_result = {&_ompt_initialize, &_ompt_finalize, (ompt_data_t) {.ptr=NULL} };
 
 ompt_start_tool_result_t* ompt_start_tool(unsigned int omp_version, const char* runtime_version) {
@@ -63,4 +62,3 @@ ompt_start_tool_result_t* ompt_start_tool(unsigned int omp_version, const char* 
     (void) runtime_version;
     return &_ompt_start_tool_result;
 }
-

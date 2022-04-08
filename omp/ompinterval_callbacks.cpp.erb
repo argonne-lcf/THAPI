@@ -5,7 +5,6 @@
 #include "xprof_utils.hpp"
 #include <babeltrace2/babeltrace.h>
 
-
 void *init_ompinterval_callbacks_state() {
     ompinterval_callbacks_state *s = new ompinterval_callbacks_state;
     return (void*) s;
@@ -18,7 +17,7 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
                             ompinterval_iter_g->dispatch->host_event_class,
                             ompinterval_self_message_iterator_g,
-                            ompinterval_iter_g->dispatch->stream);
+                            ompinterval_iter_g->dispatch->stream, BACKEND_OMP);
 
      ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);

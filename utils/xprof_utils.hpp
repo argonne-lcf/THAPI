@@ -5,6 +5,14 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
+enum backend_e{ BACKEND_UNKNOW = -1,
+                BACKEND_ZE = 0,
+                BACKEND_OPENCL = 1,
+                BACKEND_CUDA = 2,
+                BACKEND_OMP = 3 };
+
+typedef enum backend_e backend_t;
+
 typedef intptr_t                       process_id_t;
 typedef uintptr_t                      thread_id_t;
 typedef std::string                    hostname_t;
@@ -89,7 +97,7 @@ thread_id_t borrow_thread_id(const bt_event*);
 
 bt_message* create_host_message(const char *hostname, const process_id_t, const thread_id_t,
                                 const char *name, const uint64_t ts, const uint64_t duration, const bool err,
-                                bt_event_class*, bt_self_message_iterator*, bt_stream*);
+                                bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOW);
 
 bt_message* create_device_message(const char *hostname, const process_id_t, const thread_id_t,  const thapi_device_id, const thapi_device_id,
                                   const char *name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata,

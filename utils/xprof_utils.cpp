@@ -22,7 +22,7 @@ thread_id_t borrow_thread_id(const bt_event *event){
 
 bt_message* create_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
         const uint64_t ts, const uint64_t duration, const bool err,
-        bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
+        bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -46,6 +46,9 @@ bt_message* create_host_message(const char* hostname, const process_id_t process
      // ts
      bt_field *ts_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
      bt_field_integer_signed_set_value(ts_field, ts);
+     // backend
+     bt_field *backend_field = bt_field_structure_borrow_member_field_by_index(context_field,4);
+     bt_field_integer_signed_set_value(backend_field, backend);
 
      /* Payload */
      bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
