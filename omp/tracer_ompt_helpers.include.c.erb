@@ -2,7 +2,9 @@
 
 #define _OMPT_SET_CALLBACK(value, name) \
 do { \
-    const ompt_set_result_t _res = ompt_set_callback(value, (ompt_callback_t) (uintptr_t) name ## _func); ; \
+    const ompt_set_result_t _res = ompt_set_callback(value, (ompt_callback_t) (uintptr_t) name ## _func); \
+    if (!verbose) \
+        break; \
     switch (_res) { \
     case ompt_set_sometimes: \
     case ompt_set_sometimes_paired: \
@@ -28,8 +30,13 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
 {
     (void) tool_data;
     (void) initial_device_num;
+    int do_callbacks_intel = 0;
+    int verbose = 0;
 
-    char *do_callbacks_intel = getenv("LTTNG_UST_OMP_INTEL");
+    if (getenv("LTTNG_UST_OMP_INTEL"))
+        do_callbacks_intel = 1;
+    if (getenv("LTTNG_UST_OMP_VERBOSE"))
+        verbose = 1;
 
     ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) (uintptr_t) lookup("ompt_set_callback");
     if (ompt_set_callback == NULL)
