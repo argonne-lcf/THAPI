@@ -7,6 +7,7 @@ prefix=@prefix@
 datarootdir=@datarootdir@
 datadir=@datadir@
 
+
 <%def print_loader_logic (language, library, libtracer)
 env_var="LTTNG_UST_#{language.upcase}_#{library.upcase}"
 directory=language.downcase
@@ -204,7 +205,9 @@ trace_and_summary() {
         lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
     fi
 <% if languages.include?("omp") %>
+  <% if languages.include?("ze") %>
     lazy_export LTTNG_UST_OMP_INTEL 1
+  <% end %>
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
 <% end %>
 <% if languages.include?("opencl") %>
