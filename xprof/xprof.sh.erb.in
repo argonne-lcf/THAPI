@@ -25,6 +25,17 @@ directory=language.downcase
     export LD_PRELOAD=$libdir/#{libtracer}.so:$LD_PRELOAD
 EOF
 end%>
+
+# > unset FOO ; lazy_export FOO 1 ; echo $FOO
+# 1
+# > export FOO=2 ; lazy_export FOO 1 ; echo $FOO
+# 2
+lazy_export() {
+    if [ -z "${!1}" ]; then
+         export "$1"="$2"
+    fi
+}
+
 <%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 Option names are typically one to three words long, with hyphens to separate words %>
 
@@ -193,6 +204,7 @@ trace_and_summary() {
         lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
     fi
 <% if languages.include?("omp") %>
+    lazy_export LTTNG_UST_OMP_INTEL 1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
 <% end %>
 <% if languages.include?("opencl") %>
@@ -212,7 +224,7 @@ trace_and_summary() {
 <% if languages.include?("ze") %>
 
     export LTTNG_UST_ZE_PROFILE=1
-    export LTTNG_UST_ZE_PARANOID_DRIFT=1
+    lazy_export LTTNG_UST_ZE_PARANOID_DRIFT 1
 
     if [ $mode = "minimal" ]; then
         lttng $quiet enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
