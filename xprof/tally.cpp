@@ -88,7 +88,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
             std::make_tuple(1, &bt_field_integer_unsigned_get_value,
                             (uint64_t)0),
             std::make_tuple(2, &bt_field_bool_get_value, (bool)0));
-            
+
         const auto &[hostname, process_id, thread_id, backend_id] =
             get_common_context_field_host(event);
         const auto &[name, dur, err] =
@@ -235,11 +235,12 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
 
     if (dispatch->display_compact) {
 
-      for (const auto& [level,host]: dispatch->host) 
+      for (const auto& [level,host]: dispatch->host) {
+        (void) level;
         print_compact("API calls", host,
                       std::make_tuple("Hostnames", "Processes", "Threads"),
                       max_name_size);
-
+      }
       print_compact("Device profiling", dispatch->device,
                     std::make_tuple("Hostnames", "Processes", "Threads",
                                     "Devices", "Subdevices"),
@@ -250,11 +251,12 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
                     max_name_size);
 
     } else {
-      for (const auto& [level,host]: dispatch->host)
+      for (const auto& [level,host]: dispatch->host) {
+        (void) level;
         print_extended("API calls", host,
                        std::make_tuple("Hostname", "Process", "Thread"),
                        max_name_size);
-
+      }
       print_extended("Device profiling", dispatch->device,
                      std::make_tuple("Hostname", "Process", "Thread",
                                      "Device pointer", "Subdevice pointer"),

@@ -7,7 +7,6 @@ prefix=@prefix@
 datarootdir=@datarootdir@
 datadir=@datadir@
 
-
 <%def print_loader_logic (language, library, libtracer)
 env_var="LTTNG_UST_#{language.upcase}_#{library.upcase}"
 directory=language.downcase
@@ -26,16 +25,6 @@ directory=language.downcase
     export LD_PRELOAD=$libdir/#{libtracer}.so:$LD_PRELOAD
 EOF
 end%>
-
-# > unset FOO ; lazy_export FOO 1 ; echo $FOO
-# 1
-# > export FOO=2 ; lazy_export FOO 1 ; echo $FOO
-# 2
-lazy_export() {
-    if [ -z "${!1}" ]; then
-         export "$1"="$2"
-    fi
-}
 
 <%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 Option names are typically one to three words long, with hyphens to separate words %>
@@ -114,6 +103,16 @@ whichlib64_head() {
             break
         fi
     done
+}
+
+# > unset FOO ; lazy_export FOO 1 ; echo $FOO
+# 1
+# > export FOO=2 ; lazy_export FOO 1 ; echo $FOO
+# 2
+lazy_export() {
+    if [ -z "${!1}" ]; then
+         export "$1"="$2"
+    fi
 }
 
 bt2_all() {
