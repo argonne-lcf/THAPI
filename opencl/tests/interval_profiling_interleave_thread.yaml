@@ -12,6 +12,8 @@
     :class: unsigned
   - :name: ts
     :class: unsigned
+  - :name: backend
+    :class: signed
 :streams:
 - :name: stream0
   :class: interval_class
@@ -20,19 +22,19 @@
   :common_context:
     hostname: aurora12.gov
     vtid: 2
+    backend: -1
   :payload:
     name: clEnqueueSVMFree
     dur: 4
-
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
     vtid: 3
     ts: 1
+    backend: -1
   :payload:
     name: clEnqueueSVMFree
     dur: 4
-
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
@@ -40,7 +42,6 @@
   :payload:
     name: clEnqueueSVMFree
     dur: 10
-
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
