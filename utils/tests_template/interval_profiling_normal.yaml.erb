@@ -4,19 +4,19 @@
      prof_end = "end"
      mulfactor = 1
      profiled_call = "clEnqueueSVMFree"
-     backend = -1
+     backend = 0
    when "ze"
      event = "hEvent"
      prof_end = "globalEnd"
      mulfactor = 1
      profiled_call = "zeCommandListAppendBarrier"
-     backend = 0
+     backend = 1
    when "cuda"
      event = "hStop"
      prof_end = "milliseconds"
      mulfactor = 1000000
      profiled_call = "cuLaunchHostFunc"
-     backend = -1
+     backend = 0
    end %>
 
 in:

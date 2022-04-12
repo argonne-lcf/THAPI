@@ -22,7 +22,7 @@
   :common_context:
     hostname: aurora12.gov
     vpid: -1
-    backend: -1
+    backend: 0
   :payload:
     name: clEnqueueSVMFree
     dur: 4
@@ -30,7 +30,7 @@
   :common_context:
     hostname: aurora12.gov
     ts: 1
-    backend: -1
+    backend: 0
   :payload:
     name: clEnqueueSVMFree
     dur: 4

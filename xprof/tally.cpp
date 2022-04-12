@@ -94,8 +94,9 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto &[name, dur, err] =
             thapi_bt2_getter(payload_field, dur_tuple0);
 
+        const int level = backend_level[backend_id];
         TallyCoreTime a{dur, err};
-        dispatch->host[backend_id][hpt_function_name_t(hostname, process_id, thread_id, name)] += a;
+        dispatch->host[level][hpt_function_name_t(hostname, process_id, thread_id, name)] += a;
       } else if (strcmp(class_name, "lttng:device") == 0) {
         auto dur_tuple0 = std::make_tuple(
             std::make_tuple(0, bt_field_string_get_value, (std::string) ""),

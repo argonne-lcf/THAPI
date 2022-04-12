@@ -5,11 +5,13 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
-enum backend_e{ BACKEND_UNKNOW = -1,
-                BACKEND_ZE = 0,
-                BACKEND_OPENCL = 1,
-                BACKEND_CUDA = 2,
-                BACKEND_OMP = 3 };
+enum backend_e{ BACKEND_UNKNOW = 0,
+                BACKEND_ZE = 1,
+                BACKEND_OPENCL = 2,
+                BACKEND_CUDA = 3,
+                BACKEND_OMP = 4 };
+
+constexpr int backend_level[5] = { 0, 0, 0, 0, 1 };
 
 typedef enum backend_e backend_t;
 
