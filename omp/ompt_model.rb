@@ -26,20 +26,21 @@ ompt_types_e = $ompt_api["typedefs"]
 
 all_types = ompt_types_e
 all_structs = $ompt_api["structs"]
-OMPT_OBJECTS = ["ompt_device_t", "ompt_buffer_t","ompd_address_space_handle_t", "ompd_thread_handle_t", "ompd_parallel_handle_t", 
+OMPT_OBJECTS = ["ompt_device_t", "ompt_buffer_t","ompd_address_space_handle_t", "ompd_thread_handle_t", "ompd_parallel_handle_t",
                 "ompd_task_handle_t","ompd_address_space_context_t", "ompd_thread_context_t"]
-OMPT_INT_SCALARS = %w(int size_t uint8_t int64_t uint64_t char) + ["unsigned int"] 
+OMPT_INT_SCALARS = %w(int size_t uint8_t int64_t int32_t uint64_t char) + ["unsigned int"]
 OMPT_FLOAT_SCALARS = ["double"]
 OMPT_SCALARS = OMPT_INT_SCALARS + OMPT_FLOAT_SCALARS
 
 all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OMPT_INT_SCALARS.include?(t.type.name)
+  if  ( t.type.kind_of?(YAMLCAst::CustomType) || t.type.kind_of?(YAMLCAst::Int) ) && OMPT_INT_SCALARS.include?(t.type.name)
     OMPT_INT_SCALARS.push t.name
   end
 }
 
+
 OMPT_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-OMPT_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } 
+OMPT_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
 OMPT_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
 OMPT_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 OMPT_CALLBACKS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/) }
@@ -61,7 +62,7 @@ FFI_TYPE_MAP =  {
  "double" => "ffi_type_double",
  "uintptr_t" => "ffi_type_pointer",
  "size_t" => "ffi_type_pointer",
- "unsigned int" => "ffi_type_uint", 
+ "unsigned int" => "ffi_type_uint",
  "int" => "ffi_type_int",
  "char" => "ffi_type_char"
 }

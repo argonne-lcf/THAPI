@@ -39,7 +39,8 @@ $integer_sizes = {
   "ompd_seg_t" => 64,
   "ompd_device_t" => 64,
   "ompd_thread_id_t" => 64,
-  "ompd_icv_id_t" => 64
+  "ompd_icv_id_t" => 64,
+  "ompt_task_flags_t" => 32
 }
 
 OMPT_ENUM_SCALARS.each { |t|
@@ -88,7 +89,8 @@ $integer_signed = {
   "ompd_seg_t" =>false,
   "ompd_device_t" =>false,
   "ompd_thread_id_t" =>false,
-  "ompd_icv_id_t" => false
+  "ompd_icv_id_t" => false,
+  "ompt_task_flags_t" => true
 }
 
 $function_pointer = ["ompt_function_lookup_t"]

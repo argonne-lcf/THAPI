@@ -126,6 +126,8 @@ bt2_all() {
         $bindir/babeltrace_ze -r -c "$@"
 <% elsif languages.include?("cuda") %>
         $bindir/babeltrace_cuda -r -c  "$@"
+<% elsif languages.include?("omp") %>
+        $bindir/babeltrace_omp -r -c  "$@"
 <% end %>
     fi
 

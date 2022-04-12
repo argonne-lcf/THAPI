@@ -8,9 +8,6 @@ require 'yaml'
 require 'pp'
 
 $event_lambdas = {}
-require 'babeltrace_opencl_lib'
-require 'babeltrace_ze_lib'
-require 'babeltrace_cuda_lib'
 require 'babeltrace_omp_lib'
 
 $options = {
@@ -20,7 +17,7 @@ $options = {
 }
 
 OptionParser.new do |opts|
-  opts.banner = "Usage: babeltrace_thapi [OPTIONS] target_trace_directory"
+  opts.banner = "Usage: babeltrace_omp [OPTIONS] target_trace_directory"
 
   opts.on("-c", "--[no-]context", "Add context information") do |context|
     $options[:context] = context
@@ -101,7 +98,7 @@ else
   comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
 end
 comp2 = graph.add_component(utils_muxer, "mux")
-comp3 = graph.add_simple_sink("babeltrace_thapi", consume)
+comp3 = graph.add_simple_sink("babeltrace_omp", consume)
 i = 0
 comps.each { |comp|
   ops = comp.output_ports

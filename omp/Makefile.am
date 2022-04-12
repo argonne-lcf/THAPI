@@ -106,6 +106,7 @@ CLEANFILES += ompprof.sh
 
 bin_SCRIPTS = \
 	tracer_omp.sh \
+	babeltrace_omp \
 	ompprof.sh
 
 noinst_LTLIBRARIES = libompttracepoints.la
@@ -201,3 +202,21 @@ libOMPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABEL
 libOMPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libOMPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+omp_library.rb: $(srcdir)/gen_omp_library.rb $(OMP_LIB_GEN) $(OMP_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+babeltrace_omp_lib.rb: $(srcdir)/gen_babeltrace_omp_lib.rb $(OMP_LIB_GEN) $(OMP_MODEL) omp_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+OMP_BINDINGS = \
+	omp_library.rb \
+	babeltrace_omp_lib.rb
+
+EXTRA_DIST += \
+	gen_omp_library.rb \
+	gen_babeltrace_omp_lib.rb
+
+CLEANFILES += $(OMP_BINDINGS)
+
+data_DATA = \
+	$(OMP_BINDINGS)
