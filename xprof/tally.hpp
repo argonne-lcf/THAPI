@@ -16,7 +16,8 @@ struct tally_dispatch {
     std::unordered_map<unsigned,
                        std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
     std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
-    std::unordered_map<hpt_function_name_t, TallyCoreByte> traffic;
+    std::unordered_map<unsigned, 
+                       std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
     std::unordered_map<hp_device_t, std::string> device_name;
     std::vector<std::string> metadata;

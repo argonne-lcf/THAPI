@@ -31,7 +31,7 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
      bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
                                                   ompinterval_iter_g->dispatch->traffic_event_class,
                                                   ompinterval_self_message_iterator_g,
-                                                  ompinterval_iter_g->dispatch->stream);
+                                                  ompinterval_iter_g->dispatch->stream, BACKEND_OMP);
 
      ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
