@@ -304,6 +304,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% if dbt_event.name_striped == "zeModuleGetGlobalPointer" %>
     <% if dbt_event.start? %>
      save_start(state, hpt_t(hostname, process_id, thread_id), hModule);
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
     <% else dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
           const auto hModule = retrieve_start<ze_module_handle_t>(state, hpt_t(hostname, process_id,thread_id));
@@ -311,18 +313,26 @@ static void zeinterval_<%= dbt_event.name %>_callback(
           state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
      }
     <% end %>
-  <% elsif dbt_event.name_striped == "zeModulelDestroy" and dbt_event.start? %>
+  <% elsif dbt_event.name_striped == "zeModuleDestroy" and dbt_event.start? %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
      auto& s = state->module_to_module_globals;
      auto it = s.find(hp_module_t(hostname, process_id, hModule));
      if (it != s.end()) {
-          state->rangeset_memory_shared[hp_t(hostname, process_id)].erase(it->second.begin());
+          for (auto &s2: it->second)
+            state->rangeset_memory_shared[hp_t(hostname, process_id)].erase(s2);
           s.erase(it);
      }
+  <% elsif dbt_event.name_striped == "zeModuleCreate" and dbt_event.start? %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
   <% end %>
 
   <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and
         dbt_event.start? %>
           save_start(state, hpt_t(hostname, process_id, thread_id), size);
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
   <% elsif dbt_event.name_striped == "zeMemAllocHost" and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
           const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
@@ -340,6 +350,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      }
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.start? %>
      save_start(state, hpt_t(hostname, process_id, thread_id), ptr);
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
+    <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
           const auto ptr = retrieve_start<uintptr_t>(state, hpt_t(hostname, process_id, thread_id));
