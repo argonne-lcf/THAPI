@@ -335,7 +335,14 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% elsif ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
           const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
-          state->rangeset_memory_host[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+    <% if dbt_event.name_striped == "zeMemAllocHost" %>
+          auto &s = state->rangeset_memory_host;
+    <% elsif dbt_event.name_striped == "zeMemAllocDevice" %>
+          auto &s = state->rangeset_memory_device;
+    <% elsif dbt_event.name_striped == "zeMemAllocShared" %>
+          auto &s = state->rangeset_memory_shared;
+    <% end %>
+          s[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
           //create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", size);
      }
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.start? %>
