@@ -12,7 +12,7 @@ enum backend_e{ BACKEND_UNKNOW = 0,
                 BACKEND_OMP_INTEL = 4,
                 BACKEND_OMP = 5 };
 
-constexpr int backend_level[6] = { 0, 0, 0, 0, 1, 2 };
+constexpr int backend_level[6] = { 2, 2, 2, 2, 1, 0 };
 
 typedef enum backend_e backend_t;
 
