@@ -113,9 +113,12 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto &[name, dur, err] =
             thapi_bt2_getter(payload_field, dur_tuple0);
 
-        const int level = backend_level[backend_id];
         TallyCoreTime a{dur, err};
+
+        const int level = backend_level[backend_id];
+        dispatch->host_backend_name[level].insert(backend_name[backend_id]);
         dispatch->host[level][hpt_function_name_t(hostname, process_id, thread_id, name)] += a;
+
       } else if (strcmp(class_name, "lttng:device") == 0) {
         auto dur_tuple0 = std::make_tuple(
             std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
@@ -150,6 +153,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto &[name, size] = thapi_bt2_getter(payload_field, dur_tuple0);
         TallyCoreByte a{(uint64_t)size, false};
         const int level = backend_level[backend_id];
+        dispatch->traffic_backend_name[level].insert(backend_name[backend_id]);
         dispatch->traffic[level][hpt_function_name_t(hostname, process_id, thread_id,
                                                name)] += a;
 
@@ -256,8 +260,15 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
     if (dispatch->display_compact) {
 
       for (const auto& [level,host]: dispatch->host) {
-        (void) level;
-        print_compact("API calls", host,
+        auto x = dispatch->host_backend_name[level];
+        std::string s = std::accumulate( std::begin(x),
+                                 std::end(x),
+                                 std::string{},
+                                 [](const std::string& a, const std::string &b ) {
+                                    return a.empty() ? b
+                                           : a + ',' + b; } );
+
+        print_compact("Host entry-points (" + s + ")", host,
                       std::make_tuple("Hostnames", "Processes", "Threads"),
                       max_name_size);
       }
@@ -267,15 +278,28 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
                     max_name_size);
 
       for (const auto& [level,traffic]: dispatch->traffic) {
-        (void) level;
-        print_compact("Explicit memory traffic", traffic,
+        auto x = dispatch->traffic_backend_name[level];
+        std::string s = std::accumulate( std::begin(x),
+                                 std::end(x),
+                                 std::string{},
+                                 [](const std::string& a, const std::string &b ) {
+                                    return a.empty() ? b
+                                           : a + ',' + b; } );
+
+        print_compact("Explicit memory traffic (" + s + ")", traffic,
                       std::make_tuple("Hostnames", "Processes", "Threads"),
                       max_name_size);
       }
     } else {
       for (const auto& [level,host]: dispatch->host) {
-        (void) level;
-        print_extended("API calls", host,
+        auto x = dispatch->host_backend_name[level];
+        std::string s = std::accumulate( std::begin(x),
+                                 std::end(x),
+                                 std::string{},
+                                 [](const std::string& a, const std::string &b ) {
+                                    return a.empty() ? b
+                                           : a + ',' + b; } );
+        print_extended("Host entry-points (" + s + ")", host,
                        std::make_tuple("Hostname", "Process", "Thread"),
                        max_name_size);
       }
@@ -285,8 +309,14 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
                      max_name_size);
 
       for (const auto& [level,traffic]: dispatch->traffic) {
-        (void) level;
-        print_extended("Explicit memory traffic", traffic,
+        auto x = dispatch->traffic_backend_name[level];
+        std::string s = std::accumulate( std::begin(x),
+                                 std::end(x),
+                                 std::string{},
+                                 [](const std::string& a, const std::string &b ) {
+                                    return a.empty() ? b
+                                           : a + ',' + b; } );
+        print_extended("Explicit memory traffic (" + s + ")", traffic,
                      std::make_tuple("Hostname", "Process", "Thread"),
                      max_name_size);
       }

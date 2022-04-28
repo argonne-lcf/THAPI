@@ -141,7 +141,7 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
      bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
                                                   zeinterval_iter_g->dispatch->traffic_event_class,
                                                   zeinterval_self_message_iterator_g,
-                                                  zeinterval_iter_g->dispatch->stream);
+                                                  zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
 
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);

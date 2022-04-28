@@ -15,9 +15,13 @@ struct tally_dispatch {
     int  display_name_max_size;
     bool display_kernel_verbose;
 
+    std::map<unsigned, std::set<const char*>> host_backend_name;
     std::map<unsigned,
              std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
+
     std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
+
+    std::map<unsigned, std::set<const char*>> traffic_backend_name;
     std::map<unsigned, 
              std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
