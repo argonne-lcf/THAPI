@@ -187,26 +187,26 @@ void zeinterval_downstream_message_queue_push(struct zeinterval_message_iterator
 
 %>
 
-void remove_memory(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
+size_t remove_memory(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
      auto &rs = state->rangeset_memory_shared[hp];
      auto its = rs.find(ptr);
      if (its != rs.end()) {
           rs.erase(its);
-          return;
+          return its->second - its->first;
      }
      auto &rd = state->rangeset_memory_device[hp];
      auto itd = rd.find(ptr);
      if (itd != rd.end()) {
           rd.erase(itd);
-          return;
+          return itd->second - itd->first;
      }
      auto &rh = state->rangeset_memory_host[hp];
      auto ith = rh.find(ptr);
      if (ith != rh.end()) {
           rh.erase(ith);
-          return;
+          return ith->second - ith->first;
      }
-     return;
+     return 0;
 }
 
 const char* memory_location(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t ptr) {
@@ -328,16 +328,15 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
   <% end %>
 
-  <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and
-        dbt_event.start? %>
+  <% if ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and dbt_event.start? %>
           save_start(state, hpt_t(hostname, process_id, thread_id), size);
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
-  <% elsif ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and
-        dbt_event.stop? %>
+  <% elsif ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
           const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
           state->rangeset_memory_host[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + size;
+          //create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", size);
      }
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.start? %>
      save_start(state, hpt_t(hostname, process_id, thread_id), ptr);
@@ -346,7 +345,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
           const auto ptr = retrieve_start<uintptr_t>(state, hpt_t(hostname, process_id, thread_id));
-          remove_memory(state, hp_t(hostname, process_id), ptr);
+          const auto size = remove_memory(state, hp_t(hostname, process_id), ptr);
+          (void) size;
+          //create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", size);
      }
   <% end %>
 
@@ -595,6 +596,7 @@ Case B:
    |  | (/_ | | | (_) | \/    | | (_|  |   |  | (_
                         /
   %>
+  //Todo this should check for ZE_RESULT!
   <% if dbt_event.start? and
         dbt_event.name_striped.include?("Memory") and
         dbt_event.fields_name.include?("size") %>
