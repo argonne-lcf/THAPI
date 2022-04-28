@@ -9,9 +9,10 @@ enum backend_e{ BACKEND_UNKNOW = 0,
                 BACKEND_ZE = 1,
                 BACKEND_OPENCL = 2,
                 BACKEND_CUDA = 3,
-                BACKEND_OMP = 4 };
+                BACKEND_OMP_INTEL = 4,
+                BACKEND_OMP = 5 };
 
-constexpr int backend_level[5] = { 0, 0, 0, 0, 1 };
+constexpr int backend_level[6] = { 0, 0, 0, 0, 1, 2 };
 
 typedef enum backend_e backend_t;
 
