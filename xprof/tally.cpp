@@ -260,14 +260,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
     if (dispatch->display_compact) {
 
       for (const auto& [level,host]: dispatch->host) {
-        auto x = dispatch->host_backend_name[level];
-        std::string s = std::accumulate( std::begin(x),
-                                 std::end(x),
-                                 std::string{},
-                                 [](const std::string& a, const std::string &b ) {
-                                    return a.empty() ? b
-                                           : a + ',' + b; } );
-
+        std::string s = join_iterator(dispatch->host_backend_name[level]);
         print_compact("Host entry-points (" + s + ")", host,
                       std::make_tuple("Hostnames", "Processes", "Threads"),
                       max_name_size);
@@ -278,27 +271,14 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
                     max_name_size);
 
       for (const auto& [level,traffic]: dispatch->traffic) {
-        auto x = dispatch->traffic_backend_name[level];
-        std::string s = std::accumulate( std::begin(x),
-                                 std::end(x),
-                                 std::string{},
-                                 [](const std::string& a, const std::string &b ) {
-                                    return a.empty() ? b
-                                           : a + ',' + b; } );
-
+        std::string s = join_iterator(dispatch->traffic_backend_name[level]);
         print_compact("Explicit memory traffic (" + s + ")", traffic,
                       std::make_tuple("Hostnames", "Processes", "Threads"),
                       max_name_size);
       }
     } else {
       for (const auto& [level,host]: dispatch->host) {
-        auto x = dispatch->host_backend_name[level];
-        std::string s = std::accumulate( std::begin(x),
-                                 std::end(x),
-                                 std::string{},
-                                 [](const std::string& a, const std::string &b ) {
-                                    return a.empty() ? b
-                                           : a + ',' + b; } );
+        std::string s = join_iterator(dispatch->host_backend_name[level]); 
         print_extended("Host entry-points (" + s + ")", host,
                        std::make_tuple("Hostname", "Process", "Thread"),
                        max_name_size);
@@ -309,13 +289,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
                      max_name_size);
 
       for (const auto& [level,traffic]: dispatch->traffic) {
-        auto x = dispatch->traffic_backend_name[level];
-        std::string s = std::accumulate( std::begin(x),
-                                 std::end(x),
-                                 std::string{},
-                                 [](const std::string& a, const std::string &b ) {
-                                    return a.empty() ? b
-                                           : a + ',' + b; } );
+        std::string s = join_iterator(dispatch->traffic_backend_name[level]);
         print_extended("Explicit memory traffic (" + s + ")", traffic,
                      std::make_tuple("Hostname", "Process", "Thread"),
                      max_name_size);

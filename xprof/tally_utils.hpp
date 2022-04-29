@@ -13,6 +13,13 @@
 #include <unordered_map>
 #include <vector>
 
+template <typename T>
+std::string join_iterator(const T& x, std::string delimiter = ",") {
+    return std::accumulate( std::begin(x), std::end(x), std::string{},
+                            [=delimiter](const std::string& a, const std::string &b ) {
+                                  return a.empty() ? b: a + ',' + b; } );
+}
+
 thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   std::string result = mangle_name;
   std::string line_num;  
@@ -192,7 +199,7 @@ private:
 //   /--\ (_| (_| | (/_ (_| (_|  |_ | (_) | |
 //         _|  _|        _|
 
-/* Extract a subtutple
+/* Extract a sub-tuple
  * https://devblogs.microsoft.com/oldnewthing/20200623-00/?p=103901
  * Look like it may have some problem, but i was not smart enough
  * 1/ to understand the problem
@@ -222,7 +229,7 @@ template <typename TC, class... T,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 auto aggregate_nested(std::unordered_map<std::tuple<T...>, TC> &m) {
   // https://stackoverflow.com/a/42043006/7674852
-  // REALY?!
+  // REALLY?!
   typedef decltype(make_tuple_cuted(std::declval<std::tuple<T...>>())) Minusone;
   std::unordered_map<Minusone, std::unordered_map<thapi_function_name, TC>> aggregated;
   for (auto &[key, val] : m) {
@@ -243,7 +250,7 @@ void remove_neutral(std::tuple<std::set<T>...> &s, std::index_sequence<I...>) {
   (std::get<I>(s).erase (T{}), ...);
 }
 
-// Loop over the map keys and return a tuple correspoding to the uniq elements
+// Loop over the map keys and return a tuple corresponding to the unique elements
 template <template <typename...> class Map, typename... K, typename V>
 auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
   auto tuple_set = std::make_tuple(std::set<K>{}...);
@@ -343,10 +350,10 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 //   \_| |_| |_ (/_ | | |_) (/_ |  | /_ (_|  |_ | (_) | |
 //
 
-// Our base datastructor is a pair of either tuple / TalyCore and a vector of int correspond to the
-// collumn size. We print each tuple menber with the correct width, and joined with a `|`
-// /!\ Ugly: If the collumn with is negative, that mean we should print a empty collumn of abs(size)
-// This is usefull for the footer or for hiding the `error` collumn
+// Our base constructor is a pair of either tuple / TalyCore and a vector of int correspond to the
+// column size. We print each tuple members with the correct width, and joined with a `|`
+// /!\ Ugly: If the column with is negative, that mean we should print a empty column of abs(size)
+// This is useful for the footer or for hiding the `error` column
 
 // We use 3 function, because my template skill are poor...
 template <std::size_t SIZE>
@@ -419,7 +426,7 @@ void print_named_tuple(std::ostream &os, const std::string &header, const std::t
   os << std::endl;
 }
 
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void print_tally(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
@@ -450,7 +457,7 @@ void print_tally(std::unordered_map<thapi_function_name, TC> &m, int display_nam
   }
   std::cout << std::endl;
 }
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename K, typename T, typename TC,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
@@ -461,7 +468,7 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
     return;
 
   // Printing the summary of the number of Hostname, Process and co
-  // We will iterator over the map and compute the number of uniq elements of each category
+  // We will iterator over the map and compute the number of unique elements of each category
   auto tuple_tally = get_uniq_tally(m);
   print_tally(std::cout, title, tuple_tally, keys_string);
   std::cout << std::endl;
@@ -470,7 +477,7 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
   print_tally(aggregated_by_name, display_name_max_size);
 }
 
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename K, typename T, typename TC,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
@@ -505,7 +512,7 @@ void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name,
     j[key] = val;
 }
 
-// orignal_map is map where the key are tuple who correcpond to hostname, process, ..., API call
+// original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename K, typename TC,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
