@@ -14,7 +14,7 @@ enum backend_e{ BACKEND_UNKNOW = 0,
 
 constexpr int backend_level[] = { 2, 2, 2, 2, 1, 0 };
 
-constexpr const char* backend_name[] = { "BACKEND_UNKNOW",
+constexpr const char* backend_name[] = { "BACKEND_UNKNOWN",
                 "BACKEND_ZE",
                 "BACKEND_OPENCL",
                 "BACKEND_CUDA",
