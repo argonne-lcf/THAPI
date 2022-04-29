@@ -16,8 +16,8 @@
 template <typename T>
 std::string join_iterator(const T& x, std::string delimiter = ",") {
     return std::accumulate( std::begin(x), std::end(x), std::string{},
-                            [=delimiter](const std::string& a, const std::string &b ) {
-                                  return a.empty() ? b: a + ',' + b; } );
+                            [&delimiter](const std::string& a, const std::string &b ) {
+                                  return a.empty() ? b: a + delimiter + b; } );
 }
 
 thapi_function_name f_demangle_name(thapi_function_name mangle_name) {

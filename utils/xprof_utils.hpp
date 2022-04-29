@@ -18,7 +18,7 @@ constexpr const char* backend_name[] = { "BACKEND_UNKNOW",
                 "BACKEND_ZE",
                 "BACKEND_OPENCL",
                 "BACKEND_CUDA",
-                "BACKEND_OMP_TRANSFER",
+                "BACKEND_OMP_TARGET_DATA",
                 "BACKEND_OMP" };
 
 typedef enum backend_e backend_t;
