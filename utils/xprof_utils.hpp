@@ -119,7 +119,7 @@ bt_message* create_device_name_message(const char* hostname, const process_id_t 
 
 bt_message* create_traffic_message(const char *hostname, const process_id_t, const thread_id_t,
                                    const char *name, const uint64_t size,
-                                   bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOW);
+                                   bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOWN);
 
 
 //. Getter
