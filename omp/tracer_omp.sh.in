@@ -19,6 +19,12 @@ display_version() {
     exit 1
 }
 
+lazy_export() {
+    if [ -z "${!1}" ]; then
+         export "$1"="$2"
+    fi
+}
+
 while true; do
   case "$1" in
     --help           ) display_help; exit;;
@@ -46,6 +52,7 @@ lttng enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
 
 export OMP_TOOL_LIBRARIES=$libdir/libTracerOMPT.so
 export LTTNG_UST_ALLOW_BLOCKING=1
+lazy_export LTTNG_UST_OMP_INTEL 1
 lttng start
 
 ctrl_c() {
