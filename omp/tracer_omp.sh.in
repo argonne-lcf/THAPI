@@ -58,7 +58,7 @@ trap ctrl_c INT
 
 if [ ! -z "$lttng_view" ]
 then
-  lttng view --viewer="babeltrace_cuda --context --live" &
+  lttng view --viewer="babeltrace_omp --context --live" &
   PID=$!
 fi
 "$@"
