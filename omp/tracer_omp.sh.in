@@ -19,12 +19,12 @@ display_version() {
     exit 1
 }
 
-intel_extension=true
+intel_extensions=true
 while true; do
   case "$1" in
     --help                   ) display_help; exit;;
     --version                ) display_version; exit;;
-    --disable-intel-extension) intel_extension=false shift;;
+    --disable-intel-extensions) intel_extensions=false shift;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -49,7 +49,7 @@ lttng enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
 export OMP_TOOL_LIBRARIES=$libdir/libTracerOMPT.so
 export LTTNG_UST_ALLOW_BLOCKING=1
 
-if [ "$intel_extension" = true ] ; then
+if [ "$intel_extensions" = true ] ; then
     export LTTNG_UST_OMP_INTEL=1
 fi
 
