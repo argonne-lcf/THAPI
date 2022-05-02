@@ -107,54 +107,7 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                     }
                 }
 
-                int gtf_tid;
-/*                {
-
-                    int level = 0;
-                    std::string prefix;
-
-                    //Lower numbers are displayed higher in Trace Viewer. I
-                    if (name.rfind("ompt_", 0) == 0) {
-                        level = 0;
-                        prefix = "ompt_";
-                    } else if (name.rfind("ze", 0) == 0) {
-                        level = 1;
-                        prefix = "ze";
-                    } else if (name.rfind("cl", 0) == 0) {
-                        level = 2;
-                        prefix = "cl";
-                    } else if (name.rfind("cuda", 0) == 0) {
-                        level = 3;
-                        prefix = "cuda";
-                    }
-
-                    const auto thapi_tid  = hptl_t(hostname, process_id, thread_id, level);
-                    auto it = s_gtf_tid.find(thapi_tid);
-                    if (it == s_gtf_tid.end() ) {
-                        gtf_tid = s_gtf_tid.size();
-                        s_gtf_tid[thapi_tid] = gtf_tid;
-                        std::cout << nlohmann::json{ {"name", "thread_name"},
-                                                     {"ph", "M"},
-                                                     {"pid", gtf_pid},
-                                                     {"tid", gtf_tid},
-                                                     {"args", { {"name",  prefix + " | Thread " + std::to_string(thread_id) + " | "} } },
-                                                     // Double "{" to generate a dict and not array
-                                                   }
-                                  << "," << std::endl;
-                         std::cout << nlohmann::json{ {"name", "thread_sort_index"},
-                                                     {"ph", "M"},
-                                                     {"pid", gtf_pid},
-                                                     {"tid", gtf_tid},
-                                                     { "args", { {"sort_index", level } } },
-                                                     // Double "{" to generate a dict and not array
-                                                   }
-                                  << "," << std::endl;
-                    } else {
-                        gtf_tid = it->second;
-                    }
-                }
-*/
-                gtf_tid = thread_id;
+                int gtf_tid = thread_id;
                 std::cout << nlohmann::json{ {"pid", gtf_pid},
                                              {"tid", gtf_tid},
                                              {"ts", static_cast<double>((ts-begin_ts)*1E-3)},
