@@ -35,8 +35,8 @@ ompt_callback_mutex_released:
   - ompt_callback_mutex
 ompt_callback_dependences:
   - ompt_callback_dependences
-ompt_callback_target_submit:
-  - ompt_callback_target_submit
+ompt_callback_task_dependence:
+  - ompt_callback_task_dependence
 ompt_callback_work:
   - ompt_callback_work
 ompt_callback_masked:

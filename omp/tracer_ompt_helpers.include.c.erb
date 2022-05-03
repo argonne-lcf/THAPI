@@ -43,8 +43,10 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
         return 0;
 <% YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")).each do | val, names| %>
   <% if names.size == 1 %>
+
     _OMPT_SET_CALLBACK(<%= val%>, <%= names.first%>);
   <% else %>
+
     if (do_callbacks_intel) {
        _OMPT_SET_CALLBACK(<%= val%>, <%= names.last%>);
     } else {

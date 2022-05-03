@@ -32,7 +32,7 @@ EOF
 
 normal_wrapper = lambda { |c, provider|
   puts <<EOF
-#{c.decl} {
+static #{c.decl} {
 EOF
   common_block.call(c, provider)
   puts <<EOF

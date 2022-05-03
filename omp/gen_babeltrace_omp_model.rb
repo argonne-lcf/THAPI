@@ -132,29 +132,18 @@ def integer_signed?(t)
 end
 
 def meta_parameter_types_name(m)
-  lttng = m.lttng_in_type
+  lttng = m.lttng_type
   name = lttng.name
   t = m.command[m.name].type.type
 
   case m
-  when ScalarMetaParameter
-    if lttng.length
-      [["ctf_integer", "size_t", "_#{name}_length", nil],
-       [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
-    else
-      [[lttng.macro.to_s, "#{t}", "#{name}", lttng]]
-    end
-  when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng
+  when ArrayMetaParameter
     if lttng.macro.to_s == "ctf_string"
       [["ctf_string", "#{t} *", "#{name}", lttng]]
     else
       [["ctf_integer", "size_t", "_#{name}_length", nil],
        [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
     end
-  when FixedArrayMetaParameter
-    [[lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
-  when OutPtrString
-    [["ctf_string", "#{t}", "#{name}", lttng]]
   else
     raise "unsupported meta parameter class #{m.class} #{lttng.call_string} #{t}"
   end
@@ -164,8 +153,8 @@ def get_fields_types_name(c)
   fields = (c.parameters ? c.parameters : []).collect { |p|
     [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
   }
-  fields += c.meta_parameters.select { |m| m.kind_of?(In) }.collect { |m|
-    meta_parameter_types_name(m, :start)
+  fields += c.meta_parameters.collect { |m|
+    meta_parameter_types_name(m)
   }.flatten(1)
   fields
 end

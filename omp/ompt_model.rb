@@ -44,6 +44,7 @@ OMPT_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.co
 OMPT_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
 OMPT_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 OMPT_CALLBACKS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/) }
+                          .reject { |t| ["ompt_callback_buffer_complete_t","ompt_callback_buffer_request_t"].include?(t.name) }
                           .collect { |t| YAMLCAst::Declaration.new(name: t.name.gsub(/_t\z/,"")+"_func", type: t.type.type)}
 
 OMPT_STRUCT_MAP = {}
@@ -356,6 +357,85 @@ class Command
 
 end
 
+class MetaParameter
+  attr_reader :name
+  attr_reader :command
+  def initialize(command, name)
+    @command = command
+    @name = name
+  end
+
+  def lttng_type
+    @lttng_type
+  end
+
+  def check_for_null(expr, incl = true)
+    list = expr.split("->")
+    if list.length == 1
+      if incl
+        return [expr]
+      else
+        return []
+      end
+    else
+      res = []
+      pre = ""
+      list[0..(incl ? -1 : -2)].each { |n|
+        pre += n
+        res.push(pre)
+        pre += "->"
+      }
+      return res
+    end
+  end
+
+  def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
+    if checks.empty?
+      expr
+    else
+      "(#{checks.join(" && ")} ? #{expr} : #{default})"
+    end
+  end
+end
+
+class ArrayMetaParameter < MetaParameter
+  attr_reader :size
+
+  def initialize(command, name, size)
+    @size = size
+    super(command, name)
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    s = command[size]
+    raise "Invalid parameter: #{size} for #{command.name}!" unless s
+    if s.type.kind_of?(YAMLCAst::Pointer)
+      checks = check_for_null("#{size}") + check_for_null("#{name}")
+      sz = sanitize_expression("*#{size}", checks)
+      st = "#{s.type.type}"
+    else
+      checks = check_for_null("#{name}")
+      sz = sanitize_expression("#{size}", checks)
+      st = "#{s.type}"
+    end
+    if t.type.kind_of?(YAMLCAst::Void)
+      tt = YAMLCAst::CustomType::new(name: "uint8_t")
+    else
+      tt = t.type
+    end
+    y = YAMLCAst::Array::new(type: tt)
+    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt.name = name + "_vals"
+    lttngt.expression = sanitize_expression("#{name}")
+    @lttng_type = lttngt
+  end
+end
+
+def register_meta_parameter(method, type, *args)
+  META_PARAMETERS[method].push [type, args]
+end
+
 def register_prologue(method, code)
   PROLOGUES[method].push(code)
 end
@@ -368,6 +448,14 @@ AUTO_META_PARAMETERS = []
 META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
 PROLOGUES = Hash::new { |h, k| h[k] = [] }
 EPILOGUES = Hash::new { |h, k| h[k] = [] }
+
+$ompt_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ompt_meta_parameters.yaml"))
+$ompt_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
+$stderr.puts META_PARAMETERS
 
 $ompt_commands = OMPT_CALLBACKS.collect { |func|
   Command::new(func)

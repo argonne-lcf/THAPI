@@ -87,7 +87,7 @@ tracer_ompt.c: $(srcdir)/gen_ompt.rb tracer_ompt_helpers.include.c $(OMP_MODEL) 
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_ompt_helpers.include.c: $(srcdir)/tracer_ompt_helpers.include.c.erb ompt_callbacks.yaml
-	SRC_DIR=$(srcdir) $(ERB) $< > $@
+	SRC_DIR=$(srcdir) $(ERB) -T 1 $< > $@
 
 EXTRA_DIST += \
 	gen_ompt.rb \
@@ -151,10 +151,10 @@ babeltrace_ompinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb 
 	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
 
 babeltrace_ompinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="ompinterval" $< > $@
+	$(ERB) -T 1 namespace="ompinterval" $< > $@
 
 babeltrace_ompinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="ompinterval" $< > $@
+	$(ERB) -T 1 namespace="ompinterval" $< > $@
 
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@

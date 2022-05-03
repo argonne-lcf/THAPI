@@ -31,7 +31,7 @@ EOF
   c.parameters.collect(&:lttng_type).compact.each { |r|
     fields.push(r.call_string)
   }
-  c.meta_parameters.collect(&:lttng_in_type).flatten.compact.each { |r|
+  c.meta_parameters.collect(&:lttng_type).flatten.compact.each { |r|
     fields.push(r.call_string)
   }
   puts "    " << fields.join("\n    ")
