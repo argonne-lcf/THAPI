@@ -261,7 +261,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
 
       for (const auto& [level,host]: dispatch->host) {
         std::string s = join_iterator(dispatch->host_backend_name[level]);
-        print_compact("Host entry-points (" + s + ")", host,
+        print_compact(s, host,
                       std::make_tuple("Hostnames", "Processes", "Threads"),
                       max_name_size);
       }
@@ -279,7 +279,7 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
     } else {
       for (const auto& [level,host]: dispatch->host) {
         std::string s = join_iterator(dispatch->host_backend_name[level]); 
-        print_extended("Host entry-points (" + s + ")", host,
+        print_extended(s, host,
                        std::make_tuple("Hostname", "Process", "Thread"),
                        max_name_size);
       }

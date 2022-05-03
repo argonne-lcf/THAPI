@@ -9,7 +9,7 @@ enum backend_e{ BACKEND_UNKNOWN = 0,
                 BACKEND_ZE = 1,
                 BACKEND_OPENCL = 2,
                 BACKEND_CUDA = 3,
-                BACKEND_OMP_TRANSFER = 4,
+                BACKEND_OMP_TARGET_OPERATIONS = 4,
                 BACKEND_OMP = 5 };
 
 constexpr int backend_level[] = { 2, 2, 2, 2, 1, 0 };
@@ -18,7 +18,7 @@ constexpr const char* backend_name[] = { "BACKEND_UNKNOWN",
                 "BACKEND_ZE",
                 "BACKEND_OPENCL",
                 "BACKEND_CUDA",
-                "BACKEND_OMP_TARGET_DATA",
+                "BACKEND_OMP_TARGET_OPERATIONS",
                 "BACKEND_OMP" };
 
 typedef enum backend_e backend_t;

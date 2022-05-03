@@ -40,6 +40,7 @@ EXTRA_DIST += \
 
 OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
+	$(srcdir)/ompt_meta_parameters.yaml \
 	$(srcdir)/gen_probe_base.rb \
 	$(srcdir)/../utils/yaml_ast.rb \
 	$(srcdir)/../utils/LTTng.rb \
@@ -49,7 +50,9 @@ OMP_LIB_GEN = \
 	$(srcdir)/gen_omp_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
-EXTRA_DIST += $(OMP_LIB_GEN)
+EXTRA_DIST += \
+	$(OMP_LIB_GEN) \
+	$(srcdir)/ompt_meta_parameters.yaml
 
 omp_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_omp_model.rb $(OMP_LIB_GEN) $(OMP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
