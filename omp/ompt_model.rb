@@ -455,7 +455,6 @@ $ompt_meta_parameters["meta_parameters"].each  { |func, list|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
-$stderr.puts META_PARAMETERS
 
 $ompt_commands = OMPT_CALLBACKS.collect { |func|
   Command::new(func)
