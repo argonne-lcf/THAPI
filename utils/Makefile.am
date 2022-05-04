@@ -5,7 +5,6 @@ else
 endif
 
 noinst_HEADERS = \
-	lttng/tracepoint.h \
 	include/utarray.h \
 	include/uthash.h \
 	include/utlist.h \
