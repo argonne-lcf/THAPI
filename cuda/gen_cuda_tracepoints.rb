@@ -4,6 +4,7 @@ require_relative 'gen_probe_base.rb'
 provider = :lttng_ust_cuda
 
 puts <<EOF
+#include "lttng/tracepoint_gen.h"
 #include <cuda.h.include>
 EOF
 

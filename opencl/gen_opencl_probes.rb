@@ -3,6 +3,7 @@ require_relative 'opencl_tracepoints'
 
 puts <<EOF
 #define CL_TARGET_OPENCL_VERSION 300
+#include "lttng/tracepoint_gen.h"
 #include <CL/opencl.h>
 #include <CL/cl_ext.h>
 #include <CL/cl_gl.h>
