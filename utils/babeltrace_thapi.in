@@ -11,6 +11,7 @@ $event_lambdas = {}
 require 'babeltrace_opencl_lib'
 require 'babeltrace_ze_lib'
 require 'babeltrace_cuda_lib'
+require 'babeltrace_omp_lib'
 
 $options = {
   context: false,
@@ -19,7 +20,7 @@ $options = {
 }
 
 OptionParser.new do |opts|
-  opts.banner = "Usage: babeltrace_ze [OPTIONS] target_trace_directory"
+  opts.banner = "Usage: babeltrace_thapi [OPTIONS] target_trace_directory"
 
   opts.on("-c", "--[no-]context", "Add context information") do |context|
     $options[:context] = context

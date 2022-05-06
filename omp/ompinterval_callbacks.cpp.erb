@@ -1,0 +1,190 @@
+#include <iomanip>
+#include <iostream>
+#include "babeltrace_ompinterval.h"
+#include "ompinterval_callbacks.hpp"
+#include "xprof_utils.hpp"
+#include <babeltrace2/babeltrace.h>
+
+void *init_ompinterval_callbacks_state() {
+    ompinterval_callbacks_state *s = new ompinterval_callbacks_state;
+    return (void*) s;
+}
+
+
+static void create_and_enqueue_host_message_transfer(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                            const uint64_t ts, const uint64_t duration, const bool err) {
+
+     bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
+                            ompinterval_iter_g->dispatch->host_event_class,
+                            ompinterval_self_message_iterator_g,
+                            ompinterval_iter_g->dispatch->stream, BACKEND_OMP_TARGET_OPERATIONS);
+
+     ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                            const uint64_t ts, const uint64_t duration, const bool err) {
+
+     bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
+                            ompinterval_iter_g->dispatch->host_event_class,
+                            ompinterval_self_message_iterator_g,
+                            ompinterval_iter_g->dispatch->stream, BACKEND_OMP);
+
+     ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+
+static void create_and_enqueue_traffic_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
+                                               const uint64_t size) {
+
+     /* Message creation */
+     bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
+                                                  ompinterval_iter_g->dispatch->traffic_event_class,
+                                                  ompinterval_self_message_iterator_g,
+                                                  ompinterval_iter_g->dispatch->stream, BACKEND_OMP_TARGET_OPERATIONS);
+
+     ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     state->downstream_message_queue.push(message);
+}
+
+<%#
+  _                                         _                          _ ___
+ | \  _       ._   _ _|_ ._ _   _. ._ _    / \      _       _     /\  |_) |
+ |_/ (_) \/\/ | | _>  |_ | (/_ (_| | | |   \_X |_| (/_ |_| (/_   /--\ |  _|_
+
+%>
+
+bool ompinterval_downstream_message_queue_empty(struct ompinterval_message_iterator *interval_dispatch_iter)
+{
+    ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.empty();
+}
+
+size_t ompinterval_downstream_message_queue_size(struct ompinterval_message_iterator *interval_dispatch_iter)
+{
+    ompinterval_callbacks_state* state = (ompinterval_callbacks_state*)  interval_dispatch_iter->callbacks_state;
+    return state->downstream_message_queue.size();
+}
+
+const bt_message* ompinterval_downstream_message_queue_pop(struct ompinterval_message_iterator *interval_dispatch_iter)
+{
+    ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    const bt_message* m = state->downstream_message_queue.front();
+    state->downstream_message_queue.pop();
+    return m;
+}
+
+void ompinterval_downstream_message_queue_push(struct ompinterval_message_iterator *interval_dispatch_iter, const bt_message *message)
+{
+    ompinterval_callbacks_state* state = (ompinterval_callbacks_state*) interval_dispatch_iter->callbacks_state;
+    state->downstream_message_queue.push(message);
+}
+
+<%#
+    _
+   /   _. | | |_   _.  _ |   _   |\ |  _. ._ _   _
+   \_ (_| | | |_) (_| (_ |< _>   | \| (_| | | | (/_
+%>
+
+<% $dbt_events.each do | dbt_event | %>
+   <% if dbt_event.have_enum? && ["ompt_callback_target", "ompt_callback_target_data_op_intel"].include?(dbt_event.name_striped) %>
+static const char* <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_t %> <%= dbt_event.enum_name %>) {
+   switch (<%= dbt_event.enum_name %>) {
+    <% dbt_event.enum_fields.each do | fields | %>
+   case <%= fields %> :
+        return "<%= fields %>";
+    <% end %>
+   }
+   return "<%= dbt_event.name_striped.gsub(/_callback/,'') %>";
+}
+    <% end %>
+<% end %>
+<%#
+  _
+ /   _. | | |_   _.  _ |   _
+ \_ (_| | | |_) (_| (_ |< _>
+
+%>
+
+
+<% $dbt_events.each do | dbt_event | %>
+static void ompinterval_<%= dbt_event.name %>_callback(
+   <%= dbt_event.callback_signature %>
+){
+
+     int64_t ns_from_origin;
+     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+
+     const hostname_t   hostname   = borrow_hostname(bt_evt);
+     const process_id_t process_id = borrow_process_id(bt_evt);
+     const thread_id_t  thread_id  = borrow_thread_id(bt_evt);
+
+    <%if dbt_event.name_striped == "ompt_callback_target" %>
+     const char* _name = <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_name %>);
+     auto* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     if (endpoint == ompt_scope_begin) {
+        state->host_start[hpt_function_name_t(hostname,process_id, thread_id, _name)] = ns_from_origin;
+     } else if (endpoint == ompt_scope_end) {
+        auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, _name));
+        if (it_start != state->host_start.end() ) {
+           const uint64_t start_g = it_start->second;
+           state->host_start.erase(it_start);
+           create_and_enqueue_host_message(hostname.c_str(), process_id, thread_id, _name,
+                                           start_g, ns_from_origin-start_g, 0);
+        } else {
+            std::cerr << "Warning: <%= dbt_event.name_striped %> finished but didn't started" << std::endl;
+        }
+     }
+    <%elsif dbt_event.name_striped == "ompt_callback_target_submit_intel" %>
+     const char* _name = "<%= dbt_event.name_striped.gsub(/_callback/,'') %>";
+     auto* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     if (endpoint == ompt_scope_begin) {
+        state->host_start[hpt_function_name_t(hostname,process_id, thread_id, _name)] = ns_from_origin;
+     } else if (endpoint == ompt_scope_end) {
+        auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, _name));
+        const uint64_t start_g = it_start->second;
+        state->host_start.erase(it_start);
+        create_and_enqueue_host_message_transfer(hostname.c_str(), process_id, thread_id, _name,
+                                     start_g, ns_from_origin-start_g, 0);
+
+     }
+    <%elsif dbt_event.name_striped == "ompt_callback_target_data_op_intel" %>
+     const char* _name = <%= dbt_event.name_striped %>_name(<%= dbt_event.enum_name %>);
+     auto* state = (ompinterval_callbacks_state*) ompinterval_iter_g->callbacks_state;
+     if (endpoint == ompt_scope_begin) {
+        state->host_start[hpt_function_name_t(hostname,process_id, thread_id, _name)] = ns_from_origin;
+     } else if (endpoint == ompt_scope_end) {
+        auto it_start = state->host_start.find(hpt_function_name_t(hostname,process_id, thread_id, _name));
+        const uint64_t start_g = it_start->second;
+        state->host_start.erase(it_start);
+        create_and_enqueue_host_message_transfer(hostname.c_str(), process_id, thread_id, _name,
+                                     start_g, ns_from_origin-start_g, 0);
+        if (strcmp(_name,"ompt_target_data_alloc") != 0)
+            create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, _name, bytes);
+     }
+    <% else %>
+        (void) ns_from_origin;
+        (void) hostname;
+        (void) process_id;
+        (void) thread_id;
+    <% end %>
+};
+<% end %>
+
+<%#
+ ___
+  |  ._  o _|_ o  _. | o _   _
+ _|_ | | |  |_ | (_| | | /_ (/_
+
+%>
+
+void init_ompinterval_callbacks(struct ompinterval_dispatch *omp_dispatch) {
+<% $dbt_events.each do | dbt_event| %>
+     ompinterval_register_callback(omp_dispatch, "<%= dbt_event.name_unsanitized %>", (void *) &ompinterval_<%= dbt_event.name %>_callback);
+<% end %>
+}
+
+void finalize_ompinterval_callbacks(ompinterval_message_iterator *interval_dispatch_iter) {
+}

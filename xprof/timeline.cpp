@@ -2,10 +2,9 @@
 #include "timeline.hpp"
 #include "xprof_utils.hpp" // typedef
 #include "json.hpp"
-#include <set>
-
 #include <iomanip> // set precision
 #include <iostream> // stdcout
+
 bt_component_class_sink_consume_method_status timeline_dispatch_consume(
         bt_self_component_sink *self_component_sink)
 {
@@ -47,6 +46,8 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
         break;
     }
 
+    static bool first = false;
+    static uint64_t begin_ts = 0;
 
     /* For each consumed message */
     for (uint64_t i = 0; i < message_count; i++) {
@@ -63,11 +64,16 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                                               std::make_tuple(2, &bt_field_integer_unsigned_get_value,
                                                                  (thread_id_t)0), // thread
                                               std::make_tuple(3, &bt_field_integer_unsigned_get_value,
-                                                                  (long) 0));
+                                                                  (uint64_t) 0));
 
             const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
             const auto& [hostname, process_id, thread_id, ts] = thapi_bt2_getter(common_context_field, dur_tuple0);
             //Payload
+            if (!first) {
+                begin_ts = ts;
+                first = true;
+            }
+            //
             const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
 
             const bt_field *name_field = bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
@@ -78,31 +84,34 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
 
             auto &s_gtf_pid = dispatch->s_gtf_pid;
             auto &s_gtf_pid_gpu = dispatch->s_gtf_pid_gpu;
-
+            //auto &s_gtf_tid = dispatch->s_gtf_tid;
             if (std::string(class_name) == "lttng:host") {
 
-                const auto thapi_pid  = hp_t(hostname, process_id);
-                auto it = s_gtf_pid.find(thapi_pid);
                 int gtf_pid;
 
-                if (it == s_gtf_pid.end() ) {
-                    gtf_pid = s_gtf_pid.size() + s_gtf_pid_gpu.size();
-                    s_gtf_pid[thapi_pid] = gtf_pid;
-                    std::cout << nlohmann::json{ {"name", "process_name"},
-                                                 {"ph", "M"},
-                                                 {"pid", gtf_pid},
-                                                 {"args", { {"name",  hostname  + ", pid " + std::to_string(process_id) + " |"} } },
-                                                 // Double "{" to generate a dict and not array
-                                               }
-                              << "," << std::endl;
-                } else {
-                    gtf_pid = s_gtf_pid[thapi_pid];
+                {
+                    const auto thapi_pid  = hp_t(hostname, process_id);
+                    auto it = s_gtf_pid.find(thapi_pid);
+                    if (it == s_gtf_pid.end() ) {
+                        gtf_pid = s_gtf_pid.size() + s_gtf_pid_gpu.size();
+                        s_gtf_pid[thapi_pid] = gtf_pid;
+                        std::cout << nlohmann::json{ {"name", "process_name"},
+                                                     {"ph", "M"},
+                                                     {"pid", gtf_pid},
+                                                     {"args", { {"name",  hostname  + ", pid " + std::to_string(process_id) + " |"} } },
+                                                     // Double "{" to generate a dict and not array
+                                                   }
+                                  << "," << std::endl;
+                    } else {
+                        gtf_pid = it->second;
+                    }
                 }
 
+                int gtf_tid = thread_id;
                 std::cout << nlohmann::json{ {"pid", gtf_pid},
-                                             {"tid", thread_id},
-                                             {"ts", static_cast<long unsigned>(ts*1E-3)},
-                                             {"dur", static_cast<long unsigned>(dur*1E-3)},
+                                             {"tid", gtf_tid},
+                                             {"ts", static_cast<double>((ts-begin_ts)*1E-3)},
+                                             {"dur", static_cast<double>(dur*1E-3)},
                                              {"name", name},
                                              {"ph", "X"}
                                            }
@@ -128,7 +137,7 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                     std::cout << nlohmann::json{ {"name", "process_name"},
                                                  {"ph", "M"},
                                                  {"pid", gtf_pid},
-                                                 {"args", { {"name", "GPU " + hostname  + ", pid " + std::to_string(process_id) + "|"} } },
+                                                 {"args", { {"name", "GPU " + hostname  + ", pid " + std::to_string(process_id) + " | "} } },
                                                }
                               << "," << std::endl;
                 } else {
@@ -136,8 +145,8 @@ bt_component_class_sink_consume_method_status timeline_dispatch_consume(
                 }
                 std::cout << nlohmann::json{ {"pid", gtf_pid},
                                              {"tid", thread_id},
-                                             {"ts", static_cast<long unsigned>(ts*1E-3)},
-                                             {"dur", static_cast<long unsigned>(dur*1E-3)},
+                                             {"ts", static_cast<double>((ts-begin_ts)*1E-3)},
+                                             {"dur", static_cast<double>(dur*1E-3)},
                                              {"name", name},
                                              {"ph", "X"}
                                            }
@@ -178,8 +187,8 @@ bt_component_class_initialize_method_status timeline_dispatch_initialize(
     bt_self_component_sink_add_input_port(self_component_sink,
         "in", NULL, NULL);
 
-    /* Print the begining of the json */
-    std::cout << "{\"traceEvents\":[" << std::endl;
+    std::cout << "{" << std::endl;
+    std::cout << "\"traceEvents\":[" << std::endl;
 
     return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
@@ -190,10 +199,18 @@ bt_component_class_initialize_method_status timeline_dispatch_initialize(
 void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink)
 {
 
-    // JSTON is stupornd, it doesn't allow trailling comma.
-    // To avoid creating yet anothing state, we will create a dummy/empty object at the end.
-    // This only work because chrome::tracing doesn't parse such event.
-    std::cout << "{}]}" << std::endl;
+    // JSON is stupornd, it doesn't allow trailling comma.
+    // To avoid creating yet anothing state, we will create a dummy object at the end.
+    std::cout << nlohmann::json{ {"name", "thread_sort_index"},
+                                 {"ph", "M"},
+                                 {"pid", -1},
+                                 {"tid", -1},
+                                 { "args", { {"sort_index", -1 } } },
+                                  // Double "{" to generate a dict and not array
+                               }
+              << std::endl;
+
+    std::cout << "]}" << std::endl;
 }
 
 /*

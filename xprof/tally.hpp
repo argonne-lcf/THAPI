@@ -2,6 +2,8 @@
 
 #include "xprof_utils.hpp"
 #include "tally_utils.hpp"
+#include  <map>
+#include  <unordered_map>
 
 /* Sink component's private data */
 struct tally_dispatch {
@@ -13,9 +15,15 @@ struct tally_dispatch {
     int  display_name_max_size;
     bool display_kernel_verbose;
 
-    std::unordered_map<hpt_function_name_t, TallyCoreTime> host2;
-    std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device2;
-    std::unordered_map<hpt_function_name_t, TallyCoreByte> traffic2;
+    std::map<unsigned, std::set<const char*>> host_backend_name;
+    std::map<unsigned,
+             std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
+
+    std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
+
+    std::map<unsigned, std::set<const char*>> traffic_backend_name;
+    std::map<unsigned, 
+             std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
     std::unordered_map<hp_device_t, std::string> device_name;
     std::vector<std::string> metadata;

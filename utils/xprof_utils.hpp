@@ -5,6 +5,24 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
+enum backend_e{ BACKEND_UNKNOWN = 0,
+                BACKEND_ZE = 1,
+                BACKEND_OPENCL = 2,
+                BACKEND_CUDA = 3,
+                BACKEND_OMP_TARGET_OPERATIONS = 4,
+                BACKEND_OMP = 5 };
+
+constexpr int backend_level[] = { 2, 2, 2, 2, 1, 0 };
+
+constexpr const char* backend_name[] = { "BACKEND_UNKNOWN",
+                "BACKEND_ZE",
+                "BACKEND_OPENCL",
+                "BACKEND_CUDA",
+                "BACKEND_OMP_TARGET_OPERATIONS",
+                "BACKEND_OMP" };
+
+typedef enum backend_e backend_t;
+
 typedef intptr_t                       process_id_t;
 typedef uintptr_t                      thread_id_t;
 typedef std::string                    hostname_t;
@@ -89,9 +107,9 @@ thread_id_t borrow_thread_id(const bt_event*);
 
 bt_message* create_host_message(const char *hostname, const process_id_t, const thread_id_t,
                                 const char *name, const uint64_t ts, const uint64_t duration, const bool err,
-                                bt_event_class*, bt_self_message_iterator*, bt_stream*);
+                                bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOWN);
 
-bt_message* create_device_message(const char *hostname, const process_id_t, const thread_id_t,  const thapi_device_id, const thapi_device_id,
+bt_message* create_device_message(const char *hostname, const process_id_t, const thread_id_t, const thapi_device_id, const thapi_device_id,
                                   const char *name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata,
                                   bt_event_class*, bt_self_message_iterator*, bt_stream*);
 
@@ -101,7 +119,7 @@ bt_message* create_device_name_message(const char* hostname, const process_id_t 
 
 bt_message* create_traffic_message(const char *hostname, const process_id_t, const thread_id_t,
                                    const char *name, const uint64_t size,
-                                   bt_event_class*, bt_self_message_iterator*, bt_stream*);
+                                   bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOWN);
 
 
 //. Getter

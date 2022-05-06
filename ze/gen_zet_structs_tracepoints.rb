@@ -4,6 +4,7 @@ require_relative 'gen_probe_base.rb'
 provider = :lttng_ust_zet_structs
 
 puts <<EOF
+#include "lttng/tracepoint_gen.h"
 #include "ze.h.include"
 EOF
 

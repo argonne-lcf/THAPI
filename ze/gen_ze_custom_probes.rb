@@ -9,6 +9,7 @@ h = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))[namespace]
 raise "Invalid namespace!" unless h
 
 puts <<EOF
+#include "lttng/tracepoint_gen.h"
 #include "ze.h.include"
 
 EOF

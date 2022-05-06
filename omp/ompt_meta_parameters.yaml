@@ -1,0 +1,7 @@
+---
+meta_parameters:
+  ompt_callback_target_map_func:
+    - [ ArrayMetaParameter, host_addr, nitems ]
+    - [ ArrayMetaParameter, device_addr, nitems ]
+    - [ ArrayMetaParameter, bytes, nitems ]
+    - [ ArrayMetaParameter, mapping_flags, nitems ]

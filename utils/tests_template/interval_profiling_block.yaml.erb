@@ -4,16 +4,19 @@
      prof_end = "end"
      mulfactor = 1
      profiled_call = "clEnqueueSVMFree"
+     backend = 0
    when "ze"
      event = "hEvent"
      prof_end = "globalEnd"
      mulfactor = 1
      profiled_call = "zeCommandListAppendBarrier"
+     backend = 1
    when "cuda"
      event = "hStop"
      prof_end = "milliseconds"
      mulfactor = 1000000
      profiled_call = "cuLaunchHostFunc"
+     backend = 0
    end %>
 
 in:
@@ -62,6 +65,8 @@ ref:
       :class: unsigned
     - :name: ts
       :class: unsigned
+    - :name: backend
+      :class: signed
   :streams:
   - :name: stream0
     :class: interval_class
@@ -75,6 +80,7 @@ ref:
   - :name: lttng:host
     :common_context:
       hostname: aurora12.gov
+      backend: <%= backend %>
     :payload:
       name: <%= profiled_call %>
       dur: 3

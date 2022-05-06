@@ -2,6 +2,43 @@
 #include "tally.hpp"
 #include "xprof_utils.hpp" //Typedef and hashtuple
 
+auto inline get_common_context_field_host(const bt_event *event) {
+
+  auto dur_tuple0 =
+      std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                      (hostname_t) ""), // hostname
+                      std::make_tuple(1, &bt_field_integer_signed_get_value,
+                                      (process_id_t)0), // process
+                      std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                                      (thread_id_t)0), // threads
+                      std::make_tuple(4, &bt_field_integer_signed_get_value,
+                                      (int)0)); // backend
+
+  const bt_field *common_context_field =
+      bt_event_borrow_common_context_field_const(event);
+
+  return thapi_bt2_getter(common_context_field, dur_tuple0);
+}
+
+auto inline get_common_context_field_device(const bt_event *event) {
+
+  auto dur_tuple0 =
+      std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                      (hostname_t) ""), // hostname
+                      std::make_tuple(1, &bt_field_integer_signed_get_value,
+                                      (process_id_t)0), // process
+                      std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                                      (thread_id_t)0), // threads
+                      std::make_tuple(3, &bt_field_integer_signed_get_value,
+                                      (int)0)); // backend
+
+  const bt_field *common_context_field =
+      bt_event_borrow_common_context_field_const(event);
+
+  return thapi_bt2_getter(common_context_field, dur_tuple0);
+}
+
+
 auto inline get_common_context_field(const bt_event *event) {
 
   auto dur_tuple0 =
@@ -10,13 +47,14 @@ auto inline get_common_context_field(const bt_event *event) {
                       std::make_tuple(1, &bt_field_integer_signed_get_value,
                                       (process_id_t)0), // process
                       std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                      (thread_id_t)0)); // thread
+                                      (thread_id_t)0));
 
   const bt_field *common_context_field =
       bt_event_borrow_common_context_field_const(event);
 
   return thapi_bt2_getter(common_context_field, dur_tuple0);
 }
+
 
 bt_component_class_sink_consume_method_status
 tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
@@ -70,14 +108,16 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
                             (uint64_t)0),
             std::make_tuple(2, &bt_field_bool_get_value, (bool)0));
 
-        const auto &[hostname, process_id, thread_id] =
-            get_common_context_field(event);
+        const auto &[hostname, process_id, thread_id, backend_id] =
+            get_common_context_field_host(event);
         const auto &[name, dur, err] =
             thapi_bt2_getter(payload_field, dur_tuple0);
 
         TallyCoreTime a{dur, err};
-        dispatch->host2[hpt_function_name_t(hostname, process_id, thread_id,
-                                            name)] += a;
+
+        const int level = backend_level[backend_id];
+        dispatch->host_backend_name[level].insert(backend_name[backend_id]);
+        dispatch->host[level][hpt_function_name_t(hostname, process_id, thread_id, name)] += a;
 
       } else if (strcmp(class_name, "lttng:device") == 0) {
         auto dur_tuple0 = std::make_tuple(
@@ -101,19 +141,20 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const auto name_with_metadata = (dispatch->display_kernel_verbose && !metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
         TallyCoreTime a{dur, err};
-        dispatch->device2[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
+        dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
 
       } else if (strcmp(class_name, "lttng:traffic") == 0) {
         auto dur_tuple0 = std::make_tuple(
             std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
-            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
-                            (uint64_t)0)); // size
+            std::make_tuple(1, &bt_field_integer_unsigned_get_value, (uint64_t)0));
 
-        const auto &[hostname, process_id, thread_id] =
-            get_common_context_field(event);
+        const auto &[hostname, process_id, thread_id, backend_id] =
+            get_common_context_field_device(event);
         const auto &[name, size] = thapi_bt2_getter(payload_field, dur_tuple0);
         TallyCoreByte a{(uint64_t)size, false};
-        dispatch->traffic2[hpt_function_name_t(hostname, process_id, thread_id,
+        const int level = backend_level[backend_id];
+        dispatch->traffic_backend_name[level].insert(backend_name[backend_id]);
+        dispatch->traffic[level][hpt_function_name_t(hostname, process_id, thread_id,
                                                name)] += a;
 
       } else if (strcmp(class_name, "lttng:device_name") == 0) {
@@ -218,58 +259,65 @@ void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
 
     if (dispatch->display_compact) {
 
-      print_compact("API calls", dispatch->host2,
-                    std::make_tuple("Hostnames", "Processes", "Threads"),
-                    max_name_size);
-
-      print_compact("Device profiling", dispatch->device2,
+      for (const auto& [level,host]: dispatch->host) {
+        std::string s = join_iterator(dispatch->host_backend_name[level]);
+        print_compact(s, host,
+                      std::make_tuple("Hostnames", "Processes", "Threads"),
+                      max_name_size);
+      }
+      print_compact("Device profiling", dispatch->device,
                     std::make_tuple("Hostnames", "Processes", "Threads",
                                     "Devices", "Subdevices"),
                     max_name_size);
 
-      print_compact("Explicit memory traffic", dispatch->traffic2,
-                    std::make_tuple("Hostnames", "Processes", "Threads"),
-                    max_name_size);
-
+      for (const auto& [level,traffic]: dispatch->traffic) {
+        std::string s = join_iterator(dispatch->traffic_backend_name[level]);
+        print_compact("Explicit memory traffic (" + s + ")", traffic,
+                      std::make_tuple("Hostnames", "Processes", "Threads"),
+                      max_name_size);
+      }
     } else {
-
-      print_extended("API calls", dispatch->host2,
-                     std::make_tuple("Hostname", "Process", "Thread"),
-                     max_name_size);
-
-      print_extended("Device profiling", dispatch->device2,
+      for (const auto& [level,host]: dispatch->host) {
+        std::string s = join_iterator(dispatch->host_backend_name[level]); 
+        print_extended(s, host,
+                       std::make_tuple("Hostname", "Process", "Thread"),
+                       max_name_size);
+      }
+      print_extended("Device profiling", dispatch->device,
                      std::make_tuple("Hostname", "Process", "Thread",
                                      "Device pointer", "Subdevice pointer"),
                      max_name_size);
 
-      print_extended("Explicit memory traffic", dispatch->traffic2,
+      for (const auto& [level,traffic]: dispatch->traffic) {
+        std::string s = join_iterator(dispatch->traffic_backend_name[level]);
+        print_extended("Explicit memory traffic (" + s + ")", traffic,
                      std::make_tuple("Hostname", "Process", "Thread"),
                      max_name_size);
-    }
-  } else {
+      }
+   }
+ } else {
     nlohmann::json j;
     j["units"] = {{"time", "ns"}, {"size", "bytes"}};
     if (dispatch->display_metadata)
       j["metadata"] = dispatch->metadata;
     if (dispatch->display_compact) {
-      if (!dispatch->host2.empty())
-        j["host"] = json_compact(dispatch->host2);
-      if (!dispatch->device2.empty())
-        j["device"] = json_compact(dispatch->device2);
-      if (!dispatch->traffic2.empty())
-        j["trafic"] = json_compact(dispatch->traffic2);
+      for (auto& [level,host]: dispatch->host)
+        j["host"][level] = json_compact(host);
+      if (!dispatch->device.empty())
+        j["device"] = json_compact(dispatch->device);
+      for (auto& [level,traffic]: dispatch->traffic)
+        j["traffic"][level] = json_compact(traffic);
     } else {
-      if (!dispatch->host2.empty())
-        j["host"] = json_extented(
-            dispatch->host2, std::make_tuple("Hostname", "Process", "Thread"));
-      if (!dispatch->device2.empty())
-        j["device"] = json_extented(dispatch->device2,
+      for (auto& [level,host]: dispatch->host)
+        j["host"][level] = json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
+      if (!dispatch->device.empty())
+        j["device"] = json_extented(dispatch->device,
                                     std::make_tuple("Hostname", "Process",
                                                     "Thread", "Device pointer",
                                                     "Subdevice pointer"));
-      if (!dispatch->traffic2.empty())
-        j["traffic"] =
-            json_extented(dispatch->traffic2,
+      for (auto& [level,traffic]: dispatch->traffic)
+        j["traffic"][level] =
+            json_extented(traffic,
                           std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;

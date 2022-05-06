@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <ze_api.h>
 #include <unordered_set>
-#include  <cstddef>
+#include <cstddef>
  
 typedef std::map<uintptr_t, uintptr_t> MemoryInterval;
 

@@ -12,6 +12,8 @@
     :class: unsigned
   - :name: ts
     :class: unsigned
+  - :name: backend
+    :class: signed
 :streams:
 - :name: stream0
   :class: interval_class
@@ -19,6 +21,7 @@
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
+    backend: 0
   :payload:
     name: clEnqueueSVMFree 
     dur: 2
