@@ -11,6 +11,7 @@ display_help() {
     echo " $(basename $0) [options] [--] <application> <application-arguments>"
     echo "  --help                        Show this screen"
     echo "  --version                     Print the version string"
+    echo "  --disable-intel-extensions    Disable Intel extensions"
     exit 1
 }
 
