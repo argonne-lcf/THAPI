@@ -1,6 +1,6 @@
 diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing_api.h
---- include/layers/zel_tracing_api.h	2021-11-09 11:31:17.842744319 -0600
-+++ modified_include/layers/zel_tracing_api.h	2021-11-09 11:28:03.298918892 -0600
+--- include/layers/zel_tracing_api.h	2022-05-11 11:47:59.544181073 -0500
++++ modified_include/layers/zel_tracing_api.h	2022-05-11 12:04:58.036650198 -0500
 @@ -54,9 +54,9 @@
  {
      ZEL_STRUCTURE_TYPE_TRACER_DESC = 0x1  ,///< ::zel_tracer_desc_t
@@ -13,8 +13,8 @@ diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing
  } zel_structure_type_t;
  
 diff -u4 -r include/layers/zel_tracing_register_cb.h modified_include/layers/zel_tracing_register_cb.h
---- include/layers/zel_tracing_register_cb.h	2021-11-09 11:31:17.842744319 -0600
-+++ modified_include/layers/zel_tracing_register_cb.h	2021-11-09 11:28:03.290918899 -0600
+--- include/layers/zel_tracing_register_cb.h	2022-05-11 11:47:59.544181073 -0500
++++ modified_include/layers/zel_tracing_register_cb.h	2022-05-11 12:04:58.036650198 -0500
 @@ -21,9 +21,9 @@
  #endif
  
@@ -27,8 +27,8 @@ diff -u4 -r include/layers/zel_tracing_register_cb.h modified_include/layers/zel
  /// Callbacks for APIs included in spec 1.0 are contained in ze_api.helper
  
 diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
---- include/loader/ze_loader_api.h	2021-12-17 15:23:37.898503132 -0600
-+++ modified_include/loader/ze_loader_api.h	2021-12-17 15:20:01.706465215 -0600
+--- include/loader/ze_loader_api.h	2022-05-11 11:48:46.944049246 -0500
++++ modified_include/loader/ze_loader_api.h	2022-05-11 12:04:58.036650198 -0500
 @@ -7,10 +7,12 @@
   * @file ze_loader_api.cpp
   *
@@ -78,8 +78,8 @@ diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api
  #endif
 \ No newline at end of file
 diff -u4 -r include/loader/ze_loader.h modified_include/loader/ze_loader.h
---- include/loader/ze_loader.h	2021-12-17 15:23:37.898503132 -0600
-+++ modified_include/loader/ze_loader.h	2021-12-17 15:21:03.438477892 -0600
+--- include/loader/ze_loader.h	2022-05-11 11:48:14.912138332 -0500
++++ modified_include/loader/ze_loader.h	2022-05-11 12:04:58.036650198 -0500
 @@ -38,8 +38,23 @@
  zelLoaderGetVersions(
     size_t *num_elems,                     //Pointer to num versions to get.  
@@ -104,7 +104,7 @@ diff -u4 -r include/loader/ze_loader.h modified_include/loader/ze_loader.h
     ZEL_HANDLE_DRIVER,
     ZEL_HANDLE_DEVICE,
     ZEL_HANDLE_CONTEXT,
-@@ -62,10 +77,15 @@
+@@ -62,9 +77,14 @@
  zelLoaderTranslateHandle(
     zel_handle_type_t handleType,   //Handle Type
     void *handleIn,                  //Input: handle to translate from loader handle to driver handle
@@ -120,11 +120,9 @@ diff -u4 -r include/loader/ze_loader.h modified_include/loader/ze_loader.h
  #if defined(__cplusplus)
  } // extern "C"
  #endif
- #endif //_ZE_LOADER_H
-\ No newline at end of file
 diff -u4 -r include/ze_api.h modified_include/ze_api.h
---- include/ze_api.h	2021-11-09 11:31:17.842744319 -0600
-+++ modified_include/ze_api.h	2021-11-09 11:31:02.042758966 -0600
+--- include/ze_api.h	2022-05-11 11:47:31.708258490 -0500
++++ modified_include/ze_api.h	2022-05-11 12:04:58.040650249 -0500
 @@ -14,10 +14,10 @@
  #pragma once
  #endif
@@ -172,7 +170,7 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  #ifndef ZE_APICALL
  #if defined(_WIN32)
-@@ -172,12 +172,12 @@
+@@ -180,12 +180,12 @@
  
  } ze_ipc_event_pool_handle_t;
  
@@ -188,7 +186,7 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Defines Return/Error codes
  typedef enum _ze_result_t
-@@ -345,297 +345,297 @@
+@@ -401,333 +401,333 @@
  /// @brief Forces all shared allocations into device memory
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -200,6 +198,11 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  /// @brief Forward-declare ze_ipc_event_pool_handle_t
 -typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
 +//typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_uuid_t
+-typedef struct _ze_uuid_t ze_uuid_t;
++//typedef struct _ze_uuid_t ze_uuid_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare ze_base_properties_t
@@ -556,13 +559,53 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
 -typedef struct _ze_memory_free_ext_desc_t ze_memory_free_ext_desc_t;
 +//typedef struct _ze_memory_free_ext_desc_t ze_memory_free_ext_desc_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_p2p_bandwidth_exp_properties_t
+-typedef struct _ze_device_p2p_bandwidth_exp_properties_t ze_device_p2p_bandwidth_exp_properties_t;
++//typedef struct _ze_device_p2p_bandwidth_exp_properties_t ze_device_p2p_bandwidth_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_copy_bandwidth_exp_properties_t
+-typedef struct _ze_copy_bandwidth_exp_properties_t ze_copy_bandwidth_exp_properties_t;
++//typedef struct _ze_copy_bandwidth_exp_properties_t ze_copy_bandwidth_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_luid_ext_t
+-typedef struct _ze_device_luid_ext_t ze_device_luid_ext_t;
++//typedef struct _ze_device_luid_ext_t ze_device_luid_ext_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_luid_ext_properties_t
+-typedef struct _ze_device_luid_ext_properties_t ze_device_luid_ext_properties_t;
++//typedef struct _ze_device_luid_ext_properties_t ze_device_luid_ext_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_fabric_vertex_pci_exp_address_t
+-typedef struct _ze_fabric_vertex_pci_exp_address_t ze_fabric_vertex_pci_exp_address_t;
++//typedef struct _ze_fabric_vertex_pci_exp_address_t ze_fabric_vertex_pci_exp_address_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_fabric_vertex_exp_properties_t
+-typedef struct _ze_fabric_vertex_exp_properties_t ze_fabric_vertex_exp_properties_t;
++//typedef struct _ze_fabric_vertex_exp_properties_t ze_fabric_vertex_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_fabric_edge_exp_properties_t
+-typedef struct _ze_fabric_edge_exp_properties_t ze_fabric_edge_exp_properties_t;
++//typedef struct _ze_fabric_edge_exp_properties_t ze_fabric_edge_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_memory_ext_properties_t
+-typedef struct _ze_device_memory_ext_properties_t ze_device_memory_ext_properties_t;
++//typedef struct _ze_device_memory_ext_properties_t ze_device_memory_ext_properties_t;
+ 
  
  #if !defined(__GNUC__)
  #pragma endregion
 diff -u4 -r include/zes_api.h modified_include/zes_api.h
---- include/zes_api.h	2021-11-09 11:31:17.842744319 -0600
-+++ modified_include/zes_api.h	2021-11-09 11:28:03.290918899 -0600
-@@ -183,253 +183,253 @@
+--- include/zes_api.h	2022-05-11 11:47:31.708258490 -0500
++++ modified_include/zes_api.h	2022-05-11 12:04:58.036650198 -0500
+@@ -183,269 +183,269 @@
  } zes_base_capability_t;
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -649,6 +692,16 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
  /// @brief Forward-declare zes_diag_properties_t
 -typedef struct _zes_diag_properties_t zes_diag_properties_t;
 +//typedef struct _zes_diag_properties_t zes_diag_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_device_ecc_desc_t
+-typedef struct _zes_device_ecc_desc_t zes_device_ecc_desc_t;
++//typedef struct _zes_device_ecc_desc_t zes_device_ecc_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_device_ecc_properties_t
+-typedef struct _zes_device_ecc_properties_t zes_device_ecc_properties_t;
++//typedef struct _zes_device_ecc_properties_t zes_device_ecc_properties_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_engine_properties_t
@@ -875,12 +928,22 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
 -typedef struct _zes_temp_config_t zes_temp_config_t;
 +//typedef struct _zes_temp_config_t zes_temp_config_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_power_limit_ext_desc_t
+-typedef struct _zes_power_limit_ext_desc_t zes_power_limit_ext_desc_t;
++//typedef struct _zes_power_limit_ext_desc_t zes_power_limit_ext_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_power_ext_properties_t
+-typedef struct _zes_power_ext_properties_t zes_power_ext_properties_t;
++//typedef struct _zes_power_ext_properties_t zes_power_ext_properties_t;
+ 
  
  #if !defined(__GNUC__)
  #pragma endregion
 diff -u4 -r include/zet_api.h modified_include/zet_api.h
---- include/zet_api.h	2021-11-09 11:31:17.842744319 -0600
-+++ modified_include/zet_api.h	2021-11-09 11:28:03.290918899 -0600
+--- include/zet_api.h	2022-05-11 11:47:31.708258490 -0500
++++ modified_include/zet_api.h	2022-05-11 12:04:58.040650249 -0500
 @@ -147,85 +147,85 @@
  } zet_typed_value_t;
  
