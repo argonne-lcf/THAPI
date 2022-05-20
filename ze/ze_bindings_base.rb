@@ -1038,7 +1038,7 @@ EOF
 
     def append_write_global_timestamp(dstptr, signal_event: nil, wait_events: nil)
       count, ph_wait_events = _create_event_list(wait_events)
-      result = ZE.zeCommandListAppendWriteGlobalTimestamp(@handle, dstptr, count, ph_wait_events)
+      result = ZE.zeCommandListAppendWriteGlobalTimestamp(@handle, dstptr, signal_event, count, ph_wait_events)
       ZE.error_check(result)
       self
     end
