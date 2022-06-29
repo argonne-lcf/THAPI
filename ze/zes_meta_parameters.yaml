@@ -26,6 +26,15 @@ meta_parameters:
     - [ OutArray, pTests, pCount ]
   zesDiagnosticsRunTests:
     - [ OutScalar, pResult ]
+  zesDeviceEccAvailable:
+    - [ OutScalar, pAvailable ]
+  zesDeviceEccConfigurable:
+    - [ OutScalar, pConfigurable ]
+  zesDeviceGetEccState:
+    - [ OutScalar, pState ]
+  zesDeviceSetEccState:
+    - [ InScalar, newState ]
+    - [ OutScalar, pState ]
   zesDeviceEnumEngineGroups:
     - [ InOutScalar, pCount ]
     - [ OutArray, phEngine, pCount ]
@@ -204,6 +213,12 @@ meta_parameters:
     - [ InScalar, pConfig ]
   zesTemperatureGetState:
     - [ OutScalar, pTemperature ]
+  zesPowerGetLimitsExt:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pSustained, pCount ]
+  zesPowerSetLimitsExt:
+    - [ InScalar, pCount ]
+    - [ InArray, pSustained, pCount ]
   zesGetDriverProcAddrTable:
     - [ OutScalar, pDdiTable]
   zesGetDeviceProcAddrTable:

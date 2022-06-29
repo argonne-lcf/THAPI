@@ -246,6 +246,26 @@ meta_parameters:
     - [ OutScalar, phLog ]
   zeMemFreeExt:
     - [ InScalar, pMemFreeDesc ]
+  zeFabricVertexGetExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phVertices, pCount ]
+  zeFabricVertexGetSubVerticesExp: 
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phSubvertices, pCount ]
+  zeFabricVertexGetPropertiesExp:
+    - [ OutScalar, pVertexProperties ]
+  zeFabricVertexGetDeviceExp:
+    - [ OutScalar, phDevice ]
+  zeDeviceGetFabricVertexExp:
+    - [ OutScalar, phVertex ]
+  zeFabricEdgeGetExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phEdges, pCount ]
+  zeFabricEdgeGetVerticesExp:
+    - [ OutScalar, phVertexA ]
+    - [ OutScalar, phVertexB ]
+  zeFabricEdgeGetPropertiesExp:
+    - [ OutScalar, pEdgeProperties ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
