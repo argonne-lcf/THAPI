@@ -4985,7 +4985,7 @@ typedef enum _zes_power_limits_ext_version_t
 /// @brief Device power/current limit descriptor.
 typedef struct _zes_power_limit_ext_desc_t
 {
-    ze_structure_type_t stype;                      ///< [in] type of this structure
+    zes_structure_type_t stype;                     ///< [in] type of this structure
     const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
                                                     ///< structure (i.e. contains sType and pNext).
     zes_power_level_t const level;                  ///< [out] duration type over which the power draw is measured, i.e.
