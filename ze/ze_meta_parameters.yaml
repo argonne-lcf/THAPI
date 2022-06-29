@@ -255,9 +255,9 @@ meta_parameters:
   zeFabricVertexGetPropertiesExp:
     - [ OutScalar, pVertexProperties ]
   zeFabricVertexGetDeviceExp:
-    - [ OutScalar, pDevice ]
+    - [ OutScalar, phDevice ]
   zeDeviceGetFabricVertexExp:
-    - [ OutScalar, pVertex ]
+    - [ OutScalar, phVertex ]
   zeFabricEdgeGetExp:
     - [ InOutScalar, pCount ]
     - [ OutArray, phEdges, pCount ]
