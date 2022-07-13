@@ -17,15 +17,22 @@ nodist_noinst_HEADERS = xprof.sh.erb
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
+%.pb.h %.pb.cc: %.proto
+	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
+
 BUILT_SOURCES = \
-	xprof_utils.hpp
+	xprof_utils.hpp \
+	perfetto_prunned.pb.h \
+	perfetto_prunned.pb.cc
 
 # Library to be packaged
 lib_LTLIBRARIES = libXProf.la
 
 # File to compiled
 nodist_libXProf_la_SOURCES = \
-	xprof_utils.hpp
+	xprof_utils.hpp \
+	perfetto_prunned.pb.h \
+	perfetto_prunned.pb.cc
 
 # File to compiled
 libXProf_la_SOURCES = \
@@ -40,13 +47,16 @@ libXProf_la_SOURCES = \
 	my_demangle.c \
 	my_demangle.h \
 	$(top_srcdir)/utils/include/json.hpp
+
 # Right now we harcode it. We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
+# -I/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/include/ -L/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/lib/ -lprotobuf
+
 # Compiler flags
-libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/include/
 libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
+libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
@@ -83,9 +93,12 @@ EXTRA_DIST = \
 	interval.h.erb \
 	interval_model.yaml \
 	$(TRACE_FILES) \
-	tests/tally.dust.erb
+	tests/tally.dust.erb \
+	perfetto_prunned.proto
 
 CLEANFILES = \
 	iprof \
 	xprof_utils.hpp \
-	$(TALLY_DUST_FILES)
+	$(TALLY_DUST_FILES) \
+	perfetto_prunned.pb.h \
+	perfetto_prunned.pb.cc

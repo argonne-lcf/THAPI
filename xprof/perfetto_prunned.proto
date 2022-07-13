@@ -1,0 +1,75 @@
+syntax = "proto2";
+// "There Is a Light That Never Goes Out"
+// https://android.googlesource.com/platform/external/perfetto/+/refs/heads/master/protos/perfetto/trace/
+package perfetto_pruned;
+
+enum BuiltinClock {
+  BUILTIN_CLOCK_UNKNOWN = 0;
+  BUILTIN_CLOCK_REALTIME = 1;
+  BUILTIN_CLOCK_REALTIME_COARSE = 2;
+  BUILTIN_CLOCK_MONOTONIC = 3;
+  BUILTIN_CLOCK_MONOTONIC_COARSE = 4;
+  BUILTIN_CLOCK_MONOTONIC_RAW = 5;
+  BUILTIN_CLOCK_BOOTTIME = 6;
+  BUILTIN_CLOCK_MAX_ID = 63;
+  reserved 7, 8, 9;
+}
+
+message ProcessDescriptor {
+  optional int32 pid = 1;
+  optional string process_name = 6;
+}
+
+message TracePacketDefaults {
+  optional uint32 timestamp_clock_id = 58;
+}
+
+message ThreadDescriptor {
+  optional int32 pid = 1;
+  optional int32 tid = 2;
+}
+
+message TrackDescriptor {
+  optional uint64 uuid = 1;
+  optional uint64 parent_uuid = 5;
+  optional string name = 2;
+  optional ProcessDescriptor process = 3;
+  optional ThreadDescriptor thread = 4;
+}
+
+message TrackEvent {
+
+  enum Type {
+    TYPE_SLICE_BEGIN = 1;
+    TYPE_SLICE_END = 2;
+  }
+
+  optional Type type = 9;
+  optional uint64 track_uuid = 11;
+
+  oneof name_field {
+    string name = 23;
+  }
+
+}
+
+message TracePacket {
+  optional uint64 timestamp = 8;
+
+  oneof data {
+    TrackEvent track_event = 11;
+    TrackDescriptor track_descriptor = 60;
+  }
+
+  oneof optional_trusted_packet_sequence_id {
+    uint32 trusted_packet_sequence_id = 10;
+  }
+
+  required TracePacketDefaults trace_packet_defaults = 59;
+  optional bool previous_packet_dropped = 42;
+}
+
+message Trace {
+  repeated TracePacket packet = 1;
+}
+

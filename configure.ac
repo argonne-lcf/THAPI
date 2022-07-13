@@ -42,6 +42,10 @@ if test -z "$PATCH"; then
   AC_CHECK_PROG(PATCH,[patch],[patch],[no])
   test "$PATCH" == "no" && AC_MSG_ERROR([Required program 'patch' not found.])
 fi
+if test -z "$PROTOC"; then
+  AC_CHECK_PROG(PROTOC,[protoc],[protoc],[no])
+  test "$PROTOC" == "no" && AC_MSG_ERROR([Required program 'protoc' not found.])
+fi
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
@@ -56,6 +60,7 @@ AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
+PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
