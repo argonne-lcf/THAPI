@@ -39,14 +39,19 @@ libXProf_la_SOURCES = \
 	timeline.cpp \
 	my_demangle.c \
 	my_demangle.h \
-	$(top_srcdir)/utils/include/json.hpp
+	$(top_srcdir)/utils/include/json.hpp \
+	perfetto_prunned.pb.h \
+	perfetto_prunned.pb.cc
+
 # Right now we harcode it. We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
+# -I/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/include/ -L/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/lib/ -lprotobuf
+
 # Compiler flags
-libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/include/
 libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module -L/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/lib/ -lprotobuf
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean

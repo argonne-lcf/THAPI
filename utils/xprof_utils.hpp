@@ -99,6 +99,19 @@ namespace std{
         }
 
     };
+
+    template <typename ... TT>
+    struct hash<std::pair<TT...>>
+    {
+        size_t
+        operator()(std::pair<TT...> const& tt) const
+        {
+            size_t seed = 0;
+            HashValueImpl<std::pair<TT...> >::apply(seed, tt);
+            return seed;
+        }
+
+    };
 }
 
 const char* borrow_hostname(const bt_event*);

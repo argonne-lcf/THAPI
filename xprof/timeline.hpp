@@ -2,14 +2,22 @@
 
 #include "xprof_utils.hpp" // typedef
 #include <unordered_map>
+#include <stack>
+#include <utility> // pair
 #include <babeltrace2/babeltrace.h>
+#include "perfetto_prunned.pb.h"
 
-typedef std::tuple<hostname_t, process_id_t, thread_id_t, int> hptl_t;
+typedef uint64_t perfetto_uuid_t;
+typedef uint64_t timestamp_t;
 
 /* Sink component's private data */
 struct timeline_dispatch {
     bt_message_iterator *message_iterator;
-    std::unordered_map<hp_t,int> s_gtf_pid;
-    std::unordered_map<hp_dsd_t,int> s_gtf_pid_gpu;
-    std::unordered_map<hptl_t,int> s_gtf_tid;
+    // Perfetto
+    std::unordered_map<hp_t, perfetto_uuid_t> hp2uuid;
+    std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
+    std::map<std::tuple<thapi_device_id, thapi_device_id, perfetto_uuid_t>, std::map<timestamp_t,perfetto_uuid_t>> parents2tracks;
+    std::map<perfetto_uuid_t, std::stack<timestamp_t>>  uuid2stack;
+
+    perfetto_pruned::Trace trace;
 };
