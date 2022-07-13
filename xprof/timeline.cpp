@@ -307,15 +307,12 @@ void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink) {
     }
   }
   std::string path{"out.pftrace"};
-  {
-    // Write the new address book back to disk.
-    std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!dispatch->trace.SerializeToOstream(&output)) {
-      std::cerr << "Failed to write the trace." << std::endl;
-    } else {
-      std::cout << "Perfetto trace saved: " << path << std::endl;
-    }
-  }
+  // Write the new address book back to disk.
+  std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
+  if (!dispatch->trace.SerializeToOstream(&output))
+    std::cerr << "Failed to write the trace." << std::endl;
+  else
+    std::cout << "Perfetto trace saved: " << path << std::endl;
   google::protobuf::ShutdownProtobufLibrary();
 }
 

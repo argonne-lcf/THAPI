@@ -110,7 +110,7 @@ static inline void _register_ze_device(
   o_h->obj_data = (void *)d_data;
 
   d_data->properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-  ze_result_t res = zeDeviceGetProperties(device, &(d_data->properties));
+  ze_result_t res = ZE_DEVICE_GET_PROPERTIES_PTR(device, &(d_data->properties));
   if (res != ZE_RESULT_SUCCESS) {
     free((void *)mem);
     return;
@@ -612,7 +612,7 @@ static void _dump_kernel_properties(ze_kernel_handle_t hKernel) {
   ze_kernel_properties_t kernelProperties;
   kernelProperties.stype=ZE_STRUCTURE_TYPE_KERNEL_PROPERTIES;
   kernelProperties.pNext=NULL;
-  if (zeKernelGetProperties(hKernel, &kernelProperties) == ZE_RESULT_SUCCESS)
+  if (ZE_KERNEL_GET_PROPERTIES_PTR(hKernel, &kernelProperties) == ZE_RESULT_SUCCESS)
     tracepoint(lttng_ust_ze_properties, kernel, hKernel, &kernelProperties);
 }
 
