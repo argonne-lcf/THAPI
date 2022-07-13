@@ -37,7 +37,7 @@ static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uu
 static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::string hostname,
                                        uint64_t process_id, uint64_t thread_id) {
 
-  perfetto_uuid_t hp_uuid;
+  perfetto_uuid_t hp_uuid = 0;
   {
     // This is so easy...
     // Because element keys in a map are unique,
@@ -74,7 +74,7 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
   // Due to Perfetto https://github.com/google/perfetto/issues/321,
   // each GPU thread wil be mapped to a "virtual" process
   // We will add the thread_id to the process name
-  perfetto_uuid_t parent_uuid;
+  perfetto_uuid_t parent_uuid = 0;
   {
     // Same strategy used previsouly to do only one table lookup
     auto r = dispatch->hpt2uuid.insert({{hp_uuid, thread_id}, parent_uuid});
