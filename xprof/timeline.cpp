@@ -35,7 +35,8 @@ static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uu
 }
 
 static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::string hostname,
-                                       uint64_t process_id, uint64_t thread_id) {
+                                       uint64_t process_id, uint64_t thread_id,
+                                       thapi_device_id did = 0, thapi_device_id sdid = 0) {
 
   perfetto_uuid_t hp_uuid = 0;
   {
@@ -46,7 +47,7 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
     // iterator to this existing element (if the function returns a value).
 
     // In the case we where not able to insert, we use the iterator to get the value,
-    auto r = dispatch->hp2uuid.insert({{hostname, process_id}, hp_uuid});
+    auto r = dispatch->hp2uuid.insert({{hostname, process_id, did, sdid}, hp_uuid});
     auto &potential_uuid = r.first->second;
     if (!r.second) {
       hp_uuid = potential_uuid;
@@ -66,7 +67,13 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
         auto *process = track_descriptor->mutable_process();
         process->set_pid(hp_uuid);
         std::ostringstream oss;
-        oss << hostname << " | Process " << process_id << " | uuid ";
+        oss << hostname << " | Process " << process_id ;
+        if (did !=0) {
+            oss << " | Device " << did;
+            if (sdid !=0)
+                oss << " | SubDevice " << sdid;
+        }
+        oss << " | uuid ";
         process->set_process_name(oss.str());
       }
     }
@@ -125,9 +132,9 @@ static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostna
                           thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur) {
   // This function Assume non perfecly nested
   const uint64_t end = begin + dur;
-  perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id);
+  perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id, did, sdid);
   // Now see if we need a to generate a new children
-  std::map<uint64_t, perfetto_uuid_t> &m = dispatch->parents2tracks[{did, sdid, parent_uuid}];
+  std::map<uint64_t, perfetto_uuid_t> &m = dispatch->parents2tracks[parent_uuid];
   perfetto_uuid_t uuid;
 
   // Pre-historical event
@@ -143,11 +150,8 @@ static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostna
       track_descriptor->set_uuid(uuid);
       track_descriptor->set_parent_uuid(parent_uuid);
 
-      // I Hate C++ so much
       std::ostringstream oss;
-      oss << "Thread " << thread_id << " | GPU " << did;
-      if (sdid != 0)
-        oss << " " << sdid;
+      oss << "Thread " << thread_id;
       track_descriptor->set_name(oss.str());
     }
   } else {
@@ -309,7 +313,7 @@ void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink) {
     if (!dispatch->trace.SerializeToOstream(&output)) {
       std::cerr << "Failed to write the trace." << std::endl;
     } else {
-      std::cout << "Perfetto trace saved: " << path << std::endl; 
+      std::cout << "Perfetto trace saved: " << path << std::endl;
     }
   }
   google::protobuf::ShutdownProtobufLibrary();
