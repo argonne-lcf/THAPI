@@ -17,7 +17,7 @@ nodist_noinst_HEADERS = xprof.sh.erb
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
-%.pb.h %pb.cc: %.proto
+%.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
 BUILT_SOURCES = \
@@ -99,4 +99,6 @@ EXTRA_DIST = \
 CLEANFILES = \
 	iprof \
 	xprof_utils.hpp \
-	$(TALLY_DUST_FILES)
+	$(TALLY_DUST_FILES) \
+	perfetto_prunned.pb.h \
+	perfetto_prunned.pb.cc
