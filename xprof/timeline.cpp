@@ -99,11 +99,13 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
         auto *track_descriptor = packet->mutable_track_descriptor();
         track_descriptor->set_uuid(parent_uuid);
         track_descriptor->set_parent_uuid(hp_uuid);
-#ifndef WA_MERGING_THREAD
-        auto *thread = track_descriptor->mutable_thread();
-        thread->set_pid(hp_uuid);
-        thread->set_tid(thread_id);
-#endif
+        // This is the workarround for the bug: https://github.com/google/perfetto/issues/321
+        //   We trick perfetto to this they are processes
+        if (did == 0) {
+          auto *thread = track_descriptor->mutable_thread();
+          thread->set_pid(hp_uuid);
+          thread->set_tid(thread_id);
+        }
       }
     }
   }
