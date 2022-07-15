@@ -105,7 +105,10 @@ static void create_and_enqueue_host_flow_message(const char* hostname, const pro
 }
 
 static void create_and_enqueue_device_message(
-        const char* hostname, const process_id_t process_id, const thread_id_t thread_id, thapi_device_id device,
+        const char* hostname, const process_id_t process_id, 
+        const uint64_t uuid, 
+        const char* queue_name,
+        thapi_device_id device,
         const char* commandname, const char* metadata,
         bool err, const uint64_t globalStart,  const uint64_t globalEnd, const uint64_t lltng_min,
         const flow_id_t flow_id,
@@ -138,11 +141,11 @@ static void create_and_enqueue_device_message(
               device_hash = hash_device(it2->second);
      }
      /* Message creation */
-     bt_message *message = create_device_message(hostname, process_id, thread_id, device_hash, subdevice_hash,
-                                                 commandname, start, delta, err, metadata,
-                                                 zeinterval_iter_g->dispatch->device_flow_event_class,
-                                                 zeinterval_self_message_iterator_g,
-                                                 zeinterval_iter_g->dispatch->stream, flow_id);
+     bt_message *message = create_device_flow_message(hostname, process_id, uuid, device_hash, subdevice_hash,
+                                                      commandname, start, delta, err, metadata, queue_name,
+                                                      zeinterval_iter_g->dispatch->device_flow_event_class,
+                                                      zeinterval_self_message_iterator_g,
+                                                      zeinterval_iter_g->dispatch->stream);
 
      /* Set message */
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
@@ -328,19 +331,19 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
     <% else dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
-          const auto hModule = retrieve_start<ze_module_handle_t>(state, hpt_t(hostname, process_id,thread_id));
-          state->module_to_module_globals[hp_module_t(hostname, process_id, hModule)].insert((uintptr_t)pptr_val);
-          state->rangeset_memory_shared[hp_t(hostname, process_id)][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
+          const auto hModule = retrieve_start<ze_module_handle_t>(state, {hostname, process_id,thread_id} );
+          state->module_to_module_globals[ {hostname, process_id, hModule} ].insert((uintptr_t)pptr_val);
+          state->rangeset_memory_shared[ {hostname, process_id} ][(uintptr_t) pptr_val] = (uintptr_t)pptr_val + pSize_val;
      }
     <% end %>
   <% elsif dbt_event.name_striped == "zeModuleDestroy" and dbt_event.start? %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
      auto& s = state->module_to_module_globals;
-     auto it = s.find(hp_module_t(hostname, process_id, hModule));
+     auto it = s.find( {hostname, process_id, hModule} );
      if (it != s.end()) {
           for (auto &s2: it->second)
-            state->rangeset_memory_shared[hp_t(hostname, process_id)].erase(s2);
+            state->rangeset_memory_shared[ {hostname, process_id} ].erase(s2);
           s.erase(it);
      }
   <% elsif dbt_event.name_striped == "zeModuleCreate" and dbt_event.start? %>
@@ -354,7 +357,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
   <% elsif ['zeMemAllocHost','zeMemAllocDevice','zeMemAllocShared'].include?(dbt_event.name_striped) and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
-          const auto size = retrieve_start<size_t>(state, hpt_t(hostname, process_id, thread_id));
+          const auto size = retrieve_start<size_t>(state, {hostname, process_id, thread_id} );
     <% if dbt_event.name_striped == "zeMemAllocHost" %>
           auto &s = state->rangeset_memory_host;
     <% elsif dbt_event.name_striped == "zeMemAllocDevice" %>
@@ -371,8 +374,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
   <% elsif dbt_event.name_striped == "zeMemFree" and dbt_event.stop? %>
      if ( zeResult == ZE_RESULT_SUCCESS ) {
-          const auto ptr = retrieve_start<uintptr_t>(state, hpt_t(hostname, process_id, thread_id));
-          const auto size = remove_memory(state, hp_t(hostname, process_id), ptr);
+          const auto ptr = retrieve_start<uintptr_t>(state, {hostname, process_id, thread_id} );
+          const auto size = remove_memory(state, {hostname, process_id}, ptr);
           (void) size;
           //create_and_enqueue_traffic_message(hostname.c_str(), process_id, thread_id, "<%= dbt_event.name_striped %>", size);
      }
@@ -455,10 +458,10 @@ Case B:
   <% if ['zeCommandListCreate','zeCommandListCreateImmediate'].include?(dbt_event.name_striped) %>
     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
     <% if dbt_event.start? %>
-     save_start(state, hpt_t(hostname,process_id,thread_id), hDevice);
+     save_start(state, {hostname,process_id,thread_id} , hDevice);
     <% elsif dbt_event.stop? %>
-     const auto device = retrieve_start<thapi_device_id>(state, hpt_t(hostname, process_id,thread_id));
-     state->command_list_to_device[hp_command_list_t(hostname,process_id,phCommandList_val)] = device;
+     const auto device = retrieve_start<thapi_device_id>(state, {hostname, process_id,thread_id} );
+     state->command_list_to_device[ {hostname,process_id,phCommandList_val} ] = device;
     <% end %>
   <% end %>
 
@@ -474,18 +477,18 @@ Case B:
      save_start(state, hpt_t(hostname,process_id,thread_id), std::string{desc__pKernelName_val});
   <% elsif dbt_event.name_striped == "zeKernelCreate" and dbt_event.stop? %>
     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
-     state->kernel_to_name[hpk_t(hostname,process_id,phKernel_val)] = retrieve_start<std::string>(state, hpt_t(hostname,process_id,thread_id));
+     state->kernel_to_name[ { hostname,process_id,phKernel_val} ] = retrieve_start<std::string>(state, { hostname,process_id,thread_id} );
   <% elsif dbt_event.name_striped == "zeKernelSetGroupSize" and dbt_event.start? %>
      std::stringstream groupsize;
      groupsize << "{" << groupSizeX << ","
                       << groupSizeY << ","
                       << groupSizeZ << "}";
-     state->kernel_to_groupsize_str[hp_kernel_t(hostname,process_id,hKernel)] = groupsize.str();
+     state->kernel_to_groupsize_str[ {hostname,process_id,hKernel} ] = groupsize.str();
   <% end %>
 
   <% if dbt_event.name_unsanitized == "lttng_ust_ze_properties:kernel" %>
      //Not sure why SIMD size == maxSubgroupSize, but this is what Intel Tool are doing
-     state->kernel_to_simdsize_str[hp_kernel_t(hostname,process_id,hKernel)] = "SIMD" + std::to_string(pKernelProperties_val->maxSubgroupSize);
+     state->kernel_to_simdsize_str[ {hostname,process_id,hKernel} ] = "SIMD" + std::to_string(pKernelProperties_val->maxSubgroupSize);
   <% end %>
 
   <%#
@@ -512,22 +515,26 @@ Case B:
               << state->kernel_to_groupsize_str[hpk];
     <% elsif dbt_event.name_unsanitized.include?("Memory") and
              dbt_event.fields_name.any?{ |n| n.include?('ptr') } %>
-      const hp_t hp(hostname, process_id);
-      std::stringstream name_;
-      name_ << "<%= dbt_event.name_striped.sub("CommandListAppend",'') %>"
-            << "("
+     const hp_t hp(hostname, process_id);
+     std::stringstream name_;
+     name_ << "<%= dbt_event.name_striped.sub("CommandListAppend",'') %>"
+           << "("
       <% dbt_event.fields_name.filter { |n| n.include?('ptr') }.reverse.each do |n| %>
             << memory_location(state, hp, (uintptr_t) <%= n %>)
       <% end %>
-            << ")";
+           << ")";
      std::string name = name_.str();
     <% else %>
      const std::string name{"<%= dbt_event.name_striped %>"};
     <% end %>
      const flow_id_t flow_id = state->flow_id;
      state->flow_id++;
-     const auto device = state->command_list_to_device[ { hostname,process_id,hCommandList } ];
-     state->command_partial_payload[ { hostname,process_id,thread_id } ] = { hCommandList, name, metadata.str(), device, ns_from_origin, flow_id };
+     state->command_partial_payload[ { hostname,process_id,thread_id } ] = { hCommandList, name, metadata.str(), ns_from_origin, flow_id };
+  <% end %>
+
+  <% if dbt_event.start? and dbt_event.name_striped == "zeCommandQueueExecuteCommandLists" %>
+     for (uint32_t i=0; i < numCommandLists; i++)
+         state->command_list_to_command_queue[{hostname, process_id, phCommandLists_vals[i]} ] = hCommandQueue;
   <% end %>
 
   <%#
@@ -547,9 +554,11 @@ Case B:
      // Best we can do is to bailout
      if (it_pp == state->command_partial_payload.end())
           return;
-     const auto [hCommandList, commandname, metadata, device, lltng_min, flow_id] = it_pp->second;
+     const auto [hCommandList, commandname, metadata, lltng_min, flow_id] = it_pp->second;
      state->command_partial_payload.erase(it_pp);
      state->command_list_to_events[ { hostname, process_id, hCommandList } ].insert(hEvent);
+
+     const auto device = state->command_list_to_device[ { hostname,process_id,hCommandList } ];
 
      // Got the timestamp pair referance
      clock_lttng_device_t timestamp_pair_ref;
@@ -562,13 +571,27 @@ Case B:
      auto it = state->event_to_profiling_result.find(hpe);
      if (it == state->event_to_profiling_result.end()){
           //Creeate the payload who will be used by event_profiling_results
-          state->event_payload[hpe] = { thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref, flow_id };
+          state->event_payload[hpe] = { hCommandList, commandname, metadata, lltng_min, timestamp_pair_ref, flow_id };
      } else {
+
+          // Can we have a race condition with the command list destroy?
+          uint64_t uuid;
+          std::string queue_name;
+          const auto it1 = state->command_list_to_command_queue.find(  { hostname,process_id, hCommandList } );
+          if (it1 != state->command_list_to_command_queue.end() ) { 
+                uuid = reinterpret_cast<uint64_t>(it1->second);
+                queue_name = "zeCommandQueue";
+          } else {
+                uuid = reinterpret_cast<uint64_t>(hCommandList);
+                queue_name = "zeCommandListImmediate";
+          }
+
           // Handle the callbacks case, where `event_profiling_results` was called before `event_profiling`.
           const auto& [err, globalStart, globalEnd] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
-          create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
+
+          create_and_enqueue_device_message(hostname.c_str(), process_id, uuid, queue_name.c_str(), device,
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, flow_id, 
                                             timestamp_pair_ref,
@@ -582,10 +605,24 @@ Case B:
 
      auto it = state->event_payload.find(hpe);
      if (it != state->event_payload.end()) {
-          const auto& [thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref, flow_id] = it->second;
+          const auto& [hCommandList, commandname, metadata, lltng_min, timestamp_pair_ref, flow_id] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
-          create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
+
+          // Can we have a race condition with the command list destroy?
+          const auto device = state->command_list_to_device[ { hostname,process_id,hCommandList } ];
+          uint64_t uuid;
+          std::string queue_name;
+          const auto it1 = state->command_list_to_command_queue.find(  { hostname,process_id, hCommandList } );
+          if (it1 != state->command_list_to_command_queue.end() ) {
+                uuid = reinterpret_cast<uint64_t>(it1->second);
+                queue_name = "zeCommandQueue";
+          } else {
+                uuid = reinterpret_cast<uint64_t>(hCommandList);
+                queue_name = "zeCommandListImmediate";
+          }
+
+          create_and_enqueue_device_message(hostname.c_str(), process_id, uuid, queue_name.c_str(), device,
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, flow_id, 
                                             timestamp_pair_ref,
@@ -601,8 +638,11 @@ Case B:
      save_start(state, hpt_t(hostname, process_id, thread_id), hCommandList);
     <% else %>
      if (zeResult == ZE_RESULT_SUCCESS) {
-          const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, hpt_t(hostname, process_id, thread_id));
+          const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, {hostname, process_id, thread_id} );
           const hp_command_list_t hpl(hostname, process_id, hCommandList);
+
+          state->command_list_to_command_queue.erase(hpl);
+
           auto it_e = state->command_list_to_events.find(hpl);
           if (it_e != state->command_list_to_events.end()) {
                for (auto& hEvent: it_e->second) {
@@ -616,7 +656,7 @@ Case B:
     <% end %>
   <% elsif ["zeEventDestroy", "zeEventHostReset"].include?(dbt_event.name_striped)%>
     <%if dbt_event.start? %>
-     save_start(state, hpt_t(hostname, process_id, thread_id), hEvent);
+     save_start(state, {hostname, process_id, thread_id}, hEvent);
     <% else %>
      if (zeResult == ZE_RESULT_SUCCESS) {
         const auto hEvent = retrieve_start<ze_event_handle_t>(state, hpt_t(hostname, process_id, thread_id));
@@ -625,6 +665,7 @@ Case B:
         state->event_payload.erase(hpe);
      }
     <% end %>
+
   <% end %>
 
   <%#
@@ -633,13 +674,13 @@ Case B:
    |  | (/_ | | | (_) | \/    | | (_|  |   |  | (_
                         /
   %>
-  //Todo this should check for ZE_RESULT!
+  <%# Todo this should check for ZE_RESULT! #%>
   <% if dbt_event.start? and
         dbt_event.name_striped.include?("Memory") and
         dbt_event.fields_name.include?("size") %>
     <% if !dbt_event.fields_name.include?('hSignalEvent') %>
      //Name is set by the profiling, but some function transfert memory but cannot be profiled
-     //ie, prefetch, maxing memory resident...
+     //ie, prefetch, make memory resident...
      const std::string name{"<%= dbt_event.name_striped %>"};
     <% else %>
        <% $profiling_apis.add(dbt_event.name_unsanitized) %>

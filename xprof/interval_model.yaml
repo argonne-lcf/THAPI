@@ -70,8 +70,14 @@
     :class: bool
   - :name: metadata
     :class: string
-  - :name: flow_id
+  - :name: uuid
+    :cast_type: void *
     :class: unsigned
+    :class_properties:
+        :field_value_range: 64
+        :preferred_display_base: 16
+  - :name: queue_name
+    :class: string
 - :name: lttng:device_name
   :payload:
   - :name: name

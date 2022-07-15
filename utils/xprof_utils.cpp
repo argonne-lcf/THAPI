@@ -78,7 +78,7 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
                                   const thapi_device_id device_id, const thapi_device_id subdevice_id,
                                   const char* name, const uint64_t ts, const uint64_t duration, const bool err,
                                   const char* metadata,
-                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, const flow_id_t flow_id) {
+                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -130,14 +130,75 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
      //Metadata
      bt_field *metadata_field = bt_field_structure_borrow_member_field_by_index(payload_field, 5);
      bt_field_string_set_value(metadata_field, metadata);
+     return message;
+}
 
-     // flow id
-     if (flow_id != 0) {
-        bt_field *flow_id_field = bt_field_structure_borrow_member_field_by_index(payload_field, 6);
-        bt_field_integer_unsigned_set_value(flow_id_field, flow_id);
-    }
+bt_message* create_device_flow_message(const char* hostname, const process_id_t process_id, const uint64_t uuid,
+                                  const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                  const char* name, const uint64_t ts, const uint64_t duration, const bool err,
+                                  const char* metadata, const char* queue_name,
+                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
 
-    return message;
+     /* Message creation */
+     bt_message *message = bt_message_event_create(
+                             message_iterator, event_class, stream);
+
+
+     /* event */
+     bt_event *downstream_event = bt_message_event_borrow_event(message);
+
+     /* Common context */
+     bt_field *context_field = bt_event_borrow_common_context_field(downstream_event);
+
+     // Hostname
+     bt_field *hostname_msg_field = bt_field_structure_borrow_member_field_by_index(context_field,0);
+     bt_field_string_set_value(hostname_msg_field, hostname);
+     // pid
+     bt_field *vpid_field = bt_field_structure_borrow_member_field_by_index(context_field,1);
+     bt_field_integer_signed_set_value(vpid_field, process_id);
+     // vid
+     bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
+     bt_field_integer_signed_set_value(vtid_field, 0);
+     // ts
+     bt_field *ts_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
+     bt_field_integer_signed_set_value(ts_field, ts);
+
+     /* Payload */
+     bt_field *payload_field = bt_event_borrow_payload_field(downstream_event);
+
+     // name
+     bt_field *name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 0);
+     bt_field_string_set_value(name_field, name);
+
+     // dur
+     bt_field *dur_field = bt_field_structure_borrow_member_field_by_index(payload_field, 1);
+     bt_field_integer_unsigned_set_value(dur_field, duration);
+
+     // did
+     bt_field *device_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
+     bt_field_integer_unsigned_set_value(device_id_field, device_id);
+
+     // sdid
+     bt_field *subdevice_id_field = bt_field_structure_borrow_member_field_by_index(payload_field,3);
+     bt_field_integer_unsigned_set_value(subdevice_id_field, subdevice_id);
+
+     // err
+     bt_field *err_field = bt_field_structure_borrow_member_field_by_index(payload_field, 4);
+     bt_field_integer_unsigned_set_value(err_field, err);
+
+     //Metadata
+     bt_field *metadata_field = bt_field_structure_borrow_member_field_by_index(payload_field, 5);
+     bt_field_string_set_value(metadata_field, metadata);
+
+     // uuid
+     bt_field *uuid_field = bt_field_structure_borrow_member_field_by_index(payload_field, 6);
+     bt_field_integer_unsigned_set_value(uuid_field, uuid);
+
+     //Queue_name
+     bt_field *queue_name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 7);
+     bt_field_string_set_value(queue_name_field, queue_name);
+
+     return message;
 }
 
 bt_message* create_device_name_message(const char* hostname, const process_id_t process_id,

@@ -125,7 +125,13 @@ bt_message* create_host_message(const char *hostname, const process_id_t, const 
 
 bt_message* create_device_message(const char *hostname, const process_id_t, const thread_id_t, const thapi_device_id, const thapi_device_id,
                                   const char *name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata,
-                                  bt_event_class*, bt_self_message_iterator*, bt_stream*, flow_id_t flow_id = 0);
+                                  bt_event_class*, bt_self_message_iterator*, bt_stream*);
+
+bt_message* create_device_flow_message(const char* hostname, const process_id_t process_id, const uint64_t uuid,
+                                  const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                  const char* name, const uint64_t ts, const uint64_t duration, const bool err,
+                                  const char* metadata, const char* queue_name,
+                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream);
 
 bt_message* create_device_name_message(const char* hostname, const process_id_t process_id,
                                        const thapi_device_id device_id, const char* name,
