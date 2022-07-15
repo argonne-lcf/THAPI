@@ -21,8 +21,8 @@ typedef hp_event_t hpe_t;
 typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
-typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_t;
-typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t> l_tfnm_m_d_ts_t;
+typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t, flow_id_t> t_tfnm_m_d_ts_cld_tp;
+typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t, flow_id_t> l_tfnm_m_d_ts_tp;
 
 typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
 
@@ -36,7 +36,7 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_name;
     std::unordered_map<hp_kernel_t, std::string>            kernel_to_groupsize_str;
     std::unordered_map<hp_kernel_t, std::string>            kernel_to_simdsize_str;
-    std::unordered_map<hpt_function_name_t, uint64_t>       host_start;
+    std::unordered_map<hpt_function_name_t, std::pair<uint64_t,uint64_t>>       host_start;
     std::unordered_map<hpt_t, thapi_function_name>          profiled_function_name;
 
     /* Handle memory copy */
@@ -48,9 +48,10 @@ struct zeinterval_callbacks_state {
     /* Handle variable */
     std::unordered_map<hpe_t, event_profiling_result_t> event_to_profiling_result;
     std::unordered_map<hpd_t, clock_lttng_device_t>     device_timestamps_pair_ref;
-    std::unordered_map<hpt_t, l_tfnm_m_d_ts_t>          command_partial_payload;
-    std::unordered_map<hpe_t, t_tfnm_m_d_ts_cld_t>      event_payload;
+    std::unordered_map<hpt_t, l_tfnm_m_d_ts_tp>          command_partial_payload;
+    std::unordered_map<hpe_t, t_tfnm_m_d_ts_cld_tp>      event_payload;
     std::unordered_map<hpd_t, thapi_device_id>          subdevice_parent;
+    flow_id_t flow_id = 1;
 
     /* Stack to get begin end */
     std::unordered_map<hpt_t, std::vector<std::byte>> last_command;

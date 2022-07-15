@@ -101,7 +101,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
       const bt_field *payload_field =
           bt_event_borrow_payload_field_const(event);
-      if (strcmp(class_name, "lttng:host") == 0) {
+      if ( (strcmp(class_name, "lttng:host") == 0) || (strcmp(class_name, "lttng:host_flow") == 0) ) {
         auto dur_tuple0 = std::make_tuple(
             std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
             std::make_tuple(1, &bt_field_integer_unsigned_get_value,
@@ -119,7 +119,7 @@ tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
         dispatch->host_backend_name[level].insert(backend_name[backend_id]);
         dispatch->host[level][hpt_function_name_t(hostname, process_id, thread_id, name)] += a;
 
-      } else if (strcmp(class_name, "lttng:device") == 0) {
+      } else if ( (strcmp(class_name, "lttng:device") == 0) || (strcmp(class_name, "lttng:device_flow") == 0) ) {
         auto dur_tuple0 = std::make_tuple(
             std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
             std::make_tuple(1, &bt_field_integer_unsigned_get_value,

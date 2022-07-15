@@ -92,8 +92,12 @@ bt_component_class_initialize_method_status <%= namespace %>_dispatch_initialize
     // We don't create a clock, because we ensure monotonic order for the downstream messages.
     populate_ze_stream_class_common_context(trace_class, stream_class);
 
+    // This should be generated!
     dispatch->host_event_class = create_lttng_host_event_class_message(trace_class,stream_class);
+    dispatch->host_flow_event_class = create_lttng_host_flow_event_class_message(trace_class,stream_class);
+
     dispatch->device_event_class = create_lttng_device_event_class_message(trace_class, stream_class);
+    dispatch->device_flow_event_class = create_lttng_device_flow_event_class_message(trace_class, stream_class);
     dispatch->traffic_event_class = create_lttng_traffic_event_class_message(trace_class, stream_class);
     dispatch->device_name_event_class = create_lttng_device_name_event_class_message(trace_class, stream_class);
 

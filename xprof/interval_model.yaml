@@ -24,6 +24,16 @@
     :class: unsigned
   - :name: err
     :class: bool
+- :name: lttng:host_flow
+  :payload:
+  - :name: name
+    :class: string
+  - :name: dur
+    :class: unsigned
+  - :name: err
+    :class: bool
+  - :name: flow_id
+    :class: unsigned
 - :name: lttng:device
   :payload:
   - :name: name
@@ -42,6 +52,26 @@
     :class: bool
   - :name: metadata
     :class: string
+- :name: lttng:device_flow
+  :payload:
+  - :name: name
+    :class: string
+  - :name: dur
+    :class: unsigned
+  - :name: did
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: sdid
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: err
+    :class: bool
+  - :name: metadata
+    :class: string
+  - :name: flow_id
+    :class: unsigned
 - :name: lttng:device_name
   :payload:
   - :name: name

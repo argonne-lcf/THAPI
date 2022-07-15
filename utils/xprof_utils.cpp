@@ -22,7 +22,7 @@ thread_id_t borrow_thread_id(const bt_event *event){
 
 bt_message* create_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
         const uint64_t ts, const uint64_t duration, const bool err,
-        bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
+        bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend, const flow_id_t flow_id) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -65,6 +65,11 @@ bt_message* create_host_message(const char* hostname, const process_id_t process
      bt_field *err_field = bt_field_structure_borrow_member_field_by_index(payload_field, 2);
      bt_field_integer_unsigned_set_value(err_field, err);
 
+     // flow id
+     if (flow_id != 0) {
+        bt_field *flow_id_field = bt_field_structure_borrow_member_field_by_index(payload_field, 3);
+        bt_field_integer_unsigned_set_value(flow_id_field, flow_id);
+     }
      return message;
 }
 
@@ -73,7 +78,7 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
                                   const thapi_device_id device_id, const thapi_device_id subdevice_id,
                                   const char* name, const uint64_t ts, const uint64_t duration, const bool err,
                                   const char* metadata,
-                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
+                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, const flow_id_t flow_id) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -125,6 +130,12 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
      //Metadata
      bt_field *metadata_field = bt_field_structure_borrow_member_field_by_index(payload_field, 5);
      bt_field_string_set_value(metadata_field, metadata);
+
+     // flow id
+     if (flow_id != 0) {
+        bt_field *flow_id_field = bt_field_structure_borrow_member_field_by_index(payload_field, 6);
+        bt_field_integer_unsigned_set_value(flow_id_field, flow_id);
+    }
 
     return message;
 }
