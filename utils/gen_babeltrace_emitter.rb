@@ -8,7 +8,7 @@ puts <<EOF
 #include <babeltrace2/babeltrace.h>
 EOF
 
-
+# We should refractor the class_create to take a parameter
 declare_signed = lambda { |_, name|
   puts <<EOF
     bt_field_class *#{name}_field_class = bt_field_class_integer_signed_create(trace_class);
@@ -39,6 +39,13 @@ declare_structure = lambda { |_, name|
 EOF
 }
 
+declare_array_dynamic = lambda { |a, name|
+  #Assume that in the model `_lenth` is provided
+  #And that `_element_field_class` have been set by declare_group
+  puts <<EOF
+    bt_field_class *#{name}_field_class = bt_field_class_array_dynamic_create(trace_class, #{name}_element_field_class, #{name}_length_field_class);
+EOF
+}
 
 def append_member(name, parent_name) 
   puts <<EOF
@@ -56,7 +63,8 @@ $print_declarators.merge!({
   'unsigned' => declare_unsigned,
   'string' => declare_string,
   'bool' => declare_bool,
-  'structure' => declare_structure
+  'structure' => declare_structure,
+  'array_dynamic' => declare_array_dynamic
 })
 
 def declare_group(type, method, group_name, content)
@@ -65,6 +73,10 @@ def declare_group(type, method, group_name, content)
   content.each { |field|
     name = field[:name]
     klass = field[:class]
+    if klass == "array_dynamic"
+        element_klass = field[:field][:class]
+        $print_declarators[element_klass].call(element_klass, "#{name}_element")
+    end
     $print_declarators[klass].call(klass, name)
     append_member(name, group_name)
   }
@@ -73,6 +85,11 @@ def declare_group(type, method, group_name, content)
     bt_field_class_put_ref(#{group_name}_field_class);
 EOF
   content.each { |field|
+    if field[:class] == "array_dynamic"
+    puts <<EOF
+    bt_field_class_put_ref(#{field[:name]}_element_field_class);
+EOF
+    end
     puts <<EOF
     bt_field_class_put_ref(#{field[:name]}_field_class);
 EOF
