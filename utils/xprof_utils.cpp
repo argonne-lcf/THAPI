@@ -1,4 +1,5 @@
 #include "xprof_utils.hpp"
+#include <set>
 
 const char* borrow_hostname(const bt_event *event){
     const bt_stream *stream = bt_event_borrow_stream_const(event);
@@ -22,7 +23,7 @@ thread_id_t borrow_thread_id(const bt_event *event){
 
 bt_message* create_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
         const uint64_t ts, const uint64_t duration, const bool err,
-        bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend, const flow_id_t flow_id) {
+        bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend, std::set<flow_id_t> flow_ids) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -66,9 +67,19 @@ bt_message* create_host_message(const char* hostname, const process_id_t process
      bt_field_integer_unsigned_set_value(err_field, err);
 
      // flow id
-     if (flow_id != 0) {
-        bt_field *flow_id_field = bt_field_structure_borrow_member_field_by_index(payload_field, 3);
-        bt_field_integer_unsigned_set_value(flow_id_field, flow_id);
+     if (!flow_ids.empty() ) {
+        const auto size = flow_ids.size();
+        bt_field *flow_id_field_length = bt_field_structure_borrow_member_field_by_index(payload_field, 3);
+        bt_field_integer_unsigned_set_value(flow_id_field_length, size);
+
+        bt_field *flow_id_field = bt_field_structure_borrow_member_field_by_index(payload_field, 4);
+        bt_field_array_dynamic_set_length(flow_id_field, size);
+
+        int i=0;
+        for (auto element: flow_ids) {
+            bt_field *element_field = bt_field_structure_borrow_member_field_by_index(flow_id_field, i++);
+            bt_field_integer_unsigned_set_value(element_field, element);
+        }
      }
      return message;
 }
@@ -136,7 +147,7 @@ bt_message* create_device_message(const char* hostname, const process_id_t proce
 bt_message* create_device_flow_message(const char* hostname, const process_id_t process_id, const uint64_t uuid,
                                   const thapi_device_id device_id, const thapi_device_id subdevice_id,
                                   const char* name, const uint64_t ts, const uint64_t duration, const bool err,
-                                  const char* metadata, const char* queue_name,
+                                  const char* metadata, const char* queue_name, const flow_id_t flow_id,
                                   bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream) {
 
      /* Message creation */
@@ -197,6 +208,10 @@ bt_message* create_device_flow_message(const char* hostname, const process_id_t 
      //Queue_name
      bt_field *queue_name_field = bt_field_structure_borrow_member_field_by_index(payload_field, 7);
      bt_field_string_set_value(queue_name_field, queue_name);
+
+     // flow_id
+     bt_field *flow_field = bt_field_structure_borrow_member_field_by_index(payload_field, 8);
+     bt_field_integer_unsigned_set_value(flow_field, flow_id);
 
      return message;
 }

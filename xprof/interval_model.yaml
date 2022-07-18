@@ -32,8 +32,12 @@
     :class: unsigned
   - :name: err
     :class: bool
-  - :name: flow_id
+  - :name: flow_ids_length
     :class: unsigned
+  - :name: flow_ids
+    :class: array_dynamic
+    :field:
+      :class: unsigned
 - :name: lttng:device
   :payload:
   - :name: name
@@ -45,7 +49,7 @@
     :class_properties:
       :preferred_display_base: 16
   - :name: sdid
-    :class: unsigned      
+    :class: unsigned
     :class_properties:
       :preferred_display_base: 16
   - :name: err
@@ -78,6 +82,8 @@
         :preferred_display_base: 16
   - :name: queue_name
     :class: string
+  - :name: flow_id
+    :class: unsigned
 - :name: lttng:device_name
   :payload:
   - :name: name
@@ -89,4 +95,4 @@
   - :name: name
     :class: string
   - :name: size
-    :class: unsigned 
+    :class: unsigned

@@ -15,7 +15,7 @@ static perfetto_uuid_t gen_perfetto_uuid() {
 }
 
 static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
-                            timestamp_t begin, std::string name, flow_id_t flow_id) {
+                            timestamp_t begin, std::string name, std::set<flow_id_t> flow_ids = {} ) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(begin);
   packet->set_trusted_packet_sequence_id(10);
@@ -23,9 +23,10 @@ static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t 
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
   track_event->set_name(name);
   track_event->set_track_uuid(uuid);
-  if (flow_id != 0)
+  for (const auto& flow_id: flow_ids)
     track_event->add_flow_ids(flow_id);
 }
+
 
 static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
@@ -116,13 +117,13 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
 
 static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, std::string name, uint64_t begin,
-                          uint64_t dur, uint64_t flow_id = 0) {
+                          uint64_t dur, std::set<flow_id_t> flow_ids = {}) {
   // Assume perfecly nessted
   const uint64_t end = begin + dur;
 
   perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id);
   // Handling perfecly nested event
-  add_event_begin(dispatch, parent_uuid, begin, name, flow_id);
+  add_event_begin(dispatch, parent_uuid, begin, name, flow_ids);
   std::stack<uint64_t> &s = dispatch->uuid2stack[parent_uuid];
   while ((!s.empty()) && (s.top() <= begin)) {
     add_event_end(dispatch, parent_uuid, s.top());
@@ -133,7 +134,7 @@ static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostna
 
 static void add_event_gpu_old(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, thapi_device_id did,
-                          thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur, uint64_t flow_id = 0) {
+                          thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur) {
   // This function Assume non perfecly nested
   const uint64_t end = begin + dur;
   perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id, did, sdid);
@@ -168,14 +169,14 @@ static void add_event_gpu_old(struct timeline_dispatch *dispatch, std::string ho
   // Update the table
   m[end] = uuid;
   // Add event
-  add_event_begin(dispatch, uuid, begin, name, flow_id);
+  add_event_begin(dispatch, uuid, begin, name);
   add_event_end(dispatch, uuid, end);
 }
 
 static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t c_uuid, std::string queue_name,
-                          thapi_device_id did, thapi_device_id sdid, 
-                          std::string name, uint64_t begin, uint64_t dur, uint64_t flow_id = 0) {
+                          thapi_device_id did, thapi_device_id sdid,
+                          std::string name, uint64_t begin, uint64_t dur, std::set<flow_id_t> flow_ids) {
   // This function Assume non perfecly nested
   const uint64_t end = begin + dur;
   perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, c_uuid, did, sdid);
@@ -210,7 +211,7 @@ static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostna
   // Update the table
   m[end] = uuid;
   // Add event
-  add_event_begin(dispatch, uuid, begin, name, flow_id);
+  add_event_begin(dispatch, uuid, begin, name, flow_ids);
   add_event_end(dispatch, uuid, end);
 }
 
@@ -285,11 +286,16 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
       if (std::string(class_name) == "lttng:host") {
         add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur);
       } else if (std::string(class_name) == "lttng:host_flow") {
-        
-        const bt_field *flow_id_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
-        const long flow_id = bt_field_integer_unsigned_get_value(flow_id_field);
-        add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur, flow_id);
+
+        const bt_field *flow_ids_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 4);
+
+        std::set<flow_id_t> flow_ids;
+        for (unsigned i=0; i < bt_field_array_get_length(flow_ids_field); i++) {
+            const bt_field *flow_id_field = bt_field_array_borrow_element_field_by_index_const(flow_ids_field, i);
+            flow_ids.insert(bt_field_integer_unsigned_get_value(flow_id_field));
+        }
+        add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur, flow_ids);
       } else if (std::string(class_name) == "lttng:device") {
 
         const bt_field *did_field =
@@ -318,7 +324,12 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 7);
         const std::string queue_name = bt_field_string_get_value(queue_name_field);
 
-        add_event_gpu(dispatch, hostname, process_id, uuid, queue_name, did, sdid, name, ts, dur);
+        const bt_field *flow_id_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 8);
+        const uint64_t flow_id = bt_field_integer_unsigned_get_value(flow_id_field);
+
+
+        add_event_gpu(dispatch, hostname, process_id, uuid, queue_name, did, sdid, name, ts, dur, {flow_id} );
       }
 
     }

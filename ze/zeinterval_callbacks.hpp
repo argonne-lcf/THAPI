@@ -7,7 +7,8 @@
 #include <ze_api.h>
 #include <unordered_set>
 #include <cstddef>
- 
+#include <map>
+
 typedef std::map<uintptr_t, uintptr_t> MemoryInterval;
 
 typedef std::tuple<hostname_t, process_id_t, ze_event_handle_t> hp_event_t;
@@ -21,24 +22,26 @@ typedef hp_event_t hpe_t;
 typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
-typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, uint64_t, clock_lttng_device_t, flow_id_t> t_tfnm_m_d_ts_cld_tp;
-typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, uint64_t, flow_id_t> l_tfnm_m_ts_tp;
+typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_tp;
+typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, uint64_t> l_tfnm_m_ts_tp;
 
 typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
 
 struct zeinterval_callbacks_state {
     std::queue<const bt_message*>                           downstream_message_queue;
     // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
-    std::unordered_map<hp_command_list_t, thapi_device_id>  command_list_to_device;
+    std::unordered_map<hp_command_list_t, thapi_device_id>           command_list_to_device;
     std::unordered_map<hp_command_list_t, ze_command_queue_handle_t> command_list_to_command_queue;
-
+    std::unordered_map<hp_command_list_t, flow_id_t>                 command_list_to_flow_id;
     std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>>  command_list_to_events;
+
     std::unordered_map<hp_device_t, ze_device_properties_t> device_to_properties;
     // Kernel name & metadata
     std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_name;
     std::unordered_map<hp_kernel_t, std::string>            kernel_to_groupsize_str;
     std::unordered_map<hp_kernel_t, std::string>            kernel_to_simdsize_str;
-    std::unordered_map<hpt_function_name_t, std::pair<uint64_t,uint64_t>>       host_start;
+    std::unordered_map<hpt_function_name_t, uint64_t>       host_start;
+    std::unordered_map<hpt_t, std::set<flow_id_t>>          host_flow_start;
     std::unordered_map<hpt_t, thapi_function_name>          profiled_function_name;
 
     /* Handle memory copy */
@@ -50,7 +53,7 @@ struct zeinterval_callbacks_state {
     /* Handle variable */
     std::unordered_map<hpe_t, event_profiling_result_t> event_to_profiling_result;
     std::unordered_map<hpd_t, clock_lttng_device_t>     device_timestamps_pair_ref;
-    std::unordered_map<hpt_t, l_tfnm_m_ts_tp>          command_partial_payload;
+    std::unordered_map<hpt_t, l_tfnm_m_ts_tp>           command_partial_payload;
     std::unordered_map<hpe_t, t_tfnm_m_d_ts_cld_tp>     event_payload;
     std::unordered_map<hpd_t, thapi_device_id>          subdevice_parent;
 
