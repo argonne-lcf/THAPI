@@ -299,9 +299,14 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      state->host_flow_start [ { hostname,process_id, thread_id } ] = {state->flow_id};
       <% elsif dbt_event.name_striped == "zeCommandQueueExecuteCommandLists" %>
      for (uint32_t i=0; i < numCommandLists; i++) {
-        const auto flow_ids =  state->command_list_to_flow_id[ {hostname,process_id,phCommandLists_vals[i]} ];
-        state->host_flow_start[ {hostname,process_id, thread_id} ].insert(flow_ids);
+        const auto& flow_ids =  state->zeCommandListAppend2flowIds[ {hostname,process_id,phCommandLists_vals[i]} ];
+        state->host_flow_start[ {hostname, process_id, thread_id} ].insert(flow_ids.begin(), flow_ids.end() );
      }
+      <% elsif  dbt_event.name_striped == "zeCommandQueueSynchronize" %>
+        for (const auto& [hp_hCommandList, hCommandQueue2] : state->zeCommandList2zeCommandQueue) {
+            if (hCommandQueue2 == hCommandQueue)
+                state->zeCommandListAppend2flowIds.erase(hp_hCommandList);
+        }
       <% end %>
     <% elsif dbt_event.stop? %>
      auto it_start = state->host_start.find( { hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"} );
@@ -508,6 +513,19 @@ Case B:
   %>
 
   <%# Map last command partial payload %>
+  <% if dbt_event.stop? and dbt_event.name_striped == "zeCommandQueueCreate" %>
+        const flow_id_t flow_id = state->flow_id;
+        state->zeCommandQueueCreate2flowId[ { hostname, process_id, phCommandQueue_val } ] = flow_id;
+        state->flow_id++;
+  <% end %>
+
+  <% if dbt_event.stop? and dbt_event.name_striped.include?("zeCommandListCreate") %>
+        const flow_id_t flow_id = state->flow_id;
+        state->zeCommandListCreate2flowId[ { hostname, process_id, phCommandList_val } ] = flow_id;
+        state->flow_id++;
+  <% end %>
+
+  <%# Map last command partial payload %>
   <% if dbt_event.start? and dbt_event.fields_name.include?('hSignalEvent') %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
@@ -538,14 +556,15 @@ Case B:
      const std::string name{"<%= dbt_event.name_striped %>"};
     <% end %>
      const flow_id_t flow_id = state->flow_id;
+     state->zeCommandListAppend2flowIds[ { hostname,process_id, hCommandList } ].insert(flow_id);
+     state->command_partial_payload[ { hostname,process_id,thread_id } ] =
+        { flow_id, name, metadata.str(), ns_from_origin, hCommandList};
      state->flow_id++;
-     state->command_list_to_flow_id[ { hostname,process_id, hCommandList } ] = flow_id;
-     state->command_partial_payload[ { hostname,process_id,thread_id } ] = { hCommandList, name, metadata.str(), ns_from_origin};
   <% end %>
 
   <% if dbt_event.start? and dbt_event.name_striped == "zeCommandQueueExecuteCommandLists" %>
      for (uint32_t i=0; i < numCommandLists; i++)
-         state->command_list_to_command_queue[{hostname, process_id, phCommandLists_vals[i]} ] = hCommandQueue;
+         state->zeCommandList2zeCommandQueue[{hostname, process_id, phCommandLists_vals[i]} ] = hCommandQueue;
   <% end %>
 
   <%#
@@ -565,7 +584,7 @@ Case B:
      // Best we can do is to bailout
      if (it_pp == state->command_partial_payload.end())
           return;
-     const auto [hCommandList, commandname, metadata, lltng_min ] = it_pp->second;
+     const auto [flow_id_kernel, commandname, metadata, lltng_min, hCommandList ] = it_pp->second;
      state->command_partial_payload.erase(it_pp);
      state->command_list_to_events[ { hostname, process_id, hCommandList } ].insert(hEvent);
 
@@ -581,32 +600,9 @@ Case B:
 
      auto it = state->event_to_profiling_result.find(hpe);
      if (it == state->event_to_profiling_result.end()){
-          //Creeate the payload who will be used by event_profiling_results
-          state->event_payload[hpe] = { hCommandList, commandname, metadata, lltng_min, timestamp_pair_ref };
+          state->event_payload[hpe] = { flow_id_kernel, commandname, metadata, lltng_min, timestamp_pair_ref, hCommandList};
      } else {
-
-          // Can we have a race condition with the command list destroy?
-          uint64_t uuid;
-          std::string queue_name;
-          const auto it1 = state->command_list_to_command_queue.find(  { hostname,process_id, hCommandList } );
-          if (it1 != state->command_list_to_command_queue.end() ) {
-                uuid = reinterpret_cast<uint64_t>(it1->second);
-                queue_name = "zeCommandQueue";
-          } else {
-                uuid = reinterpret_cast<uint64_t>(hCommandList);
-                queue_name = "zeCommandListImmediate";
-          }
-
-          // Handle the callbacks case, where `event_profiling_results` was called before `event_profiling`.
-          const auto& [err, globalStart, globalEnd] = it->second;
-          const auto& device_to_properties = state->device_to_properties;
-          const auto& subdevice_parent = state->subdevice_parent;
-          const auto flow_id = state-> command_list_to_flow_id[ { hostname,process_id, hCommandList } ];
-          create_and_enqueue_device_message(hostname.c_str(), process_id, uuid, queue_name.c_str(), device,
-                                            commandname.c_str(), metadata.c_str(),
-                                            err, globalStart, globalEnd, lltng_min, flow_id,
-                                            timestamp_pair_ref,
-                                            device_to_properties, subdevice_parent);
+          //exit("Not implemented Error");
      }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
@@ -616,27 +612,29 @@ Case B:
 
      auto it = state->event_payload.find(hpe);
      if (it != state->event_payload.end()) {
-          const auto& [hCommandList, commandname, metadata, lltng_min, timestamp_pair_ref] = it->second;
+          const auto& [flow_id_kernel, commandname, metadata, lltng_min, timestamp_pair_ref, hCommandList] = it->second;
           const auto& device_to_properties = state->device_to_properties;
           const auto& subdevice_parent = state->subdevice_parent;
-          const auto flow_id = state-> command_list_to_flow_id[ { hostname,process_id, hCommandList } ];
 
           // Can we have a race condition with the command list destroy?
           const auto device = state->command_list_to_device[ { hostname,process_id,hCommandList } ];
-          uint64_t uuid;
+
+          // We use use the flow as a UUID
+          uint64_t queue_uuid;
           std::string queue_name;
-          const auto it1 = state->command_list_to_command_queue.find(  { hostname,process_id, hCommandList } );
-          if (it1 != state->command_list_to_command_queue.end() ) {
-                uuid = reinterpret_cast<uint64_t>(it1->second);
+          const auto it1 = state->zeCommandList2zeCommandQueue.find(  { hostname,process_id, hCommandList } );
+          if (it1 != state->zeCommandList2zeCommandQueue.end() ) {
+                const auto& hCommandQueue = it1->second;
+                queue_uuid = state->zeCommandQueueCreate2flowId[ {hostname, process_id, hCommandQueue} ];
                 queue_name = "zeCommandQueue";
           } else {
-                uuid = reinterpret_cast<uint64_t>(hCommandList);
+                queue_uuid = state->zeCommandListCreate2flowId[ {hostname, process_id, hCommandList} ];
                 queue_name = "zeCommandListImmediate";
           }
 
-          create_and_enqueue_device_message(hostname.c_str(), process_id, uuid, queue_name.c_str(), device,
+          create_and_enqueue_device_message(hostname.c_str(), process_id, queue_uuid, queue_name.c_str(), device,
                                             commandname.c_str(), metadata.c_str(),
-                                            err, globalStart, globalEnd, lltng_min, flow_id,
+                                            err, globalStart, globalEnd, lltng_min, flow_id_kernel,
                                             timestamp_pair_ref,
                                             device_to_properties, subdevice_parent);
      } else {
@@ -653,7 +651,7 @@ Case B:
           const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, {hostname, process_id, thread_id} );
           const hp_command_list_t hpl(hostname, process_id, hCommandList);
 
-          state->command_list_to_command_queue.erase(hpl);
+          state->zeCommandList2zeCommandQueue.erase(hpl);
 
           auto it_e = state->command_list_to_events.find(hpl);
           if (it_e != state->command_list_to_events.end()) {

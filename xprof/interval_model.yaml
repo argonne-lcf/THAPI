@@ -75,7 +75,6 @@
   - :name: metadata
     :class: string
   - :name: uuid
-    :cast_type: void *
     :class: unsigned
     :class_properties:
         :field_value_range: 64

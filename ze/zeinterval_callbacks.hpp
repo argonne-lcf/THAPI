@@ -22,8 +22,8 @@ typedef hp_event_t hpe_t;
 typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
-typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_tp;
-typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, uint64_t> l_tfnm_m_ts_tp;
+typedef std::tuple<flow_id_t, thapi_function_name, std::string, uint64_t, clock_lttng_device_t, ze_command_list_handle_t> t_tfnm_m_d_ts_cld_tp;
+typedef std::tuple<flow_id_t, thapi_function_name, std::string, uint64_t, ze_command_list_handle_t> l_tfnm_m_ts_tp;
 
 typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
 
@@ -31,9 +31,12 @@ struct zeinterval_callbacks_state {
     std::queue<const bt_message*>                           downstream_message_queue;
     // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
     std::unordered_map<hp_command_list_t, thapi_device_id>           command_list_to_device;
-    std::unordered_map<hp_command_list_t, ze_command_queue_handle_t> command_list_to_command_queue;
-    std::unordered_map<hp_command_list_t, flow_id_t>                 command_list_to_flow_id;
     std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>>  command_list_to_events;
+
+    std::unordered_map<hp_command_list_t, ze_command_queue_handle_t> zeCommandList2zeCommandQueue;
+    std::unordered_map<hp_command_list_t,  std::set<flow_id_t>>      zeCommandListAppend2flowIds;
+    std::unordered_map<hp_command_queue_t, flow_id_t>                zeCommandQueueCreate2flowId;
+    std::unordered_map<hp_command_list_t,  flow_id_t>                zeCommandListCreate2flowId;
 
     std::unordered_map<hp_device_t, ze_device_properties_t> device_to_properties;
     // Kernel name & metadata

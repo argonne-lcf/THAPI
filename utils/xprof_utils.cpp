@@ -69,8 +69,8 @@ bt_message* create_host_message(const char* hostname, const process_id_t process
      // flow id
      if (!flow_ids.empty() ) {
         const auto size = flow_ids.size();
-        bt_field *flow_id_field_length = bt_field_structure_borrow_member_field_by_index(payload_field, 3);
-        bt_field_integer_unsigned_set_value(flow_id_field_length, size);
+        //bt_field *flow_id_field_length = bt_field_structure_borrow_member_field_by_index(payload_field, 3);
+        //bt_field_integer_unsigned_set_value(flow_id_field_length, size);
 
         bt_field *flow_id_field = bt_field_structure_borrow_member_field_by_index(payload_field, 4);
         bt_field_array_dynamic_set_length(flow_id_field, size);

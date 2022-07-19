@@ -14,6 +14,17 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   return uuid++;
 }
 
+static uint64_t rescale_queue_uuid(uint64_t uuid) {
+  static uint64_t current_queue_uuid = 0;
+  static std::unordered_map<uint64_t, uint64_t> m;
+  auto ret = m.insert( { uuid, current_queue_uuid } );
+  if (!ret.second) {
+    return ret.first->second;
+  } else {
+    return current_queue_uuid++;
+  }
+}
+
 static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
                             timestamp_t begin, std::string name, std::set<flow_id_t> flow_ids = {} ) {
   auto *packet = dispatch->trace.add_packet();
@@ -316,9 +327,9 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
         const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
 
-        const bt_field *uuid_field =
+        const bt_field *queue_uuid_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 6);
-        const long uuid = bt_field_integer_unsigned_get_value(uuid_field);
+        const long queue_uuid = bt_field_integer_unsigned_get_value(queue_uuid_field);
 
         const bt_field *queue_name_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 7);
@@ -328,8 +339,7 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 8);
         const uint64_t flow_id = bt_field_integer_unsigned_get_value(flow_id_field);
 
-
-        add_event_gpu(dispatch, hostname, process_id, uuid, queue_name, did, sdid, name, ts, dur, {flow_id} );
+        add_event_gpu(dispatch, hostname, process_id, rescale_queue_uuid(queue_uuid), queue_name, did, sdid, name, ts, dur, {flow_id} );
       }
 
     }
