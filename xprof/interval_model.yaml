@@ -12,6 +12,8 @@
   - :name: vtid
     :class: unsigned
   - :name: ts
+    :class_properties:
+        :field_value_range: 64
     :class: signed
   - :name: backend
     :class: signed

@@ -302,11 +302,8 @@ static void zeinterval_<%= dbt_event.name %>_callback(
         const auto& flow_ids =  state->zeCommandListAppend2flowIds[ {hostname,process_id,phCommandLists_vals[i]} ];
         state->host_flow_start[ {hostname, process_id, thread_id} ].insert(flow_ids.begin(), flow_ids.end() );
      }
-      <% elsif  dbt_event.name_striped == "zeCommandQueueSynchronize" %>
-        for (const auto& [hp_hCommandList, hCommandQueue2] : state->zeCommandList2zeCommandQueue) {
-            if (hCommandQueue2 == hCommandQueue)
-                state->zeCommandListAppend2flowIds.erase(hp_hCommandList);
-        }
+      <% elsif  dbt_event.name_striped == "zeCommandListReset" %>
+        state->zeCommandListAppend2flowIds.erase( {hostname, process_id, hCommandList} );
       <% end %>
     <% elsif dbt_event.stop? %>
      auto it_start = state->host_start.find( { hostname,process_id, thread_id, "<%= dbt_event.name_striped %>"} );
