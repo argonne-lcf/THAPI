@@ -40,6 +40,8 @@
     :class: array_dynamic
     :field:
       :class: unsigned
+      :class_properties:
+        :field_value_range: 64
 - :name: lttng:device
   :payload:
   - :name: name
@@ -85,6 +87,8 @@
     :class: string
   - :name: flow_id
     :class: unsigned
+    :class_properties:
+        :field_value_range: 64
 - :name: lttng:device_name
   :payload:
   - :name: name
@@ -97,3 +101,5 @@
     :class: string
   - :name: size
     :class: unsigned
+    :class_properties:
+        :field_value_range: 64

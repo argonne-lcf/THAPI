@@ -85,7 +85,7 @@ public:
   // ` symbol lookup error: ./ici/lib/libXProf.so: undefined symbol: _ZTI13TallyCoreBase`
   virtual const std::vector<std::string> to_string() = 0;
 
-  const auto to_string_size() {
+  auto to_string_size() {
     std::vector<long> v;
     for (auto &e : to_string())
       v.push_back(static_cast<long>(e.size()));
