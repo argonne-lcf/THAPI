@@ -25,10 +25,25 @@ def set_array_dynamic(field_name, index, bt2_class, name, field)
 EOF
 end
 
+def set_option(field_name, index, bt2_class, name, field)
+    puts <<EOF
+     bt_field *#{name}_field = bt_field_structure_borrow_member_field_by_index(#{field_name}_field,#{index});
+     if (#{name} != NULL) {
+       bt_field_option_set_has_field(#{name}_field, BT_TRUE);
+       bt_field *#{name}_option_field = bt_field_option_borrow_field(#{name}_field);
+       bt_field_#{get_cetter(bt2_class)}_set_value(#{name}_option_field, #{name});
+     } else {
+        bt_field_option_set_has_field(#{name}_field, FALSE);
+     }
+EOF
+end
+
 def set_field(name, field, index)
     case field[:class]
     when "array_dynamic"
         set_array_dynamic(name, index, field[:class], field[:name], field[:field])
+    when "option"
+        set_option(name, index, field[:class], field[:name], field[:field])
     else
         set_scalar(name, index, field[:class], field[:name])
     end

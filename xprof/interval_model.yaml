@@ -93,8 +93,17 @@
   :payload:
   - :name: name
     :class: string
-  - :name: did
+  - :name: ptr
     :class: unsigned
+    :class_properties:
+        :field_value_range: 64
+# Should be an option on a struct  of 2 64 bits UUID
+#  - :name: uuid
+#    :class: option
+#    :field:
+#      :class: unsigned
+#      :class_properties:
+#        :field_value_range: 64
 - :name: lttng:traffic
   :payload:
   - :name: name

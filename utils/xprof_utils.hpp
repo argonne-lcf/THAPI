@@ -33,6 +33,10 @@ typedef uint64_t flow_id_t;
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
 typedef std::tuple<hostname_t, thapi_device_id> h_device_t;
+
+typedef std::tuple<hostname_t, thapi_device_id> h_d_t;
+typedef std::tuple<hostname_t, thapi_device_id,thapi_device_id> h_dsd_t;
+
 typedef std::tuple<hostname_t, process_id_t> hp_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;

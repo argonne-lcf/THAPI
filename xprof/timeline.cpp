@@ -14,17 +14,6 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   return uuid++;
 }
 
-static uint64_t rescale_queue_uuid(uint64_t uuid) {
-  static uint64_t current_queue_uuid = 0;
-  static std::unordered_map<uint64_t, uint64_t> m;
-  auto ret = m.insert( { uuid, current_queue_uuid } );
-  if (!ret.second) {
-    return ret.first->second;
-  } else {
-    return current_queue_uuid++;
-  }
-}
-
 static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
                             timestamp_t begin, std::string name, std::set<flow_id_t> flow_ids = {} ) {
   auto *packet = dispatch->trace.add_packet();
@@ -81,7 +70,9 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
         auto *process = track_descriptor->mutable_process();
         process->set_pid(hp_uuid);
         std::ostringstream oss;
-        oss << hostname << " | Process " << process_id ;
+        oss << hostname;
+        if (process_id!=0)
+            oss << " | Process " << process_id ;
         if (did !=0) {
             oss << " | Device " << did;
             if (sdid !=0)
@@ -209,7 +200,7 @@ static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostna
       track_descriptor->set_parent_uuid(parent_uuid);
 
       std::ostringstream oss;
-      oss << queue_name << " " << c_uuid;
+      oss << queue_name << " " << rescale_uuid(dispatch->m4[hostname][did][sdid], c_uuid);
       track_descriptor->set_name(oss.str());
     }
   } else {
@@ -329,7 +320,7 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
         const bt_field *queue_uuid_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 6);
-        const long queue_uuid = bt_field_integer_unsigned_get_value(queue_uuid_field);
+        const uint64_t queue_uuid = bt_field_integer_unsigned_get_value(queue_uuid_field);
 
         const bt_field *queue_name_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 7);
@@ -339,7 +330,14 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 8);
         const uint64_t flow_id = bt_field_integer_unsigned_get_value(flow_id_field);
 
-        add_event_gpu(dispatch, hostname, process_id, rescale_queue_uuid(queue_uuid), queue_name, did, sdid, name, ts, dur, {flow_id} );
+        // Hack to put Process at 0, meaning the pointer are uniq per hostname.
+        const uint64_t resclated_queue_uuid = rescale_uuid(dispatch->resclate_queue_uuid, queue_uuid);
+        const uint64_t rescaled_did = rescale_uuid(dispatch->m2[hostname], did);
+        uint64_t rescaled_sdid = 0;
+        if (sdid != 0)
+            rescaled_sdid = rescale_uuid(dispatch->m3[hostname][did], sdid);
+
+        add_event_gpu(dispatch, hostname, 0, resclated_queue_uuid, queue_name, rescaled_did, rescaled_sdid, name, ts, dur, {flow_id} );
       }
 
     }

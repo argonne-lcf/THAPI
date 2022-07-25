@@ -20,4 +20,36 @@ struct timeline_dispatch {
     std::map<perfetto_uuid_t, std::stack<timestamp_t>>  uuid2stack;
 
     perfetto_pruned::Trace trace;
+
+    std::unordered_map<uint64_t, uint64_t> resclate_queue_uuid;
+    std::unordered_map<h_d_t, uint64_t> resclate_device_uuid;
+    std::unordered_map<h_dsd_t, uint64_t> resclate_subdevice_uuid;
+
+    std::unordered_map<hostname_t,
+                       std::unordered_map<thapi_device_id, uint64_t> > m2;
+
+
+    std::unordered_map<hostname_t,
+                       std::unordered_map<thapi_device_id,
+                                          std::unordered_map<thapi_device_id, uint64_t> > > m3;
+
+
+    std::unordered_map<hostname_t,
+                       std::unordered_map<thapi_device_id,
+                                          std::unordered_map<thapi_device_id, 
+                                                             std::unordered_map<uint64_t, uint64_t>> > > m4;
 };
+
+
+// This only work because we never remove a value in the map
+template <class T>
+uint64_t rescale_uuid(std::unordered_map<T, uint64_t> &m, T uuid) {
+  const uint64_t current_uuid = m.size() + 1 ; // Start at 1, 0 is special
+  auto ret = m.insert( {uuid, current_uuid } );
+  if (!ret.second) {
+    return ret.first->second;
+  } else {
+    return current_uuid;
+  }
+}
+
