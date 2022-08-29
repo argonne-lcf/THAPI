@@ -1,13 +1,22 @@
-module Babeltrac2Gen
+module Babeltrace2Gen
+
   class BTFieldClass
     def self.from_h(model)
       FIELD_CLASS_NAME_MAP[model[:class]].from_h(model)
+    end
+
+    def get_declarator
+      raise NotImplementedError
     end
   end
 
   class BTFieldClass::Bool < BTFieldClass
     def self.from_h(model)
       self.new
+    end
+
+    def get_declarator(trace_class:, variable:, indent: 0)
+      [ "#{' '*indent}#{variable} = bt_field_class_bool_create(#{trace_class});" ]
     end
   end
   BTFieldClassBool = BTFieldClass::Bool
@@ -22,13 +31,18 @@ module Babeltrac2Gen
     def self.from_h(model)
       self.new(length: model[:length])
     end
+
+    def get_declarator(trace_class:, variable:, indent: 0)
+      [ "#{' '*indent}#{variable} = bt_field_class_bit_array_create(#{trace_class}, #{@length});" ]
+    end
+
   end
   BTFieldClassBitArray = BTFieldClass::BitArray
 
   class BTFieldClass::Integer < BTFieldClass
     attr_reader :field_value_range, :preferred_display_base
 
-    def initialize(field_value_range:, preferred_display_base: 10)
+    def initialize(field_value_range: 64, preferred_display_base: 10)
       @field_value_range = field_value_range
       @preferred_display_base = preferred_display_base
     end
@@ -36,15 +50,28 @@ module Babeltrac2Gen
     def self.from_h(model)
       self.new(**model[:class_properties])
     end
+
+    def get_declarator(trace_class: nil, variable:, indent: 0)
+      indent_str = ' '*indent
+      a = []
+      a << "#{indent_str}bt_field_class_integer_set_field_value_range(#{variable}, #{@field_value_range});" if @field_value_range != 64
+      a << "#{indent_str}bt_field_class_integer_set_preferred_display_base(#{variable}, #{@preferred_display_base});" if @preferred_display_base != 10
+    end
   end
   BTFieldClassInteger = BTFieldClass::Integer
 
   class BTFieldClass::Integer::Unsigned < BTFieldClassInteger
+    def get_declarator(trace_class:, variable:, indent: 0)
+      [ "#{' '*indent}#{variable} = bt_field_class_integer_unsigned_create(#{trace_class});" ] + super
+    end
   end
   BTFieldClass::IntegerUnsigned = BTFieldClass::Integer::Unsigned
   BTFieldClassIntegerUnsigned = BTFieldClass::Integer::Unsigned
 
   class BTFieldClass::Integer::Signed < BTFieldClassInteger
+    def get_declarator(trace_class:, variable:, indent: 0)
+      [ "#{' '*indent}#{variable} = bt_field_class_integer_signed_create(#{trace_class});" ] + super
+    end
   end
   BTFieldClass::IntegerSigned = BTFieldClass::Integer::Signed
   BTFieldClassIntegerSigned = BTFieldClass::Integer::Signed
@@ -57,11 +84,17 @@ module Babeltrac2Gen
   BTFieldClassReal = BTFieldClass::Real
 
   class BTFieldClass::Real::SinglePrecision < BTFieldClassReal
+    def get_declarator(trace_class:, variable:, indent: 0)
+      [ "#{' '*indent}#{variable} = bt_field_class_real_single_precision_create(#{trace_class});" ] 
+    end
   end
   BTFieldClass::RealSinglePrecision = BTFieldClass::Real::SinglePrecision
   BTFieldClassRealSinglePrecision = BTFieldClass::Real::SinglePrecision
 
   class BTFieldClass::Real::DoublePrecision < BTFieldClassReal
+    def get_declarator(trace_class:, variable:, indent: 0)
+      [ "#{' '*indent}#{variable} = bt_field_class_real_double_precision_create(#{trace_class});" ]
+    end
   end
   BTFieldClass::RealDoublePrecision = BTFieldClass::Real::DoublePrecision
   BTFieldClassRealDoublePrecision = BTFieldClass::Real::DoublePrecision
@@ -133,6 +166,20 @@ module Babeltrac2Gen
 
     def self.from_h(model)
       self.new(element_field_class: model[:field], length: model[:length])
+    end
+
+    def get_declarator(trace_class:, variable:, indent: 0)
+      a = ["#{' '*(indent)}{" ]
+      indent += 2
+
+      indent_str = ' '*(indent);
+      element_field_class_variable= "#{variable}_field_class";
+      a << "#{indent_str}bt_field_class *#{element_field_class_variable};"
+      a += @element_field_class.get_declarator(trace_class: trace_class, variable: element_field_class_variable, indent: indent)
+      a << "#{indent_str}#{variable} = bt_field_class_array_static_create(#{trace_class}, #{element_field_class_variable}, #{@length});"
+
+      indent -= 2
+      a << "#{' '*(indent)}}"
     end
   end
   BTFieldClassArrayStatic = BTFieldClass::Array::Static
