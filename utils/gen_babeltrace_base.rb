@@ -84,7 +84,10 @@ module Babeltrace2Gen
       raise if parent
       @parent = nil
       @assigns_automatic_stream_class_id = assigns_automatic_stream_class_id
-      @stream_classes = stream_classes.collect{ |m| BTStreamClass.from_h(self, m) }
+      @stream_classes = stream_classes.collect{ |m|
+          raise "Incoherent ID scheme" if (m[:id].nil? != @assigns_automatic_stream_class_id)
+          BTStreamClass.from_h(self, m)
+      }
     end
 
     def self.from_h(parent, model)
@@ -118,7 +121,6 @@ module Babeltrace2Gen
     def initialize(parent:, packet_context_field_class: nil, packet_context: nil,
                    event_common_context_field_class: nil, event_common_context: nil, event_classes: [], id: nil)
       @parent = parent
-      raise "Incoherent scheme for IDs" if (id.nil? != @parent.assigns_automatic_stream_class_id)
       @id = id
 
       raise "Two packet_context" if packet_context_field_class and packet_context
