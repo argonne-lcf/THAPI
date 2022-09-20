@@ -1,4 +1,11 @@
 module Babeltrace2Gen
+
+  module BTWrap
+    def wrapt_in_structure(d)
+      {:class => "structure", :members => d}
+    end
+  end
+
   module BTPrinter
     @@output = ""
     @@indent = 0
@@ -106,8 +113,8 @@ module Babeltrace2Gen
   class BTStreamClass
     include BTLocator
     include BTPrinter
-    attr_reader :packet_context_field_class, :packet_context
-    attr_reader :event_common_context_field_class, :event_common_context, :event_classes, :id
+    include BTWrap
+    attr_reader :packet_context_field_class, :event_common_context_field_class, :event_classes, :id
     def initialize(parent:, packet_context_field_class: nil, packet_context: nil,
                    event_common_context_field_class: nil, event_common_context: nil, event_classes: [], id: nil)
       @parent = parent
@@ -117,12 +124,12 @@ module Babeltrace2Gen
       raise "Two packet_context" if packet_context_field_class and packet_context
       # Should put assert to check for struct
       @packet_context_field_class = BTFieldClass.from_h(self, packet_context_field_class) if packet_context_field_class
-      @packet_context_field_class = BTFieldClass.from_h(self, {:class => "structure", :members => packet_context} ) if packet_context
+      @packet_context_field_class = BTFieldClass.from_h(self, wrapt_in_structure(packet_context) ) if packet_context
 
       raise "Two event_common_context" if event_common_context_field_class and event_common_context
       # Should put assert to check for struct
       @event_common_context_field_class = BTFieldClass.from_h(self, event_common_context_field_class) if event_common_context_field_class
-      @event_common_context_field_class = BTFieldClass.from_h(self, {:class => "structure", :members => event_common_context}) if event_common_context
+      @event_common_context_field_class = BTFieldClass.from_h(self, wrapt_in_structure(event_common_context)) if event_common_context
 
       @event_classes = event_classes.collect { |ec| BTEventClass.from_h(self, **ec) }
     end
@@ -147,12 +154,18 @@ module Babeltrace2Gen
   class BTEventClass
     include BTLocator
     include BTPrinter
+    include BTWrap
     attr_reader :name, :specific_context_field_class, :payload_field_class
-    def initialize(parent:, name:, specific_context_field_class: nil, payload_field_class: nil)
+    def initialize(parent:, name:, specific_context_field_class: nil, specific_context: nil, payload_field_class: nil, payload: nil)
       @parent = parent
       @name = name
-      @specific_context_field_class = BTFieldClass.from_h(self, **specific_context_field_class) if specific_context_field_class
-      @payload_field_class = BTFieldClass.from_h(self, **payload_field_class) if payload_field_class
+      raise "Two specific_context" if specific_context_field_class and specific_context
+      @specific_context_field_class = BTFieldClass.from_h(self, specific_context_field_class) if specific_context_field_class
+      @specific_context_field_class = BTFieldClass.from_h(self, wrapt_in_structure(specific_context_field_class)) if specific_context
+
+      raise "Two payload" if payload_field_class and payload
+      @payload_field_class = BTFieldClass.from_h(self, payload_field_class) if payload_field_class
+      @payload_field_class = BTFieldClass.from_h(self, wrapt_in_structure(payload_field_class)) if payload_field
     end
 
     def self.from_h(parent, model)
