@@ -70,12 +70,14 @@ module Babeltrace2Gen
 
   class BTTraceClass
     include BTLocator
+    include BTPrinter
     attr_reader :stream_classes, :assigns_automatic_stream_class_id
 
     def initialize(parent:, stream_classes:, assigns_automatic_stream_class_id: true)
       raise if parent
       @parent = nil
-      @stream_classes = stream_classes.collect{ |m| BTStreamClass.new(self, **m) }
+      @assigns_automatic_stream_class_id = assigns_automatic_stream_class_id
+      @stream_classes = stream_classes.collect{ |m| BTStreamClass.from_h(self, m) }
     end
 
     def self.from_h(parent, model)
@@ -86,15 +88,42 @@ module Babeltrace2Gen
       self
     end
 
+    def get_declarator(self_component:, variable:)
+      scope {
+        pr "bt_trace_class *#{variable} = bt_trace_class_create(#{self_component});"
+        @stream_classes.each_with_index { |m,i|
+          stream_class_name = "bt_stream_class_#{i}"
+          pr "bt_stream_class *#{stream_class_name};"
+          auto_id = @assigns_automatic_stream_class_id ? "true" : "false"
+          pr "bt_stream_class_set_assigns_automatic_stream_id(#{stream_class_name}, #{auto_id});"
+          m.get_declarator(trace_class: variable, variable: stream_class_name)
+        }
+      }
+    end
+
   end
 
   class BTStreamClass
     include BTLocator
-    attr_reader :packet_context_field_class, :event_common_context_field_class, :event_classes
-    def initialize(parent:, packet_context_field_class: nil, event_common_context_field_class: nil, event_classes: [])
+    include BTPrinter
+    attr_reader :packet_context_field_class, :packet_context
+    attr_reader :event_common_context_field_class, :event_common_context, :event_classes, :id
+    def initialize(parent:, packet_context_field_class: nil, packet_context: nil,
+                   event_common_context_field_class: nil, event_common_context: nil, event_classes: [], id: nil)
       @parent = parent
-      @packet_context_field_class = BTFieldClass.from_h(self, **packet_context_field_class) if packet_context_field_class
-      @event_common_context_field_class = BTFieldClass.from_h(self, **event_common_context_field_class) if event_common_context_field_class
+      raise "Incoherent scheme for IDs" if (id.nil? != @parent.assigns_automatic_stream_class_id)
+      @id = id
+
+      raise "Two packet_context" if packet_context_field_class and packet_context
+      # Should put assert to check for struct
+      @packet_context_field_class = BTFieldClass.from_h(self, packet_context_field_class) if packet_context_field_class
+      @packet_context_field_class = BTFieldClass.from_h(self, {:class => "structure", :members => packet_context} ) if packet_context
+
+      raise "Two event_common_context" if event_common_context_field_class and event_common_context
+      # Should put assert to check for struct
+      @event_common_context_field_class = BTFieldClass.from_h(self, event_common_context_field_class) if event_common_context_field_class
+      @event_common_context_field_class = BTFieldClass.from_h(self, {:class => "structure", :members => event_common_context}) if event_common_context
+
       @event_classes = event_classes.collect { |ec| BTEventClass.from_h(self, **ec) }
     end
 
@@ -106,6 +135,13 @@ module Babeltrace2Gen
       self
     end
 
+    def get_declarator(trace_class:, variable:)
+      if id.nil?
+        pr "#{variable} = bt_stream_class_create(#{trace_class});"
+      else
+        pr "#{variable} = bt_stream_class_create_with_id(#{trace_class}, #{@id});"
+      end
+    end
   end
 
   class BTEventClass
@@ -158,7 +194,8 @@ module Babeltrace2Gen
     end
 
     def self.from_h(parent, model)
-      FIELD_CLASS_NAME_MAP[model[:class]].from_h(parent, model)
+      key = model.delete(:class)
+      FIELD_CLASS_NAME_MAP[key].from_h(parent, model)
     end
 
     def get_declarator
@@ -389,7 +426,7 @@ module Babeltrace2Gen
       end
     end
 
-    def initialize(parent:, members:)
+    def initialize(parent:, members: [])
       @parent = parent
       @members = members.collect { |m| Member.new(parent: self, name: m[:name], field_class: m) }
     end
@@ -404,7 +441,7 @@ module Babeltrace2Gen
     end
 
     def self.from_h(parent, model)
-      self.new(parent: parent, members: model[:members])
+      self.new(parent: parent, **model)
     end
 
     def get_declarator(trace_class:, variable:)
