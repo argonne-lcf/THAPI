@@ -739,9 +739,10 @@ EOF
 
 register_prologue "zeEventPoolCreate", <<EOF
   ze_event_pool_desc_t _new_desc;
-  if (_do_profile && desc) {
+  if (_do_profile && desc && !(desc->flags & ZE_EVENT_POOL_FLAG_IPC)) {
     _new_desc = *desc;
     _new_desc.flags |= ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP;
+    _new_desc.flags |= ZE_EVENT_POOL_FLAG_HOST_VISIBLE;
     desc = &_new_desc;
   }
 EOF
