@@ -1,11 +1,5 @@
 module Babeltrace2Gen
 
-  module BTWrap
-    def wrapt_in_structure(d)
-      {:class => "structure", :members => d}
-    end
-  end
-
   module BTPrinter
     @@output = ""
     @@indent = 0
@@ -80,12 +74,12 @@ module Babeltrace2Gen
     include BTPrinter
     attr_reader :stream_classes, :assigns_automatic_stream_class_id
 
-    def initialize(parent:, stream_classes:, assigns_automatic_stream_class_id: true)
+    def initialize(parent:, stream_classes:, assigns_automatic_stream_class_id: nil)
       raise if parent
       @parent = nil
       @assigns_automatic_stream_class_id = assigns_automatic_stream_class_id
       @stream_classes = stream_classes.collect{ |m|
-          raise "Incoherent ID scheme" if (m[:id].nil? != @assigns_automatic_stream_class_id)
+          raise "Incoherent ID scheme" if (m[:id].nil? != (@assigns_automatic_stream_class_id.nil? || @assigns_automatic_stream_class_id))
           BTStreamClass.from_h(self, m)
       }
     end
@@ -99,16 +93,19 @@ module Babeltrace2Gen
     end
 
     def get_declarator(self_component:, variable:)
-      scope {
         pr "bt_trace_class *#{variable} = bt_trace_class_create(#{self_component});"
+        unless @assigns_automatic_stream_class_id.nil?
+          auto_sc_id = @assigns_automatic_stream_class_id ? "BT_TRUE": "BT_FALSE"
+          pr "bt_trace_class_set_assigns_automatic_stream_class_id(#{variable}, #{auto_sc_id});"
+        end
+
         @stream_classes.each_with_index { |m,i|
-          stream_class_name = "bt_stream_class_#{i}"
-          pr "bt_stream_class *#{stream_class_name};"
-          auto_id = @assigns_automatic_stream_class_id ? "true" : "false"
-          pr "bt_stream_class_set_assigns_automatic_stream_id(#{stream_class_name}, #{auto_id});"
-          m.get_declarator(trace_class: variable, variable: stream_class_name)
+          stream_class_name = "#{variable}_sc_#{i}"
+          scope {
+            pr "bt_stream_class *#{stream_class_name};"
+            m.get_declarator(trace_class: variable, variable: stream_class_name)
+          }
         }
-      }
     end
 
   end
@@ -116,24 +113,26 @@ module Babeltrace2Gen
   class BTStreamClass
     include BTLocator
     include BTPrinter
-    include BTWrap
-    attr_reader :packet_context_field_class, :event_common_context_field_class, :event_classes, :id
-    def initialize(parent:, packet_context_field_class: nil, packet_context: nil,
-                   event_common_context_field_class: nil, event_common_context: nil, event_classes: [], id: nil)
+    attr_reader :packet_context_field_class, :event_common_context_field_class, :event_classes, :id, :name
+    def initialize(parent:, name: nil, packet_context_field_class: nil, event_common_context_field_class: nil,
+                   event_classes: [], id: nil, assigns_automatic_event_class_id: nil, assigns_automatic_stream_id: nil)
       @parent = parent
-      @id = id
+      @name = name
 
       raise "Two packet_context" if packet_context_field_class and packet_context
       # Should put assert to check for struct
       @packet_context_field_class = BTFieldClass.from_h(self, packet_context_field_class) if packet_context_field_class
-      @packet_context_field_class = BTFieldClass.from_h(self, wrapt_in_structure(packet_context) ) if packet_context
 
-      raise "Two event_common_context" if event_common_context_field_class and event_common_context
       # Should put assert to check for struct
       @event_common_context_field_class = BTFieldClass.from_h(self, event_common_context_field_class) if event_common_context_field_class
-      @event_common_context_field_class = BTFieldClass.from_h(self, wrapt_in_structure(event_common_context)) if event_common_context
 
-      @event_classes = event_classes.collect { |ec| BTEventClass.from_h(self, **ec) }
+      @assigns_automatic_event_class_id = assigns_automatic_event_class_id
+      @event_classes = event_classes.collect { |ec|
+                                              raise "Incorect id scheme" if ec[:id].nil? != (@assigns_automatic_event_class_id.nil? || @assigns_automatic_event_class_id.nil)
+                                              BTEventClass.from_h(self, ec) }
+      @assigns_automatic_stream_id = assigns_automatic_stream_id
+      @id = id
+
     end
 
     def self.from_h(parent, model)
@@ -145,10 +144,47 @@ module Babeltrace2Gen
     end
 
     def get_declarator(trace_class:, variable:)
-      if id.nil?
-        pr "#{variable} = bt_stream_class_create(#{trace_class});"
-      else
+      if @id
         pr "#{variable} = bt_stream_class_create_with_id(#{trace_class}, #{@id});"
+      else
+        pr "#{variable} = bt_stream_class_create(#{trace_class});"
+      end
+      pr "bt_stream_class_set_name(#{variable}, \"#{name}\");" if @name
+
+      if @packet_context_field_class
+        var_pc = "#{variable}_pc_fc"
+        scope {
+          pr "bt_field_class *#{var_pc};"
+          @packet_context_field_class.get_declarator(trace_class: trace_class, variable: var_pc)
+          pr "bt_stream_class_set_packet_context_field_class(#{variable}, #{var_pc});"
+        }
+      end
+
+      if @event_common_context_field_class
+        var_ecc = "#{variable}_ecc_fc"
+        scope {
+          pr "bt_field_class *#{var_ecc};"
+          @event_common_context_field_class.get_declarator(trace_class: trace_class, variable: var_ecc)
+          pr "bt_stream_class_set_event_common_context_field_class(#{variable}, #{var_ecc});"
+        }
+      end
+      # Need to do is avec packet and  event_common_context because it can refer members to those
+      unless @assigns_automatic_event_class_id.nil?
+        auto_id_event_class = @assigns_automatic_event_class_id ? "BT_TRUE" : "BT_FALSE"
+        pr "bt_stream_class_set_assigns_automatic_event_class_id(#{variable}, #{auto_id_event_class});"
+      end
+
+      @event_classes.each_with_index { |ec,i|
+        var_name = "#{variable}_ec_#{i}"
+        scope {
+          pr "bt_event_class *#{var_name};"
+          ec.get_declarator(trace_class: trace_class, variable: var_name, stream_class: variable)
+        }
+      }
+
+      unless @assigns_automatic_stream_id.nil?
+        auto_id_stream = @assigns_automatic_stream_id ? "BT_TRUE" : "BT_FALSE"
+        pr "bt_stream_class_set_assigns_automatic_stream_id(#{variable}, #{auto_id_stream});"
       end
     end
   end
@@ -156,18 +192,14 @@ module Babeltrace2Gen
   class BTEventClass
     include BTLocator
     include BTPrinter
-    include BTWrap
     attr_reader :name, :specific_context_field_class, :payload_field_class
-    def initialize(parent:, name:, specific_context_field_class: nil, specific_context: nil, payload_field_class: nil, payload: nil)
+    def initialize(parent:, name: nil, specific_context_field_class: nil, payload_field_class: nil, id: nil)
       @parent = parent
       @name = name
-      raise "Two specific_context" if specific_context_field_class and specific_context
       @specific_context_field_class = BTFieldClass.from_h(self, specific_context_field_class) if specific_context_field_class
-      @specific_context_field_class = BTFieldClass.from_h(self, wrapt_in_structure(specific_context_field_class)) if specific_context
-
-      raise "Two payload" if payload_field_class and payload
       @payload_field_class = BTFieldClass.from_h(self, payload_field_class) if payload_field_class
-      @payload_field_class = BTFieldClass.from_h(self, wrapt_in_structure(payload_field_class)) if payload_field
+
+      @id = id
     end
 
     def self.from_h(parent, model)
@@ -175,24 +207,33 @@ module Babeltrace2Gen
     end
 
     def get_declarator(trace_class:, variable:, stream_class:)
+      # Store the variable name for instrocption purpose for LOCATION_PATH
       @variable = variable
-      scope {
+      if @id
+        pr "#{variable} = bt_event_class_create_with_id(#{stream_class}, #{@id});"
+      else
         pr "#{variable} = bt_event_class_create(#{stream_class});"
-        pr "bt_event_class_set_name(#{variable}, \"#{@name}\");"
-        if @specific_context_field_class
-          var_name = "#{variable}_sc_fc"
+      end
+
+      pr "bt_event_class_set_name(#{variable}, \"#{@name}\");" if @name
+
+      if @specific_context_field_class
+        var_name = "#{variable}_sc_fc"
+        scope {
           pr "bt_field_class *#{var_name};"
           @specific_context_field_class.get_declarator(trace_class: trace_class, variable: var_name)
           pr "bt_event_class_set_specific_context_field_class(#{variable}, #{var_name});"
-        end
+        }
+      end
 
-        if @payload_field_class
-          var_name = "#{variable}_p_fc"
+      if @payload_field_class
+        var_name = "#{variable}_p_fc"
+        scope {
           pr "bt_field_class *#{var_name};"
           @payload_field_class.get_declarator(trace_class: trace_class, variable: var_name)
           pr "bt_event_class_set_payload_field_class(#{variable}, #{var_name});"
-        end
-      }
+        }
+      end
     end
 
     def event_class
@@ -204,17 +245,24 @@ module Babeltrace2Gen
     include BTLocator
     include BTPrinter
 
+    attr_accessor :cast_type
     def initialize(parent:)
       @parent = parent
     end
 
     def self.from_h(parent, model)
-      key = model.delete(:class)
-      FIELD_CLASS_NAME_MAP[key].from_h(parent, model)
+      key = model.delete(:type)
+      raise "No type in #{model}" unless key
+      raise "No #{key} in FIELD_CLASS_NAME_MAP" unless FIELD_CLASS_NAME_MAP.include?(key)
+
+      cast_type = model.delete(:cast_type)
+      fc = FIELD_CLASS_NAME_MAP[key].from_h(parent, model)
+      fc.cast_type = cast_type if cast_type
+      fc
     end
 
-    def get_declarator
-      raise NotImplementedError
+    def get_declarator(*args, **dict)
+      raise NotImplementedError, self.class
     end
 
   end
@@ -252,19 +300,19 @@ module Babeltrace2Gen
   class BTFieldClass::Integer < BTFieldClass
     attr_reader :field_value_range, :preferred_display_base
 
-    def initialize(parent:, field_value_range: 64, preferred_display_base: 10)
+    def initialize(parent:, field_value_range: nil, preferred_display_base: nil)
       @parent = parent
       @field_value_range = field_value_range
       @preferred_display_base = preferred_display_base
     end
 
     def self.from_h(parent, model)
-      self.new(parent: parent, **model[:class_properties])
+      self.new(parent: parent, **model)
     end
 
     def get_declarator(trace_class: nil, variable:)
-      pr "bt_field_class_integer_set_field_value_range(#{variable}, #{@field_value_range});" if @field_value_range != 64
-      pr "bt_field_class_integer_set_preferred_display_base(#{variable}, #{@preferred_display_base});" if @preferred_display_base != 10
+      pr "bt_field_class_integer_set_field_value_range(#{variable}, #{@field_value_range});" if @field_value_range
+      pr "bt_field_class_integer_set_preferred_display_base(#{variable}, #{@preferred_display_base});" if @preferred_display_base
     end
   end
   BTFieldClassInteger = BTFieldClass::Integer
@@ -356,6 +404,11 @@ module Babeltrace2Gen
     def self.from_h(parent, model)
       self.new(parent: parent)
     end
+
+    def get_declarator(trace_class:, variable:)
+      pr "#{variable} = bt_field_class_string_create(#{trace_class});"
+    end
+
   end
   BTFieldClassString = BTFieldClass::String
 
@@ -381,8 +434,8 @@ module Babeltrace2Gen
     end
 
     def get_declarator(trace_class:, variable:)
+      element_field_class_variable = "#{variable}_field_class"
       scope {
-        element_field_class_variable = "#{variable}_field_class"
         pr "bt_field_class *#{element_field_class_variable};"
         @element_field_class.get_declarator(trace_class: trace_class, variable: element_field_class_variable)
         pr "#{variable} = bt_field_class_array_static_create(#{trace_class}, #{element_field_class_variable}, #{@length});"
@@ -409,8 +462,8 @@ module Babeltrace2Gen
     end
 
     def get_declarator(trace_class:, variable:)
+      element_field_class_variable= "#{variable}_field_class"
       scope {
-        element_field_class_variable= "#{variable}_field_class"
         pr "bt_field_class *#{element_field_class_variable};"
         @element_field_class.get_declarator(trace_class: trace_class, variable: element_field_class_variable)
         if @length_field_path
@@ -443,7 +496,7 @@ module Babeltrace2Gen
 
     def initialize(parent:, members: [])
       @parent = parent
-      @members = members.collect { |m| Member.new(parent: self, name: m[:name], field_class: m) }
+      @members = members.collect { |m| Member.new(parent: self, **m) }
     end
 
     def [](index)
@@ -460,15 +513,16 @@ module Babeltrace2Gen
     end
 
     def get_declarator(trace_class:, variable:)
-      @variable = variable
-      scope {
+        @variable = variable
         pr "#{variable} = bt_field_class_structure_create(#{trace_class});"
-        @members.each { |m|
-            pr "bt_field_class *#{variable}_#{m.name};"
-            m.field_class.get_declarator(trace_class: trace_class, variable: "#{variable}_#{m.name}")
-            pr "bt_field_class_structure_append_member(#{variable}, \"#{m.name}\", #{variable}_#{m.name});"
+        @members.each_with_index { |m, i|
+         var_name = "#{variable}_m_#{i}"
+          scope {
+            pr "bt_field_class *#{var_name};"
+            m.field_class.get_declarator(trace_class: trace_class, variable: var_name)
+            pr "bt_field_class_structure_append_member(#{variable}, \"#{m.name}\", #{var_name});"
+          }
         }
-      }
     end
   end
   BTFieldClassStructure = BTFieldClass::Structure
@@ -598,8 +652,8 @@ module Babeltrace2Gen
   FIELD_CLASS_NAME_MAP = {
     "bool" => BTFieldClass::Bool,
     "bit_array" => BTFieldClass::BitArray,
-    "unsigned" => BTFieldClass::Integer::Unsigned,
-    "signed" => BTFieldClass::Integer::Signed,
+    "integer_unsigned" => BTFieldClass::Integer::Unsigned,
+    "integer_signed" => BTFieldClass::Integer::Signed,
     "single" => BTFieldClass::Real::SinglePrecision,
     "double" => BTFieldClass::Real::DoublePrecision,
     "enumeration_unsigned" => BTFieldClass::Enumeration::Unsigned,
