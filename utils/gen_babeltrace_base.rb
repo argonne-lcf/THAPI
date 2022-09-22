@@ -17,7 +17,10 @@ module Babeltrace2Gen
       @@indent -= 1
       pr "}"
     end
-    module_function :scope
+
+    def bt_set_conditionally(guard)
+      yield guard ? "BT_TRUE": "BT_FALSE" unless guard.nil?
+    end
   end
 
   module BTLocator
@@ -94,10 +97,10 @@ module Babeltrace2Gen
 
     def get_declarator(self_component:, variable:)
         pr "bt_trace_class *#{variable} = bt_trace_class_create(#{self_component});"
-        unless @assigns_automatic_stream_class_id.nil?
-          auto_sc_id = @assigns_automatic_stream_class_id ? "BT_TRUE": "BT_FALSE"
-          pr "bt_trace_class_set_assigns_automatic_stream_class_id(#{variable}, #{auto_sc_id});"
-        end
+
+        bt_set_conditionally ( @assigns_automatic_stream_class_id) { |v|
+          pr "bt_trace_class_set_assigns_automatic_stream_class_id(#{variable}, #{v});"
+        }
 
         @stream_classes.each_with_index { |m,i|
           stream_class_name = "#{variable}_sc_#{i}"
@@ -168,11 +171,10 @@ module Babeltrace2Gen
           pr "bt_stream_class_set_event_common_context_field_class(#{variable}, #{var_ecc});"
         }
       end
-      # Need to do is avec packet and  event_common_context because it can refer members to those
-      unless @assigns_automatic_event_class_id.nil?
-        auto_id_event_class = @assigns_automatic_event_class_id ? "BT_TRUE" : "BT_FALSE"
-        pr "bt_stream_class_set_assigns_automatic_event_class_id(#{variable}, #{auto_id_event_class});"
-      end
+      # Need to do is afert packet an devent_common_context because it can refer members to those
+      bt_set_conditionally( @assigns_automatic_event_class_id ) { |v|
+        pr "bt_stream_class_set_assigns_automatic_event_class_id(#{variable}, #{v});"
+      }
 
       @event_classes.each_with_index { |ec,i|
         var_name = "#{variable}_ec_#{i}"
@@ -182,10 +184,9 @@ module Babeltrace2Gen
         }
       }
 
-      unless @assigns_automatic_stream_id.nil?
-        auto_id_stream = @assigns_automatic_stream_id ? "BT_TRUE" : "BT_FALSE"
-        pr "bt_stream_class_set_assigns_automatic_stream_id(#{variable}, #{auto_id_stream});"
-      end
+      bt_set_conditionally( @assigns_automatic_stream_id ) { |v|
+        pr "bt_stream_class_set_assigns_automatic_stream_id(#{variable}, #{v});"
+      }
     end
   end
 
