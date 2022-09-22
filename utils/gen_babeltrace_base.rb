@@ -1,5 +1,11 @@
 module Babeltrace2Gen
 
+  module BTUtils
+    def bt_set_conditionally(guard)
+      yield guard ? "BT_TRUE": "BT_FALSE" unless guard.nil?
+    end
+  end
+
   module BTPrinter
     @@output = ""
     @@indent = 0
@@ -10,17 +16,25 @@ module Babeltrace2Gen
     end
     module_function :pr
 
-    def scope(&block)
+    def scope
       pr "{"
       @@indent += 1
-      block.call
+      yield
       @@indent -= 1
       pr "}"
     end
 
-    def bt_set_conditionally(guard)
-      yield guard ? "BT_TRUE": "BT_FALSE" unless guard.nil?
+    def self.context(output: "", indent: 0)
+      @@output = output
+      @@indent = indent
+      yield
+      @@output
     end
+
+  end
+
+  def self.context(**args, &block)
+    BTPrinter::context(**args, &block)
   end
 
   module BTLocator
@@ -75,6 +89,7 @@ module Babeltrace2Gen
   class BTTraceClass
     include BTLocator
     include BTPrinter
+    include BTUtils
     attr_reader :stream_classes, :assigns_automatic_stream_class_id
 
     def initialize(parent:, stream_classes:, assigns_automatic_stream_class_id: nil)
@@ -96,19 +111,19 @@ module Babeltrace2Gen
     end
 
     def get_declarator(self_component:, variable:)
-        pr "bt_trace_class *#{variable} = bt_trace_class_create(#{self_component});"
+      pr "bt_trace_class *#{variable} = bt_trace_class_create(#{self_component});"
 
-        bt_set_conditionally ( @assigns_automatic_stream_class_id) { |v|
-          pr "bt_trace_class_set_assigns_automatic_stream_class_id(#{variable}, #{v});"
-        }
+      bt_set_conditionally ( @assigns_automatic_stream_class_id) { |v|
+        pr "bt_trace_class_set_assigns_automatic_stream_class_id(#{variable}, #{v});"
+      }
 
-        @stream_classes.each_with_index { |m,i|
-          stream_class_name = "#{variable}_sc_#{i}"
-          scope {
-            pr "bt_stream_class *#{stream_class_name};"
-            m.get_declarator(trace_class: variable, variable: stream_class_name)
-          }
+      @stream_classes.each_with_index { |m,i|
+        stream_class_name = "#{variable}_sc_#{i}"
+        scope {
+          pr "bt_stream_class *#{stream_class_name};"
+           m.get_declarator(trace_class: variable, variable: stream_class_name)
         }
+      }
     end
 
   end
@@ -116,6 +131,7 @@ module Babeltrace2Gen
   class BTStreamClass
     include BTLocator
     include BTPrinter
+    include BTUtils
     attr_reader :packet_context_field_class, :event_common_context_field_class, :event_classes, :id, :name
     def initialize(parent:, name: nil, packet_context_field_class: nil, event_common_context_field_class: nil,
                    event_classes: [], id: nil, assigns_automatic_event_class_id: nil, assigns_automatic_stream_id: nil)
