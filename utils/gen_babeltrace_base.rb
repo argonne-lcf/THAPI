@@ -112,7 +112,6 @@ module Babeltrace2Gen
 
     def get_declarator(self_component:, variable:)
       pr "bt_trace_class *#{variable} = bt_trace_class_create(#{self_component});"
-
       bt_set_conditionally ( @assigns_automatic_stream_class_id) { |v|
         pr "bt_trace_class_set_assigns_automatic_stream_class_id(#{variable}, #{v});"
       }
@@ -293,7 +292,6 @@ module Babeltrace2Gen
       pr "#{variable} = bt_field_class_bool_create(#{trace_class});"
     end
   end
-  BTFieldClassBool = BTFieldClass::Bool
 
   class BTFieldClass::BitArray < BTFieldClass
     attr_reader :length
@@ -312,7 +310,6 @@ module Babeltrace2Gen
     end
 
   end
-  BTFieldClassBitArray = BTFieldClass::BitArray
 
   class BTFieldClass::Integer < BTFieldClass
     attr_reader :field_value_range, :preferred_display_base
@@ -334,54 +331,43 @@ module Babeltrace2Gen
   end
   BTFieldClassInteger = BTFieldClass::Integer
 
-  class BTFieldClass::Integer::Unsigned < BTFieldClassInteger
+  class BTFieldClass::Integer::Unsigned < BTFieldClass::Integer
     def get_declarator(trace_class:, variable:)
       pr "#{variable} = bt_field_class_integer_unsigned_create(#{trace_class});"
       super
     end
   end
-  BTFieldClass::IntegerUnsigned = BTFieldClass::Integer::Unsigned
-  BTFieldClassIntegerUnsigned = BTFieldClass::Integer::Unsigned
 
-  class BTFieldClass::Integer::Signed < BTFieldClassInteger
+  class BTFieldClass::Integer::Signed < BTFieldClass::Integer
     def get_declarator(trace_class:, variable:)
       pr "#{variable} = bt_field_class_integer_signed_create(#{trace_class});"
       super
     end
   end
-  BTFieldClass::IntegerSigned = BTFieldClass::Integer::Signed
-  BTFieldClassIntegerSigned = BTFieldClass::Integer::Signed
 
   class BTFieldClass::Real < BTFieldClass
     def self.from_h(parent, model)
       self.new(parent: parent)
     end
   end
-  BTFieldClassReal = BTFieldClass::Real
 
-  class BTFieldClass::Real::SinglePrecision < BTFieldClassReal
+  class BTFieldClass::Real::SinglePrecision < BTFieldClass::Real
     def get_declarator(trace_class:, variable:)
       pr "#{variable} = bt_field_class_real_single_precision_create(#{trace_class});"
     end
   end
-  BTFieldClass::RealSinglePrecision = BTFieldClass::Real::SinglePrecision
-  BTFieldClassRealSinglePrecision = BTFieldClass::Real::SinglePrecision
 
-  class BTFieldClass::Real::DoublePrecision < BTFieldClassReal
+  class BTFieldClass::Real::DoublePrecision < BTFieldClass::Real
     def get_declarator(trace_class:, variable:)
       pr "#{variable} = bt_field_class_real_double_precision_create(#{trace_class});"
     end
   end
-  BTFieldClass::RealDoublePrecision = BTFieldClass::Real::DoublePrecision
-  BTFieldClassRealDoublePrecision = BTFieldClass::Real::DoublePrecision
 
   module BTFieldClass::Enumeration
     attr_reader :mappings
     class Mapping
     end
   end
-  BTFieldClassEnumeration = BTFieldClass::Enumeration
-  BTFieldClassEnumerationMapping = BTFieldClass::Enumeration::Mapping
 
   class BTFieldClass::Enumeration::Unsigned < BTFieldClass::Integer::Unsigned
     include BTFieldClass::Enumeration
@@ -397,8 +383,6 @@ module Babeltrace2Gen
       self.new(parent: parent, **model)
     end
   end
-  BTFieldClassEnumerationUnsigned = BTFieldClass::Enumeration::Unsigned
-  BTFieldClassEnumerationUnsignedMapping = BTFieldClass::Enumeration::Unsigned::Mapping
 
   class BTFieldClass::Enumeration::Signed < BTFieldClass::Integer::Signed
     include BTFieldClass::Enumeration
@@ -414,8 +398,6 @@ module Babeltrace2Gen
       self.new(parent: parent, **model)
     end
   end
-  BTFieldClassEnumerationSigned = BTFieldClass::Enumeration::Signed
-  BTFieldClassEnumerationSignedMapping = BTFieldClass::Enumeration::Signed::Mapping
 
   class BTFieldClass::String < BTFieldClass
     def self.from_h(parent, model)
@@ -427,7 +409,6 @@ module Babeltrace2Gen
     end
 
   end
-  BTFieldClassString = BTFieldClass::String
 
   class BTFieldClass::Array < BTFieldClass
     attr_reader :element_field_class
@@ -436,7 +417,6 @@ module Babeltrace2Gen
       @element_field_class = BTFieldClass.from_h(self, element_field_class)
     end
   end
-  BTFieldClassArray = BTFieldClass::Array
 
   class BTFieldClass::Array::Static < BTFieldClass::Array
     attr_reader :length
@@ -459,7 +439,6 @@ module Babeltrace2Gen
       }
     end
   end
-  BTFieldClassArrayStatic = BTFieldClass::Array::Static
 
   class BTFieldClass::Array::Dynamic < BTFieldClass::Array
     module WithLengthField
@@ -493,10 +472,8 @@ module Babeltrace2Gen
         end
       }
     end
-
   end
-  BTFieldClassArrayDynamic = BTFieldClass::Array::Dynamic
-  BTFieldClassArrayDynamicWithLengthField = BTFieldClass::Array::Dynamic::WithLengthField
+
   class BTFieldClass::Structure < BTFieldClass
     attr_reader :members
     class Member
@@ -542,8 +519,7 @@ module Babeltrace2Gen
         }
     end
   end
-  BTFieldClassStructure = BTFieldClass::Structure
-  BTFieldClassStructureMember = BTFieldClass::Structure::Member
+  
   class BTFieldClass::Option < BTFieldClass
     attr_reader :field_class
 
@@ -559,7 +535,6 @@ module Babeltrace2Gen
       self.new(parent: parent, field_class: model[:field])
     end
   end
-  BTFieldClassOptionWithoutSelectorField = BTFieldClass::Option::WithoutSelectorField
 
   class BTFieldClass::Option::WithSelectorField < BTFieldClass::Option
     attr_reader :selector_field_path
@@ -569,7 +544,6 @@ module Babeltrace2Gen
       super(parent: parent, field_class: field_class)
     end
   end
-  BTFieldClassOptionWithSelectorField = BTFieldClass::Option::WithSelectorField
 
   class BTFieldClass::Option::WithSelectorField::Bool < BTFieldClass::Option::WithSelectorField
     attr_reader :selector_is_reversed
@@ -583,7 +557,6 @@ module Babeltrace2Gen
       self.new(parent: parent, field_class: model[:field], selector_field_path: model[:selector_field_path], selector_is_reversed: [selector_field_path])
     end
   end
-  BTFieldClassOptionWithSelectorFieldBool = BTFieldClass::Option::WithSelectorField::Bool
 
   class BTFieldClass::Option::WithSelectorField::IntegerUnsigned < BTFieldClass::Option::WithSelectorField
     attr_reader :selector_ranges
@@ -597,7 +570,6 @@ module Babeltrace2Gen
       self.new(parent: parent, field_class: model[:field], selector_field_path: model[:selector_field_path], selector_ranges: model[:selector_ranges])
     end
   end
-  BTFieldClassOptionWithSelectorFieldIntegerUnsigned = BTFieldClass::Option::WithSelectorField::IntegerUnsigned
 
   class BTFieldClass::Option::WithSelectorField::IntegerSigned < BTFieldClass::Option::WithSelectorField
     attr_reader :selector_ranges
@@ -611,7 +583,6 @@ module Babeltrace2Gen
       self.new(parent: parent, field_class: model[:field], selector_field_path: model[:selector_field_path], selector_ranges: model[:selector_ranges])
     end
   end
-  BTFieldClassOptionWithSelectorFieldIntegerSigned = BTFieldClass::Option::WithSelectorField::IntegerSigned
 
   class BTFieldClass::Variant < BTFieldClass
     attr_reader :options
@@ -626,15 +597,13 @@ module Babeltrace2Gen
     end
 
   end
-  BTFieldClassVariant = BTFieldClass::Variant
-  BTFieldClassVariantOption = BTFieldClass::Variant::Option
 
   class BTFieldClass::Variant
     module WithoutSelectorField
     end
     module WithSelectorField
       attr_reader :selector_field_class
-      class Option < BTFieldClassVariantOption
+      class Option < BTFieldClass::Variant::Option
         attr_reader :ranges
         def initialize(parent:, name:, field_class:, ranges:)
           @ranges = ranges
@@ -659,12 +628,6 @@ module Babeltrace2Gen
       end
     end
   end
-  BTFieldClassVariantWithoutSelectorField =
-    BTFieldClass::Variant::WithoutSelectorField
-  BTFieldClassVariantWithSelectorField =
-    BTFieldClass::Variant::WithSelectorField
-  BTFieldClassVariantWithSelectorFieldOption =
-    BTFieldClass::Variant::WithSelectorField::Option
 
   FIELD_CLASS_NAME_MAP = {
     "bool" => BTFieldClass::Bool,
