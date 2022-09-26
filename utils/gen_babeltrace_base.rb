@@ -14,7 +14,7 @@ module Babeltrace2Gen
   module BTPrinter
     @@output = ''
     @@indent = 0
-    INDENT_INCREMENT = '  '
+    INDENT_INCREMENT = '  '.freeze
 
     def pr(str)
       @@output << INDENT_INCREMENT * @@indent << str << "\n"
@@ -132,9 +132,9 @@ module Babeltrace2Gen
   end
 
   class BTStreamClass
-    include BTLocator
-    include BTPrinter
     include BTUtils
+    include BTPrinter
+    include BTLocator
     extend BTFromH
     attr_reader :packet_context_field_class, :event_common_context_field_class, :event_classes, :id, :name
 
@@ -143,7 +143,7 @@ module Babeltrace2Gen
       @parent = parent
       @name = name
 
-      raise 'Two packet_context' if packet_context_field_class and packet_context
+      raise 'Two packet_context' if packet_context_field_class && packet_context
 
       # Should put assert to check for struct
       @packet_context_field_class = BTFieldClass.from_h(self, packet_context_field_class) if packet_context_field_class
@@ -215,8 +215,8 @@ module Babeltrace2Gen
   end
 
   class BTEventClass
-    include BTLocator
     include BTPrinter
+    include BTLocator
     extend BTFromH
     attr_reader :name, :specific_context_field_class, :payload_field_class
 
@@ -323,7 +323,7 @@ module Babeltrace2Gen
       @preferred_display_base = preferred_display_base
     end
 
-    def get_declarator(variable:, trace_class: nil)
+    def get_declarator(variable:)
       pr "bt_field_class_integer_set_field_value_range(#{variable}, #{@field_value_range});" if @field_value_range
       if @preferred_display_base
         pr "bt_field_class_integer_set_preferred_display_base(#{variable}, #{@preferred_display_base});"
@@ -336,7 +336,7 @@ module Babeltrace2Gen
     extend BTFromH
     def get_declarator(trace_class:, variable:)
       pr "#{variable} = bt_field_class_integer_unsigned_create(#{trace_class});"
-      super
+      super(variable: variable)
     end
   end
 
@@ -344,7 +344,7 @@ module Babeltrace2Gen
     extend BTFromH
     def get_declarator(trace_class:, variable:)
       pr "#{variable} = bt_field_class_integer_signed_create(#{trace_class});"
-      super
+      super(variable: variable)
     end
   end
 
@@ -623,5 +623,5 @@ module Babeltrace2Gen
     'option_with_selector_field_unsigned' => BTFieldClass::Option::WithSelectorField::IntegerUnsigned,
     'option_with_selector_field_signed' => BTFieldClass::Option::WithSelectorField::IntegerSigned,
     'variant' => BTFieldClass::Variant
-  }
+  }.freeze
 end
