@@ -58,6 +58,7 @@ $dbt_events = ze_babeltrace_model[:event_classes].map { |klass|
   DBT_event.new(klass)
 }
 
+$dbt_events_who_signal = $dbt_events.filter_map { |dbt_event| dbt_event.name_striped if dbt_event.start? and dbt_event.fields_name.include?('hSignalEvent') }
 $profiling_apis = Set.new
 
 template = File.read(File.join(SRC_DIR, "zeinterval_callbacks.cpp.erb"))

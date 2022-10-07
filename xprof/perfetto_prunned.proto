@@ -51,6 +51,8 @@ message TrackEvent {
     string name = 23;
   }
 
+  repeated uint64 flow_ids = 36;
+  repeated uint64 terminating_flow_ids = 42;
 }
 
 message TracePacket {

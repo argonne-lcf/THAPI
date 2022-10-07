@@ -15,7 +15,7 @@ static perfetto_uuid_t gen_perfetto_uuid() {
 }
 
 static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
-                            timestamp_t begin, std::string name) {
+                            timestamp_t begin, std::string name, std::set<flow_id_t> flow_ids = {} ) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(begin);
   packet->set_trusted_packet_sequence_id(10);
@@ -23,7 +23,10 @@ static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t 
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
   track_event->set_name(name);
   track_event->set_track_uuid(uuid);
+  for (const auto& flow_id: flow_ids)
+    track_event->add_flow_ids(flow_id);
 }
+
 
 static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
@@ -67,7 +70,9 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
         auto *process = track_descriptor->mutable_process();
         process->set_pid(hp_uuid);
         std::ostringstream oss;
-        oss << hostname << " | Process " << process_id ;
+        oss << hostname;
+        if (process_id!=0)
+            oss << " | Process " << process_id ;
         if (did !=0) {
             oss << " | Device " << did;
             if (sdid !=0)
@@ -114,13 +119,13 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
 
 static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, std::string name, uint64_t begin,
-                          uint64_t dur) {
+                          uint64_t dur, std::set<flow_id_t> flow_ids = {}) {
   // Assume perfecly nessted
   const uint64_t end = begin + dur;
 
   perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id);
   // Handling perfecly nested event
-  add_event_begin(dispatch, parent_uuid, begin, name);
+  add_event_begin(dispatch, parent_uuid, begin, name, flow_ids);
   std::stack<uint64_t> &s = dispatch->uuid2stack[parent_uuid];
   while ((!s.empty()) && (s.top() <= begin)) {
     add_event_end(dispatch, parent_uuid, s.top());
@@ -129,7 +134,7 @@ static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostna
   s.push(end);
 }
 
-static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostname,
+static void add_event_gpu_old(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, thapi_device_id did,
                           thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur) {
   // This function Assume non perfecly nested
@@ -167,6 +172,48 @@ static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostna
   m[end] = uuid;
   // Add event
   add_event_begin(dispatch, uuid, begin, name);
+  add_event_end(dispatch, uuid, end);
+}
+
+static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostname,
+                          uint64_t process_id, uint64_t c_uuid, std::string queue_name,
+                          thapi_device_id did, thapi_device_id sdid,
+                          std::string name, uint64_t begin, uint64_t dur, std::set<flow_id_t> flow_ids) {
+  // This function Assume non perfecly nested
+  const uint64_t end = begin + dur;
+  perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, c_uuid, did, sdid);
+  // Now see if we need a to generate a new children
+  std::map<uint64_t, perfetto_uuid_t> &m = dispatch->parents2tracks[parent_uuid];
+  perfetto_uuid_t uuid;
+
+  // Pre-historical event
+  if (m.empty() || begin < m.begin()->first) {
+    uuid = gen_perfetto_uuid();
+    // Generate a new children track
+    {
+      auto *packet = dispatch->trace.add_packet();
+      packet->set_trusted_packet_sequence_id(10);
+      packet->set_timestamp(0);
+
+      auto *track_descriptor = packet->mutable_track_descriptor();
+      track_descriptor->set_uuid(uuid);
+      track_descriptor->set_parent_uuid(parent_uuid);
+
+      std::ostringstream oss;
+      oss << queue_name << " " << rescale_uuid(dispatch->m4[hostname][did][sdid], c_uuid);
+      track_descriptor->set_name(oss.str());
+    }
+  } else {
+    // Find the uuid who finished just before this one
+    auto it_ub = std::prev(m.upper_bound(begin));
+    uuid = it_ub->second;
+    // Erase the old timestamps
+    m.erase(it_ub);
+  }
+  // Update the table
+  m[end] = uuid;
+  // Add event
+  add_event_begin(dispatch, uuid, begin, name, flow_ids);
   add_event_end(dispatch, uuid, end);
 }
 
@@ -240,6 +287,17 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
 
       if (std::string(class_name) == "lttng:host") {
         add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur);
+      } else if (std::string(class_name) == "lttng:host_flow") {
+
+        const bt_field *flow_ids_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 4);
+
+        std::set<flow_id_t> flow_ids;
+        for (unsigned i=0; i < bt_field_array_get_length(flow_ids_field); i++) {
+            const bt_field *flow_id_field = bt_field_array_borrow_element_field_by_index_const(flow_ids_field, i);
+            flow_ids.insert(bt_field_integer_unsigned_get_value(flow_id_field));
+        }
+        add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur, flow_ids);
       } else if (std::string(class_name) == "lttng:device") {
 
         const bt_field *did_field =
@@ -249,8 +307,39 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
         const bt_field *sdid_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
         const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
-        add_event_gpu(dispatch, hostname, process_id, thread_id, did, sdid, name, ts, dur);
+        add_event_gpu_old(dispatch, hostname, process_id, thread_id, did, sdid, name, ts, dur);
+      } else if (std::string(class_name) == "lttng:device_flow") {
+
+        const bt_field *did_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+        const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+
+        const bt_field *sdid_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+        const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
+
+        const bt_field *queue_uuid_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 6);
+        const uint64_t queue_uuid = bt_field_integer_unsigned_get_value(queue_uuid_field);
+
+        const bt_field *queue_name_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 7);
+        const std::string queue_name = bt_field_string_get_value(queue_name_field);
+
+        const bt_field *flow_id_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 8);
+        const uint64_t flow_id = bt_field_integer_unsigned_get_value(flow_id_field);
+
+        // Hack to put Process at 0, meaning the pointer are uniq per hostname.
+        const uint64_t resclated_queue_uuid = rescale_uuid(dispatch->resclate_queue_uuid, queue_uuid);
+        const uint64_t rescaled_did = rescale_uuid(dispatch->m2[hostname], did);
+        uint64_t rescaled_sdid = 0;
+        if (sdid != 0)
+            rescaled_sdid = rescale_uuid(dispatch->m3[hostname][did], sdid);
+
+        add_event_gpu(dispatch, hostname, 0, resclated_queue_uuid, queue_name, rescaled_did, rescaled_sdid, name, ts, dur, {flow_id} );
       }
+
     }
     bt_message_put_ref(message);
   }
@@ -291,7 +380,6 @@ timeline_dispatch_initialize(bt_self_component_sink *self_component_sink,
     trace_packet_defaults->set_timestamp_clock_id(perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
     packet->set_previous_packet_dropped(true);
   }
-
   return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 

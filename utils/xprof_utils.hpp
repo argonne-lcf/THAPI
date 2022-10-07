@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <set>
 #include <tuple>
 #include <string>
 #include "babeltrace2/babeltrace.h"
@@ -28,10 +28,15 @@ typedef uintptr_t                      thread_id_t;
 typedef std::string                    hostname_t;
 typedef std::string                    thapi_function_name;
 typedef uintptr_t                      thapi_device_id;
+typedef uint64_t flow_id_t;
 
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
 typedef std::tuple<hostname_t, thapi_device_id> h_device_t;
+
+typedef std::tuple<hostname_t, thapi_device_id> h_d_t;
+typedef std::tuple<hostname_t, thapi_device_id,thapi_device_id> h_dsd_t;
+
 typedef std::tuple<hostname_t, process_id_t> hp_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;
@@ -120,11 +125,17 @@ thread_id_t borrow_thread_id(const bt_event*);
 
 bt_message* create_host_message(const char *hostname, const process_id_t, const thread_id_t,
                                 const char *name, const uint64_t ts, const uint64_t duration, const bool err,
-                                bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOWN);
+                                bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOWN,  std::set<flow_id_t> flow_ids = {});
 
 bt_message* create_device_message(const char *hostname, const process_id_t, const thread_id_t, const thapi_device_id, const thapi_device_id,
                                   const char *name, const uint64_t ts, const uint64_t duration, const bool err, const char* metadata,
                                   bt_event_class*, bt_self_message_iterator*, bt_stream*);
+
+bt_message* create_device_flow_message(const char* hostname, const process_id_t process_id, const uint64_t uuid,
+                                  const thapi_device_id device_id, const thapi_device_id subdevice_id,
+                                  const char* name, const uint64_t ts, const uint64_t duration, const bool err,
+                                  const char* metadata, const char* queue_name, const uint64_t flow_id,
+                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream);
 
 bt_message* create_device_name_message(const char* hostname, const process_id_t process_id,
                                        const thapi_device_id device_id, const char* name,

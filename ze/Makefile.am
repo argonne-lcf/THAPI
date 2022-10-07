@@ -272,6 +272,9 @@ babeltrace_zeinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatch
 babeltrace_zeinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
 
+babeltrace_zeinterval_event_getter_and_setter.hpp: $(top_srcdir)/utils/gen_babeltrace_event_getter_and_setter.rb $(top_srcdir)/xprof/interval_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
+
 babeltrace_zeinterval.h: $(top_srcdir)/xprof/interval.h.erb
 	$(ERB) namespace="zeinterval" $< > $@
 
@@ -294,6 +297,7 @@ CLEANFILES += \
 	babeltrace_zeinterval_callbacks.h \
 	babeltrace_zeinterval_dispatchers.c \
 	babeltrace_zeinterval_emitter.h \
+	babeltrace_zeinterval_event_getter_and_setter.hpp \
 	babeltrace_zeinterval.h \
 	babeltrace_zeinterval.c \
 	xprof_utils.hpp \
@@ -303,6 +307,7 @@ BUILT_SOURCES += \
 	babeltrace_zeinterval_callbacks.h \
 	babeltrace_zeinterval.h \
 	babeltrace_zeinterval_emitter.h \
+	babeltrace_zeinterval_event_getter_and_setter.hpp \
 	xprof_utils.hpp
 
 nodist_libZEInterval_la_SOURCES = \
@@ -312,6 +317,7 @@ nodist_libZEInterval_la_SOURCES = \
 	babeltrace_zeinterval_dispatchers.c \
 	babeltrace_zeinterval_callbacks.cpp \
 	babeltrace_zeinterval_emitter.h \
+	babeltrace_zeinterval_event_getter_and_setter.hpp \
 	xprof_utils.hpp \
 	xprof_utils.cpp 
 

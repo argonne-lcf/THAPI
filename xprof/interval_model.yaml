@@ -12,6 +12,8 @@
   - :name: vtid
     :class: unsigned
   - :name: ts
+    :class_properties:
+        :field_value_range: 64
     :class: signed
   - :name: backend
     :class: signed
@@ -24,6 +26,22 @@
     :class: unsigned
   - :name: err
     :class: bool
+- :name: lttng:host_flow
+  :payload:
+  - :name: name
+    :class: string
+  - :name: dur
+    :class: unsigned
+  - :name: err
+    :class: bool
+  - :name: flow_ids_length
+    :class: unsigned
+  - :name: flow_ids
+    :class: array_dynamic
+    :field:
+      :class: unsigned
+      :class_properties:
+        :field_value_range: 64
 - :name: lttng:device
   :payload:
   - :name: name
@@ -35,22 +53,62 @@
     :class_properties:
       :preferred_display_base: 16
   - :name: sdid
-    :class: unsigned      
+    :class: unsigned
     :class_properties:
       :preferred_display_base: 16
   - :name: err
     :class: bool
   - :name: metadata
     :class: string
+- :name: lttng:device_flow
+  :payload:
+  - :name: name
+    :class: string
+  - :name: dur
+    :class: unsigned
+  - :name: did
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: sdid
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: err
+    :class: bool
+  - :name: metadata
+    :class: string
+  - :name: uuid
+    :class: unsigned
+    :class_properties:
+        :field_value_range: 64
+        :preferred_display_base: 16
+  - :name: queue_name
+    :class: string
+  - :name: flow_id
+    :class: unsigned
+    :class_properties:
+        :field_value_range: 64
 - :name: lttng:device_name
   :payload:
   - :name: name
     :class: string
-  - :name: did
+  - :name: ptr
     :class: unsigned
+    :class_properties:
+        :field_value_range: 64
+# Should be an option on a struct  of 2 64 bits UUID
+#  - :name: uuid
+#    :class: option
+#    :field:
+#      :class: unsigned
+#      :class_properties:
+#        :field_value_range: 64
 - :name: lttng:traffic
   :payload:
   - :name: name
     :class: string
   - :name: size
-    :class: unsigned 
+    :class: unsigned
+    :class_properties:
+        :field_value_range: 64

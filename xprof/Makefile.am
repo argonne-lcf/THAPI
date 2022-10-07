@@ -48,10 +48,6 @@ libXProf_la_SOURCES = \
 	my_demangle.h \
 	$(top_srcdir)/utils/include/json.hpp
 
-# Right now we harcode it. We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
-
-# -I/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/include/ -L/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/lib/ -lprotobuf
-
 # Compiler flags
 libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I/home/tapplencourt/tmp/proto/protobuf-3.20.1/ici/include/
 libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
