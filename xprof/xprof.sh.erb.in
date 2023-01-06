@@ -207,7 +207,7 @@ trace_and_summary() {
     fi
 <% if languages.include?("omp") %>
     lazy_export LTTNG_UST_OMP_INTEL 1
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
 <% end %>
 <% if languages.include?("opencl") %>
     opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,"
