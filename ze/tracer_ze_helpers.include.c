@@ -63,6 +63,14 @@ static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
   free(o_h);
 }
 
+#define COUNT_ITEM(type, list, item, count) do { \
+  type *_elem = NULL; \
+  DL_FOREACH(list, _elem) { \
+    if (_elem == item) \
+      count +=1; \
+  } \
+} while(0)
+
 #define FIND_ZE_OBJ(key, val) do { \
   pthread_mutex_lock(&_ze_objs_mutex); \
   HASH_FIND_PTR(_ze_objs, key, val); \
@@ -371,8 +379,13 @@ static inline void _dump_and_reset_event(ze_event_handle_t event) {
   if (o_h) {
     int to_profile = 0;
     struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    if ((cl_data->flags & _ZE_IMMEDIATE) && cl_data->events && ze_event->prev)
+    if ((cl_data->flags & _ZE_IMMEDIATE) && cl_data->events && ze_event->prev) {
+      int count = 0;
+      COUNT_ITEM(struct _ze_event_h, cl_data->events, ze_event, count);
+      if (count != 1)
+	printf("_dump_and_reset_event: %p count: %d != 1\n", ze_event, count);
       DL_DELETE(cl_data->events, ze_event);
+    }
     if (((cl_data->flags & _ZE_IMMEDIATE) ||
          (cl_data->flags & _ZE_EXECUTED)) &&
         !(ze_event->flags & _ZE_PROFILED))
