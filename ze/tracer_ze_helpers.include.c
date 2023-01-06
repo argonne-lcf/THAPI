@@ -335,7 +335,8 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl, 
   if (remove_cl) {
     struct _ze_obj_h *o_h = NULL;
 
-    FIND_AND_DEL_ZE_OBJ(&ze_event->command_list, o_h);
+    pthread_mutex_lock(&_ze_objs_mutex);
+    HASH_FIND_PTR(_ze_objs, &ze_event->command_list, o_h);
     if (o_h) {
       struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
       /* Should not be necessary, just being paranoid of user having race conditions in their code */
@@ -343,8 +344,8 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl, 
         DL_DELETE(cl_data->events, ze_event);
       if (!(cl_data->flags & _ZE_IMMEDIATE) && !(cl_data->flags & _ZE_EXECUTED))
         get_results = 0;
-      ADD_ZE_OBJ(o_h);
     }
+    pthread_mutex_unlock(&_ze_objs_mutex);
   }
 
   if (get_results && !(ze_event->flags & _ZE_PROFILED))
