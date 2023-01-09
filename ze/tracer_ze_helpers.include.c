@@ -10,7 +10,7 @@
  } while(0)
 #else
 #define THAPI_DBGLOG(...) do { } while (0)
-#define THAPI_DBGLOGNO_ARGS(fmt) do { } while (0)
+#define THAPI_DBGLOG_NO_ARGS(fmt) do { } while (0)
 #endif
 
 enum _ze_obj_type {
