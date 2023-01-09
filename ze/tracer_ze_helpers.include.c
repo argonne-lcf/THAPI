@@ -231,8 +231,8 @@ struct _ze_event_pool_entry {
   HASH_FIND_PTR(_ze_event_pools, &(val->context), pool); \
   if (!pool) { \
     pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(struct _ze_event_pool_entry)); \
-    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory"); \
     if (!pool) { \
+      THAPI_DBGLOG_NO_ARGS("Failed to allocate memory"); \
       pthread_mutex_unlock(&_ze_event_pools_mutex); \
       if (val->event_pool) { \
         if (val->event) \
