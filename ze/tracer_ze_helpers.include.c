@@ -287,7 +287,7 @@ static inline void _register_ze_event(
 
   if (!_ze_event) {
     FIND_ZE_EVENT(&event, _ze_event);
-    if (_ze_event) {
+    if (_ze_event && (_ze_event->flags & _ZE_IMMEDIATE_CMD)) {
       THAPI_DBGLOG("Event already registered: %p", event);
       return;
     }
