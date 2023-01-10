@@ -171,7 +171,8 @@ static inline void _on_create_command_list(
 }
 
 typedef enum _ze_event_flag {
-  _ZE_PROFILED = ZE_BIT(0)
+  _ZE_PROFILED = ZE_BIT(0),
+  _ZE_IMMEDIATE_CMD = ZE_BIT(1)
 } _ze_event_flag_t;
 typedef _ze_event_flag_t _ze_event_flags_t;
 
@@ -307,10 +308,13 @@ static inline void _register_ze_event(
   if (o_h) {
     cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
     _ze_event->context = cl_data->context;
+    if (cl_data->flags & _ZE_IMMEDIATE)
+      _ze_event->flags |= _ZE_IMMEDIATE_CMD;
   } else
     THAPI_DBGLOG("Could not get command list associated to event: %p", event);
 
-  if (_do_profile && cl_data)
+  /* only track our events, users are responsible for reseting/deleting their events */
+  if (cl_data && _ze_event->event_pool)
     DL_APPEND(cl_data->events, _ze_event);
   ADD_ZE_EVENT(_ze_event);
   if (o_h)
@@ -395,15 +399,13 @@ static inline void _on_created_event(ze_event_handle_t event) {
 
 static inline void _on_destroy_event(ze_event_handle_t event) {
   struct _ze_event_h *ze_event = NULL;
-  struct _ze_obj_h *o_h = NULL;
-  int get_results = 1;
 
 #ifdef THAPI_DEBUG
+  struct _ze_obj_h *o_h = NULL;
   FIND_AND_DEL_ZE_OBJ(&event, o_h);
   if (!o_h) {
     THAPI_DBGLOG("Could not find event: %p", event);
   }
-  o_h = NULL;
 #endif
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
@@ -411,20 +413,7 @@ static inline void _on_destroy_event(ze_event_handle_t event) {
     return;
   }
 
-  pthread_mutex_lock(&_ze_objs_mutex);
-  HASH_FIND_PTR(_ze_objs, &ze_event->command_list, o_h);
-  if (o_h) {
-    struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    /* Should not be necessary, just being paranoid of user having race conditions in their code */
-    if (cl_data->events && ze_event->prev)
-      DL_DELETE(cl_data->events, ze_event);
-    if (!(cl_data->flags & _ZE_IMMEDIATE) && !(cl_data->flags & _ZE_EXECUTED))
-      get_results = 0;
-  } else
-    THAPI_DBGLOG("Could not find command list: %p, for event: %p", ze_event->command_list, event);
-  pthread_mutex_unlock(&_ze_objs_mutex);
-
-  if (get_results && !(ze_event->flags & _ZE_PROFILED))
+  if (!(ze_event->flags & _ZE_PROFILED))
     _profile_event_results(event);
   PUT_ZE_EVENT_WRAPPER(ze_event);
 }
@@ -455,34 +444,10 @@ static inline void _on_reset_event(ze_event_handle_t event) {
     return;
   }
 
-  struct _ze_obj_h *o_h = NULL;
-  int to_add = 0;
+  if (!(ze_event->flags & _ZE_PROFILED))
+    _profile_event_results(event);
 
-  pthread_mutex_lock(&_ze_objs_mutex);
-  HASH_FIND_PTR(_ze_objs, &ze_event->command_list, o_h);
-  if (o_h) {
-    int to_profile = 0;
-    struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    if ((cl_data->flags & _ZE_IMMEDIATE) && cl_data->events && ze_event->prev)
-      DL_DELETE(cl_data->events, ze_event);
-    if (((cl_data->flags & _ZE_IMMEDIATE) ||
-         (cl_data->flags & _ZE_EXECUTED)) &&
-        !(ze_event->flags & _ZE_PROFILED))
-      to_profile = 1;
-    if (!(cl_data->flags & _ZE_IMMEDIATE))
-      to_add = 1;
-    pthread_mutex_unlock(&_ze_objs_mutex);
-
-    if (to_profile) {
-      _profile_event_results(event);
-      ze_event->flags |= _ZE_PROFILED;
-    }
-  } else {
-    pthread_mutex_unlock(&_ze_objs_mutex);
-    THAPI_DBGLOG("Could not find command list: %p, for event: %p", ze_event->command_list, event);
-  }
-
-  if (to_add)
+  if (!(ze_event->flags & _ZE_IMMEDIATE_CMD))
     ADD_ZE_EVENT(ze_event);
   else
     PUT_ZE_EVENT_WRAPPER(ze_event);
@@ -497,11 +462,9 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
     return;
   }
 
-  if (ze_event->event_pool) { /* one of ours */
-    /* dump events that are ours, the other should have been reset by the user */
-    _profile_event_results(event);
-    ZE_EVENT_HOST_RESET_PTR(event);
-  }
+  _profile_event_results(event);
+  ZE_EVENT_HOST_RESET_PTR(event);
+
   ze_event->flags &= ~_ZE_PROFILED;
   ADD_ZE_EVENT(ze_event);
 }
@@ -554,6 +517,7 @@ static void _on_destroy_context(ze_context_handle_t context){
           ZE_EVENT_DESTROY_PTR(ze_event->event);
         ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
       }
+       /* should put? */
       free(ze_event);
     }
   }
