@@ -1,8 +1,24 @@
+#ifdef THAPI_DEBUG
+#define TAHPI_LOG stderr
+#define THAPI_DBGLOG(fmt, ...) \
+ do { \
+   fprintf(TAHPI_LOG, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__, __VA_ARGS__); \
+ } while(0)
+#define THAPI_DBGLOG_NO_ARGS(fmt) \
+ do { \
+   fprintf(TAHPI_LOG, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__); \
+ } while(0)
+#else
+#define THAPI_DBGLOG(...) do { } while (0)
+#define THAPI_DBGLOG_NO_ARGS(fmt) do { } while (0)
+#endif
+
 enum _ze_obj_type {
   UNKNOWN = 0,
   DRIVER,
   DEVICE,
-  COMMAND_LIST
+  COMMAND_LIST,
+  EVENT
 };
 
 struct _ze_device_obj_data {
@@ -14,27 +30,13 @@ struct _ze_device_obj_data {
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
 
-typedef enum _ze_event_flag {
-  _ZE_PROFILED = ZE_BIT(0)
-} _ze_event_flag_t;
-typedef _ze_event_flag_t _ze_event_flags_t;
-
-struct _ze_event_h {
-  ze_event_handle_t event;
-  UT_hash_handle hh;
-  ze_command_list_handle_t command_list;
-  ze_event_pool_handle_t event_pool;
-  ze_context_handle_t context;
-  _ze_event_flags_t flags;
-  /* to remember events in command lists */
-  struct _ze_event_h *next, *prev;
-};
-
 typedef enum _ze_command_list_flag {
   _ZE_IMMEDIATE = ZE_BIT(0),
   _ZE_EXECUTED  = ZE_BIT(1)
 } _ze_command_list_flag_t;
 typedef _ze_command_list_flag_t _ze_command_list_flags_t;
+
+struct _ze_event_h;
 
 struct _ze_command_list_obj_data {
   ze_device_handle_t device;
@@ -92,13 +94,17 @@ static inline void _register_ze_device(
   struct _ze_device_obj_data *d_data = NULL;
 
   FIND_ZE_OBJ(&device, o_h);
-  if (o_h)
+  if (o_h) {
+    THAPI_DBGLOG("Device already registered: %p", device);
     return;
+  }
 
   intptr_t mem = (intptr_t)calloc(1, sizeof(struct _ze_obj_h) +
                                      sizeof(struct _ze_device_obj_data) );
-  if (mem == 0)
+  if (mem == 0) {
+    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
     return;
+  }
 
   o_h = (struct _ze_obj_h *)mem;
   d_data = (struct _ze_device_obj_data *)(mem + sizeof(struct _ze_obj_h));
@@ -119,7 +125,7 @@ static inline void _register_ze_device(
   ADD_ZE_OBJ(o_h);
 }
 
-static inline void _register_ze_command_list(
+static inline void _on_create_command_list(
  ze_command_list_handle_t command_list,
  ze_context_handle_t context,
  ze_device_handle_t device,
@@ -129,18 +135,24 @@ static inline void _register_ze_command_list(
   ze_driver_handle_t driver;
 
   FIND_ZE_OBJ(&device, o_h);
-  if (!o_h)
+  if (!o_h) {
+    THAPI_DBGLOG("Could not find device: %p associated with command list: %p", device, command_list);
     return;
+  }
   driver = ((struct _ze_device_obj_data *)(o_h->obj_data))->driver;
 
   FIND_ZE_OBJ(&command_list, o_h);
-  if (o_h)
+  if (o_h) {
+    THAPI_DBGLOG("Command list already registered: %p", command_list);
     return;
+  }
 
   intptr_t mem = (intptr_t)calloc(1, sizeof(struct _ze_obj_h) +
                                      sizeof(struct _ze_command_list_obj_data) );
-  if (mem == 0)
+  if (mem == 0) {
+    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
     return;
+  }
 
   o_h = (struct _ze_obj_h *)mem;
   cl_data = (struct _ze_command_list_obj_data *)(mem + sizeof(struct _ze_obj_h));
@@ -157,6 +169,26 @@ static inline void _register_ze_command_list(
 
   ADD_ZE_OBJ(o_h);
 }
+
+typedef enum _ze_event_flag {
+  _ZE_PROFILED = ZE_BIT(0),
+  _ZE_IMMEDIATE_CMD = ZE_BIT(1)
+} _ze_event_flag_t;
+typedef _ze_event_flag_t _ze_event_flags_t;
+
+struct _ze_event_h {
+  ze_event_handle_t event;
+  UT_hash_handle hh;
+  ze_command_list_handle_t command_list;
+  ze_event_pool_handle_t event_pool;
+  ze_context_handle_t context;
+  _ze_event_flags_t flags;
+  /* to remember events in command lists */
+  struct _ze_event_h *next, *prev;
+};
+
+static struct _ze_event_h *_ze_events = NULL;
+static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define FIND_ZE_EVENT(key, val) do { \
   pthread_mutex_lock(&_ze_events_mutex); \
@@ -179,14 +211,14 @@ static inline void _register_ze_command_list(
   pthread_mutex_unlock(&_ze_events_mutex); \
 } while (0)
 
-static struct _ze_event_h *_ze_events = NULL;
-static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 struct _ze_event_pool_entry {
   ze_context_handle_t context;
   UT_hash_handle hh;
   struct _ze_event_h *events;
 };
+
+struct _ze_event_pool_entry *_ze_event_pools = NULL;
+static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define GET_ZE_EVENT(key, val) do { \
   struct _ze_event_pool_entry *pool = NULL; \
@@ -207,6 +239,7 @@ struct _ze_event_pool_entry {
   if (!pool) { \
     pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(struct _ze_event_pool_entry)); \
     if (!pool) { \
+      THAPI_DBGLOG_NO_ARGS("Failed to allocate memory"); \
       pthread_mutex_unlock(&_ze_event_pools_mutex); \
       if (val->event_pool) { \
         if (val->event) \
@@ -226,8 +259,8 @@ struct _ze_event_pool_entry {
   pthread_mutex_unlock(&_ze_event_pools_mutex); \
 } while (0)
 
-struct _ze_event_pool_entry *_ze_event_pools = NULL;
-static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct _ze_event_h *_ze_event_wrappers = NULL;
+static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define GET_ZE_EVENT_WRAPPER(val) do { \
   pthread_mutex_lock(&_ze_event_wrappers_mutex); \
@@ -247,9 +280,6 @@ static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_unlock(&_ze_event_wrappers_mutex); \
 } while(0)
 
-struct _ze_event_h *_ze_event_wrappers = NULL;
-static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static inline void _register_ze_event(
  ze_event_handle_t event,
  ze_command_list_handle_t command_list,
@@ -257,11 +287,15 @@ static inline void _register_ze_event(
 
   if (!_ze_event) {
     FIND_ZE_EVENT(&event, _ze_event);
-    if (_ze_event)
+    if (_ze_event && (_ze_event->flags & _ZE_IMMEDIATE_CMD)) {
+      THAPI_DBGLOG("Event already registered: %p", event);
       return;
+    }
     GET_ZE_EVENT_WRAPPER(_ze_event);
-    if (!_ze_event)
+    if (!_ze_event) {
+      THAPI_DBGLOG("Could not get event warapper for: %p", event);
       return;
+    }
     _ze_event->event = event;
     _ze_event->command_list = command_list;
     _ze_event->event_pool = NULL;
@@ -274,9 +308,13 @@ static inline void _register_ze_event(
   if (o_h) {
     cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
     _ze_event->context = cl_data->context;
-  }
+    if (cl_data->flags & _ZE_IMMEDIATE)
+      _ze_event->flags |= _ZE_IMMEDIATE_CMD;
+  } else
+    THAPI_DBGLOG("Could not get command list associated to event: %p", event);
 
-  if (_do_profile && cl_data)
+  /* only track our events, users are responsible for reseting/deleting their events */
+  if (cl_data && _ze_event->event_pool)
     DL_APPEND(cl_data->events, _ze_event);
   ADD_ZE_EVENT(_ze_event);
   if (o_h)
@@ -289,8 +327,10 @@ static struct _ze_event_h * _get_profiling_event(
   struct _ze_event_h *e_w;
 
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h)
+  if (!o_h) {
+    THAPI_DBGLOG("Could not get command list: %p", command_list);
     return NULL;
+  }
   ze_context_handle_t context =
     ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
   GET_ZE_EVENT(&context, e_w);
@@ -300,18 +340,24 @@ static struct _ze_event_h * _get_profiling_event(
   }
 
   GET_ZE_EVENT_WRAPPER(e_w);
-  if (!e_w)
+  if (!e_w) {
+    THAPI_DBGLOG("Could not create a new event wrapper for command list: %p", command_list);
     goto cleanup;
+  }
 
   e_w->command_list = command_list;
   ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
   ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
-  if (res != ZE_RESULT_SUCCESS)
+  if (res != ZE_RESULT_SUCCESS) {
+    THAPI_DBGLOG("zeEventPoolCreate failed with %d, for command list: %p, context: %p", res, command_list, context);
     goto cleanup_wrapper;
+  }
   ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
   res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
-  if (res != ZE_RESULT_SUCCESS)
+  if (res != ZE_RESULT_SUCCESS) {
+    THAPI_DBGLOG("zeEventCreate failed with %d, for event pool: %p, command list: %p, context: %p", res, e_w->event_pool, command_list, context);
     goto cleanup_ep;
+  }
   goto cleanup;
 cleanup_ep:
   ZE_EVENT_POOL_DESTROY_PTR(e_w->event_pool);
@@ -325,27 +371,59 @@ cleanup:
 
 static void _profile_event_results(ze_event_handle_t event);
 
-static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl, int get_results) {
+static inline void _on_created_event(ze_event_handle_t event) {
+#ifdef THAPI_DEBUG
+  struct _ze_obj_h *o_h = NULL;
+  FIND_ZE_OBJ(&event, o_h);
+  if (o_h) {
+    THAPI_DBGLOG("Event already registered: %p", event);
+    return;
+  }
+
+  intptr_t mem = (intptr_t)calloc(1, sizeof(struct _ze_obj_h));
+  if (mem == 0) {
+    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
+    return;
+  }
+
+  o_h = (struct _ze_obj_h *)mem;
+  o_h->ptr = (void *)event;
+  o_h->type = EVENT;
+
+  ADD_ZE_OBJ(o_h);
+#else
+  (void)event;
+#endif
+}
+
+static inline void _on_destroy_event(ze_event_handle_t event) {
+  struct _ze_event_h *ze_event = NULL;
+
+#ifdef THAPI_DEBUG
+  struct _ze_obj_h *o_h = NULL;
+  FIND_AND_DEL_ZE_OBJ(&event, o_h);
+  if (!o_h) {
+    THAPI_DBGLOG("Could not find event: %p", event);
+  }
+#endif
+
+  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
+  if (!ze_event) {
+    return;
+  }
+
+  if (!(ze_event->flags & _ZE_PROFILED))
+    _profile_event_results(event);
+  PUT_ZE_EVENT_WRAPPER(ze_event);
+}
+
+static inline void _unregister_ze_event(ze_event_handle_t event, int get_results) {
   struct _ze_event_h *ze_event = NULL;
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event)
+  if (!ze_event) {
+    THAPI_DBGLOG("Could not find event: %p", event);
     return;
-
-  if (remove_cl) {
-    struct _ze_obj_h *o_h = NULL;
-
-    pthread_mutex_lock(&_ze_objs_mutex);
-    HASH_FIND_PTR(_ze_objs, &ze_event->command_list, o_h);
-    if (o_h) {
-      struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-      /* Should not be necessary, just being paranoid of user having race conditions in their code */
-      if (cl_data->events && ze_event->prev)
-        DL_DELETE(cl_data->events, ze_event);
-      if (!(cl_data->flags & _ZE_IMMEDIATE) && !(cl_data->flags & _ZE_EXECUTED))
-        get_results = 0;
-    }
-    pthread_mutex_unlock(&_ze_objs_mutex);
   }
 
   if (get_results && !(ze_event->flags & _ZE_PROFILED))
@@ -356,39 +434,19 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int remove_cl, 
     PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
-static inline void _dump_and_reset_event(ze_event_handle_t event) {
+static inline void _on_reset_event(ze_event_handle_t event) {
   struct _ze_event_h *ze_event = NULL;
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event)
+  if (!ze_event) {
+    THAPI_DBGLOG("Could not find event: %p", event);
     return;
+  }
 
-  struct _ze_obj_h *o_h = NULL;
-  int to_add = 0;
+  if (!(ze_event->flags & _ZE_PROFILED))
+    _profile_event_results(event);
 
-  pthread_mutex_lock(&_ze_objs_mutex);
-  HASH_FIND_PTR(_ze_objs, &ze_event->command_list, o_h);
-  if (o_h) {
-    int to_profile = 0;
-    struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    if ((cl_data->flags & _ZE_IMMEDIATE) && cl_data->events && ze_event->prev)
-      DL_DELETE(cl_data->events, ze_event);
-    if (((cl_data->flags & _ZE_IMMEDIATE) ||
-         (cl_data->flags & _ZE_EXECUTED)) &&
-        !(ze_event->flags & _ZE_PROFILED))
-      to_profile = 1;
-    if (!(cl_data->flags & _ZE_IMMEDIATE))
-      to_add = 1;
-    pthread_mutex_unlock(&_ze_objs_mutex);
-
-    if (to_profile) {
-      _profile_event_results(event);
-      ze_event->flags |= _ZE_PROFILED;
-    }
-  } else
-    pthread_mutex_unlock(&_ze_objs_mutex);
-
-  if (to_add)
+  if (!(ze_event->flags & _ZE_IMMEDIATE_CMD))
     ADD_ZE_EVENT(ze_event);
   else
     PUT_ZE_EVENT_WRAPPER(ze_event);
@@ -398,14 +456,14 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
   struct _ze_event_h *ze_event = NULL;
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event)
+  if (!ze_event) {
+    THAPI_DBGLOG("Could not find event: %p", event);
     return;
-
-  if (ze_event->event_pool) { /* one of ours */
-    /* dump events that are ours, the other should have been reset by the user */
-    _profile_event_results(event);
-    ZE_EVENT_HOST_RESET_PTR(event);
   }
+
+  _profile_event_results(event);
+  ZE_EVENT_HOST_RESET_PTR(event);
+
   ze_event->flags &= ~_ZE_PROFILED;
   ADD_ZE_EVENT(ze_event);
 }
@@ -444,7 +502,7 @@ static void _event_cleanup() {
   }
 }
 
-static void _context_cleanup(ze_context_handle_t context){
+static void _on_destroy_context(ze_context_handle_t context){
   struct _ze_event_h *ze_event = NULL;
   struct _ze_event_h *tmp = NULL;
   pthread_mutex_lock(&_ze_events_mutex);
@@ -458,6 +516,7 @@ static void _context_cleanup(ze_context_handle_t context){
           ZE_EVENT_DESTROY_PTR(ze_event->event);
         ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
       }
+       /* should put? */
       free(ze_event);
     }
   }
@@ -479,23 +538,25 @@ static void _context_cleanup(ze_context_handle_t context){
   pthread_mutex_unlock(&_ze_event_pools_mutex);
 }
 
-static void _reset_ze_command_list(ze_command_list_handle_t command_list) {
+static void _on_reset_command_list(ze_command_list_handle_t command_list) {
   struct _ze_obj_h *o_h = NULL;
 
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h)
+  if (!o_h) {
+    THAPI_DBGLOG("Could not get command list: %p", command_list);
     return;
+  }
   struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
   struct _ze_event_h *elt = NULL, *tmp = NULL;
   DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
     DL_DELETE(cl_data->events, elt);
-    _unregister_ze_event(elt->event, 0, cl_data->flags & _ZE_EXECUTED);
+    _unregister_ze_event(elt->event, cl_data->flags & _ZE_EXECUTED);
   }
   cl_data->flags &= ~_ZE_EXECUTED;
   ADD_ZE_OBJ(o_h);
 }
 
-static void _execute_ze_command_lists(uint32_t numCommandLists, ze_command_list_handle_t *phCommandLists) {
+static void _on_execute_command_lists(uint32_t numCommandLists, ze_command_list_handle_t *phCommandLists) {
   for (uint32_t i = 0; i < numCommandLists; i++) {
     struct _ze_obj_h *o_h = NULL;
     FIND_AND_DEL_ZE_OBJ(phCommandLists + i, o_h);
@@ -510,22 +571,25 @@ static void _execute_ze_command_lists(uint32_t numCommandLists, ze_command_list_
       } else
         cl_data->flags |= _ZE_EXECUTED;
       ADD_ZE_OBJ(o_h);
-    }
+    } else
+      THAPI_DBGLOG("Could not get command list: %p", phCommandLists[i]);
   }
 }
 
-static void _unregister_ze_command_list(ze_command_list_handle_t command_list) {
+static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   struct _ze_obj_h *o_h = NULL;
 
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h)
+  if (!o_h) {
+    THAPI_DBGLOG("Could not get command list: %p", command_list);
     return;
+  }
   if (_do_profile) {
     struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
       DL_DELETE(cl_data->events, elt);
-      _unregister_ze_event(elt->event, 0, (cl_data->flags & _ZE_IMMEDIATE) || (cl_data->flags & _ZE_EXECUTED));
+      _unregister_ze_event(elt->event, (cl_data->flags & _ZE_IMMEDIATE) || (cl_data->flags & _ZE_EXECUTED));
     }
   }
   free(o_h);
