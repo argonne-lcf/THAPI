@@ -381,7 +381,6 @@ static inline void _on_created_event(ze_event_handle_t event) {
   }
 
   intptr_t mem = (intptr_t)calloc(1, sizeof(struct _ze_obj_h));
-
   if (mem == 0) {
     THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
     return;
