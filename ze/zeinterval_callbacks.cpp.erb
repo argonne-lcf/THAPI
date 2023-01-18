@@ -544,18 +544,7 @@ Case B:
      if (it == state->event_to_profiling_result.end()){
 	   //Create the payload who will be used by event_profiling_results
           state->event_payload[hpe] = t_tfnm_m_d_ts_cld_t(thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref);
-     } else {
-          // Handle the callbacks case, where `event_profiling_results` was called before `event_profiling`.
-          const auto& [err, globalStart, globalEnd] = it->second;
-          const auto& device_to_properties = state->device_to_properties;
-          const auto& subdevice_parent = state->subdevice_parent;
-          create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
-                                            commandname.c_str(), metadata.c_str(),
-                                            err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
-					    device_to_properties, subdevice_parent);
-	  state->event_to_profiling_result.erase(it);
-     }
-
+     }	     
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      const hpe_t hpe(hostname, process_id, hEvent);
@@ -566,15 +555,31 @@ Case B:
           const auto& [thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref] = it->second;
           const auto& device_to_properties = state->device_to_properties;
 	  const auto& subdevice_parent = state->subdevice_parent;
-	  if (commandname != "zeCommandListAppendSignalEvent")
+	   // We did a querry durring cleaning
+	  if (commandname != "zeCommandListAppendSignalEvent" && status != ZE_RESULT_NOT_READY)
                 create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
                                                   commandname.c_str(), metadata.c_str(),
                                                   err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
-                                                  device_to_properties, subdevice_parent);
-	  state->event_payload.erase(it);
-     } else {
-          state->event_to_profiling_result[hpe] = event_profiling_result_t(err, globalStart,globalEnd);
+						  device_to_properties, subdevice_parent);
+	  // We don't have callbacks (aka event_profiling_results before event_profiling) hence we can support
+	  // multiple event_profiling_results associated to same event_profiling.
+	  // So we don't clean the state now.
      }
+  <% end %>
+  // When user Destroy event, we are sure they will not re-use it.
+  // Hence we can clean the state, this is not the case when Reseting events.
+ // For command list reset / destroy we cannot track the state , they can check event status laters. 
+  <% if ["zeEventDestroy"].include?(dbt_event.name_striped)%>
+    <%if dbt_event.start? %>
+     save_start(state, hpt_t(hostname, process_id, thread_id), hEvent);
+    <% else %>
+     if (zeResult == ZE_RESULT_SUCCESS) {
+        const auto hEvent = retrieve_start<ze_event_handle_t>(state, hpt_t(hostname, process_id, thread_id));
+        const hpe_t hpe(hostname, process_id, hEvent);
+        state->event_to_profiling_result.erase(hpe);
+        state->event_payload.erase(hpe);
+     }
+    <% end %>
   <% end %>
   <%#
                              ___        _   _
