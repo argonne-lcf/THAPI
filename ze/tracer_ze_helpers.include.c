@@ -284,16 +284,20 @@ static inline void _register_ze_event(
  ze_event_handle_t event,
  ze_command_list_handle_t command_list,
  struct _ze_event_h * _ze_event) {
-
+  // If _ze_event, our event
   if (!_ze_event) {
     FIND_ZE_EVENT(&event, _ze_event);
-    if (_ze_event && (_ze_event->flags & _ZE_IMMEDIATE_CMD)) {
-      THAPI_DBGLOG("Event already registered: %p", event);
+    if (_ze_event) {
+      if (_ze_event->flags & _ZE_IMMEDIATE_CMD) {
+        THAPI_DBGLOG("Event already registered: %p", event);
+      }
+      _ze_event->command_list = command_list;
       return;
     }
+
     GET_ZE_EVENT_WRAPPER(_ze_event);
     if (!_ze_event) {
-      THAPI_DBGLOG("Could not get event warapper for: %p", event);
+      THAPI_DBGLOG("Could not get event wrapper for: %p", event);
       return;
     }
     _ze_event->event = event;
