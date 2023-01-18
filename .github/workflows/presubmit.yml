@@ -21,7 +21,7 @@ jobs:
     name: Build and cache Babeltrace2
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         id: babeltrace2
         env:
           cache-name: cache-babeltrace2
@@ -61,8 +61,8 @@ jobs:
     name: Build and Check ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         id: babeltrace2
         env:
           cache-name: cache-babeltrace2
@@ -93,8 +93,8 @@ jobs:
     name: Build in Tree ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         id: babeltrace2
         env:
           cache-name: cache-babeltrace2
@@ -121,8 +121,8 @@ jobs:
     name: Distcheck ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         id: babeltrace2
         env:
           cache-name: cache-babeltrace2
@@ -151,8 +151,8 @@ jobs:
     name: Dist and Check ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         id: babeltrace2
         env:
           cache-name: cache-babeltrace2
