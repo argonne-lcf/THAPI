@@ -478,7 +478,7 @@ Case B:
                            _|
   %>
   <%# Map last command partial payload %>
-  <% if dbt_event.start? and dbt_event.fields_name.include?('hSignalEvent') %>
+  <% if dbt_event.start? and ( dbt_event.fields_name.include?('hSignalEvent') or dbt_event.name_striped == "zeCommandListAppendSignalEvent") %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{START}") %>
     <% $profiling_apis.add("#{dbt_event.name_prefix}_#{STOP}") %>
      std::stringstream metadata;
@@ -538,11 +538,11 @@ Case B:
      const hpd_t hpd(hostname, process_id, device);
      const auto it0 = m0.find(hpd);
      if (it0 != m0.cend())
-          timestamp_pair_ref = it0->second;
+	  timestamp_pair_ref = it0->second;
 
      auto it = state->event_to_profiling_result.find(hpe);
      if (it == state->event_to_profiling_result.end()){
-          //Creeate the payload who will be used by event_profiling_results
+	   //Create the payload who will be used by event_profiling_results
           state->event_payload[hpe] = t_tfnm_m_d_ts_cld_t(thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref);
      } else {
           // Handle the callbacks case, where `event_profiling_results` was called before `event_profiling`.
@@ -552,7 +552,8 @@ Case B:
           create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
                                             commandname.c_str(), metadata.c_str(),
                                             err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
-                                            device_to_properties, subdevice_parent);
+					    device_to_properties, subdevice_parent);
+	  state->event_to_profiling_result.erase(it);
      }
 
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_profiling:event_profiling_results" %>
@@ -564,48 +565,17 @@ Case B:
      if (it != state->event_payload.end()) {
           const auto& [thread_id, commandname, metadata, device, lltng_min, timestamp_pair_ref] = it->second;
           const auto& device_to_properties = state->device_to_properties;
-          const auto& subdevice_parent = state->subdevice_parent;
-          create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
-                                            commandname.c_str(), metadata.c_str(),
-                                            err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
-                                            device_to_properties, subdevice_parent);
+	  const auto& subdevice_parent = state->subdevice_parent;
+	  if (commandname != "zeCommandListAppendSignalEvent")
+                create_and_enqueue_device_message(hostname.c_str(), process_id, thread_id, device,
+                                                  commandname.c_str(), metadata.c_str(),
+                                                  err, globalStart, globalEnd, lltng_min, timestamp_pair_ref,
+                                                  device_to_properties, subdevice_parent);
+	  state->event_payload.erase(it);
      } else {
           state->event_to_profiling_result[hpe] = event_profiling_result_t(err, globalStart,globalEnd);
      }
   <% end %>
-  <%# Cleanup state for profiling %>
-  <%# When the command list are destroyed or reset, we can delete all the states related to those command list %>
-  <% if ["zeCommandListDestroy", "zeCommandListReset" ].include?(dbt_event.name_striped)%>
-    <%if dbt_event.start? %>
-     save_start(state, hpt_t(hostname, process_id, thread_id), hCommandList);
-    <% else %>
-     if (zeResult == ZE_RESULT_SUCCESS) {
-          const auto hCommandList = retrieve_start<ze_command_list_handle_t>(state, hpt_t(hostname, process_id, thread_id));
-          const hp_command_list_t hpl(hostname, process_id, hCommandList);
-          auto it_e = state->command_list_to_events.find(hpl);
-          if (it_e != state->command_list_to_events.end()) {
-               for (auto& hEvent: it_e->second) {
-                  const hpe_t hpe(hostname, process_id, hEvent);
-                  state->event_to_profiling_result.erase(hpe);
-                  state->event_payload.erase(hpe);
-               }
-               state->command_list_to_events.erase(it_e);
-          }
-     }
-    <% end %>
-  <% elsif ["zeEventDestroy", "zeEventHostReset"].include?(dbt_event.name_striped)%>
-    <%if dbt_event.start? %>
-     save_start(state, hpt_t(hostname, process_id, thread_id), hEvent);
-    <% else %>
-     if (zeResult == ZE_RESULT_SUCCESS) {
-        const auto hEvent = retrieve_start<ze_event_handle_t>(state, hpt_t(hostname, process_id, thread_id));
-        const hpe_t hpe(hostname, process_id, hEvent);
-        state->event_to_profiling_result.erase(hpe);
-        state->event_payload.erase(hpe);
-     }
-    <% end %>
-  <% end %>
-
   <%#
                              ___        _   _
    |\/|  _  ._ _   _  ._      | ._ _. _|_ _|_ o  _
@@ -616,7 +586,7 @@ Case B:
   <% if dbt_event.start? and
         dbt_event.name_striped.include?("Memory") and
         dbt_event.fields_name.include?("size") %>
-    <% if !dbt_event.fields_name.include?('hSignalEvent') %>
+    <% if !(dbt_event.fields_name.include?('hSignalEvent') or dbt_event.name_striped == "zeCommandListAppendSignalEvent") %>
      //Name is set by the profiling, but some function transfert memory but cannot be profiled
      //ie, prefetch, maxing memory resident...
      const std::string name{"<%= dbt_event.name_striped %>"};
