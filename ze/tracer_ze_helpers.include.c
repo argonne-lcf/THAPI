@@ -211,6 +211,17 @@ static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_unlock(&_ze_events_mutex); \
 } while (0)
 
+#define PRINT_ZE_EVENTS() do { \
+  pthread_mutex_lock(&_ze_events_mutex); \
+  THAPI_DBGLOG_NO_ARGS("Events:"); \
+  struct _ze_event_h *_ze_event = NULL; \
+  struct _ze_event_h *_tmp = NULL; \
+  HASH_ITER(hh, _ze_events, _ze_event, _tmp) { \
+    THAPI_DBGLOG("\tevent: %p, command_list: %p", _ze_event->event, _ze_event->command_list); \
+  } \
+  pthread_mutex_unlock(&_ze_events_mutex); \
+} while (0)
+
 struct _ze_event_pool_entry {
   ze_context_handle_t context;
   UT_hash_handle hh;
