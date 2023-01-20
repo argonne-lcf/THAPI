@@ -1,0 +1,9 @@
+---
+lttng_ust_sampling:
+  events:
+  - name: heartbeat
+    args: []
+    fields: []
+  - name: heartbeat2
+    args: []
+    fields: []

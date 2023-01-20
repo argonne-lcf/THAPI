@@ -1,3 +1,5 @@
+#include "thapi_sampling.h"
+
 #ifdef THAPI_DEBUG
 #define TAHPI_LOG stderr
 #define THAPI_DBGLOG(fmt, ...) \
@@ -752,6 +754,8 @@ static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
+
+  thapi_sampling_init();
 
   s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
   if (s)

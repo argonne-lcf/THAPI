@@ -43,6 +43,7 @@ display_help() {
     echo "  -e, --exports                 Trace export functions"
     echo "  -v, --visualize               Visualize trace on thefly"
     echo "  --properties                  Dump devices infos"
+    echo "  --sample                      Sample performance counters"
     exit 1
 }
 
@@ -61,6 +62,7 @@ while true; do
     -e | --exports   ) shift; exports=1;;
     -v | --visualize ) shift; lttng_view=1;;
     --properties ) shift; properties=1;;
+    --sample ) shift; sample=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -100,6 +102,12 @@ fi
 if [ ! -z "$properties" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
+fi
+if [ ! -z "$sample" ]
+then
+  export LTTNG_UST_SAMPLING=1
+  lttng enable-channel --userspace nonblocking-channel
+  lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
 fi
 if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
 then

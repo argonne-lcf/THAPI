@@ -60,6 +60,7 @@ display_help() {
     echo "  --live                   Don't store the trace and process on the fly"
     echo "  -v, --version            Print the version string"
     echo "  -r, --replay    [path]   <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
+    echo "  -s, --sample             Activate sampling"
     echo "                           If no arguments are provided, will use the latest trace available"
     echo
     echo " Example:"
@@ -205,6 +206,14 @@ trace_and_summary() {
     else
         lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
     fi
+
+    #Activate sampling on non-blocking stream
+    if [ -n "$sample" ]; then
+        export LTTNG_UST_SAMPLING=1
+        lttng enable-channel --userspace nonblocking-channel
+        lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
+    fi
+
 <% if languages.include?("omp") %>
     lazy_export LTTNG_UST_OMP_INTEL 1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
@@ -372,6 +381,7 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; display_mode=json;;
         -m | --mode)            shift; mode=$1; shift ;;
+        -s | --sample)          shift; sample=1;;
         --asm)                  shift; asm=true ;;
         --metadata)             shift; display_metadata=true ;;
         --max-name-size)        shift; display_name_max_size=$1; shift ;;

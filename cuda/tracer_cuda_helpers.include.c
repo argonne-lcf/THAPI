@@ -1,3 +1,5 @@
+#include "thapi_sampling.h"
+
 static void _log_export(CUuuid *pExportTableId, size_t exportOffset) {
   tracepoint(lttng_ust_cuda_exports, export_called, pExportTableId, exportOffset);
 }
@@ -474,6 +476,8 @@ static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
+
+  thapi_sampling_init();
 
   s = getenv("LTTNG_UST_CUDA_LIBCUDA");
   if (s)

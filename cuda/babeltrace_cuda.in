@@ -77,8 +77,11 @@ consume = lambda { |iterator, _|
       l = $event_lambdas[e.name]
       if l || !$restrict
         str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime("%H:%M:%S.%9L")}"
-        str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}" if $context
-        str << " - " << e.get_common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $context
+        if $context
+          str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}"
+          common_context_field = e.get_common_context_field
+          str << " - " << common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if common_context_field
+        end
         str << " - #{e.name}: "
         if l
           str << l.call(e.payload_field.value)

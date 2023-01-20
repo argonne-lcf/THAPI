@@ -43,6 +43,7 @@ display_help() {
     echo "  --properties                  Dump drivers and devices properties"
     echo "  --memory                      Dump memory properties"
     echo "  --structs                     Dump chained structs"
+    echo "  --sample                      Sample performance counters"
     exit 1
 }
 
@@ -61,6 +62,7 @@ while true; do
     --properties ) shift; properties=1;;
     --memory ) shift; memory=1;;
     --structs ) shift; structs=1; export LTTNG_UST_ZE_CHAINED_STRUCTS=1;;
+    --sample ) shift; sample=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -105,6 +107,12 @@ fi
 if [ ! -z "$build" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:*
+fi
+if [ ! -z "$sample" ]
+then
+  export LTTNG_UST_SAMPLING=1
+  lttng enable-channel --userspace nonblocking-channel
+  lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
 fi
 if [ -z "$LTTNG_UST_ZE_LIBZE_LOADER" ]
 then

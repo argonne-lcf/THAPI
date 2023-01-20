@@ -1,3 +1,5 @@
+#include "thapi_sampling.h"
+
 <% require "yaml" %>
 
 #define _OMPT_SET_CALLBACK(value, name) \
@@ -32,6 +34,8 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     (void) initial_device_num;
     int do_callbacks_intel = 0;
     int verbose = 0;
+
+    thapi_sampling_init();
 
     if (getenv("LTTNG_UST_OMP_INTEL"))
         do_callbacks_intel = 1;
