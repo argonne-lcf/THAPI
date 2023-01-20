@@ -74,6 +74,8 @@ void * thapi_sampling_loop(void *args) {
            time_cmp(&(*entry)->next, &now) < 0) {
       (*entry)->pfn();
       time_add(&(*entry)->next, &(*entry)->next, &(*entry)->interval);
+      if(time_cmp(&(*entry)->next, &now) < 0)
+	      time_add(&(*entry)->next, &now, &(*entry)->interval);
     }
     utarray_sort(thapi_sampling_events, sampling_entry_cmpw);
     entry = (struct sampling_entry **)utarray_front(thapi_sampling_events);
