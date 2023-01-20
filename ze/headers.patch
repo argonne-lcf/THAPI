@@ -34,9 +34,9 @@ diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api
   *
   */
  
--#include "ze_loader.h"
+-#include "ze_loader_internal.h"
 -#include "loader/ze_loader.h"
-+//#include "ze_loader.h"
++//#include "ze_loader_internal.h"
 +//#include "loader/ze_loader.h"
 +#include "../ze_api.h"
 +#define HMODULE void *
@@ -186,7 +186,7 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Defines Return/Error codes
  typedef enum _ze_result_t
-@@ -401,333 +401,333 @@
+@@ -401,349 +401,349 @@
  /// @brief Forces all shared allocations into device memory
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -488,6 +488,11 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  /// @brief Forward-declare ze_image_memory_properties_exp_t
 -typedef struct _ze_image_memory_properties_exp_t ze_image_memory_properties_exp_t;
 +//typedef struct _ze_image_memory_properties_exp_t ze_image_memory_properties_exp_t;
+
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_view_planar_ext_desc_t
+-typedef struct _ze_image_view_planar_ext_desc_t ze_image_view_planar_ext_desc_t;
++//typedef struct _ze_image_view_planar_ext_desc_t ze_image_view_planar_ext_desc_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare ze_image_view_planar_exp_desc_t
@@ -599,13 +604,28 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
 -typedef struct _ze_device_memory_ext_properties_t ze_device_memory_ext_properties_t;
 +//typedef struct _ze_device_memory_ext_properties_t ze_device_memory_ext_properties_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_ip_version_ext_t
+-typedef struct _ze_device_ip_version_ext_t ze_device_ip_version_ext_t;
++//typedef struct _ze_device_ip_version_ext_t ze_device_ip_version_ext_t;
+
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_sub_allocation_t
+-typedef struct _ze_sub_allocation_t ze_sub_allocation_t;
++//typedef struct _ze_sub_allocation_t ze_sub_allocation_t;
+
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_memory_sub_allocations_exp_properties_t
+-typedef struct _ze_memory_sub_allocations_exp_properties_t ze_memory_sub_allocations_exp_properties_t;
++//typedef struct _ze_memory_sub_allocations_exp_properties_t ze_memory_sub_allocations_exp_properties_t;
+
  
  #if !defined(__GNUC__)
  #pragma endregion
 diff -u4 -r include/zes_api.h modified_include/zes_api.h
 --- include/zes_api.h	2022-05-11 11:47:31.708258490 -0500
 +++ modified_include/zes_api.h	2022-05-11 12:04:58.036650198 -0500
-@@ -183,269 +183,269 @@
+@@ -183,285 +183,285 @@
  } zes_base_capability_t;
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -684,6 +704,21 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
 +//typedef struct _zes_pci_stats_t zes_pci_stats_t;
  
  ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_overclock_properties_t
+-typedef struct _zes_overclock_properties_t zes_overclock_properties_t;
++//typedef struct _zes_overclock_properties_t zes_overclock_properties_t;
+
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_control_property_t
+-typedef struct _zes_control_property_t zes_control_property_t;
++//typedef struct _zes_control_property_t zes_control_property_t;
+
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_vf_property_t
+-typedef struct _zes_vf_property_t zes_vf_property_t;
++//typedef struct _zes_vf_property_t zes_vf_property_t;
+
+ ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_diag_test_t
 -typedef struct _zes_diag_test_t zes_diag_test_t;
 +//typedef struct _zes_diag_test_t zes_diag_test_t;
@@ -748,6 +783,11 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
 -typedef struct _zes_fabric_port_throughput_t zes_fabric_port_throughput_t;
 +//typedef struct _zes_fabric_port_throughput_t zes_fabric_port_throughput_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_fabric_port_error_counters_t
+-typedef struct _zes_fabric_port_error_counters_t zes_fabric_port_error_counters_t;
++//typedef struct _zes_fabric_port_error_counters_t zes_fabric_port_error_counters_t;
+
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_fan_speed_t
 -typedef struct _zes_fan_speed_t zes_fan_speed_t;

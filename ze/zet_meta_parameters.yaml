@@ -16,6 +16,9 @@ meta_parameters:
   zetDebugGetRegisterSetProperties:
     - [ InOutScalar, pCount ]
     - [ OutArray, pRegisterSetProperties, pCount ]
+  zetDebugGetThreadRegisterSetProperties:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pRegisterSetProperties, pCount ]
   zetMetricGroupGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetricGroups, pCount ]

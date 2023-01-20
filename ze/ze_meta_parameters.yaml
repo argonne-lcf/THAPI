@@ -225,6 +225,9 @@ meta_parameters:
     - [ OutArray, pTimestamps, pCount ]
   zeImageGetMemoryPropertiesExp:
     - [ OutScalar, pMemoryProperties ]
+  zeImageViewCreateExt:
+    - [ InScalar, desc ]
+    - [ OutScalar, phImageView ]
   zeImageViewCreateExp:
     - [ InScalar, desc ]
     - [ OutScalar, phImageView ]
