@@ -6,7 +6,7 @@ raise "No namespace provided!" unless namespace
 
 h = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))[namespace]
 
-raise "Invalid namespace!" unless h
+raise "Invalid namespace: #{namespace}!" unless h
 
 puts <<EOF
 #include "lttng/tracepoint_gen.h"

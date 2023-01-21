@@ -101,6 +101,7 @@ ZE_PROBES_INCL = $(ZE_PROBES:=.h)
 ZE_PROBES_SRC = $(ZE_PROBES:=.c)
 
 ZE_STATIC_PROBES = \
+	ze_sampling \
 	ze_profiling \
 	ze_properties \
 	ze_build
