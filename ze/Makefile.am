@@ -146,14 +146,13 @@ EXTRA_DIST += \
 CLEANFILES += tracer_ze.c
 
 zeprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages=["ze"] $< > $@
+	$(ERB) -T 1 languages="ze" $< > $@
 	chmod a+x $@
 
 CLEANFILES += zeprof.sh
 
 bin_SCRIPTS = \
 	tracer_ze.sh \
-	babeltrace_ze \
 	zeprof.sh
 
 noinst_LTLIBRARIES = libzetracepoints.la

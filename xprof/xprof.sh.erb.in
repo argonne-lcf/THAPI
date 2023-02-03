@@ -30,11 +30,11 @@ end%>
 Option names are typically one to three words long, with hyphens to separate words %>
 
 display_help() {
-<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
+<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
     echo "$(basename $0): a tracer / summarizer of OpenCL, L0, and CUDA driver calls"
 <% elsif languages.include?("omp") %>
     echo "$(basename $0): a tracer / summarizer of OMP calls"
-<% elsif languages.include?("opencl") %>
+<% elsif languages.include?("cl") %>
     echo "$(basename $0): a tracer / summarizer of OpenCL calls"
 <% elsif languages.include?("ze") %>
     echo "$(basename $0): a tracer / summarizer of L0 calls"
@@ -128,62 +128,15 @@ get_mpi_rank() {
 
 bt2_all() {
     if [ -n "$trace" ]; then
-        # Todo filter direcly in the babeltrace
-<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
-        $bindir/babeltrace_thapi -r -c "$@"
-<% elsif languages.include?("opencl") %>
-        $bindir/babeltrace_opencl -r -c "$@"
-<% elsif languages.include?("ze") %>
-        $bindir/babeltrace_ze -r -c "$@"
-<% elsif languages.include?("cuda") %>
-        $bindir/babeltrace_cuda -r -c  "$@"
-<% elsif languages.include?("omp") %>
-        $bindir/babeltrace_omp -r -c  "$@"
-<% end %>
+       $bindir/babeltrace_thapi --backend <%= languages %> -r -c "$@"
     fi
 
     if [ -n "$timeline" ]; then
-
-       babeltrace2 --plugin-path=$libdir \
-                   "$@" \
-<% if languages.include?("opencl") %>
-                   --component=filter.clinterval.interval \
-<% end %>
-<% if languages.include?("ze") %>
-                   --component=filter.zeinterval.interval \
-<% end %>
-<% if languages.include?("cuda") %>
-                   --component=filter.cudainterval.interval \
-<% end %>
-<% if languages.include?("omp") %>
-                   --component=filter.ompinterval.interval \
-<% end %>
-                   --component=sink.xprof.timeline
+       $bindir/babeltrace_thapi timeline --backend <%= languages %> "$@"
     fi
 
     if [ -z "$timeline" ] && [ -z "$trace" ]; then
-
-       babeltrace2 --plugin-path=$libdir \
-                   "$@" \
-<% if languages.include?("opencl") %>
-                   --component=filter.clinterval.interval \
-<% end %>
-<% if languages.include?("ze") %>
-                   --component=filter.zeinterval.interval \
-<% end %>
-<% if languages.include?("cuda") %>
-                   --component=filter.cudainterval.interval \
-<% end %>
-<% if languages.include?("omp") %>
-                   --component=filter.ompinterval.interval \
-<% end %>
-                   --component=sink.xprof.tally \
-                   --params="display=$display, \
-                            name=$mangling, \
-                            display_mode=${display_mode}, \
-                            display_metadata=${display_metadata}, \
-                            display_name_max_size=${display_name_max_size}, \
-                            display_kernel_verbose=${display_kernel_verbose}"
+       $bindir/babeltrace_thapi tally --backend <%= languages %> "$@"
     fi
 }
 trace_and_summary() {
@@ -191,26 +144,32 @@ trace_and_summary() {
         display_help
     fi
     MPI_RANK=$(get_mpi_rank)
-    export LTTNG_HOME=$HOME/.lttng_home_$MPI_RANK
-   
-    mkdir -p ${LTTNG_HOME:-$HOME}
-    mkdir -p ${LTTNG_HOME2:-$HOME}/lttng-traces/running_trace/
-    # Make the muxer happy...
-    #sleep $MPI_RANK
+
+    THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
+    mkdir -p $THAPI_OUTPUT
+    if [ $MPI_RANK != -1 ]; then
+       THAPI_OUTPUT_TMP=${LTTNG_HOME:-$HOME}/lttng-traces/running_trace
+       mkdir -p $THAPI_OUTPUT_TMP
+       # Need to change LLTNG HOME so each rank have their own "lock"
+       THAPI_LOCK_DIR=$HOME/.lttng_mpi/
+       mkdir -p $THAPI_LOCK_DIR/$MPI_RANK
+       export LTTNG_HOME=$THAPI_LOCK_DIR/$MPI_RANK
+    fi
+
     lttng-sessiond $quiet --daemonize
-<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
-    THAPI_LTTNG_O=${LTTNG_HOME2:-$HOME}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
-<% elsif languages.include?("opencl") %>
-    THAPI_LTTNG_O=${LTTNG_HOME2:-$HOME}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
+<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
+    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
+<% elsif languages.include?("cl") %>
+    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("ze") %>
-    THAPI_LTTNG_O=${LTTNG_HOME2:-$HOME}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
+    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("cuda") %>
-    THAPI_LTTNG_O=${LTTNG_HOME2:-$HOME}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
+    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
 <% end %>
     if [ $MPI_RANK = -1 ]; then
     	lttng $quiet create -o $THAPI_LTTNG_O
     else
-        lttng $quiet create THAPI_$MPI_RANK -o ${LTTNG_HOME2:-$HOME}/lttng-traces/running_trace/$MPI_RANK
+        lttng $quiet create THAPI_$MPI_RANK -o $THAPI_OUTPUT_TMP/$MPI_RANK
     fi
 
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
@@ -218,7 +177,7 @@ trace_and_summary() {
     lazy_export LTTNG_UST_OMP_INTEL 1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
 <% end %>
-<% if languages.include?("opencl") %>
+<% if languages.include?("cl") %>
     opencl_disable_events="lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,"
     opencl_disable_events+="lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*,"
     opencl_disable_events+="lttng_ust_opencl:clGetMemAllocInfoINTEL*"
@@ -251,7 +210,7 @@ trace_and_summary() {
         lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events},${ze_disable_querry}
 
         if [ $mode = "full" ]; then
-            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events} 
+            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
             lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_properties}
             lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_querry}
         fi
@@ -274,12 +233,12 @@ trace_and_summary() {
 
     #Find libs and preload
 <% if languages.include?("omp") %>
-    if [ -z "$OMP_TOOL_LIBRARIES" ]; then 
+    if [ -z "$OMP_TOOL_LIBRARIES" ]; then
         export OMP_TOOL_LIBRARIES=$libdir/libTracerOMPT.so
     fi
 <% end %>
-<% if languages.include?("opencl") %>
-<%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
+<% if languages.include?("cl") %>
+<%= print_loader_logic("cl","libOpenCL","libTracerOpenCL")%>
 <% end %>
 <% if languages.include?("ze") %>
 <%= print_loader_logic("ze","libze_loader","libTracerZE")%>
@@ -287,7 +246,11 @@ trace_and_summary() {
 <% if languages.include?("cuda") %>
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
-    lttng $quiet start THAPI_$MPI_RANK
+    if [ $MPI_RANK = -1 ]; then
+        lttng $quiet start THAPI
+    else
+        lttng $quiet start THAPI_$MPI_RANK
+    fi
     #Create the metadata.
     #read and dump `$LTTNG_UST_THAPI_METADATA` env
     $bindir/thapi_metadata
@@ -297,16 +260,22 @@ trace_and_summary() {
 }
 
 trace_epilogue() {
-    lttng $quiet stop THAPI_$MPI_RANK
-    lttng $quiet destroy THAPI_$MPI_RANK
     if [ $MPI_RANK = -1 ]; then
-        summary
-    elif [ $MPI_RANK = 0 ]; then
-        while [ $(find $HOME/.lttng_home_*/ -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
+        lttng $quiet stop THAPI
+        lttng $quiet destroy THAPI
+   	summary
+   else
+        lttng $quiet stop THAPI_$MPI_RANK
+        lttng $quiet destroy THAPI_$MPI_RANK
+    fi
+
+    if [ $MPI_RANK = 0 ]; then
+	while [ $(find $THAPI_LOCK_DIR/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
+	   echo "LOOPING"
            sleep 1
 	done
-    	mv ${LTTNG_HOME2:-$HOME}/lttng-traces/running_trace $THAPI_LTTNG_O
-    	summary
+	mv ${THAPI_OUTPUT_TMP} $THAPI_LTTNG_O
+	summary
     fi
 }
 
@@ -317,9 +286,9 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
-<% if ["omp","ze","cuda","opencl"].all? { |l| languages.include?(l) } %>
+<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME2:-$HOME}/lttng-traces/iprof-* | head -1)
-<% elsif languages.include?("opencl") %>
+<% elsif languages.include?("cl") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME2:-$HOME}/lttng-traces/thapi-opencl-session* | head -1)
 <% elsif languages.include?("ze") %>
         lttng_last_session=$(ls -dt ${LTTNG_HOME2:-$HOME}/lttng-traces/thapi-ze-session* | head -1)
@@ -386,7 +355,7 @@ if [ -n "$debug" ]; then
 <% if languages.include?("ze") %>
     #export LTTNG_UST_ZE_VERBOSE=1
 <% end %>
-<% if languages.include?("opencl") %>
+<% if languages.include?("cl") %>
     #export LTTNG_UST_OPENCL_VERBOSE=1
 <% end %>
 <% if languages.include?("cuda") %>
