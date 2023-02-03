@@ -132,7 +132,7 @@ trap ctrl_c INT
 
 if [ ! -z "$lttng_view" ]
 then
-  lttng view --viewer="babeltrace_ze --context --live" &
+  lttng view --viewer="babeltrace_thapi --backend ze --context --live" &
   PID=$!
 fi
 "$@"
