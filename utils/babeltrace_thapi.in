@@ -102,17 +102,18 @@ sink_plugin = thapi_plugins.filter_map do |plugin|
 end.first
 
 if !$options[:live]
-   trace_locations = Find.find(*ARGV).reject do |path|
-                    FileTest.directory?(path)
-                  end.select do |path|
-                    File.basename(path) == 'metadata'
-                  end.collect do |path|
-                    File.dirname(path)
-                  end.select do |path|
-                    qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
-                                                  params: { 'input' => path, 'type' => 'directory' })
-                    qe.query.value['weight'] > 0.5
-                  end
+  trace_locations = 
+    Find.find(*ARGV).reject do |path|
+      FileTest.directory?(path)
+    end.select do |path|
+      File.basename(path) == 'metadata'
+    end.collect do |path|
+      File.dirname(path)
+    end.select do |path|
+      qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
+                                    params: { 'input' => path, 'type' => 'directory' })
+      qe.query.value['weight'] > 0.5
+    end
 else
   trace_locations = ARGV
 end
