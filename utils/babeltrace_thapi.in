@@ -1,118 +1,199 @@
 #!/usr/bin/env ruby
 DATADIR = File.join("@prefix@", "share")
-$:.unshift(DATADIR) if File::directory?(DATADIR)
+$:.unshift(DATADIR) if File.directory?(DATADIR)
 require 'optparse'
 require 'babeltrace2'
 require 'find'
-require 'yaml'
-require 'pp'
 
-$event_lambdas = {}
-require 'babeltrace_opencl_lib'
-require 'babeltrace_ze_lib'
-require 'babeltrace_cuda_lib'
-require 'babeltrace_omp_lib'
+# Don't complain about broken pipe
+Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
-$options = {
-  context: false,
-  restrict: false,
-  live: false
+subtext = <<~HELP
+  Commonly used command are:
+     trace:     Display the trace
+     tally:     Display the tally
+     timeline:  Dump the timeline
+
+  See 'babeltrace_thapi COMMAND --help' for more information on a specific command.
+HELP
+
+$options = { backends: %w[omp cl ze cuda] }
+$options_tally = {
+  'display' => [String, 'compact'],
+  'name' => [String, 'demangle'],
+  'display_mode' => [String, 'human'],
+  'display_metadata' => [FalseClass, false],
+  'display_name_max_size' => [Integer, 80],
+  'display_kernel_verbose' => [FalseClass, false]
 }
 
-OptionParser.new do |opts|
-  opts.banner = "Usage: babeltrace_thapi [OPTIONS] target_trace_directory"
-
-  opts.on("-c", "--[no-]context", "Add context information") do |context|
-    $options[:context] = context
+def common_options(opts)
+  opts.on('-b', '--backend BACKEND', Array) do |v|
+    $options[:backends] = v
   end
 
-  opts.on("-r", "--[no-]restrict", "Restrict output to recognized events") do |restrict|
-    $options[:restrict] = restrict
-  end
-
-  opts.on("-h", "--help", "Prints this help") do
-    puts opts
+  opts.on('-v', '--version', 'Print the version string') do
+    puts File.read(File.join(DATADIR, 'version'))
     exit
   end
+end
 
-  opts.on("--live", "Enable live display of the trace") do
-    $options[:live] = true
-  end
+subcommands = {
+  'trace' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: babeltrace_thapi [OPTIONS] trace_directory...'
+      common_options(opts)
 
-  opts.on("-v", "--version", "Print the version string") do
-    puts File.read(File.join(DATADIR, "version"))
-    exit
-  end
+      opts.on('-c', '--[no-]context', 'Add context information') do |context|
+        $options[:context] = context
+      end
 
-end.parse!
+      opts.on('-r', '--[no-]restrict', 'Restrict output to recognized events') do |restrict|
+        $options[:restrict] = restrict
+      end
 
-$restrict = $options[:restrict]
-$context = $options[:context]
-$live = $options[:live]
+      opts.on('-h', '--help', 'Prints this help') do
+        puts opts
+        exit
+      end
 
-ctf_fs = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("fs")
-ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
-utils_muxer = BT2::BTPlugin.find("utils").get_filter_component_class_by_name("muxer")
-text_pretty = BT2::BTPlugin.find("text").get_sink_component_class_by_name("pretty")
+      opts.on('--live', 'Enable live display of the trace') do
+        $options[:live] = true
+      end
 
-if !$live
-  trace_locations = Find.find(*ARGV).reject { |path|
+    end,
+  'tally' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
+      common_options(opts)
+
+      $options_tally.each do |k, (t, _)|
+        opts.on("--#{k}=VALUE", t) do |v|
+          $options_tally[k] = [t, v]
+        end
+      end
+
+    end,
+  'timeline' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: timeline [OPTIONS] trace_directory...'
+      common_options(opts)
+    end
+}
+
+$options.merge!($options_tally)
+if ARGV.empty? || ARGV[0] == '--help'
+  puts subtext
+  exit
+end
+
+ARGV.insert(0, 'trace') unless subcommands.include?(ARGV.first)
+command = ARGV.shift
+subcommands[command].order!
+
+# Componant
+ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
+utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
+text_pretty = BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty')
+
+thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join("@prefix@", "lib"))
+
+interval_plugins = thapi_plugins.filter_map do |plugin|
+  plugin.get_filter_component_class_by_name('interval') if $options[:backends].include?(plugin.name.chomp('interval'))
+end
+# Only one, but for generality return an array
+sink_plugin = thapi_plugins.filter_map do |plugin|
+  plugin.get_sink_component_class_by_name(command) if plugin.name == 'xprof'
+end.first
+
+if !$options[:live]
+  trace_locations =
+    Find.find(*ARGV).reject do |path|
       FileTest.directory?(path)
-    }.select { |path|
-      File.basename(path) == "metadata"
-    }.collect { |path|
+    end.select do |path|
+      File.basename(path) == 'metadata'
+    end.collect do |path|
       File.dirname(path)
-    }.select { |path|
-      qe = BT2::BTQueryExecutor.new( component_class: ctf_fs, object_name: "babeltrace.support-info", params: { "input" => path,  "type" => "directory" } )
-      qe.query.value["weight"] > 0.5
-    }
+    end.select do |path|
+      qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
+                                    params: { 'input' => path, 'type' => 'directory' })
+      qe.query.value['weight'] > 0.5
+    end
 else
   trace_locations = ARGV
 end
-raise "Could not find lttng trace" if trace_locations.size == 0
-
-
-consume = lambda { |iterator, _|
-  mess = iterator.next_messages
-  mess.each { |m|
-    if m.type == :BT_MESSAGE_TYPE_EVENT
-      e = m.event
-      l = $event_lambdas[e.name]
-      if l || !$restrict
-        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime("%H:%M:%S.%9L")}"
-        str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}" if $context
-        str << " - " << e.get_common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if $context
-        str << " - #{e.name}: "
-        if l
-          str << l.call(e.payload_field.value)
-        else
-          str << e.payload_field.to_s
-        end
-        puts str
-      end
-    end
-  }
-}
+raise 'Could not find lttng trace' if trace_locations.size == 0
 
 graph = BT2::BTGraph.new
-if !$live
-  comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
-else
-  comps = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
-end
-comp2 = graph.add_component(utils_muxer, "mux")
-comp3 = graph.add_simple_sink("babeltrace_thapi", consume)
-i = 0
-comps.each { |comp|
-  ops = comp.output_ports
-  ops.each { |op|
-    ip = comp2.input_port(i)
-    i += 1
-    graph.connect_ports(op, ip)
-  }
-}
 
-op = comp2.output_port(0)
-ip = comp3.input_port(0)
-graph.connect_ports(op, ip)
+# Sources comps
+
+if !$options[:live]
+  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+else
+  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+end
+
+# Muxer
+comp_muxer = graph.add_component(utils_muxer, 'mux')
+
+# Other Comps
+serial_comps =
+  case command
+  when 'trace'
+    # Yaml and event_lambdas are required by babeltrace*_lib
+    $event_lambdas = {}
+    require 'yaml'
+    require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
+    require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
+    require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
+    require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
+
+    consume = lambda { |iterator, _|
+      iterator.next_messages.each do |m|
+        next unless m.type == :BT_MESSAGE_TYPE_EVENT
+        e = m.event
+        l = $event_lambdas[e.name]
+        next unless l || !$options[:restrict]
+        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
+        if $options[:context]
+          str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
+          str << ' - ' << e.get_common_context_field.value.collect do |k, v|
+            "#{k}: #{v}"
+          end.join(', ')
+        end
+        str << " - #{e.name}: "
+        str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
+        puts str
+      end
+    }
+    graph.add_simple_sink('babeltrace_thapi', consume)
+  when 'tally'
+    comp_intervals = interval_plugins.map.with_index do |comp, i|
+      graph.add_component(comp, "interval_#{i}")
+    end
+    comp_tally = graph.add_component(sink_plugin, 'tally',
+                                     params: $options_tally.transform_values { |_, v| v } )
+    [comp_intervals, comp_tally]
+  when 'timeline'
+    comp_intervals = interval_plugins.map.with_index do |comp, i|
+      graph.add_component(comp, "interval_#{i}")
+    end
+    comp_timeline = graph.add_component(sink_plugin, 'timeline')
+    [comp_intervals, comp_timeline]
+  end
+
+# Sources to muxer
+comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+  ip = comp_muxer.input_port(i)
+  graph.connect_ports(op, ip)
+end
+
+# Chain the rest
+[comp_muxer, serial_comps].flatten.each_cons(2) do |_out, _in|
+  op = _out.output_port(0)
+  ip = _in.input_port(0)
+  graph.connect_ports(op, ip)
+end
+
 graph.run

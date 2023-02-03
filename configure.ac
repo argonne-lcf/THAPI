@@ -100,17 +100,13 @@ AC_CONFIG_FILES([Makefile
                  cuda/Makefile
                  omp/Makefile])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
-AC_CONFIG_FILES([opencl/babeltrace_opencl], [chmod +x opencl/babeltrace_opencl])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
 AC_CONFIG_FILES([opencl/test_wrapper.sh], [chmod +x opencl/test_wrapper.sh])
 AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
-AC_CONFIG_FILES([ze/babeltrace_ze], [chmod +x ze/babeltrace_ze])
 AC_CONFIG_FILES([ze/test_wrapper.sh], [chmod +x ze/test_wrapper.sh])
-AC_CONFIG_FILES([cuda/babeltrace_cuda], [chmod +x cuda/babeltrace_cuda])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
 AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
-AC_CONFIG_FILES([omp/babeltrace_omp], [chmod +x omp/babeltrace_omp])
 AC_OUTPUT
