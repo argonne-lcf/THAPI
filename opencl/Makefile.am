@@ -367,7 +367,6 @@ check_DATA = \
 	$(TRACE_SPECIFC)
 
 EXTRA_DIST += \
-	babeltrace_opencl.in \
 	extract_enqueues \
 	$(TRACE_SPECIFC) \
 	tests/trace.dust \
