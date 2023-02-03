@@ -107,7 +107,7 @@ sink_plugin = thapi_plugins.filter_map do |plugin|
 end.first
 
 if !$options[:live]
-  trace_locations = 
+  trace_locations =
     Find.find(*ARGV).reject do |path|
       FileTest.directory?(path)
     end.select do |path|
@@ -138,51 +138,50 @@ end
 comp_muxer = graph.add_component(utils_muxer, 'mux')
 
 # Other Comps
-serial_comps = 
-case command
-when 'trace'
-  # Yaml and event_lambdas are required by babeltrace*_lib
-  $event_lambdas = {}
-  require 'yaml'
-  require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
-  require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
-  require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
-  require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
+serial_comps =
+  case command
+  when 'trace'
+    # Yaml and event_lambdas are required by babeltrace*_lib
+    $event_lambdas = {}
+    require 'yaml'
+    require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
+    require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
+    require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
+    require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
 
-  consume = lambda { |iterator, _|
-    iterator.next_messages.each do |m|
-      next unless m.type == :BT_MESSAGE_TYPE_EVENT
-      e = m.event
-      l = $event_lambdas[e.name]
-      next unless l || !$options[:restrict]
-      str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
-      if $options[:context]
-	str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
-        str << ' - ' << e.get_common_context_field.value.collect do |k, v|
-          "#{k}: #{v}"
-        end.join(', ')
+    consume = lambda { |iterator, _|
+      iterator.next_messages.each do |m|
+        next unless m.type == :BT_MESSAGE_TYPE_EVENT
+        e = m.event
+        l = $event_lambdas[e.name]
+        next unless l || !$options[:restrict]
+        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
+        if $options[:context]
+          str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
+          str << ' - ' << e.get_common_context_field.value.collect do |k, v|
+            "#{k}: #{v}"
+          end.join(', ')
+        end
+        str << " - #{e.name}: "
+        str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
+        puts str
       end
-      str << " - #{e.name}: "
-      str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
-      puts str
+    }
+    graph.add_simple_sink('babeltrace_thapi', consume)
+  when 'tally'
+    comp_intervals = interval_plugins.map.with_index do |comp, i|
+      graph.add_component(comp, "interval_#{i}")
     end
-  }
-  graph.add_simple_sink('babeltrace_thapi', consume)
-when 'tally'
-  comp_intervals = interval_plugins.map.with_index do |comp, i|
-    graph.add_component(comp, "interval_#{i}")
+    comp_tally = graph.add_component(sink_plugin, 'tally',
+                                     params: $options_tally.transform_values { |_, v| v } )
+    [comp_intervals, comp_tally]
+  when 'timeline'
+    comp_intervals = interval_plugins.map.with_index do |comp, i|
+      graph.add_component(comp, "interval_#{i}")
+    end
+    comp_timeline = graph.add_component(sink_plugin, 'timeline')
+    [comp_intervals, comp_timeline]
   end
-  comp_tally = graph.add_component(sink_plugin, 'tally',
-                                   params: $options_tally.transform_values { |_, v| v } )
-  [comp_intervals, comp_tally]
-when 'timeline'
-  comp_intervals = interval_plugins.map.with_index do |comp, i|
-    graph.add_component(comp, "interval_#{i}")
-  end
-  comp_timeline = graph.add_component(sink_plugin, 'timeline')
-  # Chain the rest
-  [comp_intervals, comp_timeline]
-end
 
 # Sources to muxer
 comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
