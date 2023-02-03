@@ -151,8 +151,8 @@ in 'trace'
       l = $event_lambdas[e.name]
       next unless l || !$options[:restrict]
       str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
-      str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}" if $options[:context]
       if $options[:context]
+	str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
         str << ' - ' << e.get_common_context_field.value.collect do |k, v|
           "#{k}: #{v}"
         end.join(', ')
