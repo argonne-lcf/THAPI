@@ -135,7 +135,7 @@ comp_muxer = graph.add_component(utils_muxer, 'mux')
 # Other Comps
 serial_comps = 
 case command
-in 'trace'
+when 'trace'
   # Yaml and event_lambdas are required by babeltrace*_lib
   $event_lambdas = {}
   require 'yaml'
@@ -163,14 +163,14 @@ in 'trace'
     end
   }
   graph.add_simple_sink('babeltrace_thapi', consume)
-in 'tally'
+when 'tally'
   comp_intervals = interval_plugins.map.with_index do |comp, i|
     graph.add_component(comp, "interval_#{i}")
   end
   comp_tally = graph.add_component(sink_plugin, 'tally',
                                    params: $options_tally.transform_values { |_, v| v } )
   [comp_intervals, comp_tally]
-in 'timeline'
+when 'timeline'
   comp_intervals = interval_plugins.map.with_index do |comp, i|
     graph.add_component(comp, "interval_#{i}")
   end
