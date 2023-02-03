@@ -39,43 +39,48 @@ def common_options(opts)
 end
 
 subcommands = {
-  'trace' => OptionParser.new do |opts|
-               opts.banner = 'Usage: babeltrace_thapi [OPTIONS] trace_directory...'
+  'trace' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: babeltrace_thapi [OPTIONS] trace_directory...'
+      common_options(opts)
 
-               opts.on('-c', '--[no-]context', 'Add context information') do |context|
-                 $options[:context] = context
-               end
+      opts.on('-c', '--[no-]context', 'Add context information') do |context|
+        $options[:context] = context
+      end
 
-               opts.on('-r', '--[no-]restrict', 'Restrict output to recognized events') do |restrict|
-                 $options[:restrict] = restrict
-               end
+      opts.on('-r', '--[no-]restrict', 'Restrict output to recognized events') do |restrict|
+        $options[:restrict] = restrict
+      end
 
-               opts.on('-h', '--help', 'Prints this help') do
-                 puts opts
-                 exit
-               end
+      opts.on('-h', '--help', 'Prints this help') do
+        puts opts
+        exit
+      end
 
-               opts.on('--live', 'Enable live display of the trace') do
-                 $options[:live] = true
-               end
+      opts.on('--live', 'Enable live display of the trace') do
+        $options[:live] = true
+      end
 
-               common_options(opts)
-             end,
-  'tally' => OptionParser.new do |opts|
-               opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
+    end,
+  'tally' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
+      common_options(opts)
 
-               $options_tally.each do |k, (t, _)|
-                 opts.on("--#{k}=VALUE", t) do |v|
-                   $options_tally[k] = [t, v]
-                 end
-               end
-               common_options(opts)
-             end,
-  'timeline' => OptionParser.new do |opts|
-                  opts.banner = 'Usage: timeline [OPTIONS] trace_directory...'
-                  common_options(opts)
-                end
+      $options_tally.each do |k, (t, _)|
+        opts.on("--#{k}=VALUE", t) do |v|
+          $options_tally[k] = [t, v]
+        end
+      end
+
+    end,
+  'timeline' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: timeline [OPTIONS] trace_directory...'
+      common_options(opts)
+    end
 }
+
 $options.merge!($options_tally)
 if ARGV.empty? || ARGV[0] == '--help'
   puts subtext
