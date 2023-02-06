@@ -262,18 +262,18 @@ trace_epilogue() {
     if [ $MPI_RANK = -1 ]; then
         lttng $quiet stop THAPI
         lttng $quiet destroy THAPI
-   	summary
+        summary
     else
         lttng $quiet stop THAPI_$MPI_RANK
         lttng $quiet destroy THAPI_$MPI_RANK
     fi
 
     if [ $MPI_RANK = 0 ]; then
-	while [ $(find $THAPI_LOCK_DIR/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
-           sleep 1
-	done
-	mv ${THAPI_OUTPUT_TMP} $THAPI_LTTNG_O
-	summary
+        while [ $(find $THAPI_LOCK_DIR/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
+            sleep 1
+        done
+        mv ${THAPI_OUTPUT_TMP} $THAPI_LTTNG_O
+        summary
     fi
 }
 
