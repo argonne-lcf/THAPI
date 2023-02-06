@@ -110,32 +110,32 @@ whichlib64_head() {
 # 2
 lazy_export() {
     if [ -z "${!1}" ]; then
-         export "$1"="$2"
+        export "$1"="$2"
     fi
 }
 
 get_mpi_rank() {
     # Get the RankID from different launcher
     if [[ -v MPI_RANKID ]]; then
-         echo $MPI_RANKID
+        echo $MPI_RANKID
     elif [[ -v PALS_RANKID ]]; then
-         echo $PALS_RANKID
+        echo $PALS_RANKID
     else
-         echo -1
+        echo -1
     fi
 }
 
 bt2_all() {
     if [ -n "$trace" ]; then
-       $bindir/babeltrace_thapi --backend <%= languages %> -r -c "$@"
+        $bindir/babeltrace_thapi --backend <%= languages %> -r -c "$@"
     fi
 
     if [ -n "$timeline" ]; then
-       $bindir/babeltrace_thapi timeline --backend <%= languages %> "$@"
+        $bindir/babeltrace_thapi timeline --backend <%= languages %> "$@"
     fi
 
     if [ -z "$timeline" ] && [ -z "$trace" ]; then
-       $bindir/babeltrace_thapi tally --backend <%= languages %> "$@"
+        $bindir/babeltrace_thapi tally --backend <%= languages %> "$@"
     fi
 }
 trace_and_summary() {
@@ -147,12 +147,12 @@ trace_and_summary() {
     THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
     mkdir -p $THAPI_OUTPUT
     if [ $MPI_RANK != -1 ]; then
-       THAPI_OUTPUT_TMP=${LTTNG_HOME:-$HOME}/lttng-traces/running_trace
-       mkdir -p $THAPI_OUTPUT_TMP
-       # Need to change LLTNG HOME so each rank have their own "lock"
-       THAPI_LOCK_DIR=$HOME/.lttng_mpi/
-       mkdir -p $THAPI_LOCK_DIR/$MPI_RANK
-       export LTTNG_HOME=$THAPI_LOCK_DIR/$MPI_RANK
+        THAPI_OUTPUT_TMP=${LTTNG_HOME:-$HOME}/lttng-traces/running_trace
+        mkdir -p $THAPI_OUTPUT_TMP
+        # Need to change LLTNG HOME so each rank have their own "lock"
+        THAPI_LOCK_DIR=$HOME/.lttng_mpi/
+        mkdir -p $THAPI_LOCK_DIR/$MPI_RANK
+        export LTTNG_HOME=$THAPI_LOCK_DIR/$MPI_RANK
     fi
 
     lttng-sessiond $quiet --daemonize
@@ -166,7 +166,7 @@ trace_and_summary() {
     THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
 <% end %>
     if [ $MPI_RANK = -1 ]; then
-    	lttng $quiet create -o $THAPI_LTTNG_O
+        lttng $quiet create THAPI -o $THAPI_LTTNG_O
     else
         lttng $quiet create THAPI_$MPI_RANK -o $THAPI_OUTPUT_TMP/$MPI_RANK
     fi
@@ -263,7 +263,7 @@ trace_epilogue() {
         lttng $quiet stop THAPI
         lttng $quiet destroy THAPI
    	summary
-   else
+    else
         lttng $quiet stop THAPI_$MPI_RANK
         lttng $quiet destroy THAPI_$MPI_RANK
     fi
