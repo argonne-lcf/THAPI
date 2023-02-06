@@ -93,6 +93,7 @@ subcommands[command].order!
 
 # Componant
 ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
+ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
 utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
 text_pretty = BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty')
 
