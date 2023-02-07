@@ -104,13 +104,17 @@ whichlib64_head() {
     done
 }
 
-# > unset FOO ; lazy_export FOO 1 ; echo $FOO
+# > unset FOO ; thapi_export FOO 1 ; echo $FOO
 # 1
-# > export FOO=2 ; lazy_export FOO 1 ; echo $FOO
+# > export FOO=2 ; thapi_export FOO 1 ; echo $FOO
 # 2
-lazy_export() {
+# > export FOO=0 ; thapi_export FOO 1 ; echo $FOO
+#
+thapi_export() {
     if [ -z "${!1}" ]; then
         export "$1"="$2"
+    elif [ "${!1}" = "0" ]; then
+        unset "$1"
     fi
 }
 
@@ -173,7 +177,7 @@ trace_and_summary() {
 
     lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
 <% if languages.include?("omp") %>
-    lazy_export LTTNG_UST_OMP_INTEL 1
+    thapi_export LTTNG_UST_OMP_INTEL 1
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
 <% end %>
 <% if languages.include?("cl") %>
@@ -193,7 +197,7 @@ trace_and_summary() {
 <% if languages.include?("ze") %>
 
     export LTTNG_UST_ZE_PROFILE=1
-    lazy_export LTTNG_UST_ZE_PARANOID_DRIFT 1
+    thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
 
     if [ $mode = "minimal" ]; then
         lttng $quiet enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
