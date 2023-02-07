@@ -56,7 +56,7 @@ display_help() {
     echo "  --asm                    Dump in your current directory low level kernels informations (asm,isa,visa,...)."
     echo "  --mangle                 Use mangled name"
     echo "  --metadata               Display metadata"
-    echo "  --max-name-size <size>   Maximun size allowed for kernels names (default ${display_name_max_size_default})"
+    echo "  --max-name-size <size>   Maximun size allowed for kernels names (default 80)"
     echo "  -v, --version            Print the version string"
     echo "  -r, --replay    [path]   <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                           If no arguments are provided, will use the latest trace available"
@@ -135,7 +135,7 @@ bt2_all() {
     fi
 
     if [ -z "$timeline" ] && [ -z "$trace" ]; then
-        $bindir/babeltrace_thapi tally --backend <%= languages %> "$@"
+        $bindir/babeltrace_thapi tally --backend <%= languages %> $bt_tally_argv -- "$@"
     fi
 }
 trace_and_summary() {
@@ -315,34 +315,28 @@ summary() {
 # |_) _. ._ _ o ._   _     /\  ._ _
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
-display=compact
-mangling=demangle
-display_mode=human
-display_metadata=false
-display_name_max_size_default=80
-display_name_max_size=$display_name_max_size_default
-display_kernel_verbose=false
 mode=default
 
 if [ "$#" -eq 0 ]; then
     display_help
 fi
 
+bt_tally_argv=""
 while (( "$#" )); do
     case "$1" in
         -h | --help)            display_help; exit ;;
         -v | --version)         display_version; exit ;;
-        -k | --kernel-verbose)  shift; display_kernel_verbose=true ;;
-        -e | --extented)        shift; display=extended ;;
+        -k | --kernel-verbose)  shift; bt_tally_argv+=" --display_kernel_verbose=true" ;;
+        -e | --extented)        shift; bt_tally_argv+=" --display=extended" ;;
         -r | --replay)          shift; replay=true ;;
         -t | --trace)           shift; trace=true ;;
         -l | --timeline)        shift; timeline=true ;;
-        -j | --json)            shift; display_mode=json;;
+        -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --mode)            shift; mode=$1; shift ;;
         --asm)                  shift; asm=true ;;
-        --metadata)             shift; display_metadata=true ;;
-        --max-name-size)        shift; display_name_max_size=$1; shift ;;
-        --mangle)               shift; mangling=mangle ;;
+        --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
+        --max-name-size)        shift; bt_tally_argv+=" --display_name_max_size=$1"; shift ;;
+        --mangle)               shift; bt_tally_argv+=" --mangling=mangle" ;;
         --debug)                shift; debug=true ;;
         --)                     shift; break ;;
         *)                      break  ;;
