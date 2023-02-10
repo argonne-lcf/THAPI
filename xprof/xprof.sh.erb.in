@@ -46,20 +46,21 @@ display_help() {
     echo " $(basename $0) [option]... <application> <application-arguments>"
     echo " $(basename $0) [option]... -r [<trace>]..."
     echo
-    echo "  -h, --help               Show this screen"
-    echo "  -k, --kernel-verbose     Report kernels execution time with SIMD width and global/local sizes"
-    echo "  -e, --extended           Print information for each Hostname / Process / Thread / Device"
-    echo "  -t, --trace              Display trace"
-    echo "  -l, --timeline           Dump the timeline"
-    echo "  -j, --json               Summary will be printed as json"
-    echo "  -m, --mode <mode>        (minimal, default, full)"
-    echo "  --asm                    Dump in your current directory low level kernels informations (asm,isa,visa,...)."
-    echo "  --mangle                 Use mangled name"
-    echo "  --metadata               Display metadata"
-    echo "  --max-name-size <size>   Maximun size allowed for kernels names (default 80)"
-    echo "  -v, --version            Print the version string"
-    echo "  -r, --replay    [path]   <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
-    echo "                           If no arguments are provided, will use the latest trace available"
+    echo "  -h, --help                Show this screen"
+    echo "  -k, --kernel-verbose      Report kernels execution time with SIMD width and global/local sizes"
+    echo "  -e, --extended            Print information for each Hostname / Process / Thread / Device"
+    echo "  -t, --trace               Display trace"
+    echo "  -l, --timeline            Dump the timeline"
+    echo "  -j, --json                Summary will be printed as json"
+    echo "  -m, --mode <mode>         [minimal, default, full]"
+    echo "  --asm                     Dump in your current directory low level kernels informations (asm, isa, visa, ...)."
+    echo "  --mangle                  Use mangled name"
+    echo "  --metadata                Display metadata"
+    echo "  --max-name-size <size>    Maximun size allowed for kernels names (default 80)"
+    echo "  --traced-ranks <rank,...> Comma list separated of MPI rank to trace (default 0). You can use -1 to trace all ranks"
+    echo "  -v, --version             Print the version string"
+    echo "  -r, --replay    [path]    <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
+    echo "                            If no arguments are provided, will use the latest trace available"
     echo
     echo " Example:"
     echo " $(basename $0) ./a.out"
@@ -151,7 +152,9 @@ trace_and_summary() {
 
     THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
     mkdir -p $THAPI_OUTPUT
-    if [ $MPI_RANK != -1 ]; then
+
+    IFS=","
+    if [[ "${traced_ranks}" == "-1" ]] || [[ "${IFS}${traced_ranks}${IFS}" =~ "${IFS}${MPI_RANK}${IFS}" ]]; then
         THAPI_OUTPUT_TMP=${LTTNG_HOME:-$HOME}/lttng-traces/running_trace
         mkdir -p $THAPI_OUTPUT_TMP
         # Need to change LLTNG HOME so each rank have their own "lock"
@@ -159,6 +162,7 @@ trace_and_summary() {
         mkdir -p $THAPI_LOCK_DIR/$MPI_RANK
         export LTTNG_HOME=$THAPI_LOCK_DIR/$MPI_RANK
     fi
+    unset IFS
 
     lttng-sessiond $quiet --daemonize
 <% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
@@ -267,13 +271,24 @@ trace_epilogue() {
     if [ $MPI_RANK = -1 ]; then
         lttng $quiet stop THAPI
         lttng $quiet destroy THAPI
-        summary
-    else
-        lttng $quiet stop THAPI_$MPI_RANK
-        lttng $quiet destroy THAPI_$MPI_RANK
+	summary
+	return
     fi
 
-    if [ $MPI_RANK = 0 ]; then
+    lttng $quiet stop THAPI_$MPI_RANK
+    lttng $quiet destroy THAPI_$MPI_RANK
+
+    # One Rank should be the master rank
+    if [[ "${traced_ranks}" == "-1" ]]; then
+       master_rank=0
+    else
+       IFS=","
+       #Transform in array, and then take the first element implicitly
+       master_rank=($traced_ranks)
+       unset IFS
+    fi
+    # The master rank "wait" and then print the summary
+    if [[ ${MPI_RANK} == ${master_rank} ]]; then
         while [ $(find $THAPI_LOCK_DIR/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
             sleep 1
         done
@@ -289,7 +304,7 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
-        THAPI_OUTPUT=${LTTNG_HOME:-$HOME}    
+        THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
 <% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
         lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/iprof-* | head -1)
 <% elsif languages.include?("cl") %>
@@ -327,6 +342,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 bt_tally_argv=""
+traced_ranks=0
 while (( "$#" )); do
     case "$1" in
         -h | --help)            display_help; exit ;;
@@ -338,7 +354,8 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --mode)            shift; mode=$1; shift ;;
-        --asm)                  shift; asm=true ;;
+	--traced-ranks)		shift; traced_ranks=$1; shift ;;
+	--asm)                  shift; asm=true ;;
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
         --max-name-size)        shift; bt_tally_argv+=" --display_name_max_size=$1"; shift ;;
         --mangle)               shift; bt_tally_argv+=" --mangling=mangle" ;;
