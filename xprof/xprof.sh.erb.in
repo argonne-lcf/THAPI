@@ -131,16 +131,17 @@ get_mpi_rank() {
 }
 
 bt2_all() {
+    # Note that the $@ are not quoted!
     if [ -n "$trace" ]; then
-        $bindir/babeltrace_thapi --backend <%= languages %> -r -c "$@"
+        $bindir/babeltrace_thapi --backend <%= languages %> -r -c $@
     fi
 
     if [ -n "$timeline" ]; then
-        $bindir/babeltrace_thapi timeline --backend <%= languages %> "$@"
+        $bindir/babeltrace_thapi timeline --backend <%= languages %> $@
     fi
 
     if [ -z "$timeline" ] && [ -z "$trace" ]; then
-        $bindir/babeltrace_thapi tally --backend <%= languages %> $bt_tally_argv -- "$@"
+        $bindir/babeltrace_thapi tally --backend <%= languages %> $bt_tally_argv -- $@
     fi
 }
 trace_and_summary() {
