@@ -132,10 +132,16 @@ get_mpi_rank() {
 
 bt2_all() {
     if [ -n "$trace" ]; then
+        if [ ${MPI_RANK:--1} != -1 ]; then
+            exit "Trace with MPI not yet supported"
+        fi
         $bindir/babeltrace_thapi --backend <%= languages %> -r -c "$@"
     fi
 
     if [ -n "$timeline" ]; then
+        if [ ${MPI_RANK:--1} != -1 ]; then
+            exit "Timeline with MPI not yet supported"
+        fi
         $bindir/babeltrace_thapi timeline --backend <%= languages %> "$@"
     fi
 
@@ -143,6 +149,7 @@ bt2_all() {
         $bindir/babeltrace_thapi tally --backend <%= languages %> $bt_tally_argv -- "$@"
     fi
 }
+
 trace_and_summary() {
     if [ "$#" -eq 0 ]; then
         display_help
@@ -270,34 +277,26 @@ trace_epilogue() {
     if [ $MPI_RANK = -1 ]; then
         lttng $quiet stop THAPI
         lttng $quiet destroy THAPI
-	summary
-	return
-    fi
-
-    lttng $quiet stop THAPI_$MPI_RANK
-    lttng $quiet destroy THAPI_$MPI_RANK
-
-    # One Rank should be the master rank
-    if [[ "${traced_ranks}" == "-1" ]]; then
-       master_rank=0
+        # Not mpi, call serial summary
+        summary_serial ${THAPI_LTTNG_O}
     else
-       IFS=","
-       #Transform in array, and then take the first element implicitly
-       master_rank=($traced_ranks)
-       unset IFS
-    fi
-    # The master rank "wait" and then print the summary
-    if [[ ${MPI_RANK} == ${master_rank} ]]; then
-        while [ $(find $THAPI_LOCK_DIR/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
-            sleep 1
-        done
-        mv ${THAPI_OUTPUT_TMP} $THAPI_LTTNG_O
-        summary
+        lttng $quiet stop THAPI_$MPI_RANK
+        lttng $quiet destroy THAPI_$MPI_RANK
+
+        # One Rank should be the master rank
+        if [[ "${traced_ranks}" == "-1" ]]; then
+            master_rank=0
+        else
+           IFS=","
+           #Transform in array, and then take the first element implicitly
+           master_rank=($traced_ranks)
+           unset IFS
+        fi
+        summary_mpi
     fi
 }
 
-
-summary() {
+summary_serial() {
     if [ -n "$THAPI_LTTNG_O" ]; then
         lttng_last_session=$THAPI_LTTNG_O
         >&2 echo "Trace location:" $lttng_last_session
@@ -327,7 +326,27 @@ summary() {
             exit 1
         fi
     done
-    bt2_all "${lttng_last_session}"
+    bt2_all $lttng_last_session
+}
+
+summary_mpi() {
+    # All the mpi rank call this function
+    bt2_all "${THAPI_OUTPUT_TMP}/$MPI_RANK" > "${THAPI_OUTPUT_TMP}/$MPI_RANK/tally.log_tmp"
+    mv ${THAPI_OUTPUT_TMP}/$MPI_RANK/tally.log{_tmp,}
+    # Now serialize
+    if [[ ${MPI_RANK} == ${master_rank} ]]; then
+        MPI_SIZE=$(find ${THAPI_OUTPUT_TMP}/* -maxdepth 0 -type d | wc -l)
+        while [ $(ls ${THAPI_OUTPUT_TMP}/*/tally.log | wc -l) != $MPI_SIZE ]; do
+            sleep 1
+        done
+        # Move to the final location
+        mv ${THAPI_OUTPUT_TMP} $THAPI_LTTNG_O
+        # Need to sort alphanumerically
+        for f in $(ls ${THAPI_LTTNG_O}/*/tally.log | sort -V -t '/'); do
+           echo "Trace location: ${f}" 1>&2
+           cat $f
+        done
+    fi
 }
 
 #  _
@@ -353,8 +372,8 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --mode)            shift; mode=$1; shift ;;
-	--traced-ranks)		shift; traced_ranks=$1; shift ;;
-	--asm)                  shift; asm=true ;;
+        --traced-ranks)         shift; traced_ranks=$1; shift ;;
+        -asm)                   shift; asm=true ;;
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
         --max-name-size)        shift; bt_tally_argv+=" --display_name_max_size=$1"; shift ;;
         --mangle)               shift; bt_tally_argv+=" --mangling=mangle" ;;
@@ -389,13 +408,12 @@ if [ -n "$asm" ]; then
     export SYCL_CACHE_PERSISTENT=0
     #This is a workarround for the fact that `SYCL_CACHE_PERSISTENT` doesn't work yet.
     rm -rf "$USER"/libsycl_cache/.cache/
-
     export IGC_ShaderDumpEnable=1
     export IGC_DumpToCurrentDir=1
 fi
 
 if [ -n "$replay" ]; then
-    summary "$@"
+    summary_serial "$@"
 else
     trace_and_summary "$@"
 fi
