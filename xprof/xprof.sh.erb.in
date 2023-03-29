@@ -117,16 +117,20 @@ display_version() {
 
 # Find all location of a `.so`
 whichlib() {
-    # Output of ldconfig:
-    #/usr/lib32:
-    #       libstdc++.so.6 -> libstdc++.so.6.0.26
-    # After the awk:
-    # -> /usr/lib32/libstdc++.so.6
+   {
+	# Always remive `x` here, too much nose due to ldconfig -vNX
+	set +x
+	# Output of ldconfig:
+	#/usr/lib32:
+	#       libstdc++.so.6 -> libstdc++.so.6.0.26
+	# After the awk:
+	# -> /usr/lib32/libstdc++.so.6
 
-    # In OpenSUSE ldconfig, is in '/sbin'.
-    PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
-    awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
-                 match($1, "^lib") && match($1, p) { print header "/" $1}'
+	# In OpenSUSE ldconfig, is in '/sbin'.
+	PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+	awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+                     match($1, "^lib") && match($1, p) { print header "/" $1}'
+   }
 }
 
 whichlib64_head() {
@@ -217,18 +221,27 @@ setup_lttng() {
     # Only local master should spown and then sync,
     # but easier to relly on lttng
     lttng-sessiond $quiet --daemonize
+    local suffix=""
+    if [ ${1:-""} = "--live" ]; then
+	suffix="_live"
+    fi
+
 <% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/iprof-${PALS_APID:-0}
+   THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/iprof${suffix}-${PALS_APID:-0}
 <% elsif languages.include?("cl") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi-opencl-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-opencl-session-${PALS_APID:-0}
 <% elsif languages.include?("ze") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi-ze-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-ze-session-${PALS_APID:-0}
 <% elsif languages.include?("cuda") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi-cuda-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-cuda-session-${PALS_APID:-0}
 <% end %>
     THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/${PALS_NODEID:-0}
 
-    lttngq create THAPI_$PALS_NODEID -o $THAPI_LTTNG_O
+    if [ ${1:-""} = "--live" ]; then
+	lttngq create THAPI_$PALS_NODEID --live
+    else
+	lttngq create THAPI_$PALS_NODEID -o $THAPI_LTTNG_O
+    fi
 
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
@@ -271,6 +284,37 @@ preload_lib_tracers() {
     unset IFS
 }
 
+local_master_epilogue() {
+    lttngq stop THAPI_$PALS_NODEID
+    lttngq destroy THAPI_$PALS_NODEID
+    if [ ${1:-""} = "--live" ]; then
+	wait $BT_PID # Set setub_babeltrace_live
+    fi
+
+    global_barrier_epilogue
+    rm -rf -- $SHARED_LOCAL_FILESYSTEM
+}
+
+
+#    _
+#   |_) _   _ _|_ __ ._ _   _  ._ _|_  _  ._
+#   |  (_) _>  |_    | | | (_) |   |_ (/_ | |
+#
+
+trace_epilogue() {
+    local_barier epilogue
+    run_iff_local_master local_master_epilogue
+
+    # All the trace have been saved. We can now do the move
+    if [ ${PALS_RANKID:-0} == 0 ]; then
+	rm -rf -- $SHARED_GLOBAL_FILESYSTEM
+        local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
+        mv $THAPI_LTTNG_O_ROOT $new_output
+        THAPI_LTTNG_O=$new_output
+        summary
+	fi
+}
+
 trace_and_summary() {
     [ "$#" -eq 0 ] && display_help
     export LTTNG_HOME=$SHARED_GLOBAL_FILESYSTEM/${PALS_NODEID:-0}
@@ -290,26 +334,6 @@ trace_and_summary() {
     "$@"
 }
 
-local_master_epilogue() {
-    lttngq stop THAPI_$PALS_NODEID
-    lttngq destroy THAPI_$PALS_NODEID
-    global_barrier_epilogue
-    rm -rf -- $SHARED_LOCAL_FILESYSTEM $SHARED_GLOBAL_FILESYSTEM
-}
-
-trace_epilogue() {
-    local_barier epilogue
-    run_iff_local_master local_master_epilogue
-
-    # All the trace have been saved. We can now do the move
-    if [ ${PALS_RANKID:-0} == 0 ]; then
-	local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
-	mv $THAPI_LTTNG_O_ROOT $new_output
-        THAPI_LTTNG_O=$new_output
-	summary
-    fi
-}
-
 bt2_all() {
     # Note that the $@ are not quoted!
     if [ -n "$trace" ]; then
@@ -326,10 +350,6 @@ bt2_all() {
 }
 
 summary() {
-    if [[ $procesing_mode == "save" ]]; then
-        return
-    fi
-
     if [ -n "$THAPI_LTTNG_O" ]; then
         lttng_last_session=$THAPI_LTTNG_O
         >&2 echo "Trace location:" $lttng_last_session
@@ -360,6 +380,69 @@ summary() {
     done
     bt2_all "$lttng_last_session"
 }
+
+#
+#  |  o     _
+#  |_ | \/ (/_
+#
+
+setub_babeltrace_live() {
+  mkdir -p $THAPI_LTTNG_O_ROOT
+  babeltrace2 \
+     --plugin-path=$libdir \
+     --component=source.ctf.lttng-live \
+     --params="inputs=[\"net://localhost/host/$(hostname)/THAPI_$PALS_NODEID\"],
+             session-not-found-action=end" \
+     --component=filter.zeinterval.interval \
+     --component=sink.xprof.tally \
+     --params="display=compact, \
+               name=demangle, \
+               display_mode=human, \
+               display_metadata=false, \
+               display_name_max_size=80, \
+               display_kernel_verbose=false" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_$PALS_NODEID.log &
+   BT_PIT=$!
+}
+
+trace_epilogue_live() {
+    local_barier epilogue
+    run_iff_local_master local_master_epilogue --live
+
+    # All the trace have been saved. We can now do the move
+    if [ ${PALS_RANKID:-0} == 0 ]; then
+	rm -rf -- $SHARED_GLOBAL_FILESYSTEM
+        local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
+	mv $THAPI_LTTNG_O_ROOT $new_output
+	THAPI_LTTNG_O=$new_output
+
+	# All the trace have been saved. We can now do the move
+	for x in $(ls $THAPI_LTTNG_O/tally_*.log | sort -V); do
+           echo $x
+           cat $x
+	done
+    fi
+}
+
+trace_and_summary_live() {
+    [ "$#" -eq 0 ] && display_help
+    export LTTNG_HOME=$SHARED_GLOBAL_FILESYSTEM/${PALS_NODEID:-0}
+
+    # Each node will have their own lock
+    # Need to change LLTNG HOME so each node have their own "lock"
+    run_iff_local_master setup_lttng --live
+    run_iff_local_master setub_babeltrace_live
+    local_barier setup
+
+    #Create the metadata.
+    #read and dump `$LTTNG_UST_THAPI_METADATA` env
+    run_iff_local_master $bindir/thapi_metadata
+    # Run the binary
+    trap 'trace_epilogue_live' EXIT SIGABRT SIGSEGV
+
+    preload_lib_tracers
+    "$@"
+}
+
 
 #  _
 # |_) _. ._ _ o ._   _     /\  ._ _
@@ -398,20 +481,20 @@ done
 if [ -n "$debug" ]; then
     set -x
 <% if languages.include?("ze") %>
-    export LTTNG_UST_ZE_VERBOSE=1
+    #export LTTNG_UST_ZE_VERBOSE=1
 <% end %>
 <% if languages.include?("cl") %>
-    export LTTNG_UST_OPENCL_VERBOSE=1
+    #export LTTNG_UST_OPENCL_VERBOSE=1
 <% end %>
 <% if languages.include?("cuda") %>
-    export LTTNG_UST_CUDA_VERBOSE=1
+    #export LTTNG_UST_CUDA_VERBOSE=1
 <% end %>
 <% if languages.include?("omp") %>
-    export LTTNG_UST_OMP_VERBOSE=1
+    #export LTTNG_UST_OMP_VERBOSE=1
 <% end %>
-    export LTTNG_UST_DEBUG=y
-    export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
-    export BABELTRACE_CLI_LOG_LEVEL=WARNING
+    #export LTTNG_UST_DEBUG=y
+    #export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
+    #export BABELTRACE_CLI_LOG_LEVEL=WARNING
 else
     quiet="--quiet"
 fi
@@ -427,6 +510,8 @@ fi
 
 if [ -n "$replay" ]; then
     summary "$@"
-else
+elif [ $procesing_mode = "save" ]; then
     trace_and_summary "$@"
+else
+    trace_and_summary_live "$@"
 fi
