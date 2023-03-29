@@ -305,7 +305,7 @@ trace_epilogue() {
 
     # All the trace have been saved. We can now do the move
     if [ ${PALS_RANKID:-0} == 0 ]; then
-	new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
+	local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
 	mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
 	summary
