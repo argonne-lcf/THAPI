@@ -26,6 +26,44 @@ directory=language.downcase
 EOF
 end%>
 
+SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/${PALS_APID:-0}/
+SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/${PALS_APID:-0}/
+THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
+
+# Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
+lttngq() { lttng $quiet "$@" ; }
+echoq() { [[ $quiet != "--quiet" ]] && echo "$@" ; }
+
+local_barier() {
+  echoq "THAPI_LOG: local_barier_entry ($1): $PALS_RANKID"
+  [ -z ${PALS_RANKID+x} ] && return
+
+  local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
+  local path=$folder/$PALS_LOCAL_RANKID
+  mkdir -p $path
+  while [ $(find $folder -mindepth 1 -maxdepth 1 -type d | wc -l) != $PALS_LOCAL_SIZE ]; do
+	sleep 0.2
+  done
+  # We cannot rmdir $path here, and I have no idea why...
+  echoq "THAPI_LOG: local_barier_exit ($1): $PALS_RANKID"
+}
+
+global_barrier_epilogue() {
+  echoq "THAPI_LOG: global_barrier_epilogue_entry"
+  [ -z ${PALS_RANKID+x} ] && return
+
+  while [ $(find $SHARED_GLOBAL_FILESYSTEM/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
+	sleep 0.2
+  done
+  echoq "THAPI_LOG: global_barrier_epilogue_exit"
+}
+
+run_iff_local_master() {
+  if [[ ${PALS_LOCAL_RANKID:-0} == 0 ]]; then
+    $@
+  fi
+}
+
 <%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 Option names are typically one to three words long, with hyphens to separate words %>
 
@@ -119,20 +157,9 @@ thapi_export() {
     fi
 }
 
-get_mpi_rankid() {
-    # Get the RankID from different launcher
-    if [[ -v MPI_RANKID ]]; then
-        echo $MPI_RANKID
-    elif [[ -v PALS_RANKID ]]; then
-        echo $PALS_RANKID
-    else
-        echo -1
-    fi
-}
-
 enable_events_omp() {
     thapi_export LTTNG_UST_OMP_INTEL 1
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
 }
 
 enable_events_cl() {
@@ -140,14 +167,14 @@ enable_events_cl() {
     opencl_disable_events+="lttng_ust_opencl:clSetKernelExecInfo*,lttng_ust_opencl:clGetKernelInfo*,"
     opencl_disable_events+="lttng_ust_opencl:clGetMemAllocInfoINTEL*"
 
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x ${opencl_disable_events}
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x $opencl_disable_events
     if [ $tracing_mode = "full" ]; then
-        lttng $quiet enable-event --channel=blocking-channel --userspace ${opencl_disable_events}
+        lttngq enable-event --channel=blocking-channel --userspace $opencl_disable_events
     fi
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 }
 
 enable_events_ze() {
@@ -155,99 +182,83 @@ enable_events_ze() {
     thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
 
     if [ $tracing_mode = "minimal" ]; then
-        lttng $quiet enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
-        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
+        lttngq enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
+        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
     else
-        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
-        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
-
+        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
+        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+	# Wildcard using the * character are supported at the end of tracepoint names.
+	# https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
+	# Disable-event doesn't have wildcard sadly
         ze_disable_properties="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
         ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
-        ze_disable_querry="lttng_ust_ze:*QueryStatus"
-        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x ${ze_disable_properties}
-        lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events},${ze_disable_querry}
+	ze_disable_querry="lttng_ust_ze:*QueryStatus,lttng_ust_ze:*ProcAddrTable*"
+	ze_disable_loader="lttng_ust_ze:*Loader*"
+        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x $ze_disable_properties
+	lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events},${ze_disable_querry},${ze_disable_loader}
 
         if [ $tracing_mode = "full" ]; then
-            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_events}
-            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_properties}
-            lttng $quiet enable-event --channel=blocking-channel --userspace ${ze_disable_querry}
+            lttngq enable-event --channel=blocking-channel --userspace ${ze_disable_events},${ze_disable_querry},${ze_disable_loader}
         fi
     fi
 }
 
 enable_events_cuda() {
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
     export LTTNG_UST_CUDA_PROFILE=1
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 }
 
 enable_events_metadata() {
-    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_thapi:*
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_thapi:*
 }
 
-trace_and_summary() {
-    if [ "$#" -eq 0 ]; then
-        display_help
-    fi
-
-    MPI_RANK=get_mpi_rankid
-
-    THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
-    mkdir -p $THAPI_OUTPUT
-
-    IFS=","
-    if [[ "${traced_ranks}" == "-1" ]] || [[ "${IFS}${traced_ranks}${IFS}" =~ "${IFS}${MPI_RANK}${IFS}" ]]; then
-        THAPI_OUTPUT_TMP=${LTTNG_HOME:-$HOME}/lttng-traces/running_trace
-        mkdir -p $THAPI_OUTPUT_TMP
-        # Need to change LLTNG HOME so each rank have their own "lock"
-        THAPI_LOCK_DIR=$HOME/.lttng_mpi/
-        mkdir -p $THAPI_LOCK_DIR/$MPI_RANK
-        export LTTNG_HOME=$THAPI_LOCK_DIR/$MPI_RANK
-    fi
-    unset IFS
-
+setup_lttng() {
+    mkdir -p $LTTNG_HOME
+    # Only local master should spown and then sync,
+    # but easier to relly on lttng
     lttng-sessiond $quiet --daemonize
 <% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
-    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/iprof-${PALS_APID:-0}
 <% elsif languages.include?("cl") %>
-    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi-opencl-session-${PALS_APID:-0}
 <% elsif languages.include?("ze") %>
-    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi-ze-session-${PALS_APID:-0}
 <% elsif languages.include?("cuda") %>
-    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi-cuda-session-${PALS_APID:-0}
 <% end %>
-    if [ $MPI_RANK = -1 ]; then
-        lttng $quiet create THAPI -o $THAPI_LTTNG_O
-    else
-        lttng $quiet create THAPI_$MPI_RANK -o $THAPI_OUTPUT_TMP/$MPI_RANK
-    fi
+    THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/${PALS_NODEID:-0}
+
+    lttngq create THAPI_$PALS_NODEID -o $THAPI_LTTNG_O
 
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
-    lttng $quiet enable-channel --userspace --blocking-timeout=inf blocking-channel
+    lttngq enable-channel --userspace --blocking-timeout=inf blocking-channel
 
 <% if languages.include?("omp") %>
-    enable_events_omp()
+    enable_events_omp
 <% end %>
 <% if languages.include?("cl") %>
-    enable_events_cl()
+    enable_events_cl
 <% end %>
 <% if languages.include?("ze") %>
-    enable_events_ze()
+    enable_events_ze
 <% end %>
 <% if languages.include?("cuda") %>
-    enable_events_cuda()
+    enable_events_cuda
 <% end %>
-    enable_events_metadata()
+    enable_events_metadata
 
+    lttngq add-context --userspace --channel=blocking-channel -t vpid -t vtid
+    lttngq start THAPI_$PALS_NODEID
+}
 
-    #Add vpid/vtid to avoid race condition
-    lttng $quiet add-context --userspace --channel=blocking-channel -t vpid -t vtid
-
-    #Find libs and preload
+preload_lib_tracers() {
+    IFS=","
+    if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS${PALS_RANKID:-0}$IFS" ]]; then
 <% if languages.include?("omp") %>
-   thapi_export(OMP_TOOL_LIBRARIES, $libdir/libTracerOMPT.so)
+    thapi_export OMP_TOOL_LIBRARIES  $libdir/libTracerOMPT.so
 <% end %>
 <% if languages.include?("cl") %>
 <%= print_loader_logic("cl","libOpenCL","libTracerOpenCL")%>
@@ -258,49 +269,48 @@ trace_and_summary() {
 <% if languages.include?("cuda") %>
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
-    if [ $MPI_RANK = -1 ]; then
-        lttng $quiet start THAPI
-    else
-        lttng $quiet start THAPI_$MPI_RANK
-    fi
+   fi
+   unset IFS   
+}
+
+trace_and_summary() {
+    [ "$#" -eq 0 ] && display_help
+    export LTTNG_HOME=$SHARED_GLOBAL_FILESYSTEM/${PALS_NODEID:-0}
+
+    # Each node will have their own lock
+    # Need to change LLTNG HOME so each node have their own "lock"
+    run_iff_local_master setup_lttng
+    local_barier setup
+
     #Create the metadata.
     #read and dump `$LTTNG_UST_THAPI_METADATA` env
-    $bindir/thapi_metadata
+    run_iff_local_master $bindir/thapi_metadata
     # Run the binary
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
+
+    preload_lib_tracers
     "$@"
 }
 
-trace_epilogue() {
-    if [ $MPI_RANK = -1 ]; then
-        lttng $quiet stop THAPI
-        lttng $quiet destroy THAPI
-        summary
-        return
-    fi
-
-    lttng $quiet stop THAPI_$MPI_RANK
-    lttng $quiet destroy THAPI_$MPI_RANK
-
-    # One Rank should be the master rank
-    if [[ "${traced_ranks}" == "-1" ]]; then
-       master_rank=0
-    else
-       IFS=","
-       #Transform in array, and then take the first element implicitly
-       master_rank=($traced_ranks)
-       unset IFS
-    fi
-    # The master rank "wait" and then print the summary
-    if [[ ${MPI_RANK} == ${master_rank} ]]; then
-        while [ $(find $THAPI_LOCK_DIR/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
-            sleep 1
-        done
-        mv ${THAPI_OUTPUT_TMP} $THAPI_LTTNG_O
-        summary
-    fi
+local_master_epilogue() {
+    lttngq stop THAPI_$PALS_NODEID
+    lttngq destroy THAPI_$PALS_NODEID
+    global_barrier_epilogue
+    rm -rf -- $SHARED_LOCAL_FILESYSTEM $SHARED_GLOBAL_FILESYSTEM
 }
 
+trace_epilogue() {
+    local_barier epilogue
+    run_iff_local_master local_master_epilogue
+
+    # All the trace have been saved. We can now do the move
+    if [ ${PALS_RANKID:-0} == 0 ]; then
+	new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
+	mv $THAPI_LTTNG_O_ROOT $new_output
+        THAPI_LTTNG_O=$new_output
+	summary
+    fi
+}
 
 bt2_all() {
     # Note that the $@ are not quoted!
@@ -318,7 +328,7 @@ bt2_all() {
 }
 
 summary() {
-    if [[ ${procesing_mode} == "save" ]]; then
+    if [[ $procesing_mode == "save" ]]; then
       return
     fi
 
@@ -327,15 +337,14 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
-        THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
 <% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
-        lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/iprof-* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/iprof-* | head -1)
 <% elsif languages.include?("cl") %>
-        lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-opencl-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-opencl-session* | head -1)
 <% elsif languages.include?("ze") %>
-        lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-ze-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-ze-session* | head -1)
 <% elsif languages.include?("cuda") %>
-        lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-cuda-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-cuda-session* | head -1)
 <% end %>
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
@@ -351,7 +360,7 @@ summary() {
             exit 1
         fi
     done
-    bt2_all "${lttng_last_session}"
+    bt2_all "$lttng_last_session"
 }
 
 #  _
@@ -361,10 +370,7 @@ summary() {
 tracing_mode="default"
 procesing_mode="on-the-fly"
 
-
-if [ "$#" -eq 0 ]; then
-    display_help
-fi
+[ "$#" -eq 0 ] && display_help
 
 bt_tally_argv=""
 traced_ranks=0
@@ -394,18 +400,18 @@ done
 if [ -n "$debug" ]; then
     set -x
 <% if languages.include?("ze") %>
-    export LTTNG_UST_ZE_VERBOSE=1
+    #export LTTNG_UST_ZE_VERBOSE=1
 <% end %>
 <% if languages.include?("cl") %>
-    export LTTNG_UST_OPENCL_VERBOSE=1
+    #export LTTNG_UST_OPENCL_VERBOSE=1
 <% end %>
 <% if languages.include?("cuda") %>
-    export LTTNG_UST_CUDA_VERBOSE=1
+    #export LTTNG_UST_CUDA_VERBOSE=1
 <% end %>
 <% if languages.include?("omp") %>
-    export LTTNG_UST_OMP_VERBOSE=1
+    #export LTTNG_UST_OMP_VERBOSE=1
 <% end %>
-    export LTTNG_UST_DEBUG=y
+    #export LTTNG_UST_DEBUG=y
     export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
     export BABELTRACE_CLI_LOG_LEVEL=WARNING
 else
