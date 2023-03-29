@@ -11,16 +11,14 @@ datadir=@datadir@
 env_var="LTTNG_UST_#{language.upcase}_#{library.upcase}"
 directory=language.downcase
 <<EOF
-    if [ -z "$#{env_var}" ]
-    then
-      #{env_var}=$(whichlib64_head #{library}.so)
-      if [ -n "$#{env_var}" ]
-      then
-        export #{env_var}="$#{env_var}"
-        export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
-      fi
+    if [ -z "$#{env_var}" ]; then
+        #{env_var}=$(whichlib64_head #{library}.so)
+        if [ -n "$#{env_var}" ]; then
+            export #{env_var}="$#{env_var}"
+            export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
+        fi
     else
-      export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
+            export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
     fi
     export LD_PRELOAD=$libdir/#{libtracer}.so:$LD_PRELOAD
 EOF
@@ -35,33 +33,33 @@ lttngq() { lttng $quiet "$@" ; }
 echoq() { [[ $quiet != "--quiet" ]] && echo "$@" ; }
 
 local_barier() {
-  echoq "THAPI_LOG: local_barier_entry ($1): $PALS_RANKID"
-  [ -z ${PALS_RANKID+x} ] && return
+    echoq "THAPI_LOG: local_barier_entry ($1): $PALS_RANKID"
+    [ -z ${PALS_RANKID+x} ] && return
 
-  local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
-  local path=$folder/$PALS_LOCAL_RANKID
-  mkdir -p $path
-  while [ $(find $folder -mindepth 1 -maxdepth 1 -type d | wc -l) != $PALS_LOCAL_SIZE ]; do
+    local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
+    local path=$folder/$PALS_LOCAL_RANKID
+    mkdir -p $path
+    while [ $(find $folder -mindepth 1 -maxdepth 1 -type d | wc -l) != $PALS_LOCAL_SIZE ]; do
 	sleep 0.2
-  done
-  # We cannot rmdir $path here, and I have no idea why...
-  echoq "THAPI_LOG: local_barier_exit ($1): $PALS_RANKID"
+    done
+    # We cannot rmdir $path here, and I have no idea why...
+    echoq "THAPI_LOG: local_barier_exit ($1): $PALS_RANKID"
 }
 
 global_barrier_epilogue() {
-  echoq "THAPI_LOG: global_barrier_epilogue_entry"
-  [ -z ${PALS_RANKID+x} ] && return
+    echoq "THAPI_LOG: global_barrier_epilogue_entry"
+    [ -z ${PALS_RANKID+x} ] && return
 
-  while [ $(find $SHARED_GLOBAL_FILESYSTEM/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
+    while [ $(find $SHARED_GLOBAL_FILESYSTEM/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
 	sleep 0.2
-  done
-  echoq "THAPI_LOG: global_barrier_epilogue_exit"
+    done
+    echoq "THAPI_LOG: global_barrier_epilogue_exit"
 }
 
 run_iff_local_master() {
-  if [[ ${PALS_LOCAL_RANKID:-0} == 0 ]]; then
-    $@
-  fi
+    if [[ ${PALS_LOCAL_RANKID:-0} == 0 ]]; then
+        $@
+    fi
 }
 
 <%# https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
@@ -269,8 +267,8 @@ preload_lib_tracers() {
 <% if languages.include?("cuda") %>
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
-   fi
-   unset IFS   
+    fi
+    unset IFS
 }
 
 trace_and_summary() {
@@ -329,7 +327,7 @@ bt2_all() {
 
 summary() {
     if [[ $procesing_mode == "save" ]]; then
-      return
+        return
     fi
 
     if [ -n "$THAPI_LTTNG_O" ]; then
