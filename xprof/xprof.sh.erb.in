@@ -400,18 +400,18 @@ done
 if [ -n "$debug" ]; then
     set -x
 <% if languages.include?("ze") %>
-    #export LTTNG_UST_ZE_VERBOSE=1
+    export LTTNG_UST_ZE_VERBOSE=1
 <% end %>
 <% if languages.include?("cl") %>
-    #export LTTNG_UST_OPENCL_VERBOSE=1
+    export LTTNG_UST_OPENCL_VERBOSE=1
 <% end %>
 <% if languages.include?("cuda") %>
-    #export LTTNG_UST_CUDA_VERBOSE=1
+    export LTTNG_UST_CUDA_VERBOSE=1
 <% end %>
 <% if languages.include?("omp") %>
-    #export LTTNG_UST_OMP_VERBOSE=1
+    export LTTNG_UST_OMP_VERBOSE=1
 <% end %>
-    #export LTTNG_UST_DEBUG=y
+    export LTTNG_UST_DEBUG=y
     export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
     export BABELTRACE_CLI_LOG_LEVEL=WARNING
 else
