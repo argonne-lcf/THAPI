@@ -27,6 +27,7 @@ end%>
 SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/${PALS_APID:-0}/
 SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/${PALS_APID:-0}/
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
+export LTTNG_HOME=/tmp/.lttng_home/${PALS_APID:-0}/
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
 lttngq() { lttng $quiet "$@" ; }
@@ -49,10 +50,13 @@ local_barier() {
 global_barrier_epilogue() {
     echoq "THAPI_LOG: global_barrier_epilogue_entry"
     [ -z ${PALS_RANKID+x} ] && return
-
-    while [ $(find $SHARED_GLOBAL_FILESYSTEM/* -maxdepth 1 -type f -name .lttngrc | wc -l) != 0 ]; do
-	sleep 0.2
-    done
+    rmdir $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
+    # Only master should wait, because after master will delete $SHARED_GLOBAL_FILESYSTEM
+    if [[ ${PALS_RANKID:-0} == 0 ]]; then
+        while [ $(stat -c %h $SHARED_GLOBAL_FILESYSTEM) != 2 ]; do
+                sleep 0.2
+        done
+    fi
     echoq "THAPI_LOG: global_barrier_epilogue_exit"
 }
 
@@ -217,6 +221,7 @@ enable_events_metadata() {
 }
 
 setup_lttng() {
+    mkdir -p $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
     mkdir -p $LTTNG_HOME
     # Only local master should spown and then sync,
     # but easier to relly on lttng
@@ -317,7 +322,6 @@ trace_epilogue() {
 
 trace_and_summary() {
     [ "$#" -eq 0 ] && display_help
-    export LTTNG_HOME=$SHARED_GLOBAL_FILESYSTEM/${PALS_NODEID:-0}
 
     # Each node will have their own lock
     # Need to change LLTNG HOME so each node have their own "lock"
@@ -401,7 +405,7 @@ setub_babeltrace_live() {
                display_metadata=false, \
                display_name_max_size=80, \
                display_kernel_verbose=false" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_$PALS_NODEID.log &
-   BT_PIT=$!
+   BT_PID=$!
 }
 
 trace_epilogue_live() {
@@ -425,7 +429,6 @@ trace_epilogue_live() {
 
 trace_and_summary_live() {
     [ "$#" -eq 0 ] && display_help
-    export LTTNG_HOME=$SHARED_GLOBAL_FILESYSTEM/${PALS_NODEID:-0}
 
     # Each node will have their own lock
     # Need to change LLTNG HOME so each node have their own "lock"
