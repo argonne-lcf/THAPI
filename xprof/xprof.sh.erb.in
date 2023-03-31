@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 exec_prefix=@prefix@
 libdir=@libdir@
 bindir=@bindir@
@@ -11,6 +13,7 @@ datadir=@datadir@
 env_var="LTTNG_UST_#{language.upcase}_#{library.upcase}"
 directory=language.downcase
 <<EOF
+    set +u
     if [ -z "$#{env_var}" ]; then
         #{env_var}=$(whichlib64_head #{library}.so)
         if [ -n "$#{env_var}" ]; then
@@ -21,17 +24,22 @@ directory=language.downcase
             export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
     fi
     export LD_PRELOAD=$libdir/#{libtracer}.so:$LD_PRELOAD
+    set -u
 EOF
 end%>
 
-SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/${PALS_APID:-0}/
-SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/${PALS_APID:-0}/
+SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/${PALS_APID:-0}
+SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/${PALS_APID:-0}
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
-export LTTNG_HOME=/tmp/.lttng_home/${PALS_APID:-0}/
+export LTTNG_HOME=$HOME/.lttng_home/${PALS_APID:-0}/node-${PALS_NODEID:-0}
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
 lttngq() { lttng $quiet "$@" ; }
-echoq() { [[ $quiet != "--quiet" ]] && echo "$@" ; }
+echoq() {
+   if [ $debug != true ]; then
+        echo "$@"
+   fi
+}
 
 local_barier() {
     echoq "THAPI_LOG: local_barier_entry ($1): $PALS_RANKID"
@@ -156,11 +164,13 @@ whichlib64_head() {
 # > export FOO=0 ; thapi_export FOO 1 ; echo $FOO
 #
 thapi_export() {
+    set +u
     if [ -z "${!1}" ]; then
         export "$1"="$2"
     elif [ "${!1}" = "0" ]; then
         unset "$1"
     fi
+    set -u
 }
 
 enable_events_omp() {
@@ -221,11 +231,14 @@ enable_events_metadata() {
 }
 
 setup_lttng() {
+    # Create global lock
     mkdir -p $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
+
+
     mkdir -p $LTTNG_HOME
     # Only local master should spown and then sync,
     # but easier to relly on lttng
-    lttng-sessiond $quiet --daemonize
+    lttng-sessiond $quiet --daemonize -vvv
     local suffix=""
     if [ ${1:-""} = "--live" ]; then
 	suffix="_live"
@@ -295,7 +308,6 @@ local_master_epilogue() {
     if [ ${1:-""} = "--live" ]; then
 	wait $BT_PID # Set setub_babeltrace_live
     fi
-
     global_barrier_epilogue
     rm -rf -- $SHARED_LOCAL_FILESYSTEM
 }
@@ -456,8 +468,12 @@ procesing_mode="on-the-fly"
 
 [ "$#" -eq 0 ] && display_help
 
+debug=false
 bt_tally_argv=""
 traced_ranks=0
+asm=false
+replay=false
+
 while (( "$#" )); do
     case "$1" in
         -h | --help)            display_help; exit ;;
@@ -481,7 +497,9 @@ while (( "$#" )); do
     esac
 done
 
-if [ -n "$debug" ]; then
+quiet=""
+if [ $debug = true ]; then
+    PS4="RankID ${PALS_RANKID:-0}: "
     set -x
 <% if languages.include?("ze") %>
     #export LTTNG_UST_ZE_VERBOSE=1
@@ -502,7 +520,7 @@ else
     quiet="--quiet"
 fi
 
-if [ -n "$asm" ]; then
+if [ $asm = true ]; then
     export SYCL_CACHE_PERSISTENT=0
     #This is a workarround for the fact that `SYCL_CACHE_PERSISTENT` doesn't work yet.
     rm -rf "$USER"/libsycl_cache/.cache/
@@ -511,7 +529,7 @@ if [ -n "$asm" ]; then
     export IGC_DumpToCurrentDir=1
 fi
 
-if [ -n "$replay" ]; then
+if [ $replay = true ]; then
     summary "$@"
 elif [ $procesing_mode = "save" ]; then
     trace_and_summary "$@"
