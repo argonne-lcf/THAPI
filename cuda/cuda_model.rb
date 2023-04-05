@@ -43,9 +43,9 @@ all_types.each { |t|
 def transitive_closure(types, arr)
   sz = arr.size
   loop do
-    arr.concat( types.select { |t|
-      t.type.kind_of?(YAMLCAst::CustomType) && arr.include?(t.type.name)
-    }.collect { |t| t.name } ).uniq!
+    arr.concat( types.filter_map { |t|
+      t.name if t.type.kind_of?(YAMLCAst::CustomType) && arr.include?(t.type.name)
+    } ).uniq!
     break if sz == arr.size
     sz = arr.size
   end
