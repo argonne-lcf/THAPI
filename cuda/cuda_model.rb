@@ -661,7 +661,7 @@ class ArrayByRefMetaParameter < MetaParameter
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
     t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    raise "Type is not a pointer: #{t}!" unless t.kind_of?(YAMLCAst::Pointer)
     raise "Type is not a pointer to an array: #{t}!" if !t.type.kind_of?(YAMLCAst::Pointer)
     s = command[size]
     raise "Invalid parameter: #{size} for #{command.name}!" unless s
