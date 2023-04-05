@@ -16,15 +16,26 @@ meta_parameters:
     - [OutString, name]
   cuDeviceGetUuid:
     - [OutScalar, uuid]
+  cuDeviceGetUuid_v2:
+    - [OutScalar, uuid]
   cuDeviceGetLuid:
-    - [OutArray, luid, 8]
+    - [OutFixedArray, luid, 8]
+    - [OutScalar, deviceNodeMask]
   cuDeviceTotalMem:
     - [OutScalar, bytes]
+  cuDeviceGetTexture1DLinearMaxWidth:
+    - [OutScalar, maxWidthInElements]
   cuDeviceTotalMem_v2:
     - [OutScalar, bytes]
   cuDeviceGetAttribute:
     - [OutScalar, pi]
 #  cuDeviceGetNvSciSyncAttributes
+  cuDeviceGetMemPool:
+    - [OutScalar, pool]
+  cuDeviceGetDefaultMemPool:
+    - [OutScalar, pool_out]
+  cuDeviceGetExecAffinitySupport:
+    - [OutScalar, pi]
   cuDeviceGetProperties:
     - [OutScalar, prop]
   cuDeviceComputeCapability:
@@ -39,6 +50,9 @@ meta_parameters:
     - [OutScalar, pctx]
   cuCtxCreate_v2:
     - [OutScalar, pctx]
+  cuCtxCreate_v3:
+    - [OutScalar, pctx]
+    - [InArray, paramsArray, numParams]
   cuCtxPopCurrent:
     - [OutScalar, pctx]
   cuCtxPopCurrent_v2:
@@ -49,6 +63,8 @@ meta_parameters:
     - [OutScalar, device]
   cuCtxGetFlags:
     - [OutScalar, flags]
+  cuCtxGetId:
+    - [OutScalar, ctxId]
   cuCtxGetLimit:
     - [OutScalar, pvalue]
   cuCtxGetCacheConfig:
@@ -60,6 +76,8 @@ meta_parameters:
   cuCtxGetStreamPriorityRange:
     - [OutScalar, leastPriority]
     - [OutScalar, greatestPriority]
+  cuCtxGetExecAffinity:
+    - [OutScalar, pExecAffinity]
   cuCtxAttach:
     - [OutScalar, pctx]
   cuModuleLoad:
@@ -73,6 +91,8 @@ meta_parameters:
     - [OutScalar, module]
   cuModuleLoadFatBinary:
     - [OutScalar, module]
+  cuModuleGetLoadingMode:
+    - [OutScalar, mode]
   cuModuleGetFunction:
     - [InString, name]
     - [OutScalar, hfunc]
@@ -84,12 +104,6 @@ meta_parameters:
     - [InString, name]
     - [OutScalar, dptr]
     - [OutScalar, bytes]
-  cuModuleGetTexRef:
-    - [InString, name]
-    - [OutScalar, pTexRef]
-  cuModuleGetSurfRef:
-    - [InString, name]
-    - [OutScalar, pSurfRef]
   cuLinkCreate:
     - [InArray, options, numOptions]
     - [InArray, optionValues, numOptions]
@@ -117,6 +131,45 @@ meta_parameters:
   cuLinkComplete:
     - [OutScalar, cubinOut]
     - [OutScalar, sizeOut]
+  cuModuleGetTexRef:
+    - [InString, name]
+    - [OutScalar, pTexRef]
+  cuModuleGetSurfRef:
+    - [InString, name]
+    - [OutScalar, pSurfRef]
+  cuLibraryLoadData:
+    - [InArray, jitOptions, numJitOptions]
+    - [InArray, jitOptionsValues, numJitOptions]
+    - [InArray, libraryOptions, numLibraryOptions]
+    - [InArray, libraryOptionValues, numLibraryOptions]
+    - [OutScalar, library]
+  cuLibraryLoadFromFile:
+    - [InString, fileName]
+    - [InArray, jitOptions, numJitOptions]
+    - [InArray, jitOptionsValues, numJitOptions]
+    - [InArray, libraryOptions, numLibraryOptions]
+    - [InArray, libraryOptionValues, numLibraryOptions]
+    - [OutScalar, library]
+  cuLibraryGetKernel:
+    - [InString, name]
+    - [OutScalar, pKernel]
+  cuLibraryGetModule:
+    - [OutScalar, pMod]
+  cuKernelGetFunction:
+    - [OutScalar, pFunc]
+  cuLibraryGetGlobal:
+    - [InString, name]
+    - [OutScalar, dptr]
+    - [OutScalar, bytes]
+  cuLibraryGetManaged:
+    - [InString, name]
+    - [OutScalar, dptr]
+    - [OutScalar, bytes]
+  cuLibraryGetUnifiedFunction:
+    - [InString, symbol]
+    - [OutScalar, fptr]
+  cuKernelGetAttribute:
+    - [OutScalar, pi]
   cuMemGetInfo:
     - [OutScalar, free]
     - [OutScalar, total]
@@ -166,6 +219,8 @@ meta_parameters:
     - [OutScalar, pHandle]
   cuIpcOpenMemHandle:
     - [OutScalar, pdptr]
+  cuIpcOpenMemHandle_v2:
+    - [OutScalar, pdptr]
   cuMemcpy2D:
     - [InScalar, pCopy]
   cuMemcpy2D_v2:
@@ -214,6 +269,16 @@ meta_parameters:
     - [OutScalar, pArrayDescriptor]
   cuArrayGetDescriptor_v2:
     - [OutScalar, pArrayDescriptor]
+  cuArrayGetSparseProperties:
+    - [OutScalar, sparseProperties]
+  cuMipmappedArrayGetSparseProperties:
+    - [OutScalar, sparseProperties]
+  cuArrayGetMemoryRequirements:
+    - [OutScalar, memoryRequirements]
+  cuMipmappedArrayGetMemoryRequirements:
+    - [OutScalar, memoryRequirements]
+  cuArrayGetPlane:
+    - [OutScalar, pPlaneArray]
   cuArray3DCreate:
     - [InScalar, pAllocateArray]
     - [OutScalar, pHandle]
@@ -229,20 +294,27 @@ meta_parameters:
     - [OutScalar, pHandle]
   cuMipmappedArrayGetLevel:
     - [OutScalar, pLevelArray]
+  cuMemGetHandleForAddressRange:
+    - [OutLTTng, handle, ctf_sequence_text, uint8_t, handle_val, handle, size_t, "handleType == CU_MEM_RANGE_HANDLE_TYPE_DMA_BUF_FD ? sizeof(int) : 0"]
   cuMemAddressReserve:
     - [OutScalar, ptr]
   cuMemCreate:
     - [InScalar,  prop]
     - [OutScalar, handle]
+  cuMemMapArrayAsync:
+    - [InArray, mapInfoList, count]
+  cuMemMapArrayAsync_ptsz:
+    - [InArray, mapInfoList, count]
   cuMemSetAccess:
     - [InScalar, desc]
   cuMemGetAccess:
     - [InScalar, location]
     - [OutScalar, flags]
-# cuMemExportToShareableHandle
+  cuMemExportToShareableHandle:
+    - [OutLTTng, shareableHandle, ctf_sequence_text, uint8_t, shareableHandle_val, shareableHandle, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
   cuMemImportFromShareableHandle:
     - [OutScalar, handle]
-#   - missing osHandle
+    - [InLTTng, osHandle, ctf_sequence_text, uint8_t, osHandle_val, osHandle, size_t, "shHandleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
   cuMemGetAllocationGranularity:
     - [InScalar, prop]
     - [OutScalar, granularity]
@@ -250,8 +322,44 @@ meta_parameters:
     - [OutScalar, prop]
   cuMemRetainAllocationHandle:
     - [OutScalar, handle]
+  cuMemAllocAsync:
+    - [OutScalar, dptr]
+  cuMemAllocAsync_ptsz:
+    - [OutScalar, dptr]
+  cuMemPoolSetAttribute:
+    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "attr == CU_MEMPOOL_ATTR_RELEASE_THRESHOLD ? sizeof(cuuint64_t) : attr == CU_MEMPOOL_ATTR_REUSE_FOLLOW_EVENT_DEPENDENCIES ? sizeof(int) : attr == CU_MEMPOOL_ATTR_REUSE_ALLOW_OPPORTUNISTIC ? sizeof(int) : attr == CU_MEMPOOL_ATTR_REUSE_ALLOW_INTERNAL_DEPENDENCIES ? sizeof(int) : attr == CU_MEMPOOL_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : attr == CU_MEMPOOL_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
+  cuMemPoolGetAttribute:
+    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "attr == CU_MEMPOOL_ATTR_RELEASE_THRESHOLD ? sizeof(cuuint64_t) : attr == CU_MEMPOOL_ATTR_REUSE_FOLLOW_EVENT_DEPENDENCIES ? sizeof(int) : attr == CU_MEMPOOL_ATTR_REUSE_ALLOW_OPPORTUNISTIC ? sizeof(int) : attr == CU_MEMPOOL_ATTR_REUSE_ALLOW_INTERNAL_DEPENDENCIES ? sizeof(int) : attr == CU_MEMPOOL_ATTR_RESERVED_MEM_CURRENT ? sizeof(cuuint64_t) : attr == CU_MEMPOOL_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : attr == CU_MEMPOOL_ATTR_USED_MEM_CURRENT ? sizeof(cuuint64_t) : attr == CU_MEMPOOL_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
+  cuMemPoolSetAccess:
+    - [InArray, map, count]
+  cuMemPoolGetAccess:
+    - [InScalar, location]
+    - [OutScalar, flags]
+  cuMemPoolCreate:
+    - [InScalar, poolProps]
+    - [OutScalar, pool]
+  cuMemAllocFromPoolAsync:
+    - [OutScalar, dptr]
+  cuMemAllocFromPoolAsync_ptsz:
+    - [OutScalar, dptr]
+  cuMemPoolExportToShareableHandle:
+    - [OutLTTng, handle_out, ctf_sequence_text, uint8_t, handle_out_val, handle_out, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
+  cuMemPoolImportFromShareableHandle:
+    - [InLTTng, handle, ctf_sequence_text, uint8_t, handle_val, handle, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
+    - [OutScalar, pool_out]
+  cuMemPoolExportPointer:
+    - [OutScalar, shareData_out]
+  cuMemPoolImportPointer:
+    - [InScalar, shareData]
+    - [OutScalar, ptr_out]
+  cuMulticastCreate:
+    - [InScalar, prop]
+    - [OutScalar, mcHandle]
+  cuMulticastGetGranularity:
+    - [InScalar, prop]
+    - [OutScalar, granularity]
   cuPointerGetAttribute:
-    - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "attribute == CU_POINTER_ATTRIBUTE_CONTEXT ? sizeof(CUcontext) : attribute == CU_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(CUdeviceptr) : attribute == CU_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_P2P_TOKENS ? sizeof(CUDA_POINTER_ATTRIBUTE_P2P_TOKENS) : attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : attribute == CU_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(uint8_t) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : 0"]
+    - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "attribute == CU_POINTER_ATTRIBUTE_CONTEXT ? sizeof(CUcontext) : attribute == CU_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(CUdeviceptr) : attribute == CU_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_P2P_TOKENS ? sizeof(CUDA_POINTER_ATTRIBUTE_P2P_TOKENS) : attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(int) : attribute == CU_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : attribute == CU_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(int) : attribute == CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : attribute == CU_POINTER_ATTRIBUTE_IS_LEGACY_CUDA_IPC_CAPABLE ? sizeof(int) : attribute == CU_POINTER_ATTRIBUTE_RANGE_START_ADDR ? sizeof(void *) : attribute == CU_POINTER_ATTRIBUTE_RANGE_SIZE ? sizeof(size_t) : attribute == CU_POINTER_ATTRIBUTE_MAPPED ? sizeof(int) : attribute == CU_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES ? sizeof(CUmemAllocationHandleType) : attribute == CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE ? sizeof(CUmemoryPool) : 0"]
   cuMemRangeGetAttribute:
     - [OutArray, data, dataSize]
   cuMemRangeGetAttributes:
@@ -279,6 +387,10 @@ meta_parameters:
     - [OutScalar, priority]
   cuStreamGetPriority_ptsz:
     - [OutScalar, priority]
+  cuStreamGetId:
+    - [OutScalar, streamId]
+  cuStreamGetId_ptsz:
+    - [OutScalar, streamId]
   cuStreamGetFlags:
     - [OutScalar, flags]
   cuStreamGetFlags_ptsz:
@@ -299,11 +411,29 @@ meta_parameters:
   cuStreamIsCapturing_ptsz:
     - [OutScalar, captureStatus]
   cuStreamGetCaptureInfo:
-    - [OutScalar, captureStatus]
-    - [OutScalar, id]
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
   cuStreamGetCaptureInfo_ptsz:
-    - [OutScalar, captureStatus]
-    - [OutScalar, id]
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
+  cuStreamGetCaptureInfo_v2:
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
+    - [OutScalar, graph_out]
+    - [OutScalar, dependencies_out]
+    - [OutScalar, numDependencies_out]
+    - [OutArrayByRef, dependencies_out, numDependencies_out]
+  cuStreamGetCaptureInfo_v2_ptsz:
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
+    - [OutScalar, graph_out]
+    - [OutScalar, dependencies_out]
+    - [OutScalar, numDependencies_out]
+    - [OutArrayByRef, dependencies_out, numDependencies_out]
+  cuStreamUpdateCaptureDependencies:
+    - [InArray, dependencies, numDependencies]
+  cuStreamUpdateCaptureDependencies_ptsz:
+    - [InArray, dependencies, numDependencies]
   cuEventCreate:
     - [OutScalar, phEvent]
   cuEventElapsedTime:
@@ -336,6 +466,10 @@ meta_parameters:
     - [InArray, paramArray, count]
   cuStreamBatchMemOp_ptsz:
     - [InArray, paramArray, count]
+  cuStreamBatchMemOp_v2:
+    - [InArray, paramArray, count]
+  cuStreamBatchMemOp_v2_ptsz:
+    - [InArray, paramArray, count]
   cuFuncGetAttribute:
     - [OutScalar, pi]
   cuFuncGetModule:
@@ -343,6 +477,14 @@ meta_parameters:
   cuLaunchKernel:
     - [InNullArray, extra]
   cuLaunchKernel_ptsz:
+    - [InNullArray, extra]
+  cuLaunchKernelEx:
+    - [InScalar, config]
+    - [InArray, config->attrs, config->numAttrs]
+    - [InNullArray, extra]
+  cuLaunchKernelEx_ptsz:
+    - [InScalar, config]
+    - [InArray, config->attrs, config->numAttrs]
     - [InNullArray, extra]
   cuLaunchCooperativeKernelMultiDevice:
     - [InArray, launchParamsList, numDevices]
@@ -355,10 +497,21 @@ meta_parameters:
     - [InScalar, nodeParams]
     - [InNullArray, nodeParams->extra]
     - [OutScalar, phGraphNode]
+  cuGraphAddKernelNode_v2:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [InNullArray, nodeParams->extra]
+    - [OutScalar, phGraphNode]
   cuGraphKernelNodeGetParams:
     - [OutScalar, nodeParams]
     - [OutNullArray, nodeParams->extra]
+  cuGraphKernelNodeGetParams_v2:
+    - [OutScalar, nodeParams]
+    - [OutNullArray, nodeParams->extra]
   cuGraphKernelNodeSetParams:
+    - [InScalar, nodeParams]
+    - [InNullArray, nodeParams->extra]
+  cuGraphKernelNodeSetParams_v2:
     - [InScalar, nodeParams]
     - [InNullArray, nodeParams->extra]
   cuGraphAddMemcpyNode:
@@ -392,6 +545,57 @@ meta_parameters:
   cuGraphAddEmptyNode:
     - [InArray, dependencies, numDependencies]
     - [OutScalar, phGraphNode]
+  cuGraphAddEventRecordNode:
+    - [InArray, dependencies, numDependencies]
+    - [OutScalar, phGraphNode]
+  cuGraphEventRecordNodeGetEvent:
+    - [OutScalar, event_out]
+  cuGraphAddEventWaitNode:
+    - [InArray, dependencies, numDependencies]
+    - [OutScalar, phGraphNode]
+  cuGraphEventWaitNodeGetEvent:
+    - [OutScalar, event_out]
+  cuGraphAddExternalSemaphoresSignalNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [OutScalar, phGraphNode]
+  cuGraphExternalSemaphoresSignalNodeGetParams:
+    - [OutScalar, params_out]
+  cuGraphExternalSemaphoresSignalNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphAddExternalSemaphoresWaitNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [OutScalar, phGraphNode]
+  cuGraphExternalSemaphoresWaitNodeGetParams:
+    - [OutScalar, params_out]
+  cuGraphExternalSemaphoresWaitNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphAddBatchMemOpNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [OutScalar, phGraphNode]
+  cuGraphBatchMemOpNodeGetParams:
+    - [OutScalar, nodeParams_out]
+  cuGraphBatchMemOpNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphExecBatchMemOpNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphAddMemAllocNode:
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+    - [OutScalar, phGraphNode]
+  cuGraphMemAllocNodeGetParams:
+    - [InScalar, params_out]
+  cuGraphAddMemFreeNode:
+    - [InArray, dependencies, numDependencies]
+    - [OutScalar, phGraphNode]
+  cuGraphMemFreeNodeGetParams:
+    - [OutScalar, dptr_out]
+  cuDeviceGetGraphMemAttribute:
+    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "attr == CU_GRAPH_MEM_ATTR_USED_MEM_CURRENT ? sizeof(cuuint64_t) : attr == CU_GRAPH_MEM_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_CURRENT ? sizeof(cuuint64_t) : attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
+  cuDeviceSetGraphMemAttribute:
+    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "attr == CU_GRAPH_MEM_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
   cuGraphClone:
     - [OutScalar, phGraphClone]
   cuGraphNodeFindInClone:
@@ -424,21 +628,51 @@ meta_parameters:
     - [OutScalar, phGraphExec]
     - [OutScalar, phErrorNode]
     - [OutArray, logBuffer, bufferSize]
+  cuGraphInstantiate_v2:
+    - [OutScalar, phGraphExec]
+    - [OutScalar, phErrorNode]
+    - [OutArray, logBuffer, bufferSize]
+  cuGraphInstantiateWithFlags:
+    - [OutScalar, phGraphExec]
+  cuGraphInstantiateWithParams:
+    - [OutScalar, phGraphExec]
+    - [InScalar, instantiateParams]
+  cuGraphInstantiateWithParams_ptsz:
+    - [OutScalar, phGraphExec]
+    - [InScalar, instantiateParams]
+  cuGraphExecGetFlags:
+    - [OutScalar, flags]
   cuGraphExecKernelNodeSetParams:
     - [InScalar, nodeParams]
+    - [InNullArray, nodeParams->extra]
+  cuGraphExecKernelNodeSetParams_v2:
+    - [InScalar, nodeParams]
+    - [InNullArray, nodeParams->extra]
   cuGraphExecMemcpyNodeSetParams:
     - [InScalar, copyParams]
   cuGraphExecMemsetNodeSetParams:
     - [InScalar, memsetParams]
   cuGraphExecHostNodeSetParams:
     - [InScalar, nodeParams]
+  cuGraphExecExternalSemaphoresSignalNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphExecExternalSemaphoresWaitNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphNodeGetEnabled:
+    - [OutScalar, isEnabled]
   cuGraphExecUpdate:
     - [OutScalar, hErrorNode_out]
     - [OutScalar, updateResult_out]
+  cuGraphExecUpdate_v2:
+    - [OutScalar, resultInfo]
   cuGraphKernelNodeGetAttribute:
     - [OutScalar, value_out]
   cuGraphKernelNodeSetAttribute:
     - [InScalar, value]
+  cuGraphDebugDotPrint:
+    - [InString, path]
+  cuUserObjectCreate:
+    - [OutScalar, object_out]
   cuOccupancyMaxActiveBlocksPerMultiprocessor:
     - [OutScalar, numBlocks]
   cuOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
@@ -451,6 +685,12 @@ meta_parameters:
     - [OutScalar, blockSize]
   cuOccupancyAvailableDynamicSMemPerBlock:
     - [OutScalar, dynamicSmemSize]
+  cuOccupancyMaxPotentialClusterSize:
+    - [InScalar, config]
+    - [OutScalar, clusterSize]
+  cuOccupancyMaxActiveClusters:
+    - [InScalar, config]
+    - [OutScalar, numClusters]
   cuTexRefSetAddress:
     - [OutScalar, ByteOffset]
   cuTexRefSetAddress2D:
@@ -505,6 +745,20 @@ meta_parameters:
     - [InScalar, pResDesc]
   cuSurfObjectGetResourceDesc:
     - [OutScalar, pResDesc]
+  cuTensorMapEncodeTiled:
+    - [InArray, globalDim, tensorRank]
+    - [InLTTng, globalStrides, ctf_sequence, cuuint64_t, globalStrides_val, globalStrides, cuuint32_t, "(tensorRank - 1)"]
+    - [InArray, boxDim, tensorRank]
+    - [InArray, elementStrides, tensorRank]
+    - [OutScalar, tensorMap]
+  cuTensorMapEncodeIm2col:
+    - [InArray, globalDim, tensorRank]
+    - [InLTTng, globalStrides, ctf_sequence, cuuint64_t, globalStrides_val, globalStrides, cuuint32_t, "(tensorRank - 1)"]
+    - [InFixedArray, pixelBoxLowerCorner, 3]
+    - [InFixedArray, pixelBoxUpperCorner, 3]
+    - [OutScalar, tensorMap]
+  cuTensorMapReplaceAddress:
+    - [InScalar, tensorMap] 
   cuDeviceCanAccessPeer:
     - [OutScalar, canAccessPeer]
   cuDeviceGetP2PAttribute:
@@ -523,6 +777,25 @@ meta_parameters:
     - [InArray, resources, count]
   cuGraphicsUnmapResources:
     - [InArray, resources, count]
+  cuGetProcAddress:
+    - [InString, symbol]
+    - [OutScalar, pfn]
+  cuGetProcAddress_v2:
+    - [InString, symbol]
+    - [OutScalar, pfn]
+    - [OutScalar, symbolStatus]
+  cuCoredumpGetAttribute:
+    - [InOutScalar, size]
+    - [OutArray, value, size]
+  cuCoredumpGetAttributeGlobal:
+    - [InOutScalar, size]
+    - [OutArray, value, size]
+  cuCoredumpSetAttribute:
+    - [InOutScalar, size]
+    - [InArray, value, size]
+  cuCoredumpSetAttributeGlobal:
+    - [InOutScalar, size]
+    - [InArray, value, size]
   cuGetExportTable:
     - [InScalar, pExportTableId]
     - [OutScalar, ppExportTable]
