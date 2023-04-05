@@ -60,7 +60,7 @@ def to_ffi_name(name)
     return ":anonymous"
   when "unsigned int"
     return ":uint"
-  when "unsigned short"
+  when "unsigned short", "unsigned short int"
     return ":ushort"
   when "unsigned char"
     return ":uchar"
@@ -202,7 +202,7 @@ module YAMLCAst
       else
        to_ffi_name(type.name)
       end
-      [ t, length ]
+      [ t, length.gsub("sizeof(CUlaunchAttributeID)", "4") ]
     end
   end
 

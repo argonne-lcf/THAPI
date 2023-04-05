@@ -40,15 +40,43 @@ all_types.each { |t|
   end
 }
 
+def transitive_closure(types, arr)
+  sz = arr.size
+  loop do
+    arr.concat( types.filter_map { |t|
+      t.name if t.type.kind_of?(YAMLCAst::CustomType) && arr.include?(t.type.name)
+    } ).uniq!
+    break if sz == arr.size
+    sz = arr.size
+  end
+end
+
+def transitive_closure_map(types, map)
+  sz = map.size
+  loop do
+    types.select { |t|
+      t.type.kind_of?(YAMLCAst::CustomType) && map.include?(t.type.name)
+    }.each { |t| map[t.name] = map[t.type.name] }
+    break if sz == map.size
+    sz = map.size
+  end
+end
+
 CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char
-                      CUdevice CUdeviceptr CUdeviceptr_v1 CUtexObject CUsurfObject CUmemGenericAllocationHandle
+                      CUdevice CUdevice_v1
+                      CUdeviceptr CUdeviceptr_v1 CUdeviceptr_v2
+                      CUtexObject CUtexObject_v1 CUsurfObject CUsurfObject_v1
+                      CUmemGenericAllocationHandle
                       VdpDevice VdpFuncId VdpVideoSurface VdpOutputSurface VdpStatus)
 CUDA_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
 CUDA_FLOAT_SCALARS = %w(float double)
 CUDA_SCALARS = CUDA_INT_SCALARS + CUDA_FLOAT_SCALARS
 CUDA_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
+transitive_closure(all_types, CUDA_ENUM_SCALARS)
 CUDA_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
+transitive_closure(all_types, CUDA_STRUCT_TYPES)
 CUDA_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
+transitive_closure(all_types, CUDA_UNION_TYPES)
 CUDA_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
 CUDA_STRUCT_MAP = {}
@@ -59,6 +87,7 @@ all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
     CUDA_STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
   end
 }
+transitive_closure_map(all_types, CUDA_STRUCT_MAP)
 
 INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount/
 
@@ -623,6 +652,49 @@ class ArrayMetaParameter < MetaParameter
   end
 end
 
+class ArrayByRefMetaParameter < MetaParameter
+  attr_reader :size
+
+  def initialize(command, name, size)
+    @size = size
+    super(command, name)
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" unless t.kind_of?(YAMLCAst::Pointer)
+    raise "Type is not a pointer to an array: #{t}!" if !t.type.kind_of?(YAMLCAst::Pointer)
+    s = command[size]
+    raise "Invalid parameter: #{size} for #{command.name}!" unless s
+    if s.type.kind_of?(YAMLCAst::Pointer)
+      checks = check_for_null("#{size}") + check_for_null("#{name}") + check_for_null("*#{name}")
+      sz = sanitize_expression("*#{size}", checks)
+      st = "#{s.type.type}"
+    else
+      checks = check_for_null("#{name}") + check_for_null("*#{name}")
+      sz = sanitize_expression("#{size}", checks)
+      st = "#{s.type}"
+    end
+    if t.type.type.kind_of?(YAMLCAst::Void)
+      tt = YAMLCAst::CustomType::new(name: "uint8_t")
+    else
+      tt = t.type.type
+    end
+    y = YAMLCAst::Array::new(type: tt)
+    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt.name = name + "_val_vals"
+    lttngt.expression = sanitize_expression("*#{name}")
+    @lttng_type = lttngt
+  end
+end
+
+class OutArrayByRef < ArrayByRefMetaParameter
+  prepend Out
+  def initialize(command, name, size)
+    super
+    @lttng_out_type = @lttng_type
+  end
+end
+
 class OutArray < ArrayMetaParameter
   prepend Out
   def initialize(command, name, size)
@@ -784,7 +856,9 @@ dump_args = <<EOF
 EOF
 
 [ "cuLaunchKernel",
-  "cuLaunchKernel_ptsz" ].each { |m|
+  "cuLaunchKernel_ptsz",
+  "cuLaunchKernelEx",
+  "cuLaunchKernelEx_ptsz" ].each { |m|
   register_prologue m, dump_args
 }
 
@@ -835,6 +909,12 @@ EOF
 profiling_start_no_stream = profiling_start.call("NULL")
 profiling_start_stream = profiling_start.call("hStream")
 
+profiling_start_config = <<EOF
+  CUevent _hStart = NULL;
+  if (_do_profile && config)
+    _hStart = _create_record_event(config->hStream);
+EOF
+
 profiling_stop = lambda { |stream|
   <<EOF
   if (_do_profile)
@@ -844,6 +924,11 @@ EOF
 
 profiling_stop_no_stream = profiling_stop.call("NULL")
 profiling_stop_stream = profiling_stop.call("hStream")
+
+profiling_stop_config = <<EOF
+  if (_do_profile && config)
+    _event_profile(_retval, _hStart, config->hStream);
+EOF
 
 stream_commands = []
 no_stream_commands = []
@@ -870,6 +955,11 @@ no_stream_commands += %w(
   cuLaunchGrid
 )
 
+config_commands = %w(
+  cuLaunchKernelEx
+  cuLaunchKernelEx_ptsz
+)
+
 stream_commands.each { |m|
   register_prologue m, profiling_start_stream
   register_epilogue m, profiling_stop_stream
@@ -878,6 +968,11 @@ stream_commands.each { |m|
 no_stream_commands.each { |m|
   register_prologue m, profiling_start_no_stream
   register_epilogue m, profiling_stop_no_stream
+}
+
+config_commands.each { |m|
+  register_prologue m, profiling_start_config
+  register_epilogue m, profiling_stop_config
 }
 
 # if a context is to be destroyed we must attempt to get profiling event results

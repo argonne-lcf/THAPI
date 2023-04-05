@@ -177,6 +177,7 @@ module FFI
   end
 end
 module CUDA
+  CU_TARGET_COMPUTE_90 = 90
   extend FFI::Library
 
   module Handle
@@ -216,6 +217,18 @@ module CUDA
   end
 
 EOF
+
+def close_type(name)
+  $all_types.select { |t|
+    t.type.kind_of?(YAMLCAst::CustomType) && t.type.name == name
+  }.each { |t|
+    puts <<EOF
+  typedef #{to_ffi_name(name)}, #{to_ffi_name(t.name)}
+
+EOF
+    close_type(t.name)
+  }
+end
 
 def print_union(name, union)
   members = union.to_ffi
@@ -263,6 +276,7 @@ EOF
   typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
+  close_type(name)
 end
 
 def print_function_pointer_type(name, func)
@@ -282,6 +296,8 @@ puts <<EOF
   typedef :uint32, #{to_ffi_name("CUdeviceptr_v1")}
   typedef :uint64, #{to_ffi_name("CUtexObject")}
   typedef :uint64, #{to_ffi_name("CUsurfObject")}
+  typedef :uint64, #{to_ffi_name("CUmemGenericAllocationHandle_v1")}
+  typedef #{to_ffi_name("CUmemGenericAllocationHandle_v1")}, #{to_ffi_name("CUmemGenericAllocationHandle")}
 EOF
 
 $all_types.each { |t|

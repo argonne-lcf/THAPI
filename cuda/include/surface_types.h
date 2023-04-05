@@ -98,17 +98,6 @@ enum __device_builtin__  cudaSurfaceFormatMode
 };
 
 /**
- * CUDA Surface reference
- */
-struct __device_builtin__ surfaceReference
-{
-    /**
-     * Channel descriptor for surface reference
-     */
-    struct cudaChannelFormatDesc channelDesc;
-};
-
-/**
  * An opaque value that represents a CUDA Surface object
  */
 typedef __device_builtin__ unsigned long long cudaSurfaceObject_t;

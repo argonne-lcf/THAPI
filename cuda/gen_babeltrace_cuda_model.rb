@@ -17,6 +17,7 @@ $integer_sizes = {
   "cuuint32_t" => 32,
   "int32_t" => 32,
   "CUdevice" => 32,
+  "CUdevice_v1" => 32,
   "CUdeviceptr_v1" => 32,
   "unsigned long long" => 64,
   "unsigned long long int" => 64,
@@ -31,9 +32,9 @@ $integer_sizes = {
   "int64_t" => 64,
   "uintptr_t" => 64,
   "size_t" => 64,
-  "CUtexObject" => 64,
-  "CUsurfObject" => 64,
-  "CUdeviceptr" => 64,
+  "CUtexObject_v1" => 64,
+  "CUsurfObject_v1" => 64,
+  "CUdeviceptr_v2" => 64,
   "CUmemGenericAllocationHandle" => 64,
   "CUstreamCallback" => 64,
   "CUhostFn" => 64,
@@ -77,10 +78,11 @@ $integer_signed = {
   "uintptr_t" => false,
   "size_t" => false,
   "CUdevice" => false,
-  "CUdeviceptr" => false,
+  "CUdevice_v1" => false,
+  "CUdeviceptr_v2" => false,
   "CUdeviceptr_v1" => false,
-  "CUtexObject" => false,
-  "CUsurfObject" => false,
+  "CUtexObject_v1" => false,
+  "CUsurfObject_v1" => false,
   "CUmemGenericAllocationHandle" => false,
   "CUstreamCallback" => false,
   "CUhostFn" => false,
@@ -135,6 +137,9 @@ def meta_parameter_types_name(m, dir)
       [["ctf_integer", "size_t", "_#{name}_length", nil],
        [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
     end
+  when ArrayByRefMetaParameter
+    [["ctf_integer", "size_t", "_#{name}_length", nil],
+     [lttng.macro.to_s, "#{t.type} *", "#{name}", lttng]]
   when FixedArrayMetaParameter
     [[lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
   when OutPtrString
