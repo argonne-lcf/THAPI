@@ -320,7 +320,8 @@ babeltrace_hip_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb 
 	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
 
 EXTRA_DIST += \
-	hip.h.include
+	hip.h.include \
+	hip.map
 
 CLEANFILES += \
 	babeltrace_hip_callbacks.h \
