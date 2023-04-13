@@ -71,12 +71,12 @@ fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_hip:*
-if [ -z "$LTTNG_UST_HIP_LIBHIP" ]
+if [ -z "$LTTNG_UST_HIP_LIBAMDHIP64" ]
 then
-  LTTNG_UST_HIP_LIBHIP=$(whichlib64_head libamdhip64.so)
-  if [ -n "$LTTNG_UST_HIP_LIBHIP" ]
+  LTTNG_UST_HIP_LIBAMDHIP64=$(whichlib64_head libamdhip64.so)
+  if [ -n "$LTTNG_UST_HIP_LIBAMDHIP64" ]
   then
-    export LTTNG_UST_HIP_LIBHIP="$LTTNG_UST_HIP_LIBHIP"
+    export LTTNG_UST_HIP_LIBAMDHIP64="$LTTNG_UST_HIP_LIBHIP"
     export LD_LIBRARY_PATH=$pkglibdir/hip:$LD_LIBRARY_PATH
   fi
 else

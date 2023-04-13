@@ -38,11 +38,13 @@ end
 def to_class_name(name)
   mod = to_name_space(name)
   mod = "" unless mod
-  n = name.gsub(/_t\z/, "").gsub(/\A#{mod}/, "").split("_").collect { |s|
-    s[0] = s[0].capitalize if s.length > 0
-    s
-  }.join
-  mod << n.gsub("Uuid","UUID").gsub("Ipc", "IPC").gsub("P2p", "P2P")
+  n = name.gsub(/\A#{mod}/, "")
+  mod.capitalize! if mod == 'hip'
+  res = mod << n
+  if res[0].match(/[[:lower:]]/)
+    res[0] = res[0].upcase
+  end
+  res
 end
 
 def to_scoped_class_name(name)
@@ -63,19 +65,10 @@ def to_ffi_name(name)
     return ":uint64"
   when "size_t"
     return ":size_t"
+  when "_Bool"
+    return ":bool"
   end
-  n = to_class_name(name)
-  mod = to_name_space(name)
-  if mod
-    n = n.gsub(/\A#{mod}/, "")
-    mod << "_" unless mod[-1] == "_"
-    mod.downcase!
-  else
-    mod = ""
-  end
-  n = to_snake_case(n).gsub(/\A_+/, "")
-  mod << n
-  mod.to_sym.inspect
+  name.to_sym.inspect
 end
 
 def to_name_space(name)

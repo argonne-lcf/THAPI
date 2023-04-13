@@ -215,6 +215,10 @@ module HIP
     end
   end
 
+  hipDeviceAttributeCudaCompatibleBegin = 0
+  hipDeviceAttributeAmdSpecificBegin = 10000
+  HIPRTC_JIT_NUM_LEGACY_INPUT_TYPES = 6
+  ACTIVITY_DOMAIN_HIP_OPS = 2
 EOF
 
 def close_type(name)
@@ -288,6 +292,19 @@ def print_function_pointer_type(name, func)
 EOF
 end
 
+def print_pointer_type(name)
+  puts <<EOF
+  typedef :pointer, #{to_ffi_name(name)}
+
+EOF
+end
+
+def print_int_type(name, t_name)
+  puts <<EOF
+  typedef #{to_ffi_name(t_name)}, #{to_ffi_name(name)}
+EOF
+end
+
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
@@ -308,6 +325,12 @@ $all_types.each { |t|
     print_union(t.name, union)
   elsif t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
+  elsif t.type.kind_of?(YAMLCAst::Pointer)
+    print_pointer_type(t.name)
+  elsif t.type.kind_of?(YAMLCAst::Int)
+    print_int_type(t.name, t.type.name)
+  else
+    #$stderr.puts t.inspect
   end
 }
 

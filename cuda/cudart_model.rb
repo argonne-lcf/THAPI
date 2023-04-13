@@ -359,7 +359,7 @@ class Command
       res = parameters.find { |p| p.name == param_name }
       return nil unless res
       path.each { |n|
-        res = ZE_STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
+        res = CUDART_STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
         return nil unless res
       }
       return res

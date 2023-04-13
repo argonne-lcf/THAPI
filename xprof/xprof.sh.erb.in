@@ -30,8 +30,8 @@ end%>
 Option names are typically one to three words long, with hyphens to separate words %>
 
 display_help() {
-<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
-    echo "$(basename $0): a tracer / summarizer of OpenCL, L0, and CUDA driver calls"
+<% if ["omp","ze","cuda","cl", "hip"].all? { |l| languages.include?(l) } %>
+    echo "$(basename $0): a tracer / summarizer of OpenCL, L0, CUDA, and HIP driver calls"
 <% elsif languages.include?("omp") %>
     echo "$(basename $0): a tracer / summarizer of OMP calls"
 <% elsif languages.include?("cl") %>
@@ -40,6 +40,8 @@ display_help() {
     echo "$(basename $0): a tracer / summarizer of L0 calls"
 <% elsif languages.include?("cuda") %>
     echo "$(basename $0): a tracer / summarizer of CUDA calls"
+<% elsif languages.include?("hip") %>
+    echo "$(basename $0): a tracer / summarizer of HIP calls"
 <% end %>
     echo "Usage:"
     echo " $(basename $0) -h | --help "
@@ -165,7 +167,7 @@ trace_and_summary() {
     unset IFS
 
     lttng-sessiond $quiet --daemonize
-<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
+<% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
     THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/iprof-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("cl") %>
     THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-opencl-session-$(date '+%Y%m%d-%H%M%S')
@@ -173,6 +175,8 @@ trace_and_summary() {
     THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-ze-session-$(date '+%Y%m%d-%H%M%S')
 <% elsif languages.include?("cuda") %>
     THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-cuda-session-$(date '+%Y%m%d-%H%M%S')
+<% elsif languages.include?("hip") %>
+    THAPI_LTTNG_O=${THAPI_OUTPUT}/lttng-traces/thapi-hip-session-$(date '+%Y%m%d-%H%M%S')
 <% end %>
     if [ $MPI_RANK = -1 ]; then
         lttng $quiet create THAPI -o $THAPI_LTTNG_O
@@ -230,6 +234,9 @@ trace_and_summary() {
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 <% end %>
+<% if languages.include?("hip") %>
+    lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_hip:*
+<% end %>
     # Add thapi metadata
     lttng $quiet enable-event --channel=blocking-channel --userspace lttng_ust_thapi:*
 
@@ -253,6 +260,9 @@ trace_and_summary() {
 <% end %>
 <% if languages.include?("cuda") %>
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
+<% end %>
+<% if languages.include?("hip") %>
+<%= print_loader_logic("hip","libamdhip64","libTracerHIP")%>
 <% end %>
     if [ $MPI_RANK = -1 ]; then
         lttng $quiet start THAPI
@@ -305,7 +315,7 @@ summary() {
         >&2 echo
     elif [ "$#" -eq 0 ]; then
         THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
-<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
+<% if ["omp","ze","cuda","cl", "hip"].all? { |l| languages.include?(l) } %>
         lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/iprof-* | head -1)
 <% elsif languages.include?("cl") %>
         lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-opencl-session* | head -1)
@@ -313,6 +323,8 @@ summary() {
         lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-ze-session* | head -1)
 <% elsif languages.include?("cuda") %>
         lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-cuda-session* | head -1)
+<% elsif languages.include?("hip") %>
+        lttng_last_session=$(ls -dt ${THAPI_OUTPUT}/lttng-traces/thapi-hip-session* | head -1)
 <% end %>
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
@@ -375,6 +387,9 @@ if [ -n "$debug" ]; then
 <% end %>
 <% if languages.include?("cuda") %>
     export LTTNG_UST_CUDA_VERBOSE=1
+<% end %>
+<% if languages.include?("hip") %>
+    export LTTNG_UST_HIP_VERBOSE=1
 <% end %>
 <% if languages.include?("omp") %>
     export LTTNG_UST_OMP_VERBOSE=1

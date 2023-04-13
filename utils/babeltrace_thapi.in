@@ -17,7 +17,7 @@ subtext = <<~HELP
   See 'babeltrace_thapi COMMAND --help' for more information on a specific command.
 HELP
 
-$options = { backends: %w[omp cl ze cuda] }
+$options = { backends: %w[omp cl ze cuda hip] }
 $options_tally = {
   'display' => [String, 'compact'],
   'name' => [String, 'demangle'],
@@ -151,6 +151,7 @@ serial_comps =
     require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
     require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
     require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
+    require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
 
     consume = lambda { |iterator, _|
       iterator.next_messages.each do |m|

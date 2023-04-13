@@ -61,7 +61,7 @@ end
 
 def find_types_map(types, cast_type, map)
   res = types.select { |t| t.type.kind_of? cast_type }.each { |t|
-    map[t.name] = t.type.name
+    map[t.name] = map[t.type.name]
   }
   transitive_closure_map(types, res)
 end

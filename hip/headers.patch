@@ -1,6 +1,6 @@
 diff -u4 -r --new-file include/hip/amd_detail/amd_hip_vector_types.h modified_include/hip/amd_detail/amd_hip_vector_types.h
 --- include/hip/amd_detail/amd_hip_vector_types.h	2023-04-12 10:06:55.991651183 -0500
-+++ modified_include/hip/amd_detail/amd_hip_vector_types.h	2023-04-12 18:10:21.142452860 -0500
++++ modified_include/hip/amd_detail/amd_hip_vector_types.h	2023-04-12 19:27:40.502276847 -0500
 @@ -1384,20 +1384,20 @@
              T w;\
          } CUDA_name##4;
@@ -161,7 +161,7 @@ diff -u4 -r --new-file include/hip/amd_detail/amd_hip_vector_types.h modified_in
  #endif
 diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
 --- include/hip/hip_ext.h	2023-04-12 10:06:56.003651147 -0500
-+++ modified_include/hip/hip_ext.h	2023-04-12 18:10:21.142452860 -0500
++++ modified_include/hip/hip_ext.h	2023-04-12 19:27:40.502276847 -0500
 @@ -21,9 +21,9 @@
  */
  
@@ -203,7 +203,7 @@ diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
  
 diff -u4 -r --new-file include/hip/hiprtc.h modified_include/hip/hiprtc.h
 --- include/hip/hiprtc.h	2023-04-12 10:06:56.007651134 -0500
-+++ modified_include/hip/hiprtc.h	2023-04-12 18:10:21.142452860 -0500
++++ modified_include/hip/hiprtc.h	2023-04-12 19:27:40.502276847 -0500
 @@ -36,9 +36,9 @@
  #ifdef __cplusplus
  extern "C" {
@@ -216,8 +216,8 @@ diff -u4 -r --new-file include/hip/hiprtc.h modified_include/hip/hiprtc.h
  #pragma GCC visibility push (default)
  #endif
 diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_runtime_api.h
---- include/hip/hip_runtime_api.h	2023-04-12 10:06:56.007651134 -0500
-+++ modified_include/hip/hip_runtime_api.h	2023-04-12 18:10:21.142452860 -0500
+--- include/hip/hip_runtime_api.h	2023-04-12 18:39:21.702256758 -0500
++++ modified_include/hip/hip_runtime_api.h	2023-04-12 19:27:40.502276847 -0500
 @@ -30,9 +30,9 @@
  #ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
  #define HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
@@ -229,6 +229,17 @@ diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_ru
  #include <hip/hip_common.h>
  
  enum {
+@@ -41,9 +41,9 @@
+     HIP_ERROR_NOT_INITIALIZED,
+     HIP_ERROR_LAUNCH_OUT_OF_RESOURCES
+ };
+ 
+-typedef struct {
++typedef struct hipDeviceArch_t {
+     // 32-bit Atomics
+     unsigned hasGlobalInt32Atomics : 1;     ///< 32-bit integer atomics for global memory.
+     unsigned hasGlobalFloatAtomicExch : 1;  ///< 32-bit float atomic exch for global memory.
+     unsigned hasSharedInt32Atomics : 1;     ///< 32-bit integer atomics for shared memory.
 @@ -471,10 +471,10 @@
   */
  
@@ -244,7 +255,7 @@ diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_ru
  #include <hip/amd_detail/host_defines.h>
 diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/hip_runtime_load_api.h
 --- include/hip/hip_runtime_load_api.h	1969-12-31 19:00:00.000000000 -0500
-+++ modified_include/hip/hip_runtime_load_api.h	2023-04-12 18:10:21.138452860 -0500
++++ modified_include/hip/hip_runtime_load_api.h	2023-04-12 19:27:40.498276852 -0500
 @@ -0,0 +1,95 @@
 +#ifndef HIP_RUNTIME_LOAD_API_
 +#define HIP_RUNTIME_LOAD_API_
@@ -341,3 +352,35 @@ diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/h
 +#endif /* __cplusplus */
 +
 +#endif
+diff -u4 -r --new-file include/hip/texture_types.h modified_include/hip/texture_types.h
+--- include/hip/texture_types.h	2023-04-12 10:06:56.011651122 -0500
++++ modified_include/hip/texture_types.h	2023-04-12 19:27:40.502276847 -0500
+@@ -64,24 +64,24 @@
+ 
+ /**
+  * hip texture address modes
+  */
+-enum hipTextureAddressMode {
++typedef enum hipTextureAddressMode {
+     hipAddressModeWrap = 0,
+     hipAddressModeClamp = 1,
+     hipAddressModeMirror = 2,
+     hipAddressModeBorder = 3
+-};
++} hipTextureAddressMode;
+ 
+ /**
+  * hip texture filter modes
+  */
+-enum hipTextureFilterMode { hipFilterModePoint = 0, hipFilterModeLinear = 1 };
++typedef enum hipTextureFilterMode { hipFilterModePoint = 0, hipFilterModeLinear = 1 } hipTextureFilterMode;
+ 
+ /**
+  * hip texture read modes
+  */
+-enum hipTextureReadMode { hipReadModeElementType = 0, hipReadModeNormalizedFloat = 1 };
++typedef enum hipTextureReadMode { hipReadModeElementType = 0, hipReadModeNormalizedFloat = 1 } hipTextureReadMode;
+ 
+ /**
+  * hip texture reference
+  */

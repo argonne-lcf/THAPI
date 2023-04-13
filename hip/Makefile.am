@@ -156,7 +156,7 @@ MODIFIED_HIP_HDR = \
 	$(MODIFIED_HIP_EXTRA_HDR) \
 	$(srcdir)/hip_cpp_symbols.h
 
-modified_include/hip/hip_runtime_api.h:
+modified_include/hip/hip_runtime_api.h: $(HIP_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/

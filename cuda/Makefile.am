@@ -133,9 +133,6 @@ EXTRA_DIST += \
 	gen_probe_base.rb \
 	cuda_events.yaml \
 	cudart_model.rb \
-	cuda_model.rb \
-	cuda_events.yaml \
-	cudart_model.rb \
 	gen_babeltrace_cuda_model.rb
 
 CUDA_PROBES = \
@@ -285,7 +282,7 @@ uninstall-hook:
 
 tmplibdir = $(libdir)/tmp
 tmplib_LTLIBRARIES = libBabeltraceCUDA.la
-install-data-hook::
+install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 babeltrace_cuda_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include

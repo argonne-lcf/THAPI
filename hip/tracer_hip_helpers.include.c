@@ -7,7 +7,7 @@ static void _load_tracer(void) {
   void *handle = NULL;
   int verbose = 0;
 
-  s = getenv("LTTNG_UST_HIP_LIBHIP");
+  s = getenv("LTTNG_UST_HIP_LIBAMDHIP64");
   if (s)
       handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
   else

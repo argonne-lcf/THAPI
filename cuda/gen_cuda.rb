@@ -92,7 +92,6 @@ common_block = lambda { |c, provider|
       p.name
     end
   }
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
   c.tracepoint_parameters.each { |p|
     puts "  #{p.type} #{p.name};"
   }
