@@ -186,7 +186,7 @@ HIP_EXTRACTED = \
 	hip_api.yaml
 
 CLEANFILES = \
-	HIP_EXTRACTED
+	$(HIP_EXTRACTED)
 
 EXTRA_DIST += \
 	extract_base.rb \
