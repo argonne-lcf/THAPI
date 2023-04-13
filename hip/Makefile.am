@@ -153,8 +153,7 @@ MODIFIED_HIP_EXTRA_HDR = \
 
 MODIFIED_HIP_HDR = \
 	modified_include/hip/hip_runtime_api.h \
-	$(MODIFIED_HIP_EXTRA_HDR) \
-	$(srcdir)/hip_cpp_symbols.h
+	$(MODIFIED_HIP_EXTRA_HDR)
 
 modified_include/hip/hip_runtime_api.h: $(HIP_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
@@ -180,7 +179,7 @@ EXTRA_DIST = \
 HIP_EXTRACT = \
 	$(srcdir)/extract_base.rb
 
-hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR)
+hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR) $(srcdir)/hip_cpp_symbols.h $(srcdir)/hip_missing_apis.h
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
 HIP_EXTRACTED = \
@@ -191,7 +190,9 @@ CLEANFILES = \
 
 EXTRA_DIST += \
 	extract_base.rb \
-	extract_hip.rb
+	extract_hip.rb \
+	hip_cpp_symbols.h \
+	hip_missing_apis.h
 
 ML_HIP_FILES = \
 	$(srcdir)/hip_meta_parameters.yaml
