@@ -8,6 +8,7 @@ else
   SRC_DIR = "."
 end
 
+RESULT_NAME = "hipResult"
 START = "entry"
 STOP = "exit"
 SUFFIXES = { :start => START, :stop => STOP }
@@ -406,6 +407,10 @@ class Command
   end
 
   def [](name)
+    # special case when querying the return value
+    if name == :result
+      return YAMLCAst::Declaration.new(name: "#{RESULT_NAME}", type: type)
+    end
     path = name.split(/->/)
     if path.length == 1
       res = parameters.find { |p| p.name == name }
@@ -482,6 +487,20 @@ class MetaParameter
   end
 end
 
+class ReturnString < MetaParameter
+  prepend Out
+  def initialize(command)
+    super(command, :result)
+    raise "Command does not return!" unless command.has_return_type?
+    raise "Return type is not a pointer: #{command.type}!" unless command.type.kind_of?(YAMLCAst::Pointer)
+    ev = LTTng::TracepointField::new
+    ev.macro = :ctf_string
+    ev.name = "#{RESULT_NAME}_val"
+    ev.expression = "#{RESULT_NAME}"
+    @lttng_out_type = ev
+  end
+end
+
 class InString < MetaParameter
   prepend In
   def initialize(command, name)
@@ -495,6 +514,38 @@ class InString < MetaParameter
     ev.name = "#{name}_val"
     ev.expression = sanitize_expression("#{name}")
     @lttng_in_type = ev
+  end
+end
+
+class OutString < MetaParameter
+  prepend Out
+  def initialize(command, name)
+    super
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    ev = LTTng::TracepointField::new
+    ev.macro = :ctf_string
+    ev.name = "#{name}_val"
+    ev.expression = sanitize_expression("#{name}")
+    @lttng_out_type = ev
+  end
+end
+
+class OutPtrString < MetaParameter
+  prepend Out
+  def initialize(command, name)
+    super
+    a = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless a
+    t = a.type
+    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    ev = LTTng::TracepointField::new
+    ev.macro = :ctf_string
+    ev.name = "#{name}_val_val"
+    ev.expression = sanitize_expression("*#{name}")
+    @lttng_out_type = ev
   end
 end
 
@@ -686,6 +737,24 @@ class OutFixedArray < FixedArrayMetaParameter
   def initialize(command, name, size)
     super
     @lttng_out_type = @lttng_type
+  end
+end
+
+class OutLTTng < MetaParameter
+  prepend Out
+  def initialize(command, name, *args)
+    raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+    super(command, name)
+    @lttng_out_type = LTTng::TracepointField::new(*args)
+  end
+end
+
+class InLTTng < MetaParameter
+  prepend In
+  def initialize(command, name, *args)
+    raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+    super(command, name)
+    @lttng_in_type = LTTng::TracepointField::new(*args)
   end
 end
 

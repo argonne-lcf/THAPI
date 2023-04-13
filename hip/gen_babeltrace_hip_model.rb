@@ -114,7 +114,7 @@ def meta_parameter_types_name(m, dir)
     else
       [[lttng.macro.to_s, "#{t}", "#{name}", lttng]]
     end
-  when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng
+  when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng, ReturnString
     if lttng.macro.to_s == "ctf_string"
       [["ctf_string", "#{t} *", "#{name}", lttng]]
     else

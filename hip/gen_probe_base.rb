@@ -1,5 +1,3 @@
-RESULT_NAME = "hipResult"
-
 $tracepoint_lambda = lambda { |provider, c, dir|
   puts <<EOF
 TRACEPOINT_EVENT(
