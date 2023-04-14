@@ -181,6 +181,9 @@ module YAMLCAst
         when *OBJECT_TYPES, *POINTER_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
+        when *HEX_INT_TYPES
+          ev.macro = :"ctf_#{lttng_arr_type}_hex"
+          ev.type = type.name
         when *INT_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = type.name
