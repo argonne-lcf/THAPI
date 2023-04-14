@@ -2,6 +2,7 @@ require 'yaml'
 require 'pp'
 require_relative '../utils/yaml_ast'
 require_relative '../utils/LTTng'
+require_relative '../utils/command.rb'
 require_relative '../utils/meta_parameters'
 
 if ENV["SRC_DIR"]
@@ -34,19 +35,19 @@ all_types.each { |t|
 
 
 OMPT_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-OMPT_STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
+STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
 OMPT_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
 OMPT_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 OMPT_CALLBACKS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/) }
                           .reject { |t| ["ompt_callback_buffer_complete_t","ompt_callback_buffer_request_t"].include?(t.name) }
                           .collect { |t| YAMLCAst::Declaration.new(name: t.name.gsub(/_t\z/,"")+"_func", type: t.type.type)}
 
-OMPT_STRUCT_MAP = {}
+STRUCT_MAP = {}
 all_types.select { |t| t.type.kind_of?(YAMLCAst::Struct) && !OMPT_OBJECTS.include?(t.name) }.each { |t|
   if t.type.members
-    OMPT_STRUCT_MAP[t.name] = t.type.members
+    STRUCT_MAP[t.name] = t.type.members
   else
-    OMPT_STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
+    STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
   end
 }
 
@@ -84,7 +85,7 @@ module YAMLCAst
         r.expression = "&#{name}"
       when CustomType
         case type.name
-        when *OMPT_STRUCT_TYPES, *OMPT_UNION_TYPES
+        when *STRUCT_TYPES, *OMPT_UNION_TYPES
           r.expression = "&#{name}"
         else
           r.expression = name
@@ -191,7 +192,7 @@ module YAMLCAst
       when *OMPT_ENUM_SCALARS
         ev.macro = :ctf_integer
         ev.type = :int32_t
-      when *OMPT_STRUCT_TYPES, *OMPT_UNION_TYPES
+      when *STRUCT_TYPES, *OMPT_UNION_TYPES
         ev.macro = :ctf_array_text
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
@@ -255,7 +256,7 @@ module YAMLCAst
         when *OMPT_ENUM_SCALARS
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
-        when *OMPT_STRUCT_TYPES, *OMPT_UNION_TYPES
+        when *STRUCT_TYPES, *OMPT_UNION_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length
@@ -271,102 +272,6 @@ module YAMLCAst
     end
   end
 end
-
-class Command
-  attr_reader :tracepoint_parameters
-  attr_reader :meta_parameters
-  attr_reader :prologues
-  attr_reader :epilogues
-  attr_reader :function
-
-  def initialize(function)
-    @function = function
-    @tracepoint_parameters = []
-    @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@function.name].collect { |type, args|
-      type::new(self, *args)
-    }
-    @init      = @function.name.match(INIT_FUNCTIONS)
-    @prologues = PROLOGUES[@function.name]
-    @epilogues = EPILOGUES[@function.name]
-  end
-
-  def name
-    @function.name
-  end
-
-  def decl_pointer(name = pointer_name)
-    YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
-  end
-
-  def decl
-    @function.to_s
-  end
-
-  def pointer_name
-    name + "_ptr"
-  end
-
-  def pointer_type_name
-    name + "_t"
-  end
-
-  def type
-    @function.type.type
-  end
-
-  def parameters
-    @function.type.params
-  end
-
-  def init?
-    name.match(INIT_FUNCTIONS)
-  end
-
-  def has_return_type?
-    if type && !type.kind_of?(YAMLCAst::Void)
-      true
-    else
-      false
-    end
-  end
-
-  def [](name)
-    path = name.split(/->/)
-    if path.length == 1
-      res = parameters.find { |p| p.name == name }
-      return res if res
-      @tracepoint_parameters.find { |p| p.name == name }
-    else
-      param_name = path.shift
-      res = parameters.find { |p| p.name == param_name }
-      return nil unless res
-      path.each { |n|
-        res = OMPT_STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
-        return nil unless res
-      }
-      return res
-    end
-  end
-
-end
-
-def register_meta_parameter(method, type, *args)
-  META_PARAMETERS[method].push [type, args]
-end
-
-def register_prologue(method, code)
-  PROLOGUES[method].push(code)
-end
-
-def register_epilogue(method, code)
-  EPILOGUES[method].push(code)
-end
-
-AUTO_META_PARAMETERS = []
-META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
-PROLOGUES = Hash::new { |h, k| h[k] = [] }
-EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 $ompt_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ompt_meta_parameters.yaml"))
 $ompt_meta_parameters["meta_parameters"].each  { |func, list|

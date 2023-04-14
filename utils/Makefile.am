@@ -72,4 +72,5 @@ EXTRA_DIST = \
 	gen_babeltrace_callbacks.rb \
 	gen_babeltrace_emitter.rb \
 	thapi_metadata_tracepoints.tp \
+	command.rb \
 	meta_parameters.rb

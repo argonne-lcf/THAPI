@@ -2,6 +2,7 @@ require 'yaml'
 require 'pp'
 require_relative '../utils/yaml_ast'
 require_relative '../utils/LTTng'
+require_relative '../utils/command.rb'
 require_relative '../utils/meta_parameters'
 
 if ENV["SRC_DIR"]
@@ -70,22 +71,22 @@ HIP_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned long long 
 find_types(all_types, YAMLCAst::Int, HIP_INT_SCALARS)
 
 HIP_ENUM_SCALARS = find_types(all_types, YAMLCAst::Enum)
-HIP_STRUCT_TYPES = find_types(all_types, YAMLCAst::Struct)
+STRUCT_TYPES = find_types(all_types, YAMLCAst::Struct)
 HIP_UNION_TYPES = find_types(all_types, YAMLCAst::Union)
 HIP_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
 HIP_POINTER_TYPES.delete("hipGraphicsResource_t")
 
-HIP_STRUCT_MAP = {}
+STRUCT_MAP = {}
 all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
   if t.type.members
-    HIP_STRUCT_MAP[t.name] = t.type.members
+    STRUCT_MAP[t.name] = t.type.members
   else
     mapped = all_structs.find { |str| str.name == t.type.name }
-    HIP_STRUCT_MAP[t.name] = mapped.members if mapped
+    STRUCT_MAP[t.name] = mapped.members if mapped
   end
 }
-transitive_closure_map(all_types, HIP_STRUCT_MAP)
+transitive_closure_map(all_types, STRUCT_MAP)
 
 INIT_FUNCTIONS = /.*/
 
@@ -127,7 +128,7 @@ module YAMLCAst
         r.expression = "&#{name}"
       when CustomType
         case type.name
-        when *HIP_STRUCT_TYPES, *HIP_UNION_TYPES
+        when *STRUCT_TYPES, *HIP_UNION_TYPES
           r.expression = "&#{name}"
         else
           r.expression = name
@@ -234,7 +235,7 @@ module YAMLCAst
       when *HIP_ENUM_SCALARS
         ev.macro = :ctf_integer
         ev.type = :int32_t
-      when *HIP_STRUCT_TYPES, *HIP_UNION_TYPES
+      when *STRUCT_TYPES, *HIP_UNION_TYPES
         ev.macro = :ctf_array_text
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
@@ -298,7 +299,7 @@ module YAMLCAst
         when *HIP_ENUM_SCALARS
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
-        when *HIP_STRUCT_TYPES, *HIP_UNION_TYPES
+        when *STRUCT_TYPES, *HIP_UNION_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length
@@ -320,133 +321,6 @@ module YAMLCAst
     end
   end
 end
-
-class Member
-  def initialize(command, member, prefix, dir = :start)
-    @member = member
-    @dir = dir
-    @prefix = prefix
-    name = "#{prefix}#{MEMBER_SEPARATOR}#{member.name}"
-    expr = "#{prefix} ? #{prefix}->#{member.name} : 0"
-    @lttng_type = member.type.lttng_type
-    @lttng_type.name = name
-    @lttng_type.expr = expr
-  end
-
-   def lttng_in_type
-     @dir == :start ? @lttng_type : nil
-   end
-
-   def lttng_out_type
-     @dir == :start ? nil : @lttng_type
-   end
-end
-
-class Command
-  attr_reader :tracepoint_parameters
-  attr_reader :meta_parameters
-  attr_reader :prologues
-  attr_reader :epilogues
-  attr_reader :function
-
-  def initialize(function)
-    @function = function
-    @tracepoint_parameters = []
-    @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@function.name].collect { |type, args|
-      type::new(self, *args)
-    }
-    @prologues = PROLOGUES[@function.name]
-    @epilogues = EPILOGUES[@function.name]
-  end
-
-  def name
-    @function.name
-  end
-
-  def decl_pointer(name = pointer_name)
-    YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
-  end
-
-  def decl
-    @function.to_s
-  end
-
-  def pointer_name
-    name + "_ptr"
-  end
-
-  def pointer_type_name
-    name + "_t"
-  end
-
-  def type
-    @function.type.type
-  end
-
-  def parameters
-    @function.type.params
-  end
-
-  def init?
-    name.match(INIT_FUNCTIONS)
-  end
-
-  def has_return_type?
-    if type && !type.kind_of?(YAMLCAst::Void)
-      true
-    else
-      false
-    end
-  end
-
-  def [](name)
-    # special case when querying the return value
-    if name == :result
-      return YAMLCAst::Declaration.new(name: "#{RESULT_NAME}", type: type)
-    end
-    path = name.split(/->/)
-    if path.length == 1
-      res = parameters.find { |p| p.name == name }
-      return res if res
-      @tracepoint_parameters.find { |p| p.name == name }
-    else
-      param_name = path.shift
-      res = parameters.find { |p| p.name == param_name }
-      return nil unless res
-      path.each { |n|
-        res = HIP_STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
-        return nil unless res
-      }
-      return res
-    end
-  end
-
-end
-
-def register_meta_parameter(method, type, *args)
-  META_PARAMETERS[method].push [type, args]
-end
-
-def register_meta_struct(method, name, type)
-  raise "Unknown struct: #{type}!" unless HIP_STRUCT_TYPES.include?(type)
-  HIP_STRUCT_MAP[type].each { |m|
-    META_PARAMETERS[method].push [Member, [m, name]]
-  }
-end
-
-def register_prologue(method, code)
-  PROLOGUES[method].push(code)
-end
-
-def register_epilogue(method, code)
-  EPILOGUES[method].push(code)
-end
-
-AUTO_META_PARAMETERS = []
-META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
-PROLOGUES = Hash::new { |h, k| h[k] = [] }
-EPILOGUES = Hash::new { |h, k| h[k] = [] }
 
 $hip_meta_parameters = YAML::load_file(File.join(SRC_DIR,"hip_meta_parameters.yaml"))
 $hip_meta_parameters["meta_parameters"].each  { |func, list|
