@@ -64,6 +64,7 @@ EXTRA_DIST = \
 	tracepoint_gen.rb \
 	yaml_ast.rb \
 	yaml_ast_lttng.rb \
+	gen_library_base.rb \
 	gen_dummy_trace.rb \
 	bt2.rb \
 	bt_plugins/dust.rb \
