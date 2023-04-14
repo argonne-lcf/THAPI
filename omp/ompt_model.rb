@@ -2,6 +2,7 @@ require 'yaml'
 require 'pp'
 require_relative '../utils/yaml_ast'
 require_relative '../utils/LTTng'
+require_relative '../utils/meta_parameters'
 
 if ENV["SRC_DIR"]
   SRC_DIR = ENV["SRC_DIR"]
@@ -9,14 +10,7 @@ else
   SRC_DIR = "."
 end
 
-START = "entry"
-STOP = "exit"
-SUFFIXES = { :start => START, :stop => STOP }
-
-LTTNG_AVAILABLE_PARAMS = 25
-LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
-
-provider = :lttng_ust_ompt
+RESULT_NAME = "ompResult"
 
 $ompt_api_yaml = YAML::load_file("ompt_api.yaml")
 $ompt_api = YAMLCAst.from_yaml_ast($ompt_api_yaml)
@@ -355,81 +349,6 @@ class Command
     end
   end
 
-end
-
-class MetaParameter
-  attr_reader :name
-  attr_reader :command
-  def initialize(command, name)
-    @command = command
-    @name = name
-  end
-
-  def lttng_type
-    @lttng_type
-  end
-
-  def check_for_null(expr, incl = true)
-    list = expr.split("->")
-    if list.length == 1
-      if incl
-        return [expr]
-      else
-        return []
-      end
-    else
-      res = []
-      pre = ""
-      list[0..(incl ? -1 : -2)].each { |n|
-        pre += n
-        res.push(pre)
-        pre += "->"
-      }
-      return res
-    end
-  end
-
-  def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
-    if checks.empty?
-      expr
-    else
-      "(#{checks.join(" && ")} ? #{expr} : #{default})"
-    end
-  end
-end
-
-class ArrayMetaParameter < MetaParameter
-  attr_reader :size
-
-  def initialize(command, name, size)
-    @size = size
-    super(command, name)
-    a = command[name]
-    raise "Invalid parameter: #{name} for #{command.name}!" unless a
-    t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    s = command[size]
-    raise "Invalid parameter: #{size} for #{command.name}!" unless s
-    if s.type.kind_of?(YAMLCAst::Pointer)
-      checks = check_for_null("#{size}") + check_for_null("#{name}")
-      sz = sanitize_expression("*#{size}", checks)
-      st = "#{s.type.type}"
-    else
-      checks = check_for_null("#{name}")
-      sz = sanitize_expression("#{size}", checks)
-      st = "#{s.type}"
-    end
-    if t.type.kind_of?(YAMLCAst::Void)
-      tt = YAMLCAst::CustomType::new(name: "uint8_t")
-    else
-      tt = t.type
-    end
-    y = YAMLCAst::Array::new(type: tt)
-    lttngt = y.lttng_type(length: sz, length_type: st)
-    lttngt.name = name + "_vals"
-    lttngt.expression = sanitize_expression("#{name}")
-    @lttng_type = lttngt
-  end
 end
 
 def register_meta_parameter(method, type, *args)

@@ -1,5 +1,3 @@
-RESULT_NAME = "ompResult"
-
 $tracepoint_lambda = lambda { |provider, c|
   puts <<EOF
 TRACEPOINT_EVENT(
