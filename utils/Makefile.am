@@ -63,6 +63,7 @@ EXTRA_DIST = \
 	gen_babeltrace_model_helper.rb \
 	tracepoint_gen.rb \
 	yaml_ast.rb \
+	yaml_ast_lttng.rb \
 	gen_dummy_trace.rb \
 	bt2.rb \
 	bt_plugins/dust.rb \

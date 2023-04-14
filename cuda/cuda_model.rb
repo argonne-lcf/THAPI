@@ -1,6 +1,6 @@
 require 'yaml'
 require 'pp'
-require_relative '../utils/yaml_ast'
+require_relative '../utils/yaml_ast_lttng'
 require_relative '../utils/LTTng'
 require_relative '../utils/command.rb'
 require_relative '../utils/meta_parameters'
@@ -28,10 +28,10 @@ cuda_exports_type_e = $cuda_exports_api["typedefs"]
 all_types = cuda_types_e + cuda_exports_type_e
 all_structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
 
-CUDA_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+OBJECT_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && CUDA_OBJECTS.include?(t.type.name)
-    CUDA_OBJECTS.push t.name
+  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
+    OBJECT_TYPES.push t.name
   end
 }
 
@@ -57,22 +57,22 @@ def transitive_closure_map(types, map)
   end
 end
 
-CUDA_INT_SCALARS = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char
+INT_TYPES = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char
                       CUdevice CUdevice_v1
                       CUdeviceptr CUdeviceptr_v1 CUdeviceptr_v2
                       CUtexObject CUtexObject_v1 CUsurfObject CUsurfObject_v1
                       CUmemGenericAllocationHandle
                       VdpDevice VdpFuncId VdpVideoSurface VdpOutputSurface VdpStatus)
-CUDA_INT_SCALARS.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
+INT_TYPES.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
 CUDA_FLOAT_SCALARS = %w(float double)
-CUDA_SCALARS = CUDA_INT_SCALARS + CUDA_FLOAT_SCALARS
-CUDA_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-transitive_closure(all_types, CUDA_ENUM_SCALARS)
+CUDA_SCALARS = INT_TYPES + CUDA_FLOAT_SCALARS
+ENUM_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
+transitive_closure(all_types, ENUM_TYPES)
 STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
 transitive_closure(all_types, STRUCT_TYPES)
-CUDA_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
-transitive_closure(all_types, CUDA_UNION_TYPES)
-CUDA_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
+transitive_closure(all_types, UNION_TYPES)
+POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
 STRUCT_MAP = {}
 all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
@@ -109,222 +109,15 @@ FFI_TYPE_MAP =  {
  "CUsurfObject" => "ffi_type_uint64",
 }
 
-CUDA_OBJECTS.each { |o|
+OBJECT_TYPES.each { |o|
   FFI_TYPE_MAP[o] = "ffi_type_pointer"
 }
 
-CUDA_ENUM_SCALARS.each { |e|
+ENUM_TYPES.each { |e|
   FFI_TYPE_MAP[e] = "ffi_type_sint32"
 }
 
-CUDA_FLOAT_SCALARS_MAP = {"float" => "uint32_t", "double" => "uint64_t"}
-
-module YAMLCAst
-  class Declaration
-    def lttng_type
-      r = type.lttng_type
-      r.name = name
-      case type
-      when Struct, Union
-        r.expression = "&#{name}"
-      when CustomType
-        case type.name
-        when *STRUCT_TYPES, *CUDA_UNION_TYPES
-          r.expression = "&#{name}"
-        else
-          r.expression = name
-        end
-      else
-        r.expression = name
-      end
-      r
-    end
-  end
-
-  class Type
-    def lttng_type
-      raise "Unsupported type #{self}!"
-    end
-  end
-
-  class Void
-    def lttng_type
-      nil
-    end
-  end
-
-  class Int
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = name
-      ev
-    end
-  end
-
-  class Float
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_float
-      ev.type = name
-      ev
-    end
-  end
-
-  class Char
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = name
-      ev
-    end
-  end
-
-  class Bool
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = name
-      ev
-    end
-  end
-
-  class Struct
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_array_text
-      ev.type = :uint8_t
-      ev.length = "sizeof(struct #{name})"
-      ev
-    end
-
-    def [](name)
-      members.find { |m| m.name == name }
-    end
-  end
-
-  class Union
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_array_text
-      ev.type = :uint8_t
-      ev.length = "sizeof(union #{name})"
-      ev
-    end
-  end
-
-  class Enum
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = "enum #{name}"
-      ev
-    end
-  end
-
-  class CustomType
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      case name
-      when *CUDA_OBJECTS, *CUDA_POINTER_TYPES
-        ev.macro = :ctf_integer_hex
-        ev.type = :uintptr_t
-        ev.cast = "uintptr_t"
-      when "CUdeviceptr"
-        ev.macro = :ctf_integer_hex
-        ev.type = name
-      when *CUDA_INT_SCALARS
-        ev.macro = :ctf_integer
-        ev.type = name
-      when *CUDA_ENUM_SCALARS
-        ev.macro = :ctf_integer
-        ev.type = :int32_t
-      when *STRUCT_TYPES, *CUDA_UNION_TYPES
-        ev.macro = :ctf_array_text
-        ev.type = :uint8_t
-        ev.length = "sizeof(#{name})"
-      else
-        super
-      end
-      ev
-    end
-  end
-
-  class Pointer
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer_hex
-      ev.type = :uintptr_t
-      ev.cast = "uintptr_t"
-      ev
-    end
-  end
-
-  class Array
-    def lttng_type(length: nil, length_type: nil)
-      ev = LTTng::TracepointField::new
-      if length
-        ev.length = length
-      elsif self.length
-        ev.length = self.length
-      else
-        ev.macro = :ctf_integer_hex
-        ev.type = :uintptr_t
-        ev.cast = "uintptr_t"
-        return ev
-      end
-      if length_type
-        lttng_arr_type = "sequence"
-        ev.length_type = length_type
-      else
-        lttng_arr_type = "array"
-      end
-      case type
-      when YAMLCAst::Pointer
-        ev.macro = :"ctf_#{lttng_arr_type}_hex"
-        ev.type = :uintptr_t
-      when YAMLCAst::Int
-        ev.macro = :"ctf_#{lttng_arr_type}"
-        ev.type = type.name
-      when YAMLCAst::Float
-        ev.macro = :"ctf_#{lttng_arr_type}_hex"
-        ev.type = CUDA_FLOAT_SCALARS_MAP[type.name]
-      when YAMLCAst::Char
-        ev.macro = :"ctf_#{lttng_arr_type}_text"
-        ev.type = type.name
-      when YAMLCAst::CustomType
-        case type.name
-        when *CUDA_OBJECTS, *CUDA_POINTER_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_hex"
-          ev.type = :uintptr_t
-        when *CUDA_INT_SCALARS
-          ev.macro = :"ctf_#{lttng_arr_type}"
-          ev.type = type.name
-        when *CUDA_ENUM_SCALARS
-          ev.macro = :"ctf_#{lttng_arr_type}"
-          ev.type = :int32_t
-        when *STRUCT_TYPES, *CUDA_UNION_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
-          ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(#{type.name})"
-          end
-        when "uint8_t"
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
-          ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(uint8_t)"
-          end
-        else
-          super
-        end
-      else
-        super
-      end
-      ev
-    end
-  end
-end
+HEX_INT_TYPES = %w( CUdeviceptr )
 
 class TracepointParameter
   attr_reader :name

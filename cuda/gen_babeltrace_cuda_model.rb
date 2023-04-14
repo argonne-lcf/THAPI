@@ -41,7 +41,7 @@ $integer_sizes = {
   "CUoccupancyB2DSize" => 64,
 }
 
-CUDA_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_sizes[t] = 32
 }
 
@@ -89,7 +89,7 @@ $integer_signed = {
   "CUoccupancyB2DSize" => false,
 }
 
-CUDA_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_signed[t] = true
 }
 

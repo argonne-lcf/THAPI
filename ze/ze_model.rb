@@ -1,6 +1,6 @@
 require 'yaml'
 require 'pp'
-require_relative '../utils/yaml_ast'
+require_relative '../utils/yaml_ast_lttng'
 require_relative '../utils/LTTng'
 require_relative '../utils/command.rb'
 require_relative '../utils/meta_parameters'
@@ -36,26 +36,26 @@ zel_types_e = $zel_api["typedefs"]
 all_types = ze_types_e + zet_types_e + zes_types_e + zel_types_e
 all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"]
 
-ZE_OBJECTS = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+OBJECT_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
-    ZE_OBJECTS.push t.name
+  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
+    OBJECT_TYPES.push t.name
   end
 }
-ZE_INT_SCALARS = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t char)
+INT_TYPES = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t char)
 ZE_FLOAT_SCALARS = %w(float double)
-ZE_SCALARS = ZE_INT_SCALARS + ZE_FLOAT_SCALARS
+ZE_SCALARS = INT_TYPES + ZE_FLOAT_SCALARS
 
 all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
-    ZE_INT_SCALARS.push t.name
+  if t.type.kind_of?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
+    INT_TYPES.push t.name
   end
 }
 
-ZE_ENUM_SCALARS = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
+ENUM_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
 STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t", "zel_core_callbacks_t" ]
-ZE_UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
-ZE_POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
+UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
+POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
 
 STRUCT_MAP = {}
 all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
@@ -84,207 +84,15 @@ FFI_TYPE_MAP =  {
  "ze_bool_t" => "ffi_type_uint8"
 }
 
-ZE_OBJECTS.each { |o|
+OBJECT_TYPES.each { |o|
   FFI_TYPE_MAP[o] = "ffi_type_pointer"
 }
 
-ZE_ENUM_SCALARS.each { |e|
+ENUM_TYPES.each { |e|
   FFI_TYPE_MAP[e] = "ffi_type_sint32"
 }
 
-ZE_FLOAT_SCALARS_MAP = {"float" => "uint32_t", "double" => "uint64_t"}
-
-module YAMLCAst
-  class Declaration
-    def lttng_type
-      r = type.lttng_type
-      r.name = name
-      case type
-      when Struct, Union
-        r.expression = "&#{name}"
-      when CustomType
-        case type.name
-        when *STRUCT_TYPES, *ZE_UNION_TYPES
-          r.expression = "&#{name}"
-        else
-          r.expression = name
-        end
-      else
-        r.expression = name
-      end
-      r
-    end
-  end
-
-  class Type
-    def lttng_type
-      raise "Unsupported type #{self}!"
-    end
-  end
-
-  class Int
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = name
-      ev
-    end
-  end
-
-  class Float
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_float
-      ev.type = name
-      ev
-    end
-  end
-
-  class Char
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = name
-      ev
-    end
-  end
-
-  class Bool
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = name
-      ev
-    end
-  end
-
-  class Struct
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_array_text
-      ev.type = :uint8_t
-      ev.length = "sizeof(struct #{name})"
-      ev
-    end
-
-    def [](name)
-      members.find { |m| m.name == name }
-    end
-  end
-
-  class Union
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_array_text
-      ev.type = :uint8_t
-      ev.length = "sizeof(union #{name})"
-      ev
-    end
-  end
-
-  class Enum
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer
-      ev.type = "enum #{name}"
-      ev
-    end
-  end
-
-  class CustomType
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      case name
-      when *ZE_OBJECTS, *ZE_POINTER_TYPES
-        ev.macro = :ctf_integer_hex
-        ev.type = :uintptr_t
-        ev.cast = "uintptr_t"
-      when *ZE_INT_SCALARS
-        ev.macro = :ctf_integer
-        ev.type = name
-      when *ZE_ENUM_SCALARS
-        ev.macro = :ctf_integer
-        ev.type = :int32_t
-      when *STRUCT_TYPES, *ZE_UNION_TYPES
-        ev.macro = :ctf_array_text
-        ev.type = :uint8_t
-        ev.length = "sizeof(#{name})"
-      else
-        super
-      end
-      ev
-    end
-  end
-
-  class Pointer
-    def lttng_type
-      ev = LTTng::TracepointField::new
-      ev.macro = :ctf_integer_hex
-      ev.type = :uintptr_t
-      ev.cast = "uintptr_t"
-      ev
-    end
-  end
-
-  class Array
-    def lttng_type(length: nil, length_type: nil)
-      ev = LTTng::TracepointField::new
-      if length
-        ev.length = length
-      elsif self.length
-        ev.length = self.length
-      else
-        ev.macro = :ctf_integer_hex
-        ev.type = :uintptr_t
-        ev.cast = "uintptr_t"
-        return ev
-      end
-      if length_type
-        lttng_arr_type = "sequence"
-        ev.length_type = length_type
-      else
-        lttng_arr_type = "array"
-      end
-      case type
-      when YAMLCAst::Pointer
-        ev.macro = :"ctf_#{lttng_arr_type}_hex"
-        ev.type = :uintptr_t
-      when YAMLCAst::Int
-        ev.macro = :"ctf_#{lttng_arr_type}"
-        ev.type = type.name
-      when YAMLCAst::Float
-        ev.macro = :"ctf_#{lttng_arr_type}_hex"
-        ev.type = ZE_FLOAT_SCALARS_MAP[type.name]
-      when YAMLCAst::Char
-        ev.macro = :"ctf_#{lttng_arr_type}_text"
-        ev.type = type.name
-      when YAMLCAst::CustomType
-        case type.name
-        when *ZE_OBJECTS, *ZE_POINTER_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_hex"
-          ev.type = :uintptr_t
-        when *ZE_INT_SCALARS
-          ev.macro = :"ctf_#{lttng_arr_type}"
-          ev.type = type.name
-        when *ZE_ENUM_SCALARS
-          ev.macro = :"ctf_#{lttng_arr_type}"
-          ev.type = :int32_t
-        when *STRUCT_TYPES, *ZE_UNION_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
-          ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(#{type.name})"
-          end
-        else
-          super
-        end
-      else
-        super
-      end
-      ev
-    end
-  end
-end
+HEX_INT_TYPES = []
 
 $ze_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ze_meta_parameters.yaml"))
 $ze_meta_parameters["meta_parameters"].each  { |func, list|

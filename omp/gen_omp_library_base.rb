@@ -18,14 +18,14 @@ $objects = $all_types.select { |t|
 }.collect { |t| t.name }
 
 $all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OMPT_OBJECTS.include?(t.type.name)
+  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
     $objects.push t.name
   end
 }
 
 $int_scalars = {}
 $all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OMPT_INT_SCALARS.include?(t.type.name)
+  if t.type.kind_of?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
     $int_scalars[t.name] = t.type.name
   end
 }

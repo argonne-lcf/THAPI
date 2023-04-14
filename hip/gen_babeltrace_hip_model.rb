@@ -34,7 +34,7 @@ $all_enums.each { |t|
   $integer_sizes["enum #{t.name}"] = 32
 }
 
-HIP_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_sizes[t] = 32
 }
 
@@ -73,7 +73,7 @@ $all_enums.each { |t|
   $integer_signed["enum #{t.name}"] = true
 }
 
-HIP_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_signed[t] = true
 }
 
@@ -82,7 +82,7 @@ find_types_map($all_types, YAMLCAst::Int, $integer_signed)
 def integer_size(t)
   return 64 if t.match(/\*/)
   return 64 if $objects.include?(t)
-  return 64 if HIP_POINTER_TYPES.include?(t)
+  return 64 if POINTER_TYPES.include?(t)
   r = $integer_sizes[t]
   raise "unknown integer type #{t}" if r.nil?
   r
@@ -91,7 +91,7 @@ end
 def integer_signed?(t)
   return false if t.match(/\*/)
   return false if $objects.include?(t)
-  return false if HIP_POINTER_TYPES.include?(t)
+  return false if POINTER_TYPES.include?(t)
   r = $integer_signed[t]
   raise "unknown integer type #{t}" if r.nil?
   r

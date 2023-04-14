@@ -16,7 +16,7 @@ $integer_sizes = {
   "ze_bool_t" => 8
 }
 
-ZE_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_sizes[t] = 32
 }
 
@@ -38,7 +38,7 @@ $integer_signed = {
   "ze_bool_t" => false
 }
 
-ZE_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_signed[t] = true
 }
 

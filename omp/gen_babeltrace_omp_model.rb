@@ -48,7 +48,7 @@ $integer_sizes = {
   "ompt_frame_flags_t" => 32
 }
 
-OMPT_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_sizes[t] = 32
 }
 
@@ -105,7 +105,7 @@ $integer_signed = {
 
 $function_pointer = ["ompt_function_lookup_t"]
 
-OMPT_ENUM_SCALARS.each { |t|
+ENUM_TYPES.each { |t|
   $integer_signed[t] = true
 }
 
