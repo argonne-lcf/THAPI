@@ -215,14 +215,14 @@ class ArrayMetaParameter < MetaParameter
     if s.type.kind_of?(YAMLCAst::Pointer)
       checks = check_for_null("#{size}") + check_for_null("#{name}")
       size = "*#{size}"
-      size = "(#{size} < 0 ? 0 : (uint#{INT_SIZE_MAP["#{s.type.type}"]*8}_t)#{size})"if INT_SIGN_MAP["#{s.type.type}"]
+      size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = "#{s.type}"
+      st = INT_SIGN_MAP["#{s.type.type}"] ? "size_t"  : "#{s.type}"
     else
       checks = check_for_null("#{name}")
-      size = "(#{size} < 0 ? 0 : (uint#{INT_SIZE_MAP["#{s.type}"]*8}_t)#{size})"if INT_SIGN_MAP["#{s.type}"]
+      size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = "#{s.type}"
+      st = INT_SIGN_MAP["#{s.type}"] ? "size_t" : "#{s.type}"
     end
     if t.type.kind_of?(YAMLCAst::Void)
       tt = YAMLCAst::CustomType::new(name: "uint8_t")
