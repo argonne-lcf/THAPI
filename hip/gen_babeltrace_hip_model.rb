@@ -1,88 +1,19 @@
 require_relative 'gen_hip_library_base.rb'
 require_relative '../utils/gen_babeltrace_model_helper'
 
-$integer_sizes = {
-  "unsigned char" => 8,
-  "char" => 8,
-  "uint8_t" => 8,
-  "int8_t" =>  8,
-  "unsigned short" => 16,
-  "unsigned short int" => 16,
-  "short" => 16,
-  "short int" => 16,
-  "unsigned int" => 32,
-  "int" => 32,
-  "uint32_t" => 32,
-  "int32_t" => 32,
-  "unsigned long long" => 64,
-  "unsigned long long int" => 64,
-  "long long" => 64,
-  "long long int" => 64,
-  "long" => 64,
-  "long int" => 64,
-  "unsigned long" => 64,
-  "unsigned long int" => 64,
-  "uint64_t" => 64,
-  "int64_t" => 64,
-  "uintptr_t" => 64,
-  "intptr_t" => 64,
-  "size_t" => 64,
-  "ssize_t" => 64,
-}
+$integer_sizes = INT_SIZE_MAP.transform_values { |v| v*8 }
+$integer_signed = INT_SIGN_MAP
 
 $all_enums.each { |t|
   $integer_sizes["enum #{t.name}"] = 32
-}
-
-ENUM_TYPES.each { |t|
-  $integer_sizes[t] = 32
-}
-
-find_types_map($all_types, YAMLCAst::Int, $integer_sizes)
-
-$integer_signed = {
-  "char" => true,
-  "int8_t" =>  true,
-  "short" => true,
-  "short int" => true,
-  "int" => true,
-  "int32_t" => true,
-  "long long" => true,
-  "long long int" => true,
-  "long" => true,
-  "long int" => true,
-  "int64_t" => true,
-  "intptr_t" => true,
-  "ssize_t" => true,
-  "unsigned char" => false,
-  "uint8_t" => false,
-  "unsigned short" => false,
-  "unsigned short int" => false,
-  "unsigned int" => false,
-  "uint32_t" => false,
-  "unsigned long long" => false,
-  "unsigned long long int" => false,
-  "unsigned long" => false,
-  "unsigned long int" => false,
-  "uint64_t" => false,
-  "uintptr_t" => false,
-  "size_t" => false,
 }
 
 $all_enums.each { |t|
   $integer_signed["enum #{t.name}"] = true
 }
 
-ENUM_TYPES.each { |t|
-  $integer_signed[t] = true
-}
-
-find_types_map($all_types, YAMLCAst::Int, $integer_signed)
-
 def integer_size(t)
   return 64 if t.match(/\*/)
-  return 64 if $objects.include?(t)
-  return 64 if POINTER_TYPES.include?(t)
   r = $integer_sizes[t]
   raise "unknown integer type #{t}" if r.nil?
   r
@@ -90,8 +21,6 @@ end
 
 def integer_signed?(t)
   return false if t.match(/\*/)
-  return false if $objects.include?(t)
-  return false if POINTER_TYPES.include?(t)
   r = $integer_signed[t]
   raise "unknown integer type #{t}" if r.nil?
   r

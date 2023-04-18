@@ -28,71 +28,14 @@ zet_funcs_e = $zet_api["functions"]
 zes_funcs_e = $zes_api["functions"]
 zel_funcs_e = $zel_api["functions"]
 
-ze_types_e = $ze_api["typedefs"]
-zet_types_e = $zet_api["typedefs"]
-zes_types_e = $zes_api["typedefs"]
-zel_types_e = $zel_api["typedefs"]
+typedefs = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"] + $zel_api["typedefs"]
+structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"]
 
-all_types = ze_types_e + zet_types_e + zes_types_e + zel_types_e
-all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"]
-
-OBJECT_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
-all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-    OBJECT_TYPES.push t.name
-  end
-}
-INT_TYPES = %w(uintptr_t size_t int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t char)
-ZE_FLOAT_SCALARS = %w(float double)
-ZE_SCALARS = INT_TYPES + ZE_FLOAT_SCALARS
-
-all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
-    INT_TYPES.push t.name
-  end
-}
-
-ENUM_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name } + [ "zet_core_callbacks_t", "zel_core_callbacks_t" ]
-UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
-POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
-
-STRUCT_MAP = {}
-all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
-  if t.type.members
-    STRUCT_MAP[t.name] = t.type.members
-  else
-    STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
-  end
-}
+find_all_types(typedefs)
+gen_struct_map(typedefs, structs)
+gen_ffi_type_map(typedefs)
 
 INIT_FUNCTIONS = /zeInit|zeLoaderInit/
-
-FFI_TYPE_MAP =  {
- "uint8_t" => "ffi_type_uint8",
- "int8_t" => "ffi_type_sint8",
- "uint16_t" => "ffi_type_uint16",
- "int16_t" => "ffi_type_sint16",
- "uint32_t" => "ffi_type_uint32",
- "int32_t" => "ffi_type_sint32",
- "uint64_t" => "ffi_type_uint64",
- "int64_t" => "ffi_type_sint64",
- "float" => "ffi_type_float",
- "double" => "ffi_type_double",
- "uintptr_t" => "ffi_type_pointer",
- "size_t" => "ffi_type_pointer",
- "ze_bool_t" => "ffi_type_uint8"
-}
-
-OBJECT_TYPES.each { |o|
-  FFI_TYPE_MAP[o] = "ffi_type_pointer"
-}
-
-ENUM_TYPES.each { |e|
-  FFI_TYPE_MAP[e] = "ffi_type_sint32"
-}
-
-HEX_INT_TYPES = []
 
 $ze_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ze_meta_parameters.yaml"))
 $ze_meta_parameters["meta_parameters"].each  { |func, list|

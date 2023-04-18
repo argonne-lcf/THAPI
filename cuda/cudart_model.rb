@@ -17,64 +17,16 @@ $cudart_api_yaml = YAML::load_file("cudart_api.yaml")
 
 $cudart_api = YAMLCAst.from_yaml_ast($cudart_api_yaml)
 
-cudart_funcs_e = $cudart_api["functions"]
+funcs = $cudart_api["functions"]
+typedefs = $cudart_api["typedefs"]
+structs = $cudart_api["structs"]
 
-cudart_types_e = $cudart_api["typedefs"]
+find_all_types(typedefs)
+gen_struct_map(typedefs, structs)
+gen_ffi_type_map(typedefs)
 
-all_types = cudart_types_e
-all_structs = $cudart_api["structs"]
-
-OBJECT_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
-all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-    OBJECT_TYPES.push t.name
-  end
-}
-
-INT_TYPES = %w(size_t uint32_t uint64_t int short char cudaTextureObject_t cudaSurfaceObject_t)
-INT_TYPES.concat [ "unsigned long long", "unsigned int", "unsigned short", "unsigned char" ]
-CUDART_FLOAT_SCALARS = %w(float double)
-CUDART_SCALARS = INT_TYPES + CUDART_FLOAT_SCALARS
-ENUM_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
-UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
-POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
-
-STRUCT_MAP = {}
-all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
-  if t.type.members
-    STRUCT_MAP[t.name] = t.type.members
-  else
-    STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
-  end
-}
-
-FFI_TYPE_MAP =  {
- "uint8_t" => "ffi_type_uint8",
- "int8_t" => "ffi_type_sint8",
- "uint16_t" => "ffi_type_uint16",
- "int16_t" => "ffi_type_sint16",
- "uint32_t" => "ffi_type_uint32",
- "int32_t" => "ffi_type_sint32",
- "uint64_t" => "ffi_type_uint64",
- "int64_t" => "ffi_type_sint64",
- "float" => "ffi_type_float",
- "double" => "ffi_type_double",
- "uintptr_t" => "ffi_type_pointer",
- "size_t" => "ffi_type_pointer",
- "cudaTextureObject_t" => "ffi_type_uint64",
- "cudaSurfaceObject_t" => "ffi_type_uint64"
-}
-
-OBJECT_TYPES.each { |o|
-  FFI_TYPE_MAP[o] = "ffi_type_pointer"
-}
-
-ENUM_TYPES.each { |e|
-  FFI_TYPE_MAP[e] = "ffi_type_sint32"
-}
-
-HEX_INT_TYPES = []
+# Currently ignored by gen_cudart.rb
+INIT_FUNCTIONS = /.*/
 
 $cudart_meta_parameters = YAML::load_file(File.join(SRC_DIR,"cudart_meta_parameters.yaml"))
 $cudart_meta_parameters["meta_parameters"].each  { |func, list|
@@ -83,7 +35,7 @@ $cudart_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
-$cudart_commands = cudart_funcs_e.collect { |func|
+$cudart_commands = funcs.collect { |func|
   Command::new(func)
 }
 

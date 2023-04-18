@@ -25,99 +25,16 @@ cuda_exports_funcs_e = $cuda_exports_api["functions"]
 cuda_types_e = $cuda_api["typedefs"]
 cuda_exports_type_e = $cuda_exports_api["typedefs"]
 
-all_types = cuda_types_e + cuda_exports_type_e
-all_structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
+typedefs = cuda_types_e + cuda_exports_type_e
+structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
 
-OBJECT_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
-all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-    OBJECT_TYPES.push t.name
-  end
-}
-
-def transitive_closure(types, arr)
-  sz = arr.size
-  loop do
-    arr.concat( types.filter_map { |t|
-      t.name if t.type.kind_of?(YAMLCAst::CustomType) && arr.include?(t.type.name)
-    } ).uniq!
-    break if sz == arr.size
-    sz = arr.size
-  end
-end
-
-def transitive_closure_map(types, map)
-  sz = map.size
-  loop do
-    types.select { |t|
-      t.type.kind_of?(YAMLCAst::CustomType) && map.include?(t.type.name)
-    }.each { |t| map[t.name] = map[t.type.name] }
-    break if sz == map.size
-    sz = map.size
-  end
-end
-
-INT_TYPES = %w(size_t uint32_t cuuint32_t uint64_t cuuint64_t int short char
-                      CUdevice CUdevice_v1
-                      CUdeviceptr CUdeviceptr_v1 CUdeviceptr_v2
-                      CUtexObject CUtexObject_v1 CUsurfObject CUsurfObject_v1
-                      CUmemGenericAllocationHandle
-                      VdpDevice VdpFuncId VdpVideoSurface VdpOutputSurface VdpStatus)
-INT_TYPES.concat [ "long long", "unsigned long long", "unsigned long long int", "unsigned int", "unsigned short", "unsigned char" ]
-CUDA_FLOAT_SCALARS = %w(float double)
-CUDA_SCALARS = INT_TYPES + CUDA_FLOAT_SCALARS
-ENUM_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Enum }.collect { |t| t.name }
-transitive_closure(all_types, ENUM_TYPES)
-STRUCT_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.collect { |t| t.name }
-transitive_closure(all_types, STRUCT_TYPES)
-UNION_TYPES = all_types.select { |t| t.type.kind_of? YAMLCAst::Union }.collect { |t| t.name }
-transitive_closure(all_types, UNION_TYPES)
-POINTER_TYPES = all_types.select { |t| t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct) }.collect { |t| t.name }
-
-STRUCT_MAP = {}
-all_types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
-  if t.type.members
-    STRUCT_MAP[t.name] = t.type.members
-  else
-    STRUCT_MAP[t.name] = all_structs.find { |str| str.name == t.type.name }.members
-  end
-}
-transitive_closure_map(all_types, STRUCT_MAP)
+find_all_types(typedefs)
+gen_struct_map(typedefs, structs)
+gen_ffi_type_map(typedefs)
 
 INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount/
 
-FFI_TYPE_MAP =  {
- "unsigned char" => "ffi_type_uint8",
- "char" => "ffi_type_sint8",
- "unsigned short" => "ffi_type_uint16",
- "short" => "ffi_type_sint16",
- "unsigned int" => "ffi_type_uint32",
- "int" => "ffi_type_sint32",
- "unsigned long long" => "ffi_type_uint64",
- "long long" => "ffi_type_sint64",
- "uint32_t" => "ffi_type_uint32",
- "cuuint32_t" => "ffi_type_uint32",
- "uint64_t" => "ffi_type_uint64",
- "cuuint64_t" => "ffi_type_uint64",
- "float" => "ffi_type_float",
- "double" => "ffi_type_double",
- "size_t" => "ffi_type_pointer",
- "CUdevice" => "ffi_type_uint32",
- "CUdeviceptr_v1" => "ffi_type_uint32",
- "CUdeviceptr" => "ffi_type_pointer",
- "CUtexObject" => "ffi_type_uint64",
- "CUsurfObject" => "ffi_type_uint64",
-}
-
-OBJECT_TYPES.each { |o|
-  FFI_TYPE_MAP[o] = "ffi_type_pointer"
-}
-
-ENUM_TYPES.each { |e|
-  FFI_TYPE_MAP[e] = "ffi_type_sint32"
-}
-
-HEX_INT_TYPES = %w( CUdeviceptr )
+HEX_INT_TYPES.push("CUdeviceptr")
 
 class TracepointParameter
   attr_reader :name

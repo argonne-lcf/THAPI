@@ -178,6 +178,13 @@ module YAMLCAst
         ev.type = type.name
       when YAMLCAst::CustomType
         case type.name
+        # Usually binary data or text
+        when "uint8_t"
+          ev.macro = :"ctf_#{lttng_arr_type}_text"
+          ev.type = :uint8_t
+          if ev.length
+            ev.length = "(#{ev.length}) * sizeof(uint8_t)"
+          end
         when *OBJECT_TYPES, *POINTER_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
@@ -195,12 +202,6 @@ module YAMLCAst
           ev.type = :uint8_t
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(#{type.name})"
-          end
-        when "uint8_t"
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
-          ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(uint8_t)"
           end
         else
           super

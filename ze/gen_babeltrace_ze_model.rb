@@ -2,54 +2,11 @@ require_relative 'gen_ze_library_base.rb'
 require_relative '../utils/gen_babeltrace_model_helper'
 require 'set'
 
-$integer_sizes = {
-  "uint8_t" => 8,
-  "int8_t" =>  8,
-  "uint16_t" => 16,
-  "int16_t" => 16,
-  "uint32_t" => 32,
-  "int32_t" => 32,
-  "uint64_t" => 64,
-  "int64_t" => 64,
-  "uintptr_t" => 64,
-  "size_t" => 64,
-  "ze_bool_t" => 8
-}
-
-ENUM_TYPES.each { |t|
-  $integer_sizes[t] = 32
-}
-
-$int_scalars.each { |t, v|
-  $integer_sizes[t] = $integer_sizes[v]
-}
-
-$integer_signed = {
-  "int8_t" =>  true,
-  "int16_t" => true,
-  "int32_t" => true,
-  "int64_t" => true,
-  "uint8_t" => false,
-  "uint16_t" => false,
-  "uint32_t" => false,
-  "uint64_t" => false,
-  "uintptr_t" => false,
-  "size_t" => false,
-  "ze_bool_t" => false
-}
-
-ENUM_TYPES.each { |t|
-  $integer_signed[t] = true
-}
-
-$int_scalars.each { |t, v|
-  $integer_signed[t] = $integer_signed[v]
-}
+$integer_sizes = INT_SIZE_MAP.transform_values { |v| v*8 }
+$integer_signed = INT_SIGN_MAP
 
 def integer_size(t)
   return 64 if t.match(/\*/)
-  return 64 if $objects.include?(t)
-  return 64 if $all_types_map[t].kind_of?(YAMLCAst::Pointer)
   r = $integer_sizes[t]
   raise "unknown integer type #{t}" if r.nil?
   r
@@ -57,8 +14,6 @@ end
 
 def integer_signed?(t)
   return false if t.match(/\*/)
-  return false if $objects.include?(t)
-  return false if $all_types_map[t].kind_of?(YAMLCAst::Pointer)
   r = $integer_signed[t]
   raise "unknown integer type #{t}" if r.nil?
   r
