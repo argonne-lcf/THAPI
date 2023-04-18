@@ -20,7 +20,7 @@ void hip_register_dispatcher(struct hip_dispatch *hip_dispatch, const char *name
 }
 
 void hip_register_callback(struct hip_dispatch *hip_dispatch, const char *name, void *func) {
-    struct hip_event_callbacks *callbacks;
+    struct hip_event_callbacks *callbacks = NULL ;
     HASH_FIND_STR(hip_dispatch->event_callbacks, name, callbacks);
     if (!callbacks) {
         callbacks = hip_create_event_callbacks(name);
