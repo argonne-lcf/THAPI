@@ -1,0 +1,11 @@
+---
+:components:
+- :plugin: source.ruby.dust
+  :name: dust
+  :params:
+    schemas: [hip_babeltrace_model.yaml]
+    trace: hip_dummy_trace.yaml
+- :plugin: sink.hip.dispatch
+  :name: dispatch
+:connections:
+- dust:dispatch

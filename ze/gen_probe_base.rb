@@ -1,5 +1,3 @@
-RESULT_NAME = "zeResult"
-
 $tracepoint_lambda = lambda { |provider, c, dir|
   puts <<EOF
 TRACEPOINT_EVENT(

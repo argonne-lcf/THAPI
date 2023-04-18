@@ -123,6 +123,9 @@ def populate_field(field, field_value)
         struct = OpenCL.const_get(n[4..-1].to_sym).new
       elsif n.start_with?('CU')
         struct = CU.const_get(n.to_sym).new
+      elsif n.start_with?('HIP')
+        require "#{ENV["BINDING_DIR"]}/hip_library"
+        struct = eval(n).new
       else
         raise "unsupported be_class structure #{n}"
       end

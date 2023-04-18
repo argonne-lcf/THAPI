@@ -1,0 +1,446 @@
+diff -u4 -r --new-file include/hip/amd_detail/amd_hip_vector_types.h modified_include/hip/amd_detail/amd_hip_vector_types.h
+--- include/hip/amd_detail/amd_hip_vector_types.h	2023-04-13 17:34:00.008157568 -0500
++++ modified_include/hip/amd_detail/amd_hip_vector_types.h	2023-04-18 16:32:48.539622270 -0500
+@@ -1384,20 +1384,20 @@
+             T w;\
+         } CUDA_name##4;
+ #endif
+ 
+-__MAKE_VECTOR_TYPE__(uchar, unsigned char);
+-__MAKE_VECTOR_TYPE__(char, char);
+-__MAKE_VECTOR_TYPE__(ushort, unsigned short);
+-__MAKE_VECTOR_TYPE__(short, short);
+-__MAKE_VECTOR_TYPE__(uint, unsigned int);
+-__MAKE_VECTOR_TYPE__(int, int);
+-__MAKE_VECTOR_TYPE__(ulong, unsigned long);
+-__MAKE_VECTOR_TYPE__(long, long);
+-__MAKE_VECTOR_TYPE__(ulonglong, unsigned long long);
+-__MAKE_VECTOR_TYPE__(longlong, long long);
+-__MAKE_VECTOR_TYPE__(float, float);
+-__MAKE_VECTOR_TYPE__(double, double);
++__MAKE_VECTOR_TYPE__(uchar, unsigned char)
++__MAKE_VECTOR_TYPE__(char, char)
++__MAKE_VECTOR_TYPE__(ushort, unsigned short)
++__MAKE_VECTOR_TYPE__(short, short)
++__MAKE_VECTOR_TYPE__(uint, unsigned int)
++__MAKE_VECTOR_TYPE__(int, int)
++__MAKE_VECTOR_TYPE__(ulong, unsigned long)
++__MAKE_VECTOR_TYPE__(long, long)
++__MAKE_VECTOR_TYPE__(ulonglong, unsigned long long)
++__MAKE_VECTOR_TYPE__(longlong, long long)
++__MAKE_VECTOR_TYPE__(float, float)
++__MAKE_VECTOR_TYPE__(double, double)
+ 
+ #else // !defined(__has_attribute)
+ 
+ #if defined(_MSC_VER)
+@@ -2478,65 +2478,65 @@
+     return r;                                                                                      \
+   }
+ #endif
+ 
+-DECLOP_MAKE_ONE_COMPONENT(unsigned char, uchar1);
+-DECLOP_MAKE_TWO_COMPONENT(unsigned char, uchar2);
+-DECLOP_MAKE_THREE_COMPONENT(unsigned char, uchar3);
+-DECLOP_MAKE_FOUR_COMPONENT(unsigned char, uchar4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(signed char, char1);
+-DECLOP_MAKE_TWO_COMPONENT(signed char, char2);
+-DECLOP_MAKE_THREE_COMPONENT(signed char, char3);
+-DECLOP_MAKE_FOUR_COMPONENT(signed char, char4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(unsigned short, ushort1);
+-DECLOP_MAKE_TWO_COMPONENT(unsigned short, ushort2);
+-DECLOP_MAKE_THREE_COMPONENT(unsigned short, ushort3);
+-DECLOP_MAKE_FOUR_COMPONENT(unsigned short, ushort4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(signed short, short1);
+-DECLOP_MAKE_TWO_COMPONENT(signed short, short2);
+-DECLOP_MAKE_THREE_COMPONENT(signed short, short3);
+-DECLOP_MAKE_FOUR_COMPONENT(signed short, short4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(unsigned int, uint1);
+-DECLOP_MAKE_TWO_COMPONENT(unsigned int, uint2);
+-DECLOP_MAKE_THREE_COMPONENT(unsigned int, uint3);
+-DECLOP_MAKE_FOUR_COMPONENT(unsigned int, uint4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(signed int, int1);
+-DECLOP_MAKE_TWO_COMPONENT(signed int, int2);
+-DECLOP_MAKE_THREE_COMPONENT(signed int, int3);
+-DECLOP_MAKE_FOUR_COMPONENT(signed int, int4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(float, float1);
+-DECLOP_MAKE_TWO_COMPONENT(float, float2);
+-DECLOP_MAKE_THREE_COMPONENT(float, float3);
+-DECLOP_MAKE_FOUR_COMPONENT(float, float4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(double, double1);
+-DECLOP_MAKE_TWO_COMPONENT(double, double2);
+-DECLOP_MAKE_THREE_COMPONENT(double, double3);
+-DECLOP_MAKE_FOUR_COMPONENT(double, double4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(unsigned long, ulong1);
+-DECLOP_MAKE_TWO_COMPONENT(unsigned long, ulong2);
+-DECLOP_MAKE_THREE_COMPONENT(unsigned long, ulong3);
+-DECLOP_MAKE_FOUR_COMPONENT(unsigned long, ulong4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(signed long, long1);
+-DECLOP_MAKE_TWO_COMPONENT(signed long, long2);
+-DECLOP_MAKE_THREE_COMPONENT(signed long, long3);
+-DECLOP_MAKE_FOUR_COMPONENT(signed long, long4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(unsigned long long, ulonglong1);
+-DECLOP_MAKE_TWO_COMPONENT(unsigned long long, ulonglong2);
+-DECLOP_MAKE_THREE_COMPONENT(unsigned long long, ulonglong3);
+-DECLOP_MAKE_FOUR_COMPONENT(unsigned long long, ulonglong4);
+-
+-DECLOP_MAKE_ONE_COMPONENT(signed long long, longlong1);
+-DECLOP_MAKE_TWO_COMPONENT(signed long long, longlong2);
+-DECLOP_MAKE_THREE_COMPONENT(signed long long, longlong3);
+-DECLOP_MAKE_FOUR_COMPONENT(signed long long, longlong4);
++DECLOP_MAKE_ONE_COMPONENT(unsigned char, uchar1)
++DECLOP_MAKE_TWO_COMPONENT(unsigned char, uchar2)
++DECLOP_MAKE_THREE_COMPONENT(unsigned char, uchar3)
++DECLOP_MAKE_FOUR_COMPONENT(unsigned char, uchar4)
++
++DECLOP_MAKE_ONE_COMPONENT(signed char, char1)
++DECLOP_MAKE_TWO_COMPONENT(signed char, char2)
++DECLOP_MAKE_THREE_COMPONENT(signed char, char3)
++DECLOP_MAKE_FOUR_COMPONENT(signed char, char4)
++
++DECLOP_MAKE_ONE_COMPONENT(unsigned short, ushort1)
++DECLOP_MAKE_TWO_COMPONENT(unsigned short, ushort2)
++DECLOP_MAKE_THREE_COMPONENT(unsigned short, ushort3)
++DECLOP_MAKE_FOUR_COMPONENT(unsigned short, ushort4)
++
++DECLOP_MAKE_ONE_COMPONENT(signed short, short1)
++DECLOP_MAKE_TWO_COMPONENT(signed short, short2)
++DECLOP_MAKE_THREE_COMPONENT(signed short, short3)
++DECLOP_MAKE_FOUR_COMPONENT(signed short, short4)
++
++DECLOP_MAKE_ONE_COMPONENT(unsigned int, uint1)
++DECLOP_MAKE_TWO_COMPONENT(unsigned int, uint2)
++DECLOP_MAKE_THREE_COMPONENT(unsigned int, uint3)
++DECLOP_MAKE_FOUR_COMPONENT(unsigned int, uint4)
++
++DECLOP_MAKE_ONE_COMPONENT(signed int, int1)
++DECLOP_MAKE_TWO_COMPONENT(signed int, int2)
++DECLOP_MAKE_THREE_COMPONENT(signed int, int3)
++DECLOP_MAKE_FOUR_COMPONENT(signed int, int4)
++
++DECLOP_MAKE_ONE_COMPONENT(float, float1)
++DECLOP_MAKE_TWO_COMPONENT(float, float2)
++DECLOP_MAKE_THREE_COMPONENT(float, float3)
++DECLOP_MAKE_FOUR_COMPONENT(float, float4)
++
++DECLOP_MAKE_ONE_COMPONENT(double, double1)
++DECLOP_MAKE_TWO_COMPONENT(double, double2)
++DECLOP_MAKE_THREE_COMPONENT(double, double3)
++DECLOP_MAKE_FOUR_COMPONENT(double, double4)
++
++DECLOP_MAKE_ONE_COMPONENT(unsigned long, ulong1)
++DECLOP_MAKE_TWO_COMPONENT(unsigned long, ulong2)
++DECLOP_MAKE_THREE_COMPONENT(unsigned long, ulong3)
++DECLOP_MAKE_FOUR_COMPONENT(unsigned long, ulong4)
++
++DECLOP_MAKE_ONE_COMPONENT(signed long, long1)
++DECLOP_MAKE_TWO_COMPONENT(signed long, long2)
++DECLOP_MAKE_THREE_COMPONENT(signed long, long3)
++DECLOP_MAKE_FOUR_COMPONENT(signed long, long4)
++
++DECLOP_MAKE_ONE_COMPONENT(unsigned long long, ulonglong1)
++DECLOP_MAKE_TWO_COMPONENT(unsigned long long, ulonglong2)
++DECLOP_MAKE_THREE_COMPONENT(unsigned long long, ulonglong3)
++DECLOP_MAKE_FOUR_COMPONENT(unsigned long long, ulonglong4)
++
++DECLOP_MAKE_ONE_COMPONENT(signed long long, longlong1)
++DECLOP_MAKE_TWO_COMPONENT(signed long long, longlong2)
++DECLOP_MAKE_THREE_COMPONENT(signed long long, longlong3)
++DECLOP_MAKE_FOUR_COMPONENT(signed long long, longlong4)
+ 
+ #endif
+diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
+--- include/hip/hip_ext.h	2023-04-13 17:34:00.016157575 -0500
++++ modified_include/hip/hip_ext.h	2023-04-18 16:32:48.539622270 -0500
+@@ -21,9 +21,9 @@
+ */
+ 
+ #ifndef HIP_INCLUDE_HIP_HIP_EXT_H
+ #define HIP_INCLUDE_HIP_HIP_EXT_H
+-#include "hip/hip_runtime.h"
++//#include "hip/hip_runtime.h"
+ #if defined(__cplusplus)
+ #include <tuple>
+ #include <type_traits>
+ #endif
+@@ -69,11 +69,11 @@
+                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
+                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
+                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
+                                     hipStream_t hStream, void** kernelParams, void** extra,
+-                                    hipEvent_t startEvent = nullptr,
+-                                    hipEvent_t stopEvent = nullptr,
+-                                    uint32_t flags = 0);
++                                    hipEvent_t startEvent,
++                                    hipEvent_t stopEvent,
++                                    uint32_t flags);
+ /**
+  * @brief This HIP API is deprecated, please use hipExtModuleLaunchKernel() instead.
+  *
+  */
+@@ -82,10 +82,10 @@
+                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
+                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
+                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
+                                     hipStream_t hStream, void** kernelParams, void** extra,
+-                                    hipEvent_t startEvent = nullptr,
+-                                    hipEvent_t stopEvent = nullptr)
++                                    hipEvent_t startEvent,
++                                    hipEvent_t stopEvent)
+                                     __attribute__((deprecated("use hipExtModuleLaunchKernel instead")));
+ 
+ #if defined(__cplusplus)
+ 
+diff -u4 -r --new-file include/hip/hiprtc.h modified_include/hip/hiprtc.h
+--- include/hip/hiprtc.h	2023-04-13 17:34:00.020157579 -0500
++++ modified_include/hip/hiprtc.h	2023-04-18 16:32:48.539622270 -0500
+@@ -36,9 +36,9 @@
+ #ifdef __cplusplus
+ extern "C" {
+ #endif /* __cplusplus */
+ 
+-#include <stdlib.h>
++//#include <stdlib.h>
+ 
+ #if !defined(_WIN32)
+ #pragma GCC visibility push (default)
+ #endif
+diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_runtime_api.h
+--- include/hip/hip_runtime_api.h	2023-04-13 17:34:00.020157579 -0500
++++ modified_include/hip/hip_runtime_api.h	2023-04-18 16:34:01.303657845 -0500
+@@ -30,9 +30,9 @@
+ #ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
+ #define HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
+ 
+ 
+-#include <string.h>  // for getDeviceProp
++//#include <string.h>  // for getDeviceProp
+ #include <hip/hip_version.h>
+ #include <hip/hip_common.h>
+ 
+ enum {
+@@ -41,37 +41,39 @@
+     HIP_ERROR_NOT_INITIALIZED,
+     HIP_ERROR_LAUNCH_OUT_OF_RESOURCES
+ };
+ 
+-typedef struct {
+-    // 32-bit Atomics
+-    unsigned hasGlobalInt32Atomics : 1;     ///< 32-bit integer atomics for global memory.
+-    unsigned hasGlobalFloatAtomicExch : 1;  ///< 32-bit float atomic exch for global memory.
+-    unsigned hasSharedInt32Atomics : 1;     ///< 32-bit integer atomics for shared memory.
+-    unsigned hasSharedFloatAtomicExch : 1;  ///< 32-bit float atomic exch for shared memory.
+-    unsigned hasFloatAtomicAdd : 1;  ///< 32-bit float atomic add in global and shared memory.
+-
+-    // 64-bit Atomics
+-    unsigned hasGlobalInt64Atomics : 1;  ///< 64-bit integer atomics for global memory.
+-    unsigned hasSharedInt64Atomics : 1;  ///< 64-bit integer atomics for shared memory.
+-
+-    // Doubles
+-    unsigned hasDoubles : 1;  ///< Double-precision floating point.
+-
+-    // Warp cross-lane operations
+-    unsigned hasWarpVote : 1;     ///< Warp vote instructions (__any, __all).
+-    unsigned hasWarpBallot : 1;   ///< Warp ballot instructions (__ballot).
+-    unsigned hasWarpShuffle : 1;  ///< Warp shuffle operations. (__shfl_*).
+-    unsigned hasFunnelShift : 1;  ///< Funnel two words into one with shift&mask caps.
+-
+-    // Sync
+-    unsigned hasThreadFenceSystem : 1;  ///< __threadfence_system.
+-    unsigned hasSyncThreadsExt : 1;     ///< __syncthreads_count, syncthreads_and, syncthreads_or.
+-
+-    // Misc
+-    unsigned hasSurfaceFuncs : 1;        ///< Surface functions.
+-    unsigned has3dGrid : 1;              ///< Grid and group dims are 3D (rather than 2D).
+-    unsigned hasDynamicParallelism : 1;  ///< Dynamic parallelism.
++typedef struct hipDeviceArch_t {
++// Bitfields are not portable
++    unsigned flags;
++//    // 32-bit Atomics
++//    unsigned hasGlobalInt32Atomics : 1;     ///< 32-bit integer atomics for global memory.
++//    unsigned hasGlobalFloatAtomicExch : 1;  ///< 32-bit float atomic exch for global memory.
++//    unsigned hasSharedInt32Atomics : 1;     ///< 32-bit integer atomics for shared memory.
++//    unsigned hasSharedFloatAtomicExch : 1;  ///< 32-bit float atomic exch for shared memory.
++//    unsigned hasFloatAtomicAdd : 1;  ///< 32-bit float atomic add in global and shared memory.
++//
++//    // 64-bit Atomics
++//    unsigned hasGlobalInt64Atomics : 1;  ///< 64-bit integer atomics for global memory.
++//    unsigned hasSharedInt64Atomics : 1;  ///< 64-bit integer atomics for shared memory.
++//
++//    // Doubles
++//    unsigned hasDoubles : 1;  ///< Double-precision floating point.
++//
++//    // Warp cross-lane operations
++//    unsigned hasWarpVote : 1;     ///< Warp vote instructions (__any, __all).
++//    unsigned hasWarpBallot : 1;   ///< Warp ballot instructions (__ballot).
++//    unsigned hasWarpShuffle : 1;  ///< Warp shuffle operations. (__shfl_*).
++//    unsigned hasFunnelShift : 1;  ///< Funnel two words into one with shift&mask caps.
++//
++//    // Sync
++//    unsigned hasThreadFenceSystem : 1;  ///< __threadfence_system.
++//    unsigned hasSyncThreadsExt : 1;     ///< __syncthreads_count, syncthreads_and, syncthreads_or.
++//
++//    // Misc
++//    unsigned hasSurfaceFuncs : 1;        ///< Surface functions.
++//    unsigned has3dGrid : 1;              ///< Grid and group dims are 3D (rather than 2D).
++//    unsigned hasDynamicParallelism : 1;  ///< Dynamic parallelism.
+ } hipDeviceArch_t;
+ 
+ typedef struct hipUUID_t {
+     char bytes[16];
+@@ -471,10 +473,10 @@
+  */
+ 
+ #if (defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)) && !(defined(__HIP_PLATFORM_NVCC__) || defined(__HIP_PLATFORM_NVIDIA__))
+ 
+-#include <stdint.h>
+-#include <stddef.h>
++//#include <stdint.h>
++//#include <stddef.h>
+ #ifndef GENERIC_GRID_LAUNCH
+ #define GENERIC_GRID_LAUNCH 1
+ #endif
+ #include <hip/amd_detail/host_defines.h>
+Binary files include/hip/.hip_runtime_api.h.swo and modified_include/hip/.hip_runtime_api.h.swo differ
+Binary files include/hip/.hip_runtime_api.h.swp and modified_include/hip/.hip_runtime_api.h.swp differ
+diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/hip_runtime_load_api.h
+--- include/hip/hip_runtime_load_api.h	1969-12-31 19:00:00.000000000 -0500
++++ modified_include/hip/hip_runtime_load_api.h	2023-04-18 16:32:48.539622270 -0500
+@@ -0,0 +1,95 @@
++#ifndef HIP_RUNTIME_LOAD_API_
++#define HIP_RUNTIME_LOAD_API_
++
++#ifdef __cplusplus
++extern "C" {
++#endif /* __cplusplus */
++
++extern void **__hipRegisterFatBinary(
++    const void *data);
++
++
++extern void __hipRegisterFunction(
++    void         **modules,
++    const void    *hostFunction,
++    char          *deviceFunction,
++    const char    *deviceName,
++    unsigned int   threadLimit,
++    uint3         *tid,
++    uint3         *bid,
++    dim3          *blockDim,
++    dim3          *gridDim,
++    int           *wSize);
++
++extern void __hipRegisterManagedVar(
++    void      **modules,    // Pointer to hip module returned from __hipRegisterFatbinary
++    void      **pointer,    // Pointer to a chunk of managed memory with size \p size and alignment \p
++                            // align HIP runtime allocates such managed memory and assign it to \p pointer
++    void       *init_value, // Initial value to be copied into \p pointer
++    const char *name,       // Name of the variable in code object
++    size_t      size,
++    unsigned    align);
++
++extern void __hipRegisterSurface(
++    void **modules,   // The device modules containing code object
++    void  *var,       // The shadow variable in host code
++    char  *hostVar,   // Variable name in host code
++    char  *deviceVar, // Variable name in device code
++    int    type,
++    int    ext);
++
++
++extern void __hipRegisterTexture(
++    void **modules,   // The device modules containing code object
++    void  *var,       // The shadow variable in host code
++    char  *hostVar,   // Variable name in host code
++    char  *deviceVar, // Variable name in device code
++    int    type,
++    int    norm,
++    int    ext);
++
++extern void __hipRegisterVar(
++    void   **modules,   // The device modules containing code object
++    void    *var,       // The shadow variable in host code
++    char    *hostVar,   // Variable name in host code
++    char    *deviceVar, // Variable name in device code
++    int      ext,       // Whether this variable is external
++    size_t   size,      // Size of the variable
++    int      constant,  // Whether this variable is constant
++    int      global);   // Unknown, always 0
++
++extern void __hipUnregisterFatBinary(
++    void** modules);
++
++extern const char* hipGetCmdName(
++    uint32_t id);
++
++typedef enum activity_domain_t {
++  ACTIVITY_DOMAIN_HSA_API = 0, /* HSA API domain */
++  ACTIVITY_DOMAIN_HSA_OPS = 1, /* HSA async activity domain */
++  ACTIVITY_DOMAIN_HIP_OPS = 2, /* HIP async activity domain */
++  ACTIVITY_DOMAIN_HCC_OPS =
++      ACTIVITY_DOMAIN_HIP_OPS, /* HCC async activity domain */
++  ACTIVITY_DOMAIN_HIP_VDI =
++      ACTIVITY_DOMAIN_HIP_OPS, /* HIP VDI async activity domain */
++  ACTIVITY_DOMAIN_HIP_API = 3, /* HIP API domain */
++  ACTIVITY_DOMAIN_KFD_API = 4, /* KFD API domain */
++  ACTIVITY_DOMAIN_EXT_API = 5, /* External ID domain */
++  ACTIVITY_DOMAIN_ROCTX = 6,   /* ROCTX domain */
++  ACTIVITY_DOMAIN_HSA_EVT = 7, /* HSA events */
++  ACTIVITY_DOMAIN_NUMBER
++} activity_domain_t;
++
++typedef int hipRegisterTracerCallback_callback_t(
++    activity_domain_t domain,
++    uint32_t operation_id,
++    void* data);
++
++extern void hipRegisterTracerCallback(
++    hipRegisterTracerCallback_callback_t *function);
++
++#ifdef __cplusplus
++}
++#endif /* __cplusplus */
++
++#endif
+diff -u4 -r --new-file include/hip/texture_types.h modified_include/hip/texture_types.h
+--- include/hip/texture_types.h	2023-04-13 17:34:00.020157579 -0500
++++ modified_include/hip/texture_types.h	2023-04-18 16:32:48.543622272 -0500
+@@ -64,24 +64,24 @@
+ 
+ /**
+  * hip texture address modes
+  */
+-enum hipTextureAddressMode {
++typedef enum hipTextureAddressMode {
+     hipAddressModeWrap = 0,
+     hipAddressModeClamp = 1,
+     hipAddressModeMirror = 2,
+     hipAddressModeBorder = 3
+-};
++} hipTextureAddressMode;
+ 
+ /**
+  * hip texture filter modes
+  */
+-enum hipTextureFilterMode { hipFilterModePoint = 0, hipFilterModeLinear = 1 };
++typedef enum hipTextureFilterMode { hipFilterModePoint = 0, hipFilterModeLinear = 1 } hipTextureFilterMode;
+ 
+ /**
+  * hip texture read modes
+  */
+-enum hipTextureReadMode { hipReadModeElementType = 0, hipReadModeNormalizedFloat = 1 };
++typedef enum hipTextureReadMode { hipReadModeElementType = 0, hipReadModeNormalizedFloat = 1 } hipTextureReadMode;
+ 
+ /**
+  * hip texture reference
+  */

@@ -1,0 +1,583 @@
+---
+meta_parameters:
+  hipDriverGetVersion:
+    - [OutScalar, driverVersion]
+  hipRuntimeGetVersion:
+    - [OutScalar, runtimeVersion]
+  hipDeviceGet:
+    - [OutScalar, device]
+  hipDeviceComputeCapability:
+    - [OutScalar, major]
+    - [OutScalar, minor]
+  hipDeviceGetName:
+    - [OutString, name]
+  hipDeviceGetUuid:
+    - [OutScalar, uuid]
+  hipDeviceGetP2PAttribute:
+    - [OutScalar, value]
+  hipDeviceGetPCIBusId:
+    - [OutString, pciBusId]
+  hipDeviceGetByPCIBusId:
+    - [InString, pciBusId]
+    - [OutScalar, device]
+  hipDeviceTotalMem:
+    - [OutScalar, bytes]
+  hipGetDevice:
+    - [OutScalar, deviceId]
+  hipGetDeviceCount:
+    - [OutScalar, count]
+  hipDeviceGetAttribute:
+    - [OutScalar, pi]
+  hipDeviceGetDefaultMemPool:
+    - [OutScalar, mem_pool]
+  hipDeviceGetMemPool:
+    - [OutScalar, mem_pool]
+  hipGetDeviceProperties:
+    - [OutScalar, prop]
+  hipDeviceGetCacheConfig:
+    - [OutScalar, cacheConfig]
+  hipDeviceGetLimit:
+    - [OutScalar, pValue]
+  hipDeviceGetSharedMemConfig:
+    - [OutScalar, pConfig]
+  hipGetDeviceFlags:
+    - [OutScalar, flags]
+  hipChooseDevice:
+    - [InScalar, prop]
+    - [OutScalar, device]
+  hipExtGetLinkTypeAndHopCount:
+    - [OutScalar, linktype]
+    - [OutScalar, hopcount]
+  hipIpcGetMemHandle:
+    - [OutScalar, handle]
+  hipIpcOpenMemHandle:
+    - [OutScalar, devPtr]
+  hipIpcGetEventHandle:
+    - [OutScalar, handle]
+  hipIpcOpenEventHandle:
+    - [OutScalar, event]
+  hipGetErrorName:
+    - [ReturnString]
+  hipGetErrorString:
+    - [ReturnString]
+  hipDrvGetErrorName:
+    - [OutScalar, errorString]
+    - [OutPtrString, errorString]
+  hipDrvGetErrorString:
+    - [OutScalar, errorString]
+    - [OutPtrString, errorString]
+  hipStreamCreate:
+    - [OutScalar, stream]
+  hipStreamCreateWithFlags:
+    - [OutScalar, stream]
+  hipStreamCreateWithPriority:
+    - [OutScalar, stream]
+  hipDeviceGetStreamPriorityRange:
+    - [OutScalar, leastPriority]
+    - [OutScalar, greatestPriority]
+  hipStreamGetFlags:
+    - [OutScalar, flags]
+  hipStreamGetPriority:
+    - [OutScalar, priority]
+  hipExtStreamCreateWithCUMask:
+    - [InArray, cuMask, cuMaskSize]
+    - [OutScalar, stream]
+  hipExtStreamGetCUMask:
+    - [OutArray, cuMask, cuMaskSize]
+  hipEventCreateWithFlags:
+    - [OutScalar, event]
+  hipEventCreate:
+    - [OutScalar, event]
+  hipEventElapsedTime:
+    - [OutScalar, ms]
+  hipPointerGetAttributes:
+    - [OutScalar, attributes]
+  hipPointerGetAttribute:
+    - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "\
+      attribute == HIP_POINTER_ATTRIBUTE_CONTEXT ? 0 : \
+      attribute == HIP_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : \
+      attribute == HIP_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(hipDeviceptr_t) : \
+      attribute == HIP_POINTER_ATTRIBUTE_HOST_POINTER ? sizeof(void *) : \
+      attribute == HIP_POINTER_ATTRIBUTE_P2P_TOKENS ? 0 : \
+      attribute == HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(int) : \
+      attribute == HIP_POINTER_ATTRIBUTE_BUFFER_ID ? sizeof(unsigned long long) : \
+      attribute == HIP_POINTER_ATTRIBUTE_IS_MANAGED ? sizeof(int) : \
+      attribute == HIP_POINTER_ATTRIBUTE_DEVICE_ORDINAL ? sizeof(int) : \
+      attribute == HIP_POINTER_ATTRIBUTE_IS_LEGACY_HIP_IPC_CAPABLE ? 0 : \
+      attribute == HIP_POINTER_ATTRIBUTE_RANGE_START_ADDR ? sizeof(void *) : \
+      attribute == HIP_POINTER_ATTRIBUTE_RANGE_SIZE ? sizeof(size_t) : \
+      attribute == HIP_POINTER_ATTRIBUTE_MAPPED ? sizeof(int) : \
+      attribute == HIP_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES ? 0 : \
+      attribute == HIP_POINTER_ATTRIBUTE_IS_GPU_DIRECT_RDMA_CAPABLE ? 0 : \
+      attribute == HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS ? sizeof(hipMemAccessFlags) : \
+      attribute == HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE ? 0 : 0"]
+  hipImportExternalSemaphore:
+    - [InScalar, semHandleDesc]
+    - [OutScalar, extSem_out]
+  hipSignalExternalSemaphoresAsync:
+    - [InArray, extSemArray, numExtSems]
+    - [InArray, paramsArray, numExtSems]
+  hipWaitExternalSemaphoresAsync:
+    - [InArray, extSemArray, numExtSems]
+    - [InArray, paramsArray, numExtSems]
+  hipImportExternalMemory:
+    - [InScalar, memHandleDesc]
+    - [OutScalar, extMem_out]
+  hipExternalMemoryGetMappedBuffer:
+    - [InScalar, bufferDesc]
+    - [OutScalar, devPtr]
+  hipMalloc:
+    - [OutScalar, ptr]
+  hipExtMallocWithFlags:
+    - [OutScalar, ptr]
+  hipMallocHost:
+    - [OutScalar, ptr]
+  hipMemAllocHost:
+    - [OutScalar, ptr]
+  hipHostMalloc:
+    - [OutScalar, ptr]
+  hipMallocManaged:
+    - [OutScalar, dev_ptr]
+  hipMemRangeGetAttribute:
+    - [OutArray, data, data_size]
+  hipMemRangeGetAttributes:
+    - [InArray, attributes, num_attributes]
+    - [InArray, data_sizes, num_attributes]
+  hipMallocAsync:
+    - [OutScalar, dev_ptr]
+  hipMemPoolSetAttribute:
+    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+      attr == hipMemPoolReuseFollowEventDependencies ? sizeof(int) : \
+      attr == hipMemPoolReuseAllowOpportunistic ? sizeof(int) : \
+      attr == hipMemPoolReuseAllowInternalDependencies ? sizeof(int) : \
+      attr == hipMemPoolAttrReleaseThreshold ? sizeof(uint64_t) : \
+      attr == hipMemPoolAttrReservedMemCurrent ? 0 : \
+      attr == hipMemPoolAttrReservedMemHigh ? 0 : \
+      attr == hipMemPoolAttrUsedMemCurrent ? 0 : \
+      attr == hipMemPoolAttrUsedMemHigh ? 0 : 0"]
+  hipMemPoolGetAttribute:
+    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+      attr == hipMemPoolReuseFollowEventDependencies ? sizeof(int) : \
+      attr == hipMemPoolReuseAllowOpportunistic ? sizeof(int) : \
+      attr == hipMemPoolReuseAllowInternalDependencies ? sizeof(int) : \
+      attr == hipMemPoolAttrReleaseThreshold ? sizeof(uint64_t) : \
+      attr == hipMemPoolAttrReservedMemCurrent ? 0 : \
+      attr == hipMemPoolAttrReservedMemHigh ? 0 : \
+      attr == hipMemPoolAttrUsedMemCurrent ? 0 : \
+      attr == hipMemPoolAttrUsedMemHigh ? 0 : 0"]
+  hipMemPoolSetAccess:
+    - [InArray, desc_list, count]
+  hipMemPoolGetAccess:
+    - [InScalar, location]
+    - [OutScalar, flags]
+  hipMemPoolCreate:
+    - [InScalar, pool_props]
+    - [OutScalar, mem_pool]
+  hipMallocFromPoolAsync:
+    - [OutScalar, dev_ptr]
+  hipMemPoolExportToShareableHandle:
+    - [OutLTTng, shared_handle, ctf_sequence_text, uint8_t, shared_handle_val, shared_handle, size_t, "\
+      handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+  hipMemPoolImportFromShareableHandle:
+    - [InLTTng, shared_handle, ctf_sequence_text, uint8_t, shared_handle_val, shared_handle, size_t, "\
+      handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+    - [OutScalar, mem_pool]
+  hipMemPoolExportPointer:
+    - [OutScalar, export_data]
+  hipMemPoolImportPointer:
+    - [InScalar, export_data]
+    - [OutScalar, dev_ptr]
+  hipHostAlloc:
+    - [OutScalar, ptr]
+  hipHostGetDevicePointer:
+    - [OutScalar, devPtr]
+  hipHostGetFlags:
+    - [OutScalar, flagsPtr]
+  hipMallocPitch:
+    - [OutScalar, ptr]
+    - [OutScalar, pitch]
+  hipMemAllocPitch:
+    - [OutScalar, dptr]
+    - [OutScalar, pitch]
+  hipModuleGetGlobal:
+    - [InString, name]
+    - [OutScalar, dptr]
+    - [OutScalar, bytes]
+  hipGetSymbolAddress:
+    - [OutScalar, devPtr]
+  hipGetSymbolSize:
+    - [OutScalar, size]
+  hipMemGetInfo:
+    - [OutScalar, free]
+    - [OutScalar, total]
+  hipMemPtrGetInfo:
+    - [OutScalar, size]
+  hipMallocArray:
+    - [InScalar, desc]
+    - [OutScalar, array]
+  hipArrayCreate:
+    - [InScalar, pAllocateArray]
+    - [OutScalar, pHandle]
+  hipMalloc3D:
+    - [OutScalar, pitchedDevPtr]
+  hipMalloc3DArray:
+    - [InScalar, desc]
+    - [OutScalar, array]
+  hipMallocMipmappedArray:
+    - [InScalar, desc]
+    - [OutScalar, mipmappedArray]
+  hipGetMipmappedArrayLevel:
+    - [OutScalar, levelArray]
+  hipMemcpyParam2D:
+    - [InScalar, pCopy]
+  hipMemcpyParam2DAsync:
+    - [InScalar, pCopy]
+  hipMemcpy3D:
+    - [InScalar, p]
+  hipMemcpy3DAsync:
+    - [InScalar, p]
+  hipDrvMemcpy3D:
+    - [InScalar, pCopy]
+  hipDrvMemcpy3DAsync:
+    - [InScalar, pCopy]
+  hipDeviceCanAccessPeer:
+    - [OutScalar, canAccessPeer]
+  hipMemGetAddressRange:
+    - [OutScalar, pbase]
+    - [OutScalar, psize]
+  hipCtxCreate:
+    - [OutScalar, ctx]
+  hipCtxPopCurrent:
+    - [OutScalar, ctx]
+  hipCtxGetCurrent:
+    - [OutScalar, ctx]
+  hipCtxGetDevice:
+    - [OutScalar, device]
+  hipCtxGetApiVersion:
+    - [OutScalar, apiVersion]
+  hipCtxGetCacheConfig:
+    - [OutScalar, cacheConfig]
+  hipCtxGetSharedMemConfig:
+    - [OutScalar, pConfig]
+  hipCtxGetFlags:
+    - [OutScalar, flags]
+  hipDevicePrimaryCtxGetState:
+    - [OutScalar, flags]
+    - [OutScalar, active]
+  hipDevicePrimaryCtxRetain:
+    - [OutScalar, pctx]
+  hipModuleLoad:
+    - [InString, fname]
+    - [OutScalar, module]
+  hipModuleGetFunction:
+    - [InString, kname]
+    - [OutScalar, function]
+  hipFuncGetAttributes:
+    - [OutScalar, attr]
+  hipFuncGetAttribute:
+    - [OutScalar, value]
+  hipModuleGetTexRef:
+    - [InString, name]
+    - [OutScalar, texRef]
+  hipModuleLoadData:
+    - [OutScalar, module]
+  hipModuleLoadDataEx:
+    - [InArray, options, numOptions]
+    - [InArray, optionValues, numOptions]
+    - [OutScalar, module]
+  hipLaunchCooperativeKernelMultiDevice:
+    - [InArray, launchParamsList, numDevices]
+  hipExtLaunchMultiKernelMultiDevice:
+    - [InArray, launchParamsList, numDevices]
+  hipModuleOccupancyMaxPotentialBlockSize:
+    - [OutScalar, gridSize]
+    - [OutScalar, blockSize]
+  hipModuleOccupancyMaxPotentialBlockSizeWithFlags:
+    - [OutScalar, gridSize]
+    - [OutScalar, blockSize]
+  hipModuleOccupancyMaxActiveBlocksPerMultiprocessor:
+    - [OutScalar, numBlocks]
+  hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
+    - [OutScalar, numBlocks]
+  hipOccupancyMaxActiveBlocksPerMultiprocessor:
+    - [OutScalar, numBlocks]
+  hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
+    - [OutScalar, numBlocks]
+  hipOccupancyMaxPotentialBlockSize:
+    - [OutScalar, gridSize]
+    - [OutScalar, blockSize]
+  hipSetupArgument:
+    - [InArray, arg, size]
+  __hipPopCallConfiguration:
+    - [OutScalar, gridDim]
+    - [OutScalar, blockDim]
+    - [OutScalar, sharedMem]
+    - [OutScalar, stream]
+  hipDrvMemcpy2DUnaligned:
+    - [InScalar, pCopy]
+  hipBindTextureToMipmappedArray:
+    - [InScalar, desc]
+  hipCreateTextureObject:
+    - [InScalar, pResDesc]
+    - [InScalar, pTexDesc]
+    - [InScalar, pResViewDesc]
+    - [OutScalar, pTexObject]
+  hipGetChannelDesc:
+    - [OutScalar, desc]
+  hipGetTextureObjectResourceDesc:
+    - [OutScalar, pResDesc]
+  hipGetTextureObjectResourceViewDesc:
+    - [OutScalar, pResViewDesc]
+  hipGetTextureObjectTextureDesc:
+    - [OutScalar, pTexDesc]
+  hipTexObjectCreate:
+    - [InScalar, pResDesc,]
+    - [InScalar, pTexDesc]
+    - [InScalar, pResViewDesc]
+    - [OutScalar, pTexObject]
+  hipTexObjectGetResourceDesc:
+    - [OutScalar, pResDesc]
+  hipTexObjectGetResourceViewDesc:
+    - [OutScalar, pResViewDesc]
+  hipTexObjectGetTextureDesc:
+    - [OutScalar, pTexDesc]
+  hipGetTextureReference:
+    - [OutScalar, texref]
+  hipBindTexture:
+    - [InScalar, desc]
+    - [OutScalar, offset]
+  hipBindTexture2D:
+    - [InScalar, desc]
+    - [OutScalar, offset]
+  hipBindTextureToArray:
+    - [InScalar, desc]
+  hipGetTextureAlignmentOffset:
+    - [OutScalar, offset]
+  hipTexRefGetAddress:
+    - [OutScalar, dev_ptr]
+  hipTexRefGetAddressMode:
+    - [OutScalar, pam]
+  hipTexRefGetFilterMode:
+    - [OutScalar, pfm]
+  hipTexRefGetFlags:
+    - [OutScalar, pFlags]
+  hipTexRefGetFormat:
+    - [OutScalar, pFormat]
+    - [OutScalar, pNumChannels]
+  hipTexRefGetMaxAnisotropy:
+    - [OutScalar, pmaxAnsio]
+  hipTexRefGetMipmapFilterMode:
+    - [OutScalar, pfm]
+  hipTexRefGetMipmapLevelBias:
+    - [OutScalar, pbias]
+  hipTexRefGetMipmapLevelClamp:
+    - [OutScalar, pminMipmapLevelClamp]
+    - [OutScalar, pmaxMipmapLevelClamp]
+  hipTexRefGetMipMappedArray:
+    - [OutScalar, pArray]
+  hipTexRefSetAddress:
+    - [OutScalar, ByteOffset]
+  hipTexRefSetAddress2D:
+    - [InScalar, desc]
+  hipMipmappedArrayCreate:
+    - [InScalar, pMipmappedArrayDesc]
+    - [OutScalar, pHandle]
+  hipMipmappedArrayGetLevel:
+    - [OutScalar, pLevelArray]
+  hipApiName:
+    - [ReturnString]
+  hipKernelNameRef:
+    - [ReturnString]
+  hipKernelNameRefByPtr:
+    - [ReturnString]
+  hipStreamEndCapture:
+    - [OutScalar, pGraph]
+  hipStreamGetCaptureInfo:
+    - [OutScalar, pCaptureStatus]
+    - [OutScalar, pId]
+  hipStreamGetCaptureInfo_v2:
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
+    - [OutScalar, graph_out]
+    - [OutScalar, numDependencies_out]
+    - [OutArray, dependencies_out, numDependencies_out]
+  hipStreamIsCapturing:
+    - [OutScalar, pCaptureStatus]
+  hipStreamUpdateCaptureDependencies:
+    - [InArray, dependencies, numDependencies]
+  hipThreadExchangeStreamCaptureMode:
+    - [InOutScalar, mode]
+  hipGraphCreate:
+    - [OutScalar, pGraph]
+  hipGraphAddDependencies:
+    - [InArray, from, numDependencies]
+    - [InArray, to, numDependencies]
+  hipGraphRemoveDependencies:
+    - [InArray, from, numDependencies]
+    - [InArray, to, numDependencies]
+  hipGraphGetEdges:
+    - [OutScalar, numEdges]
+    - [OutArray, from, numEdges]
+    - [OutArray, to, numEdges]
+  hipGraphGetNodes:
+    - [OutScalar, numNodes]
+    - [OutArray, nodes, numNodes]
+  hipGraphGetRootNodes:
+    - [OutScalar, pNumRootNodes]
+    - [OutArray, pRootNodes, pNumRootNodes]
+  hipGraphNodeGetDependencies:
+    - [OutScalar, pNumDependencies]
+    - [OutArray, pDependencies, pNumDependencies]
+  hipGraphNodeGetDependentNodes:
+    - [OutScalar, pNumDependentNodes]
+    - [OutArray, pDependentNodes, pNumDependentNodes]
+  hipGraphNodeGetType:
+    - [OutScalar, pType]
+  hipGraphClone:
+    - [OutScalar, pGraphClone]
+  hipGraphNodeFindInClone:
+    - [OutScalar, pNode]
+  hipGraphInstantiate:
+    - [OutScalar, pGraphExec]
+    - [OutScalar, pErrorNode]
+    - [OutArray, pLogBuffer, bufferSize]
+  hipGraphInstantiateWithFlags:
+    - [OutScalar, pGraphExec]
+  hipGraphExecUpdate:
+    - [OutScalar, hErrorNode_out]
+    - [OutScalar, updateResult_out]
+  hipGraphAddKernelNode:
+    - [InArray, pDependencies, numDependencies]
+    - [InScalar, pNodeParams]
+    - [OutScalar, pGraphNode]
+  hipGraphKernelNodeGetParams:
+    - [OutScalar, pNodeParams]
+  hipGraphKernelNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphAddMemcpyNode:
+    - [InArray, pDependencies, numDependencies]
+    - [InScalar, pCopyParams]
+    - [OutScalar, pGraphNode]
+  hipGraphMemcpyNodeGetParams:
+    - [OutScalar, pNodeParams]
+  hipGraphMemcpyNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphKernelNodeSetAttribute:
+    - [InScalar, value]
+  hipGraphKernelNodeGetAttribute:
+    - [OutScalar, value]
+  hipGraphExecMemcpyNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphAddMemcpyNode1D:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphAddMemcpyNodeFromSymbol:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphAddMemcpyNodeToSymbol:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphAddMemsetNode:
+    - [InArray, pDependencies, numDependencies]
+    - [InScalar, pMemsetParams]
+    - [OutScalar, pGraphNode]
+  hipGraphMemsetNodeGetParams:
+    - [OutScalar, pNodeParams]
+  hipGraphMemsetNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphExecMemsetNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphAddHostNode:
+    - [InArray, pDependencies, numDependencies]
+    - [InScalar, pNodeParams]
+    - [OutScalar, pGraphNode]
+  hipGraphHostNodeGetParams:
+    - [OutScalar, pNodeParams]
+  hipGraphHostNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphExecHostNodeSetParams:
+    - [InScalar, pNodeParams]
+  hipGraphAddChildGraphNode:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphChildGraphNodeGetGraph:
+    - [OutScalar, pGraph]
+  hipGraphAddEmptyNode:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphAddEventRecordNode:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphEventRecordNodeGetEvent:
+    - [OutScalar, event_out]
+  hipGraphAddEventWaitNode:
+    - [InArray, pDependencies, numDependencies]
+    - [OutScalar, pGraphNode]
+  hipGraphEventWaitNodeGetEvent:
+    - [OutScalar, event_out]
+  hipDeviceGetGraphMemAttribute:
+    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+      attr == hipGraphMemAttrUsedMemCurrent ? sizeof(uint64_t) : \
+      attr == hipGraphMemAttrUsedMemHigh ? sizeof(uint64_t) : \
+      attr == hipGraphMemAttrReservedMemCurrent ? sizeof(uint64_t) : \
+      attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0"]
+  hipDeviceSetGraphMemAttribute:
+    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+      attr == hipGraphMemAttrUsedMemHigh ? sizeof(uint64_t) : \
+      attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0"]
+  hipUserObjectCreate:
+    - [OutScalar, object_out]
+  hipMemAddressReserve:
+    - [OutScalar, ptr]
+  hipMemCreate:
+    - [InScalar, prop]
+    - [OutScalar, handle]
+  hipMemExportToShareableHandle:
+    - [OutLTTng, shareableHandle, ctf_sequence_text, uint8_t, shareableHandle_val, shareableHandle, size_t, "\
+      handleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+  hipMemGetAccess:
+    - [InScalar, location]
+    - [OutScalar, flags]
+  hipMemGetAllocationGranularity:
+    - [InScalar, prop]
+    - [OutScalar, granularity]
+  hipMemGetAllocationPropertiesFromHandle:
+    - [OutScalar, prop]
+  hipMemImportFromShareableHandle:
+    - [InLTTng, osHandle, ctf_sequence_text, uint8_t, osHandle_val, osHandle, size_t, "\
+      shHandleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+    - [OutScalar, handle]
+  hipMemMapArrayAsync:
+    - [InScalar, mapInfoList]
+  hipMemRetainAllocationHandle:
+    - [OutScalar, handle]
+  hipMemSetAccess:
+    - [InArray, desc, count]
+  hipGLGetDevices:
+    - [OutScalar, pHipDeviceCount]
+    - [OutArray, pHipDevices, hipDeviceCount]
+  hipGraphicsGLRegisterBuffer:
+    - [OutScalar, resource]
+  hipGraphicsGLRegisterImage:
+    - [OutScalar, resource]
+  hipGraphicsMapResources:
+    - [InArray, resources, count]
+  hipGraphicsSubResourceGetMappedArray:
+    - [OutScalar, array]
+  hipGraphicsResourceGetMappedPointer:
+    - [OutScalar, devPtr]
+    - [OutScalar, size]
+  hipGraphicsUnmapResources:
+    - [InArray, resources, count]
+  _Z22hipCreateSurfaceObjectPP13__hip_surfacePK15hipResourceDesc:
+    - [InScalar, pResDesc]
+    - [OutScalar, pSurfObject]
+  _ZN8hip_impl22hipLaunchKernelGGLImplEmRK4dim3S2_jP12ihipStream_tPPv:
+    - [InScalar, numBlocks]
+    - [InScalar, dimBlocks]
+  hipGraphDebugDotPrint:
+    - [InString, fName]
+  amd_dbgapi_get_build_name:
+    - [ReturnString]
+  amd_dbgapi_get_git_hash:
+    - [ReturnString]

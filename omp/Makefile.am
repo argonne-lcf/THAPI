@@ -43,10 +43,13 @@ OMP_MODEL = \
 	$(srcdir)/ompt_meta_parameters.yaml \
 	$(srcdir)/gen_probe_base.rb \
 	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/yaml_ast_lttng.rb \
+	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb \
 	$(OMP_EXTRACTED)
 
 OMP_LIB_GEN = \
+	$(srcdir)/../utils/gen_library_base.rb \
 	$(srcdir)/gen_omp_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 

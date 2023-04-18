@@ -98,7 +98,8 @@ AC_CONFIG_FILES([Makefile
                  ze/Makefile
                  xprof/Makefile
                  cuda/Makefile
-                 omp/Makefile])
+                 omp/Makefile
+                 hip/Makefile])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
 AC_CONFIG_FILES([opencl/test_wrapper.sh], [chmod +x opencl/test_wrapper.sh])
@@ -109,4 +110,6 @@ AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
 AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
+AC_CONFIG_FILES([hip/tracer_hip.sh], [chmod +x hip/tracer_hip.sh])
+AC_CONFIG_FILES([hip/test_wrapper.sh], [chmod +x hip/test_wrapper.sh])
 AC_OUTPUT

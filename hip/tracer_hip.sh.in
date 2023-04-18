@@ -1,0 +1,109 @@
+#!/bin/sh
+exec_prefix=@prefix@
+libdir=@libdir@
+pkglibdir=$libdir/@PACKAGE@
+prefix=@prefix@
+datarootdir=@datarootdir@
+datadir=@datadir@
+
+# Find all location of a `.so`
+whichlib() {
+  # Output of ldconfig:
+  #/usr/lib32:
+  #       libstdc++.so.6 -> libstdc++.so.6.0.26
+  # After the awk:
+  # -> /usr/lib32/libstdc++.so.6
+
+  # In OpenSUSE ldconfig, is in '/sbin'.
+  PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+               match($1, "^lib") && match($1, p) { print header "/" $1}'
+}
+
+whichlib64_head() {
+  # This function return only the first lib found
+  # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
+  for lib in $(whichlib $1)
+  do
+    if objdump -a $lib | grep 64 > /dev/null; then
+      echo $lib
+      break
+    fi
+  done
+}
+
+display_help() {
+    echo "Usage:"
+    echo " $(basename $0) [options] [--] <application> <application-arguments>"
+    echo "  --help                        Show this screen"
+    echo "  --version                     Print the version string"
+    echo "  -v, --visualize               Visualize trace on the fly"
+    exit 1
+}
+
+display_version() {
+    cat $datadir/version
+    exit 1
+}
+
+while true; do
+  case "$1" in
+    --help           ) display_help; exit;;
+    --version        ) display_version; exit;;
+    -v | --visualize ) shift; lttng_view=1;;
+    -- ) shift; break ;;
+    * ) break ;;
+  esac
+done
+
+if [ "$#" -eq 0 ]; then
+    display_help
+fi
+
+lttng-sessiond --daemonize --quiet
+if [ ! -z "$lttng_view" ]
+then
+  lttng-relayd --daemonize
+  lttng create thapi-hip-session --live
+else
+  lttng create thapi-hip-session
+fi
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_hip:*
+if [ -z "$LTTNG_UST_HIP_LIBAMDHIP64" ]
+then
+  LTTNG_UST_HIP_LIBAMDHIP64=$(whichlib64_head libamdhip64.so)
+  if [ -n "$LTTNG_UST_HIP_LIBAMDHIP64" ]
+  then
+    export LTTNG_UST_HIP_LIBAMDHIP64="$LTTNG_UST_HIP_LIBAMDHIP64"
+    export LD_LIBRARY_PATH=$pkglibdir/hip:$LD_LIBRARY_PATH
+  fi
+else
+  export LD_LIBRARY_PATH=$pkglibdir/hip:$LD_LIBRARY_PATH
+fi
+export LD_PRELOAD=$libdir/libTracerHIP.so:$LD_PRELOAD
+export LTTNG_UST_ALLOW_BLOCKING=1
+export LTTNG_UST_HIP_VERBOSE=1
+lttng start
+
+ctrl_c() {
+  lttng stop
+  lttng destroy
+  exit
+}
+
+trap ctrl_c INT
+
+if [ ! -z "$lttng_view" ]
+then
+  lttng view --viewer="babeltrace_thapi --backend hip --context --live" &
+  PID=$!
+fi
+"$@"
+lttng stop
+lttng destroy
+if [ ! -z "$lttng_view" ]
+then
+  wait $PID
+fi

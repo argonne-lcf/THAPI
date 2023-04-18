@@ -63,6 +63,8 @@ EXTRA_DIST = \
 	gen_babeltrace_model_helper.rb \
 	tracepoint_gen.rb \
 	yaml_ast.rb \
+	yaml_ast_lttng.rb \
+	gen_library_base.rb \
 	gen_dummy_trace.rb \
 	bt2.rb \
 	bt_plugins/dust.rb \
@@ -71,4 +73,6 @@ EXTRA_DIST = \
 	gen_babeltrace_dispatchers.rb \
 	gen_babeltrace_callbacks.rb \
 	gen_babeltrace_emitter.rb \
-	thapi_metadata_tracepoints.tp
+	thapi_metadata_tracepoints.tp \
+	command.rb \
+	meta_parameters.rb

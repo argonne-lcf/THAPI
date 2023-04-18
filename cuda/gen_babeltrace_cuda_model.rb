@@ -1,105 +1,11 @@
 require_relative 'gen_cuda_library_base.rb'
 require_relative '../utils/gen_babeltrace_model_helper'
 
-$integer_sizes = {
-  "unsigned char" => 8,
-  "char" => 8,
-  "uint8_t" => 8,
-  "int8_t" =>  8,
-  "unsigned short" => 16,
-  "unsigned short int" => 16,
-  "short" => 16,
-  "uint16_t" => 16,
-  "int16_t" => 16,
-  "unsigned int" => 32,
-  "int" => 32,
-  "uint32_t" => 32,
-  "cuuint32_t" => 32,
-  "int32_t" => 32,
-  "CUdevice" => 32,
-  "CUdevice_v1" => 32,
-  "CUdeviceptr_v1" => 32,
-  "unsigned long long" => 64,
-  "unsigned long long int" => 64,
-  "long" => 64,
-  "long int" => 64,
-  "unsigned long" => 64,
-  "unsigned long int" => 64,
-  "long long" => 64,
-  "long long int" => 64,
-  "uint64_t" => 64,
-  "cuuuint64_t" => 64,
-  "int64_t" => 64,
-  "uintptr_t" => 64,
-  "size_t" => 64,
-  "CUtexObject_v1" => 64,
-  "CUsurfObject_v1" => 64,
-  "CUdeviceptr_v2" => 64,
-  "CUmemGenericAllocationHandle" => 64,
-  "CUstreamCallback" => 64,
-  "CUhostFn" => 64,
-  "CUoccupancyB2DSize" => 64,
-}
-
-CUDA_ENUM_SCALARS.each { |t|
-  $integer_sizes[t] = 32
-}
-
-$int_scalars.each { |t, v|
-  $integer_sizes[t] = $integer_sizes[v]
-}
-
-$integer_signed = {
-  "char" => true,
-  "int8_t" => true,
-  "short" => true,
-  "int16_t" => true,
-  "int" => true,
-  "int32_t" => true,
-  "long" => true,
-  "long int" => true,
-  "long long" => true,
-  "long long int" => true,
-  "int64_t" => true,
-  "unsigned char" => false,
-  "uint8_t" => false,
-  "unsigned short" => false,
-  "unsigned short int" => false,
-  "uint16_t" => false,
-  "unsigned int" => false,
-  "uint32_t" => false,
-  "cuuint32_t" => false,
-  "unsigned long" => false,
-  "unsigned long int" => false,
-  "unsigned long long" => false,
-  "unsigned long long int" => false,
-  "uint64_t" => false,
-  "cuuint64_t" => false,
-  "uintptr_t" => false,
-  "size_t" => false,
-  "CUdevice" => false,
-  "CUdevice_v1" => false,
-  "CUdeviceptr_v2" => false,
-  "CUdeviceptr_v1" => false,
-  "CUtexObject_v1" => false,
-  "CUsurfObject_v1" => false,
-  "CUmemGenericAllocationHandle" => false,
-  "CUstreamCallback" => false,
-  "CUhostFn" => false,
-  "CUoccupancyB2DSize" => false,
-}
-
-CUDA_ENUM_SCALARS.each { |t|
-  $integer_signed[t] = true
-}
-
-$int_scalars.each { |t, v|
-  $integer_signed[t] = $integer_signed[v]
-}
+$integer_sizes = INT_SIZE_MAP.transform_values { |v| v*8 }
+$integer_signed = INT_SIGN_MAP
 
 def integer_size(t)
   return 64 if t.match(/\*/)
-  return 64 if $objects.include?(t)
   r = $integer_sizes[t]
   raise "unknown integer type #{t}" if r.nil?
   r
@@ -107,7 +13,6 @@ end
 
 def integer_signed?(t)
   return false if t.match(/\*/)
-  return false if $objects.include?(t)
   r = $integer_signed[t]
   raise "unknown integer type #{t}" if r.nil?
   r

@@ -1,5 +1,6 @@
 require_relative 'ze_model'
 require_relative 'gen_probe_base.rb'
+require_relative '../utils/gen_library_base.rb'
 
 $all_types = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"] + $zel_api["typedefs"]
 $all_structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"]
@@ -19,14 +20,14 @@ $objects = $all_types.select { |t|
 }.collect { |t| t.name }
 
 $all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_OBJECTS.include?(t.type.name)
+  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
     $objects.push t.name
   end
 }
 
 $int_scalars = {}
 $all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && ZE_INT_SCALARS.include?(t.type.name)
+  if t.type.kind_of?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
     $int_scalars[t.name] = t.type.name
   end
 }
@@ -66,81 +67,6 @@ $all_types.each { |t|
 
 $all_bitfield_names += $all_bitfield_names.select { |n| n.end_with?("_flag_t") }.map { |n| n.gsub("_flag_t", "_flags_t") }
 
-module YAMLCAst
-  class Struct
-    def to_ffi
-      res = []
-      members.each { |m|
-        mt = case m.type
-        when Array
-          m.type.to_ffi
-        when Pointer
-          ":pointer"
-        else
-          to_ffi_name(m.type.name)
-        end
-        res.push [to_ffi_name(m.name), mt]
-      }
-      res
-    end
-  end
+FFI_STRUCT = 'FFI::ZEStruct'
+FFI_UNION = 'FFI::ZEUnion'
 
-  class Union
-    def to_ffi
-      res = []
-      members.each { |m|
-        mt = case m.type
-        when Array
-          m.type.to_ffi
-        when Pointer
-          ":pointer"
-        else
-          to_ffi_name(m.type.name)
-        end
-        res.push [to_ffi_name(m.name), mt]
-      }
-      res
-    end
-  end
-
-  class Array
-    def to_ffi
-      t = case type
-      when Pointer
-        ":pointer"
-      else
-       to_ffi_name(type.name)
-      end
-      [ t, length ]
-    end
-  end
-
-  class Function
-    def to_ffi
-      if type.respond_to?(:name)
-        t = to_ffi_name(type.name)
-      elsif type.kind_of?(Pointer)
-        t = ":pointer"
-      else
-        raise "unknown return type: #{type}"
-      end
-      p = if params
-        params.collect { |par|
-          if par.type.kind_of?(Pointer)
-            if par.type.type.respond_to?(:name) &&
-              $all_struct_names.include?(par.type.type.name)
-              "#{to_class_name(par.type.type.name)}.ptr"
-            else
-              ":pointer"
-            end
-          else
-            to_ffi_name(par.type.name)
-          end
-        }
-      else
-        []
-      end
-      [t, p]
-    end
-  end
-end
