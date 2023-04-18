@@ -110,6 +110,8 @@ CUDA_MODEL = \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
 	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/yaml_ast_lttng.rb \
+	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
@@ -119,6 +121,8 @@ CUDART_MODEL = \
 	$(ML_CUDART_FILES) \
 	$(CUDART_EXTRACTED) \
 	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/yaml_ast_lttng.rb \
+	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb
 
 cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
@@ -314,7 +318,7 @@ libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_MODEL) cuda_babeltrace_model.yaml
+babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(srcdir)/../utils/gen_library_base.rb $(CUDA_MODEL) cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CUDA_BINDINGS = \

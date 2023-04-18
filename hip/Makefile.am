@@ -208,6 +208,8 @@ HIP_MODEL = \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
 	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/yaml_ast_lttng.rb \
+	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb \
 	hip.h.include
 
@@ -342,7 +344,7 @@ libBabeltraceHIP_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(HIP_MODEL) hip_babeltrace_model.yaml
+babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(srcdir)/../utils/gen_library_base.rb $(HIP_MODEL) hip_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 HIP_BINDINGS = \

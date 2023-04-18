@@ -84,6 +84,8 @@ ZE_MODEL = \
 	$(ML_FILES) \
 	$(ZE_EXTRACTED) \
 	$(srcdir)/../utils/yaml_ast.rb \
+	$(srcdir)/../utils/yaml_ast_lttng.rb \
+	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb
 
 ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
@@ -193,6 +195,7 @@ install-data-hook::
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 ZE_LIB_GEN = \
+	$(srcdir)/../utils/gen_library_base.rb \
 	$(srcdir)/gen_ze_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
