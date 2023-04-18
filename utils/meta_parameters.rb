@@ -214,10 +214,13 @@ class ArrayMetaParameter < MetaParameter
     raise "Invalid parameter: #{size} for #{command.name}!" unless s
     if s.type.kind_of?(YAMLCAst::Pointer)
       checks = check_for_null("#{size}") + check_for_null("#{name}")
-      sz = sanitize_expression("*#{size}", checks)
-      st = "#{s.type.type}"
+      size = "*#{size}"
+      size = "(#{size} < 0 ? 0 : (uint#{INT_SIZE_MAP["#{s.type.type}"]*8}_t)#{size})"if INT_SIGN_MAP["#{s.type.type}"]
+      sz = sanitize_expression("#{size}", checks)
+      st = "#{s.type}"
     else
       checks = check_for_null("#{name}")
+      size = "(#{size} < 0 ? 0 : (uint#{INT_SIZE_MAP["#{s.type}"]*8}_t)#{size})"if INT_SIGN_MAP["#{s.type}"]
       sz = sanitize_expression("#{size}", checks)
       st = "#{s.type}"
     end
