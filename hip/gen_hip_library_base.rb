@@ -13,10 +13,9 @@ $all_bitfield_names = []
 $all_struct_names = []
 $all_union_names = []
 
-$objects = $all_types.select { |t|
-  t.type.kind_of?(YAMLCAst::Pointer) &&
-  t.type.type.kind_of?(YAMLCAst::Struct)
-}.collect { |t| t.name }
+$objects = $all_types.filter_map { |t|
+  t.name if t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct)
+}
 $objects.push "hipGraphicsResource_t"
 
 $all_types.each { |t|
