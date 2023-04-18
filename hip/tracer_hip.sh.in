@@ -76,7 +76,7 @@ then
   LTTNG_UST_HIP_LIBAMDHIP64=$(whichlib64_head libamdhip64.so)
   if [ -n "$LTTNG_UST_HIP_LIBAMDHIP64" ]
   then
-    export LTTNG_UST_HIP_LIBAMDHIP64="$LTTNG_UST_HIP_LIBHIP"
+    export LTTNG_UST_HIP_LIBAMDHIP64="$LTTNG_UST_HIP_LIBAMDHIP64"
     export LD_LIBRARY_PATH=$pkglibdir/hip:$LD_LIBRARY_PATH
   fi
 else
