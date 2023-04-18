@@ -85,13 +85,12 @@ def get_fields_types_name(c, dir)
 end
 
 event_classes = 
-[[:lttng_ust_hip, $hip_commands]
-].collect { |provider, commands|
-  commands.collect { |c|
-    [gen_event_bt_model(provider, c, :start),
-    gen_event_bt_model(provider, c, :stop)]
-  }
-}.flatten(2)
+  [[:lttng_ust_hip, $hip_commands]].collect { |provider, commands|
+    commands.collect { |c|
+      [gen_event_bt_model(provider, c, :start),
+      gen_event_bt_model(provider, c, :stop)]
+    }
+  }.flatten(2)
 
 hip_events = YAML::load_file(File.join(SRC_DIR,"hip_events.yaml"))
 event_classes += hip_events.collect { |provider, es|
