@@ -30,7 +30,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: gem install --user-install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi
+      - run: gem install --user-install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.4.tar.bz2
         if: steps.babeltrace2.outputs.cache-hit != 'true'
