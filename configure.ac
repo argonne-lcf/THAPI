@@ -30,6 +30,10 @@ if test -z "$ERB"; then
   AC_CHECK_PROG(ERB,[erb],[erb],[no])
   test "$ERB" == "no" && AC_MSG_ERROR([Required program 'erb' not found.])
 fi
+if test -z "$METABABEL"; then
+  AC_CHECK_PROG(METABABEL,[metababel],[metababel],[no])
+  test "$METABABEL" == "no" && AC_MSG_ERROR([Required program 'metababel' not found.])
+fi
 if test -z "$LTTNG_GEN_TP"; then
   AC_CHECK_PROG(LTTNG_GEN_TP,[lttng-gen-tp],[lttng-gen-tp],[no])
   test "$LTTNG_GEN_TP" == "no" && AC_MSG_ERROR([Required program 'lttng-gen-tp' not found.])
@@ -65,6 +69,7 @@ PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
+AX_RUBY_EXTENSION([metababel], [yes])
 
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stddef.h stdint.h stdlib.h string.h unistd.h])
