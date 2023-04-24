@@ -102,10 +102,7 @@ thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join("@prefix@", "lib"))
 interval_plugins = thapi_plugins.filter_map do |plugin|
   plugin.get_filter_component_class_by_name('interval') if $options[:backends].include?(plugin.name.chomp('interval'))
 end
-# Only one, but for generality return an array
-sink_plugin = thapi_plugins.filter_map do |plugin|
-  plugin.get_sink_component_class_by_name(command) if plugin.name == 'xprof'
-end.first
+
 
 # Fix segfault
 ARGV.uniq!
@@ -176,6 +173,12 @@ serial_comps =
     comp_intervals = interval_plugins.map.with_index do |comp, i|
       graph.add_component(comp, "interval_#{i}")
     end
+
+    # Only one, but for generality return an array
+    sink_plugin = thapi_plugins.filter_map do |plugin|
+      plugin.get_sink_component_class_by_name(command) if plugin.name == 'tally'
+    end.first
+
     comp_tally = graph.add_component(sink_plugin, 'tally',
                                      params: $options_tally.transform_values { |_, v| v } )
     [comp_intervals, comp_tally]
@@ -183,6 +186,12 @@ serial_comps =
     comp_intervals = interval_plugins.map.with_index do |comp, i|
       graph.add_component(comp, "interval_#{i}")
     end
+
+    # Only one, but for generality return an array
+    sink_plugin = thapi_plugins.filter_map do |plugin|
+      plugin.get_sink_component_class_by_name(command) if plugin.name == 'timeline'
+    end.first
+
     comp_timeline = graph.add_component(sink_plugin, 'timeline')
     [comp_intervals, comp_timeline]
   end
