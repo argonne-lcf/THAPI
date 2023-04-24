@@ -3,8 +3,8 @@
 /* Mandatory */
 BT_PLUGIN_MODULE();
 
-/* Define the `xprof` plugin */
-BT_PLUGIN(xprof);
+/* Define the `timeline` plugin */
+BT_PLUGIN(timeline);
 
 //~ ~ ~
 // Sink Timeline
