@@ -3,8 +3,8 @@
 /* Mandatory */
 BT_PLUGIN_MODULE();
 
-/* Define the `xprof` plugin */
-BT_PLUGIN(xprof);
+/* Define the `tally` plugin */
+BT_PLUGIN(tally);
 
 //~ ~ ~
 // Sink Tally
