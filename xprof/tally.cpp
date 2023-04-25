@@ -1,4 +1,4 @@
-#include "tally.h"
+#include "btx_tally.h"
 #include "tally.hpp"
 #include "xprof_utils.hpp" //Typedef and hashtuple
 

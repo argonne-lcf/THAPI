@@ -42,7 +42,7 @@ libXTally_la_SOURCES = \
 	btx_tally.c \
 	tally.hpp \
 	tally_utils.hpp \
-	tally.h \
+	btx_tally.h \
 	tally.cpp \
 	my_demangle.c \
 	my_demangle.h \
