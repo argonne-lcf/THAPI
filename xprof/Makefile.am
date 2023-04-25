@@ -26,35 +26,46 @@ BUILT_SOURCES = \
 	perfetto_prunned.pb.cc
 
 # Library to be packaged
-lib_LTLIBRARIES = libXProf.la
+lib_LTLIBRARIES = libXTally.la libXTimeline.la
 
 # File generated but not distributed
-nodist_libXProf_la_SOURCES = \
+nodist_libXTally_la_SOURCES = \
+	xprof_utils.hpp
+
+nodist_libXTimeline_la_SOURCES = \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
 # File generated
-libXProf_la_SOURCES = \
-	xprof.c \
-	tally.hpp \
+libXTally_la_SOURCES = \
+	btx_tally.c \
+	btx_tally.h \
 	tally_utils.hpp \
-	tally.h \
+	tally.hpp \
 	tally.cpp \
-	timeline.hpp \
-	timeline.h \
-	timeline.cpp \
 	my_demangle.c \
 	my_demangle.h \
 	$(top_srcdir)/utils/include/json.hpp
 
+libXTimeline_la_SOURCES = \
+	btx_timeline.c \
+	btx_timeline.h \
+	timeline.hpp \
+	timeline.cpp
+
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
-libXProf_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libXProf_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libXProf_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
-libXProf_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
+libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
+libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
