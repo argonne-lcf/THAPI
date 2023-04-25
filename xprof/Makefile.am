@@ -50,8 +50,8 @@ libXTally_la_SOURCES = \
 
 libXTimeline_la_SOURCES = \
 	btx_timeline.c \
+	btx_timeline.h \
 	timeline.hpp \
-	timeline.h \
 	timeline.cpp
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
