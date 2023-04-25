@@ -1,5 +1,6 @@
 #include <babeltrace2/babeltrace.h>
 #include "btx_tally.h"
+
 /* Mandatory */
 BT_PLUGIN_MODULE();
 

@@ -40,9 +40,9 @@ nodist_libXTimeline_la_SOURCES = \
 # File generated
 libXTally_la_SOURCES = \
 	btx_tally.c \
-	tally.hpp \
-	tally_utils.hpp \
 	btx_tally.h \
+	tally_utils.hpp \
+	tally.hpp \
 	tally.cpp \
 	my_demangle.c \
 	my_demangle.h \

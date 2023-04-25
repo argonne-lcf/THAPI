@@ -1,5 +1,6 @@
 #include <babeltrace2/babeltrace.h>
-#include "timeline.h"
+#include "btx_timeline.h"
+
 /* Mandatory */
 BT_PLUGIN_MODULE();
 
