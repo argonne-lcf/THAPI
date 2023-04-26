@@ -112,6 +112,7 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	interval_model.yaml \
+	btx_timeline_upstream_model.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto
