@@ -21,3 +21,5 @@ struct timeline_dispatch {
 
     perfetto_pruned::Trace trace;
 };
+
+typedef struct timeline_dispatch timeline_dispatch_t;
