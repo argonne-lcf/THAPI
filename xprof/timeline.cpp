@@ -1,13 +1,32 @@
 #include <metababel/metababel.h>
 
-#include "timeline.hpp"
 #include "xprof_utils.hpp" // typedef
 #include <fstream>
 #include <iomanip>  // set precision
 #include <iostream> // stdcout
 #include <stack>
+#include <unordered_map>
+#include <utility> // pair
 
 #include "perfetto_prunned.pb.h"
+
+
+typedef uint64_t perfetto_uuid_t;
+typedef uint64_t timestamp_t;
+
+/* Sink component's private data */
+struct timeline_dispatch {
+    bt_message_iterator *message_iterator;
+    // Perfetto
+    std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
+    std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
+    std::map<perfetto_uuid_t, std::map<timestamp_t,perfetto_uuid_t>> parents2tracks;
+    std::map<perfetto_uuid_t, std::stack<timestamp_t>>  uuid2stack;
+
+    perfetto_pruned::Trace trace;
+};
+
+typedef struct timeline_dispatch timeline_dispatch_t;
 
 static perfetto_uuid_t gen_perfetto_uuid() {
   // Start at one, Look like UUID 0 is special
@@ -15,7 +34,7 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   return uuid++;
 }
 
-static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
+static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
                             timestamp_t begin, std::string name) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(begin);
@@ -26,7 +45,7 @@ static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t 
   track_event->set_track_uuid(uuid);
 }
 
-static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid, uint64_t end) {
+static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10);
   packet->set_timestamp(end);
@@ -35,7 +54,7 @@ static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uu
   track_event->set_track_uuid(uuid);
 }
 
-static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::string hostname,
+static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::string hostname,
                                        uint64_t process_id, uint64_t thread_id,
                                        thapi_device_id did = 0, thapi_device_id sdid = 0) {
 
@@ -113,7 +132,7 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
   return parent_uuid;
 }
 
-static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
+static void add_event_cpu(timeline_dispatch_t *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, std::string name, uint64_t begin,
                           uint64_t dur) {
   // Assume perfecly nessted
@@ -130,7 +149,7 @@ static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostna
   s.push(end);
 }
 
-static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostname,
+static void add_event_gpu(timeline_dispatch_t *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, thapi_device_id did,
                           thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur) {
   // This function Assume non perfecly nested
@@ -201,7 +220,7 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data){
     std::cout << "Perfetto trace saved: " << path << std::endl;
   google::protobuf::ShutdownProtobufLibrary();
 
-  free(dispatch);
+  delete dispatch;
 }
 
 static void lttng_host_usr_callback(

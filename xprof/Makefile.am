@@ -62,7 +62,6 @@ libXTally_la_SOURCES = \
 	$(top_srcdir)/utils/include/json.hpp
 
 libXTimeline_la_SOURCES = \
-	timeline.hpp \
 	timeline.cpp
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
