@@ -1,12 +1,32 @@
-#include "btx_timeline.h"
-#include "timeline.hpp"
+#include <metababel/metababel.h>
+
 #include "xprof_utils.hpp" // typedef
 #include <fstream>
 #include <iomanip>  // set precision
 #include <iostream> // stdcout
 #include <stack>
+#include <unordered_map>
+#include <utility> // pair
 
 #include "perfetto_prunned.pb.h"
+
+
+typedef uint64_t perfetto_uuid_t;
+typedef uint64_t timestamp_t;
+
+/* Sink component's private data */
+struct timeline_dispatch {
+    bt_message_iterator *message_iterator;
+    // Perfetto
+    std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
+    std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
+    std::map<perfetto_uuid_t, std::map<timestamp_t,perfetto_uuid_t>> parents2tracks;
+    std::map<perfetto_uuid_t, std::stack<timestamp_t>>  uuid2stack;
+
+    perfetto_pruned::Trace trace;
+};
+
+typedef struct timeline_dispatch timeline_dispatch_t;
 
 static perfetto_uuid_t gen_perfetto_uuid() {
   // Start at one, Look like UUID 0 is special
@@ -14,7 +34,7 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   return uuid++;
 }
 
-static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
+static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
                             timestamp_t begin, std::string name) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(begin);
@@ -25,7 +45,7 @@ static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t 
   track_event->set_track_uuid(uuid);
 }
 
-static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid, uint64_t end) {
+static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10);
   packet->set_timestamp(end);
@@ -34,7 +54,7 @@ static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uu
   track_event->set_track_uuid(uuid);
 }
 
-static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::string hostname,
+static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::string hostname,
                                        uint64_t process_id, uint64_t thread_id,
                                        thapi_device_id did = 0, thapi_device_id sdid = 0) {
 
@@ -112,7 +132,7 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
   return parent_uuid;
 }
 
-static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
+static void add_event_cpu(timeline_dispatch_t *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, std::string name, uint64_t begin,
                           uint64_t dur) {
   // Assume perfecly nessted
@@ -129,7 +149,7 @@ static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostna
   s.push(end);
 }
 
-static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostname,
+static void add_event_gpu(timeline_dispatch_t *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, thapi_device_id did,
                           thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur) {
   // This function Assume non perfecly nested
@@ -170,137 +190,20 @@ static void add_event_gpu(struct timeline_dispatch *dispatch, std::string hostna
   add_event_end(dispatch, uuid, end);
 }
 
-bt_component_class_sink_consume_method_status
-timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
-  bt_component_class_sink_consume_method_status status =
-      BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
+void btx_initialize_usr_data(void *btx_handle, void **usr_data){
+  *usr_data = new timeline_dispatch_t;
 
-  // Internal datatrastruct to convern hostname process to Google trace format process
-  // https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview
+  auto *packet = ((timeline_dispatch_t *)(*usr_data))->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10);
+  packet->set_timestamp(0);
 
-  /* Retrieve our private data from the component's user data */
-  struct timeline_dispatch *dispatch = (timeline_dispatch *)bt_self_component_get_data(
-      bt_self_component_sink_as_self_component(self_component_sink));
-
-  /* Consume a batch of messages from the upstream message iterator */
-  bt_message_array_const messages;
-  uint64_t message_count;
-  bt_message_iterator_next_status next_status =
-      bt_message_iterator_next(dispatch->message_iterator, &messages, &message_count);
-
-  switch (next_status) {
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_END:
-    /* End of iteration: put the message iterator's reference */
-    bt_message_iterator_put_ref(dispatch->message_iterator);
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_END;
-    goto end;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_AGAIN;
-    goto end;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_MEMORY_ERROR:
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_MEMORY_ERROR;
-    goto end;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_ERROR:
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_ERROR;
-    goto end;
-  default:
-    break;
-  }
-
-  /* For each consumed message */
-  for (uint64_t i = 0; i < message_count; i++) {
-    const bt_message *message = messages[i];
-    if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
-      const bt_event *event = bt_message_event_borrow_event_const(message);
-      const bt_event_class *event_class = bt_event_borrow_class_const(event);
-      const char *class_name = bt_event_class_get_name(event_class);
-
-      auto dur_tuple0 =
-          std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                          (hostname_t) ""), // hostname
-                          std::make_tuple(1, &bt_field_integer_signed_get_value,
-                                          (process_id_t)0), // process
-                          std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                          (thread_id_t)0), // thread
-                          std::make_tuple(3, &bt_field_integer_unsigned_get_value, (uint64_t)0));
-
-      const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-      const auto & [ hostname, process_id, thread_id, ts ] =
-          thapi_bt2_getter(common_context_field, dur_tuple0);
-
-      const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
-
-      const bt_field *name_field =
-          bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
-      const std::string name = std::string{bt_field_string_get_value(name_field)};
-
-      const bt_field *dur_field =
-          bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-      const long dur = bt_field_integer_unsigned_get_value(dur_field);
-
-      if (std::string(class_name) == "lttng:host") {
-        add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur);
-      } else if (std::string(class_name) == "lttng:device") {
-
-        const bt_field *did_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-        const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
-
-        const bt_field *sdid_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
-        const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
-        add_event_gpu(dispatch, hostname, process_id, thread_id, did, sdid, name, ts, dur);
-      }
-    }
-    bt_message_put_ref(message);
-  }
-end:
-  return status;
+  auto *trace_packet_defaults = packet->mutable_trace_packet_defaults();
+  trace_packet_defaults->set_timestamp_clock_id(perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
+  packet->set_previous_packet_dropped(true);
 }
 
-/*
- * Initializes the sink component.
- */
-bt_component_class_initialize_method_status
-timeline_dispatch_initialize(bt_self_component_sink *self_component_sink,
-                             bt_self_component_sink_configuration *configuration,
-                             const bt_value *params, void *initialize_method_data) {
-  /* Allocate a private data structure */
-  struct timeline_dispatch *dispatch = new timeline_dispatch;
-
-  /* Set the component's user data to our private data structure */
-  bt_self_component_set_data(bt_self_component_sink_as_self_component(self_component_sink),
-                             dispatch);
-
-  /*
-   * Add an input port named `in` to the sink component.
-   *
-   * This is needed so that this sink component can be connected to a
-   * filter or a source component. With a connected upstream
-   * component, this sink component can create a message iterator
-   * to consume messages.
-   */
-  bt_self_component_sink_add_input_port(self_component_sink, "in", NULL, NULL);
-
-  {
-    auto *packet = dispatch->trace.add_packet();
-    packet->set_trusted_packet_sequence_id(10);
-    packet->set_timestamp(0);
-
-    auto *trace_packet_defaults = packet->mutable_trace_packet_defaults();
-    trace_packet_defaults->set_timestamp_clock_id(perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
-    packet->set_previous_packet_dropped(true);
-  }
-
-  return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
-}
-
-/*
- * Finalizes the sink component.
- */
-void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink) {
-  struct timeline_dispatch *dispatch = (timeline_dispatch *)bt_self_component_get_data(
-      bt_self_component_sink_as_self_component(self_component_sink));
+void btx_finalize_usr_data(void *btx_handle, void *usr_data){
+  timeline_dispatch_t *dispatch = (timeline_dispatch_t *)usr_data;
 
   for (auto & [ uuid, s ] : dispatch->uuid2stack) {
     while (!s.empty()) {
@@ -316,27 +219,33 @@ void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink) {
   else
     std::cout << "Perfetto trace saved: " << path << std::endl;
   google::protobuf::ShutdownProtobufLibrary();
+
+  delete dispatch;
 }
 
-/*
- * Called when the trace processing graph containing the sink component
- * is configured.
- *
- * This is where we can create our upstream message iterator.
- */
-bt_component_class_sink_graph_is_configured_method_status
-timeline_dispatch_graph_is_configured(bt_self_component_sink *self_component_sink) {
-  /* Retrieve our private data from the component's user data */
-  struct timeline_dispatch *dispatch = (timeline_dispatch *)bt_self_component_get_data(
-      bt_self_component_sink_as_self_component(self_component_sink));
+static void lttng_host_usr_callback(
+    void *btx_handle, void *usr_data,   const char* hostname,
+    int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend_id, const char* name,
+    uint64_t dur, bt_bool err
+)
+{
+  timeline_dispatch_t *dispatch = (timeline_dispatch_t *)usr_data;
+  add_event_cpu(dispatch, hostname, vpid, vtid, name, ts, dur);
+}
 
-  /* Borrow our unique port */
-  bt_self_component_port_input *in_port =
-      bt_self_component_sink_borrow_input_port_by_index(self_component_sink, 0);
+static void lttng_device_usr_callback(
+    void *btx_handle, void *usr_data, const char* hostname, int64_t vpid,
+    uint64_t vtid, int64_t ts, int64_t backend, const char* name, uint64_t dur, 
+    uint64_t did, uint64_t sdid, bt_bool err, const char* metadata
+)
+{
+  timeline_dispatch_t *dispatch = (timeline_dispatch_t *)usr_data;
+  add_event_gpu(dispatch, hostname, vpid, vtid, did, sdid, name, ts, dur);
+}
 
-  /* Create the uptream message iterator */
-  bt_message_iterator_create_from_sink_component(self_component_sink, in_port,
-                                                 &dispatch->message_iterator);
-
-  return BT_COMPONENT_CLASS_SINK_GRAPH_IS_CONFIGURED_METHOD_STATUS_OK;
+void btx_register_usr_callbacks(void *btx_handle) {
+  btx_register_callbacks_lttng_host(btx_handle, &lttng_host_usr_callback);
+  btx_register_callbacks_lttng_device(btx_handle, &lttng_device_usr_callback);
+  btx_register_callbacks_initialize_usr_data(btx_handle,&btx_initialize_usr_data);
+  btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 }

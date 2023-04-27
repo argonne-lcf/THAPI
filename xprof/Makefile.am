@@ -20,7 +20,19 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
+%/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml
+	$(METABABEL) -u $< -t SINK -o $* -p $* -c $*
+
+BTX_TIMELINE_GENERATED = \
+	btx_timeline/metababel/metababel.h \
+	btx_timeline/metababel/btx_component.h \
+	btx_timeline/metababel/btx_component.c \
+	btx_timeline/metababel/btx_upstream.h \
+	btx_timeline/metababel/btx_upstream.c \
+	btx_timeline/btx_main.c
+
 BUILT_SOURCES = \
+	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
@@ -33,6 +45,7 @@ nodist_libXTally_la_SOURCES = \
 	xprof_utils.hpp
 
 nodist_libXTimeline_la_SOURCES = \
+	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
@@ -49,9 +62,6 @@ libXTally_la_SOURCES = \
 	$(top_srcdir)/utils/include/json.hpp
 
 libXTimeline_la_SOURCES = \
-	btx_timeline.c \
-	btx_timeline.h \
-	timeline.hpp \
 	timeline.cpp
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
@@ -62,7 +72,7 @@ libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE
 libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_timeline
 libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
@@ -101,6 +111,7 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	interval_model.yaml \
+	btx_timeline_upstream_model.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto
@@ -110,4 +121,5 @@ CLEANFILES = \
 	xprof_utils.hpp \
 	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
-	perfetto_prunned.pb.cc
+	perfetto_prunned.pb.cc \
+	$(BTX_TIMELINE_GENERATED)
