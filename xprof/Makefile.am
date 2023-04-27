@@ -20,8 +20,16 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
-%/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml
-	$(METABABEL) -u $< -t SINK -o $* -p $* -c $*
+%/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml %_params.yaml
+	$(METABABEL) -u $< -t SINK -o $* -p $* -c $* --params $(word 2,$^)
+
+BTX_TALLY_GENERATED = \
+	btx_tally/metababel/metababel.h \
+	btx_tally/metababel/btx_component.h \
+	btx_tally/metababel/btx_component.c \
+	btx_tally/metababel/btx_upstream.h \
+	btx_tally/metababel/btx_upstream.c \
+	btx_tally/btx_main.c
 
 BTX_TIMELINE_GENERATED = \
 	btx_timeline/metababel/metababel.h \
@@ -32,6 +40,7 @@ BTX_TIMELINE_GENERATED = \
 	btx_timeline/btx_main.c
 
 BUILT_SOURCES = \
+	$(BTX_TALLY_GENERATED) \
 	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
@@ -42,9 +51,11 @@ lib_LTLIBRARIES = libXTally.la libXTimeline.la
 
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
+	$(BTX_TALLY_GENERATED) \
 	xprof_utils.hpp
 
 nodist_libXTimeline_la_SOURCES = \
+	$(BTX_TALLY_GENERATED) \
 	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
@@ -52,8 +63,6 @@ nodist_libXTimeline_la_SOURCES = \
 
 # File generated
 libXTally_la_SOURCES = \
-	btx_tally.c \
-	btx_tally.h \
 	tally_utils.hpp \
 	tally.hpp \
 	tally.cpp \
@@ -67,7 +76,7 @@ libXTimeline_la_SOURCES = \
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
-libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_tally
 libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -112,6 +121,9 @@ EXTRA_DIST = \
 	interval.h.erb \
 	interval_model.yaml \
 	btx_timeline_upstream_model.yaml \
+	btx_timeline_params.yaml \
+	btx_tally_upstream_model.yaml \
+	btx_tally_params.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto
@@ -122,4 +134,5 @@ CLEANFILES = \
 	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
-	$(BTX_TIMELINE_GENERATED)
+	$(BTX_TIMELINE_GENERATED) \
+	$(BTX_TALLY_GENERATED)

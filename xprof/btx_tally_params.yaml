@@ -1,0 +1,16 @@
+:type: map
+:entries:
+  - :name: display_compact
+    :type: bool
+  - :name: demangle_name
+    :type: bool
+  - :name: display_human
+    :type: bool
+    :default_value: BT_TRUE
+  - :name: display_metadata
+    :type: bool
+  - :name: display_name_max_size
+    :type: integer_unsigned
+    :default_value: 20
+  - :name: display_kernel_verbose
+    :type: bool

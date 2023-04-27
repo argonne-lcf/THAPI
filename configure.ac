@@ -11,7 +11,7 @@ AC_CONFIG_AUX_DIR([m4])
 AC_CONFIG_MACRO_DIR([m4])
 
 # automake should fail on any error
-AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.12 subdir-objects])
+AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability foreign 1.12 subdir-objects])
 AM_PROG_AR
 
 # check for libtool
