@@ -4,7 +4,7 @@
   :params:
     schemas: [interval_model.yaml]
     trace: interval_<%= namespace[/interval_(.*).dust/,1] %>.yaml
-- :plugin: sink.tally.tally
+- :plugin: sink.btx_tally.btx_tally
   :name: tally
   :params:
      display: compact
