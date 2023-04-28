@@ -253,7 +253,7 @@ class TallyCoreBase {
 public:
   TallyCoreBase() {}
 
-  TallyCoreBase(uint64_t _dur, bool _err) : duration{_dur}, error{_err} {
+  TallyCoreBase(uint64_t _dur, uint64_t _err) : duration{_dur}, error{_err} {
     count = 1;
     if (!error) {
       min = duration;

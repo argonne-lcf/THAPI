@@ -117,7 +117,7 @@ static void lttng_host_usr_callback(
     /* In callbacks, the user just  need to cast our API usr_data to his/her data structure */
     struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
 
-    TallyCoreTime a{dur, err};
+    TallyCoreTime a{dur, (uint64_t)err};
     const int level = backend_level[backend_id];
     data->host_backend_name[level].insert(backend_name[backend_id]);
     data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
@@ -136,7 +136,7 @@ static void lttng_device_usr_callback(
     const auto name_demangled = (data->demangle_name) ? f_demangle_name(name) : name;
     const auto name_with_metadata = (data->display_kernel_verbose && !strcmp(metadata, "")) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
-    TallyCoreTime a{dur, err};
+    TallyCoreTime a{dur, (uint64_t)err};
     data->device[hpt_device_function_name_t(hostname, vpid, vtid, did, sdid, name_with_metadata)] += a;
 
 }
