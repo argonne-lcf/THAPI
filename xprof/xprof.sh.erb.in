@@ -211,7 +211,8 @@ trace_and_summary() {
     if [ -n "$sample" ]; then
         export LTTNG_UST_SAMPLING=1
         lttng enable-channel --userspace nonblocking-channel
-        lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:* lttng_ust_ze_sampling:*
+        lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
+        lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_ze_sampling:*
     fi
 
 <% if languages.include?("omp") %>
