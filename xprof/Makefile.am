@@ -20,8 +20,12 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
+btx_tally_upstream_model.yaml btx_timeline_upstream_model.yaml: btx_interval_model.yaml
+	cp $< btx_timeline_upstream_model.yaml 
+	cp $< btx_tally_upstream_model.yaml 
+
 %/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml %_params.yaml
-	$(METABABEL) -u $< -t SINK -o $* -p $* -c $* --params $(word 2,$^)
+	$(METABABEL) -u $(builddir)/$*_upstream_model.yaml -t SINK -o $* -p $* -c $* --params $(srcdir)/$*_params.yaml
 
 BTX_TALLY_GENERATED = \
 	btx_tally/metababel/metababel.h \
@@ -55,8 +59,7 @@ nodist_libXTally_la_SOURCES = \
 	xprof_utils.hpp
 
 nodist_libXTimeline_la_SOURCES = \
-	$(BTX_TALLY_GENERATED) \
-	$(BTX_TIMELINE_GENERATED) \
+ 	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
@@ -120,10 +123,11 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	interval_model.yaml \
-	btx_timeline_upstream_model.yaml \
+	btx_interval_model.yaml \
+	btx_timeline_upstream_model.yaml 
 	btx_timeline_params.yaml \
-	btx_tally_upstream_model.yaml \
 	btx_tally_params.yaml \
+	btx_timeline_upstream_model.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto
