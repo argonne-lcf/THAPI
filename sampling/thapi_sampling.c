@@ -88,7 +88,7 @@ void * thapi_sampling_loop(void *args) {
 }
 
 static void thapi_sampling_heartbeat() {
-  do_tracepoint(lttng_ust_sampling, heartbeat);
+  do_tracepoint(lttng_ust_sampling, heartbeat, 16);
 }
 
 static void thapi_sampling_heartbeat2() {

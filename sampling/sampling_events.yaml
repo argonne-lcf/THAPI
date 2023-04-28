@@ -2,8 +2,10 @@
 lttng_ust_sampling:
   events:
   - name: heartbeat
-    args: []
-    fields: []
+    args:
+    - [uint64_t, foo]
+    fields:
+    - [ctf_integer, uint64_t, foo, foo]
   - name: heartbeat2
     args: []
     fields: []
