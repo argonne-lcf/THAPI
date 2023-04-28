@@ -21,10 +21,10 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
 btx_tally_upstream_model.yaml btx_timeline_upstream_model.yaml: btx_interval_model.yaml
-	cp $< $@
+	cp $< $(srcdir)/$@
 
 %/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml %_params.yaml
-	$(METABABEL) -u $(builddir)/$*_upstream_model.yaml -t SINK -o $* -p $* -c $* --params $(srcdir)/$*_params.yaml
+	$(METABABEL) -u $(srcdir)/$*_upstream_model.yaml -t SINK -o $* -p $* -c $* --params $(srcdir)/$*_params.yaml
 
 BTX_TALLY_GENERATED = \
 	btx_tally/metababel/metababel.h \
@@ -124,6 +124,7 @@ EXTRA_DIST = \
 	btx_interval_model.yaml \
 	interval_model.yaml \
 	btx_timeline_upstream_model.yaml \
+	btx_timeline_params.yaml \
 	btx_tally_upstream_model.yaml \
 	btx_tally_params.yaml \
 	$(TRACE_FILES) \
@@ -136,5 +137,7 @@ CLEANFILES = \
 	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
+	btx_timeline_upstream_model.yaml \
+	btx_tally_upstream_model.yaml \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED)
