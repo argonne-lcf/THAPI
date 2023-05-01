@@ -21,10 +21,10 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
 btx_tally_upstream_model.yaml btx_timeline_upstream_model.yaml: btx_interval_model.yaml
-	cp $< $(srcdir)/$@
+	cp $< $(builddir)/$@
 
 %/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml %_params.yaml
-	$(METABABEL) -u $(srcdir)/$*_upstream_model.yaml -t SINK -o $* -p $* -c $* --params $(srcdir)/$*_params.yaml
+	$(METABABEL) -u $(builddir)/$*_upstream_model.yaml -t SINK -o $* -p $* -c $* --params $(srcdir)/$*_params.yaml
 
 BTX_TALLY_GENERATED = \
 	btx_tally/metababel/metababel.h \
@@ -123,9 +123,7 @@ EXTRA_DIST = \
 	interval.h.erb \
 	btx_interval_model.yaml \
 	interval_model.yaml \
-	btx_timeline_upstream_model.yaml \
 	btx_timeline_params.yaml \
-	btx_tally_upstream_model.yaml \
 	btx_tally_params.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
