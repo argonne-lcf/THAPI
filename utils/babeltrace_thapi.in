@@ -176,7 +176,7 @@ serial_comps =
 
     # Only one, but for generality return an array
     sink_plugin = thapi_plugins.filter_map do |plugin|
-      plugin.get_sink_component_class_by_name(command) if plugin.name == 'tally'
+      plugin.get_sink_component_class_by_name('btx_tally') if plugin.name == 'btx_tally'
     end.first
 
     comp_tally = graph.add_component(sink_plugin, 'tally',
