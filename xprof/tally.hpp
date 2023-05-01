@@ -71,62 +71,21 @@ typedef std::string   hostname_t;
 typedef std::string   thapi_function_name;
 typedef uintptr_t     thapi_device_id;
 
-// Represent a device and a sub device
+// Represent a device and a sub device data.
 
-// TODO: Referenced in THAPI (opencl/clinterval_callbacks.hpp,utils/xprof_utils.hpp,opencl/clinterval_callbacks.cpp.erb), but not used in metababel, not sure if needed.
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
 typedef std::tuple<hostname_t, thapi_device_id> h_device_t;
-
-// TODO: Referenced in THAPI (ze/zeinterval_callbacks.hpp,ze/zeinterval_callbacks.cpp.erb,utils/xprof_utils.hpp) but not used in metababel, not sure if needed.
 typedef std::tuple<hostname_t, process_id_t> hp_t;
-
-// TDOD: Referenced in THAPI (cuda/cudainterval_callbacks.cpp.erb,ze/zeinterval_callbacks.hpp,opencl/clinterval_callbacks.hpp,ze/zeinterval_callbacks.cpp.erb,omp/ompinterval_callbacks.hpp,utils/xprof_utils.hpp)
-//! Identifies an entity in a parallel/distributed program that generates a message. 
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
-
-//! Identifies an specific host, process, thread using the api call "thapi_function_name" in a parallel/distributed program
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
 typedef std::tuple<thread_id_t, thapi_function_name> t_function_name_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id> hpt_dsd_t;
-
-//! Identifies an specific host, process, thread, device, sudevice, using the api call "thapi_function_name" in a parallel/distributed program.
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id, thapi_function_name> hpt_device_function_name_t;
-
-// TDOD: Referenced in THAPI (opencl/clinterval_callbacks.hpp, opencl/clinterval_callbacks.cpp.erb,ze/zeinterval_callbacks.hpp,xprof/tally.hpp,cuda/cudainterval_callbacks.hpp,cuda/cudainterval_callbacks.cpp.erb,utils/xprof_utils.hpp,xprof/tally.cpp,ze/zeinterval_callbacks.cpp.erb), but not used in metababel, not sure if needed.
-//! Identifies an specific host, process using a device  in a parallel/distributed program.
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
-
-// TODO: Referenced in THAPI (xprof/timeline.hpp,utils/xprof_utils.hpp) but not used in metababel, not sure if needed.
-//! Identifies an specific host, process, device an subdevice in a parallel/distributed program.
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-
-// TODO: Referenced in THAPI (opencl/clinterval_callbacks.hpp,utils/xprof_utils.hpp,opencl/clinterval_callbacks.cpp.erb) but not used in metababel, not sure if needed.
-//! Identifies the start time and duration (delta) of an API call in an applications. Used in the creation of intervals in the filter component .  
 typedef std::tuple<long,long> sd_t;
-
-// TDOD: 
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
-
-// Referenced in THAPI (opencl/clinterval_callbacks.hpp, cuda/cudainterval_callbacks.hpp, utils/xprof_utils.hpp, cuda/cudainterval_callbacks.cpp.erb, opencl/clinterval_callbacks.cpp.erb)  but not used in metababel, not sure if needed.
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-typedef std::tuple<thapi_function_name, thapi_device_id, thapi_device_id, long> fn_dsd_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-typedef std::tuple<thread_id_t, thapi_function_name, thapi_device_id, thapi_device_id, long> tfn_dsd_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-typedef std::tuple<thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> fnm_dsd_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> tfnm_dsd_ts_t;
 
 // NOTE: Required to generate a hash of a tuple, otherwhise, the operaton "data->host[level][entity_id] += interval;"
 // may fail since host[level] returns an unordered_map and this data structure does not know to hash a tuple.
@@ -432,13 +391,8 @@ private:
 //! callbacks calls, for instance commad line params that can modify the printing 
 //! behaviour.
 struct tally_dispatch {
-    bool display_compact;
-    bool demangle_name;
-    bool display_human;
-    bool display_metadata;
-    int  display_name_max_size;
-    bool display_kernel_verbose;
-    std::string display_message;
+    //! User params provided to the user component.
+    btx_params_t *params;
 
     //! Maps "level" with the names of the backends that appeared when processing host messages (lttng:host). 
     //! This information is separed by level. Refer to the "backend_level" array at the top of this 

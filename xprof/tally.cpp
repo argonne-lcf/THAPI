@@ -1,7 +1,5 @@
 #include "tally.hpp"
-#include <chrono>
 
-using namespace std::chrono;
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
     /* User allocates its own data structure */
@@ -12,13 +10,7 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
     struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
-
-    data->display_compact = usr_params->display_compact;
-    data->demangle_name = usr_params->demangle_name;
-    data->display_human = usr_params->display_human;
-    data->display_metadata = usr_params->display_metadata;
-    data->display_name_max_size = usr_params->display_name_max_size;
-    data->display_kernel_verbose = usr_params->display_kernel_verbose;
+    data->params = usr_params;
 }
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
@@ -27,13 +19,13 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
     
     /* User do some stuff with the saved data */
 
-    const int max_name_size = data->display_name_max_size;
+    const int max_name_size = data->params->display_name_max_size;
 
-    if (data->display_human) {
-        if (data->display_metadata)
+    if (data->params->display_human) {
+        if (data->params->display_metadata)
             print_metadata(data->metadata);
 
-        if (data->display_compact) {
+        if (data->params->display_compact) {
 
             for (const auto& [level,host]: data->host) {
                 std::string s = join_iterator(data->host_backend_name[level]);
@@ -76,10 +68,10 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
         nlohmann::json j;
         j["units"] = {{"time", "ns"}, {"size", "bytes"}};
         
-        if (data->display_metadata)
+        if (data->params->display_metadata)
             j["metadata"] = data->metadata;
         
-        if (data->display_compact) {
+        if (data->params->display_compact) {
             for (auto& [level,host]: data->host)
                 j["host"][level] = json_compact(host);
 
@@ -133,8 +125,8 @@ static void lttng_device_usr_callback(
     struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
 
     /* TODO: Should fucking cache this function */
-    const auto name_demangled = (data->demangle_name) ? f_demangle_name(name) : name;
-    const auto name_with_metadata = (data->display_kernel_verbose && !strcmp(metadata, "")) ? name_demangled + "[" + metadata + "]" : name_demangled;
+    const auto name_demangled = (data->params->demangle_name) ? f_demangle_name(name) : name;
+    const auto name_with_metadata = (data->params->display_kernel_verbose && !strcmp(metadata, "")) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
     TallyCoreTime a{dur, (uint64_t)err};
     data->device[hpt_device_function_name_t(hostname, vpid, vtid, did, sdid, name_with_metadata)] += a;
