@@ -1,6 +1,6 @@
 //! Backends' Messages Tabulation and Summarization (tally). 
 
-//! This file contains the infraestructure used to tabulate data 
+//! This file contains the infrastructure used to tabulate data 
 //! in messages that were generated from different backends.
 
 #include <metababel/metababel.h>
