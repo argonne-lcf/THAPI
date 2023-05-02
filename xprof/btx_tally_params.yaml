@@ -5,6 +5,7 @@
     :default_value: BT_TRUE
   - :name: demangle_name
     :type: bool
+    :default_value: BT_TRUE
   - :name: display_human
     :type: bool
     :default_value: BT_TRUE
@@ -15,3 +16,4 @@
     :default_value: 20
   - :name: display_kernel_verbose
     :type: bool
+    :default_value: BT_TRUE
