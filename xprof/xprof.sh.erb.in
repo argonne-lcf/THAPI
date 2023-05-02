@@ -349,21 +349,21 @@ trace_and_summary() {
 
 bt2_all() {
     # Note that the $@ are not quoted!
-    if [ -n "$trace" ]; then
+    if [ -n "${trace-}" ]; then
         $bindir/babeltrace_thapi --backend <%= languages %> -r -c $@
     fi
 
-    if [ -n "$timeline" ]; then
+    if [ -n "${timeline-}" ]; then
         $bindir/babeltrace_thapi timeline --backend <%= languages %> $@
     fi
 
-    if [ -z "$timeline" ] && [ -z "$trace" ]; then
+    if [ -z "${timeline-}" ] && [ -z "${trace-}" ]; then
         $bindir/babeltrace_thapi tally --backend <%= languages %> $bt_tally_argv -- $@
     fi
 }
 
 summary() {
-    if [ -n "$THAPI_LTTNG_O" ]; then
+    if [ -n "${THAPI_LTTNG_O-}" ]; then
         lttng_last_session=$THAPI_LTTNG_O
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
