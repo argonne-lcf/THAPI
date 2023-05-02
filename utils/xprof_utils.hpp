@@ -47,74 +47,27 @@ constexpr int backend_level[] = {
   0  // BACKEND_OMP
 };
 
-// TODO: Referenced in THAPI (utils/xprof_utils.hpp), but not used in metababel.
 typedef enum backend_e backend_t;
 
 // Datatypes represeting string classes (or messages) common data. 
-
 typedef intptr_t      process_id_t;
 typedef uintptr_t     thread_id_t;
 typedef std::string   hostname_t;
 typedef std::string   thapi_function_name;
 typedef uintptr_t     thapi_device_id;
 
-
 // Represent a device and a sub device
-
-// Referenced in THAPI (opencl/clinterval_callbacks.hpp,utils/xprof_utils.hpp,opencl/clinterval_callbacks.cpp.erb), but not used in metababel, not sure if needed.
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-// typedef std::tuple<hostname_t, thapi_device_id> h_device_t;
-
-// TODO: Referenced in THAPI (ze/zeinterval_callbacks.hpp,ze/zeinterval_callbacks.cpp.erb,utils/xprof_utils.hpp) but not used in metababel, not sure if needed.
 typedef std::tuple<hostname_t, process_id_t> hp_t;
-
-// TDOD: Referenced in THAPI (cuda/cudainterval_callbacks.cpp.erb,ze/zeinterval_callbacks.hpp,opencl/clinterval_callbacks.hpp,ze/zeinterval_callbacks.cpp.erb,omp/ompinterval_callbacks.hpp,utils/xprof_utils.hpp)
-//! Identifies an entity in a parallel/distributed program that generates a message. 
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
-
-//! Identifies an specific host, process, thread using the api call "thapi_function_name" in a parallel/distributed program
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
 typedef std::tuple<thread_id_t, thapi_function_name> t_function_name_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-// typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id> hpt_dsd_t;
-
-//! Identifies an specific host, process, thread, device, sudevice, using the api call "thapi_function_name" in a parallel/distributed program.
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id, thapi_function_name> hpt_device_function_name_t;
-
-// TDOD: Referenced in THAPI (opencl/clinterval_callbacks.hpp, opencl/clinterval_callbacks.cpp.erb,ze/zeinterval_callbacks.hpp,xprof/tally.hpp,cuda/cudainterval_callbacks.hpp,cuda/cudainterval_callbacks.cpp.erb,utils/xprof_utils.hpp,xprof/tally.cpp,ze/zeinterval_callbacks.cpp.erb), but not used in metababel, not sure if needed.
-//! Identifies an specific host, process using a device  in a parallel/distributed program.
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
-
-// TODO: Referenced in THAPI (xprof/timeline.hpp,utils/xprof_utils.hpp) but not used in metababel, not sure if needed.
-//! Identifies an specific host, process, device an subdevice in a parallel/distributed program.
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-
-// TODO: Referenced in THAPI (opencl/clinterval_callbacks.hpp,utils/xprof_utils.hpp,opencl/clinterval_callbacks.cpp.erb) but not used in metababel, not sure if needed.
-//! Identifies the start time and duration (delta) of an API call in an applications. Used in the creation of intervals in the filter component .  
 typedef std::tuple<long,long> sd_t;
-
-// TDOD: 
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
-
-// Referenced in THAPI (opencl/clinterval_callbacks.hpp, cuda/cudainterval_callbacks.hpp, utils/xprof_utils.hpp, cuda/cudainterval_callbacks.cpp.erb, opencl/clinterval_callbacks.cpp.erb)  but not used in metababel, not sure if needed.
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-// typedef std::tuple<thapi_function_name, thapi_device_id, thapi_device_id, long> fn_dsd_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-// typedef std::tuple<thread_id_t, thapi_function_name, thapi_device_id, thapi_device_id, long> tfn_dsd_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-// typedef std::tuple<thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> fnm_dsd_ts_t;
-
-// TODO: Not referenced in any other place of THAPI (babeltrace) neither metababel.
-// typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, thapi_device_id, long> tfnm_dsd_ts_t;
 
 // NOTE: Required to generate a hash of a tuple, otherwhise, the operaton "data->host[level][entity_id] += interval;"
 // may fail since host[level] returns an unordered_map and this data structure does not know to hash a tuple.
@@ -198,29 +151,3 @@ bt_message* create_device_name_message(const char* hostname, const process_id_t 
 bt_message* create_traffic_message(const char *hostname, const process_id_t, const thread_id_t,
                                    const char *name, const uint64_t size,
                                    bt_event_class*, bt_self_message_iterator*, bt_stream*, backend_t = BACKEND_UNKNOWN);
-
-
-//. Getter
-//
-//
-// Explanation of magic number
-// 0 == Idx
-// 1 == GetterFunction
-// 2 == Setting function
-// template<class T>
-// auto populate_tuple(const bt_field* payload_field, T t) {
-//   const bt_field *field = bt_field_structure_borrow_member_field_by_index_const(payload_field, std::get<0>(t));
-//   //Decltype return a reference
-//   return static_cast<typename std::remove_reference<decltype(std::get<2>(t))>::type>(std::get<1>(t)(field));
-// }
-
-// template<class ...T, size_t ...I>
-// auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a, std::index_sequence<I...>){
-//    return std::tuple{populate_tuple(payload_field, std::get<I>(a))...};
-// }
-
-// template<class ...T>
-// auto thapi_bt2_getter(const bt_field* payload_field, std::tuple<T...>& a){
-//    constexpr auto seq = std::make_index_sequence<sizeof...(T)>();
-//    return thapi_bt2_getter(payload_field,a,seq);
-// }
