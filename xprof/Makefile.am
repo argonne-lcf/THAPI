@@ -59,7 +59,7 @@ nodist_libXTally_la_SOURCES = \
 	xprof_utils.hpp
 
 nodist_libXTimeline_la_SOURCES = \
- 	$(BTX_TIMELINE_GENERATED) \
+	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc

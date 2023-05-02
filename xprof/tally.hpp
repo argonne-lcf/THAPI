@@ -89,34 +89,14 @@ public:
       duration = 0;
   }
 
-  //! Total exeuction time 
-  //! The sum of the durations of traces of an specific entity (host,proces,thread,api_call_name), 
-  // it is ("Time" in statistics)
   uint64_t duration{0};
-  
-  //! Accumulates the amount of errors found for an (host,pid,tid,api_call_name) entity.
   uint64_t error{0};
-
-  //! Minimum duration found among occurrences of the same (host,pid,tid,api_call_name) entity.
   uint64_t min{std::numeric_limits<uint64_t>::max()};
-
-  //! Maximum duration found among occurrences of the same (host,pid,tid,api_call_name) entity.
   uint64_t max{0};
-
-  //! Count the number of times an error is found for a given (host,pid,tid,api_call_name) entity.
   uint64_t count{0};
-
-  //! Percentage of the total execution time.
-  //! duration / app_total_execution_time, this is computed at the end, once we have collected 
-  //! the duratiin information of all the ocurrences of a given (host,pid,tid,api_call_name) entity.
   double duration_ratio{1.};
-
-  //! Average duration.
-  //! It is rougly duration / #of_sucessfull_calls, see "finalize" member function.
   double average{0};
 
-  // NOTE: Pure virtual function is needed if not we have an
-  //`symbol lookup error: ./ici/lib/libXProf.so: undefined symbol: _ZTI13TallyCoreBase`
   virtual const std::vector<std::string> to_string() = 0;
 
   const auto to_string_size() {
@@ -251,48 +231,6 @@ private:
   }
 };
 
-
-//! User data collection structure.
-//! It is used to collect interval messages data, once data is collected. 
-//! It is aggregated and tabulated for printing.
-//! This structure can hold data that the user needs to be present among different 
-//! callbacks calls, for instance commad line params that can modify the printing 
-//! behaviour.
-struct tally_dispatch {
-    //! User params provided to the user component.
-    btx_params_t *params;
-
-    //! Maps "level" with the names of the backends that appeared when processing host messages (lttng:host). 
-    //! This information is separed by level. Refer to the "backend_level" array at the top of this 
-    //! file to see which backends may appear on each level. 
-    std::map<unsigned,std::set<const char*>> host_backend_name;
-
-    //! Maps "level" with the duration data collected from host messages (lttng:host) for every (host,pid,tid,api_call_name) entity.
-    //! EXAMPLE: map{ 0 => umap{ tuple("iris",1287,2780,"ompt_target") => TallyCoreTime } }
-    std::map<unsigned,std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
-
-    //! Maps "level" with the duration data collected from device messages (lttng:device) for every (host,pid,tid,api_call_name) entity.
-    //! EXAMPLE: map{ 2 => umap{ tuple("iris",1287,2780,"zeMemoryCopy") => TallyCoreTime } }
-    std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
-
-    //! Maps "level" with the names of the backends appearing when processing traffic messages (lttng:traffic). 
-    //! This information is separed by level. Refer to the "backend_level" array at the top of this 
-    //! file to see which backends may appear on each level. 
-    std::map<unsigned,std::set<const char*>> traffic_backend_name;
-
-    //! Maps "level" with the duration data collected from traffic messages (lttng:traffic) for every (host,pid,tid,api_call_name) entity.
-    //! EXAMPLE: map{ 0 => umap{ tuple("iris",1287,2780,"ompt_target") => TallyCoreTime } }
-    std::map<unsigned,std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
-
-    //! Maps a "(host,pid,tid,device_id)" with the device name.
-    //! The device name is collected when processing data of "device_name" messaages (lttng:device_name). 
-    //! This assume that a process is attached to a device (with a given name), once the program execution starts, 
-    //! and this will not change during the execution of the program.
-    std::unordered_map<hp_device_t, std::string> device_name;
-
-    //! Collects thapi metadata appearing when processing "lttng_ust_thapi:metadata" messages.
-    std::vector<std::string> metadata;
-};
 
 //                  
 //   | | _|_ o |  _ 
@@ -448,13 +386,6 @@ template <class... T, class... T2, size_t... I>
 void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I...>) {
   (std::get<I>(s).insert(std::get<I>(t)), ...);
 }
-
-// NOTE: It seems this function is not doing anything, so lets see if 
-// it breacks something.
-// template <class... T, size_t... I>
-// void remove_neutral(std::tuple<std::set<T>...> &s, std::index_sequence<I...>) {
-//   (std::get<I>(s).erase (T{}), ...);
-// }
 
 //! Add the elements of the tuple "t" in the set elements "s".
 /*! This is used in the print_compact mode to know how many hosts, pids, tids, have been aggregated.
@@ -803,18 +734,4 @@ nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h)
     j.push_back(j2);
   }
   return j;
-}
-
-//
-// Metadata
-//
-//
-void print_metadata(std::vector<std::string> metadata) {
-  if (metadata.empty())
-    return;
-
-  std::cout << "Metadata" << std::endl;
-  std::cout << std::endl;
-  for (std::string value : metadata)
-    std::cout << value << std::endl;
 }
