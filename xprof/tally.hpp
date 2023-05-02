@@ -70,11 +70,11 @@ std::string to_string_with_precision(const T a_value, const std::string units, c
 //! Since the same entity can take place several times, i.e., a thread spawned from 
 //! a process running in a given host can call api_call_name several times, our 
 //! interest is to aggregate these durations in a single one per entity.
-//! In addition to the duration, othe data of interes is collected from different
-//! ocurrences of the same entity such as, what was the minumum and max durations
-//! among the ocurrences, the number of times an api_call_name happed for a given 
+//! In addition to the duration, other data of interest is collected from different
+//! occurrences of the same entity such as, what was the minumum and max durations
+//! among the occurrences, the number of times an api_call_name happened for a given
 // "htp" (host,pid,tid), and how many occurrences failed.
-//! Once the data of an entity is collected, when considering all its ocurrences,
+//! Once the data of an entity is collected, when considering all its occurrences,
 //! This helper calls facilitates aggregation of data by overloading += and + operators.
 class TallyCoreBase {
 public:
@@ -117,8 +117,8 @@ public:
   }
 
   //! Updates the average and duration ratio.
-  //! NOTE: This should happend once we have collected the information the duratiin information 
-  //! of all the ocurrences of a given (host,pid,tid,api_call_name) entity.
+  //! NOTE: This should happened once we have collected the information the duration information
+  //! of all the occurrences of a given (host,pid,tid,api_call_name) entity.
   void finalize(const TallyCoreBase &rhs) {
     average = ( count && count != error ) ? static_cast<double>(duration) / (count-error) : 0.;
     duration_ratio = static_cast<double>(duration) / rhs.duration;
@@ -135,7 +135,7 @@ public:
   }
 };
 
-//! Specifalization of TallyCoreBase for execution times.
+//! Specialization of TallyCoreBase for execution times.
 class TallyCoreTime : public TallyCoreBase {
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
@@ -154,7 +154,7 @@ public:
   }
 
 private:
-  //! Returns duration as a formated string with units.
+  //! Returns duration as a formatted string with units.
   template <typename T>
   std::string format_time(const T duration) {
     if (duration == std::numeric_limits<T>::max() || duration == T{0})
@@ -205,7 +205,7 @@ public:
 
 private:
 
-  //! Returns a data transfer size (duration) as a formated string with units.
+  //! Returns a data transfer size (duration) as a formatted string with units.
   template <typename T> std::string format_byte(const T duration) {
     const double PB = duration / 1e+15;
     if (PB >= 1.)
@@ -238,9 +238,9 @@ private:
 //  
 
 //! Join iterable items as string.
-//! \param iterable an iterable container (set, map, etc) whose iterms support string concantenation.
+//! \param iterable an iterable container (set, map, etc) whose items support string concatenation.
 //! \param delimiter :, ;, or other user specified delimiter.
-//! \return Returns a string where iterable's "items" are separed by "delimiter"
+//! \return Returns a string where iterable's "items" are separated by "delimiter"
 template <typename T>
 std::string join_iterator(const T& x, std::string delimiter = ",") {
     return std::accumulate( std::begin(x), std::end(x), std::string{},
@@ -295,7 +295,7 @@ EXAMPLE:
   std::index_sequence<0,1,2>
 
   Because the "sizeof...(Args) - 1", the index_sequence discarded the last index.
-  The created sequence is then pased to a helper that actually returns a new tuple
+  The created sequence is then passed to a helper that actually returns a new tuple
   containing the items in indexes 0,1,2.
 
 REFERENCE: 
@@ -387,6 +387,15 @@ void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I.
   (std::get<I>(s).insert(std::get<I>(t)), ...);
 }
 
+// NOTE: This function was placed for a reason, but we do not remember why.
+// We saw it apparently do nothing, but we are not sure if we got a special
+// case that needed this function treatment.
+// We prefer to kept it until test show everything is working properly.
+// template <class... T, size_t... I>
+// void remove_neutral(std::tuple<std::set<T>...> &s, std::index_sequence<I...>) {
+//   (std::get<I>(s).erase (T{}), ...);
+// }
+
 //! Add the elements of the tuple "t" in the set elements "s".
 /*! This is used in the print_compact mode to know how many hosts, pids, tids, have been aggregated.
 \param s tuple of sets.
@@ -415,9 +424,12 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
   for (auto &m : input)
     add_to_set(tuple_set, m.first, s);
 
-  // NOTE: It seems this function is not doing anything, so lets see if 
-  // it breacks something.
+  // NOTE: This function was placed for a reason, but we do not remember why.
+  // We saw it apparently do nothing, but we are not sure if we got a special
+  // case that needed this function treatment.
+  // We prefer to kept it until test show everything is working properly.
   // remove_neutral(tuple_set, s);
+
   return tuple_set;
 }
 

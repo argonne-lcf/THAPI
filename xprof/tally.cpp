@@ -5,14 +5,14 @@
 //! It is used to collect interval messages data, once data is collected. 
 //! It is aggregated and tabulated for printing.
 //! This structure can hold data that the user needs to be present among different 
-//! callbacks calls, for instance commad line params that can modify the printing 
+//! callbacks calls, for instance command line params that can modify the printing 
 //! behaviour.
-struct tally_dispatch {
+struct tally_dispatch_s {
     //! User params provided to the user component.
     btx_params_t *params;
 
     //! Maps "level" with the names of the backends that appeared when processing host messages (lttng:host). 
-    //! This information is separed by level. Refer to the "backend_level" array at the top of this 
+    //! This information is split by level. Refer to the "backend_level" array at the top of this 
     //! file to see which backends may appear on each level. 
     std::map<unsigned,std::set<const char*>> host_backend_name;
 
@@ -25,7 +25,7 @@ struct tally_dispatch {
     std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
 
     //! Maps "level" with the names of the backends appearing when processing traffic messages (lttng:traffic). 
-    //! This information is separed by level. Refer to the "backend_level" array at the top of this 
+    //! This information is split by level. Refer to the "backend_level" array at the top of this 
     //! file to see which backends may appear on each level. 
     std::map<unsigned,std::set<const char*>> traffic_backend_name;
 
@@ -34,7 +34,7 @@ struct tally_dispatch {
     std::map<unsigned,std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
     //! Maps a "(host,pid,tid,device_id)" with the device name.
-    //! The device name is collected when processing data of "device_name" messaages (lttng:device_name). 
+    //! The device name is collected when processing data of "device_name" messages (lttng:device_name). 
     //! This assume that a process is attached to a device (with a given name), once the program execution starts, 
     //! and this will not change during the execution of the program.
     std::unordered_map<hp_device_t, std::string> device_name;
@@ -42,6 +42,8 @@ struct tally_dispatch {
     //! Collects thapi metadata appearing when processing "lttng_ust_thapi:metadata" messages.
     std::vector<std::string> metadata;
 };
+
+typedef struct tally_dispatch_s tally_dispatch_t;
 
 void print_metadata(std::vector<std::string> metadata) {
   if (metadata.empty())
@@ -55,22 +57,18 @@ void print_metadata(std::vector<std::string> metadata) {
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
     /* User allocates its own data structure */
-    struct tally_dispatch *data = new struct tally_dispatch;
-    /* User makes our API usr_data to point to his/her data structure */
-    *usr_data = data;
+     *usr_data = new tally_dispatch_t;
 }
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
     data->params = usr_params;
 }
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
     /* User cast the API usr_data that was already initialized with his/her data */
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
     
-    /* User do some stuff with the saved data */
-
     const int max_name_size = data->params->display_name_max_size;
 
     if (data->params->display_human) {
@@ -158,8 +156,7 @@ static void lttng_host_usr_callback(
     uint64_t dur, bt_bool err
 ) 
 {
-    /* In callbacks, the user just  need to cast our API usr_data to his/her data structure */
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
 
     TallyCoreTime a{dur, (uint64_t)err};
     const int level = backend_level[backend_id];
@@ -173,10 +170,8 @@ static void lttng_device_usr_callback(
     uint64_t did, uint64_t sdid, bt_bool err, const char* metadata
 )
 {
-    /* In callbacks, the user just  need to cast our API usr_data to his/her data structure */
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
 
-    /* TODO: Should fucking cache this function */
     const auto name_demangled = (data->params->demangle_name) ? f_demangle_name(name) : name;
     const auto name_with_metadata = (data->params->display_kernel_verbose && !strcmp(metadata, "")) ? name_demangled + "[" + metadata + "]" : name_demangled;
 
@@ -191,8 +186,7 @@ static void lttng_traffic_usr_callback(
     const char* name, uint64_t size
 )
 {
-    /* In callbacks, the user just  need to cast our API usr_data to his/her data structure */
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
 
     TallyCoreByte a{(uint64_t)size, false};
     const int level = backend_level[backend];
@@ -205,8 +199,7 @@ static void lttng_device_name_usr_callback(
     uint64_t vtid, int64_t ts, int64_t backend, const char* name, uint64_t did
 )
 {
-    /* In callbacks, the user just  need to cast our API usr_data to his/her data structure */
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
 
     data->device_name[hp_device_t(hostname, vpid, did)] = name;
 }
@@ -216,8 +209,7 @@ static void lttng_thapi_metadata_usr_callback(
     uint64_t vtid, int64_t ts, int64_t backend, const char* metadata
 )
 {
-    /* In callbacks, the user just  need to cast our API usr_data to his/her data structure */
-    struct tally_dispatch *data = (struct tally_dispatch *) usr_data;
+    tally_dispatch_t *data = (tally_dispatch_t *) usr_data;
 
     data->metadata.push_back(metadata);
 }
