@@ -75,8 +75,8 @@ run_iff_local_master() {
 Option names are typically one to three words long, with hyphens to separate words %>
 
 display_help() {
-<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
-    echo "$(basename $0): a tracer / summarizer of OpenCL, L0, and CUDA driver calls"
+<% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
+    echo "$(basename $0): a tracer / summarizer of OpenCL, L0, CUDA, HIP, and OMPT driver calls"
 <% elsif languages.include?("omp") %>
     echo "$(basename $0): a tracer / summarizer of OMP calls"
 <% elsif languages.include?("cl") %>
@@ -85,6 +85,8 @@ display_help() {
     echo "$(basename $0): a tracer / summarizer of L0 calls"
 <% elsif languages.include?("cuda") %>
     echo "$(basename $0): a tracer / summarizer of CUDA calls"
+<% elsif languages.include?("hip") %>
+    echo "$(basename $0): a tracer / summarizer of HIP calls"
 <% end %>
     echo "Usage:"
     echo " $(basename $0) -h | --help "
@@ -104,6 +106,7 @@ display_help() {
     echo "  --metadata                Display metadata"
     echo "  --max-name-size <size>    Maximun size allowed for kernels names (default 80)"
     echo "  --traced-ranks <rank,...> Comma list separated of MPI rank to trace (default 0). You can use -1 to trace all ranks"
+    echo "  --clean-up                Clean lttng daemon, and internal lock file"
     echo "  -v, --version             Print the version string"
     echo "  -r, --replay    [path]    <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
     echo "                            If no arguments are provided, will use the latest trace available"
@@ -171,8 +174,14 @@ thapi_export() {
     set -u
 }
 
+cleanup() {
+    echo "Cleaning up lttng daemons and tmp folders..."
+    killall -9 --quiet lttng-sessiond lttng-consumerd lttng-relayd || true
+    rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
+    rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
+}
+
 enable_events_omp() {
-    thapi_export LTTNG_UST_OMP_INTEL 1
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*target*
 }
 
@@ -192,9 +201,6 @@ enable_events_cl() {
 }
 
 enable_events_ze() {
-    export LTTNG_UST_ZE_PROFILE=1
-    thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
-
     if [ $tracing_mode = "minimal" ]; then
         lttngq enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
@@ -219,7 +225,6 @@ enable_events_ze() {
 
 enable_events_cuda() {
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
-    export LTTNG_UST_CUDA_PROFILE=1
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 }
@@ -235,7 +240,7 @@ setup_lttng() {
 
     mkdir -p $LTTNG_HOME
     # Only local master call this
-    $quiet --daemonize || true
+    lttng-sessiond $quiet --daemonize || true
 
     local suffix=""
     if [ ${1:-""} = "--live" ]; then
@@ -285,15 +290,19 @@ preload_lib_tracers() {
     IFS=","
     if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS${PALS_RANKID:-0}$IFS" ]]; then
 <% if languages.include?("omp") %>
+    thapi_export LTTNG_UST_OMP_INTEL 1
     thapi_export OMP_TOOL_LIBRARIES  $libdir/libTracerOMPT.so
 <% end %>
 <% if languages.include?("cl") %>
 <%= print_loader_logic("cl","libOpenCL","libTracerOpenCL")%>
 <% end %>
 <% if languages.include?("ze") %>
+    export LTTNG_UST_ZE_PROFILE=1
+    thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
 <%= print_loader_logic("ze","libze_loader","libTracerZE")%>
 <% end %>
 <% if languages.include?("cuda") %>
+    export LTTNG_UST_CUDA_PROFILE=1
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
     fi
@@ -307,7 +316,7 @@ local_master_epilogue() {
         wait $BT_PID # Set setub_babeltrace_live
     fi
     global_barrier_epilogue
-    rm -rf -- $SHARED_LOCAL_FILESYSTEM
+    rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
 }
 
 
@@ -322,7 +331,7 @@ trace_epilogue() {
 
     # All the trace have been saved. We can now do the move
     if [ ${PALS_RANKID:-0} == 0 ]; then
-        rm -rf -- $SHARED_GLOBAL_FILESYSTEM
+        rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
         local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
@@ -407,7 +416,21 @@ setub_babeltrace_live() {
      --component=source.ctf.lttng-live \
      --params="inputs=[\"net://localhost/host/$(hostname)/THAPI_${PALS_NODEID:-0}\"],
              session-not-found-action=end" \
+<% if languages.include?("ze") %>
      --component=filter.zeinterval.interval \
+<% end %>
+<% if languages.include?("cl") %>
+     --component=filter.clinterval.interval \
+<% end %>
+<% if languages.include?("cuda") %>
+    --component=filter.cudainterval.interval \
+<% end %>
+<% if languages.include?("hip") %>
+     --component=filter.hipinterval.interval \
+<% end %>
+<% if languages.include?("omp") %>
+     --component=filter.ompinterval.interval \
+<% end %>
      --component=sink.tally.tally \
      --params="display=compact, \
                name=demangle, \
@@ -424,7 +447,7 @@ trace_epilogue_live() {
 
     # All the trace have been saved. We can now do the move
     if [ ${PALS_RANKID:-0} == 0 ]; then
-        rm -rf -- $SHARED_GLOBAL_FILESYSTEM
+        rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
         local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
@@ -468,6 +491,7 @@ bt_tally_argv=""
 traced_ranks=0
 asm=false
 replay=false
+cleanup=false
 
 while (( "$#" )); do
     case "$1" in
@@ -486,6 +510,7 @@ while (( "$#" )); do
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
         --max-name-size)        shift; bt_tally_argv+=" --display_name_max_size=$1"; shift ;;
         --mangle)               shift; bt_tally_argv+=" --mangling=mangle" ;;
+        --cleanup)              shift; cleanup=true ;;
         --debug)                shift; debug=true ;;
         --)                     shift; break ;;
         *)                      break  ;;
@@ -497,22 +522,27 @@ if [ $debug = true ]; then
     PS4="RankID ${PALS_RANKID:-0}: "
     set -x
 <% if languages.include?("ze") %>
-    #export LTTNG_UST_ZE_VERBOSE=1
+    export LTTNG_UST_ZE_VERBOSE=1
 <% end %>
 <% if languages.include?("cl") %>
-    #export LTTNG_UST_OPENCL_VERBOSE=1
+    export LTTNG_UST_OPENCL_VERBOSE=1
 <% end %>
 <% if languages.include?("cuda") %>
-    #export LTTNG_UST_CUDA_VERBOSE=1
+    export LTTNG_UST_CUDA_VERBOSE=1
 <% end %>
 <% if languages.include?("omp") %>
-    #export LTTNG_UST_OMP_VERBOSE=1
+    export LTTNG_UST_OMP_VERBOSE=1
 <% end %>
     #export LTTNG_UST_DEBUG=y
     #export LIBBABELTRACE2_INIT_LOG_LEVEL=WARNING
     #export BABELTRACE_CLI_LOG_LEVEL=WARNING
 else
     quiet="--quiet"
+fi
+
+if [ $cleanup = true ]; then
+    cleanup
+    exit
 fi
 
 if [ $asm = true ]; then
