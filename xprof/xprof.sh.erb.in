@@ -21,7 +21,7 @@ directory=language.downcase
             export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
         fi
     else
-            export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=$pkglibdir/#{directory}:$LD_LIBRARY_PATH
     fi
     export LD_PRELOAD=$libdir/#{libtracer}.so:$LD_PRELOAD
     set -u
@@ -510,7 +510,7 @@ while (( "$#" )); do
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
         --max-name-size)        shift; bt_tally_argv+=" --display_name_max_size=$1"; shift ;;
         --mangle)               shift; bt_tally_argv+=" --mangling=mangle" ;;
-        --cleanup)              shift; cleanup=true ;;
+        --clean-up)             shift; cleanup=true ;;
         --debug)                shift; debug=true ;;
         --)                     shift; break ;;
         *)                      break  ;;
