@@ -57,6 +57,7 @@ struct _ze_obj_h {
 struct _ze_obj_h *_ze_objs = NULL;
 pthread_mutex_t _ze_objs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*
 static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
   HASH_DEL(_ze_objs, o_h);
   if (o_h->obj_data && o_h->obj_data_free) {
@@ -64,6 +65,7 @@ static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
   }
   free(o_h);
 }
+*/
 
 #define FIND_ZE_OBJ(key, val) do { \
   pthread_mutex_lock(&_ze_objs_mutex); \
