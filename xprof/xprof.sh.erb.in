@@ -234,9 +234,8 @@ setup_lttng() {
 
 
     mkdir -p $LTTNG_HOME
-    # Only local master spown and then sync
-    run_iff_local_master lttng-sessiond $quiet --daemonize || true
-    local_barier daemonize
+    # Only local master call this
+    $quiet --daemonize || true
 
     local suffix=""
     if [ ${1:-""} = "--live" ]; then
