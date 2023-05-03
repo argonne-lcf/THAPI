@@ -98,7 +98,8 @@ display_help() {
     echo "  -l, --timeline            Dump the timeline"
     echo "  -j, --json                Summary will be printed as json"
     echo "  -m, --tracing-mode <mode> [minimal, default, full]"
-    echo "  --asm                     Dump in your current directory low level kernels informations (asm, isa, visa, ...)."
+    echo "  --asm                     Dump in your current directory low level kernels informations (asm, isa, visa, ...)"
+    echo "  --no-save                 Data will be processed on-the-fly"
     echo "  --mangle                  Use mangled name"
     echo "  --metadata                Display metadata"
     echo "  --max-name-size <size>    Maximun size allowed for kernels names (default 80)"
@@ -233,9 +234,10 @@ setup_lttng() {
 
 
     mkdir -p $LTTNG_HOME
-    # Only local master should spown and then sync,
-    # but easier to relly on lttng
-    lttng-sessiond $quiet --daemonize || true
+    # Only local master spown and then sync
+    run_iff_local_master lttng-sessiond $quiet --daemonize || true
+    local_barier daemonize
+
     local suffix=""
     if [ ${1:-""} = "--live" ]; then
         suffix="_live"
@@ -458,7 +460,7 @@ trace_and_summary_live() {
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
 tracing_mode="default"
-procesing_mode="on-the-fly"
+procesing_mode="save"
 
 [ "$#" -eq 0 ] && display_help
 
@@ -479,7 +481,7 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
-        --save)                 shift; procesing_mode="save" ;;
+        --no-save)              shift; procesing_mode="on-the-fly" ;;
         --traced-ranks)         shift; traced_ranks=$1; shift ;;
         --asm)                  shift; asm=true ;;
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
