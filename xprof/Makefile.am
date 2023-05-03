@@ -79,8 +79,8 @@ libXTimeline_la_SOURCES = \
 
 # Compiler flags
 libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_tally
-libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR)  -fno-fast-math $(BABELTRACE2_CFLAGS)
-libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR)  -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_timeline
