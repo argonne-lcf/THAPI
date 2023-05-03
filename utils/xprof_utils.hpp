@@ -5,11 +5,6 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
-//! Backends identifiers enum.
-
-//! Every backend reaching an lttng tracepoint, that subsequently 
-//! generates a message, is identified by a backend_id. This 
-//! identifies the backend that generated a given message.
 enum backend_e{ 
   BACKEND_UNKNOWN = 0,
   BACKEND_ZE = 1,
@@ -19,11 +14,6 @@ enum backend_e{
   BACKEND_OMP = 5 
 };
 
-//! Backends identifiers enum.
-
-//! Every backend reaching an lttng tracepoint, that subsequently 
-//! generates a message, is identified by a backend_id. This 
-//! identifies the backend that generated a given message.
 constexpr const char* backend_name[] = { 
   "BACKEND_UNKNOWN",
   "BACKEND_ZE",
@@ -33,11 +23,6 @@ constexpr const char* backend_name[] = {
   "BACKEND_OMP" 
 };
 
-//! Backends levels.
-
-//! "backend_level" maps a "backend_id" with its level of abstraction.
-//! For instance, OpenMP in level 0 run on top of LO/OpenCL/CUDA.
-//! This abstraction hierachy is represented by "backend_level".
 constexpr int backend_level[] = { 
   2, // BACKEND_UNKNOWN
   2, // BACKEND_ZE
