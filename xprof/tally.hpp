@@ -1,19 +1,18 @@
 #include <metababel/metababel.h>
 
-#include <map>
-#include <unordered_map>
-#include <tuple>
-#include <set>
-#include <vector>
 #include <cmath>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+#include <map>
 #include <regex>
+#include <set>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
 
 #include "json.hpp"
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
-
 
 //! Returns a demangled name.
 //! @param mangle_name function names
@@ -33,7 +32,7 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   if (demangle) {
     thapi_function_name s{demangle};
     if (!line_num.empty())
-       s += "_" + line_num;
+      s += "_" + line_num;
 
     /* We name the kernels after the type that gets passed in the first
        template parameter to the sycl_kernel function in order to prevent
@@ -51,7 +50,8 @@ thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
 //! @param a_value the value to be casted to string with the given decimal places.
 //! @param units units to be append at the end of the string.
 //! @param n number of decimal places required.
-//! REFERENCE: https://stackoverflow.com/questions/16605967/set-precision-of-stdto-string-when-converting-floating-point-values
+//! REFERENCE:
+//! https://stackoverflow.com/questions/16605967/set-precision-of-stdto-string-when-converting-floating-point-values
 template <typename T>
 std::string to_string_with_precision(const T a_value, const std::string units, const int n = 2) {
   std::ostringstream out;
@@ -62,8 +62,8 @@ std::string to_string_with_precision(const T a_value, const std::string units, c
 
 //! TallyCoreBase is a callbacks duration data collection and aggregation helper.
 //! It is of interest to collect data for every (host,pid,tid,api_call_name) entity.
-//! Since the same entity can take place several times, i.e., a thread spawned from 
-//! a process running in a given host can call api_call_name several times, our 
+//! Since the same entity can take place several times, i.e., a thread spawned from
+//! a process running in a given host can call api_call_name several times, our
 //! interest is to aggregate these durations in a single one per entity.
 //! In addition to the duration, other data of interest is collected from different
 //! occurrences of the same entity such as, what was the minumum and max durations
@@ -115,7 +115,7 @@ public:
   //! NOTE: This should happened once we have collected the information the duration information
   //! of all the occurrences of a given (host,pid,tid,api_call_name) entity.
   void finalize(const TallyCoreBase &rhs) {
-    average = ( count && count != error ) ? static_cast<double>(duration) / (count-error) : 0.;
+    average = (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;
     duration_ratio = static_cast<double>(duration) / rhs.duration;
   }
 
@@ -138,22 +138,20 @@ public:
   using TallyCoreBase::TallyCoreBase;
   virtual const std::vector<std::string> to_string() {
     return std::vector<std::string>{
-      format_time(duration),
-      std::isnan(duration_ratio) ? "" : to_string_with_precision(100. * duration_ratio, "%"),
-      to_string_with_precision(count, "", 0),
-      format_time(average),
-      format_time(min),
-      format_time(max),
-      to_string_with_precision(error, "", 0)
-    };
+        format_time(duration),
+        std::isnan(duration_ratio) ? "" : to_string_with_precision(100. * duration_ratio, "%"),
+        to_string_with_precision(count, "", 0),
+        format_time(average),
+        format_time(min),
+        format_time(max),
+        to_string_with_precision(error, "", 0)};
   }
 
 private:
   //! Returns duration as a formatted string with units.
-  template <typename T>
-  std::string format_time(const T duration) {
+  template <typename T> std::string format_time(const T duration) {
     if (duration == std::numeric_limits<T>::max() || duration == T{0})
-        return "";
+      return "";
 
     const double h = duration / 3.6e+12;
     if (h >= 1.)
@@ -187,19 +185,16 @@ public:
 
   using TallyCoreBase::TallyCoreBase;
   virtual const std::vector<std::string> to_string() {
-    return std::vector<std::string>{
-      format_byte(duration),
-      to_string_with_precision(100. * duration_ratio, "%"),
-      to_string_with_precision(count, "", 0),
-      format_byte(average),
-      format_byte(min),
-      format_byte(max),
-      to_string_with_precision(error, "", 0)
-    };
+    return std::vector<std::string>{format_byte(duration),
+                                    to_string_with_precision(100. * duration_ratio, "%"),
+                                    to_string_with_precision(count, "", 0),
+                                    format_byte(average),
+                                    format_byte(min),
+                                    format_byte(max),
+                                    to_string_with_precision(error, "", 0)};
   }
 
 private:
-
   //! Returns a data transfer size (duration) as a formatted string with units.
   template <typename T> std::string format_byte(const T duration) {
     const double PB = duration / 1e+15;
@@ -226,29 +221,26 @@ private:
   }
 };
 
-
-//                  
-//   | | _|_ o |  _ 
-//   |_|  |_ | | _> 
-//  
+//
+//   | | _|_ o |  _
+//   |_|  |_ | | _>
+//
 
 //! Join iterable items as string.
 //! \param iterable an iterable container (set, map, etc) whose items support string concatenation.
 //! \param delimiter :, ;, or other user specified delimiter.
 //! \return Returns a string where iterable's "items" are separated by "delimiter"
-template <typename T>
-std::string join_iterator(const T& x, std::string delimiter = ",") {
-    return std::accumulate( std::begin(x), std::end(x), std::string{},
-                            [&delimiter](const std::string& a, const std::string &b ) {
-                                  return a.empty() ? b: a + delimiter + b; } );
+template <typename T> std::string join_iterator(const T &x, std::string delimiter = ",") {
+  return std::accumulate(std::begin(x), std::end(x), std::string{},
+                         [&delimiter](const std::string &a, const std::string &b) {
+                           return a.empty() ? b : a + delimiter + b;
+                         });
 }
-
 
 //
 //    /\   _   _  ._ _   _   _. _|_ o  _  ._
 //   /--\ (_| (_| | (/_ (_| (_|  |_ | (_) | |
 //         _|  _|        _|
-
 
 //! Remove the last element of a tuple. (helper)
 /*!
@@ -260,11 +252,11 @@ EXAMPLE:
 
     It unfolds the expression "std::get<Is>(tp)..." according to Is.
     So it becomes, std::get<0>(tp), std::get<1>(tp), std::get<2>(tp).
-    Then the final expression becomes 
-    
+    Then the final expression becomes
+
     "std::tuple{std::get<0>(tp), std::get<1>(tp), std::get<2>(tp)};"
 
-REFERENCE: 
+REFERENCE:
 https://devblogs.microsoft.com/oldnewthing/20200623-00/?p=103901
 
 NOTE: Look like it may have some problem, but i was not smart enough
@@ -293,12 +285,11 @@ EXAMPLE:
   The created sequence is then passed to a helper that actually returns a new tuple
   containing the items in indexes 0,1,2.
 
-REFERENCE: 
+REFERENCE:
 https://devblogs.microsoft.com/oldnewthing/20200623-00/?p=103901
 
 */
-template <class... Args> 
-auto make_tuple_cuted(std::tuple<Args...> tp) {
+template <class... Args> auto make_tuple_cuted(std::tuple<Args...> tp) {
   return make_tuple_cuted(tp, std::make_index_sequence<sizeof...(Args) - 1>{});
 }
 
@@ -307,12 +298,13 @@ auto make_tuple_cuted(std::tuple<Args...> tp) {
 \param m (std::unordered_map).
 \return Returns unordered map with data aggregated by (host,pid,tid)
     in the first level, and aggregated by api_call_name in the second level.
- 
+
 EXAMPLE:
     input   umap{ ("iris01",232,789,"getDeviceInfo") : CoreTime }
-    output  umap{ ("iris01",232,789) : umap{ "getDeviceInfio" : CoreTime } 
+    output  umap{ ("iris01",232,789) : umap{ "getDeviceInfio" : CoreTime }
 */
-template <typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, class... T,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 auto aggregate_nested(std::unordered_map<std::tuple<T...>, TC> &m) {
 
   // New type for a tuple without the last element.
@@ -332,39 +324,41 @@ auto aggregate_nested(std::unordered_map<std::tuple<T...>, TC> &m) {
 //! Aggregate data by thapi_function_name.
 /*! This is used eventually to print in compact mode, i.e., statistics per thapi_function_name.
 \param m (std::unordered_map).
-\return Returns unordered map with data aggregated by thapi_function_name. 
+\return Returns unordered map with data aggregated by thapi_function_name.
 EXAMPLE:
-    input   umap{ 
+    input   umap{
                   ("iris01",232,789,"getDeviceInfo") : CoreTime,
-                  ("iris02",123,890,"getDeviceInfo") : CoreTime 
+                  ("iris02",123,890,"getDeviceInfo") : CoreTime
             }
-    output  umap{ "getDeviceInfio" : CoreTime } 
+    output  umap{ "getDeviceInfio" : CoreTime }
 */
-template <typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, class... T,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 auto aggregate_by_name(std::unordered_map<std::tuple<T...>, TC> &m) {
   std::unordered_map<thapi_function_name, TC> aggregated{};
-  
+
   for (auto const &[key, val] : m)
     // use the thapi_function_name as the key.
     // thapi_function_name is the last element in the tuple "key".
     aggregated[std::get<sizeof...(T) - 1>(key)] += val;
-  
+
   return aggregated;
 }
 
 //! Add the elements of the tuple "t" in the set elements "s".
-/*! 
+/*!
 \param s tuple of sets.
 \param t hpt_function_name_t (tuple)
 \param index sequence
 
 EXAMPLE:
-  input  
-    tuple{ set {}, set{}, set{}, set{} }, tuple{"iris01",232,789,"getDeviceInfo"}, std::index_sequence<0,1,2,3>
-  output (update first param by reference) 
-    tuple{ set {"iris01"}, set{232}, set{789}, set{"getDeviceInfo"} }
+  input
+    tuple{ set {}, set{}, set{}, set{} }, tuple{"iris01",232,789,"getDeviceInfo"},
+std::index_sequence<0,1,2,3> output (update first param by reference) tuple{ set {"iris01"},
+set{232}, set{789}, set{"getDeviceInfo"} }
 
-  The index sequence used as argument "std::index_sequence<0,1,2,3>" enables the following unfolding:
+  The index sequence used as argument "std::index_sequence<0,1,2,3>" enables the following
+unfolding:
 
   (
     std::get<0>(s).insert(std::get<0>(t)),
@@ -373,8 +367,8 @@ EXAMPLE:
     std::get<3>(s).insert(std::get<3>(t))
   );
 
-  which adds every element of the tuple to its corresponding set, this updating the tuple of sets params
-  provided by reference.
+  which adds every element of the tuple to its corresponding set, this updating the tuple of sets
+params provided by reference.
 
 */
 template <class... T, class... T2, size_t... I>
@@ -396,15 +390,16 @@ void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I.
 \param s tuple of sets.
 \param t hpt_function_name_t (tuple)
 \param index sequence
-\return Returns a tuple of sets with unique hosts names, pids, tids, and api call function names found.
+\return Returns a tuple of sets with unique hosts names, pids, tids, and api call function names
+found.
 
 EXAMPLE:
-  input   umap{ 
+  input   umap{
                 ("iris01",232,789,"getDeviceInfo") : CoreTime,
                 ("iris02",123,890,"getDeviceInfo") : CoreTime,
-                ("iris02",890,890,"getDeviceInfo") : CoreTime 
+                ("iris02",890,890,"getDeviceInfo") : CoreTime
           }
-  output  tuple{ set {"iris01","iris02"}, set{232,123,890}, set{789,890}, set{"getDeviceInfo"} } 
+  output  tuple{ set {"iris01","iris02"}, set{232,123,890}, set{789,890}, set{"getDeviceInfo"} }
 
 TODO:
   Now, we are counting the number of unique elements in print_compact  using the .size method.
@@ -433,18 +428,18 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
 \param m vector of tuples.
 
 EXAMPLE:
-  input   vector{ 
+  input   vector{
                 pair{"zeModuleCreate"),  CoreTime},
                 pair{"zeModuleDestroy"), CoreTime},
-                pair{"zeMemFree"),       CoreTime} 
+                pair{"zeMemFree"),       CoreTime}
           }
-  output (update first param by reference) 
+  output (update first param by reference)
 
-          vector{ 
+          vector{
                 pair{"zeModuleCreate"),  CoreTime},
                 pair{"zeModuleDestroy"), CoreTime},
                 pair{"zeMemFree"),       CoreTime},
-                pair{"Total"),           CoreTime}  
+                pair{"Total"),           CoreTime}
           }
 
 */
@@ -475,23 +470,23 @@ void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
  * sorted by original map values
  */
 
-//! Take an umap and return a vector of pair sorted in descending order. 
+//! Take an umap and return a vector of pair sorted in descending order.
 /*! This is used to sort by duration.
 \param m unordered_map{thapi_function_name,TallyCoreBase}
 \return Returns a vector of pairs with sorted entries.
 
 EXAMPLE:
-  input   umap{ 
+  input   umap{
                 "zeModuleCreate"  , CoreTime{ duration = 20, ... },
                 "zeModuleDestroy" , CoreTime{ duration = 15, ... },
-                "getDeviceInfo"   , CoreTime{ duration = 30, ... } 
+                "getDeviceInfo"   , CoreTime{ duration = 30, ... }
           }
-  output  vector{ 
+  output  vector{
                 pair{ "zeModuleCreate"  , CoreTime{ duration = 30, ... } },
                 pair{ "zeModuleDestroy" , CoreTime{ duration = 20, ... } },
                 pair{ "getDeviceInfo"   , CoreTime{ duration = 15, ... } }
                 ,
-                 
+
           }
 
 */
@@ -530,15 +525,17 @@ void apply_sizelimit(std::vector<std::pair<thapi_function_name, TC>> &m, int max
 //   |  | (_| >< | | | | |_| | |   __) |_ |  | | | (_|   __) | /_ (/_
 //                                                  _|
 // TallyCoreHeader tuple of str
-template <std::size_t SIZE, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m, const std::pair<std::string, std::array<const char *, SIZE>> header) {
+template <std::size_t SIZE, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
+                     const std::pair<std::string, std::array<const char *, SIZE>> header) {
 
   auto &[header_name, header_tallycore] = header;
   long name_max = header_name.size();
 
   // Know at compile time
   auto tallycore_max =
-      std::apply([](auto &&...e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
+      std::apply([](auto &&... e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
                  header_tallycore);
 
   for (auto &[name, tallycore] : m) {
@@ -564,12 +561,14 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m, const s
 
 // We use 3 function, because my template skill are poor...
 template <std::size_t SIZE>
-std::ostream &operator<<(std::ostream &os,const std::pair<std::array<const char *, SIZE>, std::vector<long>> &_tup) {
+std::ostream &operator<<(std::ostream &os,
+                         const std::pair<std::array<const char *, SIZE>, std::vector<long>> &_tup) {
   auto &[c, column_width] = _tup;
   for (auto i = 0U; i < c.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
-      os << "" << "   ";
+      os << ""
+         << "   ";
     else
       os << c[i] << " | ";
   }
@@ -584,7 +583,8 @@ std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tu
   for (auto i = 0U; i < v.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
-      os << "" << "   ";
+      os << ""
+         << "   ";
     else
       os << v[i] << " | ";
   }
@@ -598,14 +598,16 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
 template <class... T, class... T2, size_t... I>
-void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h, std::index_sequence<I...>) {
+void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+                 std::index_sequence<I...>) {
   ((std::get<I>(s).size() ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
-                            : os << ""),
+                          : os << ""),
    ...);
 }
 
 template <class... T, class... T2>
-void print_tally(std::ostream &os, const std::string &header, const std::tuple<T...> &s, const std::tuple<T2...> &h) {
+void print_tally(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
+                 const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
   print_tally(os, s, h, seq);
@@ -614,9 +616,9 @@ void print_tally(std::ostream &os, const std::string &header, const std::tuple<T
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
 template <class... T, class... T2, size_t... I>
-void print_named_tuple(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h, std::index_sequence<I...>) {
-  (((std::get<I>(s) != T{}) ? os << std::get<I>(h) << ": " << std::get<I>(s) << " | "
-                            : os << ""),
+void print_named_tuple(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+                       std::index_sequence<I...>) {
+  (((std::get<I>(s) != T{}) ? os << std::get<I>(h) << ": " << std::get<I>(s) << " | " : os << ""),
    ...);
 }
 
@@ -664,7 +666,8 @@ void print_tally(std::unordered_map<thapi_function_name, TC> &m, int display_nam
 // name, and the value are TallyCore
 template <typename K, typename T, typename TC,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_string, int display_name_max_size) {
+void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_string,
+                   int display_name_max_size) {
 
   if (m.empty())
     return;
@@ -681,8 +684,10 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
 
 // original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
-template <typename K, typename T, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_string, int display_name_max_size) {
+template <typename K, typename T, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_string,
+                    int display_name_max_size) {
 
   // Now working of the body of the table
   auto aggregated_nested = aggregate_nested(m);
@@ -714,7 +719,8 @@ void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name,
 
 // original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
-template <typename K, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename K, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 nlohmann::json json_compact(std::unordered_map<K, TC> &m) {
   auto aggregated_by_name = aggregate_by_name(m);
   auto sorted_by_value = sort_by_value(aggregated_by_name);
@@ -723,11 +729,13 @@ nlohmann::json json_compact(std::unordered_map<K, TC> &m) {
 }
 
 template <class... T, class... T2, size_t... I>
-void json_populate(nlohmann::json &j, const std::tuple<T...> &h, const std::tuple<T2...> &s, std::index_sequence<I...>) {
+void json_populate(nlohmann::json &j, const std::tuple<T...> &h, const std::tuple<T2...> &s,
+                   std::index_sequence<I...>) {
   ((j[std::get<I>(h)] = std::get<I>(s)), ...);
 }
 
-template <typename K, typename TC, class... T, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename K, typename TC, class... T,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h) {
   nlohmann::json j;
   auto aggregated_nested = aggregate_nested(m);
