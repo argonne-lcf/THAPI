@@ -47,9 +47,11 @@ constexpr int backend_level[] = {
   0  // BACKEND_OMP
 };
 
-typedef enum backend_e backend_t;
+typedef enum        backend_e backend_t;
+typedef unsigned    backend_level_t;
+typedef std::string thapi_metadata_t;
 
-// Datatypes represeting string classes (or messages) common data. 
+// Datatypes representing string classes (or messages) common data. 
 typedef intptr_t      process_id_t;
 typedef uintptr_t     thread_id_t;
 typedef std::string   hostname_t;
@@ -69,9 +71,9 @@ typedef std::tuple<long,long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
 
-// NOTE: Required to generate a hash of a tuple, otherwhise, the operaton "data->host[level][entity_id] += interval;"
+// NOTE: Required to generate a hash of a tuple, otherwise, the operation "data->host[level][entity_id] += interval;"
 // may fail since host[level] returns an unordered_map and this data structure does not know to hash a tuple.
-// REFERENCE: https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set 
+// REFERENCE: https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 namespace std{
   namespace
   {

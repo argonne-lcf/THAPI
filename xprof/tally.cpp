@@ -1,45 +1,22 @@
 #include "tally.hpp"
 
-
 //! User data collection structure.
-//! It is used to collect interval messages data, once data is collected. 
-//! It is aggregated and tabulated for printing.
-//! This structure can hold data that the user needs to be present among different 
-//! callbacks calls, for instance command line params that can modify the printing 
-//! behaviour.
+//! It is used to collect interval messages data, once data is collected, 
+//! it is aggregated and tabulated for printing.
 struct tally_dispatch_s {
     //! User params provided to the user component.
     btx_params_t *params;
 
-    //! Maps "level" with the names of the backends that appeared when processing host messages (lttng:host). 
-    //! This information is split by level. Refer to the "backend_level" array at the top of this 
-    //! file to see which backends may appear on each level. 
-    std::map<unsigned,std::set<const char*>> host_backend_name;
+    std::map<backend_level_t,std::set<const char*>> host_backend_name;
+    std::map<backend_level_t,std::set<const char*>> traffic_backend_name;
 
-    //! Maps "level" with the duration data collected from host messages (lttng:host) for every (host,pid,tid,api_call_name) entity.
-    //! EXAMPLE: map{ 0 => umap{ tuple("iris",1287,2780,"ompt_target") => TallyCoreTime } }
-    std::map<unsigned,std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
+    std::map<backend_level_t,std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
+    std::map<backend_level_t,std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
-    //! Maps "level" with the duration data collected from device messages (lttng:device) for every (host,pid,tid,api_call_name) entity.
-    //! EXAMPLE: map{ 2 => umap{ tuple("iris",1287,2780,"zeMemoryCopy") => TallyCoreTime } }
     std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
-
-    //! Maps "level" with the names of the backends appearing when processing traffic messages (lttng:traffic). 
-    //! This information is split by level. Refer to the "backend_level" array at the top of this 
-    //! file to see which backends may appear on each level. 
-    std::map<unsigned,std::set<const char*>> traffic_backend_name;
-
-    //! Maps "level" with the duration data collected from traffic messages (lttng:traffic) for every (host,pid,tid,api_call_name) entity.
-    //! EXAMPLE: map{ 0 => umap{ tuple("iris",1287,2780,"ompt_target") => TallyCoreTime } }
-    std::map<unsigned,std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
-
-    //! Maps a "(host,pid,tid,device_id)" with the device name.
-    //! The device name is collected when processing data of "device_name" messages (lttng:device_name). 
-    //! This assume that a process is attached to a device (with a given name), once the program execution starts, 
-    //! and this will not change during the execution of the program.
     std::unordered_map<hp_device_t, std::string> device_name;
 
-    //! Collects thapi metadata appearing when processing "lttng_ust_thapi:metadata" messages.
+    //! Collects thapi metadata "lttng_ust_thapi:metadata".
     std::vector<std::string> metadata;
 };
 
