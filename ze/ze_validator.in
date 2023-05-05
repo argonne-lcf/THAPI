@@ -198,32 +198,31 @@ end
 
 STATE = Hash.new { |h, k| h[k] = ZEModel::Node.new(k) }
 
-def get_last_entry(hostname, context)
-  STATE[hostname].processes[context['vpid']].threads[context['vtid']].last_entry
+def get_last_entry(context)
+  STATE[context['hostname']].processes[context['vpid']].threads[context['vtid']].last_entry
 end
 
-def get_thread(hostname, context)
-  STATE[hostname].processes[context['vpid']].threads[context['vtid']]
+def get_thread(context)
+  STATE[context['hostname']].processes[context['vpid']].threads[context['vtid']]
 end
 
-def get_process(hostname, context)
-  STATE[hostname].processes[context['vpid']]
+def get_process(context)
+  STATE[context['hostname']].processes[context['vpid']]
 end
 
-def check_last_entry(hostname, context, name)
-  last_entry = get_last_entry(hostname, context)
-  unless last_entry && last_entry.name == name
-    pp STATE
-    raise "Invalid State in #{name}"
+def check_last_entry(context)
+  last_entry = get_last_entry(context)
+  unless last_entry && last_entry.name == context['api']
+    raise "Invalid State in #{context['api']}"
   end
 end
 
-def set_last_entry(hostname, context, name, defi)
-  get_thread(hostname, context).last_entry = ZEModel::Command.new(name, defi)
+def set_last_entry(context, defi)
+  get_thread(context).last_entry = ZEModel::Command.new(context['api'], defi)
 end
 
-def reset_last_entry(hostname, context)
-  get_thread(hostname, context).last_entry = nil
+def reset_last_entry(context)
+  get_thread(context).last_entry = nil
 end
 
 def validate_result(defi)
@@ -236,25 +235,33 @@ def if_validated(defi, &block)
   end
 end
 
-def print_usage_error(loc, str)
-  $stderr.puts "Level Zero Usage Error: in #{loc}: #{str}"
+def get_context_str(context)
+  "#{context['hostname']} - #{context['vpid']} - #{context['vtid']} in #{context['api']}"
+end
+
+def print_usage_error(context, str)
+  $stderr.puts "Level Zero Usage Error: on #{get_context_str(context)}: #{str}"
+end
+
+def raise_internal_error(context, str)
+  raise "Invalid state #{get_context_str(context)}: #{str}"
 end
 
 $event_lambdas = {}
 
-$event_lambdas['lttng_ust_ze:zeDriverGet_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeDriverGet_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    drivers = get_process(hostname, ctx).drivers
+    drivers = get_process(ctx).drivers
     defi['phDrivers_vals'].each { |h|
       drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
     }
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeDeviceGet_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeDeviceGet_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    devices = get_process(hostname, ctx).devices
-    driver = get_process(hostname, ctx).drivers[get_last_entry(hostname, ctx).params['hDriver']]
+    devices = get_process(ctx).devices
+    driver = get_process(ctx).drivers[get_last_entry(ctx).params['hDriver']]
     defi['phDevices_vals'].each { |h|
       unless devices[h]
         devices[h] = ZEModel::Device.new(h)
@@ -264,10 +271,10 @@ $event_lambdas['lttng_ust_ze:zeDeviceGet_exit'] = lambda { |hostname, ctx, defi|
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeDeviceGetSubDevices_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeDeviceGetSubDevices_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    devices = get_process(hostname, ctx).devices
-    device = get_process(hostname, ctx).devices[get_last_entry(hostname, ctx).params['hDevice']]
+    devices = get_process(ctx).devices
+    device = get_process(ctx).devices[get_last_entry(ctx).params['hDevice']]
     defi['phSubdevices_vals'].each { |h|
       unless devices[h]
         devices[h] = ZEModel::SubDevice.new(h, device)
@@ -277,85 +284,85 @@ $event_lambdas['lttng_ust_ze:zeDeviceGetSubDevices_exit'] = lambda { |hostname, 
   } 
 }
 
-$event_lambdas['lttng_ust_ze:zeContextCreate_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeContextCreate_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    contexts = get_process(hostname, ctx).contexts
-    driver = get_process(hostname, ctx).drivers[get_last_entry(hostname, ctx).params['hDriver']]
-    desc_val = get_last_entry(hostname, ctx).params['desc_val']
+    contexts = get_process(ctx).contexts
+    driver = get_process(ctx).drivers[get_last_entry(ctx).params['hDriver']]
+    desc_val = get_last_entry(ctx).params['desc_val']
     desc = desc_val.size > 0 ? ZE::ZEContextDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
     handle = defi['phContext_val']
     contexts[handle] = ZEModel::Context.new(handle, driver, desc)
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeContextDestroy_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeContextDestroy_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    contexts = get_process(hostname, ctx).contexts
-    contexts.delete(get_last_entry(hostname, ctx).params['hContext']) { |h|
-      raise "Invalid state in zeContextDestroy, context #{'0x%016x' % h} does not exist"
+    contexts = get_process(ctx).contexts
+    contexts.delete(get_last_entry(ctx).params['hContext']) { |h|
+      raise_internal_error(ctx, "context #{'0x%016x' % h} does not exist")
     }
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeEventPoolCreate_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeEventPoolCreate_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    context = get_process(hostname, ctx).contexts[get_last_entry(hostname, ctx).params['hContext']]
-    devices = get_process(hostname, ctx).devices
-    event_pools = get_process(hostname, ctx).event_pools
-    desc_val = get_last_entry(hostname, ctx).params['desc_val']
+    context = get_process(ctx).contexts[get_last_entry(ctx).params['hContext']]
+    devices = get_process(ctx).devices
+    event_pools = get_process(ctx).event_pools
+    desc_val = get_last_entry(ctx).params['desc_val']
     desc = desc_val.size > 0 ? ZE::ZEEventPoolDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
     handle = defi['phEventPool_val']
-    devs = get_last_entry(hostname, ctx).params['phDevices_vals'].collect { |h| devices[h] }
-    devs = nil unless get_last_entry(hostname, ctx).params['phDevices'] != 0
+    devs = get_last_entry(ctx).params['phDevices_vals'].collect { |h| devices[h] }
+    devs = nil unless get_last_entry(ctx).params['phDevices'] != 0
     event_pools[handle] = ZEModel::EventPool.new(handle, context, desc, devs)
     context.event_pools[handle] = event_pools[handle]
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeEventPoolDestroy_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeEventPoolDestroy_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    event_pools = get_process(hostname, ctx).event_pools
-    handle = get_last_entry(hostname, ctx).params['hEventPool']
+    event_pools = get_process(ctx).event_pools
+    handle = get_last_entry(ctx).params['hEventPool']
     event_pool = event_pools.delete(handle) {
-      raise "Invalid state in zeEventPoolDestroy, event_pool #{'0x%016x' % handle} does not exist"
+      raise_internal_error(ctx, "event_pool #{'0x%016x' % handle} does not exist")
     }
     event_pool.context.event_pools.delete(handle) {
-      raise "Invalid state in zeEventPoolDestroy, event_pool #{'0x%016x' % handle} does not exist in context"
+      raise_internal_error(ctx, "event_pool #{'0x%016x' % handle} does not exist in context")
     }
     event_pool.events.each { |h, _|
-      print_usage_error('zeEventPoolDestroy', "event #{'0x%016x' % h} was not destroyed prior to event_pool #{'0x%016x' % handle} destruction")
+      print_usage_error(ctx, "event #{'0x%016x' % h} was not destroyed prior to event_pool #{'0x%016x' % handle} destruction")
     }
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeEventCreate_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeEventCreate_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    event_pool = get_process(hostname, ctx).event_pools[get_last_entry(hostname, ctx).params['hEventPool']]
-    events = get_process(hostname, ctx).events
-    desc_val = get_last_entry(hostname, ctx).params['desc_val']
+    event_pool = get_process(ctx).event_pools[get_last_entry(ctx).params['hEventPool']]
+    events = get_process(ctx).events
+    desc_val = get_last_entry(ctx).params['desc_val']
     desc = desc_val.size > 0 ? ZE::ZEEventDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
     handle = defi['phEvent_val']
     events[handle] = ZEModel::Event.new(handle, event_pool, desc)
     if !event_pool.indices.delete?(desc[:index])
-      print_usage_error('zeEventCreate', "event_pool #{'0x%016x' % event_pool.handle} index #{desc['index']} is already used")
+      print_usage_error(ctx, "event_pool #{'0x%016x' % event_pool.handle} index #{desc['index']} is already used")
     end
     event_pool.events[handle] = events[handle]
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeEventDestroy_exit'] = lambda { |hostname, ctx, defi|
+$event_lambdas['lttng_ust_ze:zeEventDestroy_exit'] = lambda { |ctx, defi|
   if_validated(defi) {
-    events = get_process(hostname, ctx).events
-    handle = get_last_entry(hostname, ctx).params['hEvent']
+    events = get_process(ctx).events
+    handle = get_last_entry(ctx).params['hEvent']
     event = events.delete(handle) {
-      raise "Invalid state in zeEventDestroy, event #{'0x%016x' % handle} does not exist"
+      raise_internal_error(ctx, "event #{'0x%016x' % handle} does not exist")
     }
     event_pool = event.event_pool
     event_pool.events.delete(handle) {
-      raise "Invalid state in zeEventDestroy, event #{'0x%016x' % handle} does not exist in event_pool"
+      raise_internal_error(ctx, "event #{'0x%016x' % handle} does not exist in event_pool")
     }
     if !event_pool.indices.add?(event.desc[:index])
-       print_usage_error('zeEventDestroy', "event_pool #{'0x%016x' % event_pool.handle} index #{event.desc[:index]} is already freed")
+       print_usage_error(ctx, "event_pool #{'0x%016x' % event_pool.handle} index #{event.desc[:index]} is already freed")
     end
   }
 }
@@ -369,13 +376,15 @@ consume = lambda { |iterator, _|
       hostname = e.stream.trace.get_environment_entry_value_by_name('hostname').value
       context = e.get_common_context_field.value
       defi = e.payload_field.value
+      context['hostname'] = hostname
+      context['api'] = m[1]
 
-      set_last_entry(hostname, context, m[1], defi) if m[2] == 'entry'
+      set_last_entry(context, defi) if m[2] == 'entry'
       l = $event_lambdas[e.name]
-      l.call(hostname, context, e.payload_field.value) if l
+      l.call(context, e.payload_field.value) if l
       if m[2] == 'exit'
-        check_last_entry(hostname, context, m[1])
-        reset_last_entry(hostname, context)
+        check_last_entry(context)
+        reset_last_entry(context)
       end
     end
   end
