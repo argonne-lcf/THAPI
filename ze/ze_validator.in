@@ -106,6 +106,7 @@ class Context < Object
 
   attr_reader :event_pools
   attr_reader :command_queues
+  attr_reader :command_lists
 
   def initialize(handle, driver, desc, devices = nil)
     super(handle)
@@ -115,6 +116,7 @@ class Context < Object
 
     @event_pools = {}
     @command_queues = {}
+    @command_lists = {}
   end
 end
 
@@ -200,23 +202,27 @@ end
 
 class Process
   attr_reader :vpid
+  attr_reader :threads
+
   attr_reader :drivers
   attr_reader :devices
   attr_reader :contexts
   attr_reader :event_pools
   attr_reader :events
   attr_reader :command_queues
-  attr_reader :threads
+  attr_reader :command_lists
 
   def initialize(vpid)
     @vpid = vpid
+    @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
+
     @drivers = {}
     @devices = {}
     @contexts = {}
     @event_pools = {}
     @events = {}
     @command_queues = {}
-    @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
+    @command_lists = {}
   end
 end
 
@@ -452,6 +458,39 @@ $exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
   }
 }
 
+$exit_lambdas['zeCommandListCreate'] = lambda { |ctx, defi|
+  command_lists = find_objects(ctx, 'command_list')
+  context = find_object(ctx, 'context', 'hContext')
+  device = find_object(ctx, 'device', 'hDevice')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZECommandListDesc)
+  handle = defi['phCommandList_val']
+  command_lists[handle] = ZEModel::CommandList.new(handle, context, device, desc, nil)
+  context.command_lists[handle] = command_lists[handle]
+}
+
+$exit_lambdas['zeCommandListCreateImmediate'] = lambda { |ctx, defi|
+  command_lists = find_objects(ctx, 'command_list')
+  context = find_object(ctx, 'context', 'hContext')
+  device = find_object(ctx, 'device', 'hDevice')
+  altdesc_val = find_param(ctx, 'altdesc_val')
+  altdesc = to_struct(altdesc_val, ZE::ZECommandQueueDesc)
+  handle = defi['phCommandList_val']
+  command_lists[handle] = ZEModel::CommandList.new(handle, context, device, nil, altdesc)
+  context.command_lists[handle] = command_lists[handle]
+}
+
+$exit_lambdas['zeCommandListDestroy'] = lambda { |ctx, defi|
+  command_lists = find_objects(ctx, 'command_list')
+  handle = find_param(ctx, 'hCommandList')
+  command_list = command_lists.delete(handle) {
+    raise_internal_error(ctx, "command_list #{get_handle_str(handle)} does not exist")
+  }
+  command_list.context.command_lists.delete(handle) {
+    raise_internal_error(ctx, "command_list #{get_handle_str(handle)} does not exist in context")
+  }
+}
+
 consume = lambda { |iterator, _|
   iterator.next_messages.each do |m|
     next unless m.type == :BT_MESSAGE_TYPE_EVENT
@@ -498,8 +537,8 @@ STATE.each { |hostname, node|
   node.processes.each { |pid, process|
     process.threads.each { |tid, thread|
       if thread.last_entry
-        ctx = {"hostname" => hostname, "vpid"=> pid, "vtid" => tid, "api" => thread.last_entry.name}
-        pring_crash_error(ctx, "command did not finish execution")
+        ctx = {'hostname' => hostname, 'vpid'=> pid, 'vtid' => tid, 'api' => thread.last_entry.name}
+        pring_crash_error(ctx, 'command did not finish execution')
         crash = true
       end
     }
@@ -509,12 +548,15 @@ STATE.each { |hostname, node|
 unless crash && false
   STATE.each { |hostname, node|
     node.processes.each { |pid, process|
-      ctx = {"hostname" => hostname, "vpid"=> pid}
+      ctx = {'hostname' => hostname, 'vpid'=> pid}
       process.contexts.each { |h, c|
-        pring_leak_error(ctx, "context", h)
+        pring_leak_error(ctx, 'context', h)
       }
       process.command_queues.each { |h, c|
-        pring_leak_error(ctx, "command_queue", h)
+        pring_leak_error(ctx, 'command_queue', h)
+      }
+      process.command_lists.each { |h, c|
+        pring_leak_error(ctx, 'command_list', h)
       }
     }
   }
