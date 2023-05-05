@@ -170,7 +170,8 @@ EXTRA_DIST += \
 CLEANFILES += tracer_ze.c
 
 bin_SCRIPTS = \
-	tracer_ze.sh
+	tracer_ze.sh \
+	ze_validator
 
 noinst_LTLIBRARIES = libzetracepoints.la
 
