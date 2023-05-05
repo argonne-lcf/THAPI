@@ -105,6 +105,7 @@ class Context < Object
   attr_reader :devices
 
   attr_reader :event_pools
+  attr_reader :command_queues
 
   def initialize(handle, driver, desc, devices = nil)
     super(handle)
@@ -113,6 +114,7 @@ class Context < Object
     @devices = devices
 
     @event_pools = {}
+    @command_queues = {}
   end
 end
 
@@ -144,7 +146,39 @@ class Event < Object
   end
 end
 
-class Command
+class CommandQueue < Object
+  attr_reader :context
+  attr_reader :device
+  attr_reader :desc
+
+  def initialize(handle, context, device, desc)
+    super(handle)
+    @context = context
+    @device = device
+    @desc = desc
+  end
+end
+
+class CommandList < Object
+  attr_reader :context
+  attr_reader :device
+  attr_reader :desc
+  attr_reader :altdesc
+
+  def initialize(handle, context, device, desc, altdesc)
+    super(handle)
+    @context = context
+    @device = device
+    @desc = desc
+    @altdesc = altdesc
+  end
+
+  def immediate?
+    return !desc
+  end
+end
+
+class ApiCall
   attr_reader :name
   attr_reader :params
 
@@ -171,6 +205,7 @@ class Process
   attr_reader :contexts
   attr_reader :event_pools
   attr_reader :events
+  attr_reader :command_queues
   attr_reader :threads
 
   def initialize(vpid)
@@ -180,6 +215,7 @@ class Process
     @contexts = {}
     @event_pools = {}
     @events = {}
+    @command_queues = {}
     @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
   end
 end
@@ -218,7 +254,7 @@ def check_last_entry(context)
 end
 
 def set_last_entry(context, defi)
-  get_thread(context).last_entry = ZEModel::Command.new(context['api'], defi)
+  get_thread(context).last_entry = ZEModel::ApiCall.new(context['api'], defi)
 end
 
 def reset_last_entry(context)
@@ -235,135 +271,184 @@ def if_validated(defi, &block)
   end
 end
 
+def get_handle_str(handle)
+  '0x%016x' % handle
+end
+
+def get_proc_context_str(context)
+  "#{context['hostname']} - #{context['vpid']}"
+end
+
 def get_context_str(context)
-  "#{context['hostname']} - #{context['vpid']} - #{context['vtid']} in #{context['api']}"
+  "#{get_proc_context_str(context)} - #{context['vtid']} in #{context['api']}"
 end
 
 def print_usage_error(context, str)
   $stderr.puts "Level Zero Usage Error: on #{get_context_str(context)}: #{str}"
 end
 
+def pring_crash_error(context, str)
+  $stderr.puts "Level Zero Crash Error: on #{get_context_str(context)}: #{str}"
+end
+
+def pring_leak_error(context, type, handle)
+  $stderr.puts "Level Zero Leak: on #{get_proc_context_str(context)}: #{type} #{get_handle_str(handle)}"
+end
+
 def raise_internal_error(context, str)
   raise "Invalid state #{get_context_str(context)}: #{str}"
 end
 
-$event_lambdas = {}
+def find_param(context, name)
+  get_last_entry(context).params[name]
+end
 
-$event_lambdas['lttng_ust_ze:zeDriverGet_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    drivers = get_process(ctx).drivers
-    defi['phDrivers_vals'].each { |h|
-      drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
-    }
+def find_objects(context, type)
+  get_process(context).instance_variable_get("@#{type}s")
+end
+
+def find_object(context, type, handle)
+  handle = find_param(context, handle) if handle.kind_of? String
+  find_objects(context, type)[handle]
+end
+
+def to_struct(memory, klass)
+  memory.size > 0 ? klass.new(FFI::MemoryPointer.from_string(memory)) : nil
+end
+
+$exit_lambdas = {}
+
+$exit_lambdas['zeDriverGet'] = lambda { |ctx, defi|
+  drivers = get_process(ctx).drivers
+  defi['phDrivers_vals'].each { |h|
+    drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeDeviceGet_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    devices = get_process(ctx).devices
-    driver = get_process(ctx).drivers[get_last_entry(ctx).params['hDriver']]
-    defi['phDevices_vals'].each { |h|
-      unless devices[h]
-        devices[h] = ZEModel::Device.new(h)
-        driver.devices.push devices[h]
-      end
-    }
-  }
-}
-
-$event_lambdas['lttng_ust_ze:zeDeviceGetSubDevices_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    devices = get_process(ctx).devices
-    device = get_process(ctx).devices[get_last_entry(ctx).params['hDevice']]
-    defi['phSubdevices_vals'].each { |h|
-      unless devices[h]
-        devices[h] = ZEModel::SubDevice.new(h, device)
-        device.sub_devices.push devices[h]
-      end
-    }
-  } 
-}
-
-$event_lambdas['lttng_ust_ze:zeContextCreate_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    contexts = get_process(ctx).contexts
-    driver = get_process(ctx).drivers[get_last_entry(ctx).params['hDriver']]
-    desc_val = get_last_entry(ctx).params['desc_val']
-    desc = desc_val.size > 0 ? ZE::ZEContextDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
-    handle = defi['phContext_val']
-    contexts[handle] = ZEModel::Context.new(handle, driver, desc)
-  }
-}
-
-$event_lambdas['lttng_ust_ze:zeContextDestroy_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    contexts = get_process(ctx).contexts
-    contexts.delete(get_last_entry(ctx).params['hContext']) { |h|
-      raise_internal_error(ctx, "context #{'0x%016x' % h} does not exist")
-    }
-  }
-}
-
-$event_lambdas['lttng_ust_ze:zeEventPoolCreate_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    context = get_process(ctx).contexts[get_last_entry(ctx).params['hContext']]
-    devices = get_process(ctx).devices
-    event_pools = get_process(ctx).event_pools
-    desc_val = get_last_entry(ctx).params['desc_val']
-    desc = desc_val.size > 0 ? ZE::ZEEventPoolDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
-    handle = defi['phEventPool_val']
-    devs = get_last_entry(ctx).params['phDevices_vals'].collect { |h| devices[h] }
-    devs = nil unless get_last_entry(ctx).params['phDevices'] != 0
-    event_pools[handle] = ZEModel::EventPool.new(handle, context, desc, devs)
-    context.event_pools[handle] = event_pools[handle]
-  }
-}
-
-$event_lambdas['lttng_ust_ze:zeEventPoolDestroy_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    event_pools = get_process(ctx).event_pools
-    handle = get_last_entry(ctx).params['hEventPool']
-    event_pool = event_pools.delete(handle) {
-      raise_internal_error(ctx, "event_pool #{'0x%016x' % handle} does not exist")
-    }
-    event_pool.context.event_pools.delete(handle) {
-      raise_internal_error(ctx, "event_pool #{'0x%016x' % handle} does not exist in context")
-    }
-    event_pool.events.each { |h, _|
-      print_usage_error(ctx, "event #{'0x%016x' % h} was not destroyed prior to event_pool #{'0x%016x' % handle} destruction")
-    }
-  }
-}
-
-$event_lambdas['lttng_ust_ze:zeEventCreate_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    event_pool = get_process(ctx).event_pools[get_last_entry(ctx).params['hEventPool']]
-    events = get_process(ctx).events
-    desc_val = get_last_entry(ctx).params['desc_val']
-    desc = desc_val.size > 0 ? ZE::ZEEventDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
-    handle = defi['phEvent_val']
-    events[handle] = ZEModel::Event.new(handle, event_pool, desc)
-    if !event_pool.indices.delete?(desc[:index])
-      print_usage_error(ctx, "event_pool #{'0x%016x' % event_pool.handle} index #{desc['index']} is already used")
+$exit_lambdas['zeDeviceGet'] = lambda { |ctx, defi|
+  devices = find_objects(ctx, 'device')
+  driver = find_object(ctx, 'driver', 'hDriver')
+  defi['phDevices_vals'].each { |h|
+    unless devices[h]
+      devices[h] = ZEModel::Device.new(h)
+      driver.devices.push devices[h]
     end
-    event_pool.events[handle] = events[handle]
   }
 }
 
-$event_lambdas['lttng_ust_ze:zeEventDestroy_exit'] = lambda { |ctx, defi|
-  if_validated(defi) {
-    events = get_process(ctx).events
-    handle = get_last_entry(ctx).params['hEvent']
-    event = events.delete(handle) {
-      raise_internal_error(ctx, "event #{'0x%016x' % handle} does not exist")
-    }
-    event_pool = event.event_pool
-    event_pool.events.delete(handle) {
-      raise_internal_error(ctx, "event #{'0x%016x' % handle} does not exist in event_pool")
-    }
-    if !event_pool.indices.add?(event.desc[:index])
-       print_usage_error(ctx, "event_pool #{'0x%016x' % event_pool.handle} index #{event.desc[:index]} is already freed")
+$exit_lambdas['zeDeviceGetSubDevices'] = lambda { |ctx, defi|
+  devices = find_objects(ctx, 'device')
+  device = find_object(ctx, 'device', 'hDevice')
+  defi['phSubdevices_vals'].each { |h|
+    unless devices[h]
+      devices[h] = ZEModel::SubDevice.new(h, device)
+      device.sub_devices.push devices[h]
     end
+  }
+}
+
+$exit_lambdas['zeContextCreate'] = lambda { |ctx, defi|
+  contexts = find_objects(ctx, 'context')
+  driver = find_object(ctx, 'driver', 'hDriver')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEContextDesc)
+  handle = defi['phContext_val']
+  contexts[handle] = ZEModel::Context.new(handle, driver, desc)
+}
+
+$exit_lambdas['zeContextCreateEx'] = lambda { |ctx, defi|
+  contexts = find_objects(ctx, 'context')
+  devices = find_objects(ctx, 'device')
+  driver = find_object(ctx, 'driver', 'hDriver')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEContextDesc)
+  devs = find_param(ctx, 'phDevices_vals').collect { |h| devices[h] }
+  devs = nil unless find_param(ctx, 'phDevices') != 0
+  handle = defi['phContext_val']
+  contexts[handle] = ZEModel::Context.new(handle, driver, desc, devs)
+}
+
+$exit_lambdas['zeContextDestroy'] = lambda { |ctx, defi|
+  contexts = find_objects(ctx, 'context')
+  contexts.delete(find_param(ctx, 'hContext')) { |h|
+    raise_internal_error(ctx, "context #{get_handle_str(h)} does not exist")
+  }
+}
+
+$exit_lambdas['zeEventPoolCreate'] = lambda { |ctx, defi|
+  context = find_object(ctx, 'context', 'hContext')
+  devices = find_objects(ctx, 'device')
+  event_pools = find_objects(ctx, 'event_pool')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEEventPoolDesc)
+  devs = find_param(ctx, 'phDevices_vals').collect { |h| devices[h] }
+  devs = nil unless find_param(ctx, 'phDevices') != 0
+  handle = defi['phEventPool_val']
+  event_pools[handle] = ZEModel::EventPool.new(handle, context, desc, devs)
+  context.event_pools[handle] = event_pools[handle]
+}
+
+$exit_lambdas['zeEventPoolDestroy'] = lambda { |ctx, defi|
+  event_pools = find_objects(ctx, 'event_pool')
+  handle = find_param(ctx, 'hEventPool')
+  event_pool = event_pools.delete(handle) {
+    raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} does not exist")
+  }
+  event_pool.context.event_pools.delete(handle) {
+    raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} does not exist in context")
+  }
+  event_pool.events.each { |h, _|
+    print_usage_error(ctx, "event #{get_handle_str(h)} was not destroyed prior to event_pool #{get_handle_str(handle)} destruction")
+  }
+}
+
+$exit_lambdas['zeEventCreate'] = lambda { |ctx, defi|
+  events = find_objects(ctx, 'event')
+  event_pool = find_object(ctx, 'event_pool', 'hEventPool')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEEventDesc)
+  handle = defi['phEvent_val']
+  events[handle] = ZEModel::Event.new(handle, event_pool, desc)
+  if !event_pool.indices.delete?(desc[:index])
+    print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{desc['index']} is already used")
+  end
+  event_pool.events[handle] = events[handle]
+}
+
+$exit_lambdas['zeEventDestroy'] = lambda { |ctx, defi|
+  events = find_objects(ctx, 'event')
+  handle = find_param(ctx, 'hEvent')
+  event = events.delete(handle) {
+    raise_internal_error(ctx, "event #{get_handle_str(handle)} does not exist")
+  }
+  event_pool = event.event_pool
+  event_pool.events.delete(handle) {
+    raise_internal_error(ctx, "event #{get_handle_str(handle)} does not exist in event_pool")
+  }
+  if !event_pool.indices.add?(event.desc[:index])
+     print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{event.desc[:index]} is already freed")
+  end
+}
+
+$exit_lambdas['zeCommandQueueCreate'] = lambda { |ctx, defi|
+  command_queues = find_objects(ctx, 'command_queue')
+  context = find_object(ctx, 'context', 'hContext')
+  device = find_object(ctx, 'device', 'hDevice')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZECommandQueueDesc)
+  handle = defi['phCommandQueue_val']
+  command_queues[handle] = ZEModel::CommandQueue.new(handle, context, device, desc)
+  context.command_queues[handle] = command_queues[handle]
+}
+
+$exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
+  command_queues = find_objects(ctx, 'command_queue')
+  handle = find_param(ctx, 'hCommandQueue')
+  command_queue = command_queues.delete(handle) {
+    raise_internal_error(ctx, "command_queue #{get_handle_str(handle)} does not exist")
+  }
+  command_queue.context.command_queues.delete(handle) {
+    raise_internal_error(ctx, "command_queue #{get_handle_str(handle)} does not exist in context")
   }
 }
 
@@ -380,8 +465,10 @@ consume = lambda { |iterator, _|
       context['api'] = m[1]
 
       set_last_entry(context, defi) if m[2] == 'entry'
-      l = $event_lambdas[e.name]
-      l.call(context, e.payload_field.value) if l
+      if_validated(defi) {
+        l = $exit_lambdas[m[1]]
+        l.call(context, e.payload_field.value) if l
+      }
       if m[2] == 'exit'
         check_last_entry(context)
         reset_last_entry(context)
@@ -405,3 +492,30 @@ end
 end
 
 graph.run
+
+crash = false
+STATE.each { |hostname, node|
+  node.processes.each { |pid, process|
+    process.threads.each { |tid, thread|
+      if thread.last_entry
+        ctx = {"hostname" => hostname, "vpid"=> pid, "vtid" => tid, "api" => thread.last_entry.name}
+        pring_crash_error(ctx, "command did not finish execution")
+        crash = true
+      end
+    }
+  }
+}
+
+unless crash && false
+  STATE.each { |hostname, node|
+    node.processes.each { |pid, process|
+      ctx = {"hostname" => hostname, "vpid"=> pid}
+      process.contexts.each { |h, c|
+        pring_leak_error(ctx, "context", h)
+      }
+      process.command_queues.each { |h, c|
+        pring_leak_error(ctx, "command_queue", h)
+      }
+    }
+  }
+end
