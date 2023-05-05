@@ -1,0 +1,398 @@
+#!/usr/bin/env ruby
+DATADIR = File.join("@prefix@", "share")
+$:.unshift(DATADIR) if File.directory?(DATADIR)
+require 'optparse'
+require 'babeltrace2'
+require 'find'
+require 'ze_library'
+require 'pp'
+require 'set'
+
+# Don't complain about broken pipe
+Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
+
+$options = { live: false }
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: ze_validator [OPTIONS] trace_directory...'
+
+  opts.on('-h', '--help', 'Prints this help') do
+    puts opts
+    exit
+  end
+
+  opts.on('--live', 'Enable live processing of the trace') do
+    $options[:live] = true
+  end
+end.parse!
+
+ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
+ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
+utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
+
+ARGV.uniq!
+
+if !$options[:live]
+  trace_locations =
+    Find.find(*ARGV).reject do |path|
+      FileTest.directory?(path)
+    end.select do |path|
+      File.basename(path) == 'metadata'
+    end.collect do |path|
+      File.dirname(path)
+    end.select do |path|
+      qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
+                                    params: { 'input' => path, 'type' => 'directory' })
+      qe.query.value['weight'] > 0.5
+   end
+else
+  trace_locations = ARGV
+end
+raise 'Could not find lttng trace' if trace_locations.size == 0
+
+graph = BT2::BTGraph.new
+
+if !$options[:live]
+  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+else
+  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+end
+
+# Muxer
+comp_muxer = graph.add_component(utils_muxer, 'mux')
+
+module ZEModel
+
+class Object
+  attr_reader :handle
+
+  def initialize(handle)
+    @handle = handle
+  end
+end
+
+class Driver < Object
+  attr_reader :devices
+
+  def initialize(handle)
+    super
+    @devices = []
+  end
+end
+
+class Device < Object
+  attr_reader :properties
+  attr_reader :sub_devices
+
+  def initialize(handle)
+    super
+    @sub_devices = []
+  end
+end
+
+class SubDevice < Device
+  attr_reader :parent
+
+  def initialize(handle, parent)
+    @parent = parent
+    super(handle)
+  end
+end
+
+class Context < Object
+  attr_reader :driver
+  attr_reader :desc
+  attr_reader :devices
+
+  attr_reader :event_pools
+
+  def initialize(handle, driver, desc, devices = nil)
+    super(handle)
+    @driver = driver
+    @desc = desc
+    @devices = devices
+
+    @event_pools = {}
+  end
+end
+
+class EventPool < Object
+  attr_reader :context
+  attr_reader :desc
+  attr_reader :devices
+  attr_reader :events
+  attr_reader :indices
+
+  def initialize(handle, context, desc, devices = nil)
+    super(handle)
+    @context = context
+    @desc = desc
+    @devices = devices
+    @events = {}
+    @indices = Set.new(desc[:count].times.to_a)
+  end
+end
+
+class Event < Object
+  attr_reader :event_pool
+  attr_reader :desc
+
+  def initialize(handle, event_pool, desc)
+    super(handle)
+    @event_pool = event_pool
+    @desc = desc
+  end
+end
+
+class Command
+  attr_reader :name
+  attr_reader :params
+
+  def initialize(name, params)
+    @name = name
+    @params = params
+  end
+end
+
+class Thread
+  attr_reader :vtid
+  attr_accessor :last_entry
+
+  def initialize(vtid)
+    @vtid = vtid
+    @last_entry = nil
+  end
+end
+
+class Process
+  attr_reader :vpid
+  attr_reader :drivers
+  attr_reader :devices
+  attr_reader :contexts
+  attr_reader :event_pools
+  attr_reader :events
+  attr_reader :threads
+
+  def initialize(vpid)
+    @vpid = vpid
+    @drivers = {}
+    @devices = {}
+    @contexts = {}
+    @event_pools = {}
+    @events = {}
+    @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
+  end
+end
+
+class Node
+  attr_reader :name
+  attr_reader :processes
+
+  def initialize(name)
+    @name = name
+    @processes = Hash.new { |h, k| h[k] = Process.new(k) }
+  end
+end
+
+end
+
+STATE = Hash.new { |h, k| h[k] = ZEModel::Node.new(k) }
+
+def get_last_entry(hostname, context)
+  STATE[hostname].processes[context['vpid']].threads[context['vtid']].last_entry
+end
+
+def get_thread(hostname, context)
+  STATE[hostname].processes[context['vpid']].threads[context['vtid']]
+end
+
+def get_process(hostname, context)
+  STATE[hostname].processes[context['vpid']]
+end
+
+def check_last_entry(hostname, context, name)
+  last_entry = get_last_entry(hostname, context)
+  unless last_entry && last_entry.name == name
+    pp STATE
+    raise "Invalid State in #{name}"
+  end
+end
+
+def set_last_entry(hostname, context, name, defi)
+  get_thread(hostname, context).last_entry = ZEModel::Command.new(name, defi)
+end
+
+def reset_last_entry(hostname, context)
+  get_thread(hostname, context).last_entry = nil
+end
+
+def validate_result(defi)
+  ZE::ZEResult.from_native(defi["zeResult"], nil) == :ZE_RESULT_SUCCESS
+end
+
+def if_validated(defi, &block)
+  if validate_result(defi)
+    block.call
+  end
+end
+
+def print_usage_error(loc, str)
+  $stderr.puts "Level Zero Usage Error: in #{loc}: #{str}"
+end
+
+$event_lambdas = {}
+
+$event_lambdas['lttng_ust_ze:zeDriverGet_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    drivers = get_process(hostname, ctx).drivers
+    defi['phDrivers_vals'].each { |h|
+      drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
+    }
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeDeviceGet_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    devices = get_process(hostname, ctx).devices
+    driver = get_process(hostname, ctx).drivers[get_last_entry(hostname, ctx).params['hDriver']]
+    defi['phDevices_vals'].each { |h|
+      unless devices[h]
+        devices[h] = ZEModel::Device.new(h)
+        driver.devices.push devices[h]
+      end
+    }
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeDeviceGetSubDevices_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    devices = get_process(hostname, ctx).devices
+    device = get_process(hostname, ctx).devices[get_last_entry(hostname, ctx).params['hDevice']]
+    defi['phSubdevices_vals'].each { |h|
+      unless devices[h]
+        devices[h] = ZEModel::SubDevice.new(h, device)
+        device.sub_devices.push devices[h]
+      end
+    }
+  } 
+}
+
+$event_lambdas['lttng_ust_ze:zeContextCreate_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    contexts = get_process(hostname, ctx).contexts
+    driver = get_process(hostname, ctx).drivers[get_last_entry(hostname, ctx).params['hDriver']]
+    desc_val = get_last_entry(hostname, ctx).params['desc_val']
+    desc = desc_val.size > 0 ? ZE::ZEContextDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
+    handle = defi['phContext_val']
+    contexts[handle] = ZEModel::Context.new(handle, driver, desc)
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeContextDestroy_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    contexts = get_process(hostname, ctx).contexts
+    contexts.delete(get_last_entry(hostname, ctx).params['hContext']) { |h|
+      raise "Invalid state in zeContextDestroy, context #{'0x%016x' % h} does not exist"
+    }
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeEventPoolCreate_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    context = get_process(hostname, ctx).contexts[get_last_entry(hostname, ctx).params['hContext']]
+    devices = get_process(hostname, ctx).devices
+    event_pools = get_process(hostname, ctx).event_pools
+    desc_val = get_last_entry(hostname, ctx).params['desc_val']
+    desc = desc_val.size > 0 ? ZE::ZEEventPoolDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
+    handle = defi['phEventPool_val']
+    devs = get_last_entry(hostname, ctx).params['phDevices_vals'].collect { |h| devices[h] }
+    devs = nil unless get_last_entry(hostname, ctx).params['phDevices'] != 0
+    event_pools[handle] = ZEModel::EventPool.new(handle, context, desc, devs)
+    context.event_pools[handle] = event_pools[handle]
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeEventPoolDestroy_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    event_pools = get_process(hostname, ctx).event_pools
+    handle = get_last_entry(hostname, ctx).params['hEventPool']
+    event_pool = event_pools.delete(handle) {
+      raise "Invalid state in zeEventPoolDestroy, event_pool #{'0x%016x' % handle} does not exist"
+    }
+    event_pool.context.event_pools.delete(handle) {
+      raise "Invalid state in zeEventPoolDestroy, event_pool #{'0x%016x' % handle} does not exist in context"
+    }
+    event_pool.events.each { |h, _|
+      print_usage_error('zeEventPoolDestroy', "event #{'0x%016x' % h} was not destroyed prior to event_pool #{'0x%016x' % handle} destruction")
+    }
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeEventCreate_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    event_pool = get_process(hostname, ctx).event_pools[get_last_entry(hostname, ctx).params['hEventPool']]
+    events = get_process(hostname, ctx).events
+    desc_val = get_last_entry(hostname, ctx).params['desc_val']
+    desc = desc_val.size > 0 ? ZE::ZEEventDesc.new(FFI::MemoryPointer.from_string(desc_val)) : nil
+    handle = defi['phEvent_val']
+    events[handle] = ZEModel::Event.new(handle, event_pool, desc)
+    if !event_pool.indices.delete?(desc[:index])
+      print_usage_error('zeEventCreate', "event_pool #{'0x%016x' % event_pool.handle} index #{desc['index']} is already used")
+    end
+    event_pool.events[handle] = events[handle]
+  }
+}
+
+$event_lambdas['lttng_ust_ze:zeEventDestroy_exit'] = lambda { |hostname, ctx, defi|
+  if_validated(defi) {
+    events = get_process(hostname, ctx).events
+    handle = get_last_entry(hostname, ctx).params['hEvent']
+    event = events.delete(handle) {
+      raise "Invalid state in zeEventDestroy, event #{'0x%016x' % handle} does not exist"
+    }
+    event_pool = event.event_pool
+    event_pool.events.delete(handle) {
+      raise "Invalid state in zeEventDestroy, event #{'0x%016x' % handle} does not exist in event_pool"
+    }
+    if !event_pool.indices.add?(event.desc[:index])
+       print_usage_error('zeEventDestroy', "event_pool #{'0x%016x' % event_pool.handle} index #{event.desc[:index]} is already freed")
+    end
+  }
+}
+
+consume = lambda { |iterator, _|
+  iterator.next_messages.each do |m|
+    next unless m.type == :BT_MESSAGE_TYPE_EVENT
+    e = m.event
+    m = e.name.match(/:(.*)_(entry|exit)/)
+    if m
+      hostname = e.stream.trace.get_environment_entry_value_by_name('hostname').value
+      context = e.get_common_context_field.value
+      defi = e.payload_field.value
+
+      set_last_entry(hostname, context, m[1], defi) if m[2] == 'entry'
+      l = $event_lambdas[e.name]
+      l.call(hostname, context, e.payload_field.value) if l
+      if m[2] == 'exit'
+        check_last_entry(hostname, context, m[1])
+        reset_last_entry(hostname, context)
+      end
+    end
+  end
+}
+sink = graph.add_simple_sink('babeltrace_thapi', consume)
+
+# Sources to muxer
+comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+  ip = comp_muxer.input_port(i)
+  graph.connect_ports(op, ip)
+end
+
+# Chain the rest
+[comp_muxer, sink].flatten.each_cons(2) do |_out, _in|
+  op = _out.output_port(0)
+  ip = _in.input_port(0)
+  graph.connect_ports(op, ip)
+end
+
+graph.run

@@ -155,7 +155,8 @@ CLEANFILES += zeprof.sh
 
 bin_SCRIPTS = \
 	tracer_ze.sh \
-	zeprof.sh
+	zeprof.sh \
+	ze_validator
 
 noinst_LTLIBRARIES = libzetracepoints.la
 
