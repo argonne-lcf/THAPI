@@ -251,14 +251,16 @@ EXTRA_DIST += \
 	gen_ze_library.rb \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
-	gen_ze_bindings.rb
+	gen_ze_bindings.rb \
+	ze_thread_safety.yaml
 
 CLEANFILES += $(ZE_BINDINGS)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb \
-	babeltrace_zeprofiling_apis.txt
+	babeltrace_zeprofiling_apis.txt \
+	ze_thread_safety.yaml
 
 babeltrace_zeinterval_callbacks.cpp: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< callbacks > $@

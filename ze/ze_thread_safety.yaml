@@ -1,0 +1,15 @@
+---
+zeCommandListDestroy:
+ - [hCommandList, command_list]
+zeCommandListClose:
+ - [hCommandList, command_list]
+zeCommandListReset:
+ - [hCommandList, command_list]
+zeCommandListAppendWriteGlobalTimestamp:
+ - [hCommandList, command_list]
+zeCommandListAppendLaunchKernel:
+ - [hCommandList, command_list]
+zeCommandListAppendBarrier:
+ - [hCommandList, command_list]
+zeCommandQueueExecuteCommandLists:
+ - [phCommandLists_vals, command_list]
