@@ -240,14 +240,16 @@ EXTRA_DIST += \
 	gen_ze_library.rb \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
-	gen_ze_bindings.rb
+	gen_ze_bindings.rb \
+	ze_thread_safety.yaml
 
 CLEANFILES += $(ZE_BINDINGS)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb \
-	babeltrace_zeprofiling_apis.txt
+	babeltrace_zeprofiling_apis.txt \
+	ze_thread_safety.yaml
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
