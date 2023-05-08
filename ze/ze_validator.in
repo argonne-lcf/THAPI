@@ -107,6 +107,8 @@ class Context < Object
   attr_reader :event_pools
   attr_reader :command_queues
   attr_reader :command_lists
+  attr_reader :modules
+  attr_reader :module_build_logs
 
   def initialize(handle, driver, desc, devices = nil)
     super(handle)
@@ -117,6 +119,8 @@ class Context < Object
     @event_pools = {}
     @command_queues = {}
     @command_lists = {}
+    @modules = {}
+    @module_build_logs = {}
   end
 end
 
@@ -152,11 +156,24 @@ class CommandQueue < Object
   attr_reader :context
   attr_reader :device
   attr_reader :desc
+  attr_reader :fences
 
   def initialize(handle, context, device, desc)
     super(handle)
     @context = context
     @device = device
+    @desc = desc
+    @fences = {}
+  end
+end
+
+class Fence < Object
+  attr_reader :command_queue
+  attr_reader :desc
+
+  def initialize(handle, command_queue, desc)
+    super(handle)
+    @command_queue = command_queue
     @desc = desc
   end
 end
@@ -177,6 +194,42 @@ class CommandList < Object
 
   def immediate?
     return !desc
+  end
+end
+
+class Module < Object
+  class BuildLog < Object
+    attr_reader :module
+
+    def initialize(handle, mod = nil)
+      super(handle)
+      @module = mod
+    end
+  end
+
+  attr_reader :context
+  attr_reader :device
+  attr_reader :desc
+  attr_accessor :build_log
+  attr_reader :kernels
+
+  def initialize(handle, context, device, desc)
+    super(handle)
+    @context = context
+    @device = device
+    @desc = desc
+    @kernels = {}
+  end
+end
+
+class Kernel < Object
+  attr_reader :module
+  attr_reader :desc
+
+  def initialize(handle, mod, desc)
+    super(handle)
+    @module = mod
+    @desc = desc
   end
 end
 
@@ -210,7 +263,10 @@ class Process
   attr_reader :event_pools
   attr_reader :events
   attr_reader :command_queues
+  attr_reader :fences
   attr_reader :command_lists
+  attr_reader :modules
+  attr_reader :module_build_logs
 
   def initialize(vpid)
     @vpid = vpid
@@ -222,7 +278,15 @@ class Process
     @event_pools = {}
     @events = {}
     @command_queues = {}
+    @fences = {}
     @command_lists = {}
+    @modules = {}
+    @module_build_logs = {}
+    @kernels = {}
+  end
+
+  def objects(type)
+    instance_variable_get(:"@#{type}s")
   end
 end
 
@@ -303,6 +367,10 @@ end
 
 def raise_internal_error(context, str)
   raise "Invalid state #{get_context_str(context)}: #{str}"
+end
+
+def object_not_found(context, type, handle, sub_context = nil)
+  raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} not found#{sub_context ? " in #{sub_context}" : ""}")
 end
 
 def find_param(context, name)
@@ -398,10 +466,10 @@ $exit_lambdas['zeEventPoolDestroy'] = lambda { |ctx, defi|
   event_pools = find_objects(ctx, 'event_pool')
   handle = find_param(ctx, 'hEventPool')
   event_pool = event_pools.delete(handle) {
-    raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} does not exist")
+    object_not_found(ctx, 'event_pool', handle)
   }
   event_pool.context.event_pools.delete(handle) {
-    raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} does not exist in context")
+    object_not_found(ctx, 'event_pool', handle, 'context')
   }
   event_pool.events.each { |h, _|
     print_usage_error(ctx, "event #{get_handle_str(h)} was not destroyed prior to event_pool #{get_handle_str(handle)} destruction")
@@ -425,11 +493,11 @@ $exit_lambdas['zeEventDestroy'] = lambda { |ctx, defi|
   events = find_objects(ctx, 'event')
   handle = find_param(ctx, 'hEvent')
   event = events.delete(handle) {
-    raise_internal_error(ctx, "event #{get_handle_str(handle)} does not exist")
+    object_not_found(ctx, 'event', handle)
   }
   event_pool = event.event_pool
   event_pool.events.delete(handle) {
-    raise_internal_error(ctx, "event #{get_handle_str(handle)} does not exist in event_pool")
+    object_not_found(ctx, 'event', handle, 'event_pool')
   }
   if !event_pool.indices.add?(event.desc[:index])
      print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{event.desc[:index]} is already freed")
@@ -451,10 +519,36 @@ $exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
   command_queues = find_objects(ctx, 'command_queue')
   handle = find_param(ctx, 'hCommandQueue')
   command_queue = command_queues.delete(handle) {
-    raise_internal_error(ctx, "command_queue #{get_handle_str(handle)} does not exist")
+    object_not_found(ctx, 'command_queue', handle)
   }
   command_queue.context.command_queues.delete(handle) {
-    raise_internal_error(ctx, "command_queue #{get_handle_str(handle)} does not exist in context")
+    object_not_found(ctx, 'command_queue', handle, 'context')
+  }
+  command_queue.fences.each { |h, _|
+    print_usage_error(ctx, "fence #{get_handle_str(h)} was not destroyed prior to command_queue #{get_handle_str(handle)} destruction")
+  }
+}
+
+$exit_lambdas['zeFenceCreate'] = lambda { |ctx, defi|
+  fences = find_objects(ctx, 'fence')
+  command_queue = find_object(ctx, 'command_queue', 'hCommandQueue')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEFenceDesc)
+  handle = defi['phFence_val']
+  fence = ZEModel::Fence.new(handle, command_queue, desc)
+  fences[handle] = fence
+  command_queue.fences[handle] = fence
+}
+
+$exit_lambdas['zeFenceDestroy'] = lambda { |ctx, defi|
+  fences = find_objects(ctx, 'fence')
+  handle = find_param(ctx, 'hFence')
+  fence = fences.delete(handle) {
+    object_not_found(ctx, 'fence', handle)
+  }
+  command_queue = fence.command_queue
+  command_queue.fences.delete(handle) {
+    object_not_found(ctx, 'fence', handle, 'command_queue')
   }
 }
 
@@ -484,10 +578,91 @@ $exit_lambdas['zeCommandListDestroy'] = lambda { |ctx, defi|
   command_lists = find_objects(ctx, 'command_list')
   handle = find_param(ctx, 'hCommandList')
   command_list = command_lists.delete(handle) {
-    raise_internal_error(ctx, "command_list #{get_handle_str(handle)} does not exist")
+    object_not_found(ctx, 'command_list', handle)
   }
   command_list.context.command_lists.delete(handle) {
-    raise_internal_error(ctx, "command_list #{get_handle_str(handle)} does not exist in context")
+    object_not_found(ctx, 'command_list', handle, 'context')
+  }
+}
+
+$exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
+  modules = find_objects(ctx, 'module')
+  context = find_object(ctx, 'context', 'hContext')
+  device = find_object(ctx, 'device', 'hDevice')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEModuleDesc)
+  handle = defi['phModule_val']
+  mod = ZEModel::Module.new(handle, context, device, desc)
+  modules[handle] = mod
+  context.modules[handle] = mod
+  build_log_handle = defi['phBuildLog_val']
+  if build_log_handle != 0
+    module_build_logs = find_objects(ctx, 'module_build_log')
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle, mod)
+    module_build_logs[build_log_handle] = build_log
+    context.module_build_logs[build_log_handle] = build_log
+    modules[handle].build_log = build_log
+  end
+}
+
+$exit_lambdas['zeModuleDestroy'] = lambda { |ctx, defi|
+  modules = find_objects(ctx, 'module')
+  handle = find_param(ctx, 'hModule')
+  mod = modules.delete(handle) {
+    object_not_found(ctx, 'module', handle)
+  }
+  mod.context.modules.delete(handle) {
+    object_not_found(ctx, 'module', handle, 'context')
+  }
+  mod.kernels.each { |h, _|
+    print_usage_error(ctx, "kernel #{get_handle_str(h)} was not destroyed prior to module #{get_handle_str(handle)} destruction")
+  }
+}
+
+$exit_lambdas['zeModuleDynamicLink'] = lambda { |ctx, defi|
+  build_log_handle = defi['phLinkLog_val']
+  if build_log_handle != 0
+    module_build_logs = find_objects(ctx, 'module_build_log')
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
+    module_build_logs[build_log_handle] = build_log
+    context.module_build_logs[build_log_handle] = build_log
+  end
+}
+
+$exit_lambdas['zeModuleBuildLogDestroy'] = lambda { |ctx, defi|
+  module_build_logs = find_objects(ctx, 'module_build_log')
+  handle = find_param(ctx, 'hModuleBuildLog')
+  module_build_log = module_build_logs.delete(handle) {
+    object_not_found(ctx, 'module_build_log', handle)
+  }
+  if module_build_log.module
+    module_build_log.module.context.module_build_logs.delete(handle) {
+      object_not_found(ctx, 'module_build_log', handle, 'context')
+    }
+    module_build_log.module.build_log = nil
+  end
+}
+
+$exit_lambdas['zeKernelCreate'] = lambda { |ctx, defi|
+  kernels = find_objects(ctx, 'kernel')
+  mod = find_object(ctx, 'module', 'hModule')
+  desc_val = find_param(ctx, 'desc_val')
+  desc = to_struct(desc_val, ZE::ZEKernelDesc)
+  handle = defi['phKernel_val']
+  kernel = ZEModel::Kernel.new(handle, mod, desc)
+  kernels[handle] = kernel
+  mod.kernels[handle] = kernel
+}
+
+$exit_lambdas['zeKernelDestroy'] = lambda { |ctx, defi|
+  kernels = find_objects(ctx, 'kernel')
+  handle = find_param(ctx, 'hKernel')
+  kernel = kernels.delete(handle) {
+    object_not_found(ctx, 'kernel', handle)
+  }
+  mod = kernel.module
+  mod.kernels.delete(handle) {
+    object_not_found(ctx, 'kernel', handle, 'module')
   }
 }
 
@@ -549,14 +724,18 @@ unless crash && false
   STATE.each { |hostname, node|
     node.processes.each { |pid, process|
       ctx = {'hostname' => hostname, 'vpid'=> pid}
-      process.contexts.each { |h, c|
-        pring_leak_error(ctx, 'context', h)
-      }
-      process.command_queues.each { |h, c|
-        pring_leak_error(ctx, 'command_queue', h)
-      }
-      process.command_lists.each { |h, c|
-        pring_leak_error(ctx, 'command_list', h)
+      [ 'context',
+        'event_pool',
+        'command_queue',
+        'fence',
+        'command_list',
+        'module',
+        'module_build_log',
+        'kernel',
+      ].each { |t|
+        process.objects(t).each { |h, c|
+          pring_leak_error(ctx, t, h)
+        }
       }
     }
   }
