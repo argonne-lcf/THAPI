@@ -367,12 +367,6 @@ def validate_result(defi)
   ZE::ZEResult.from_native(defi["zeResult"], nil) == :ZE_RESULT_SUCCESS
 end
 
-def if_validated(defi, &block)
-  if validate_result(defi)
-    block.call
-  end
-end
-
 def get_handle_str(handle)
   '0x%016x' % handle
 end
@@ -433,16 +427,17 @@ end
 $entry_lambdas = Hash.new { |h, k| h[k] = [] }
 $exit_lambdas = Hash.new { |h, k| h[k] = [] }
 
-$clean_exit_lambdas = {}
+$success_exit_lambdas = {}
+$error_exit_lambdas = {}
 
-$clean_exit_lambdas['zeDriverGet'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeDriverGet'] = lambda { |ctx, defi|
   drivers = get_process(ctx).drivers
   defi['phDrivers_vals'].each { |h|
     drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
   }
 }
 
-$clean_exit_lambdas['zeDeviceGet'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeDeviceGet'] = lambda { |ctx, defi|
   devices = find_objects(ctx, 'device')
   driver = find_object(ctx, 'driver', 'hDriver')
   defi['phDevices_vals'].each { |h|
@@ -453,7 +448,7 @@ $clean_exit_lambdas['zeDeviceGet'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeDeviceGetSubDevices'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeDeviceGetSubDevices'] = lambda { |ctx, defi|
   devices = find_objects(ctx, 'device')
   device = find_object(ctx, 'device', 'hDevice')
   defi['phSubdevices_vals'].each { |h|
@@ -464,7 +459,7 @@ $clean_exit_lambdas['zeDeviceGetSubDevices'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeContextCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeContextCreate'] = lambda { |ctx, defi|
   contexts = find_objects(ctx, 'context')
   driver = find_object(ctx, 'driver', 'hDriver')
   desc_val = find_param(ctx, 'desc_val')
@@ -473,7 +468,7 @@ $clean_exit_lambdas['zeContextCreate'] = lambda { |ctx, defi|
   contexts[handle] = ZEModel::Context.new(handle, driver, desc)
 }
 
-$clean_exit_lambdas['zeContextCreateEx'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeContextCreateEx'] = lambda { |ctx, defi|
   contexts = find_objects(ctx, 'context')
   devices = find_objects(ctx, 'device')
   driver = find_object(ctx, 'driver', 'hDriver')
@@ -485,14 +480,14 @@ $clean_exit_lambdas['zeContextCreateEx'] = lambda { |ctx, defi|
   contexts[handle] = ZEModel::Context.new(handle, driver, desc, devs)
 }
 
-$clean_exit_lambdas['zeContextDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeContextDestroy'] = lambda { |ctx, defi|
   contexts = find_objects(ctx, 'context')
   contexts.delete(find_param(ctx, 'hContext')) { |h|
     raise_internal_error(ctx, "context #{get_handle_str(h)} does not exist")
   }
 }
 
-$clean_exit_lambdas['zeEventPoolCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeEventPoolCreate'] = lambda { |ctx, defi|
   context = find_object(ctx, 'context', 'hContext')
   devices = find_objects(ctx, 'device')
   event_pools = find_objects(ctx, 'event_pool')
@@ -505,7 +500,7 @@ $clean_exit_lambdas['zeEventPoolCreate'] = lambda { |ctx, defi|
   context.event_pools[handle] = event_pools[handle]
 }
 
-$clean_exit_lambdas['zeEventPoolDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeEventPoolDestroy'] = lambda { |ctx, defi|
   event_pools = find_objects(ctx, 'event_pool')
   handle = find_param(ctx, 'hEventPool')
   event_pool = event_pools.delete(handle) {
@@ -519,7 +514,7 @@ $clean_exit_lambdas['zeEventPoolDestroy'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeEventCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeEventCreate'] = lambda { |ctx, defi|
   events = find_objects(ctx, 'event')
   event_pool = find_object(ctx, 'event_pool', 'hEventPool')
   desc_val = find_param(ctx, 'desc_val')
@@ -532,7 +527,7 @@ $clean_exit_lambdas['zeEventCreate'] = lambda { |ctx, defi|
   event_pool.events[handle] = events[handle]
 }
 
-$clean_exit_lambdas['zeEventDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeEventDestroy'] = lambda { |ctx, defi|
   events = find_objects(ctx, 'event')
   handle = find_param(ctx, 'hEvent')
   event = events.delete(handle) {
@@ -547,7 +542,7 @@ $clean_exit_lambdas['zeEventDestroy'] = lambda { |ctx, defi|
   end
 }
 
-$clean_exit_lambdas['zeCommandQueueCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeCommandQueueCreate'] = lambda { |ctx, defi|
   command_queues = find_objects(ctx, 'command_queue')
   context = find_object(ctx, 'context', 'hContext')
   device = find_object(ctx, 'device', 'hDevice')
@@ -558,7 +553,7 @@ $clean_exit_lambdas['zeCommandQueueCreate'] = lambda { |ctx, defi|
   context.command_queues[handle] = command_queues[handle]
 }
 
-$clean_exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
   command_queues = find_objects(ctx, 'command_queue')
   handle = find_param(ctx, 'hCommandQueue')
   command_queue = command_queues.delete(handle) {
@@ -572,7 +567,7 @@ $clean_exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeFenceCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeFenceCreate'] = lambda { |ctx, defi|
   fences = find_objects(ctx, 'fence')
   command_queue = find_object(ctx, 'command_queue', 'hCommandQueue')
   desc_val = find_param(ctx, 'desc_val')
@@ -583,7 +578,7 @@ $clean_exit_lambdas['zeFenceCreate'] = lambda { |ctx, defi|
   command_queue.fences[handle] = fence
 }
 
-$clean_exit_lambdas['zeFenceDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeFenceDestroy'] = lambda { |ctx, defi|
   fences = find_objects(ctx, 'fence')
   handle = find_param(ctx, 'hFence')
   fence = fences.delete(handle) {
@@ -595,7 +590,7 @@ $clean_exit_lambdas['zeFenceDestroy'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeCommandListCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeCommandListCreate'] = lambda { |ctx, defi|
   command_lists = find_objects(ctx, 'command_list')
   context = find_object(ctx, 'context', 'hContext')
   device = find_object(ctx, 'device', 'hDevice')
@@ -606,7 +601,7 @@ $clean_exit_lambdas['zeCommandListCreate'] = lambda { |ctx, defi|
   context.command_lists[handle] = command_lists[handle]
 }
 
-$clean_exit_lambdas['zeCommandListCreateImmediate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeCommandListCreateImmediate'] = lambda { |ctx, defi|
   command_lists = find_objects(ctx, 'command_list')
   context = find_object(ctx, 'context', 'hContext')
   device = find_object(ctx, 'device', 'hDevice')
@@ -617,7 +612,7 @@ $clean_exit_lambdas['zeCommandListCreateImmediate'] = lambda { |ctx, defi|
   context.command_lists[handle] = command_lists[handle]
 }
 
-$clean_exit_lambdas['zeCommandListDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeCommandListDestroy'] = lambda { |ctx, defi|
   command_lists = find_objects(ctx, 'command_list')
   handle = find_param(ctx, 'hCommandList')
   command_list = command_lists.delete(handle) {
@@ -628,7 +623,7 @@ $clean_exit_lambdas['zeCommandListDestroy'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
   modules = find_objects(ctx, 'module')
   context = find_object(ctx, 'context', 'hContext')
   device = find_object(ctx, 'device', 'hDevice')
@@ -648,7 +643,17 @@ $clean_exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
   end
 }
 
-$clean_exit_lambdas['zeModuleDestroy'] = lambda { |ctx, defi|
+$error_exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
+  build_log_handle = defi['phBuildLog_val']
+  if build_log_handle != 0
+    module_build_logs = find_objects(ctx, 'module_build_log')
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
+    module_build_logs[build_log_handle] = build_log
+    context.module_build_logs[build_log_handle] = build_log
+  end
+}
+
+$success_exit_lambdas['zeModuleDestroy'] = lambda { |ctx, defi|
   modules = find_objects(ctx, 'module')
   handle = find_param(ctx, 'hModule')
   mod = modules.delete(handle) {
@@ -662,7 +667,7 @@ $clean_exit_lambdas['zeModuleDestroy'] = lambda { |ctx, defi|
   }
 }
 
-$clean_exit_lambdas['zeModuleDynamicLink'] = lambda { |ctx, defi|
+$error_exit_lambdas['zeModuleDynamicLink'] = $success_exit_lambdas['zeModuleDynamicLink'] = lambda { |ctx, defi|
   build_log_handle = defi['phLinkLog_val']
   if build_log_handle != 0
     module_build_logs = find_objects(ctx, 'module_build_log')
@@ -672,7 +677,7 @@ $clean_exit_lambdas['zeModuleDynamicLink'] = lambda { |ctx, defi|
   end
 }
 
-$clean_exit_lambdas['zeModuleBuildLogDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeModuleBuildLogDestroy'] = lambda { |ctx, defi|
   module_build_logs = find_objects(ctx, 'module_build_log')
   handle = find_param(ctx, 'hModuleBuildLog')
   module_build_log = module_build_logs.delete(handle) {
@@ -686,7 +691,7 @@ $clean_exit_lambdas['zeModuleBuildLogDestroy'] = lambda { |ctx, defi|
   end
 }
 
-$clean_exit_lambdas['zeKernelCreate'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeKernelCreate'] = lambda { |ctx, defi|
   kernels = find_objects(ctx, 'kernel')
   mod = find_object(ctx, 'module', 'hModule')
   desc_val = find_param(ctx, 'desc_val')
@@ -697,7 +702,7 @@ $clean_exit_lambdas['zeKernelCreate'] = lambda { |ctx, defi|
   mod.kernels[handle] = kernel
 }
 
-$clean_exit_lambdas['zeKernelDestroy'] = lambda { |ctx, defi|
+$success_exit_lambdas['zeKernelDestroy'] = lambda { |ctx, defi|
   kernels = find_objects(ctx, 'kernel')
   handle = find_param(ctx, 'hKernel')
   kernel = kernels.delete(handle) {
@@ -757,10 +762,13 @@ consume = lambda { |iterator, _|
         $exit_lambdas[m[1]].reverse_each { |l|
           l.call(context, defi)
         }
-        if_validated(defi) {
-          l = $clean_exit_lambdas[m[1]]
+        if validate_result(defi)
+          l = $success_exit_lambdas[m[1]]
           l.call(context, defi) if l
-        }
+        else
+          l = $error_exit_lambdas[m[1]]
+          l.call(context, defi) if l
+        end
         check_last_entry(context)
         reset_last_entry(context)
       end
