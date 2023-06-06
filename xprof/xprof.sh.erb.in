@@ -149,6 +149,8 @@ whichlib() {
 whichlib64_head() {
     # This function return only the first lib found
     # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
+  {
+    unset IFS
     for lib in $(whichlib $1)
     do
         if objdump -a $lib | grep 64 > /dev/null; then
@@ -156,6 +158,7 @@ whichlib64_head() {
             break
         fi
     done
+  }
 }
 
 # > unset FOO ; thapi_export FOO 1 ; echo $FOO
