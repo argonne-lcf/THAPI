@@ -353,7 +353,8 @@ EOF
     table_members.each { |m|
       ftype = m.type.name
       epilogue << <<EOF
-    pDdiTable->#{m.name} = _#{ftype.gsub("_pfn","").gsub(/_t\z/, "")}_hid;
+    if(pDdiTable->#{m.name})
+      pDdiTable->#{m.name} = _#{ftype.gsub("_pfn","").gsub(/_t\z/, "")}_hid;
 EOF
     }
     epilogue << <<EOF
