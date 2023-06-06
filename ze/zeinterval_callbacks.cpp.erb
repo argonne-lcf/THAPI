@@ -453,22 +453,11 @@ Case B:
   %>
   <%# Map kernel to name and group size %>
   <% if dbt_event.name_striped == "zeKernelCreate" and dbt_event.start? %>
-     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      save_start(state, hpt_t(hostname,process_id,thread_id), std::string{desc__pKernelName_val});
   <% elsif dbt_event.name_striped == "zeKernelCreate" and dbt_event.stop? %>
-     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
+    <% $profiling_apis.add(dbt_event.name_unsanitized) %>
      state->kernel_to_name[hpk_t(hostname,process_id,phKernel_val)] = retrieve_start<std::string>(state, hpt_t(hostname,process_id,thread_id));
-  <% elsif dbt_event.name_striped == "zeKernelGetName" and dbt_event.start? %>
-     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
-     <%# Workarround for "virgin birth" kernel (aka kernel who are not created via zeKernelCreate) %>
-     if (pName != nullptr)
-       save_start(state, hpt_t(hostname,process_id,thread_id), hKernel);
-  <% elsif dbt_event.name_striped == "zeKernelGetName" and dbt_event.stop? %>
-     <% $profiling_apis.add(dbt_event.name_unsanitized) %>
-     if (std::string{pName_val} != "" && zeResult == ZE_RESULT_SUCCESS) {
-       ze_kernel_handle_t _hKernel = retrieve_start<ze_kernel_handle_t>(state, hpt_t(hostname,process_id,thread_id));
-       state->kernel_to_name[hpk_t(hostname,process_id,_hKernel)] = std::string{pName_val};
-     }
   <% elsif dbt_event.name_striped == "zeKernelSetGroupSize" and dbt_event.start? %>
      std::stringstream groupsize;
      groupsize << "{" << groupSizeX << ","
