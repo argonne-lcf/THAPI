@@ -24,6 +24,10 @@ class Command
     YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
   end
 
+  def decl_hidden_alias(alias_name = hidden_alias_name, storage: nil)
+    YAMLCAst::Declaration::new(name: alias_name, type: @function.type, storage: storage).to_s + " __attribute__ ((alias (\"#{name}\"), visibility(\"hidden\")))"
+  end
+
   def decl
     @function.to_s
   end
@@ -34,6 +38,10 @@ class Command
 
   def pointer_type_name
     name + "_t"
+  end
+
+  def hidden_alias_name
+    "_" + name + "_hid"
   end
 
   def type

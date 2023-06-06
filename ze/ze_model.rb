@@ -341,3 +341,24 @@ register_epilogue "zeKernelCreate", <<EOF
     _dump_kernel_properties(*phKernel);
  }
 EOF
+
+($ze_commands + $zet_commands + $zes_commands + $zel_commands).each { |c|
+  if c.name.match?("ProcAddrTable")
+    epilogue = <<EOF
+  if (_do_override_proc_tables && _retval == ZE_RESULT_SUCCESS && pDdiTable) {
+EOF
+    table = c["pDdiTable"]
+    table_type = table.type.type.name
+    table_members = STRUCT_MAP[table_type]
+    table_members.each { |m|
+      ftype = m.type.name
+      epilogue << <<EOF
+    pDdiTable->#{m.name} = _#{ftype.gsub("_pfn","").gsub(/_t\z/, "")}_hid;
+EOF
+    }
+    epilogue << <<EOF
+  }
+EOF
+  register_epilogue c.name, epilogue
+  end
+}

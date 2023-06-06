@@ -120,6 +120,7 @@ fi
 export LD_PRELOAD=$libdir/libTracerZE.so:$LD_PRELOAD
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LTTNG_UST_ZE_VERBOSE=1
+export LTTNG_UST_ZE_OVERRIDE_PROC_TABLES=1
 lttng start
 
 ctrl_c() {

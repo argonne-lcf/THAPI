@@ -29,6 +29,7 @@ struct _ze_device_obj_data {
 
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
+static int _do_override_proc_tables = 0;
 
 typedef enum _ze_command_list_flag {
   _ZE_IMMEDIATE = ZE_BIT(0),
@@ -780,6 +781,10 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_ZE_CHAINED_STRUCTS");
   if (s)
     _do_chained_structs = 1;
+
+  s = getenv("LTTNG_UST_ZE_OVERRIDE_PROC_TABLES");
+  if (s)
+    _do_override_proc_tables = 1;
 
   find_ze_symbols(handle, verbose);
 

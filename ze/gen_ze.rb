@@ -111,6 +111,7 @@ all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands
 
 #{c.decl_pointer(c.pointer_type_name)};
 static #{c.pointer_type_name} #{ZE_POINTER_NAMES[c]} = (void *) 0x0;
+#{c.decl_hidden_alias(c.hidden_alias_name)};
 EOF
 }
 

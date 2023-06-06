@@ -299,6 +299,7 @@ preload_lib_tracers() {
 <% if languages.include?("ze") %>
     export LTTNG_UST_ZE_PROFILE=1
     thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
+    thapi_export LTTNG_UST_ZE_OVERRIDE_PROC_TABLES 1
 <%= print_loader_logic("ze","libze_loader","libTracerZE")%>
 <% end %>
 <% if languages.include?("cuda") %>
