@@ -232,6 +232,10 @@ enable_events_cuda() {
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 }
 
+enable_events_hip() {
+    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_hip:*
+}
+
 enable_events_metadata() {
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_thapi:*
 }
@@ -250,7 +254,7 @@ setup_lttng() {
         suffix="_live"
     fi
 
-<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
+<% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
     THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/iprof${suffix}-${PALS_APID:-0}
 <% elsif languages.include?("cl") %>
     THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-opencl-session-${PALS_APID:-0}
@@ -258,6 +262,8 @@ setup_lttng() {
     THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-ze-session-${PALS_APID:-0}
 <% elsif languages.include?("cuda") %>
     THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-cuda-session-${PALS_APID:-0}
+<% elsif languages.include?("hip") %>
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-hip-session-${PALS_APID:-0}
 <% end %>
     THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/${PALS_NODEID:-0}
 
@@ -283,6 +289,9 @@ setup_lttng() {
 <% if languages.include?("cuda") %>
     enable_events_cuda
 <% end %>
+<% if languages.include?("hip") %>
+    enable_events_hip
+<% end %>
     enable_events_metadata
 
     lttngq add-context --userspace --channel=blocking-channel -t vpid -t vtid
@@ -307,6 +316,9 @@ preload_lib_tracers() {
 <% if languages.include?("cuda") %>
     export LTTNG_UST_CUDA_PROFILE=1
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
+<% end %>
+<% if languages.include?("hip") %>
+<%= print_loader_logic("hip","libamdhip64","libTracerHIP")%>
 <% end %>
     fi
     unset IFS
@@ -381,7 +393,7 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
-<% if ["omp","ze","cuda","cl"].all? { |l| languages.include?(l) } %>
+<% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
         lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/iprof-* | head -1)
 <% elsif languages.include?("cl") %>
         lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-opencl-session* | head -1)
@@ -389,6 +401,8 @@ summary() {
         lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-ze-session* | head -1)
 <% elsif languages.include?("cuda") %>
         lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-cuda-session* | head -1)
+<% elsif languages.include?("hip") %>
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-hip-session* | head -1)
 <% end %>
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
@@ -532,6 +546,9 @@ if [ $debug = true ]; then
 <% end %>
 <% if languages.include?("cuda") %>
     export LTTNG_UST_CUDA_VERBOSE=1
+<% end %>
+<% if languages.include?("hip") %>
+    export LTTNG_UST_HIP_VERBOSE=1
 <% end %>
 <% if languages.include?("omp") %>
     export LTTNG_UST_OMP_VERBOSE=1
