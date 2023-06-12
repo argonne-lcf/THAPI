@@ -27,7 +27,7 @@ static void create_and_enqueue_host_message(const char* hostname, const process_
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
                             cudainterval_iter_g->dispatch->host_event_class,
                             cudainterval_self_message_iterator_g,
-                            cudainterval_iter_g->dispatch->stream);
+                            cudainterval_iter_g->dispatch->stream, BACKEND_CUDA);
 
      cudainterval_callbacks_state* state = (cudainterval_callbacks_state*) cudainterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
@@ -56,7 +56,7 @@ static void create_and_enqueue_traffic_message(const char* hostname, const proce
      bt_message *message = create_traffic_message(hostname, process_id, thread_id, name, size,
                                                   cudainterval_iter_g->dispatch->traffic_event_class,
                                                   cudainterval_self_message_iterator_g,
-                                                  cudainterval_iter_g->dispatch->stream);
+                                                  cudainterval_iter_g->dispatch->stream, BACKEND_CUDA);
 
      cudainterval_callbacks_state* state = (cudainterval_callbacks_state*) cudainterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
