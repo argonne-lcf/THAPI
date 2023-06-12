@@ -27,7 +27,7 @@ btx_tally_upstream_model.yaml: btx_interval_model.yaml
 	cp $< $(builddir)/$@
 
 btx_%/metababel/metababel.h btx_%/metababel/btx_component.h btx_%/metababel/btx_component.c btx_%/metababel/btx_upstream.h btx_%/metababel/btx_upstream.c btx_%/btx_main.c: btx_%_upstream_model.yaml btx_%_params.yaml
-	$(METABABEL) -u $(builddir)/$*_upstream_model.yaml -t SINK -o btx_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
+	$(METABABEL) -u $(builddir)/btx_$*_upstream_model.yaml -t SINK -o btx_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
 
 BTX_TALLY_GENERATED = \
 	btx_tally/metababel/metababel.h \
