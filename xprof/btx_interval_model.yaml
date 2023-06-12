@@ -1,5 +1,5 @@
 :stream_classes:
-  - :name: some_name
+  - :name: interval
     :event_common_context_field_class:
       :type: structure
       :members:
