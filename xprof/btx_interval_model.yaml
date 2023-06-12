@@ -1,5 +1,5 @@
 :stream_classes:
-  - :name: interval
+  - :name: some_name
     :event_common_context_field_class:
       :type: structure
       :members:
@@ -28,7 +28,7 @@
             :field_value_range: 64
             :cast_type: int64_t
     :event_classes:
-      - :name: host
+      - :name: lttng:host 
         :payload_field_class:
           :type: structure
           :members:
@@ -45,7 +45,7 @@
               :field_class:
                 :type: bool
                 :cast_type: bt_bool
-      - :name: device
+      - :name: lttng:device 
         :payload_field_class:
           :type: structure
           :members:
@@ -76,7 +76,7 @@
               :field_class:
                 :type: string
                 :cast_type: const char*
-      - :name: traffic
+      - :name: lttng:traffic 
         :payload_field_class:
           :type: structure
           :members:
@@ -89,7 +89,7 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
-      - :name: device_name
+      - :name: lttng:device_name 
         :payload_field_class:
           :type: structure
           :members:
@@ -102,7 +102,7 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
-      - :name: ust_thapi:metadata 
+      - :name: lttng_ust_thapi:metadata 
         :payload_field_class:
           :type: structure
           :members:

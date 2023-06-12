@@ -180,9 +180,9 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_read_params(btx_handle, &btx_read_params);
   btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 
-  btx_register_callbacks_host(btx_handle, &host_usr_callback);
-  btx_register_callbacks_device(btx_handle, &device_usr_callback);
-  btx_register_callbacks_traffic(btx_handle, &traffic_usr_callback);
-  btx_register_callbacks_device_name(btx_handle, &device_name_usr_callback);
-  btx_register_callbacks_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
+  btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
+  btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
+  btx_register_callbacks_lttng_traffic(btx_handle, &traffic_usr_callback);
+  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
+  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
 }
