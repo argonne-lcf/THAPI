@@ -109,7 +109,7 @@ Usage:
   -f, --full         All API calls will be traced. By default and for performance raison, some of them will be ignored
   --metadata         Display metadata
   --max-name-size    Maximun size allowed for names
-  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders (/home/videau/lttng-traces/...)
+  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)
                      If no arguments are provided, will use the latest trace available
 
  Example:

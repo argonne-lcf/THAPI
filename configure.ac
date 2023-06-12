@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([thapi], [0.0.7], [bvideau@anl.gov])
+AC_INIT([thapi], [0.0.9], [bvideau@anl.gov])
 AC_CONFIG_SRCDIR([opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
