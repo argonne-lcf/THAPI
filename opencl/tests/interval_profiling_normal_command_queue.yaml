@@ -21,7 +21,7 @@
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
-    backend: 0
+    backend: 2
   :payload:
       name: clCreateCommandQueue
       dur: 1
@@ -34,7 +34,7 @@
   :common_context:
     hostname: aurora12.gov
     ts: 2
-    backend: 0
+    backend: 2
   :payload:
       name: clEnqueueReadBuffer 
       dur: 2
