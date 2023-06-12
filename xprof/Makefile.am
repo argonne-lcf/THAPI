@@ -20,12 +20,14 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
-btx_timeline_upstream_model.yaml btx_tally_upstream_model.yaml &: btx_interval_model.yaml
-	cp $< $(builddir)/btx_timeline_upstream_model.yaml
-	cp $< $(builddir)/btx_tally_upstream_model.yaml
+btx_timeline_upstream_model.yaml: btx_interval_model.yaml
+	cp $< $(builddir)/$@
 
-%/metababel/metababel.h %/metababel/btx_component.h %/metababel/btx_component.c %/metababel/btx_upstream.h %/metababel/btx_upstream.c %/btx_main.c: %_upstream_model.yaml %_params.yaml
-	$(METABABEL) -u $(builddir)/$*_upstream_model.yaml -t SINK -o $* -p $* -c $* --params $(srcdir)/$*_params.yaml
+btx_tally_upstream_model.yaml: btx_interval_model.yaml
+	cp $< $(builddir)/$@
+
+btx_%/metababel/metababel.h btx_%/metababel/btx_component.h btx_%/metababel/btx_component.c btx_%/metababel/btx_upstream.h btx_%/metababel/btx_upstream.c btx_%/btx_main.c: btx_%_upstream_model.yaml btx_%_params.yaml
+	$(METABABEL) -u $(builddir)/$*_upstream_model.yaml -t SINK -o btx_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
 
 BTX_TALLY_GENERATED = \
 	btx_tally/metababel/metababel.h \
