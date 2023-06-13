@@ -14,15 +14,6 @@ enum backend_e{
   BACKEND_OMP = 5 
 };
 
-constexpr const char* backend_name[] = { 
-  "BACKEND_UNKNOWN",
-  "BACKEND_ZE",
-  "BACKEND_OPENCL",
-  "BACKEND_CUDA",
-  "BACKEND_OMP_TARGET_OPERATIONS",
-  "BACKEND_OMP" 
-};
-
 typedef enum        backend_e backend_t;
 typedef unsigned    backend_level_t;
 typedef std::string thapi_metadata_t;
