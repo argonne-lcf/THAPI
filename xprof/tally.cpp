@@ -7,6 +7,8 @@ struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
 
+  std::vector<int>backend_level;
+
   std::map<backend_level_t, std::set<const char *>> host_backend_name;
   std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
 
@@ -32,9 +34,92 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
+void get_backend_id_from_name(const char *name, int *identifier){
+  *identifier = -1;
+  for(int i = 0; i < backend_size; ++i)
+    if (strcmp(backend_name[i],name) == 0) *identifier = i;
+}
+
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   /* User allocates its own data structure */
   *usr_data = new tally_dispatch_t;
+  tally_dispatch_t *data = (tally_dispatch_t *)(*usr_data);
+
+  data->backend_level = {
+    2, // BACKEND_UNKNOWN
+    2, // BACKEND_ZE
+    2, // BACKEND_OPENCL
+    2, // BACKEND_CUDA
+    1, // BACKEND_OMP_TARGET_OPERATIONS
+    0  // BACKEND_OMP
+  };
+
+  {
+    int identifier;
+    if(const char* new_level = std::getenv("BACKEND_UNKNOWN")){
+      get_backend_id_from_name("BACKEND_UNKNOWN", &identifier);
+      if (identifier >= 0){
+        std::cout << "New level for 'BACKEND_UNKNOWN': " << identifier << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
+
+  {
+    int identifier;
+    if(const char* new_level = std::getenv("BACKEND_ZE")){
+      get_backend_id_from_name("BACKEND_ZE", &identifier);
+      if (identifier >= 0){
+        std::cout << "New level for 'BACKEND_ZE': " << identifier << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
+
+  {
+    int identifier;
+    if(const char* new_level = std::getenv("BACKEND_OPENCL")){
+      get_backend_id_from_name("BACKEND_OPENCL", &identifier);
+      if (identifier >= 0){
+        std::cout << "New level for 'BACKEND_OPENCL': " << identifier << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
+
+  {
+    int identifier;
+    if(const char* new_level = std::getenv("BACKEND_CUDA")){
+      get_backend_id_from_name("BACKEND_CUDA", &identifier);
+      if (identifier >= 0){
+        std::cout << "New level for 'BACKEND_CUDA': " << identifier << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
+
+  {
+    int identifier;
+    if(const char* new_level = std::getenv("BACKEND_OMP_TARGET_OPERATIONS")){
+      get_backend_id_from_name("BACKEND_OMP_TARGET_OPERATIONS", &identifier);
+      if (identifier >= 0){
+        std::cout << "New level for 'BACKEND_OMP_TARGET_OPERATIONS': " << identifier << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
+
+  {
+    int identifier;
+    if(const char* new_level = std::getenv("BACKEND_OMP")){
+      get_backend_id_from_name("BACKEND_OMP", &identifier);
+      if (identifier >= 0){
+        std::cout << "New level for 'BACKEND_OMP': " << identifier << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
+
 }
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
@@ -127,7 +212,7 @@ static void host_usr_callback(void *btx_handle, void *usr_data, const char *host
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
   TallyCoreTime a{dur, (uint64_t)err};
-  const int level = backend_level[backend_id];
+  const int level = data->backend_level[backend_id];
   data->host_backend_name[level].insert(backend_name[backend_id]);
   data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
 }
@@ -154,7 +239,7 @@ static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *h
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
   TallyCoreByte a{(uint64_t)size, false};
-  const int level = backend_level[backend];
+  const int level = data->backend_level[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
   data->traffic[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
 }

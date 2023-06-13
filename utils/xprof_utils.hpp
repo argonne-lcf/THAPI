@@ -5,7 +5,7 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
-enum backend_e{ 
+enum backend_e{
   BACKEND_UNKNOWN = 0,
   BACKEND_ZE = 1,
   BACKEND_OPENCL = 2,
@@ -21,15 +21,6 @@ constexpr const char* backend_name[] = {
   "BACKEND_CUDA",
   "BACKEND_OMP_TARGET_OPERATIONS",
   "BACKEND_OMP" 
-};
-
-constexpr int backend_level[] = { 
-  2, // BACKEND_UNKNOWN
-  2, // BACKEND_ZE
-  2, // BACKEND_OPENCL
-  2, // BACKEND_CUDA
-  1, // BACKEND_OMP_TARGET_OPERATIONS
-  0  // BACKEND_OMP
 };
 
 typedef enum        backend_e backend_t;
