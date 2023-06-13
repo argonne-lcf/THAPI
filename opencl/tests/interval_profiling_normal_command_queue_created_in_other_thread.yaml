@@ -24,20 +24,21 @@
   :common_context:
     hostname: aurora12.gov
     vtid: 0
-    backend: 0
+    backend: 2
   :payload:
     name: clCreateCommandQueue
     dur: 1
 - :name: lttng:traffic
   :common_context:
     hostname: aurora12.gov
+    backend: 2
   :payload:
     name: clEnqueueReadBuffer
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
     ts: 2
-    backend: 0
+    backend: 2
   :payload:
     name: clEnqueueReadBuffer 
     dur: 2

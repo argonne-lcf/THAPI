@@ -22,7 +22,7 @@
   :common_context:
     hostname: aurora12.gov
     ts: 1
-    backend: 0
+    backend: 2
   :payload:
     name: clEnqueueNDRangeKernel
     dur: 2
