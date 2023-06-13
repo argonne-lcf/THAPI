@@ -189,7 +189,7 @@ bt_message* create_traffic_message(const char *hostname, const process_id_t proc
      bt_field *vtid_field = bt_field_structure_borrow_member_field_by_index(context_field,2);
      bt_field_integer_signed_set_value(vtid_field, thread_id);
      // backend
-     bt_field *backend_field = bt_field_structure_borrow_member_field_by_index(context_field,3);
+     bt_field *backend_field = bt_field_structure_borrow_member_field_by_index(context_field,4);
      bt_field_integer_signed_set_value(backend_field, backend);
 
      /* Payload */
