@@ -48,11 +48,11 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
 
   const int max_name_size = data->params->display_name_max_size;
 
-  if (data->params->display_human) {
+  if (strcmp(data->params->display_mode, "human") == 0) {
     if (data->params->display_metadata)
       print_metadata(data->metadata);
 
-    if (data->params->display_compact) {
+    if (strcmp(data->params->display, "compact") == 0) {
 
       for (const auto &[level, host] : data->host) {
         std::string s = join_iterator(data->host_backend_name[level]);
@@ -91,7 +91,7 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
     if (data->params->display_metadata)
       j["metadata"] = data->metadata;
 
-    if (data->params->display_compact) {
+    if (strcmp(data->params->display, "compact") == 0) {
       for (auto &[level, host] : data->host)
         j["host"][level] = json_compact(host);
 
@@ -138,7 +138,7 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                       bt_bool err, const char *metadata) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  const auto name_demangled = (data->params->demangle_name) ? f_demangle_name(name) : name;
+  const auto name_demangled = (strcmp(data->params->name, "demangle") == 0) ? f_demangle_name(name) : name;
   const auto name_with_metadata = (data->params->display_kernel_verbose && !strcmp(metadata, ""))
                                       ? name_demangled + "[" + metadata + "]"
                                       : name_demangled;

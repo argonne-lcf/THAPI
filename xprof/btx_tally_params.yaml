@@ -1,19 +1,14 @@
 :type: map
 :entries:
-  - :name: display_compact
-    :type: bool
-    :default_value: BT_TRUE
-  - :name: demangle_name
-    :type: bool
-    :default_value: BT_TRUE
-  - :name: display_human
-    :type: bool
-    :default_value: BT_TRUE
+  - :name: display
+    :type: string
+  - :name: name
+    :type: string
+  - :name: display_mode
+    :type: string
   - :name: display_metadata
     :type: bool
   - :name: display_name_max_size
     :type: integer_unsigned
-    :default_value: 20
   - :name: display_kernel_verbose
     :type: bool
-    :default_value: BT_TRUE

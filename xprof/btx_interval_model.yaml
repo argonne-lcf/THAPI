@@ -28,7 +28,7 @@
             :field_value_range: 64
             :cast_type: int64_t
     :event_classes:
-      - :name: lttng:host 
+      - :name: lttng:host
         :payload_field_class:
           :type: structure
           :members:

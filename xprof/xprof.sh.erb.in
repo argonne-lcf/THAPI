@@ -449,10 +449,10 @@ setub_babeltrace_live() {
      --component=filter.ompinterval.interval \
 <% end %>
      --component=sink.btx_tally.tally \
-     --params="display_compact=false, \
-               demangle_name=true, \
-               display_human=true, \
-               display_metadata=true, \
+     --params="display=compact, \
+               name=demangle, \
+               display_mode=human, \
+               display_metadata=false, \
                display_name_max_size=80, \
                display_kernel_verbose=false" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_${PALS_NODEID:-0}.log &
    BT_PID=$!
