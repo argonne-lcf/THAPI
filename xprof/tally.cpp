@@ -1,350 +1,188 @@
-#include "btx_tally.h"
 #include "tally.hpp"
-#include "xprof_utils.hpp" //Typedef and hashtuple
 
-auto inline get_common_context_field_host(const bt_event *event) {
+//! User data collection structure.
+//! It is used to collect interval messages data, once data is collected,
+//! it is aggregated and tabulated for printing.
+struct tally_dispatch_s {
+  //! User params provided to the user component.
+  btx_params_t *params;
 
-  auto dur_tuple0 =
-      std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                      (hostname_t) ""), // hostname
-                      std::make_tuple(1, &bt_field_integer_signed_get_value,
-                                      (process_id_t)0), // process
-                      std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                      (thread_id_t)0), // threads
-                      std::make_tuple(4, &bt_field_integer_signed_get_value,
-                                      (int)0)); // backend
+  std::map<backend_level_t, std::set<const char *>> host_backend_name;
+  std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
 
-  const bt_field *common_context_field =
-      bt_event_borrow_common_context_field_const(event);
+  std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
+  std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
-  return thapi_bt2_getter(common_context_field, dur_tuple0);
+  std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
+  std::unordered_map<hp_device_t, std::string> device_name;
+
+  //! Collects thapi metadata "lttng_ust_thapi:metadata".
+  std::vector<std::string> metadata;
+};
+
+typedef struct tally_dispatch_s tally_dispatch_t;
+
+void print_metadata(std::vector<std::string> metadata) {
+  if (metadata.empty())
+    return;
+
+  std::cout << "Metadata" << std::endl;
+  std::cout << std::endl;
+  for (std::string value : metadata)
+    std::cout << value << std::endl;
 }
 
-auto inline get_common_context_field_device(const bt_event *event) {
-
-  auto dur_tuple0 =
-      std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                      (hostname_t) ""), // hostname
-                      std::make_tuple(1, &bt_field_integer_signed_get_value,
-                                      (process_id_t)0), // process
-                      std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                      (thread_id_t)0), // threads
-                      std::make_tuple(3, &bt_field_integer_signed_get_value,
-                                      (int)0)); // backend
-
-  const bt_field *common_context_field =
-      bt_event_borrow_common_context_field_const(event);
-
-  return thapi_bt2_getter(common_context_field, dur_tuple0);
+void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
+  /* User allocates its own data structure */
+  *usr_data = new tally_dispatch_t;
 }
 
-
-auto inline get_common_context_field(const bt_event *event) {
-
-  auto dur_tuple0 =
-      std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                      (hostname_t) ""), // hostname
-                      std::make_tuple(1, &bt_field_integer_signed_get_value,
-                                      (process_id_t)0), // process
-                      std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                      (thread_id_t)0));
-
-  const bt_field *common_context_field =
-      bt_event_borrow_common_context_field_const(event);
-
-  return thapi_bt2_getter(common_context_field, dur_tuple0);
+void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+  data->params = usr_params;
 }
 
+void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
+  /* User cast the API usr_data that was already initialized with his/her data */
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-bt_component_class_sink_consume_method_status
-tally_dispatch_consume(bt_self_component_sink *self_component_sink) {
-  bt_component_class_sink_consume_method_status status =
-      BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
+  const int max_name_size = data->params->display_name_max_size;
 
-  /* Retrieve our private data from the component's user data */
-  struct tally_dispatch *dispatch =
-      (tally_dispatch *)bt_self_component_get_data(
-          bt_self_component_sink_as_self_component(self_component_sink));
+  if (strcmp(data->params->display_mode, "human") == 0) {
+    if (data->params->display_metadata)
+      print_metadata(data->metadata);
 
-  /* Consume a batch of messages from the upstream message iterator */
-  bt_message_array_const messages;
-  uint64_t message_count;
-  bt_message_iterator_next_status next_status = bt_message_iterator_next(
-      dispatch->message_iterator, &messages, &message_count);
+    if (strcmp(data->params->display, "compact") == 0) {
 
-  switch (next_status) {
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_END:
-    /* End of iteration: put the message iterator's reference */
-    bt_message_iterator_put_ref(dispatch->message_iterator);
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_END;
-    goto end;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_AGAIN;
-    goto end;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_MEMORY_ERROR:
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_MEMORY_ERROR;
-    goto end;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_ERROR:
-    status = BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_ERROR;
-    goto end;
-  default:
-    break;
-  }
-
-  /* For each consumed message */
-  for (uint64_t i = 0; i < message_count; i++) {
-    const bt_message *message = messages[i];
-    if (bt_message_get_type(message) == BT_MESSAGE_TYPE_EVENT) {
-      const bt_event *event = bt_message_event_borrow_event_const(message);
-      const bt_event_class *event_class = bt_event_borrow_class_const(event);
-      const char *class_name = bt_event_class_get_name(event_class);
-
-      const bt_field *payload_field =
-          bt_event_borrow_payload_field_const(event);
-      if (strcmp(class_name, "lttng:host") == 0) {
-        auto dur_tuple0 = std::make_tuple(
-            std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
-            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
-                            (uint64_t)0),
-            std::make_tuple(2, &bt_field_bool_get_value, (bool)0));
-
-        const auto &[hostname, process_id, thread_id, backend_id] =
-            get_common_context_field_host(event);
-        const auto &[name, dur, err] =
-            thapi_bt2_getter(payload_field, dur_tuple0);
-
-        TallyCoreTime a{dur, err};
-
-        const int level = backend_level[backend_id];
-        dispatch->host_backend_name[level].insert(backend_name[backend_id]);
-        dispatch->host[level][hpt_function_name_t(hostname, process_id, thread_id, name)] += a;
-
-      } else if (strcmp(class_name, "lttng:device") == 0) {
-        auto dur_tuple0 = std::make_tuple(
-            std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
-            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
-                            (uint64_t)0), // dur
-            std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                            (uint64_t)0), // device
-            std::make_tuple(3, &bt_field_integer_unsigned_get_value,
-                            (uint64_t)0), // subdevice
-            std::make_tuple(4, &bt_field_bool_get_value, (bool)0), // Error
-            std::make_tuple(5, &bt_field_string_get_value, (std::string) "") ); // Metadata
-
-        const auto &[hostname, process_id, thread_id] =
-            get_common_context_field(event);
-        const auto &[name, dur, did, sdid, err, metadata] =
-            thapi_bt2_getter(payload_field, dur_tuple0);
-
-         /*Should fucking cache this function */
-        const auto name_demangled = (dispatch->demangle_name) ? f_demangle_name(name) : name;
-        const auto name_with_metadata = (dispatch->display_kernel_verbose && !metadata.empty()) ? name_demangled + "[" + metadata + "]" : name_demangled;
-
-        TallyCoreTime a{dur, err};
-        dispatch->device[hpt_device_function_name_t(hostname, process_id, thread_id, did, sdid, name_with_metadata)] += a;
-
-      } else if (strcmp(class_name, "lttng:traffic") == 0) {
-        auto dur_tuple0 = std::make_tuple(
-            std::make_tuple(0, bt_field_string_get_value, (std::string) ""),
-            std::make_tuple(1, &bt_field_integer_unsigned_get_value, (uint64_t)0));
-
-        const auto &[hostname, process_id, thread_id, backend_id] =
-            get_common_context_field_device(event);
-        const auto &[name, size] = thapi_bt2_getter(payload_field, dur_tuple0);
-        TallyCoreByte a{(uint64_t)size, false};
-        const int level = backend_level[backend_id];
-        dispatch->traffic_backend_name[level].insert(backend_name[backend_id]);
-        dispatch->traffic[level][hpt_function_name_t(hostname, process_id, thread_id,
-                                               name)] += a;
-
-      } else if (strcmp(class_name, "lttng:device_name") == 0) {
-        auto dur_tuple0 = std::make_tuple(
-            std::make_tuple(0, &bt_field_string_get_value, (std::string) ""),
-            std::make_tuple(1, &bt_field_integer_unsigned_get_value,
-                            (thapi_device_id)0)); // device
-
-        const auto &[hostname, process_id, thread_id] = get_common_context_field(event);
-        (void) thread_id;
-        const auto &[name, did] = thapi_bt2_getter(payload_field, dur_tuple0);
-
-        dispatch->device_name[hp_device_t(hostname, process_id, did)] = name;
-      } else if (strcmp(class_name, "lttng_ust_thapi:metadata") == 0) {
-
-        auto dur_tuple0 = std::make_tuple(std::make_tuple(
-            0, &bt_field_string_get_value, (std::string) "")); // device
-
-        const auto [metadata] = thapi_bt2_getter(payload_field, dur_tuple0);
-        dispatch->metadata.push_back(metadata);
+      for (const auto &[level, host] : data->host) {
+        std::string s = join_iterator(data->host_backend_name[level]);
+        print_compact(s, host, std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
-    }
-    bt_message_put_ref(message);
-  }
-end:
-  return status;
-}
-
-/*
- * Initializes the sink component.
- */
-bt_component_class_initialize_method_status
-tally_dispatch_initialize(bt_self_component_sink *self_component_sink,
-                          bt_self_component_sink_configuration *configuration,
-                          const bt_value *params,
-                          void *initialize_method_data) {
-  /*Read env variable */
-  const bt_value *val;
-  val = bt_value_map_borrow_entry_value_const(params, "display");
-  const std::string display_mode(
-      val && bt_value_is_string(val) ? bt_value_string_get(val) : "compact");
-  val = bt_value_map_borrow_entry_value_const(params, "name");
-  const std::string display_name(
-      val && bt_value_is_string(val) ? bt_value_string_get(val) : "mangle");
-  val = bt_value_map_borrow_entry_value_const(params, "display_mode");
-  const std::string display_human(
-      val && bt_value_is_string(val) ? bt_value_string_get(val) : "human");
-  val = bt_value_map_borrow_entry_value_const(params, "display_metadata");
-  const bool display_metadata =
-      (val && bt_value_is_bool(val) ? bt_value_bool_get(val) : false);
-
-  val = bt_value_map_borrow_entry_value_const(params, "display_name_max_size");
-  const int display_name_max_size =
-      (val && bt_value_is_signed_integer(val) ? bt_value_integer_signed_get(val)
-                                              : -1);
-
-  val = bt_value_map_borrow_entry_value_const(params, "display_kernel_verbose");
-  const bool display_kernel_verbose =
-      (val && bt_value_is_bool(val) ? bt_value_bool_get(val) : false);
-
-  /* Allocate a private data structure */
-  struct tally_dispatch *dispatch = new tally_dispatch;
-
-  dispatch->display_compact =
-      (display_mode == "compact");                        // Compact or Extented
-  dispatch->demangle_name = (display_name == "demangle"); // Demangle or mangle
-  dispatch->display_human = (display_human == "human");   // Human or JSON
-  dispatch->display_metadata = display_metadata;
-  dispatch->display_name_max_size = display_name_max_size;
-  dispatch->display_kernel_verbose = display_kernel_verbose;
-
-  /* Set the component's user data to our private data structure */
-  bt_self_component_set_data(
-      bt_self_component_sink_as_self_component(self_component_sink), dispatch);
-
-  /*
-   * Add an input port named `in` to the sink component.
-   *
-   * This is needed so that this sink component can be connected to a
-   * filter or a source component. With a connected upstream
-   * component, this sink component can create a message iterator
-   * to consume messages.
-   */
-  bt_self_component_sink_add_input_port(self_component_sink, "in", NULL, NULL);
-
-  return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
-}
-
-/*
- * Finalizes the sink component.
- */
-void tally_dispatch_finalize(bt_self_component_sink *self_component_sink) {
-  struct tally_dispatch *dispatch =
-      (tally_dispatch *)bt_self_component_get_data(
-          bt_self_component_sink_as_self_component(self_component_sink));
-
-  const int max_name_size = dispatch->display_name_max_size;
-
-  if (dispatch->display_human) {
-    if (dispatch->display_metadata)
-      print_metadata(dispatch->metadata);
-
-    if (dispatch->display_compact) {
-
-      for (const auto& [level,host]: dispatch->host) {
-        std::string s = join_iterator(dispatch->host_backend_name[level]);
-        print_compact(s, host,
-                      std::make_tuple("Hostnames", "Processes", "Threads"),
-                      max_name_size);
-      }
-      print_compact("Device profiling", dispatch->device,
-                    std::make_tuple("Hostnames", "Processes", "Threads",
-                                    "Devices", "Subdevices"),
+      print_compact("Device profiling", data->device,
+                    std::make_tuple("Hostnames", "Processes", "Threads", "Devices", "Subdevices"),
                     max_name_size);
 
-      for (const auto& [level,traffic]: dispatch->traffic) {
-        std::string s = join_iterator(dispatch->traffic_backend_name[level]);
+      for (const auto &[level, traffic] : data->traffic) {
+        std::string s = join_iterator(data->traffic_backend_name[level]);
         print_compact("Explicit memory traffic (" + s + ")", traffic,
-                      std::make_tuple("Hostnames", "Processes", "Threads"),
-                      max_name_size);
+                      std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
     } else {
-      for (const auto& [level,host]: dispatch->host) {
-        std::string s = join_iterator(dispatch->host_backend_name[level]); 
-        print_extended(s, host,
-                       std::make_tuple("Hostname", "Process", "Thread"),
-                       max_name_size);
+      for (const auto &[level, host] : data->host) {
+        std::string s = join_iterator(data->host_backend_name[level]);
+        print_extended(s, host, std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
       }
-      print_extended("Device profiling", dispatch->device,
-                     std::make_tuple("Hostname", "Process", "Thread",
-                                     "Device pointer", "Subdevice pointer"),
-                     max_name_size);
+      print_extended(
+          "Device profiling", data->device,
+          std::make_tuple("Hostname", "Process", "Thread", "Device pointer", "Subdevice pointer"),
+          max_name_size);
 
-      for (const auto& [level,traffic]: dispatch->traffic) {
-        std::string s = join_iterator(dispatch->traffic_backend_name[level]);
+      for (const auto &[level, traffic] : data->traffic) {
+        std::string s = join_iterator(data->traffic_backend_name[level]);
         print_extended("Explicit memory traffic (" + s + ")", traffic,
-                     std::make_tuple("Hostname", "Process", "Thread"),
-                     max_name_size);
+                       std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
       }
-   }
- } else {
+    }
+  } else {
+
     nlohmann::json j;
     j["units"] = {{"time", "ns"}, {"size", "bytes"}};
-    if (dispatch->display_metadata)
-      j["metadata"] = dispatch->metadata;
-    if (dispatch->display_compact) {
-      for (auto& [level,host]: dispatch->host)
+
+    if (data->params->display_metadata)
+      j["metadata"] = data->metadata;
+
+    if (strcmp(data->params->display, "compact") == 0) {
+      for (auto &[level, host] : data->host)
         j["host"][level] = json_compact(host);
-      if (!dispatch->device.empty())
-        j["device"] = json_compact(dispatch->device);
-      for (auto& [level,traffic]: dispatch->traffic)
+
+      if (!data->device.empty())
+        j["device"] = json_compact(data->device);
+
+      for (auto &[level, traffic] : data->traffic)
         j["traffic"][level] = json_compact(traffic);
+
     } else {
-      for (auto& [level,host]: dispatch->host)
+      for (auto &[level, host] : data->host)
         j["host"][level] = json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
-      if (!dispatch->device.empty())
-        j["device"] = json_extented(dispatch->device,
-                                    std::make_tuple("Hostname", "Process",
-                                                    "Thread", "Device pointer",
-                                                    "Subdevice pointer"));
-      for (auto& [level,traffic]: dispatch->traffic)
+
+      if (!data->device.empty())
+        j["device"] =
+            json_extented(data->device, std::make_tuple("Hostname", "Process", "Thread",
+                                                        "Device pointer", "Subdevice pointer"));
+
+      for (auto &[level, traffic] : data->traffic)
         j["traffic"][level] =
-            json_extented(traffic,
-                          std::make_tuple("Hostname", "Process", "Thread"));
+            json_extented(traffic, std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;
   }
+
+  /* Delete user data */
+  delete data;
 }
 
-/*
- * Called when the trace processing graph containing the sink component
- * is configured.
- *
- * This is where we can create our upstream message iterator.
- */
-bt_component_class_sink_graph_is_configured_method_status
-tally_dispatch_graph_is_configured(
-    bt_self_component_sink *self_component_sink) {
-  /* Retrieve our private data from the component's user data */
-  struct tally_dispatch *dispatch =
-      (tally_dispatch *)bt_self_component_get_data(
-          bt_self_component_sink_as_self_component(self_component_sink));
+static void host_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                    int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend_id,
+                                    const char *name, uint64_t dur, bt_bool err) {
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  /* Borrow our unique port */
-  bt_self_component_port_input *in_port =
-      bt_self_component_sink_borrow_input_port_by_index(self_component_sink, 0);
+  TallyCoreTime a{dur, (uint64_t)err};
+  const int level = backend_level[backend_id];
+  data->host_backend_name[level].insert(backend_name[backend_id]);
+  data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
+}
 
-  /* Create the uptream message iterator */
-  bt_message_iterator_create_from_sink_component(self_component_sink, in_port,
-                                                 &dispatch->message_iterator);
+static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                      int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                      const char *name, uint64_t dur, uint64_t did, uint64_t sdid,
+                                      bt_bool err, const char *metadata) {
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  return BT_COMPONENT_CLASS_SINK_GRAPH_IS_CONFIGURED_METHOD_STATUS_OK;
+  const auto name_demangled = (strcmp(data->params->name, "demangle") == 0) ? f_demangle_name(name) : name;
+  const auto name_with_metadata = (data->params->display_kernel_verbose && !strcmp(metadata, ""))
+                                      ? name_demangled + "[" + metadata + "]"
+                                      : name_demangled;
+
+  TallyCoreTime a{dur, (uint64_t)err};
+  data->device[hpt_device_function_name_t(hostname, vpid, vtid, did, sdid, name_with_metadata)] +=
+      a;
+}
+
+static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                       int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                       const char *name, uint64_t size) {
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+
+  TallyCoreByte a{(uint64_t)size, false};
+  const int level = backend_level[backend];
+  data->traffic_backend_name[level].insert(backend_name[backend]);
+  data->traffic[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
+}
+
+static void device_name_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                           int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                           const char *name, uint64_t did) {
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+
+  data->device_name[hp_device_t(hostname, vpid, did)] = name;
+}
+
+static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data,
+                                              const char *hostname, int64_t vpid, uint64_t vtid,
+                                              int64_t ts, int64_t backend, const char *metadata) {
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+
+  data->metadata.push_back(metadata);
+}
+
+void btx_register_usr_callbacks(void *btx_handle) {
+  btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
+  btx_register_callbacks_read_params(btx_handle, &btx_read_params);
+  btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
+
+  btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
+  btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
+  btx_register_callbacks_lttng_traffic(btx_handle, &traffic_usr_callback);
+  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
+  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
 }

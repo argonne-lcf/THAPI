@@ -448,7 +448,7 @@ setub_babeltrace_live() {
 <% if languages.include?("omp") %>
      --component=filter.ompinterval.interval \
 <% end %>
-     --component=sink.tally.tally \
+     --component=sink.btx_tally.tally \
      --params="display=compact, \
                name=demangle, \
                display_mode=human, \
