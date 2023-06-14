@@ -47,8 +47,7 @@ typedef std::tuple<long,long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
 
-// NOTE: Required to generate a hash of a tuple, otherwise, the operation "data->host[level][entity_id] += interval;"
-// may fail since host[level] returns an unordered_map and this data structure does not know to hash a tuple.
+// NOTE: Required to generate the hash of a tuple.
 // REFERENCE: https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set
 namespace std{
   namespace
