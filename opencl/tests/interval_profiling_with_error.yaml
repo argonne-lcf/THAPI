@@ -21,7 +21,7 @@
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
-    backend: 0
+    backend: 2
   :payload:
     name: clEnqueueSVMFree 
     dur: 2

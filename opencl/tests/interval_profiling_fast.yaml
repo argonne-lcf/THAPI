@@ -21,6 +21,7 @@
 - :name: lttng:traffic
   :common_context:
     hostname: aurora12.gov
+    backend: 2
   :payload:
     name: clEnqueueReadBuffer
 - :name: lttng:device
@@ -32,7 +33,7 @@
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
-    backend: 0
+    backend: 2
   :payload:
     name: clEnqueueReadBuffer
     dur: 3
