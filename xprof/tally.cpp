@@ -7,6 +7,8 @@ struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
 
+  std::array<int, BACKEND_MAX>backend_level;
+
   std::map<backend_level_t, std::set<const char *>> host_backend_name;
   std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
 
@@ -32,9 +34,40 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
+void get_backend_id_from_name(const char *name, tally_dispatch_t *data, int *identifier){
+  *identifier = -1;
+  for(int i = 0; i < BACKEND_MAX; ++i)
+    // backend_name is located in xprof_utils.cpp
+    if (strcmp(backend_name[i],name) == 0) *identifier = i;
+}
+
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   /* User allocates its own data structure */
   *usr_data = new tally_dispatch_t;
+  tally_dispatch_t *data = (tally_dispatch_t *)(*usr_data);
+
+  /* Backend information must match enum backend_e in xprof_utils.hpp */
+  data->backend_level = {
+    2, // BACKEND_UNKNOWN
+    2, // BACKEND_ZE
+    2, // BACKEND_OPENCL
+    2, // BACKEND_CUDA
+    1, // BACKEND_OMP_TARGET_OPERATIONS
+    0, // BACKEND_OMP
+    2  // BACKEND_HIP
+  };
+
+  for (int i = 0; i < BACKEND_MAX; ++i){
+    const char *name = backend_name[i];
+    int identifier = -1;
+    if(const char* new_level = std::getenv(name)){
+      get_backend_id_from_name(name, data, &identifier);
+      if (identifier >= 0){
+        std::cout << "NEW LEVEL SET FOR " << "'" << name << "' : " << new_level << std::endl;
+        data->backend_level[identifier] = atoi(new_level);
+      }
+    }
+  }
 }
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
@@ -127,7 +160,7 @@ static void host_usr_callback(void *btx_handle, void *usr_data, const char *host
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
   TallyCoreTime a{dur, (uint64_t)err};
-  const int level = backend_level[backend_id];
+  const int level = data->backend_level[backend_id];
   data->host_backend_name[level].insert(backend_name[backend_id]);
   data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
 }
@@ -154,7 +187,7 @@ static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *h
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
   TallyCoreByte a{(uint64_t)size, false};
-  const int level = backend_level[backend];
+  const int level = data->backend_level[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
   data->traffic[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
 }
