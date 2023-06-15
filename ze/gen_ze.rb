@@ -36,7 +36,13 @@ $struct_type_conversion_table = {
   "ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC" => "ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC",
   "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32",
   "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32",
+  "ZET_STRUCTURE_TYPE_METRIC_CALCULATE_EXP_DESC" => "ZET_STRUCTURE_TYPE_METRICS_CALCULATE_EXP_DESC",
+  "ZET_STRUCTURE_TYPE_METRIC_GLOBAL_TIMESTAMPS_RESOLUTION_EXP" => "ZET_STRUCTURE_TYPE_GLOBAL_METRICS_TIMESTAMPS_EXP_PROPERTIES",
 }
+
+$struct_type_reject = Set.new([
+  "ze_kernel_max_group_size_properties_ext_t",
+])
 
 def get_structs_types(namespace, types, structs)
   types.select { |t|
@@ -53,7 +59,7 @@ void _print_lttng_ust_#{namespace}_struct(const void * p) {
   #{namespace}_structure_type_t stype = (#{namespace}_structure_type_t)((ze_base_desc_t *)p)->stype;
   switch (stype) {
 EOF
-  types.each { |t|
+  types.reject { |t| $struct_type_reject.include?(t.to_s) }.each { |t|
     ename = "#{namespace.to_s.upcase}_STRUCTURE_TYPE_#{t.delete_prefix(namespace.to_s+"_").delete_suffix("_t").upcase}"
     ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
     puts <<EOF
