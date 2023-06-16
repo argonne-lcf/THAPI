@@ -15,6 +15,8 @@ meta_parameters:
   zeDriverGetExtensionFunctionAddress:
     - [ InString, name ]
     - [ OutScalar, ppFunctionAddress ]
+  zeDriverGetLastErrorDescription:
+    - [ OutPtrString, ppString]
   zeDeviceGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phDevices, pCount ]
@@ -144,6 +146,10 @@ meta_parameters:
     - [ OutScalar, pSize ]
   zeMemGetIpcHandle:
     - [ OutScalar, pIpcHandle ]
+  zeMemGetIpcHandleFromFileDescriptorExp:
+    - [ OutScalar, pIpcHandle ]
+  zeMemGetFileDescriptorFromIpcHandleExp:
+    - [ OutScalar, pHandle ]
   zeMemOpenIpcHandle:
     - [ OutScalar, pptr ]
   zeModuleCreate:
@@ -269,6 +275,9 @@ meta_parameters:
     - [ OutScalar, phVertexB ]
   zeFabricEdgeGetPropertiesExp:
     - [ OutScalar, pEdgeProperties ]
+  zeEventQueryKernelTimestampsExt:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pResults, pCount ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
@@ -306,6 +315,8 @@ meta_parameters:
   zeGetPhysicalMemProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetMemProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetMemExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetVirtualMemProcAddrTable:
     - [ OutScalar, pDdiTable ]
