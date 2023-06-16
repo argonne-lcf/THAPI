@@ -4,6 +4,7 @@ require_relative '../utils/yaml_ast_lttng'
 require_relative '../utils/LTTng'
 require_relative '../utils/command.rb'
 require_relative '../utils/meta_parameters'
+require 'set'
 
 if ENV["SRC_DIR"]
   SRC_DIR = ENV["SRC_DIR"]
@@ -36,6 +37,19 @@ gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
 INIT_FUNCTIONS = /zeInit|zeLoaderInit/
+
+$struct_type_conversion_table = {
+  "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP" => "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES",
+  "ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC" => "ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC",
+  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32",
+  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32",
+  "ZET_STRUCTURE_TYPE_METRIC_CALCULATE_EXP_DESC" => "ZET_STRUCTURE_TYPE_METRICS_CALCULATE_EXP_DESC",
+  "ZET_STRUCTURE_TYPE_METRIC_GLOBAL_TIMESTAMPS_RESOLUTION_EXP" => "ZET_STRUCTURE_TYPE_GLOBAL_METRICS_TIMESTAMPS_EXP_PROPERTIES",
+}
+
+$struct_type_reject = Set.new([
+  "ze_kernel_max_group_size_properties_ext_t",
+])
 
 $ze_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ze_meta_parameters.yaml"))
 $ze_meta_parameters["meta_parameters"].each  { |func, list|

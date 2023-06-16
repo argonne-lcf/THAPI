@@ -341,13 +341,6 @@ def print_union(name, union)
 EOF
 end
 
-$struct_type_conversion_table = {
-  "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP" => "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES",
-  "ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC" => "ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC",
-  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32",
-  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32",
-}
-
 def print_struct(name, struct)
   members = struct.to_ffi
   print_lambda = lambda { |m|
@@ -380,7 +373,7 @@ EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
 EOF
-  if members.first[0] == ":stype"
+  if members.first[0] == ":stype" && !$struct_type_reject.include?(name)
     puts <<EOF
 
     def initialize(*args)
