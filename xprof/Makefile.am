@@ -20,30 +20,30 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
-btx_timeline_upstream_model.yaml: btx_interval_model.yaml
+btx_source_timeline_upstream_model.yaml: btx_interval_model.yaml
 	cp $< $(builddir)/$@
 
-btx_tally_upstream_model.yaml: btx_interval_model.yaml
+btx_source_tally_upstream_model.yaml: btx_interval_model.yaml
 	cp $< $(builddir)/$@
 
-btx_%/metababel/metababel.h btx_%/metababel/btx_component.h btx_%/metababel/btx_component.c btx_%/metababel/btx_upstream.h btx_%/metababel/btx_upstream.c btx_%/btx_main.c: btx_%_upstream_model.yaml btx_%_params.yaml
-	$(METABABEL) -u $(builddir)/btx_$*_upstream_model.yaml -t SINK -o btx_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
+btx_source_%/metababel/metababel.h btx_source_%/metababel/btx_component.h btx_source_%/metababel/btx_component.c btx_source_%/metababel/btx_upstream.h btx_source_%/metababel/btx_upstream.c btx_source_%/btx_main.c: btx_source_%_upstream_model.yaml btx_%_params.yaml
+	$(METABABEL) -u $(builddir)/btx_source_$*_upstream_model.yaml -t SINK -o btx_source_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
 
 BTX_TALLY_GENERATED = \
-	btx_tally/metababel/metababel.h \
-	btx_tally/metababel/btx_component.h \
-	btx_tally/metababel/btx_component.c \
-	btx_tally/metababel/btx_upstream.h \
-	btx_tally/metababel/btx_upstream.c \
-	btx_tally/btx_main.c
+	btx_source_tally/metababel/metababel.h \
+	btx_source_tally/metababel/btx_component.h \
+	btx_source_tally/metababel/btx_component.c \
+	btx_source_tally/metababel/btx_upstream.h \
+	btx_source_tally/metababel/btx_upstream.c \
+	btx_source_tally/btx_main.c
 
 BTX_TIMELINE_GENERATED = \
-	btx_timeline/metababel/metababel.h \
-	btx_timeline/metababel/btx_component.h \
-	btx_timeline/metababel/btx_component.c \
-	btx_timeline/metababel/btx_upstream.h \
-	btx_timeline/metababel/btx_upstream.c \
-	btx_timeline/btx_main.c
+	btx_source_timeline/metababel/metababel.h \
+	btx_source_timeline/metababel/btx_component.h \
+	btx_source_timeline/metababel/btx_component.c \
+	btx_source_timeline/metababel/btx_upstream.h \
+	btx_source_timeline/metababel/btx_upstream.c \
+	btx_source_timeline/btx_main.c
 
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
@@ -80,12 +80,12 @@ libXTimeline_la_SOURCES = \
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
-libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_tally
+libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_source_tally
 libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_timeline
+libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_source_timeline
 libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
@@ -137,7 +137,7 @@ CLEANFILES = \
 	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
-	btx_timeline_upstream_model.yaml \
-	btx_tally_upstream_model.yaml \
+	btx_source_timeline_upstream_model.yaml \
+	btx_source_tally_upstream_model.yaml \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED)
