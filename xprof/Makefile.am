@@ -20,14 +20,25 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
+# Some build-system hack because we use  pattern rules and not grouped target
+# 	"Multiple target patterns in pattern rules are always treated as grouped targets (see Multiple Targets in a Rule) regardless of whether they use the : or &: separator."
 btx_source_timeline_upstream_model.yaml: btx_interval_model.yaml
 	cp $< $(builddir)/$@
 
 btx_source_tally_upstream_model.yaml: btx_interval_model.yaml
 	cp $< $(builddir)/$@
 
+btx_filter_aggreg_upstream_model.yaml: btx_interval_model.yaml
+	cp $< $(builddir)/$@
+
+btx_filter_aggreg_downstream_model.yaml: btx_aggreg_model.yaml
+	cp $< $(builddir)/$@
+
 btx_source_%/metababel/metababel.h btx_source_%/metababel/btx_component.h btx_source_%/metababel/btx_component.c btx_source_%/metababel/btx_upstream.h btx_source_%/metababel/btx_upstream.c btx_source_%/btx_main.c: btx_source_%_upstream_model.yaml btx_%_params.yaml
 	$(METABABEL) -u $(builddir)/btx_source_$*_upstream_model.yaml -t SINK -o btx_source_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
+
+btx_filter_%/metababel/metababel.h btx_filter_%/metababel/btx_component.h btx_filter_%/metababel/btx_component.c btx_filter_%/metababel/btx_upstream.h btx_filter_%/metababel/btx_upstream.c btx_filter_%/metababel/btx_downstream.h btx_filter_%/metababel/btx_downstream.c btx_filter_%/btx_main.c: btx_filter_%_upstream_model.yaml btx_filter_%_downstream_model.yaml btx_%_params.yaml
+	$(METABABEL) -u $(builddir)/btx_filter_$*_upstream_model.yaml -d $(builddir)/btx_filter_$*_downstream_model.yaml -t FILTER -o btx_filter_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
 
 BTX_TALLY_GENERATED = \
 	btx_source_tally/metababel/metababel.h \
