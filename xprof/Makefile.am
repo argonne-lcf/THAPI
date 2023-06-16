@@ -75,7 +75,7 @@ BUILT_SOURCES = \
 	perfetto_prunned.pb.cc
 
 # Library to be packaged
-lib_LTLIBRARIES = libXTally.la libXTimeline.la
+lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la
 
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
@@ -88,6 +88,9 @@ nodist_libXTimeline_la_SOURCES = \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
+nodist_libXAggreg_la_SOURCES = \
+        $(BTX_AGGREG_GENERATED)
+
 # File not generated
 libXTally_la_SOURCES = \
 	tally.hpp \
@@ -98,6 +101,9 @@ libXTally_la_SOURCES = \
 
 libXTimeline_la_SOURCES = \
 	timeline.cpp
+
+libXAggreg_la_SOURCES = \
+        aggreg.cpp
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
@@ -111,6 +117,12 @@ libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I.
 libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
+
+
+libXAggreg_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
+libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) 
+libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
