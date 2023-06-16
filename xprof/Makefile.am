@@ -88,7 +88,7 @@ nodist_libXTimeline_la_SOURCES = \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
-# File generated
+# File not generated
 libXTally_la_SOURCES = \
 	tally.hpp \
 	tally.cpp \
@@ -146,9 +146,11 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	btx_interval_model.yaml \
+        btx_aggreg_model.yaml \
 	interval_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
+	btx_aggreg_params.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto
@@ -161,6 +163,8 @@ CLEANFILES = \
 	perfetto_prunned.pb.cc \
 	btx_source_timeline_upstream_model.yaml \
 	btx_source_tally_upstream_model.yaml \
+	btx_filter_aggreg_upstream_model.yaml \
+	btx_filter_aggreg_downstream_model.yaml \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_AGGREG_GENERATED)
