@@ -34,6 +34,17 @@ meta_parameters:
     - [ InOutScalar, pTotalMetricValueCount ]
     - [ OutArray, pMetricCounts, pSetCount ]
     - [ OutArray, pMetricValues, pTotalMetricValueCount ]
+  zetMetricGroupGetGlobalTimestampsExp:
+    - [ OutScalar, globalTimestamp ]
+    - [ OutScalar, metricTimestamp ]
+  zetMetricGroupGetExportDataExp:
+    - [ InOutScalar, pExportDataSize ]
+  zetMetricGroupCalculateMetricExportDataExp:
+    - [ InScalar, pCalculateDescriptor ]
+    - [ InOutScalar, pSetCount ]
+    - [ InOutScalar, pTotalMetricValueCount ]
+    - [ OutArray, pMetricCounts, pSetCount ]
+    - [ OutArray, pMetricValues, pTotalMetricValueCount ]
   zetMetricGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetrics, pCount ]
