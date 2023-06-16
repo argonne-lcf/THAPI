@@ -9,6 +9,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <string>
 
 #include "json.hpp"
 #include "my_demangle.h"

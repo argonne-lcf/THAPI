@@ -34,11 +34,29 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-void get_backend_id_from_name(const char *name, tally_dispatch_t *data, int *identifier){
+void get_backend_id_from_name(const char *name, int *identifier){
   *identifier = -1;
   for(int i = 0; i < BACKEND_MAX; ++i)
     // backend_name is located in xprof_utils.cpp
     if (strcmp(backend_name[i],name) == 0) *identifier = i;
+}
+
+// Reference: https://favtutor.com/blogs/split-string-cpp
+std::vector <std::string> split(std::string str, char separator) {
+  std::vector <std::string> strings;
+  int startIndex = 0, endIndex = 0;
+  for (unsigned i = 0; i <= str.size(); i++) {
+    // If we reached the end of the word or the end of the input.
+    if (str[i] == separator || i == str.size()) {
+        endIndex = i;
+        std::string temp;
+        temp.append(str, startIndex, endIndex - startIndex);
+        strings.push_back(temp);
+        startIndex = endIndex + 1;
+    }
+  }
+
+  return strings;
 }
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
@@ -57,15 +75,17 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
     2  // BACKEND_HIP
   };
 
-  for (int i = 0; i < BACKEND_MAX; ++i){
-    const char *name = backend_name[i];
+  // TODO: We must change this by data->params, but we need to adjust
+  // metababel to load btx_read_params before btx_initialize_usr_data.
+  std::vector<std::string> backends = split(std::string(((common_data_t *)btx_handle)->btx_params->backend_level), ',');
+
+  for (auto bk: backends) {
+    auto b_l =  split(bk, ':');
     int identifier = -1;
-    if(const char* new_level = std::getenv(name)){
-      get_backend_id_from_name(name, data, &identifier);
-      if (identifier >= 0){
-        std::cout << "NEW LEVEL SET FOR " << "'" << name << "' : " << new_level << std::endl;
-        data->backend_level[identifier] = atoi(new_level);
-      }
+    get_backend_id_from_name(b_l.front().c_str(), &identifier);
+    if (identifier >= 0){
+      std::cout << "NEW LEVEL SET FOR " << "'" << b_l.front() << "' : " << b_l.back() << std::endl;
+      data->backend_level[identifier] = atoi(b_l.back().c_str());
     }
   }
 }

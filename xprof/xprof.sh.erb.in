@@ -521,6 +521,7 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
+        --backend-level)         shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
         --no-save)              shift; procesing_mode="on-the-fly" ;;
         --traced-ranks)         shift; traced_ranks=$1; shift ;;
         --asm)                  shift; asm=true ;;

@@ -12,3 +12,5 @@
     :type: integer_unsigned
   - :name: display_kernel_verbose
     :type: bool
+  - :name: backend_level
+    :type: string
