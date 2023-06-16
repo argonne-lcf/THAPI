@@ -56,9 +56,20 @@ BTX_TIMELINE_GENERATED = \
 	btx_source_timeline/metababel/btx_upstream.c \
 	btx_source_timeline/btx_main.c
 
+BTX_AGGREG_GENERATED = \
+        btx_filter_aggreg/metababel/metababel.h \
+        btx_filter_aggreg/metababel/btx_component.h \
+        btx_filter_aggreg/metababel/btx_component.c \
+        btx_filter_aggreg/metababel/btx_upstream.h \
+        btx_filter_aggreg/metababel/btx_upstream.c \
+        btx_filter_aggreg/metababel/btx_downstream.h \
+        btx_filter_aggreg/metababel/btx_downstream.c \
+        btx_filter_aggreg/btx_main.c
+
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_TIMELINE_GENERATED) \
+        $(BTX_AGGREG_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
@@ -151,4 +162,5 @@ CLEANFILES = \
 	btx_source_timeline_upstream_model.yaml \
 	btx_source_tally_upstream_model.yaml \
 	$(BTX_TIMELINE_GENERATED) \
-	$(BTX_TALLY_GENERATED)
+	$(BTX_TALLY_GENERATED) \
+	$(BTX_AGGREG_GENERATED)
