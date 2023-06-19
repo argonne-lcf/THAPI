@@ -63,12 +63,33 @@ std::string to_string_with_precision(const T a_value, const std::string units, c
   return out.str();
 }
 
+class TallyCoreString : public TallyCoreBase {
+
+  using TallyCoreBase::TallyCoreBase;
+
+  virtual const std::vector<std::string> to_string() = 0;
+
+  const auto to_string_size() {
+    std::vector<long> v;
+    for (auto &e : to_string())
+      v.push_back(static_cast<long>(e.size()));
+    return v;
+  }
+public:
+
+  void update_max_size(std::vector<long> &m) {
+    const auto current_size = to_string_size();
+    for (auto i = 0U; i < current_size.size(); i++)
+      m[i] = std::max(m[i], current_size[i]);
+  }
+};
+
 //! Specialization of TallyCoreBase for execution times.
-class TallyCoreTime : public TallyCoreBase {
+class TallyCoreTime : public TallyCoreString {
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
 
-  using TallyCoreBase::TallyCoreBase;
+  using TallyCoreString::TallyCoreString;
   virtual const std::vector<std::string> to_string() {
     return std::vector<std::string>{
         format_time(duration),
@@ -112,11 +133,11 @@ private:
 
 //! Specialization of TallyCoreBase for data transfer sizes.
 //! This is used for traffic related events, lttng:traffic.
-class TallyCoreByte : public TallyCoreBase {
+class TallyCoreByte : public TallyCoreString {
 public:
   static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
 
-  using TallyCoreBase::TallyCoreBase;
+  using TallyCoreString::TallyCoreString;
   virtual const std::vector<std::string> to_string() {
     return std::vector<std::string>{format_byte(duration),
                                     to_string_with_precision(100. * duration_ratio, "%"),
@@ -637,14 +658,14 @@ void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_str
 //
 // https://github.com/nlohmann/json
 //
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 void to_json(nlohmann::json &j, const TC &tc) {
   j = nlohmann::json{{"time", tc.duration}, {"call", tc.count}, {"min", tc.min}, {"max", tc.max}};
   if (tc.error != 0)
     j["error"] = tc.error;
 }
 
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name, TC>> &aggregated) {
   for (auto const &[key, val] : aggregated)
     j[key] = val;
@@ -653,7 +674,7 @@ void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name,
 // original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename K, typename TC,
-          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 nlohmann::json json_compact(std::unordered_map<K, TC> &m) {
   auto aggregated_by_name = aggregate_by_name(m);
   auto sorted_by_value = sort_by_value(aggregated_by_name);
@@ -668,7 +689,7 @@ void json_populate(nlohmann::json &j, const std::tuple<T...> &h, const std::tupl
 }
 
 template <typename K, typename TC, class... T,
-          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h) {
   nlohmann::json j;
   auto aggregated_nested = aggregate_nested(m);

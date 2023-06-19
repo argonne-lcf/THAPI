@@ -40,20 +40,4 @@ public:
     average = (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;
     duration_ratio = static_cast<double>(duration) / rhs.duration;
   }
-
-  virtual const std::vector<std::string> to_string() = 0;
-
-  const auto to_string_size() {
-    std::vector<long> v;
-    for (auto &e : to_string())
-      v.push_back(static_cast<long>(e.size()));
-    return v;
-  }
-
-  void update_max_size(std::vector<long> &m) {
-    const auto current_size = to_string_size();
-    for (auto i = 0U; i < current_size.size(); i++)
-      m[i] = std::max(m[i], current_size[i]);
-  }
-
 };
