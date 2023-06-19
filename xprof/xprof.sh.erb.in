@@ -100,7 +100,7 @@ display_help() {
     echo "  -l, --timeline                      Dump the timeline"
     echo "  -j, --json                          Summary will be printed as json"
     echo "  -m, --tracing-mode <mode>           [minimal, default, full]"
-    echo "  --backend-level <name:value,...>    Update default tally backend levels"
+    echo "  --backend-level <name:value,...>    Update tally default backend levels"
     echo "  --asm                               Dump in your current directory low level kernels informations (asm, isa, visa, ...)"
     echo "  --no-save                           Data will be processed on-the-fly"
     echo "  --mangle                            Use mangled name"
