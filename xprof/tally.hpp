@@ -1,3 +1,5 @@
+#pragma once
+
 #include <metababel/metababel.h>
 
 #include <cmath>
@@ -13,6 +15,7 @@
 #include "json.hpp"
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
+#include "tally_core.hpp"
 
 //! Returns a demangled name.
 //! @param mangle_name function names
@@ -59,76 +62,6 @@ std::string to_string_with_precision(const T a_value, const std::string units, c
   out << std::fixed << a_value << units;
   return out.str();
 }
-
-//! TallyCoreBase is a callbacks duration data collection and aggregation helper.
-//! It is of interest to collect data for every (host,pid,tid,api_call_name) entity.
-//! Since the same entity can take place several times, i.e., a thread spawned from
-//! a process running in a given host can call api_call_name several times, our
-//! interest is to aggregate these durations in a single one per entity.
-//! In addition to the duration, other data of interest is collected from different
-//! occurrences of the same entity such as, what was the minumum and max durations
-//! among the occurrences, the number of times an api_call_name happened for a given
-// "htp" (host,pid,tid), and how many occurrences failed.
-//! Once the data of an entity is collected, when considering all its occurrences,
-//! This helper calls facilitates aggregation of data by overloading += and + operators.
-class TallyCoreBase {
-public:
-  TallyCoreBase() {}
-
-  TallyCoreBase(uint64_t _dur, uint64_t _err) : duration{_dur}, error{_err} {
-    count = 1;
-    if (!error) {
-      min = duration;
-      max = duration;
-    } else
-      duration = 0;
-  }
-
-  uint64_t duration{0};
-  uint64_t error{0};
-  uint64_t min{std::numeric_limits<uint64_t>::max()};
-  uint64_t max{0};
-  uint64_t count{0};
-  double duration_ratio{1.};
-  double average{0};
-
-  virtual const std::vector<std::string> to_string() = 0;
-
-  const auto to_string_size() {
-    std::vector<long> v;
-    for (auto &e : to_string())
-      v.push_back(static_cast<long>(e.size()));
-    return v;
-  }
-
-  //! Accumulates duration information.
-  TallyCoreBase &operator+=(const TallyCoreBase &rhs) {
-    this->duration += rhs.duration;
-    this->min = std::min(this->min, rhs.min);
-    this->max = std::max(this->max, rhs.max);
-    this->count += rhs.count;
-    this->error += rhs.error;
-    return *this;
-  }
-
-  //! Updates the average and duration ratio.
-  //! NOTE: This should happened once we have collected the information the duration information
-  //! of all the occurrences of a given (host,pid,tid,api_call_name) entity.
-  void finalize(const TallyCoreBase &rhs) {
-    average = (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;
-    duration_ratio = static_cast<double>(duration) / rhs.duration;
-  }
-
-  //! Enables the comparison of two TallyCoreBase instances by their duration.
-  //! It is used for sorting purposes.
-  bool operator>(const TallyCoreBase &rhs) { return duration > rhs.duration; }
-
-  void update_max_size(std::vector<long> &m) {
-    const auto current_size = to_string_size();
-    for (auto i = 0U; i < current_size.size(); i++)
-      m[i] = std::max(m[i], current_size[i]);
-  }
-};
 
 //! Specialization of TallyCoreBase for execution times.
 class TallyCoreTime : public TallyCoreBase {

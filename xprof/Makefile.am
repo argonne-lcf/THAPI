@@ -89,10 +89,12 @@ nodist_libXTimeline_la_SOURCES = \
 	perfetto_prunned.pb.cc
 
 nodist_libXAggreg_la_SOURCES = \
-        $(BTX_AGGREG_GENERATED)
+        $(BTX_AGGREG_GENERATED) \
+	xprof_utils.hpp
 
 # File not generated
 libXTally_la_SOURCES = \
+	tally_core.hpp \
 	tally.hpp \
 	tally.cpp \
 	my_demangle.c \
@@ -103,7 +105,8 @@ libXTimeline_la_SOURCES = \
 	timeline.cpp
 
 libXAggreg_la_SOURCES = \
-        aggreg.cpp
+	tally_core.hpp \
+	btx_aggreg.cpp
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
