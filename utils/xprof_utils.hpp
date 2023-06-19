@@ -14,6 +14,8 @@ enum backend_e{ BACKEND_UNKNOWN = 0,
                 BACKEND_HIP = 6,
                 BACKEND_MAX = 7 };
 
+constexpr int backend_level[] = { 2, 2, 2, 2, 1, 0, 2 };
+
 constexpr const char* backend_name[] = { "BACKEND_UNKNOWN",
                 "BACKEND_ZE",
                 "BACKEND_OPENCL",

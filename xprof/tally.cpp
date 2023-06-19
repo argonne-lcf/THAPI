@@ -34,29 +34,20 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-void get_backend_id_from_name(const char *name, int *identifier){
+void get_backend_id(const char *name, int *identifier){
   *identifier = -1;
   for(int i = 0; i < BACKEND_MAX; ++i)
     // backend_name is located in xprof_utils.cpp
     if (strcmp(backend_name[i],name) == 0) *identifier = i;
 }
 
-// Reference: https://favtutor.com/blogs/split-string-cpp
-std::vector <std::string> split(std::string str, char separator) {
-  std::vector <std::string> strings;
-  int startIndex = 0, endIndex = 0;
-  for (unsigned i = 0; i <= str.size(); i++) {
-    // If we reached the end of the word or the end of the input.
-    if (str[i] == separator || i == str.size()) {
-        endIndex = i;
-        std::string temp;
-        temp.append(str, startIndex, endIndex - startIndex);
-        strings.push_back(temp);
-        startIndex = endIndex + 1;
-    }
-  }
-
-  return strings;
+/* pos must be lower than str.size() */
+auto left_split(std::string &str, int &pos, char sep){
+  size_t start = pos;
+  while (pos < str.size() && str[pos] != sep) {pos++;}
+  std::string left {str,start,pos - start};
+  pos++;
+  return left;
 }
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
@@ -64,35 +55,21 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   *usr_data = new tally_dispatch_t;
   tally_dispatch_t *data = (tally_dispatch_t *)(*usr_data);
 
-  /* Backend information must match enum backend_e in xprof_utils.hpp */
-  data->backend_level = {
-    2, // BACKEND_UNKNOWN
-    2, // BACKEND_ZE
-    2, // BACKEND_OPENCL
-    2, // BACKEND_CUDA
-    1, // BACKEND_OMP_TARGET_OPERATIONS
-    0, // BACKEND_OMP
-    2  // BACKEND_HIP
-  };
-
-  // TODO: We must change this by data->params, but we need to adjust
-  // metababel to load btx_read_params before btx_initialize_usr_data.
-  std::vector<std::string> backends = split(std::string(((common_data_t *)btx_handle)->btx_params->backend_level), ',');
-
-  for (auto bk: backends) {
-    auto b_l =  split(bk, ':');
-    int identifier = -1;
-    get_backend_id_from_name(b_l.front().c_str(), &identifier);
-    if (identifier >= 0){
-      std::cout << "NEW LEVEL SET FOR " << "'" << b_l.front() << "' : " << b_l.back() << std::endl;
-      data->backend_level[identifier] = atoi(b_l.back().c_str());
-    }
-  }
+  /* Copy backend_level default values. */
+  for (int i = 0; i < BACKEND_MAX; i++)
+    data->backend_level[i] = backend_level[i];
 }
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
   data->params = usr_params;
+
+  std::string str{std::string(data->params->backend_level};
+  /* We mutate the value of i in left_split */
+  for (int i = 0; i < str.size(); i++){
+    int id = get_backend_id(left_split(str,i,':'));
+    data->backend_level[id] = (int)(left_split(str,i,','));
+  }
 }
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
