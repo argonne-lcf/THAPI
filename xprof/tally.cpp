@@ -34,26 +34,28 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-void get_backend_id(const char *name, int *identifier){
-  *identifier = -1;
+int get_backend_id(const char *name){
+  int identifier = -1;
   for(int i = 0; i < BACKEND_MAX; ++i)
     // backend_name is located in xprof_utils.cpp
-    if (strcmp(backend_name[i],name) == 0) *identifier = i;
+    if (strcmp(backend_name[i],name) == 0) identifier = i;
+
+  return identifier;
 }
 
 /* pos must be lower than str.size() */
-auto left_split(std::string &str, int &pos, char sep){
+auto left_split(std::string &str, unsigned &pos, char sep){
   size_t start = pos;
   while (pos < str.size() && str[pos] != sep) {pos++;}
   std::string left {str,start,pos - start};
-  pos++;
+  pos++; // skipt separator
   return left;
 }
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   /* User allocates its own data structure */
-  *usr_data = new tally_dispatch_t;
-  tally_dispatch_t *data = (tally_dispatch_t *)(*usr_data);
+  auto *data = new tally_dispatch_t;
+  *usr_data = data;
 
   /* Copy backend_level default values. */
   for (int i = 0; i < BACKEND_MAX; i++)
@@ -64,11 +66,16 @@ void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params)
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
   data->params = usr_params;
 
-  std::string str{std::string(data->params->backend_level};
+  std::string str{data->params->backend_level};
   /* We mutate the value of i in left_split */
-  for (int i = 0; i < str.size(); i++){
-    int id = get_backend_id(left_split(str,i,':'));
-    data->backend_level[id] = (int)(left_split(str,i,','));
+  for (unsigned i = 0; i < str.size(); i++){
+    int id = get_backend_id(left_split(str,i,':').c_str());
+    assert((id > 0) && "Backend not found.");
+    data->backend_level[id] = std::stoi(left_split(str,i,','));
+    // Since the for loop will add an additional increment
+    // We need to decrement 'i' to not loose the first character
+    // of the second key:value pair
+    i--;
   }
 }
 
