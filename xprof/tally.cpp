@@ -1,4 +1,7 @@
 #include "tally.hpp"
+#include <string>
+#include <array>
+#include <cassert>
 
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
@@ -34,13 +37,11 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-int get_backend_id(const char *name){
-  int identifier = -1;
+int get_backend_id(std::string name){
   for(int i = 0; i < BACKEND_MAX; ++i)
     // backend_name is located in xprof_utils.cpp
-    if (strcmp(backend_name[i],name) == 0) identifier = i;
-
-  return identifier;
+    if (std::string{backend_name[i]} == name) return i;
+  return -1;
 }
 
 /* pos must be lower than str.size() */
@@ -57,9 +58,16 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   auto *data = new tally_dispatch_t;
   *usr_data = data;
 
-  /* Copy backend_level default values. */
-  for (int i = 0; i < BACKEND_MAX; i++)
-    data->backend_level[i] = backend_level[i];
+  /* Backend information must match enum backend_e in xprof_utils.hpp */
+  data->backend_level = {
+    2, // BACKEND_UNKNOWN
+    2, // BACKEND_ZE
+    2, // BACKEND_OPENCL
+    2, // BACKEND_CUDA
+    1, // BACKEND_OMP_TARGET_OPERATIONS
+    0, // BACKEND_OMP
+    2  // BACKEND_HIP
+  };
 }
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
@@ -68,14 +76,11 @@ void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params)
 
   std::string str{data->params->backend_level};
   /* We mutate the value of i in left_split */
-  for (unsigned i = 0; i < str.size(); i++){
-    int id = get_backend_id(left_split(str,i,':').c_str());
+  unsigned i = 0; 
+  while (i < str.size()){
+    int id = get_backend_id(left_split(str,i,':'));
     assert((id > 0) && "Backend not found.");
     data->backend_level[id] = std::stoi(left_split(str,i,','));
-    // Since the for loop will add an additional increment
-    // We need to decrement 'i' to not loose the first character
-    // of the second key:value pair
-    i--;
   }
 }
 

@@ -11,7 +11,6 @@
 #include <vector>
 #include <string>
 #include <array>
-#include <cassert>
 
 #include "json.hpp"
 #include "my_demangle.h"
