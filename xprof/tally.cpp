@@ -126,7 +126,7 @@ static void host_usr_callback(void *btx_handle, void *usr_data, const char *host
                                     const char *name, uint64_t dur, bt_bool err) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  TallyCoreTime a{dur, (uint64_t)err};
+  TallyCoreTime a{dur, (bool) err};
   const int level = backend_level[backend_id];
   data->host_backend_name[level].insert(backend_name[backend_id]);
   data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
@@ -143,7 +143,7 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                       ? name_demangled + "[" + metadata + "]"
                                       : name_demangled;
 
-  TallyCoreTime a{dur, (uint64_t)err};
+  TallyCoreTime a{dur, (bool) err};
   data->device[hpt_device_function_name_t(hostname, vpid, vtid, did, sdid, name_with_metadata)] +=
       a;
 }

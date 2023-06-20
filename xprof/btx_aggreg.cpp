@@ -45,7 +45,7 @@ static void host_usr_callback(void *btx_handle, void *usr_data, const char *host
                               uint64_t vtid, int64_t ts, int64_t backend_id, const char *name,
                               uint64_t dur, bt_bool err) {
   auto *data = (aggreg_t *)usr_data;
-  data->host[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {dur, (uint64_t)err};
+  data->host[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {dur, (bool) err};
 }
 
 static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
@@ -62,7 +62,7 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                 bt_bool err, const char *metadata) {
 
   auto *data = (aggreg_t *)usr_data;
-  data->device[{hostname, vpid, vtid, did, sdid, name, metadata}] += {dur, (uint64_t)err};
+  data->device[{hostname, vpid, vtid, did, sdid, name, metadata}] += {dur, (bool) err};
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {

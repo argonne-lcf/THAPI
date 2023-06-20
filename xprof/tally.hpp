@@ -95,7 +95,7 @@ public:
         format_time(duration),
         std::isnan(duration_ratio) ? "" : to_string_with_precision(100. * duration_ratio, "%"),
         to_string_with_precision(count, "", 0),
-        format_time(average),
+        format_time(average()),
         format_time(min),
         format_time(max),
         to_string_with_precision(error, "", 0)};
@@ -142,7 +142,7 @@ public:
     return std::vector<std::string>{format_byte(duration),
                                     to_string_with_precision(100. * duration_ratio, "%"),
                                     to_string_with_precision(count, "", 0),
-                                    format_byte(average),
+                                    format_byte(average()),
                                     format_byte(min),
                                     format_byte(max),
                                     to_string_with_precision(error, "", 0)};
@@ -377,42 +377,17 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
   return tuple_set;
 }
 
-//! Add the total values at the end of the table (represented as a vector of tuples)".
-/*!
-\param m vector of tuples.
-
-EXAMPLE:
-  input   vector{
-                pair{"zeModuleCreate"),  CoreTime},
-                pair{"zeModuleDestroy"), CoreTime},
-                pair{"zeMemFree"),       CoreTime}
-          }
-  output (update first param by reference)
-
-          vector{
-                pair{"zeModuleCreate"),  CoreTime},
-                pair{"zeModuleDestroy"), CoreTime},
-                pair{"zeMemFree"),       CoreTime},
-                pair{"Total"),           CoreTime}
-          }
-
-*/
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
-
-  // Create the final Tally
   TC tot{};
-  for (auto const &keyval : m)
-    tot += keyval.second;
-  // Finalize (compute ratio)
-  for (auto &keyval : m)
-    keyval.second.finalize(tot);
+  for (auto const &[_, t] : m)
+    tot += t;
+  m.push_back( { "Total", tot } );
 
-  if (tot.error == tot.count)
-    tot.duration_ratio = NAN;
-
-  m.push_back(std::make_pair(std::string("Total"), tot));
+  for (auto &[_, t] : m)
+    t.compute_duration_ratio(tot);
 }
+
 
 //    __
 //   (_   _  ._ _|_ o ._   _

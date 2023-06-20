@@ -3,28 +3,26 @@
 #include <cstdint>
 #include <vector>
 #include <limits>
+#include <cassert>
 
 class TallyCoreBase {
 public:
   TallyCoreBase() {}
 
-  TallyCoreBase(uint64_t _dur, uint64_t _err) : duration{_dur}, error{_err} {
-    count = 1;
-    if (!error) {
-      min = duration;
-      max = duration;
-    } else
-      duration = 0;
+  TallyCoreBase(uint64_t _dur, bool _err) : error{ (uint64_t) _err}, count{1} {
+    if (!_err) {
+      duration = _dur;
+      min = _dur;
+      max = _dur;
+    } 
   }
 
   uint64_t duration{0};
   uint64_t error{0};
+  uint64_t count{0};
   uint64_t min{std::numeric_limits<uint64_t>::max()};
   uint64_t max{0};
-  uint64_t count{0};
-  double duration_ratio{1.};
-  double average{0};
-
+  double duration_ratio{std::numeric_limits<double>::quiet_NaN() };
 
   TallyCoreBase &operator+=(const TallyCoreBase &rhs) {
     this->duration += rhs.duration;
@@ -34,11 +32,15 @@ public:
     this->error += rhs.error;
     return *this;
   }
-  
+
   bool operator>(const TallyCoreBase &rhs) { return duration > rhs.duration; }
 
-  void finalize(const TallyCoreBase &rhs) {
-    average = (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;
-    duration_ratio = static_cast<double>(duration) / rhs.duration;
+  double average() {
+    return (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;
+  }
+
+  void compute_duration_ratio(const TallyCoreBase &rhs) {
+    if (rhs.duration > 0)
+	duration_ratio = static_cast<double>(duration) / rhs.duration;
   }
 };
