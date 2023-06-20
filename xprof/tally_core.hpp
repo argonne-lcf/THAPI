@@ -41,6 +41,6 @@ public:
 
   void compute_duration_ratio(const TallyCoreBase &rhs) {
     if (rhs.duration > 0)
-	duration_ratio = static_cast<double>(duration) / rhs.duration;
+      duration_ratio = static_cast<double>(duration) / rhs.duration;
   }
 };
