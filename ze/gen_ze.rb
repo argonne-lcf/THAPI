@@ -1,5 +1,4 @@
 require_relative 'ze_model'
-require 'set'
 
 puts <<EOF
 #include <stdint.h>
@@ -31,13 +30,6 @@ puts <<EOF
 
 EOF
 
-$struct_type_conversion_table = {
-  "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP" => "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES",
-  "ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC" => "ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC",
-  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32",
-  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32",
-}
-
 def get_structs_types(namespace, types, structs)
   types.select { |t|
     t.type.kind_of?(YAMLCAst::Struct) && (struct = structs.find { |s| t.type.name == s.name }) && struct.members.first.name == "stype"
@@ -53,7 +45,7 @@ void _print_lttng_ust_#{namespace}_struct(const void * p) {
   #{namespace}_structure_type_t stype = (#{namespace}_structure_type_t)((ze_base_desc_t *)p)->stype;
   switch (stype) {
 EOF
-  types.each { |t|
+  types.reject { |t| $struct_type_reject.include?(t.to_s) }.each { |t|
     ename = "#{namespace.to_s.upcase}_STRUCTURE_TYPE_#{t.delete_prefix(namespace.to_s+"_").delete_suffix("_t").upcase}"
     ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
     puts <<EOF

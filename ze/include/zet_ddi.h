@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zet_ddi.h
- * @version v1.5-r1.5.8
+ * @version v1.6-r1.6.10
  *
  */
 #ifndef _ZET_DDI_H
@@ -44,8 +44,8 @@ typedef struct _zet_device_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetDeviceProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_device_dditable_t* pDdiTable                ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_device_dditable_t* pDdiTable                                        ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -82,8 +82,8 @@ typedef struct _zet_context_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetContextProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_context_dditable_t* pDdiTable               ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_context_dditable_t* pDdiTable                                       ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -145,8 +145,8 @@ typedef struct _zet_command_list_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetCommandListProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_command_list_dditable_t* pDdiTable          ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_command_list_dditable_t* pDdiTable                                  ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -183,8 +183,8 @@ typedef struct _zet_module_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetModuleProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_module_dditable_t* pDdiTable                ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_module_dditable_t* pDdiTable                                        ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -219,8 +219,8 @@ typedef struct _zet_kernel_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetKernelProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_kernel_dditable_t* pDdiTable                ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_kernel_dditable_t* pDdiTable                                        ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -228,6 +228,51 @@ zetGetKernelProcAddrTable(
 typedef ze_result_t (ZE_APICALL *zet_pfnGetKernelProcAddrTable_t)(
     ze_api_version_t,
     zet_kernel_dditable_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zetMetricGet 
+typedef ze_result_t (ZE_APICALL *zet_pfnMetricGet_t)(
+    zet_metric_group_handle_t,
+    uint32_t*,
+    zet_metric_handle_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zetMetricGetProperties 
+typedef ze_result_t (ZE_APICALL *zet_pfnMetricGetProperties_t)(
+    zet_metric_handle_t,
+    zet_metric_properties_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Table of Metric functions pointers
+typedef struct _zet_metric_dditable_t
+{
+    zet_pfnMetricGet_t                                          pfnGet;
+    zet_pfnMetricGetProperties_t                                pfnGetProperties;
+} zet_metric_dditable_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Exported function for filling application's Metric table
+///        with current process' addresses
+///
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
+ZE_DLLEXPORT ze_result_t ZE_APICALL
+zetGetMetricProcAddrTable(
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_metric_dditable_t* pDdiTable                                        ///< [in,out] pointer to table of DDI function pointers
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zetGetMetricProcAddrTable
+typedef ze_result_t (ZE_APICALL *zet_pfnGetMetricProcAddrTable_t)(
+    ze_api_version_t,
+    zet_metric_dditable_t*
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -276,8 +321,8 @@ typedef struct _zet_metric_group_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetMetricGroupProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_metric_group_dditable_t* pDdiTable          ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_metric_group_dditable_t* pDdiTable                                  ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -301,10 +346,46 @@ typedef ze_result_t (ZE_APICALL *zet_pfnMetricGroupCalculateMultipleMetricValues
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zetMetricGroupGetGlobalTimestampsExp 
+typedef ze_result_t (ZE_APICALL *zet_pfnMetricGroupGetGlobalTimestampsExp_t)(
+    zet_metric_group_handle_t,
+    ze_bool_t,
+    uint64_t*,
+    uint64_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zetMetricGroupGetExportDataExp 
+typedef ze_result_t (ZE_APICALL *zet_pfnMetricGroupGetExportDataExp_t)(
+    zet_metric_group_handle_t,
+    const uint8_t*,
+    size_t,
+    size_t*,
+    uint8_t *
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Function-pointer for zetMetricGroupCalculateMetricExportDataExp 
+typedef ze_result_t (ZE_APICALL *zet_pfnMetricGroupCalculateMetricExportDataExp_t)(
+    ze_driver_handle_t,
+    zet_metric_group_calculation_type_t,
+    size_t,
+    const uint8_t*,
+    zet_metric_calculate_exp_desc_t*,
+    uint32_t*,
+    uint32_t*,
+    uint32_t*,
+    zet_typed_value_t*
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Table of MetricGroupExp functions pointers
 typedef struct _zet_metric_group_exp_dditable_t
 {
     zet_pfnMetricGroupCalculateMultipleMetricValuesExp_t        pfnCalculateMultipleMetricValuesExp;
+    zet_pfnMetricGroupGetGlobalTimestampsExp_t                  pfnGetGlobalTimestampsExp;
+    zet_pfnMetricGroupGetExportDataExp_t                        pfnGetExportDataExp;
+    zet_pfnMetricGroupCalculateMetricExportDataExp_t            pfnCalculateMetricExportDataExp;
 } zet_metric_group_exp_dditable_t;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -318,8 +399,8 @@ typedef struct _zet_metric_group_exp_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetMetricGroupExpProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_metric_group_exp_dditable_t* pDdiTable      ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_metric_group_exp_dditable_t* pDdiTable                              ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -327,51 +408,6 @@ zetGetMetricGroupExpProcAddrTable(
 typedef ze_result_t (ZE_APICALL *zet_pfnGetMetricGroupExpProcAddrTable_t)(
     ze_api_version_t,
     zet_metric_group_exp_dditable_t*
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zetMetricGet 
-typedef ze_result_t (ZE_APICALL *zet_pfnMetricGet_t)(
-    zet_metric_group_handle_t,
-    uint32_t*,
-    zet_metric_handle_t*
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zetMetricGetProperties 
-typedef ze_result_t (ZE_APICALL *zet_pfnMetricGetProperties_t)(
-    zet_metric_handle_t,
-    zet_metric_properties_t*
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Table of Metric functions pointers
-typedef struct _zet_metric_dditable_t
-{
-    zet_pfnMetricGet_t                                          pfnGet;
-    zet_pfnMetricGetProperties_t                                pfnGetProperties;
-} zet_metric_dditable_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Exported function for filling application's Metric table
-///        with current process' addresses
-///
-/// @returns
-///     - ::ZE_RESULT_SUCCESS
-///     - ::ZE_RESULT_ERROR_UNINITIALIZED
-///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
-///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
-ZE_DLLEXPORT ze_result_t ZE_APICALL
-zetGetMetricProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_metric_dditable_t* pDdiTable                ///< [in,out] pointer to table of DDI function pointers
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Function-pointer for zetGetMetricProcAddrTable
-typedef ze_result_t (ZE_APICALL *zet_pfnGetMetricProcAddrTable_t)(
-    ze_api_version_t,
-    zet_metric_dditable_t*
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -420,8 +456,8 @@ typedef struct _zet_metric_streamer_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetMetricStreamerProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_metric_streamer_dditable_t* pDdiTable       ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_metric_streamer_dditable_t* pDdiTable                               ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -466,8 +502,8 @@ typedef struct _zet_metric_query_pool_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetMetricQueryPoolProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_metric_query_pool_dditable_t* pDdiTable     ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_metric_query_pool_dditable_t* pDdiTable                             ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -526,8 +562,8 @@ typedef struct _zet_metric_query_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetMetricQueryProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_metric_query_dditable_t* pDdiTable          ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_metric_query_dditable_t* pDdiTable                                  ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -594,8 +630,8 @@ typedef struct _zet_tracer_exp_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetTracerExpProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_tracer_exp_dditable_t* pDdiTable            ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_tracer_exp_dditable_t* pDdiTable                                    ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -736,8 +772,8 @@ typedef struct _zet_debug_dditable_t
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_VERSION
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zetGetDebugProcAddrTable(
-    ze_api_version_t version,                       ///< [in] API version requested
-    zet_debug_dditable_t* pDdiTable                 ///< [in,out] pointer to table of DDI function pointers
+    ze_api_version_t version,                                               ///< [in] API version requested
+    zet_debug_dditable_t* pDdiTable                                         ///< [in,out] pointer to table of DDI function pointers
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -756,9 +792,9 @@ typedef struct _zet_dditable_t
     zet_command_list_dditable_t         CommandList;
     zet_module_dditable_t               Module;
     zet_kernel_dditable_t               Kernel;
+    zet_metric_dditable_t               Metric;
     zet_metric_group_dditable_t         MetricGroup;
     zet_metric_group_exp_dditable_t     MetricGroupExp;
-    zet_metric_dditable_t               Metric;
     zet_metric_streamer_dditable_t      MetricStreamer;
     zet_metric_query_pool_dditable_t    MetricQueryPool;
     zet_metric_query_dditable_t         MetricQuery;

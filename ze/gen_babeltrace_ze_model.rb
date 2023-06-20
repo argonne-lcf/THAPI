@@ -43,6 +43,10 @@ def meta_parameter_types_name(m, dir)
       [["ctf_integer", "size_t", "_#{name}_length", nil],
        [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
     end
+  when OutPtrString
+    [["ctf_string", "#{t}", "#{name}", lttng]]
+  else
+    raise "unsupported meta parameter class #{m.class} #{lttng.call_string} #{t}"
   end
 end
 
