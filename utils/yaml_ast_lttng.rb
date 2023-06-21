@@ -55,8 +55,9 @@ module YAMLCAst
   class Struct
     def lttng_type
       ev = LTTng::TracepointField::new
-      ev.macro = :ctf_array_text
+      ev.macro = :ctf_sequence_text
       ev.type = :uint8_t
+      ev.length_type = :size_t
       ev.length = "sizeof(struct #{name})"
       ev
     end
@@ -69,8 +70,9 @@ module YAMLCAst
   class Union
     def lttng_type
       ev = LTTng::TracepointField::new
-      ev.macro = :ctf_array_text
+      ev.macro = :ctf_sequence_text
       ev.type = :uint8_t
+      ev.length_type = :size_t
       ev.length = "sizeof(union #{name})"
       ev
     end
@@ -134,8 +136,9 @@ module YAMLCAst
         ev.macro = :ctf_integer
         ev.type = :int32_t
       when *STRUCT_TYPES, *UNION_TYPES
-        ev.macro = :ctf_array_text
+        ev.macro = :ctf_sequence_text
         ev.type = :uint8_t
+        ev.length_type = :size_t
         ev.length = "sizeof(#{name})"
       else
         super
@@ -174,8 +177,9 @@ module YAMLCAst
         ev.macro = :"ctf_#{lttng_arr_type}_hex"
         ev.type = FLOAT_SCALARS_MAP[type.name]
       when YAMLCAst::Char
-        ev.macro = :"ctf_#{lttng_arr_type}_text"
+        ev.macro = :ctf_sequence_text
         ev.type = type.name
+        ev.length_type = 'size_t' unless length_type
       when YAMLCAst::CustomType
         case type.name
         # Usually binary data or text

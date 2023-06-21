@@ -53,7 +53,7 @@ class MetaParameter
     end
   end
 
-  def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
+  def sanitize_expression(expr, checks = check_for_null(expr, false), default: 0)
     if checks.empty?
       expr
     else
@@ -90,7 +90,7 @@ class StringMetaParameter < MetaParameter
       ev.macro = :ctf_string
     end
     ev.name = "#{name}_val"
-    ev.expression = sanitize_expression("#{name}")
+    ev.expression = sanitize_expression("#{name}", default: 'NULL')
     @lttng_type = ev
   end
 end
@@ -158,9 +158,8 @@ class ScalarMetaParameter < MetaParameter
     end
     lttngt = st.lttng_type
     lttngt.name = name + "_val"
-    if lttngt.macro == :ctf_array_text
-      lttngt.macro = :ctf_sequence_text
-      lttngt.expression = sanitize_expression("#{name}")
+    if lttngt.macro == :ctf_sequence_text
+      lttngt.expression = sanitize_expression("#{name}", default: 'NULL')
       checks = check_for_null("#{name}")
       lttngt.length = sanitize_expression("#{lttngt.length}", checks)
       lttngt.length_type = "size_t"
@@ -232,7 +231,7 @@ class ArrayMetaParameter < MetaParameter
     y = YAMLCAst::Array::new(type: tt)
     lttngt = y.lttng_type(length: sz, length_type: st)
     lttngt.name = name + "_vals"
-    lttngt.expression = sanitize_expression("#{name}")
+    lttngt.expression = sanitize_expression("#{name}", default: 'NULL')
     @lttng_type = lttngt
   end
 end
@@ -323,7 +322,7 @@ class ArrayByRefMetaParameter < MetaParameter
     y = YAMLCAst::Array::new(type: tt)
     lttngt = y.lttng_type(length: sz, length_type: st)
     lttngt.name = name + "_val_vals"
-    lttngt.expression = sanitize_expression("*#{name}")
+    lttngt.expression = sanitize_expression("*#{name}", default: 'NULL')
     @lttng_type = lttngt
   end
 end
