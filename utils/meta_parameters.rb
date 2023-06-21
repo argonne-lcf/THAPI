@@ -216,7 +216,7 @@ class ArrayMetaParameter < MetaParameter
       size = "*#{size}"
       size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = INT_SIGN_MAP["#{s.type.type}"] ? "size_t"  : "#{s.type}"
+      st = INT_SIGN_MAP["#{s.type.type}"] ? "size_t"  : "#{s.type.type}"
     else
       checks = check_for_null("#{name}")
       size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type}"]
