@@ -161,48 +161,46 @@ module YAMLCAst
         return ev
       end
       if length_type
-        lttng_arr_type = "sequence"
         ev.length_type = length_type
       else
-        lttng_arr_type = "array"
+        ev.length_type = 'size_t'
       end
       case type
       when YAMLCAst::Pointer
-        ev.macro = :"ctf_#{lttng_arr_type}_hex"
+        ev.macro = :"ctf_sequence_hex"
         ev.type = :uintptr_t
       when YAMLCAst::Int
-        ev.macro = :"ctf_#{lttng_arr_type}"
+        ev.macro = :"ctf_sequence"
         ev.type = type.name
       when YAMLCAst::Float
-        ev.macro = :"ctf_#{lttng_arr_type}_hex"
+        ev.macro = :"ctf_sequence_hex"
         ev.type = FLOAT_SCALARS_MAP[type.name]
       when YAMLCAst::Char
         ev.macro = :ctf_sequence_text
         ev.type = type.name
-        ev.length_type = 'size_t' unless length_type
       when YAMLCAst::CustomType
         case type.name
         # Usually binary data or text
         when "uint8_t"
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
+          ev.macro = :"ctf_sequence_text"
           ev.type = :uint8_t
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(uint8_t)"
           end
         when *OBJECT_TYPES, *POINTER_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_hex"
+          ev.macro = :"ctf_sequence_hex"
           ev.type = :uintptr_t
         when *HEX_INT_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_hex"
+          ev.macro = :"ctf_sequence_hex"
           ev.type = type.name
         when *INT_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}"
+          ev.macro = :"ctf_sequence"
           ev.type = type.name
         when *ENUM_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}"
+          ev.macro = :"ctf_sequence"
           ev.type = :int32_t
         when *STRUCT_TYPES, *UNION_TYPES
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
+          ev.macro = :"ctf_sequence_text"
           ev.type = :uint8_t
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(#{type.name})"

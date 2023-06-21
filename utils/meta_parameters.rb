@@ -269,7 +269,7 @@ class FixedArrayMetaParameter < MetaParameter
       tt = t.type
     end
     y = YAMLCAst::Array::new(type: tt)
-    lttngt = y.lttng_type(length: size, length_type: nil)
+    lttngt = y.lttng_type(length: sanitize_expression("#{size}", checks), length_type: nil)
     lttngt.name = name + "_vals"
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt

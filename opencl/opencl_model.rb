@@ -402,8 +402,8 @@ class MetaParameter
       lttng_arr_type = "sequence"
       lttng_args = [ stype, "#{name} == NULL ? 0 : #{size}" ]
     else
-      lttng_arr_type = "array"
-      lttng_args = [ size ]
+      lttng_arr_type = "sequence"
+      lttng_args = [ 'size_t', "#{name} == NULL ? 0 : #{size}" ]
     end
     expr = name
     case type
