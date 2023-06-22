@@ -2,6 +2,7 @@
 #include <string>
 #include <array>
 #include <cassert>
+#include <sstream>      // std::stringstream, std::stringbuf
 
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
@@ -44,15 +45,6 @@ int get_backend_id(std::string name){
   return -1;
 }
 
-/* pos must be lower than str.size() */
-auto left_split(std::string &str, unsigned &pos, char sep){
-  size_t start = pos;
-  while (pos < str.size() && str[pos] != sep) {pos++;}
-  std::string left {str,start,pos - start};
-  pos++; // skipt separator
-  return left;
-}
-
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   /* User allocates its own data structure */
   auto *data = new tally_dispatch_t;
@@ -75,12 +67,20 @@ void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params)
   data->params = usr_params;
 
   std::string str{data->params->backend_level};
-  /* We mutate the value of i in left_split */
-  unsigned i = 0; 
-  while (i < str.size()){
-    int id = get_backend_id(left_split(str,i,':'));
-    assert((id > 0) && "Backend not found.");
-    data->backend_level[id] = std::stoi(left_split(str,i,','));
+  std::stringstream ss(str);
+  std::vector<std::string> words;
+  std::string tmp, key, value;
+
+  // Split backend level format bname_1:bvalue_1,...,bname_n,bvalue_n.
+  while(getline(ss, tmp, ',')){
+    std::stringstream _tmp(tmp);
+    std::getline(_tmp,key,':');
+    std::getline(_tmp,value,'\0');
+    int id = get_backend_id(key);
+    assert((id > 0) && "Backend not found. Please check --backend-level format.");
+    data->backend_level[id] = std::stoi(value);
+    key = '\0';
+    value = '\0';
   }
 }
 
