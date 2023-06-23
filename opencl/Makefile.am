@@ -89,7 +89,7 @@ OPENCL_STATIC_PROBES_SRC = $(OPENCL_STATIC_PROBES:=.c)
 opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(OPENCL_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_opencl_custom_probes.rb $(TRACEPOINT_GEN)
+$(OPENCL_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_opencl_custom_probes.rb $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp
