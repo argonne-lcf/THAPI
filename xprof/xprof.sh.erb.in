@@ -97,10 +97,10 @@ display_help() {
     echo "  -k, --kernel-verbose      Report kernels execution time with SIMD width and global/local sizes"
     echo "  -e, --extended            Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace               Display trace"
-    echo "  -l, --timeline            Dump the timeline"
+    echo "  -l, --timeline            Dump the timeline. Will create a `out.pftrace` file that can be opened in perfetto (https://ui.perfetto.dev/#!/viewer)"
     echo "  -j, --json                Summary will be printed as json"
     echo "  -m, --tracing-mode <mode> [minimal, default, full]"
-    echo "  --asm                     Dump in your current directory low level kernels informations (asm, isa, visa, ...)"
+    echo "  --asm                     Dump in your current directory low-level kernels information (asm, isa, visa, ...)"
     echo "  --no-save                 Data will be processed on-the-fly"
     echo "  --mangle                  Use mangled name"
     echo "  --metadata                Display metadata"
@@ -108,7 +108,7 @@ display_help() {
     echo "  --traced-ranks <rank,...> Comma list separated of MPI rank to trace (default 0). You can use -1 to trace all ranks"
     echo "  --clean-up                Clean lttng daemon, and internal lock file"
     echo "  -v, --version             Print the version string"
-    echo "  -r, --replay    [path]    <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
+    echo "  -r, --replay    [path]    <application> <application-arguments> will be treated as paths to traces folders ($HOME/lttng-traces/...)"
     echo "                            If no arguments are provided, will use the latest trace available"
     echo
     echo " Example:"
@@ -116,10 +116,10 @@ display_help() {
     echo
     echo "$(basename $0) will save the trace in $HOME/lttng-traces/"
     echo " Please tidy up from time to time"
-    echo "                                                   __ "
-    echo "For complain, praise, or bug reports please use: <(o )___"
-    echo "   https://github.com/argonne-lcf/THAPI           ( ._> /"
-    echo "   or send email to {apl,bvideau}@anl.gov          \`---'"
+    echo "                                                    __ "
+    echo "For complaint, praise, or bug reports please use: <(o )___"
+    echo "   https://github.com/argonne-lcf/THAPI            ( ._> /"
+    echo "   or send email to {apl,bvideau}@anl.gov           \`---'"
     exit 1
 }
 
