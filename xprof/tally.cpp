@@ -66,21 +66,14 @@ void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params)
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
   data->params = usr_params;
 
-  std::string str{data->params->backend_level};
-  std::stringstream ss(str);
-  std::vector<std::string> words;
-  std::string tmp, key, value;
-
-  // Split backend level format bname_1:bvalue_1,...,bname_n,bvalue_n.
-  while(getline(ss, tmp, ',')){
-    std::stringstream _tmp(tmp);
-    std::getline(_tmp,key,':');
-    std::getline(_tmp,value,'\0');
-    int id = get_backend_id(key);
+  // Consumes token by token in the stringstream k1:v1,..,kn:vn
+  std::stringstream tokens{data->params->backend_level};
+  std::string k,v;
+  while (getline(tokens, k, ':')) {
+    int id = get_backend_id(k);
     assert((id > 0) && "Backend not found. Please check --backend-level format.");
-    data->backend_level[id] = std::stoi(value);
-    key = '\0';
-    value = '\0';
+    getline(tokens, v, ',');
+    data->backend_level[id] = std::stoi(v);
   }
 }
 
