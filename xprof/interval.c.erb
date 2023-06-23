@@ -11,6 +11,8 @@
 // <%= namespace %>_dispatch_message_iterator_next to the callbacks
 struct <%= namespace %>_message_iterator *<%= namespace %>_iter_g = NULL;
 bt_self_message_iterator *<%= namespace %>_self_message_iterator_g = NULL;
+bool <%= namespace %>_first_call = true;
+bool <%= namespace %>_last_call = false;
 
 static
 struct <%= namespace %>_event_callbacks * opencl_create_event_callbacks(const char *name) {
@@ -225,6 +227,11 @@ bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_i
     /* Set global variable */
     <%= namespace %>_iter_g = dispatch_iter;
     <%= namespace %>_self_message_iterator_g = self_message_iterator;
+    if (<%= namespace %>_first_call) {
+      bt_message *message = bt_message_stream_beginning_create(self_message_iterator, dispatch_iter->dispatch->stream);
+      <%= namespace %>_downstream_message_queue_push(dispatch_iter, message);
+      <%= namespace %>_first_call = false;
+    }
 
 consume_upstream_messages:
 
@@ -234,6 +241,12 @@ consume_upstream_messages:
     /* Initialize the return status to a success */
     bt_message_iterator_class_next_method_status status =
         BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_OK;
+
+    if (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END &&  !<%= namespace %>_last_call) {
+      bt_message *message = bt_message_stream_end_create(self_message_iterator, dispatch_iter->dispatch->stream);
+      <%= namespace %>_downstream_message_queue_push(dispatch_iter, message);
+      <%= namespace %>_last_call = true;
+    }
 
     if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && <%= namespace %>_downstream_message_queue_empty(dispatch_iter) ) {
        bt_message_iterator_put_ref(dispatch_iter->message_iterator);
