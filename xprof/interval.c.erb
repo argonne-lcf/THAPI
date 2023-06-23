@@ -288,8 +288,9 @@ consume_upstream_messages:
                // Will forward the message as is to `downstream_message_queue` variable.
                <%= namespace %>_downstream_message_queue_push(dispatch_iter, upstream_message);
             }
+        } else {
+              <%= namespace %>_downstream_message_queue_push(dispatch_iter, upstream_message);
         }
-        /* Discard upstream message: put its reference */
     }
     if ( <%= namespace %>_downstream_message_queue_empty(dispatch_iter) ) {
         /*
