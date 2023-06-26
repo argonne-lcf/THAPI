@@ -25,7 +25,7 @@ $options_tally = {
   'display_metadata' => [FalseClass, false],
   'display_name_max_size' => [Integer, 80],
   'display_kernel_verbose' => [FalseClass, false],
-  'backend_level' => [String, '']
+  'backend_level' => [String, ''],
 }
 
 def common_options(opts)
