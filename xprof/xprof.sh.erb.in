@@ -116,10 +116,10 @@ display_help() {
     echo
     echo "$(basename $0) will save the trace in $HOME/lttng-traces/"
     echo " Please tidy up from time to time"
-    echo "                                                    __ "
-    echo "For complaint, praise, or bug reports please use: <(o )___"
-    echo "   https://github.com/argonne-lcf/THAPI            ( ._> /"
-    echo "   or send email to {apl,bvideau}@anl.gov           \`---'"
+    echo "                                                      __ "
+    echo "For complaints, praises, or bug reports please use: <(o )___"
+    echo "   https://github.com/argonne-lcf/THAPI              ( ._> /"
+    echo "   or send email to {apl,bvideau}@anl.gov             \`---'"
     exit 1
 }
 
