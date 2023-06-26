@@ -25,7 +25,7 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 btx_source_timeline_upstream_model.yaml: btx_interval_model.yaml
 	cp $< $(builddir)/$@
 
-btx_source_tally_upstream_model.yaml: btx_interval_model.yaml
+btx_source_tally_upstream_model.yaml: btx_aggreg_model.yaml
 	cp $< $(builddir)/$@
 
 btx_filter_aggreg_upstream_model.yaml: btx_interval_model.yaml

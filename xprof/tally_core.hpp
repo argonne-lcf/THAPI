@@ -17,6 +17,9 @@ public:
     } 
   }
 
+  TallyCoreBase(uint64_t _dur, uint64_t _err, uint64_t _count, uint64_t _min, uint64_t _max) :
+	  duration{_dur}, error{_err}, count{_count}, min{_min}, max{_max} {}
+
   uint64_t duration{0};
   uint64_t error{0};
   uint64_t count{0};
