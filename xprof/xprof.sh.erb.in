@@ -93,26 +93,6 @@ display_help() {
     echo " $(basename $0) [option]... <application> <application-arguments>"
     echo " $(basename $0) [option]... -r [<trace>]..."
     echo
-<<<<<<< HEAD
-    echo "  -h, --help                          Show this screen"
-    echo "  -k, --kernel-verbose                Report kernels execution time with SIMD width and global/local sizes"
-    echo "  -e, --extended                      Print information for each Hostname / Process / Thread / Device"
-    echo "  -t, --trace                         Display trace"
-    echo "  -l, --timeline                      Dump the timeline"
-    echo "  -j, --json                          Summary will be printed as json"
-    echo "  -m, --tracing-mode <mode>           [minimal, default, full]"
-    echo "  --backend-level <name:value,...>    Update tally default backend levels"
-    echo "  --asm                               Dump in your current directory low level kernels informations (asm, isa, visa, ...)"
-    echo "  --no-save                           Data will be processed on-the-fly"
-    echo "  --mangle                            Use mangled name"
-    echo "  --metadata                          Display metadata"
-    echo "  --max-name-size <size>              Maximun size allowed for kernels names (default 80)"
-    echo "  --traced-ranks <rank,...>           Comma list separated of MPI rank to trace (default 0). You can use -1 to trace all ranks"
-    echo "  --clean-up                          Clean lttng daemon, and internal lock file"
-    echo "  -v, --version                       Print the version string"
-    echo "  -r, --replay    [path]              <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
-    echo "                                      If no arguments are provided, will use the latest trace available"
-=======
     echo "  -h, --help                Show this screen"
     echo "  -k, --kernel-verbose      Report kernels execution time with SIMD width and global/local sizes"
     echo "  -e, --extended            Print information for each Hostname / Process / Thread / Device"
@@ -130,7 +110,6 @@ display_help() {
     echo "  -v, --version             Print the version string"
     echo "  -r, --replay    [path]    <application> <application-arguments> will be treated as paths to traces folders ($HOME/lttng-traces/...)"
     echo "                            If no arguments are provided, will use the latest trace available"
->>>>>>> alcf/master
     echo
     echo " Example:"
     echo " $(basename $0) ./a.out"
