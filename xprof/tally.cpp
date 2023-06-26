@@ -58,7 +58,7 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
     2, // BACKEND_CUDA
     1, // BACKEND_OMP_TARGET_OPERATIONS
     0, // BACKEND_OMP
-    2,  // BACKEND_HIP
+    2, // BACKEND_HIP
   };
 }
 

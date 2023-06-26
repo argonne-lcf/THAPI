@@ -5,22 +5,26 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
-enum backend_e{ BACKEND_UNKNOWN = 0,
-                BACKEND_ZE = 1,
-                BACKEND_OPENCL = 2,
-                BACKEND_CUDA = 3,
-                BACKEND_OMP_TARGET_OPERATIONS = 4,
-                BACKEND_OMP = 5,
-                BACKEND_HIP = 6,
-                BACKEND_MAX = 7, };
+enum backend_e{
+  BACKEND_UNKNOWN = 0,
+  BACKEND_ZE = 1,
+  BACKEND_OPENCL = 2,
+  BACKEND_CUDA = 3,
+  BACKEND_OMP_TARGET_OPERATIONS = 4,
+  BACKEND_OMP = 5,
+  BACKEND_HIP = 6,
+  BACKEND_MAX = 7,
+};
 
-constexpr const char* backend_name[] = { "BACKEND_UNKNOWN",
-                "BACKEND_ZE",
-                "BACKEND_OPENCL",
-                "BACKEND_CUDA",
-                "BACKEND_OMP_TARGET_OPERATIONS",
-                "BACKEND_OMP",
-                "BACKEND_HIP" };
+constexpr const char* backend_name[] = {
+  "BACKEND_UNKNOWN",
+  "BACKEND_ZE",
+  "BACKEND_OPENCL",
+  "BACKEND_CUDA",
+  "BACKEND_OMP_TARGET_OPERATIONS",
+  "BACKEND_OMP",
+  "BACKEND_HIP",
+};
 
 typedef enum        backend_e backend_t;
 typedef unsigned    backend_level_t;
