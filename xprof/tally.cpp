@@ -69,13 +69,13 @@ void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params)
   // Consumes key:value pairs in the stringstream k1:v1,..,kn:vn
   std::stringstream tokens{data->params->backend_level};
   std::string tmp;
-  while (getline(tokens, tmp, ',')) {
+  while (std::getline(tokens, tmp, ',')) {
     std::stringstream tmp_string{tmp};
     std::string k,v;
-    getline(tmp_string, k, ':');
+    std::getline(tmp_string, k, ':');
     int id = get_backend_id(k);
     assert((id > 0) && "Backend not found. Please check --backend-level format.");
-    getline(tmp_string, v);
+    std::getline(tmp_string, v);
     data->backend_level[id] = std::stoi(v);
   }
 }
