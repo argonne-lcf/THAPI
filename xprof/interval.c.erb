@@ -6,7 +6,6 @@
 #include "uthash.h"
 #include "utarray.h"
 
-
 // Global variable used to path some handle from the
 // <%= namespace %>_dispatch_message_iterator_next to the callbacks
 struct <%= namespace %>_message_iterator *<%= namespace %>_iter_g = NULL;
@@ -221,7 +220,7 @@ bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_i
 
     /* Consume a batch of messages from the upstream message iterator */
     bt_message_array_const upstream_messages;
-    uint64_t upstream_message_count;
+    uint64_t upstream_message_count = 0;
     bt_message_iterator_next_status next_status;
 
     /* Set global variable */
@@ -235,24 +234,31 @@ bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_i
 
 consume_upstream_messages:
 
-    next_status = bt_message_iterator_next(dispatch_iter->message_iterator,
-        &upstream_messages, &upstream_message_count);
+    next_status = BT_MESSAGE_ITERATOR_NEXT_STATUS_OK;
+
+    if (!<%= namespace %>_last_call) {
+      // We cannot call bt_message_iterator_next if previously returned BT_MESSAGE_ITERATOR_NEXT_STATUS_END
+      next_status = bt_message_iterator_next(dispatch_iter->message_iterator,
+            &upstream_messages, &upstream_message_count);
+      if (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) {
+          <%= namespace %>_last_call = true;
+          bt_message *message = bt_message_stream_end_create(self_message_iterator, dispatch_iter->dispatch->stream);
+          <%= namespace %>_downstream_message_queue_push(dispatch_iter, message);
+      }
+    }
 
     /* Initialize the return status to a success */
     bt_message_iterator_class_next_method_status status =
-        BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_OK;
+      BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_OK;
 
-    if (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END &&  !<%= namespace %>_last_call) {
-      bt_message *message = bt_message_stream_end_create(self_message_iterator, dispatch_iter->dispatch->stream);
-      <%= namespace %>_downstream_message_queue_push(dispatch_iter, message);
-      <%= namespace %>_last_call = true;
-    }
-
-    if ( (next_status == BT_MESSAGE_ITERATOR_NEXT_STATUS_END) && <%= namespace %>_downstream_message_queue_empty(dispatch_iter) ) {
+    // No more message to send, we can exit
+    if (<%= namespace %>_last_call && <%= namespace %>_downstream_message_queue_empty(dispatch_iter) )  {
        bt_message_iterator_put_ref(dispatch_iter->message_iterator);
        status = BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_END;
        goto end;
     }
+    // We rely on the fact that if <%= namespace %>_last_call> but we still have some message to send,
+    // We put upstream_message_count to 0; hence we will bypass the reading step
 
     switch (next_status) {
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
