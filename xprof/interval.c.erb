@@ -220,7 +220,7 @@ bt_message_iterator_class_next_method_status <%= namespace %>_dispatch_message_i
 
     /* Consume a batch of messages from the upstream message iterator */
     bt_message_array_const upstream_messages;
-    uint64_t upstream_message_count;
+    uint64_t upstream_message_count = 0;
     bt_message_iterator_next_status next_status;
 
     /* Set global variable */
@@ -258,7 +258,7 @@ consume_upstream_messages:
        goto end;
     }
     // We rely on the fact that if <%= namespace %>_last_call> but we still have some message to send,
-    // bt2 will put upstream_message_count == 0, hence we will bypass the reading step
+    // We put upstream_message_count to 0; hence we will bypass the reading step
 
     switch (next_status) {
     case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN:
