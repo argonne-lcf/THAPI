@@ -38,7 +38,7 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-int get_backend_id(std::string name){
+int get_backend_id(std::string name) {
   for(int i = 0; i < BACKEND_MAX; ++i)
     // backend_name is located in xprof_utils.cpp
     if (std::string{backend_name[i]} == name) return i;
