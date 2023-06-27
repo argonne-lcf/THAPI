@@ -759,14 +759,16 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
 static int initialized = 0;
 
 #define MAX_N_DEVS  (8)
-#define MAX_N_PDOMS (8)
+#define MAX_N_PDOMS (4)
 
 static int selected_driver_id = 0;
 static ze_driver_handle_t selected_drvh;
 
 static uint32_t n_devhs;
+static uint32_t npwrdoms;
 static ze_device_handle_t  devhs_cache[MAX_N_DEVS];
-static zes_pwr_handle_t   mainpwrh_per_dev[MAX_N_DEVS]; // main power domain associated with each device
+static zes_pwr_handle_t   mainpwrh_per_dev[MAX_N_DEVS * MAX_N_PDOMS ]; // main power domain associated with each device
+//static zes_pwr_handle_t pwrhs[MAX_N_PDOMS]; 
 static int canreadpwrh_per_dev[MAX_N_DEVS];
 
 
@@ -776,17 +778,34 @@ int zerGetNDevs()
   return n_devhs;
 }
 
-void  zerReadEnergy(int devid, uint64_t *ts_us, uint64_t *energy_uj)
+uint32_t  zerGetNDoms()
 {
+  if(!initialized) return 0;
+  return npwrdoms;
+}
+
+
+
+void  zerReadEnergy(int devid, int pwrid, uint64_t *ts_us, uint64_t *energy_uj)
+{
+ 
+    
   *ts_us = 0;
   *energy_uj = 0;
   if (!initialized) return;
-
+  
   if (canreadpwrh_per_dev[devid]) {
+
+
+  //  double watt=0.0;
+    
     zes_power_energy_counter_t ecounter;
-    ZES_POWER_GET_ENERGY_COUNTER_PTR(mainpwrh_per_dev[devid], &ecounter);
+    ZES_POWER_GET_ENERGY_COUNTER_PTR( mainpwrh_per_dev[(devid * npwrdoms) + pwrid ], &ecounter);
+
     *ts_us = ecounter.timestamp;
     *energy_uj = ecounter.energy;
+      
+    
   }
 }
 
@@ -866,7 +885,7 @@ int zerInit()
     if (props.type == ZE_DEVICE_TYPE_GPU) {
       zes_device_handle_t smh = smh = (zes_device_handle_t)devhs_cache[i];
       zes_pwr_handle_t pwrhs[MAX_N_PDOMS];
-      uint32_t npwrdoms = 0;
+     // uint32_t npwrdoms = 0;
 
       res = ZES_DEVICE_ENUM_POWER_DOMAINS_PTR(smh, &npwrdoms, NULL);
       if (res != ZE_RESULT_SUCCESS) {
@@ -878,7 +897,12 @@ int zerInit()
 	    _ZE_ERROR_MSG("ZES_DEVICE_ENUM_POWER_DOMAINS_PTR", res);
 	    return -1;
 					   }
-	  mainpwrh_per_dev[i] = pwrhs[0];
+       //  printf("%lu \n",(unsigned long)npwrdoms);
+	  for (uint32_t di=0; di < npwrdoms; di++)
+	  {
+	    
+	      mainpwrh_per_dev[(i * npwrdoms) + di] = pwrhs[di];
+	  }
 	  canreadpwrh_per_dev[i] = 1;
 	  if(0) {
 	    zes_power_energy_counter_t ecounter;
@@ -907,11 +931,14 @@ static void thapi_sampling_energy() {
   uint64_t energy_uj;
 
   for (int i=0; i<zerGetNDevs(); i++) {
-    zerReadEnergy(i, &ts_us, &energy_uj);
+	  for (uint32_t di=0;di<zerGetNDoms();di++)
+	  {
+    zerReadEnergy(i, di, &ts_us, &energy_uj);
     do_tracepoint(lttng_ust_ze_sampling, gpu_energy,
-		  (ze_device_handle_t)devhs_cache[i],
-		  (uint64_t)energy_uj);
+		  (ze_device_handle_t)devhs_cache[i],di,
+		  (uint64_t)energy_uj,ts_us);
     // printf("thapi_sampling_energy i=%d energy_uj=%lu\n", i, energy_uj);
+          }
   }
 }
 
