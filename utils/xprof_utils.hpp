@@ -5,7 +5,7 @@
 #include <string>
 #include "babeltrace2/babeltrace.h"
 
-enum backend_e{
+enum backend_e {
   BACKEND_UNKNOWN = 0,
   BACKEND_ZE = 1,
   BACKEND_OPENCL = 2,
