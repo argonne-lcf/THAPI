@@ -257,7 +257,7 @@ consume_upstream_messages:
        status = BT_MESSAGE_ITERATOR_CLASS_NEXT_METHOD_STATUS_END;
        goto end;
     }
-    // We really on the fact that if <%= namespace %>_last_call> but we still have somne message to send,
+    // We rely on the fact that if <%= namespace %>_last_call> but we still have some message to send,
     // bt2 will put upstream_message_count == 0, hence we will bypass the reading step
 
     switch (next_status) {
