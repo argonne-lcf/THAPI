@@ -100,6 +100,7 @@ display_help() {
     echo "  -l, --timeline            Dump the timeline. Will create a `out.pftrace` file that can be opened in perfetto (https://ui.perfetto.dev/#!/viewer)"
     echo "  -j, --json                Summary will be printed as json"
     echo "  -m, --tracing-mode <mode> [minimal, default, full]"
+    echo " --backend-level <name:value,...> Update tally default backend levels"
     echo "  --asm                     Dump in your current directory low-level kernels information (asm, isa, visa, ...)"
     echo "  --no-save                 Data will be processed on-the-fly"
     echo "  --mangle                  Use mangled name"
@@ -521,6 +522,7 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
+        --backend-level)        shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
         --no-save)              shift; procesing_mode="on-the-fly" ;;
         --traced-ranks)         shift; traced_ranks=$1; shift ;;
         --asm)                  shift; asm=true ;;

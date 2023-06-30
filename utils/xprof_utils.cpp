@@ -205,4 +205,3 @@ bt_message* create_traffic_message(const char *hostname, const process_id_t proc
 
      return message;
 }
-
