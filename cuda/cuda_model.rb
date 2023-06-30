@@ -32,7 +32,7 @@ find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
-INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount/
+INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount|cuGetProcAddress/
 
 HEX_INT_TYPES.push("CUdeviceptr")
 
