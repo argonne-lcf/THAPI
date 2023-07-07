@@ -100,10 +100,14 @@ text_pretty = BT2::BTPlugin.find('text').get_sink_component_class_by_name('prett
 
 thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join("@prefix@", "lib"))
 
+# Used for tally and timeline
 interval_plugins = thapi_plugins.filter_map do |plugin|
   plugin.get_filter_component_class_by_name('interval') if $options[:backends].include?(plugin.name.chomp('interval'))
 end
 
+thapi_plugins.each do |plugin|
+  interval_plugins << plugin.get_filter_component_class_by_name('aggreg') if plugin.name == 'btx_aggreg'
+end
 
 # Fix segfault
 ARGV.uniq!
