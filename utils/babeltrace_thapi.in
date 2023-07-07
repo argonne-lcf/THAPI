@@ -105,10 +105,6 @@ interval_plugins = thapi_plugins.filter_map do |plugin|
   plugin.get_filter_component_class_by_name('interval') if $options[:backends].include?(plugin.name.chomp('interval'))
 end
 
-thapi_plugins.each do |plugin|
-  interval_plugins << plugin.get_filter_component_class_by_name('aggreg') if plugin.name == 'btx_aggreg'
-end
-
 # Fix segfault
 ARGV.uniq!
 if !$options[:live]
@@ -175,6 +171,11 @@ serial_comps =
     }
     graph.add_simple_sink('babeltrace_thapi', consume)
   when 'tally'
+
+    thapi_plugins.each do |plugin|
+      interval_plugins << plugin.get_filter_component_class_by_name('aggreg') if plugin.name == 'btx_aggreg'
+    end
+
     comp_intervals = interval_plugins.map.with_index do |comp, i|
       graph.add_component(comp, "interval_#{i}")
     end
