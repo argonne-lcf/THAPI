@@ -197,12 +197,12 @@ static void tally_traffic_callback(void *btx_handle, void *usr_data, const char 
   data->traffic_backend_name[level].insert(backend_name[backend]);
   data->traffic[level][ {hostname, vpid, vtid, name} ] +=  {total, 0, count, min, max};;
 }
-/*
+
 static void device_name_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                            int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
                                            const char *name, uint64_t did) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
-
+  std::cout << "device_name_usr_callback" << name << std::endl;
   data->device_name[hp_device_t(hostname, vpid, did)] = name;
 }
 
@@ -213,16 +213,15 @@ static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data,
 
   data->metadata.push_back(metadata);
 }
-*/
+
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
   btx_register_callbacks_read_params(btx_handle, &btx_read_params);
   btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 
-//  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
-//  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
-
+  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
+  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
 
   btx_register_callbacks_tally_host(btx_handle, &tally_host_callback);
   btx_register_callbacks_tally_device(btx_handle, &tally_device_callback);
