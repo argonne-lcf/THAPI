@@ -159,21 +159,23 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
   delete data;
 }
 
-static void host_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                    int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend_id,
-                                    const char *name, uint64_t dur, bt_bool err) {
+static void tally_host_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid,  const char *name,
+				uint64_t min, uint64_t max, uint64_t total, uint64_t count,
+				uint64_t backend, uint64_t err) {
+
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  TallyCoreTime a{dur, (uint64_t)err};
-  const int level = data->backend_level[backend_id];
-  data->host_backend_name[level].insert(backend_name[backend_id]);
-  data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
+  const int level = data->backend_level[backend];
+  data->host_backend_name[level].insert(backend_name[backend]);
+  data->host[level][ {hostname, vpid, vtid, name } ] += {total, err, count, min, max};
 }
 
-static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                      int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                      const char *name, uint64_t dur, uint64_t did, uint64_t sdid,
-                                      bt_bool err, const char *metadata) {
+static void tally_device_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid,  const char *name,
+                                uint64_t min, uint64_t max, uint64_t total, uint64_t count,
+				uint64_t did, uint64_t sdid, const char * metadata ) {
+
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
   const auto name_demangled = (strcmp(data->params->name, "demangle") == 0) ? f_demangle_name(name) : name;
@@ -181,22 +183,21 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                       ? name_demangled + "[" + metadata + "]"
                                       : name_demangled;
 
-  TallyCoreTime a{dur, (uint64_t)err};
-  data->device[hpt_device_function_name_t(hostname, vpid, vtid, did, sdid, name_with_metadata)] +=
-      a;
+  data->device[ {hostname, vpid, vtid, did, sdid, name_with_metadata} ] += {total, 0, count, min, max};
 }
 
-static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                       int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                       const char *name, uint64_t size) {
+static void tally_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid,  const char *name,
+                                uint64_t min, uint64_t max, uint64_t total, uint64_t count,
+                                uint64_t backend) {
+
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  TallyCoreByte a{(uint64_t)size, false};
   const int level = data->backend_level[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
-  data->traffic[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
+  data->traffic[level][ {hostname, vpid, vtid, name} ] +=  {total, 0, count, min, max};;
 }
-
+/*
 static void device_name_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                            int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
                                            const char *name, uint64_t did) {
@@ -212,15 +213,19 @@ static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data,
 
   data->metadata.push_back(metadata);
 }
+*/
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
   btx_register_callbacks_read_params(btx_handle, &btx_read_params);
   btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 
-  btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
-  btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
-  btx_register_callbacks_lttng_traffic(btx_handle, &traffic_usr_callback);
-  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
-  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
+//  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
+//  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
+
+
+  btx_register_callbacks_tally_host(btx_handle, &tally_host_callback);
+  btx_register_callbacks_tally_device(btx_handle, &tally_device_callback);
+  btx_register_callbacks_tally_traffic(btx_handle, &tally_traffic_callback);
+
 }

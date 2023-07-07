@@ -1,3 +1,5 @@
+#pragma once
+
 #include <metababel/metababel.h>
 
 #include <cmath>
@@ -15,6 +17,7 @@
 #include "json.hpp"
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
+#include "tally_core.hpp"
 
 //! Returns a demangled name.
 //! @param mangle_name function names
@@ -62,37 +65,9 @@ std::string to_string_with_precision(const T a_value, const std::string units, c
   return out.str();
 }
 
-//! TallyCoreBase is a callbacks duration data collection and aggregation helper.
-//! It is of interest to collect data for every (host,pid,tid,api_call_name) entity.
-//! Since the same entity can take place several times, i.e., a thread spawned from
-//! a process running in a given host can call api_call_name several times, our
-//! interest is to aggregate these durations in a single one per entity.
-//! In addition to the duration, other data of interest is collected from different
-//! occurrences of the same entity such as, what was the minumum and max durations
-//! among the occurrences, the number of times an api_call_name happened for a given
-// "htp" (host,pid,tid), and how many occurrences failed.
-//! Once the data of an entity is collected, when considering all its occurrences,
-//! This helper calls facilitates aggregation of data by overloading += and + operators.
-class TallyCoreBase {
-public:
-  TallyCoreBase() {}
+class TallyCoreString : public TallyCoreBase {
 
-  TallyCoreBase(uint64_t _dur, uint64_t _err) : duration{_dur}, error{_err} {
-    count = 1;
-    if (!error) {
-      min = duration;
-      max = duration;
-    } else
-      duration = 0;
-  }
-
-  uint64_t duration{0};
-  uint64_t error{0};
-  uint64_t min{std::numeric_limits<uint64_t>::max()};
-  uint64_t max{0};
-  uint64_t count{0};
-  double duration_ratio{1.};
-  double average{0};
+  using TallyCoreBase::TallyCoreBase;
 
   virtual const std::vector<std::string> to_string() = 0;
 
@@ -102,28 +77,7 @@ public:
       v.push_back(static_cast<long>(e.size()));
     return v;
   }
-
-  //! Accumulates duration information.
-  TallyCoreBase &operator+=(const TallyCoreBase &rhs) {
-    this->duration += rhs.duration;
-    this->min = std::min(this->min, rhs.min);
-    this->max = std::max(this->max, rhs.max);
-    this->count += rhs.count;
-    this->error += rhs.error;
-    return *this;
-  }
-
-  //! Updates the average and duration ratio.
-  //! NOTE: This should happened once we have collected the information the duration information
-  //! of all the occurrences of a given (host,pid,tid,api_call_name) entity.
-  void finalize(const TallyCoreBase &rhs) {
-    average = (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;
-    duration_ratio = static_cast<double>(duration) / rhs.duration;
-  }
-
-  //! Enables the comparison of two TallyCoreBase instances by their duration.
-  //! It is used for sorting purposes.
-  bool operator>(const TallyCoreBase &rhs) { return duration > rhs.duration; }
+public:
 
   void update_max_size(std::vector<long> &m) {
     const auto current_size = to_string_size();
@@ -133,17 +87,17 @@ public:
 };
 
 //! Specialization of TallyCoreBase for execution times.
-class TallyCoreTime : public TallyCoreBase {
+class TallyCoreTime : public TallyCoreString {
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
 
-  using TallyCoreBase::TallyCoreBase;
+  using TallyCoreString::TallyCoreString;
   virtual const std::vector<std::string> to_string() {
     return std::vector<std::string>{
         format_time(duration),
         std::isnan(duration_ratio) ? "" : to_string_with_precision(100. * duration_ratio, "%"),
         to_string_with_precision(count, "", 0),
-        format_time(average),
+        format_time(average()),
         format_time(min),
         format_time(max),
         to_string_with_precision(error, "", 0)};
@@ -181,16 +135,16 @@ private:
 
 //! Specialization of TallyCoreBase for data transfer sizes.
 //! This is used for traffic related events, lttng:traffic.
-class TallyCoreByte : public TallyCoreBase {
+class TallyCoreByte : public TallyCoreString {
 public:
   static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
 
-  using TallyCoreBase::TallyCoreBase;
+  using TallyCoreString::TallyCoreString;
   virtual const std::vector<std::string> to_string() {
     return std::vector<std::string>{format_byte(duration),
                                     to_string_with_precision(100. * duration_ratio, "%"),
                                     to_string_with_precision(count, "", 0),
-                                    format_byte(average),
+                                    format_byte(average()),
                                     format_byte(min),
                                     format_byte(max),
                                     to_string_with_precision(error, "", 0)};
@@ -425,42 +379,17 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
   return tuple_set;
 }
 
-//! Add the total values at the end of the table (represented as a vector of tuples)".
-/*!
-\param m vector of tuples.
-
-EXAMPLE:
-  input   vector{
-                pair{"zeModuleCreate"),  CoreTime},
-                pair{"zeModuleDestroy"), CoreTime},
-                pair{"zeMemFree"),       CoreTime}
-          }
-  output (update first param by reference)
-
-          vector{
-                pair{"zeModuleCreate"),  CoreTime},
-                pair{"zeModuleDestroy"), CoreTime},
-                pair{"zeMemFree"),       CoreTime},
-                pair{"Total"),           CoreTime}
-          }
-
-*/
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
-
-  // Create the final Tally
   TC tot{};
-  for (auto const &keyval : m)
-    tot += keyval.second;
-  // Finalize (compute ratio)
-  for (auto &keyval : m)
-    keyval.second.finalize(tot);
+  for (auto const &[_, t] : m)
+    tot += t;
+  m.push_back( { "Total", tot } );
 
-  if (tot.error == tot.count)
-    tot.duration_ratio = NAN;
-
-  m.push_back(std::make_pair(std::string("Total"), tot));
+  for (auto &[_, t] : m)
+    t.compute_duration_ratio(tot);
 }
+
 
 //    __
 //   (_   _  ._ _|_ o ._   _
@@ -706,14 +635,14 @@ void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_str
 //
 // https://github.com/nlohmann/json
 //
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 void to_json(nlohmann::json &j, const TC &tc) {
   j = nlohmann::json{{"time", tc.duration}, {"call", tc.count}, {"min", tc.min}, {"max", tc.max}};
   if (tc.error != 0)
     j["error"] = tc.error;
 }
 
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name, TC>> &aggregated) {
   for (auto const &[key, val] : aggregated)
     j[key] = val;
@@ -722,7 +651,7 @@ void to_json(nlohmann::json &j, const std::vector<std::pair<thapi_function_name,
 // original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename K, typename TC,
-          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 nlohmann::json json_compact(std::unordered_map<K, TC> &m) {
   auto aggregated_by_name = aggregate_by_name(m);
   auto sorted_by_value = sort_by_value(aggregated_by_name);
@@ -737,7 +666,7 @@ void json_populate(nlohmann::json &j, const std::tuple<T...> &h, const std::tupl
 }
 
 template <typename K, typename TC, class... T,
-          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h) {
   nlohmann::json j;
   auto aggregated_nested = aggregate_nested(m);
