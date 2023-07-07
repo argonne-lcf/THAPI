@@ -1,4 +1,8 @@
 #include "tally.hpp"
+#include <string>
+#include <array>
+#include <cassert>
+#include <sstream>      // std::stringstream, std::stringbuf
 
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
@@ -6,6 +10,8 @@
 struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
+
+  std::array<int, BACKEND_MAX>backend_level;
 
   std::map<backend_level_t, std::set<const char *>> host_backend_name;
   std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
@@ -32,14 +38,46 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
+int get_backend_id(std::string name) {
+  for(int i = 0; i < BACKEND_MAX; ++i)
+    // backend_name is located in xprof_utils.cpp
+    if (std::string{backend_name[i]} == name) return i;
+  return -1;
+}
+
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   /* User allocates its own data structure */
-  *usr_data = new tally_dispatch_t;
+  auto *data = new tally_dispatch_t;
+  *usr_data = data;
+
+  /* Backend information must match enum backend_e in xprof_utils.hpp */
+  data->backend_level = {
+    2, // BACKEND_UNKNOWN
+    2, // BACKEND_ZE
+    2, // BACKEND_OPENCL
+    2, // BACKEND_CUDA
+    1, // BACKEND_OMP_TARGET_OPERATIONS
+    0, // BACKEND_OMP
+    2, // BACKEND_HIP
+  };
 }
 
 void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
   data->params = usr_params;
+
+  // Consumes key:value pairs in the stringstream k1:v1,..,kn:vn
+  std::stringstream tokens{data->params->backend_level};
+  std::string tmp;
+  while (std::getline(tokens, tmp, ',')) {
+    std::stringstream tmp_string{tmp};
+    std::string k,v;
+    std::getline(tmp_string, k, ':');
+    int id = get_backend_id(k);
+    assert((id > 0) && "Backend not found. Please check --backend-level format.");
+    std::getline(tmp_string, v);
+    data->backend_level[id] = std::stoi(v);
+  }
 }
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
@@ -128,7 +166,7 @@ static void tally_host_callback(void *btx_handle, void *usr_data, const char *ho
 
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  const int level = backend_level[backend];
+  const int level = data->backend_level[backend];
   data->host_backend_name[level].insert(backend_name[backend]);
   data->host[level][ {hostname, vpid, vtid, name } ] += {total, err, count, min, max};
 }
@@ -155,7 +193,7 @@ static void tally_traffic_callback(void *btx_handle, void *usr_data, const char 
 
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  const int level = backend_level[backend];
+  const int level = data->backend_level[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
   data->traffic[level][ {hostname, vpid, vtid, name} ] +=  {total, 0, count, min, max};;
 }

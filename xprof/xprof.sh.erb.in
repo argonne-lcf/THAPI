@@ -97,10 +97,12 @@ display_help() {
     echo "  -k, --kernel-verbose      Report kernels execution time with SIMD width and global/local sizes"
     echo "  -e, --extended            Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace               Display trace"
-    echo "  -l, --timeline            Dump the timeline"
+    echo "  -l, --timeline            Dump the timeline. Will create a `out.pftrace` file that can be opened in perfetto (https://ui.perfetto.dev/#!/viewer)"
     echo "  -j, --json                Summary will be printed as json"
     echo "  -m, --tracing-mode <mode> [minimal, default, full]"
-    echo "  --asm                     Dump in your current directory low level kernels informations (asm, isa, visa, ...)"
+    echo "  --no-profile              Device activities will not be profiled"
+    echo "  --backend-level <name:value,...> Update tally default backend levels"
+    echo "  --asm                     Dump in your current directory low-level kernels information (asm, isa, visa, ...)"
     echo "  --no-save                 Data will be processed on-the-fly"
     echo "  --mangle                  Use mangled name"
     echo "  --metadata                Display metadata"
@@ -108,7 +110,7 @@ display_help() {
     echo "  --traced-ranks <rank,...> Comma list separated of MPI rank to trace (default 0). You can use -1 to trace all ranks"
     echo "  --clean-up                Clean lttng daemon, and internal lock file"
     echo "  -v, --version             Print the version string"
-    echo "  -r, --replay    [path]    <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)"
+    echo "  -r, --replay    [path]    <application> <application-arguments> will be treated as paths to traces folders ($HOME/lttng-traces/...)"
     echo "                            If no arguments are provided, will use the latest trace available"
     echo
     echo " Example:"
@@ -116,10 +118,10 @@ display_help() {
     echo
     echo "$(basename $0) will save the trace in $HOME/lttng-traces/"
     echo " Please tidy up from time to time"
-    echo "                                                   __ "
-    echo "For complain, praise, or bug reports please use: <(o )___"
-    echo "   https://github.com/argonne-lcf/THAPI           ( ._> /"
-    echo "   or send email to {apl,bvideau}@anl.gov          \`---'"
+    echo "                                                      __ "
+    echo "For complaints, praises, or bug reports please use: <(o )___"
+    echo "   https://github.com/argonne-lcf/THAPI              ( ._> /"
+    echo "   or send email to {apl,bvideau}@anl.gov             \`---'"
     exit 1
 }
 
@@ -198,7 +200,9 @@ enable_events_cl() {
         lttngq enable-event --channel=blocking-channel --userspace $opencl_disable_events
     fi
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
-    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
+    if [ $profile = true ]; then
+        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
+    fi
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:kernel_info
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 }
@@ -209,7 +213,9 @@ enable_events_ze() {
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
     else
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_build:log*
-        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+        if [ $profile = true ]; then
+            lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_profiling:*
+        fi
         # Wildcard using the * character are supported at the end of tracepoint names.
         #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
         # Disable-event doesn't have wildcard sadly
@@ -228,7 +234,9 @@ enable_events_ze() {
 
 enable_events_cuda() {
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
-    lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
+    if [ $profile = true ]; then
+        lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
+    fi
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 }
 
@@ -309,12 +317,16 @@ preload_lib_tracers() {
 <%= print_loader_logic("cl","libOpenCL","libTracerOpenCL")%>
 <% end %>
 <% if languages.include?("ze") %>
-    export LTTNG_UST_ZE_PROFILE=1
-    thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
+    if [ $profile = true ]; then
+        export LTTNG_UST_ZE_PROFILE=1
+        thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
+    fi
 <%= print_loader_logic("ze","libze_loader","libTracerZE")%>
 <% end %>
 <% if languages.include?("cuda") %>
-    export LTTNG_UST_CUDA_PROFILE=1
+    if [ $profile = true ]; then
+        export LTTNG_UST_CUDA_PROFILE=1
+    fi
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
 <% if languages.include?("hip") %>
@@ -509,6 +521,7 @@ traced_ranks=0
 asm=false
 replay=false
 cleanup=false
+profile=true
 
 while (( "$#" )); do
     case "$1" in
@@ -521,6 +534,8 @@ while (( "$#" )); do
         -l | --timeline)        shift; timeline=true ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
+        --no-profile)           shift; profile=false ;;
+        --backend-level)        shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
         --no-save)              shift; procesing_mode="on-the-fly" ;;
         --traced-ranks)         shift; traced_ranks=$1; shift ;;
         --asm)                  shift; asm=true ;;
