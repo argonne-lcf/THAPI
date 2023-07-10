@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <vector>
 #include <limits>
-#include <cassert>
 
 class TallyCoreBase {
 public:
