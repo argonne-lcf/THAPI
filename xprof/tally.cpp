@@ -202,7 +202,6 @@ static void device_name_usr_callback(void *btx_handle, void *usr_data, const cha
                                            int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
                                            const char *name, uint64_t did) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
-  std::cout << "device_name_usr_callback" << name << std::endl;
   data->device_name[hp_device_t(hostname, vpid, did)] = name;
 }
 
