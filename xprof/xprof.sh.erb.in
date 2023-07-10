@@ -314,7 +314,7 @@ preload_lib_tracers() {
     thapi_export OMP_TOOL_LIBRARIES  $libdir/libTracerOMPT.so
 <% end %>
 <% if languages.include?("cl") %>
-<%= print_loader_logic("cl","libOpenCL","libTracerOpenCL")%>
+<%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
 <% end %>
 <% if languages.include?("ze") %>
     if [ $profile = true ]; then
