@@ -96,10 +96,6 @@ subcommands[command].order!
 # Fix segfault
 ARGV.uniq!
 
-#    _                                        _
-#   /   _  ._ _  ._   _  ._   _  ._ _|_  _   /  |  _.  _  _  _   _
-#   \_ (_) | | | |_) (_) | | (/_ | | |_ _>   \_ | (_| _> _> (/_ _>
-#                |
 # BT "native" component classes
 components_classes = {
   'source.ctf.fs' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs'),
