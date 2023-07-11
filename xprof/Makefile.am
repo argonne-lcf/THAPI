@@ -84,14 +84,14 @@ nodist_libXAggreg_la_SOURCES = \
 # File not generated
 libXTally_la_SOURCES = \
 	tally_core.hpp \
-	tally.hpp \
-	tally.cpp \
+	btx_tally.hpp \
+	btx_tally.cpp \
 	my_demangle.c \
 	my_demangle.h \
 	$(top_srcdir)/utils/include/json.hpp
 
 libXTimeline_la_SOURCES = \
-	timeline.cpp
+	btx_timeline.cpp
 
 libXAggreg_la_SOURCES = \
 	tally_core.hpp \
