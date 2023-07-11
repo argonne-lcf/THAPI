@@ -8,10 +8,6 @@ require 'find'
 # Don't complain about broken pipe
 Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
-#    _    ___
-#   /  |   |    |_|  _. ._   _| | o ._   _
-#   \_ |_ _|_   | | (_| | | (_| | | | | (_|
-#                                        _|
 subtext = <<~HELP
   Commonly used command are:
      trace:     Display the trace
