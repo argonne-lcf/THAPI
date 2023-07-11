@@ -369,25 +369,23 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
 
   for (auto &m : input)
     add_to_set(tuple_set, m.first, s);
-
-  // NOTE: This function was placed for a reason, but we do not remember why.
-  // We saw it apparently do nothing, but we are not sure if we got a special
-  // case that needed this function treatment.
-  // We prefer to kept it until test show everything is working properly.
-  // remove_neutral(tuple_set, s);
-
   return tuple_set;
 }
 
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
   TC tot{};
-  for (auto const &[_, t] : m)
+  for (auto const &[_, t] : m) {
+    (void) _;
     tot += t;
+  }
   m.push_back( { "Total", tot } );
 
-  for (auto &[_, t] : m)
+  for (auto &[_, t] : m) {
+    (void) _;
     t.compute_duration_ratio(tot);
+  }
+
 }
 
 
