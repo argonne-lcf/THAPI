@@ -20,40 +20,51 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 %.pb.h %.pb.cc: %.proto
 	$(PROTOC) -I=$(srcdir) --cpp_out=$(builddir) $<
 
-btx_timeline_upstream_model.yaml: btx_interval_model.yaml
-	cp $< $(builddir)/$@
-
-btx_tally_upstream_model.yaml: btx_interval_model.yaml
-	cp $< $(builddir)/$@
-
-btx_%/metababel/metababel.h btx_%/metababel/btx_component.h btx_%/metababel/btx_component.c btx_%/metababel/btx_upstream.h btx_%/metababel/btx_upstream.c btx_%/btx_main.c: btx_%_upstream_model.yaml btx_%_params.yaml
-	$(METABABEL) -u $(builddir)/btx_$*_upstream_model.yaml -t SINK -o btx_$* -p btx_$* -c $* --params $(srcdir)/btx_$*_params.yaml
-
 BTX_TALLY_GENERATED = \
-	btx_tally/metababel/metababel.h \
-	btx_tally/metababel/btx_component.h \
-	btx_tally/metababel/btx_component.c \
-	btx_tally/metababel/btx_upstream.h \
-	btx_tally/metababel/btx_upstream.c \
-	btx_tally/btx_main.c
+	btx_sink_tally/metababel/metababel.h \
+	btx_sink_tally/metababel/btx_component.h \
+	btx_sink_tally/metababel/btx_component.c \
+	btx_sink_tally/metababel/btx_upstream.h \
+	btx_sink_tally/metababel/btx_upstream.c \
+	btx_sink_tally/btx_main.c
 
 BTX_TIMELINE_GENERATED = \
-	btx_timeline/metababel/metababel.h \
-	btx_timeline/metababel/btx_component.h \
-	btx_timeline/metababel/btx_component.c \
-	btx_timeline/metababel/btx_upstream.h \
-	btx_timeline/metababel/btx_upstream.c \
-	btx_timeline/btx_main.c
+	btx_sink_timeline/metababel/metababel.h \
+	btx_sink_timeline/metababel/btx_component.h \
+	btx_sink_timeline/metababel/btx_component.c \
+	btx_sink_timeline/metababel/btx_upstream.h \
+	btx_sink_timeline/metababel/btx_upstream.c \
+	btx_sink_timeline/btx_main.c
+
+BTX_AGGREG_GENERATED = \
+        btx_filter_aggreg/metababel/metababel.h \
+        btx_filter_aggreg/metababel/btx_component.h \
+        btx_filter_aggreg/metababel/btx_component.c \
+        btx_filter_aggreg/metababel/btx_upstream.h \
+        btx_filter_aggreg/metababel/btx_upstream.c \
+        btx_filter_aggreg/metababel/btx_downstream.h \
+        btx_filter_aggreg/metababel/btx_downstream.c \
+        btx_filter_aggreg/btx_main.c
+
+$(BTX_TIMELINE_GENERATED) &: btx_interval_model.yaml btx_timeline_params.yaml
+	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -t SINK -o btx_sink_timeline -p btx_timeline -c timeline --params $(srcdir)/btx_timeline_params.yaml
+
+$(BTX_TALLY_GENERATED) &: btx_aggreg_model.yaml btx_tally_params.yaml
+	$(METABABEL) -u $(srcdir)/btx_aggreg_model.yaml -t SINK -o btx_sink_tally -p btx_tally -c tally --params $(srcdir)/btx_tally_params.yaml
+
+$(BTX_AGGREG_GENERATED) &: btx_interval_model.yaml btx_aggreg_model.yaml btx_aggreg_params.yaml
+	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
 
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_TIMELINE_GENERATED) \
+        $(BTX_AGGREG_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
 # Library to be packaged
-lib_LTLIBRARIES = libXTally.la libXTimeline.la
+lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la
 
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
@@ -66,29 +77,44 @@ nodist_libXTimeline_la_SOURCES = \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
-# File generated
+nodist_libXAggreg_la_SOURCES = \
+        $(BTX_AGGREG_GENERATED) \
+	xprof_utils.hpp
+
+# File not generated
 libXTally_la_SOURCES = \
-	tally.hpp \
-	tally.cpp \
+	tally_core.hpp \
+	btx_tally.hpp \
+	btx_tally.cpp \
 	my_demangle.c \
 	my_demangle.h \
 	$(top_srcdir)/utils/include/json.hpp
 
 libXTimeline_la_SOURCES = \
-	timeline.cpp
+	btx_timeline.cpp
+
+libXAggreg_la_SOURCES = \
+	tally_core.hpp \
+	btx_aggreg.cpp
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
-libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_tally
+libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_sink_tally
 libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_timeline
+libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_sink_timeline
 libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
+
+
+libXAggreg_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
+libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
@@ -124,9 +150,11 @@ EXTRA_DIST = \
 	interval.c.erb \
 	interval.h.erb \
 	btx_interval_model.yaml \
+        btx_aggreg_model.yaml \
 	interval_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
+	btx_aggreg_params.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto
@@ -137,7 +165,6 @@ CLEANFILES = \
 	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
-	btx_timeline_upstream_model.yaml \
-	btx_tally_upstream_model.yaml \
 	$(BTX_TIMELINE_GENERATED) \
-	$(BTX_TALLY_GENERATED)
+	$(BTX_TALLY_GENERATED) \
+	$(BTX_AGGREG_GENERATED)

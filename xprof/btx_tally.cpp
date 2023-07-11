@@ -1,8 +1,14 @@
-#include "tally.hpp"
+#include <metababel/metababel.h>
+
+#include "btx_tally.hpp"
+#include "xprof_utils.hpp"
+#include "my_demangle.h"
 #include <string>
 #include <array>
-#include <cassert>
 #include <sstream>      // std::stringstream, std::stringbuf
+#include <unordered_map>
+#include <vector>
+#include <tuple>
 
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
@@ -22,13 +28,50 @@ struct tally_dispatch_s {
   std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
   std::unordered_map<hp_device_t, std::string> device_name;
 
-  //! Collects thapi metadata "lttng_ust_thapi:metadata".
   std::vector<std::string> metadata;
 };
 
+static int get_backend_id(std::string name) {
+  for(int i = 0; i < BACKEND_MAX; ++i)
+    // backend_name is located in xprof_utils.hpp
+    if (std::string{backend_name[i]} == name) return i;
+  return -1;
+}
+
 typedef struct tally_dispatch_s tally_dispatch_t;
 
-void print_metadata(std::vector<std::string> metadata) {
+static
+thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
+  std::string result = mangle_name;
+  std::string line_num;
+
+  // C++ don't handle PCRE, hence and lazy/non-greedy and $.
+  const static std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
+  std::smatch base_match;
+  if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 3) {
+    result = base_match[1].str();
+    line_num = base_match[2].str();
+  }
+
+  const char *demangle = my_demangle(result.c_str());
+  if (demangle) {
+    thapi_function_name s{demangle};
+    if (!line_num.empty())
+      s += "_" + line_num;
+
+    /* We name the kernels after the type that gets passed in the first
+       template parameter to the sycl_kernel function in order to prevent
+       it from conflicting with any actual function name.
+       The result is the demangling will always be something like, “typeinfo for...”.
+    */
+    if (s.rfind("typeinfo name for ") == 0)
+      return s.substr(18, s.size());
+    return s;
+  }
+  return mangle_name;
+}
+
+static void print_metadata(std::vector<std::string> metadata) {
   if (metadata.empty())
     return;
 
@@ -38,14 +81,7 @@ void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-int get_backend_id(std::string name) {
-  for(int i = 0; i < BACKEND_MAX; ++i)
-    // backend_name is located in xprof_utils.cpp
-    if (std::string{backend_name[i]} == name) return i;
-  return -1;
-}
-
-void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
+static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
   /* User allocates its own data structure */
   auto *data = new tally_dispatch_t;
   *usr_data = data;
@@ -62,7 +98,7 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   };
 }
 
-void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
+static void read_params_callaback(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
   data->params = usr_params;
 
@@ -80,7 +116,7 @@ void btx_read_params(void *btx_handle, void *usr_data, btx_params_t *usr_params)
   }
 }
 
-void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
+static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
   /* User cast the API usr_data that was already initialized with his/her data */
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
@@ -159,21 +195,23 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
   delete data;
 }
 
-static void host_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                    int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend_id,
-                                    const char *name, uint64_t dur, bt_bool err) {
+static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid,  const char *name,
+				uint64_t min, uint64_t max, uint64_t total, uint64_t count,
+				uint64_t backend, uint64_t err) {
+
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
-  TallyCoreTime a{dur, (uint64_t)err};
-  const int level = data->backend_level[backend_id];
-  data->host_backend_name[level].insert(backend_name[backend_id]);
-  data->host[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
+  const int level = data->backend_level[backend];
+  data->host_backend_name[level].insert(backend_name[backend]);
+  data->host[level][ {hostname, vpid, vtid, name } ] += {total, err, count, min, max};
 }
 
-static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                      int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                      const char *name, uint64_t dur, uint64_t did, uint64_t sdid,
-                                      bt_bool err, const char *metadata) {
+static void aggreg_device_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid,  const char *name,
+                                uint64_t min, uint64_t max, uint64_t total, uint64_t count,
+				uint64_t did, uint64_t sdid, const char * metadata ) {
+
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
   const auto name_demangled = (strcmp(data->params->name, "demangle") == 0) ? f_demangle_name(name) : name;
@@ -181,46 +219,49 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                       ? name_demangled + "[" + metadata + "]"
                                       : name_demangled;
 
-  TallyCoreTime a{dur, (uint64_t)err};
-  data->device[hpt_device_function_name_t(hostname, vpid, vtid, did, sdid, name_with_metadata)] +=
-      a;
+  data->device[ {hostname, vpid, vtid, did, sdid, name_with_metadata} ] += {total, 0, count, min, max};
 }
 
-static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                       int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                       const char *name, uint64_t size) {
-  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid,  const char *name,
+                                uint64_t min, uint64_t max, uint64_t total, uint64_t count,
+                                uint64_t backend) {
 
-  TallyCoreByte a{(uint64_t)size, false};
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+  
   const int level = data->backend_level[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
-  data->traffic[level][hpt_function_name_t(hostname, vpid, vtid, name)] += a;
+  data->traffic[level][ {hostname, vpid, vtid, name} ] +=  {total, 0, count, min, max};;
 }
 
 static void device_name_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                            int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
                                            const char *name, uint64_t did) {
-  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
 
+  tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
+  
   data->device_name[hp_device_t(hostname, vpid, did)] = name;
 }
 
 static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data,
                                               const char *hostname, int64_t vpid, uint64_t vtid,
                                               int64_t ts, int64_t backend, const char *metadata) {
+  
   tally_dispatch_t *data = (tally_dispatch_t *)usr_data;
-
   data->metadata.push_back(metadata);
 }
 
-void btx_register_usr_callbacks(void *btx_handle) {
-  btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
-  btx_register_callbacks_read_params(btx_handle, &btx_read_params);
-  btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 
-  btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
-  btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
-  btx_register_callbacks_lttng_traffic(btx_handle, &traffic_usr_callback);
+void btx_register_usr_callbacks(void *btx_handle) {
+  btx_register_callbacks_initialize_usr_data(btx_handle, &initialize_usr_data_callback);
+  btx_register_callbacks_read_params(btx_handle, &read_params_callaback);
+  btx_register_callbacks_finalize_usr_data(btx_handle, &finalize_usr_data_callback);
+
   btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
   btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
+
+  btx_register_callbacks_aggreg_host(btx_handle, &aggreg_host_callback);
+  btx_register_callbacks_aggreg_device(btx_handle, &aggreg_device_callback);
+  btx_register_callbacks_aggreg_traffic(btx_handle, &aggreg_traffic_callback);
+
 }

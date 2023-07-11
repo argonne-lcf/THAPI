@@ -1,0 +1,135 @@
+:stream_classes:
+  - :name: interval_aggreg
+    :event_common_context_field_class:
+      :type: structure
+      :members:
+        - :name: hostname
+          :field_class:
+            :type: string
+            :cast_type: const char*
+        - :name: vpid
+          :field_class:
+            :type: integer_signed
+            :field_value_range: 64
+            :cast_type: int64_t
+        - :name: vtid
+          :field_class:
+            :type: integer_unsigned
+            :field_value_range: 64
+            :cast_type: uint64_t
+        - :name: name
+          :field_class:
+            :type: string
+            :cast_type: const char*
+        - :name: min
+          :field_class:
+            :type: integer_unsigned
+            :field_value_range: 64
+            :cast_type: uint64_t
+        - :name: max
+          :field_class:
+            :type: integer_unsigned
+            :field_value_range: 64
+            :cast_type: uint64_t
+        - :name: total
+          :field_class:
+            :type: integer_unsigned
+            :field_value_range: 64
+            :cast_type: uint64_t
+        - :name: count
+          :field_class:
+            :type: integer_unsigned
+            :field_value_range: 64
+            :cast_type: uint64_t
+    :event_classes:
+      - :name: aggreg:host
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: backend
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: err_count
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+      - :name: aggreg:device
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: sdid
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: metadata
+              :field_class:
+                :type: string
+                :cast_type: const char*
+      - :name: aggreg:traffic
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: backend
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+  - :name: interval
+    :event_common_context_field_class:
+      :type: structure
+      :members:
+        - :name: hostname
+          :field_class:
+            :type: string
+            :cast_type: const char*
+        - :name: vpid
+          :field_class:
+            :type: integer_signed
+            :field_value_range: 64
+            :cast_type: int64_t
+        - :name: vtid
+          :field_class:
+            :type: integer_unsigned
+            :field_value_range: 64
+            :cast_type: uint64_t
+        - :name: ts
+          :field_class:
+            :type: integer_signed
+            :field_value_range: 64
+            :cast_type: int64_t
+        - :name: backend
+          :field_class:
+            :type: integer_signed
+            :field_value_range: 64
+            :cast_type: int64_t
+    :event_classes:
+      - :name: lttng:device_name
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: name
+              :field_class:
+                :type: string
+                :cast_type: const char*
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+      - :name: lttng_ust_thapi:metadata
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: metadata
+              :field_class:
+                :type: string
+                :cast_type: const char*

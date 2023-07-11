@@ -89,24 +89,3 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
-      - :name: lttng:device_name 
-        :payload_field_class:
-          :type: structure
-          :members:
-            - :name: name
-              :field_class:
-                :type: string
-                :cast_type: const char*
-            - :name: did
-              :field_class:
-                :type: integer_unsigned
-                :field_value_range: 64
-                :cast_type: uint64_t
-      - :name: lttng_ust_thapi:metadata 
-        :payload_field_class:
-          :type: structure
-          :members:
-            - :name: metadata
-              :field_class:
-                :type: string
-                :cast_type: const char*

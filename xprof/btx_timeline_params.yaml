@@ -1,2 +1,4 @@
 :type: map
-:entries: []
+:entries:
+    - :name: output_path
+      :type: string

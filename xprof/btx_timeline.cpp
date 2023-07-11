@@ -7,6 +7,7 @@
 #include <stack>
 #include <unordered_map>
 #include <utility> // pair
+#include <map>
 
 #include "perfetto_prunned.pb.h"
 
