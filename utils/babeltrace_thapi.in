@@ -100,17 +100,6 @@ components_classes = {
   'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty')
 }
 
-def bt_type_to_str(t)
-  case t
-  when :BT_COMPONENT_CLASS_TYPE_SOURCE
-    'source'
-  when :BT_COMPONENT_CLASS_TYPE_FILTER
-    'filter'
-  when :BT_COMPONENT_CLASS_TYPE_SINK
-    'sink'
-  end
-end
-
 # THAPI components
 thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib'))
 thapi_plugins.map do |pg|
