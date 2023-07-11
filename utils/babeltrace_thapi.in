@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-DATADIR = File.join("@prefix@", "share")
+DATADIR = File.join('@prefix@', 'share')
 $:.unshift(DATADIR) if File.directory?(DATADIR)
 require 'optparse'
 require 'babeltrace2'
@@ -8,6 +8,10 @@ require 'find'
 # Don't complain about broken pipe
 Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
+#    _    ___
+#   /  |   |    |_|  _. ._   _| | o ._   _
+#   \_ |_ _|_   | | (_| | | (_| | | | | (_|
+#                                        _|
 subtext = <<~HELP
   Commonly used command are:
      trace:     Display the trace
@@ -25,7 +29,7 @@ $options_tally = {
   'display_metadata' => [FalseClass, false],
   'display_name_max_size' => [Integer, 80],
   'display_kernel_verbose' => [FalseClass, false],
-  'backend_level' => [String, ''],
+  'backend_level' => [String, '']
 }
 
 def common_options(opts)
@@ -61,7 +65,6 @@ subcommands = {
       opts.on('--live', 'Enable live display of the trace') do
         $options[:live] = true
       end
-
     end,
   'tally' =>
     OptionParser.new do |opts|
@@ -73,7 +76,6 @@ subcommands = {
           $options_tally[k] = [t, v]
         end
       end
-
     end,
   'timeline' =>
     OptionParser.new do |opts|
@@ -91,23 +93,50 @@ end
 ARGV.insert(0, 'trace') unless subcommands.include?(ARGV.first)
 command = ARGV.shift
 subcommands[command].order!
-
-# Componant
-ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
-ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
-utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
-text_pretty = BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty')
-
-thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join("@prefix@", "lib"))
-
-# Used for tally and timeline
-interval_plugins = thapi_plugins.filter_map do |plugin|
-  plugin.get_filter_component_class_by_name('interval') if $options[:backends].include?(plugin.name.chomp('interval'))
-end
-
 # Fix segfault
 ARGV.uniq!
+
+#    _                                        _
+#   /   _  ._ _  ._   _  ._   _  ._ _|_  _   /  |  _.  _  _  _   _
+#   \_ (_) | | | |_) (_) | | (/_ | | |_ _>   \_ | (_| _> _> (/_ _>
+#                |
+# BT "native" component classes
+components_classes = {
+  'source.ctf.fs' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs'),
+  'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
+  'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
+  'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty')
+}
+
+def bt_type_to_str(t)
+  case t
+  when :BT_COMPONENT_CLASS_TYPE_SOURCE
+    'source'
+  when :BT_COMPONENT_CLASS_TYPE_FILTER
+    'filter'
+  when :BT_COMPONENT_CLASS_TYPE_SINK
+    'sinK'
+  end
+end
+
+# THAPI compoents
+thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib'))
+thapi_plugins.map do |pg|
+  pg.source_component_classes.each { |c| components_classes["source.#{pg.name}.#{c.name}"] = c }
+  pg.filter_component_classes.each { |c| components_classes["filter.#{pg.name}.#{c.name}"] = c }
+  pg.sink_component_classes.each { |c| components_classes["sink.#{pg.name}.#{c.name}"] = c }
+end
+
+#    __
+#   (_   _      ._ _  _    __ \   |\/|         _  ._
+#   __) (_) |_| | (_ (/_      /   |  | |_| >< (/_ |
+#
+
+graph = BT2::BTGraph.new
+
 if !$options[:live]
+  ctf_fs = components_classes['source.ctf.fs']
+
   trace_locations =
     Find.find(*ARGV).reject do |path|
       FileTest.directory?(path)
@@ -120,87 +149,21 @@ if !$options[:live]
                                     params: { 'input' => path, 'type' => 'directory' })
       qe.query.value['weight'] > 0.5
     end
+
+  comp_sources = trace_locations.each_with_index.map do |trace_location, i|
+    graph.add_component(ctf_fs, "source_live_#{i}", params: { 'inputs' => [trace_location] })
+  end
 else
   trace_locations = ARGV
-end
-raise 'Could not find lttng trace' if trace_locations.size == 0
-
-graph = BT2::BTGraph.new
-
-# Sources comps
-
-if !$options[:live]
-  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
-else
-  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+  ctf_lttng_live = components_classes['source.ctf.lttng_live']
+  comp_sources = trace_locations.each_with_index.map do |trace_location, i|
+    graph.add_component(ctf_lttng_live, "source_#{i}",
+                        params: { 'inputs' => [trace_location], 'session-not-found-action' => 'end' })
+  end
 end
 
 # Muxer
-comp_muxer = graph.add_component(utils_muxer, 'mux')
-
-# Other Comps
-serial_comps =
-  case command
-  when 'trace'
-    # Yaml and event_lambdas are required by babeltrace*_lib
-    $event_lambdas = {}
-    require 'yaml'
-    require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
-    require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
-    require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
-    require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
-    require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
-
-    consume = lambda { |iterator, _|
-      iterator.next_messages.each do |m|
-        next unless m.type == :BT_MESSAGE_TYPE_EVENT
-        e = m.event
-        l = $event_lambdas[e.name]
-        next unless l || !$options[:restrict]
-        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
-        if $options[:context]
-          str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
-          str << ' - ' << e.get_common_context_field.value.collect do |k, v|
-            "#{k}: #{v}"
-          end.join(', ')
-        end
-        str << " - #{e.name}: "
-        str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
-        puts str
-      end
-    }
-    graph.add_simple_sink('babeltrace_thapi', consume)
-  when 'tally'
-
-    thapi_plugins.each do |plugin|
-      interval_plugins << plugin.get_filter_component_class_by_name('aggreg') if plugin.name == 'btx_aggreg'
-    end
-
-    comp_intervals = interval_plugins.map.with_index do |comp, i|
-      graph.add_component(comp, "interval_#{i}")
-    end
-
-    # Only one, but for generality return an array
-    sink_plugin = thapi_plugins.filter_map do |plugin|
-      plugin.get_sink_component_class_by_name('tally') if plugin.name == 'btx_tally'
-    end.first
-
-    comp_tally = graph.add_component(sink_plugin, 'tally',
-                                     params: $options_tally.transform_values { |_, v| v } )
-    [comp_intervals, comp_tally]
-  when 'timeline'
-    comp_intervals = interval_plugins.map.with_index do |comp, i|
-      graph.add_component(comp, "interval_#{i}")
-    end
-
-    # Only one, but for generality return an array
-    sink_plugin = thapi_plugins.filter_map do |plugin|
-      plugin.get_sink_component_class_by_name('timeline') if plugin.name == 'btx_timeline'
-    end.first
-
-    comp_timeline = graph.add_component(sink_plugin, 'timeline')
-    [comp_intervals, comp_timeline]
-  end
+comp_muxer = graph.add_component(components_classes['filter.utils.muxer'], 'muxer')
 
 # Sources to muxer
 comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
@@ -208,11 +171,68 @@ comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
   graph.connect_ports(op, ip)
 end
 
-# Chain the rest
-[comp_muxer, serial_comps].flatten.each_cons(2) do |_out, _in|
+#
+#   |\/|         _  ._   __ \   \|/
+#   |  | |_| >< (/_ |       /   /|\
+#
+
+comp = []
+case command
+when 'trace'
+  # Yaml and event_lambdas are required by babeltrace*_lib
+  $event_lambdas = {}
+  require 'yaml'
+  require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
+  require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
+  require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
+  require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
+  require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
+
+  consume = lambda { |iterator, _|
+    iterator.next_messages.each do |m|
+      next unless m.type == :BT_MESSAGE_TYPE_EVENT
+
+      e = m.event
+      l = $event_lambdas[e.name]
+      next unless l || !$options[:restrict]
+
+      str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
+      if $options[:context]
+        str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
+        str << ' - ' << e.get_common_context_field.value.collect do |k, v|
+          "#{k}: #{v}"
+        end.join(', ')
+      end
+      str << " - #{e.name}: "
+      str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
+      puts str
+    end
+  }
+  comp << graph.add_simple_sink('babeltrace_thapi', consume)
+when 'tally'
+  $options[:backends].each_with_index do |name, i|
+    comp << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
+  end
+  comp << graph.add_component(components_classes['filter.btx_aggreg.aggreg'], 'aggreg')
+  comp << graph.add_component(components_classes['sink.btx_tally.tally'], 'tally',
+                              params: $options_tally.transform_values { |_, v| v })
+when 'timeline'
+  $options[:backends].each_with_index do |name, i|
+    comp << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
+  end
+  comp << graph.add_component(components_classes['sink.btx_timeline.timeline'], 'timeline')
+end
+
+# Muxer to serial part
+[comp_muxer, comp].flatten.each_cons(2) do |_out, _in|
   op = _out.output_port(0)
   ip = _in.input_port(0)
   graph.connect_ports(op, ip)
 end
+
+#    _             __
+#   |_)     ._    /__ ._ _. ._  |_
+#   | \ |_| | |   \_| | (_| |_) | |
+#                           |
 
 graph.run
