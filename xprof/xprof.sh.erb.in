@@ -218,7 +218,7 @@ enable_events_ze() {
         fi
         # Wildcard using the * character are supported at the end of tracepoint names.
         #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
-        # Disable-event doesn't have wildcard sadly
+        # Disable-event doesn't have wildcards
         ze_disable_properties="lttng_ust_ze_properties:memory_info_properties,lttng_ust_ze_properties:memory_info_range"
         ze_disable_events="lttng_ust_ze:zeKernelSetArgumentValue*,lttng_ust_ze:ze*Get*Properties*,lttng_ust_ze:zeKernelGetName"
         ze_disable_querry="lttng_ust_ze:*QueryStatus,lttng_ust_ze:*ProcAddrTable*"
@@ -249,12 +249,12 @@ enable_events_metadata() {
 }
 
 setup_lttng() {
-    # Create global lock
+    # Create a global lock
     mkdir -p $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
 
 
     mkdir -p $LTTNG_HOME
-    # Only local master call this
+    # Only local masters call this
     lttng-sessiond $quiet --daemonize || true
 
     local suffix=""
@@ -356,7 +356,7 @@ trace_epilogue() {
     local_barier epilogue
     run_iff_local_master local_master_epilogue
 
-    # All the trace have been saved. We can now do the move
+    # All the traces have been saved. We can now do the move
     if [ ${PALS_RANKID:-0} == 0 ]; then
         rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
         local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
@@ -370,7 +370,7 @@ trace_and_summary() {
     [ "$#" -eq 0 ] && display_help
 
     # Each node will have their own lock
-    # Need to change LLTNG HOME so each node have their own "lock"
+    # Need to change LLTNG HOME so each node has its own "lock"
     run_iff_local_master setup_lttng
     local_barier setup
 
@@ -405,7 +405,7 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
-        # || true, to avoid broken pipe
+        # || true, to avoid broken pipes
 <% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
         lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/iprof-* | head -1 || true)
 <% elsif languages.include?("cl") %>
@@ -422,12 +422,12 @@ summary() {
     else
         lttng_last_session=$@
     fi
-    # Check that the argument are trace.
+    # Check that arguments are traces.
     # We don't quote the $lttng_last_session, to be able to loop over hit.
     # Should be cleaner to use bash arrays.
     for f in  $lttng_last_session; do
         if [ ! -d "$f" ]; then
-            echo "$f is not a trace folder, cannot replay. Exiting..."
+            echo "$f is not a trace folder, we cannot replay. Exiting..."
             exit 1
         fi
     done
@@ -475,14 +475,14 @@ trace_epilogue_live() {
     local_barier epilogue
     run_iff_local_master local_master_epilogue --live
 
-    # All the trace have been saved. We can now do the move
+    # All the traces have been saved. We can now do the move
     if [ ${PALS_RANKID:-0} == 0 ]; then
         rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
         local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
 
-        # All the trace have been saved. We can now do the print
+        # All the traces have been moved. We can now print
         for x in $(ls $THAPI_LTTNG_O/tally_*.log | sort -V || true); do
            echo $x
            cat $x
@@ -493,12 +493,11 @@ trace_epilogue_live() {
 trace_and_summary_live() {
     [ "$#" -eq 0 ] && display_help
     # Each node will have their own lock
-    # Need to change LLTNG HOME so each node have their own "lock"
     run_iff_local_master setup_lttng --live
     run_iff_local_master setub_babeltrace_live
     local_barier setup
-    #Create the metadata.
-    #read and dump `$LTTNG_UST_THAPI_METADATA` env
+    # Create the metadata.
+    # Read and dump `$LTTNG_UST_THAPI_METADATA` env
     run_iff_local_master $bindir/thapi_metadata
     # Run the binary
     trap 'trace_epilogue_live' EXIT SIGABRT SIGSEGV
@@ -529,7 +528,7 @@ while (( "$#" )); do
         -h | --help)            display_help; exit ;;
         -v | --version)         display_version; exit ;;
         -k | --kernel-verbose)  shift; bt_tally_argv+=" --display_kernel_verbose=true" ;;
-        -e | --extented)        shift; bt_tally_argv+=" --display=extended" ;;
+        -e | --extended)        shift; bt_tally_argv+=" --display=extended" ;;
         -r | --replay)          shift; replay=true ;;
         -t | --trace)           shift; trace=true ;;
         -l | --timeline)        shift; timeline=true ;;
@@ -583,7 +582,7 @@ fi
 
 if [ $asm = true ]; then
     export SYCL_CACHE_PERSISTENT=0
-    #This is a workarround for the fact that `SYCL_CACHE_PERSISTENT` doesn't work yet.
+    #This is a workaround for the fact that `SYCL_CACHE_PERSISTENT` doesn't work yet.
     rm -rf "$USER"/libsycl_cache/.cache/
 
     export IGC_ShaderDumpEnable=1
