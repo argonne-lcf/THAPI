@@ -46,7 +46,7 @@ local_barier() {
     local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
     local path=$folder/${PALS_LOCAL_RANKID:-0}
     mkdir -p $path
-    while [ $(find $folder -mindepth 1 -maxdepth 1 -type d | wc -l) != ${PALS_LOCAL_SIZE:-1} ]; do
+    while [ $(find $folder -mindepth 1 -maxdepth 1 -type d | wc -l || true) != ${PALS_LOCAL_SIZE:-1} ]; do
       sleep 0.2
     done
     # We cannot rmdir $path here, and I have no idea why...
@@ -149,13 +149,13 @@ whichlib() {
 }
 
 whichlib64_head() {
-    # This function return only the first lib found
-    # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
+  # This function return the first lib64 found
   {
+    set +o pipefail
     unset IFS
     for lib in $(whichlib $1)
     do
-        if objdump -a $lib | grep 64 > /dev/null; then
+        if objdump -a $lib | grep -q 64; then
             echo $lib
             break
         fi
@@ -405,16 +405,17 @@ summary() {
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
     elif [ "$#" -eq 0 ]; then
+        # || true, to avoid broken pipe
 <% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
-        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/iprof-* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/iprof-* | head -1 || true)
 <% elsif languages.include?("cl") %>
-        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-opencl-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-opencl-session* | head -1 || true)
 <% elsif languages.include?("ze") %>
-        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-ze-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-ze-session* | head -1 || true)
 <% elsif languages.include?("cuda") %>
-        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-cuda-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-cuda-session* | head -1 || true)
 <% elsif languages.include?("hip") %>
-        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-hip-session* | head -1)
+        lttng_last_session=$(ls -dt $THAPI_OUTPUT/lttng-traces/thapi-hip-session* | head -1 || true)
 <% end %>
         >&2 echo "Trace location:" $lttng_last_session
         >&2 echo
@@ -482,7 +483,7 @@ trace_epilogue_live() {
         THAPI_LTTNG_O=$new_output
 
         # All the trace have been saved. We can now do the move
-        for x in $(ls $THAPI_LTTNG_O/tally_*.log | sort -V); do
+        for x in $(ls $THAPI_LTTNG_O/tally_*.log | sort -V || true); do
            echo $x
            cat $x
         done
