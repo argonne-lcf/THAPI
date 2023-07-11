@@ -107,7 +107,7 @@ def bt_type_to_str(t)
   when :BT_COMPONENT_CLASS_TYPE_FILTER
     'filter'
   when :BT_COMPONENT_CLASS_TYPE_SINK
-    'sinK'
+    'sink'
   end
 end
 
