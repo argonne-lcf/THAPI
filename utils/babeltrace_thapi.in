@@ -159,11 +159,6 @@ comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
   graph.connect_ports(op, ip)
 end
 
-#
-#   |\/|         _  ._   __ \   \|/
-#   |  | |_| >< (/_ |       /   /|\
-#
-
 comp = []
 case command
 when 'trace'
