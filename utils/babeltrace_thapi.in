@@ -218,7 +218,7 @@ when 'tally'
                               params: $options_tally.transform_values { |_, v| v })
 when 'timeline'
   $options[:backends].each_with_index do |name, i|
-    comp << graph.add_component(components_classes["filter.#{name}_interval.interval"], "interval_#{i}")
+    comp << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
   end
   comp << graph.add_component(components_classes['sink.btx_timeline.timeline'], 'timeline')
 end
