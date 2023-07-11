@@ -23,20 +23,20 @@ static void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
   // Host
   for (const auto &[hptb_function_name, t] : data->host) {
     const auto [hostname, vpid, vtid, backend_id, name] = hptb_function_name;
-    btx_push_message_tally_host(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
+    btx_push_message_aggreg_host(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
                                 t.count, (int64_t)backend_id, t.error);
   }
   // Traffic
   for (const auto &[hptb_function_name, t] : data->traffic) {
     const auto &[hostname, vpid, vtid, backend_id, name] = hptb_function_name;
-    btx_push_message_tally_traffic(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
+    btx_push_message_aggreg_traffic(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
                                    t.count, (int64_t)backend_id);
   }
 
   // Device
   for (const auto &[hptb_function_name, t] : data->device) {
     const auto &[hostname, vpid, vtid, did, sdid, name, metadata] = hptb_function_name;
-    btx_push_message_tally_device(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
+    btx_push_message_aggreg_device(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
                                   t.count, did, sdid, metadata.c_str());
   }
 }

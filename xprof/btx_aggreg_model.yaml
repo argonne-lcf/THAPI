@@ -42,7 +42,7 @@
             :field_value_range: 64
             :cast_type: uint64_t
     :event_classes:
-      - :name: tally_host
+      - :name: aggreg:host
         :payload_field_class:
           :type: structure
           :members:
@@ -56,7 +56,7 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
-      - :name: tally_device
+      - :name: aggreg:device
         :payload_field_class:
           :type: structure
           :members:
@@ -74,7 +74,7 @@
               :field_class:
                 :type: string
                 :cast_type: const char*
-      - :name: tally_traffic
+      - :name: aggreg:traffic
         :payload_field_class:
           :type: structure
           :members:
