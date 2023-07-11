@@ -122,6 +122,7 @@ end
 
 graph = BT2::BTGraph.new
 
+# Source components
 if !$options[:live]
   ctf_fs = components_classes['source.ctf.fs']
 
@@ -150,16 +151,17 @@ else
   end
 end
 
-# Muxer
+# Muxer components
 comp_muxer = graph.add_component(components_classes['filter.utils.muxer'], 'muxer')
 
-# Sources to muxer
+# Sources to muxer connection
 comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
   ip = comp_muxer.input_port(i)
   graph.connect_ports(op, ip)
 end
 
-comp = []
+# Rest of graph components
+comps = []
 case command
 when 'trace'
   # Yaml and event_lambdas are required by babeltrace*_lib
@@ -191,23 +193,23 @@ when 'trace'
       puts str
     end
   }
-  comp << graph.add_simple_sink('babeltrace_thapi', consume)
+  comps << graph.add_simple_sink('babeltrace_thapi', consume)
 when 'tally'
   $options[:backends].each_with_index do |name, i|
-    comp << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
+    comps << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
   end
-  comp << graph.add_component(components_classes['filter.btx_aggreg.aggreg'], 'aggreg')
-  comp << graph.add_component(components_classes['sink.btx_tally.tally'], 'tally',
+  comps << graph.add_component(components_classes['filter.btx_aggreg.aggreg'], 'aggreg')
+  comps << graph.add_component(components_classes['sink.btx_tally.tally'], 'tally',
                               params: $options_tally.transform_values { |_, v| v })
 when 'timeline'
   $options[:backends].each_with_index do |name, i|
-    comp << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
+    comps << graph.add_component(components_classes["filter.#{name}interval.interval"], "interval_#{i}")
   end
-  comp << graph.add_component(components_classes['sink.btx_timeline.timeline'], 'timeline')
+  comps << graph.add_component(components_classes['sink.btx_timeline.timeline'], 'timeline')
 end
 
 # Muxer to serial part
-[comp_muxer, comp].flatten.each_cons(2) do |_out, _in|
+[comp_muxer, comps].flatten.each_cons(2) do |_out, _in|
   op = _out.output_port(0)
   ip = _in.input_port(0)
   graph.connect_ports(op, ip)
