@@ -111,7 +111,7 @@ def bt_type_to_str(t)
   end
 end
 
-# THAPI compoents
+# THAPI components
 thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib'))
 thapi_plugins.map do |pg|
   pg.source_component_classes.each { |c| components_classes["source.#{pg.name}.#{c.name}"] = c }
