@@ -119,10 +119,6 @@ thapi_plugins.map do |pg|
   pg.sink_component_classes.each { |c| components_classes["sink.#{pg.name}.#{c.name}"] = c }
 end
 
-#    __
-#   (_   _      ._ _  _    __ \   |\/|         _  ._
-#   __) (_) |_| | (_ (/_      /   |  | |_| >< (/_ |
-#
 
 graph = BT2::BTGraph.new
 
