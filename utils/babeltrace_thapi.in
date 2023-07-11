@@ -215,9 +215,4 @@ end
   graph.connect_ports(op, ip)
 end
 
-#    _             __
-#   |_)     ._    /__ ._ _. ._  |_
-#   | \ |_| | |   \_| | (_| |_) | |
-#                           |
-
 graph.run
