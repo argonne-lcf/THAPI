@@ -201,9 +201,11 @@ static void add_event_gpu(timeline_dispatch_t *dispatch, std::string hostname,
 }
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
-  *usr_data = new timeline_dispatch_t;
 
-  auto *packet = ((timeline_dispatch_t *)(*usr_data))->trace.add_packet();
+  auto *dispatch = new timeline_dispatch_t;
+  *usr_data = dispatch;
+
+  auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10);
   packet->set_timestamp(0);
 
