@@ -17,10 +17,8 @@ using perfetto_uuid_t = uint64_t;
 /* Sink component's private data */
 struct timeline_dispatch_s {
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
-  std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t>
-      hpt2uuid;
-  std::map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>>
-      parents2tracks;
+  std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
+  std::map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> parents2tracks;
   std::map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
 
   perfetto_pruned::Trace trace;
@@ -33,8 +31,8 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   return uuid++;
 }
 
-static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
-                            timestamp_t begin, std::string name) {
+static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
+                            std::string name) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(begin);
   packet->set_trusted_packet_sequence_id(10);
@@ -44,8 +42,7 @@ static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
   track_event->set_track_uuid(uuid);
 }
 
-static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
-                          uint64_t end) {
+static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10);
   packet->set_timestamp(end);
@@ -54,11 +51,9 @@ static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
   track_event->set_track_uuid(uuid);
 }
 
-static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch,
-                                       std::string hostname,
+static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::string hostname,
                                        uint64_t process_id, uint64_t thread_id,
-                                       thapi_device_id did = 0,
-                                       thapi_device_id sdid = 0) {
+                                       thapi_device_id did = 0, thapi_device_id sdid = 0) {
 
   perfetto_uuid_t hp_uuid = 0;
   {
@@ -71,8 +66,7 @@ static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch,
 
     // In the case we where not able to insert, we use the iterator to get the
     // value,
-    auto r =
-        dispatch->hp2uuid.insert({{hostname, process_id, did, sdid}, hp_uuid});
+    auto r = dispatch->hp2uuid.insert({{hostname, process_id, did, sdid}, hp_uuid});
     auto &potential_uuid = r.first->second;
     if (!r.second) {
       hp_uuid = potential_uuid;
@@ -138,14 +132,12 @@ static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch,
   return parent_uuid;
 }
 
-static void add_event_cpu(timeline_dispatch_t *dispatch, std::string hostname,
-                          uint64_t process_id, uint64_t thread_id,
-                          std::string name, uint64_t begin, uint64_t dur) {
+static void add_event_cpu(timeline_dispatch_t *dispatch, std::string hostname, uint64_t process_id,
+                          uint64_t thread_id, std::string name, uint64_t begin, uint64_t dur) {
   // Assume perfecly nessted
   const uint64_t end = begin + dur;
 
-  perfetto_uuid_t parent_uuid =
-      get_parent_uuid(dispatch, hostname, process_id, thread_id);
+  perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id);
   // Handling perfecly nested event
   add_event_begin(dispatch, parent_uuid, begin, name);
   std::stack<uint64_t> &s = dispatch->uuid2stack[parent_uuid];
@@ -156,17 +148,15 @@ static void add_event_cpu(timeline_dispatch_t *dispatch, std::string hostname,
   s.push(end);
 }
 
-static void add_event_gpu(timeline_dispatch_t *dispatch, std::string hostname,
-                          uint64_t process_id, uint64_t thread_id,
-                          thapi_device_id did, thapi_device_id sdid,
+static void add_event_gpu(timeline_dispatch_t *dispatch, std::string hostname, uint64_t process_id,
+                          uint64_t thread_id, thapi_device_id did, thapi_device_id sdid,
                           std::string name, uint64_t begin, uint64_t dur) {
   // This function Assume non perfecly nested
   const uint64_t end = begin + dur;
   perfetto_uuid_t parent_uuid =
       get_parent_uuid(dispatch, hostname, process_id, thread_id, did, sdid);
   // Now see if we need a to generate a new children
-  std::map<uint64_t, perfetto_uuid_t> &m =
-      dispatch->parents2tracks[parent_uuid];
+  std::map<uint64_t, perfetto_uuid_t> &m = dispatch->parents2tracks[parent_uuid];
   perfetto_uuid_t uuid;
 
   // Pre-historical event
@@ -210,8 +200,7 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
   packet->set_timestamp(0);
 
   auto *trace_packet_defaults = packet->mutable_trace_packet_defaults();
-  trace_packet_defaults->set_timestamp_clock_id(
-      perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
+  trace_packet_defaults->set_timestamp_clock_id(perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
   packet->set_previous_packet_dropped(true);
 }
 
@@ -236,20 +225,17 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
   delete dispatch;
 }
 
-static void host_usr_callback(void *btx_handle, void *usr_data,
-                              const char *hostname, int64_t vpid, uint64_t vtid,
-                              int64_t ts, int64_t backend_id, const char *name,
+static void host_usr_callback(void *btx_handle, void *usr_data, const char *hostname, int64_t vpid,
+                              uint64_t vtid, int64_t ts, int64_t backend_id, const char *name,
                               uint64_t dur, bt_bool err) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_cpu(dispatch, hostname, vpid, vtid, name, ts, dur);
 }
 
-static void device_usr_callback(void *btx_handle, void *usr_data,
-                                const char *hostname, int64_t vpid,
-                                uint64_t vtid, int64_t ts, int64_t backend,
-                                const char *name, uint64_t dur, uint64_t did,
-                                uint64_t sdid, bt_bool err,
-                                const char *metadata) {
+static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                const char *name, uint64_t dur, uint64_t did, uint64_t sdid,
+                                bt_bool err, const char *metadata) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_gpu(dispatch, hostname, vpid, vtid, did, sdid, name, ts, dur);
 }
@@ -257,7 +243,6 @@ static void device_usr_callback(void *btx_handle, void *usr_data,
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
-  btx_register_callbacks_initialize_usr_data(btx_handle,
-                                             &btx_initialize_usr_data);
+  btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
   btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 }

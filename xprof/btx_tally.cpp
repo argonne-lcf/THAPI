@@ -22,12 +22,8 @@ struct tally_dispatch_s {
   std::map<backend_level_t, std::set<const char *>> host_backend_name;
   std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
 
-  std::map<backend_level_t,
-           std::unordered_map<hpt_function_name_t, TallyCoreTime>>
-      host;
-  std::map<backend_level_t,
-           std::unordered_map<hpt_function_name_t, TallyCoreByte>>
-      traffic;
+  std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
+  std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
 
   std::unordered_map<hpt_device_function_name_t, TallyCoreTime> device;
   std::unordered_map<hp_device_t, std::string> device_name;
@@ -49,11 +45,9 @@ static thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   std::string line_num;
 
   // C++ don't handle PCRE, hence and lazy/non-greedy and $.
-  const static std::regex base_regex(
-      "__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
+  const static std::regex base_regex("__omp_offloading_[^_]+_[^_]+_(.*?)_([^_]+)$");
   std::smatch base_match;
-  if (std::regex_match(mangle_name, base_match, base_regex) &&
-      base_match.size() == 3) {
+  if (std::regex_match(mangle_name, base_match, base_regex) && base_match.size() == 3) {
     result = base_match[1].str();
     line_num = base_match[2].str();
   }
@@ -105,8 +99,7 @@ static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
   };
 }
 
-static void read_params_callaback(void *btx_handle, void *usr_data,
-                                  btx_params_t *usr_params) {
+static void read_params_callaback(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
@@ -119,8 +112,7 @@ static void read_params_callaback(void *btx_handle, void *usr_data,
     std::string k, v;
     std::getline(tmp_string, k, ':');
     int id = get_backend_id(k);
-    assert((id > 0) &&
-           "Backend not found. Please check --backend-level format.");
+    assert((id > 0) && "Backend not found. Please check --backend-level format.");
     std::getline(tmp_string, v);
     data->backend_level[id] = std::stoi(v);
   }
@@ -140,38 +132,31 @@ static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
 
       for (const auto &[level, host] : data->host) {
         std::string s = join_iterator(data->host_backend_name[level]);
-        print_compact(s, host,
-                      std::make_tuple("Hostnames", "Processes", "Threads"),
-                      max_name_size);
+        print_compact(s, host, std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
       print_compact("Device profiling", data->device,
-                    std::make_tuple("Hostnames", "Processes", "Threads",
-                                    "Devices", "Subdevices"),
+                    std::make_tuple("Hostnames", "Processes", "Threads", "Devices", "Subdevices"),
                     max_name_size);
 
       for (const auto &[level, traffic] : data->traffic) {
         std::string s = join_iterator(data->traffic_backend_name[level]);
         print_compact("Explicit memory traffic (" + s + ")", traffic,
-                      std::make_tuple("Hostnames", "Processes", "Threads"),
-                      max_name_size);
+                      std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
     } else {
       for (const auto &[level, host] : data->host) {
         std::string s = join_iterator(data->host_backend_name[level]);
-        print_extended(s, host,
-                       std::make_tuple("Hostname", "Process", "Thread"),
-                       max_name_size);
+        print_extended(s, host, std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
       }
-      print_extended("Device profiling", data->device,
-                     std::make_tuple("Hostname", "Process", "Thread",
-                                     "Device pointer", "Subdevice pointer"),
-                     max_name_size);
+      print_extended(
+          "Device profiling", data->device,
+          std::make_tuple("Hostname", "Process", "Thread", "Device pointer", "Subdevice pointer"),
+          max_name_size);
 
       for (const auto &[level, traffic] : data->traffic) {
         std::string s = join_iterator(data->traffic_backend_name[level]);
         print_extended("Explicit memory traffic (" + s + ")", traffic,
-                       std::make_tuple("Hostname", "Process", "Thread"),
-                       max_name_size);
+                       std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
       }
     }
   } else {
@@ -194,18 +179,16 @@ static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
 
     } else {
       for (auto &[level, host] : data->host)
-        j["host"][level] = json_extented(
-            host, std::make_tuple("Hostname", "Process", "Thread"));
+        j["host"][level] = json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
 
       if (!data->device.empty())
-        j["device"] = json_extented(data->device,
-                                    std::make_tuple("Hostname", "Process",
-                                                    "Thread", "Device pointer",
-                                                    "Subdevice pointer"));
+        j["device"] =
+            json_extented(data->device, std::make_tuple("Hostname", "Process", "Thread",
+                                                        "Device pointer", "Subdevice pointer"));
 
       for (auto &[level, traffic] : data->traffic)
-        j["traffic"][level] = json_extented(
-            traffic, std::make_tuple("Hostname", "Process", "Thread"));
+        j["traffic"][level] =
+            json_extented(traffic, std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;
   }
@@ -214,84 +197,69 @@ static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
   delete data;
 }
 
-static void aggreg_host_callback(void *btx_handle, void *usr_data,
-                                 const char *hostname, int64_t vpid,
-                                 uint64_t vtid, const char *name, uint64_t min,
-                                 uint64_t max, uint64_t total, uint64_t count,
-                                 uint64_t backend, uint64_t err) {
+static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                 int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
+                                 uint64_t max, uint64_t total, uint64_t count, uint64_t backend,
+                                 uint64_t err) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
 
   const int level = data->backend_level[backend];
   data->host_backend_name[level].insert(backend_name[backend]);
-  data->host[level][{hostname, vpid, vtid, name}] +=
-      {total, err, count, min, max};
+  data->host[level][{hostname, vpid, vtid, name}] += {total, err, count, min, max};
 }
 
-static void aggreg_device_callback(void *btx_handle, void *usr_data,
-                                   const char *hostname, int64_t vpid,
-                                   uint64_t vtid, const char *name,
-                                   uint64_t min, uint64_t max, uint64_t total,
-                                   uint64_t count, uint64_t did, uint64_t sdid,
-                                   const char *metadata) {
+static void aggreg_device_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                   int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
+                                   uint64_t max, uint64_t total, uint64_t count, uint64_t did,
+                                   uint64_t sdid, const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-  const auto name_demangled = (strcmp(data->params->name, "demangle") == 0)
-                                  ? f_demangle_name(name)
-                                  : name;
-  const auto name_with_metadata =
-      (data->params->display_kernel_verbose && !strcmp(metadata, ""))
-          ? name_demangled + "[" + metadata + "]"
-          : name_demangled;
+  const auto name_demangled =
+      (strcmp(data->params->name, "demangle") == 0) ? f_demangle_name(name) : name;
+  const auto name_with_metadata = (data->params->display_kernel_verbose && !strcmp(metadata, ""))
+                                      ? name_demangled + "[" + metadata + "]"
+                                      : name_demangled;
 
   data->device[{hostname, vpid, vtid, did, sdid, name_with_metadata}] +=
       {total, 0, count, min, max};
 }
 
-static void aggreg_traffic_callback(void *btx_handle, void *usr_data,
-                                    const char *hostname, int64_t vpid,
-                                    uint64_t vtid, const char *name,
-                                    uint64_t min, uint64_t max, uint64_t total,
-                                    uint64_t count, uint64_t backend) {
+static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                    int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
+                                    uint64_t max, uint64_t total, uint64_t count,
+                                    uint64_t backend) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   const int level = data->backend_level[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
-  data->traffic[level][{hostname, vpid, vtid, name}] +=
-      {total, 0, count, min, max};
+  data->traffic[level][{hostname, vpid, vtid, name}] += {total, 0, count, min, max};
   ;
 }
 
-static void device_name_usr_callback(void *btx_handle, void *usr_data,
-                                     const char *hostname, int64_t vpid,
-                                     uint64_t vtid, int64_t ts, int64_t backend,
+static void device_name_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                     int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
                                      const char *name, uint64_t did) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->device_name[hp_device_t(hostname, vpid, did)] = name;
 }
 
-static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data,
-                                            const char *hostname, int64_t vpid,
-                                            uint64_t vtid, int64_t ts,
-                                            int64_t backend,
-                                            const char *metadata) {
+static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                            int64_t vpid, uint64_t vtid, int64_t ts,
+                                            int64_t backend, const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->metadata.push_back(metadata);
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
-  btx_register_callbacks_initialize_usr_data(btx_handle,
-                                             &initialize_usr_data_callback);
+  btx_register_callbacks_initialize_usr_data(btx_handle, &initialize_usr_data_callback);
   btx_register_callbacks_read_params(btx_handle, &read_params_callaback);
-  btx_register_callbacks_finalize_usr_data(btx_handle,
-                                           &finalize_usr_data_callback);
+  btx_register_callbacks_finalize_usr_data(btx_handle, &finalize_usr_data_callback);
 
-  btx_register_callbacks_lttng_device_name(btx_handle,
-                                           &device_name_usr_callback);
-  btx_register_callbacks_lttng_ust_thapi_metadata(
-      btx_handle, &ust_thapi_metadata_usr_callback);
+  btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
+  btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
 
   btx_register_callbacks_aggreg_host(btx_handle, &aggreg_host_callback);
   btx_register_callbacks_aggreg_device(btx_handle, &aggreg_device_callback);
