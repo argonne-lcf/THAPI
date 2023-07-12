@@ -34,6 +34,7 @@ struct tally_dispatch_s {
 
   std::vector<std::string> metadata;
 };
+using tally_dispatch_t = struct tally_dispatch_s;
 
 static int get_backend_id(std::string name) {
   for (int i = 0; i < BACKEND_MAX; ++i)
@@ -42,8 +43,6 @@ static int get_backend_id(std::string name) {
       return i;
   return -1;
 }
-
-typedef struct tally_dispatch_s tally_dispatch_t;
 
 static thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
   std::string result = mangle_name;
@@ -108,7 +107,8 @@ static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
 
 static void read_params_callaback(void *btx_handle, void *usr_data,
                                   btx_params_t *usr_params) {
-  auto *data = (tally_dispatch_t *)usr_data;
+
+  auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
 
   // Consumes key:value pairs in the stringstream k1:v1,..,kn:vn
