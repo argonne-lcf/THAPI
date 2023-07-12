@@ -1,20 +1,20 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <map>
 #include <regex>
 #include <set>
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#include <string>
-#include <array>
 
 #include "json.hpp"
-#include "xprof_utils.hpp"
 #include "tally_core.hpp"
+#include "xprof_utils.hpp"
 
 //! Returns a number as a string with the given number of decimals.
 //! @param a_value the value to be casted to string with the given decimal places.
@@ -42,8 +42,8 @@ class TallyCoreString : public TallyCoreBase {
       v.push_back(static_cast<long>(e.size()));
     return v;
   }
-public:
 
+public:
   void update_max_size(std::vector<long> &m) {
     const auto current_size = to_string_size();
     for (auto i = 0U; i < current_size.size(); i++)
@@ -341,18 +341,16 @@ template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBa
 void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
   TC tot{};
   for (auto const &[_, t] : m) {
-    (void) _;
+    (void)_;
     tot += t;
   }
-  m.push_back( { "Total", tot } );
+  m.push_back({"Total", tot});
 
   for (auto &[_, t] : m) {
-    (void) _;
+    (void)_;
     t.compute_duration_ratio(tot);
   }
-
 }
-
 
 //    __
 //   (_   _  ._ _|_ o ._   _
@@ -429,7 +427,7 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 
   // Know at compile time
   auto tallycore_max =
-      std::apply([](auto &&... e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
+      std::apply([](auto &&...e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
                  header_tallycore);
 
   for (auto &[name, tallycore] : m) {
