@@ -1,43 +1,46 @@
 #include "tally_core.hpp"
 #include "xprof_utils.hpp"
+#include <cstdint>
 #include <metababel/metababel.h>
 #include <unordered_map>
-#include <cstdint>
 
-typedef std::string name_t;
-typedef std::string metadata_t;
-typedef std::tuple<hostname_t, process_id_t, thread_id_t, backend_t, name_t> _hptbn_t;
-typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id, name_t, metadata_t> _hptn_dsb_nm_t;
+using name_t = std::string;
+using metadata_t = std::string;
+using _hptbn_t = std::tuple<hostname_t, process_id_t, thread_id_t, backend_t, name_t>;
+using _hptn_dsb_nm_t = std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id,
+                                  thapi_device_id, name_t, metadata_t>;
 
 struct aggreg_s {
   std::unordered_map<_hptbn_t, TallyCoreBase> host;
   std::unordered_map<_hptbn_t, TallyCoreBase> traffic;
   std::unordered_map<_hptn_dsb_nm_t, TallyCoreBase> device;
 };
-typedef struct aggreg_s aggreg_t;
+using aggreg_t = struct aggreg_s;
 
-static void initialize_usr_data_callback(void *btx_handle, void **usr_data) { *usr_data = new aggreg_t; }
+static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
+  *usr_data = new aggreg_t;
+}
 
 static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
-  auto *data = (aggreg_t *)usr_data;
+  auto *data = static_cast<aggreg_t *>(usr_data);
   // Host
   for (const auto &[hptb_function_name, t] : data->host) {
     const auto [hostname, vpid, vtid, backend_id, name] = hptb_function_name;
-    btx_push_message_aggreg_host(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
-                                t.count, (int64_t)backend_id, t.error);
+    btx_push_message_aggreg_host(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min,
+                                 t.max, t.duration, t.count, (int64_t)backend_id, t.error);
   }
   // Traffic
   for (const auto &[hptb_function_name, t] : data->traffic) {
     const auto &[hostname, vpid, vtid, backend_id, name] = hptb_function_name;
-    btx_push_message_aggreg_traffic(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
-                                   t.count, (int64_t)backend_id);
+    btx_push_message_aggreg_traffic(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min,
+                                    t.max, t.duration, t.count, (int64_t)backend_id);
   }
 
   // Device
   for (const auto &[hptb_function_name, t] : data->device) {
     const auto &[hostname, vpid, vtid, did, sdid, name, metadata] = hptb_function_name;
-    btx_push_message_aggreg_device(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min, t.max, t.duration,
-                                  t.count, did, sdid, metadata.c_str());
+    btx_push_message_aggreg_device(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min,
+                                   t.max, t.duration, t.count, did, sdid, metadata.c_str());
   }
 
   delete data;
@@ -46,16 +49,16 @@ static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
 static void host_usr_callback(void *btx_handle, void *usr_data, const char *hostname, int64_t vpid,
                               uint64_t vtid, int64_t ts, int64_t backend_id, const char *name,
                               uint64_t dur, bt_bool err) {
-  auto *data = (aggreg_t *)usr_data;
-  data->host[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {dur, (bool) err};
+  auto *data = static_cast<aggreg_t *>(usr_data);
+  data->host[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {dur, (bool)err};
 }
 
 static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                  int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend_id,
                                  const char *name, uint64_t size) {
 
-  auto *data = (aggreg_t *)usr_data;
-  data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {size, 0};
+  auto *data = static_cast<aggreg_t *>(usr_data);
+  data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {size, false};
 }
 
 static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
@@ -63,8 +66,8 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                 const char *name, uint64_t dur, uint64_t did, uint64_t sdid,
                                 bt_bool err, const char *metadata) {
 
-  auto *data = (aggreg_t *)usr_data;
-  data->device[{hostname, vpid, vtid, did, sdid, name, metadata}] += {dur, (bool) err};
+  auto *data = static_cast<aggreg_t *>(usr_data);
+  data->device[{hostname, vpid, vtid, did, sdid, name, metadata}] += {dur, (bool)err};
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
