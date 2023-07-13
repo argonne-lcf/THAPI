@@ -67,6 +67,10 @@ subcommands = {
       opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
       common_options(opts)
 
+      opts.on('--live', 'Enable live display of the trace') do
+        $options[:live] = true
+      end
+
       $options_tally.each do |k, (t, _)|
         opts.on("--#{k}=VALUE", t) do |v|
           $options_tally[k] = [t, v]
