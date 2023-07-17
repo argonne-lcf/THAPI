@@ -97,7 +97,7 @@ display_help() {
     echo "  -k, --kernel-verbose      Report kernels execution time with SIMD width and global/local sizes"
     echo "  -e, --extended            Print information for each Hostname / Process / Thread / Device"
     echo "  -t, --trace               Display trace"
-    echo "  -l, --timeline            Dump the timeline. Will create a `out.pftrace` file that can be opened in perfetto (https://ui.perfetto.dev/#!/viewer)"
+    echo "  -l, --timeline            Dump the timeline. Will create a 'out.pftrace' file that can be opened in perfetto (https://ui.perfetto.dev/#!/viewer)"
     echo "  -j, --json                Summary will be printed as json"
     echo "  -m, --tracing-mode <mode> [minimal, default, full]"
     echo "  --no-profile              Device activities will not be profiled"
