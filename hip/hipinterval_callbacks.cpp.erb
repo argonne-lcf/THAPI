@@ -101,7 +101,11 @@ static void hipinterval_<%= dbt_event.name %>_callback(
       <%elsif dbt_event.name_unsanitized.end_with?(STOP) %>
     uint64_t &_start_g = _state->host_start.at(hpt_function_name_t(_hostname, _process_id, _thread_id, "<%= dbt_event.name_striped  %>"));
       <% if dbt_event.fields_name.include?('hipResult') && dbt_event.fields_type['hipResult'] == 'hipError_t' %>
-    create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, hipResult);
+     // Not an Error
+     if (hipResult == hipErrorNotReady)
+      create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, 0);
+    else
+      create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, hipResult);
       <% else %>
     create_and_enqueue_host_message(_hostname.c_str(), _process_id, _thread_id, "<%= dbt_event.name_striped %>", _start_g, _ns_from_origin-_start_g, 0);
       <% end %>
