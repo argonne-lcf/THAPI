@@ -119,7 +119,7 @@ using tally_dispatch_t = struct tally_dispatch_s;
 static int get_backend_id(std::string name) {
   for (int i = 0; i < BACKEND_MAX; ++i)
     // backend_name is located in xprof_utils.hpp
-    if (std::string{backend_name[i]} == name)
+    if (std::string{pretty_backend_name[i]} == name)
       return i;
   return -1;
 }

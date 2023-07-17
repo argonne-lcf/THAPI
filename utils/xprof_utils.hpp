@@ -16,6 +16,16 @@ enum backend_e {
   BACKEND_MAX,
 };
 
+constexpr const char *pretty_backend_name[] = {
+    "unknown",
+    "ze",
+    "cl",
+    "cuda",
+    "omp_target",
+    "omp",
+    "hip",
+};
+
 constexpr const char *backend_name[] = {
     "BACKEND_UNKNOWN",
     "BACKEND_ZE",
