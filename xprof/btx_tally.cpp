@@ -10,6 +10,90 @@
 #include <unordered_map>
 #include <vector>
 
+class TallyCoreTime : public TallyCoreString {
+  using TallyCoreString::TallyCoreString;
+public:
+  static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
+  virtual const std::vector<std::string> to_string() {
+    return std::vector<std::string>{
+        (count == error) ? "" : this->format_time(duration),
+        (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
+        this->to_pretty_string(count, "", 0),
+        (count == error) ? "" : this->format_time(average()),
+        (count == error) ? "" : this->format_time(min),
+        (count == error) ? "" : this->format_time(max),
+        this->to_pretty_string(error, "", 0)};
+  }
+
+private:
+  //! Returns duration as a formatted string with units.
+  template <typename T> std::string format_time(const T duration) {
+    const double h = duration / 3.6e+12;
+    if (h >= 1.)
+      return this->to_pretty_string(h, "h");
+
+    const double min = duration / 6e+10;
+    if (min >= 1.)
+      return this->to_pretty_string(min, "min");
+
+    const double s = duration / 1e+9;
+    if (s >= 1.)
+      return this->to_pretty_string(s, "s");
+
+    const double ms = duration / 1e+6;
+    if (ms >= 1.)
+      return this->to_pretty_string(ms, "ms");
+
+    const double us = duration / 1e+3;
+    if (us >= 1.)
+      return this->to_pretty_string(us, "us");
+
+    return this->to_pretty_string(duration, "ns");
+  }
+};
+
+class TallyCoreByte : public TallyCoreString {
+  using TallyCoreString::TallyCoreString;
+public:
+  static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
+  virtual const std::vector<std::string> to_string() {
+    return std::vector<std::string>{format_byte(duration),
+                                    this->to_pretty_string(100. * duration_ratio, "%"),
+                                    this->to_pretty_string(count, "", 0),
+                                    this->format_byte(average()),
+                                    this->format_byte(min),
+                                    this->format_byte(max),
+                                    this->to_pretty_string(error, "", 0)};
+  }
+
+private:
+  //! Returns a data transfer size (duration) as a formatted string with units.
+  template <typename T> std::string format_byte(const T duration) {
+    const double PB = duration / 1e+15;
+    if (PB >= 1.)
+      return this->to_pretty_string(PB, "PB");
+
+    const double TB = duration / 1e+12;
+    if (TB >= 1.)
+      return this->to_pretty_string(TB, "TB");
+
+    const double GB = duration / 1e+9;
+    if (GB >= 1.)
+      return this->to_pretty_string(GB, "GB");
+
+    const double MB = duration / 1e+6;
+    if (MB >= 1.)
+      return this->to_pretty_string(MB, "MB");
+
+    const double kB = duration / 1e+3;
+    if (kB >= 1.)
+      return this->to_pretty_string(kB, "kB");
+
+    return this->to_pretty_string(duration, "B");
+  }
+};
+
+
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
 //! it is aggregated and tabulated for printing.

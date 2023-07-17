@@ -22,126 +22,31 @@
 //! @param n number of decimal places required.
 //! REFERENCE:
 //! https://stackoverflow.com/questions/16605967/set-precision-of-stdto-string-when-converting-floating-point-values
-template <typename T>
-std::string to_string_with_precision(const T a_value, const std::string units, const int n = 2) {
-  std::ostringstream out;
-  out.precision(n);
-  out << std::fixed << a_value << units;
-  return out.str();
-}
 
 class TallyCoreString : public TallyCoreBase {
 
   using TallyCoreBase::TallyCoreBase;
 
-  virtual const std::vector<std::string> to_string() = 0;
-
-  auto to_string_size() {
-    std::vector<long> v;
-    for (auto &e : to_string())
-      v.push_back(static_cast<long>(e.size()));
-    return v;
-  }
-
 public:
   void update_max_size(std::vector<long> &m) {
-    const auto current_size = to_string_size();
-    for (auto i = 0U; i < current_size.size(); i++)
-      m[i] = std::max(m[i], current_size[i]);
+    std::vector<std::string> current_string = to_string();
+    for (auto i = 0UL; i < m.size(); i++)
+        m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
+    }
+
+protected:
+  template <typename T>
+  std::string to_pretty_string(const T a_value, const std::string units, const int n = 2) {
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << a_value << units;
+    return out.str();
   }
-};
-
-//! Specialization of TallyCoreBase for execution times.
-class TallyCoreTime : public TallyCoreString {
-public:
-  static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
-
-  using TallyCoreString::TallyCoreString;
-  virtual const std::vector<std::string> to_string() {
-    return std::vector<std::string>{
-        format_time(duration),
-        std::isnan(duration_ratio) ? "" : to_string_with_precision(100. * duration_ratio, "%"),
-        to_string_with_precision(count, "", 0),
-        format_time(average()),
-        format_time(min),
-        format_time(max),
-        to_string_with_precision(error, "", 0)};
-  }
-
+  
 private:
-  //! Returns duration as a formatted string with units.
-  template <typename T> std::string format_time(const T duration) {
-    if (duration == std::numeric_limits<T>::max() || duration == T{0})
-      return "";
-
-    const double h = duration / 3.6e+12;
-    if (h >= 1.)
-      return to_string_with_precision(h, "h");
-
-    const double min = duration / 6e+10;
-    if (min >= 1.)
-      return to_string_with_precision(min, "min");
-
-    const double s = duration / 1e+9;
-    if (s >= 1.)
-      return to_string_with_precision(s, "s");
-
-    const double ms = duration / 1e+6;
-    if (ms >= 1.)
-      return to_string_with_precision(ms, "ms");
-
-    const double us = duration / 1e+3;
-    if (us >= 1.)
-      return to_string_with_precision(us, "us");
-
-    return to_string_with_precision(duration, "ns");
-  }
+  // Pure virtual function
+  virtual const std::vector<std::string> to_string() = 0;
 };
-
-//! Specialization of TallyCoreBase for data transfer sizes.
-//! This is used for traffic related events, lttng:traffic.
-class TallyCoreByte : public TallyCoreString {
-public:
-  static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
-
-  using TallyCoreString::TallyCoreString;
-  virtual const std::vector<std::string> to_string() {
-    return std::vector<std::string>{format_byte(duration),
-                                    to_string_with_precision(100. * duration_ratio, "%"),
-                                    to_string_with_precision(count, "", 0),
-                                    format_byte(average()),
-                                    format_byte(min),
-                                    format_byte(max),
-                                    to_string_with_precision(error, "", 0)};
-  }
-
-private:
-  //! Returns a data transfer size (duration) as a formatted string with units.
-  template <typename T> std::string format_byte(const T duration) {
-    const double PB = duration / 1e+15;
-    if (PB >= 1.)
-      return to_string_with_precision(PB, "PB");
-
-    const double TB = duration / 1e+12;
-    if (TB >= 1.)
-      return to_string_with_precision(TB, "TB");
-
-    const double GB = duration / 1e+9;
-    if (GB >= 1.)
-      return to_string_with_precision(GB, "GB");
-
-    const double MB = duration / 1e+6;
-    if (MB >= 1.)
-      return to_string_with_precision(MB, "MB");
-
-    const double kB = duration / 1e+3;
-    if (kB >= 1.)
-      return to_string_with_precision(kB, "kB");
-
-    return to_string_with_precision(duration, "B");
-  }
-};
-
 //
 //   | | _|_ o |  _
 //   |_|  |_ | | _>
@@ -266,54 +171,7 @@ auto aggregate_by_name(std::unordered_map<std::tuple<T...>, TC> &m) {
   return aggregated;
 }
 
-//! Add the elements of the tuple "t" in the set elements "s".
-/*!
-\param s tuple of sets.
-\param t hpt_function_name_t (tuple)
-\param index sequence
-
-EXAMPLE:
-  input
-    tuple{ set {}, set{}, set{}, set{} }, tuple{"iris01",232,789,"getDeviceInfo"},
-std::index_sequence<0,1,2,3> output (update first param by reference) tuple{ set {"iris01"},
-set{232}, set{789}, set{"getDeviceInfo"} }
-
-  The index sequence used as argument "std::index_sequence<0,1,2,3>" enables the following
-unfolding:
-
-  (
-    std::get<0>(s).insert(std::get<0>(t)),
-    std::get<1>(s).insert(std::get<1>(t)),
-    std::get<2>(s).insert(std::get<2>(t)),
-    std::get<3>(s).insert(std::get<3>(t))
-  );
-
-  which adds every element of the tuple to its corresponding set, this updating the tuple of sets
-params provided by reference.
-
-*/
-template <class... T, class... T2, size_t... I>
-void add_to_set(std::tuple<T...> &s, std::tuple<T2...> t, std::index_sequence<I...>) {
-  (std::get<I>(s).insert(std::get<I>(t)), ...);
-}
-
-// NOTE: This function was placed for a reason, but we do not remember why.
-// We saw it apparently do nothing, but we are not sure if we got a special
-// case that needed this function treatment.
-// We prefer to kept it until test show everything is working properly.
-// template <class... T, size_t... I>
-// void remove_neutral(std::tuple<std::set<T>...> &s, std::index_sequence<I...>) {
-//   (std::get<I>(s).erase (T{}), ...);
-// }
-
-//! Add the elements of the tuple "t" in the set elements "s".
-/*! This is used in the print_compact mode to know how many hosts, pids, tids, have been aggregated.
-\param s tuple of sets.
-\param t hpt_function_name_t (tuple)
-\param index sequence
-\return Returns a tuple of sets with unique hosts names, pids, tids, and api call function names
-found.
-
+/*
 EXAMPLE:
   input   umap{
                 ("iris01",232,789,"getDeviceInfo") : CoreTime,
@@ -321,18 +179,19 @@ EXAMPLE:
                 ("iris02",890,890,"getDeviceInfo") : CoreTime
           }
   output  tuple{ set {"iris01","iris02"}, set{232,123,890}, set{789,890}, set{"getDeviceInfo"} }
-
-TODO:
-  Now, we are counting the number of unique elements in print_compact  using the .size method.
-  Maybe we can do that here if no other function requires the result as is implemented right now.
-
 */
-template <template <typename...> class Map, typename... K, typename V>
-auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
+template <class... K,  size_t... I>
+void add_to_set(std::tuple<std::set<K>...> &s,
+                std::tuple<K...> t, std::index_sequence<I...>) {
+  (std::get<I>(s).insert(std::get<I>(t)), ...);
+}
+
+template<typename... K, typename V>
+auto get_uniq_tally(std::unordered_map<std::tuple<K...>, V> &input) {
   auto tuple_set = std::make_tuple(std::set<K>{}...);
   constexpr auto s = std::make_index_sequence<sizeof...(K)>();
 
-  for (auto &m : input)
+  for (auto const &m : input)
     add_to_set(tuple_set, m.first, s);
   return tuple_set;
 }
@@ -340,16 +199,12 @@ auto get_uniq_tally(Map<std::tuple<K...>, V> &input) {
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void add_footer(std::vector<std::pair<thapi_function_name, TC>> &m) {
   TC tot{};
-  for (auto const &[_, t] : m) {
-    (void)_;
-    tot += t;
-  }
+  for (auto const &nt : m)
+    tot += nt.second;
   m.push_back({"Total", tot});
 
-  for (auto &[_, t] : m) {
-    (void)_;
-    t.compute_duration_ratio(tot);
-  }
+  for (auto &nt : m)
+    nt.second.compute_duration_ratio(tot);
 }
 
 //    __
@@ -391,10 +246,10 @@ auto sort_by_value(Map<K, V> &m) {
 }
 
 inline std::string limit_string_size(std::string original, int u_size, std::string j = "[...]") {
-  if ((u_size < 0) || ((uint)u_size >= original.length()))
+  if ((u_size < 0) || (static_cast<size_t>(u_size) >= original.length()))
     return original;
 
-  if ((uint)u_size <= j.length())
+  if (static_cast<size_t>(u_size) <= j.length())
     return j.substr(0, u_size);
 
   const unsigned size = u_size - j.length();
@@ -418,7 +273,7 @@ void apply_sizelimit(std::vector<std::pair<thapi_function_name, TC>> &m, int max
 //                                                  _|
 // TallyCoreHeader tuple of str
 template <std::size_t SIZE, typename TC,
-          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
                      const std::pair<std::string, std::array<const char *, SIZE>> header) {
 
@@ -468,7 +323,7 @@ std::ostream &operator<<(std::ostream &os,
 }
 
 // Print the TallyCore
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tup) {
   auto &[c, column_width] = _tup;
   const std::vector<std::string> v = c.to_string();
