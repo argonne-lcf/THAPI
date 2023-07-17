@@ -566,10 +566,10 @@ Case B:
 	  // So we don't clean the state now.
      }
   <% end %>
-  // When user Destroy event, we are sure they will not re-use it.
-  // Hence we can clean the state, this is not the case when Reseting events.
- // For command list reset / destroy we cannot track the state , they can check event status laters. 
-  <% if ["zeEventDestroy"].include?(dbt_event.name_striped)%>
+  // When users destroy events, we are sure they will not re-use it.
+  // When users are signaling from the host, the state need to be cleared as well.
+  // This is not the case when reseting events.
+  <% if ["zeEventDestroy", "zeEventHostSignal"].include?(dbt_event.name_striped)%>
     <%if dbt_event.start? %>
      save_start(state, hpt_t(hostname, process_id, thread_id), hEvent);
     <% else %>
