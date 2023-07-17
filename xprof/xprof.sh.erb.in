@@ -441,34 +441,8 @@ summary() {
 
 setub_babeltrace_live() {
   mkdir -p $THAPI_LTTNG_O_ROOT
-  babeltrace2 \
-     --plugin-path=$libdir \
-     --component=source.ctf.lttng-live \
-     --params="inputs=[\"net://localhost/host/$(hostname)/THAPI_${PALS_NODEID:-0}\"],
-             session-not-found-action=end" \
-<% if languages.include?("ze") %>
-     --component=filter.zeinterval.interval \
-<% end %>
-<% if languages.include?("cl") %>
-     --component=filter.clinterval.interval \
-<% end %>
-<% if languages.include?("cuda") %>
-    --component=filter.cudainterval.interval \
-<% end %>
-<% if languages.include?("hip") %>
-     --component=filter.hipinterval.interval \
-<% end %>
-<% if languages.include?("omp") %>
-     --component=filter.ompinterval.interval \
-<% end %>
-     --component=sink.btx_tally.tally \
-     --params="display=compact, \
-               name=demangle, \
-               display_mode=human, \
-               display_metadata=false, \
-               display_name_max_size=80, \
-               display_kernel_verbose=false" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_${PALS_NODEID:-0}.log &
-   BT_PID=$!
+  $bindir/babeltrace_thapi tally --live --backend <%= languages %> $bt_tally_argv -- "net://localhost/host/$(hostname)/THAPI_${PALS_NODEID:-0}" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_${PALS_NODEID:-0}.log &
+  BT_PID=$!
 }
 
 trace_epilogue_live() {
