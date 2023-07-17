@@ -14,7 +14,7 @@ class TallyCoreTime : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
-  virtual const std::vector<std::string> to_string() {
+  virtual const std::vector<std::string> to_string() override {
     return std::vector<std::string>{
         (count == error) ? "" : this->format_time(duration),
         (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
@@ -56,7 +56,7 @@ class TallyCoreByte : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
 public:
   static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
-  virtual const std::vector<std::string> to_string() {
+  virtual const std::vector<std::string> to_string() override {
     return std::vector<std::string>{format_byte(duration),
                                     this->to_pretty_string(100. * duration_ratio, "%"),
                                     this->to_pretty_string(count, "", 0),
