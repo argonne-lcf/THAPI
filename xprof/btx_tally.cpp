@@ -103,8 +103,8 @@ struct tally_dispatch_s {
 
   std::array<int, BACKEND_MAX> backend_level;
 
-  std::map<backend_level_t, std::set<const char *>> host_backend_name;
-  std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
+  std::map<backend_level_t, std::set<std::string>> host_backend_name;
+  std::map<backend_level_t, std::set<std::string>> traffic_backend_name;
 
   std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
   std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
@@ -115,6 +115,13 @@ struct tally_dispatch_s {
   std::vector<std::string> metadata;
 };
 using tally_dispatch_t = struct tally_dispatch_s;
+
+static std::string join_iterator(const std::set<std::string> &x, std::string delimiter = ",") {
+  return std::accumulate(std::begin(x), std::end(x), std::string{},
+                         [&delimiter](const std::string &a, const std::string &b) {
+                           return a.empty() ? b : a + delimiter + b;
+                         });
+}
 
 static int get_backend_id(std::string name) {
   for (int i = 0; i < BACKEND_MAX; ++i)

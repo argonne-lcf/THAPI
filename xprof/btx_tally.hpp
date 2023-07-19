@@ -49,22 +49,6 @@ private:
   virtual const std::array<std::string, nfields> to_string() = 0;
 };
 //
-//   | | _|_ o |  _
-//   |_|  |_ | | _>
-//
-
-//! Join iterable items as string.
-//! \param iterable an iterable container (set, map, etc) whose items support string concatenation.
-//! \param delimiter :, ;, or other user specified delimiter.
-//! \return Returns a string where iterable's "items" are separated by "delimiter"
-template <typename T> std::string join_iterator(const T &x, std::string delimiter = ",") {
-  return std::accumulate(std::begin(x), std::end(x), std::string{},
-                         [&delimiter](const std::string &a, const std::string &b) {
-                           return a.empty() ? b : a + delimiter + b;
-                         });
-}
-
-//
 //    /\   _   _  ._ _   _   _. _|_ o  _  ._
 //   /--\ (_| (_| | (/_ (_| (_|  |_ | (_) | |
 //         _|  _|        _|
