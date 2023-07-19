@@ -310,7 +310,7 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
 template <class... T, class... T2, size_t... I>
-void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+void print_tally_header(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
                  std::index_sequence<I...>) {
   ((std::get<I>(s).size() ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
                           : os << ""),
@@ -318,11 +318,11 @@ void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T
 }
 
 template <class... T, class... T2>
-void print_tally(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
+void print_tally_header(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
                  const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
-  print_tally(os, s, h, seq);
+  print_tally_header(os, s, h, seq);
   os << std::endl;
 }
 
@@ -386,8 +386,8 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
 
   // Printing the summary of the number of Hostname, Process and co
   // We will iterator over the map and compute the number of unique elements of each category
-  auto tuple_tally = get_uniq_tally(m);
-  print_tally(std::cout, title, tuple_tally, keys_string);
+  const auto tuple_tally = get_uniq_tally(m);
+  print_tally_header(std::cout, title, tuple_tally, keys_string);
   std::cout << std::endl;
 
   auto aggregated_by_name = aggregate_by_name(m);
