@@ -202,8 +202,8 @@ EXAMPLE:
           }
 
 */
-template <template <typename...> class Map, typename K, typename V>
-auto sort_by_value(Map<K, V> &m) {
+template <typename K, typename V> 
+auto sort_by_value(const std::unordered_map<K, V> &m) {
   std::vector<std::pair<K, V>> v;
   std::copy(m.begin(), m.end(), std::back_inserter<std::vector<std::pair<K, V>>>(v));
   std::sort(v.begin(), v.end(), [=](auto &a, auto &b) { return a.second > b.second; });
@@ -346,7 +346,7 @@ void print_named_tuple(std::ostream &os, const std::string &header, const std::t
 // original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_tally(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
+void print_tally(const std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
 
   auto sorted_by_value = sort_by_value(m);
   add_footer(sorted_by_value);
