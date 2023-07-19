@@ -27,14 +27,8 @@ class TallyCoreString : public TallyCoreBase {
 
   using TallyCoreBase::TallyCoreBase;
 
-public:
-  void update_max_size(std::vector<long> &m) {
-    std::vector<std::string> current_string = to_string();
-    for (auto i = 0UL; i < m.size(); i++)
-        m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
-    }
-
 protected:
+  static constexpr size_t nfields = 7;
   template <typename T>
   std::string to_pretty_string(const T a_value, const std::string units, const int n = 2) {
     std::ostringstream out;
@@ -42,10 +36,17 @@ protected:
     out << std::fixed << a_value << units;
     return out.str();
   }
-  
+
+public:
+  void update_max_size(std::array<long, nfields> &m) {
+    const auto current_string = to_string();
+    for (auto i = 0UL; i < m.size(); i++)
+        m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
+    }
+ 
 private:
   // Pure virtual function
-  virtual const std::vector<std::string> to_string() = 0;
+  virtual const std::array<std::string, nfields> to_string() = 0;
 };
 //
 //   | | _|_ o |  _
@@ -282,7 +283,7 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 
   // Know at compile time
   auto tallycore_max =
-      std::apply([](auto &&...e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
+      std::apply([](auto &&...e) { return std::array{(static_cast<long>(strlen(e)))...}; },
                  header_tallycore);
 
   for (auto &[name, tallycore] : m) {
@@ -307,9 +308,9 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 // This is useful for the footer or for hiding the `error` column
 
 // We use 3 function, because my template skill are poor...
-template <std::size_t SIZE>
+template <size_t SIZE>
 std::ostream &operator<<(std::ostream &os,
-                         const std::pair<std::array<const char *, SIZE>, std::vector<long>> &_tup) {
+                         const std::pair<std::array<const char *, SIZE>, std::array<long, SIZE>> &_tup) {
   auto &[c, column_width] = _tup;
   for (auto i = 0U; i < c.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
@@ -323,10 +324,10 @@ std::ostream &operator<<(std::ostream &os,
 }
 
 // Print the TallyCore
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
-std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tup) {
+template <size_t SIZE, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
+std::ostream &operator<<(std::ostream &os, std::pair<TC, std::array<long, SIZE>> &_tup) {
   auto &[c, column_width] = _tup;
-  const std::vector<std::string> v = c.to_string();
+  const auto v = c.to_string();
   for (auto i = 0U; i < v.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
