@@ -41,25 +41,30 @@ echoq() {
    fi
 }
 
+count_file() {
+    # https://unix.stackexchange.com/a/90152
+    a=$(2>/dev/null \ls  -afq $1 | wc -l)
+    echo $((a - 2))
+}
+
 local_barier() {
     echoq "THAPI_LOG: local_barier_entry ($1): ${PALS_RANKID:-0}"
     local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
     local path=$folder/${PALS_LOCAL_RANKID:-0}
     mkdir -p $path
-    while [ $(find $folder -mindepth 1 -maxdepth 1 -type d | wc -l || true) != ${PALS_LOCAL_SIZE:-1} ]; do
-      sleep 0.2
+    while [ $(count_file $folder) != ${PALS_LOCAL_SIZE:-1} ]; do
+        sleep 0.2
     done
-    # We cannot rmdir $path here, and I have no idea why...
+    # We cannot rmdir $path here to avoid race-condition
     echoq "THAPI_LOG: local_barier_exit ($1): ${PALS_RANKID:-0}"
 }
 
 global_barrier_epilogue() {
     echoq "THAPI_LOG: global_barrier_epilogue_entry"
     rmdir $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
-    # Only master should wait, because after master will delete $SHARED_GLOBAL_FILESYSTEM
     if [[ ${PALS_RANKID:-0} == 0 ]]; then
-        while [ $(stat -c %h $SHARED_GLOBAL_FILESYSTEM) != 2 ]; do
-                sleep 0.2
+        while [ $(count_file $SHARED_GLOBAL_FILESYSTEM) != 0 ]; do
+           sleep 0.2
         done
     fi
     echoq "THAPI_LOG: global_barrier_epilogue_exit"
