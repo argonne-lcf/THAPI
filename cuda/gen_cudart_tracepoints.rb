@@ -5,8 +5,7 @@ provider = :lttng_ust_cudart
 
 puts <<EOF
 #include "lttng/tracepoint_gen.h"
-#define __CUDA_API_VERSION_INTERNAL 1
-#include <cuda_runtime_api.h>
+#include <cudart.h.include>
 EOF
 
 $cudart_commands.each { |c|

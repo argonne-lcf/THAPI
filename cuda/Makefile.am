@@ -16,6 +16,9 @@ CUDA_EXTRA_HDR = \
 	$(srcdir)/include/device_types.h \
 	$(srcdir)/include/cuda_device_runtime_api.h \
 	$(srcdir)/include/cuda_runtime_api.h \
+	$(srcdir)/include/__cudart.h \
+	$(srcdir)/include/cuda_vdpau_interop.h \
+	$(srcdir)/include/cuda_profiler_api.h \
 	$(srcdir)/include/vector_types.h \
 	$(srcdir)/include/cudaVDPAU.h
 CUDA_HDR = \
@@ -31,6 +34,9 @@ MODIFIED_CUDA_EXTRA_HDR = \
 	modified_include/device_types.h \
 	modified_include/cuda_device_runtime_api.h \
 	modified_include/cuda_runtime_api.h \
+	modified_include/__cudart.h \
+	modified_include/cuda_vdpau_interop.h \
+	modified_include/cuda_profiler_api.h \
 	modified_include/vector_types.h \
 	modified_include/cudaVDPAU.h
 MODIFIED_CUDA_HDR = \
@@ -123,7 +129,8 @@ CUDART_MODEL = \
 	$(srcdir)/../utils/yaml_ast.rb \
 	$(srcdir)/../utils/yaml_ast_lttng.rb \
 	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb
+	$(srcdir)/../utils/LTTng.rb \
+	$(srcdir)/cudart.h.include
 
 cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -297,7 +304,7 @@ BUILT_SOURCES += babeltrace_cuda_callbacks.h
 babeltrace_cuda_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
 
-EXTRA_DIST += cuda.h.include
+EXTRA_DIST += cuda.h.include cudart.h.include
 
 CLEANFILES += \
 	babeltrace_cuda_callbacks.h \
