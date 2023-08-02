@@ -280,8 +280,30 @@ EOF
 register_epilogue "cuGetExportTable", <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
-    tracepoint(lttng_ust_cuda, cuGetExportTable_exit, ppExportTable, pExportTableId, _retval);
     *ppExportTable = tmp;
-    return _retval;
   }
 EOF
+
+# cuGetProcAddress*
+register_proc_callbacks = lambda { |method|
+  str = <<EOF
+  if (_retval == CUDA_SUCCESS && pfn && *pfn) {
+EOF
+  str << $cuda_commands.collect { |c|
+    <<EOF
+    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
+      wrap_#{c.name}(pfn);
+    }
+EOF
+  }.join(<<EOF)
+    else
+EOF
+  str << <<EOF
+  }
+EOF
+
+  register_epilogue method, str
+}
+
+register_proc_callbacks.call("cuGetProcAddress")
+register_proc_callbacks.call("cuGetProcAddress_v2")

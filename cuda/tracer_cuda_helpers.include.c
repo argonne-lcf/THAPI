@@ -1,3 +1,17 @@
+pthread_mutex_t cuda_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct cuda_closure {
+  void *ptr;
+  void *c_ptr;
+  UT_hash_handle hh;
+  ffi_cif cif;
+  ffi_closure *closure;
+  ffi_type **types;
+};
+
+struct cuda_closure * cuda_closures = NULL;
+
+
 static void _log_export(CUuuid *pExportTableId, size_t exportOffset) {
   tracepoint(lttng_ust_cuda_exports, export_called, pExportTableId, exportOffset);
 }

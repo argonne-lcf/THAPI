@@ -24,6 +24,14 @@ class Command
     YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
   end
 
+  def ffi_name
+    name + "_ffi"
+  end
+
+  def decl_ffi_wrapper
+    "void #{ffi_name}(ffi_cif *cif, void *ffi_ret, void **args, #{pointer_type_name} #{pointer_name})"
+  end
+
   def decl
     @function.to_s
   end
