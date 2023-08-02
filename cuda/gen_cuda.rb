@@ -4,7 +4,6 @@ puts <<EOF
 #include <pthread.h>
 #include <sys/mman.h>
 #include <string.h>
-#include <ffi.h>
 #include "cuda_tracepoints.h"
 #include "cuda_exports_tracepoints.h"
 #include "cuda_args.h"
@@ -13,6 +12,9 @@ puts <<EOF
 #include "utlist.h"
 #include "uthash.h"
 EOF
+#puts <<EOF
+##include <ffi.h>
+#EOF
 
 ($cuda_commands + $cuda_exports_commands).each { |c|
   puts "#define #{CUDA_POINTER_NAMES[c]} #{c.pointer_name}"
@@ -29,9 +31,11 @@ EOF
 $cuda_commands.each { |c|
   puts <<EOF
 #{c.decl_hidden_alias};
-static #{c.decl_ffi_wrapper};
 static void wrap_#{c.name}(void **pfn);
 EOF
+#  puts <<EOF
+#static #{c.decl_ffi_wrapper};
+#EOF
 }
 
 puts <<EOF
@@ -165,101 +169,104 @@ $cuda_commands.each { |c|
 }
 
 $cuda_commands.each { |c|
+#  puts <<EOF
+#static #{c.decl_ffi_wrapper} {
+#  (void)cif;
+#EOF
+#  if c.parameters.size == 0
+#  puts <<EOF
+#  (void)args;
+#EOF
+#  else
+#    c.parameters.each_with_index { |p, i|
+#      puts <<EOF
+#  #{p} = *(#{p.type} *)args[#{i}];
+#EOF
+#    }
+#  end
+#  common_block.call(c, :lttng_ust_cuda)
+#  if c.has_return_type?
+#    puts <<EOF
+#  *(#{c.type} *)ffi_ret = _retval;
+#EOF
+#  end
+#  puts <<EOF
+#}
+#EOF
   puts <<EOF
-static #{c.decl_ffi_wrapper} {
-  (void)cif;
-EOF
-  if c.parameters.size == 0
-  puts <<EOF
-  (void)args;
-EOF
-  else
-    c.parameters.each_with_index { |p, i|
-      puts <<EOF
-  #{p} = *(#{p.type} *)args[#{i}];
-EOF
-    }
-  end
-  common_block.call(c, :lttng_ust_cuda)
-  if c.has_return_type?
-    puts <<EOF
-  *(#{c.type} *)ffi_ret = _retval;
-EOF
-  end
-  puts <<EOF
-}
 
 static void wrap_#{c.name}(void **pfn) {
 EOF
-  begin
-    str = <<EOF
+  str = <<EOF
   if (*pfn == #{CUDA_POINTER_NAMES[c]}) {
     *pfn = #{c.hidden_alias_name};
-    return;
-  }
-  struct cuda_closure *closure = NULL;
-  pthread_mutex_lock(&cuda_closures_mutex);
-  HASH_FIND_PTR(cuda_closures, pfn, closure);
-  pthread_mutex_unlock(&cuda_closures_mutex);
-  if (closure != NULL) {
-    *pfn = closure->c_ptr;
-  } else {
-    closure = (struct cuda_closure *)malloc(sizeof(struct cuda_closure) + #{c.parameters.size} * sizeof(ffi_type *));
-    if (closure != NULL) {
-      closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct cuda_closure));
-      closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
-      if (closure->closure != NULL) {
-        closure->ptr = *pfn;
-EOF
-    c.parameters.each_with_index { |a, i|
-      if a.type.kind_of?(YAMLCAst::Pointer)
-        ffi_type = "ffi_type_pointer"
-      elsif FFI_TYPE_MAP["#{a.type}"]
-        ffi_type = FFI_TYPE_MAP["#{a.type}"]
-      else
-        raise "Unsupported type: #{a.type}"
-      end
-      str << <<EOF
-        closure->types[#{i}] = &#{ffi_type};
-EOF
-    }
-    if c.type.kind_of?(YAMLCAst::Void)
-      ffi_ret_type = "ffi_type_void"
-    elsif c.type.kind_of?(YAMLCAst::Pointer)
-      ffi_ret_type = "ffi_type_pointer"
-    elsif FFI_TYPE_MAP["#{c.type}"]
-      ffi_ret_type = FFI_TYPE_MAP["#{c.type}"]
-    else
-      raise "Unsupported type: #{c.type}"
-    end
-    str << <<EOF
-        if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{ffi_ret_type}, closure->types) == FFI_OK) {
-          if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif*, void *, void **, void *))#{c.ffi_name}, *pfn, closure->c_ptr) == FFI_OK) {
-            pthread_mutex_lock(&cuda_closures_mutex);
-            HASH_ADD_PTR(cuda_closures, ptr, closure);
-            pthread_mutex_unlock(&cuda_closures_mutex);
-            *pfn = closure->c_ptr;
-          } else {
-            ffi_closure_free(closure->closure);
-            free(closure);
-          }
-        } else {
-          ffi_closure_free(closure->closure);
-          free(closure);
-        }
-      } else {
-        free(closure);
-      }
-    }
   }
 EOF
-  rescue => e
-    str = <<EOF
-  (void)pfn;
-  (void)#{c.ffi_name};
-EOF
-  end
-
+#  begin
+#    str << <<EOF
+#  struct cuda_closure *closure = NULL;
+#  pthread_mutex_lock(&cuda_closures_mutex);
+#  HASH_FIND_PTR(cuda_closures, pfn, closure);
+#  pthread_mutex_unlock(&cuda_closures_mutex);
+#  if (closure != NULL) {
+#    *pfn = closure->c_ptr;
+#  } else {
+#    closure = (struct cuda_closure *)malloc(sizeof(struct cuda_closure) + #{c.parameters.size} * sizeof(ffi_type *));
+#    if (closure != NULL) {
+#      closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct cuda_closure));
+#      closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
+#      if (closure->closure != NULL) {
+#        closure->ptr = *pfn;
+#EOF
+#    c.parameters.each_with_index { |a, i|
+#      if a.type.kind_of?(YAMLCAst::Pointer)
+#        ffi_type = "ffi_type_pointer"
+#      elsif FFI_TYPE_MAP["#{a.type}"]
+#        ffi_type = FFI_TYPE_MAP["#{a.type}"]
+#      else
+#        raise "Unsupported type: #{a.type}"
+#      end
+#      str << <<EOF
+#        closure->types[#{i}] = &#{ffi_type};
+#EOF
+#    }
+#    if c.type.kind_of?(YAMLCAst::Void)
+#      ffi_ret_type = "ffi_type_void"
+#    elsif c.type.kind_of?(YAMLCAst::Pointer)
+#      ffi_ret_type = "ffi_type_pointer"
+#    elsif FFI_TYPE_MAP["#{c.type}"]
+#      ffi_ret_type = FFI_TYPE_MAP["#{c.type}"]
+#    else
+#      raise "Unsupported type: #{c.type}"
+#    end
+#    str << <<EOF
+#        if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{ffi_ret_type}, closure->types) == FFI_OK) {
+#          if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif*, void *, void **, void *))#{c.ffi_name}, *pfn, closure->c_ptr) == FFI_OK) {
+#            pthread_mutex_lock(&cuda_closures_mutex);
+#            HASH_ADD_PTR(cuda_closures, ptr, closure);
+#            pthread_mutex_unlock(&cuda_closures_mutex);
+#            *pfn = closure->c_ptr;
+#          } else {
+#            ffi_closure_free(closure->closure);
+#            free(closure);
+#          }
+#        } else {
+#          ffi_closure_free(closure->closure);
+#          free(closure);
+#        }
+#      } else {
+#        free(closure);
+#      }
+#    }
+#  }
+#EOF
+#  rescue => e
+#    str = <<EOF
+#  (void)pfn;
+#  (void)#{c.ffi_name};
+#EOF
+#  end
+#
 print str
 puts <<EOF
 }
