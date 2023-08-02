@@ -28,7 +28,7 @@ EOF
 
 $cuda_commands.each { |c|
   puts <<EOF
-
+#{c.decl_hidden_alias};
 static #{c.decl_ffi_wrapper};
 static void wrap_#{c.name}(void **pfn);
 EOF
@@ -193,6 +193,10 @@ static void wrap_#{c.name}(void **pfn) {
 EOF
   begin
     str = <<EOF
+  if (*pfn == #{CUDA_POINTER_NAMES[c]}) {
+    *pfn = #{c.hidden_alias_name};
+    return;
+  }
   struct cuda_closure *closure = NULL;
   pthread_mutex_lock(&cuda_closures_mutex);
   HASH_FIND_PTR(cuda_closures, pfn, closure);

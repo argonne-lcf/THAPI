@@ -121,6 +121,7 @@ CUDA_MODEL = \
 	$(srcdir)/../utils/yaml_ast_lttng.rb \
 	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb \
+	$(srcdir)/../utils/command.rb \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
 

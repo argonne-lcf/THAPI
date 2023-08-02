@@ -32,6 +32,14 @@ class Command
     "void #{ffi_name}(ffi_cif *cif, void *ffi_ret, void **args, #{pointer_type_name} #{pointer_name})"
   end
 
+  def hidden_alias_name
+    name + "_hid"
+  end
+
+  def decl_hidden_alias(name = hidden_alias_name)
+    YAMLCAst::Declaration::new(name: name, type: @function.type, storage: "static").to_s + "__attribute__ ((alias (\"#{self.name}\")))"
+  end
+
   def decl
     @function.to_s
   end
