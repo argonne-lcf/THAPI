@@ -201,8 +201,8 @@ EOF
     *pfn = closure->c_ptr;
   } else {
     closure = (struct cuda_closure *)malloc(sizeof(struct cuda_closure) + #{c.parameters.size} * sizeof(ffi_type *));
-    closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct cuda_closure));
     if (closure != NULL) {
+      closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct cuda_closure));
       closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
       if (closure->closure != NULL) {
         closure->ptr = *pfn;
@@ -235,6 +235,9 @@ EOF
             HASH_ADD_PTR(cuda_closures, ptr, closure);
             pthread_mutex_unlock(&cuda_closures_mutex);
             *pfn = closure->c_ptr;
+          } else {
+            ffi_closure_free(closure->closure);
+            free(closure);
           }
         } else {
           ffi_closure_free(closure->closure);

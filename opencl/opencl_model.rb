@@ -1242,8 +1242,8 @@ EOF
         return closure->c_ptr;
       }
       closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
-      closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct opencl_closure));
       if (closure != NULL) {
+        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct opencl_closure));
         closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
         if (closure->closure != NULL) {
           closure->ptr = _retval;

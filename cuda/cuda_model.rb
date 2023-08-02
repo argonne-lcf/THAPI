@@ -1,5 +1,6 @@
 require 'yaml'
 require 'pp'
+require 'set'
 require_relative '../utils/yaml_ast_lttng'
 require_relative '../utils/LTTng'
 require_relative '../utils/command.rb'
@@ -13,6 +14,7 @@ end
 
 RESULT_NAME = "cuResult"
 
+$cuda_api_versions_yaml = YAML::load_file("cuda_api_versions.yaml")
 $cuda_api_yaml = YAML::load_file("cuda_api.yaml")
 $cuda_exports_api_yaml = YAML::load_file("cuda_exports_api.yaml")
 
@@ -285,19 +287,40 @@ register_epilogue "cuGetExportTable", <<EOF
 EOF
 
 # cuGetProcAddress*
+command_names = Set[*$cuda_commands.collect(&:name)]
+pt_condition = "((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))"
+normal_condition = "((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))"
+
 register_proc_callbacks = lambda { |method|
   str = <<EOF
+  const int pt_condition = #{pt_condition};
+  const int normal_condition = #{normal_condition};
   if (_retval == CUDA_SUCCESS && pfn && *pfn) {
 EOF
-  str << $cuda_commands.collect { |c|
-    <<EOF
-    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
-      wrap_#{c.name}(pfn);
+  str << $cuda_api_versions_yaml.map { |name, suffixes|
+    suffixes.map { |suffix, versions|
+      versions.each_with_index.map { |version, i|
+        fullname = "#{name}#{versions.size - i > 1 ? "_v#{versions.size - i}" : ""}#{suffix}"
+        fullname = "#{name}_v2#{suffix}" unless command_names.include?(fullname)
+        sstr = <<EOF
+    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{suffixes.keys.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
+      wrap_#{fullname}(pfn);
     }
 EOF
-  }.join(<<EOF)
+      }
+    }
+  }.flatten.join(<<EOF)
     else
 EOF
+#  str << $cuda_commands.collect { |c|
+#    <<EOF
+#    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
+#      wrap_#{c.name}(pfn);
+#    }
+#EOF
+#  }.join(<<EOF)
+#    else
+#EOF
   str << <<EOF
   }
 EOF
