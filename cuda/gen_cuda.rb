@@ -236,10 +236,13 @@ EOF
             pthread_mutex_unlock(&cuda_closures_mutex);
             *pfn = closure->c_ptr;
           }
+        } else {
+          ffi_closure_free(closure->closure);
+          free(closure);
         }
-        ffi_closure_free(closure->closure);
+      } else {
+        free(closure);
       }
-      free(closure);
     }
   }
 EOF
