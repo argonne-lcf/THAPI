@@ -11,7 +11,22 @@ module MyRefinement
       attr_accessor :plugin
   end
 
+  refine(BT2::BTPlugin.singleton_class) do
+
+    def find_all_from_dir(path, recurse: false, fail_on_load_error: true)
+        ps = super
+        ps.each { |p|
+          p.path = path
+        }
+        ps
+    end
+
+  end
+
   refine(BT2::BTPlugin) do
+
+    attr_accessor :path
+
     def get_source_component_class_by_name(name)
       c = super
       c.plugin = self if c
@@ -51,29 +66,44 @@ module MyRefinement
   end
   
   refine(BT2::BTGraph) do
+    
+    @@plugins_path = []
+    @@cli = []
 
     def add_component(component_class, name, params: {},
                       logging_level: BT2::BTLogging.default_level,
                       initialize_method_data: nil)
-      puts "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name} \\"
+
+      @@plugins_path << component_class.plugin.path
+      @@cli << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
       str_params = params.filter_map { |k,v| "#{k}=#{v}" unless v.class == String && v.empty? }.join(",")
-      puts "--params #{str_params.dump} \\" unless str_params.empty?
+      @@cli << "--params #{str_params.dump}" unless str_params.empty?
       super
     end
 
-    @once_source_ctf_fs = true
+    @@once_source_ctf_fs = true
     def connect_ports(upstream_port, downstream_port)
       # Work arround for source.ctf.fs port
       if upstream_port.component.name == "source_0"
-        if @once_source_ctf_fs
-          puts "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.* \\"
-          @once_source_ctf_fs = false
+        if @@once_source_ctf_fs
+          @@cli << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
+          @@once_source_ctf_fs = false
         end
       else
-        puts "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name} \\" 
+        @@cli << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}" 
       end
       super
     end
+
+    def gen_cli() 
+      l = ["babeltrace2"]
+      ps_u = @@plugins_path.uniq.compact.sort
+      l << "--plugin-path=#{ps_u.join(",")}" unless ps_u.empty?
+      l << "run"
+      l += @@cli
+      l.join(" \\\n")
+    end
+
   end
 end
 
@@ -280,5 +310,7 @@ end
   ip = _in.input_port(0)
   graph.connect_ports(op, ip)
 end
+
+puts graph.gen_cli
 
 graph.run
