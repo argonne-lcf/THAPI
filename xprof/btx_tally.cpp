@@ -14,8 +14,8 @@ class TallyCoreTime : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
-  virtual const std::vector<std::string> to_string() override {
-    return std::vector<std::string>{
+  virtual const std::array<std::string, nfields> to_string() override {
+    return std::array{
         (count == error) ? "" : this->format_time(duration),
         (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
         this->to_pretty_string(count, "", 0),
@@ -56,8 +56,8 @@ class TallyCoreByte : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
 public:
   static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
-  virtual const std::vector<std::string> to_string() override {
-    return std::vector<std::string>{format_byte(duration),
+  virtual const std::array<std::string, nfields> to_string() override {
+    return std::array {format_byte(duration),
                                     this->to_pretty_string(100. * duration_ratio, "%"),
                                     this->to_pretty_string(count, "", 0),
                                     this->format_byte(average()),
@@ -103,8 +103,8 @@ struct tally_dispatch_s {
 
   std::array<int, BACKEND_MAX> backend_level;
 
-  std::map<backend_level_t, std::set<const char *>> host_backend_name;
-  std::map<backend_level_t, std::set<const char *>> traffic_backend_name;
+  std::map<backend_level_t, std::set<std::string>> host_backend_name;
+  std::map<backend_level_t, std::set<std::string>> traffic_backend_name;
 
   std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreTime>> host;
   std::map<backend_level_t, std::unordered_map<hpt_function_name_t, TallyCoreByte>> traffic;
@@ -115,6 +115,13 @@ struct tally_dispatch_s {
   std::vector<std::string> metadata;
 };
 using tally_dispatch_t = struct tally_dispatch_s;
+
+static std::string join_iterator(const std::set<std::string> &x, std::string delimiter = ",") {
+  return std::accumulate(std::begin(x), std::end(x), std::string{},
+                         [&delimiter](const std::string &a, const std::string &b) {
+                           return a.empty() ? b : a + delimiter + b;
+                         });
+}
 
 static int get_backend_id(std::string name) {
   for (int i = 0; i < BACKEND_MAX; ++i)

@@ -27,14 +27,8 @@ class TallyCoreString : public TallyCoreBase {
 
   using TallyCoreBase::TallyCoreBase;
 
-public:
-  void update_max_size(std::vector<long> &m) {
-    std::vector<std::string> current_string = to_string();
-    for (auto i = 0UL; i < m.size(); i++)
-        m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
-    }
-
 protected:
+  static constexpr size_t nfields = 7;
   template <typename T>
   std::string to_pretty_string(const T a_value, const std::string units, const int n = 2) {
     std::ostringstream out;
@@ -42,27 +36,18 @@ protected:
     out << std::fixed << a_value << units;
     return out.str();
   }
-  
+
+public:
+  void update_max_size(std::array<long, nfields> &m) {
+    const auto current_string = to_string();
+    for (auto i = 0UL; i < m.size(); i++)
+        m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
+    }
+ 
 private:
   // Pure virtual function
-  virtual const std::vector<std::string> to_string() = 0;
+  virtual const std::array<std::string, nfields> to_string() = 0;
 };
-//
-//   | | _|_ o |  _
-//   |_|  |_ | | _>
-//
-
-//! Join iterable items as string.
-//! \param iterable an iterable container (set, map, etc) whose items support string concatenation.
-//! \param delimiter :, ;, or other user specified delimiter.
-//! \return Returns a string where iterable's "items" are separated by "delimiter"
-template <typename T> std::string join_iterator(const T &x, std::string delimiter = ",") {
-  return std::accumulate(std::begin(x), std::end(x), std::string{},
-                         [&delimiter](const std::string &a, const std::string &b) {
-                           return a.empty() ? b : a + delimiter + b;
-                         });
-}
-
 //
 //    /\   _   _  ._ _   _   _. _|_ o  _  ._
 //   /--\ (_| (_| | (/_ (_| (_|  |_ | (_) | |
@@ -91,32 +76,12 @@ NOTE: Look like it may have some problem, but i was not smart enough
 
 */
 template <class... Args, std::size_t... Is>
-auto make_tuple_cuted(std::tuple<Args...> tp, std::index_sequence<Is...>) {
+auto make_tuple_without_last(std::tuple<Args...> tp, std::index_sequence<Is...>) {
   return std::tuple{std::get<Is>(tp)...};
 }
 
-//! Remove the last element of a tuple.
-/*!
-\param tp (std::tuple).
-\return Returns a new tuple without the last element.
-
-EXAMPLE:
-  input   ("iris01",232,789,"getDeviceInfo")
-  output  ("iris01",232,789)
-
-  It will create the following index sequence
-  std::index_sequence<0,1,2>
-
-  Because the "sizeof...(Args) - 1", the index_sequence discarded the last index.
-  The created sequence is then passed to a helper that actually returns a new tuple
-  containing the items in indexes 0,1,2.
-
-REFERENCE:
-https://devblogs.microsoft.com/oldnewthing/20200623-00/?p=103901
-
-*/
-template <class... Args> auto make_tuple_cuted(std::tuple<Args...> tp) {
-  return make_tuple_cuted(tp, std::make_index_sequence<sizeof...(Args) - 1>{});
+template <class... Args> auto make_tuple_without_last(std::tuple<Args...> tp) {
+  return make_tuple_without_last(tp, std::make_index_sequence<sizeof...(Args) - 1>{});
 }
 
 //! Aggregate data by (host,pid,tid) and by (api_call_name)
@@ -135,13 +100,13 @@ auto aggregate_nested(std::unordered_map<std::tuple<T...>, TC> &m) {
 
   // New type for a tuple without the last element.
   // Reference: https://stackoverflow.com/a/42043006/7674852
-  typedef decltype(make_tuple_cuted(std::declval<std::tuple<T...>>())) Minusone;
+  typedef decltype(make_tuple_without_last(std::declval<std::tuple<T...>>())) Minusone;
 
   // Umap for the aggregated data
   std::unordered_map<Minusone, std::unordered_map<thapi_function_name, TC>> aggregated;
 
   for (auto &[key, val] : m) {
-    auto head = make_tuple_cuted(key);
+    const auto head = make_tuple_without_last(key);
     aggregated[head][std::get<sizeof...(T) - 1>(key)] += val;
   }
   return aggregated;
@@ -237,8 +202,8 @@ EXAMPLE:
           }
 
 */
-template <template <typename...> class Map, typename K, typename V>
-auto sort_by_value(Map<K, V> &m) {
+template <typename K, typename V> 
+auto sort_by_value(const std::unordered_map<K, V> &m) {
   std::vector<std::pair<K, V>> v;
   std::copy(m.begin(), m.end(), std::back_inserter<std::vector<std::pair<K, V>>>(v));
   std::sort(v.begin(), v.end(), [=](auto &a, auto &b) { return a.second > b.second; });
@@ -282,7 +247,7 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 
   // Know at compile time
   auto tallycore_max =
-      std::apply([](auto &&...e) { return std::vector<long>{(static_cast<long>(strlen(e)))...}; },
+      std::apply([](auto &&...e) { return std::array{(static_cast<long>(strlen(e)))...}; },
                  header_tallycore);
 
   for (auto &[name, tallycore] : m) {
@@ -307,9 +272,9 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 // This is useful for the footer or for hiding the `error` column
 
 // We use 3 function, because my template skill are poor...
-template <std::size_t SIZE>
+template <size_t SIZE>
 std::ostream &operator<<(std::ostream &os,
-                         const std::pair<std::array<const char *, SIZE>, std::vector<long>> &_tup) {
+                         const std::pair<std::array<const char *, SIZE>, std::array<long, SIZE>> &_tup) {
   auto &[c, column_width] = _tup;
   for (auto i = 0U; i < c.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
@@ -323,10 +288,10 @@ std::ostream &operator<<(std::ostream &os,
 }
 
 // Print the TallyCore
-template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
-std::ostream &operator<<(std::ostream &os, std::pair<TC, std::vector<long>> &_tup) {
+template <size_t SIZE, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
+std::ostream &operator<<(std::ostream &os, std::pair<TC, std::array<long, SIZE>> &_tup) {
   auto &[c, column_width] = _tup;
-  const std::vector<std::string> v = c.to_string();
+  const auto v = c.to_string();
   for (auto i = 0U; i < v.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
@@ -345,7 +310,7 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
 template <class... T, class... T2, size_t... I>
-void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+void print_tally_header(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
                  std::index_sequence<I...>) {
   ((std::get<I>(s).size() ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
                           : os << ""),
@@ -353,11 +318,11 @@ void print_tally(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T
 }
 
 template <class... T, class... T2>
-void print_tally(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
+void print_tally_header(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
                  const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
-  print_tally(os, s, h, seq);
+  print_tally_header(os, s, h, seq);
   os << std::endl;
 }
 
@@ -381,7 +346,7 @@ void print_named_tuple(std::ostream &os, const std::string &header, const std::t
 // original_map is map where the key are tuple who correspond to hostname, process, ..., API call
 // name, and the value are TallyCore
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
-void print_tally(std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
+void print_tally(const std::unordered_map<thapi_function_name, TC> &m, int display_name_max_size) {
 
   auto sorted_by_value = sort_by_value(m);
   add_footer(sorted_by_value);
@@ -421,8 +386,8 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
 
   // Printing the summary of the number of Hostname, Process and co
   // We will iterator over the map and compute the number of unique elements of each category
-  auto tuple_tally = get_uniq_tally(m);
-  print_tally(std::cout, title, tuple_tally, keys_string);
+  const auto tuple_tally = get_uniq_tally(m);
+  print_tally_header(std::cout, title, tuple_tally, keys_string);
   std::cout << std::endl;
 
   auto aggregated_by_name = aggregate_by_name(m);
