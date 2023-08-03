@@ -14,6 +14,7 @@ module MyRefinement
   refine(BT2::BTPlugin.singleton_class) do
 
     def find_all_from_dir(path, recurse: false, fail_on_load_error: true)
+        # I guess print a warning if recurse?
         ps = super
         ps.each { |p|
           p.path = path
@@ -64,43 +65,52 @@ module MyRefinement
     end
 
   end
-  
+  refine(BT2::BTGraph.singleton_class) do
+
+    def new(handle = nil, retain: true, auto_release: true,
+                   mip_version: 0)
+      obj = super
+      obj.plugins_path = []
+      obj.cli_v = []
+      obj.once_source_ctf_fs = false
+      obj
+    end
+
+  end
+
   refine(BT2::BTGraph) do
-    
-    @@plugins_path = []
-    @@cli = []
+    attr_accessor :plugins_path, :cli_v, :once_source_ctf_fs
 
     def add_component(component_class, name, params: {},
                       logging_level: BT2::BTLogging.default_level,
                       initialize_method_data: nil)
 
-      @@plugins_path << component_class.plugin.path
-      @@cli << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
+      @plugins_path << component_class.plugin.path
+      @cli_v << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
       str_params = params.filter_map { |k,v| "#{k}=#{v}" unless v.class == String && v.empty? }.join(",")
-      @@cli << "--params #{str_params.dump}" unless str_params.empty?
+      @cli_v << "--params #{str_params.dump}" unless str_params.empty?
       super
     end
 
-    @@once_source_ctf_fs = true
     def connect_ports(upstream_port, downstream_port)
       # Work arround for source.ctf.fs port
       if upstream_port.component.name == "source_0"
-        if @@once_source_ctf_fs
-          @@cli << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
-          @@once_source_ctf_fs = false
+        if @once_source_ctf_fs.nil?
+          @cli_v << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
+          @nce_source_ctf_fs = false
         end
       else
-        @@cli << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}" 
+        @cli_v << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}"
       end
       super
     end
 
-    def gen_cli() 
+    def cli
       l = ["babeltrace2"]
-      ps_u = @@plugins_path.uniq.compact.sort
+      ps_u = @plugins_path.uniq.compact.sort
       l << "--plugin-path=#{ps_u.join(",")}" unless ps_u.empty?
       l << "run"
-      l += @@cli
+      l += @cli_v
       l.join(" \\\n")
     end
 
@@ -135,6 +145,10 @@ $options_tally = {
 def common_options(opts)
   opts.on('-b', '--backend BACKEND', Array) do |v|
     $options[:backends] = v
+  end
+
+  opts.on('--debug') do |v|
+    $options[:debug] = true
   end
 
   opts.on('-v', '--version', 'Print the version string') do
@@ -311,6 +325,6 @@ end
   graph.connect_ports(op, ip)
 end
 
-puts graph.gen_cli
+puts graph.cli if $options[:debug]
 
 graph.run
