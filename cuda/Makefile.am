@@ -90,6 +90,7 @@ EXTRA_DIST += \
 	extract_base.rb \
 	extract_cuda.rb \
 	extract_cuda_exports.rb \
+	extract_cuda_versions.rb \
 	extract_cudart.rb
 
 cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml
