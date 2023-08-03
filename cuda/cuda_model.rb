@@ -287,7 +287,7 @@ register_epilogue "cuGetExportTable", <<EOF
 EOF
 
 # cuGetProcAddress*
-command_names = Set[*$cuda_commands.collect(&:name)]
+command_names = $cuda_commands.collect(&:name).to_set
 pt_condition = "((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))"
 normal_condition = "((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))"
 
@@ -299,11 +299,11 @@ register_proc_callbacks = lambda { |method|
 EOF
   str << $cuda_api_versions_yaml.map { |name, suffixes|
     suffixes.map { |suffix, versions|
-      versions.each_with_index.map { |version, i|
+      versions.map.with_index { |version, i|
         fullname = "#{name}#{versions.size - i > 1 ? "_v#{versions.size - i}" : ""}#{suffix}"
         fullname = "#{name}_v2#{suffix}" unless command_names.include?(fullname)
         sstr = <<EOF
-    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{suffixes.keys.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
+    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{suffixes.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
       wrap_#{fullname}(pfn);
     }
 EOF
