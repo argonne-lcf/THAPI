@@ -103,3 +103,7 @@ EOF
 $cudart_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_cudart)
 }
+
+$cudart_commands.each { |c|
+  puts "__asm__(\".symver #{c.name},#{c.name}@@libcudart.so.12, remove\");"
+}
