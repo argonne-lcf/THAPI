@@ -28,6 +28,7 @@ typedef VdpStatus  VdpGetProcAddress(
 typedef uint32_t VdpVideoSurface;
 typedef uint32_t VdpOutputSurface;
 #include <cudaVDPAU.h>
+#include <cudaProfiler.h>
 EOF
 ast = $parser.parse(preprocessed_sources_cuda_api)
 
