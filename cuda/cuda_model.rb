@@ -1,5 +1,6 @@
 require 'yaml'
 require 'pp'
+require 'set'
 require_relative '../utils/yaml_ast_lttng'
 require_relative '../utils/LTTng'
 require_relative '../utils/command.rb'
@@ -13,6 +14,7 @@ end
 
 RESULT_NAME = "cuResult"
 
+$cuda_api_versions_yaml = YAML::load_file("cuda_api_versions.yaml")
 $cuda_api_yaml = YAML::load_file("cuda_api.yaml")
 $cuda_exports_api_yaml = YAML::load_file("cuda_exports_api.yaml")
 
@@ -280,8 +282,51 @@ EOF
 register_epilogue "cuGetExportTable", <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
-    tracepoint(lttng_ust_cuda, cuGetExportTable_exit, ppExportTable, pExportTableId, _retval);
     *ppExportTable = tmp;
-    return _retval;
   }
 EOF
+
+# cuGetProcAddress*
+command_names = $cuda_commands.collect(&:name).to_set
+pt_condition = "((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))"
+normal_condition = "((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))"
+
+register_proc_callbacks = lambda { |method|
+  str = <<EOF
+  const int pt_condition = #{pt_condition};
+  const int normal_condition = #{normal_condition};
+  if (_retval == CUDA_SUCCESS && pfn && *pfn) {
+EOF
+  str << $cuda_api_versions_yaml.map { |name, suffixes|
+    suffixes.map { |suffix, versions|
+      versions.map.with_index { |version, i|
+        fullname = "#{name}#{versions.size - i > 1 ? "_v#{versions.size - i}" : ""}#{suffix}"
+        fullname = "#{name}_v2#{suffix}" unless command_names.include?(fullname)
+        sstr = <<EOF
+    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{suffixes.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
+      wrap_#{fullname}(pfn);
+    }
+EOF
+      }
+    }
+  }.flatten.join(<<EOF)
+    else
+EOF
+#  str << $cuda_commands.collect { |c|
+#    <<EOF
+#    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
+#      wrap_#{c.name}(pfn);
+#    }
+#EOF
+#  }.join(<<EOF)
+#    else
+#EOF
+  str << <<EOF
+  }
+EOF
+
+  register_epilogue method, str
+}
+
+register_proc_callbacks.call("cuGetProcAddress")
+register_proc_callbacks.call("cuGetProcAddress_v2")

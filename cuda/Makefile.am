@@ -17,7 +17,11 @@ CUDA_EXTRA_HDR = \
 	$(srcdir)/include/cuda_device_runtime_api.h \
 	$(srcdir)/include/cuda_runtime_api.h \
 	$(srcdir)/include/vector_types.h \
-	$(srcdir)/include/cudaVDPAU.h
+	$(srcdir)/include/cudaVDPAU.h \
+	$(srcdir)/include/cudaProfiler.h \
+	$(srcdir)/include/cudaTypedefs.h \
+	$(srcdir)/include/cudaVDPAUTypedefs.h \
+	$(srcdir)/include/cudaProfilerTypedefs.h
 CUDA_HDR = \
 	$(srcdir)/include/cuda.h \
 	$(CUDA_EXTRA_HDR)
@@ -32,7 +36,11 @@ MODIFIED_CUDA_EXTRA_HDR = \
 	modified_include/cuda_device_runtime_api.h \
 	modified_include/cuda_runtime_api.h \
 	modified_include/vector_types.h \
-	modified_include/cudaVDPAU.h
+	modified_include/cudaVDPAU.h \
+	modified_include/cudaProfiler.h \
+	modified_include/cudaTypedefs.h \
+	modified_include/cudaVDPAUTypedefs.h \
+	modified_include/cudaProfilerTypedefs.h
 MODIFIED_CUDA_HDR = \
 	modified_include/cuda.h \
 	$(MODIFIED_CUDA_EXTRA_HDR)
@@ -60,6 +68,9 @@ EXTRA_DIST = $(srcdir)/include headers.patch
 CUDA_EXTRACT = \
 	$(srcdir)/extract_base.rb
 
+cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cudaTypedefs.h modified_include/cudaVDPAUTypedefs.h modified_include/cudaProfilerTypedefs.h
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+
 cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
@@ -71,7 +82,8 @@ cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cu
 
 CUDA_EXTRACTED = \
 	cuda_api.yaml \
-	cuda_exports_api.yaml
+	cuda_exports_api.yaml \
+	cuda_api_versions.yaml
 
 CUDART_EXTRACTED = \
 	cudart_api.yaml
@@ -82,6 +94,7 @@ EXTRA_DIST += \
 	extract_base.rb \
 	extract_cuda.rb \
 	extract_cuda_exports.rb \
+	extract_cuda_versions.rb \
 	extract_cudart.rb
 
 cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml
@@ -113,6 +126,7 @@ CUDA_MODEL = \
 	$(srcdir)/../utils/yaml_ast_lttng.rb \
 	$(srcdir)/../utils/meta_parameters.rb \
 	$(srcdir)/../utils/LTTng.rb \
+	$(srcdir)/../utils/command.rb \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
 
