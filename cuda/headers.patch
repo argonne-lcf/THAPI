@@ -1,6 +1,6 @@
-diff -u4 include/cuda.h modified_include/cuda.h
---- include/cuda.h	2020-07-14 13:39:54.180519602 -0500
-+++ modified_include/cuda.h	2020-07-15 17:02:39.193569005 -0500
+diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
+--- include/cuda.h	2023-06-06 10:07:58.570419730 -0500
++++ modified_include/cuda.h	2023-08-02 21:57:02.428626420 -0500
 @@ -52,14 +52,12 @@
  
  
@@ -38,7 +38,7 @@ diff -u4 include/cuda.h modified_include/cuda.h
          CUdeviceptr address;
          union {
              cuuint32_t value;
-@@ -523,13 +521,13 @@
+@@ -519,13 +517,13 @@
          };
          unsigned int flags;
          CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
@@ -54,3 +54,20 @@ diff -u4 include/cuda.h modified_include/cuda.h
          unsigned int flags;
      } memoryBarrier;
      cuuint64_t pad[6];
+diff -u4 -r --new-file include/cuda_vdpau_interop.h modified_include/cuda_vdpau_interop.h
+--- include/cuda_vdpau_interop.h	2023-08-02 21:49:17.225507196 -0500
++++ modified_include/cuda_vdpau_interop.h	2023-08-02 21:57:02.428626420 -0500
+@@ -49,11 +49,11 @@
+ 
+ #if !defined(__CUDA_VDPAU_INTEROP_H__)
+ #define __CUDA_VDPAU_INTEROP_H__
+ 
+-#include "cuda_runtime_api.h"
++//#include "cuda_runtime_api.h"
+ 
+-#include <vdpau/vdpau.h>
++//#include <vdpau/vdpau.h>
+ 
+ #if defined(__cplusplus)
+ extern "C" {
+ #endif /* __cplusplus */

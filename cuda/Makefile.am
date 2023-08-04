@@ -16,6 +16,9 @@ CUDA_EXTRA_HDR = \
 	$(srcdir)/include/device_types.h \
 	$(srcdir)/include/cuda_device_runtime_api.h \
 	$(srcdir)/include/cuda_runtime_api.h \
+	$(srcdir)/include/__cudart.h \
+	$(srcdir)/include/cuda_vdpau_interop.h \
+	$(srcdir)/include/cuda_profiler_api.h \
 	$(srcdir)/include/vector_types.h \
 	$(srcdir)/include/cudaVDPAU.h \
 	$(srcdir)/include/cudaProfiler.h \
@@ -35,6 +38,9 @@ MODIFIED_CUDA_EXTRA_HDR = \
 	modified_include/device_types.h \
 	modified_include/cuda_device_runtime_api.h \
 	modified_include/cuda_runtime_api.h \
+	modified_include/__cudart.h \
+	modified_include/cuda_vdpau_interop.h \
+	modified_include/cuda_profiler_api.h \
 	modified_include/vector_types.h \
 	modified_include/cudaVDPAU.h \
 	modified_include/cudaProfiler.h \
@@ -137,7 +143,8 @@ CUDART_MODEL = \
 	$(srcdir)/../utils/yaml_ast.rb \
 	$(srcdir)/../utils/yaml_ast_lttng.rb \
 	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb
+	$(srcdir)/../utils/LTTng.rb \
+	$(srcdir)/cudart.h.include
 
 cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -215,7 +222,8 @@ EXTRA_DIST += \
 BUILT_SOURCES = \
 	$(CUDA_PROBES_INCL) \
 	$(CUDA_STATIC_PROBES_INCL) \
-	$(CUDART_PROBES_INCL)
+	$(CUDART_PROBES_INCL) \
+	tracer_cudart.map
 
 tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -223,16 +231,21 @@ tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(C
 tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
+tracer_cudart.map: $(srcdir)/gen_cudart_linker_script.rb $(CUDART_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< libcudart.so.12 > $@
+
 EXTRA_DIST += \
 	gen_cuda.rb \
 	tracer_cuda_helpers.include.c \
 	cuda_export_tables.yaml \
 	gen_cudart.rb \
+	gen_cudart_linker_script.rb \
 	tracer_cudart_helpers.include.c
 
 CLEANFILES += \
 	tracer_cuda.c \
-	tracer_cudart.c
+	tracer_cudart.c \
+	tracer_cudart.map
 
 cuprof.sh: $(top_builddir)/xprof/xprof.sh.erb
 	$(ERB) -T 1 languages="cuda" $< > $@
@@ -281,7 +294,7 @@ nodist_libTracerCUDART_la_SOURCES = \
 libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 libTracerCUDART_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
-libTracerCUDART_la_LDFLAGS += -version-number 12:1:55
+libTracerCUDART_la_LDFLAGS += -version-number 12:1:55 -Wl,--version-script,tracer_cudart.map
 libTracerCUDART_la_LIBADD = libcudarttracepoints.la
 
 install-exec-hook:
@@ -311,7 +324,7 @@ BUILT_SOURCES += babeltrace_cuda_callbacks.h
 babeltrace_cuda_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
 
-EXTRA_DIST += cuda.h.include
+EXTRA_DIST += cuda.h.include cudart.h.include
 
 CLEANFILES += \
 	babeltrace_cuda_callbacks.h \
