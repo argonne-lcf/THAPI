@@ -117,12 +117,12 @@ export LTTNG_UST_ALLOW_BLOCKING=1
 export LTTNG_UST_CUDA_VERBOSE=1
 if [ ! -z "$cudart" ]
 then
-  if [ -z "$LTTNG_UST_CUDA_LIBCUDART" ]
+  if [ -z "$LTTNG_UST_CUDART_LIBCUDART" ]
   then
-    LTTNG_UST_CUDA_LIBCUDART=$(whichlib64_head libcudart.so)
-    if [ -n "$LTTNG_UST_CUDA_LIBCUDART" ]
+    LTTNG_UST_CUDART_LIBCUDART=$(whichlib64_head libcudart.so)
+    if [ -n "$LTTNG_UST_CUDART_LIBCUDART" ]
     then
-      export LTTNG_UST_CUDA_LIBCUDART="$LTTNG_UST_CUDA_LIBCUDART"
+      export LTTNG_UST_CUDART_LIBCUDART="$LTTNG_UST_CUDART_LIBCUDART"
       export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
     fi
   else
