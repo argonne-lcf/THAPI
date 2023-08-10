@@ -12,6 +12,13 @@ lttng_ust_ze_sampling:
     - [ ctf_integer, uint32_t, domain, "domain" ]
     - [ ctf_integer, uint64_t, energy, "energy" ]
     - [ ctf_integer, uint64_t, timestamp, "timestamp" ]
+  - name: gpu_frequency
+    args:
+    - [ uint64_t, timestamp ] 
+    - [ uint64_t, frequency ]
+    fields:
+    - [ ctf_integer, uint64_t, timestamp, "timestamp" ]
+    - [ ctf_integer, uint64_t, frequency, "frequency" ]
 lttng_ust_ze_profiling:
   events:
   - name: event_profiling

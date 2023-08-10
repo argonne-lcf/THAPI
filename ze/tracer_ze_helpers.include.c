@@ -763,9 +763,10 @@ static int initialized = 0;
 
 static int selected_driver_id = 0;
 static ze_driver_handle_t selected_drvh;
-
+static zes_freq_handle_t domainList[MAX_N_PDOMS];
 static uint32_t n_devhs;
 static uint32_t npwrdoms;
+static uint32_t domainCount;
 static ze_device_handle_t  devhs_cache[MAX_N_DEVS];
 static zes_pwr_handle_t   mainpwrh_per_dev[MAX_N_DEVS * MAX_N_PDOMS ]; // main power domain associated with each device
 //static zes_pwr_handle_t pwrhs[MAX_N_PDOMS]; 
@@ -782,6 +783,12 @@ uint32_t  zerGetNDoms()
 {
   if(!initialized) return 0;
   return npwrdoms;
+}
+
+uint32_t  zerGetFDoms()
+{
+  if(!initialized) return 0;
+  return domainCount;
 }
 
 
@@ -807,6 +814,23 @@ void  zerReadEnergy(int devid, int pwrid, uint64_t *ts_us, uint64_t *energy_uj)
       
     
   }
+}
+
+
+void  zerReadFrequency( uint32_t domain_id, uint32_t *frequency)
+{
+
+*frequency = 0;
+//zesFrequencyGetProperties(domainList[i], &domainProps);
+       /*     printf("---- [%u] Clock EU Freq Range (MHz): %.2f - %.2f %s\n",
+                   i, domainProps.min, domainProps.max,
+                   domainProps.canControl ? "(changeable)" : "(unchangeable)");*/
+            zes_freq_state_t state = {
+                .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
+                .pNext = NULL};
+            zesFrequencyGetState(domainList[domain_id], &state);/// getting freq of only tile 0
+*frequency = state.actual;
+           // printf("---- [%u] Current GPU  Freq (MHz): %.2f\n",i, state.actual);
 }
 
 // return non-zero if failed to initialize
@@ -918,6 +942,46 @@ int zerInit()
       fprintf(stderr, "Warning: dev%d is not a GPU!\n", i);
     }
   }
+//////////////////////////////////////////////////gpu_frequency
+ // Get the frequency domains
+   domainCount = 0;
+    res = zesDeviceEnumFrequencyDomains(devhs_cache[0], &domainCount, NULL);
+   printf("domainCount=%u\n",domainCount);
+    if (domainCount > 0) {
+        printf("-- Frequency Domains: %u\n", domainCount);
+
+       // zes_freq_handle_t* domainList = malloc(domainCount * sizeof(zes_freq_handle_t));
+        res = zesDeviceEnumFrequencyDomains(devhs_cache[0], &domainCount, domainList);
+        if (res != ZE_RESULT_SUCCESS) {
+            printf("Failed to retrieve frequency domains\n");
+            return -1;
+        }
+
+        for (uint32_t i = 0; i < domainCount; ++i) {
+            zes_freq_properties_t domainProps = {
+                .stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES,
+                .pNext = NULL
+            };
+            zesFrequencyGetProperties(domainList[i], &domainProps);
+
+       /*     printf("---- [%u] Clock EU Freq Range (MHz): %.2f - %.2f %s\n",
+                   i, domainProps.min, domainProps.max,
+                   domainProps.canControl ? "(changeable)" : "(unchangeable)");*/
+
+            zes_freq_state_t state = {
+                .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
+                .pNext = NULL
+            };
+            zesFrequencyGetState(domainList[i], &state);
+            printf("---- [%u] Current GPU  Freq (MHz): %.2f\n",
+                   i, state.actual);
+        }
+
+       // free(domainList);
+    }
+
+
+///////////////////////////////////////////////////////
 
   initialized = 1;
   return 0;
@@ -929,7 +993,7 @@ int zerInit()
 static void thapi_sampling_energy() {
   uint64_t ts_us;
   uint64_t energy_uj;
-
+  uint32_t frequency;
   for (int i=0; i<zerGetNDevs(); i++) {
 	  for (uint32_t di=0;di<zerGetNDoms();di++)
 	  {
@@ -939,10 +1003,19 @@ static void thapi_sampling_energy() {
 		  (uint64_t)energy_uj,ts_us);
     // printf("thapi_sampling_energy i=%d energy_uj=%lu\n", i, energy_uj);
           }
-  }
+ } 
+
+for (uint32_t domain=0; domain < zerGetFDoms(); domain++)
+{
+zerReadFrequency(domain, &frequency);
+//printf("Tile=%u, frequency=%u\n",domain,frequency);
+//do_tracepoint(lttng_ust_ze_sampling,gpu_frequency,ts_us,frequency);
+// zerReadFrequency(0, &frequency);
 }
+//printf("time=%lu\n",ts_us);
+do_tracepoint(lttng_ust_ze_sampling,gpu_frequency,ts_us,frequency);
 
-
+}
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
