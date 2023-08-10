@@ -995,25 +995,24 @@ static void thapi_sampling_energy() {
   uint64_t energy_uj;
   uint32_t frequency;
   for (int i=0; i<zerGetNDevs(); i++) {
-	  for (uint32_t di=0;di<zerGetNDoms();di++)
-	  {
-    zerReadEnergy(i, di, &ts_us, &energy_uj);
-    do_tracepoint(lttng_ust_ze_sampling, gpu_energy,
-		  (ze_device_handle_t)devhs_cache[i],di,
-		  (uint64_t)energy_uj,ts_us);
+    for (uint32_t di=0;di<zerGetNDoms();di++) {
+      zerReadEnergy(i, di, &ts_us, &energy_uj);
+      do_tracepoint(lttng_ust_ze_sampling, gpu_energy,
+                    (ze_device_handle_t)devhs_cache[i],di,
+                    (uint64_t)energy_uj,ts_us);
     // printf("thapi_sampling_energy i=%d energy_uj=%lu\n", i, energy_uj);
-          }
- } 
+    }
+  } 
 
-for (uint32_t domain=0; domain < zerGetFDoms(); domain++)
-{
-zerReadFrequency(domain, &frequency);
-//printf("Tile=%u, frequency=%u\n",domain,frequency);
-//do_tracepoint(lttng_ust_ze_sampling,gpu_frequency,ts_us,frequency);
-// zerReadFrequency(0, &frequency);
-}
+  for (uint32_t domain=0; domain < (zerGetFDoms() >= 1 ? 1 : 0); domain++) {
+    zerReadFrequency(domain, &frequency);
+    //printf("Tile=%u, frequency=%u\n",domain,frequency);
+    //do_tracepoint(lttng_ust_ze_sampling,gpu_frequency,ts_us,frequency);
+    // zerReadFrequency(0, &frequency);
+    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)devhs_cache[0],
+                  domain, ts_us, frequency);
+  }
 //printf("time=%lu\n",ts_us);
-do_tracepoint(lttng_ust_ze_sampling,gpu_frequency,ts_us,frequency);
 
 }
 static void _load_tracer(void) {

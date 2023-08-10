@@ -112,6 +112,31 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
   return parent_uuid;
 }
 
+static int first_freq = 0;
+
+static void add_event_freq(struct timeline_dispatch *dispatch, std::string hostname, uintptr_t hDevice,
+                           uint32_t domain, uint64_t timestamp, uint64_t frequency) {
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10);
+  packet->set_timestamp(timestamp);
+  auto *gpu_counter_event = packet->mutable_gpu_counter_event();
+  if (first_freq) {
+    auto *counter_descriptor = gpu_counter_event->mutable_counter_descriptor();
+    auto *spec = counter_descriptor->add_specs();
+    spec->set_counter_id(domain);
+    spec->set_name("Frequency");
+    spec->set_description("ZE Frequency domain");
+    spec->set_int_peak_value(1600);
+    spec->add_numerator_units(perfetto_pruned::GpuCounterDescriptor::MEGAHERTZ);
+    spec->add_groups(perfetto_pruned::GpuCounterDescriptor::SYSTEM);
+    first_freq = 1;
+  }
+  gpu_counter_event->set_gpu_id((uint32_t)hDevice);
+  auto *counter = gpu_counter_event->add_counters();
+  counter->set_counter_id(domain);
+  counter->set_int_value((int64_t)frequency);
+}
+
 static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, std::string name, uint64_t begin,
                           uint64_t dur) {
@@ -215,41 +240,69 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
       const bt_event_class *event_class = bt_event_borrow_class_const(event);
       const char *class_name = bt_event_class_get_name(event_class);
 
-      auto dur_tuple0 =
-          std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                          (hostname_t) ""), // hostname
-                          std::make_tuple(1, &bt_field_integer_signed_get_value,
-                                          (process_id_t)0), // process
-                          std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                          (thread_id_t)0), // thread
-                          std::make_tuple(3, &bt_field_integer_unsigned_get_value, (uint64_t)0));
+      if (std::string(class_name) == "lttng_ust_ze_sampling:gpu_frequency") {
+        auto dur_tuple0 =
+            std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                            (hostname_t) ""));
+        const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+        const auto & [ hostname ] = thapi_bt2_getter(common_context_field, dur_tuple0);
 
-      const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-      const auto & [ hostname, process_id, thread_id, ts ] =
-          thapi_bt2_getter(common_context_field, dur_tuple0);
+        const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
+        const bt_field *device_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
+        const uintptr_t hDevice = bt_field_integer_unsigned_get_value(device_field);
 
-      const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
+	const bt_field *domain_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+        const uint32_t domain = bt_field_integer_unsigned_get_value(domain_field);
 
-      const bt_field *name_field =
-          bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
-      const std::string name = std::string{bt_field_string_get_value(name_field)};
-
-      const bt_field *dur_field =
-          bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
-      const long dur = bt_field_integer_unsigned_get_value(dur_field);
-
-      if (std::string(class_name) == "lttng:host") {
-        add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur);
-      } else if (std::string(class_name) == "lttng:device") {
-
-        const bt_field *did_field =
+        const bt_field *timestamp_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-        const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+        const uint64_t timestamp = bt_field_integer_unsigned_get_value(timestamp_field);
 
-        const bt_field *sdid_field =
+        const bt_field *frequency_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
-        const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
-        add_event_gpu(dispatch, hostname, process_id, thread_id, did, sdid, name, ts, dur);
+        const uint64_t frequency = bt_field_integer_unsigned_get_value(frequency_field);
+
+        add_event_freq(dispatch, hostname, hDevice, domain, timestamp, frequency);
+      } else {
+
+        auto dur_tuple0 =
+            std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                            (hostname_t) ""), // hostname
+                            std::make_tuple(1, &bt_field_integer_signed_get_value,
+                                            (process_id_t)0), // process
+                            std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                                            (thread_id_t)0), // thread
+                            std::make_tuple(3, &bt_field_integer_unsigned_get_value, (uint64_t)0));
+
+        const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+        const auto & [ hostname, process_id, thread_id, ts ] =
+            thapi_bt2_getter(common_context_field, dur_tuple0);
+
+        const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
+
+        const bt_field *name_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
+        const std::string name = std::string{bt_field_string_get_value(name_field)};
+
+        const bt_field *dur_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+        const long dur = bt_field_integer_unsigned_get_value(dur_field);
+
+        if (std::string(class_name) == "lttng:host") {
+          add_event_cpu(dispatch, hostname, process_id, thread_id, name, ts, dur);
+        } else if (std::string(class_name) == "lttng:device") {
+
+          const bt_field *did_field =
+              bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+          const thapi_device_id did = bt_field_integer_unsigned_get_value(did_field);
+
+          const bt_field *sdid_field =
+              bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+          const thapi_device_id sdid = bt_field_integer_unsigned_get_value(sdid_field);
+          add_event_gpu(dispatch, hostname, process_id, thread_id, did, sdid, name, ts, dur);
+        }
       }
     }
     bt_message_put_ref(message);
