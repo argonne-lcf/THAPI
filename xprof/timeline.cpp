@@ -240,45 +240,35 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
       const bt_event_class *event_class = bt_event_borrow_class_const(event);
       const char *class_name = bt_event_class_get_name(event_class);
 
-      if (std::string(class_name) == "lttng_ust_ze_sampling:gpu_frequency") {
-        auto dur_tuple0 =
-            std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                            (hostname_t) ""));
-        const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-        const auto & [ hostname ] = thapi_bt2_getter(common_context_field, dur_tuple0);
+      auto dur_tuple0 =
+          std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
+                                          (hostname_t) ""), // hostname
+                          std::make_tuple(1, &bt_field_integer_signed_get_value,
+                                          (process_id_t)0), // process
+                          std::make_tuple(2, &bt_field_integer_unsigned_get_value,
+                                          (thread_id_t)0), // thread
+                          std::make_tuple(3, &bt_field_integer_unsigned_get_value, (uint64_t)0));
 
+      const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
+      const auto & [ hostname, process_id, thread_id, ts ] =
+          thapi_bt2_getter(common_context_field, dur_tuple0);
+
+      if (std::string(class_name) == "lttng:frequency") {
         const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
-        const bt_field *device_field =
+        const bt_field *did_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
-        const uintptr_t hDevice = bt_field_integer_unsigned_get_value(device_field);
+        const uintptr_t did = bt_field_integer_unsigned_get_value(did_field);
 
 	const bt_field *domain_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
         const uint32_t domain = bt_field_integer_unsigned_get_value(domain_field);
 
-        const bt_field *timestamp_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-        const uint64_t timestamp = bt_field_integer_unsigned_get_value(timestamp_field);
-
         const bt_field *frequency_field =
-            bt_field_structure_borrow_member_field_by_index_const(payload_field, 3);
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
         const uint64_t frequency = bt_field_integer_unsigned_get_value(frequency_field);
 
-        add_event_freq(dispatch, hostname, hDevice, domain, timestamp, frequency);
+        add_event_freq(dispatch, hostname, did, domain, ts, frequency);
       } else {
-
-        auto dur_tuple0 =
-            std::make_tuple(std::make_tuple(0, &bt_field_string_get_value,
-                                            (hostname_t) ""), // hostname
-                            std::make_tuple(1, &bt_field_integer_signed_get_value,
-                                            (process_id_t)0), // process
-                            std::make_tuple(2, &bt_field_integer_unsigned_get_value,
-                                            (thread_id_t)0), // thread
-                            std::make_tuple(3, &bt_field_integer_unsigned_get_value, (uint64_t)0));
-
-        const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
-        const auto & [ hostname, process_id, thread_id, ts ] =
-            thapi_bt2_getter(common_context_field, dur_tuple0);
 
         const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
 
