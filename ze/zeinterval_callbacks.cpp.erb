@@ -258,7 +258,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      const hostname_t   hostname   = borrow_hostname(bt_evt);
      const process_id_t process_id = 0;
      const thread_id_t  thread_id = 0;
-     create_and_enqueue_frequency_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, domain, timestamp, frequency);
+     int64_t ns_from_origin;
+     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+     create_and_enqueue_frequency_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, domain, ns_from_origin, frequency);
   <% elsif dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
         dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
         dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or

@@ -112,29 +112,35 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
   return parent_uuid;
 }
 
-static int first_freq = 0;
+//static int first_freq = 0;
 
 static void add_event_freq(struct timeline_dispatch *dispatch, std::string hostname, uintptr_t hDevice,
                            uint32_t domain, uint64_t timestamp, uint64_t frequency) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10);
   packet->set_timestamp(timestamp);
-  auto *gpu_counter_event = packet->mutable_gpu_counter_event();
-  if (first_freq) {
-    auto *counter_descriptor = gpu_counter_event->mutable_counter_descriptor();
-    auto *spec = counter_descriptor->add_specs();
-    spec->set_counter_id(domain);
-    spec->set_name("Frequency");
-    spec->set_description("ZE Frequency domain");
-    spec->set_int_peak_value(1600);
-    spec->add_numerator_units(perfetto_pruned::GpuCounterDescriptor::MEGAHERTZ);
-    spec->add_groups(perfetto_pruned::GpuCounterDescriptor::SYSTEM);
-    first_freq = 1;
-  }
-  gpu_counter_event->set_gpu_id((uint32_t)hDevice);
-  auto *counter = gpu_counter_event->add_counters();
-  counter->set_counter_id(domain);
-  counter->set_int_value((int64_t)frequency);
+  auto *ftrace_event = packet->mutable_ftrace_events();
+  auto *event = ftrace_event->add_event();
+  event->set_timestamp(timestamp);
+  auto *gpu_frequency = event->mutable_gpu_frequency();
+  gpu_frequency->set_gpu_id((uint32_t)(hDevice + domain));
+  gpu_frequency->set_state(frequency);
+//  auto *gpu_counter_event = packet->mutable_gpu_counter_event();
+//  if (first_freq) {
+//    auto *counter_descriptor = gpu_counter_event->mutable_counter_descriptor();
+//    auto *spec = counter_descriptor->add_specs();
+//    spec->set_counter_id(domain);
+//    spec->set_name("Frequency");
+//    spec->set_description("ZE Frequency domain");
+//    spec->set_int_peak_value(1600);
+//    spec->add_numerator_units(perfetto_pruned::GpuCounterDescriptor::MEGAHERTZ);
+//    spec->add_groups(perfetto_pruned::GpuCounterDescriptor::SYSTEM);
+//    first_freq = 1;
+//  }
+//  gpu_counter_event->set_gpu_id((uint32_t)hDevice);
+//  auto *counter = gpu_counter_event->add_counters();
+//  counter->set_counter_id(domain);
+//  counter->set_int_value((int64_t)frequency);
 }
 
 static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
