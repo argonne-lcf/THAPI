@@ -72,7 +72,7 @@ module MyRefinement
       obj = super
       obj.plugins_path = []
       obj.cli_v = []
-      obj.once_source_ctf_fs = false
+      obj.once_source_ctf_fs = true
       obj
     end
 
@@ -93,11 +93,11 @@ module MyRefinement
     end
 
     def connect_ports(upstream_port, downstream_port)
-      # Work arround for source.ctf.fs port
+      # Work around for source.ctf.fs port
       if upstream_port.component.name == "source_0"
-        if @once_source_ctf_fs.nil?
+        if @once_source_ctf_fs
           @cli_v << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
-          @nce_source_ctf_fs = false
+          @once_source_ctf_fs = false
         end
       else
         @cli_v << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}"
