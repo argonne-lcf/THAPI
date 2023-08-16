@@ -91,7 +91,7 @@ module MyRefinement
       @cli_v << "--params #{str_params.dump}" unless str_params.empty?
       super
     end
-    
+
     def connect_ports(upstream_port, downstream_port)
       # Work around for source.ctf.fs port
       if upstream_port.component.name == "source_0"
