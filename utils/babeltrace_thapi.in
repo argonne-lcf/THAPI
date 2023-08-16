@@ -5,6 +5,120 @@ require 'optparse'
 require 'babeltrace2'
 require 'find'
 
+module MyRefinement
+
+  refine(BT2::BTComponentClass) do
+      attr_accessor :plugin
+  end
+
+  refine(BT2::BTPlugin.singleton_class) do
+
+    def find_all_from_dir(path, recurse: false, fail_on_load_error: true)
+        # I guess print a warning if recurse?
+        ps = super
+        ps.each { |p|
+          p.path = path
+        }
+        ps
+    end
+
+  end
+
+  refine(BT2::BTPlugin) do
+
+    attr_accessor :path
+
+    def get_source_component_class_by_name(name)
+      c = super
+      c.plugin = self if c
+      c
+    end
+
+    def get_filter_component_class_by_name(name)
+      c = super
+      c.plugin = self if c
+      c
+    end
+
+    def get_sink_component_class_by_name(name)
+      c = super
+      c.plugin = self if c
+      c
+    end
+
+    def source_component_classes
+      cs = super
+      cs.each { |c| c.plugin = self }
+      cs
+    end
+
+    def filter_component_classes
+      cs = super
+      cs.each { |c| c.plugin = self }
+      cs
+    end
+
+    def sink_component_classes
+      cs = super
+      cs.each { |c| c.plugin = self }
+      cs
+    end
+
+  end
+  refine(BT2::BTGraph.singleton_class) do
+
+    def new(handle = nil, retain: true, auto_release: true,
+                   mip_version: 0)
+      obj = super
+      obj.plugins_path = []
+      obj.cli_v = []
+      obj.once_source_ctf_fs = false
+      obj
+    end
+
+  end
+
+  refine(BT2::BTGraph) do
+    attr_accessor :plugins_path, :cli_v, :once_source_ctf_fs
+
+    def add_component(component_class, name, params: {},
+                      logging_level: BT2::BTLogging.default_level,
+                      initialize_method_data: nil)
+
+      @plugins_path << component_class.plugin.path
+      @cli_v << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
+      str_params = params.filter_map { |k,v| "#{k}=#{v}" unless v.class == String && v.empty? }.join(",")
+      @cli_v << "--params #{str_params.dump}" unless str_params.empty?
+      super
+    end
+
+    def connect_ports(upstream_port, downstream_port)
+      # Work arround for source.ctf.fs port
+      if upstream_port.component.name == "source_0"
+        if @once_source_ctf_fs.nil?
+          @cli_v << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
+          @nce_source_ctf_fs = false
+        end
+      else
+        @cli_v << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}"
+      end
+      super
+    end
+
+    def cli
+      l = ["babeltrace2"]
+      ps_u = @plugins_path.uniq.compact.sort
+      l << "--plugin-path=#{ps_u.join(",")}" unless ps_u.empty?
+      l << "run"
+      l += @cli_v
+      l.join(" \\\n")
+    end
+
+  end
+end
+
+using MyRefinement
+
 # Don't complain about broken pipe
 Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
@@ -31,6 +145,10 @@ $options_tally = {
 def common_options(opts)
   opts.on('-b', '--backend BACKEND', Array) do |v|
     $options[:backends] = v
+  end
+
+  opts.on('--debug') do |v|
+    $options[:debug] = true
   end
 
   opts.on('-v', '--version', 'Print the version string') do
@@ -132,7 +250,7 @@ if !$options[:live]
     end
 
   comp_sources = trace_locations.each_with_index.map do |trace_location, i|
-    graph.add_component(ctf_fs, "source_live_#{i}", params: { 'inputs' => [trace_location] })
+    graph.add_component(ctf_fs, "source_#{i}", params: { 'inputs' => [trace_location] })
   end
 else
   trace_locations = ARGV
@@ -187,15 +305,15 @@ when 'trace'
   }
   comps << graph.add_simple_sink('babeltrace_thapi', consume)
 when 'tally'
-  $options[:backends].each_with_index do |name, i|
-    comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "interval_#{i}")
+  $options[:backends].each do |name|
+    comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "#{name}interval")
   end
   comps << graph.add_component(components_classes.fetch('filter.btx_aggreg.aggreg'), 'aggreg')
   comps << graph.add_component(components_classes.fetch('sink.btx_tally.tally'), 'tally',
                                params: $options_tally.transform_values { |_, v| v })
 when 'timeline'
-  $options[:backends].each_with_index do |name, i|
-    comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "interval_#{i}")
+  $options[:backends].each do |name|
+    comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "#{name}interval")
   end
   comps << graph.add_component(components_classes.fetch('sink.btx_timeline.timeline'), 'timeline')
 end
@@ -206,5 +324,7 @@ end
   ip = _in.input_port(0)
   graph.connect_ports(op, ip)
 end
+
+puts graph.cli if $options[:debug]
 
 graph.run
