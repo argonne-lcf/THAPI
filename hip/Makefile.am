@@ -7,7 +7,8 @@ else
 endif
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
-HIP_EXTRA_HDR = \
+HIP_HDR = \
+	$(srcdir)/include/hip/hip_runtime_api.h \
 	$(srcdir)/include/hip/hip_cooperative_groups.h \
 	$(srcdir)/include/hip/device_functions.h \
 	$(srcdir)/include/hip/driver_types.h \
@@ -77,11 +78,8 @@ HIP_EXTRA_HDR = \
 	$(srcdir)/include/hip/channel_descriptor.h \
 	$(srcdir)/include/hip/hip_version.h
 
-HIP_HDR = \
-	$(srcdir)/include/hip/hip_runtime_api.h \
-	$(HIP_EXTRA_HDR)
-
-MODIFIED_HIP_EXTRA_HDR = \
+MODIFIED_HIP_HDR = \
+	modified_include/hip/hip_runtime_api.h \
 	modified_include/hip/hip_cooperative_groups.h \
 	modified_include/hip/device_functions.h \
 	modified_include/hip/driver_types.h \
@@ -151,23 +149,11 @@ MODIFIED_HIP_EXTRA_HDR = \
 	modified_include/hip/channel_descriptor.h \
 	modified_include/hip/hip_version.h
 
-MODIFIED_HIP_HDR = \
-	modified_include/hip/hip_runtime_api.h \
-	$(MODIFIED_HIP_EXTRA_HDR)
-
-modified_include/hip/hip_runtime_api.h: $(HIP_HDR) $(srcdir)/headers.patch
+$(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
-
-$(MODIFIED_HIP_EXTRA_HDR): modified_include/hip/hip_runtime_api.h
-	@if test -f $@; then \
-	  touch $@; \
-	else \
-	  $(RM) modified_include/hip/hip_runtime_api.h; \
-	  $(MAKE) $(AM_MAKEFLAGS) modified_include/hip/hip_runtime_api.h; \
-	fi
 
 clean-local:
 	$(RM) -r modified_include
