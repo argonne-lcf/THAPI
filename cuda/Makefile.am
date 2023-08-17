@@ -7,7 +7,8 @@ else
 endif
 LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
-CUDA_EXTRA_HDR = \
+CUDA_HDR = \
+	$(srcdir)/include/cuda.h \
 	$(srcdir)/include/builtin_types.h \
 	$(srcdir)/include/driver_types.h \
 	$(srcdir)/include/texture_types.h \
@@ -25,11 +26,9 @@ CUDA_EXTRA_HDR = \
 	$(srcdir)/include/cudaTypedefs.h \
 	$(srcdir)/include/cudaVDPAUTypedefs.h \
 	$(srcdir)/include/cudaProfilerTypedefs.h
-CUDA_HDR = \
-	$(srcdir)/include/cuda.h \
-	$(CUDA_EXTRA_HDR)
 
-MODIFIED_CUDA_EXTRA_HDR = \
+MODIFIED_CUDA_HDR = \
+	modified_include/cuda.h \
 	modified_include/builtin_types.h \
 	modified_include/driver_types.h \
 	modified_include/texture_types.h \
@@ -47,23 +46,12 @@ MODIFIED_CUDA_EXTRA_HDR = \
 	modified_include/cudaTypedefs.h \
 	modified_include/cudaVDPAUTypedefs.h \
 	modified_include/cudaProfilerTypedefs.h
-MODIFIED_CUDA_HDR = \
-	modified_include/cuda.h \
-	$(MODIFIED_CUDA_EXTRA_HDR)
 
-modified_include/cuda.h: $(CUDA_HDR) $(srcdir)/headers.patch
+$(MODIFIED_CUDA_HDR) &: $(CUDA_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
-
-$(MODIFIED_CUDA_EXTRA_HDR): modified_include/cuda.h
-	@if test -f $@; then \
-	  touch $@; \
-	else \
-	  $(RM) modified_include/cuda.h; \
-	  $(MAKE) $(AM_MAKEFLAGS) modified_include/cuda.h; \
-	fi
 
 clean-local:
 	$(RM) -r modified_include

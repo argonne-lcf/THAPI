@@ -10,7 +10,8 @@ LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign
 ZE_NAMESPACES = ze zet zes zel
 ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
-ZE_EXTRA_HDR = \
+ZE_HDR = \
+	$(srcdir)/include/ze_api.h \
 	$(srcdir)/include/ze_ddi.h \
 	$(srcdir)/include/zes_api.h \
 	$(srcdir)/include/zes_ddi.h \
@@ -22,11 +23,8 @@ ZE_EXTRA_HDR = \
 	$(srcdir)/include/layers/zel_tracing_register_cb.h \
 	$(srcdir)/include/loader/ze_loader.h
 
-ZE_HDR = \
-	$(srcdir)/include/ze_api.h \
-	$(ZE_EXTRA_HDR)
-
-MODIFIED_ZE_EXTRA_HDR = \
+MODIFIED_ZE_HDR = \
+	modified_include/ze_api.h \
 	modified_include/ze_ddi.h \
 	modified_include/zes_api.h \
 	modified_include/zes_ddi.h \
@@ -38,23 +36,11 @@ MODIFIED_ZE_EXTRA_HDR = \
 	modified_include/layers/zel_tracing_register_cb.h \
 	modified_include/loader/ze_loader.h
 
-MODIFIED_ZE_HDR = \
-	modified_include/ze_api.h \
-	$(MODIFIED_ZE_EXTRA_HDR)
-
-modified_include/ze_api.h: $(ZE_HDR) $(srcdir)/headers.patch
+$(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
 	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
-
-$(MODIFIED_ZE_EXTRA_HDR): modified_include/ze_api.h
-	@if test -f $@; then \
-	  touch $@; \
-	else \
-	  $(RM) modified_include/ze_api.h; \
-	  $(MAKE) $(AM_MAKEFLAGS) modified_include/ze_api.h; \
-	fi
 
 clean-local:
 	$(RM) -r modified_include
