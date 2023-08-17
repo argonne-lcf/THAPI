@@ -33,7 +33,7 @@ AC_DEFUN([AX_RUBY_EXTENSION],[
     fi
     RUBY_NAME=`basename $RUBY`
     AC_MSG_CHECKING($RUBY_NAME extension: $1)
-    $RUBY -e "require '$1'" 2>/dev/null
+    $RUBY -e "gem *'$1'.split(' ', 2)" 2>/dev/null
     if test $? -eq 0;
     then
         AC_MSG_RESULT(yes)
