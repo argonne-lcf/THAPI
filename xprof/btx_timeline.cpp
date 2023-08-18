@@ -8,6 +8,7 @@
 #include <stack>
 #include <unordered_map>
 #include <utility> // pair
+#include <optional>
 
 #include "perfetto_prunned.pb.h"
 
@@ -53,7 +54,8 @@ static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, u
 
 static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::string hostname,
                                        uint64_t process_id, uint64_t thread_id,
-                                       thapi_device_id did = 0, thapi_device_id sdid = 0) {
+                                       std::optional<thapi_device_id> did = std::nullopt,
+                                       std::optional<thapi_device_id> sdid = std::nullopt) {
 
   perfetto_uuid_t hp_uuid = 0;
   {
@@ -66,7 +68,13 @@ static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::strin
 
     // In the case we where not able to insert, we use the iterator to get the
     // value,
-    auto r = dispatch->hp2uuid.insert({{hostname, process_id, did, sdid}, hp_uuid});
+
+    // /UGLY\ We use un-conditonal use the sdid, and sdid as key,
+    // so we need to provide default value. Cannot be `0` as `0` is the default
+    // uuid for cuda
+    auto r = dispatch->hp2uuid.insert({{hostname, process_id,
+                                        did.value_or(UINTPTR_MAX),
+                                        sdid.value_or(UINTPTR_MAX) }, hp_uuid});
     auto &potential_uuid = r.first->second;
     if (!r.second) {
       hp_uuid = potential_uuid;
@@ -87,10 +95,10 @@ static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::strin
         process->set_pid(hp_uuid);
         std::ostringstream oss;
         oss << hostname << " | Process " << process_id;
-        if (did != 0) {
-          oss << " | Device " << did;
-          if (sdid != 0)
-            oss << " | SubDevice " << sdid;
+        if (did) {
+          oss << " | Device " << *did;
+          if (sdid)
+            oss << " | SubDevice " << *sdid;
         }
         oss << " | uuid ";
         process->set_process_name(oss.str());
@@ -121,7 +129,7 @@ static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::strin
         // This is the workarround for the bug:
         // https://github.com/google/perfetto/issues/321
         //   We trick perfetto to this they are processes
-        if (did == 0) {
+        if (did) {
           auto *thread = track_descriptor->mutable_thread();
           thread->set_pid(hp_uuid);
           thread->set_tid(thread_id);
