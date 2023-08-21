@@ -180,8 +180,9 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
   // Find a events who finished *before* our current begin.
   auto it = lasts.upper_bound(begin);
   if (it != lasts.end()) {
+    auto _uuid = it->second;
     lasts.erase(it);
-    return lasts[end] = it->second;
+    return lasts[end] = _uuid;
   }
   // If not found, create a new tracks
   auto new_uuid = gen_perfetto_uuid();
