@@ -15,18 +15,13 @@
 using timestamp_t = uint64_t;
 using perfetto_uuid_t = uint64_t;
 
-/* Sink component's private data */
+// Based on https://perfetto.dev/docs/reference/synthetic-track-event
+
 struct timeline_dispatch_s {
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
   std::unordered_map<perfetto_uuid_t, perfetto_uuid_t> thread2uuid;
-
   std::unordered_map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
-
   std::unordered_map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> track2lasts;
-
-  // std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
-  // std::map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> parents2tracks;
-
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
