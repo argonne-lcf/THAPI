@@ -13,7 +13,7 @@
 #include "perfetto_prunned.pb.h"
 
 #define TRUSTED_PACKED_SEQUENCE_ID 10
- 
+
 using timestamp_t = uint64_t;
 using perfetto_uuid_t = uint64_t;
 
@@ -21,9 +21,11 @@ using perfetto_uuid_t = uint64_t;
 
 struct timeline_dispatch_s {
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
-  std::unordered_map<perfetto_uuid_t, perfetto_uuid_t> thread2uuid;
+  std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> thread2uuid;
   std::unordered_map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
-  std::unordered_map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> track2lasts;
+  std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>,
+                     std::map<timestamp_t, perfetto_uuid_t>>
+      track2lasts;
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
@@ -108,7 +110,7 @@ static perfetto_uuid_t get_track_uuid_perfecly_nested(timeline_dispatch_t *dispa
   // Check if this uuid is already used
   //    variable initialized to avoid false positive in `-Werror=maybe-uninitialized`
   perfetto_uuid_t track_uuid = 0;
-  auto r = dispatch->thread2uuid.insert({hp_uuid, track_uuid});
+  auto r = dispatch->thread2uuid.insert({{hp_uuid, thread_id}, track_uuid});
   auto &potential_uuid = r.first->second;
   // Process UUID already in the mao
   if (!r.second)
@@ -160,7 +162,7 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
                                             uint64_t begin, uint64_t end) {
 
   auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid);
-  auto &lasts = dispatch->track2lasts[process_uuid];
+  auto &lasts = dispatch->track2lasts[{process_uuid, thread_id}];
 
   perfetto_uuid_t uuid;
   // Pre-historical event
