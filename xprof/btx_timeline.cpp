@@ -79,9 +79,9 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(hp_uuid);
 
-    // In the case of a non perfectly nested event 
-    // the track need a name 
-    // In the case of a perfectly nested event, the process name will be used  
+    // In the case of a non perfectly nested event
+    // the track need a name
+    // In the case of a perfectly nested event, the process name will be used
     if (stream) {
       std::ostringstream oss;
       oss << "Thread " << *stream;
@@ -173,29 +173,30 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
 
   auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid, thread_id);
   auto &lasts = dispatch->track2lasts[process_uuid];
+
   // Using the "main-track", not necessary but nicer
-  if (lasts.empty()) {
+  if (lasts.empty())
     return lasts[end] = process_uuid;
+
+  // Pre-historical event
+  if (begin < lasts.begin()->first) {
+    auto new_uuid = gen_perfetto_uuid();
+    {
+      auto *packet = dispatch->trace.add_packet();
+      auto *track_descriptor = packet->mutable_track_descriptor();
+      track_descriptor->set_uuid(new_uuid);
+      track_descriptor->set_parent_uuid(process_uuid);
+      std::ostringstream oss;
+      track_descriptor->set_name(oss.str());
+    }
+    return lasts[end] = new_uuid;
   }
-  // Find a events who finished *before* our current begin.
-  auto it = lasts.upper_bound(begin);
-  if (it != lasts.end()) {
-    auto _uuid = it->second;
-    lasts.erase(it);
-    return lasts[end] = _uuid;
-  }
-  // If not found, create a new tracks
-  auto new_uuid = gen_perfetto_uuid();
-  {
-    auto *packet = dispatch->trace.add_packet();
-    auto *track_descriptor = packet->mutable_track_descriptor();
-    track_descriptor->set_uuid(new_uuid);
-    track_descriptor->set_parent_uuid(process_uuid);
-    std::ostringstream oss;
-    oss << "Thread " << thread_id;
-    track_descriptor->set_name(oss.str());
-  }
-  return lasts[end] = new_uuid;
+
+  // Find the uuid who finished just before this one
+  auto it = std::prev(lasts.upper_bound(begin));
+  auto _uuid = it->second;
+  lasts.erase(it);
+  return lasts[end] = _uuid;
 }
 
 static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
@@ -216,6 +217,10 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+
+  for (auto it : dispatch->track2lasts) {
+    std::cout << "End " << it.second.size() << std::endl;
+  }
 
   for (auto &[uuid, s] : dispatch->uuid2stack) {
     while (!s.empty()) {
