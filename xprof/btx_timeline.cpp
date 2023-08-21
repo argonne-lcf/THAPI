@@ -119,17 +119,14 @@ static perfetto_uuid_t get_track_uuid_perfecly_nested(timeline_dispatch_t *dispa
   // Add the thread packet to the trace
   {
     auto *packet = dispatch->trace.add_packet();
-
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(track_uuid);
     track_descriptor->set_parent_uuid(hp_uuid);
-
     auto *thread = track_descriptor->mutable_thread();
-
     // Our `pid` is the same as the hp_uuid, because of hostname.
     thread->set_pid(hp_uuid);
     thread->set_tid(thread_id);
-
+    // Add Thread name
     std::ostringstream oss;
     oss << "Thread ";
     thread->set_thread_name(oss.str());
@@ -163,26 +160,26 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
   auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid);
   auto &lasts = dispatch->track2lasts[process_uuid];
 
+  perfetto_uuid_t uuid;
   // Pre-historical event
   if (lasts.empty() || begin < lasts.begin()->first) {
-    auto new_uuid = gen_perfetto_uuid();
+    uuid = gen_perfetto_uuid();
     {
       auto *packet = dispatch->trace.add_packet();
       auto *track_descriptor = packet->mutable_track_descriptor();
-      track_descriptor->set_uuid(new_uuid);
+      track_descriptor->set_uuid(uuid);
       track_descriptor->set_parent_uuid(process_uuid);
       std::ostringstream oss;
       oss << "Thread " << thread_id;
       track_descriptor->set_name(oss.str());
     }
-    return lasts[end] = new_uuid;
+  } else {
+    // Find the uuid who finished just before this one
+    auto it = std::prev(lasts.upper_bound(begin));
+    uuid = it->second;
+    lasts.erase(it);
   }
-
-  // Find the uuid who finished just before this one
-  auto it = std::prev(lasts.upper_bound(begin));
-  auto _uuid = it->second;
-  lasts.erase(it);
-  return lasts[end] = _uuid;
+  return lasts[end] = uuid;
 }
 
 static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
