@@ -55,8 +55,7 @@ static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, u
 static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::string hostname,
                                         uint64_t process_id,
                                         std::optional<thapi_device_id> did = std::nullopt,
-                                        std::optional<thapi_device_id> sdid = std::nullopt,
-                                        std::optional<uint64_t> stream = std::nullopt) {
+                                        std::optional<thapi_device_id> sdid = std::nullopt) {
 
   // Check if this uuid is already used
   perfetto_uuid_t hp_uuid;
@@ -78,16 +77,6 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
 
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(hp_uuid);
-
-    // In the case of a non perfectly nested event
-    // the track need a name
-    // In the case of a perfectly nested event, the process name will be used
-    if (stream) {
-      std::ostringstream oss;
-      oss << "Thread " << *stream;
-      track_descriptor->set_name(oss.str());
-    }
-
     auto *process = track_descriptor->mutable_process();
 
     // Use the same `pid` as uuid, because of hostname.
@@ -171,15 +160,11 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
                                             thapi_device_id sdid, uint64_t thread_id,
                                             uint64_t begin, uint64_t end) {
 
-  auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid, thread_id);
+  auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid);
   auto &lasts = dispatch->track2lasts[process_uuid];
 
-  // Using the "main-track", not necessary but nicer
-  if (lasts.empty())
-    return lasts[end] = process_uuid;
-
   // Pre-historical event
-  if (begin < lasts.begin()->first) {
+  if (lasts.empty() || begin < lasts.begin()->first) {
     auto new_uuid = gen_perfetto_uuid();
     {
       auto *packet = dispatch->trace.add_packet();
@@ -187,6 +172,7 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
       track_descriptor->set_uuid(new_uuid);
       track_descriptor->set_parent_uuid(process_uuid);
       std::ostringstream oss;
+      oss << "Thread " << thread_id;
       track_descriptor->set_name(oss.str());
     }
     return lasts[end] = new_uuid;
