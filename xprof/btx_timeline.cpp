@@ -84,7 +84,9 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(hp_uuid);
 
-    // In the case of non nested you need a name
+    // In the case of non perfectly nested event 
+    // the track need a name 
+    // In the case of perfectly nested event, the process name will be used  
     if (stream) {
       std::ostringstream oss;
       oss << "Thread " << *stream;
