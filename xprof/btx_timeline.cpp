@@ -84,9 +84,9 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(hp_uuid);
 
-    // In the case of non perfectly nested event 
+    // In the case of a non perfectly nested event 
     // the track need a name 
-    // In the case of perfectly nested event, the process name will be used  
+    // In the case of a perfectly nested event, the process name will be used  
     if (stream) {
       std::ostringstream oss;
       oss << "Thread " << *stream;
@@ -120,7 +120,7 @@ static perfetto_uuid_t get_track_uuid_perfecly_nested(timeline_dispatch_t *dispa
   auto hp_uuid = get_process_uuid(dispatch, hostname, process_id);
 
   // Check if this uuid is already used
-  //    variable initialzed to avoid false positif in `-Werror=maybe-uninitialized`
+  //    variable initialized to avoid false positive in `-Werror=maybe-uninitialized`
   perfetto_uuid_t track_uuid = 0;
   auto r = dispatch->thread2uuid.insert({hp_uuid, track_uuid});
   auto &potential_uuid = r.first->second;
@@ -160,7 +160,7 @@ static void add_event_perfectly_nested(timeline_dispatch_t *dispatch, std::strin
   auto track_uuid = get_track_uuid_perfecly_nested(dispatch, hostname, process_id, thread_id);
 
   const uint64_t end = begin + dur;
-  // Handling perfecly nested event
+  // Handling perfectly nested event
   add_event_begin(dispatch, track_uuid, begin, name);
   std::stack<uint64_t> &s = dispatch->uuid2stack[track_uuid];
   while ((!s.empty()) && (s.top() <= begin)) {
@@ -178,7 +178,7 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
 
   auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid, thread_id);
   auto &lasts = dispatch->track2lasts[process_uuid];
-  // Using the "main-track", not neccessary but nicer
+  // Using the "main-track", not necessary but nicer
   if (lasts.empty()) {
     return lasts[end] = process_uuid;
   }
