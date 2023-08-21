@@ -217,11 +217,6 @@ void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
-
-  for (auto it : dispatch->track2lasts) {
-    std::cout << "End " << it.second.size() << std::endl;
-  }
-
   for (auto &[uuid, s] : dispatch->uuid2stack) {
     while (!s.empty()) {
       add_event_end(dispatch, uuid, s.top());
