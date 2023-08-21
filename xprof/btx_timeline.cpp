@@ -5,10 +5,10 @@
 #include <iomanip>  // set precision
 #include <iostream> // stdcout
 #include <map>
+#include <optional>
 #include <stack>
 #include <unordered_map>
 #include <utility> // pair
-#include <optional>
 
 #include "perfetto_prunned.pb.h"
 
@@ -18,9 +18,14 @@ using perfetto_uuid_t = uint64_t;
 /* Sink component's private data */
 struct timeline_dispatch_s {
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
-  std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
-  std::map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> parents2tracks;
-  std::map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
+  std::unordered_map<perfetto_uuid_t, perfetto_uuid_t> thread2uuid;
+
+  std::unordered_map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
+
+  std::unordered_map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> track2lasts;
+
+  // std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> hpt2uuid;
+  // std::map<perfetto_uuid_t, std::map<timestamp_t, perfetto_uuid_t>> parents2tracks;
 
   perfetto_pruned::Trace trace;
 };
@@ -52,164 +57,163 @@ static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, u
   track_event->set_track_uuid(uuid);
 }
 
-static perfetto_uuid_t get_parent_uuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                       uint64_t process_id, uint64_t thread_id,
-                                       std::optional<thapi_device_id> did = std::nullopt,
-                                       std::optional<thapi_device_id> sdid = std::nullopt) {
+static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::string hostname,
+                                        uint64_t process_id,
+                                        std::optional<thapi_device_id> did = std::nullopt,
+                                        std::optional<thapi_device_id> sdid = std::nullopt,
+                                        std::optional<uint64_t> stream = std::nullopt) {
 
-  perfetto_uuid_t hp_uuid = 0;
+  // Check if this uuid is already used
+  perfetto_uuid_t hp_uuid;
+  auto r = dispatch->hp2uuid.insert(
+      {{hostname, process_id, did.value_or(UINTPTR_MAX), sdid.value_or(UINTPTR_MAX)}, hp_uuid});
+  auto &potential_uuid = r.first->second;
+  // Process UUID already in the MAP
+  if (!r.second)
+    return potential_uuid;
+
+  // Generating a new one
+  hp_uuid = gen_perfetto_uuid();
+  // Adding it to the map
+  potential_uuid = hp_uuid;
+
+  // Add the process packet to the trace
   {
-    // This is so easy...
-    // Because element keys in a map are unique,
-    // the insertion operation checks whether each inserted element has a key
-    // equivalent to the one of an element already in the container, and if so,
-    // the element is not inserted, returning an iterator to this existing
-    // element (if the function returns a value).
+    auto *packet = dispatch->trace.add_packet();
 
-    // In the case we where not able to insert, we use the iterator to get the
-    // value,
+    auto *track_descriptor = packet->mutable_track_descriptor();
+    track_descriptor->set_uuid(hp_uuid);
 
-    // /UGLY\ We use un-conditonal use the sdid, and sdid as key,
-    // so we need to provide default value. Cannot be `0` as `0` is the default
-    // uuid for cuda
-    auto r = dispatch->hp2uuid.insert({{hostname, process_id,
-                                        did.value_or(UINTPTR_MAX),
-                                        sdid.value_or(UINTPTR_MAX) }, hp_uuid});
-    auto &potential_uuid = r.first->second;
-    if (!r.second) {
-      hp_uuid = potential_uuid;
-      // In the case we where able to insert our dummy value,
-      // We generate the a new uuid, and mutate the value in the map
-    } else {
-      hp_uuid = gen_perfetto_uuid();
-      potential_uuid = hp_uuid;
-
-      {
-        auto *packet = dispatch->trace.add_packet();
-        packet->set_trusted_packet_sequence_id(10);
-        packet->set_timestamp(0);
-
-        auto *track_descriptor = packet->mutable_track_descriptor();
-        track_descriptor->set_uuid(hp_uuid);
-        auto *process = track_descriptor->mutable_process();
-        process->set_pid(hp_uuid);
-        std::ostringstream oss;
-        oss << hostname << " | Process " << process_id;
-        if (did) {
-          oss << " | Device " << *did;
-          if (sdid)
-            oss << " | SubDevice " << *sdid;
-        }
-        oss << " | uuid ";
-        process->set_process_name(oss.str());
-      }
+    // In the case of non nested you need a name
+    if (stream) {
+      std::ostringstream oss;
+      oss << "Thread " << *stream;
+      track_descriptor->set_name(oss.str());
     }
-  }
-  // Due to Perfetto https://github.com/google/perfetto/issues/321,
-  // each GPU thread wil be mapped to a "virtual" process
-  // We will add the thread_id to the process name
-  perfetto_uuid_t parent_uuid = 0;
-  {
-    // Same strategy used previsouly to do only one table lookup
-    auto r = dispatch->hpt2uuid.insert({{hp_uuid, thread_id}, parent_uuid});
-    auto &potential_uuid = r.first->second;
-    if (!r.second) {
-      parent_uuid = potential_uuid;
-    } else {
-      parent_uuid = gen_perfetto_uuid();
-      potential_uuid = parent_uuid;
-      {
-        auto *packet = dispatch->trace.add_packet();
-        packet->set_trusted_packet_sequence_id(10);
-        packet->set_timestamp(0);
 
-        auto *track_descriptor = packet->mutable_track_descriptor();
-        track_descriptor->set_uuid(parent_uuid);
-        track_descriptor->set_parent_uuid(hp_uuid);
-        // This is the workarround for the bug:
-        // https://github.com/google/perfetto/issues/321
-        //   We trick perfetto to this they are processes
-        if (did) {
-          auto *thread = track_descriptor->mutable_thread();
-          thread->set_pid(hp_uuid);
-          thread->set_tid(thread_id);
-        }
-      }
+    auto *process = track_descriptor->mutable_process();
+
+    // Use the same `pid` as uuid, because of hostname.
+    process->set_pid(hp_uuid);
+    std::ostringstream oss;
+    oss << "Hostname " << hostname << " | Process " << process_id;
+    if (did) {
+      oss << " | Device " << *did;
+      if (sdid)
+        oss << " | SubDevice " << *sdid;
     }
+    oss << " | uuid ";
+    process->set_process_name(oss.str());
   }
-  return parent_uuid;
+  return hp_uuid;
 }
 
-static void add_event_cpu(timeline_dispatch_t *dispatch, std::string hostname, uint64_t process_id,
-                          uint64_t thread_id, std::string name, uint64_t begin, uint64_t dur) {
-  // Assume perfecly nessted
-  const uint64_t end = begin + dur;
+// Perfectly Nested
 
-  perfetto_uuid_t parent_uuid = get_parent_uuid(dispatch, hostname, process_id, thread_id);
+static perfetto_uuid_t get_track_uuid_perfecly_nested(timeline_dispatch_t *dispatch,
+                                                      std::string hostname, uint64_t process_id,
+                                                      uint64_t thread_id) {
+
+  // Get process UUID
+  auto hp_uuid = get_process_uuid(dispatch, hostname, process_id);
+
+  // Check if this uuid is already used
+  //    variable initialzed to avoid false positif in `-Werror=maybe-uninitialized`
+  perfetto_uuid_t track_uuid = 0;
+  auto r = dispatch->thread2uuid.insert({hp_uuid, track_uuid});
+  auto &potential_uuid = r.first->second;
+  // Process UUID already in the mao
+  if (!r.second)
+    return potential_uuid;
+
+  // Generating a new one
+  track_uuid = gen_perfetto_uuid();
+  // Adding it to the map
+  potential_uuid = track_uuid;
+  // Add the thread packet to the trace
+  {
+    auto *packet = dispatch->trace.add_packet();
+
+    auto *track_descriptor = packet->mutable_track_descriptor();
+    track_descriptor->set_uuid(track_uuid);
+    track_descriptor->set_parent_uuid(hp_uuid);
+
+    auto *thread = track_descriptor->mutable_thread();
+
+    // Our `pid` is the same as the hp_uuid, because of hostname.
+    thread->set_pid(hp_uuid);
+    thread->set_tid(thread_id);
+
+    std::ostringstream oss;
+    oss << "Thread ";
+    thread->set_thread_name(oss.str());
+  }
+  return track_uuid;
+}
+
+static void add_event_perfectly_nested(timeline_dispatch_t *dispatch, std::string hostname,
+                                       uint64_t process_id, uint64_t thread_id, std::string name,
+                                       uint64_t begin, uint64_t dur) {
+
+  auto track_uuid = get_track_uuid_perfecly_nested(dispatch, hostname, process_id, thread_id);
+
+  const uint64_t end = begin + dur;
   // Handling perfecly nested event
-  add_event_begin(dispatch, parent_uuid, begin, name);
-  std::stack<uint64_t> &s = dispatch->uuid2stack[parent_uuid];
+  add_event_begin(dispatch, track_uuid, begin, name);
+  std::stack<uint64_t> &s = dispatch->uuid2stack[track_uuid];
   while ((!s.empty()) && (s.top() <= begin)) {
-    add_event_end(dispatch, parent_uuid, s.top());
+    add_event_end(dispatch, track_uuid, s.top());
     s.pop();
   }
   s.push(end);
 }
 
-static void add_event_gpu(timeline_dispatch_t *dispatch, std::string hostname, uint64_t process_id,
-                          uint64_t thread_id, thapi_device_id did, thapi_device_id sdid,
-                          std::string name, uint64_t begin, uint64_t dur) {
-  // This function Assume non perfecly nested
-  const uint64_t end = begin + dur;
-  perfetto_uuid_t parent_uuid =
-      get_parent_uuid(dispatch, hostname, process_id, thread_id, did, sdid);
-  // Now see if we need a to generate a new children
-  std::map<uint64_t, perfetto_uuid_t> &m = dispatch->parents2tracks[parent_uuid];
-  perfetto_uuid_t uuid;
+// Async
+static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::string hostname,
+                                            uint64_t process_id, thapi_device_id did,
+                                            thapi_device_id sdid, uint64_t thread_id,
+                                            uint64_t begin, uint64_t end) {
 
-  // Pre-historical event
-  if (m.empty() || begin < m.begin()->first) {
-    uuid = gen_perfetto_uuid();
-    // Generate a new children track
-    {
-      auto *packet = dispatch->trace.add_packet();
-      packet->set_trusted_packet_sequence_id(10);
-      packet->set_timestamp(0);
-
-      auto *track_descriptor = packet->mutable_track_descriptor();
-      track_descriptor->set_uuid(uuid);
-      track_descriptor->set_parent_uuid(parent_uuid);
-
-      std::ostringstream oss;
-      oss << "Thread " << thread_id;
-      track_descriptor->set_name(oss.str());
-    }
-  } else {
-    // Find the uuid who finished just before this one
-    auto it_ub = std::prev(m.upper_bound(begin));
-    uuid = it_ub->second;
-    // Erase the old timestamps
-    m.erase(it_ub);
+  auto process_uuid = get_process_uuid(dispatch, hostname, process_id, did, sdid, thread_id);
+  auto &lasts = dispatch->track2lasts[process_uuid];
+  // Using the "main-track", not neccessary but nicer
+  if (lasts.empty()) {
+    return lasts[end] = process_uuid;
   }
-  // Update the table
-  m[end] = uuid;
-  // Add event
-  add_event_begin(dispatch, uuid, begin, name);
-  add_event_end(dispatch, uuid, end);
+  // Find a events who finished *before* our current begin.
+  auto it = lasts.upper_bound(begin);
+  if (it != lasts.end()) {
+    lasts.erase(it);
+    return lasts[end] = it->second;
+  }
+  // If not found, create a new tracks
+  auto new_uuid = gen_perfetto_uuid();
+  {
+    auto *packet = dispatch->trace.add_packet();
+    auto *track_descriptor = packet->mutable_track_descriptor();
+    track_descriptor->set_uuid(new_uuid);
+    track_descriptor->set_parent_uuid(process_uuid);
+    std::ostringstream oss;
+    oss << "Thread " << thread_id;
+    track_descriptor->set_name(oss.str());
+  }
+  return lasts[end] = new_uuid;
+}
+
+static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
+                            uint64_t process_id, uint64_t thread_id, thapi_device_id did,
+                            thapi_device_id sdid, std::string name, uint64_t begin, uint64_t dur) {
+
+  auto end = begin + dur;
+  auto track_uuid =
+      get_track_uuid_async(dispatch, hostname, process_id, did, sdid, thread_id, begin, end);
+  add_event_begin(dispatch, track_uuid, begin, name);
+  add_event_end(dispatch, track_uuid, end);
 }
 
 void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
 
-  auto *dispatch = new timeline_dispatch_t;
-  *usr_data = dispatch;
-
-  auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10);
-  packet->set_timestamp(0);
-
-  auto *trace_packet_defaults = packet->mutable_trace_packet_defaults();
-  trace_packet_defaults->set_timestamp_clock_id(perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
-  packet->set_previous_packet_dropped(true);
+  *usr_data = new timeline_dispatch_t;
 }
 
 void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
@@ -221,6 +225,7 @@ void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
       s.pop();
     }
   }
+
   std::string path{"out.pftrace"};
   // Write the new address book back to disk.
   std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
@@ -237,7 +242,7 @@ static void host_usr_callback(void *btx_handle, void *usr_data, const char *host
                               uint64_t vtid, int64_t ts, int64_t backend_id, const char *name,
                               uint64_t dur, bt_bool err) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
-  add_event_cpu(dispatch, hostname, vpid, vtid, name, ts, dur);
+  add_event_perfectly_nested(dispatch, hostname, vpid, vtid, name, ts, dur);
 }
 
 static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
@@ -245,7 +250,7 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                 const char *name, uint64_t dur, uint64_t did, uint64_t sdid,
                                 bt_bool err, const char *metadata) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
-  add_event_gpu(dispatch, hostname, vpid, vtid, did, sdid, name, ts, dur);
+  add_event_async(dispatch, hostname, vpid, vtid, did, sdid, name, ts, dur);
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {

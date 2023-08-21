@@ -27,6 +27,7 @@ message TracePacketDefaults {
 message ThreadDescriptor {
   optional int32 pid = 1;
   optional int32 tid = 2;
+  optional string thread_name = 5;
 }
 
 message TrackDescriptor {
