@@ -12,6 +12,8 @@
 
 #include "perfetto_prunned.pb.h"
 
+#define TRUSTED_PACKED_SEQUENCE_ID 10
+ 
 using timestamp_t = uint64_t;
 using perfetto_uuid_t = uint64_t;
 
@@ -36,7 +38,7 @@ static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
                             std::string name) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(begin);
-  packet->set_trusted_packet_sequence_id(10);
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   auto *track_event = packet->mutable_track_event();
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
   track_event->set_name(name);
@@ -45,7 +47,7 @@ static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
 
 static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10);
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   packet->set_timestamp(end);
   auto *track_event = packet->mutable_track_event();
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_END);
