@@ -165,8 +165,9 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
   auto &lasts = dispatch->track2lasts[{process_uuid, thread_id}];
 
   perfetto_uuid_t uuid;
+  auto it = lasts.upper_bound(begin);
   // Pre-historical event
-  if (lasts.empty() || begin < lasts.begin()->first) {
+  if (it == lasts.begin()) {
     uuid = gen_perfetto_uuid();
     {
       auto *packet = dispatch->trace.add_packet();
@@ -179,9 +180,9 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
     }
   } else {
     // Find the uuid who finished just before this one
-    auto it = std::prev(lasts.upper_bound(begin));
-    uuid = it->second;
-    lasts.erase(it);
+    auto itp = std::prev(it);
+    uuid = itp->second;
+    lasts.erase(itp);
   }
   return lasts[end] = uuid;
 }
