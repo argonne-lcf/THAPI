@@ -5,7 +5,9 @@
 #include <iomanip>  // set precision
 #include <iostream> // stdcout
 #include <stack>
-
+#include <string>
+#include <vector>
+#include <cstdint>
 #include "perfetto_prunned.pb.h"
 
 static perfetto_uuid_t gen_perfetto_uuid() {
@@ -13,6 +15,15 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   static std::atomic<perfetto_uuid_t> uuid{1};
   return uuid++;
 }
+bool pushIfNotExists(std::vector<uint64_t>& vec, uint64_t value) {
+    if (std::find(vec.begin(), vec.end(), value) == vec.end()) {
+        vec.push_back(value);
+        return true;
+    }
+    return false;
+}
+
+
 
 static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid,
                             timestamp_t begin, std::string name) {
@@ -25,6 +36,7 @@ static void add_event_begin(struct timeline_dispatch *dispatch, perfetto_uuid_t 
   track_event->set_track_uuid(uuid);
 }
 
+
 static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uuid, uint64_t end) {
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10);
@@ -32,6 +44,9 @@ static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uu
   auto *track_event = packet->mutable_track_event();
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_END);
   track_event->set_track_uuid(uuid);
+
+
+
 }
 
 static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::string hostname,
@@ -112,36 +127,106 @@ static perfetto_uuid_t get_parent_uuid(struct timeline_dispatch *dispatch, std::
   return parent_uuid;
 }
 
-//static int first_freq = 0;
 
-static void add_event_freq(struct timeline_dispatch *dispatch, std::string hostname, uintptr_t hDevice,
+static int first_freq = 0;
+//static uint64_t delay = 0;
+static std::vector<uint64_t> dev_list;
+
+static void add_event_freq(struct timeline_dispatch *dispatch, std::string hostname,  uint64_t process_id, uint64_t thread_id, uintptr_t hDevice,
                            uint32_t domain, uint64_t timestamp, uint64_t frequency) {
-  auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10);
-  packet->set_timestamp(timestamp);
-  auto *ftrace_event = packet->mutable_ftrace_events();
-  auto *event = ftrace_event->add_event();
-  event->set_timestamp(timestamp);
-  auto *gpu_frequency = event->mutable_gpu_frequency();
-  gpu_frequency->set_gpu_id((uint32_t)(hDevice + domain));
-  gpu_frequency->set_state(frequency);
-//  auto *gpu_counter_event = packet->mutable_gpu_counter_event();
-//  if (first_freq) {
-//    auto *counter_descriptor = gpu_counter_event->mutable_counter_descriptor();
-//    auto *spec = counter_descriptor->add_specs();
-//    spec->set_counter_id(domain);
-//    spec->set_name("Frequency");
-//    spec->set_description("ZE Frequency domain");
-//    spec->set_int_peak_value(1600);
-//    spec->add_numerator_units(perfetto_pruned::GpuCounterDescriptor::MEGAHERTZ);
-//    spec->add_groups(perfetto_pruned::GpuCounterDescriptor::SYSTEM);
-//    first_freq = 1;
-//  }
-//  gpu_counter_event->set_gpu_id((uint32_t)hDevice);
-//  auto *counter = gpu_counter_event->add_counters();
-//  counter->set_counter_id(domain);
-//  counter->set_int_value((int64_t)frequency);
+
+if (first_freq == 0){
+
+
+    auto *packet = dispatch->trace.add_packet(); 
+    packet->set_trusted_packet_sequence_id(10000);
+    packet->set_timestamp(0);
+    packet->set_previous_packet_dropped(true);
+    auto *track_descriptor = packet->mutable_track_descriptor();
+    track_descriptor->set_uuid(1388);
+    auto *process = track_descriptor->mutable_process();
+    process->set_pid(1024);
+    process->set_process_name("GPU_Frequency");
+    first_freq++;
 }
+
+
+ if (pushIfNotExists(dev_list, hDevice))//we use vector to store the unique devices, Need change to support for multiple node
+{
+    auto *packet = dispatch->trace.add_packet();
+    packet->set_timestamp(0);
+    packet->set_trusted_packet_sequence_id(10000);
+    auto *track_descriptor = packet->mutable_track_descriptor();
+//    std::string s=std::to_string(hDevice);
+    track_descriptor->set_uuid(hDevice);
+    track_descriptor->set_parent_uuid(1388);
+    std::string s="Freq Device-" + std::to_string(hDevice);
+    
+    track_descriptor->set_name(s);
+    track_descriptor->mutable_counter();  
+   // first_freq= first_freq+1;
+    
+}
+
+    auto *packet = dispatch->trace.add_packet();
+    packet->set_trusted_packet_sequence_id(10000);
+    packet->set_timestamp(timestamp); 
+    auto *track_event = packet->mutable_track_event();
+    track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+    track_event->set_track_uuid(hDevice);
+    track_event->set_name("frequency");
+    track_event->set_counter_value(frequency);
+}
+
+//static int first_energy=0;
+static void add_event_energy(struct timeline_dispatch *dispatch, std::string hostname,  uint64_t process_id, uint64_t thread_id, uintptr_t hDevice,
+                           uint32_t domain, uint64_t timestamp, uint64_t energy) {
+/*
+if (first_energy == 0){
+
+
+    auto *packet = dispatch->trace.add_packet();
+    packet->set_trusted_packet_sequence_id(20000);
+    packet->set_timestamp(0);
+    packet->set_previous_packet_dropped(true);
+    auto *track_descriptor = packet->mutable_track_descriptor();
+    track_descriptor->set_uuid(1288);
+    auto *process = track_descriptor->mutable_process();
+    process->set_pid(1064);
+    process->set_process_name("GPU_Energy");
+}
+ if (first_energy < 6 )//we can use vector or hash to store the unique devices
+{
+   //char *s = "Frequency Counter-" + std::to_string(domain);
+    auto *packet = dispatch->trace.add_packet();
+    packet->set_timestamp(0);
+    packet->set_trusted_packet_sequence_id(20000);
+    auto *track_descriptor = packet->mutable_track_descriptor();
+//    std::string s=std::to_string(hDevice);
+    track_descriptor->set_uuid(hDevice);
+    track_descriptor->set_parent_uuid(1288);
+    std::string s = "Energy Device-" + std::to_string(hDevice);
+
+    track_descriptor->set_name(s);
+    track_descriptor->mutable_counter();
+    first_energy++;
+
+}
+
+    auto *packet = dispatch->trace.add_packet();
+    packet->set_trusted_packet_sequence_id(20000);
+    packet->set_timestamp(timestamp);
+   // delay=delay + 500; 
+    auto *track_event = packet->mutable_track_event();
+    track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+   // std::string s=std::to_string(hDevice);
+    track_event->set_track_uuid(hDevice);
+    track_event->set_name("energy");
+    track_event->set_counter_value(energy);
+*/
+}
+
+
 
 static void add_event_cpu(struct timeline_dispatch *dispatch, std::string hostname,
                           uint64_t process_id, uint64_t thread_id, std::string name, uint64_t begin,
@@ -258,8 +343,24 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
       const bt_field *common_context_field = bt_event_borrow_common_context_field_const(event);
       const auto & [ hostname, process_id, thread_id, ts ] =
           thapi_bt2_getter(common_context_field, dur_tuple0);
+      
+       if (std::string(class_name) == "lttng:frequency") {
+        const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
+        const bt_field *did_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
+        const uintptr_t did = bt_field_integer_unsigned_get_value(did_field);
 
-      if (std::string(class_name) == "lttng:frequency") {
+        const bt_field *domain_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
+        const uint32_t domain = bt_field_integer_unsigned_get_value(domain_field);
+
+        const bt_field *frequency_field =
+            bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
+        const uint64_t frequency = bt_field_integer_unsigned_get_value(frequency_field);
+
+        add_event_freq(dispatch, hostname, process_id,  thread_id, did, domain, ts, frequency);
+      } 
+      else if (std::string(class_name) == "lttng:energy") {
         const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
         const bt_field *did_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 0);
@@ -269,11 +370,11 @@ timeline_dispatch_consume(bt_self_component_sink *self_component_sink) {
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 1);
         const uint32_t domain = bt_field_integer_unsigned_get_value(domain_field);
 
-        const bt_field *frequency_field =
+        const bt_field *energy_field =
             bt_field_structure_borrow_member_field_by_index_const(payload_field, 2);
-        const uint64_t frequency = bt_field_integer_unsigned_get_value(frequency_field);
+        const uint64_t energy = bt_field_integer_unsigned_get_value(energy_field);
 
-        add_event_freq(dispatch, hostname, did, domain, ts, frequency);
+        add_event_energy(dispatch, hostname, process_id,  thread_id, did, domain, ts, energy);
       } else {
 
         const bt_field *payload_field = bt_event_borrow_payload_field_const(event);
@@ -331,16 +432,15 @@ timeline_dispatch_initialize(bt_self_component_sink *self_component_sink,
    */
   bt_self_component_sink_add_input_port(self_component_sink, "in", NULL, NULL);
 
-  {
+{
     auto *packet = dispatch->trace.add_packet();
     packet->set_trusted_packet_sequence_id(10);
     packet->set_timestamp(0);
 
     auto *trace_packet_defaults = packet->mutable_trace_packet_defaults();
     trace_packet_defaults->set_timestamp_clock_id(perfetto_pruned::BUILTIN_CLOCK_BOOTTIME);
-    packet->set_previous_packet_dropped(true);
-  }
-
+   // packet->set_previous_packet_dropped(true);
+}
   return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
 }
 
@@ -353,11 +453,12 @@ void timeline_dispatch_finalize(bt_self_component_sink *self_component_sink) {
 
   for (auto & [ uuid, s ] : dispatch->uuid2stack) {
     while (!s.empty()) {
-      add_event_end(dispatch, uuid, s.top());
+    add_event_end(dispatch, uuid, s.top());
       s.pop();
     }
   }
-  std::string path{"out.pftrace"};
+
+  std::string path{"output.pftrace"};
   // Write the new address book back to disk.
   std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
   if (!dispatch->trace.SerializeToOstream(&output))

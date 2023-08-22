@@ -10,7 +10,7 @@
 syntax = "proto2";
 
 package perfetto_pruned;
-
+//import "gpu_freq.proto";
 //option go_package = "github.com/google/perfetto/perfetto_proto";
 
 // Begin of protos/perfetto/common/ftrace_descriptor.proto
@@ -13034,6 +13034,7 @@ message TracePacket {
     // - old versions of protoc produce Java bindings with syntax errors when
     //   the field id is large enough.
     TestEvent for_testing = 900;
+  // gpu_freq.Packet gpu_freq_packet = 1001;
   }
 
   // Trusted user id of the producer which generated this packet. Keep in sync

@@ -760,10 +760,11 @@ static int initialized = 0;
 
 #define MAX_N_DEVS  (8)
 #define MAX_N_PDOMS (4)
+#define MAX_N_FDOMS (2)
 
 static int selected_driver_id = 0;
 static ze_driver_handle_t selected_drvh;
-static zes_freq_handle_t domainList[MAX_N_PDOMS];
+static zes_freq_handle_t domainList[MAX_N_DEVS * MAX_N_FDOMS];
 static uint32_t n_devhs;
 static uint32_t npwrdoms;
 static uint32_t domainCount;
@@ -817,7 +818,7 @@ void  zerReadEnergy(int devid, int pwrid, uint64_t *ts_us, uint64_t *energy_uj)
 }
 
 
-void  zerReadFrequency( uint32_t domain_id, uint32_t *frequency)
+void  zerReadFrequency(int devid, uint32_t domain_id, uint32_t *frequency)
 {
 
 *frequency = 0;
@@ -828,7 +829,7 @@ void  zerReadFrequency( uint32_t domain_id, uint32_t *frequency)
             zes_freq_state_t state = {
                 .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
                 .pNext = NULL};
-            zesFrequencyGetState(domainList[domain_id], &state);/// getting freq of only tile 0
+            zesFrequencyGetState(domainList[(devid * domainCount ) + domain_id], &state);/// getting freq of only tile 0
 *frequency = state.actual;
            // printf("---- [%u] Current GPU  Freq (MHz): %.2f\n",i, state.actual);
 }
@@ -906,7 +907,7 @@ int zerInit()
       _ZE_ERROR_MSG("ZE_DEVICE_GET_PROPERTIES_PTR", res);
       return -1;
     }
-    if (props.type == ZE_DEVICE_TYPE_GPU) {
+    if (props.type == ZE_DEVICE_TYPE_GPU)  {
       zes_device_handle_t smh = smh = (zes_device_handle_t)devhs_cache[i];
       zes_pwr_handle_t pwrhs[MAX_N_PDOMS];
      // uint32_t npwrdoms = 0;
@@ -938,31 +939,30 @@ int zerInit()
 	  fprintf(stderr, "Warning: npwrdoms=%d\n", npwrdoms);
 	}
       }
-    } else {
-      fprintf(stderr, "Warning: dev%d is not a GPU!\n", i);
     }
-  }
 //////////////////////////////////////////////////gpu_frequency
  // Get the frequency domains
    domainCount = 0;
-    res = zesDeviceEnumFrequencyDomains(devhs_cache[0], &domainCount, NULL);
-   printf("domainCount=%u\n",domainCount);
+   zes_freq_handle_t domains[MAX_N_FDOMS];
+    res = zesDeviceEnumFrequencyDomains(devhs_cache[i], &domainCount, NULL);
+    printf("domainCount=%u\n",domainCount);
     if (domainCount > 0) {
         printf("-- Frequency Domains: %u\n", domainCount);
 
        // zes_freq_handle_t* domainList = malloc(domainCount * sizeof(zes_freq_handle_t));
-        res = zesDeviceEnumFrequencyDomains(devhs_cache[0], &domainCount, domainList);
+        res = zesDeviceEnumFrequencyDomains(devhs_cache[i], &domainCount, domains);
         if (res != ZE_RESULT_SUCCESS) {
             printf("Failed to retrieve frequency domains\n");
             return -1;
         }
 
-        for (uint32_t i = 0; i < domainCount; ++i) {
+        for (uint32_t k = 0; k < domainCount; ++k) {
             zes_freq_properties_t domainProps = {
                 .stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES,
                 .pNext = NULL
             };
-            zesFrequencyGetProperties(domainList[i], &domainProps);
+             domainList[(i * domainCount) + k] = domains[k];
+            zesFrequencyGetProperties(domainList[(i * domainCount) + k], &domainProps);
 
        /*     printf("---- [%u] Clock EU Freq Range (MHz): %.2f - %.2f %s\n",
                    i, domainProps.min, domainProps.max,
@@ -972,7 +972,7 @@ int zerInit()
                 .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
                 .pNext = NULL
             };
-            zesFrequencyGetState(domainList[i], &state);
+            zesFrequencyGetState(domainList[(i * domainCount) + k], &state);
             printf("---- [%u] Current GPU  Freq (MHz): %.2f\n",
                    i, state.actual);
         }
@@ -980,6 +980,16 @@ int zerInit()
        // free(domainList);
     }
 
+
+
+
+
+
+
+     else {
+      fprintf(stderr, "Warning: dev%d is not a GPU!\n", i);
+    }
+  }
 
 ///////////////////////////////////////////////////////
 
@@ -995,25 +1005,27 @@ static void thapi_sampling_energy() {
   uint64_t energy_uj;
   uint32_t frequency;
   for (int i=0; i<zerGetNDevs(); i++) {
-    for (uint32_t di=0;di<zerGetNDoms();di++) {
-      zerReadEnergy(i, di, &ts_us, &energy_uj);
-      do_tracepoint(lttng_ust_ze_sampling, gpu_energy,
+   // for (uint32_t di=0;di<zerGetNDoms();di++) {
+      for (uint32_t di=0;di< (zerGetNDoms() >= 1 ? 1 : 0 ); di++) {
+          zerReadEnergy(i, di, &ts_us, &energy_uj);
+          do_tracepoint(lttng_ust_ze_sampling, gpu_energy,
                     (ze_device_handle_t)devhs_cache[i],di,
                     (uint64_t)energy_uj,ts_us);
     // printf("thapi_sampling_energy i=%d energy_uj=%lu\n", i, energy_uj);
     }
-  } 
-
+  
   for (uint32_t domain=0; domain < (zerGetFDoms() >= 1 ? 1 : 0); domain++) {
-    zerReadFrequency(domain, &frequency);
+  //for (uint32_t domain=0; domain <  zerGetFDoms(); domain++){
+ 
+    zerReadFrequency(i,domain, &frequency);
     //printf("Tile=%u, frequency=%u\n",domain,frequency);
     //do_tracepoint(lttng_ust_ze_sampling,gpu_frequency,ts_us,frequency);
     // zerReadFrequency(0, &frequency);
-    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)devhs_cache[0],
+    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)devhs_cache[i],
                   domain, ts_us, frequency);
   }
 //printf("time=%lu\n",ts_us);
-
+}
 }
 static void _load_tracer(void) {
   char *s = NULL;
