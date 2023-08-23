@@ -28,10 +28,52 @@ directory=language.downcase
 EOF
 end%>
 
-SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/${PALS_APID:-0}
-SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/${PALS_APID:-0}
+cached_id=$(date '+%Y%m%d-%H%M%S')
+mpi_job_id() {
+    if [ -n "${PALS_APID+x}" ]; then
+       echo "$PALS_APID"
+    elif [ -n "${PMI_JOBID+x}" ]; then
+       echo "$PMI_JOBID"
+    else
+       echo "$cached_id"
+    fi
+}
+
+mpi_rank_id() {
+    if [ -n "${PALS_RANKID+x}" ]; then
+       echo "$PALS_RANKID"
+    elif [ -n "${PMI_RANK+x}" ]; then
+       echo "$PMI_RANK"
+    else
+       echo 0
+    fi
+}
+
+mpi_local_size() {
+    if [ -n "${PALS_LOCAL_SIZE+x}" ]; then
+       echo "$PALS_LOCAL_SIZE"
+    elif [ -n "${PMI_LOCAL_SIZE+x}" ]; then
+       echo "$PMI_LOCAL_SIZE"
+    else
+       echo 1
+    fi
+}
+
+mpi_local_rank_id() {
+    if [ -n "${PALS_LOCAL_RANKID+x}" ]; then
+       echo "$PALS_LOCAL_RANKID"
+    elif [ -n "${PMI_LOCAL_RANK+x}" ]; then
+       echo "$PMI_LOCAL_RANK"
+    else
+       echo 0
+    fi
+}
+
+
+SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/$(mpi_job_id)
+SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/$(mpi_job_id)
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
-export LTTNG_HOME=$HOME/.lttng_home/${PALS_APID:-0}/node-${PALS_NODEID:-0}
+export LTTNG_HOME=$HOME/.lttng_home/$(mpi_job_id)/$(hostname)
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
 lttngq() { lttng $quiet "$@" ; }
@@ -48,21 +90,22 @@ count_file() {
 }
 
 local_barier() {
-    echoq "THAPI_LOG: local_barier_entry ($1): ${PALS_RANKID:-0}"
+    echoq "THAPI_LOG: local_barier_entry ($1): $(mpi_rank_id)"
     local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
-    local path=$folder/${PALS_LOCAL_RANKID:-0}
+    local path=$folder/$(mpi_local_rank_id)
+    local local_size=$(mpi_local_size)
     mkdir -p $path
-    while [ $(count_file $folder) != ${PALS_LOCAL_SIZE:-1} ]; do
+    while [ $(count_file $folder) != $local_size ]; do
         sleep 0.2
     done
     # We cannot rmdir $path here to avoid race-condition
-    echoq "THAPI_LOG: local_barier_exit ($1): ${PALS_RANKID:-0}"
+    echoq "THAPI_LOG: local_barier_exit ($1): $(mpi_rank_id)"
 }
 
 global_barrier_epilogue() {
     echoq "THAPI_LOG: global_barrier_epilogue_entry"
-    rmdir $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
-    if [[ ${PALS_RANKID:-0} == 0 ]]; then
+    rmdir $SHARED_GLOBAL_FILESYSTEM/$(mpi_rank_id)
+    if [[ $(mpi_rank_id) == 0 ]]; then
         while [ $(count_file $SHARED_GLOBAL_FILESYSTEM) != 0 ]; do
            sleep 0.2
         done
@@ -71,7 +114,7 @@ global_barrier_epilogue() {
 }
 
 run_iff_local_master() {
-    if [[ ${PALS_LOCAL_RANKID:-0} == 0 ]]; then
+    if [[ $(mpi_local_rank_id) == 0 ]]; then
         $@
     fi
 }
@@ -255,8 +298,7 @@ enable_events_metadata() {
 
 setup_lttng() {
     # Create a global lock
-    mkdir -p $SHARED_GLOBAL_FILESYSTEM/${PALS_RANKID:-0}
-
+    mkdir -p $SHARED_GLOBAL_FILESYSTEM/$(mpi_rank_id)
 
     mkdir -p $LTTNG_HOME
     # Only local masters call this
@@ -268,22 +310,22 @@ setup_lttng() {
     fi
 
 <% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/iprof${suffix}-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/iprof${suffix}-$(mpi_job_id)
 <% elsif languages.include?("cl") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-opencl-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-opencl-session-$(mpi_job_id)
 <% elsif languages.include?("ze") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-ze-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-ze-session-$(mpi_job_id)
 <% elsif languages.include?("cuda") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-cuda-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-cuda-session-$(mpi_job_id)
 <% elsif languages.include?("hip") %>
-    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-hip-session-${PALS_APID:-0}
+    THAPI_LTTNG_O_ROOT=$THAPI_OUTPUT/lttng-traces/thapi${suffix}-hip-session-$(mpi_job_id)
 <% end %>
-    THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/${PALS_NODEID:-0}
+    THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/$(hostname)
 
     if [ ${1:-""} = "--live" ]; then
-        lttngq create THAPI_${PALS_NODEID:-0} --live
+        lttngq create THAPI_$(hostname) --live
     else
-        lttngq create THAPI_${PALS_NODEID:-0} -o $THAPI_LTTNG_O
+        lttngq create THAPI_$(hostname) -o $THAPI_LTTNG_O
     fi
 
     #Preventing trace event record loss
@@ -308,12 +350,12 @@ setup_lttng() {
     enable_events_metadata
 
     lttngq add-context --userspace --channel=blocking-channel -t vpid -t vtid
-    lttngq start THAPI_${PALS_NODEID:-0}
+    lttngq start THAPI_$(hostname)
 }
 
 preload_lib_tracers() {
     IFS=","
-    if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS${PALS_RANKID:-0}$IFS" ]]; then
+    if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS$(mpi_rank_id)$IFS" ]]; then
 <% if languages.include?("omp") %>
     thapi_export LTTNG_UST_OMP_INTEL 1
     thapi_export OMP_TOOL_LIBRARIES  $libdir/libTracerOMPT.so
@@ -342,8 +384,8 @@ preload_lib_tracers() {
 }
 
 local_master_epilogue() {
-    lttngq stop THAPI_${PALS_NODEID:-0}
-    lttngq destroy THAPI_${PALS_NODEID:-0}
+    lttngq stop THAPI_$(hostname)
+    lttngq destroy THAPI_$(hostname)
     if [ ${1:-""} = "--live" ]; then
         wait $BT_PID # Set setub_babeltrace_live
     fi
@@ -362,9 +404,10 @@ trace_epilogue() {
     run_iff_local_master local_master_epilogue
 
     # All the traces have been saved. We can now do the move
-    if [ ${PALS_RANKID:-0} == 0 ]; then
+    if [ $(mpi_rank_id) == 0 ]; then
         rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
-        local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
+        # substitute `mpi_job_id` -> `date`
+        local new_output=${THAPI_LTTNG_O_ROOT/$(mpi_job_id)/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
         summary
@@ -446,7 +489,7 @@ summary() {
 
 setub_babeltrace_live() {
   mkdir -p $THAPI_LTTNG_O_ROOT
-  $bindir/babeltrace_thapi tally --live --backend <%= languages %> $bt_tally_argv -- "net://localhost/host/$(hostname)/THAPI_${PALS_NODEID:-0}" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_${PALS_NODEID:-0}.log &
+  $bindir/babeltrace_thapi tally --live --backend <%= languages %> $bt_tally_argv -- "net://localhost/host/$(hostname)/THAPI_$(hostname)" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_$(hostname).log &
   BT_PID=$!
 }
 
@@ -455,9 +498,10 @@ trace_epilogue_live() {
     run_iff_local_master local_master_epilogue --live
 
     # All the traces have been saved. We can now do the move
-    if [ ${PALS_RANKID:-0} == 0 ]; then
+    if [ $(mpi_rank_id) == 0 ]; then
         rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"
-        local new_output=${THAPI_LTTNG_O_ROOT/${PALS_APID:-0}/$(date '+%Y%m%d-%H%M%S')}
+        # substitute `mpi_job_id` -> `date`
+        local new_output=${THAPI_LTTNG_O_ROOT/$(mpi_job_id)/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
 
@@ -530,7 +574,7 @@ done
 
 quiet=""
 if [ $debug = true ]; then
-    PS4="RankID ${PALS_RANKID:-0}: "
+    PS4="RankID $(mpi_rank_id): "
     set -x
 <% if languages.include?("ze") %>
     export LTTNG_UST_ZE_VERBOSE=1
