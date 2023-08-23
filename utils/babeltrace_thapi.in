@@ -72,7 +72,6 @@ module MyRefinement
       obj = super
       obj.plugins_path = []
       obj.cli_v = []
-      obj.once_source_ctf_fs = true
       obj
     end
 
@@ -317,6 +316,11 @@ end
   graph.connect_ports(op, ip)
 end
 
-puts graph.cli if $options[:debug]
+if $options[:debug]
+  cli = graph.cli
+  puts cli
+  puts "Will also be saved in babeltrace_thapi_cli.sh"
+  File::open('babeltrace_thapi_cli.sh','w') { |f| f.write(cli) }
+end
 
 graph.run
