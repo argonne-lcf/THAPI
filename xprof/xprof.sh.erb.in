@@ -41,6 +41,16 @@ echoq() {
    fi
 }
 
+mpi_local_size() {
+    if [ -n "${PALS_LOCAL_SIZE+x}" ]; then
+       echo "$PALS_LOCAL_SIZE"
+    elif [ -n "${PMI_LOCAL_SIZE+x}" ]; then
+       echo "$PMI_LOCAL_SIZE"
+    else
+       echo 1
+    fi
+}
+
 count_file() {
     # https://unix.stackexchange.com/a/90152
     a=$(2>/dev/null \ls  -afq $1 | wc -l)
@@ -51,8 +61,9 @@ local_barier() {
     echoq "THAPI_LOG: local_barier_entry ($1): ${PALS_RANKID:-0}"
     local folder=$SHARED_LOCAL_FILESYSTEM/lock/$1
     local path=$folder/${PALS_LOCAL_RANKID:-0}
+    local local_size=$(mpi_local_size)
     mkdir -p $path
-    while [ $(count_file $folder) != ${PALS_LOCAL_SIZE:-1} ]; do
+    while [ $(count_file $folder) != $local_size ]; do
         sleep 0.2
     done
     # We cannot rmdir $path here to avoid race-condition
