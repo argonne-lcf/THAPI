@@ -79,7 +79,7 @@ module MyRefinement
   end
 
   refine(BT2::BTGraph) do
-    attr_accessor :plugins_path, :cli_v, :once_source_ctf_fs
+    attr_accessor :plugins_path, :cli_v
 
     def add_component(component_class, name, params: {},
                       logging_level: BT2::BTLogging.default_level,
@@ -89,20 +89,11 @@ module MyRefinement
       @cli_v << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
       str_params = params.filter_map { |k,v| "#{k}=#{v}" unless v.class == String && v.empty? }.join(",")
       @cli_v << "--params #{str_params.dump}" unless str_params.empty?
-      @once_source_ctf_fs = {}
       super
     end
 
     def connect_ports(upstream_port, downstream_port)
-      # Work around for source.ctf.fs port
-      if upstream_port.component.name.start_with?("source_")
-        if !@once_source_ctf_fs[upstream_port.component.name]
-          @cli_v << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
-          @once_source_ctf_fs [upstream_port.component.name] = true
-        end
-      else
-        @cli_v << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}"
-      end
+      @cli_v << "--connect \"#{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}\""
       super
     end
 
