@@ -72,14 +72,13 @@ module MyRefinement
       obj = super
       obj.plugins_path = []
       obj.cli_v = []
-      obj.once_source_ctf_fs = true
       obj
     end
 
   end
 
   refine(BT2::BTGraph) do
-    attr_accessor :plugins_path, :cli_v, :once_source_ctf_fs
+    attr_accessor :plugins_path, :cli_v
 
     def add_component(component_class, name, params: {},
                       logging_level: BT2::BTLogging.default_level,
@@ -93,15 +92,7 @@ module MyRefinement
     end
 
     def connect_ports(upstream_port, downstream_port)
-      # Work around for source.ctf.fs port
-      if upstream_port.component.name == "source_0"
-        if @once_source_ctf_fs
-          @cli_v << "--connect #{upstream_port.component.name}.*:#{downstream_port.component.name}.*"
-          @once_source_ctf_fs = false
-        end
-      else
-        @cli_v << "--connect #{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}"
-      end
+      @cli_v << "--connect \"#{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}\""
       super
     end
 
@@ -325,6 +316,11 @@ end
   graph.connect_ports(op, ip)
 end
 
-puts graph.cli if $options[:debug]
+if $options[:debug]
+  cli = graph.cli
+  puts cli
+  puts "Will also be saved in babeltrace_thapi_cli.sh"
+  File::open('babeltrace_thapi_cli.sh','w') { |f| f.write(cli) }
+end
 
 graph.run
