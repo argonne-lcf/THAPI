@@ -29,7 +29,7 @@ EOF
 end%>
 
 cached_id=$(date '+%Y%m%d-%H%M%S')
-mpi_job_id() {
+mpi_job_id_() {
     if [ -n "${PALS_APID+x}" ]; then
        echo "$PALS_APID"
     elif [ -n "${PMI_JOBID+x}" ]; then
@@ -37,6 +37,11 @@ mpi_job_id() {
     else
        echo "$cached_id"
     fi
+}
+
+# Workarround for too large path ofr LTTNG HOME
+mpi_job_id() {
+    echo $(mpi_job_id_) | md5sum | cut -f1 -d" "
 }
 
 mpi_rank_id() {
