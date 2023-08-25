@@ -329,7 +329,8 @@ subcommands[command].order!
 # Fix segfault
 ARGV.uniq!
 
-thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
+thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                            'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
                 'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                'sink.btx_timeline.timeline'],
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
@@ -343,10 +344,10 @@ connects(graph, comp)
 
 if $options[:debug]
   cli = graph.cli
-  #puts cli
-  puts "babeltrace_thapi: babeltrace2 cli command will be saved in ./babeltrace_thapi_cli.sh"
+  # puts cli
+  puts 'babeltrace_thapi: babeltrace2 cli command will be saved in ./babeltrace_thapi_cli.sh'
   $stdout.flush
-  File::open('babeltrace_thapi_cli.sh','w') { |f| f.write(cli) }
+  File.open('babeltrace_thapi_cli.sh', 'w') { |f| f.write(cli) }
 end
 
 graph.run
