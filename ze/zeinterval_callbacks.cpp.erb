@@ -193,20 +193,23 @@ size_t remove_memory(zeinterval_callbacks_state* state, hp_t hp, const uintptr_t
      auto &rs = state->rangeset_memory_shared[hp];
      auto its = rs.find(ptr);
      if (its != rs.end()) {
+          size_t tmp = its->second - its->first;
           rs.erase(its);
-          return its->second - its->first;
+          return tmp;
      }
      auto &rd = state->rangeset_memory_device[hp];
      auto itd = rd.find(ptr);
      if (itd != rd.end()) {
+          size_t tmp = itd->second - itd->first;
           rd.erase(itd);
-          return itd->second - itd->first;
+          return tmp;
      }
      auto &rh = state->rangeset_memory_host[hp];
      auto ith = rh.find(ptr);
      if (ith != rh.end()) {
+          size_t tmp = ith->second - ith->first;
           rh.erase(ith);
-          return ith->second - ith->first;
+          return tmp;
      }
      return 0;
 }
