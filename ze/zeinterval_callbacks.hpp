@@ -21,10 +21,18 @@ typedef hp_event_t hpe_t;
 typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
+typedef std::tuple<uint64_t, uint64_t> device_energy_t;
+
 typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_t;
 typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t> l_tfnm_m_d_ts_t;
 
 typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
+
+struct DeviceState {
+    uint64_t energy;
+    uint64_t timestamp;
+};
+std::unordered_map<std::pair<const char*, uint64_t>, DeviceState> stateMap;
 
 struct zeinterval_callbacks_state {
     std::queue<const bt_message*>                           downstream_message_queue;
@@ -54,6 +62,8 @@ struct zeinterval_callbacks_state {
 
     /* Stack to get begin end */
     std::unordered_map<hpt_t, std::vector<std::byte>> last_command;
+    /*Energy */
+    std::unordered_map<hpd_t, device_energy_t> device_energy_ref;
 };
 
 template <class K,
