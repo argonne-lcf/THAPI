@@ -51,7 +51,7 @@ static perfetto_uuid_t get_counter_track_uuuid(struct timeline_dispatch *dispatc
   auto r2 = parent_tracks.insert({{hostname, process_id}, hp_uuid});
   auto &potential_uuid2 = r2.first->second;
   // Didn't exist
-  if (r.second) {
+  if (r2.second) {
     hp_uuid = gen_perfetto_uuid();
     potential_uuid2 = hp_uuid;
     // Create parent track
