@@ -29,7 +29,7 @@ EOF
 end%>
 
 cached_id=$(date '+%Y%m%d-%H%M%S')
-mpi_job_id_() {
+mpi_job_id() {
     if [ -n "${PALS_APID+x}" ]; then
        echo "$PALS_APID"
     elif [ -n "${PMI_JOBID+x}" ]; then
@@ -37,11 +37,6 @@ mpi_job_id_() {
     else
        echo "$cached_id"
     fi
-}
-
-# Workarround for too large path ofr LTTNG HOME
-mpi_job_id() {
-    echo $(mpi_job_id_) | md5sum | cut -f1 -d" "
 }
 
 mpi_rank_id() {
@@ -78,7 +73,7 @@ mpi_local_rank_id() {
 SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/$(mpi_job_id)
 SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/$(mpi_job_id)
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
-export LTTNG_HOME=$HOME/.lttng_home/$(mpi_job_id)/$(hostname)
+export LTTNG_HOME=/tmp/lttng_home/$(mpi_job_id)
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
 lttngq() { lttng $quiet "$@" ; }
