@@ -1,11 +1,11 @@
 #!/usr/bin/env ruby
 DATADIR = File.join('@prefix@', 'share')
-$:.unshift(DATADIR) if File.directory?(DATADIR)
+$LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'optparse'
 require 'babeltrace2'
 require 'find'
 
-module MyRefinement
+module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
     attr_accessor :plugin
   end
@@ -100,7 +100,7 @@ module MyRefinement
   end
 end
 
-using MyRefinement
+using BTComponentClassRefinement
 
 # Don't complain about broken pipe
 Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
@@ -146,10 +146,11 @@ def get_components(names)
     pg.sink_component_classes.each { |c| components_classes["sink.#{pg.name}.#{c.name}"] = c }
   end
 
-  c = names.flat_map do |name|
-    if name == 'filter.intervals.interval'
+  names.flat_map do |name|
+    case name
+    when 'filter.intervals.interval'
       $options[:backends].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
-    elsif name == 'sink.text.rubypretty'
+    when 'sink.text.rubypretty'
       # Yaml and event_lambdas are required by babeltrace*_lib
       $event_lambdas = {}
       require 'yaml'
@@ -158,27 +159,27 @@ def get_components(names)
       require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
       require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
       require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
+      f = lambda { |iterator, _|
+        iterator.next_messages.each do |m|
+          next unless m.type == :BT_MESSAGE_TYPE_EVENT
 
-      NameComp.new('sink.text.rubypretty', lambda { |iterator, _|
-                                             iterator.next_messages.each do |m|
-                                               next unless m.type == :BT_MESSAGE_TYPE_EVENT
+          e = m.event
+          l = $event_lambdas[e.name]
+          next unless l || !$options[:restrict]
 
-                                               e = m.event
-                                               l = $event_lambdas[e.name]
-                                               next unless l || !$options[:restrict]
-
-                                               str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
-                                               if $options[:context]
-                                                 str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
-                                                 str << ' - ' << e.get_common_context_field.value.collect do |k, v|
-                                                   "#{k}: #{v}"
-                                                 end.join(', ')
-                                               end
-                                               str << " - #{e.name}: "
-                                               str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
-                                               puts str
-                                             end
-                                           })
+          str = Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L').to_s
+          if $options[:context]
+            str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
+            str << ' - ' << e.get_common_context_field.value.collect do |k, v|
+              "#{k}: #{v}"
+            end.join(', ')
+          end
+          str << " - #{e.name}: "
+          str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
+          puts str
+        end
+      }
+      NameComp.new('sink.text.rubypretty', f)
     else
       NameComp.new(name, components_classes[name])
     end
@@ -189,36 +190,32 @@ def get_and_add_components(graph, names)
   get_components(names).map do |nc|
     name = nc.name
     comp = nc.comp
-    if name == 'sink.text.rubypretty'
+    case name
+    when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
-    elsif name == 'source.ctf.lttng_live'
+    when 'source.ctf.lttng_live'
       graph.add(comp, 'source_live',
                 params: { 'inputs' => $options[:inputs],
                           'session-not-found-action' => 'end' })
-    elsif name == 'source.ctf.fs'
-      trace_locations =
-        Find.find(*ARGV).reject do |path|
-          FileTest.directory?(path)
-        end.select do |path|
-          File.basename(path) == 'metadata'
-        end.collect do |path|
-          File.dirname(path)
-        end.select do |path|
-          qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
-                                        params: { 'input' => path, 'type' => 'directory' })
-          qe.query.value['weight'] > 0.5
-        end
-      # One source.ctf.fs per directory
-      trace_locations.each_with_index.map do |trace_location, i|
-        graph.add(comp, "source_#{i}", params: { 'inputs' => [trace_location] })
-      end
-
-    elsif name == 'sink.ctf.fs'
+    when 'source.ctf.fs'
+      Find.find(*ARGV)
+          .reject { |path| FileTest.directory?(path) }
+          .filter_map { |path| File.dirname(path) if File.basename(path) == 'metadata' }
+          .select do |path|
+            qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
+                                          params: { 'input' => path, 'type' => 'directory' })
+            qe.query.value['weight'] > 0.5
+          end
+          .each_with_index.map do |trace_location, i|
+            graph.add(comp, "source_#{i}",
+                      params: { 'inputs' => [trace_location] })
+          end
+    when 'sink.ctf.fs'
       graph.add(comp, 'ctf_sink',
                 params: { 'path' => $options[:output],
                           'assume-single-trace' => false,
                           'quiet' => $options[:debug] ? false : true })
-    elsif name == 'sink.btx_tally.tally'
+    when 'sink.btx_tally.tally'
       graph.add(comp, 'tally',
                 params: $options_tally.transform_values { |_, v| v })
     else
@@ -228,9 +225,9 @@ def get_and_add_components(graph, names)
 end
 
 def connects(graph, comps)
-  comps.each_cons(2) do |_out, _in|
-    [_out].flatten.flat_map(&:output_ports).each_with_index do |op, i|
-      ip = _in.input_port(i)
+  comps.each_cons(2) do |out, in_|
+    [out].flatten.flat_map(&:output_ports).each_with_index do |op, i|
+      ip = in_.input_port(i)
       graph.connect_ports(op, ip)
     end
   end
