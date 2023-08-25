@@ -62,7 +62,7 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
                                         std::optional<thapi_device_id> sdid = std::nullopt) {
 
   // Check if this uuid is already used
-  perfetto_uuid_t hp_uuid;
+  perfetto_uuid_t hp_uuid = 0;
   auto r = dispatch->hp2uuid.insert(
       {{hostname, process_id, did.value_or(UINTPTR_MAX), sdid.value_or(UINTPTR_MAX)}, hp_uuid});
   auto &potential_uuid = r.first->second;
