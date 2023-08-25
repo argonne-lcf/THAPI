@@ -73,7 +73,7 @@ mpi_local_rank_id() {
 SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/$(mpi_job_id)
 SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/$(mpi_job_id)
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
-export LTTNG_HOME=$HOME/.lttng_home/$(mpi_job_id)/$(hostname)
+export LTTNG_HOME=/tmp/lttng_home/$(mpi_job_id)
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
 lttngq() { lttng $quiet "$@" ; }
@@ -391,6 +391,7 @@ local_master_epilogue() {
     fi
     global_barrier_epilogue
     rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
+    rm -rf -- "$LTTNG_HOME"
 }
 
 
@@ -402,7 +403,6 @@ local_master_epilogue() {
 trace_epilogue() {
     local_barier epilogue
     run_iff_local_master local_master_epilogue
-
     # All the traces have been saved. We can now do the move
     if [ $(mpi_rank_id) == 0 ]; then
         rm -rf -- "$SHARED_GLOBAL_FILESYSTEM"

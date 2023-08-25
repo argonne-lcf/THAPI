@@ -318,8 +318,9 @@ end
 
 if $options[:debug]
   cli = graph.cli
-  puts cli
-  puts "Will also be saved in babeltrace_thapi_cli.sh"
+  #puts cli
+  puts "babeltrace_thapi: babeltrace2 cli command will be saved in ./babeltrace_thapi_cli.sh"
+  $stdout.flush
   File::open('babeltrace_thapi_cli.sh','w') { |f| f.write(cli) }
 end
 
