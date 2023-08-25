@@ -323,15 +323,11 @@ when 'tally'
   comps << graph.add_component(components_classes.fetch('sink.btx_tally.tally'), 'tally',
                                params: $options_tally.transform_values { |_, v| v })
 when 'aggreg_live'
-  #pp $options
-  #pp $options[:output]
-  escaped_output = %|"#{$options[:output]}"|
-  #pp escaped_output
   $options[:backends].each do |name|
     comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "#{name}interval")
   end
   comps << graph.add_component(components_classes.fetch('sink.ctf.fs'), 'ctf_sink',
-                               params: {"path" => escaped_output})
+                               params: {"path" => $options[:output]})
 end
 
 # Muxer to serial part
