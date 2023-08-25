@@ -410,7 +410,7 @@ trace_epilogue() {
         local new_output=${THAPI_LTTNG_O_ROOT/$(mpi_job_id)/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
-        rm -rf $HOME/.lttng_home/$(mpi_job_id)
+        rm -rf $LTTNG_HOME
         summary
     fi
 }
