@@ -171,6 +171,20 @@ subcommands = {
         $options[:live] = true
       end
     end,
+  'aggreg_live' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: aggreg_live [OPTIONS]'
+      common_options(opts)
+
+      opts.on('--inputs=INPUTS') do |inputs|
+        $options[:inputs] =  [inputs]
+      end
+
+      opts.on('--output=OUTPUT') do |output|
+        $options[:output] = output
+      end
+
+    end,
   'tally' =>
     OptionParser.new do |opts|
       opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
@@ -211,6 +225,7 @@ components_classes = {
   'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
   'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
   'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
+  'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
 }
 
 # THAPI components
@@ -224,7 +239,12 @@ end
 graph = BT2::BTGraph.new
 
 # Source components
-if !$options[:live]
+case command
+when 'aggreg_live'
+  ctf_lttng_live = components_classes.fetch('source.ctf.lttng_live')
+  comp_sources = [ graph.add_component(ctf_lttng_live, "source_live",
+                      params: { 'inputs' => $options[:inputs], 'session-not-found-action' => 'end' }) ]
+else
   ctf_fs = components_classes.fetch('source.ctf.fs')
 
   trace_locations =
@@ -242,13 +262,6 @@ if !$options[:live]
 
   comp_sources = trace_locations.each_with_index.map do |trace_location, i|
     graph.add_component(ctf_fs, "source_#{i}", params: { 'inputs' => [trace_location] })
-  end
-else
-  trace_locations = ARGV
-  ctf_lttng_live = components_classes.fetch('source.ctf.lttng_live')
-  comp_sources = trace_locations.each_with_index.map do |trace_location, i|
-    graph.add_component(ctf_lttng_live, "source_#{i}",
-                        params: { 'inputs' => [trace_location], 'session-not-found-action' => 'end' })
   end
 end
 
@@ -302,11 +315,23 @@ when 'tally'
   comps << graph.add_component(components_classes.fetch('filter.btx_aggreg.aggreg'), 'aggreg')
   comps << graph.add_component(components_classes.fetch('sink.btx_tally.tally'), 'tally',
                                params: $options_tally.transform_values { |_, v| v })
-when 'timeline'
+when 'tally'
   $options[:backends].each do |name|
     comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "#{name}interval")
   end
-  comps << graph.add_component(components_classes.fetch('sink.btx_timeline.timeline'), 'timeline')
+  comps << graph.add_component(components_classes.fetch('filter.btx_aggreg.aggreg'), 'aggreg')
+  comps << graph.add_component(components_classes.fetch('sink.btx_tally.tally'), 'tally',
+                               params: $options_tally.transform_values { |_, v| v })
+when 'aggreg_live'
+  #pp $options
+  #pp $options[:output]
+  escaped_output = %|"#{$options[:output]}"|
+  #pp escaped_output
+  $options[:backends].each do |name|
+    comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "#{name}interval")
+  end
+  comps << graph.add_component(components_classes.fetch('sink.ctf.fs'), 'ctf_sink',
+                               params: {"path" => escaped_output})
 end
 
 # Muxer to serial part
