@@ -66,9 +66,7 @@
       :preferred_display_base: 16
   - :name: frequency
     :class: unsigned
-    :class_properties:
-      :preferred_display_base: 16
-- :name: lttng:energy
+- :name: lttng:power
   :payload:
   - :name: did
     :class: unsigned
@@ -78,8 +76,5 @@
     :class: unsigned
     :class_properties:
       :preferred_display_base: 16
-  - :name: energy 
+  - :name: power
     :class: unsigned
-    :class_properties:
-      :preferred_display_base: 16
-

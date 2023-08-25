@@ -19,5 +19,10 @@ struct timeline_dispatch {
     std::map<perfetto_uuid_t, std::map<timestamp_t,perfetto_uuid_t>> parents2tracks;
     std::map<perfetto_uuid_t, std::stack<timestamp_t>>  uuid2stack;
 
+    std::unordered_map<hp_t, perfetto_uuid_t> hp2frqtracks;
+    std::unordered_map<hp_t, perfetto_uuid_t> hp2pwrtracks;
+    std::unordered_map<hp_device_t, perfetto_uuid_t> hp_devs2frqtracks;
+    std::unordered_map<hp_device_t, perfetto_uuid_t> hp_devs2pwrtracks;
+
     perfetto_pruned::Trace trace;
 };

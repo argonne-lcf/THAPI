@@ -21,33 +21,6 @@
 #include <set>
 #include <assert.h>     /* assert */
 
-
-std::pair<uint64_t, uint64_t> processTraceEvent(const char* host, uint64_t device, uint64_t energy, uint64_t timestamp) {
-    auto key = std::make_pair(host, device);
-
-    if (stateMap.find(key) == stateMap.end()) {
-        stateMap[key] = {energy, timestamp};
-        return std::make_pair(0, 0);  // No previous state, so no deltas
-    }
-
-    DeviceState& previousState = stateMap[key];
-    uint64_t energyDelta = energy - previousState.energy;
-    uint64_t timestampDelta = timestamp - previousState.timestamp;
-
-    previousState.energy = energy;
-    previousState.timestamp = timestamp;
-
-    return std::make_pair(energyDelta, timestampDelta);
-}
-
-
-
-
-
-
-
-
-
 //Memory interval
 static bool contains(const MemoryInterval& m, const uintptr_t val) {
     // if m empty, begin == end
@@ -104,19 +77,27 @@ void *init_zeinterval_callbacks_state() {
     zeinterval_callbacks_state *s = new zeinterval_callbacks_state;
     return (void*) s;
 }
-//uint64_t  power;
-static void create_and_enqueue_energy_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
+
+static void create_and_enqueue_power_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
                                                  const uintptr_t hDevice, const uint32_t domain, const uint64_t energy, const uint64_t ts) {
-        
-       std::pair<uint64_t, uint64_t> deltas = processTraceEvent(hostname, hDevice, energy, ts);
-       bt_message *message = create_energy_message(hostname, process_id,
-                           thread_id, hDevice, domain,
-                         (deltas.first == 0) ? 0 : static_cast<uint64_t>((deltas.first / static_cast<double>(deltas.second)) * 1000.0) ,ts,
-                           zeinterval_iter_g->dispatch->energy_event_class,
-                           zeinterval_self_message_iterator_g,
-                           zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     auto r = state->device_energy_ref.insert({{hostname, process_id, hDevice}, {energy, ts}});
+     // First entry
+     if (r.second)
+            return;
+
+     auto &[prev_energy, prev_ts] = r.first->second;
+
+     bt_message *message = create_power_message(hostname, process_id,
+                            thread_id, hDevice, domain,
+                            static_cast<uint64_t>(((energy-prev_energy) / static_cast<double>(ts-prev_ts))*1000.0),
+                            prev_ts,
+                            zeinterval_iter_g->dispatch->power_event_class,
+                            zeinterval_self_message_iterator_g,
+                            zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
      state->downstream_message_queue.push(message);
+     prev_energy = energy;
+     prev_ts = ts;
 }
 
 static void create_and_enqueue_frequency_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
@@ -301,7 +282,7 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      const thread_id_t  thread_id = 0; 
      int64_t ns_from_origin;
      bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
-     create_and_enqueue_energy_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, domain, energy, ns_from_origin);
+     create_and_enqueue_power_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, domain, energy, ns_from_origin);
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_sampling:gpu_frequency" %>
      const hostname_t   hostname   = borrow_hostname(bt_evt);
      const process_id_t process_id = 0;
@@ -310,9 +291,9 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
      create_and_enqueue_frequency_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, domain, ns_from_origin, frequency);
   <% elsif dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
-        dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
-        dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
-        dbt_event.name_unsanitized.start_with?('lttng_ust_zel:') %>
+           dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
+           dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
+           dbt_event.name_unsanitized.start_with?('lttng_ust_zel:') %>
 
      const hostname_t   hostname   = borrow_hostname(bt_evt);
      const process_id_t process_id = borrow_process_id(bt_evt);
