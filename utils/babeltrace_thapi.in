@@ -171,9 +171,9 @@ subcommands = {
         $options[:live] = true
       end
     end,
-  'aggreg_live' =>
+  'live2aggreg' =>
     OptionParser.new do |opts|
-      opts.banner = 'Usage: aggreg_live [OPTIONS]'
+      opts.banner = 'Usage: live2aggreg [OPTIONS]'
       common_options(opts)
 
       opts.on('--inputs=INPUTS') do |inputs|
@@ -193,6 +193,17 @@ subcommands = {
       opts.on('--live', 'Enable live display of the trace') do
         $options[:live] = true
       end
+
+      $options_tally.each do |k, (t, _)|
+        opts.on("--#{k}=VALUE", t) do |v|
+          $options_tally[k] = [t, v]
+        end
+      end
+    end,
+  'aggreg2tally' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: aggreg2tally [OPTIONS] trace_directory...'
+      common_options(opts)
 
       $options_tally.each do |k, (t, _)|
         opts.on("--#{k}=VALUE", t) do |v|
@@ -240,10 +251,12 @@ graph = BT2::BTGraph.new
 
 # Source components
 case command
-when 'aggreg_live'
+when 'live2aggreg'
   ctf_lttng_live = components_classes.fetch('source.ctf.lttng_live')
+  params =  { 'inputs' => $options[:inputs], 'session-not-found-action' => 'end' }
   comp_sources = [ graph.add_component(ctf_lttng_live, "source_live",
-                      params: { 'inputs' => $options[:inputs], 'session-not-found-action' => 'end' }) ]
+                      params: { 'inputs' => $options[:inputs],
+                                'session-not-found-action' => 'end' }) ]
 else
   ctf_fs = components_classes.fetch('source.ctf.fs')
 
@@ -265,13 +278,14 @@ else
   end
 end
 
-# Muxer components
-comp_muxer = graph.add_component(components_classes.fetch('filter.utils.muxer'), 'muxer')
-
-# Sources to muxer connection
-comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
-  ip = comp_muxer.input_port(i)
-  graph.connect_ports(op, ip)
+if command != "aggreg2tally"
+  # Muxer components
+  comp_muxer = graph.add_component(components_classes.fetch('filter.utils.muxer'), 'muxer')
+  # Sources to muxer connection
+  comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+    ip = comp_muxer.input_port(i)
+    graph.connect_ports(op, ip)
+  end
 end
 
 # Rest of graph components
@@ -322,12 +336,31 @@ when 'tally'
   comps << graph.add_component(components_classes.fetch('filter.btx_aggreg.aggreg'), 'aggreg')
   comps << graph.add_component(components_classes.fetch('sink.btx_tally.tally'), 'tally',
                                params: $options_tally.transform_values { |_, v| v })
-when 'aggreg_live'
+when 'live2aggreg'
   $options[:backends].each do |name|
     comps << graph.add_component(components_classes.fetch("filter.#{name}interval.interval"), "#{name}interval")
   end
   comps << graph.add_component(components_classes.fetch('sink.ctf.fs'), 'ctf_sink',
-                               params: {"path" => $options[:output]})
+                               params: {"path" => $options[:output],
+                                        "assume-single-trace" => false,
+                                        "quiet" => $options[:debug] ? false : true})
+when 'aggreg2tally'
+  comps << graph.add_component(components_classes.fetch('filter.btx_aggreg.aggreg'), 'aggreg')
+  comps << graph.add_component(components_classes.fetch('sink.btx_tally.tally'), 'tally',
+                               params: $options_tally.transform_values { |_, v| v })
+end
+
+
+
+case command
+when 'aggreg2tally'
+  # Overwrite muxer, with aggreg, we didn't connect before
+  comp_muxer = comps.shift
+  # Sources to muxer connection
+  comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+    ip = comp_muxer.input_port(i)
+    graph.connect_ports(op, ip)
+  end
 end
 
 # Muxer to serial part

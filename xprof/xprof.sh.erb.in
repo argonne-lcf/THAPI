@@ -433,6 +433,11 @@ trace_and_summary() {
 }
 
 bt2_all() {
+    if [ -n "${aggreg2tally-}" ]; then
+        $bindir/babeltrace_thapi aggreg2tally $([ $debug == true ] && echo "--debug") --backend <%= languages %> $bt_tally_argv -- $@
+        return
+    fi
+
     # Note that the $@ are not quoted!
     if [ -n "${trace-}" ]; then
         $bindir/babeltrace_thapi $([ $debug == true ] && echo "--debug") --backend <%= languages %> -r -c $@
@@ -489,7 +494,7 @@ summary() {
 
 setup_babeltrace_live() {
   mkdir -p $THAPI_LTTNG_O
-  $bindir/babeltrace_thapi aggreg_live --backend <%= languages %> \
+  $bindir/babeltrace_thapi live2aggreg --backend <%= languages %> \
                                        --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
                                        --output $THAPI_LTTNG_O &
   BT_PID=$!
@@ -506,6 +511,7 @@ trace_epilogue_live() {
         local new_output=${THAPI_LTTNG_O_ROOT/$(mpi_job_id)/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
+        aggreg2tally=true
         summary
     fi
 }
