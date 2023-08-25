@@ -6,26 +6,22 @@ require 'babeltrace2'
 require 'find'
 
 module MyRefinement
-
   refine(BT2::BTComponentClass) do
-      attr_accessor :plugin
+    attr_accessor :plugin
   end
 
   refine(BT2::BTPlugin.singleton_class) do
-
     def find_all_from_dir(path, recurse: false, fail_on_load_error: true)
-        # I guess print a warning if recurse?
-        ps = super
-        ps.each { |p|
-          p.path = path
-        }
-        ps
+      # I guess print a warning if recurse?
+      ps = super
+      ps.each do |p|
+        p.path = path
+      end
+      ps
     end
-
   end
 
   refine(BT2::BTPlugin) do
-
     attr_accessor :path
 
     def get_source_component_class_by_name(name)
@@ -63,18 +59,15 @@ module MyRefinement
       cs.each { |c| c.plugin = self }
       cs
     end
-
   end
   refine(BT2::BTGraph.singleton_class) do
-
     def new(handle = nil, retain: true, auto_release: true,
-                   mip_version: 0)
+            mip_version: 0)
       obj = super
       obj.plugins_path = []
       obj.cli_v = []
       obj
     end
-
   end
 
   refine(BT2::BTGraph) do
@@ -86,7 +79,7 @@ module MyRefinement
 
       @plugins_path << component_class.plugin.path
       @cli_v << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
-      str_params = params.filter_map { |k,v| "#{k}=#{v}" unless v.class == String && v.empty? }.join(",")
+      str_params = params.filter_map { |k, v| "#{k}=#{v}" unless v.instance_of?(String) && v.empty? }.join(',')
       @cli_v << "--params #{str_params.dump}" unless str_params.empty?
       super
     end
@@ -97,14 +90,13 @@ module MyRefinement
     end
 
     def cli
-      l = ["babeltrace2"]
+      l = ['babeltrace2']
       ps_u = @plugins_path.uniq.compact.sort
-      l << "--plugin-path=#{ps_u.join(",")}" unless ps_u.empty?
-      l << "run"
+      l << "--plugin-path=#{ps_u.join(',')}" unless ps_u.empty?
+      l << 'run'
       l += @cli_v
       l.join(" \\\n")
     end
-
   end
 end
 
@@ -143,6 +135,7 @@ def get_components(names)
     'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
     'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
     'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
+    'sink.utils.dummy' => BT2::BTPlugin.find('utils').get_sink_component_class_by_name('dummy'),
   }
 
   # THAPI components
@@ -153,90 +146,89 @@ def get_components(names)
     pg.sink_component_classes.each { |c| components_classes["sink.#{pg.name}.#{c.name}"] = c }
   end
 
-  c = names.flat_map { |name|
-    if name == "filter.intervals.interval"
-        $options[:backends].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"] ) }
-    elsif name == "sink.text.rubypretty"
-        # Yaml and event_lambdas are required by babeltrace*_lib
-        $event_lambdas = {}
-        require 'yaml'
-        require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
-        require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
-        require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
-        require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
-        require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
+  c = names.flat_map do |name|
+    if name == 'filter.intervals.interval'
+      $options[:backends].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
+    elsif name == 'sink.text.rubypretty'
+      # Yaml and event_lambdas are required by babeltrace*_lib
+      $event_lambdas = {}
+      require 'yaml'
+      require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
+      require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
+      require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
+      require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
+      require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
 
-        NameComp.new('sink.text.rubypretty', lambda { |iterator, _|
-          iterator.next_messages.each do |m|
-            next unless m.type == :BT_MESSAGE_TYPE_EVENT
+      NameComp.new('sink.text.rubypretty', lambda { |iterator, _|
+                                             iterator.next_messages.each do |m|
+                                               next unless m.type == :BT_MESSAGE_TYPE_EVENT
 
-            e = m.event
-            l = $event_lambdas[e.name]
-            next unless l || !$options[:restrict]
+                                               e = m.event
+                                               l = $event_lambdas[e.name]
+                                               next unless l || !$options[:restrict]
 
-            str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
-            if $options[:context]
-              str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
-              str << ' - ' << e.get_common_context_field.value.collect do |k, v|
-              "#{k}: #{v}"
-            end.join(', ')
-          end
-          str << " - #{e.name}: "
-        str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
-        puts str
-      end
-      } )
+                                               str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime('%H:%M:%S.%9L')}"
+                                               if $options[:context]
+                                                 str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
+                                                 str << ' - ' << e.get_common_context_field.value.collect do |k, v|
+                                                   "#{k}: #{v}"
+                                                 end.join(', ')
+                                               end
+                                               str << " - #{e.name}: "
+                                               str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
+                                               puts str
+                                             end
+                                           })
     else
       NameComp.new(name, components_classes[name])
     end
-  }
+  end
 end
 
-def get_and_add_components(graph,names)
-  get_components(names).map { |nc|
-    name= nc.name
+def get_and_add_components(graph, names)
+  get_components(names).map do |nc|
+    name = nc.name
     comp = nc.comp
-    if name == "sink.text.rubypretty" 
-      graph.add_simple_sink("rubypretty", comp)
-    elsif name == "source.ctf.lttng_live"
-      graph.add(comp, "source_live",
+    if name == 'sink.text.rubypretty'
+      graph.add_simple_sink('rubypretty', comp)
+    elsif name == 'source.ctf.lttng_live'
+      graph.add(comp, 'source_live',
                 params: { 'inputs' => $options[:inputs],
                           'session-not-found-action' => 'end' })
-    elsif name == "source.ctf.fs"
-  trace_locations =
-    Find.find(*ARGV).reject do |path|
-      FileTest.directory?(path)
-    end.select do |path|
-      File.basename(path) == 'metadata'
-    end.collect do |path|
-      File.dirname(path)
-    end.select do |path|
-      qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
-                                    params: { 'input' => path, 'type' => 'directory' })
-      qe.query.value['weight'] > 0.5
-    end
-    # One source.ctf.fs per directory
-    trace_locations.each_with_index.map do |trace_location, i|
-      graph.add(comp, "source_#{i}", params: { 'inputs' => [trace_location] })
-    end
+    elsif name == 'source.ctf.fs'
+      trace_locations =
+        Find.find(*ARGV).reject do |path|
+          FileTest.directory?(path)
+        end.select do |path|
+          File.basename(path) == 'metadata'
+        end.collect do |path|
+          File.dirname(path)
+        end.select do |path|
+          qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
+                                        params: { 'input' => path, 'type' => 'directory' })
+          qe.query.value['weight'] > 0.5
+        end
+      # One source.ctf.fs per directory
+      trace_locations.each_with_index.map do |trace_location, i|
+        graph.add(comp, "source_#{i}", params: { 'inputs' => [trace_location] })
+      end
 
-  
-    elsif name == "sink.ctf.fs"
+    elsif name == 'sink.ctf.fs'
       graph.add(comp, 'ctf_sink',
-                params: {"path" => $options[:output],
-                         "assume-single-trace" => false,
-                          "quiet" => $options[:debug] ? false : true})
-    elsif name == "sink.btx_tally.tally"
+                params: { 'path' => $options[:output],
+                          'assume-single-trace' => false,
+                          'quiet' => $options[:debug] ? false : true })
+    elsif name == 'sink.btx_tally.tally'
       graph.add(comp, 'tally',
                 params: $options_tally.transform_values { |_, v| v })
     else
       graph.add(comp, name)
     end
-  }
+  end
 end
 
 def connects(graph, comps)
-  comps.each_cons(2) do | _out, _in|
+  comps.each_cons(2) do |_out, _in|
     [_out].flatten.flat_map(&:output_ports).each_with_index do |op, i|
       ip = _in.input_port(i)
       graph.connect_ports(op, ip)
@@ -249,7 +241,7 @@ def common_options(opts)
     $options[:backends] = v
   end
 
-  opts.on('--debug') do |v|
+  opts.on('--debug') do |_v|
     $options[:debug] = true
   end
 
@@ -288,13 +280,12 @@ subcommands = {
       common_options(opts)
 
       opts.on('--inputs=INPUTS') do |inputs|
-        $options[:inputs] =  [inputs]
+        $options[:inputs] = [inputs]
       end
 
       opts.on('--output=OUTPUT') do |output|
         $options[:output] = output
       end
-
     end,
   'tally' =>
     OptionParser.new do |opts|
@@ -341,13 +332,15 @@ subcommands[command].order!
 # Fix segfault
 ARGV.uniq!
 
-thapi_graph= { "tally" => [ "source.ctf.fs", "filter.utils.muxer", "filter.intervals.interval", "filter.btx_aggreg.aggreg", "sink.btx_tally.tally"],
-               "timeline" => [ "source.ctf.fs", "filter.utils.muxer", "filter.intervals.interval", "filter.btx_aggreg.aggreg", "sink.btx_timeline.timeline"],
-               "trace" => [ "source.ctf.fs", "filter.utils.muxer", "sink.text.rubypretty"],
-               "live2aggreg" => ["source.ctf.lttng_live", "filter.utils.muxer", "filter.intervals.interval", "filter.btx_aggreg.aggreg", "sink.ctf.fs" ],
-               "aggreg2tally" => ["source.ctf.fs", "filter.btx_aggreg.aggreg", "sink.btx_tally.tally"] } 
+thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
+                'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                               'filter.btx_aggreg.aggreg', 'sink.btx_timeline.timeline'],
+                'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
+                'live2aggreg' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'filter.intervals.interval',
+                                  'filter.btx_aggreg.aggreg', 'sink.ctf.fs'],
+                'aggreg2tally' => ['source.ctf.fs', 'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'] }
 
 graph = BT2::BTGraph.new
 comp = get_and_add_components(graph, thapi_graph[command])
-connects(graph,comp)
+connects(graph, comp)
 graph.run
