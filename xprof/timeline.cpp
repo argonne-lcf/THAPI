@@ -37,47 +37,55 @@ static void add_event_end(struct timeline_dispatch *dispatch, perfetto_uuid_t uu
 
 }
 
-static perfetto_uuid_t get_counter_track_uuuid(struct timeline_dispatch *dispatch, std::unordered_map<hp_t, perfetto_uuid_t> &parent_tracks,
-                                               std::unordered_map<hp_device_t, perfetto_uuid_t> counter_tracks, const std::string track_name,
-                                               std::string hostname, uint64_t process_id, thapi_device_id did) {
-  perfetto_uuid_t hp_dev_uuid = 0;
-  auto r = counter_tracks.insert({{hostname, process_id, did}, hp_dev_uuid});
-  auto &potential_uuid = r.first->second;
+static perfetto_uuid_t get_parent_counter_track_uuid(struct timeline_dispatch *dispatch, std::unordered_map<hp_t, perfetto_uuid_t> &parent_tracks,
+                                                     const std::string track_name, std::string hostname, uint64_t process_id) {
+  perfetto_uuid_t hp_uuid = 0;
+  auto [it, inserted] = parent_tracks.insert({{hostname, process_id}, hp_uuid});
+  auto &potential_uuid = it->second;
   // Exists
-  if (!r.second)
+  if (!inserted)
     return potential_uuid;
 
-  perfetto_uuid_t hp_uuid = 0;
-  auto r2 = parent_tracks.insert({{hostname, process_id}, hp_uuid});
-  auto &potential_uuid2 = r2.first->second;
-  // Didn't exist
-  if (r2.second) {
-    hp_uuid = gen_perfetto_uuid();
-    potential_uuid2 = hp_uuid;
-    // Create parent track
-    auto *packet = dispatch->trace.add_packet();
-    packet->set_trusted_packet_sequence_id(10000);
-    packet->set_timestamp(0);
-    packet->set_previous_packet_dropped(true);
-    auto *track_descriptor = packet->mutable_track_descriptor();
-    track_descriptor->set_uuid(hp_uuid);
-    auto *process = track_descriptor->mutable_process();
-    process->set_pid(hp_uuid);
-    std::ostringstream oss;
-    oss << "Hostname " << hostname << " | Process " << process_id;
-    oss << " | " << track_name << " | uuid ";
-    process->set_process_name(oss.str());
-  }
+  hp_uuid = gen_perfetto_uuid();
+  potential_uuid = hp_uuid;
 
+  // Create packet with track descriptor
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_timestamp(0);
+  packet->set_previous_packet_dropped(true);
+  auto *track_descriptor = packet->mutable_track_descriptor();
+  track_descriptor->set_uuid(hp_uuid);
+  auto *process = track_descriptor->mutable_process();
+  process->set_pid(hp_uuid);
+  std::ostringstream oss;
+  oss << "Hostname " << hostname << " | Process " << process_id;
+  oss << " | " << track_name << " | uuid ";
+  process->set_process_name(oss.str());
+  return hp_uuid;
+}
+
+static perfetto_uuid_t get_counter_track_uuuid(struct timeline_dispatch *dispatch, std::unordered_map<hp_t, perfetto_uuid_t> &parent_tracks,
+                                               std::unordered_map<hp_device_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
+                                               std::string hostname, uint64_t process_id, thapi_device_id did) {
+  perfetto_uuid_t hp_dev_uuid = 0;
+  auto [it, inserted] = counter_tracks.insert({{hostname, process_id, did}, hp_dev_uuid});
+  auto &potential_uuid = it->second;
+  // Exists
+  if (!inserted)
+    return potential_uuid;
+
+  perfetto_uuid_t hp_uuid = get_parent_counter_track_uuid(dispatch, parent_tracks, track_name, hostname, process_id);
   hp_dev_uuid = gen_perfetto_uuid();
   potential_uuid = hp_dev_uuid;
+
   // Create new track
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(0);
   packet->set_trusted_packet_sequence_id(10000);
   auto *track_descriptor = packet->mutable_track_descriptor();
   track_descriptor->set_uuid(hp_dev_uuid);
-  track_descriptor->set_parent_uuid(potential_uuid2);
+  track_descriptor->set_parent_uuid(hp_uuid);
   std::ostringstream oss;
   oss << "Device " << did;
   track_descriptor->set_name(oss.str());

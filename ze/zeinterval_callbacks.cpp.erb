@@ -81,12 +81,12 @@ void *init_zeinterval_callbacks_state() {
 static void create_and_enqueue_power_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
                                                  const uintptr_t hDevice, const uint32_t domain, const uint64_t energy, const uint64_t ts) {
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
-     auto r = state->device_energy_ref.insert({{hostname, process_id, hDevice}, {energy, ts}});
+     auto [it, inserted] = state->device_energy_ref.insert({{hostname, process_id, hDevice}, {energy, ts}});
      // First entry
-     if (r.second)
+     if (inserted)
             return;
 
-     auto &[prev_energy, prev_ts] = r.first->second;
+     auto &[prev_energy, prev_ts] = it->second;
 
      bt_message *message = create_power_message(hostname, process_id,
                             thread_id, hDevice, domain,
