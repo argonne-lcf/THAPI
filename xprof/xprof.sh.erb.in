@@ -244,7 +244,7 @@ enable_events_cl() {
     opencl_disable_events+="lttng_ust_opencl:clGetMemAllocInfoINTEL*"
 
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x $opencl_disable_events
-    if [ $tracing = "full" ]; then
+    if [ $tracing_mode = "full" ]; then
         lttngq enable-event --channel=blocking-channel --userspace $opencl_disable_events
     fi
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
@@ -256,7 +256,7 @@ enable_events_cl() {
 }
 
 enable_events_ze() {
-    if [ $tracing = "minimal" ]; then
+    if [ $tracing_mode = "minimal" ]; then
         lttngq enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
     else
@@ -274,7 +274,7 @@ enable_events_ze() {
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x $ze_disable_properties
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events},${ze_disable_querry},${ze_disable_loader}
 
-        if [ $tracing = "full" ]; then
+        if [ $tracing_mode = "full" ]; then
             lttngq enable-event --channel=blocking-channel --userspace ${ze_disable_events},${ze_disable_querry},${ze_disable_loader}
         fi
     fi
@@ -483,8 +483,8 @@ summary() {
             exit 1
         fi
         if [[ "$f" == *"-aggreg"* ]]; then
-          procesing_mode="on-the-fly"
-        elif [ $procesing_mode = "on-the-fly" ]; then
+          processing_mode="on-the-fly"
+        elif [ $processing_mode = "on-the-fly" ]; then
           echo "Cannot mix aggregate on non aggregate traces"
           exit 1
         fi
@@ -627,7 +627,7 @@ fi
 
 if [ $replay = true ]; then
     summary "$@"
-elif [ $procesing = "post-process" ]; then
+elif [ $processing_mode = "post-process" ]; then
     trace_and_summary "$@"
 else
     trace_and_summary_live "$@"
