@@ -517,7 +517,6 @@ trace_epilogue_live() {
         local new_output=${THAPI_LTTNG_O_ROOT/$(mpi_job_id)/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
-        aggreg2tally=true
         summary
     fi
 }
