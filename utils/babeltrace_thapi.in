@@ -336,7 +336,7 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
                 'live2aggreg' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'filter.intervals.interval',
                                   'filter.btx_aggreg.aggreg', 'sink.ctf.fs'],
-                'aggreg2tally' => ['source.ctf.fs', 'sink.btx_tally.tally'] }
+                'aggreg2tally' => ['source.ctf.fs', 'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'] }
 
 graph = BT2::BTGraph.new
 comp = get_and_add_components(graph, thapi_graph[command])

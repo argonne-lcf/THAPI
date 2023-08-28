@@ -85,7 +85,7 @@ echoq() {
 
 count_file() {
     # https://unix.stackexchange.com/a/90152
-    a=$(2>/dev/null \ls  -afq $1 | wc -l)
+    a=$(2>/dev/null \ls -afq $1 | wc -l)
     echo $((a - 2))
 }
 
@@ -306,7 +306,7 @@ setup_lttng() {
 
     local suffix=""
     if [ ${1:-""} = "--live" ]; then
-        suffix="_live"
+        suffix="-aggreg"
     fi
 
 <% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
@@ -358,7 +358,7 @@ preload_lib_tracers() {
     if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS$(mpi_rank_id)$IFS" ]]; then
 <% if languages.include?("omp") %>
     thapi_export LTTNG_UST_OMP_INTEL 1
-    thapi_export OMP_TOOL_LIBRARIES  $libdir/libTracerOMPT.so
+    thapi_export OMP_TOOL_LIBRARIES $libdir/libTracerOMPT.so
 <% end %>
 <% if languages.include?("cl") %>
 <%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
@@ -432,23 +432,22 @@ trace_and_summary() {
     "$@"
 }
 
-bt2_all() {
-    if [ -n "${aggreg2tally-}" ]; then
-        $bindir/babeltrace_thapi aggreg2tally $([ $debug == true ] && echo "--debug") --backend <%= languages %> $bt_tally_argv -- $@
-        return
-    fi
+call_babeltrace_thapi() {
 
-    # Note that the $@ are not quoted!
-    if [ -n "${trace-}" ]; then
-        $bindir/babeltrace_thapi $([ $debug == true ] && echo "--debug") --backend <%= languages %> -r -c $@
-    fi
+    local btt_debug_flag=$([ $debug == true ] && echo "--debug" || echo "")
+    local btt_common_flag="--backend <%= languages %> $btt_debug_flag"
 
-    if [ -n "${timeline-}" ]; then
-        $bindir/babeltrace_thapi timeline $([ $debug == true ] && echo "--debug") --backend <%= languages %> $@
-    fi
-
-    if [ -z "${timeline-}" ] && [ -z "${trace-}" ]; then
-        $bindir/babeltrace_thapi tally $([ $debug == true ] && echo "--debug") --backend <%= languages %> $bt_tally_argv -- $@
+    if [ $mode == "tally" ] && [ $procesing_mode == "post-process" ]; then
+      $bindir/babeltrace_thapi tally $btt_common_flag $bt_tally_argv -- $@
+    elif [ $mode == "tally" ] && [ $procesing_mode == "on-the-fly" ]; then
+      $bindir/babeltrace_thapi aggreg2tally $btt_common_flag $bt_tally_argv -- $@
+    elif [ $mode == "trace" ] && [ $procesing_mode == "post-process" ]; then
+      $bindir/babeltrace_thapi trace $btt_common_flag --restrict --context -- $@
+    elif [ $mode == "timeline" ] && [ $procesing_mode == "post-process" ]; then
+      $bindir/babeltrace_thapi timeline $btt_common_flag -- $@
+    else
+      echo "Combinaison of $mode and $procesing_mode not supported"
+      exit 1
     fi
 }
 
@@ -483,8 +482,15 @@ summary() {
             echo "$f is not a trace folder, we cannot replay. Exiting..."
             exit 1
         fi
+        if [[ "$f" == *"-aggreg"* ]]; then
+          procesing_mode="on-the-fly"
+        elif [ $procesing_mode = "on-the-fly" ]; then
+          echo "Cannot mix aggreg on non aggreg trace"
+          exit 1
+        fi
     done
-    bt2_all "$lttng_last_session"
+
+    call_babeltrace_thapi "$lttng_last_session"
 }
 
 #
@@ -536,10 +542,15 @@ trace_and_summary_live() {
 # |_) _. ._ _ o ._   _     /\  ._ _
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
-tracing_mode="default"
-procesing_mode="save"
-
 [ "$#" -eq 0 ] && display_help
+
+# Minimal, Full, Default
+tracing_mode="default"
+
+# Tally, Timeleine, Trace
+mode="tally"
+# "Post-process" or "on-the-fly"
+procesing_mode="post-process"
 
 debug=false
 bt_tally_argv=""
@@ -556,8 +567,8 @@ while (( "$#" )); do
         -k | --kernel-verbose)  shift; bt_tally_argv+=" --display_kernel_verbose=true" ;;
         -e | --extended)        shift; bt_tally_argv+=" --display=extended" ;;
         -r | --replay)          shift; replay=true ;;
-        -t | --trace)           shift; trace=true ;;
-        -l | --timeline)        shift; timeline=true ;;
+        -t | --trace)           shift; mode="trace" ;;
+        -l | --timeline)        shift; mode="timeline" ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
         --no-profile)           shift; profile=false ;;
@@ -571,7 +582,7 @@ while (( "$#" )); do
         --clean-up)             shift; cleanup=true ;;
         --debug)                shift; debug=true ;;
         --)                     shift; break ;;
-        *)                      break  ;;
+        *)                      break ;;
     esac
 done
 
@@ -617,7 +628,7 @@ fi
 
 if [ $replay = true ]; then
     summary "$@"
-elif [ $procesing_mode = "save" ]; then
+elif [ $procesing_mode = "post-process" ]; then
     trace_and_summary "$@"
 else
     trace_and_summary_live "$@"
