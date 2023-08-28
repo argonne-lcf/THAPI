@@ -85,7 +85,7 @@ echoq() {
 
 count_file() {
     # https://unix.stackexchange.com/a/90152
-    a=$(2>/dev/null \ls  -afq $1 | wc -l)
+    a=$(2>/dev/null \ls -afq $1 | wc -l)
     echo $((a - 2))
 }
 
@@ -306,7 +306,7 @@ setup_lttng() {
 
     local suffix=""
     if [ ${1:-""} = "--live" ]; then
-        suffix="_live"
+        suffix="-aggreg"
     fi
 
 <% if ["omp","ze","cuda","cl","hip"].all? { |l| languages.include?(l) } %>
@@ -358,7 +358,7 @@ preload_lib_tracers() {
     if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS$(mpi_rank_id)$IFS" ]]; then
 <% if languages.include?("omp") %>
     thapi_export LTTNG_UST_OMP_INTEL 1
-    thapi_export OMP_TOOL_LIBRARIES  $libdir/libTracerOMPT.so
+    thapi_export OMP_TOOL_LIBRARIES $libdir/libTracerOMPT.so
 <% end %>
 <% if languages.include?("cl") %>
 <%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
@@ -387,7 +387,7 @@ local_master_epilogue() {
     lttngq stop THAPI_$(hostname)
     lttngq destroy THAPI_$(hostname)
     if [ ${1:-""} = "--live" ]; then
-        wait $BT_PID # Set setub_babeltrace_live
+        wait $BT_PID # assigned by setup_babeltrace_live
     fi
     global_barrier_epilogue
     rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
@@ -432,18 +432,22 @@ trace_and_summary() {
     "$@"
 }
 
-bt2_all() {
-    # Note that the $@ are not quoted!
-    if [ -n "${trace-}" ]; then
-        $bindir/babeltrace_thapi $([ $debug == true ] && echo "--debug") --backend <%= languages %> -r -c $@
-    fi
+call_babeltrace_thapi() {
 
-    if [ -n "${timeline-}" ]; then
-        $bindir/babeltrace_thapi timeline $([ $debug == true ] && echo "--debug") --backend <%= languages %> $@
-    fi
+    local btt_debug_flag=$([ $debug == true ] && echo "--debug" || echo "")
+    local btt_common_flag="--backend <%= languages %> $btt_debug_flag"
 
-    if [ -z "${timeline-}" ] && [ -z "${trace-}" ]; then
-        $bindir/babeltrace_thapi tally $([ $debug == true ] && echo "--debug") --backend <%= languages %> $bt_tally_argv -- $@
+    if [ $mode == "tally" ] && [ $processing_mode == "post-process" ]; then
+      $bindir/babeltrace_thapi tally $btt_common_flag $bt_tally_argv -- $@
+    elif [ $mode == "tally" ] && [ $processing_mode == "on-the-fly" ]; then
+      $bindir/babeltrace_thapi aggreg2tally $btt_common_flag $bt_tally_argv -- $@
+    elif [ $mode == "trace" ] && [ $processing_mode == "post-process" ]; then
+      $bindir/babeltrace_thapi trace $btt_common_flag --restrict --context -- $@
+    elif [ $mode == "timeline" ] && [ $processing_mode == "post-process" ]; then
+      $bindir/babeltrace_thapi timeline $btt_common_flag -- $@
+    else
+      echo "Combinaison of $mode and $processing_mode not supported"
+      exit 1
     fi
 }
 
@@ -478,8 +482,15 @@ summary() {
             echo "$f is not a trace folder, we cannot replay. Exiting..."
             exit 1
         fi
+        if [[ "$f" == *"-aggreg"* ]]; then
+          processing_mode="on-the-fly"
+        elif [ $processing_mode = "on-the-fly" ]; then
+          echo "Cannot mix aggregate on non aggregate traces"
+          exit 1
+        fi
     done
-    bt2_all "$lttng_last_session"
+
+    call_babeltrace_thapi "$lttng_last_session"
 }
 
 #
@@ -487,9 +498,11 @@ summary() {
 #  |_ | \/ (/_
 #
 
-setub_babeltrace_live() {
-  mkdir -p $THAPI_LTTNG_O_ROOT
-  $bindir/babeltrace_thapi tally --live --backend <%= languages %> $bt_tally_argv -- "net://localhost/host/$(hostname)/THAPI_$(hostname)" > $THAPI_LTTNG_O_ROOT/tally_$(hostname)_$(hostname).log &
+setup_babeltrace_live() {
+  mkdir -p $THAPI_LTTNG_O
+  $bindir/babeltrace_thapi live2aggreg --backend <%= languages %> \
+                                       --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
+                                       --output $THAPI_LTTNG_O &
   BT_PID=$!
 }
 
@@ -504,12 +517,7 @@ trace_epilogue_live() {
         local new_output=${THAPI_LTTNG_O_ROOT/$(mpi_job_id)/$(date '+%Y%m%d-%H%M%S')}
         mv $THAPI_LTTNG_O_ROOT $new_output
         THAPI_LTTNG_O=$new_output
-
-        # All the traces have been moved. We can now print
-        for x in $(ls $THAPI_LTTNG_O/tally_*.log | sort -V || true); do
-           echo $x
-           cat $x
-        done
+        summary
     fi
 }
 
@@ -517,7 +525,7 @@ trace_and_summary_live() {
     [ "$#" -eq 0 ] && display_help
     # Each node will have their own lock
     run_iff_local_master setup_lttng --live
-    run_iff_local_master setub_babeltrace_live
+    run_iff_local_master setup_babeltrace_live
     local_barier setup
     # Create the metadata.
     # Read and dump `$LTTNG_UST_THAPI_METADATA` env
@@ -533,10 +541,15 @@ trace_and_summary_live() {
 # |_) _. ._ _ o ._   _     /\  ._ _
 # |  (_| | _> | | | (_|   /--\ | (_| \/
 #                    _|           _|
-tracing_mode="default"
-procesing_mode="save"
-
 [ "$#" -eq 0 ] && display_help
+
+# Minimal, Full, Default
+tracing_mode="default"
+
+# Tally, Timeline, Trace
+mode="tally"
+# "Post-process" or "on-the-fly"
+processing_mode="post-process"
 
 debug=false
 bt_tally_argv=""
@@ -553,13 +566,13 @@ while (( "$#" )); do
         -k | --kernel-verbose)  shift; bt_tally_argv+=" --display_kernel_verbose=true" ;;
         -e | --extended)        shift; bt_tally_argv+=" --display=extended" ;;
         -r | --replay)          shift; replay=true ;;
-        -t | --trace)           shift; trace=true ;;
-        -l | --timeline)        shift; timeline=true ;;
+        -t | --trace)           shift; mode="trace" ;;
+        -l | --timeline)        shift; mode="timeline" ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
         --no-profile)           shift; profile=false ;;
         --backend-level)        shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
-        --no-save)              shift; procesing_mode="on-the-fly" ;;
+        --no-save)              shift; processing_mode="on-the-fly" ;;
         --traced-ranks)         shift; traced_ranks=$1; shift ;;
         --asm)                  shift; asm=true ;;
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
@@ -568,7 +581,7 @@ while (( "$#" )); do
         --clean-up)             shift; cleanup=true ;;
         --debug)                shift; debug=true ;;
         --)                     shift; break ;;
-        *)                      break  ;;
+        *)                      break ;;
     esac
 done
 
@@ -614,7 +627,7 @@ fi
 
 if [ $replay = true ]; then
     summary "$@"
-elif [ $procesing_mode = "save" ]; then
+elif [ $processing_mode = "post-process" ]; then
     trace_and_summary "$@"
 else
     trace_and_summary_live "$@"
