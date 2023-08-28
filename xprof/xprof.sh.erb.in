@@ -244,7 +244,7 @@ enable_events_cl() {
     opencl_disable_events+="lttng_ust_opencl:clGetMemAllocInfoINTEL*"
 
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x $opencl_disable_events
-    if [ $tracing_mode = "full" ]; then
+    if [ $tracing = "full" ]; then
         lttngq enable-event --channel=blocking-channel --userspace $opencl_disable_events
     fi
     lttngq enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:infos*
@@ -256,7 +256,7 @@ enable_events_cl() {
 }
 
 enable_events_ze() {
-    if [ $tracing_mode = "minimal" ]; then
+    if [ $tracing = "minimal" ]; then
         lttngq enable-event --channel=blocking-channel --userspace $(cat $datadir/babeltrace_zeprofiling_apis.txt)
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:device_timer
     else
@@ -274,7 +274,7 @@ enable_events_ze() {
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze_properties:* -x $ze_disable_properties
         lttngq enable-event --channel=blocking-channel --userspace lttng_ust_ze:* -x ${ze_disable_events},${ze_disable_querry},${ze_disable_loader}
 
-        if [ $tracing_mode = "full" ]; then
+        if [ $tracing = "full" ]; then
             lttngq enable-event --channel=blocking-channel --userspace ${ze_disable_events},${ze_disable_querry},${ze_disable_loader}
         fi
     fi
@@ -437,16 +437,16 @@ call_babeltrace_thapi() {
     local btt_debug_flag=$([ $debug == true ] && echo "--debug" || echo "")
     local btt_common_flag="--backend <%= languages %> $btt_debug_flag"
 
-    if [ $mode == "tally" ] && [ $procesing_mode == "post-process" ]; then
+    if [ $mode == "tally" ] && [ $processing_mode == "post-process" ]; then
       $bindir/babeltrace_thapi tally $btt_common_flag $bt_tally_argv -- $@
-    elif [ $mode == "tally" ] && [ $procesing_mode == "on-the-fly" ]; then
+    elif [ $mode == "tally" ] && [ $processing_mode == "on-the-fly" ]; then
       $bindir/babeltrace_thapi aggreg2tally $btt_common_flag $bt_tally_argv -- $@
-    elif [ $mode == "trace" ] && [ $procesing_mode == "post-process" ]; then
+    elif [ $mode == "trace" ] && [ $processing_mode == "post-process" ]; then
       $bindir/babeltrace_thapi trace $btt_common_flag --restrict --context -- $@
-    elif [ $mode == "timeline" ] && [ $procesing_mode == "post-process" ]; then
+    elif [ $mode == "timeline" ] && [ $processing_mode == "post-process" ]; then
       $bindir/babeltrace_thapi timeline $btt_common_flag -- $@
     else
-      echo "Combinaison of $mode and $procesing_mode not supported"
+      echo "Combinaison of $mode and $processing_mode not supported"
       exit 1
     fi
 }
@@ -485,7 +485,7 @@ summary() {
         if [[ "$f" == *"-aggreg"* ]]; then
           procesing_mode="on-the-fly"
         elif [ $procesing_mode = "on-the-fly" ]; then
-          echo "Cannot mix aggreg on non aggreg trace"
+          echo "Cannot mix aggregate on non aggregate traces"
           exit 1
         fi
     done
@@ -546,10 +546,10 @@ trace_and_summary_live() {
 # Minimal, Full, Default
 tracing_mode="default"
 
-# Tally, Timeleine, Trace
+# Tally, Timeline, Trace
 mode="tally"
 # "Post-process" or "on-the-fly"
-procesing_mode="post-process"
+processing_mode="post-process"
 
 debug=false
 bt_tally_argv=""
@@ -572,7 +572,7 @@ while (( "$#" )); do
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
         --no-profile)           shift; profile=false ;;
         --backend-level)        shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
-        --no-save)              shift; procesing_mode="on-the-fly" ;;
+        --no-save)              shift; processing_mode="on-the-fly" ;;
         --traced-ranks)         shift; traced_ranks=$1; shift ;;
         --asm)                  shift; asm=true ;;
         --metadata)             shift; bt_tally_argv+=" --display_metadata=true" ;;
@@ -627,7 +627,7 @@ fi
 
 if [ $replay = true ]; then
     summary "$@"
-elif [ $procesing_mode = "post-process" ]; then
+elif [ $procesing = "post-process" ]; then
     trace_and_summary "$@"
 else
     trace_and_summary_live "$@"
