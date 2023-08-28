@@ -21,9 +21,9 @@ thread_id_t borrow_thread_id(const bt_event *event){
 }
 
 
-bt_message* create_energy_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                     const uintptr_t hDevice, const uint32_t domain, const uint64_t energy, const uint64_t ts,
-                                     bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
+bt_message* create_power_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
+                                 const uintptr_t hDevice, const uint32_t domain, const uint64_t power, const uint64_t ts,
+                                 bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
 
      /* Message creation */
      bt_message *message = bt_message_event_create(
@@ -62,9 +62,9 @@ bt_message* create_energy_message(const char* hostname, const process_id_t proce
      bt_field *domain_field = bt_field_structure_borrow_member_field_by_index(payload_field,1);
      bt_field_integer_unsigned_set_value(domain_field, domain);
 
-     // energy
-     bt_field *energy_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
-     bt_field_integer_unsigned_set_value(energy_field, energy);
+     // power
+     bt_field *power_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
+     bt_field_integer_unsigned_set_value(power_field, power);
 
      return message;
 }
