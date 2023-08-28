@@ -820,17 +820,12 @@ void  zerReadEnergy(int devid, int pwrid, uint64_t *ts_us, uint64_t *energy_uj)
 
 void  zerReadFrequency(int devid, uint32_t domain_id, uint32_t *frequency)
 {
-
-*frequency = 0;
-//zesFrequencyGetProperties(domainList[i], &domainProps);
-       /*     printf("---- [%u] Clock EU Freq Range (MHz): %.2f - %.2f %s\n",
-                   i, domainProps.min, domainProps.max,
-                   domainProps.canControl ? "(changeable)" : "(unchangeable)");*/
-            zes_freq_state_t state = {
-                .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
-                .pNext = NULL};
-            zesFrequencyGetState(domainList[(devid * domainCount ) + domain_id], &state);/// getting freq of only tile 0
-*frequency = state.actual;
+   *frequency = 0;
+   zes_freq_state_t state = {
+            .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
+            .pNext = NULL};
+   zesFrequencyGetState(domainList[(devid * domainCount ) + domain_id], &state);/// getting freq of only tile 0
+   *frequency = state.actual;
            // printf("---- [%u] Current GPU  Freq (MHz): %.2f\n",i, state.actual);
 }
 
@@ -942,14 +937,10 @@ int zerInit()
     }
 //////////////////////////////////////////////////gpu_frequency
  // Get the frequency domains
-   domainCount = 0;
-   zes_freq_handle_t domains[MAX_N_FDOMS];
+    domainCount = 0;
+    zes_freq_handle_t domains[MAX_N_FDOMS];
     res = zesDeviceEnumFrequencyDomains(devhs_cache[i], &domainCount, NULL);
-    printf("domainCount=%u\n",domainCount);
     if (domainCount > 0) {
-        printf("-- Frequency Domains: %u\n", domainCount);
-
-       // zes_freq_handle_t* domainList = malloc(domainCount * sizeof(zes_freq_handle_t));
         res = zesDeviceEnumFrequencyDomains(devhs_cache[i], &domainCount, domains);
         if (res != ZE_RESULT_SUCCESS) {
             printf("Failed to retrieve frequency domains\n");
@@ -960,23 +951,17 @@ int zerInit()
             zes_freq_properties_t domainProps = {
                 .stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES,
                 .pNext = NULL
-            };
-             domainList[(i * domainCount) + k] = domains[k];
-            zesFrequencyGetProperties(domainList[(i * domainCount) + k], &domainProps);
+           };
+        domainList[(i * domainCount) + k] = domains[k];
+        zesFrequencyGetProperties(domainList[(i * domainCount) + k], &domainProps);
 
-       /*     printf("---- [%u] Clock EU Freq Range (MHz): %.2f - %.2f %s\n",
-                   i, domainProps.min, domainProps.max,
-                   domainProps.canControl ? "(changeable)" : "(unchangeable)");*/
-
-            zes_freq_state_t state = {
+        zes_freq_state_t state = {
                 .stype = ZES_STRUCTURE_TYPE_FREQ_STATE,
                 .pNext = NULL
-            };
-            zesFrequencyGetState(domainList[(i * domainCount) + k], &state);
-           // printf("---- [%u] Current GPU  Freq (MHz): %.2f\n",i, state.actual);
+         };
+         zesFrequencyGetState(domainList[(i * domainCount) + k], &state);
         }
 
-       // free(domainList);
     }
 
      else {
