@@ -503,7 +503,7 @@ static void _load_tracer(void) {
   }
 
   if( !handle ) {
-    fprintf(stderr, "Failure: could not load cuda library!\n");
+    fprintf(stderr, "THAPI: Failure: could not load cuda library!\n");
     exit(1);
   }
 

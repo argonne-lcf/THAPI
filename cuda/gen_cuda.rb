@@ -20,7 +20,25 @@ EOF
   puts "#define #{CUDA_POINTER_NAMES[c]} #{c.pointer_name}"
 }
 
-($cuda_commands + $cuda_exports_commands).each { |c|
+($cuda_commands).each { |c|
+  puts <<EOF
+
+static #{YAMLCAst::Declaration::new(name: c.name + "_unsupp", type: c.function.type)} {
+  #{c.parameters.map(&:name).map { |n| "(void)#{n};" }.join("\n  ")}
+  fprintf(stderr, "THAPI: #{c.name} was called, but it is unsupported by the driver\\n");
+  return CUDA_ERROR_NOT_SUPPORTED;
+}
+static #{YAMLCAst::Declaration::new(name: c.name + "_uninit", type: c.function.type)} {
+  #{c.parameters.map(&:name).map { |n| "(void)#{n};" }.join("\n  ")}
+  fprintf(stderr, "THAPI: #{c.name} was called before THAPI was initialized\\n");
+  return CUDA_ERROR_NOT_INITIALIZED;
+}
+#{c.decl_pointer(c.pointer_type_name)};
+static #{c.pointer_type_name} #{CUDA_POINTER_NAMES[c]} = (void *)&#{c.name}_uninit;
+EOF
+}
+
+($cuda_exports_commands).each { |c|
   puts <<EOF
 
 #{c.decl_pointer(c.pointer_type_name)};
@@ -47,8 +65,11 @@ $cuda_commands.each { |c|
   puts <<EOF
 
   #{CUDA_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{CUDA_POINTER_NAMES[c]} && verbose)
-    fprintf(stderr, "Missing symbol #{c.name}!\\n");
+  if (!#{CUDA_POINTER_NAMES[c]}) {
+    #{CUDA_POINTER_NAMES[c]} = &#{c.name}_unsupp;
+    if (verbose)
+      fprintf(stderr, "THAPI: Missing symbol #{c.name}!\\n");
+  }
 EOF
 }
 
