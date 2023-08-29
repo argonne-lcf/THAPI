@@ -73,7 +73,7 @@ module BTComponentClassRefinement
   refine(BT2::BTGraph) do
     attr_accessor :plugins_path, :cli_v
 
-    def add_component(component_class, name, params: {},
+    def add(component_class, name, params: {},
                       logging_level: BT2::BTLogging.default_level,
                       initialize_method_data: nil)
 
@@ -219,7 +219,8 @@ def get_and_add_components(graph, names)
       graph.add(comp, 'tally',
                 params: $options_tally.transform_values { |_, v| v })
     else
-      graph.add(comp, name)
+      # `.` is not allowed in the babeltrace components name when using the CLI
+      graph.add(comp, name.gsub('.','_'))
     end
   end
 end
@@ -344,10 +345,11 @@ connects(graph, comp)
 
 if $options[:debug]
   cli = graph.cli
+  name = "babeltrace_thapi_cli_#{command}.sh"
   # puts cli
-  puts 'babeltrace_thapi: babeltrace2 cli command will be saved in ./babeltrace_thapi_cli.sh'
+  puts "babeltrace_thapi: babeltrace2 cli command will be saved in ./#{name}"
   $stdout.flush
-  File.open('babeltrace_thapi_cli.sh', 'w') { |f| f.write(cli) }
+  File.open(name, 'w') { |f| f.write(cli) }
 end
 
 graph.run
