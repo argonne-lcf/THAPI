@@ -516,8 +516,6 @@ static void _load_tracer(void) {
   if(tracepoint_enabled(lttng_ust_cuda_exports, export_called))
     _do_trace_export_tables = 1;
 
-  if (_do_profile)
-    atexit(&_lib_cleanup);
 }
 
 static pthread_once_t _init_tracer_once = PTHREAD_ONCE_INIT;
@@ -540,6 +538,8 @@ static void _init_tracer(void) {
 
 static void _load_cuda(void) {
   _dump_properties();
+  if (_do_profile)
+    atexit(&_lib_cleanup);
 }
 
 static pthread_once_t _init_cuda_once = PTHREAD_ONCE_INIT;
