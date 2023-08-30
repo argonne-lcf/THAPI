@@ -34,8 +34,6 @@ find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
-INIT_FUNCTIONS = /cuInit|cuDriverGetVersion|cuGetExportTable|cuDeviceGetCount|cuGetProcAddress/
-
 HEX_INT_TYPES.push("CUdeviceptr")
 
 class TracepointParameter
@@ -283,6 +281,12 @@ register_epilogue "cuGetExportTable", <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
     *ppExportTable = tmp;
+  }
+EOF
+
+register_epilogue "cuInit", <<EOF
+  if (_retval == CUDA_SUCCESS) {
+    _init_cuda();
   }
 EOF
 

@@ -11,6 +11,8 @@ puts <<EOF
 #include "cuda_properties.h"
 #include "utlist.h"
 #include "uthash.h"
+
+static void _init_tracer(void);
 EOF
 #puts <<EOF
 ##include <ffi.h>
@@ -28,13 +30,25 @@ static #{YAMLCAst::Declaration::new(name: c.name + "_unsupp", type: c.function.t
   fprintf(stderr, "THAPI: #{c.name} was called, but it is unsupported by the driver\\n");
   return CUDA_ERROR_NOT_SUPPORTED;
 }
-static #{YAMLCAst::Declaration::new(name: c.name + "_uninit", type: c.function.type)} {
-  #{c.parameters.map(&:name).map { |n| "(void)#{n};" }.join("\n  ")}
-  fprintf(stderr, "THAPI: #{c.name} was called before THAPI was initialized\\n");
-  return CUDA_ERROR_NOT_INITIALIZED;
-}
+static #{YAMLCAst::Declaration::new(name: c.name + "_uninit", type: c.function.type)};
 #{c.decl_pointer(c.pointer_type_name)};
 static #{c.pointer_type_name} #{CUDA_POINTER_NAMES[c]} = (void *)&#{c.name}_uninit;
+static #{YAMLCAst::Declaration::new(name: c.name + "_uninit", type: c.function.type)} {
+  #{c.parameters.map(&:name).map { |n| "(void)#{n};" }.join("\n  ")}
+  _init_tracer();
+EOF
+  params = c.parameters.collect(&:name)
+  if c.has_return_type?
+    puts <<EOF
+  return #{CUDA_POINTER_NAMES[c]}(#{params.join(", ")});
+EOF
+  else
+    puts <<EOF
+  #{CUDA_POINTER_NAMES[c]}(#{params.join(", ")});
+EOF
+  end
+  puts <<EOF
+}
 EOF
 }
 
@@ -168,11 +182,6 @@ normal_wrapper = lambda { |c, provider|
   puts <<EOF
 #{c.decl} {
 EOF
-  if c.init?
-    puts <<EOF
-  _init_tracer();
-EOF
-  end
   common_block.call(c, provider)
   if c.has_return_type?
     puts <<EOF
