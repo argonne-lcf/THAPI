@@ -434,9 +434,6 @@ trace_and_summary() {
 
 call_babeltrace_thapi() {
 
-    local btt_debug_flag=$([ $debug == true ] && echo "--debug" || echo "")
-    local btt_common_flag="--backend <%= languages %> $btt_debug_flag"
-
     if [ $mode == "tally" ] && [ $processing_mode == "post-process" ]; then
       $bindir/babeltrace_thapi tally $btt_common_flag $bt_tally_argv -- $@
     elif [ $mode == "tally" ] && [ $processing_mode == "on-the-fly" ]; then
@@ -500,7 +497,7 @@ summary() {
 
 setup_babeltrace_live() {
   mkdir -p $THAPI_LTTNG_O
-  $bindir/babeltrace_thapi live2aggreg --backend <%= languages %> \
+  $bindir/babeltrace_thapi live2aggreg $btt_common_flag \
                                        --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
                                        --output $THAPI_LTTNG_O &
   BT_PID=$!
@@ -584,6 +581,9 @@ while (( "$#" )); do
         *)                      break ;;
     esac
 done
+
+btt_debug_flag=$([ $debug == true ] && echo "--debug" || echo "")
+btt_common_flag="--backend <%= languages %> $btt_debug_flag"
 
 quiet=""
 if [ $debug = true ]; then
