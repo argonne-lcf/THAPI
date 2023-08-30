@@ -496,16 +496,14 @@ summary() {
 #
 
 setup_babeltrace_live() {
-  mkdir -p $THAPI_LTTNG_O
-  $bindir/babeltrace_thapi live2aggreg $btt_common_flag \
-                                       --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
-                                       --output $THAPI_LTTNG_O &
-  BT_PID=$!
-
-  while [[ $(babeltrace2 --input-format=lttng-live net://localhost) == *"0 client(s) connected"* ]]; do
+    mkdir -p $THAPI_LTTNG_O
+    $bindir/babeltrace_thapi live2aggreg $btt_common_flag \
+                                         --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
+                                         --output $THAPI_LTTNG_O &
+    BT_PID=$!
+    while [[ $(babeltrace2 --input-format=lttng-live net://localhost) == *"0 client(s) connected"* ]]; do
         sleep 0.2
-  done
-
+    done
 }
 
 trace_epilogue_live() {
