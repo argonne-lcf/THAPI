@@ -501,6 +501,11 @@ setup_babeltrace_live() {
                                        --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
                                        --output $THAPI_LTTNG_O &
   BT_PID=$!
+
+  while [[ $(babeltrace2 --input-format=lttng-live net://localhost) == *"0 client(s) connected"* ]]; do
+        sleep 0.2
+  done
+
 }
 
 trace_epilogue_live() {
