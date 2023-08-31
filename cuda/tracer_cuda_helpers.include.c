@@ -480,10 +480,6 @@ static void _lib_cleanup() {
   }
 }
 
-static pthread_once_t _init = PTHREAD_ONCE_INIT;
-static __thread volatile int in_init = 0;
-static volatile int _initialized = 0;
-
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
@@ -503,7 +499,7 @@ static void _load_tracer(void) {
   }
 
   if( !handle ) {
-    fprintf(stderr, "Failure: could not load cuda library!\n");
+    fprintf(stderr, "THAPI: Failure: could not load cuda library!\n");
     exit(1);
   }
 
@@ -512,10 +508,7 @@ static void _load_tracer(void) {
     verbose = 1;
 
   find_cuda_symbols(handle, verbose);
-  CU_INIT_PTR(0);
   find_cuda_extensions();
-
-  _dump_properties();
 
   s = getenv("LTTNG_UST_CUDA_PROFILE");
   if (s)
@@ -523,21 +516,45 @@ static void _load_tracer(void) {
   if(tracepoint_enabled(lttng_ust_cuda_exports, export_called))
     _do_trace_export_tables = 1;
 
-  if (_do_profile)
-    atexit(&_lib_cleanup);
 }
 
-static inline void _init_tracer(void) {
+static pthread_once_t _init_tracer_once = PTHREAD_ONCE_INIT;
+static __thread volatile int _in_init = 0;
+static volatile int _initialized = 0;
+
+static void _init_tracer(void) {
   if( __builtin_expect (_initialized, 1) )
     return;
   /* Avoid reentrancy */
-  if (!in_init) {
-    in_init=1;
+  if (!_in_init) {
+    _in_init = 1;
     __sync_synchronize();
-    pthread_once(&_init, _load_tracer);
+    pthread_once(&_init_tracer_once, _load_tracer);
     __sync_synchronize();
-    in_init=0;
+    _in_init = 0;
   }
   _initialized = 1;
 }
 
+static void _load_cuda(void) {
+  _dump_properties();
+  if (_do_profile)
+    atexit(&_lib_cleanup);
+}
+
+static pthread_once_t _init_cuda_once = PTHREAD_ONCE_INIT;
+static __thread volatile int _in_init_cuda = 0;
+static volatile int _initialized_cuda = 0;
+
+static void _init_cuda(void) {
+  if( __builtin_expect (_initialized_cuda, 1) )
+    return;
+  if (!_in_init_cuda) {
+    _in_init_cuda = 1;
+    __sync_synchronize();
+    pthread_once(&_init_cuda_once, _load_cuda);
+    __sync_synchronize();
+    _in_init_cuda = 0;
+  }
+  _initialized_cuda = 1;
+}
