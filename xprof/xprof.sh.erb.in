@@ -73,6 +73,8 @@ mpi_local_rank_id() {
 SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/$(mpi_job_id)
 SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/$(mpi_job_id)
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
+# In live mode, we cannot have a socket name bigger than the unix limit
+THAPI_SESION_ID=$(echo "THAPI_$(hostname)_$(mpi_job_id)" | md5sum  | cut -d" " -f1)
 export LTTNG_HOME=/tmp/lttng_home/$(mpi_job_id)
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
@@ -325,12 +327,12 @@ setup_lttng() {
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
     if [ ${1:-""} = "--live" ]; then
-        lttngq create THAPI_$(hostname) --live
+        lttngq create $THAPI_SESION_ID --live
         lttngq enable-channel --userspace --blocking-timeout=inf \
                               --tracefile-size=524288 --tracefile-count=32 \
                               blocking-channel
     else
-        lttngq create THAPI_$(hostname) -o $THAPI_LTTNG_O
+        lttngq create $THAPI_SESION_ID -o $THAPI_LTTNG_O
         lttngq enable-channel --userspace --blocking-timeout=inf \
                               blocking-channel
     fi
@@ -353,7 +355,7 @@ setup_lttng() {
     enable_events_metadata
 
     lttngq add-context --userspace --channel=blocking-channel -t vpid -t vtid
-    lttngq start THAPI_$(hostname)
+    lttngq start $THAPI_SESION_ID
 }
 
 preload_lib_tracers() {
@@ -387,8 +389,8 @@ preload_lib_tracers() {
 }
 
 local_master_epilogue() {
-    lttngq stop THAPI_$(hostname)
-    lttngq destroy THAPI_$(hostname)
+    lttngq stop $THAPI_SESION_ID
+    lttngq destroy $THAPI_SESION_ID
     if [ ${1:-""} = "--live" ]; then
         wait $BT_PID # assigned by setup_babeltrace_live
     fi
@@ -505,7 +507,7 @@ summary() {
 setup_babeltrace_live() {
     mkdir -p $THAPI_LTTNG_O
     $bindir/babeltrace_thapi live2aggreg $btt_common_flag \
-                                         --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
+                                         --inputs "net://localhost/host/$(hostname)/$THAPI_SESION_ID" \
                                          --output $THAPI_LTTNG_O &
     BT_PID=$!
     while [[ $(babeltrace2 --input-format=lttng-live net://localhost) == *"0 client(s) connected"* ]]; do
