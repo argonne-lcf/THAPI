@@ -392,6 +392,10 @@ local_master_epilogue() {
     if [ ${1:-""} = "--live" ]; then
         wait $BT_PID # assigned by setup_babeltrace_live
     fi
+    # In the case of people sharing the same compute-node,
+    # this will be painfull...
+    killall -9 lttng-relayd || true
+
     global_barrier_epilogue
     rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
     rm -rf -- "$LTTNG_HOME"
