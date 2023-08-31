@@ -322,15 +322,18 @@ setup_lttng() {
 <% end %>
     THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/$(hostname)
 
-    if [ ${1:-""} = "--live" ]; then
-        lttngq create THAPI_$(hostname) --live
-    else
-        lttngq create THAPI_$(hostname) -o $THAPI_LTTNG_O
-    fi
-
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
-    lttngq enable-channel --userspace --blocking-timeout=inf blocking-channel
+    if [ ${1:-""} = "--live" ]; then
+        lttngq create THAPI_$(hostname) --live
+        lttngq enable-channel --userspace --blocking-timeout=inf \
+                              --tracefile-size=524288 --tracefile-count=32 \
+                              blocking-channel
+    else
+        lttngq create THAPI_$(hostname) -o $THAPI_LTTNG_O
+        lttngq enable-channel --userspace --blocking-timeout=inf \
+                              blocking-channel
+    fi
 
 <% if languages.include?("omp") %>
     enable_events_omp
