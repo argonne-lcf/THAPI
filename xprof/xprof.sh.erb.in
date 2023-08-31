@@ -327,6 +327,13 @@ setup_lttng() {
     #Preventing trace event record loss
     export LTTNG_UST_ALLOW_BLOCKING=1
     if [ ${1:-""} = "--live" ]; then
+
+        local arr=($(pidof lttng-relayd))
+        if [ ${#arr[@]} != 0 ]; then
+          echo "A lttng-relayd process is already present. Exiting..."
+          exit 1
+        fi
+
         lttngq create $THAPI_SESION_ID --live
         lttngq enable-channel --userspace --blocking-timeout=inf \
                               --tracefile-size=524288 --tracefile-count=32 \
@@ -397,6 +404,7 @@ local_master_epilogue() {
     # In the case of people sharing the same compute-node,
     # this will be painfull...
     killall -9 lttng-relayd || true
+    killall -9 lttng-sessiond || true
 
     global_barrier_epilogue
     rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
