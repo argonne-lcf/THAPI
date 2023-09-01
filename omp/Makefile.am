@@ -129,9 +129,9 @@ nodist_libTracerOMPT_la_SOURCES = \
 	$(OMP_PROBES_INCL) \
 	tracer_ompt.c
 
-libTracerOMPT_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I../utils -I./
+libTracerOMPT_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I./modified_include -I../utils -I./
 libTracerOMPT_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
-libTracerOMPT_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module
+libTracerOMPT_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module ../sampling/libThapiSampling.la
 libTracerOMPT_la_LIBADD = libompttracepoints.la
 
 install-exec-hook:

@@ -89,3 +89,41 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+      - :name: lttng:frequency 
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: domain
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: frequency
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+      - :name: lttng:power 
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: domain
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: power
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t

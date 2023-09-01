@@ -53,4 +53,28 @@
   - :name: name
     :class: string
   - :name: size
-    :class: unsigned 
+    :class: unsigned
+- :name: lttng:frequency
+  :payload:
+  - :name: did
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: domain
+    :class: unsigned
+    :class_properties:
+      :field_value_range: 32
+  - :name: frequency
+    :class: unsigned
+- :name: lttng:power
+  :payload:
+  - :name: did
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: domain
+    :class: unsigned
+    :class_properties:
+      :field_value_range: 32
+  - :name: power
+    :class: unsigned

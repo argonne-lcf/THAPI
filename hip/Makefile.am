@@ -277,9 +277,9 @@ nodist_libTracerHIP_la_SOURCES = \
 	$(HIP_PROBES_INCL) \
 	tracer_hip.c
 
-libTracerHIP_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
+libTracerHIP_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./utils -I./
 libTracerHIP_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerHIP_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
+libTracerHIP_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libTracerHIP_la_LDFLAGS += -Wl,--version-script,$(srcdir)/hip.map -version-number 5:4:50400
 libTracerHIP_la_DEPENDS = $(srcdir)/hip.map
 libTracerHIP_la_LIBADD = libhiptracepoints.la

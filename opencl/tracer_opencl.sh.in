@@ -49,6 +49,7 @@ display_help() {
     echo "  -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE"
     echo "  -v, --visualize               Visualize trace on thefly"
     echo "  --devices                     Dump devices information"
+    echo "  --sample                      Sample performance counters"
     exit 1
 }
 
@@ -73,6 +74,7 @@ while true; do
     -e | --iteration-end ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
     -v | --visualize) shift; lttng_view=1;;
     --devices ) shift; devices=1;;
+    --sample ) shift; sample=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -116,6 +118,12 @@ fi
 if [ ! -z "$build" ]
 then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:*
+fi
+if [ ! -z "$sample" ]
+then
+  export LTTNG_UST_SAMPLING=1
+  lttng enable-channel --userspace nonblocking-channel
+  lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
 fi
 if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]
 then

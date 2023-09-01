@@ -12,6 +12,7 @@ display_help() {
     echo "  --help                        Show this screen"
     echo "  --version                     Print the version string"
     echo "  --disable-intel-extensions    Disable Intel extensions"
+    echo "  --sample                      Sample performance counters"
     exit 1
 }
 
@@ -26,6 +27,7 @@ while true; do
     --help                   ) display_help; exit;;
     --version                ) display_version; exit;;
     --disable-intel-extensions) intel_extensions=false shift;;
+    --sample ) shift; sample=1;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -52,6 +54,12 @@ export LTTNG_UST_ALLOW_BLOCKING=1
 
 if [ "$intel_extensions" = true ] ; then
     export LTTNG_UST_OMP_INTEL=1
+fi
+if [ ! -z "$sample" ]
+then
+  export LTTNG_UST_SAMPLING=1
+  lttng enable-channel --userspace nonblocking-channel
+  lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
 fi
 
 lttng start
