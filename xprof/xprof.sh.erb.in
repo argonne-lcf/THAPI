@@ -73,6 +73,8 @@ mpi_local_rank_id() {
 SHARED_LOCAL_FILESYSTEM=/dev/shm/.thapi_lock/$(mpi_job_id)
 SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/$(mpi_job_id)
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
+# In live mode, we cannot have a socket name bigger than the unix limit
+THAPI_SESION_ID=$(echo "THAPI_$(hostname)_$(mpi_job_id)" | md5sum  | cut -d" " -f1)
 export LTTNG_HOME=/tmp/lttng_home/$(mpi_job_id)
 
 # Bash is so nice..: https://stackoverflow.com/a/38595828/7674852
@@ -323,14 +325,22 @@ setup_lttng() {
     THAPI_LTTNG_O=$THAPI_LTTNG_O_ROOT/$(hostname)
 
     if [ ${1:-""} = "--live" ]; then
-        lttngq create THAPI_$(hostname) --live
-    else
-        lttngq create THAPI_$(hostname) -o $THAPI_LTTNG_O
-    fi
 
-    #Preventing trace event record loss
-    export LTTNG_UST_ALLOW_BLOCKING=1
-    lttngq enable-channel --userspace --blocking-timeout=inf blocking-channel
+        local arr=($(pidof lttng-relayd))
+        if [ ${#arr[@]} != 0 ]; then
+          echo "A lttng-relayd process is already present. Exiting..."
+          exit 1
+        fi
+
+        lttngq create $THAPI_SESION_ID --live
+        lttngq enable-channel --userspace --blocking-timeout=inf \
+                              --tracefile-size=524288 --tracefile-count=32 \
+                              blocking-channel
+    else
+        lttngq create $THAPI_SESION_ID -o $THAPI_LTTNG_O
+        lttngq enable-channel --userspace --blocking-timeout=inf \
+                              blocking-channel
+    fi
 
 <% if languages.include?("omp") %>
     enable_events_omp
@@ -350,7 +360,7 @@ setup_lttng() {
     enable_events_metadata
 
     lttngq add-context --userspace --channel=blocking-channel -t vpid -t vtid
-    lttngq start THAPI_$(hostname)
+    lttngq start $THAPI_SESION_ID
 }
 
 preload_lib_tracers() {
@@ -384,11 +394,16 @@ preload_lib_tracers() {
 }
 
 local_master_epilogue() {
-    lttngq stop THAPI_$(hostname)
-    lttngq destroy THAPI_$(hostname)
+    lttngq stop $THAPI_SESION_ID
+    lttngq destroy $THAPI_SESION_ID
     if [ ${1:-""} = "--live" ]; then
         wait $BT_PID # assigned by setup_babeltrace_live
     fi
+    # In the case of people sharing the same compute-node,
+    # this will be painful...
+    killall -9 lttng-relayd 2> /dev/null || true
+    killall -9 lttng-sessiond 2> /dev/null || true
+
     global_barrier_epilogue
     rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
     rm -rf -- "$LTTNG_HOME"
@@ -417,7 +432,7 @@ trace_epilogue() {
 trace_and_summary() {
     [ "$#" -eq 0 ] && display_help
 
-    # Each node will have their own lock
+    # Each node will have its own lock
     # Need to change LLTNG HOME so each node has its own "lock"
     run_iff_local_master setup_lttng
     local_barier setup
@@ -429,7 +444,8 @@ trace_and_summary() {
     trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
 
     preload_lib_tracers
-    "$@"
+    #Preventing trace event record loss
+    LTTNG_UST_ALLOW_BLOCKING=1 "$@"
 }
 
 call_babeltrace_thapi() {
@@ -482,7 +498,7 @@ summary() {
         if [[ "$f" == *"-aggreg"* ]]; then
           processing_mode="on-the-fly"
         elif [ $processing_mode = "on-the-fly" ]; then
-          echo "Cannot mix aggregate on non aggregate traces"
+          echo "Cannot mix aggregated on non-aggregated traces"
           exit 1
         fi
     done
@@ -496,11 +512,14 @@ summary() {
 #
 
 setup_babeltrace_live() {
-  mkdir -p $THAPI_LTTNG_O
-  $bindir/babeltrace_thapi live2aggreg $btt_common_flag \
-                                       --inputs "net://localhost/host/$(hostname)/THAPI_$(hostname)"  \
-                                       --output $THAPI_LTTNG_O &
-  BT_PID=$!
+    mkdir -p $THAPI_LTTNG_O
+    $bindir/babeltrace_thapi live2aggreg $btt_common_flag \
+                                         --inputs "net://localhost/host/$(hostname)/$THAPI_SESION_ID" \
+                                         --output $THAPI_LTTNG_O &
+    BT_PID=$!
+    while [[ $(babeltrace2 --input-format=lttng-live net://localhost) == *"0 client(s) connected"* ]]; do
+        sleep 0.2
+    done
 }
 
 trace_epilogue_live() {
