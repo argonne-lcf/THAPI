@@ -578,7 +578,7 @@ while (( "$#" )); do
         -l | --timeline)        shift; mode="timeline" ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
-        -s | --sample)          shift; sample=true;;
+        -s | --sample)          shift; sample=true ;;
         --no-profile)           shift; profile=false ;;
         --backend-level)        shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
         --no-save)              shift; processing_mode="on-the-fly" ;;
