@@ -22,24 +22,10 @@ message TrackEventDescriptor {
   repeated TrackEventCategory available_categories = 1;
 }
 
-// End of protos/perfetto/common/track_event_descriptor.proto
-
-// Begin of protos/perfetto/common/data_source_descriptor.proto
-
-// This message is sent from Producer(s) to the tracing Service when registering
-// to advertise their capabilities. It describes the structure of tracing
-// protos that will be produced by the data source and the supported filters.
 message DataSourceDescriptor {
   optional TrackEventDescriptor track_event_descriptor = 6 [lazy = true];
 
 }
-
-
-// Reports the state of the tracing service. Used to gather details about the
-// data sources connected.
-// See ConsumerPort::QueryServiceState().
-// End of protos/perfetto/common/tracing_service_state.proto
-
 // Begin of protos/perfetto/common/builtin_clock.proto
 
 enum BuiltinClock {
@@ -63,37 +49,6 @@ message TrackEventConfig {
   // The following fields define the set of enabled trace categories. Each list
   // item is a glob.
   //
-  // To determine if category is enabled, it is checked against the filters in
-  // the following order:
-  //
-  //   1. Exact matches in enabled categories.
-  //   2. Exact matches in enabled tags.
-  //   3. Exact matches in disabled categories.
-  //   4. Exact matches in disabled tags.
-  //   5. Pattern matches in enabled categories.
-  //   6. Pattern matches in enabled tags.
-  //   7. Pattern matches in disabled categories.
-  //   8. Pattern matches in disabled tags.
-  //
-  // If none of the steps produced a match, the category is enabled by default.
-  //
-  // Examples:
-  //
-  //  - To enable all non-slow/debug categories:
-  //
-  //       No configuration needed, happens by default.
-  //
-  //  - To enable a specific category:
-  //
-  //       disabled_categories = ["*"]
-  //       enabled_categories = ["my_category"]
-  //
-  //  - To enable only categories with a specific tag:
-  //
-  //       disabled_tags = ["*"]
-  //       enabled_tags = ["my_tag"]
-  //
-
   // Default: []
   repeated string disabled_categories = 1;
 
@@ -141,15 +96,6 @@ message DataSourceConfig {
   reserved 268435455;
 }
 
-// End of protos/perfetto/config/data_source_config.proto
-
-// Begin of protos/perfetto/config/trace_config.proto
-
-// The overall config that is used when starting a new tracing session through
-// ProducerPort::StartTracing().
-// It contains the general config for the logging buffer(s) and the configs for
-// all the data source being enabled.
-//
 // Next id: 38.
 message TraceConfig {
   message BufferConfig {
@@ -178,29 +124,9 @@ message TraceConfig {
     optional FillPolicy fill_policy = 4;
   }
   repeated BufferConfig buffers = 1;
-
-  // An identifier clients can use to tie this trace to other logging.
-  // DEPRECATED as per v32. See TracePacket.trace_uuid for the authoritative
-  // Trace UUID. If this field is set, the tracing service will respect the
-  // requested UUID (i.e. TracePacket.trace_uuid == this field) but only if
-  // gap-less snapshotting is not used.
+ 
   optional int64 trace_uuid_msb = 27 [deprecated = true];
   optional int64 trace_uuid_lsb = 28 [deprecated = true];
-
-  // When set applies a post-filter to the trace contents using the filter
-  // provided. The filter is applied at ReadBuffers() time and works both in the
-  // case of IPC readback and write_into_file. This filter can be generated
-  // using `tools/proto_filter -s schema.proto -F filter_out.bytes` or
-  // `-T filter_out.escaped_string` (for .pbtx). See go/trace-filtering for
-  // design.
-  //
-  // Introduced in Android S, but it was broken (b/195065199). Reintroduced in
-  // Android T with a different field number. Updated in Android U with a new
-  // bytecode version which supports string filtering.
-    // Android-only. Not for general use. If set, reports the trace to the
-  // Android framework. This field is read by perfetto_cmd, rather than the
-  // tracing service. This field must be set when passing the --upload flag to
-  // perfetto_cmd.
 
 }
 // A snapshot of clock readings to allow for trace alignment.
@@ -257,47 +183,7 @@ message ClockSnapshot {
   // their chosen clock domains) to this domain during import.
   optional BuiltinClock primary_trace_clock = 2;
 }
-
-// End of protos/perfetto/trace/clock_snapshot.proto
-
-// Begin of protos/perfetto/common/descriptor.proto
-
-// The protocol compiler can output a FileDescriptorSet containing the .proto
-// files it parses.
-
-
-
-// Describes a message type.
-message DescriptorProto {
-  optional string name = 1;
-
-  repeated FieldDescriptorProto field = 2;
-  repeated FieldDescriptorProto extension = 6;
-
-  repeated DescriptorProto nested_type = 3;
-  repeated EnumDescriptorProto enum_type = 4;
-
-  reserved 5;
-
-  repeated OneofDescriptorProto oneof_decl = 8;
-
-  reserved 7;
-
-  // Range of reserved tag numbers. Reserved tag numbers may not be used by
-  // fields or extension ranges in the same message. Reserved ranges may
-  // not overlap.
-  message ReservedRange {
-    // Inclusive.
-    optional int32 start = 1;
-    // Exclusive.
-    optional int32 end = 2;
-  }
-  repeated ReservedRange reserved_range = 9;
-  // Reserved field names, which may not be used by fields in the same message.
-  // A given name may only be reserved once.
-  repeated string reserved_name = 10;
-}
-
+/*
 message FieldOptions {
   // The packed option can be enabled for repeated primitive fields to enable
   // a more efficient representation on the wire. Rather than repeatedly
@@ -306,87 +192,7 @@ message FieldOptions {
   // false will avoid using packed encoding.
   optional bool packed = 2;
 }
-
-// Describes a field within a message.
-message FieldDescriptorProto {
-  enum Type {
-    // 0 is reserved for errors.
-    // Order is weird for historical reasons.
-    TYPE_DOUBLE = 1;
-    TYPE_FLOAT = 2;
-    // Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT64 if
-    // negative values are likely.
-    TYPE_INT64 = 3;
-    TYPE_UINT64 = 4;
-    // Not ZigZag encoded.  Negative numbers take 10 bytes.  Use TYPE_SINT32 if
-    // negative values are likely.
-    TYPE_INT32 = 5;
-    TYPE_FIXED64 = 6;
-    TYPE_FIXED32 = 7;
-    TYPE_BOOL = 8;
-    TYPE_STRING = 9;
-    // Tag-delimited aggregate.
-    // Group type is deprecated and not supported in proto3. However, Proto3
-    // implementations should still be able to parse the group wire format and
-    // treat group fields as unknown fields.
-    TYPE_GROUP = 10;
-    // Length-delimited aggregate.
-    TYPE_MESSAGE = 11;
-
-    // New in version 2.
-    TYPE_BYTES = 12;
-    TYPE_UINT32 = 13;
-    TYPE_ENUM = 14;
-    TYPE_SFIXED32 = 15;
-    TYPE_SFIXED64 = 16;
-    // Uses ZigZag encoding.
-    TYPE_SINT32 = 17;
-    // Uses ZigZag encoding.
-    TYPE_SINT64 = 18;
-  };
-
-  enum Label {
-    // 0 is reserved for errors
-    LABEL_OPTIONAL = 1;
-    LABEL_REQUIRED = 2;
-    LABEL_REPEATED = 3;
-  };
-
-  optional string name = 1;
-  optional int32 number = 3;
-  optional Label label = 4;
-
-  // If type_name is set, this need not be set.  If both this and type_name
-  // are set, this must be one of TYPE_ENUM, TYPE_MESSAGE or TYPE_GROUP.
-  optional Type type = 5;
-
-  // For message and enum types, this is the name of the type.  If the name
-  // starts with a '.', it is fully-qualified.  Otherwise, C++-like scoping
-  // rules are used to find the type (i.e. first the nested types within this
-  // message are searched, then within the parent, on up to the root
-  // namespace).
-  optional string type_name = 6;
-
-  // For extensions, this is the name of the type being extended.  It is
-  // resolved in the same manner as type_name.
-  optional string extendee = 2;
-
-  // For numeric types, contains the original text representation of the value.
-  // For booleans, "true" or "false".
-  // For strings, contains the default text contents (not escaped in any way).
-  // For bytes, contains the C escaped value.  All bytes >= 128 are escaped.
-  // TODO(kenton):  Base-64 encode?
-  optional string default_value = 7;
-
-  optional FieldOptions options = 8;
-
-  // If set, gives the index of a oneof in the containing type's oneof_decl
-  // list.  This field is a member of that oneof.
-  optional int32 oneof_index = 9;
-
-  reserved 10;
-}
-
+*/
 // Describes a oneof.
 message OneofDescriptorProto {
   optional string name = 1;
@@ -421,77 +227,6 @@ message OneofOptions {
   // Clients can define custom options in extensions of this message. See above.
   extensions 1000 to max;
 }
-
-// End of protos/perfetto/common/descriptor.proto
-
-// Begin of protos/perfetto/trace/extension_descriptor.proto
-
-// This message contains descriptors used to parse extension fields of
-// TrackEvent.
-//
-// See docs/design-docs/extensions.md for more details.
-// Trace events emitted by client instrumentation library (TRACE_EVENT macros),
-// which describe activity on a track, such as a thread or asynchronous event
-// track. The track is specified using separate TrackDescriptor messages and
-// referred to via the track's UUID.
-//
-// A simple TrackEvent packet specifies a timestamp, category, name and type:
-// ```protobuf
-//   trace_packet {
-//     timestamp: 1000
-//     track_event {
-//       categories: ["my_cat"]
-//       name: "my_event"
-//       type: TYPE_INSTANT
-//      }
-//    }
-// ```
-//
-// To associate an event with a custom track (e.g. a thread), the track is
-// defined in a separate packet and referred to from the TrackEvent by its UUID:
-// ```protobuf
-//   trace_packet {
-//     track_descriptor {
-//       track_uuid: 1234
-//       name: "my_track"
-//
-//       // Optionally, associate the track with a thread.
-//       thread_descriptor {
-//         pid: 10
-//         tid: 10
-//         ..
-//       }
-//     }
-//   }
-// ```
-//
-// A pair of TYPE_SLICE_BEGIN and _END events form a slice on the track:
-//
-// ```protobuf
-//   trace_packet {
-//     timestamp: 1200
-//     track_event {
-//       track_uuid: 1234
-//       categories: ["my_cat"]
-//       name: "my_slice"
-//       type: TYPE_SLICE_BEGIN
-//     }
-//   }
-//   trace_packet {
-//     timestamp: 1400
-//     track_event {
-//       track_uuid: 1234
-//       type: TYPE_SLICE_END
-//     }
-//   }
-// ```
-// TrackEvents also support optimizations to reduce data repetition and encoded
-// data size, e.g. through data interning (names, categories, ...) and delta
-// encoding of timestamps/counters. For details, see the InternedData message.
-// Further, default values for attributes of events on the same sequence (e.g.
-// their default track association) can be emitted as part of a
-// TrackEventDefaults message.
-//
 // Next reserved id: 13 (up to 15). Next id: 50.
 message TrackEvent {
   // Names of categories of the event. In the client library, categories are a
@@ -520,22 +255,7 @@ message TrackEvent {
   enum Type {
     TYPE_UNSPECIFIED = 0;
 
-    // Slice events are events that have a begin and end timestamp, i.e. a
-    // duration. They can be nested similar to a callstack: If, on the same
-    // track, event B begins after event A, but before A ends, B is a child
-    // event of A and will be drawn as a nested event underneath A in the UI.
-    // Note that child events should always end before their parents (e.g. B
-    // before A).
-    //
-    // Each slice event is formed by a pair of BEGIN + END events. The END event
-    // does not need to repeat any TrackEvent fields it has in common with its
-    // corresponding BEGIN event. Arguments and debug annotations of the BEGIN +
-    // END pair will be merged during trace import.
-    //
-    // Note that we deliberately chose not to support COMPLETE events (which
-    // would specify a duration directly) since clients would need to delay
-    // writing them until the slice is completed, which can result in reordered
-    // events in the trace and loss of unfinished events at the end of a trace.
+
     TYPE_SLICE_BEGIN = 1;
     TYPE_SLICE_END = 2;
 
@@ -569,27 +289,6 @@ message TrackEvent {
     double double_counter_value = 44;
   }
 
-  // To encode counter values more efficiently, we support attaching additional
-  // counter values to a TrackEvent of any type. All values will share the same
-  // timestamp specified in the TracePacket. The value at
-  // extra_counter_values[N] is for the counter track referenced by
-  // extra_counter_track_uuids[N].
-  //
-  // |extra_counter_track_uuids| may also be set via TrackEventDefaults. There
-  // should always be equal or more uuids than values. It is valid to set more
-  // uuids (e.g. via defaults) than values. If uuids are specified in
-  // TrackEventDefaults and a TrackEvent, the TrackEvent uuids override the
-  // default uuid list.
-  //
-  // For example, this allows snapshotting the thread time clock at each
-  // thread-track BEGIN and END event to capture the cpu time delta of a slice.
-  repeated uint64 extra_counter_track_uuids = 31;
-  repeated int64 extra_counter_values = 12;
-
-  // Counter snapshots using floating point instead of integer values.
-  repeated uint64 extra_double_counter_track_uuids = 45;
-  repeated double extra_double_counter_values = 46;
-
   // ---------------------------------------------------------------------------
   // TrackEvent arguments:
   // ---------------------------------------------------------------------------
@@ -609,28 +308,6 @@ message TrackEvent {
   // Deprecated. Use the |timestamp| and |timestamp_clock_id| fields in
   // TracePacket instead.
   //
-  // Timestamp in microseconds (usually CLOCK_MONOTONIC).
-  oneof timestamp {
-    // Delta timestamp value since the last TrackEvent or ThreadDescriptor. To
-    // calculate the absolute timestamp value, sum up all delta values of the
-    // preceding TrackEvents since the last ThreadDescriptor and add the sum to
-    // the |reference_timestamp| in ThreadDescriptor. This value should always
-    // be positive.
-    int64 timestamp_delta_us = 1;
-    // Absolute value (e.g. a manually specified timestamp in the macro).
-    // This is a one-off value that does not affect delta timestamp computation
-    // in subsequent TrackEvents.
-    int64 timestamp_absolute_us = 16;
-  }
-
-  // Deprecated. Use |extra_counter_values| and |extra_counter_track_uuids| to
-  // encode thread time instead.
-  //
-  // CPU time for the current thread (e.g., CLOCK_THREAD_CPUTIME_ID) in
-  // microseconds.
-
-// Next id: 20.
-
 }
 
 // Default values for fields of all TrackEvents on the same packet sequence.
@@ -696,11 +373,11 @@ message ProcessTree {
     // The command line for the process, as per /proc/pid/cmdline.
     // If it is a kernel thread there will only be one cmdline field
     // and it will contain /proc/pid/comm.
-    repeated string cmdline = 3;
+   // repeated string cmdline = 3;
 
     // No longer used as of Apr 2018, when the dedicated |threads| field was
     // introduced in ProcessTree.
-    repeated Thread threads_deprecated = 4 [deprecated = true];
+    //repeated Thread threads_deprecated = 4 [deprecated = true];
 
     // The uid for the process, as per /proc/pid/status.
     optional int32 uid = 5;
@@ -779,16 +456,6 @@ message ProcessDescriptor {
 
 // End of protos/perfetto/trace/track_event/process_descriptor.proto
 
-// Begin of protos/perfetto/trace/track_event/range_of_interest.proto
-
-// This message specifies the "range of interest" for track events. With the
-// `drop_track_event_data_before` option set to `kTrackEventRangeOfInterest`,
-// Trace Processor drops track events outside of this range.
-message TrackEventRangeOfInterest {
-  optional int64 start_us = 1;
-}
-// End of protos/perfetto/trace/track_event/range_of_interest.proto
-
 // Begin of protos/perfetto/trace/track_event/thread_descriptor.proto
 
 // Describes a thread's attributes. Emitted as part of a TrackDescriptor,
@@ -862,20 +529,6 @@ message CounterDescriptor {
   // In order to use a unit not defined as a part of |Unit|, a free-form unit
   // name can be used instead.
   optional string unit_name = 6;
-
-  // Multiplication factor of this counter's values, e.g. to supply
-  // COUNTER_THREAD_TIME_NS timestamps in microseconds instead.
-  optional int64 unit_multiplier = 4;
-
-  // Whether values for this counter are provided as delta values. Only
-  // supported for counters that are emitted on a single packet-sequence (e.g.
-  // thread time). Counter values in subsequent packets on the current packet
-  // sequence will be interpreted as delta values from the sequence's most
-  // recent value for the counter. When incremental state is cleared, the
-  // counter value is considered to be reset to 0. Thus, the first value after
-  // incremental state is cleared is effectively an absolute value.
-  optional bool is_incremental = 5;
-
   // TODO(eseckler): Support arguments describing the counter (?).
   // repeated DebugAnnotation debug_annotations;
 }
@@ -942,44 +595,9 @@ message TrackDescriptor {
 
 // End of protos/perfetto/trace/track_event/track_descriptor.proto
 
-
-// Design doc: go/trace-ui-state.
-message UiState {
-  // The start and end bounds of the viewport of the UI in nanoseconds.
-  //
-  // This is the absolute time associated to slices and other events in
-  // trace processor tables (i.e. the |ts| column of most tables)
-  optional int64 timeline_start_ts = 1;
-  optional int64 timeline_end_ts = 2;
-
-  // Indicates that the given process should be highlighted by the UI.
-  message HighlightProcess {
-    oneof selector {
-      // The pid of the process to highlight. This is useful for UIs to focus
-      // on tracks of a particular process in the trace.
-      //
-      // If more than one process in a trace has the same pid, it is UI
-      // implementation specific how the process to be focused will be
-      // chosen.
-      uint32 pid = 1;
-
-      // The command line of the process to highlight; for most Android apps,
-      // this is the package name of the app. This is useful for UIs to focus
-      // on a particular app in the trace.
-      //
-      // If more than one process hasthe same cmdline, it is UI implementation
-      // specific how the process to be focused will be chosen.
-      string cmdline = 2;
-    }
-  }
-  optional HighlightProcess highlight_process = 3;
-}
-
 // Next id: 95.
 message TracePacket {
   // The timestamp of the TracePacket.
-  // By default this timestamps refers to the trace clock (CLOCK_BOOTTIME on
-  // Android). It can be overridden using a different timestamp_clock_id.
   // The clock domain definition in ClockSnapshot can also override:
   // - The unit (default: 1ns).
   // - The absolute vs delta encoding (default: absolute timestamp).
@@ -993,11 +611,11 @@ message TracePacket {
   optional uint32 timestamp_clock_id = 58;
 
   oneof data {
-    ProcessTree process_tree = 2;
+//    ProcessTree process_tree = 2;
     //ProcessStats process_stats = 9;
     //InodeFileMap inode_file_map = 4;
     //ChromeEventBundle chrome_events = 5;
-    ClockSnapshot clock_snapshot = 6;
+  //  ClockSnapshot clock_snapshot = 6;
     //SysStats sys_stats = 7;
     TrackEvent track_event = 11;
 
@@ -1007,7 +625,7 @@ message TracePacket {
     TraceUuid trace_uuid = 89;
     TraceConfig trace_config = 33;
   
-    UiState ui_state = 78;
+    // UiState ui_state = 78;
  
 
     // Only used by TrackEvent.
@@ -1019,27 +637,16 @@ message TracePacket {
     // Deprecated, use TrackDescriptor instead.
     ThreadDescriptor thread_descriptor = 44;
 
-    // Events from the Linux kernel ftrace infrastructure.
-    //FtraceEventBundle ftrace_events = 1;
-
     // This field is emitted at periodic intervals (~10s) and
     // contains always the binary representation of the UUID
     // {82477a76-b28d-42ba-81dc-33326d57a079}. This is used to be able to
     // efficiently partition long traces without having to fully parse them.
-    bytes synchronization_marker = 36;
-
-    // Zero or more proto encoded trace packets compressed using deflate.
-    // Each compressed_packets TracePacket (including the two field ids and
-    // sizes) should be less than 512KB.
-   // bytes compressed_packets = 50;
+   // bytes synchronization_marker = 36;
 
    //TestEvent for_testing = 900;
-  // gpu_freq.Packet gpu_freq_packet = 1001;
+   //gpu_freq.Packet gpu_freq_packet = 1001;
   }
 
-  // Trusted user id of the producer which generated this packet. Keep in sync
-  // with TrustedPacket.trusted_uid.
-  //
   // TODO(eseckler): Emit this field in a PacketSequenceDescriptor message
   // instead.
   oneof optional_trusted_uid { int32 trusted_uid = 3; };
@@ -1056,77 +663,16 @@ message TracePacket {
   // the service.
   optional int32 trusted_pid = 79;
 
-  // Incrementally emitted interned data, valid only on the packet's sequence
-  // (packets with the same |trusted_packet_sequence_id|). The writer will
-  // usually emit new interned data in the same TracePacket that first refers to
-  // it (since the last reset of interning state). It may also be emitted
-  // proactively in advance of referring to them in later packets.
- // optional InternedData interned_data = 12;
-
-  enum SequenceFlags {
-    SEQ_UNSPECIFIED = 0;
-
-    // Set by the writer to indicate that it will re-emit any incremental data
-    // for the packet's sequence before referring to it again. This includes
-    // interned data as well as periodically emitted data like
-    // Process/ThreadDescriptors. This flag only affects the current packet
-    // sequence (see |trusted_packet_sequence_id|).
-    //
-    // When set, this TracePacket and subsequent TracePackets on the same
-    // sequence will not refer to any incremental data emitted before this
-    // TracePacket. For example, previously emitted interned data will be
-    // re-emitted if it is referred to again.
-    //
-    // When the reader detects packet loss (|previous_packet_dropped|), it needs
-    // to skip packets in the sequence until the next one with this flag set, to
-    // ensure intact incremental data.
-    SEQ_INCREMENTAL_STATE_CLEARED = 1;
-
-    // This packet requires incremental state, such as TracePacketDefaults or
-    // InternedData, to be parsed correctly. The trace reader should skip this
-    // packet if incremental state is not valid on this sequence, i.e. if no
-    // packet with the SEQ_INCREMENTAL_STATE_CLEARED flag has been seen on the
-    // current |trusted_packet_sequence_id|.
-    SEQ_NEEDS_INCREMENTAL_STATE = 2;
-  };
   optional uint32 sequence_flags = 13;
 
-  // DEPRECATED. Moved to SequenceFlags::SEQ_INCREMENTAL_STATE_CLEARED.
-  optional bool incremental_state_cleared = 41;
-
-  // Default values for fields of later TracePackets emitted on this packet's
-  // sequence (TracePackets with the same |trusted_packet_sequence_id|).
-  // It must be reemitted when incremental state is cleared (see
-  // |incremental_state_cleared|).
-  // Requires that any future packet emitted on the same sequence specifies
-  // the SEQ_NEEDS_INCREMENTAL_STATE flag.
-  // TracePacketDefaults always override the global defaults for any future
+ // TracePacketDefaults always override the global defaults for any future
   // packet on this sequence (regardless of SEQ_NEEDS_INCREMENTAL_STATE).
   optional TracePacketDefaults trace_packet_defaults = 59;
 
-  // Flag set by the service if, for the current packet sequence (see
-  // |trusted_packet_sequence_id|), either:
-  // * this is the first packet, or
-  // * one or multiple packets were dropped since the last packet that the
-  //   consumer read from the sequence. This can happen if chunks in the trace
-  //   buffer are overridden before the consumer could read them when the trace
-  //   is configured in ring buffer mode.
-  //
   // When packet loss occurs, incrementally emitted data (including interned
   // data) on the sequence should be considered invalid up until the next packet
   // with SEQ_INCREMENTAL_STATE_CLEARED set.
   optional bool previous_packet_dropped = 42;
-
-  // Flag set by a producer (starting from SDK v29) if, for the current packet
-  // sequence (see |trusted_packet_sequence_id|), this is the first packet.
-  //
-  // This flag can be used for distinguishing the two situations when
-  // processing the trace:
-  // 1. There are no prior events for the sequence because of data loss, e.g.
-  //    due to ring buffer wrapping.
-  // 2. There are no prior events for the sequence because it didn't start
-  //    before this packet (= there's definitely no preceeding data loss).
-  //
   // Given that older SDK versions do not support this flag, this flag not
   // being present for a particular sequence does not necessarily imply data
   // loss.
@@ -1140,11 +686,6 @@ message TracePacket {
 message Trace {
   repeated TracePacket packet = 1;
 
-  // Do NOT add any other field here. This is just a convenience wrapper for
-  // the use case of a trace being saved to a file. There are other cases
-  // (streaming) where TracePacket are directly streamed without being wrapped
-  // in a Trace proto. Nothing should ever rely on the full trace, all the
-  // logic should be based on TracePacket(s).
+  // Do NOT add any other field here.
 }
-
 // End of protos/perfetto/trace/trace.proto
