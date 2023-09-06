@@ -400,9 +400,9 @@ local_master_epilogue() {
         wait $BT_PID # assigned by setup_babeltrace_live
     fi
     # In the case of people sharing the same compute-node,
-    # this will be painfull...
-    killall -9 lttng-relayd || true
-    killall -9 lttng-sessiond || true
+    # this will be painful...
+    killall -9 lttng-relayd 2> /dev/null || true
+    killall -9 lttng-sessiond 2> /dev/null || true
 
     global_barrier_epilogue
     rm -rf -- "$SHARED_LOCAL_FILESYSTEM"
@@ -432,7 +432,7 @@ trace_epilogue() {
 trace_and_summary() {
     [ "$#" -eq 0 ] && display_help
 
-    # Each node will have their own lock
+    # Each node will have its own lock
     # Need to change LLTNG HOME so each node has its own "lock"
     run_iff_local_master setup_lttng
     local_barier setup
@@ -498,7 +498,7 @@ summary() {
         if [[ "$f" == *"-aggreg"* ]]; then
           processing_mode="on-the-fly"
         elif [ $processing_mode = "on-the-fly" ]; then
-          echo "Cannot mix aggregate on non aggregate traces"
+          echo "Cannot mix aggregated on non-aggregated traces"
           exit 1
         fi
     done
