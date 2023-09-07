@@ -134,6 +134,7 @@ def get_components(names)
     'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
     'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
     'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
+    'sink.text.details' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('details'),
     'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
     'sink.utils.dummy' => BT2::BTPlugin.find('utils').get_sink_component_class_by_name('dummy'),
   }
@@ -268,9 +269,6 @@ subcommands = {
         exit
       end
 
-      opts.on('--live', 'Enable live display of the trace') do
-        $options[:live] = true
-      end
     end,
   'live2aggreg' =>
     OptionParser.new do |opts|
@@ -285,14 +283,28 @@ subcommands = {
         $options[:output] = output
       end
     end,
+  'live2details' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: live2aggreg [OPTIONS]'
+      common_options(opts)
+
+      opts.on('--inputs=INPUTS') do |inputs|
+        $options[:inputs] = [inputs]
+      end
+    end,
+    'live2dummy' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: live2aggreg [OPTIONS]'
+      common_options(opts)
+
+      opts.on('--inputs=INPUTS') do |inputs|
+        $options[:inputs] = [inputs]
+      end
+    end,
   'tally' =>
     OptionParser.new do |opts|
       opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
       common_options(opts)
-
-      opts.on('--live', 'Enable live display of the trace') do
-        $options[:live] = true
-      end
 
       $options_tally.each do |k, (t, _)|
         opts.on("--#{k}=VALUE", t) do |v|
@@ -337,6 +349,8 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
                 'live2aggreg' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'filter.intervals.interval',
                                   'filter.btx_aggreg.aggreg', 'sink.ctf.fs'],
+                'live2details' =>  ['source.ctf.lttng_live', 'sink.text.details'],
+                'live2dummy' =>  ['source.ctf.lttng_live', 'sink.utils.dummy'],
                 'aggreg2tally' => ['source.ctf.fs', 'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'] }
 
 graph = BT2::BTGraph.new
