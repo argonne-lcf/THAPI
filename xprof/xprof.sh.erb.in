@@ -549,7 +549,7 @@ trace_and_summary_live() {
     # Run the binary
     trap 'trace_epilogue_live' EXIT SIGABRT SIGSEGV
     preload_lib_tracers
-    "$@"
+    LTTNG_UST_ALLOW_BLOCKING=1 "$@"
 }
 
 
