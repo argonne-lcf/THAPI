@@ -947,6 +947,7 @@ static void _load_tracer(void) {
 
   if (getenv("LTTNG_UST_SAMPLING_ENERGY")) {
     initializeHandles();   
+    /* TODO: make it configurable */
     interval.tv_sec = 0;
     interval.tv_nsec = 50000000;
     thapi_register_sampling(&thapi_sampling_energy, &interval);

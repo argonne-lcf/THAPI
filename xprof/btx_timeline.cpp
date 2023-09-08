@@ -58,6 +58,7 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
   packet->set_timestamp(0);
+  // TODO: check if this is required
   packet->set_previous_packet_dropped(true);
   auto *track_descriptor = packet->mutable_track_descriptor();
   track_descriptor->set_uuid(hp_uuid);

@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# TODO: merge into babeltrace_thapi at some point
 DATADIR = File.join("@prefix@", "share")
 $:.unshift(DATADIR) if File::directory?(DATADIR)
 require 'optparse'
@@ -8,10 +9,6 @@ require 'yaml'
 require 'pp'
 
 $event_lambdas = {}
-#require 'babeltrace_opencl_lib'
-#require 'babeltrace_ze_lib'
-#require 'babeltrace_cuda_lib'
-#require 'babeltrace_omp_lib'
 
 $options = {
   context: false,
@@ -96,19 +93,6 @@ consume = lambda { |iterator, _|
       l = $event_lambdas[e.name]
       if l
          l.call e 
-#        str = "#{Time.at(0, m.get_default_clock_snapshot.ns_from_origin, :nsec).strftime("%H:%M:%S.%9L")}"
-#        if $context
-#          str << " - #{e.stream.trace.get_environment_entry_value_by_name("hostname")}"
-#          common_context_field = e.get_common_context_field
-#          str << " - " << common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if common_context_field
-#        end
-#        str << " - #{e.name}: "
-#        if l
-#          str << l.call(e.payload_field.value)
-#        else
-#          str << e.payload_field.to_s
-#        end
-#        puts str
       end
     end
   }
