@@ -440,12 +440,13 @@ trace_and_summary() {
     #Create the metadata.
     #read and dump `$LTTNG_UST_THAPI_METADATA` env
     run_iff_local_master $bindir/thapi_metadata
-    # Run the binary
-    trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
 
-    preload_lib_tracers
-    #Preventing trace event record loss
-    LTTNG_UST_ALLOW_BLOCKING=1 "$@"
+    # Run the binary.
+    trap 'trace_epilogue' EXIT SIGABRT SIGSEGV
+    (
+        preload_lib_tracers
+        LTTNG_UST_ALLOW_BLOCKING=1 "$@"
+    )
 }
 
 call_babeltrace_thapi() {
@@ -539,17 +540,21 @@ trace_epilogue_live() {
 
 trace_and_summary_live() {
     [ "$#" -eq 0 ] && display_help
+
     # Each node will have their own lock
     run_iff_local_master setup_lttng --live
     run_iff_local_master setup_babeltrace_live
     local_barier setup
+
     # Create the metadata.
     # Read and dump `$LTTNG_UST_THAPI_METADATA` env
     run_iff_local_master $bindir/thapi_metadata
     # Run the binary
     trap 'trace_epilogue_live' EXIT SIGABRT SIGSEGV
-    preload_lib_tracers
-    LTTNG_UST_ALLOW_BLOCKING=1 "$@"
+    (
+        preload_lib_tracers
+        LTTNG_UST_ALLOW_BLOCKING=1 "$@"
+    )
 }
 
 
