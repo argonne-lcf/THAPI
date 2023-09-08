@@ -757,14 +757,14 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
 #define _ZE_ERROR_MSG_NOTERMINATE(NAME,RES) {fprintf(stderr,"%s() error at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));}
 #define _ERROR_MSG(MSG) {perror((MSG)); fprintf(stderr,"errno=%d at %d(%s)",errno,__LINE__,__FILE__);}
 
-static int initialized = 0;
+static int _sampling_initialized = 0;
 // Static handles to stay throughout the execution
-static ze_device_handle_t* hDevices;
-static zes_freq_handle_t** hFrequencies;
-static zes_pwr_handle_t** hPowers;
-static uint32_t deviceCount;
-static uint32_t* freqDomainCounts;
-static uint32_t* powerDomainCounts;
+static ze_device_handle_t* _sampling_hDevices;
+static zes_freq_handle_t** _sampling_hFrequencies;
+static zes_pwr_handle_t** _sampling_hPowers;
+static uint32_t _sampling_deviceCount;
+static uint32_t* _sampling_freqDomainCounts;
+static uint32_t* _sampling_powerDomainCounts;
 
 int initializeHandles() {
   ze_result_t res;
@@ -798,76 +798,76 @@ int initializeHandles() {
   }
 
   // Query device count
-  res = ZE_DEVICE_GET_PTR(hDriver[0], &deviceCount, NULL);
-  if (res != ZE_RESULT_SUCCESS || deviceCount == 0) {
+  res = ZE_DEVICE_GET_PTR(hDriver[0], &_sampling_deviceCount, NULL);
+  if (res != ZE_RESULT_SUCCESS || _sampling_deviceCount == 0) {
     fprintf(stderr, "ERROR: No device found!\n");
     _ZE_ERROR_MSG("ZE_DEVICE_GET_PTR", res);
     return -1;
   }
 
-  hDevices = (ze_device_handle_t*) malloc(deviceCount * sizeof(ze_device_handle_t));
-  res = ZE_DEVICE_GET_PTR(hDriver[0], &deviceCount, hDevices);
+  _sampling_hDevices = (ze_device_handle_t*) malloc(_sampling_deviceCount * sizeof(ze_device_handle_t));
+  res = ZE_DEVICE_GET_PTR(hDriver[0], &_sampling_deviceCount, _sampling_hDevices);
   if (res != ZE_RESULT_SUCCESS) {
     _ZE_ERROR_MSG("2nd ZE_DRIVER_GET_PTR", res);
     return -1;
   }
 
-  hFrequencies = (zes_freq_handle_t**) malloc(deviceCount * sizeof(zes_freq_handle_t*));
-  freqDomainCounts = (uint32_t*) malloc(deviceCount * sizeof(uint32_t));
+  _sampling_hFrequencies = (zes_freq_handle_t**) malloc(_sampling_deviceCount * sizeof(zes_freq_handle_t*));
+  _sampling_freqDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
 
-  hPowers = (zes_pwr_handle_t**) malloc(deviceCount * sizeof(zes_pwr_handle_t*));
-  powerDomainCounts = (uint32_t*) malloc(deviceCount * sizeof(uint32_t));
+  _sampling_hPowers = (zes_pwr_handle_t**) malloc(_sampling_deviceCount * sizeof(zes_pwr_handle_t*));
+  _sampling_powerDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
 
-  for (uint32_t i = 0; i < deviceCount; i++) {
+  for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get frequency domains for each device
-    res = zesDeviceEnumFrequencyDomains(hDevices[i], &freqDomainCounts[i], NULL);
+    res = zesDeviceEnumFrequencyDomains(_sampling_hDevices[i], &_sampling_freqDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
       printf("zesDeviceEnumFrequencyDomains (count query) failed for device %d: %d\n", i, res);
       return(-1);
     }
 
-    hFrequencies[i] = (zes_freq_handle_t*) malloc(freqDomainCounts[i] * sizeof(zes_freq_handle_t));
-    res = zesDeviceEnumFrequencyDomains(hDevices[i], &freqDomainCounts[i], hFrequencies[i]);
+    _sampling_hFrequencies[i] = (zes_freq_handle_t*) malloc(_sampling_freqDomainCounts[i] * sizeof(zes_freq_handle_t));
+    res = zesDeviceEnumFrequencyDomains(_sampling_hDevices[i], &_sampling_freqDomainCounts[i], _sampling_hFrequencies[i]);
     if (res != ZE_RESULT_SUCCESS) {
       printf("zesDeviceEnumFrequencyDomains failed for device %d: %d\n", i, res);
       return(-1);
     }
 
     // Get power domains for each device
-    res = zesDeviceEnumPowerDomains(hDevices[i], &powerDomainCounts[i], NULL);
+    res = zesDeviceEnumPowerDomains(_sampling_hDevices[i], &_sampling_powerDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
       printf("zesDeviceEnumPowerDomains (count query) failed for device %d: %d\n", i, res);
       return(-1);
     }
 
-    hPowers[i] = (zes_pwr_handle_t*) malloc(powerDomainCounts[i] * sizeof(zes_pwr_handle_t));
-    res = zesDeviceEnumPowerDomains(hDevices[i], &powerDomainCounts[i], hPowers[i]);
+    _sampling_hPowers[i] = (zes_pwr_handle_t*) malloc(_sampling_powerDomainCounts[i] * sizeof(zes_pwr_handle_t));
+    res = zesDeviceEnumPowerDomains(_sampling_hDevices[i], &_sampling_powerDomainCounts[i], _sampling_hPowers[i]);
     if (res != ZE_RESULT_SUCCESS) {
       printf("zesDeviceEnumPowerDomains failed for device %d: %d\n", i, res);
       return(-1);
     }
   }
   free(hDriver);
-  initialized=1;
+  _sampling_initialized=1;
   return 0;
 }
 
 void readFrequency(uint32_t deviceIdx, uint32_t domainIdx, uint32_t *frequency) {
-  if (!initialized) return;
+  if (!_sampling_initialized) return;
   *frequency=0;
   zes_freq_state_t freqState;
-  if (zesFrequencyGetState(hFrequencies[deviceIdx][domainIdx], &freqState) == ZE_RESULT_SUCCESS) {
+  if (zesFrequencyGetState(_sampling_hFrequencies[deviceIdx][domainIdx], &freqState) == ZE_RESULT_SUCCESS) {
     // printf("Device %d - Frequency Domain %d: Current frequency: %lf MHz\n", deviceIdx, domainIdx, freqState.actual);
     *frequency = freqState.actual;
   }
 }
 
 void readEnergy(uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_t *energy_uj) {
-  if (!initialized) return;
+  if (!_sampling_initialized) return;
   *ts_us = 0;
   *energy_uj = 0;
   zes_power_energy_counter_t energyCounter;
-  if (zesPowerGetEnergyCounter(hPowers[deviceIdx][domainIdx], &energyCounter) == ZE_RESULT_SUCCESS) {
+  if (zesPowerGetEnergyCounter(_sampling_hPowers[deviceIdx][domainIdx], &energyCounter) == ZE_RESULT_SUCCESS) {
     // printf("Device %d - Power Domain %d: Total energy consumption: %lu Joules\n", deviceIdx, domainIdx, energyCounter.energy);
     *ts_us = energyCounter.timestamp;
     *energy_uj = energyCounter.energy;
@@ -878,14 +878,14 @@ static void thapi_sampling_energy() {
   uint64_t ts_us;
   uint64_t energy_uj;
   uint32_t frequency;
-  for (uint32_t i = 0; i < deviceCount; i++) {
-    for (uint32_t j = 0; j < (freqDomainCounts[i] >= 1 ? 1:0); j++) {
+  for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
+    for (uint32_t j = 0; j < (_sampling_freqDomainCounts[i] >= 1 ? 1:0); j++) {
       readFrequency(i, j, &frequency);
-      do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)hDevices[i], j, ts_us, frequency);
+      do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
     }
-    for (uint32_t j = 0; j < (powerDomainCounts[i] >= 1 ? 1:0); j++) {
+    for (uint32_t j = 0; j < (_sampling_powerDomainCounts[i] >= 1 ? 1:0); j++) {
       readEnergy(i, j, &ts_us, &energy_uj);
-      do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)hDevices[i], j, (uint64_t)energy_uj, ts_us);
+      do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
     }
   }
 }
