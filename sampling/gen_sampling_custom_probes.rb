@@ -1,16 +1,22 @@
-require_relative 'ze_model'
+require 'yaml'
+require_relative '../utils/LTTng'
+
+if ENV["SRC_DIR"]
+  SRC_DIR = ENV["SRC_DIR"]
+else
+  SRC_DIR = "."
+end
 
 namespace = ARGV[0]
 
 raise "No namespace provided!" unless namespace
 
-h = YAML::load_file(File.join(SRC_DIR,"ze_events.yaml"))[namespace]
+h = YAML::load_file(File.join(SRC_DIR,"sampling_events.yaml"))[namespace]
 
-raise "Invalid namespace: #{namespace}!" unless h
+raise "Invalid namespace!" unless h
 
 puts <<EOF
 #include "lttng/tracepoint_gen.h"
-#include "ze.h.include"
 
 EOF
 enums = h["enums"]

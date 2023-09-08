@@ -98,6 +98,7 @@ AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strt
 
 AC_CONFIG_FILES([Makefile
                  utils/Makefile
+                 sampling/Makefile
                  xprof/xprof.sh.erb
                  opencl/Makefile
                  ze/Makefile
@@ -113,6 +114,7 @@ AC_CONFIG_FILES([ze/test_wrapper.sh], [chmod +x ze/test_wrapper.sh])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
 AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
+AC_CONFIG_FILES([utils/babeltrace_energy], [chmod +x utils/babeltrace_energy])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
 AC_CONFIG_FILES([hip/tracer_hip.sh], [chmod +x hip/tracer_hip.sh])

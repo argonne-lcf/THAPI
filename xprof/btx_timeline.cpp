@@ -26,6 +26,12 @@ struct timeline_dispatch_s {
   std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>,
                      std::map<timestamp_t, perfetto_uuid_t>>
       track2lasts;
+
+  std::unordered_map<hp_t, perfetto_uuid_t> hp2frqtracks;
+  std::unordered_map<hp_t, perfetto_uuid_t> hp2pwrtracks;
+  std::unordered_map<hp_device_t, perfetto_uuid_t> hp_devs2frqtracks;
+  std::unordered_map<hp_device_t, perfetto_uuid_t> hp_devs2pwrtracks;
+
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
@@ -34,6 +40,103 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   // Start at one, Look like UUID 0 is special
   static std::atomic<perfetto_uuid_t> uuid{1};
   return uuid++;
+}
+
+static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispatch, std::unordered_map<hp_t, perfetto_uuid_t> &parent_tracks,
+                                                     const std::string track_name, std::string hostname, uint64_t process_id) {
+  perfetto_uuid_t hp_uuid = 0;
+  auto [it, inserted] = parent_tracks.insert({{hostname, process_id}, hp_uuid});
+  auto &potential_uuid = it->second;
+  // Exists
+  if (!inserted)
+    return potential_uuid;
+
+  hp_uuid = gen_perfetto_uuid();
+  potential_uuid = hp_uuid;
+
+  // Create packet with track descriptor
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_timestamp(0);
+  // TODO: check if this is required
+  packet->set_previous_packet_dropped(true);
+  auto *track_descriptor = packet->mutable_track_descriptor();
+  track_descriptor->set_uuid(hp_uuid);
+  auto *process = track_descriptor->mutable_process();
+  process->set_pid(hp_uuid);
+  std::ostringstream oss;
+  oss << "Hostname " << hostname << " | Process " << process_id;
+  oss << " | " << track_name << " | uuid ";
+  process->set_process_name(oss.str());
+  return hp_uuid;
+}
+
+static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch, std::unordered_map<hp_t, perfetto_uuid_t> &parent_tracks,
+                                               std::unordered_map<hp_device_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
+                                               std::string hostname, uint64_t process_id, thapi_device_id did) {
+  perfetto_uuid_t hp_dev_uuid = 0;
+  auto [it, inserted] = counter_tracks.insert({{hostname, process_id, did}, hp_dev_uuid});
+  auto &potential_uuid = it->second;
+  // Exists
+  if (!inserted)
+    return potential_uuid;
+
+  perfetto_uuid_t hp_uuid = get_parent_counter_track_uuid(dispatch, parent_tracks, track_name, hostname, process_id);
+  hp_dev_uuid = gen_perfetto_uuid();
+  potential_uuid = hp_dev_uuid;
+
+  // Create new track
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_timestamp(0);
+  packet->set_trusted_packet_sequence_id(10000);
+  auto *track_descriptor = packet->mutable_track_descriptor();
+  track_descriptor->set_uuid(hp_dev_uuid);
+  track_descriptor->set_parent_uuid(hp_uuid);
+  std::ostringstream oss;
+  oss << "Device " << did;
+  track_descriptor->set_name(oss.str());
+  track_descriptor->mutable_counter();
+  return hp_dev_uuid;
+}
+
+static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
+                                                 uint64_t process_id, thapi_device_id did) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp2frqtracks, dispatch->hp_devs2frqtracks, "GPU Frequency", hostname, process_id, did);
+}
+
+static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
+                                             uint64_t process_id, thapi_device_id did) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp2pwrtracks, dispatch->hp_devs2pwrtracks, "GPU Power", hostname, process_id, did);
+}
+
+static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
+                                uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                                uint32_t domain, uint64_t timestamp, uint64_t frequency) {
+  (void)domain;
+  perfetto_uuid_t track_uuid = get_frequency_track_uuuid(dispatch, hostname, process_id, did);
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_timestamp(timestamp);
+  auto *track_event = packet->mutable_track_event();
+  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+  track_event->set_track_uuid(track_uuid);
+  track_event->set_name("Frequency");
+  track_event->set_counter_value(frequency);
+}
+
+static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
+                            uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                            uint32_t domain, uint64_t timestamp, uint64_t power) {
+  (void)domain;
+  perfetto_uuid_t track_uuid = get_power_track_uuuid(dispatch, hostname, process_id, did);
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_timestamp(timestamp);
+  auto *track_event = packet->mutable_track_event();
+  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+  track_event->set_track_uuid(track_uuid);
+  track_event->set_name("Power");
+  track_event->set_counter_value(power);
 }
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
@@ -239,9 +342,25 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
   add_event_async(dispatch, hostname, vpid, vtid, did, sdid, name, ts, dur);
 }
 
+static void frequency_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                                   int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                   uint64_t did, uint32_t domain, uint64_t frequency) {
+  auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  add_event_frequency(dispatch, hostname, vpid, vtid, did, domain, ts, frequency);
+}
+
+static void power_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                               int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                               uint64_t did, uint32_t domain, uint64_t power) {
+  auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  add_event_power(dispatch, hostname, vpid, vtid, did, domain, ts, power);
+}
+
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
+  btx_register_callbacks_lttng_frequency(btx_handle, &frequency_usr_callback);
+  btx_register_callbacks_lttng_power(btx_handle, &power_usr_callback);
   btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
   btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 }

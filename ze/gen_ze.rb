@@ -24,6 +24,7 @@ puts <<EOF
 #include "zet_structs_tracepoints.h"
 #include "zes_structs_tracepoints.h"
 #include "zel_structs_tracepoints.h"
+#include "ze_sampling.h"
 #include "ze_profiling.h"
 #include "ze_properties.h"
 #include "ze_build.h"

@@ -162,6 +162,7 @@ display_help() {
     echo "  -v, --version             Print the version string"
     echo "  -r, --replay    [path]    <application> <application-arguments> will be treated as paths to traces folders ($HOME/lttng-traces/...)"
     echo "                            If no arguments are provided, will use the latest trace available"
+    echo "  -s, --sample              Activate sampling"
     echo
     echo " Example:"
     echo " $(basename $0) ./a.out"
@@ -340,6 +341,18 @@ setup_lttng() {
         lttngq create $THAPI_SESION_ID -o $THAPI_LTTNG_O
         lttngq enable-channel --userspace --blocking-timeout=inf \
                               blocking-channel
+    fi
+
+    #Activate sampling on non-blocking stream
+    if [ $sample == true ]; then
+        export LTTNG_UST_SAMPLING=1
+        export LTTNG_UST_SAMPLING_ENERGY=1
+        lttngq enable-channel --userspace nonblocking-channel
+        lttngq enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
+<% if languages.include?("ze") %>
+        lttngq enable-event --channel=nonblocking-channel --userspace lttng_ust_ze_sampling:*
+<% end %>
+        lttngq add-context --userspace --channel=nonblocking-channel -t vpid -t vtid
     fi
 
 <% if languages.include?("omp") %>
@@ -574,6 +587,7 @@ asm=false
 replay=false
 cleanup=false
 profile=true
+sample=false
 
 while (( "$#" )); do
     case "$1" in
@@ -586,6 +600,7 @@ while (( "$#" )); do
         -l | --timeline)        shift; mode="timeline" ;;
         -j | --json)            shift; bt_tally_argv+=" --display_mode=json" ;;
         -m | --tracing-mode)    shift; tracing_mode=$1; shift ;;
+        -s | --sample)          shift; sample=true ;;
         --no-profile)           shift; profile=false ;;
         --backend-level)        shift; bt_tally_argv+=" --backend_level=$1"; shift ;;
         --no-save)              shift; processing_mode="on-the-fly" ;;

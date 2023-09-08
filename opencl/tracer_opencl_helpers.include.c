@@ -1,3 +1,5 @@
+#include "thapi_sampling.h"
+
 void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
   (void)user_data;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling_results)) {
@@ -1179,6 +1181,8 @@ static void _load_tracer(void) {
   char *s = NULL;
   void * handle = NULL;
   int verbose = 0;
+
+  thapi_sampling_init();
 
   s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
   if (s)
