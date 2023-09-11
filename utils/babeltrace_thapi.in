@@ -160,20 +160,23 @@ def get_components(names)
       require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
       require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
       # I guess need to put it in `babeltrace_energy_lib` at some point?
-      if $options[:backends].include?('ze')
-        $energies={}
-        $event_lambdas["lttng_ust_ze_sampling:gpu_energy"] = lambda { |defi|
-          energy = defi['energy']
-          timestamp = defi['timestamp']
-          key = [ defi['hDevice'], defi['domain'] ]
-          previous = $energies[key]
-          if previous
-            p_energy, p_timestamp = previous
-            puts "#{key[0]}:#{key[1]}: #{(energy - p_energy).to_f/(timestamp - p_timestamp)}"
-          end
-          $energies[key] = [energy, timestamp]
-        } 
-      end
+
+      $energies={}
+      $event_lambdas["lttng_ust_ze_sampling:gpu_energy"] = lambda { |defi|
+        energy = defi['energy']
+        timestamp = defi['timestamp']
+
+        key = [ defi['hDevice'], defi['domain'] ]
+        previous = $energies[key]
+        $energies[key] = [energy, timestamp]
+
+        if previous
+          p_energy, p_timestamp = previous
+          "#{key[0]}:#{key[1]}: #{(energy - p_energy).to_f/(timestamp - p_timestamp)}"
+        else
+          ""
+        end
+      } if $options[:backends].include?('ze')
 
       f = lambda { |iterator, _|
         iterator.next_messages.each do |m|
