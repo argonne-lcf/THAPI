@@ -18,6 +18,7 @@ AM_PROG_AR
 LT_INIT([disable-static])
 
 # Checks for programs.
+AC_PROG_LN
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_PROG_CXX

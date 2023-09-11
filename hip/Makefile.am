@@ -288,10 +288,15 @@ install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/hip
 	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerHIP.so.5.4.50400 $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so.5
 	$(LN_S) -f $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so.5 $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libHIPInterval.so $(DESTDIR)$(pkglibdir)/bt2/libHIPInterval.so
+
 
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so.5 $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so
 	-rmdir $(DESTDIR)$(pkglibdir)/hip
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libHIPInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
 tmplib_LTLIBRARIES = libBabeltraceHIP.la

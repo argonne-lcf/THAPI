@@ -139,7 +139,7 @@ def get_components(names)
   }
 
   # THAPI components
-  thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib'))
+  thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib', '@PACKAGE@', 'bt2'))
   thapi_plugins.map do |pg|
     pg.source_component_classes.each { |c| components_classes["source.#{pg.name}.#{c.name}"] = c }
     pg.filter_component_classes.each { |c| components_classes["filter.#{pg.name}.#{c.name}"] = c }

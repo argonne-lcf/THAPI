@@ -171,10 +171,14 @@ install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ze
 	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerZE.so.0.0.0 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1
 	$(LN_S) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libZEInterval.so $(DESTDIR)$(pkglibdir)/bt2/libZEInterval.so
 
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
 	-rmdir $(DESTDIR)$(pkglibdir)/ze
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libZEInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
 tmplib_LTLIBRARIES = libBabeltraceZE.la

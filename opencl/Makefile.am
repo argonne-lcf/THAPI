@@ -171,10 +171,14 @@ install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/opencl
 	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerOpenCL.so.1.0.0 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1
 	$(LN_S) -f $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libCLInterval.so $(DESTDIR)$(pkglibdir)/bt2/libCLInterval.so
 
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so
 	-rmdir $(DESTDIR)$(pkglibdir)/opencl
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libCLInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean

@@ -137,11 +137,14 @@ libTracerOMPT_la_LIBADD = libompttracepoints.la
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ompt
 	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerOMPT.so $(DESTDIR)$(pkglibdir)/ompt/libompt.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libOMPInterval.so $(DESTDIR)$(pkglibdir)/bt2/libOMPInterval.so
 
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/ompt/libompt.so
 	-rmdir $(DESTDIR)$(pkglibdir)/ompt
-
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libOMPInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 babeltrace_ompinterval_callbacks.cpp: $(srcdir)/gen_ompinterval_callbacks.rb $(srcdir)/ompinterval_callbacks.cpp.erb omp_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@

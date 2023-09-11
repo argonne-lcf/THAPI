@@ -116,6 +116,16 @@ libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-m
 libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so
+	$(LN) -f $(DESTDIR)$(libdir)/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so
+	$(LN) -f $(DESTDIR)$(libdir)/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
+
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
 #   noinst_LTLIBRARIES would be the correct thing but then libtool
