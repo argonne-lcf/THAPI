@@ -181,11 +181,19 @@ display_version() {
     exit 1
 }
 
+populate_whichlib_cache() {
+    set +x
+    whichlib_cached=$(PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null)
+    if [ $debug = true ]; then
+        set -x
+    fi
+}
+
 # Find all location of a `.so`
 whichlib() {
-   {
     # Always remove `x` here, too much nose due to ldconfig -vNX
     set +x
+
     # Output of ldconfig:
     #/usr/lib32:
     #       libstdc++.so.6 -> libstdc++.so.6.0.26
@@ -193,25 +201,24 @@ whichlib() {
     # -> /usr/lib32/libstdc++.so.6
 
     # In OpenSUSE ldconfig, is in '/sbin'.
-    PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+    echo "$whichlib_cached" |
     awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
                  match($1, "^lib") && match($1, p) { print header "/" $1}'
-   }
+    if [ $debug = true ]; then
+        set -x
+    fi
 }
 
 whichlib64_head() {
-  # This function return the first lib64 found
-  {
     set +o pipefail
-    unset IFS
     for lib in $(whichlib $1)
     do
-        if objdump -a $lib | grep -q 64; then
+        if objdump -f $lib | grep architecture | cut -d',' -f1 | grep -q 64; then
             echo $lib
             break
         fi
     done
-  }
+    set -o pipefail
 }
 
 # > unset FOO ; thapi_export FOO 1 ; echo $FOO
@@ -377,33 +384,37 @@ setup_lttng() {
 }
 
 preload_lib_tracers() {
+    populate_whichlib_cache
+
     IFS=","
     if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS$(mpi_rank_id)$IFS" ]]; then
+       unset IFS
 <% if languages.include?("omp") %>
-    thapi_export LTTNG_UST_OMP_INTEL 1
-    thapi_export OMP_TOOL_LIBRARIES $libdir/libTracerOMPT.so
+       thapi_export LTTNG_UST_OMP_INTEL 1
+       thapi_export OMP_TOOL_LIBRARIES $libdir/libTracerOMPT.so
 <% end %>
 <% if languages.include?("cl") %>
 <%= print_loader_logic("opencl","libOpenCL","libTracerOpenCL")%>
 <% end %>
 <% if languages.include?("ze") %>
-    if [ $profile = true ]; then
-        export LTTNG_UST_ZE_PROFILE=1
-        thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
-    fi
+      if [ $profile = true ]; then
+          export LTTNG_UST_ZE_PROFILE=1
+          thapi_export LTTNG_UST_ZE_PARANOID_DRIFT 1
+      fi
 <%= print_loader_logic("ze","libze_loader","libTracerZE")%>
 <% end %>
 <% if languages.include?("cuda") %>
-    if [ $profile = true ]; then
-        export LTTNG_UST_CUDA_PROFILE=1
-    fi
+      if [ $profile = true ]; then
+          export LTTNG_UST_CUDA_PROFILE=1
+      fi
 <%= print_loader_logic("cuda","libcuda","libTracerCUDA")%>
 <% end %>
 <% if languages.include?("hip") %>
 <%= print_loader_logic("hip","libamdhip64","libTracerHIP")%>
 <% end %>
+    else
+      unset IFS
     fi
-    unset IFS
 }
 
 local_master_epilogue() {
