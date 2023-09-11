@@ -181,11 +181,19 @@ display_version() {
     exit 1
 }
 
+populate_whichlib_cache() {
+    set +x
+    whichlib_cached=$(PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null)
+    if [ $debug = true ]; then
+        set -x
+    fi
+}
+
 # Find all location of a `.so`
 whichlib() {
-   {
     # Always remove `x` here, too much nose due to ldconfig -vNX
     set +x
+
     # Output of ldconfig:
     #/usr/lib32:
     #       libstdc++.so.6 -> libstdc++.so.6.0.26
@@ -193,10 +201,12 @@ whichlib() {
     # -> /usr/lib32/libstdc++.so.6
 
     # In OpenSUSE ldconfig, is in '/sbin'.
-    PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
+    echo $whichlib_cached |
     awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
                  match($1, "^lib") && match($1, p) { print header "/" $1}'
-   }
+    if [ $debug = true ]; then
+        set -x
+    fi
 }
 
 whichlib64_head() {
@@ -377,6 +387,8 @@ setup_lttng() {
 }
 
 preload_lib_tracers() {
+    populate_whichlib_cache
+
     IFS=","
     if [[ "$traced_ranks" == "-1" ]] || [[ "$IFS$traced_ranks$IFS" =~ "$IFS$(mpi_rank_id)$IFS" ]]; then
 <% if languages.include?("omp") %>
