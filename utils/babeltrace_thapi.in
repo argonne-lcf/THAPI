@@ -171,7 +171,7 @@ def get_components(names)
           puts "#{key[0]}:#{key[1]}: #{(energy - p_energy).to_f/(timestamp - p_timestamp)}"
         end
         $energies[key] = [energy, timestamp]
-      }
+      } if $options[:backends].include?('ze')
 
       f = lambda { |iterator, _|
         iterator.next_messages.each do |m|
