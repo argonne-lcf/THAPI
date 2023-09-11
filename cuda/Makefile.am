@@ -292,12 +292,17 @@ install-exec-hook:
 	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.12 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so
 	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerCUDA.so.1.0.0 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1
 	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libCUDAInterval.so $(DESTDIR)$(pkglibdir)/bt2/libCUDAInterval.so
+
 
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.12 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so
 	$(RM) -f $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so
 	-rmdir $(DESTDIR)$(pkglibdir)/cudart
 	-rmdir $(DESTDIR)$(pkglibdir)/cuda
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libCUDAInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
 tmplib_LTLIBRARIES = libBabeltraceCUDA.la
