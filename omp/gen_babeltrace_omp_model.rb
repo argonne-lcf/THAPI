@@ -24,7 +24,14 @@ def meta_parameter_types_name(m)
   t = m.command[m.name].type.type
 
   case m
-  when ArrayMetaParameter
+  when ScalarMetaParameter
+    if lttng.length
+      [["ctf_integer", "size_t", "_#{name}_length", nil],
+       [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+    else
+      [[lttng.macro.to_s, "#{t}", "#{name}", lttng]]
+    end
+  when ArrayMetaParameter, StringMetaParameter
     if lttng.macro.to_s == "ctf_string"
       [["ctf_string", "#{t} *", "#{name}", lttng]]
     else
@@ -49,7 +56,7 @@ end
 def gen_event_fields_bt_model(c)
   types_name = get_fields_types_name(c)
   types_name.collect { |lttng_name, type, name, lttng|
-    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ""), name, lttng)
+    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ""), name, lttng, be_union: true)
   }
 end
 

@@ -175,6 +175,8 @@ class ScalarMetaParameter < MetaParameter
   end
 end
 
+Scalar = ScalarMetaParameter
+
 class InOutScalar < ScalarMetaParameter
   prepend In
   prepend Out

@@ -1,5 +1,55 @@
 ---
 meta_parameters:
+  ompt_callback_thread_begin_func:
+    - [ Scalar, thread_data ]
+  ompt_callback_thread_end_func:
+    - [ Scalar, thread_data ]
+  ompt_callback_parallel_begin_func:
+    - [ Scalar, encountering_task_data ]
+    - [ Scalar, encountering_task_frame ]
+    - [ Scalar, parallel_data ]
+  ompt_callback_parallel_end_func:
+    - [ Scalar, parallel_data ]
+    - [ Scalar, encountering_task_data ]
+  ompt_callback_work_func:
+    - [ Scalar, parallel_data ]
+    - [ Scalar, task_data ]
+  ompt_callback_dispatch_func:
+    - [ Scalar, parallel_data ]
+    - [ Scalar, task_data ]
+  ompt_callback_task_create_func:
+    - [ Scalar, encountering_task_data ]
+    - [ Scalar, encountering_task_frame ]
+    - [ Scalar, new_task_data ]
+  ompt_callback_dependences_func:
+    - [ Scalar, task_data ]
+    - [ Scalar, deps ]
+  ompt_callback_task_dependence_func:
+    - [ Scalar, src_task_data ]
+    - [ Scalar, sink_task_data ]
+  ompt_callback_task_schedule_func:
+    - [ Scalar, prior_task_data ]
+    - [ Scalar, next_task_data ]
+  ompt_callback_implicit_task_func:
+    - [ Scalar, parallel_data ]
+    - [ Scalar, task_data ]
+  ompt_callback_master_func:
+    - [ Scalar, parallel_data ]
+    - [ Scalar, task_data ]
+  ompt_callback_sync_region_func:
+    - [ Scalar, parallel_data ]
+    - [ Scalar, task_data ]
+  ompt_callback_flush_func:
+    - [ Scalar, thread_data ]
+  ompt_callback_cancel_func:
+    - [ Scalar, task_data ]
+  ompt_callback_device_initialize_func:
+    - [ StringMetaParameter, type ]
+    - [ StringMetaParameter, documentation ]
+  ompt_callback_device_load_func:
+    - [ StringMetaParameter, filename ]
+  ompt_callback_target_func:
+    - [ Scalar, task_data ]
   ompt_callback_target_map_func:
     - [ ArrayMetaParameter, host_addr, nitems ]
     - [ ArrayMetaParameter, device_addr, nitems ]

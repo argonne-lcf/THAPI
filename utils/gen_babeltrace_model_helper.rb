@@ -13,7 +13,7 @@ def get_extra_fields_types_name(event)
   }.flatten(1)
 end
 
-def gen_bt_field_model(lttng_name, type, name, lttng)
+def gen_bt_field_model(lttng_name, type, name, lttng, be_union: false)
   field = { name: name, cast_type: type}
   case lttng_name
   when 'ctf_float'
@@ -46,11 +46,15 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:class] = 'string'
     if $all_struct_names.include?(type.sub(" *", ""))
       field[:be_class] = to_scoped_class_name(type.sub(" *", ""))
+    elsif be_union && $all_union_names.include?(type.sub(" *", ""))
+      field[:be_class] = to_scoped_class_name(type.sub(" *", ""))
     end
   when 'ctf_array_text'
     field[:class] = 'string'
     field[:length] = lttng.length
     if $all_struct_names.include?(type.sub(" *", ""))
+      field[:be_class] = to_scoped_class_name(type.sub(" *", ""))
+    elsif be_union && $all_union_names.include?(type.sub(" *", ""))
       field[:be_class] = to_scoped_class_name(type.sub(" *", ""))
     end
   else
@@ -59,10 +63,10 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   field
 end
 
-def gen_event_fields_bt_model(c, dir)
+def gen_event_fields_bt_model(c, dir, be_union: false)
   types_name = get_fields_types_name(c, dir)
   types_name.collect { |lttng_name, type, name, lttng|
-    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ""), name, lttng)
+    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ""), name, lttng, be_union: be_union)
   }
 end
 
@@ -73,9 +77,9 @@ def gen_extra_event_fields_bt_model(event)
   }
 end
 
-def gen_event_bt_model(provider, c, dir)
+def gen_event_bt_model(provider, c, dir, be_union: false)
   { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}",
-    payload: gen_event_fields_bt_model(c, dir) }
+    payload: gen_event_fields_bt_model(c, dir, be_union: be_union) }
 end
 
 def gen_extra_event_bt_model(provider, event)
