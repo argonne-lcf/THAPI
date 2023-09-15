@@ -44,7 +44,7 @@ static perfetto_uuid_t gen_perfetto_uuid() {
 static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispatch,
                                                      std::string hostname, uint64_t process_id, thapi_device_id did ) {
   perfetto_uuid_t hp_uuid = 0;
-  auto [it, inserted] = timeline_dispatch_t->hp_device2countertracks.insert({{hostname, process_id, did}, hp_uuid});
+  auto [it, inserted] = dispatch->hp_device2countertracks.insert({{hostname, process_id, did}, hp_uuid});
   auto &potential_uuid = it->second;
   // Exists
   if (!inserted)
@@ -71,7 +71,7 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
 }
 
 static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
-                                               std::unordered_map<hp_dsd_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
+                                               std::unordered_map<hp_ddomain_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
                                                std::string hostname, uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
   perfetto_uuid_t hp_dev_uuid = 0;
   auto [it, inserted] = counter_tracks.insert({{hostname, process_id, did, domain}, hp_dev_uuid});
@@ -99,11 +99,11 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
 }
 static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
                                                  uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
-  return get_counter_track_uuuid(dispatch->hp_devs2frqtracks, "GPU Frequency", hostname, process_id, did, domain);
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, "GPU Frequency", hostname, process_id, did, domain);
 }
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
                                              uint64_t process_id, thapi_device_id did, thapi_device_id domain) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp2pwrtracks, dispatch->hp_devs2pwrtracks, "GPU Power", hostname, process_id, did, domain);
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, " GPU Power", hostname, process_id, did, domain);
 }
 
 static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
