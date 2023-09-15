@@ -17,11 +17,6 @@
 using timestamp_t = uint64_t;
 using perfetto_uuid_t = uint64_t;
 
-std::vector<std::string> stringVector = {"  Power |  Device | Total", "  Power | Domain | 0 ",
-                                         "  Power | Domain | 1", " Frequency | Domain | 0",
-                                         " Frequency | Domain | 1"};
-//std::unordered_map<std::string, int> domainToID;
-
 // Based on https://perfetto.dev/docs/reference/synthetic-track-event
 
 struct timeline_dispatch_s {
@@ -32,10 +27,9 @@ struct timeline_dispatch_s {
                      std::map<timestamp_t, perfetto_uuid_t>>
       track2lasts;
 
-  std::unordered_map<hp_device_t, perfetto_uuid_t> hp2frqtracks;
-  std::unordered_map<hp_device_t, perfetto_uuid_t> hp2pwrtracks;
-  std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp_devs2frqtracks;
-  std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp_devs2pwrtracks;
+  std::unordered_map<hp_device_t, perfetto_uuid_t> hp_device2countertracks;
+  std::unordered_map<hp_ddomain_t, perfetto_uuid_t> hp_ddomain2frqtracks;
+  std::unordered_map<hp_ddomain_t, perfetto_uuid_t> hp_ddomain2pwrtracks;
 
   perfetto_pruned::Trace trace;
 };
@@ -47,10 +41,10 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   return uuid++;
 }
 
-static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispatch, std::unordered_map<hp_device_t, perfetto_uuid_t> &parent_tracks,
-                                                     const std::string track_name, std::string hostname, uint64_t process_id,  thapi_device_id did ) {
+static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispatch,
+                                                     std::string hostname, uint64_t process_id, thapi_device_id did ) {
   perfetto_uuid_t hp_uuid = 0;
-  auto [it, inserted] = parent_tracks.insert({{hostname, process_id, did}, hp_uuid});
+  auto [it, inserted] = timeline_dispatch_t->hp_device2countertracks.insert({{hostname, process_id, did}, hp_uuid});
   auto &potential_uuid = it->second;
   // Exists
   if (!inserted)
@@ -76,9 +70,9 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
   return hp_uuid;
 }
 
-static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch, std::unordered_map<hp_device_t, perfetto_uuid_t> &parent_tracks,
+static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
                                                std::unordered_map<hp_dsd_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
-                                               std::string hostname, uint64_t process_id, thapi_device_id did,  thapi_device_id domain) {
+                                               std::string hostname, uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
   perfetto_uuid_t hp_dev_uuid = 0;
   auto [it, inserted] = counter_tracks.insert({{hostname, process_id, did, domain}, hp_dev_uuid});
   auto &potential_uuid = it->second;
@@ -86,7 +80,7 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch, st
   if (!inserted)
     return potential_uuid;
 
-  perfetto_uuid_t hp_uuid = get_parent_counter_track_uuid(dispatch, parent_tracks, track_name, hostname, process_id, did);
+  perfetto_uuid_t hp_uuid = get_parent_counter_track_uuid(dispatch, hostname, process_id, did);
   hp_dev_uuid = gen_perfetto_uuid();
   potential_uuid = hp_dev_uuid;
 
@@ -97,18 +91,16 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch, st
   auto *track_descriptor = packet->mutable_track_descriptor();
   track_descriptor->set_uuid(hp_dev_uuid);
   track_descriptor->set_parent_uuid(hp_uuid);
-  //std::ostringstream oss;
-  //oss << "Device " << did << " | Domain " << domain;
-  track_descriptor->set_name(stringVector[domain]);
+  std::ostringstream oss;
+  oss << track_name << " | Domain " << domain;
+  track_descriptor->set_name(oss.str());
   track_descriptor->mutable_counter();
   return hp_dev_uuid;
 }
-/*
 static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                                 uint64_t process_id, thapi_device_id did, thapi_device_id domain) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp2frqtracks, dispatch->hp_devs2frqtracks, "GPU Frequency", hostname, process_id, did, domain);
+                                                 uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
+  return get_counter_track_uuuid(dispatch->hp_devs2frqtracks, "GPU Frequency", hostname, process_id, did, domain);
 }
-*/
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
                                              uint64_t process_id, thapi_device_id did, thapi_device_id domain) {
   return get_counter_track_uuuid(dispatch, dispatch->hp2pwrtracks, dispatch->hp_devs2pwrtracks, "GPU Power", hostname, process_id, did, domain);
@@ -118,8 +110,7 @@ static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostn
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
                                 uint32_t domain, uint64_t timestamp, uint64_t frequency) {
  
-  domain = domain + 3;// to avoid overlap with power tracks
-  perfetto_uuid_t track_uuid = get_power_track_uuuid(dispatch, hostname, process_id, did, domain);
+  perfetto_uuid_t track_uuid = get_frequency_track_uuuid(dispatch, hostname, process_id, did, domain);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
   packet->set_timestamp(timestamp);
@@ -133,7 +124,6 @@ static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostn
 static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
                             uint64_t process_id, uint64_t thread_id, uintptr_t did,
                             uint32_t domain, uint64_t timestamp, uint64_t power) {
- // (void)domain;
   perfetto_uuid_t track_uuid = get_power_track_uuuid(dispatch, hostname, process_id, did, domain);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
