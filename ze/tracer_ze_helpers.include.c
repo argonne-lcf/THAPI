@@ -879,11 +879,11 @@ static void thapi_sampling_energy() {
   uint64_t energy_uj;
   uint32_t frequency;
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
-    for (uint32_t j = 0; j < (_sampling_freqDomainCounts[i] >= 1 ? 1:0); j++) {
+    for (uint32_t j = 0; j < _sampling_freqDomainCounts[i]; j++) {
       readFrequency(i, j, &frequency);
       do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
     }
-    for (uint32_t j = 0; j < (_sampling_powerDomainCounts[i] >= 1 ? 1:0); j++) {
+    for (uint32_t j = 0; j < _sampling_powerDomainCounts[i]; j++) {
       readEnergy(i, j, &ts_us, &energy_uj);
       do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
     }
@@ -946,6 +946,7 @@ static void _load_tracer(void) {
     /* TODO: make it configurable */
     interval.tv_sec = 0;
     interval.tv_nsec = 50000000;
+    thapi_sampling_energy();
     thapi_register_sampling(&thapi_sampling_energy, &interval);
   }
 

@@ -17,6 +17,7 @@ typedef std::tuple<hostname_t, process_id_t, ze_command_list_handle_t> hp_comman
 typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_command_queue_t;
 typedef std::tuple<hostname_t, process_id_t, ze_module_handle_t> hp_module_t;
 typedef hp_device_t hpd_t;
+typedef hp_dsd_t hpdd_t;
 typedef hp_event_t hpe_t;
 typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
@@ -56,7 +57,7 @@ struct zeinterval_callbacks_state {
     /* Stack to get begin end */
     std::unordered_map<hpt_t, std::vector<std::byte>> last_command;
     /*Energy */
-    std::unordered_map<hpd_t, energy_timestamp_t> device_energy_ref;
+    std::unordered_map<hpdd_t, energy_timestamp_t> device_energy_ref;
 };
 
 template <class K,
