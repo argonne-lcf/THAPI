@@ -46,7 +46,7 @@ typedef uintptr_t thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_function_name;
 typedef uintptr_t thapi_device_id;
-typedef uintptr_t thapi_domain_id;
+typedef uint32_t thapi_domain_id;
 
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
