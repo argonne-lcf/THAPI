@@ -95,7 +95,7 @@ puts <<EOF
 require 'ffi'
 module FFI
 
-  class OMPStruct < Struct
+  class OMPTStruct < Struct
     def to_h
       members.zip(values).to_h
     end
@@ -117,7 +117,10 @@ module FFI
   class OMPEnum < Enum
   end
 
-  class OMPUnion < Union
+  class OMPTUnion < Union
+    def self.find_type(name, type_map = nil)
+      OMP.find_type(name)
+    end
   end
 
   class OMPBitmask < Bitmask
@@ -166,6 +169,7 @@ end
 
 module OMP
   extend FFI::Library
+  typedef :uint, :"unsigned int"
 
 EOF
 
@@ -181,7 +185,7 @@ def print_union(name, union)
     s
   }
   puts <<EOF
-  class #{to_class_name(name)} < FFI::OMPUnion
+  class #{to_class_name(name)} < FFI::OMPTUnion
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
 EOF
   if name == "ompt_data_t"
@@ -210,7 +214,7 @@ def print_struct(name, struct)
     s
   }
   puts <<EOF
-  class #{to_class_name(name)} < FFI::OMPStruct
+  class #{to_class_name(name)} < FFI::OMPTStruct
 EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
@@ -221,6 +225,19 @@ EOF
 
 EOF
 end
+
+def print_function_pointer(name, type)
+  puts <<EOF
+  typedef :pointer, #{to_ffi_name(name)}
+EOF
+end
+
+$int_scalars.each { |k, v|
+  puts <<EOF
+  typedef #{to_ffi_name(v)}, #{to_ffi_name(k)}
+
+EOF
+}
 
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
@@ -238,6 +255,8 @@ $all_types.each { |t|
     union = $all_unions.find { |s| t.type.name == s.name }
     next unless union
     print_union(t.name, union)
+  elsif t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
+    print_function_pointer(t.name, t.type)
   end
 }
 
