@@ -30,7 +30,8 @@ struct timeline_dispatch_s {
   std::unordered_map<hp_device_t, perfetto_uuid_t> hp_device2countertracks;
   std::unordered_map<hp_ddomain_t, perfetto_uuid_t> hp_ddomain2frqtracks;
   std::unordered_map<hp_ddomain_t, perfetto_uuid_t> hp_ddomain2pwrtracks;
-
+  std::unordered_map<hp_dsdev_t, perfetto_uuid_t> hp_dsdev2cpetracks;
+  std::unordered_map<hp_dsdev_t, perfetto_uuid_t> hp_dsdev2cpytracks;
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
@@ -99,12 +100,23 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
 }
 static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
                                                  uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, "GPU Frequency", hostname, process_id, did, domain);
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, " GPU Frequency", hostname, process_id, did, domain);
 }
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                             uint64_t process_id, thapi_device_id did, thapi_device_id domain) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, " GPU Power", hostname, process_id, did, domain);
+                                             uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  GPU Power", hostname, process_id, did, domain);
 }
+
+static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
+                                             uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeE Utilization", hostname, process_id, did, subDevice);
+}
+
+static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
+                                             uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyE Utilization", hostname, process_id, did, subDevice);
+}
+
 
 static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
@@ -134,6 +146,34 @@ static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
   track_event->set_name("Power");
   track_event->set_counter_value(power);
 }
+static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostname,
+                            uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                            uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
+  perfetto_uuid_t track_uuid = get_computeEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_timestamp(timestamp);
+  auto *track_event = packet->mutable_track_event();
+  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+  track_event->set_track_uuid(track_uuid);
+  track_event->set_name("computeEngine Usage");
+  track_event->set_counter_value(activeTime);
+}
+
+static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname,
+                            uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                            uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
+  perfetto_uuid_t track_uuid = get_copyEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_timestamp(timestamp);
+  auto *track_event = packet->mutable_track_event();
+  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+  track_event->set_track_uuid(track_uuid);
+  track_event->set_name("copyEngine Usage");
+  track_event->set_counter_value(activeTime);
+}
+
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
                             std::string name) {
@@ -352,11 +392,28 @@ static void power_usr_callback(void *btx_handle, void *usr_data, const char *hos
   add_event_power(dispatch, hostname, vpid, vtid, did, domain, ts, power);
 }
 
+static void computeEU_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                               int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                               uint64_t did, uint32_t subDevice, uint64_t activeTime) {
+  auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  add_event_computeEU(dispatch, hostname, vpid, vtid, did, subDevice, ts, activeTime);
+}
+
+static void copyEU_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
+                               int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                               uint64_t did, uint32_t subDevice, uint64_t activeTime) {
+  auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  add_event_copyEU(dispatch, hostname, vpid, vtid, did, subDevice, ts, activeTime);
+}
+
+
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
   btx_register_callbacks_lttng_frequency(btx_handle, &frequency_usr_callback);
   btx_register_callbacks_lttng_power(btx_handle, &power_usr_callback);
+  btx_register_callbacks_lttng_computeEU(btx_handle, &computeEU_usr_callback);
+  btx_register_callbacks_lttng_copyEU(btx_handle, &copyEU_usr_callback);
   btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
   btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
 }
