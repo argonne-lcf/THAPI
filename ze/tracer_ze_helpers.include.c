@@ -762,9 +762,23 @@ static int _sampling_initialized = 0;
 static ze_device_handle_t* _sampling_hDevices;
 static zes_freq_handle_t** _sampling_hFrequencies;
 static zes_pwr_handle_t** _sampling_hPowers;
+static zes_engine_handle_t** _sampling_engineHandles;
 static uint32_t _sampling_deviceCount;
+static uint32_t _sampling_subDeviceCount;
 static uint32_t* _sampling_freqDomainCounts;
 static uint32_t* _sampling_powerDomainCounts;
+static uint32_t* _sampling_engineCounts;
+static uint32_t* _sampling_engineCounts;
+
+typedef struct {
+    uint64_t timestamp;
+    uint64_t computeActive;
+} computeEngineData;
+
+typedef struct {
+    uint64_t timestamp;
+    uint64_t copyActive;
+} copyEngineData;
 
 int initializeHandles() {
   ze_result_t res;
@@ -811,12 +825,17 @@ int initializeHandles() {
     _ZE_ERROR_MSG("2nd ZE_DRIVER_GET_PTR", res);
     return -1;
   }
+  //Get no sub-devices
+  zeDeviceGetSubDevices(_sampling_hDevices[0], &_sampling_subDeviceCount, NULL);
 
   _sampling_hFrequencies = (zes_freq_handle_t**) malloc(_sampling_deviceCount * sizeof(zes_freq_handle_t*));
   _sampling_freqDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
 
   _sampling_hPowers = (zes_pwr_handle_t**) malloc(_sampling_deviceCount * sizeof(zes_pwr_handle_t*));
   _sampling_powerDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
+
+  _sampling_engineHandles = (zes_engine_handle_t**) malloc(_sampling_deviceCount * sizeof(zes_engine_handle_t*));
+  _sampling_engineCounts  = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
 
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get frequency domains for each device
@@ -846,6 +865,19 @@ int initializeHandles() {
       printf("zesDeviceEnumPowerDomains failed for device %d: %d\n", i, res);
       return(-1);
     }
+    // Get the available engines for each device
+    res = zesDeviceEnumEngineGroups(_sampling_hDevices[i], &_sampling_engineCounts[i], NULL);
+    if (res != ZE_RESULT_SUCCESS || _sampling_engineCounts[i] == 0) {
+      printf("No engine groups found\n");
+      return(-1);
+    }
+    _sampling_engineHandles[i] = (zes_engine_handle_t*)malloc(_sampling_engineCounts[i] * sizeof(zes_engine_handle_t));
+    res = zesDeviceEnumEngineGroups(_sampling_hDevices[i], &_sampling_engineCounts[i], _sampling_engineHandles[i]);
+    if (res != ZE_RESULT_SUCCESS) {
+     printf("Failed to get engine group handles\n");
+     free(_sampling_engineHandles);
+     return (-1);
+   }
   }
   free(hDriver);
   _sampling_initialized=1;
@@ -874,10 +906,50 @@ void readEnergy(uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_
   }
 }
 
+void readPerformance(uint32_t deviceIdx, computeEngineData *computeData, copyEngineData *copyData ){
+  ze_result_t result;
+  for (uint32_t i = 0; i < _sampling_subDeviceCount; i++) {
+    computeData[i].computeActive = 0;
+    computeData[i].timestamp = 0;
+    copyData[i].copyActive = 0;
+    copyData[i].timestamp = 0;
+  }
+  for (uint32_t j = 0; j < _sampling_engineCounts[deviceIdx]; ++j) {
+    zes_engine_properties_t engineProp = {};
+    result = zesEngineGetProperties(_sampling_engineHandles[deviceIdx][j], &engineProp);
+    if (result != ZE_RESULT_SUCCESS) {
+       printf("Failed to get engine properties\n");
+       exit(-1);
+    }
+    if (engineProp.type == ZES_ENGINE_GROUP_COMPUTE_ALL){
+      zes_engine_stats_t engineStats = {0};
+      result = zesEngineGetActivity(_sampling_engineHandles[deviceIdx][j], &engineStats);
+      if (result != ZE_RESULT_SUCCESS) {
+        printf("Failed to get engine activity data\n");
+        exit(-1);
+      }
+      computeData[engineProp.subdeviceId].computeActive = engineStats.activeTime;
+      computeData[engineProp.subdeviceId].timestamp = engineStats.timestamp;
+    }
+    if (engineProp.type == ZES_ENGINE_GROUP_COPY_ALL){
+      zes_engine_stats_t engineStats = {0};
+      result = zesEngineGetActivity(_sampling_engineHandles[deviceIdx][j], &engineStats);
+      if (result != ZE_RESULT_SUCCESS) {
+        printf("Failed to get engine activity data\n");
+        exit(-1);
+      }
+      copyData[engineProp.subdeviceId].copyActive = engineStats.activeTime;
+      copyData[engineProp.subdeviceId].timestamp = engineStats.timestamp;
+    }
+  }
+}
+
 static void thapi_sampling_energy() {
   uint64_t ts_us;
   uint64_t energy_uj;
   uint32_t frequency;
+  computeEngineData computeE[_sampling_subDeviceCount];
+  copyEngineData copyE[_sampling_subDeviceCount];
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     for (uint32_t j = 0; j < _sampling_freqDomainCounts[i]; j++) {
       readFrequency(i, j, &frequency);
@@ -886,6 +958,11 @@ static void thapi_sampling_energy() {
     for (uint32_t j = 0; j < _sampling_powerDomainCounts[i]; j++) {
       readEnergy(i, j, &ts_us, &energy_uj);
       do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
+    }
+    readPerformance(i, computeE, copyE);
+    for (uint32_t k=0; k<_sampling_subDeviceCount; k++){
+      do_tracepoint(lttng_ust_ze_sampling, computeEngine , (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
+      do_tracepoint(lttng_ust_ze_sampling, copyEngine, (ze_device_handle_t)_sampling_hDevices[i], k, copyE[k].copyActive, copyE[k].timestamp);
     }
   }
 }

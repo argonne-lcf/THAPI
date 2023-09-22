@@ -99,7 +99,8 @@ bt_component_class_initialize_method_status <%= namespace %>_dispatch_initialize
     dispatch->device_name_event_class = create_lttng_device_name_event_class_message(trace_class, stream_class);
     dispatch->frequency_event_class = create_lttng_frequency_event_class_message(trace_class, stream_class);
     dispatch->power_event_class = create_lttng_power_event_class_message(trace_class, stream_class);
-
+    dispatch->computeEU_event_class = create_lttng_computeEU_event_class_message(trace_class, stream_class);
+    dispatch->copyEU_event_class = create_lttng_copyEU_event_class_message(trace_class, stream_class);
     /* Create a default trace from (instance of `trace_class`) */
     bt_trace *trace = bt_trace_create(trace_class);
 
