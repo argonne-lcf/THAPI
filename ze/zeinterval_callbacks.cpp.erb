@@ -136,7 +136,7 @@ static void create_and_enqueue_computeEU_message(const char* hostname, const pro
 
      bt_message *message = create_computeEU_message(hostname, process_id,
                             thread_id, hDevice, subDevice,
-                            static_cast<uint64_t>(((activeTime - prev_activeTime) / static_cast<double>(ts-prev_ts))*100000.0),
+                            static_cast<uint64_t>(((activeTime - prev_activeTime) / static_cast<double>(ts-prev_ts)) * 100000.0),
                             prev_ts,
                             zeinterval_iter_g->dispatch->computeEU_event_class,
                             zeinterval_self_message_iterator_g,
@@ -167,9 +167,6 @@ static void create_and_enqueue_copyEU_message(const char* hostname, const proces
      prev_activeTime = activeTime;
      prev_ts = ts;
 }
-
-
-
 static void create_and_enqueue_device_message(
         const char* hostname, const process_id_t process_id, const thread_id_t thread_id, thapi_device_id device,
         const char* commandname, const char* metadata,
@@ -342,14 +339,14 @@ static void zeinterval_<%= dbt_event.name %>_callback(
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_sampling:computeEngine" %>
      const hostname_t   hostname   = borrow_hostname(bt_evt);
      const process_id_t process_id = 0;
-     const thread_id_t  thread_id = 0;
+     const thread_id_t  thread_id  = 0;
      int64_t ns_from_origin;
      bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
      create_and_enqueue_computeEU_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, subDevice, activeTime, ns_from_origin);
   <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_sampling:copyEngine" %>
      const hostname_t   hostname   = borrow_hostname(bt_evt);
      const process_id_t process_id = 0;
-     const thread_id_t  thread_id = 0;
+     const thread_id_t  thread_id  = 0;
      int64_t ns_from_origin;
      bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
      create_and_enqueue_copyEU_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, subDevice, activeTime, ns_from_origin);

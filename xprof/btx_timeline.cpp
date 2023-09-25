@@ -32,6 +32,7 @@ struct timeline_dispatch_s {
   std::unordered_map<hp_ddomain_t, perfetto_uuid_t> hp_ddomain2pwrtracks;
   std::unordered_map<hp_dsdev_t, perfetto_uuid_t> hp_dsdev2cpetracks;
   std::unordered_map<hp_dsdev_t, perfetto_uuid_t> hp_dsdev2cpytracks;
+  
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
@@ -117,7 +118,6 @@ static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch, std
   return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyE Utilization", hostname, process_id, did, subDevice);
 }
 
-
 static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
                                 uint32_t domain, uint64_t timestamp, uint64_t frequency) {
@@ -146,9 +146,10 @@ static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
   track_event->set_name("Power");
   track_event->set_counter_value(power);
 }
+
 static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostname,
-                            uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                            uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
+                                uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                                uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
   perfetto_uuid_t track_uuid = get_computeEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
@@ -161,8 +162,8 @@ static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostn
 }
 
 static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname,
-                            uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                            uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
+                             uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                             uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
   perfetto_uuid_t track_uuid = get_copyEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
@@ -173,7 +174,6 @@ static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname
   track_event->set_name("copyEngine Usage");
   track_event->set_counter_value(activeTime);
 }
-
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
                             std::string name) {
@@ -393,19 +393,18 @@ static void power_usr_callback(void *btx_handle, void *usr_data, const char *hos
 }
 
 static void computeEU_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                               int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                               uint64_t did, uint32_t subDevice, uint64_t activeTime) {
+                                   int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                   uint64_t did, uint32_t subDevice, uint64_t activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_computeEU(dispatch, hostname, vpid, vtid, did, subDevice, ts, activeTime);
 }
 
 static void copyEU_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                               int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                               uint64_t did, uint32_t subDevice, uint64_t activeTime) {
+                                int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
+                                uint64_t did, uint32_t subDevice, uint64_t activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_copyEU(dispatch, hostname, vpid, vtid, did, subDevice, ts, activeTime);
 }
-
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);

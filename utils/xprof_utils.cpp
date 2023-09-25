@@ -214,7 +214,6 @@ bt_message* create_copyEU_message(const char* hostname, const process_id_t proce
      return message;
 }
 
-
 bt_message* create_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
         const uint64_t ts, const uint64_t duration, const bool err,
         bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
