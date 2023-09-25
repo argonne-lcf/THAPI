@@ -961,7 +961,7 @@ static void thapi_sampling_energy() {
     }
     readPerformance(i, computeE, copyE);
     for (uint32_t k=0; k<_sampling_subDeviceCount; k++){
-      do_tracepoint(lttng_ust_ze_sampling, computeEngine , (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
+      do_tracepoint(lttng_ust_ze_sampling, computeEngine, (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
       do_tracepoint(lttng_ust_ze_sampling, copyEngine, (ze_device_handle_t)_sampling_hDevices[i], k, copyE[k].copyActive, copyE[k].timestamp);
     }
   }
