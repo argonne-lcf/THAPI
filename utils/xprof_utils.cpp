@@ -119,7 +119,7 @@ bt_message* create_frequency_message(const char* hostname, const process_id_t pr
 }
 
 bt_message* create_computeEU_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                     const uintptr_t hDevice, const uint32_t subDevice, const uint64_t activeTime, const uint64_t ts,
+                                     const uintptr_t hDevice, const uint32_t subDevice, const float activeTime, const uint64_t ts,
                                      bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
 
      /* Message creation */
@@ -161,13 +161,13 @@ bt_message* create_computeEU_message(const char* hostname, const process_id_t pr
 
      //activeTime
      bt_field *activeTime_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
-     bt_field_integer_unsigned_set_value(activeTime_field, activeTime);
+     bt_field_real_single_precision_set_value(activeTime_field, activeTime);
 
      return message;
 }
 
 bt_message* create_copyEU_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                     const uintptr_t hDevice, const uint32_t subDevice, const uint64_t activeTime, const uint64_t ts,
+                                     const uintptr_t hDevice, const uint32_t subDevice, const float activeTime, const uint64_t ts,
                                      bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend) {
 
      /* Message creation */
@@ -209,7 +209,7 @@ bt_message* create_copyEU_message(const char* hostname, const process_id_t proce
 
      //activeTime
      bt_field *activeTime_field = bt_field_structure_borrow_member_field_by_index(payload_field,2);
-     bt_field_integer_unsigned_set_value(activeTime_field, activeTime);
+     bt_field_real_single_precision_set_value(activeTime_field, activeTime);
 
      return message;
 }

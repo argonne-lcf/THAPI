@@ -768,7 +768,6 @@ static uint32_t _sampling_subDeviceCount;
 static uint32_t* _sampling_freqDomainCounts;
 static uint32_t* _sampling_powerDomainCounts;
 static uint32_t* _sampling_engineCounts;
-static uint32_t* _sampling_engineCounts;
 
 typedef struct {
     uint64_t timestamp;
@@ -797,7 +796,7 @@ int initializeHandles() {
 #endif
 
   // Query driver
-  uint32_t driverCount;
+  uint32_t driverCount = 0;
   res = ZE_DRIVER_GET_PTR(&driverCount, NULL);
   if (res != ZE_RESULT_SUCCESS) {
     _ZE_ERROR_MSG("1st ZE_DRIVER_GET_PTR", res);
@@ -851,7 +850,6 @@ int initializeHandles() {
       printf("zesDeviceEnumFrequencyDomains failed for device %d: %d\n", i, res);
       return(-1);
     }
-
     // Get power domains for each device
     res = zesDeviceEnumPowerDomains(_sampling_hDevices[i], &_sampling_powerDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
@@ -871,6 +869,7 @@ int initializeHandles() {
       printf("No engine groups found\n");
       return(-1);
     }
+    
     _sampling_engineHandles[i] = (zes_engine_handle_t*)malloc(_sampling_engineCounts[i] * sizeof(zes_engine_handle_t));
     res = zesDeviceEnumEngineGroups(_sampling_hDevices[i], &_sampling_engineCounts[i], _sampling_engineHandles[i]);
     if (res != ZE_RESULT_SUCCESS) {
@@ -889,7 +888,6 @@ void readFrequency(uint32_t deviceIdx, uint32_t domainIdx, uint32_t *frequency) 
   *frequency=0;
   zes_freq_state_t freqState;
   if (zesFrequencyGetState(_sampling_hFrequencies[deviceIdx][domainIdx], &freqState) == ZE_RESULT_SUCCESS) {
-    // printf("Device %d - Frequency Domain %d: Current frequency: %lf MHz\n", deviceIdx, domainIdx, freqState.actual);
     *frequency = freqState.actual;
   }
 }
@@ -900,7 +898,6 @@ void readEnergy(uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_
   *energy_uj = 0;
   zes_power_energy_counter_t energyCounter;
   if (zesPowerGetEnergyCounter(_sampling_hPowers[deviceIdx][domainIdx], &energyCounter) == ZE_RESULT_SUCCESS) {
-    // printf("Device %d - Power Domain %d: Total energy consumption: %lu Joules\n", deviceIdx, domainIdx, energyCounter.energy);
     *ts_us = energyCounter.timestamp;
     *energy_uj = energyCounter.energy;
   }
@@ -953,16 +950,16 @@ static void thapi_sampling_energy() {
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     for (uint32_t j = 0; j < _sampling_freqDomainCounts[i]; j++) {
       readFrequency(i, j, &frequency);
-      do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
+      tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
     }
     for (uint32_t j = 0; j < _sampling_powerDomainCounts[i]; j++) {
       readEnergy(i, j, &ts_us, &energy_uj);
-      do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
+      tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
     }
     readPerformance(i, computeE, copyE);
     for (uint32_t k=0; k<_sampling_subDeviceCount; k++){
-      do_tracepoint(lttng_ust_ze_sampling, computeEngine, (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
-      do_tracepoint(lttng_ust_ze_sampling, copyEngine, (ze_device_handle_t)_sampling_hDevices[i], k, copyE[k].copyActive, copyE[k].timestamp);
+      tracepoint(lttng_ust_ze_sampling, computeEngine, (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
+      tracepoint(lttng_ust_ze_sampling, copyEngine, (ze_device_handle_t)_sampling_hDevices[i], k, copyE[k].copyActive, copyE[k].timestamp);
     }
   }
 }
