@@ -149,7 +149,7 @@ static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
 
 static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                                uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
+                                uint32_t subDevice, uint64_t timestamp, float activeTime) {
   perfetto_uuid_t track_uuid = get_computeEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
@@ -158,12 +158,12 @@ static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostn
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
   track_event->set_track_uuid(track_uuid);
   track_event->set_name("computeEngine Usage");
-  track_event->set_counter_value(activeTime);
+  track_event->set_double_counter_value(activeTime);
 }
 
 static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname,
                              uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                             uint32_t subDevice, uint64_t timestamp, uint64_t activeTime) {
+                             uint32_t subDevice, uint64_t timestamp, float activeTime) {
   perfetto_uuid_t track_uuid = get_copyEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(10000);
@@ -172,7 +172,7 @@ static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
   track_event->set_track_uuid(track_uuid);
   track_event->set_name("copyEngine Usage");
-  track_event->set_counter_value(activeTime);
+  track_event->set_double_counter_value(activeTime);
 }
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
@@ -394,14 +394,14 @@ static void power_usr_callback(void *btx_handle, void *usr_data, const char *hos
 
 static void computeEU_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                    int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                   uint64_t did, uint32_t subDevice, uint64_t activeTime) {
+                                   uint64_t did, uint32_t subDevice, float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_computeEU(dispatch, hostname, vpid, vtid, did, subDevice, ts, activeTime);
 }
 
 static void copyEU_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                 int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                uint64_t did, uint32_t subDevice, uint64_t activeTime) {
+                                uint64_t did, uint32_t subDevice, float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_copyEU(dispatch, hostname, vpid, vtid, did, subDevice, ts, activeTime);
 }
