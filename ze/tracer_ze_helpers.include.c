@@ -835,7 +835,7 @@ int initializeHandles() {
   _sampling_powerDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
 
   _sampling_engineHandles = (zes_engine_handle_t**) malloc(_sampling_deviceCount * sizeof(zes_engine_handle_t*));
-  _sampling_engineCounts  = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
+  _sampling_engineCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
 
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get frequency domains for each device
@@ -874,10 +874,10 @@ int initializeHandles() {
     _sampling_engineHandles[i] = (zes_engine_handle_t*)malloc(_sampling_engineCounts[i] * sizeof(zes_engine_handle_t));
     res = zesDeviceEnumEngineGroups(_sampling_hDevices[i], &_sampling_engineCounts[i], _sampling_engineHandles[i]);
     if (res != ZE_RESULT_SUCCESS) {
-     printf("Failed to get engine group handles\n");
-     free(_sampling_engineHandles);
-     return (-1);
-   }
+      printf("Failed to get engine group handles\n");
+      free(_sampling_engineHandles);
+      return (-1);
+    }
   }
   free(hDriver);
   _sampling_initialized=1;
