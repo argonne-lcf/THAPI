@@ -838,6 +838,7 @@ int initializeHandles() {
 
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get frequency domains for each device
+    _sampling_freqDomainCounts[i] = 0;
     res = zesDeviceEnumFrequencyDomains(_sampling_hDevices[i], &_sampling_freqDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
       printf("zesDeviceEnumFrequencyDomains (count query) failed for device %d: %d\n", i, res);
@@ -851,6 +852,7 @@ int initializeHandles() {
       return(-1);
     }
     // Get power domains for each device
+    _sampling_powerDomainCounts[i] = 0;
     res = zesDeviceEnumPowerDomains(_sampling_hDevices[i], &_sampling_powerDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
       printf("zesDeviceEnumPowerDomains (count query) failed for device %d: %d\n", i, res);
@@ -864,6 +866,7 @@ int initializeHandles() {
       return(-1);
     }
     // Get the available engines for each device
+    _sampling_engineCounts[i] = 0;
     res = zesDeviceEnumEngineGroups(_sampling_hDevices[i], &_sampling_engineCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS || _sampling_engineCounts[i] == 0) {
       printf("No engine groups found\n");

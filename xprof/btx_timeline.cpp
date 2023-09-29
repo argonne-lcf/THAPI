@@ -109,12 +109,12 @@ static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std:
 }
 
 static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                             uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
+                                                 uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
   return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeE Utilization", hostname, process_id, did, subDevice);
 }
 
 static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                             uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
+                                              uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
   return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyE Utilization", hostname, process_id, did, subDevice);
 }
 
