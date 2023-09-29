@@ -903,13 +903,11 @@ void readEnergy(uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_
   }
 }
 
-void readPerformance(uint32_t deviceIdx, computeEngineData *computeData, copyEngineData *copyData ){
+void readComputeE(uint32_t deviceIdx, computeEngineData *computeData ){
   ze_result_t result;
   for (uint32_t i = 0; i < _sampling_subDeviceCount; i++) {
     computeData[i].computeActive = 0;
     computeData[i].timestamp = 0;
-    copyData[i].copyActive = 0;
-    copyData[i].timestamp = 0;
   }
   for (uint32_t j = 0; j < _sampling_engineCounts[deviceIdx]; ++j) {
     zes_engine_properties_t engineProp = {};
@@ -927,6 +925,22 @@ void readPerformance(uint32_t deviceIdx, computeEngineData *computeData, copyEng
       }
       computeData[engineProp.subdeviceId].computeActive = engineStats.activeTime;
       computeData[engineProp.subdeviceId].timestamp = engineStats.timestamp;
+    }
+  }
+}
+
+void readCopyE(uint32_t deviceIdx, copyEngineData *copyData ){
+  ze_result_t result;
+  for (uint32_t i = 0; i < _sampling_subDeviceCount; i++) {
+    copyData[i].copyActive = 0;
+    copyData[i].timestamp = 0;
+  }
+  for (uint32_t j = 0; j < _sampling_engineCounts[deviceIdx]; ++j) {
+    zes_engine_properties_t engineProp = {};
+    result = zesEngineGetProperties(_sampling_engineHandles[deviceIdx][j], &engineProp);
+    if (result != ZE_RESULT_SUCCESS) {
+       printf("Failed to get engine properties\n");
+       exit(-1);
     }
     if (engineProp.type == ZES_ENGINE_GROUP_COPY_ALL){
       zes_engine_stats_t engineStats = {0};
@@ -948,18 +962,29 @@ static void thapi_sampling_energy() {
   computeEngineData computeE[_sampling_subDeviceCount];
   copyEngineData copyE[_sampling_subDeviceCount];
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
-    for (uint32_t j = 0; j < _sampling_freqDomainCounts[i]; j++) {
-      readFrequency(i, j, &frequency);
-      tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
+    if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)){
+      for (uint32_t j = 0; j < _sampling_freqDomainCounts[i]; j++) {
+        readFrequency(i, j, &frequency);
+        do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
+      }
     }
-    for (uint32_t j = 0; j < _sampling_powerDomainCounts[i]; j++) {
-      readEnergy(i, j, &ts_us, &energy_uj);
-      tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
+    if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_energy)){
+      for (uint32_t j = 0; j < _sampling_powerDomainCounts[i]; j++) {
+        readEnergy(i, j, &ts_us, &energy_uj);
+        do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[i], j, (uint64_t)energy_uj, ts_us);
+      }
     }
-    readPerformance(i, computeE, copyE);
-    for (uint32_t k=0; k<_sampling_subDeviceCount; k++){
-      tracepoint(lttng_ust_ze_sampling, computeEngine, (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
-      tracepoint(lttng_ust_ze_sampling, copyEngine, (ze_device_handle_t)_sampling_hDevices[i], k, copyE[k].copyActive, copyE[k].timestamp);
+    if (tracepoint_enabled(lttng_ust_ze_sampling, computeEngine)){
+      readComputeE(i, computeE);
+      for (uint32_t k=0; k<_sampling_subDeviceCount; k++){
+        do_tracepoint(lttng_ust_ze_sampling, computeEngine, (ze_device_handle_t)_sampling_hDevices[i], k, computeE[k].computeActive, computeE[k].timestamp);
+      }
+    }
+    if (tracepoint_enabled(lttng_ust_ze_sampling, copyEngine)){
+      readCopyE(i, copyE);
+      for (uint32_t k=0; k<_sampling_subDeviceCount; k++){
+        do_tracepoint(lttng_ust_ze_sampling, copyEngine, (ze_device_handle_t)_sampling_hDevices[i], k, copyE[k].copyActive, copyE[k].timestamp);
+      }
     }
   }
 }
