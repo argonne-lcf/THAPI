@@ -105,6 +105,7 @@ static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, 
 }
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
                                              uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
+  //Extra leading space in the name field to make GPU Power the first track 
   return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  GPU Power", hostname, process_id, did, domain);
 }
 
