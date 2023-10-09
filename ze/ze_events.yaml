@@ -38,7 +38,6 @@ lttng_ust_ze_sampling:
     args:
     - [ ze_device_handle_t, hDevice ]
     - [ uint32_t, domain ]
-    - [ uint64_t, timestamp ]
     - [ uint64_t, frequency ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
