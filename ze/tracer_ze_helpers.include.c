@@ -793,12 +793,13 @@ void intializeFrequency() {
   _sampling_freqDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get frequency domains for each device
+    _sampling_hFrequencies[i] = NULL;
     _sampling_freqDomainCounts[i] = 0;
     res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[i], &_sampling_freqDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR", res);
       _sampling_freqDomainCounts[i] = 0;
-      return;
+      continue;
     }
     _sampling_hFrequencies[i] = (zes_freq_handle_t*) malloc(_sampling_freqDomainCounts[i] * sizeof(zes_freq_handle_t));
     res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[i], &_sampling_freqDomainCounts[i], _sampling_hFrequencies[i]);
@@ -806,7 +807,6 @@ void intializeFrequency() {
       _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR", res);
       _sampling_freqDomainCounts[i] = 0;
       free(_sampling_hFrequencies[i]);
-      return;
     }
   }
   _sampling_freq_initialized = 1;
@@ -818,12 +818,13 @@ void intializePower() {
   _sampling_powerDomainCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t));
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get power domains for each device
+    _sampling_hPowers[i] = NULL;
     _sampling_powerDomainCounts[i] = 0;
     res = ZES_DEVICE_ENUM_POWER_DOMAINS_PTR(_sampling_hDevices[i], &_sampling_powerDomainCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_POWER_DOMAINS_PTR", res);
       _sampling_powerDomainCounts[i] = 0;
-      return;
+      continue;
     }
 
     _sampling_hPowers[i] = (zes_pwr_handle_t*) malloc(_sampling_powerDomainCounts[i] * sizeof(zes_pwr_handle_t));
@@ -832,7 +833,6 @@ void intializePower() {
       _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_POWER_DOMAINS_PTR", res);
       _sampling_powerDomainCounts[i] = 0;
       free(_sampling_hPowers[i]);
-      return;
     }
   }
   _sampling_pwr_initialized = 1;
@@ -844,12 +844,13 @@ void intializeEngines() {
   _sampling_engineCounts = (uint32_t*) malloc(_sampling_deviceCount * sizeof(uint32_t)); 
   for (uint32_t i = 0; i < _sampling_deviceCount; i++) {
     // Get engine counts for each device
+    _sampling_engineHandles[i] = NULL;
     _sampling_engineCounts[i] = 0;
     res = ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR(_sampling_hDevices[i], &_sampling_engineCounts[i], NULL);
     if (res != ZE_RESULT_SUCCESS || _sampling_engineCounts[i] == 0) {
       _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR", res);
       _sampling_engineCounts[i] = 0;
-      return;
+      continue;
     }
 
     _sampling_engineHandles[i] = (zes_engine_handle_t*)malloc(_sampling_engineCounts[i] * sizeof(zes_engine_handle_t));
@@ -858,7 +859,6 @@ void intializeEngines() {
       _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR", res);
       _sampling_engineCounts[i] = 0;
       free(_sampling_engineHandles[i]);
-      return;
     }
   }
   _sampling_engines_initialized = 1;
@@ -1015,7 +1015,7 @@ static void thapi_sampling_energy() {
     if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)){
       for (uint32_t j = 0; j < _sampling_freqDomainCounts[i]; j++) {
         readFrequency(i, j, &frequency);
-        do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, ts_us, frequency);
+        do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[i], j, frequency);
       }
     }
     if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_energy)){

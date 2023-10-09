@@ -63,7 +63,7 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hpdd_t, energy_timestamp_t> device_energy_ref;
     /*computeEngine */
     std::unordered_map<hpdsd_t, computeEngine_timestamp_t> device_computeEngine_ref;
-     /*copyEngine */
+    /*copyEngine */
     std::unordered_map<hpdsd_t, copyEngine_timestamp_t> device_copyEngine_ref;
 };
 
