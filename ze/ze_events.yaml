@@ -42,7 +42,6 @@ lttng_ust_ze_sampling:
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer, uint32_t, domain, "domain" ]
-    - [ ctf_integer, uint64_t, timestamp, "timestamp" ]
     - [ ctf_integer, uint64_t, frequency, "frequency" ]
 lttng_ust_ze_profiling:
   events:
