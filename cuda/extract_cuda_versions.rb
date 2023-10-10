@@ -12,4 +12,6 @@ ARGV.each { |path|
   }
 }
 
+apis.each { |api, suffixes| suffixes.each { |suffix, versions| versions.sort!.reverse! } }
+
 puts YAML::dump(apis)
