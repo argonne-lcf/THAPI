@@ -874,6 +874,7 @@ void intializeEngines() {
   }
   _sampling_engines_initialized = 1;
 }
+
 int initializeHandles() {
   ze_result_t res;
   const char *e = getenv("ZES_ENABLE_SYSMAN");
@@ -896,7 +897,6 @@ int initializeHandles() {
     _ZE_ERROR_MSG("1st ZE_DRIVER_GET_PTR", res);
     return -1;
   }
-
   ze_driver_handle_t *hDriver = (ze_driver_handle_t*) alloca(_sampling_driverCount * sizeof(ze_driver_handle_t));
   res = ZE_DRIVER_GET_PTR(&_sampling_driverCount, hDriver);
   if (res != ZE_RESULT_SUCCESS) {
