@@ -70,7 +70,7 @@ mpi_local_rank_id() {
 }
 
 
-SHARED_LOCAL_FILESYSTEM=/dev/shm/$(USER)/.thapi_lock/$(mpi_job_id)
+SHARED_LOCAL_FILESYSTEM=/dev/shm/$USER/.thapi_lock/$(mpi_job_id)
 SHARED_GLOBAL_FILESYSTEM=$HOME/.thapi_lock/$(mpi_job_id)
 THAPI_OUTPUT=${LTTNG_HOME:-$HOME}
 # In live mode, we cannot have a socket name bigger than the Unix limit
