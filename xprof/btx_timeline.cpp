@@ -357,6 +357,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
   btx_register_callbacks_lttng_frequency(btx_handle, &frequency_usr_callback);
   btx_register_callbacks_lttng_power(btx_handle, &power_usr_callback);
-  btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
-  btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
+  btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_usr_data);
+  btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_usr_data);
 }

@@ -72,8 +72,8 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
 
 void btx_register_usr_callbacks(void *btx_handle) {
 
-  btx_register_callbacks_initialize_usr_data(btx_handle, &initialize_usr_data_callback);
-  btx_register_callbacks_finalize_usr_data(btx_handle, &finalize_usr_data_callback);
+  btx_register_callbacks_initialize_component(btx_handle, &initialize_usr_data_callback);
+  btx_register_callbacks_finalize_component(btx_handle, &finalize_usr_data_callback);
 
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_traffic(btx_handle, &traffic_usr_callback);
