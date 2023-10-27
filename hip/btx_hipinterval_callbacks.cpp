@@ -13,8 +13,8 @@
 
 
 void send_message_lttng_host(void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name, 
-                                 const char *hostname, int64_t vpid, uint64_t vtid, int64_t err){
-  data_t *data = (data_t *)usr_data;
+                             const char *hostname, int64_t vpid, uint64_t vtid, int64_t err){
+  auto *data = static_cast<data_t *>(usr_data);
 
   std::string event_class_name_striped = strip_event_class_name(event_class_name);
   int64_t _start = data->dispatch.at(hpt_fn_t(hostname, vpid, vtid, event_class_name_striped));
@@ -28,7 +28,7 @@ void btx_initialize_component(void *btx_handle, void **usr_data) {
 }
 
 void btx_finalize_component(void *btx_handle, void *usr_data) {
-  data_t *data = (data_t *)usr_data;
+  auto *data = static_cast<data_t *>(usr_data);
   delete data;
 }
 
