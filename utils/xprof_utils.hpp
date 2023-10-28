@@ -46,8 +46,8 @@ typedef uintptr_t thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_function_name;
 typedef uintptr_t thapi_device_id;
-typedef uint32_t thapi_domain_id;
-typedef uint32_t thapi_sdevice_id;
+typedef uint32_t thapi_domain_idx;
+typedef uint32_t thapi_sdevice_idx;
 
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
@@ -60,8 +60,8 @@ typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi
     hpt_device_function_name_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_domain_id> hp_ddomain_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_sdevice_id> hp_dsdev_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_domain_idx> hp_ddomain_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_sdevice_idx> hp_dsdev_t;
 typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;

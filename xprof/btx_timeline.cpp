@@ -36,7 +36,7 @@ struct timeline_dispatch_s {
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
-
+using uuid_getter_t = perfetto_uuid_t(*)(timeline_dispatch_t*, std::string, uint64_t, uintptr_t, uint32_t);
 static perfetto_uuid_t gen_perfetto_uuid() {
   // Start at one, Look like UUID 0 is special
   static std::atomic<perfetto_uuid_t> uuid{1};
@@ -57,7 +57,7 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
 
   // Create packet with track descriptor
   auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   packet->set_timestamp(0);
   // TODO: check if this is required
   packet->set_previous_packet_dropped(true);
@@ -74,7 +74,7 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
 
 static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
                                                std::unordered_map<hp_ddomain_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
-                                               std::string hostname, uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
+                                              std::string hostname, uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
   perfetto_uuid_t hp_dev_uuid = 0;
   auto [it, inserted] = counter_tracks.insert({{hostname, process_id, did, domain}, hp_dev_uuid});
   auto &potential_uuid = it->second;
@@ -89,7 +89,7 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
   // Create new track
   auto *packet = dispatch->trace.add_packet();
   packet->set_timestamp(0);
-  packet->set_trusted_packet_sequence_id(10000);
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   auto *track_descriptor = packet->mutable_track_descriptor();
   track_descriptor->set_uuid(hp_dev_uuid);
   track_descriptor->set_parent_uuid(hp_uuid);
@@ -99,81 +99,68 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
   track_descriptor->mutable_counter();
   return hp_dev_uuid;
 }
+
 static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                                 uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
+                                                 uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
   return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, " GPU Frequency", hostname, process_id, did, domain);
 }
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                             uint64_t process_id, thapi_device_id did, thapi_domain_id domain) {
+                                             uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
   //Extra leading space in the name field to make GPU Power the first track 
   return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  GPU Power", hostname, process_id, did, domain);
 }
 
 static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                                 uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeE Utilization", hostname, process_id, did, subDevice);
+                                                 uint64_t process_id, thapi_device_id did, thapi_sdevice_idx subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeEngine (%)", hostname, process_id, did, subDevice);
 }
 
 static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                              uint64_t process_id, thapi_device_id did, thapi_sdevice_id subDevice) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyE Utilization", hostname, process_id, did, subDevice);
+                                              uint64_t process_id, thapi_device_id did, thapi_sdevice_idx subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyEngine (%)", hostname, process_id, did, subDevice);
+}
+
+static void add_event_DTelemetry(timeline_dispatch_t *dispatch, std::string hostname, uint64_t process_id,
+                                 uint64_t thread_id, uintptr_t did, uint32_t subDevice, uint64_t timestamp,
+                                 float value, uuid_getter_t uuid_getter, const std::string& eventName) {
+  perfetto_uuid_t track_uuid = uuid_getter(dispatch, hostname, process_id, did, subDevice);
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+  packet->set_timestamp(timestamp);
+  auto *track_event = packet->mutable_track_event();
+  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+  track_event->set_track_uuid(track_uuid);
+  track_event->set_name(eventName);
+  track_event->set_double_counter_value(value);
 }
 
 static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                                uint32_t domain, uint64_t timestamp, uint64_t frequency) {
- 
-  perfetto_uuid_t track_uuid = get_frequency_track_uuuid(dispatch, hostname, process_id, did, domain);
-  auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10000);
-  packet->set_timestamp(timestamp);
-  auto *track_event = packet->mutable_track_event();
-  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
-  track_event->set_track_uuid(track_uuid);
-  track_event->set_name("Frequency");
-  track_event->set_counter_value(frequency);
+                                uint32_t domain, uint64_t timestamp, float frequency) {
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, domain,
+                       timestamp, frequency, get_frequency_track_uuuid, "Frequency");
 }
 
 static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
                             uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                            uint32_t domain, uint64_t timestamp, uint64_t power) {
-  perfetto_uuid_t track_uuid = get_power_track_uuuid(dispatch, hostname, process_id, did, domain);
-  auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10000);
-  packet->set_timestamp(timestamp);
-  auto *track_event = packet->mutable_track_event();
-  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
-  track_event->set_track_uuid(track_uuid);
-  track_event->set_name("Power");
-  track_event->set_counter_value(power);
+                            uint32_t domain, uint64_t timestamp, float power)
+{
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, domain,
+                       timestamp, power, get_power_track_uuuid, "Power");
 }
 
 static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
                                 uint32_t subDevice, uint64_t timestamp, float activeTime) {
-  perfetto_uuid_t track_uuid = get_computeEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
-  auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10000);
-  packet->set_timestamp(timestamp);
-  auto *track_event = packet->mutable_track_event();
-  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
-  track_event->set_track_uuid(track_uuid);
-  track_event->set_name("computeEngine Usage");
-  track_event->set_double_counter_value(activeTime);
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice,
+                       timestamp, activeTime, get_computeEU_track_uuuid, "ComputeEngine");
 }
 
 static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname,
                              uint64_t process_id, uint64_t thread_id, uintptr_t did,
                              uint32_t subDevice, uint64_t timestamp, float activeTime) {
-  perfetto_uuid_t track_uuid = get_copyEU_track_uuuid(dispatch, hostname, process_id, did, subDevice);
-  auto *packet = dispatch->trace.add_packet();
-  packet->set_trusted_packet_sequence_id(10000);
-  packet->set_timestamp(timestamp);
-  auto *track_event = packet->mutable_track_event();
-  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
-  track_event->set_track_uuid(track_uuid);
-  track_event->set_name("copyEngine Usage");
-  track_event->set_double_counter_value(activeTime);
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice,
+                       timestamp, activeTime, get_copyEU_track_uuuid, "CopyEngine");
 }
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,

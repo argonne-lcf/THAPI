@@ -26,6 +26,7 @@ typedef std::tuple<uint64_t, uint64_t> energy_timestamp_t;
 typedef std::tuple<uint64_t, uint64_t> computeEngine_timestamp_t;
 typedef std::tuple<uint64_t, uint64_t> copyEngine_timestamp_t;
 
+typedef std::unordered_map<std::tuple<std::string, process_id_t, uintptr_t, uint32_t>, std::tuple<uint64_t, uint64_t>> device_ref_t;
 typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_t;
 typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t> l_tfnm_m_d_ts_t;
 
