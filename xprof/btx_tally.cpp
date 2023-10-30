@@ -345,9 +345,9 @@ static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data, co
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
-  btx_register_callbacks_initialize_usr_data(btx_handle, &initialize_usr_data_callback);
+  btx_register_callbacks_initialize_component(btx_handle, &initialize_usr_data_callback);
   btx_register_callbacks_read_params(btx_handle, &read_params_callaback);
-  btx_register_callbacks_finalize_usr_data(btx_handle, &finalize_usr_data_callback);
+  btx_register_callbacks_finalize_component(btx_handle, &finalize_usr_data_callback);
 
   btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
   btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
