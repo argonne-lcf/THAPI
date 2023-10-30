@@ -159,6 +159,11 @@ BTX_HIP_GENERATED = \
 	btx_filter_hip/metababel/btx_downstream.c \
 	btx_filter_hip/btx_main.c
 
+EXTRA_DIST = \
+	btx_model.yaml \
+	btx_interval_model.yaml \
+	btx_callbacks.yaml
+
 $(BTX_HIP_GENERATED) &: btx_model.yaml btx_interval_model.yaml btx_callbacks.yaml
 	$(METABABEL) -u $(srcdir)/btx_model.yaml -d $(srcdir)/btx_interval_model.yaml -t FILTER -o btx_filter_hip -p hipinterval -c interval --callbacks $(srcdir)/btx_callbacks.yaml -i hip.h.include
 
@@ -171,7 +176,7 @@ $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 clean-local:
 	$(RM) -r modified_include
 
-EXTRA_DIST = \
+EXTRA_DIST += \
 	$(srcdir)/include \
 	headers.patch
 
@@ -375,16 +380,18 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
-	$(BTX_TALLY_GENERATED) \
+	$(BTX_HIP_GENERATED) \
 	xprof_utils.cpp \
 	xprof_utils.hpp
 
+BUILT_SOURCES += \
+	$(BTX_HIP_GENERATED)
+
 nodist_libHIPInterval_la_SOURCES = \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	$(BTX_HIP_GENERATED) \
+	xprof_utils.hpp
 
 libHIPInterval_la_SOURCES = \
-	$(BTX_HIP_GENERATED) \
 	btx_hipinterval_callbacks.cpp \
 	btx_hipinterval_callbacks.hpp
 
