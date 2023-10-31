@@ -163,6 +163,10 @@ EXTRA_DIST = \
 	btx_interval_model.yaml \
 	btx_matching_model.yaml
 
+CLEANFILES = \
+	babeltrace_to_metababel_model.rb \
+	btx_model.yaml
+
 babeltrace_to_metababel_model.rb: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb
 	cp $< $@
 
@@ -194,7 +198,7 @@ hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR) $(srcd
 HIP_EXTRACTED = \
 	hip_api.yaml
 
-CLEANFILES = \
+CLEANFILES += \
 	$(HIP_EXTRACTED)
 
 EXTRA_DIST += \
