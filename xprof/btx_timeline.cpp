@@ -297,12 +297,11 @@ static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
   add_event_end(dispatch, track_uuid, end);
 }
 
-void btx_initialize_component(void **usr_data) {
-
+void btx_initialize_component_callback(void **usr_data) {
   *usr_data = new timeline_dispatch_t;
 }
 
-void btx_finalize_component(void *usr_data) {
+void btx_finalize_component_callback(void *usr_data) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   for (auto &[uuid, s] : dispatch->uuid2stack) {
     while (!s.empty()) {
@@ -357,6 +356,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
   btx_register_callbacks_lttng_frequency(btx_handle, &frequency_usr_callback);
   btx_register_callbacks_lttng_power(btx_handle, &power_usr_callback);
-  btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
-  btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component);
+  btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component_callback);
+  btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component_callback);
 }
