@@ -40,9 +40,9 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               event_class_name_striped.c_str(), (ts - _start), err);
 }
 
-void btx_initialize_component(void *btx_handle, void **usr_data) { *usr_data = new data_t; }
+void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
 
-void btx_finalize_component(void *btx_handle, void *usr_data) {
+void btx_finalize_component(void *usr_data) {
   delete static_cast<data_t *>(usr_data);
 }
 

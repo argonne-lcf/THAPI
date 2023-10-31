@@ -173,7 +173,7 @@ static void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
+static void initialize_component(void **usr_data) {
   /* User allocates its own data structure */
   auto *data = new tally_dispatch_t;
   *usr_data = data;
@@ -190,7 +190,7 @@ static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
   };
 }
 
-static void read_params_callaback(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
+static void read_params_callaback(void *usr_data, btx_params_t *usr_params) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
@@ -209,7 +209,7 @@ static void read_params_callaback(void *btx_handle, void *usr_data, btx_params_t
   }
 }
 
-static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
+static void finalize_component(void *usr_data) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
 
@@ -345,9 +345,9 @@ static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data, co
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
-  btx_register_callbacks_initialize_component(btx_handle, &initialize_usr_data_callback);
+  btx_register_callbacks_initialize_component(btx_handle, &initialize_component);
   btx_register_callbacks_read_params(btx_handle, &read_params_callaback);
-  btx_register_callbacks_finalize_component(btx_handle, &finalize_usr_data_callback);
+  btx_register_callbacks_finalize_component(btx_handle, &finalize_component);
 
   btx_register_callbacks_lttng_device_name(btx_handle, &device_name_usr_callback);
   btx_register_callbacks_lttng_ust_thapi_metadata(btx_handle, &ust_thapi_metadata_usr_callback);
