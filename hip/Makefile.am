@@ -392,8 +392,7 @@ nodist_libHIPInterval_la_SOURCES = \
 	xprof_utils.hpp
 
 libHIPInterval_la_SOURCES = \
-	btx_hipinterval_callbacks.cpp \
-	btx_hipinterval_callbacks.hpp
+	btx_hipinterval_callbacks.cpp
 
 libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_hip
 libHIPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
