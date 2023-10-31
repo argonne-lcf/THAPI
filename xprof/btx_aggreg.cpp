@@ -17,11 +17,11 @@ struct aggreg_s {
 };
 using aggreg_t = struct aggreg_s;
 
-static void initialize_component_callback(void *btx_handle, void **usr_data) {
+static void initialize_component_callback(void **usr_data) {
   *usr_data = new aggreg_t;
 }
 
-static void finalize_component_callback(void *btx_handle, void *usr_data) {
+static void finalize_component_callback(void *usr_data) {
   auto *data = static_cast<aggreg_t *>(usr_data);
   delete data;
 }

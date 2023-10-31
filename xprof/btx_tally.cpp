@@ -173,7 +173,7 @@ static void print_metadata(std::vector<std::string> metadata) {
     std::cout << value << std::endl;
 }
 
-static void initialize_component_callback(void *btx_handle, void **usr_data) {
+static void initialize_component_callback(void **usr_data) {
   /* User allocates its own data structure */
   auto *data = new tally_dispatch_t;
   *usr_data = data;
@@ -190,7 +190,7 @@ static void initialize_component_callback(void *btx_handle, void **usr_data) {
   };
 }
 
-static void read_params_callback(void *btx_handle, void *usr_data, btx_params_t *usr_params) {
+static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
@@ -209,7 +209,7 @@ static void read_params_callback(void *btx_handle, void *usr_data, btx_params_t 
   }
 }
 
-static void finalize_component_callback(void *btx_handle, void *usr_data) {
+static void finalize_component_callback(void *usr_data) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
 
