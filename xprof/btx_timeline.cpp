@@ -325,12 +325,11 @@ static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
   add_event_end(dispatch, track_uuid, end);
 }
 
-void btx_initialize_usr_data(void *btx_handle, void **usr_data) {
-
+void btx_initialize_component_callback(void **usr_data) {
   *usr_data = new timeline_dispatch_t;
 }
 
-void btx_finalize_usr_data(void *btx_handle, void *usr_data) {
+void btx_finalize_component_callback(void *usr_data) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   for (auto &[uuid, s] : dispatch->uuid2stack) {
     while (!s.empty()) {
@@ -401,6 +400,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_power(btx_handle, &power_usr_callback);
   btx_register_callbacks_lttng_computeEU(btx_handle, &computeEU_usr_callback);
   btx_register_callbacks_lttng_copyEU(btx_handle, &copyEU_usr_callback);
-  btx_register_callbacks_initialize_usr_data(btx_handle, &btx_initialize_usr_data);
-  btx_register_callbacks_finalize_usr_data(btx_handle, &btx_finalize_usr_data);
+  btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component_callback);
+  btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component_callback);
 }
