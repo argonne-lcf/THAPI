@@ -164,14 +164,10 @@ EXTRA_DIST = \
 	btx_matching_model.yaml
 
 CLEANFILES = \
-	babeltrace_to_metababel_model.rb \
 	btx_model.yaml
 
-babeltrace_to_metababel_model.rb: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb
-	cp $< $@
-
-btx_model.yaml: babeltrace_to_metababel_model.rb hip_babeltrace_model.yaml
-	$(RUBY) $^ > $@
+btx_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb hip_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
 
 $(BTX_HIP_GENERATED) &: btx_interval_model.yaml btx_matching_model.yaml btx_model.yaml
 	$(METABABEL) -u btx_model.yaml -d $(srcdir)/btx_interval_model.yaml -t FILTER -o btx_filter_hip -p hipinterval -c interval --matching $(srcdir)/btx_matching_model.yaml -i hip.h.include
