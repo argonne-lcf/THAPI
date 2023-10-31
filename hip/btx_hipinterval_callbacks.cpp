@@ -33,10 +33,8 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               const char *event_class_name, const char *hostname, int64_t vpid,
                               uint64_t vtid, bool err) {
 
-  auto *data = static_cast<data_t *>(usr_data);
-
   std::string event_class_name_striped = strip_event_class_name(event_class_name);
-  const int64_t _start = data->dispatch.at({hostname, vpid, vtid, event_class_name_striped});
+  const int64_t _start = (static_cast<data_t *>(usr_data))->dispatch.at({hostname, vpid, vtid, event_class_name_striped});
 
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, _start, BACKEND_HIP,
                               event_class_name_striped.c_str(), (ts - _start), err);
@@ -64,10 +62,10 @@ static void exits_callback_hipError_absent(void *btx_handle, void *usr_data, int
 
 static void exits_callback_hipError_present(void *btx_handle, void *usr_data, int64_t ts,
                                             const char *event_class_name, const char *hostname,
-                                            int64_t vpid, uint64_t vtid, int64_t hipResult) {
+                                            int64_t vpid, uint64_t vtid, hipError_t hipResult) {
 
   // Not an Error (hipResult == hipErrorNotReady)
-  bool err = (hipResult != 0) && (hipResult != hipErrorNotReady);
+  bool err = (hipResult != hipSuccess) && (hipResult != hipErrorNotReady);
   send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, err);
 }
 
