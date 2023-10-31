@@ -17,11 +17,16 @@ struct aggreg_s {
 };
 using aggreg_t = struct aggreg_s;
 
-static void initialize_usr_data_callback(void *btx_handle, void **usr_data) {
+static void initialize_component_callback(void **usr_data) {
   *usr_data = new aggreg_t;
 }
 
-static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
+static void finalize_component_callback(void *usr_data) {
+  auto *data = static_cast<aggreg_t *>(usr_data);
+  delete data;
+}
+
+static void finalize_processing_callback(void *btx_handle, void *usr_data) {
   auto *data = static_cast<aggreg_t *>(usr_data);
   // Host
   for (const auto &[hptb_function_name, t] : data->host) {
@@ -42,8 +47,6 @@ static void finalize_usr_data_callback(void *btx_handle, void *usr_data) {
     btx_push_message_aggreg_device(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min,
                                    t.max, t.duration, t.count, did, sdid, metadata.c_str());
   }
-
-  delete data;
 }
 
 static void host_usr_callback(void *btx_handle, void *usr_data, const char *hostname, int64_t vpid,
@@ -71,9 +74,9 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
-
-  btx_register_callbacks_initialize_usr_data(btx_handle, &initialize_usr_data_callback);
-  btx_register_callbacks_finalize_usr_data(btx_handle, &finalize_usr_data_callback);
+  btx_register_callbacks_initialize_component(btx_handle, &initialize_component_callback);
+  btx_register_callbacks_finalize_processing(btx_handle, &finalize_processing_callback);
+  btx_register_callbacks_finalize_component(btx_handle, &finalize_component_callback);
 
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_traffic(btx_handle, &traffic_usr_callback);
