@@ -18,11 +18,15 @@ typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_comma
 typedef std::tuple<hostname_t, process_id_t, ze_module_handle_t> hp_module_t;
 typedef hp_device_t hpd_t;
 typedef hp_dsd_t hpdd_t;
+typedef hp_dsdev_t hpdsd_t;
 typedef hp_event_t hpe_t;
 typedef hp_kernel_t hpk_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 typedef std::tuple<uint64_t, uint64_t> energy_timestamp_t;
+typedef std::tuple<uint64_t, uint64_t> computeEngine_timestamp_t;
+typedef std::tuple<uint64_t, uint64_t> copyEngine_timestamp_t;
 
+typedef std::unordered_map<std::tuple<std::string, process_id_t, uintptr_t, uint32_t>, std::tuple<uint64_t, uint64_t>> device_ref_t;
 typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_t;
 typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t> l_tfnm_m_d_ts_t;
 
@@ -58,6 +62,10 @@ struct zeinterval_callbacks_state {
     std::unordered_map<hpt_t, std::vector<std::byte>> last_command;
     /*Energy */
     std::unordered_map<hpdd_t, energy_timestamp_t> device_energy_ref;
+    /*computeEngine */
+    std::unordered_map<hpdsd_t, computeEngine_timestamp_t> device_computeEngine_ref;
+    /*copyEngine */
+    std::unordered_map<hpdsd_t, copyEngine_timestamp_t> device_copyEngine_ref;
 };
 
 template <class K,

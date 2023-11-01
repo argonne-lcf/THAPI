@@ -78,3 +78,27 @@
       :field_value_range: 32
   - :name: power
     :class: unsigned
+- :name: lttng:computeEU
+  :payload:
+  - :name: did
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: subDevice
+    :class: unsigned
+    :class_properties:
+      :field_value_range: 32
+  - :name: activeTime
+    :class: unsigned
+- :name: lttng:copyEU
+  :payload:
+  - :name: did
+    :class: unsigned
+    :class_properties:
+      :preferred_display_base: 16
+  - :name: subDevice
+    :class: unsigned
+    :class_properties:
+      :field_value_range: 32
+  - :name: activeTime
+    :class: unsigned

@@ -46,7 +46,8 @@ typedef uintptr_t thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_function_name;
 typedef uintptr_t thapi_device_id;
-typedef uint32_t thapi_domain_id;
+typedef uint32_t thapi_domain_idx;
+typedef uint32_t thapi_sdevice_idx;
 
 // Represent a device and a sub device
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
@@ -59,7 +60,8 @@ typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi
     hpt_device_function_name_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_domain_id> hp_ddomain_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_domain_idx> hp_ddomain_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_sdevice_idx> hp_dsdev_t;
 typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
@@ -116,10 +118,17 @@ bt_message* create_power_message(const char* hostname, const process_id_t propro
                                  const uintptr_t hDevice, const uint32_t domain, const uint64_t power, const uint64_t ts,
                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
 
-
 bt_message* create_frequency_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
                                      const uintptr_t hDevice, const uint32_t domain, const uint64_t ts, const uint64_t frequency,
                                      bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
+
+bt_message* create_computeEU_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
+                                     const uintptr_t hDevice, const uint32_t subDevice, const float activeTime, const uint64_t ts,
+                                     bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
+
+bt_message* create_copyEU_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
+                                  const uintptr_t hDevice, const uint32_t subDevice, const float activeTime, const uint64_t ts,
+                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
 
 bt_message *create_host_message(const char *hostname, const process_id_t, const thread_id_t,
                                 const char *name, const uint64_t ts, const uint64_t duration,

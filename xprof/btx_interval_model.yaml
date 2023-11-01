@@ -127,3 +127,39 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+      - :name: lttng:computeEU
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: subDevice
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: activeTime
+              :field_class:
+                :type: single
+                :cast_type: float
+      - :name: lttng:copyEU
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: subDevice
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: activeTime
+              :field_class:
+                :type: single
+                :cast_type: float

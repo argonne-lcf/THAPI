@@ -58,6 +58,8 @@ struct <%= namespace %>_dispatch {
     bt_event_class *device_name_event_class;
     bt_event_class *frequency_event_class;
     bt_event_class *power_event_class;
+    bt_event_class *computeEU_event_class;
+    bt_event_class *copyEU_event_class;
     /* Component's input port (weak) */
     bt_self_component_port_input *in_port;
 };

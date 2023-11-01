@@ -53,6 +53,7 @@ static uint64_t convert_device_cycle(uint64_t device_cycle,
 }
 
 static uint64_t compute_and_convert_delta(uint64_t start, uint64_t end, const ze_device_properties_t &device_property) {
+   
     assert (device_property.kernelTimestampValidBits <= 64);
     const uint64_t max_val = ((uint64_t)1 << device_property.kernelTimestampValidBits) - 1;
     start &= max_val;
@@ -78,8 +79,10 @@ void *init_zeinterval_callbacks_state() {
     return (void*) s;
 }
 
-static void create_and_enqueue_power_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                                 const uintptr_t hDevice, const uint32_t domain, const uint64_t energy, const uint64_t ts) {
+static void create_and_enqueue_power_message(const char* hostname, const process_id_t process_id,
+                                             const thread_id_t thread_id, const uintptr_t hDevice,
+                                             const uint32_t domain, const uint64_t energy, const uint64_t ts) {
+     
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      auto [it, inserted] = state->device_energy_ref.insert({{hostname, process_id, hDevice, domain}, {energy, ts}});
      // First entry
@@ -89,39 +92,86 @@ static void create_and_enqueue_power_message(const char* hostname, const process
      auto &[prev_energy, prev_ts] = it->second;
 
      bt_message *message = create_power_message(hostname, process_id,
-                            thread_id, hDevice, domain,
-                            static_cast<uint64_t>(((energy-prev_energy) / static_cast<double>(ts-prev_ts))*1000.0),
-                            prev_ts,
-                            zeinterval_iter_g->dispatch->power_event_class,
-                            zeinterval_self_message_iterator_g,
-                            zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
+                                                thread_id, hDevice, domain,
+                                                static_cast<uint64_t>(((energy-prev_energy) / static_cast<double>(ts-prev_ts)) * 1000.0),
+                                                prev_ts,
+                                                zeinterval_iter_g->dispatch->power_event_class,
+                                                zeinterval_self_message_iterator_g,
+                                                zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
      state->downstream_message_queue.push(message);
      prev_energy = energy;
      prev_ts = ts;
 }
 
-static void create_and_enqueue_frequency_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id,
-                                                 const uintptr_t hDevice, const uint32_t domain, const uint64_t ts, const uint64_t frequency) {
-    bt_message *message = create_frequency_message(hostname, process_id, thread_id, hDevice, domain, ts, frequency,
-                           zeinterval_iter_g->dispatch->frequency_event_class,
-                           zeinterval_self_message_iterator_g,
-                           zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
+static void create_and_enqueue_frequency_message(const char* hostname, const process_id_t process_id,
+                                                 const thread_id_t thread_id, const uintptr_t hDevice,
+                                                 const uint32_t domain, const uint64_t ts, const uint64_t frequency) {
+     
+     bt_message *message = create_frequency_message(hostname, process_id, thread_id, hDevice, domain, ts, frequency,
+                                                    zeinterval_iter_g->dispatch->frequency_event_class,
+                                                    zeinterval_self_message_iterator_g,
+                                                    zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
 
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
 }
 
-static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id, const thread_id_t thread_id, const char* name,
-                                            const uint64_t ts, const uint64_t duration, const bool err) {
+static void create_and_enqueue_host_message(const char* hostname, const process_id_t process_id,
+                                            const thread_id_t thread_id, const char* name, const uint64_t ts,
+                                            const uint64_t duration, const bool err) {
 
      /* Message creation */
      bt_message *message = create_host_message(hostname, process_id, thread_id, name, ts, duration, err,
-                            zeinterval_iter_g->dispatch->host_event_class,
-                            zeinterval_self_message_iterator_g,
-                            zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
+                                               zeinterval_iter_g->dispatch->host_event_class,
+                                               zeinterval_self_message_iterator_g,
+                                               zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
 
      zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
      state->downstream_message_queue.push(message);
+}
+
+template<typename Func>
+static void create_and_enqueue_EU_message(const char* hostname, const process_id_t process_id,
+                                          const thread_id_t thread_id, const uintptr_t hDevice,
+                                          const uint32_t subDevice, const uint64_t activeTime,
+                                          const uint64_t ts, device_ref_t& device_ref,
+                                          Func message_creator, void* event_class) {
+     zeinterval_callbacks_state* state = (zeinterval_callbacks_state*) zeinterval_iter_g->callbacks_state;
+     auto [it, inserted] = device_ref.insert({{hostname, process_id, hDevice, subDevice}, {activeTime, ts}});
+     if (inserted)
+          return;
+
+     auto &[prev_activeTime, prev_ts] = it->second;
+     bt_message *message = message_creator(hostname, process_id, thread_id, hDevice, subDevice,
+                                          ((activeTime-prev_activeTime) / static_cast<double>(ts-prev_ts)) * 1000.0,
+                                          prev_ts, static_cast<bt_event_class*>(event_class), zeinterval_self_message_iterator_g,
+                                          zeinterval_iter_g->dispatch->stream, BACKEND_ZE);
+
+     state->downstream_message_queue.push(message);
+     prev_activeTime = activeTime;
+     prev_ts = ts;
+}
+
+static void create_and_enqueue_computeEU_message(const char* hostname, const process_id_t process_id,
+                                                 const thread_id_t thread_id, const uintptr_t hDevice,
+                                                 const uint32_t subDevice, const uint64_t activeTime,
+                                                 const uint64_t ts) {
+     create_and_enqueue_EU_message(hostname, process_id, thread_id, hDevice, subDevice,
+                                   activeTime, ts,
+                                   static_cast<zeinterval_callbacks_state*>(zeinterval_iter_g->callbacks_state)->device_computeEngine_ref,
+                                   create_computeEU_message,
+                                   zeinterval_iter_g->dispatch->computeEU_event_class);
+}
+
+static void create_and_enqueue_copyEU_message(const char* hostname, const process_id_t process_id,
+                                              const thread_id_t thread_id, const uintptr_t hDevice,
+                                              const uint32_t subDevice, const uint64_t activeTime,
+                                              const uint64_t ts) {
+     create_and_enqueue_EU_message(hostname, process_id, thread_id, hDevice, subDevice,
+                                   activeTime, ts,
+                                   static_cast<zeinterval_callbacks_state*>(zeinterval_iter_g->callbacks_state)->device_copyEngine_ref,
+                                   create_copyEU_message,
+                                   zeinterval_iter_g->dispatch->copyEU_event_class);
 }
 
 static void create_and_enqueue_device_message(
@@ -293,6 +343,20 @@ static void zeinterval_<%= dbt_event.name %>_callback(
      int64_t ns_from_origin;
      bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
      create_and_enqueue_frequency_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, domain, ns_from_origin, frequency);
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_sampling:computeEngine" %>
+     const hostname_t   hostname   = borrow_hostname(bt_evt);
+     const process_id_t process_id = 0;
+     const thread_id_t  thread_id  = 0;
+     int64_t ns_from_origin;
+     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+     create_and_enqueue_computeEU_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, subDevice, activeTime, ns_from_origin);
+  <% elsif dbt_event.name_unsanitized == "lttng_ust_ze_sampling:copyEngine" %>
+     const hostname_t   hostname   = borrow_hostname(bt_evt);
+     const process_id_t process_id = 0;
+     const thread_id_t  thread_id  = 0;
+     int64_t ns_from_origin;
+     bt_clock_snapshot_get_ns_from_origin(bt_clock, &ns_from_origin);
+     create_and_enqueue_copyEU_message(hostname.c_str(), process_id, thread_id, (uintptr_t)hDevice, subDevice, activeTime, ns_from_origin);
   <% elsif dbt_event.name_unsanitized.start_with?('lttng_ust_ze:')  or
            dbt_event.name_unsanitized.start_with?('lttng_ust_zet:') or
            dbt_event.name_unsanitized.start_with?('lttng_ust_zes:') or
