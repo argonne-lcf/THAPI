@@ -160,6 +160,7 @@ BTX_HIP_GENERATED = \
 	btx_filter_hip/btx_main.c
 
 EXTRA_DIST = \
+	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	btx_interval_model.yaml \
 	btx_matching_model.yaml
 
