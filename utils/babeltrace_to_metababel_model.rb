@@ -83,50 +83,43 @@ def get_event_class(evt)
   event_class
 end
 
-def get_stream_class(sc)
+def get_event_common_context_field(common_context_field)
   {
-    :name => sc[:name],
-    :default_clock_class => {},
-    :packet_context_field_class => {
-      :type => 'structure',
-      :members => [
-        {
-          :name => 'cpu_id',
-          :field_class => {
-            :type => 'integer_unsigned',
-            :field_value_range => 32,
-            :cast_type => 'uint64_t'
-          }
-        }
-      ]
-    },
-    :event_common_context_field_class => {
-      :type => 'structure',
-      :members => [
-        {
-          :name => 'vpid',
-          :field_class => {
-            :type => 'integer_signed',
-            :field_value_range => 64,
-            :cast_type => 'int64_t'
-          }
-        },
-        {
-          :name => 'vtid',
-          :field_class => {
-            :type => 'integer_unsigned',
-            :field_value_range => 64,
-            :cast_type => 'uint64_t'
-          }
-        }
-      ]
-    },
-    :event_classes => sc[:event_classes].map(&method(:get_event_class))
+    :type => 'structure',
+    :members => common_context_field.map(&method(get_field_class_properties))
   }
 end
 
+def get_stream_class(sc)
+  stream_class = { :name => sc[:name] }
+
+  if sc.key?(:clock_snapshot_value)
+    stream_class[:default_clock_class] = {}
+  end
+
+  if sc.key?(:packet_context)
+    members = sc[:packet_context].map(&method(:get_event_class_member))
+    stream_class[:packet_context_field_class] = {
+      :type => 'structure',
+      :members =>  members
+    }
+  end
+
+  if sc.key?(:common_context)
+    members = sc[:common_context].map(&method(:get_event_class_member))
+    stream_class[:event_common_context_field_class] = {
+      :type => 'structure',
+      :members =>  members
+    }
+  end
+
+  stream_class[:event_classes] = sc[:event_classes].map(&method(:get_event_class))
+
+  stream_class
+end
+
 raise "Not input model provided" unless ARGV.length > 0
-input_model_path = ARGV[0] 
+input_model_path = ARGV[0]
 model = YAML.load_file(input_model_path)
 
 trace = { 
