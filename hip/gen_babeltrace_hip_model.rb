@@ -99,6 +99,13 @@ event_classes += hip_events.collect { |provider, es|
   }
 }.flatten
 
+environment = [
+  {
+    name: 'hostname',
+    class: 'string',
+  }
+]
+
 packet_context = [
   {
     name: 'cpu_id',
@@ -131,6 +138,7 @@ common_context = [
 
 puts YAML.dump({
   name: "thapi_hip",
+  environment: environment,
   clock_snapshot_value: true,
   packet_context: packet_context,
   common_context: common_context,

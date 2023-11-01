@@ -113,15 +113,26 @@ def get_stream_class(sc)
   stream_class
 end
 
+def get_environment_entry(entry)
+  { :name => entry[:name], :type => entry[:class] }
+end
+
 raise "Not input model provided" unless ARGV.length > 0
 input_model_path = ARGV[0]
 model = YAML.load_file(input_model_path)
 
-trace = { 
-  :environment => {
-    :entries => [{ :name => 'hostname', :type => 'string' }]
-  },
-  :stream_classes => [get_stream_class(model)],
-}.to_yaml
+# THAPI interval and HIP model differ.
+if model.key?(:stream_classes)
+  stream_class = model.delete(:stream_classes).pop
+  event_classes = model.delete(:event_classes)
+  stream_class[:event_classes] = event_classes
+else
+  stream_class = model
+end
 
-puts trace
+trace = {}
+environment = model.delete(:environment)
+trace[:environment] = { :entries => environment.map(&method(:get_environment_entry)) } if environment
+trace[:stream_classes] = [get_stream_class(stream_class)]
+
+puts trace.to_yaml
