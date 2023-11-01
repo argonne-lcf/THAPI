@@ -73,6 +73,7 @@ end
 
 def get_event_class_member(member)
   member_name = member.delete(:name)
+
   { :name => member_name, :field_class => get_field_class_properties(member, member_name) }
 end
 
@@ -80,14 +81,8 @@ def get_event_class(evt)
   members = evt[:payload].map(&method(:get_event_class_member))
   event_class = { :name => evt.delete(:name) }
   event_class[:payload_field_class] = { :type => 'structure', :members =>  members } unless members.empty?
-  event_class
-end
 
-def get_event_common_context_field(common_context_field)
-  {
-    :type => 'structure',
-    :members => common_context_field.map(&method(get_field_class_properties))
-  }
+  event_class
 end
 
 def get_stream_class(sc)
