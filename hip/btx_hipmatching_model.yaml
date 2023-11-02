@@ -28,7 +28,7 @@
       :members:
       - :name: ^hipResult$
         :field_class:
-          :type: ^integer_signed$
+          :type: integer_signed
           :cast_type: ^hipError_t$
 
   - :set_id: exits_hipError_absent

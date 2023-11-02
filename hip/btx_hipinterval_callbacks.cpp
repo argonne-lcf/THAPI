@@ -12,10 +12,18 @@
 
 
 struct data_s {
-  std::unordered_map<hpt_function_name_t, int64_t> dispatch;
+  std::unordered_map<hpt_t, int64_t> entry_ts;
 };
 
 typedef struct data_s data_t;
+
+void set_entry_ts(data_t *data, hpt_t hpt, int64_t ts) {
+  data->entry_ts[hpt] = ts;
+}
+
+int64_t get_entry_ts(data_t *data, hpt_t hpt) {
+  return data->entry_ts.at(hpt);
+}
 
 std::string strip_event_class_name(const char *str) {
   std::string temp(str);
@@ -34,7 +42,7 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               uint64_t vtid, bool err) {
 
   std::string event_class_name_striped = strip_event_class_name(event_class_name);
-  const int64_t _start = (static_cast<data_t *>(usr_data))->dispatch.at({hostname, vpid, vtid, event_class_name_striped});
+  const int64_t _start = get_entry_ts(static_cast<data_t *>(usr_data), {hostname, vpid, vtid});
 
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, _start, BACKEND_HIP,
                               event_class_name_striped.c_str(), (ts - _start), err);
@@ -49,8 +57,7 @@ void btx_finalize_component(void *usr_data) {
 static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
                              const char *event_class_name, const char *hostname, int64_t vpid,
                              uint64_t vtid) {
-
-  ((data_t *)usr_data)->dispatch[{hostname, vpid, vtid, strip_event_class_name(event_class_name)}] = ts;
+  set_entry_ts(((data_t *)usr_data), {hostname, vpid, vtid}, ts);
 }
 
 static void exits_callback_hipError_absent(void *btx_handle, void *usr_data, int64_t ts,

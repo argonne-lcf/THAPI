@@ -161,20 +161,18 @@ BTX_HIP_GENERATED = \
 
 EXTRA_DIST = \
 	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
-	$(top_srcdir)/xprof/interval_model.yaml \
+	$(top_srcdir)/utils/btx_interval_model.yaml \
 	btx_hipmatching_model.yaml
 
 CLEANFILES = \
-	btx_model.yaml
+	btx_hip_model.yaml \
+	btx_interval_model.yaml
 
-btx_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb hip_babeltrace_model.yaml
+btx_hip_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb hip_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
 
-btx_interval_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb $(top_srcdir)/xprof/interval_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
-
-$(BTX_HIP_GENERATED) &: btx_interval_model.yaml btx_hipmatching_model.yaml btx_model.yaml
-	$(METABABEL) -u btx_model.yaml -d btx_interval_model.yaml -t FILTER -o btx_filter_hip -p hipinterval -c interval --matching $(srcdir)/btx_hipmatching_model.yaml -i hip.h.include
+$(BTX_HIP_GENERATED) &: $(top_srcdir)/utils/btx_interval_model.yaml btx_hipmatching_model.yaml btx_hip_model.yaml
+	$(METABABEL) -u btx_hip_model.yaml -d $(top_srcdir)/utils/btx_interval_model.yaml -t FILTER -o btx_filter_hip -p hipinterval -c interval --matching $(srcdir)/btx_hipmatching_model.yaml -i hip.h.include
 
 $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
@@ -226,7 +224,6 @@ HIP_MODEL = \
 	$(srcdir)/../utils/LTTng.rb \
 	hip.h.include
 
-# TODO: Take this file and use the script to generate the new model version.
 hip_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 

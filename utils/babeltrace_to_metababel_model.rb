@@ -5,16 +5,9 @@ require 'yaml'
 
 HIP_STRUCT_TYPES = [
   'struct hipChannelFormatDesc',
+  'struct hipExtent',
   'hipIpcMemHandle_t',
   'hipIpcEventHandle_t',
-  'hipPitchedPtr',
-  'hipExtent',
-  'hipPitchedPtr',
-  'hipExtent',
-  'struct hipExtent',
-  'dim3',
-  'hipPitchedPtr',
-  'hipExtent',
   'hipPitchedPtr',
   'hipExtent',
   'dim3',
@@ -52,7 +45,9 @@ end
 def get_element_field_class(element_field, parent_field)
   class_properties = element_field.delete(:class_properties)
   field_properties = (element_field.to_a + class_properties.to_a).filter_map {|k,v| translate_key_value(k,v) unless INGONRE_PROPERTIES.include?(k) }.to_h
+
   if parent_field[:class] == 'array_dynamic'
+    # get array elements' cast_type
     match = parent_field[:cast_type].match(/(.*) \*/)
     raise ":cast_type for element_field in array_dynamic can not be determined for #{parent_field}." unless match
     field_properties[:cast_type] = match[1]
@@ -65,9 +60,11 @@ def get_field_class_properties(field, member_name)
   class_properties = field.delete(:class_properties)
   field_element_field_class = field.key?(:field) ? get_element_field_class(field.delete(:field), field) : {}
   field_properties = (field.to_a + class_properties.to_a + field_element_field_class.to_a ).filter_map {|k,v| translate_key_value(k,v) unless INGONRE_PROPERTIES.include?(k) }.to_h
-  field_properties[:cast_type_is_struct] = true if HIP_STRUCT_TYPES.include?(field[:cast_type])
   field_properties[:length_field_path] = "EVENT_PAYLOAD[\"_#{member_name}_length\"]" if field_properties[:type] == 'array_dynamic'
-  
+
+  # Special casting case for struct <-> string.
+  field_properties[:cast_type_is_struct] = true if HIP_STRUCT_TYPES.include?(field[:cast_type])
+
   field_properties
 end
 
