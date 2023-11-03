@@ -149,6 +149,30 @@ MODIFIED_HIP_HDR = \
 	modified_include/hip/channel_descriptor.h \
 	modified_include/hip/hip_version.h
 
+BTX_HIP_GENERATED = \
+	btx_filter_hip/metababel/metababel.h \
+	btx_filter_hip/metababel/btx_component.h \
+	btx_filter_hip/metababel/btx_component.c \
+	btx_filter_hip/metababel/btx_upstream.h \
+	btx_filter_hip/metababel/btx_upstream.c \
+	btx_filter_hip/metababel/btx_downstream.h \
+	btx_filter_hip/metababel/btx_downstream.c \
+	btx_filter_hip/btx_main.c
+
+EXTRA_DIST = \
+	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
+	$(top_srcdir)/xprof/btx_interval_model.yaml \
+	btx_hipmatching_model.yaml
+
+CLEANFILES = \
+	btx_hip_model.yaml
+
+btx_hip_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb hip_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+
+$(BTX_HIP_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_hipmatching_model.yaml btx_hip_model.yaml
+	$(METABABEL) -u btx_hip_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_hip -p hipinterval -c interval --matching $(srcdir)/btx_hipmatching_model.yaml -i hip.h.include
+
 $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
@@ -158,7 +182,7 @@ $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 clean-local:
 	$(RM) -r modified_include
 
-EXTRA_DIST = \
+EXTRA_DIST += \
 	$(srcdir)/include \
 	headers.patch
 
@@ -171,7 +195,7 @@ hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR) $(srcd
 HIP_EXTRACTED = \
 	hip_api.yaml
 
-CLEANFILES = \
+CLEANFILES += \
 	$(HIP_EXTRACTED)
 
 EXTRA_DIST += \
@@ -299,15 +323,14 @@ uninstall-hook:
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
+
 tmplib_LTLIBRARIES = libBabeltraceHIP.la
+
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 babeltrace_hip_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb hip_babeltrace_model.yaml hip.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
-
-BUILT_SOURCES += \
-	babeltrace_hip_callbacks.h
 
 babeltrace_hip_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb hip_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
@@ -315,6 +338,9 @@ babeltrace_hip_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb 
 EXTRA_DIST += \
 	hip.h.include \
 	hip.map
+
+BUILT_SOURCES += \
+	babeltrace_hip_callbacks.h
 
 CLEANFILES += \
 	babeltrace_hip_callbacks.h \
@@ -352,64 +378,28 @@ CLEANFILES += \
 data_DATA = \
 	$(HIP_BINDINGS)
 
-babeltrace_hipinterval_callbacks.cpp: $(srcdir)/gen_hipinterval_callbacks.rb $(srcdir)/hipinterval_callbacks.cpp.erb hip_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-babeltrace_hipinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb hip_babeltrace_model.yaml hip.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ hipinterval > $@
-
-babeltrace_hipinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb hip_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ hipinterval > $@
-
-babeltrace_hipinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ hipinterval > $@
-
-babeltrace_hipinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="hipinterval" $< > $@
-
-babeltrace_hipinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="hipinterval" $< > $@
-
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
-EXTRA_DIST += \
-	gen_hipinterval_callbacks.rb \
-	hipinterval_callbacks.cpp.erb
-
 CLEANFILES += \
-	babeltrace_hipinterval_callbacks.cpp \
-	babeltrace_hipinterval_callbacks.h \
-	babeltrace_hipinterval_dispatchers.c \
-	babeltrace_hipinterval_emitter.h \
-	babeltrace_hipinterval.h \
-	babeltrace_hipinterval.c \
+	$(BTX_HIP_GENERATED) \
 	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	babeltrace_hipinterval.h \
-	babeltrace_hipinterval_callbacks.h \
-	babeltrace_hipinterval_emitter.h \
-	xprof_utils.hpp
+	$(BTX_HIP_GENERATED)
 
 nodist_libHIPInterval_la_SOURCES = \
-	babeltrace_hipinterval.c \
-	babeltrace_hipinterval.h \
-	babeltrace_hipinterval_callbacks.h \
-	babeltrace_hipinterval_dispatchers.c \
-	babeltrace_hipinterval_callbacks.cpp \
-	babeltrace_hipinterval_emitter.h \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	$(BTX_HIP_GENERATED) \
+	xprof_utils.hpp
 
 libHIPInterval_la_SOURCES = \
-	hipinterval_callbacks.hpp
+	btx_hipinterval_callbacks.cpp
 
-libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_hip
 libHIPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module

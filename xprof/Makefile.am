@@ -46,13 +46,13 @@ BTX_AGGREG_GENERATED = \
         btx_filter_aggreg/metababel/btx_downstream.c \
         btx_filter_aggreg/btx_main.c
 
-$(BTX_TIMELINE_GENERATED) &: btx_interval_model.yaml btx_timeline_params.yaml
+$(BTX_TIMELINE_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_timeline_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -t SINK -o btx_sink_timeline -p btx_timeline -c timeline --params $(srcdir)/btx_timeline_params.yaml
 
-$(BTX_TALLY_GENERATED) &: btx_aggreg_model.yaml btx_tally_params.yaml
+$(BTX_TALLY_GENERATED) &: $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_tally_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_aggreg_model.yaml -t SINK -o btx_sink_tally -p btx_tally -c tally --params $(srcdir)/btx_tally_params.yaml
 
-$(BTX_AGGREG_GENERATED) &: btx_interval_model.yaml btx_aggreg_model.yaml btx_aggreg_params.yaml
+$(BTX_AGGREG_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_aggreg_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
 
 BUILT_SOURCES = \
@@ -157,17 +157,17 @@ data_DATA = \
 	$(TRACE_FILES)
 
 EXTRA_DIST = \
-	interval.c.erb \
-	interval.h.erb \
 	btx_interval_model.yaml \
-        btx_aggreg_model.yaml \
-	interval_model.yaml \
+    btx_aggreg_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
 	btx_aggreg_params.yaml \
+    interval_model.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
-	perfetto_prunned.proto
+	perfetto_prunned.proto \
+	interval.c.erb \
+	interval.h.erb
 
 CLEANFILES = \
 	iprof \

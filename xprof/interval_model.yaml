@@ -3,7 +3,6 @@
 - :name: ze_stream_class
   :schemas:
   - thapi_ze
-  :clock_snapshot_value: true
   :common_context:
   - :name: hostname
     :class: string

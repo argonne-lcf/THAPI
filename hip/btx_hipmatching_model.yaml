@@ -1,0 +1,37 @@
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: ^vpid$
+      :field_class:
+        :type: integer_signed
+    - :name: ^vtid$
+      :field_class:
+        :type: integer_unsigned
+  :event_classes:
+  - :set_id: entries
+    :name: "_entry$"
+
+  - :set_id: all_exits
+    :register: false
+    :name: "_exit$"
+
+  - :set_id: exits_hipError_present
+    :name: "_exit$"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hipResult$
+        :field_class:
+          :type: integer_signed
+          :cast_type: ^hipError_t$
+
+  - :set_id: exits_hipError_absent
+    :name: "_exit$"
+    :domain: |
+      all_exits - exits_hipError_present 
