@@ -1,0 +1,151 @@
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: "^vpid$"
+    - :name: "^vtid$"
+  :event_classes:
+# Host
+  - :set_id: entries
+    :name: "_entry$"
+  - :set_id: exits
+    :name: "_exit$"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^zeResult$
+# Map command list to device 
+  - :set_id: command_list_entry
+    :domain: entries
+    :name: "zeCommandListCreate|zeCommandListCreateImmediate"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hDevice$
+  - :set_id: command_list_exit
+    :domain: exits
+    :name: "zeCommandListCreate|zeCommandListCreateImmediate"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^phCommandList_val$
+# Name of the Function Profiled
+  - :set_id: zeKernelCreate_entry
+    :domain: entries
+    :name: "zeKernelCreate"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^desc__pKernelName_val$
+  - :set_id: zeKernelCreate_exit
+    :domain: exits
+    :name: "zeKernelCreate"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^phKernel_val$
+# Alloc
+  - :set_id: entries_alloc
+    :domain: entries
+    :name : zeMemAlloc*
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^size$
+  - :set_id: exits_alloc
+    :domain: exits
+    :name : zeMemAlloc*
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^zeResult$
+      - :name: pptr_val
+  - :set_id: zeModule_entry
+    :domain: entries
+    :name : zeModuleGetGlobalPointer|zeModuleDestroy
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hModule$
+# Profiling Name
+  - :set_id: hSignalEvent_entry
+    :domain: entries
+    :register: false
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hSignalEvent$
+  - :set_id: launchKernelEntry_group_present
+    :domain: hSignalEvent_entry
+    :name: zeCommandListAppendLaunchKernel|zeCommandListAppendLaunchCooperativeKernel
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hCommandList$
+      - :name: ^hKernel$
+      - :name: ^pLaunchFuncArgs_val$
+  - :set_id: launchKernelEntry_group_absent
+    :domain: hSignalEvent_entry
+    :name: zeCommandListAppendLaunchKernelIndirect|zeCommandListAppendLaunchMultipleKernelsIndirect 
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hCommandList$
+      - :name: ^hKernel$
+  - :set_id: eventMemory
+    :domain: hSignalEvent_entry
+    :name:  zeCommandListAppendMemory*
+    :register: false
+  - :set_id: eventMemory2ptr
+    :domain: eventMemory
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hCommandList$
+      - :name: ^dstptr$
+      - :name: ^srcptr$
+      - :name: ^size$
+  - :set_id: eventMemory1ptr
+    :domain: eventMemory - eventMemory2ptr
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hCommandList$
+      - :name: ^ptr$
+      - :name: ^size$
+  - :set_id: memory_but_no_event
+    :name: "Memory"
+    :domain: entries - ( eventMemory1ptr + eventMemory2ptr )
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^size$
+  - :set_id: launchCommandEntry_Rest
+    :domain: | 
+      hSignalEvent_entry - ( launchKernelEntry_group_present + launchKernelEntry_group_absent + eventMemory )
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name:  ^hCommandList$
+        :field_class:
+          :cast_type: ze_command_list_handle_t
+#Free memory
+  - :set_id: memFree_entry
+    :domain: entries
+    :name: "zeMemFree"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ptr$
+  - :set_id: memFree_exit
+    :domain: exits
+    :name: zeMemFree
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^zeResult$

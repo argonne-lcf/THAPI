@@ -36,6 +36,30 @@ MODIFIED_ZE_HDR = \
 	modified_include/layers/zel_tracing_register_cb.h \
 	modified_include/loader/ze_loader.h
 
+
+BTX_ZE_GENERATED = \
+	btx_filter_ze/metababel/metababel.h \
+	btx_filter_ze/metababel/btx_component.h \
+	btx_filter_ze/metababel/btx_component.c \
+	btx_filter_ze/metababel/btx_upstream.h \
+	btx_filter_ze/metababel/btx_upstream.c \
+	btx_filter_ze/metababel/btx_downstream.h \
+	btx_filter_ze/metababel/btx_downstream.c \
+	btx_filter_ze/btx_main.c
+
+EXTRA_DIST = \
+	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
+	$(top_srcdir)/xprof/btx_interval_model.yaml \
+	btx_zematching_model.yaml
+
+CLEANFILES = btx_ze_model.yaml
+
+btx_ze_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb ze_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+
+$(BTX_ZE_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_zematching_model.yaml btx_ze_model.yaml
+	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_ze -p zeinterval -c interval --matching $(srcdir)/btx_zematching_model.yaml -i ze.h.include
+
 $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
@@ -46,14 +70,16 @@ clean-local:
 	$(RM) -r modified_include
 	$(RM) -r tests
 
-EXTRA_DIST = $(srcdir)/include headers.patch
+EXTRA_DIST += \
+	$(srcdir)/include \
+	headers.patch
 
 ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
 $(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
-CLEANFILES = $(ZE_EXTRACTED)
+CLEANFILES += $(ZE_EXTRACTED)
 
 EXTRA_DIST += \
 	extract_base.rb \
@@ -250,68 +276,25 @@ data_DATA = \
 	ze_bindings_base.rb \
 	babeltrace_zeprofiling_apis.txt
 
-babeltrace_zeinterval_callbacks.cpp: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< callbacks > $@
-
-babeltrace_zeprofiling_apis.txt: $(srcdir)/gen_zeinterval_callbacks.rb $(srcdir)/zeinterval_callbacks.cpp.erb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< apis > $@
-
-babeltrace_zeinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
-
-babeltrace_zeinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
-
-babeltrace_zeinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ zeinterval > $@
-
-babeltrace_zeinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="zeinterval" $< > $@
-
-babeltrace_zeinterval.c: $(top_srcdir)/xprof/interval.c.erb 
-	$(ERB) namespace="zeinterval" $< > $@
-
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
-EXTRA_DIST += \
-	gen_zeinterval_callbacks.rb \
-	zeinterval_callbacks.cpp.erb
-
 CLEANFILES += \
-	babeltrace_zeinterval_callbacks.cpp \
-	babeltrace_zeprofiling_apis.txt \
-	babeltrace_zeinterval_callbacks.h \
-	babeltrace_zeinterval_dispatchers.c \
-	babeltrace_zeinterval_emitter.h \
-	babeltrace_zeinterval.h \
-	babeltrace_zeinterval.c \
+	$(BTX_ZE_GENERATED) \
 	xprof_utils.hpp \
 	xprof_utils.cpp
 
 BUILT_SOURCES += \
-	babeltrace_zeinterval_callbacks.h \
-	babeltrace_zeinterval.h \
-	babeltrace_zeinterval_emitter.h \
-	xprof_utils.hpp
+	$(BTX_ZE_GENERATED)
 
 nodist_libZEInterval_la_SOURCES = \
-	babeltrace_zeinterval.c \
-	babeltrace_zeinterval.h \
-	babeltrace_zeinterval_callbacks.h \
-	babeltrace_zeinterval_dispatchers.c \
-	babeltrace_zeinterval_callbacks.cpp \
-	babeltrace_zeinterval_emitter.h \
-	xprof_utils.hpp \
-	xprof_utils.cpp 
+	$(BTX_HIP_GENERATED) \
+	xprof_utils.hpp
 
 libZEInterval_la_SOURCES = \
-	zeinterval_callbacks.hpp
+	btx_zeinterval_callbacks.hpp
 
-libZEInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libZEInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_ze
 libZEInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libZEInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libZEInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
