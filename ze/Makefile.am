@@ -50,7 +50,8 @@ BTX_ZE_GENERATED = \
 EXTRA_DIST = \
 	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
-	btx_zematching_model.yaml
+	btx_zematching_model.yaml \
+	babeltrace_zeprofiling_apis.txt
 
 CLEANFILES = btx_ze_model.yaml
 
@@ -288,10 +289,11 @@ BUILT_SOURCES += \
 	$(BTX_ZE_GENERATED)
 
 nodist_libZEInterval_la_SOURCES = \
-	$(BTX_HIP_GENERATED) \
+	$(BTX_ZE_GENERATED) \
 	xprof_utils.hpp
 
 libZEInterval_la_SOURCES = \
+	btx_zeinterval_callbacks.cpp \
 	btx_zeinterval_callbacks.hpp
 
 libZEInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_ze
@@ -373,4 +375,4 @@ CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
 	$(DUST_COMMON) \
 	$(DUST_SPECIFIC) \
-	$(TRACE_COMMON) 
+	$(TRACE_COMMON)

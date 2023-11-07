@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
-#include <zeinterval_callbacks.hpp>
+#include <btx_zeinterval_callbacks.hpp>
 
 std::string strip_event_class_name(const char *str) {
   std::string temp(str);
@@ -22,7 +22,7 @@ std::string strip_event_class_name(const char *str) {
 
 static void add_memory(data_t *state, hp_t hp, uintptr_t ptr, size_t size,
                        std::string source) {
-  std::unordered_map<hp_t, memory_interval_t> *mi;
+  std::unordered_map<hp_t, memory_interval_t> *mi = nullptr;
   if (source == "lttng_ust_ze:zeMemAllocHost_exit")
     mi = &state->rangeset_memory_host;
   else if (source == "lttng_ust_ze:zeMemAllocDevice_exit")
