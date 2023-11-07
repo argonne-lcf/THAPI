@@ -3,15 +3,20 @@
 
 require 'yaml'
 
-HIP_STRUCT_TYPES = [
-  'struct hipChannelFormatDesc',
-  'struct hipExtent',
-  'hipIpcMemHandle_t',
-  'hipIpcEventHandle_t',
-  'hipPitchedPtr',
-  'hipExtent',
-  'dim3',
-]
+raise "Not input model provided" unless ARGV.length > 0
+input_model_path = ARGV[0]
+model = YAML.load_file(input_model_path)
+
+
+# Just look in the payload, good enough for now
+HIP_STRUCT_TYPES =  model[:event_classes].map { |f|
+  f[:payload].filter_map { |l|
+    native = l[:class]
+    cast = l[:cast_type]
+
+    cast if native == "string" and cast != "char *"  and !cast.include?("*")
+  }
+}.flatten.uniq
 
 PROPERTIES_DICT = {
   :class => :type
@@ -113,10 +118,6 @@ end
 def get_environment_entry(entry)
   { :name => entry[:name], :type => entry[:class] }
 end
-
-raise "Not input model provided" unless ARGV.length > 0
-input_model_path = ARGV[0]
-model = YAML.load_file(input_model_path)
 
 # THAPI interval and HIP model differ.
 if model.key?(:stream_classes)
