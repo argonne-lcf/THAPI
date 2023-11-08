@@ -60,7 +60,6 @@ btx_ze_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb ze_babel
 
 $(BTX_ZE_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_zematching_model.yaml btx_ze_model.yaml
 	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_ze -p zeinterval -c interval --matching $(srcdir)/btx_zematching_model.yaml -i ze.h.include
-	sed -i -e 's/assert(!message_iterator_private_data->head_mi);//g' btx_filter_ze/btx_main.c
 
 $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/

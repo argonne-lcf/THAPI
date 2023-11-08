@@ -5,15 +5,17 @@ require 'optparse'
 class Comparator
   def consume_method(_self_component)
     # This function will comsume message for all the message iterator
-    # and compare events fields
-    # If the number of message consumed by message iterator are differnts
-    # an error is raised
-
-    @message_iterators.each_with_index do |message_iterator, i|
+    @message_iterators.delete_if do |message_iterator, i|
       message_iterator.next_messages.each do |m|
         @stack_messages[i] << m.event if m.type == :BT_MESSAGE_TYPE_EVENT
       end
+    rescue StopIteration
+      true
+    else
+      false
     end
+
+    raise StopIteration if @message_iterators.empty?
   end
 
   def initialize_method(self_component, _configuration, _params, _data)
@@ -40,7 +42,7 @@ class Comparator
   def graph_is_configured_method(self_component)
     @message_iterators = self_component.get_input_port_count.times.map do |i|
       p = self_component.get_input_port_by_index(i)
-      self_component.create_message_iterator(p)
+      [self_component.create_message_iterator(p), i]
     end
   end
 
