@@ -86,6 +86,14 @@ jobs:
         working-directory: build
       - run: make check
         working-directory: build
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: build-and-check
+          path: |
+            build/**/*.log
+            build/config.log
+            build/**/tests/*.log
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
@@ -114,6 +122,14 @@ jobs:
       - run: ./configure
       - run: make -j
       - run: make check
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: build-in-tree
+          path: |
+            ./**/*.log
+            ./config.log
+            ./**/tests/*.log
 
   distcheck:
     needs: [babeltrace2, pre_job]
@@ -190,3 +206,11 @@ jobs:
           cd build
           make -j check
         working-directory: build
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: dist-check
+          path: |
+            build/**/*.log
+            build/config.log
+            build/**/tests/*.log
