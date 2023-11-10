@@ -1,5 +1,6 @@
 #pragma once
 
+#include <metababel/metababel.h>
 #include "xprof_utils.hpp"
 #include <cstddef> // Bytes
 #include <tuple>
