@@ -1,4 +1,5 @@
 #include "xprof_utils.hpp"
+#include <btx_zeinterval_callbacks.hpp>
 #include <cassert>
 #include <iostream>
 #include <metababel/metababel.h>
@@ -6,7 +7,6 @@
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
-#include <btx_zeinterval_callbacks.hpp>
 
 std::string strip_event_class_name(const char *str) {
   std::string temp(str);
@@ -354,7 +354,7 @@ static void eventMemory2ptr_callbacks(void *btx_handle, void *usr_data,
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
   std::stringstream name;
-  name << strip_event_class_name(event_class_name) << " ("
+  name << strip_event_class_name(event_class_name) << "("
        << memory_location(data, hp, (uintptr_t)srcptr) << "2"
        << memory_location(data, hp, (uintptr_t)dstptr) << ")";
   std::string metadata = "";
@@ -364,8 +364,8 @@ static void eventMemory2ptr_callbacks(void *btx_handle, void *usr_data,
       hCommandList, name.str(), metadata, device, ts};
 
   // Should we check Error ? Send with Error?
- btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid,
-                                ts, BACKEND_ZE, name.str().c_str(), size);
+  btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts,
+                                 BACKEND_ZE, name.str().c_str(), size);
 }
 
 static void eventMemory1ptr_callbacks(void *btx_handle, void *usr_data,
@@ -388,20 +388,20 @@ static void eventMemory1ptr_callbacks(void *btx_handle, void *usr_data,
       hCommandList, name.str(), metadata, device, ts};
 
   // Should we check Error ? Send with Error?
- btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid,
-                                ts, BACKEND_ZE, name.str().c_str(), size);
+  btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts,
+                                 BACKEND_ZE, name.str().c_str(), size);
 }
 
 static void memory_but_no_event_callbacks(void *btx_handle, void *usr_data,
-                                      int64_t ts, const char *event_class_name,
-                                      const char *hostname, int64_t vpid,
-                                      uint64_t vtid,
-                                      size_t size) {
+                                          int64_t ts,
+                                          const char *event_class_name,
+                                          const char *hostname, int64_t vpid,
+                                          uint64_t vtid, size_t size) {
 
- btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid,
-                                ts, BACKEND_ZE, strip_event_class_name(event_class_name).c_str(), size);
+  btx_push_message_lttng_traffic(
+      btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
+      strip_event_class_name(event_class_name).c_str(), size);
 }
-
 
 static void launchCommandEntry_Rest_callbacks(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
@@ -495,16 +495,17 @@ static void memFree_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
 
 /*
  * Timestamp Shift
- */ 
+ */
 
 static void property_device_timer_callback(void *btx_handle, void *usr_data,
-  					   int64_t ts, const char *hostname,
-                                     	   int64_t vpid, uint64_t vtid,
-					   ze_device_handle_t hDevice,
-				   	   uint64_t hostTimestamp,
-					   uint64_t deviceTimestamp) {
-   auto *data = static_cast<data_t *>(usr_data);
-   data->device_timestamps_pair_ref[ {hostname, vpid, (thapi_device_id) hDevice} ] = {ts, deviceTimestamp};
+                                           int64_t ts, const char *hostname,
+                                           int64_t vpid, uint64_t vtid,
+                                           ze_device_handle_t hDevice,
+                                           uint64_t hostTimestamp,
+                                           uint64_t deviceTimestamp) {
+  auto *data = static_cast<data_t *>(usr_data);
+  data->device_timestamps_pair_ref[{hostname, vpid, (thapi_device_id)hDevice}] =
+      {ts, deviceTimestamp};
 }
 
 /*
@@ -539,8 +540,8 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
   const hp_event_t hpe{hostname, vpid, hEvent};
 
   // Maybe we should check if not present
-  data->event_payload[hpe] = {vtid,   commandName, metadata,
-                              device, lltngMin,    clockLttngDevice};
+  data->event_payload[hpe] = {vtid,     commandName,      metadata, device,
+                              lltngMin, clockLttngDevice, false};
 }
 
 static void event_profiling_result_callback(
@@ -557,8 +558,16 @@ static void event_profiling_result_callback(
       ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
 
   const auto &[vtid_submision, commandName, metadata, device, lltngMin,
-               clockLttngDevice] =
+               clockLttngDevice, to_ignore] =
       data->event_payload[{hostname, vpid, hEvent}];
+
+  // The duration of an event created from an event pool that was created using
+  //   ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP or
+  //   ZE_EVENT_POOL_FLAG_KERNEL_MAPPED_TIMESTAMP flags is undefined.
+  // However, for consistency and orthogonality the event will report correctly
+  //   as signaled when used by other event API functionality.
+  if (to_ignore)
+    return;
 
   // No device information. No convertion to ns, to looping
   uint64_t delta = globalEnd - globalStart;
@@ -588,45 +597,89 @@ static void event_profiling_result_callback(
                                 metadata.c_str());
 }
 
-/* 
- * Sampling 
+static void zeEventDestroy_entry_callback(void *btx_handle, void *usr_data,
+                                          int64_t ts, const char *hostname,
+                                          int64_t vpid, uint64_t vtid,
+                                          ze_event_handle_t hEvent) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  push_entry(data, {hostname, vpid, vtid}, hEvent);
+}
+
+static void zeEventDestroy_exit_callback(void *btx_handle, void *usr_data,
+                                         int64_t ts, const char *hostname,
+                                         int64_t vpid, uint64_t vtid,
+                                         ze_result_t zeResult) {
+
+  if (zeResult != ZE_RESULT_SUCCESS)
+    return;
+
+  auto *data = static_cast<data_t *>(usr_data);
+  auto hEvent = pop_entry<ze_event_handle_t>(data, {hostname, vpid, vtid});
+  data->event_payload.erase({hostname, vpid, hEvent});
+}
+
+static void zeToIgnore_entry_callback(void *btx_handle, void *usr_data,
+                                      int64_t ts, const char *event_class_name,
+                                      const char *hostname, int64_t vpid,
+                                      uint64_t vtid, ze_event_handle_t hEvent) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  push_entry(data, {hostname, vpid, vtid}, hEvent);
+}
+
+static void zeToIgnore_exit_callback(void *btx_handle, void *usr_data,
+                                     int64_t ts, const char *event_class_name,
+                                     const char *hostname, int64_t vpid,
+                                     uint64_t vtid, ze_result_t zeResult) {
+
+  if (zeResult != ZE_RESULT_SUCCESS)
+    return;
+
+  auto *data = static_cast<data_t *>(usr_data);
+  auto hEvent = pop_entry<ze_event_handle_t>(data, {hostname, vpid, vtid});
+  auto &payload = data->event_payload[{hostname, vpid, hEvent}];
+  std::get<to_ignore_t>(payload) = true;
+}
+
+/*
+ * Sampling
  */
 
-static void 
-lttng_ust_ze_sampling_gpu_energy_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid,
-    ze_device_handle_t hDevice, uint32_t domain, uint64_t energy, uint64_t sampling_ts) {
+static void lttng_ust_ze_sampling_gpu_energy_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid, ze_device_handle_t hDevice, uint32_t domain,
+    uint64_t energy, uint64_t sampling_ts) {
 
-   btx_push_message_lttng_power(btx_handle, hostname, 0, 0,
-                                ts, BACKEND_ZE, (uint64_t) hDevice, domain, energy);
+  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, ts, BACKEND_ZE,
+                               (uint64_t)hDevice, domain, energy);
 }
 
-static void
-lttng_ust_ze_sampling_gpu_frequency_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid,
-    ze_device_handle_t hDevice, uint32_t domain, uint64_t frequency) {
+static void lttng_ust_ze_sampling_gpu_frequency_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid, ze_device_handle_t hDevice, uint32_t domain,
+    uint64_t frequency) {
 
-   btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0,
-                                ts, BACKEND_ZE, (uint64_t) hDevice, domain, frequency);
+  btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0, ts, BACKEND_ZE,
+                                   (uint64_t)hDevice, domain, frequency);
 }
 
-static void
-lttng_ust_ze_sampling_computeEngine_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid,
-    ze_device_handle_t hDevice, uint32_t subDevice,
+static void lttng_ust_ze_sampling_computeEngine_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid, ze_device_handle_t hDevice, uint32_t subDevice,
     uint64_t activeTime, uint64_t sampling_ts) {
 
-   btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0,
-                                     ts, BACKEND_ZE, (uint64_t) hDevice, subDevice, activeTime);
+  btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0, ts, BACKEND_ZE,
+                                   (uint64_t)hDevice, subDevice, activeTime);
 }
 
-static void
-lttng_ust_ze_sampling_copyEngine_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid,
-    ze_device_handle_t hDevice, uint32_t subDevice, uint64_t activeTime, uint64_t sampling_ts) {
+static void lttng_ust_ze_sampling_copyEngine_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid, ze_device_handle_t hDevice, uint32_t subDevice,
+    uint64_t activeTime, uint64_t sampling_ts) {
 
-   btx_push_message_lttng_copyEU(btx_handle, hostname, 0, 0,
-                                 ts, BACKEND_ZE, (uint64_t) hDevice, subDevice, activeTime);
+  btx_push_message_lttng_copyEU(btx_handle, hostname, 0, 0, ts, BACKEND_ZE,
+                                (uint64_t)hDevice, subDevice, activeTime);
 }
 
 /*
@@ -670,8 +723,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &property_kernel_callback);
 
   /* Drift */
-  btx_register_callbacks_lttng_ust_ze_properties_device_timer(btx_handle,
-		  					      &property_device_timer_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_device_timer(
+      btx_handle, &property_device_timer_callback);
 
   /* Profiling Command (everything who signal an event on completion)  */
   btx_register_callbacks_launchKernelEntry_group_present(
@@ -684,9 +737,9 @@ void btx_register_usr_callbacks(void *btx_handle) {
                                          &eventMemory1ptr_callbacks);
   btx_register_callbacks_launchCommandEntry_Rest(
       btx_handle, &launchCommandEntry_Rest_callbacks);
- 
-  btx_register_callbacks_memory_but_no_event(
-      btx_handle, &memory_but_no_event_callbacks);
+
+  btx_register_callbacks_memory_but_no_event(btx_handle,
+                                             &memory_but_no_event_callbacks);
 
   /* Remove Memory */
   btx_register_callbacks_memFree_entry(btx_handle, &memFree_entry_callback);
@@ -702,14 +755,22 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_ust_ze_profiling_event_profiling_results(
       btx_handle, &event_profiling_result_callback);
 
+  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_entry(
+      btx_handle, &zeEventDestroy_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(
+      btx_handle, &zeEventDestroy_exit_callback);
+
+  btx_register_callbacks_zeToIgnore_entry(btx_handle,
+                                          &zeToIgnore_entry_callback);
+  btx_register_callbacks_zeToIgnore_exit(btx_handle, &zeToIgnore_exit_callback);
+
   /* Sampling */
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(
-     btx_handle, &lttng_ust_ze_sampling_gpu_energy_callback);
+      btx_handle, &lttng_ust_ze_sampling_gpu_energy_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_frequency(
-     btx_handle, &lttng_ust_ze_sampling_gpu_frequency_callback);
+      btx_handle, &lttng_ust_ze_sampling_gpu_frequency_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_computeEngine(
-     btx_handle, &lttng_ust_ze_sampling_computeEngine_callback);
+      btx_handle, &lttng_ust_ze_sampling_computeEngine_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_copyEngine(
-     btx_handle, &lttng_ust_ze_sampling_copyEngine_callback);
-
+      btx_handle, &lttng_ust_ze_sampling_copyEngine_callback);
 }

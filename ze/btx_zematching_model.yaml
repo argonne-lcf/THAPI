@@ -134,6 +134,21 @@
       - :name:  ^hCommandList$
         :field_class:
           :cast_type: ze_command_list_handle_t
+# To ignore. Either mean nothing or instaneous
+  - :set_id: zeToIgnore_entry
+    :name: "zeCommandListAppendSignalEvent|zeEventHostSignal"
+    :domain: entries
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hEvent$
+  - :set_id: zeToIgnore_exit
+    :name: "zeCommandListAppendSignalEvent|zeEventHostSignal"
+    :domain: exits
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^zeResult$
 #Free memory
   - :set_id: memFree_entry
     :domain: entries

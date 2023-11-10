@@ -16,6 +16,7 @@ typedef std::tuple<hostname_t, process_id_t, ze_module_handle_t> hp_module_t;
 typedef std::map<uintptr_t, uintptr_t> memory_interval_t;
 
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
+typedef bool to_ignore_t;
 
 struct data_s {
   /* Host */
@@ -49,7 +50,8 @@ struct data_s {
       device_timestamps_pair_ref;
   std::unordered_map<
       hp_event_t, std::tuple<thread_id_t, thapi_function_name, std::string,
-                             thapi_device_id, uint64_t, clock_lttng_device_t>>
+                             thapi_device_id, uint64_t, clock_lttng_device_t,
+			     to_ignore_t>>
       event_payload;
 };
 typedef struct data_s data_t;
