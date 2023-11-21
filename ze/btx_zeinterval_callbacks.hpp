@@ -80,7 +80,7 @@ void inline push_entry(S *state, hpt_t hpt, const std::string s) {
   state->last_command[hpt] = std::vector<std::byte>(b, b + s.size() + 1);
 }
 
-// Cannt have `class S`...
+// Cannot have `class S`...
 template <> inline std::string pop_entry(data_t *state, hpt_t hpt) {
   return std::string{(char *)state->last_command[hpt].data()};
 }

@@ -30,7 +30,7 @@ static void add_memory(data_t *state, hp_t hp, uintptr_t ptr, size_t size,
   else if (source == "lttng_ust_ze:zeMemAllocShared_exit")
     mi = &state->rangeset_memory_shared;
   else
-    std::cout << "WARNING Adding unknoew memory " << source << "ptr " << ptr
+    std::cout << "WARNING Adding unknow memory " << source << "ptr " << ptr
               << std::endl;
 
   (*mi)[hp][ptr] = ptr + size;
@@ -131,7 +131,7 @@ static uintptr_t hash_device(const ze_device_properties_t &device_property) {
   const auto device_uuid = device_property.uuid;
 
   // Right now we store `ptr` and not `uuid`.
-  // we cast `uiid` to `ptr`. This should to the oposite
+  // we cast `uiid` to `ptr`. This should to the opposite
   uintptr_t device_uuid_hash[2];
   memcpy(&device_uuid_hash[0], &device_uuid, sizeof(device_uuid));
   device_uuid_hash[0] += device_uuid_hash[1];
@@ -344,12 +344,12 @@ static void hSignalEvent_launchKernel_without_group_entry_callback(
       hCommandList, name, metadata, device, ts};
 }
 
-static void eventMemory2ptr_callbacks(void *btx_handle, void *usr_data,
-                                      int64_t ts, const char *event_class_name,
-                                      const char *hostname, int64_t vpid,
-                                      uint64_t vtid,
-                                      ze_command_list_handle_t hCommandList,
-                                      void *dstptr, void *srcptr, size_t size) {
+static void eventMemory2ptr_callback(void *btx_handle, void *usr_data,
+                                     int64_t ts, const char *event_class_name,
+                                     const char *hostname, int64_t vpid,
+                                     uint64_t vtid,
+                                     ze_command_list_handle_t hCommandList,
+                                     void *dstptr, void *srcptr, size_t size) {
 
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
@@ -368,12 +368,12 @@ static void eventMemory2ptr_callbacks(void *btx_handle, void *usr_data,
                                  BACKEND_ZE, name.str().c_str(), size);
 }
 
-static void eventMemory1ptr_callbacks(void *btx_handle, void *usr_data,
-                                      int64_t ts, const char *event_class_name,
-                                      const char *hostname, int64_t vpid,
-                                      uint64_t vtid,
-                                      ze_command_list_handle_t hCommandList,
-                                      void *ptr, size_t size) {
+static void eventMemory1ptr_callback(void *btx_handle, void *usr_data,
+                                     int64_t ts, const char *event_class_name,
+                                     const char *hostname, int64_t vpid,
+                                     uint64_t vtid,
+                                     ze_command_list_handle_t hCommandList,
+                                     void *ptr, size_t size) {
 
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
@@ -392,11 +392,11 @@ static void eventMemory1ptr_callbacks(void *btx_handle, void *usr_data,
                                  BACKEND_ZE, name.str().c_str(), size);
 }
 
-static void memory_but_no_event_callbacks(void *btx_handle, void *usr_data,
-                                          int64_t ts,
-                                          const char *event_class_name,
-                                          const char *hostname, int64_t vpid,
-                                          uint64_t vtid, size_t size) {
+static void memory_but_no_event_callback(void *btx_handle, void *usr_data,
+                                         int64_t ts,
+                                         const char *event_class_name,
+                                         const char *hostname, int64_t vpid,
+                                         uint64_t vtid, size_t size) {
 
   btx_push_message_lttng_traffic(
       btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
@@ -445,7 +445,7 @@ static void zeModuleDestroy_exit_callback(void *btx_handle, void *usr_data,
 
   auto &s = data->module_global_pointer;
   auto it = s.find({hostname, vpid, hModule});
-  // This should never happend
+  // This should never happen
   if (it == s.end())
     return;
 
@@ -542,7 +542,7 @@ static void event_profiling_result_callback(
   const bool err =
       ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
 
-  const auto &[vtid_submision, commandName, metadata, device, lltngMin,
+  const auto &[vtid_submission, commandName, metadata, device, lltngMin,
                clockLttngDevice, to_ignore] =
       data->event_payload[{hostname, vpid, hEvent}];
 
@@ -554,7 +554,7 @@ static void event_profiling_result_callback(
   if (to_ignore)
     return;
 
-  // No device information. No convertion to ns, to looping
+  // No device information. No conversion to ns, no looping
   uint64_t delta = globalEnd - globalStart;
   uint64_t start = lltngMin;
 
@@ -576,7 +576,7 @@ static void event_profiling_result_callback(
     if (it2 != data->device_property.cend())
       subdevice_hash = hash_device(it2->second);
   }
-  btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submision,
+  btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission,
                                 start, BACKEND_ZE, commandName.c_str(), delta,
                                 device_hash, subdevice_hash, err,
                                 metadata.c_str());
@@ -604,19 +604,20 @@ static void zeEventDestroy_exit_callback(void *btx_handle, void *usr_data,
   data->event_payload.erase({hostname, vpid, hEvent});
 }
 
-static void zeToIgnore_entry_callback(void *btx_handle, void *usr_data,
-                                      int64_t ts, const char *event_class_name,
-                                      const char *hostname, int64_t vpid,
-                                      uint64_t vtid, ze_event_handle_t hEvent) {
+static void hSignalEvent_ignore_entry_callback(void *btx_handle, void *usr_data,
+                                               int64_t ts,
+                                               const char *event_class_name,
+                                               const char *hostname,
+                                               int64_t vpid, uint64_t vtid,
+                                               ze_event_handle_t hEvent) {
 
   auto *data = static_cast<data_t *>(usr_data);
   push_entry(data, {hostname, vpid, vtid}, hEvent);
 }
 
-static void zeToIgnore_exit_callback(void *btx_handle, void *usr_data,
-                                     int64_t ts, const char *event_class_name,
-                                     const char *hostname, int64_t vpid,
-                                     uint64_t vtid, ze_result_t zeResult) {
+static void hSignalEvent_ignore_exit_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
+    const char *hostname, int64_t vpid, uint64_t vtid, ze_result_t zeResult) {
 
   if (zeResult != ZE_RESULT_SUCCESS)
     return;
@@ -716,12 +717,12 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &hSignalEvent_launchKernel_with_group_entry_callback);
   btx_register_callbacks_hSignalEvent_hKernel_without_group_entry(
       btx_handle, &hSignalEvent_launchKernel_without_group_entry_callback);
-  btx_register_callbacks_hSignalEvent_eventMemory_2ptr_entry(btx_handle,
-                                         &eventMemory2ptr_callbacks);
-  btx_register_callbacks_hSignalEvent_eventMemory_1ptr_entry(btx_handle,
-                                         &eventMemory1ptr_callbacks);
-  btx_register_callbacks_eventMemory_wihout_hSignalEvent_entry(btx_handle,
-                                             &memory_but_no_event_callbacks);
+  btx_register_callbacks_hSignalEvent_eventMemory_2ptr_entry(
+      btx_handle, &eventMemory2ptr_callback);
+  btx_register_callbacks_hSignalEvent_eventMemory_1ptr_entry(
+      btx_handle, &eventMemory1ptr_callback);
+  btx_register_callbacks_eventMemory_without_hSignalEvent_entry(
+      btx_handle, &memory_but_no_event_callback);
 
   /* Remove Memory */
   btx_register_callbacks_memFree_entry(btx_handle, &memFree_entry_callback);
@@ -742,9 +743,10 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(
       btx_handle, &zeEventDestroy_exit_callback);
 
-  btx_register_callbacks_hSignalEvent_ignore_entry(btx_handle,
-                                          &zeToIgnore_entry_callback);
-  btx_register_callbacks_hSignalEvent_ignore_exit(btx_handle, &zeToIgnore_exit_callback);
+  btx_register_callbacks_hSignalEvent_ignore_entry(
+      btx_handle, &hSignalEvent_ignore_entry_callback);
+  btx_register_callbacks_hSignalEvent_ignore_exit(
+      btx_handle, &hSignalEvent_ignore_exit_callback);
 
   /* Sampling */
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(
