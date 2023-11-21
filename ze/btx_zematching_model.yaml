@@ -19,60 +19,66 @@
       :type: structure
       :members:
       - :name: ^zeResult$
-# Map command list to device 
-  - :set_id: command_list_entry
-    :domain: entries
+# Map command list to device
+  - :set_id: command_list
     :name: "zeCommandListCreate|zeCommandListCreateImmediate"
+    :register: false
+  - :set_id: command_list_entry
+    :domain: entries & command_list
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hDevice$
   - :set_id: command_list_exit
-    :domain: exits
-    :name: "zeCommandListCreate|zeCommandListCreateImmediate"
+    :domain: exits & command_list
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^phCommandList_val$
 # Name of the Function Profiled
-  - :set_id: zeKernelCreate_entry
-    :domain: entries
+  - :set_id: zeKernelCreate
     :name: "zeKernelCreate"
+    :register: false
+  - :set_id: zeKernelCreate_entry
+    :domain: entries & zeKernelCreate
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^desc__pKernelName_val$
   - :set_id: zeKernelCreate_exit
-    :domain: exits
-    :name: "zeKernelCreate"
+    :domain: exits & zeKernelCreate
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^phKernel_val$
 # Alloc
+  - :set_id: alloc
+    :name : "zeMemAlloc"
+    :register: false
   - :set_id: entries_alloc
-    :domain: entries
-    :name : zeMemAlloc*
+    :domain: entries & alloc
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^size$
   - :set_id: exits_alloc
-    :domain: exits
-    :name : zeMemAlloc*
+    :domain: exits & alloc
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^zeResult$
       - :name: pptr_val
+
+# We handle the exits separatly
   - :set_id: zeModule_entry
     :domain: entries
-    :name : zeModuleGetGlobalPointer|zeModuleDestroy
+    :name : "zeModuleGetGlobalPointer|zeModuleDestroy"
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hModule$
-# Profiling Name
+
+# Profiling Name Kernel
   - :set_id: hSignalEvent_entry
     :domain: entries
     :register: false
@@ -80,29 +86,32 @@
       :type: structure
       :members:
       - :name: ^hSignalEvent$
-  - :set_id: launchKernelEntry_group_present
+  - :set_id: hSignalEvent_hKernel_with_group_entry
     :domain: hSignalEvent_entry
-    :name: zeCommandListAppendLaunchKernel|zeCommandListAppendLaunchCooperativeKernel
+    #:name: "zeCommandListAppendLaunchKernel|zeCommandListAppendLaunchCooperativeKernel|..."
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hCommandList$
       - :name: ^hKernel$
-      - :name: ^pLaunchFuncArgs_val$
-  - :set_id: launchKernelEntry_group_absent
-    :domain: hSignalEvent_entry
-    :name: zeCommandListAppendLaunchKernelIndirect|zeCommandListAppendLaunchMultipleKernelsIndirect 
+      - :name: _val$
+        :field_class:
+          :cast_type: ze_group_count_t \*
+  - :set_id: hSignalEvent_hKernel_without_group_entry
+    :domain: hSignalEvent_entry - hSignalEvent_hKernel_with_group_entry
+    #:name: "zeCommandListAppendLaunchKernelIndirect|zeCommandListAppendLaunchMultipleKernelsIndirect|..."
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hCommandList$
       - :name: ^hKernel$
-  - :set_id: eventMemory
+#Data Transfert (profiling + traffc)
+  - :set_id: hSignalEvent_eventMemory_entry
     :domain: hSignalEvent_entry
-    :name:  zeCommandListAppendMemory*
+    :name: "zeCommandListAppendMemory"
     :register: false
-  - :set_id: eventMemory2ptr
-    :domain: eventMemory
+  - :set_id: hSignalEvent_eventMemory_2ptr_entry
+    :domain: hSignalEvent_eventMemory_entry
     :payload_field_class:
       :type: structure
       :members:
@@ -110,41 +119,38 @@
       - :name: ^dstptr$
       - :name: ^srcptr$
       - :name: ^size$
-  - :set_id: eventMemory1ptr
-    :domain: eventMemory - eventMemory2ptr
+  - :set_id: hSignalEvent_eventMemory_1ptr_entry
+    :domain: hSignalEvent_eventMemory_entry - hSignalEvent_eventMemory_2ptr_entry
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hCommandList$
       - :name: ^ptr$
       - :name: ^size$
-  - :set_id: memory_but_no_event
+## Rest of Trafic
+  - :set_id: eventMemory_wihout_hSignalEvent_entry
     :name: "Memory"
-    :domain: entries - ( eventMemory1ptr + eventMemory2ptr )
+    :domain: |
+      entries - ( hSignalEvent_eventMemory_2ptr_entry + hSignalEvent_eventMemory_1ptr_entry )
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^size$
-  - :set_id: launchCommandEntry_Rest
-    :domain: | 
-      hSignalEvent_entry - ( launchKernelEntry_group_present + launchKernelEntry_group_absent + eventMemory )
+## Thing we should not profile. Either mean nothing, instaneous or not supported)
+  - :set_id: hSignalEvent_ignore_entry
+    #:name: zeCommandListAppendSignalEvent|zeCommandListAppendBarrier|zeCommandListAppendLaunchMultipleKernelsIndirect...
+    :domain: |
+      entries - ( hSignalEvent_hKernel_with_group_entry + hSignalEvent_hKernel_without_group_entry + hSignalEvent_eventMemory_entry )
     :payload_field_class:
       :type: structure
       :members:
-      - :name:  ^hCommandList$
+      - :name: ^hSignalEvent$
         :field_class:
-          :cast_type: ze_command_list_handle_t
-# To ignore. Either mean nothing or instaneous
-  - :set_id: zeToIgnore_entry
-    :name: "zeCommandListAppendSignalEvent|zeEventHostSignal"
-    :domain: entries
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^hEvent$
-  - :set_id: zeToIgnore_exit
-    :name: "zeCommandListAppendSignalEvent|zeEventHostSignal"
-    :domain: exits
+          :cast_type: ze_event_handle_t
+  - :set_id: hSignalEvent_ignore_exit
+    :domain: |
+      hSignalEvent_ignore_entry_sanitized_name = hSignalEvent_ignore_entry.map{ |e| e.name.gsub(/_entry/,'') }
+      exits.filter { |e| hSignalEvent_ignore_entry_sanitized_name.include?(e.name.gsub(/_exit/,'')) }.to_set
     :payload_field_class:
       :type: structure
       :members:
@@ -159,7 +165,7 @@
       - :name: ^ptr$
   - :set_id: memFree_exit
     :domain: exits
-    :name: zeMemFree
+    :name: "zeMemFree"
     :payload_field_class:
       :type: structure
       :members:

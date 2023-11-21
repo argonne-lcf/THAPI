@@ -305,7 +305,7 @@ property_kernel_callback(void *btx_handle, void *usr_data, int64_t ts,
 /*
  * Profiling Command (everything who signal an event on completion)
  * */
-static void launchKernelEntry_group_present_callbacks(
+static void hSignalEvent_launchKernel_with_group_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
     ze_command_list_handle_t hCommandList, ze_kernel_handle_t hKernel,
@@ -330,7 +330,7 @@ static void launchKernelEntry_group_present_callbacks(
       hCommandList, name, metadata.str(), device, ts};
 }
 
-static void launchKernelEntry_group_absent_callbacks(
+static void hSignalEvent_launchKernel_without_group_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
     ze_command_list_handle_t hCommandList, ze_kernel_handle_t hKernel) {
@@ -401,21 +401,6 @@ static void memory_but_no_event_callbacks(void *btx_handle, void *usr_data,
   btx_push_message_lttng_traffic(
       btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
       strip_event_class_name(event_class_name).c_str(), size);
-}
-
-static void launchCommandEntry_Rest_callbacks(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid,
-    ze_command_list_handle_t hCommandList) {
-
-  std::string name = strip_event_class_name(event_class_name);
-  std::string metadata = "";
-  auto *data = static_cast<data_t *>(usr_data);
-  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
-  // Not sure why need to store the command list and the device, as we never
-  // remove anything from `command_list_device`
-  data->command_partial_payload[{hostname, vpid, vtid}] = {
-      hCommandList, name, metadata, device, ts};
 }
 
 // Handle Global
@@ -727,18 +712,15 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &property_device_timer_callback);
 
   /* Profiling Command (everything who signal an event on completion)  */
-  btx_register_callbacks_launchKernelEntry_group_present(
-      btx_handle, &launchKernelEntry_group_present_callbacks);
-  btx_register_callbacks_launchKernelEntry_group_absent(
-      btx_handle, &launchKernelEntry_group_absent_callbacks);
-  btx_register_callbacks_eventMemory2ptr(btx_handle,
+  btx_register_callbacks_hSignalEvent_hKernel_with_group_entry(
+      btx_handle, &hSignalEvent_launchKernel_with_group_entry_callback);
+  btx_register_callbacks_hSignalEvent_hKernel_without_group_entry(
+      btx_handle, &hSignalEvent_launchKernel_without_group_entry_callback);
+  btx_register_callbacks_hSignalEvent_eventMemory_2ptr_entry(btx_handle,
                                          &eventMemory2ptr_callbacks);
-  btx_register_callbacks_eventMemory1ptr(btx_handle,
+  btx_register_callbacks_hSignalEvent_eventMemory_1ptr_entry(btx_handle,
                                          &eventMemory1ptr_callbacks);
-  btx_register_callbacks_launchCommandEntry_Rest(
-      btx_handle, &launchCommandEntry_Rest_callbacks);
-
-  btx_register_callbacks_memory_but_no_event(btx_handle,
+  btx_register_callbacks_eventMemory_wihout_hSignalEvent_entry(btx_handle,
                                              &memory_but_no_event_callbacks);
 
   /* Remove Memory */
@@ -760,9 +742,9 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(
       btx_handle, &zeEventDestroy_exit_callback);
 
-  btx_register_callbacks_zeToIgnore_entry(btx_handle,
+  btx_register_callbacks_hSignalEvent_ignore_entry(btx_handle,
                                           &zeToIgnore_entry_callback);
-  btx_register_callbacks_zeToIgnore_exit(btx_handle, &zeToIgnore_exit_callback);
+  btx_register_callbacks_hSignalEvent_ignore_exit(btx_handle, &zeToIgnore_exit_callback);
 
   /* Sampling */
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(
