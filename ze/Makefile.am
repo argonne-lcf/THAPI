@@ -341,12 +341,15 @@ TRACE_SPECIFC = \
 	tests/interval_API_call.yaml \
 	tests/interval_profiling_normal.yaml \
 	tests/interval_profiling_fast.yaml \
-	tests/interval_profiling_interleave_process.yaml
+	tests/interval_profiling_interleave_process.yaml \
+	tests/profiling_ignore.yaml \
+	tests/interval_profiling_ignore.yaml
 
 DUST_SPECIFIC = \
 	tests/interval_API_call.dust \
 	tests/interval_profiling_fast.dust \
-	tests/interval_profiling_interleave_process.dust
+	tests/interval_profiling_interleave_process.dust \
+	tests/interval_profiling_ignore.dust
 
 $(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
 	$(ERB) namespace="$@" $< > $@
