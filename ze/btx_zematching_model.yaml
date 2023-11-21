@@ -10,8 +10,8 @@
     - :name: "^vpid$"
     - :name: "^vtid$"
   :event_classes:
-# Host
-  - :set_id: entries
+  - # Host
+    :set_id: entries
     :name: "_entry$"
   - :set_id: exits
     :name: "_exit$"
@@ -19,8 +19,8 @@
       :type: structure
       :members:
       - :name: ^zeResult$
-# Map command list to device
-  - :set_id: command_list
+  - # Map command list to device
+    :set_id: command_list
     :name: "zeCommandListCreate|zeCommandListCreateImmediate"
     :register: false
   - :set_id: command_list_entry
@@ -35,8 +35,8 @@
       :type: structure
       :members:
       - :name: ^phCommandList_val$
-# Name of the Function Profiled
-  - :set_id: zeKernelCreate
+  - # Name of the Function Profiled
+    :set_id: zeKernelCreate
     :name: "zeKernelCreate"
     :register: false
   - :set_id: zeKernelCreate_entry
@@ -51,9 +51,9 @@
       :type: structure
       :members:
       - :name: ^phKernel_val$
-# Alloc
-  - :set_id: alloc
-    :name : "zeMemAlloc"
+  - # Handling of Allocation
+    :set_id: alloc
+    :name: "zeMemAlloc"
     :register: false
   - :set_id: entries_alloc
     :domain: entries & alloc
@@ -68,18 +68,16 @@
       :members:
       - :name: ^zeResult$
       - :name: pptr_val
-
-# We handle the exits separately
   - :set_id: zeModule_entry
     :domain: entries
-    :name : "zeModuleGetGlobalPointer|zeModuleDestroy"
+    :name: "zeModuleGetGlobalPointer|zeModuleDestroy"
+    # We handle the exits separately
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hModule$
-
-# Profiling Name Kernel
-  - :set_id: hSignalEvent_entry
+  - # Profiling Name Kernel
+    :set_id: hSignalEvent_entry
     :domain: entries
     :register: false
     :payload_field_class:
@@ -105,8 +103,8 @@
       :members:
       - :name: ^hCommandList$
       - :name: ^hKernel$
-#Data Transferred (profiling + traffc)
-  - :set_id: hSignalEvent_eventMemory_entry
+  - #Data Transferred (profiling + traffc)
+    :set_id: hSignalEvent_eventMemory_entry
     :domain: hSignalEvent_entry
     :name: "zeCommandListAppendMemory"
     :register: false
@@ -127,8 +125,8 @@
       - :name: ^hCommandList$
       - :name: ^ptr$
       - :name: ^size$
-## Rest of Traffic
-  - :set_id: eventMemory_without_hSignalEvent_entry
+  - ## Rest of Traffic
+    :set_id: eventMemory_without_hSignalEvent_entry
     :name: "Memory"
     :domain: |
       entries - ( hSignalEvent_eventMemory_2ptr_entry + hSignalEvent_eventMemory_1ptr_entry )
@@ -136,8 +134,8 @@
       :type: structure
       :members:
       - :name: ^size$
-## Thing we should not profile. Either mean nothing, instaneous or not supported)
-  - :set_id: hSignalEvent_ignore_entry
+  - ## Thing we should not profile. Either mean nothing, instaneous or not supported)
+    :set_id: hSignalEvent_ignore_entry
     #:name: zeCommandListAppendSignalEvent|zeCommandListAppendBarrier|zeCommandListAppendLaunchMultipleKernelsIndirect...
     :domain: |
       entries - ( hSignalEvent_hKernel_with_group_entry + hSignalEvent_hKernel_without_group_entry + hSignalEvent_eventMemory_entry )
@@ -155,7 +153,7 @@
       :type: structure
       :members:
       - :name: ^zeResult$
-#Free memory
+        #Free memory
   - :set_id: memFree_entry
     :domain: entries
     :name: "zeMemFree"
