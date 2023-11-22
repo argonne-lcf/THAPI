@@ -134,26 +134,7 @@
       :type: structure
       :members:
       - :name: ^size$
-  - ## Thing we should not profile. Either mean nothing, instaneous or not supported)
-    :set_id: hSignalEvent_ignore_entry
-    #:name: zeCommandListAppendSignalEvent|zeCommandListAppendBarrier|zeCommandListAppendLaunchMultipleKernelsIndirect...
-    :domain: |
-      entries - ( hSignalEvent_hKernel_with_group_entry + hSignalEvent_hKernel_without_group_entry + hSignalEvent_eventMemory_entry )
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^hSignalEvent$
-        :field_class:
-          :cast_type: ze_event_handle_t
-  - :set_id: hSignalEvent_ignore_exit
-    :domain: |
-      hSignalEvent_ignore_entry_sanitized_name = hSignalEvent_ignore_entry.map{ |e| e.name.gsub(/_entry/,'') }
-      exits.filter { |e| hSignalEvent_ignore_entry_sanitized_name.include?(e.name.gsub(/_exit/,'')) }.to_set
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^zeResult$
-        #Free memory
+  #Free memory
   - :set_id: memFree_entry
     :domain: entries
     :name: "zeMemFree"

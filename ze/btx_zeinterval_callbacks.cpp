@@ -505,11 +505,14 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
 
   auto it_pp = data->command_partial_payload.find({hostname, vpid, vtid});
   // We didn't find the command who initiated this even_profiling,
-  // Best we can do is to bailout
+  // 	-- This mean we should ignore it, Either mean nothing, instaneous or not
+  // supported
+  // 	zeCommandListAppendSignalEvent|zeCommandListAppendBarrier|zeCommandListAppendLaunchMultipleKernelsIndirect...
+  //
   if (it_pp == data->command_partial_payload.end())
     return;
-  // Why not storring clockLttngDevice here?
-  // Try to be as close at the launch?
+
+  // Don't put an `&` is break the metadata / commandName... Not sure why
   const auto [hCommandList, commandName, metadata, device, lltngMin] =
       it_pp->second;
   data->command_partial_payload.erase(it_pp);
@@ -521,12 +524,8 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
   if (it0 != m0.cend())
     clockLttngDevice = it0->second;
   // Do we handle the case where it's nul??
-
-  const hp_event_t hpe{hostname, vpid, hEvent};
-
-  // Maybe we should check if not present
-  data->event_payload[hpe] = {vtid,     commandName,      metadata, device,
-                              lltngMin, clockLttngDevice, false};
+  data->event_payload[{hostname, vpid, hEvent}] = {
+      vtid, commandName, metadata, device, lltngMin, clockLttngDevice};
 }
 
 static void event_profiling_result_callback(
@@ -539,25 +538,21 @@ static void event_profiling_result_callback(
 
   auto *data = static_cast<data_t *>(usr_data);
 
-  const bool err =
-      ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
+  // We didn't find thhe partial payload, that mean we should ignore it
+  const auto it_p = data->event_payload.find({hostname, vpid, hEvent});
+  if (it_p == data->event_payload.cend())
+    return;
 
   const auto &[vtid_submission, commandName, metadata, device, lltngMin,
-               clockLttngDevice, to_ignore] =
-      data->event_payload[{hostname, vpid, hEvent}];
+               clockLttngDevice] = it_p->second;
+  // We don't erase, may have one entry for multiple result
 
-  // The duration of an event created from an event pool that was created using
-  //   ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP or
-  //   ZE_EVENT_POOL_FLAG_KERNEL_MAPPED_TIMESTAMP flags is undefined.
-  // However, for consistency and orthogonality the event will report correctly
-  //   as signaled when used by other event API functionality.
-  if (to_ignore)
-    return;
+  const bool err =
+      ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
 
   // No device information. No conversion to ns, no looping
   uint64_t delta = globalEnd - globalStart;
   uint64_t start = lltngMin;
-
   uintptr_t device_hash = 0;
   const auto it0 = data->device_property.find({hostname, vpid, device});
   if (it0 != data->device_property.cend()) {
@@ -576,6 +571,7 @@ static void event_profiling_result_callback(
     if (it2 != data->device_property.cend())
       subdevice_hash = hash_device(it2->second);
   }
+
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission,
                                 start, BACKEND_ZE, commandName.c_str(), delta,
                                 device_hash, subdevice_hash, err,
@@ -602,30 +598,6 @@ static void zeEventDestroy_exit_callback(void *btx_handle, void *usr_data,
   auto *data = static_cast<data_t *>(usr_data);
   auto hEvent = pop_entry<ze_event_handle_t>(data, {hostname, vpid, vtid});
   data->event_payload.erase({hostname, vpid, hEvent});
-}
-
-static void hSignalEvent_ignore_entry_callback(void *btx_handle, void *usr_data,
-                                               int64_t ts,
-                                               const char *event_class_name,
-                                               const char *hostname,
-                                               int64_t vpid, uint64_t vtid,
-                                               ze_event_handle_t hEvent) {
-
-  auto *data = static_cast<data_t *>(usr_data);
-  push_entry(data, {hostname, vpid, vtid}, hEvent);
-}
-
-static void hSignalEvent_ignore_exit_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, ze_result_t zeResult) {
-
-  if (zeResult != ZE_RESULT_SUCCESS)
-    return;
-
-  auto *data = static_cast<data_t *>(usr_data);
-  auto hEvent = pop_entry<ze_event_handle_t>(data, {hostname, vpid, vtid});
-  auto &payload = data->event_payload[{hostname, vpid, hEvent}];
-  std::get<to_ignore_t>(payload) = true;
 }
 
 /*
@@ -742,11 +714,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &zeEventDestroy_entry_callback);
   btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(
       btx_handle, &zeEventDestroy_exit_callback);
-
-  btx_register_callbacks_hSignalEvent_ignore_entry(
-      btx_handle, &hSignalEvent_ignore_entry_callback);
-  btx_register_callbacks_hSignalEvent_ignore_exit(
-      btx_handle, &hSignalEvent_ignore_exit_callback);
 
   /* Sampling */
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(
