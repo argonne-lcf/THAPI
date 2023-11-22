@@ -1,8 +1,8 @@
 #pragma once
 
-#include <metababel/metababel.h>
 #include "xprof_utils.hpp"
 #include <cstddef> // Bytes
+#include <metababel/metababel.h>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -57,28 +57,28 @@ typedef struct data_s data_t;
 
 // Push pop entry
 template <class K, class S,
-          typename = std::enable_if_t<std::is_trivially_copyable_v<K> ||
-                                      std::is_same_v<K, std::string>>>
+          typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
 static inline void push_entry(S *state, hpt_t hpt, K v) {
   const auto *b = (std::byte *)&v;
   state->last_command[hpt] = std::vector<std::byte>(b, b + sizeof(K));
 }
 
 template <class K, class S,
-          typename = std::enable_if_t<std::is_trivially_copyable_v<K> ||
-                                      std::is_same_v<K, std::string>>>
-inline K pop_entry(S *state, hpt_t hpt) {
+          typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
+static inline K pop_entry(S *state, hpt_t hpt) {
   return *(K *)(state->last_command[hpt].data());
 }
 
-// String specialization
+//-- String specialization
 template <class S>
-void inline push_entry(S *state, hpt_t hpt, const std::string s) {
+static inline void push_entry(S *state, hpt_t hpt, const std::string s) {
   const auto *b = (std::byte *)s.data();
   state->last_command[hpt] = std::vector<std::byte>(b, b + s.size() + 1);
 }
 
-// Cannot have `class S`...
-template <> inline std::string pop_entry(data_t *state, hpt_t hpt) {
+template <class K, class S,
+          typename = std::enable_if_t<std::is_same_v<K, std::string>>>
+static inline std::enable_if_t<std::is_same_v<K, std::string>, K>
+pop_entry(S *state, hpt_t hpt) {
   return std::string{(char *)state->last_command[hpt].data()};
 }
