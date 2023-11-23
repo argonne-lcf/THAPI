@@ -3,6 +3,8 @@
 #include "xprof_utils.hpp"
 #include <cstddef> // Bytes
 #include <metababel/metababel.h>
+#include <optional>
+#include <stdexcept>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,7 +25,7 @@ struct data_s {
   std::unordered_map<hpt_t, int64_t> entry_ts;
 
   /* Useful State */
-  std::unordered_map<hpt_t, std::vector<std::byte>> last_command;
+  std::unordered_map<hpt_t, std::optional<std::vector<std::byte>>> last_command;
 
   /* Handle memory copy */
   std::unordered_map<hp_module_t, std::unordered_set<uint64_t>>
@@ -55,30 +57,59 @@ struct data_s {
 };
 typedef struct data_s data_t;
 
-// Push pop entry
+// Push Pop. Verify that we never missuse them
+template <class S>
+static inline void push_entry_impl(S *state, hpt_t hpt,
+                                   std::vector<std::byte> &res) {
+  const auto [kv, inserted] =
+      state->last_command.emplace(std::make_pair(hpt, res));
+  if (!inserted) {
+    auto &v = kv->second;
+    if (v)
+      throw std::runtime_error("push was not empty");
+    v = res;
+  }
+}
+
+template <class S> static inline auto &pop_entry_impl(S *state, hpt_t hpt) {
+  const auto it = state->last_command.find(hpt);
+  auto &v = it->second;
+  if (it == state->last_command.cend() || !v)
+    throw std::runtime_error("pop was empty");
+  return v;
+}
+
 template <class K, class S,
           typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
 static inline void push_entry(S *state, hpt_t hpt, K v) {
   const auto *b = (std::byte *)&v;
-  state->last_command[hpt] = std::vector<std::byte>(b, b + sizeof(K));
+  std::vector<std::byte> res{b, b + sizeof(K)};
+  push_entry_impl(state, hpt, res);
 }
 
 template <class K, class S,
           typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
 static inline K pop_entry(S *state, hpt_t hpt) {
-  return *(K *)(state->last_command[hpt].data());
+  auto &v = pop_entry_impl(state, hpt);
+  const K res{*(K *)(v.value().data())};
+  v.reset();
+  return res;
 }
 
 //-- String specialization
 template <class S>
 static inline void push_entry(S *state, hpt_t hpt, const std::string s) {
   const auto *b = (std::byte *)s.data();
-  state->last_command[hpt] = std::vector<std::byte>(b, b + s.size() + 1);
+  std::vector<std::byte> res{b, b + s.size() + 1};
+  push_entry_impl(state, hpt, res);
 }
 
 template <class K, class S,
           typename = std::enable_if_t<std::is_same_v<K, std::string>>>
-static inline std::enable_if_t<std::is_same_v<K, std::string>, K>
+inline std::enable_if_t<std::is_same_v<K, std::string>, K>
 pop_entry(S *state, hpt_t hpt) {
-  return std::string{(char *)state->last_command[hpt].data()};
+  auto &v = pop_entry_impl(state, hpt);
+  const std::string res{(char *)v.value().data()};
+  v.reset();
+  return res;
 }
