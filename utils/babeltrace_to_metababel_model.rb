@@ -7,7 +7,6 @@ raise "Not input model provided" unless ARGV.length > 0
 input_model_path = ARGV[0]
 model = YAML.load_file(input_model_path)
 
-
 # Just look in the payload, good enough for now
 STRUCT_TYPES =  model[:event_classes].map { |f|
   f[:payload].filter_map { |l|
