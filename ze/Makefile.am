@@ -282,8 +282,7 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 
 CLEANFILES += \
 	$(BTX_ZE_GENERATED) \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.hpp
 
 BUILT_SOURCES += \
 	$(BTX_ZE_GENERATED)
