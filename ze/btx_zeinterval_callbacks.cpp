@@ -176,10 +176,6 @@ static void exits_callback(void *btx_handle, void *usr_data, int64_t ts,
       strip_event_class_name(event_class_name).c_str(), (ts - start), err);
 }
 
-/*
- *
- */
-
 static void entries_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
                                    const char *event_class_name,
                                    const char *hostname, int64_t vpid,
