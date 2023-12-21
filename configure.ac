@@ -101,6 +101,7 @@ AC_CONFIG_FILES([Makefile
                  utils/Makefile
                  sampling/Makefile
                  xprof/xprof.sh.erb
+                 xprof/xprof.rb
                  opencl/Makefile
                  ze/Makefile
                  xprof/Makefile

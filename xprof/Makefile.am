@@ -8,8 +8,8 @@ endif
 
 bin_SCRIPTS = iprof
 
-iprof: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages="cl","ze","cuda","omp","hip" $< > $@
+iprof: $(top_builddir)/xprof/xprof.rb
+	cp $(top_builddir)/xprof/xprof.rb $@
 	chmod a+x $@
 
 nodist_noinst_HEADERS = xprof.sh.erb
