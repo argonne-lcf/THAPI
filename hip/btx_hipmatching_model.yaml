@@ -17,12 +17,12 @@
   - :set_id: entries
     :name: "_entry$"
 
-  - :set_id: all_exits
+  - :set_id: exits
     :register: false
     :name: "_exit$"
 
   - :set_id: exits_hipError_present
-    :name: "_exit$"
+    :domain: exits
     :payload_field_class:
       :type: structure
       :members:
@@ -32,6 +32,4 @@
           :cast_type: ^hipError_t$
 
   - :set_id: exits_hipError_absent
-    :name: "_exit$"
-    :domain: |
-      all_exits - exits_hipError_present 
+    :domain: exits - exits_hipError_present 
