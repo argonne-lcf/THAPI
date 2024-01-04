@@ -5,6 +5,19 @@ require 'optparse'
 require 'pty'
 require 'digest/md5'
 require 'socket'
+require 'logger'
+
+#    _
+#   |_ |\ | \  /
+#   |_ | \|  \/
+#
+def env_fetches(*args, default: nil)
+  @env_fetches ||= {}
+  @env_fetches[args] ||= begin
+    a = ENV.values_at(*args).compact
+    a.empty? ? default : a.first
+  end
+end
 
 #
 #   \    / |_  o  _ |_  | o |_
@@ -13,10 +26,21 @@ require 'socket'
 def ldconfig
   @ldconfig ||= begin
     ld_library_path = ENV['LD_LIBRARY_PATH'].gsub(':', ' ')
-    stdout_str, _stderr_str, _status = Open3.capture3({ 'PATH' => "#{ENV['PATH']}:/sbin" },
+    stdout_str, _stderr_str, _status = Open3.capture3({ 'PATH' => "#{env_fetches('PATH')}:/sbin" },
                                                       "ldconfig -vNX #{ld_library_path}")
     stdout_str.split
   end
+end
+
+def exec(cmd)
+  stdout_str, stderr_str, status = Open3.capture3(cmd)
+
+  raise unless status.success?
+
+  LOGGER.info { cmd }
+  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
+  LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
+  stdout_str
 end
 
 def whichlibs(pattern)
@@ -45,14 +69,6 @@ end
 #   |\/| |_) |    |_ ._
 #   |  | |  _|_   |_ | | \/
 #
-def env_fetches(*args, default: nil)
-  @env_fetches ||= {}
-  @env_fetches[args] ||= begin
-    a = ENV.values_at(*args).compact
-    a.empty? ? default : a.first
-  end
-end
-
 def in_mpi_env?
   env_fetches('PALS_RANKID', 'PMI_RANK') ? true : false
 end
@@ -98,7 +114,7 @@ end
 FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
 # Put the user name, to avoid permission issue for people sharing nodes
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
-SHARED_GLOBAL_FILESYSTEM = File.join(ENV['HOME'], FOLDER_JOBID)
+SHARED_GLOBAL_FILESYSTEM = File.join(env_fetches('HOME'), FOLDER_JOBID)
 
 # Use a log distribution seem to be a good tradeoff
 # between being nice to the FileSystem (not to many call)
@@ -115,6 +131,7 @@ end
 #   when another process is sleeping
 # Hence, each local barrier should have a unique name
 def local_barier(name)
+  LOGGER.info { "Local_barier #{name}" }
   return unless in_mpi_env?
 
   folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
@@ -138,18 +155,18 @@ end
 #    this thread will pass the barrier.
 # We rely/We hope, that user will call an MPI_Barrier() && that we do enough work...
 def init_global_barrier
+  LOGGER.info { 'Init_global_barrier' }
   return unless in_mpi_env?
 
-  # raise "Cannot be called by non master rank" unless mpi_local_master?
   f = File.join(SHARED_GLOBAL_FILESYSTEM, mpi_rank_id.to_s)
   FileUtils.mkdir_p(f)
   f
 end
 
 def global_barrier(f)
+  LOGGER.info { 'Global_barrier' }
   return unless in_mpi_env?
 
-  # raise "Cannot be called by non master rank" unless mpi_local_master?
   # Block until all the process have removed their sentinel,
   #    then master will clean the folder to be nice to the user
   #
@@ -168,13 +185,18 @@ end
 #   |_ |_  |_ | | (_|   __) (/_ |_ |_| |_)
 #                  _|                  |
 
-EXEC_PREFIX = @prefix@
-LIBDIR = @libdir@
-BINDIR = @bindir@
-PKGLIBDIR = File.join(LIBDIR, @PACKAGE@)
-PREFIX = @prefix@
-DATAROOTDIR = @datarootdir@
-DATADIR = @datadir@
+# We Cannot use "@ .. @" for libdir, bindir, and dataroodir
+# as they will appear as bash "${exec_prefix}/lib"
+# So for now we will rely on them having the default value,
+#  (https://www.gnu.org/software/automake/manual/html_node/Standard-Directory-Variables.html)
+# Will do some gsub + eval if required latter
+EXEC_PREFIX = '@prefix@'
+BINDIR = File.join(EXEC_PREFIX, 'bin')
+LIBDIR = File.join(EXEC_PREFIX, 'lib')
+PKGLIBDIR = File.join(LIBDIR, '@PACKAGE@')
+PREFIX = '@prefix@'
+DATAROOTDIR = File.join(PREFIX, 'share')
+DATADIR = DATAROOTDIR
 
 def append_env_tracers(h)
   h['LD_LIBRARY_PATH'] << File.join(PKGLIBDIR, 'ze')
@@ -182,7 +204,8 @@ def append_env_tracers(h)
   h['LD_PRELOAD'] << File.join(LIBDIR, 'libTracerZE.so')
 end
 
-def launch_user_bin(env, cmd)
+def launch_usr_bin(env, cmd)
+  LOGGER.info { "Lauch_usr_bin #{cmd}" }
   bash_env = env.map do |k, v|
     v.prepend(env_fetches(k)) if env_fetches(k)
     [k, v.join(':')]
@@ -201,15 +224,15 @@ end
 def rename_to_human_readable_folder(lttng_output_root)
   # Multiple thapi can run concurrently.
   #   To avoid any race-condition, we try to MKDIR until we succeed
-  
+
   # This is solving a consensus for the name,
   # make it simpler and only allow "rank" per job to do it
-  raise unless mpi_master? 
+  raise unless mpi_master?
 
   date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
   path = (0..).each do |i|
     prefix =  i == 0 ? '' : "_#{i}"
-    path = File.join(ENV['HOME'], 'lttng-traces', "thapi--#{date}#{prefix}")
+    path = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{date}#{prefix}")
     begin
       Dir.mkdir(path)
     rescue SystemCallError
@@ -222,14 +245,43 @@ def rename_to_human_readable_folder(lttng_output_root)
   path
 end
 
-def enable_events_ze(lttng_session_uuid, channel_name)
-  `lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_ze:*`
+def enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  case tracing_mode
+  when 'minimal'
+    exec("#{lttng_enable} $(cat #{datadir}/babeltrace_zeprofiling_apis.txt)")
+    exec("#{lttng_enable} lttng_ust_ze_properties:device_timer")
+  when 'full'
+    exec("#{lttng_enable} lttng_ust_ze_build:log*")
+    exec("#{lttng_enable} lttng_ust_ze_profiling:*") if profiling
+    exec("#{lttng_enable} lttng_ust_ze_properties:*")
+    exec("#{lttng_enable} lttng_ust_ze:*")
+  when 'default'
+    exec("#{lttng_enable} lttng_ust_ze_build:log*")
+    exec("#{lttng_enable} lttng_ust_ze_profiling:*") if profiling
+    # Wildcard using the * character are supported at the end of tracepoint names.
+    #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
+    # Disable-event doesn't have wildcards
+    # So we enable and disable on the same line
+    ze_properties_disable = ['lttng_ust_ze_properties:memory_info_properties',
+                             'lttng_ust_ze_properties:memory_info_range']
+    exec("#{lttng_enable} lttng_ust_ze_properties:* -x #{ze_properties_disable.join(',')}")
+
+    ze_disable_events = ['lttng_ust_ze:zeKernelSetArgumentValue*', 'lttng_ust_ze:ze*Get*Properties*',
+                         'lttng_ust_ze:zeKernelGetName']
+    ze_disable_query = ['lttng_ust_ze:*QueryStatus', 'lttng_ust_ze:*ProcAddrTable*']
+    ze_disable_loader = ['lttng_ust_ze:*Loader*']
+    ze_disable = ze_disable_events + ze_disable_query + ze_disable_loader
+    exec("#{lttng_enable} lttng_ust_ze:* -x #{ze_disable.join(',')}")
+  else
+    raise("Tracing mode #{tracing_mode} not supported")
+  end
 end
 
 def setup_lttng
   #  We launch one daemon per Node
   #  Hence the output need to be prefixed by hostname, so that each MPI local master will write into it
-  lttng_output = File.join(ENV['HOME'], 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
+  lttng_output = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
 
   # Each session will have an UUID.
   # This will be used to set LLTNG_HOME to a uuid for this run
@@ -242,27 +294,28 @@ def setup_lttng
   FileUtils.mkdir_p(lttng_home)
   ENV['LTTNG_HOME'] = lttng_home
 
-  # I don't know how to get the PID of `sessiond`, to then cleaning it up
-  `lttng-sessiond --daemonize`
+  # The deamon will be cleaer in the teardown
+  exec('lttng-sessiond --daemonize')
 
-  `lttng create #{lttng_session_uuid} -o #{lttng_output}`
+  exec("lttng create #{lttng_session_uuid} -o #{lttng_output}")
 
   channel_name = 'blocking-channel'
-  `lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}`
-  `lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid`
+  exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
+  exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
   enable_events_ze(lttng_session_uuid, channel_name)
-  `lttng start #{lttng_session_uuid}`
+  exec("lttng start #{lttng_session_uuid}")
   [lttng_output, lttng_home, lttng_session_uuid]
 end
 
 def teardown_lttng(lttng_session_uuid, lttng_home)
-  `lttng destroy #{lttng_session_uuid}`
+  exec("lttng destroy #{lttng_session_uuid}")
   # Need to kill the sessiond. It's safe, because each job have their own
   #   In theory opening this file is racy.
   #   It's possible that the sessiond spawn before writing in file
   #   In practice to so much work between the two. Should ne ok
   pid = File.read(File.join(lttng_home, '.lttng', 'lttng-sessiond.pid')).to_i
+  LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
 end
 
@@ -280,7 +333,7 @@ def trace(usr_argv)
   local_barier('waiting_for_lttng_setup')
 
   # Launch User Command
-  launch_user_bin(h, usr_argv)
+  launch_usr_bin(h, usr_argv)
 
   # We need to be sure that all the local rank finished
   # before local master stop the lttng session
@@ -300,11 +353,12 @@ end
 #
 
 def last_trace_saved
-  Dir[File.join(ENV['HOME'], 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
+  Dir[File.join(env_fetches('HOME'), 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
 end
 
-# TOOD: Use babeltrace_thapi as a LIB not a binary
+# TODO: Use babeltrace_thapi as a LIB not a binary
 def postprocess(folder, _options)
+  LOGGER.info { "postprocess #{folder}" }
   return unless mpi_master?
 
   IO.popen("#{BINDIR}/babeltrace_thapi tally --backend cl,ze,cuda,omp,hip -- #{folder}") do |stdout, _stdin, _pid|
@@ -330,12 +384,14 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+LOGGER = Logger.new($stdout)
+
 # Right now, `replay` mean no tracing.
-folder = if !options.include?(:replay)
-           trace(ARGV)
-         else
-           # But we don't have a way of disabling post-pocessing
+# But we don't have a way of disabling post-pocessing
+folder = if options.include?(:replay)
            options[:replay] || last_trace_saved
+         else
+           trace(ARGV)
          end
 
 pp folder
