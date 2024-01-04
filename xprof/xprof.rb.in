@@ -303,7 +303,7 @@ def setup_lttng
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
   exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
-  enable_events_ze(lttng_session_uuid, channel_name)
+  enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: OPTIONS[:tracing_mode], profiling: OPTIONS[:profiling])
   exec("lttng start #{lttng_session_uuid}")
   [lttng_output, lttng_home, lttng_session_uuid]
 end
@@ -370,7 +370,9 @@ end
 #   |_) _. ._ _ o ._   _    /  |   |
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
-options = {}
+options = { :tracing_mode => "default",
+            :profiling => true,
+            :replay => false }
 OptionParser.new do |opts|
   opts.banner = 'Usage: example.rb [options]'
 
@@ -379,16 +381,27 @@ OptionParser.new do |opts|
     exit
   end
 
+  opts.on('-m', '--tracing-mode [MODE]', '[minimal, default, full] (default default)') do |m|
+    options[:tracing_mode] = m
+  end
+
+  opts.on('--no-profile', 'Device activities will not be profiled') do
+    options[:profiling] = false
+  end
+
   opts.on('-r', '--replay [PATH]', 'Replay traces for post-morten analysis') do |path|
     options[:replay] = path
   end
 end.parse!
 
 LOGGER = Logger.new($stdout)
+OPTIONS = options
+
+LOGGER.debug(options)
 
 # Right now, `replay` mean no tracing.
 # But we don't have a way of disabling post-pocessing
-folder = if options.include?(:replay)
+folder = if options[:replay] != false
            options[:replay] || last_trace_saved
          else
            trace(ARGV)
