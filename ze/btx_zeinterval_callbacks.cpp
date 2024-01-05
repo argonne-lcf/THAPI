@@ -534,7 +534,7 @@ static void event_profiling_result_callback(
 
   auto *data = static_cast<data_t *>(usr_data);
 
-  // We didn't find thhe partial payload, that mean we should ignore it
+  // We didn't find the partial payload, that mean we should ignore it
   const auto it_p = data->event_payload.find({hostname, vpid, hEvent});
   if (it_p == data->event_payload.cend())
     return;

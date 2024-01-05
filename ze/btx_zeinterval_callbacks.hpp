@@ -57,7 +57,7 @@ struct data_s {
 };
 typedef struct data_s data_t;
 
-// Push Pop. Verify that we never missuse them
+// Push Pop. Verify that we never misuse them
 template <class S>
 static inline void push_entry_impl(S *state, hpt_t hpt,
                                    std::vector<std::byte> &res) {
