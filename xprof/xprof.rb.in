@@ -25,6 +25,7 @@ end
 #
 def ldconfig
   @ldconfig ||= begin
+    LOGGER.debug { "Reading ldcondig" }
     ld_library_path = ENV['LD_LIBRARY_PATH'].gsub(':', ' ')
     stdout_str, _stderr_str, _status = Open3.capture3({ 'PATH' => "#{env_fetches('PATH')}:/sbin" },
                                                       "ldconfig -vNX #{ld_library_path}")
@@ -205,7 +206,7 @@ def append_env_tracers(h)
 end
 
 def launch_usr_bin(env, cmd)
-  LOGGER.info { "Lauch_usr_bin #{cmd}" }
+  LOGGER.info { "Launch_usr_bin #{cmd}" }
   bash_env = env.map do |k, v|
     v.prepend(env_fetches(k)) if env_fetches(k)
     [k, v.join(':')]
@@ -294,7 +295,7 @@ def setup_lttng
   FileUtils.mkdir_p(lttng_home)
   ENV['LTTNG_HOME'] = lttng_home
 
-  # The deamon will be cleaer in the teardown
+  # The dawmon will be cleaned in the teardown
   exec('lttng-sessiond --daemonize')
 
   exec("lttng create #{lttng_session_uuid} -o #{lttng_output}")
@@ -303,7 +304,8 @@ def setup_lttng
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
   exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
-  enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: OPTIONS[:tracing_mode], profiling: OPTIONS[:profiling])
+  enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: OPTIONS[:tracing_mode],
+                                                     profiling: OPTIONS[:profile])
   exec("lttng start #{lttng_session_uuid}")
   [lttng_output, lttng_home, lttng_session_uuid]
 end
@@ -361,48 +363,98 @@ def postprocess(folder, _options)
   LOGGER.info { "postprocess #{folder}" }
   return unless mpi_master?
 
-  IO.popen("#{BINDIR}/babeltrace_thapi tally --backend cl,ze,cuda,omp,hip -- #{folder}") do |stdout, _stdin, _pid|
+  backend_level = OPTIONS[:backend]
+  backends = backend_level.map { |name_level| name_level.split(':').first }.join(',')
+
+  if OPTIONS.include?(:trace)
+    opts = 'trace'
+    opts << '--restrict '
+    opts << '--context '
+    opts << "--backend #{backends.join(',')} " unless backends.empty?
+
+  elsif OPTIONS.include?(:timeline)
+    opts = 'timeline'
+    opts << "--backend #{backends.join(',')} " unless backends.empty?
+  else
+    opts = 'tally '
+    opts << '--display_kernel_verbose ' if OPTIONS.include?(:'kernel-verbose')
+    opts << '--display_metadata ' if OPTIONS.include?(:metadata)
+    opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} " if OPTIONS.include?(:'max-name-size')
+    opts << '--display_mode json ' if OPTIONS.include?(:json)
+    opts << "--backend #{backends.join(',')} " unless backends.empty?
+    opts << "--backend_level #{backend_level.join(',')}" unless backend_level.empty?
+    opts << '--display extended ' if OPTIONS.include?(:extended)
+  end
+
+  IO.popen("#{BINDIR}/babeltrace_thapi #{opts} -- #{folder}") do |stdout, _stdin, _pid|
     stdout.each { |line| print line }
   end
 end
+
+LOGGER = Logger.new($stdout)
+
 #
 #    _                       _    ___
 #   |_) _. ._ _ o ._   _    /  |   |
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
-options = { :tracing_mode => "default",
-            :profiling => true,
-            :replay => false }
-OptionParser.new do |opts|
-  opts.banner = 'Usage: example.rb [options]'
+parser = OptionParser.new
 
-  opts.on('-h', '--help', 'Prints this help') do
-    puts opts
-    exit
-  end
+# Tracing
+parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
+parser.on('--[no-]profile', 'Device activities will not profiled')
 
-  opts.on('-m', '--tracing-mode [MODE]', '[minimal, default, full] (default default)') do |m|
-    options[:tracing_mode] = m
-  end
+# General Options
+parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
+          'Format: backend_name[:backend_level],...',
+          'Default: omp:2,cl:1,ze:1,cuda:1,hip:1')
 
-  opts.on('--no-profile', 'Device activities will not be profiled') do
-    options[:profiling] = false
-  end
+# Analysis
+parser.on('-r', '--replay [PATH]', 'Replay traces for post-morten analysis')
+parser.on('-t', '--trace', 'Pretty print the trace')
+parser.on('-l', '--timeline', 'Dump a timeline of the trace.',
+          "This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer")
+## Tally Specific Options
+parser.on('-j', '--json', 'The tally will be dumped as json')
+parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
+parser.on('-k', '--kernel-verbose',
+          'The tally will report kernels execution time with SIMD width and global/local sizes')
+parser.on('--max-name-size SIZE',
+          'Maximum size allowed for kernels names (default 80)', '-1 mean no limit') { |size| size.to_i }
 
-  opts.on('-r', '--replay [PATH]', 'Replay traces for post-morten analysis') do |path|
-    options[:replay] = path
-  end
-end.parse!
+parser.on('--metadata', 'Display Trace Metadata')
 
-LOGGER = Logger.new($stdout)
-OPTIONS = options
+# backend default are hardcoded inside the cpp for now
+options = { tracing_mode: 'default', profile: true, backend: [] }
 
-LOGGER.debug(options)
+def print_help_and_exit(parser)
+  puts(parser.help)
+  puts(<<~EOF
+                                                          __
+    For complaints, praises, or bug reports please use: <(o )___
+       https://github.com/argonne-lcf/THAPI              ( ._> /
+       or send email to {apl,bvideau}@anl.gov             `---'
+  EOF
+      )
+  exit 1
+end
+
+print_help_and_exit(parser) if ARGV.empty?
+
+begin
+  parser.parse!(into: options)
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
+  puts(e)
+  print_help_and_exit(parser)
+end
+
+OPTIONS = options.freeze
+LOGGER.debug(OPTIONS)
 
 # Right now, `replay` mean no tracing.
 # But we don't have a way of disabling post-pocessing
-folder = if options[:replay] != false
-           options[:replay] || last_trace_saved
+folder = if OPTIONS.include?(:replay)
+           OPTIONS[:replay] || last_trace_saved
          else
            trace(ARGV)
          end
