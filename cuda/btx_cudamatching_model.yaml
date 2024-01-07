@@ -1,3 +1,9 @@
+# Note: all API calls seen by THAPI are driver API calls, even when the
+# application uses only runtime API (since runtime API is just high level
+# wrapper around driver API).
+#
+# See also:
+#  https://docs.nvidia.com/cuda/cuda-driver-api/driver-vs-runtime-api.html
 :environment:
   :entries:
   - :name: ^hostname$
@@ -36,7 +42,7 @@
 
   # Memory traffic
   - :set_id: traffic
-    :name: "cuMemcpy(2D|3D)?(Unaligned)?(DtoH|DtoD|HtoD)(Aync)?_v2(_ptds|_ptsz)?"
+    :name: "cuMemcpy"
     :register: false
   - :set_id: entries_traffic
     :domain: entries & traffic
@@ -56,3 +62,232 @@
         :field_class:
           :type: integer_signed
           :cast_type: ^CUresult$
+
+  # Context create/destroy
+  - :set_id: ctx_create
+    :name: "cuCtxCreate"
+    :register: false
+  - :set_id: ctx_create_entry
+    :domain: entries & ctx_create
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^dev$
+  - :set_id: ctx_create_exit
+    :domain: exits & ctx_create
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^pctx_val$
+  
+  - :set_id: ctx_destroy
+    :name: "cuCtxDestroy"
+    :register: false
+  - :set_id: ctx_destroy_entry
+    :domain: entries & ctx_destroy
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ctx$
+  - :set_id: ctx_destroy_exit
+    :domain: exits & ctx_destroy
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  # Context stack management
+  - :set_id: ctx_set_current
+    :name: "cuCtxSetCurrent"
+    :register: false
+  - :set_id: ctx_set_current_entry
+    :domain: entries & ctx_set_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ctx$
+  - :set_id: ctx_set_current_exit
+    :domain: exits & ctx_set_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  - :set_id: ctx_push_current
+    :name: "cuCtxPushCurrent"
+    :register: false
+  - :set_id: ctx_push_current_entry
+    :domain: entries & ctx_push_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ctx$
+  - :set_id: ctx_push_current_exit
+    :domain: exits & ctx_push_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  - :set_id: ctx_pop_current
+    :name: "cuCtxPopCurrent"
+    :register: false
+  - :set_id: ctx_pop_current_entry
+    :domain: entries & ctx_pop_current
+  - :set_id: ctx_pop_current_exit
+    :domain: exits & ctx_pop_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^pctx_val$
+  
+  # Device primary context management
+  - :set_id: primary_ctx_retain
+    :name: "cuDevicePrimaryCtxRetain"
+    :register: false
+  - :set_id: primary_ctx_retain_entry
+    :domain: entries & primary_ctx_retain
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^dev$
+  - :set_id: primary_ctx_retain_exit
+    :domain: exits & primary_ctx_retain
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^pctx_val$
+  
+  - :set_id: primary_ctx_release
+    :name: "cuDevicePrimaryCtxRelease"
+    :register: false
+  - :set_id: primary_ctx_release_entry
+    :domain: entries & primary_ctx_release
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^dev$
+  - :set_id: primary_ctx_release_exit
+    :domain: exits & primary_ctx_release
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  - :set_id: primary_ctx_reset
+    :name: "cuDevicePrimaryCtxReset"
+    :register: false
+  - :set_id: primary_ctx_reset_entry
+    :domain: entries & primary_ctx_reset
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^dev$
+  - :set_id: primary_ctx_reset_exit
+    :domain: exits & primary_ctx_reset
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+
+  # Stream create
+  - :set_id: stream_create
+    :name: "cuStreamCreate"
+    :register: false
+  - :set_id: stream_create_entry
+    :domain: entries & stream_create
+    :register: false
+  - :set_id: stream_create_exit
+    :domain: exits & stream_create
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^phStream_val$
+
+  # kernel function name tracking
+  - :set_id: module_get_function
+    :name: "cuModuleGetFunction"
+    :register: false
+  - :set_id: module_get_function_entry
+    :domain: entries & module_get_function
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^name_val$
+  - :set_id: module_get_function_exit
+    :domain: exits & module_get_function
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^hfunc_val$
+
+  # device operations
+  ## memory operations
+  - :set_id: device_mem_op
+    :name: "(cuMemcpy|cuMemPrefetch|cuMemset|cuMemFree)"
+    :register: false
+
+  - :set_id: device_mem_op_entry
+    :domain: entries & device_mem_op
+    :register: false
+
+  - :set_id: device_mem_op_stream_present_entry
+    :domain: device_mem_op_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hStream$
+
+  - :set_id: device_mem_op_stream_absent_entry
+    :domain: device_mem_op - device_mem_op_stream_present_entry
+
+  # NOTE: exit not currently used
+  - :set_id: device_mem_op_exit
+    :domain: exits & device_mem_op
+    :register: false
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+
+  ## kernel launches
+  - :set_id: device_kernel_launch
+    :name: "cuLaunch"
+    :register: false
+
+  - :set_id: device_kernel_launch_entry
+    :domain: entries & device_kernel_launch
+    :register: false
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^f$
+
+  - :set_id: device_kernel_launch_stream_present_entry
+    :domain: device_kernel_launch_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^f$
+      - :name: ^hStream$
+
+  - :set_id: device_kernel_launch_stream_absent_entry
+    :domain: device_kernel_launch_entry - device_kernel_launch_stream_present_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^f$
+
+  # NOTE: exit not currently used
+  - :set_id: device_kernel_launch_exit
+    :domain: exits & device_kernel_launch
+    :register: false
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$

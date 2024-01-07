@@ -391,7 +391,10 @@ nodist_libCUDAInterval_la_SOURCES = \
 	xprof_utils.cpp
 
 libCUDAInterval_la_SOURCES = \
-	btx_cudainterval_callbacks.cpp
+	btx_cudainterval_callbacks.cpp \
+	btx_cudainterval_callbacks.hpp \
+	context_manager.cpp \
+	context_manager.hpp
 
 libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_cuda
 libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
