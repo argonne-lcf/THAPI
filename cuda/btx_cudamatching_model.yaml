@@ -33,3 +33,26 @@
 
   - :set_id: exits_cudaError_absent
     :domain: exits - exits_cudaError_present 
+
+  # Memory traffic
+  - :set_id: traffic
+    :name: "cuMemcpy(2D|3D)?(Unaligned)?(DtoH|DtoD|HtoD)(Aync)?_v2(_ptds|_ptsz)?"
+    :register: false
+  - :set_id: entries_traffic
+    :domain: entries & traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ByteCount$
+        :field_class:
+          :cast_type: size_t
+          :type: integer_unsigned
+  - :set_id: exits_traffic
+    :domain: exits & traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+        :field_class:
+          :type: integer_signed
+          :cast_type: ^CUresult$
