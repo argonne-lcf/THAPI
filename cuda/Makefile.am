@@ -47,6 +47,30 @@ MODIFIED_CUDA_HDR = \
 	modified_include/cudaVDPAUTypedefs.h \
 	modified_include/cudaProfilerTypedefs.h
 
+BTX_CUDA_GENERATED = \
+	btx_filter_cuda/metababel/metababel.h \
+	btx_filter_cuda/metababel/btx_component.h \
+	btx_filter_cuda/metababel/btx_component.c \
+	btx_filter_cuda/metababel/btx_upstream.h \
+	btx_filter_cuda/metababel/btx_upstream.c \
+	btx_filter_cuda/metababel/btx_downstream.h \
+	btx_filter_cuda/metababel/btx_downstream.c \
+	btx_filter_cuda/btx_main.c
+
+EXTRA_DIST = \
+	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
+	$(top_srcdir)/xprof/btx_interval_model.yaml \
+	btx_cudamatching_model.yaml
+
+CLEANFILES = \
+	btx_cuda_model.yaml
+
+btx_cuda_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb cuda_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+
+$(BTX_CUDA_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_cudamatching_model.yaml btx_cuda_model.yaml
+	$(METABABEL) -u btx_cuda_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_cuda -p cudainterval -c interval --matching $(srcdir)/btx_cudamatching_model.yaml -i cuda.h.include
+
 $(MODIFIED_CUDA_HDR) &: $(CUDA_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
@@ -57,7 +81,7 @@ clean-local:
 	$(RM) -r modified_include
 	$(RM) -r tests
 
-EXTRA_DIST = $(srcdir)/include headers.patch
+EXTRA_DIST += $(srcdir)/include headers.patch
 
 CUDA_EXTRACT = \
 	$(srcdir)/extract_base.rb
@@ -82,7 +106,7 @@ CUDA_EXTRACTED = \
 CUDART_EXTRACTED = \
 	cudart_api.yaml
 
-CLEANFILES = $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
+CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
 
 EXTRA_DIST += \
 	extract_base.rb \
@@ -346,64 +370,30 @@ CLEANFILES += $(CUDA_BINDINGS)
 
 data_DATA = $(CUDA_BINDINGS)
 
-babeltrace_cudainterval_callbacks.cpp: $(srcdir)/gen_cudainterval_callbacks.rb $(srcdir)/cudainterval_callbacks.cpp.erb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-babeltrace_cudainterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
-
-babeltrace_cudainterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
-
-babeltrace_cudainterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ cudainterval > $@
-
-babeltrace_cudainterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="cudainterval" $< > $@
-
-babeltrace_cudainterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="cudainterval" $< > $@
-
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
-EXTRA_DIST += \
-	gen_cudainterval_callbacks.rb \
-	cudainterval_callbacks.cpp.erb
-
 CLEANFILES += \
-	babeltrace_cudainterval_callbacks.cpp \
-	babeltrace_cudainterval_callbacks.h \
-	babeltrace_cudainterval_dispatchers.c \
-	babeltrace_cudainterval_emitter.h \
-	babeltrace_cudainterval.h \
-	babeltrace_cudainterval.c \
+	$(BTX_CUDA_GENERATED) \
 	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	babeltrace_cudainterval.h \
-	babeltrace_cudainterval_callbacks.h \
-	babeltrace_cudainterval_emitter.h \
+	$(BTX_CUDA_GENERATED) \
 	xprof_utils.hpp
 
 nodist_libCUDAInterval_la_SOURCES = \
-	babeltrace_cudainterval.c \
-	babeltrace_cudainterval.h \
-	babeltrace_cudainterval_callbacks.h \
-	babeltrace_cudainterval_dispatchers.c \
-	babeltrace_cudainterval_callbacks.cpp \
-	babeltrace_cudainterval_emitter.h \
+	$(BTX_CUDA_GENERATED) \
 	xprof_utils.hpp \
 	xprof_utils.cpp
 
 libCUDAInterval_la_SOURCES = \
-	cudainterval_callbacks.hpp
+	btx_cudainterval_callbacks.cpp
 
-libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_cuda
 libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
