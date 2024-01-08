@@ -6,6 +6,7 @@ require 'pty'
 require 'digest/md5'
 require 'socket'
 require 'logger'
+require 'set'
 
 #    _
 #   |_ |\ | \  /
@@ -25,7 +26,7 @@ end
 #
 def ldconfig
   @ldconfig ||= begin
-    LOGGER.debug { "Reading ldcondig" }
+    LOGGER.debug { 'Reading ldcondig' }
     ld_library_path = ENV['LD_LIBRARY_PATH'].gsub(':', ' ')
     stdout_str, _stderr_str, _status = Open3.capture3({ 'PATH' => "#{env_fetches('PATH')}:/sbin" },
                                                       "ldconfig -vNX #{ld_library_path}")
@@ -199,14 +200,28 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
-def append_env_tracers(h)
-  h['LD_LIBRARY_PATH'] << File.join(PKGLIBDIR, 'ze')
-  h['LTTNG_UST_ZE_LIBZE_LOADER'] << whichlib64('libze_loader.so') unless env_fetches('LTTNG_UST_ZE_LIBZE_LOADER')
-  h['LD_PRELOAD'] << File.join(LIBDIR, 'libTracerZE.so')
+def env_tracers
+  # Note the cast
+  return {} if in_mpi_env? && Set[-1, mpi_rank_id].disjoint?(OPTIONS[:'traced-ranks'])
+
+  h = Hash.new { |h, k| h[k] = [] }
+  backends = ['ze']
+  backends.each do |be|
+    beu = be.upcase
+    h['LD_LIBRARY_PATH'] << File.join(PKGLIBDIR, be)
+    loader = "LTTNG_UST_#{beu}_LIB#{beu}_LOADER"
+    h[loader] << whichlib64("lib#{be}_loader.so") unless env_fetches(loader)
+    h['LD_PRELOAD'] << File.join(LIBDIR, "libTracer#{beu}.so")
+  end
+  LOGGER.debug(h)
+  h.freeze
 end
 
 def launch_usr_bin(env, cmd)
   LOGGER.info { "Launch_usr_bin #{cmd}" }
+  # Transform list to bash env
+  #   Appneding to current env if already existing
+  #   we don't modify `ENV` direclly to avoid by-construction any side-effect
   bash_env = env.map do |k, v|
     v.prepend(env_fetches(k)) if env_fetches(k)
     [k, v.join(':')]
@@ -279,7 +294,7 @@ def enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: 'default', 
   end
 end
 
-def setup_lttng
+def get_lttng_paths
   #  We launch one daemon per Node
   #  Hence the output need to be prefixed by hostname, so that each MPI local master will write into it
   lttng_output = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
@@ -292,8 +307,13 @@ def setup_lttng
   #   `Error: Could not get lock file $USER/.lttng/lttng-sessiond.lck, another instance is running.`
   #   We will use the blancket solution of setting LLTNG_HOME waiting for the more granular solution
   lttng_home = File.join('/', 'tmp', lttng_session_uuid)
+
+  [lttng_output, lttng_session_uuid, lttng_home]
+end
+
+def setup_lttng(lttng_output, lttng_session_uuid, lttng_home)
+  # Daemon will crash if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home)
-  ENV['LTTNG_HOME'] = lttng_home
 
   # The dawmon will be cleaned in the teardown
   exec('lttng-sessiond --daemonize')
@@ -307,7 +327,6 @@ def setup_lttng
   enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: OPTIONS[:tracing_mode],
                                                      profiling: OPTIONS[:profile])
   exec("lttng start #{lttng_session_uuid}")
-  [lttng_output, lttng_home, lttng_session_uuid]
 end
 
 def teardown_lttng(lttng_session_uuid, lttng_home)
@@ -326,14 +345,16 @@ def trace(usr_argv)
   # All master setup a futur global barrier
   global_barrier_h = init_global_barrier if mpi_local_master?
 
-  # All rank Load Tracers and APILoaders Lib
-  h = Hash.new { |h, k| h[k] = [] }
-  append_env_tracers(h)
+  # Load Tracers and APILoaders Lib
+  h = env_tracers
 
-  # Local Master setup lttng, all other local rank wait for it completion
-  lttng_output, lttng_home, lttng_session_uuid = setup_lttng if mpi_local_master?
+  # All Need to set the LLTTNG_HOME
+  # so they can have access to the daemon
+  lttng_output, lttng_session_uuid, lttng_home = get_lttng_paths
+  ENV['LTTNG_HOME'] = lttng_home
+  # Only local master spawn LTTNG daemon and start session
+  setup_lttng(lttng_output, lttng_session_uuid, lttng_home) if mpi_local_master?
   local_barier('waiting_for_lttng_setup')
-
   # Launch User Command
   launch_usr_bin(h, usr_argv)
 
@@ -360,9 +381,9 @@ end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
 def postprocess(folder, _options)
-  LOGGER.info { "postprocess #{folder}" }
   return unless mpi_master?
-
+  LOGGER.info { "postprocess #{folder}" }
+  print("Trace Location #{folder}\n")
   backend_level = OPTIONS[:backend]
   backends = backend_level.map { |name_level| name_level.split(':').first }.join(',')
 
@@ -371,7 +392,6 @@ def postprocess(folder, _options)
     opts << '--restrict '
     opts << '--context '
     opts << "--backend #{backends.join(',')} " unless backends.empty?
-
   elsif OPTIONS.include?(:timeline)
     opts = 'timeline'
     opts << "--backend #{backends.join(',')} " unless backends.empty?
@@ -402,6 +422,9 @@ parser = OptionParser.new
 
 # Tracing
 parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
+parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
+          'Use -1 to mean all ranks.', 
+          'Default: -1') { |ranks| ranks.map(&:to_i)}
 parser.on('--[no-]profile', 'Device activities will not profiled')
 
 # General Options
@@ -420,12 +443,14 @@ parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Pro
 parser.on('-k', '--kernel-verbose',
           'The tally will report kernels execution time with SIMD width and global/local sizes')
 parser.on('--max-name-size SIZE',
-          'Maximum size allowed for kernels names (default 80)', '-1 mean no limit') { |size| size.to_i }
+          'Maximum size allowed for kernels names.',
+          'Use -1 to mean no limit.',
+          'Default: 80') { |size| size.to_i }
 
 parser.on('--metadata', 'Display Trace Metadata')
 
 # backend default are hardcoded inside the cpp for now
-options = { tracing_mode: 'default', profile: true, backend: [] }
+options = { tracing_mode: 'default', profile: true, backend: [], 'traced-ranks': [-1] }
 
 def print_help_and_exit(parser)
   puts(parser.help)
@@ -459,5 +484,4 @@ folder = if OPTIONS.include?(:replay)
            trace(ARGV)
          end
 
-pp folder
 postprocess(folder, {})
