@@ -12,8 +12,6 @@ iprof: $(top_builddir)/xprof/xprof.rb
 	cp $(top_builddir)/xprof/xprof.rb $@
 	chmod a+x $@
 
-nodist_noinst_HEADERS = xprof.sh.erb
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 

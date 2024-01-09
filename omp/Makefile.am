@@ -104,15 +104,8 @@ CLEANFILES += \
 	tracer_ompt.c \
 	tracer_ompt_helpers.include.c
 
-ompprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages="omp" $< > $@
-	chmod a+x $@
-
-CLEANFILES += ompprof.sh
-
 bin_SCRIPTS = \
-	tracer_omp.sh \
-	ompprof.sh
+	tracer_omp.sh
 
 noinst_LTLIBRARIES = libompttracepoints.la
 
