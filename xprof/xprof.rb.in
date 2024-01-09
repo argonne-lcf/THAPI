@@ -263,7 +263,7 @@ def launch_usr_bin(env, cmd)
     rescue Errno::EIO
     end
   rescue PTY::ChildExited
-    puts 'The child process exited!'
+    puts('The child process exited!')
   end
 end
 
@@ -534,7 +534,7 @@ def print_help_and_exit(parser)
        or send email to {apl,bvideau}@anl.gov             `---'
   EOF
       )
-  exit 1
+  exit(1)
 end
 
 print_help_and_exit(parser) if ARGV.empty?
@@ -552,7 +552,7 @@ LOGGER.debug(OPTIONS)
 
 if OPTIONS.include?(:version)
   puts(File.read(File.join(DATADIR, 'version')))
-  exit 0
+  exit(0)
 end
 
 # Right now, `replay` mean no tracing.
