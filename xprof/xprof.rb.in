@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+
 require 'open3'
 require 'fileutils'
 require 'etc'
@@ -209,7 +211,7 @@ def env_tracers
    %w[ze ze libze_loader libTracerZE],
    %w[cuda cuda libcuda libTracerCUDA],
    %w[hip hip libamdhip64 libTracerHIP]].each do |name, bt_name, lib, libtracer|
-    # Backend ot requested
+    # Backend requested
     next unless OPTIONS[:'backend-name'].include?(bt_name)
 
     # Find and Save the original lib path
@@ -449,7 +451,7 @@ def postprocess(folder, _options)
   return unless mpi_master?
 
   LOGGER.info { "postprocess #{folder}" }
-  print("Trace Location #{folder}\n")
+  puts("Trace Location #{folder}")
   backends = OPTIONS[:'backend-name'].join(',')
 
   backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
@@ -516,7 +518,8 @@ parser.on('--max-name-size SIZE',
           'Use -1 to mean no limit.',
           'Default: 80') { |size| size.to_i }
 
-parser.on('--metadata', 'Display Trace Metadata')
+parser.on('--metadata', 'Display trace Metadata')
+parser.on('-v', '--version', 'Display THAPI version')
 
 # backend default are hardcoded inside the cpp for now
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
@@ -547,12 +550,12 @@ options[:'backend-name'] = options[:backend].map { |name_level| name_level.split
 OPTIONS = options.freeze
 LOGGER.debug(OPTIONS)
 
+if OPTIONS.include?(:version)
+  puts(File.read(File.join(DATADIR, 'version')))
+  exit 0
+end
+
 # Right now, `replay` mean no tracing.
 # But we don't have a way of disabling post-pocessing
-folder = if OPTIONS.include?(:replay)
-           OPTIONS[:replay] || last_trace_saved
-         else
-           trace(ARGV)
-         end
-
+folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace(ARGV)
 postprocess(folder, {})
