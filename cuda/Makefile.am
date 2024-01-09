@@ -235,15 +235,8 @@ CLEANFILES += \
 	tracer_cudart.c \
 	tracer_cudart.map
 
-cuprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages="cuda" $< > $@
-	chmod a+x $@
-
-CLEANFILES += cuprof.sh
-
 bin_SCRIPTS = \
-	tracer_cuda.sh \
-	cuprof.sh
+	tracer_cuda.sh
 
 noinst_LTLIBRARIES = libcudatracepoints.la libcudarttracepoints.la
 

@@ -272,16 +272,8 @@ EXTRA_DIST += \
 CLEANFILES += \
 	tracer_hip.c
 
-hipprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages="hip" $< > $@
-	chmod a+x $@
-
-CLEANFILES += \
-	hipprof.sh
-
 bin_SCRIPTS = \
-	tracer_hip.sh \
-	hipprof.sh
+	tracer_hip.sh
 
 noinst_LTLIBRARIES = \
 	libhiptracepoints.la
