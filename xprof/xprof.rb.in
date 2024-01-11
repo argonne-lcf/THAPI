@@ -37,11 +37,10 @@ def ldconfig
 end
 
 def exec(cmd)
-  stdout_str, stderr_str, status = Open3.capture3(cmd)
-
-  raise unless status.success?
-
   LOGGER.info { cmd }
+  stdout_str, stderr_str, status = Open3.capture3(cmd)
+  raise "#{cmd} failed" unless status.success?
+
   LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
   stdout_str
@@ -203,21 +202,24 @@ DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
 def env_tracers
-  # Note the cast
-  return {} if in_mpi_env? && Set[-1, mpi_rank_id].disjoint?(OPTIONS[:'traced-ranks'])
+  # Return the list of backend and env
+  return [[], {}] if in_mpi_env? && Set[-1, mpi_rank_id].disjoint?(OPTIONS[:'traced-ranks'])
 
   h = Hash.new { |h, k| h[k] = [] }
+  backends = []
+
   [%w[opencl cl libOpenCL libTracerOpenCL],
    %w[ze ze libze_loader libTracerZE],
    %w[cuda cuda libcuda libTracerCUDA],
    %w[hip hip libamdhip64 libTracerHIP]].each do |name, bt_name, lib, libtracer|
-    # Backend requested
+    # Backend requested, skip omp. It will be handled in a custom case bellow
     next unless OPTIONS[:'backend-name'].include?(bt_name)
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
     if env_fetches(libenv)
       LOGGER.debug("#{libenv} was already set, will use this path for the #{backend} loader")
+      # TODO: Verify that this guy exist?
     else
       libpath = whichlib64("#{lib}.so")
       if libpath
@@ -227,6 +229,7 @@ def env_tracers
         next
       end
     end
+    backends << bt_name
     # Add our "stud" library to the path
     h['LD_LIBRARY_PATH'] << File.join(PKGLIBDIR, name)
     # Preload our own lib
@@ -239,12 +242,13 @@ def env_tracers
   h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-name'].include?('ze') && OPTIONS[:profile]
 
   if OPTIONS[:'backend-name'].include?('omp')
+    backends << 'omp'
     h['LTTNG_UST_OMP_INTEL'] = 1
     h['OMP_TOOL_LIBRARIES'] = File.join(PKGLIBDIR, 'libTracerOMPT.so')
   end
-
-  LOGGER.debug(h)
-  h.freeze
+  LOGGER.debug("Backends found: #{backends}")
+  LOGGER.debug("User app env: #{h}")
+  [backends, h.freeze]
 end
 
 def launch_usr_bin(env, cmd)
@@ -354,6 +358,28 @@ def enable_events_cl(lttng_session_uuid, channel_name, tracing_mode: 'default', 
   end
 end
 
+def enable_events_cuda(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_cuda:*")
+  exec("#{lttng_enable} lttng_ust_cuda_properties")
+  exec("#{lttng_enable} lttng_ust_cuda_profiling:*") if profiling
+end
+
+def enable_events_hip(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_hip:*")
+end
+
+def enable_events_omp(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_ompt:*target*")
+end
+
+def enable_events_metadata(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_thapi:*")
+end
+
 def get_lttng_paths
   #  We launch one daemon per Node
   #  Hence the output need to be prefixed by hostname, so that each MPI local master will write into it
@@ -371,7 +397,7 @@ def get_lttng_paths
   [lttng_output, lttng_session_uuid, lttng_home]
 end
 
-def setup_lttng(lttng_output, lttng_session_uuid, lttng_home)
+def setup_lttng(lttng_output, lttng_session_uuid, lttng_home, backends)
   # Daemon will crash if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home)
 
@@ -384,15 +410,11 @@ def setup_lttng(lttng_output, lttng_session_uuid, lttng_home)
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
   exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
-  if OPTIONS[:'backend-name'].include?('ze')
-    enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: OPTIONS[:tracing_mode],
-                                                       profiling: OPTIONS[:profile])
+  (backends + ['metadata']).each do |name|
+    send("enable_events_#{name}", lttng_session_uuid, channel_name,
+         tracing_mode: OPTIONS[:tracing_mode],
+         profiling: OPTIONS[:profile])
   end
-  if OPTIONS[:'backend-name'].include?('cl')
-    enable_events_cl(lttng_session_uuid, channel_name, tracing_mode: OPTIONS[:tracing_mode],
-                                                       profiling: OPTIONS[:profile])
-  end
-
   exec("lttng start #{lttng_session_uuid}")
 end
 
@@ -413,14 +435,14 @@ def trace(usr_argv)
   global_barrier_h = init_global_barrier if mpi_local_master?
 
   # Load Tracers and APILoaders Lib
-  h = env_tracers
+  backends, h = env_tracers
 
   # All Need to set the LLTTNG_HOME
   # so they can have access to the daemon
   lttng_output, lttng_session_uuid, lttng_home = get_lttng_paths
   ENV['LTTNG_HOME'] = lttng_home
   # Only local master spawn LTTNG daemon and start session
-  setup_lttng(lttng_output, lttng_session_uuid, lttng_home) if mpi_local_master?
+  setup_lttng(lttng_output, lttng_session_uuid, lttng_home, backends) if mpi_local_master?
   local_barier('waiting_for_lttng_setup')
   # Launch User Command
   launch_usr_bin(h, usr_argv)
@@ -453,7 +475,6 @@ def postprocess(folder, _options)
   LOGGER.info { "postprocess #{folder}" }
   puts("Trace Location #{folder}")
   backends = OPTIONS[:'backend-name'].join(',')
-
   backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
 
   if OPTIONS.include?(:trace)
@@ -523,7 +544,7 @@ parser.on('--debug [LEVEL]', 'Level of debug [default 0]') { |level| level.to_i 
 # backend default are hardcoded inside the cpp for now
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
             'traced-ranks': [-1],
-            'debug': Logger::FATAL }
+            debug: Logger::FATAL }
 
 def print_help_and_exit(parser)
   puts(parser.help)
