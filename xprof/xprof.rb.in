@@ -223,7 +223,7 @@ def env_tracers
       if libpath
         h[libenv] = libpath
       else
-        LOGGER.debug("No #{lib}.so found in LD_LIBRARY_PATH")
+        LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
         next
       end
     end
@@ -482,8 +482,6 @@ def postprocess(folder, _options)
   end
 end
 
-LOGGER = Logger.new($stdout)
-
 #
 #    _                       _    ___
 #   |_) _. ._ _ o ._   _    /  |   |
@@ -520,10 +518,12 @@ parser.on('--max-name-size SIZE',
 
 parser.on('--metadata', 'Display trace Metadata')
 parser.on('-v', '--version', 'Display THAPI version')
+parser.on('--debug [LEVEL]', 'Level of debug [default 0]') { |level| level.to_i }
 
 # backend default are hardcoded inside the cpp for now
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
-            'traced-ranks': [-1] }
+            'traced-ranks': [-1],
+            'debug': Logger::FATAL }
 
 def print_help_and_exit(parser)
   puts(parser.help)
@@ -537,6 +537,7 @@ def print_help_and_exit(parser)
   exit(1)
 end
 
+# Parsing ARGV
 print_help_and_exit(parser) if ARGV.empty?
 
 begin
@@ -548,7 +549,14 @@ end
 
 options[:'backend-name'] = options[:backend].map { |name_level| name_level.split(':').first }
 OPTIONS = options.freeze
+
+# Setup Logger
+LOGGER = Logger.new($stdout)
+LOGGER.level = OPTIONS[:debug]
+
 LOGGER.debug(OPTIONS)
+
+# Action
 
 if OPTIONS.include?(:version)
   puts(File.read(File.join(DATADIR, 'version')))
