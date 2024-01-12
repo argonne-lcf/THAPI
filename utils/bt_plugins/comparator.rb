@@ -55,4 +55,5 @@ class Comparator
     component_class.graph_is_configured_method = lambda(&method(:graph_is_configured_method))
     component_class
   end
+
 end
