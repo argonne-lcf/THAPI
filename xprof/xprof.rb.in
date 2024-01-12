@@ -10,16 +10,31 @@ require 'socket'
 require 'logger'
 require 'set'
 
+def exec(cmd, opts: {}, debug: true)
+  return Open3.capture3(opts, cmd).first unless debug
+
+  LOGGER.info { cmd }
+  LOGGER.debug { opts } unless opts.empty?
+
+  stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
+  raise "#{cmd} failed" unless status.success?
+
+  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
+  LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
+  stdout_str
+end
+
 #    _
 #   |_ |\ | \  /
 #   |_ | \|  \/
 #
+
+# Cannot use refinement on `ENV`
+#   as I don't know the `type` of ENV
 def env_fetches(*args, default: nil)
   @env_fetches ||= {}
-  @env_fetches[args] ||= begin
-    a = ENV.values_at(*args).compact
-    a.empty? ? default : a.first
-  end
+  # Get first non nil env, or take the default
+  @env_fetches[args] ||= ENV.values_at(*args).compact.first || default
 end
 
 #
@@ -28,41 +43,30 @@ end
 #
 def ldconfig
   @ldconfig ||= begin
-    LOGGER.debug { 'Reading ldcondig' }
     ld_library_path = ENV['LD_LIBRARY_PATH'].gsub(':', ' ')
-    stdout_str, _stderr_str, _status = Open3.capture3({ 'PATH' => "#{env_fetches('PATH')}:/sbin" },
-                                                      "ldconfig -vNX #{ld_library_path}")
+    stdout_str = exec("ldconfig -vNX #{ld_library_path}",
+                      opts: { 'PATH' => "#{env_fetches('PATH')}:/sbin" },
+                      debug: false)
     stdout_str.split
   end
 end
 
-def exec(cmd)
-  LOGGER.info { cmd }
-  stdout_str, stderr_str, status = Open3.capture3(cmd)
-  raise "#{cmd} failed" unless status.success?
-
-  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
-  LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
-  stdout_str
-end
-
 def whichlibs(pattern)
-  header = ''
-  ldconfig.filter_map do |l|
+  ldconfig.reduce(['', []]) do |(header, path), l|
     # /opt/cray/libfabric/1.15.2.0/lib64:
-    if l.end_with?(':')
-      header = l.chop
-      next
-    end
+    next [l.chop, path] if l.end_with?(':')
+
     # libfabric.so.1 -> libfabric.so.1.18.2
-    lib = l.split(' -> ', 1).first
-    File.join(header, lib) if lib.match?(pattern)
-  end
+    lib = l.split(' -> ').first
+    path << File.join(header, lib) if lib.match?(pattern)
+    next [header, path]
+  end.last
 end
 
 def whichlib64(pattern)
+  # Use lazy to avoid `objdump` all the possible libs
   whichlibs(pattern).lazy.filter do |lib|
-    stdout_str, _stderr_str, _status = Open3.capture3("objdump -f #{lib}")
+    stdout_str = exec("objdump -f #{lib}")
     # architecture: i386:x86-64, flags 0x00000150"
     stdout_str.match?(/architecture: \S+64/)
   end.first
@@ -110,7 +114,7 @@ end
 def count_file(folder)
   # \ls to avoid alias. Counter `.` and `..`, so remove them
   #  Will return -2 for a empty directory
-  stdout_str, _stderr_str, _status = Open3.capture3("\\ls -afq #{folder}")
+  stdout_str = exec("\\ls -afq #{folder}", debug: false)
   stdout_str.lines.size - 2
 end
 
@@ -217,17 +221,14 @@ def env_tracers
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
-    if env_fetches(libenv)
-      LOGGER.debug("#{libenv} was already set, will use this path for the #{backend} loader")
+    if (e = env_fetches(libenv))
+      LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
+    elsif (libpath = whichlib64("#{lib}.so"))
+      h[libenv] = libpath
     else
-      libpath = whichlib64("#{lib}.so")
-      if libpath
-        h[libenv] = libpath
-      else
-        LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
-        next
-      end
+      LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
+      next
     end
     backends << bt_name
     # Add our "stud" library to the path
