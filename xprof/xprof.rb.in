@@ -44,7 +44,7 @@ end
 #
 def ldconfig
   @ldconfig ||= begin
-    ld_library_path = ENV['LD_LIBRARY_PATH'].gsub(':', ' ')
+    ld_library_path = env_fetches('LD_LIBRARY_PATH', default: '').gsub(':', ' ')
     stdout_str = exec("ldconfig -vNX #{ld_library_path}",
                       opts: { 'PATH' => "#{env_fetches('PATH')}:/sbin" },
                       debug: false)
