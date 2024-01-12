@@ -9,6 +9,7 @@ require 'digest/md5'
 require 'socket'
 require 'logger'
 require 'set'
+require 'securerandom'
 
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
@@ -82,7 +83,6 @@ end
 
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
-require 'securerandom'
 def mpi_job_id
   env_fetches('PALS_APID', 'PMI_JOBID', default: SecureRandom.hex)
 end
