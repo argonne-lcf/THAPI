@@ -81,6 +81,11 @@ ref:
   - :name: lttng:device
     :common_context:
       hostname: aurora12.gov
+<% if be == "ze" %>
+      backend: <%= backend %>
+<% else %>
+      backend: 0
+<% end %>
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
