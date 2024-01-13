@@ -521,7 +521,7 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
   // This mean we should ignore it, Either mean nothing, instaneous
   // or not supported
   //
-  // zeCommandListAppendSignalEvent|zeCommandListAppendBarrier|zeCommandListAppendLaunchMultipleKernelsIndirect...
+  // zeCommandListAppendSignalEvent|zeCommandListAppendLaunchMultipleKernelsIndirect...
   //
   if (it_pp == data->command_partial_payload.end())
     return;
