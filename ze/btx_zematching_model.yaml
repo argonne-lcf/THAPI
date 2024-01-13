@@ -134,6 +134,14 @@
       :type: structure
       :members:
       - :name: ^size$
+  - ## Rest
+    :set_id: hSignalEvent_rest_entry
+    :domain: hSignalEvent_entry - (hSignalEvent_hKernel_with_group_entry + hSignalEvent_hKernel_without_group_entry + hSignalEvent_eventMemory_entry)
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :field_class:
+          :cast_type: ^ze_command_list_handle_t$
   #Free memory
   - :set_id: memFree_entry
     :domain: entries
