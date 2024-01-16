@@ -1,21 +1,17 @@
 #!/usr/bin/env ruby
-# Disclaimer: This script has been only tested on HIP, and ZE model.
+# Disclaimer: This script has been only tested on HIP model.
 
 require 'yaml'
 
-raise "Not input model provided" unless ARGV.length > 0
-input_model_path = ARGV[0]
-model = YAML.load_file(input_model_path)
-
-# Just look in the payload, good enough for now
-STRUCT_TYPES =  model[:event_classes].map { |f|
-  f[:payload].filter_map { |l|
-    native = l[:class]
-    cast = l[:cast_type]
-
-    cast if native == "string" and cast != "char *"  and !cast.include?("*")
-  }
-}.flatten.uniq
+HIP_STRUCT_TYPES = [
+  'struct hipChannelFormatDesc',
+  'struct hipExtent',
+  'hipIpcMemHandle_t',
+  'hipIpcEventHandle_t',
+  'hipPitchedPtr',
+  'hipExtent',
+  'dim3',
+]
 
 PROPERTIES_DICT = {
   :class => :type
@@ -67,7 +63,7 @@ def get_field_class_properties(field, member_name)
   field_properties[:length_field_path] = "EVENT_PAYLOAD[\"_#{member_name}_length\"]" if field_properties[:type] == 'array_dynamic'
 
   # Special casting case for struct <-> string.
-  field_properties[:cast_type_is_struct] = true if STRUCT_TYPES.include?(field[:cast_type])
+  field_properties[:cast_type_is_struct] = true if HIP_STRUCT_TYPES.include?(field[:cast_type])
 
   field_properties
 end
@@ -118,7 +114,11 @@ def get_environment_entry(entry)
   { :name => entry[:name], :type => entry[:class] }
 end
 
-# THAPI interval and BTX model differ.
+raise "Not input model provided" unless ARGV.length > 0
+input_model_path = ARGV[0]
+model = YAML.load_file(input_model_path)
+
+# THAPI interval and HIP model differ.
 if model.key?(:stream_classes)
   stream_class = model.delete(:stream_classes).pop
   event_classes = model.delete(:event_classes)

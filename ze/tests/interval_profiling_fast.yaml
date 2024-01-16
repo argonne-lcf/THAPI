@@ -21,7 +21,6 @@
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
-    backend: 1
   :payload:
     name: zeCommandListAppendBarrier
     dur: 8
