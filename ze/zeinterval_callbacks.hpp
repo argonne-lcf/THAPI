@@ -1,0 +1,93 @@
+#pragma once
+
+#include "xprof_utils.hpp"
+#include <queue>
+#include <babeltrace2/babeltrace.h>
+#include <unordered_map>
+#include <ze_api.h>
+#include <unordered_set>
+#include <cstddef>
+ 
+typedef std::map<uintptr_t, uintptr_t> MemoryInterval;
+
+typedef std::tuple<hostname_t, process_id_t, ze_event_handle_t> hp_event_t;
+typedef std::tuple<hostname_t, process_id_t, ze_kernel_handle_t> hp_kernel_t;
+
+typedef std::tuple<hostname_t, process_id_t, ze_command_list_handle_t> hp_command_list_t;
+typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_command_queue_t;
+typedef std::tuple<hostname_t, process_id_t, ze_module_handle_t> hp_module_t;
+typedef hp_device_t hpd_t;
+typedef hp_dsd_t hpdd_t;
+typedef hp_dsdev_t hpdsd_t;
+typedef hp_event_t hpe_t;
+typedef hp_kernel_t hpk_t;
+typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
+typedef std::tuple<uint64_t, uint64_t> energy_timestamp_t;
+typedef std::tuple<uint64_t, uint64_t> computeEngine_timestamp_t;
+typedef std::tuple<uint64_t, uint64_t> copyEngine_timestamp_t;
+
+typedef std::unordered_map<std::tuple<std::string, process_id_t, uintptr_t, uint32_t>, std::tuple<uint64_t, uint64_t>> device_ref_t;
+typedef std::tuple<thread_id_t, thapi_function_name, std::string, thapi_device_id, uint64_t, clock_lttng_device_t> t_tfnm_m_d_ts_cld_t;
+typedef std::tuple<ze_command_list_handle_t, thapi_function_name, std::string, thapi_device_id, uint64_t> l_tfnm_m_d_ts_t;
+
+typedef std::tuple<bool, uint64_t, uint64_t> event_profiling_result_t;
+
+struct zeinterval_callbacks_state {
+    std::queue<const bt_message*>                           downstream_message_queue;
+    // https://spec.oneapi.io/level-zero/latest/core/api.html#_CPPv4N16ze_device_uuid_t2idE
+    std::unordered_map<hp_command_list_t, thapi_device_id>  command_list_to_device;
+    std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>>  command_list_to_events;
+    std::unordered_map<hp_device_t, ze_device_properties_t> device_to_properties;
+    // Kernel name & metadata
+    std::unordered_map<hp_kernel_t, thapi_function_name>    kernel_to_name;
+    std::unordered_map<hp_kernel_t, std::string>            kernel_to_groupsize_str;
+    std::unordered_map<hp_kernel_t, std::string>            kernel_to_simdsize_str;
+    std::unordered_map<hpt_function_name_t, uint64_t>       host_start;
+    std::unordered_map<hpt_t, thapi_function_name>          profiled_function_name;
+
+    /* Handle memory copy */
+    std::unordered_map<hp_module_t, std::unordered_set<uint64_t> > module_to_module_globals;
+    std::unordered_map<hp_t, MemoryInterval> rangeset_memory_device;
+    std::unordered_map<hp_t, MemoryInterval> rangeset_memory_host;
+    std::unordered_map<hp_t, MemoryInterval> rangeset_memory_shared;
+
+    /* Handle variable */
+    std::unordered_map<hpe_t, event_profiling_result_t> event_to_profiling_result;
+    std::unordered_map<hpd_t, clock_lttng_device_t>     device_timestamps_pair_ref;
+    std::unordered_map<hpt_t, l_tfnm_m_d_ts_t>          command_partial_payload;
+    std::unordered_map<hpe_t, t_tfnm_m_d_ts_cld_t>      event_payload;
+    std::unordered_map<hpd_t, thapi_device_id>          subdevice_parent;
+
+    /* Stack to get begin end */
+    std::unordered_map<hpt_t, std::vector<std::byte>> last_command;
+    /*Energy */
+    std::unordered_map<hpdd_t, energy_timestamp_t> device_energy_ref;
+    /*computeEngine */
+    std::unordered_map<hpdsd_t, computeEngine_timestamp_t> device_computeEngine_ref;
+    /*copyEngine */
+    std::unordered_map<hpdsd_t, copyEngine_timestamp_t> device_copyEngine_ref;
+};
+
+template <class K,
+          typename = std::enable_if_t<std::is_trivially_copyable_v<K> || std::is_same_v<K, std::string>>>
+static inline void save_start(zeinterval_callbacks_state* state, hpt_t hpt, K v){
+    const auto b = (std::byte*) &v;
+    state->last_command[hpt] = std::vector<std::byte>(b, b+sizeof(K));
+}
+
+template <>
+void save_start(zeinterval_callbacks_state* state, hpt_t hpt, const std::string s){
+    const auto b = (std::byte*) s.data();
+    state->last_command[hpt] = std::vector<std::byte>(b, b + s.size() + 1);
+}
+
+template <class K,
+         typename = std::enable_if_t<std::is_trivially_copyable_v<K> || std::is_same_v<K, std::string>>>
+static inline K retrieve_start(zeinterval_callbacks_state* state, hpt_t hpt){
+    return *(K*)(state->last_command[hpt].data());
+}
+
+template <>
+std::string retrieve_start(zeinterval_callbacks_state* state, hpt_t hpt){
+    return std::string( (char*) state->last_command[hpt].data());
+}

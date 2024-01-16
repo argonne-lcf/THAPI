@@ -38,7 +38,6 @@
   :common_context:
     hostname: aurora12.gov
     vpid: -1
-    backend: 1
   :payload:
     name: zeCommandListAppendBarrier
     dur: 10
@@ -46,7 +45,6 @@
   :common_context:
     hostname: aurora12.gov
     ts: 1
-    backend: 1
   :payload:
     name: zeCommandListAppendBarrier
     dur: 20
