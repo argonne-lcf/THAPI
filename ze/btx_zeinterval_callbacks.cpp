@@ -159,7 +159,6 @@ static void btx_finalize_component(void *usr_data) {
 static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
                              const char *event_class_name, const char *hostname,
                              int64_t vpid, uint64_t vtid) {
-
   auto *data = static_cast<data_t *>(usr_data);
   push_entry_ts(data, {hostname, vpid, vtid}, ts);
 }
@@ -399,6 +398,24 @@ static void memory_but_no_event_callback(void *btx_handle, void *usr_data,
       strip_event_class_name(event_class_name).c_str(), size);
 }
 
+// Barrier
+static void hSignalEvent_rest_callback(void *btx_handle, void *usr_data,
+                                       int64_t ts,
+                                       const char *event_class_name,
+                                       const char *hostname, int64_t vpid,
+                                       uint64_t vtid,
+                                       ze_command_list_handle_t hCommandList) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  std::string name = strip_event_class_name(event_class_name);
+  std::string metadata = "";
+
+  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
+
+  data->command_partial_payload[{hostname, vpid, vtid}] = {
+      hCommandList, name, metadata, device, ts};
+}
+
 // Handle Global
 
 // zeModuleGetGlobalPointer and zeModuleDestroy
@@ -501,9 +518,10 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
 
   auto it_pp = data->command_partial_payload.find({hostname, vpid, vtid});
   // We didn't find the command who initiated this even_profiling,
-  // 	-- This mean we should ignore it, Either mean nothing, instaneous or not
-  // supported
-  // 	zeCommandListAppendSignalEvent|zeCommandListAppendBarrier|zeCommandListAppendLaunchMultipleKernelsIndirect...
+  // This mean we should ignore it, Either mean nothing, instaneous
+  // or not supported
+  //
+  // zeCommandListAppendSignalEvent|zeCommandListAppendLaunchMultipleKernelsIndirect...
   //
   if (it_pp == data->command_partial_payload.end())
     return;
@@ -529,6 +547,7 @@ static void event_profiling_result_callback(
     int64_t vpid, uint64_t vtid, ze_event_handle_t hEvent, ze_result_t status,
     ze_result_t timestampStatus, uint64_t globalStart, uint64_t globalEnd,
     uint64_t contextStart, uint64_t contextEnd) {
+
   if (status == ZE_RESULT_NOT_READY)
     return;
 
@@ -691,6 +710,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &eventMemory1ptr_callback);
   btx_register_callbacks_eventMemory_without_hSignalEvent_entry(
       btx_handle, &memory_but_no_event_callback);
+  btx_register_callbacks_hSignalEvent_rest_entry(
+      btx_handle, &hSignalEvent_rest_callback);
 
   /* Remove Memory */
   btx_register_callbacks_memFree_entry(btx_handle, &memFree_entry_callback);
