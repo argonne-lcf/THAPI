@@ -515,7 +515,7 @@ parser = OptionParser.new
 parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
 parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
           'Use -1 to mean all ranks.',
-          'Default: -1') { |ranks| ranks.map(&:to_i) }
+          'Default: -1') { |ranks| ranks.map(&:to_i).to_set }
 parser.on('--[no-]profile', 'Device activities will not profiled')
 
 # General Options
@@ -544,7 +544,7 @@ parser.on('--debug [LEVEL]', 'Level of debug [default 0]') { |level| level.to_i 
 
 # backend default are hardcoded inside the cpp for now
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
-            'traced-ranks': [-1],
+            'traced-ranks': Set[-1],
             debug: Logger::FATAL }
 
 def print_help_and_exit(parser)
