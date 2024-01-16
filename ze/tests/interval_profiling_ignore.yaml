@@ -18,17 +18,10 @@
 - :name: stream0
   :class: interval_class
 :events:
-- :name: lttng:device
-  :common_context:
-    hostname: aurora12.gov
-    backend: 1
-  :payload:
-    name: zeCommandListAppendBarrier
-    dur: 8
 - :name: lttng:host
   :common_context:
     hostname: aurora12.gov
     backend: 1
   :payload:
-    name: zeCommandListAppendBarrier
+    name: zeEventHostSignal 
     dur: 3
