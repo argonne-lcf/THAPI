@@ -78,25 +78,25 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 def in_mpi_env?
-  env_fetches('PALS_RANKID', 'PMI_RANK') ? true : false
+  env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK') ? true : false
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
 def mpi_job_id
-  env_fetches('PALS_APID', 'PMI_JOBID', default: SecureRandom.hex)
+  env_fetches('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
 end
 
 def mpi_rank_id
-  env_fetches('PALS_RANKID', 'PMI_RANK', default: 0).to_i
+  env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
 end
 
 def mpi_local_size
-  env_fetches('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', default: 1).to_i
+  env_fetches('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetches('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', default: 0).to_i
+  env_fetches('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
 end
 
 def mpi_local_master?
