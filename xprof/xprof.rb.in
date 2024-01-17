@@ -32,10 +32,9 @@ end
 
 # Cannot use refinement on `ENV`
 #   as I don't know the `type` of ENV
+# /!\ was changing the value of `mpi_env?`
 def env_fetches(*args, default: nil)
-  @env_fetches ||= {}
-  # Get first non nil env, or take the default
-  @env_fetches[args] ||= ENV.values_at(*args).compact.first || default
+  ENV.values_at(*args).compact.first || default
 end
 
 #
@@ -78,7 +77,7 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 def in_mpi_env?
-  env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK') ? true : false
+  !env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
@@ -497,7 +496,7 @@ def postprocess(folder, _options)
     opts << "--backend #{backends} " unless backends.empty?
   else
     opts = 'tally '
-    opts << '--display_kernel_verbose ' if OPTIONS.include?(:'kernel-verbose')
+    opts << '--display_kernel_verbose true ' if OPTIONS.include?(:'kernel-verbose')
     opts << '--display_metadata ' if OPTIONS.include?(:metadata)
     opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} " if OPTIONS.include?(:'max-name-size')
     opts << '--display_mode json ' if OPTIONS.include?(:json)
