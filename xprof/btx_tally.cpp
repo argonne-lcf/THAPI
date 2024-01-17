@@ -308,10 +308,9 @@ static void aggreg_device_callback(void *btx_handle, void *usr_data, const char 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   const auto name_demangled =
       (strcmp(data->params->name, "demangle") == 0) ? f_demangle_name(name) : name;
-  const auto name_with_metadata = (data->params->display_kernel_verbose && !strcmp(metadata, ""))
+  const auto name_with_metadata = (data->params->display_kernel_verbose && strlen(metadata) != 0)
                                       ? name_demangled + "[" + metadata + "]"
                                       : name_demangled;
-
   data->device[{hostname, vpid, vtid, did, sdid, name_with_metadata}] +=
       {total, 0, count, min, max};
 }
