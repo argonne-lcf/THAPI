@@ -206,8 +206,13 @@ DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
 def env_tracers
-  # Return the list of backend and env
-  return [[], {}] if in_mpi_env? && Set[-1, mpi_rank_id].disjoint?(OPTIONS[:'traced-ranks'])
+  # Return the list of backends (used by local master to enable lttng events)
+  # and the ENV used by any traced-ranks to preload THAPI tracers
+  need_backend = mpi_local_master?
+  need_env = Set[-1, mpi_rank_id].intersect?(OPTIONS[:'traced-ranks'])
+
+  # Early exit to be nice with the FileSystem
+  return [[], {}] unless need_backend || need_env
 
   h = Hash.new { |h, k| h[k] = [] }
   backends = []
@@ -249,6 +254,10 @@ def env_tracers
   end
   LOGGER.debug("Backends found: #{backends}")
   LOGGER.debug("User app env: #{h}")
+
+  backends = [] unless need_backend
+  h = {} unless need_env
+
   [backends, h.freeze]
 end
 
