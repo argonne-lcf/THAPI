@@ -1,3 +1,6 @@
+AllCops:
+  NewCops: enable
+
 Style/TrailingCommaInArrayLiteral:
   EnforcedStyleForMultiline: comma
 

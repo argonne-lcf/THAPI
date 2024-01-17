@@ -113,12 +113,6 @@ BUILT_SOURCES += \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_INCL)
 
-clprof.sh: $(top_builddir)/xprof/xprof.sh.erb
-	$(ERB) -T 1 languages="cl" $< > $@
-	chmod a+x $@
-
-CLEANFILES += clprof.sh
-
 EXTRA_DIST += opencl_infos.yaml
 
 data_DATA += \
@@ -126,7 +120,6 @@ data_DATA += \
 
 bin_SCRIPTS = \
 	tracer_opencl.sh \
-	clprof.sh \
 	extract_enqueues
 
 tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h

@@ -92,35 +92,32 @@ Similarly to OpenCL, a wrapper script with presets is provided, `tracer_cuda.sh`
 `iprof` is another wrapper around the OpenCL, Level Zero, and CUDA tracers. It gives aggregated profiling information.
 
 ```
-iprof: a tracer / summarizer of OpenCL, L0, and CUDA driver calls
-Usage:
- iprof -h | --help 
- iprof [option]... <application> <application-arguments>
- iprof [option]... -r [<trace>]...
-
-  -h, --help         Show this screen
-  -v, --version      Print the version string
-  -e, --extended     Print information for each Hostname / Process / Thread / Device
-  -t, --trace        Display trace
-  -l, --timeline     Dump the timeline
-  -m, --mangle       Use mangled name
-  -j, --json         Summary will be printed as json
-  -a, --asm          Dump in your current directory low level kernels informations (asm,isa,visa,...).
-  -f, --full         All API calls will be traced. By default and for performance raison, some of them will be ignored
-  --metadata         Display metadata
-  --max-name-size    Maximun size allowed for names
-  -r, --replay       <application> <application-arguments> will be traited as pathes to traces folders ($HOME/lttng-traces/...)
-                     If no arguments are provided, will use the latest trace available
-
- Example:
- iprof ./a.out
-
-iprof will save the trace in /home/videau/lttng-traces/
- Please tidy up from time to time
-                                                   __
-For complain, praise, or bug reports please use: <(o )___
-   https://github.com/argonne-lcf/THAPI           ( ._> /
-   or send email to {apl,bvideau}@anl.gov          `---'
+Usage: iprof [options]
+    -m, --tracing-mode=MODE          Define the category of events traced
+        --traced-ranks=RANK          Select with MPI rank will be traced.
+                                     Use -1 to mean all ranks.
+                                     Default: -1
+        --[no-]profile               Device activities will not profiled
+    -b, --backend BACKEND            Select which and how backends' need to handled.
+                                     Format: backend_name[:backend_level],...
+                                     Default: omp:2,cl:1,ze:1,cuda:1,hip:1
+    -r, --replay [PATH]              Replay traces for post-morten analysis
+    -t, --trace                      Pretty print the trace
+    -l, --timeline                   Dump a timeline of the trace.
+                                     This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer
+    -j, --json                       The tally will be dumped as json
+    -e, --extended                   The tally will be printed for each Hostname / Process / Thread / Device
+    -k, --kernel-verbose             The tally will report kernels execution time with SIMD width and global/local sizes
+        --max-name-size SIZE         Maximum size allowed for kernels names.
+                                     Use -1 to mean no limit.
+                                     Default: 80
+        --metadata                   Display trace Metadata
+    -v, --version                    Display THAPI version
+        --debug [LEVEL]              Level of debug [default 0]
+                                                      __
+For complaints, praises, or bug reports please use: <(o )___
+   https://github.com/argonne-lcf/THAPI              ( ._> /
+   or send email to {apl,bvideau}@anl.gov             `---'
 ```
 
 Programming model specific variants exist: clprof.sh, zeprof.sh, and cuprof.sh.

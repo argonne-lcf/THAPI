@@ -100,7 +100,7 @@ AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strt
 AC_CONFIG_FILES([Makefile
                  utils/Makefile
                  sampling/Makefile
-                 xprof/xprof.sh.erb
+                 xprof/xprof.rb
                  opencl/Makefile
                  ze/Makefile
                  xprof/Makefile
