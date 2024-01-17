@@ -252,11 +252,11 @@ def env_tracers
     h['LTTNG_UST_OMP_INTEL'] = 1
     h['OMP_TOOL_LIBRARIES'] = File.join(PKGLIBDIR, 'libTracerOMPT.so')
   end
-  LOGGER.debug("Backends found: #{backends}")
-  LOGGER.debug("User app env: #{h}")
 
   backends = [] unless need_backend
   h = {} unless need_env
+  LOGGER.debug("Backends found: #{backends}")
+  LOGGER.debug("User app env: #{h}")
 
   [backends, h.freeze]
 end
