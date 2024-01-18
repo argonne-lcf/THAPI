@@ -32,8 +32,8 @@ end
 
 # Cannot use refinement on `ENV`
 #   as I don't know the `type` of ENV
-# /!\ bad caching was changing the value of `mpi_env?, so no more caching`
-def env_fetches(*args, default: nil)
+# /!\ bad caching was changing the value of `mpi_env?, so no more caching
+def env_fetch_first(*args, default: nil)
   ENV.values_at(*args).compact.first || default
 end
 
@@ -43,9 +43,9 @@ end
 #
 def ldconfig
   @ldconfig ||= begin
-    ld_library_path = env_fetches('LD_LIBRARY_PATH', default: '').gsub(':', ' ')
+    ld_library_path = env_fetch_first('LD_LIBRARY_PATH', default: '').gsub(':', ' ')
     stdout_str = exec("ldconfig -vNX #{ld_library_path}",
-                      opts: { 'PATH' => "#{env_fetches('PATH')}:/sbin" },
+                      opts: { 'PATH' => "#{env_fetch_first('PATH')}:/sbin" },
                       debug: false)
     stdout_str.split
   end
@@ -77,25 +77,25 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 def in_mpi_env?
-  !env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
+  !env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
 def mpi_job_id
-  env_fetches('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
+  env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
 end
 
 def mpi_rank_id
-  env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+  env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
 end
 
 def mpi_local_size
-  env_fetches('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
+  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetches('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
+  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
 end
 
 def mpi_local_master?
@@ -120,7 +120,7 @@ end
 FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
 # Put the user name, to avoid permission issue for people sharing nodes
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
-SHARED_GLOBAL_FILESYSTEM = File.join(env_fetches('HOME'), FOLDER_JOBID)
+SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
 
 # Use a log distribution seem to be a good tradeoff
 # between being nice to the FileSystem (not to many call)
@@ -225,7 +225,7 @@ def env_tracers
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
-    if (e = env_fetches(libenv))
+    if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
     elsif (libpath = whichlib64("#{lib}.so"))
@@ -266,7 +266,7 @@ def launch_usr_bin(env, cmd)
   #   prepending to current env if already existing
   #   we don't modify `ENV` direclly to avoid by-construction any side-effect
   bash_env = env.map do |k, v|
-    v.append(env_fetches(k)) if env_fetches(k)
+    v.append(env_fetch_first(k)) if env_fetch_first(k)
     [k, [v].flatten.join(':')]
   end.to_h
 
@@ -291,7 +291,7 @@ def rename_to_human_readable_folder(lttng_output_root)
   date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
   path = (0..).each do |i|
     prefix =  i == 0 ? '' : "_#{i}"
-    path = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{date}#{prefix}")
+    path = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{date}#{prefix}")
     begin
       Dir.mkdir(path)
     rescue SystemCallError
@@ -392,7 +392,7 @@ end
 def get_lttng_paths
   #  We launch one daemon per Node
   #  Hence the output need to be prefixed by hostname, so that each MPI local master will write into it
-  lttng_output = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
+  lttng_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
 
   # Each session will have an UUID.
   # This will be used to set LLTNG_HOME to a uuid for this run
@@ -474,7 +474,7 @@ end
 #
 
 def last_trace_saved
-  Dir[File.join(env_fetches('HOME'), 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
+  Dir[File.join(env_fetch_first('HOME'), 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
 end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
