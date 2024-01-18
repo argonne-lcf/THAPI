@@ -32,10 +32,9 @@ end
 
 # Cannot use refinement on `ENV`
 #   as I don't know the `type` of ENV
-def env_fetches(*args, default: nil)
-  @env_fetches ||= {}
-  # Get first non nil env, or take the default
-  @env_fetches[args] ||= ENV.values_at(*args).compact.first || default
+# /!\ bad caching was changing the value of `mpi_env?, so no more caching
+def env_fetch_first(*args, default: nil)
+  ENV.values_at(*args).compact.first || default
 end
 
 #
@@ -44,9 +43,9 @@ end
 #
 def ldconfig
   @ldconfig ||= begin
-    ld_library_path = env_fetches('LD_LIBRARY_PATH', default: '').gsub(':', ' ')
+    ld_library_path = env_fetch_first('LD_LIBRARY_PATH', default: '').gsub(':', ' ')
     stdout_str = exec("ldconfig -vNX #{ld_library_path}",
-                      opts: { 'PATH' => "#{env_fetches('PATH')}:/sbin" },
+                      opts: { 'PATH' => "#{env_fetch_first('PATH')}:/sbin" },
                       debug: false)
     stdout_str.split
   end
@@ -78,25 +77,25 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 def in_mpi_env?
-  env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK') ? true : false
+  !env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
 def mpi_job_id
-  env_fetches('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
+  env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
 end
 
 def mpi_rank_id
-  env_fetches('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+  env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
 end
 
 def mpi_local_size
-  env_fetches('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
+  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetches('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
+  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
 end
 
 def mpi_local_master?
@@ -121,7 +120,7 @@ end
 FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
 # Put the user name, to avoid permission issue for people sharing nodes
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
-SHARED_GLOBAL_FILESYSTEM = File.join(env_fetches('HOME'), FOLDER_JOBID)
+SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
 
 # Use a log distribution seem to be a good tradeoff
 # between being nice to the FileSystem (not to many call)
@@ -226,7 +225,7 @@ def env_tracers
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
-    if (e = env_fetches(libenv))
+    if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
     elsif (libpath = whichlib64("#{lib}.so"))
@@ -255,7 +254,7 @@ def env_tracers
 
   backends = [] unless need_backend
   h = {} unless need_env
-  LOGGER.debug("Backends found: #{backends}")
+  LOGGER.info("Backends found: #{backends}")
   LOGGER.debug("User app env: #{h}")
 
   [backends, h.freeze]
@@ -267,7 +266,7 @@ def launch_usr_bin(env, cmd)
   #   prepending to current env if already existing
   #   we don't modify `ENV` direclly to avoid by-construction any side-effect
   bash_env = env.map do |k, v|
-    v.append(env_fetches(k)) if env_fetches(k)
+    v.append(env_fetch_first(k)) if env_fetch_first(k)
     [k, [v].flatten.join(':')]
   end.to_h
 
@@ -292,7 +291,7 @@ def rename_to_human_readable_folder(lttng_output_root)
   date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
   path = (0..).each do |i|
     prefix =  i == 0 ? '' : "_#{i}"
-    path = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{date}#{prefix}")
+    path = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{date}#{prefix}")
     begin
       Dir.mkdir(path)
     rescue SystemCallError
@@ -393,7 +392,7 @@ end
 def get_lttng_paths
   #  We launch one daemon per Node
   #  Hence the output need to be prefixed by hostname, so that each MPI local master will write into it
-  lttng_output = File.join(env_fetches('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
+  lttng_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
 
   # Each session will have an UUID.
   # This will be used to set LLTNG_HOME to a uuid for this run
@@ -433,7 +432,7 @@ def teardown_lttng(lttng_session_uuid, lttng_home)
   # Need to kill the sessiond. It's safe, because each job have their own
   #   In theory opening this file is racy.
   #   It's possible that the sessiond spawn before writing in file
-  #   In practice to so much work between the two. Should ne ok
+  #   In practice to so much work between the two. Should be ok
   pid = File.read(File.join(lttng_home, '.lttng', 'lttng-sessiond.pid')).to_i
   LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
@@ -475,7 +474,7 @@ end
 #
 
 def last_trace_saved
-  Dir[File.join(env_fetches('HOME'), 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
+  Dir[File.join(env_fetch_first('HOME'), 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
 end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
@@ -491,17 +490,17 @@ def postprocess(folder, _options)
     opts = 'trace'
     opts << '--restrict '
     opts << '--context '
-    opts << "--backend #{backends} " unless backends.empty?
+    opts << "--backend #{backends} "
   elsif OPTIONS.include?(:timeline)
     opts = 'timeline'
-    opts << "--backend #{backends} " unless backends.empty?
+    opts << "--backend #{backends} "
   else
     opts = 'tally '
-    opts << '--display_kernel_verbose ' if OPTIONS.include?(:'kernel-verbose')
-    opts << '--display_metadata ' if OPTIONS.include?(:metadata)
-    opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} " if OPTIONS.include?(:'max-name-size')
+    opts << '--display_kernel_verbose true ' if OPTIONS.include?(:'kernel-verbose')
+    opts << '--display_metadata true ' if OPTIONS.include?(:metadata)
+    opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} "
     opts << '--display_mode json ' if OPTIONS.include?(:json)
-    opts << "--backend #{backends} " unless backends.empty?
+    opts << "--backend #{backends} "
     opts << "--backend_level #{backend_level}" unless backend_level.empty?
     opts << '--display extended ' if OPTIONS.include?(:extended)
   end
@@ -520,17 +519,32 @@ end
 #                      _|
 parser = OptionParser.new
 
+# backend default are hardcoded inside the cpp for now
+options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
+            'traced-ranks': Set[-1],
+            'max-name-size': 80,
+            debug: Logger::FATAL }
+
 # Tracing
 parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
 parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
           'Use -1 to mean all ranks.',
-          'Default: -1') { |ranks| ranks.map(&:to_i).to_set }
+          "Default: #{options[:'traced-ranks'].join(',')}") do |ranks|
+  ranks.map do |r|
+    if r.match?(/^\d+$/)
+      r.to_i
+    else
+      raise(OptionParser::ParseError,
+            "Invalid value (#{r}). Only integer accepted")
+    end
+  end.to_set
+end
 parser.on('--[no-]profile', 'Device activities will not profiled')
 
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
           'Format: backend_name[:backend_level],...',
-          'Default: omp:2,cl:1,ze:1,cuda:1,hip:1')
+          "Default: #{options[:'backend'].join(',')}")
 
 # Analysis
 parser.on('-r', '--replay [PATH]', 'Replay traces for post-morten analysis')
@@ -543,20 +557,20 @@ parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Pro
 parser.on('-k', '--kernel-verbose',
           'The tally will report kernels execution time with SIMD width and global/local sizes')
 parser.on('--max-name-size SIZE',
+          OptionParser::DecimalInteger,
           'Maximum size allowed for kernels names.',
           'Use -1 to mean no limit.',
-          'Default: 80') { |size| size.to_i }
+          "Default: #{options[:'max-name-size']}")
 
 parser.on('--metadata', 'Display trace Metadata')
 parser.on('-v', '--version', 'Display THAPI version')
-parser.on('--debug [LEVEL]', 'Level of debug [default 0]') { |level| level.to_i }
+parser.on('-h', '--help', 'Display this message')
 
-# backend default are hardcoded inside the cpp for now
-options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
-            'traced-ranks': Set[-1],
-            debug: Logger::FATAL }
+parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
+          "By default the debug level is #{options[:debug]}.",
+          "If LEVEL is omitted the debug level with be set to #{Logger::INFO}") { |d| d || Logger::INFO }
 
-def print_help_and_exit(parser)
+def print_help_and_exit(parser, exit_code: 1)
   puts(parser.help)
   puts(<<~EOF
                                                           __
@@ -565,7 +579,7 @@ def print_help_and_exit(parser)
        or send email to {apl,bvideau}@anl.gov             `---'
   EOF
       )
-  exit(1)
+  exit(exit_code)
 end
 
 # Parsing ARGV
@@ -573,8 +587,8 @@ print_help_and_exit(parser) if ARGV.empty?
 
 begin
   parser.parse!(into: options)
-rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
-  puts(e)
+rescue StandardError => e
+  puts("ERROR: #{e}")
   print_help_and_exit(parser)
 end
 
@@ -588,6 +602,9 @@ LOGGER.level = OPTIONS[:debug]
 LOGGER.debug(OPTIONS)
 
 # Action
+
+# We don't rely on the Parser-OPT default help, as it doesn't print the footer
+print_help_and_exit(parser, exit_code: 0) if OPTIONS.include?(:help)
 
 if OPTIONS.include?(:version)
   puts(File.read(File.join(DATADIR, 'version')))
