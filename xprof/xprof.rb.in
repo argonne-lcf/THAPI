@@ -32,7 +32,7 @@ end
 
 # Cannot use refinement on `ENV`
 #   as I don't know the `type` of ENV
-# /!\ was changing the value of `mpi_env?`
+# /!\ bad caching was changing the value of `mpi_env?, so no more caching`
 def env_fetches(*args, default: nil)
   ENV.values_at(*args).compact.first || default
 end
