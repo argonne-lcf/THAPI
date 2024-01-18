@@ -432,7 +432,7 @@ def teardown_lttng(lttng_session_uuid, lttng_home)
   # Need to kill the sessiond. It's safe, because each job have their own
   #   In theory opening this file is racy.
   #   It's possible that the sessiond spawn before writing in file
-  #   In practice to so much work between the two. Should ne ok
+  #   In practice to so much work between the two. Should be ok
   pid = File.read(File.join(lttng_home, '.lttng', 'lttng-sessiond.pid')).to_i
   LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
@@ -517,13 +517,18 @@ end
 #   |_) _. ._ _ o ._   _    /  |   |
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
+
+def to_i_or_raise(str)
+  str.match?(/^\d+$/) ? str.to.i : raise(OptionParser::ParseError.new("Invalid value (#{str}). Only integer accepted"))
+end
+
 parser = OptionParser.new
 
 # Tracing
 parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
 parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
           'Use -1 to mean all ranks.',
-          'Default: -1') { |ranks| ranks.map(&:to_i).to_set }
+          'Default: -1') { |ranks| ranks.map{ |r| to_i_or_raise(r) }.to_set }
 parser.on('--[no-]profile', 'Device activities will not profiled')
 
 # General Options
@@ -544,18 +549,20 @@ parser.on('-k', '--kernel-verbose',
 parser.on('--max-name-size SIZE',
           'Maximum size allowed for kernels names.',
           'Use -1 to mean no limit.',
-          'Default: 80') { |size| size.to_i }
+          'Default: 80') { |size| to_i_or_raise(size) }
 
 parser.on('--metadata', 'Display trace Metadata')
 parser.on('-v', '--version', 'Display THAPI version')
-parser.on('--debug [LEVEL]', 'Level of debug [default 0]') { |level| level.to_i }
+parser.on('-h', '--help', 'Display this message')
+
+parser.on('--debug [LEVEL]', 'Level of debug [default 0]') { |level| to_i_or_raise(level) }
 
 # backend default are hardcoded inside the cpp for now
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
             'traced-ranks': Set[-1],
             debug: Logger::FATAL }
 
-def print_help_and_exit(parser)
+def print_help_and_exit(parser, exit_code: 1)
   puts(parser.help)
   puts(<<~EOF
                                                           __
@@ -564,7 +571,7 @@ def print_help_and_exit(parser)
        or send email to {apl,bvideau}@anl.gov             `---'
   EOF
       )
-  exit(1)
+  exit(exit_code)
 end
 
 # Parsing ARGV
@@ -572,8 +579,8 @@ print_help_and_exit(parser) if ARGV.empty?
 
 begin
   parser.parse!(into: options)
-rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
-  puts(e)
+rescue  OptionParser::InvalidOption, OptionParser::MissingArgument, OptionParser::ParseError, OptionParser::ArgumentError => e
+  puts("ERROR: #{e}")
   print_help_and_exit(parser)
 end
 
@@ -587,6 +594,11 @@ LOGGER.level = OPTIONS[:debug]
 LOGGER.debug(OPTIONS)
 
 # Action
+
+# We don't rely on the Parser-OPT default help, as it doesn't print the footer
+if OPTIONS.include?(:help)
+  print_help_and_exit(parser, exit_code: 0)
+end
 
 if OPTIONS.include?(:version)
   puts(File.read(File.join(DATADIR, 'version')))
