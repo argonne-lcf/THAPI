@@ -579,7 +579,7 @@ print_help_and_exit(parser) if ARGV.empty?
 
 begin
   parser.parse!(into: options)
-rescue  OptionParser::InvalidOption, OptionParser::MissingArgument, OptionParser::ParseError => e
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument, OptionParser::ParseError => e
   puts("ERROR: #{e}")
   print_help_and_exit(parser)
 end
