@@ -254,7 +254,7 @@ def env_tracers
 
   backends = [] unless need_backend
   h = {} unless need_env
-  LOGGER.debug("Backends found: #{backends}")
+  LOGGER.info("Backends found: #{backends}")
   LOGGER.debug("User app env: #{h}")
 
   [backends, h.freeze]
@@ -544,7 +544,7 @@ parser.on('--[no-]profile', 'Device activities will not profiled')
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
           'Format: backend_name[:backend_level],...',
-          'Default: omp:2,cl:1,ze:1,cuda:1,hip:1')
+          "Default: #{options[:'backend'].join(',')}")
 
 # Analysis
 parser.on('-r', '--replay [PATH]', 'Replay traces for post-morten analysis')
