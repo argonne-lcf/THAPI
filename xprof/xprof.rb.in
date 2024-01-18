@@ -497,7 +497,7 @@ def postprocess(folder, _options)
   else
     opts = 'tally '
     opts << '--display_kernel_verbose true ' if OPTIONS.include?(:'kernel-verbose')
-    opts << '--display_metadata ' if OPTIONS.include?(:metadata)
+    opts << '--display_metadata true ' if OPTIONS.include?(:metadata)
     opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} " if OPTIONS.include?(:'max-name-size')
     opts << '--display_mode json ' if OPTIONS.include?(:json)
     opts << "--backend #{backends} " unless backends.empty?
@@ -519,7 +519,7 @@ end
 #                      _|
 
 def to_i_or_raise(str)
-  str.match?(/^\d+$/) ? str.to.i : raise(OptionParser::ParseError.new("Invalid value (#{str}). Only integer accepted"))
+  str.match?(/^\d+$/) ? str.to_i : raise(OptionParser::ParseError.new("Invalid value (#{str}). Only integer accepted"))
 end
 
 parser = OptionParser.new
@@ -579,7 +579,7 @@ print_help_and_exit(parser) if ARGV.empty?
 
 begin
   parser.parse!(into: options)
-rescue  OptionParser::InvalidOption, OptionParser::MissingArgument, OptionParser::ParseError, OptionParser::ArgumentError => e
+rescue  OptionParser::InvalidOption, OptionParser::MissingArgument, OptionParser::ParseError => e
   puts("ERROR: #{e}")
   print_help_and_exit(parser)
 end
