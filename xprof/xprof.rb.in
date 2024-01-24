@@ -275,8 +275,11 @@ def launch_usr_bin(env, cmd)
       stdout.each { |line| print line }
     rescue Errno::EIO
     end
+  # Not sure how this exception can be triggered
   rescue PTY::ChildExited
-    puts('The child process exited!')
+    LOGGER.warn { 'Application Exited'}
+  rescue Interrupt
+    LOGGER.warn { 'Application Reseived Interrupt Signal'}
   end
 end
 
