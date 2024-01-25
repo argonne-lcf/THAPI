@@ -13,6 +13,7 @@ const int RT_SIGNAL_SPECIAL_GROUP = SIGRTMIN + 4;
 
 // Define signal handler flags
 std::atomic<bool> special_group_flag(false);
+std::atomic<bool> exit_flag(false);
 
 // Task functions
 void performGlobalTask(int world_rank, MPI_Comm comm) {
@@ -84,6 +85,10 @@ void performSpecialTask(int world_rank, MPI_Comm world_comm) {
 // Signal handling function
 void handleSignal(int signum, int world_rank, MPI_Comm world_comm, MPI_Comm local_comm, int local_rank) {
     switch (signum) {
+        case SIGTERM:
+        case SIGINT:
+            exit_flag = true;
+            break;
         case RT_SIGNAL_GLOBAL:
             performGlobalTask(world_rank, world_comm);
             break;
@@ -130,6 +135,8 @@ int main(int argc, char** argv) {
     sigaddset(&set, RT_SIGNAL_RANK);
     sigaddset(&set, RT_SIGNAL_SET_SPECIAL_FLAG);
     sigaddset(&set, RT_SIGNAL_SPECIAL_GROUP);
+    sigaddset(&set, SIGTERM);
+    sigaddset(&set, SIGINT);
 
     // Setup signal handlers
     signal(RT_SIGNAL_GLOBAL, globalTaskSignalHandler);
@@ -139,7 +146,7 @@ int main(int argc, char** argv) {
     signal(RT_SIGNAL_SPECIAL_GROUP, executeSpecialTaskSignalHandler);
 
     // Main loop
-    while (true) {
+    while (!exit_flag) {
         // Wait for a signal
         signal_result = sigwait(&signal_set, &sig);
         if (signal_result == 0) {
