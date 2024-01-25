@@ -8,14 +8,14 @@
 const int RT_SIGNAL_GLOBAL = SIGRTMIN;
 const int RT_SIGNAL_NODE = SIGRTMIN + 1;
 const int RT_SIGNAL_RANK = SIGRTMIN + 2;
-const int RT_SIGNAL_SET_FLAG = SIGRTMIN + 3;
-const int RT_SIGNAL_EXECUTE_TASK = SIGRTMIN + 4;
+const int RT_SIGNAL_SET_SPECIAL_FLAG = SIGRTMIN + 3;
+const int RT_SIGNAL_SPECIAL_GROUP = SIGRTMIN + 4;
 
 // Define signal handler flags
 std::atomic<bool> perform_global_task(false);
 std::atomic<bool> perform_node_task(false);
 std::atomic<bool> perform_rank_task(false);
-std::atomic<bool> local_flag(false);
+std::atomic<bool> special_group_flag(false);
 std::atomic<bool> perform_special_task(false);
 
 // Signal handlers
@@ -32,7 +32,7 @@ void rankSpecificTaskSignalHandler(int signum) {
 }
 
 void setFlagSignalHandler(int signum) {
-    local_flag = true;
+    special_group_flag = true;
 }
 
 void executeSpecialTaskSignalHandler(int signum) {
@@ -69,8 +69,8 @@ void performSpecialTask(int world_rank, MPI_Comm world_comm) {
 
     // Gather flags from all processes
     int *flags = new int[world_size]();
-    int local_flag_value = local_flag.load() ? 1 : 0;
-    MPI_Allgather(&local_flag_value, 1, MPI_INT, flags, 1, MPI_INT, world_comm);
+    int special_group_flag_value = special_group_flag.load() ? 1 : 0;
+    MPI_Allgather(&special_group_flag_value, 1, MPI_INT, flags, 1, MPI_INT, world_comm);
 
     // Determine the ranks that are part of the new group
     std::vector<int> group_ranks;
@@ -83,7 +83,7 @@ void performSpecialTask(int world_rank, MPI_Comm world_comm) {
     MPI_Group world_group, special_group;
     MPI_Comm special_comm;
 
-    if (local_flag) {
+    if (special_group_flag) {
         // Can do stuff right away
         std::cout << "Rank " << world_rank << " performing special task" << std::endl;
 
@@ -106,7 +106,7 @@ void performSpecialTask(int world_rank, MPI_Comm world_comm) {
     }
 
     delete[] flags;
-    local_flag = false;
+    special_group_flag = false;
     perform_special_task = false;
 }
 
@@ -126,8 +126,8 @@ int main(int argc, char** argv) {
     signal(RT_SIGNAL_GLOBAL, globalTaskSignalHandler);
     signal(RT_SIGNAL_NODE, nodeSpecificTaskSignalHandler);
     signal(RT_SIGNAL_RANK, rankSpecificTaskSignalHandler);
-    signal(RT_SIGNAL_SET_FLAG, setFlagSignalHandler);
-    signal(RT_SIGNAL_EXECUTE_TASK, executeSpecialTaskSignalHandler);
+    signal(RT_SIGNAL_SET_SPECIAL_FLAG, setFlagSignalHandler);
+    signal(RT_SIGNAL_SPECIAL_GROUP, executeSpecialTaskSignalHandler);
 
 
     // Main loop
