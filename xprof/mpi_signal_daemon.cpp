@@ -3,6 +3,7 @@
 #include <vector>
 #include <atomic>
 #include <signal.h>
+#include <cstring>
 
 // Define real-time signals
 const int RT_SIGNAL_GLOBAL = SIGRTMIN;
@@ -137,13 +138,6 @@ int main(int argc, char** argv) {
     sigaddset(&set, RT_SIGNAL_SPECIAL_GROUP);
     sigaddset(&set, SIGTERM);
     sigaddset(&set, SIGINT);
-
-    // Setup signal handlers
-    signal(RT_SIGNAL_GLOBAL, globalTaskSignalHandler);
-    signal(RT_SIGNAL_NODE, nodeSpecificTaskSignalHandler);
-    signal(RT_SIGNAL_RANK, rankSpecificTaskSignalHandler);
-    signal(RT_SIGNAL_SET_SPECIAL_FLAG, setFlagSignalHandler);
-    signal(RT_SIGNAL_SPECIAL_GROUP, executeSpecialTaskSignalHandler);
 
     // Main loop
     while (!exit_flag) {
