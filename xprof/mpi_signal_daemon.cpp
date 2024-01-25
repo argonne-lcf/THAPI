@@ -140,11 +140,25 @@ int main(int argc, char** argv) {
     int world_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
+    // Split world communitcator based on memory shared (N.B. should create communicator for all ranks on the same node)
     MPI_Comm local_comm;
     MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm);
 
     int local_rank;
     MPI_Comm_rank(local_comm, &local_rank);
+
+    // Initialize signal handling variables
+    sigset_t signal_set;
+    int sig;
+    int signal_result;
+
+    // Initialize signal set and add signals
+    sigemptyset(&set);
+    sigaddset(&set, RT_SIGNAL_GLOBAL);
+    sigaddset(&set, RT_SIGNAL_NODE);
+    sigaddset(&set, RT_SIGNAL_RANK);
+    sigaddset(&set, RT_SIGNAL_SET_SPECIAL_FLAG);
+    sigaddset(&set, RT_SIGNAL_SPECIAL_GROUP);
 
     // Setup signal handlers
     signal(RT_SIGNAL_GLOBAL, globalTaskSignalHandler);
@@ -153,20 +167,14 @@ int main(int argc, char** argv) {
     signal(RT_SIGNAL_SET_SPECIAL_FLAG, setFlagSignalHandler);
     signal(RT_SIGNAL_SPECIAL_GROUP, executeSpecialTaskSignalHandler);
 
-
     // Main loop
     while (true) {
-        if (perform_global_task) {
-            performGlobalTask(world_rank, MPI_COMM_WORLD);
-        }
-        if (perform_node_task) {
-            performNodeSpecificTask(world_rank, local_rank, local_comm);
-        }
-        if (perform_rank_task) {
-            performRankSpecificTask(world_rank);
-        }
-        if (perform_special_task) {
-            performSpecialTask(world_rank, MPI_COMM_WORLD);
+        // Wait for a signal
+        signal_result = sigwait(&signal_set, &sig);
+        if (signal_result == 0) {
+            handleSignal(sig, world_rank, MPI_COMM_WORLD, local_comm, local_rank);
+        } else {
+            std::cerr << "sigwait error: " << strerror(signal_result) << std::endl;
         }
     }
 
