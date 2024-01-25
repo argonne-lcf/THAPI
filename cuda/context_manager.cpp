@@ -31,6 +31,7 @@ bool CUDAContextManager::get_top_context(hpt_t hpt, CUcontext *pctx) {
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt, "no context stack for thread");
   }
+  return false;
 }
 
 bool CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream, CUdevice *pdev) {
