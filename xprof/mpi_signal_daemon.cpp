@@ -130,14 +130,14 @@ int main(int argc, char** argv) {
     int signal_result;
 
     // Initialize signal set and add signals
-    sigemptyset(&set);
-    sigaddset(&set, RT_SIGNAL_GLOBAL);
-    sigaddset(&set, RT_SIGNAL_NODE);
-    sigaddset(&set, RT_SIGNAL_RANK);
-    sigaddset(&set, RT_SIGNAL_SET_SPECIAL_FLAG);
-    sigaddset(&set, RT_SIGNAL_SPECIAL_GROUP);
-    sigaddset(&set, SIGTERM);
-    sigaddset(&set, SIGINT);
+    sigemptyset(&signal_set);
+    sigaddset(&signal_set, RT_SIGNAL_GLOBAL);
+    sigaddset(&signal_set, RT_SIGNAL_NODE);
+    sigaddset(&signal_set, RT_SIGNAL_RANK);
+    sigaddset(&signal_set, RT_SIGNAL_SET_SPECIAL_FLAG);
+    sigaddset(&signal_set, RT_SIGNAL_SPECIAL_GROUP);
+    sigaddset(&signal_set, SIGTERM);
+    sigaddset(&signal_set, SIGINT);
 
     // Main loop
     while (!exit_flag) {
