@@ -141,14 +141,21 @@ void exits_callback_cudaError_present(void *btx_handle, void *usr_data, int64_t 
   }
 }
 
-void entries_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
-                      const char *event_class_name, const char *hostname, int64_t vpid,
-                      uint64_t vtid, size_t size) {
+void entries_traffic_v2_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                 const char *event_class_name, const char *hostname,
+                                 int64_t vpid, uint64_t vtid, size_t size) {
   // save traffic size and entry ts for use in exit callback
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key = {hostname, vpid, vtid};
   set_entry_ts(state, key, ts);
   state->entry_traffic_size[key] = size;
+}
+
+void entries_traffic_v1_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                 const char *event_class_name, const char *hostname,
+                                 int64_t vpid, uint64_t vtid, uint32_t size) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name, hostname,
+                              vpid, vtid, static_cast<size_t>(size));
 }
 
 void exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -548,7 +555,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_exits_cudaError_present(btx_handle, &exits_callback_cudaError_present);
 
   // Traffic
-  btx_register_callbacks_entries_traffic(btx_handle, &entries_traffic_callback);
+  btx_register_callbacks_entries_traffic_v1(btx_handle, &entries_traffic_v1_callback);
+  btx_register_callbacks_entries_traffic_v2(btx_handle, &entries_traffic_v2_callback);
   btx_register_callbacks_exits_traffic(btx_handle, &exits_traffic_callback);
 
   // device profiling events
