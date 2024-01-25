@@ -33,9 +33,6 @@
       :type: structure
       :members:
       - :name: ^cuResult$
-        :field_class:
-          :type: integer_signed
-          :cast_type: ^CUresult$
 
   - :set_id: exits_cudaError_absent
     :domain: exits - exits_cudaError_present 
@@ -50,18 +47,12 @@
       :type: structure
       :members:
       - :name: ^ByteCount$
-        :field_class:
-          :cast_type: size_t
-          :type: integer_unsigned
   - :set_id: exits_traffic
     :domain: exits & traffic
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^cuResult$
-        :field_class:
-          :type: integer_signed
-          :cast_type: ^CUresult$
 
   # Context create/destroy
   - :set_id: ctx_create
