@@ -85,29 +85,20 @@ void performSpecialTask(int world_rank, MPI_Comm world_comm) {
 
 // Signal handling function
 void handleSignal(int signum, int world_rank, MPI_Comm world_comm, MPI_Comm local_comm, int local_rank) {
-    switch (signum) {
-        case SIGTERM:
-        case SIGINT:
-            exit_flag = true;
-            break;
-        case RT_SIGNAL_GLOBAL:
-            performGlobalTask(world_rank, world_comm);
-            break;
-        case RT_SIGNAL_NODE:
-            performNodeSpecificTask(world_rank, local_rank, local_comm);
-            break;
-        case RT_SIGNAL_RANK:
-            performRankSpecificTask(world_rank);
-            break;
-        case RT_SIGNAL_SET_SPECIAL_FLAG:
-            special_group_flag = true;
-            break;
-        case RT_SIGNAL_SPECIAL_GROUP:
-            performSpecialTask(world_rank, world_comm);
-            break;
-        default:
-            std::cerr << "Unhandled signal: " << signum << std::endl;
-            break;
+    if (signum == SIGTERM || signum == SIGINT) {
+        exit_flag = true;
+    } else if (signum == RT_SIGNAL_GLOBAL) {
+        performGlobalTask(world_rank, world_comm);
+    } else if (signum == RT_SIGNAL_NODE) {
+        performNodeSpecificTask(world_rank, local_rank, local_comm);
+    } else if (signum == RT_SIGNAL_RANK) {
+        performRankSpecificTask(world_rank);
+    } else if (signum == RT_SIGNAL_SET_SPECIAL_FLAG) {
+        special_group_flag = true;
+    } else if (signum == RT_SIGNAL_SPECIAL_GROUP) {
+        performSpecialTask(world_rank, world_comm);
+    } else {
+        std::cerr << "Unhandled signal: " << signum << std::endl;
     }
 }
 
