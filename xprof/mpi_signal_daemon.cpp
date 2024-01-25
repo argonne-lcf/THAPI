@@ -12,51 +12,23 @@ const int RT_SIGNAL_SET_SPECIAL_FLAG = SIGRTMIN + 3;
 const int RT_SIGNAL_SPECIAL_GROUP = SIGRTMIN + 4;
 
 // Define signal handler flags
-std::atomic<bool> perform_global_task(false);
-std::atomic<bool> perform_node_task(false);
-std::atomic<bool> perform_rank_task(false);
 std::atomic<bool> special_group_flag(false);
-std::atomic<bool> perform_special_task(false);
-
-// Signal handlers
-void globalTaskSignalHandler(int signum) {
-    perform_global_task = true;
-}
-
-void nodeSpecificTaskSignalHandler(int signum) {
-    perform_node_task = true;
-}
-
-void rankSpecificTaskSignalHandler(int signum) {
-    perform_rank_task = true;
-}
-
-void setFlagSignalHandler(int signum) {
-    special_group_flag = true;
-}
-
-void executeSpecialTaskSignalHandler(int signum) {
-    perform_special_task = true;
-}
 
 // Task functions
 void performGlobalTask(int world_rank, MPI_Comm comm) {
     std::cout << "Global rank " << world_rank << " performing global task: waiting for barrier" << std::endl;
     MPI_Barrier(comm);
     std::cout << "Global rank " << world_rank << " performing global task: barrier complete" << std::endl;
-    perform_global_task = false;
 }
 
 void performNodeSpecificTask(int world_rank, int local_rank, MPI_Comm comm) {
     std::cout << "Global rank " << world_rank << ", Local rank " << local_rank << " performing node-specific task: waiting for barrier" << std::endl;
     MPI_Barrier(comm);
     std::cout << "Global rank " << world_rank << ", Local rank " << local_rank << " performing node-specific task: barrier complete" << std::endl;
-    perform_node_task = false;
 }
 
 void performRankSpecificTask(int world_rank) {
     std::cout << "Global rank " << world_rank << " performing rank-specific task" << std::endl;
-    perform_rank_task = false;
 }
 
 void performSpecialTask(int world_rank, MPI_Comm world_comm) {
@@ -107,7 +79,6 @@ void performSpecialTask(int world_rank, MPI_Comm world_comm) {
 
     delete[] flags;
     special_group_flag = false;
-    perform_special_task = false;
 }
 
 // Signal handling function
