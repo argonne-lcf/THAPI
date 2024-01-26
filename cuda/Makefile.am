@@ -423,8 +423,9 @@ tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltr
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_block.yaml \
 	tests/interval_profiling_normal.yaml
+
+# TODO: add multi-thread / multi context, a couple more
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
 	$(ERB) be="cuda" $< > $@

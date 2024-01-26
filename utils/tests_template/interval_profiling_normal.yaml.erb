@@ -81,7 +81,7 @@ ref:
   - :name: lttng:device
     :common_context:
       hostname: aurora12.gov
-<% if be == "ze" %>
+<% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
 <% else %>
       backend: 0
