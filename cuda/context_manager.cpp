@@ -136,9 +136,7 @@ void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
     THAPI_FATAL_HPT(hpt,
                     "no entry device for thread in ctx create exit callback");
   }
-  if (hpt_ctx_stack_.count(hpt) == 0) {
-    hpt_ctx_stack_[hpt] = {};
-  }
+  ensure_stack(hpt);
   hp_context_t hp_ctx_key = {std::get<0>(hpt), std::get<1>(hpt), ctx};
   hp_ctx_to_device_[hp_ctx_key] = entry_dev;
   hpt_ctx_stack_[hpt].push(ctx);
@@ -200,10 +198,7 @@ void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
                     "no entry context for thread in ctx set current exit callback");
   }
   try {
-    if (hpt_ctx_stack_.count(hpt) == 0) {
-      // std::cerr << "init stack for thread " << std::get<2>(hpt) << std::endl;
-      hpt_ctx_stack_[hpt] = {};
-    }
+    ensure_stack(hpt);
     auto& stack = hpt_ctx_stack_.at(hpt);
     if (!stack.empty()) {
       stack.pop();
@@ -226,9 +221,7 @@ void CUDAContextManager::ctx_push_current_exit(hpt_t hpt, CUresult cuResult) {
     return;
   }
   try {
-    if (hpt_ctx_stack_.count(hpt) == 0) {
-      hpt_ctx_stack_[hpt] = {};
-    }
+    ensure_stack(hpt);
     auto entry_ctx = hpt_entry_ctx_.at(hpt);
     hpt_ctx_stack_[hpt].push(entry_ctx);
   } catch(const std::out_of_range& oor) {
@@ -268,4 +261,10 @@ void CUDAContextManager::stream_create_exit(hpt_t hpt, CUresult cuResult,
   hp_stream_t hp_stream_key = {std::get<0>(hpt), std::get<1>(hpt), cuStream}; 
   
   hp_stream_to_ctx_[hp_stream_key] = ctx;
+}
+
+void CUDAContextManager::ensure_stack(hpt_t hpt) {
+  if (hpt_ctx_stack_.count(hpt) == 0) {
+    hpt_ctx_stack_[hpt] = {};
+  }
 }

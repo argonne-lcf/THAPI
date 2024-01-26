@@ -112,6 +112,8 @@ public:
   void stream_create_exit(hpt_t hpt, CUresult cuResult, CUstream phStream_val);
 
 private:
+  void ensure_stack(hpt_t hpt);
+
   // There is at most once primary context per (host, process, device)
   std::unordered_map<hp_device_t, CUcontext> hp_device_primary_ctx_;
 

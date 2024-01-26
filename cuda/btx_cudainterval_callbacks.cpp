@@ -451,93 +451,70 @@ void module_get_function_exit_callback(void *btx_handle, void *usr_data,
   }
 }
 
-// TODO: don't update name->dev map on exit failure?
-void device_mem_op_stream_present_entry_callback(void *btx_handle, void *usr_data,
+void operation_entry_helper(void *btx_handle, void *usr_data,
+                            int64_t ts, const char *event_class_name,
+                            const char *hostname, int64_t vpid,
+                            uint64_t vtid, CUstream cuStream, CUfunction f) {
+  auto state = static_cast<data_t *>(usr_data);
+  hpt_t hpt = {hostname, vpid, vtid};
+  CUdevice dev;
+  bool found = state->context_manager.get_stream_device(hpt, cuStream, &dev);
+  if (!found) {
+    THAPI_FATAL_HPT(hpt, "no device for thread in device op");
+  }
+
+  std::string name = strip_event_class_name(event_class_name);
+  if (f == nullptr) {
+    // for host launch and non launch operations like cuMemcpy, the device op name
+    // is just the function name
+    state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
+    state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
+  } else {
+    // for device launch, get the name saved when the kernel was loaded in the
+    // module get function callbacks
+    try
+    {
+      std::string name = state->hp_kernel_to_name.at({hostname, vpid, f});
+      state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
+      state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
+    } catch(const std::out_of_range& oor) {
+      THAPI_FATAL_HPT(hpt,
+        "device not found for hpt function name in kernel launch callback");
+    }
+  }
+}
+
+void named_operation_stream_present_entry_callback(void *btx_handle, void *usr_data,
+                                                   int64_t ts, const char *event_class_name,
+                                                   const char *hostname, int64_t vpid,
+                                                   uint64_t vtid, CUstream cuStream) {
+  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                         hostname, vpid, vtid, cuStream, nullptr);
+}
+
+void named_operation_stream_absent_entry_callback(void *btx_handle, void *usr_data,
+                                                  int64_t ts, const char *event_class_name,
+                                                  const char *hostname, int64_t vpid,
+                                                  uint64_t vtid) {
+  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                         hostname, vpid, vtid, nullptr, nullptr);
+}
+
+void kernel_launch_stream_present_entry_callback(void *btx_handle, void *usr_data,
                                                  int64_t ts, const char *event_class_name,
                                                  const char *hostname, int64_t vpid,
-                                                 uint64_t vtid, CUstream cuStream) {
-  auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  CUdevice dev;
-  bool found = state->context_manager.get_stream_device(hpt, cuStream, &dev);
-  if (!found) {
-    THAPI_FATAL_HPT(hpt,
-                    "no device for thread and stream in mem op stream present entry");
-  }
-  std::string name = strip_event_class_name(event_class_name);
-  hpt_function_name_t hpt_function_name = {hostname, vpid, vtid, name};
-  state->hpt_function_name_to_dev[hpt_function_name] = dev;
-
-  state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
+                                                 uint64_t vtid, CUstream cuStream,
+                                                 CUfunction f) {
+  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                         hostname, vpid, vtid, cuStream, f);
 }
 
-void device_mem_op_stream_absent_entry_callback(void *btx_handle, void *usr_data,
+void kernel_launch_stream_absent_entry_callback(void *btx_handle, void *usr_data,
                                                 int64_t ts, const char *event_class_name,
                                                 const char *hostname, int64_t vpid,
-                                                uint64_t vtid) {
-  auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  CUdevice dev;
-  bool found = state->context_manager.get_device(hpt, &dev);
-  if (!found) {
-    THAPI_FATAL_HPT(hpt, "no device for thread in mem op stream absent entry");
-  }
-  std::string name = strip_event_class_name(event_class_name);
-  hpt_function_name_t hpt_function_name = {hostname, vpid, vtid, name};
-  state->hpt_function_name_to_dev[hpt_function_name] = dev;
-
-  state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
-}
-
-// TODO: don't update name->dev map on exit failure?
-void device_kernel_launch_stream_present_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, CUfunction f,
-    CUstream cuStream) {
-  auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  CUdevice dev;
-  bool found = state->context_manager.get_stream_device(hpt, cuStream, &dev);
-  if (!found) {
-    THAPI_FATAL_HPT(hpt,
-      "no device for thread and stream in kernel launch stream present entry");
-  }
-  hp_kernel_t hp_kernel_key = {hostname, vpid, f};
-  try
-  {
-    std::string name = state->hp_kernel_to_name.at(hp_kernel_key);
-    hpt_function_name_t hpt_function_name = {hostname, vpid, vtid, name};
-    state->hpt_function_name_to_dev[hpt_function_name] = dev;
-
-    state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
-  } catch(const std::out_of_range& oor) {
-    THAPI_FATAL_HPT(hpt,
-      "device not found for hpt function name in kernel launch stream present callback");
-  }
-}
-
-void device_kernel_launch_stream_absent_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, CUfunction f) {
-  auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  CUdevice dev;
-  bool found = state->context_manager.get_device(hpt, &dev);
-  if (!found) {
-    THAPI_FATAL_HPT(hpt,
-      "no device for thread in kernel launch stream absent entry");
-  }
-  hp_kernel_t hp_kernel_key = {hostname, vpid, f};
-  try {
-    std::string name = state->hp_kernel_to_name.at(hp_kernel_key);
-    hpt_function_name_t hpt_function_name = {hostname, vpid, vtid, name};
-    state->hpt_function_name_to_dev[hpt_function_name] = dev;
-
-    state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
-  } catch(const std::out_of_range& oor) {
-    THAPI_FATAL_HPT(hpt,
-      "device not found for hpt function name in kernel launch stream absent callback");
-  }
+                                                uint64_t vtid, CUfunction f) {
+  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                         hostname, vpid, vtid, nullptr, f);
 }
 
 
@@ -616,13 +593,13 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_module_get_function_exit(btx_handle,
     &module_get_function_exit_callback);
 
-  btx_register_callbacks_device_mem_op_stream_present_entry(btx_handle,
-    &device_mem_op_stream_present_entry_callback);
-  btx_register_callbacks_device_mem_op_stream_absent_entry(btx_handle,
-    &device_mem_op_stream_absent_entry_callback);
+  btx_register_callbacks_named_operation_stream_present_entry(btx_handle,
+    &named_operation_stream_present_entry_callback);
+  btx_register_callbacks_named_operation_stream_absent_entry(btx_handle,
+    &named_operation_stream_absent_entry_callback);
 
-  btx_register_callbacks_device_kernel_launch_stream_present_entry(btx_handle,
-    &device_kernel_launch_stream_present_entry_callback);
-  btx_register_callbacks_device_kernel_launch_stream_absent_entry(btx_handle,
-    &device_kernel_launch_stream_absent_entry_callback);
+  btx_register_callbacks_kernel_launch_stream_present_entry(btx_handle,
+    &kernel_launch_stream_present_entry_callback);
+  btx_register_callbacks_kernel_launch_stream_absent_entry(btx_handle,
+    &kernel_launch_stream_absent_entry_callback);
 }
