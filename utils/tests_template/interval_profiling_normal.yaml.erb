@@ -37,7 +37,10 @@ in:
     :class: stream_class
   :events:
   <% if be == "cuda" %>
+  - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_entry
+  - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_exit
   - :name: lttng_ust_cuda:cuCtxSetCurrent_entry
+  - :name: lttng_ust_cuda:cuCtxSetCurrent_exit
   <% end %>
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
@@ -71,6 +74,23 @@ ref:
   - :name: stream0
     :class: interval_class
   :events:
+  <% if be == "cuda" %>
+  - :name: lttng:host
+    :common_context:
+      hostname: aurora12.gov
+      backend: <%= backend %>
+    :payload:
+      name: cuDevicePrimaryCtxRetain
+      dur: 1
+  - :name: lttng:host
+    :common_context:
+      hostname: aurora12.gov
+      backend: <%= backend %>
+      ts: 2
+    :payload:
+      name: cuCtxSetCurrent
+      dur: 1
+  <% end %>
   - :name: lttng:host
     :common_context:
       hostname: aurora12.gov
