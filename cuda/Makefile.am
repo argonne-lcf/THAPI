@@ -423,7 +423,11 @@ tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltr
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_normal.yaml
+	tests/interval_profiling_normal.yaml \
+	tests/interval_profiling_driver_api.yaml \
+	tests/interval_profiling_multictx.yaml \
+	tests/interval_profiling_multithread.yaml \
+	tests/interval_profiling_kernel_name.yaml
 
 # TODO: add multi-thread / multi context, a couple more
 
