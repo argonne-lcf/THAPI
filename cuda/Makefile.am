@@ -426,6 +426,7 @@ TRACE_COMMON = \
 	tests/interval_profiling_normal.yaml \
 	tests/interval_profiling_cuda_driver_api.yaml \
 	tests/interval_profiling_cuda_multictx.yaml \
+	tests/interval_profiling_cuda_multistream.yaml \
 	tests/interval_profiling_multithread.yaml \
 	tests/interval_profiling_kernel_name.yaml
 
