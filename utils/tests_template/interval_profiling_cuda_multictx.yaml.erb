@@ -4,6 +4,8 @@
    mulfactor = 1000000
    profiled_call = "cuLaunchHostFunc"
    backend = 3
+   device1 = 123
+   device2 = 456
 %>
 
 in:
@@ -24,6 +26,8 @@ in:
     :class: stream_class
   :events:
   - :name: lttng_ust_cuda:cuCtxCreate_entry
+    :payload:
+      dev: <%= device1 %>
   - :name: lttng_ust_cuda:cuCtxCreate_exit
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
@@ -39,6 +43,8 @@ in:
   - :name: lttng_ust_cuda:cuCtxDestroy_entry
   - :name: lttng_ust_cuda:cuCtxDestroy_exit
   - :name: lttng_ust_cuda:cuCtxCreate_entry
+    :payload:
+      dev: <%= device2 %>
   - :name: lttng_ust_cuda:cuCtxCreate_exit
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
@@ -95,6 +101,8 @@ ref:
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
+      did: <%= device1 %>
+      sdid: <%= device1 %>
   <% if be == "cuda" %>
   - :name: lttng:host
     :common_context:
@@ -127,3 +135,5 @@ ref:
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
+      did: <%= device2 %>
+      sdid: <%= device2 %>

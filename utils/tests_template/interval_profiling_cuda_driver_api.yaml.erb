@@ -3,6 +3,7 @@
    mulfactor = 1000000
    profiled_call = "cuLaunchHostFunc"
    backend = 3
+   device = 123
 %>
 
 in:
@@ -23,6 +24,8 @@ in:
     :class: stream_class
   :events:
   - :name: lttng_ust_cuda:cuCtxCreate_entry
+    :payload:
+      dev: <%= device %>
   - :name: lttng_ust_cuda:cuCtxCreate_exit
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
@@ -77,3 +80,5 @@ ref:
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
+      did: <%= device %>
+      sdid: <%= device %>
