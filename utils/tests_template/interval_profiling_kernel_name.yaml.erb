@@ -5,12 +5,14 @@
      mulfactor = 1
      profiled_call = "clEnqueueSVMFree"
      backend = 2
+     kernel_function_name = "solver"
    when "ze"
      event = "hEvent"
      prof_end = "globalEnd"
      mulfactor = 1
      profiled_call = "zeCommandListAppendBarrier"
      backend = 1
+     kernel_function_name = "solver"
    when "cuda"
      event = "hStop"
      prof_end = "milliseconds"

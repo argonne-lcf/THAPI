@@ -424,8 +424,8 @@ tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltr
 
 TRACE_COMMON = \
 	tests/interval_profiling_normal.yaml \
-	tests/interval_profiling_driver_api.yaml \
-	tests/interval_profiling_multictx.yaml \
+	tests/interval_profiling_cuda_driver_api.yaml \
+	tests/interval_profiling_cuda_multictx.yaml \
 	tests/interval_profiling_multithread.yaml \
 	tests/interval_profiling_kernel_name.yaml
 

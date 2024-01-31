@@ -1,23 +1,10 @@
-<% case be
-   when "opencl"
-     event = "event"
-     prof_end = "end"
-     mulfactor = 1
-     profiled_call = "clEnqueueSVMFree"
-     backend = 2
-   when "ze"
-     event = "hEvent"
-     prof_end = "globalEnd"
-     mulfactor = 1
-     profiled_call = "zeCommandListAppendBarrier"
-     backend = 1
-   when "cuda"
-     event = "hStop"
-     prof_end = "milliseconds"
-     mulfactor = 1000000
-     profiled_call = "cuLaunchHostFunc"
-     backend = 3
-   end %>
+<% 
+   event = "hStop"
+   prof_end = "milliseconds"
+   mulfactor = 1000000
+   profiled_call = "cuLaunchHostFunc"
+   backend = 3
+%>
 
 in:
   :hostname: aurora12.gov
@@ -36,10 +23,8 @@ in:
   - :name: stream0
     :class: stream_class
   :events:
-  <% if be == "cuda" %>
   - :name: lttng_ust_cuda:cuCtxCreate_entry
   - :name: lttng_ust_cuda:cuCtxCreate_exit
-  <% end %>
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
   - :name: lttng_ust_<%= be %>_profiling:event_profiling
@@ -51,12 +36,10 @@ in:
     :payload:
       <%= event %>: 12
       <%= prof_end %>: 10
-  <% if be == "cuda" %>
   - :name: lttng_ust_cuda:cuCtxDestroy_entry
   - :name: lttng_ust_cuda:cuCtxDestroy_exit
   - :name: lttng_ust_cuda:cuCtxCreate_entry
   - :name: lttng_ust_cuda:cuCtxCreate_exit
-  <% end %>
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
   - :name: lttng_ust_<%= be %>_profiling:event_profiling
@@ -108,11 +91,7 @@ ref:
   - :name: lttng:device
     :common_context:
       hostname: aurora12.gov
-<% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
-<% else %>
-      backend: 0
-<% end %>
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
@@ -144,11 +123,7 @@ ref:
   - :name: lttng:device
     :common_context:
       hostname: aurora12.gov
-<% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
-<% else %>
-      backend: 0
-<% end %>
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
