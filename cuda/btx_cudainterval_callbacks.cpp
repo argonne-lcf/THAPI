@@ -263,8 +263,7 @@ void primary_ctx_retain_entry_callback(void *btx_handle, void *usr_data,
                                        const char *hostname, int64_t vpid,
                                        uint64_t vtid, CUdevice dev) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.primary_ctx_retain_entry(hpt, dev);
+  state->context_manager.primary_ctx_retain_entry({hostname, vpid, vtid}, dev);
 }
 
 void primary_ctx_retain_exit_callback(void *btx_handle, void *usr_data,
@@ -273,8 +272,7 @@ void primary_ctx_retain_exit_callback(void *btx_handle, void *usr_data,
                                       uint64_t vtid, CUresult cuResult,
                                       CUcontext ctx) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.primary_ctx_retain_exit(hpt, cuResult, ctx);
+  state->context_manager.primary_ctx_retain_exit({hostname, vpid, vtid}, cuResult, ctx);
 }
 
 void primary_ctx_release_entry_callback(void *btx_handle, void *usr_data,
@@ -282,8 +280,7 @@ void primary_ctx_release_entry_callback(void *btx_handle, void *usr_data,
                                         const char *hostname, int64_t vpid,
                                         uint64_t vtid, CUdevice dev) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.primary_ctx_release_entry(hpt, dev);
+  state->context_manager.primary_ctx_release_entry({hostname, vpid, vtid}, dev);
 }
 
 void primary_ctx_release_exit_callback(void *btx_handle, void *usr_data,
@@ -291,8 +288,7 @@ void primary_ctx_release_exit_callback(void *btx_handle, void *usr_data,
                                        const char *hostname, int64_t vpid,
                                        uint64_t vtid, CUresult cuResult) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.primary_ctx_release_exit(hpt, cuResult);
+  state->context_manager.primary_ctx_release_exit({hostname, vpid, vtid}, cuResult);
 }
 
 void primary_ctx_reset_entry_callback(void *btx_handle, void *usr_data,
@@ -300,8 +296,7 @@ void primary_ctx_reset_entry_callback(void *btx_handle, void *usr_data,
                                       const char *hostname, int64_t vpid,
                                       uint64_t vtid, CUdevice dev) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.primary_ctx_reset_entry(hpt, dev);
+  state->context_manager.primary_ctx_reset_entry({hostname, vpid, vtid}, dev);
 }
 
 void primary_ctx_reset_exit_callback(void *btx_handle, void *usr_data,
@@ -309,8 +304,7 @@ void primary_ctx_reset_exit_callback(void *btx_handle, void *usr_data,
                                      const char *hostname, int64_t vpid,
                                      uint64_t vtid, CUresult cuResult) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.primary_ctx_reset_exit(hpt, cuResult);
+  state->context_manager.primary_ctx_reset_exit({hostname, vpid, vtid}, cuResult);
 }
 
 void ctx_create_entry_callback(void *btx_handle, void *usr_data,
@@ -318,8 +312,7 @@ void ctx_create_entry_callback(void *btx_handle, void *usr_data,
                                const char *hostname, int64_t vpid,
                                uint64_t vtid, CUdevice dev) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_create_entry(hpt, dev);
+  state->context_manager.ctx_create_entry({hostname, vpid, vtid}, dev);
 }
 
 void ctx_create_exit_callback(void *btx_handle, void *usr_data,
@@ -328,8 +321,7 @@ void ctx_create_exit_callback(void *btx_handle, void *usr_data,
                               uint64_t vtid, CUresult cuResult,
                               CUcontext ctx) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_create_exit(hpt, cuResult, ctx);
+  state->context_manager.ctx_create_exit({hostname, vpid, vtid}, cuResult, ctx);
 }
 
 void ctx_destroy_entry_callback(void *btx_handle, void *usr_data,
@@ -337,8 +329,7 @@ void ctx_destroy_entry_callback(void *btx_handle, void *usr_data,
                                 const char *hostname, int64_t vpid,
                                 uint64_t vtid, CUcontext ctx) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_destroy_entry(hpt, ctx);
+  state->context_manager.ctx_destroy_entry({hostname, vpid, vtid}, ctx);
 }
 
 void ctx_destroy_exit_callback(void *btx_handle, void *usr_data,
@@ -346,8 +337,7 @@ void ctx_destroy_exit_callback(void *btx_handle, void *usr_data,
                                    const char *hostname, int64_t vpid,
                                    uint64_t vtid, CUresult cuResult) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_destroy_exit(hpt, cuResult);
+  state->context_manager.ctx_destroy_exit({hostname, vpid, vtid}, cuResult);
 }
 
 void ctx_set_current_entry_callback(void *btx_handle, void *usr_data,
@@ -355,8 +345,7 @@ void ctx_set_current_entry_callback(void *btx_handle, void *usr_data,
                                         const char *hostname, int64_t vpid,
                                         uint64_t vtid, CUcontext ctx) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_set_current_entry(hpt, ctx);
+  state->context_manager.ctx_set_current_entry({hostname, vpid, vtid}, ctx);
 }
 
 void ctx_set_current_exit_callback(void *btx_handle, void *usr_data,
@@ -364,8 +353,7 @@ void ctx_set_current_exit_callback(void *btx_handle, void *usr_data,
                                        const char *hostname, int64_t vpid,
                                        uint64_t vtid, CUresult cuResult) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_set_current_exit(hpt, cuResult);
+  state->context_manager.ctx_set_current_exit({hostname, vpid, vtid}, cuResult);
 }
 
 void ctx_push_current_entry_callback(void *btx_handle, void *usr_data,
@@ -373,8 +361,7 @@ void ctx_push_current_entry_callback(void *btx_handle, void *usr_data,
                                          const char *hostname, int64_t vpid,
                                          uint64_t vtid, CUcontext ctx) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_push_current_entry(hpt, ctx);
+  state->context_manager.ctx_push_current_entry({hostname, vpid, vtid}, ctx);
 }
 
 void ctx_push_current_exit_callback(void *btx_handle, void *usr_data,
@@ -382,8 +369,7 @@ void ctx_push_current_exit_callback(void *btx_handle, void *usr_data,
                                         const char *hostname, int64_t vpid,
                                         uint64_t vtid, CUresult cuResult) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_push_current_exit(hpt, cuResult);
+  state->context_manager.ctx_push_current_exit({hostname, vpid, vtid}, cuResult);
 }
 
 void ctx_pop_current_entry_callback(void *btx_handle, void *usr_data,
@@ -391,8 +377,7 @@ void ctx_pop_current_entry_callback(void *btx_handle, void *usr_data,
                                         const char *hostname, int64_t vpid,
                                         uint64_t vtid) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_pop_current_entry(hpt);
+  state->context_manager.ctx_pop_current_entry({hostname, vpid, vtid});
 }
 
 void ctx_pop_current_exit_callback(void *btx_handle, void *usr_data,
@@ -401,8 +386,7 @@ void ctx_pop_current_exit_callback(void *btx_handle, void *usr_data,
                                        uint64_t vtid, CUresult cuResult,
                                        CUcontext ctx) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.ctx_pop_current_exit(hpt, cuResult, ctx);
+  state->context_manager.ctx_pop_current_exit({hostname, vpid, vtid}, cuResult, ctx);
 }
 
 void stream_create_exit_callback(void *btx_handle, void *usr_data,
@@ -412,7 +396,7 @@ void stream_create_exit_callback(void *btx_handle, void *usr_data,
                                  CUstream stream) {
   auto state = static_cast<data_t *>(usr_data);
   hpt_t hpt = {hostname, vpid, vtid};
-  state->context_manager.stream_create_exit(hpt, cuResult, stream);
+  state->context_manager.stream_create_exit({hostname, vpid, vtid}, cuResult, stream);
 }
 // ===============================
 // END Context management
