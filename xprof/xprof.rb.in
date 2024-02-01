@@ -275,14 +275,17 @@ def launch_usr_bin(env, cmd)
       stdout.each { |line| print line }
     rescue Errno::EIO
     end
+  # Not sure how this exception can be triggered
   rescue PTY::ChildExited
-    puts('The child process exited!')
+    LOGGER.warn { 'Application Exited' }
+  rescue Interrupt
+    LOGGER.warn { 'Application Received Interrupt Signal' }
   end
 end
 
 def rename_to_human_readable_folder(lttng_output_root)
   # Multiple thapi can run concurrently.
-  #   To avoid any race-condition, we try to MKDIR until we succeed
+  #   To avoid any race-conditions, we try to MKDIR until we succeed
 
   # This is solving a consensus for the name,
   # make it simpler and only allow "rank" per job to do it
@@ -391,7 +394,7 @@ end
 
 def get_lttng_paths
   #  We launch one daemon per Node
-  #  Hence the output need to be prefixed by hostname, so that each MPI local master will write into it
+  #  Hence, the output needs to be prefixed by hostname so that each MPI local master will write into it
   lttng_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
 
   # Each session will have an UUID.
@@ -400,7 +403,7 @@ def get_lttng_paths
 
   # Because $HOME is shared, the sessiond daemon will not be able to get a lock.
   #   `Error: Could not get lock file $USER/.lttng/lttng-sessiond.lck, another instance is running.`
-  #   We will use the blancket solution of setting LLTNG_HOME waiting for the more granular solution
+  #   We will use the blanket solution of setting LLTNG_HOME waiting for the more granular solution
   lttng_home = File.join('/', 'tmp', lttng_session_uuid)
 
   [lttng_output, lttng_session_uuid, lttng_home]
@@ -410,7 +413,7 @@ def setup_lttng(lttng_output, lttng_session_uuid, lttng_home, backends)
   # Daemon will crash if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home)
 
-  # The dawmon will be cleaned in the teardown
+  # The daemon will be cleaned in the teardown
   exec('lttng-sessiond --daemonize')
 
   exec("lttng create #{lttng_session_uuid} -o #{lttng_output}")
@@ -429,10 +432,10 @@ end
 
 def teardown_lttng(lttng_session_uuid, lttng_home)
   exec("lttng destroy #{lttng_session_uuid}")
-  # Need to kill the sessiond. It's safe, because each job have their own
-  #   In theory opening this file is racy.
-  #   It's possible that the sessiond spawn before writing in file
-  #   In practice to so much work between the two. Should be ok
+  # Need to kill the sessiond. It's safe because each job has their own
+  #   In theory, opening this file is racy.
+  #   It's possible that the sessiond spawned before writing in the file
+  # In practice, there is so much work between the two. Should be ok
   pid = File.read(File.join(lttng_home, '.lttng', 'lttng-sessiond.pid')).to_i
   LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
@@ -440,7 +443,7 @@ end
 
 # Start and Stop lttng
 def trace(usr_argv)
-  # All master setup a futur global barrier
+  # All masters setup a future global barrier
   global_barrier_h = init_global_barrier if mpi_local_master?
 
   # Load Tracers and APILoaders Lib
@@ -456,8 +459,8 @@ def trace(usr_argv)
   # Launch User Command
   launch_usr_bin(h, usr_argv)
 
-  # We need to be sure that all the local rank finished
-  # before local master stop the lttng session
+  # We need to be sure that all the local ranks finished
+  # before local master stops the lttng session
   local_barier('waiting_for_application_ending')
   teardown_lttng(lttng_session_uuid, lttng_home) if mpi_local_master?
 
@@ -519,7 +522,6 @@ end
 #                      _|
 parser = OptionParser.new
 
-# backend default are hardcoded inside the cpp for now
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
             'traced-ranks': Set[-1],
             'max-name-size': 80,
@@ -539,7 +541,7 @@ parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
     end
   end.to_set
 end
-parser.on('--[no-]profile', 'Device activities will not profiled')
+parser.on('--[no-]profile', 'Device activities will not be profiled')
 
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
@@ -547,7 +549,7 @@ parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need
           "Default: #{options[:'backend'].join(',')}")
 
 # Analysis
-parser.on('-r', '--replay [PATH]', 'Replay traces for post-morten analysis')
+parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
 parser.on('-t', '--trace', 'Pretty print the trace')
 parser.on('-l', '--timeline', 'Dump a timeline of the trace.',
           "This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer")
@@ -611,7 +613,7 @@ if OPTIONS.include?(:version)
   exit(0)
 end
 
-# Right now, `replay` mean no tracing.
-# But we don't have a way of disabling post-pocessing
+# Right now, `replay` means no tracing.
+# But we don't have a way of disabling post-processing
 folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace(ARGV)
 postprocess(folder, {})
