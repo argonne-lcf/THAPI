@@ -283,7 +283,7 @@ def launch_usr_bin(env, cmd)
   end
 end
 
-def rename_to_human_readable_folder(lttng_output_root)
+def rename_root_to_human_readable_folder(lttng_output_root)
   # Multiple thapi can run concurrently.
   #   To avoid any race-conditions, we try to MKDIR until we succeed
 
@@ -294,7 +294,7 @@ def rename_to_human_readable_folder(lttng_output_root)
   date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
   path = (0..).each do |i|
     prefix =  i == 0 ? '' : "_#{i}"
-    path = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{date}#{prefix}")
+    path = lttng_output_root.sub("--#{mpi_job_id}", "--#{date}#{prefix}")
     begin
       Dir.mkdir(path)
     rescue SystemCallError
@@ -392,10 +392,15 @@ def enable_events_metadata(lttng_session_uuid, channel_name, tracing_mode: 'defa
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
 
+# TODO: Put in option
+# Or env_fetch_first('HOME'),
+THAPI_TMP_FOLDER_ROOT = "/tmp"
+
 def get_lttng_paths
   #  We launch one daemon per Node
-  #  Hence, the output needs to be prefixed by hostname so that each MPI local master will write into it
-  lttng_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
+  #  Hence, the output needs to be prefixed by hostname 
+  #  so that each MPI local master can write to it
+  lttng_output = File.join(THAPI_TMP_FOLDER_ROOT, 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
 
   # Each session will have an UUID.
   # This will be used to set LLTNG_HOME to a uuid for this run
@@ -462,13 +467,10 @@ def trace(usr_argv)
   # We need to be sure that all the local ranks finished
   # before local master stops the lttng session
   local_barier('waiting_for_application_ending')
-  teardown_lttng(lttng_session_uuid, lttng_home) if mpi_local_master?
-
-  # Ensure that all traces have been written so we can post-process them
-  global_barrier(global_barrier_h) if mpi_local_master?
-
-  # Master will move all the folders to a better folder
-  rename_to_human_readable_folder(File.dirname(lttng_output)) if mpi_master?
+  return unless mpi_local_master?
+  teardown_lttng(lttng_session_uuid, lttng_home) 
+  # Preprocess trace
+  preprocess_trace(lttng_output) 
 end
 
 #    _                                   _
@@ -477,12 +479,59 @@ end
 #
 
 def last_trace_saved
-  Dir[File.join(env_fetch_first('HOME'), 'lttng-traces', 'thapi--*')].max_by { |f| File.mtime(f) }
+  Dir[File.join(env_fetch_first('HOME'), 'lttng-traces', 'thapi*')].max_by { |f| File.mtime(f) }
 end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
-def postprocess(folder, _options)
-  return unless mpi_master?
+
+# The postprocess will as much as "per-node" as possible
+# TODO: In the case of replay we need to print to some error if the saved-trace is not valid
+# For now we will rely and the folder-name. 
+# This is not robust, we should rely on some `metadata` sometime
+
+
+# postprocess_ctf_transformation
+# Handle any processing need to be done after lttng-trace where generated
+
+def preprocess_trace(lttng_output)
+  raise unless mpi_local_master?
+
+  if OPTIONS.include?(:trace)
+    # Do nothing
+    opts = nil
+    ctf_output = lttng_output
+  elsif OPTIONS.include?(:timeline)
+    # Write Interval
+    opts = 'to_interval'
+    opts << "--backend #{backends} "
+    ctf_output = File.join(HOME, 'lttng-traces', "thapi_interval--#{mpi_job_id}", Socket.gethostname)
+  else
+    opts = 'to_aggreg'
+    opts << "--backend #{backends} "
+    # Write Aggreg
+    ctf_output = File.join(HOME, 'lttng-traces', "thapi_aggreg--#{mpi_job_id}", Socket.gethostname)
+  end
+
+  if opts?
+    opts << "--output #{ctf_output}"
+    cmd = "#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_output}"
+    LOGGER.debug(cmd)
+    exec("lttng destroy #{lttng_session_uuid}")
+  end
+
+  # Global Barrier
+  global_barrier(global_barrier_h) 
+
+  # Replace mpi_job_id with a better name
+  rename_root_to_human_readable_folder(File.dirname(ctf_output)) if mpi_master?
+end
+
+
+# Handle stuff who need to be done by the master rank
+# postprocess_master
+
+def postprocess(folder)
+  raise unless mpi_master?
 
   LOGGER.info { "postprocess #{folder}" }
   puts("Trace Location #{folder}")
@@ -513,6 +562,7 @@ def postprocess(folder, _options)
   IO.popen(cmd) do |stdout, _stdin, _pid|
     stdout.each { |line| print line }
   end
+
 end
 
 #
@@ -616,4 +666,4 @@ end
 # Right now, `replay` means no tracing.
 # But we don't have a way of disabling post-processing
 folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace(ARGV)
-postprocess(folder, {})
+postprocess(folder) if mpi_master?

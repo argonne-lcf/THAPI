@@ -131,7 +131,6 @@ def get_components(names)
   # BT "native" component classes
   components_classes = {
     'source.ctf.fs' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs'),
-    'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
     'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
     'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
     'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
@@ -211,10 +210,6 @@ def get_and_add_components(graph, names)
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
-    when 'source.ctf.lttng_live'
-      graph.add(comp, 'source_live',
-                params: { 'inputs' => $options[:inputs],
-                          'session-not-found-action' => 'end' })
     when 'source.ctf.fs'
       Find.find(*ARGV)
           .reject { |path| FileTest.directory?(path) }
@@ -290,15 +285,18 @@ subcommands = {
         $options[:live] = true
       end
     end,
-  'live2aggreg' =>
+  'to_interval' =>
     OptionParser.new do |opts|
-      opts.banner = 'Usage: live2aggreg [OPTIONS]'
+      opts.banner = 'Usage: to_interval [OPTIONS]'
       common_options(opts)
-
-      opts.on('--inputs=INPUTS') do |inputs|
-        $options[:inputs] = [inputs]
+      opts.on('--output=OUTPUT') do |output|
+        $options[:output] = output
       end
-
+    end,
+  'to_aggreg' =>
+    OptionParser.new do |opts|
+      opts.banner = 'Usage: to_aggreg [OPTIONS]'
+      common_options(opts)
       opts.on('--output=OUTPUT') do |output|
         $options[:output] = output
       end
@@ -311,17 +309,6 @@ subcommands = {
       opts.on('--live', 'Enable live display of the trace') do
         $options[:live] = true
       end
-
-      $options_tally.each do |k, (t, _)|
-        opts.on("--#{k}=VALUE", t) do |v|
-          $options_tally[k] = [t, v]
-        end
-      end
-    end,
-  'aggreg2tally' =>
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: aggreg2tally [OPTIONS] trace_directory...'
-      common_options(opts)
 
       $options_tally.each do |k, (t, _)|
         opts.on("--#{k}=VALUE", t) do |v|
@@ -353,9 +340,9 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                 'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                'sink.btx_timeline.timeline'],
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                'live2aggreg' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'filter.intervals.interval',
-                                  'filter.btx_aggreg.aggreg', 'sink.ctf.fs'],
-                'aggreg2tally' => ['source.ctf.fs', 'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'] }
+                'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'sink.ctf.fs'],
+                'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                                'filter.btx_aggreg.aggreg', 'sink.ctf.fs'],
 
 graph = BT2::BTGraph.new
 comp = get_and_add_components(graph, thapi_graph[command])
