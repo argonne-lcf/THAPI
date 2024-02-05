@@ -74,8 +74,8 @@ module BTComponentClassRefinement
     attr_accessor :plugins_path, :cli_v
 
     def add(component_class, name, params: {},
-                      logging_level: BT2::BTLogging.default_level,
-                      initialize_method_data: nil)
+            logging_level: BT2::BTLogging.default_level,
+            initialize_method_data: nil)
 
       @plugins_path << component_class.plugin.path
       @cli_v << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
@@ -160,22 +160,24 @@ def get_components(names)
       require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
       # I guess need to put it in `babeltrace_energy_lib` at some point?
 
-      $energies={}
-      $event_lambdas["lttng_ust_ze_sampling:gpu_energy"] = lambda { |defi|
-        energy = defi['energy']
-        timestamp = defi['timestamp']
+      $energies = {}
+      if $options[:backends].include?('ze')
+        $event_lambdas['lttng_ust_ze_sampling:gpu_energy'] = lambda { |defi|
+          energy = defi['energy']
+          timestamp = defi['timestamp']
 
-        key = [ defi['hDevice'], defi['domain'] ]
-        previous = $energies[key]
-        $energies[key] = [energy, timestamp]
+          key = [defi['hDevice'], defi['domain']]
+          previous = $energies[key]
+          $energies[key] = [energy, timestamp]
 
-        if previous
-          p_energy, p_timestamp = previous
-          "#{key[0]}:#{key[1]}: #{(energy - p_energy).to_f/(timestamp - p_timestamp)}"
-        else
-          ""
-        end
-      } if $options[:backends].include?('ze')
+          if previous
+            p_energy, p_timestamp = previous
+            "#{key[0]}:#{key[1]}: #{(energy - p_energy).to_f / (timestamp - p_timestamp)}"
+          else
+            ''
+          end
+        }
+      end
 
       f = lambda { |iterator, _|
         iterator.next_messages.each do |m|
@@ -189,7 +191,11 @@ def get_components(names)
           if $options[:context]
             str << " - #{e.stream.trace.get_environment_entry_value_by_name('hostname')}"
             common_context_field = e.get_common_context_field
-            str << " - " << common_context_field.value.collect { |k, v| "#{k}: #{v}" }.join(", ") if common_context_field
+            if common_context_field
+              str << ' - ' << common_context_field.value.collect do |k, v|
+                "#{k}: #{v}"
+              end.join(', ')
+            end
           end
           str << " - #{e.name}: "
           str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
@@ -204,7 +210,7 @@ def get_components(names)
 end
 
 def get_and_add_components(graph, names)
-  get_components(names).map do |nc|
+  get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
     case name
@@ -231,9 +237,11 @@ def get_and_add_components(graph, names)
     when 'sink.btx_tally.tally'
       graph.add(comp, 'tally',
                 params: $options_tally.transform_values { |_, v| v })
+    when 'filter.utils.muxer'
+      graph.add(comp, name) unless $options[:'no-muxer']
     else
       # `.` is not allowed in the babeltrace components name when using the CLI
-      graph.add(comp, name.gsub('.','_'))
+      graph.add(comp, name.gsub('.', '_'))
     end
   end
 end
@@ -254,6 +262,10 @@ def common_options(opts)
 
   opts.on('--debug') do |_v|
     $options[:debug] = true
+  end
+
+  opts.on('--no-muxer') do |_v|
+    $options[:'no-muxer'] = true
   end
 
   opts.on('-v', '--version', 'Print the version string') do
@@ -306,10 +318,6 @@ subcommands = {
       opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
       common_options(opts)
 
-      opts.on('--live', 'Enable live display of the trace') do
-        $options[:live] = true
-      end
-
       $options_tally.each do |k, (t, _)|
         opts.on("--#{k}=VALUE", t) do |v|
           $options_tally[k] = [t, v]
@@ -335,6 +343,15 @@ subcommands[command].order!
 # Fix segfault
 ARGV.uniq!
 
+if $options[:'no-muxer']
+  # We need a metababel plugin to read multiple port who come from the source.
+  # And they need to be first
+  h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 0, 'ze' => 0 }
+  raise if ($options[:backends] & h.filter_map { |k, v| k if v == 1 }).empty?
+
+  $options[:backends] = $options[:backends].sort_by { |k| h[k] }
+end
+
 thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                             'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
                 'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
@@ -342,7 +359,7 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
                 'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'sink.ctf.fs'],
                 'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                'filter.btx_aggreg.aggreg', 'sink.ctf.fs'],
+                                'filter.btx_aggreg.aggreg', 'sink.ctf.fs'] }
 
 graph = BT2::BTGraph.new
 comp = get_and_add_components(graph, thapi_graph[command])
@@ -354,7 +371,7 @@ if $options[:debug]
   # puts cli
   puts "babeltrace_thapi: babeltrace2 cli command will be saved in ./#{name}"
   $stdout.flush
-  File.open(name, 'w') { |f| f.write(cli) }
+  File.write(name, cli)
 end
 
 graph.run

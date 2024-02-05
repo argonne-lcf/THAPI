@@ -83,7 +83,7 @@ end
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
 def mpi_job_id
-  env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
+  @mpi_job_id ||= env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
 end
 
 def mpi_rank_id
@@ -293,7 +293,7 @@ def rename_root_to_human_readable_folder(lttng_output_root)
 
   date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
   path = (0..).each do |i|
-    prefix =  i == 0 ? '' : "_#{i}"
+    prefix = i == 0 ? '' : "_#{i}"
     path = lttng_output_root.sub("--#{mpi_job_id}", "--#{date}#{prefix}")
     begin
       Dir.mkdir(path)
@@ -303,6 +303,7 @@ def rename_root_to_human_readable_folder(lttng_output_root)
       break path
     end
   end
+  LOGGER.debug { "Rename #{lttng_output_root} -> #{path}" }
   File.rename(lttng_output_root, path)
   path
 end
@@ -394,11 +395,11 @@ end
 
 # TODO: Put in option
 # Or env_fetch_first('HOME'),
-THAPI_TMP_FOLDER_ROOT = "/tmp"
+THAPI_TMP_FOLDER_ROOT = '/tmp'
 
 def get_lttng_paths
   #  We launch one daemon per Node
-  #  Hence, the output needs to be prefixed by hostname 
+  #  Hence, the output needs to be prefixed by hostname
   #  so that each MPI local master can write to it
   lttng_output = File.join(THAPI_TMP_FOLDER_ROOT, 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
 
@@ -468,9 +469,10 @@ def trace(usr_argv)
   # before local master stops the lttng session
   local_barier('waiting_for_application_ending')
   return unless mpi_local_master?
-  teardown_lttng(lttng_session_uuid, lttng_home) 
+
+  teardown_lttng(lttng_session_uuid, lttng_home)
   # Preprocess trace
-  preprocess_trace(lttng_output) 
+  preprocess_trace(lttng_output, backends, global_barrier_h)
 end
 
 #    _                                   _
@@ -486,14 +488,13 @@ end
 
 # The postprocess will as much as "per-node" as possible
 # TODO: In the case of replay we need to print to some error if the saved-trace is not valid
-# For now we will rely and the folder-name. 
+# For now we will rely and the folder-name.
 # This is not robust, we should rely on some `metadata` sometime
-
 
 # postprocess_ctf_transformation
 # Handle any processing need to be done after lttng-trace where generated
 
-def preprocess_trace(lttng_output)
+def preprocess_trace(lttng_output, backends, global_barrier_h)
   raise unless mpi_local_master?
 
   if OPTIONS.include?(:trace)
@@ -502,30 +503,27 @@ def preprocess_trace(lttng_output)
     ctf_output = lttng_output
   elsif OPTIONS.include?(:timeline)
     # Write Interval
-    opts = 'to_interval'
-    opts << "--backend #{backends} "
-    ctf_output = File.join(HOME, 'lttng-traces', "thapi_interval--#{mpi_job_id}", Socket.gethostname)
+    opts = 'to_interval '
+    opts << "--backend #{backends.join(',')} "
+    ctf_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi_interval--#{mpi_job_id}", Socket.gethostname)
   else
-    opts = 'to_aggreg'
-    opts << "--backend #{backends} "
+    opts = 'to_aggreg '
+    opts << "--backend #{backends.join(',')} "
     # Write Aggreg
-    ctf_output = File.join(HOME, 'lttng-traces', "thapi_aggreg--#{mpi_job_id}", Socket.gethostname)
+    ctf_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi_aggreg--#{mpi_job_id}", Socket.gethostname)
   end
 
-  if opts?
+  unless opts.nil?
     opts << "--output #{ctf_output}"
-    cmd = "#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_output}"
-    LOGGER.debug(cmd)
-    exec("lttng destroy #{lttng_session_uuid}")
+    exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_output}")
   end
 
   # Global Barrier
-  global_barrier(global_barrier_h) 
+  global_barrier(global_barrier_h)
 
   # Replace mpi_job_id with a better name
   rename_root_to_human_readable_folder(File.dirname(ctf_output)) if mpi_master?
 end
-
 
 # Handle stuff who need to be done by the master rank
 # postprocess_master
@@ -553,16 +551,17 @@ def postprocess(folder)
     opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} "
     opts << '--display_mode json ' if OPTIONS.include?(:json)
     opts << "--backend #{backends} "
-    opts << "--backend_level #{backend_level}" unless backend_level.empty?
+    opts << "--backend_level #{backend_level} " unless backend_level.empty?
     opts << '--display extended ' if OPTIONS.include?(:extended)
   end
+
+  opts << '--no-muxer ' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
 
   cmd = "#{BINDIR}/babeltrace_thapi #{opts} -- #{folder}"
   LOGGER.debug(cmd)
   IO.popen(cmd) do |stdout, _stdin, _pid|
     stdout.each { |line| print line }
   end
-
 end
 
 #
@@ -596,7 +595,7 @@ parser.on('--[no-]profile', 'Device activities will not be profiled')
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
           'Format: backend_name[:backend_level],...',
-          "Default: #{options[:'backend'].join(',')}")
+          "Default: #{options[:backend].join(',')}")
 
 # Analysis
 parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
