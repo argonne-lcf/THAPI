@@ -106,6 +106,63 @@ def mpi_master?
   mpi_rank_id == 0
 end
 
+#    _                    _
+#   |_ _  |  _|  _  ._   |_) _. _|_ |_
+#   | (_) | (_| (/_ |    |  (_|  |_ | |
+#
+
+# Type is aggreg bs
+def prefix_processed_trace
+  if OPTIONS.include?(:trace)
+    ''
+  elsif OPTIONS.include?(:timeline)
+    '_interval'
+  else
+    '_aggreg'
+  end
+end
+
+def lttng_trace_dir_tmp
+  File.join('/', 'tmp', "thapi--#{mpi_job_id}", Socket.gethostname)
+end
+
+def thapi_trace_dir_tmp
+  File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{mpi_job_id}",
+            Socket.gethostname)
+end
+
+def lttng_home_dir
+  File.join('/', 'tmp', "lttng_home--#{mpi_job_id}")
+end
+
+# Put the date on the directory name, can be removed from another naming scheme
+# Or we can can the data beffore
+def thapi_trace_dir_root
+  raise unless mpi_master?
+
+  @thapi_trace_dir_root ||= begin
+    # Multiple thapi can run concurrently.
+    #   To avoid any race-conditions, we try to MKDIR until we succeed
+
+    # This is solving a consensus for the name,
+    # make it simpler and only allow "rank" per job to do it
+
+    date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
+    (0..).each do |i|
+      prefix = i == 0 ? '' : "_#{i}"
+      thapi_uuid = date + prefix
+      path = File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{thapi_uuid}")
+      begin
+        Dir.mkdir(path)
+      rescue SystemCallError
+        next
+      else
+        break path
+      end
+    end
+  end
+end
+
 #    _
 #   |_)  _. ._ ._ o  _  ._
 #   |_) (_| |  |  | (/_ |
@@ -204,6 +261,10 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
+def lttng_session_uuid
+  Digest::MD5.hexdigest(lttng_trace_dir_tmp)
+end
+
 def env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -283,32 +344,7 @@ def launch_usr_bin(env, cmd)
   end
 end
 
-def rename_root_to_human_readable_folder(lttng_output_root)
-  # Multiple thapi can run concurrently.
-  #   To avoid any race-conditions, we try to MKDIR until we succeed
-
-  # This is solving a consensus for the name,
-  # make it simpler and only allow "rank" per job to do it
-  raise unless mpi_master?
-
-  date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
-  path = (0..).each do |i|
-    prefix = i == 0 ? '' : "_#{i}"
-    path = lttng_output_root.sub("--#{mpi_job_id}", "--#{date}#{prefix}")
-    begin
-      Dir.mkdir(path)
-    rescue SystemCallError
-      next
-    else
-      break path
-    end
-  end
-  LOGGER.debug { "Rename #{lttng_output_root} -> #{path}" }
-  File.rename(lttng_output_root, path)
-  path
-end
-
-def enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   case tracing_mode
   when 'minimal'
@@ -341,7 +377,7 @@ def enable_events_ze(lttng_session_uuid, channel_name, tracing_mode: 'default', 
   end
 end
 
-def enable_events_cl(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   case tracing_mode
   when 'full'
@@ -371,96 +407,113 @@ def enable_events_cl(lttng_session_uuid, channel_name, tracing_mode: 'default', 
   end
 end
 
-def enable_events_cuda(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_cuda:*")
   exec("#{lttng_enable} lttng_ust_cuda_properties")
   exec("#{lttng_enable} lttng_ust_cuda_profiling:*") if profiling
 end
 
-def enable_events_hip(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_hip(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_hip:*")
 end
 
-def enable_events_omp(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_ompt:*target*")
 end
 
-def enable_events_metadata(lttng_session_uuid, channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
 
-# TODO: Put in option
-# Or env_fetch_first('HOME'),
-THAPI_TMP_FOLDER_ROOT = '/tmp'
-
-def get_lttng_paths
-  #  We launch one daemon per Node
-  #  Hence, the output needs to be prefixed by hostname
-  #  so that each MPI local master can write to it
-  lttng_output = File.join(THAPI_TMP_FOLDER_ROOT, 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
-
-  # Each session will have an UUID.
-  # This will be used to set LLTNG_HOME to a uuid for this run
-  lttng_session_uuid = Digest::MD5.hexdigest(lttng_output)
-
-  # Because $HOME is shared, the sessiond daemon will not be able to get a lock.
-  #   `Error: Could not get lock file $USER/.lttng/lttng-sessiond.lck, another instance is running.`
-  #   We will use the blanket solution of setting LLTNG_HOME waiting for the more granular solution
-  lttng_home = File.join('/', 'tmp', lttng_session_uuid)
-
-  [lttng_output, lttng_session_uuid, lttng_home]
-end
-
-def setup_lttng(lttng_output, lttng_session_uuid, lttng_home, backends)
+def setup_lttng(backends)
   # Daemon will crash if LTTNG_HOME doesn't exist
-  FileUtils.mkdir_p(lttng_home)
+  FileUtils.mkdir_p(lttng_home_dir)
 
   # The daemon will be cleaned in the teardown
   exec('lttng-sessiond --daemonize')
 
-  exec("lttng create #{lttng_session_uuid} -o #{lttng_output}")
+  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
   channel_name = 'blocking-channel'
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
   exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
   (backends + ['metadata']).each do |name|
-    send("enable_events_#{name}", lttng_session_uuid, channel_name,
+    send("enable_events_#{name}", channel_name,
          tracing_mode: OPTIONS[:tracing_mode],
          profiling: OPTIONS[:profile])
   end
   exec("lttng start #{lttng_session_uuid}")
 end
 
-def teardown_lttng(lttng_session_uuid, lttng_home)
+def teardown_lttng
   exec("lttng destroy #{lttng_session_uuid}")
   # Need to kill the sessiond. It's safe because each job has their own
   #   In theory, opening this file is racy.
   #   It's possible that the sessiond spawned before writing in the file
   # In practice, there is so much work between the two. Should be ok
-  pid = File.read(File.join(lttng_home, '.lttng', 'lttng-sessiond.pid')).to_i
+  pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
   LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
 end
 
-# Start and Stop lttng
-def trace(usr_argv)
+#    _                                   _
+#   |_)  _. |_   _  | _|_ ._ _.  _  _     )
+#   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
+#
+
+# TODO: Use babeltrace_thapi as a LIB not a binary
+
+def on_node_processing(_backends, global_barrier_h)
+  raise unless mpi_local_master?
+
+  opts = if OPTIONS.include?(:trace)
+           # Do move to $home
+           nil
+         elsif OPTIONS.include?(:timeline)
+           # Write Interval
+           'to_interval '
+         else
+           'to_aggreg '
+         end
+
+  if opts
+    opts << "--output #{thapi_trace_dir_tmp}"
+    exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
+    FileUtils.rm_f(lttng_trace_dir_tmp)
+  else
+    FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
+    FileUtils.mv(lttng_trace_dir_tmp, thapi_trace_dir_tmp)
+  end
+
+  # Global Barrier
+  global_barrier(global_barrier_h)
+
+  # Replace mpi_job_id with a better name
+  return unless mpi_master?
+
+  thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
+  FileUtils.mv(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
+  thapi_trace_dir_root
+end
+
+# Start, Stop lttng, amd do the on-node analsysis
+def trace_and_on_node_processing(usr_argv)
   # All masters setup a future global barrier
   global_barrier_h = init_global_barrier if mpi_local_master?
 
   # Load Tracers and APILoaders Lib
   backends, h = env_tracers
 
-  # All Need to set the LLTTNG_HOME
+  # All rank need to set the LLTTNG_HOME env
   # so they can have access to the daemon
-  lttng_output, lttng_session_uuid, lttng_home = get_lttng_paths
-  ENV['LTTNG_HOME'] = lttng_home
+  ENV['LTTNG_HOME'] = lttng_home_dir
   # Only local master spawn LTTNG daemon and start session
-  setup_lttng(lttng_output, lttng_session_uuid, lttng_home, backends) if mpi_local_master?
+  setup_lttng(backends) if mpi_local_master?
   local_barier('waiting_for_lttng_setup')
   # Launch User Command
   launch_usr_bin(h, usr_argv)
@@ -470,68 +523,12 @@ def trace(usr_argv)
   local_barier('waiting_for_application_ending')
   return unless mpi_local_master?
 
-  teardown_lttng(lttng_session_uuid, lttng_home)
+  teardown_lttng
   # Preprocess trace
-  preprocess_trace(lttng_output, backends, global_barrier_h)
+  on_node_processing(backends, global_barrier_h)
 end
 
-#    _                                   _
-#   |_)  _. |_   _  | _|_ ._ _.  _  _     )
-#   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
-#
-
-def last_trace_saved
-  Dir[File.join(env_fetch_first('HOME'), 'lttng-traces', 'thapi*')].max_by { |f| File.mtime(f) }
-end
-
-# TODO: Use babeltrace_thapi as a LIB not a binary
-
-# The postprocess will as much as "per-node" as possible
-# TODO: In the case of replay we need to print to some error if the saved-trace is not valid
-# For now we will rely and the folder-name.
-# This is not robust, we should rely on some `metadata` sometime
-
-# postprocess_ctf_transformation
-# Handle any processing need to be done after lttng-trace where generated
-
-def preprocess_trace(lttng_output, backends, global_barrier_h)
-  raise unless mpi_local_master?
-
-  if OPTIONS.include?(:trace)
-    # Do move to $home
-    opts = nil
-    ctf_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi--#{mpi_job_id}", Socket.gethostname)
-  elsif OPTIONS.include?(:timeline)
-    # Write Interval
-    opts = 'to_interval '
-    opts << "--backend #{backends.join(',')} "
-    ctf_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi_interval--#{mpi_job_id}", Socket.gethostname)
-  else
-    opts = 'to_aggreg '
-    opts << "--backend #{backends.join(',')} "
-    # Write Aggreg
-    ctf_output = File.join(env_fetch_first('HOME'), 'lttng-traces', "thapi_aggreg--#{mpi_job_id}", Socket.gethostname)
-  end
-
-  if opts
-    opts << "--output #{ctf_output}"
-    exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_output}")
-  else
-    FileUtils.mkdir_p(File.dirname(ctf_output))
-    FileUtils.mv(lttng_output, ctf_output)
-  end
-
-  # Global Barrier
-  global_barrier(global_barrier_h)
-
-  # Replace mpi_job_id with a better name
-  rename_root_to_human_readable_folder(File.dirname(ctf_output)) if mpi_master?
-end
-
-# Handle stuff who need to be done by the master rank
-# postprocess_master
-
-def postprocess(folder)
+def global_processing(folder)
   raise unless mpi_master?
 
   LOGGER.info { "postprocess #{folder}" }
@@ -540,11 +537,17 @@ def postprocess(folder)
   backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
 
   if OPTIONS.include?(:trace)
+    if folder.include?('_interval') || folder.include?('_aggreg')
+      raise 'Cannot show the trace of an interval or aggregated trace'
+    end
+
     opts = 'trace '
     opts << '--restrict '
     opts << '--context '
     opts << "--backend #{backends} "
   elsif OPTIONS.include?(:timeline)
+    raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
+
     opts = 'timeline '
     opts << "--backend #{backends} "
   else
@@ -652,20 +655,20 @@ OPTIONS = options.freeze
 # Setup Logger
 LOGGER = Logger.new($stdout)
 LOGGER.level = OPTIONS[:debug]
-
 LOGGER.debug(OPTIONS)
-
-# Action
 
 # We don't rely on the Parser-OPT default help, as it doesn't print the footer
 print_help_and_exit(parser, exit_code: 0) if OPTIONS.include?(:help)
-
 if OPTIONS.include?(:version)
   puts(File.read(File.join(DATADIR, 'version')))
   exit(0)
 end
 
+def last_trace_saved
+  Dir[File.join(env_fetch_first('HOME'), 'thapi-traces', 'thapi*')].max_by { |f| File.mtime(f) }
+end
+
 # Right now, `replay` means no tracing.
 # But we don't have a way of disabling post-processing
-folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace(ARGV)
-postprocess(folder) if mpi_master?
+folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
+global_processing(folder) if mpi_master?
