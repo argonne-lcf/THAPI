@@ -431,6 +431,7 @@ end
 
 def setup_lttng(backends)
   raise unless mpi_local_master?
+
   # Daemon will crash if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
 
@@ -482,7 +483,7 @@ def on_node_processing(_backends, global_barrier_h)
            'to_aggreg '
          end
 
-  if opts
+  if opts && OPTIONS[:analysis]
     opts << "--output #{thapi_trace_dir_tmp}"
     exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
@@ -533,7 +534,6 @@ def global_processing(folder)
   raise unless mpi_master?
 
   LOGGER.info { "postprocess #{folder}" }
-  puts("Trace Location #{folder}")
   backends = OPTIONS[:'backend-name'].join(',')
   backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
 
@@ -579,6 +579,7 @@ end
 parser = OptionParser.new
 
 options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
+            analysis: true,
             'traced-ranks': Set[-1],
             'max-name-size': 80,
             debug: Logger::FATAL }
@@ -597,7 +598,8 @@ parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
     end
   end.to_set
 end
-parser.on('--[no-]profile', 'Device activities will not be profiled')
+parser.on('--[no-]profile', 'Triger for device activities profiling')
+parser.on('--[no-]analysis', 'Triger for analysis')
 
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
@@ -672,4 +674,5 @@ end
 # Right now, `replay` means no tracing.
 # But we don't have a way of disabling post-processing
 folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
-global_processing(folder) if mpi_master?
+puts("THAPI: Trace Location #{folder}")
+global_processing(folder) if OPTIONS[:analysis] && mpi_master?
