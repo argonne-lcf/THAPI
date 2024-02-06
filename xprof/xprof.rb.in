@@ -430,6 +430,7 @@ def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: tru
 end
 
 def setup_lttng(backends)
+  raise unless mpi_local_master?
   # Daemon will crash if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
 
@@ -509,7 +510,7 @@ def trace_and_on_node_processing(usr_argv)
   # Load Tracers and APILoaders Lib
   backends, h = env_tracers
 
-  # All rank need to set the LLTTNG_HOME env
+  # All ranks need to set the LLTTNG_HOME env
   # so they can have access to the daemon
   ENV['LTTNG_HOME'] = lttng_home_dir
   # Only local master spawn LTTNG daemon and start session
