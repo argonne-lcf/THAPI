@@ -346,8 +346,8 @@ ARGV.uniq!
 if $options[:'no-muxer']
   # We need a metababel plugin to read multiple port who come from the source.
   # And they need to be first
-  h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 0, 'ze' => 0 }
-  raise if ($options[:backends] & h.filter_map { |k, v| k if v == 1 }).empty?
+  h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 1, 'ze' => 0 }
+  raise if ($options[:backends] & h.filter_map { |k, v| k if v == 0 }).empty?
 
   $options[:backends] = $options[:backends].sort_by { |k| h[k] }
 end
