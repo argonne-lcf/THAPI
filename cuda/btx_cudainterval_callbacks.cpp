@@ -9,16 +9,15 @@
 #include "btx_cudainterval_callbacks.hpp"
 
 #include "context_manager.hpp"
+#include "entry_state.hpp"
 
 #include <metababel/metababel.h>
 
 
 struct data_s {
-  // store entry state per thread in order to use in exit callback, conditioned
-  // on the cuResult being a non-error
-  std::unordered_map<hpt_t, int64_t> entry_ts;
-  std::unordered_map<hpt_t, std::string> entry_kernel_name;
-  std::unordered_map<hpt_t, size_t> entry_traffic_size;
+  // need to store entry state per thread in order to use in exit callback if the
+  // cuResult is a non-error
+  EntryState entry_state;
 
   // kernels (CUfunction objects) are "created" before use, at which time we save
   // the name so at execute time we know the name and can emit an event with the name
@@ -51,17 +50,13 @@ struct data_s {
 
   // Encapsulate complex context management state
   CUDAContextManager context_manager;
+
+  // TODO: per thread state, data filled in as we go
+
+  // level zero is vector of std::byte
 };
 
 using data_t = struct data_s;
-
-void set_entry_ts(data_t *data, hpt_t hpt, int64_t ts) {
-  data->entry_ts[hpt] = ts;
-}
-
-int64_t get_entry_ts(data_t *data, hpt_t hpt) {
-  return data->entry_ts.at(hpt);
-}
 
 std::string strip_event_class_name(const char *str) {
   std::string temp(str);
@@ -79,7 +74,7 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               const char *event_class_name, const char *hostname, int64_t vpid,
                               uint64_t vtid, bool err) {
   std::string event_class_name_striped = strip_event_class_name(event_class_name);
-  const int64_t _start = get_entry_ts(static_cast<data_t *>(usr_data), {hostname, vpid, vtid});
+  const int64_t _start = static_cast<data_t *>(usr_data)->entry_state.get_ts({hostname, vpid, vtid});
 
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, _start, BACKEND_CUDA,
                               event_class_name_striped.c_str(), (ts - _start), err);
@@ -91,10 +86,10 @@ static void send_traffic_message(void *btx_handle, void *usr_data, int64_t ts,
   std::string event_class_name_stripped = strip_event_class_name(event_class_name);
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key = {hostname, vpid, vtid};
-  const int64_t _start = get_entry_ts(state, key);
+  const int64_t _start = state->entry_state.get_ts(key);
 
   if (!err) {
-    auto size = state->entry_traffic_size.at(key);
+    auto size = state->entry_state.pop_entry<size_t>(key);
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, _start, BACKEND_CUDA,
                                    event_class_name_stripped.c_str(), size);
   }
@@ -110,7 +105,7 @@ void btx_finalize_component(void *usr_data) {
 void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
                       const char *event_class_name, const char *hostname, int64_t vpid,
                              uint64_t vtid) {
-  set_entry_ts(((data_t *)usr_data), {hostname, vpid, vtid}, ts);
+  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
 }
 
 void exits_callback_cudaError_absent(void *btx_handle, void *usr_data, int64_t ts,
@@ -141,14 +136,15 @@ void exits_callback_cudaError_present(void *btx_handle, void *usr_data, int64_t 
   }
 }
 
+// TODO: explain difference
 void entries_traffic_v2_callback(void *btx_handle, void *usr_data, int64_t ts,
                                  const char *event_class_name, const char *hostname,
                                  int64_t vpid, uint64_t vtid, size_t size) {
   // save traffic size and entry ts for use in exit callback
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key = {hostname, vpid, vtid};
-  set_entry_ts(state, key, ts);
-  state->entry_traffic_size[key] = size;
+  state->entry_state.set_ts(key, ts);
+  state->entry_state.push_entry<size_t>(key, size);
 }
 
 void entries_traffic_v1_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -412,7 +408,7 @@ void module_get_function_entry_callback(void *btx_handle, void *usr_data,
   std::string name_str(name);
   auto state = static_cast<data_t *>(usr_data);
   hpt_t hpt = {hostname, vpid, vtid};
-  state->entry_kernel_name[hpt] = name_str;
+  state->entry_state.push_entry(hpt, name_str);
 }
 
 void module_get_function_exit_callback(void *btx_handle, void *usr_data,
@@ -426,7 +422,7 @@ void module_get_function_exit_callback(void *btx_handle, void *usr_data,
   auto state = static_cast<data_t *>(usr_data);
   hpt_t hpt = {hostname, vpid, vtid};
   try {
-    auto kernel_name = state->entry_kernel_name.at(hpt);
+    auto kernel_name = state->entry_state.pop_entry<std::string>(hpt);
     hp_kernel_t hp_kernel_key = {hostname, vpid, cuFunction};
     state->hp_kernel_to_name[hp_kernel_key] = kernel_name;
   } catch(const std::out_of_range& oor) {
