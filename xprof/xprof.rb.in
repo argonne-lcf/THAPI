@@ -122,6 +122,22 @@ def prefix_processed_trace
   end
 end
 
+
+# THAPI/xprof use multiple folter
+# - lttng_trace_dir_tmp
+#     where the 'raw' lttng trace if saved.
+#     For performance we store in a `tmp` folder.
+#     When "on the fly" analys will be possible, this should not potential OOM
+# - thapi_trace_dir_tmp
+#     Where the "pre-processed / analysed / condensed" trace a saved.
+#     Each nodes need to aggree on a root folder to write into.
+#  - thapi_trace_dir_root
+#     Final directory exposed to the user. The `master rank`  rename the `thapi_trace_dir_tmp`
+#     with a more "friendly" name.
+#
+#  - lttng_home_dir
+#     Home of the lttng daemon
+
 def lttng_trace_dir_tmp
   File.join('/', 'tmp', "thapi--#{mpi_job_id}", Socket.gethostname)
 end
@@ -135,8 +151,6 @@ def lttng_home_dir
   File.join('/', 'tmp', "lttng_home--#{mpi_job_id}")
 end
 
-# Put the date on the directory name, can be removed from another naming scheme
-# Or we can can the data beffore
 def thapi_trace_dir_root
   raise unless mpi_master?
 
@@ -432,18 +446,18 @@ end
 def setup_lttng(backends)
   raise unless mpi_local_master?
 
-  # Daemon will crash if LTTNG_HOME doesn't exist
+  # Spawning the sessiond Daemon will crash
+  #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
 
-  # The daemon will be cleaned in the teardown
   exec('lttng-sessiond --daemonize')
-
   exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
   channel_name = 'blocking-channel'
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
   exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
+  # Enable backend events
   (backends + ['metadata']).each do |name|
     send("enable_events_#{name}", channel_name,
          tracing_mode: OPTIONS[:tracing_mode],
@@ -454,13 +468,15 @@ end
 
 def teardown_lttng
   exec("lttng destroy #{lttng_session_uuid}")
-  # Need to kill the sessiond. It's safe because each job has their own
-  #   In theory, opening this file is racy.
-  #   It's possible that the sessiond spawned before writing in the file
-  # In practice, there is so much work between the two. Should be ok
+  # Need to kill the sessiond Daemon. It's safe because each job has their own
+  #
+  # In theory, opening the lttng-sessiond.pid file is racy.
+  # It's possible that the sessiond spawned, and didn't yet wrote the file
+  # In practice, there is lot of work between the spawn and the write, so should be ok
   pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
   LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
+  FileUtils.rm_f(lttng_home_dir)
 end
 
 #    _                                   _
@@ -598,8 +614,8 @@ parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
     end
   end.to_set
 end
-parser.on('--[no-]profile', 'Triger for device activities profiling')
-parser.on('--[no-]analysis', 'Triger for analysis')
+parser.on('--[no-]profile', 'Trigger for device activities profiling')
+parser.on('--[no-]analysis', 'Trigger for analysis')
 
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
