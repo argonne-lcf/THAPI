@@ -689,5 +689,7 @@ end
 # Right now, `replay` means no tracing.
 # But we don't have a way of disabling post-processing
 folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
-puts("THAPI: Trace Location #{folder}")
-global_processing(folder) if OPTIONS[:analysis] && mpi_master?
+if mpi_master?
+  puts("THAPI: Trace Location #{folder}")
+  global_processing(folder) if OPTIONS[:analysis]
+end
