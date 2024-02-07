@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <regex>
 #include <tuple>
 #include <string>
@@ -431,10 +432,20 @@ void module_get_function_exit_callback(void *btx_handle, void *usr_data,
   }
 }
 
-void operation_entry_helper(void *btx_handle, void *usr_data,
-                            int64_t ts, const char *event_class_name,
-                            const char *hostname, int64_t vpid,
-                            uint64_t vtid, CUstream cuStream, CUfunction f) {
+/**
+ * Handle two types of tasks:
+ *
+ * 1. kernels with function objects and names
+ * 2. other async tasks like cuMemcpy* and cuLaunchHost that don't have
+ *    anassociated function object
+ *
+ * These are distinguished by whether f_optional function object is passed
+ */
+void task_entry_helper(void *btx_handle, void *usr_data,
+                       int64_t ts, const char *event_class_name,
+                       const char *hostname, int64_t vpid,
+                       uint64_t vtid, CUstream cuStream,
+                       const std::optional<CUfunction> f_optional = {}) {
   auto state = static_cast<data_t *>(usr_data);
   hpt_t hpt = {hostname, vpid, vtid};
   CUdevice dev;
@@ -444,12 +455,8 @@ void operation_entry_helper(void *btx_handle, void *usr_data,
   }
 
   std::string name = strip_event_class_name(event_class_name);
-  if (f == nullptr) {
-    // for host launch and non launch operations like cuMemcpy, the device op name
-    // is just the function name
-    state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
-    state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
-  } else {
+  if (f_optional.has_value()) {
+    auto f = f_optional.value();
     // for device launch, get the name saved when the kernel was loaded in the
     // module get function callbacks
     try
@@ -461,40 +468,45 @@ void operation_entry_helper(void *btx_handle, void *usr_data,
       THAPI_FATAL_HPT(hpt,
         "device not found for hpt function name in kernel launch callback");
     }
+  } else {
+    // for host launch and non launch tasks like cuMemcpy, the device op name
+    // is just the function name
+    state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
+    state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
   }
 }
 
-void named_operation_stream_present_entry_callback(void *btx_handle, void *usr_data,
+void non_kernel_task_stream_present_entry_callback(void *btx_handle, void *usr_data,
                                                    int64_t ts, const char *event_class_name,
                                                    const char *hostname, int64_t vpid,
                                                    uint64_t vtid, CUstream cuStream) {
-  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
-                         hostname, vpid, vtid, cuStream, nullptr);
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                    hostname, vpid, vtid, cuStream);
 }
 
-void named_operation_stream_absent_entry_callback(void *btx_handle, void *usr_data,
+void non_kernel_task_stream_absent_entry_callback(void *btx_handle, void *usr_data,
                                                   int64_t ts, const char *event_class_name,
                                                   const char *hostname, int64_t vpid,
                                                   uint64_t vtid) {
-  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
-                         hostname, vpid, vtid, nullptr, nullptr);
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                    hostname, vpid, vtid, nullptr);
 }
 
-void kernel_launch_stream_present_entry_callback(void *btx_handle, void *usr_data,
-                                                 int64_t ts, const char *event_class_name,
-                                                 const char *hostname, int64_t vpid,
-                                                 uint64_t vtid, CUstream cuStream,
-                                                 CUfunction f) {
-  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
-                         hostname, vpid, vtid, cuStream, f);
+void kernel_task_stream_present_entry_callback(void *btx_handle, void *usr_data,
+                                               int64_t ts, const char *event_class_name,
+                                               const char *hostname, int64_t vpid,
+                                               uint64_t vtid, CUstream cuStream,
+                                               CUfunction f) {
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                    hostname, vpid, vtid, cuStream, f);
 }
 
-void kernel_launch_stream_absent_entry_callback(void *btx_handle, void *usr_data,
-                                                int64_t ts, const char *event_class_name,
-                                                const char *hostname, int64_t vpid,
-                                                uint64_t vtid, CUfunction f) {
-  operation_entry_helper(btx_handle, usr_data, ts, event_class_name,
-                         hostname, vpid, vtid, nullptr, f);
+void kernel_task_stream_absent_entry_callback(void *btx_handle, void *usr_data,
+                                              int64_t ts, const char *event_class_name,
+                                              const char *hostname, int64_t vpid,
+                                              uint64_t vtid, CUfunction f) {
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name,
+                    hostname, vpid, vtid, nullptr, f);
 }
 
 
@@ -573,13 +585,13 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_module_get_function_exit(btx_handle,
     &module_get_function_exit_callback);
 
-  btx_register_callbacks_named_operation_stream_present_entry(btx_handle,
-    &named_operation_stream_present_entry_callback);
-  btx_register_callbacks_named_operation_stream_absent_entry(btx_handle,
-    &named_operation_stream_absent_entry_callback);
+  btx_register_callbacks_non_kernel_task_stream_present_entry(btx_handle,
+    &non_kernel_task_stream_present_entry_callback);
+  btx_register_callbacks_non_kernel_task_stream_absent_entry(btx_handle,
+    &non_kernel_task_stream_absent_entry_callback);
 
-  btx_register_callbacks_kernel_launch_stream_present_entry(btx_handle,
-    &kernel_launch_stream_present_entry_callback);
-  btx_register_callbacks_kernel_launch_stream_absent_entry(btx_handle,
-    &kernel_launch_stream_absent_entry_callback);
+  btx_register_callbacks_kernel_task_stream_present_entry(btx_handle,
+    &kernel_task_stream_present_entry_callback);
+  btx_register_callbacks_kernel_task_stream_absent_entry(btx_handle,
+    &kernel_task_stream_absent_entry_callback);
 }

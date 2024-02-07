@@ -235,59 +235,59 @@
       - :name: ^cuResult$
       - :name: ^hfunc_val$
 
-  # operations that generate thapi device events
-  - :set_id: operation
+  # tasks that generate thapi device events
+  - :set_id: task
     :name: "(cuMemcpy|cuMemPrefetch|cuMemset|cuMemFree|cuLaunch)"
     :register: false
 
-  - :set_id: operation_entry
-    :domain: entries & operation
+  - :set_id: task_entry
+    :domain: entries & task
     :register: false
 
-  - :set_id: operation_stream_present_entry
-    :domain: operation_entry
+  - :set_id: task_stream_present_entry
+    :domain: task_entry
     :register: false
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hStream$
 
-  - :set_id: operation_stream_absent_entry
-    :domain: operation_entry - operation_stream_present_entry
+  - :set_id: task_stream_absent_entry
+    :domain: task_entry - task_stream_present_entry
     :register: false
 
   # specialize for whether a funtion arg is present or not
-  - :set_id: kernel_launch_entry
+  - :set_id: kernel_task_entry
     :name: "cuLaunch[^H]"
-    :domain: operation_entry
+    :domain: task_entry
     :register: false
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^f$
 
-  - :set_id: kernel_launch_stream_present_entry
-    :domain: operation_stream_present_entry & kernel_launch_entry
+  - :set_id: kernel_task_stream_present_entry
+    :domain: task_stream_present_entry & kernel_task_entry
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hStream$
       - :name: ^f$
 
-  - :set_id: kernel_launch_stream_absent_entry
-    :domain: kernel_launch_entry - kernel_launch_stream_present_entry
+  - :set_id: kernel_task_stream_absent_entry
+    :domain: kernel_task_entry - kernel_task_stream_present_entry
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^f$
 
   # specialize for whether a funtion arg is present or not
-  - :set_id: named_operation_stream_present_entry
-    :domain: operation_stream_present_entry - kernel_launch_stream_present_entry
+  - :set_id: non_kernel_task_stream_present_entry
+    :domain: task_stream_present_entry - kernel_task_stream_present_entry
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^hStream$
 
-  - :set_id: named_operation_stream_absent_entry
-    :domain: operation_stream_absent_entry - kernel_launch_stream_absent_entry
+  - :set_id: non_kernel_task_stream_absent_entry
+    :domain: task_stream_absent_entry - kernel_task_stream_absent_entry
