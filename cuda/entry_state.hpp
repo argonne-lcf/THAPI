@@ -51,7 +51,7 @@ public:
   }
 
   int64_t get_ts(hpt_t hpt) {
-    return entry_ts[hpt];
+    return THAPI_AT(entry_ts, hpt);
   }
 
 private:
@@ -63,17 +63,15 @@ private:
         entry_data.emplace(std::make_pair(hpt, res));
     if (!inserted) {
       auto &v = kv->second;
+#ifndef NDEBUG
       if (v)
         throw std::runtime_error("push was not empty");
+#endif
       v = res;
     }
   }
 
   auto &pop_entry_impl(hpt_t hpt) {
-    const auto it = entry_data.find(hpt);
-    auto &v = it->second;
-    if (it == entry_data.cend() || !v)
-      throw std::runtime_error("pop was empty");
-    return v;
+    return THAPI_AT(entry_data, hpt);
   }
 };

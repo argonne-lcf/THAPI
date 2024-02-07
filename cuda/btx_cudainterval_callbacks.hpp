@@ -31,3 +31,4 @@ inline void __thapi_fatal_hpt(hpt_t hpt, const char *msg, const char *fname, int
             << ", " << std::get<2>(hpt) << "}" << std::endl;
   abort();
 }
+

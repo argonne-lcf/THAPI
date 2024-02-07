@@ -191,7 +191,7 @@ void profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 #endif
   try {
-    auto fn_name_ts = state->hpt_profiled_function_name_and_ts.at(hpt);
+    auto fn_name_ts = THAPI_AT(state->hpt_profiled_function_name_and_ts, hpt);
     state->hp_event_to_function_name_and_ts[hp_event] = fn_name_ts;
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt,
@@ -215,7 +215,7 @@ void profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
   try {
     // Note: this assumes profiling_callback is always called before this results
     // callback
-    const auto [fn_name_, launch_ts_] = state->hp_event_to_function_name_and_ts.at(hp_event);
+    const auto [fn_name_, launch_ts_] = THAPI_AT(state->hp_event_to_function_name_and_ts, hp_event);
     fn_name = fn_name_;
     launch_ts = launch_ts_;
   } catch(const std::out_of_range& oor) {
@@ -234,7 +234,7 @@ void profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
 
   try {
     hpt_function_name_t hpt_function_name = {hostname, vpid, vtid, fn_name};
-    auto dev = state->hpt_function_name_to_dev.at(hpt_function_name);
+    auto dev = THAPI_AT(state->hpt_function_name_to_dev, hpt_function_name);
     bool err = cuResultIsError(startStatus) || cuResultIsError(stopStatus)
              || cuResultIsError(status);
 
@@ -459,15 +459,10 @@ void task_entry_helper(void *btx_handle, void *usr_data,
     auto f = f_optional.value();
     // for device launch, get the name saved when the kernel was loaded in the
     // module get function callbacks
-    try
-    {
-      std::string name = state->hp_kernel_to_name.at({hostname, vpid, f});
-      state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
-      state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
-    } catch(const std::out_of_range& oor) {
-      THAPI_FATAL_HPT(hpt,
-        "device not found for hpt function name in kernel launch callback");
-    }
+    hp_kernel_t hp_kernel_key = {hostname, vpid, f};
+    std::string name = THAPI_AT(state->hp_kernel_to_name, hp_kernel_key);
+    state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
+    state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
   } else {
     // for host launch and non launch tasks like cuMemcpy, the device op name
     // is just the function name

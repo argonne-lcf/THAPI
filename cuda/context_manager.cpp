@@ -17,21 +17,16 @@ bool CUDAContextManager::get_device(hpt_t hpt, CUdevice *pdev) {
 }
 
 bool CUDAContextManager::get_top_context(hpt_t hpt, CUcontext *pctx) {
-  try {
-    // std::cerr << "get top ctx for thread " << std::get<2>(hpt) << std::endl;
-    auto& hpt_stack = hpt_ctx_stack_.at(hpt);
-    // Note: the primary context is not used automatically, it must be pushed or set
-    // current first and be on the stack
-    if (hpt_stack.empty()) {
-      // std::cerr << "empty stack for thread " << std::get<2>(hpt) << std::endl;
-      return false;
-    }
-    *pctx = hpt_stack.top();
-    return true;
-  } catch(const std::out_of_range& oor) {
-    THAPI_FATAL_HPT(hpt, "no context stack for thread");
+  // std::cerr << "get top ctx for thread " << std::get<2>(hpt) << std::endl;
+  auto& hpt_stack = THAPI_AT(hpt_ctx_stack_, hpt);
+  // Note: the primary context is not used automatically, it must be pushed or set
+  // current first and be on the stack
+  if (hpt_stack.empty()) {
+    // std::cerr << "empty stack for thread " << std::get<2>(hpt) << std::endl;
+    return false;
   }
-  return false;
+  *pctx = hpt_stack.top();
+  return true;
 }
 
 bool CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream, CUdevice *pdev) {
@@ -41,12 +36,7 @@ bool CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream, CUdevice 
   }
   hp_stream_t hp_stream_key = {std::get<0>(hpt), std::get<1>(hpt), stream};
   CUcontext ctx;
-  try {
-    ctx = hp_stream_to_ctx_.at(hp_stream_key);
-  } catch(const std::out_of_range& oor) {
-    THAPI_FATAL_HPT(hpt,
-      "no context stack for thread in CUDAContextManager::get_stream_device");
-  }
+  ctx = THAPI_AT(hp_stream_to_ctx_, hp_stream_key);
   auto ctx_find = hp_ctx_to_device_.find({std::get<0>(hpt), std::get<1>(hpt), ctx});
   if (ctx_find != hp_ctx_to_device_.end()) {
     *pdev = ctx_find->second;
@@ -54,8 +44,6 @@ bool CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream, CUdevice 
   }
   return false;
 }
-
-
 
 // cuPrimaryCtxRetain_v2_(entry|exit)
 void CUDAContextManager::primary_ctx_retain_entry(hpt_t hpt, CUdevice dev) {
@@ -70,7 +58,7 @@ void CUDAContextManager::primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult,
   }
   // std::cerr << "primaryctx retain exit thread " << std::get<2>(hpt) << std::endl;
   try {
-    auto entry_dev = hpt_entry_dev_.at(hpt);
+    auto entry_dev = THAPI_AT(hpt_entry_dev_, hpt);
     hp_device_primary_ctx_[{std::get<0>(hpt), std::get<1>(hpt), entry_dev}] = ctx;
     hp_ctx_to_device_[{std::get<0>(hpt), std::get<1>(hpt), ctx}] = entry_dev;
   } catch(const std::out_of_range& oor) {
@@ -91,7 +79,7 @@ void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) 
   }
   CUdevice entry_dev;
   try {
-    entry_dev = hpt_entry_dev_.at(hpt);
+    entry_dev = THAPI_AT(hpt_entry_dev_, hpt);
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt,
                     "no entry device in primary ctx release exit callback");
@@ -99,7 +87,7 @@ void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) 
   // std::cerr << "release primary ctx for device " << entry_dev << " thread " << std::get<2>(hpt) << std::endl;
   hp_device_t hp_dev_key = {std::get<0>(hpt), std::get<1>(hpt), entry_dev};
   try {
-    auto ctx = hp_device_primary_ctx_.at(hp_dev_key);
+    auto ctx = THAPI_AT(hp_device_primary_ctx_, hp_dev_key);
     hp_device_primary_ctx_.erase(hp_dev_key);
     hp_ctx_to_device_.erase({std::get<0>(hpt), std::get<1>(hpt), ctx});
   } catch(const std::out_of_range& oor) {
@@ -131,7 +119,7 @@ void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
   }
   CUdevice entry_dev;
   try {
-    entry_dev = hpt_entry_dev_.at(hpt);
+    entry_dev = THAPI_AT(hpt_entry_dev_, hpt);
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt,
                     "no entry device for thread in ctx create exit callback");
@@ -154,7 +142,7 @@ void CUDAContextManager::ctx_destroy_exit(hpt_t hpt, CUresult cuResult) {
   }
   CUcontext entry_ctx;
   try {
-    entry_ctx = hpt_entry_ctx_.at(hpt);
+    entry_ctx = THAPI_AT(hpt_entry_ctx_, hpt);
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt,
                     "no entry device for thread in ctx destroy exit callback");
@@ -168,7 +156,7 @@ void CUDAContextManager::ctx_destroy_exit(hpt_t hpt, CUresult cuResult) {
   // pop thread context stack only if it's current on the calling thread
   // See https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html
   try {
-    auto& stack = hpt_ctx_stack_.at(hpt);
+    auto& stack = THAPI_AT(hpt_ctx_stack_, hpt);
     if (!stack.empty() && stack.top() == entry_ctx) {
       stack.pop();
     }
@@ -192,14 +180,14 @@ void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
   // std::cerr << "set current exit thread " << std::get<2>(hpt) << std::endl;
   CUcontext entry_ctx;
   try {
-    entry_ctx = hpt_entry_ctx_.at(hpt);
+    entry_ctx = THAPI_AT(hpt_entry_ctx_, hpt);
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt,
                     "no entry context for thread in ctx set current exit callback");
   }
   try {
     ensure_stack(hpt);
-    auto& stack = hpt_ctx_stack_.at(hpt);
+    auto& stack = THAPI_AT(hpt_ctx_stack_, hpt);
     if (!stack.empty()) {
       stack.pop();
     }
@@ -222,7 +210,7 @@ void CUDAContextManager::ctx_push_current_exit(hpt_t hpt, CUresult cuResult) {
   }
   try {
     ensure_stack(hpt);
-    auto entry_ctx = hpt_entry_ctx_.at(hpt);
+    auto entry_ctx = THAPI_AT(hpt_entry_ctx_, hpt);
     hpt_ctx_stack_[hpt].push(entry_ctx);
   } catch(const std::out_of_range& oor) {
     THAPI_FATAL_HPT(hpt,
