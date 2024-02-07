@@ -131,6 +131,7 @@ def get_components(names)
   # BT "native" component classes
   components_classes = {
     'source.ctf.fs' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs'),
+    'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
     'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
     'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
     'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
@@ -216,6 +217,10 @@ def get_and_add_components(graph, names)
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
+    when 'source.ctf.lttng_live'
+      graph.add(comp, 'source_live',
+                params: { 'inputs' => $options[:inputs],
+                          'session-not-found-action' => 'end' })
     when 'source.ctf.fs'
       Find.find(*ARGV)
           .reject { |path| FileTest.directory?(path) }
@@ -357,11 +362,14 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                 'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                'sink.btx_timeline.timeline'],
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
+                'trace_live' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'sink.text.rubypretty'],
                 'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'sink.ctf.fs'],
                 'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                 'filter.btx_aggreg.aggreg', 'sink.ctf.fs'] }
 
 graph = BT2::BTGraph.new
+
+command = 'trace_live' if command == 'trace' && $options[:live]
 comp = get_and_add_components(graph, thapi_graph[command])
 connects(graph, comp)
 
