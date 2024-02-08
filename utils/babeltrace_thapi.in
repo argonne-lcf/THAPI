@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 DATADIR = File.join('@prefix@', 'share')
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
-require 'optparse'
 require 'babeltrace2'
 require 'find'
+require 'optparse_thapi.rb'
 
 module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
