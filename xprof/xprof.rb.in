@@ -571,13 +571,13 @@ def global_processing(folder)
     opts << '--display_kernel_verbose true' if OPTIONS.include?(:'kernel-verbose')
     opts << '--display_metadata true' if OPTIONS.include?(:metadata)
     opts << "--display_name_max_size #{OPTIONS[:'max-name-size']}"
-    opts << '--display_mode json'  if OPTIONS.include?(:json)
+    opts << '--display_mode json' if OPTIONS.include?(:json)
     opts << "--backend #{backends}"
     opts << "--backend_level #{backend_level}" unless backend_level.empty?
     opts << '--display extended' if OPTIONS.include?(:extended)
   end
 
-  opts << '--no-muxer ' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
+  opts << '--no-muxer' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
 
   cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{folder}"
   LOGGER.debug(cmd)
