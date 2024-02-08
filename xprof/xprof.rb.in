@@ -557,29 +557,29 @@ def global_processing(folder)
       raise 'Cannot show the trace of an interval or aggregated trace'
     end
 
-    opts = 'trace '
-    opts << '--restrict '
-    opts << '--context '
-    opts << "--backend #{backends} "
+    opts = ['trace']
+    opts << '--restrict'
+    opts << '--context'
+    opts << "--backend #{backends}"
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
 
-    opts = 'timeline '
-    opts << "--backend #{backends} "
+    opts = ['timeline']
+    opts << "--backend #{backends}"
   else
-    opts = 'tally '
-    opts << '--display_kernel_verbose true ' if OPTIONS.include?(:'kernel-verbose')
-    opts << '--display_metadata true ' if OPTIONS.include?(:metadata)
-    opts << "--display_name_max_size #{OPTIONS[:'max-name-size']} "
-    opts << '--display_mode json ' if OPTIONS.include?(:json)
-    opts << "--backend #{backends} "
-    opts << "--backend_level #{backend_level} " unless backend_level.empty?
-    opts << '--display extended ' if OPTIONS.include?(:extended)
+    opts = ['tally']
+    opts << '--display_kernel_verbose true' if OPTIONS.include?(:'kernel-verbose')
+    opts << '--display_metadata true' if OPTIONS.include?(:metadata)
+    opts << "--display_name_max_size #{OPTIONS[:'max-name-size']}"
+    opts << '--display_mode json'  if OPTIONS.include?(:json)
+    opts << "--backend #{backends}"
+    opts << "--backend_level #{backend_level}" unless backend_level.empty?
+    opts << '--display extended' if OPTIONS.include?(:extended)
   end
 
   opts << '--no-muxer ' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
 
-  cmd = "#{BINDIR}/babeltrace_thapi #{opts} -- #{folder}"
+  cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{folder}"
   LOGGER.debug(cmd)
   IO.popen(cmd) do |stdout, _stdin, _pid|
     stdout.each { |line| print line }
