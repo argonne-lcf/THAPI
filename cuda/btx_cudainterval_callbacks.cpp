@@ -16,8 +16,9 @@
 
 
 struct data_s {
-  // need to store entry state per thread in order to use in exit callback if the
-  // cuResult is a non-error
+  // Need to store entry state per thread in order to use in exit callback if the
+  // cuResult is a non-error. Keeps track of one data item (of any type) and one ts
+  // for each thread.
   EntryState entry_state;
 
   // kernels (CUfunction objects) are "created" before use, at which time we save
@@ -30,31 +31,33 @@ struct data_s {
 
   // State for device event profiling
   //
-  // The flow of events for event profiling is:
+  // The callbacks should be called in this order for all valid CUDA programs,
+  // and all threads, whether they use runtime API or driver API:
   //
-  // 1. device operation entry (cuMemcpy, cuLaunch, etc)
-  // 2. event_profiling
-  // 3. device operation exit
-  // 4. unknown number of intervening events
-  // ...
-  // 5. event profiling results
+  // 1. Context set - at least one of ctx_set_current_*_callback, ctx_create_*_callback
+  // ... unknown number of intervening events
+  // 2. module_get_function_entry_callback (entry and exit) [kernel tasks only]
+  // ... unknown number of intervening events
+  // 3. (non_)?kernel_task_stream_(present|absent)_entry_callback
+  // 4. profiling_callback
+  // 5. (non_)?kernel_task_stream_(present|absent)_exit_callback
+  // ... unknown number of intervening events
+  // 6. profiling_results_callback
   // 
   // The information needed to emit a thapi device event is spread out throughout
   // these calls, so we need to maintain state between them.
   // 
-  // Since 1 and 2 always happen one after another in a given thread, we just need
-  // to save the function name and launch ts keyed by {hostname, process, thread}.
-  // In (2) we can associate this information with the events, so when the results
-  // are finally available it can be looked up.
+  // Since task entry callback (3) and profiling_callback (4) always happen one after
+  // another in a given thread, we just need to save the function name and launch ts
+  // keyed by {hostname, process, thread}.
+  //
+  // In profiling_callback we can associate this information with the events, so when
+  // the results are finally available it can be looked up.
   std::unordered_map<hpt_t, fn_ts_t> hpt_profiled_function_name_and_ts;
   std::unordered_map<hp_event_t, fn_ts_t> hp_event_to_function_name_and_ts;
 
   // Encapsulate complex context management state
   CUDAContextManager context_manager;
-
-  // TODO: per thread state, data filled in as we go
-
-  // level zero is vector of std::byte
 };
 
 using data_t = struct data_s;
