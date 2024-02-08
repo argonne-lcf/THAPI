@@ -79,4 +79,5 @@ EXTRA_DIST = \
 	gen_babeltrace_emitter.rb \
 	thapi_metadata_tracepoints.tp \
 	command.rb \
-	meta_parameters.rb
+	meta_parameters.rb \
+	optparse_thapi.rb
