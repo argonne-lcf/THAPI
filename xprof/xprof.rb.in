@@ -570,20 +570,20 @@ def global_processing(folder)
     args += ['tally']
     args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
     args << '--display_metadata' << 'true' if OPTIONS.include?(:metadata)
-    args << "--display_name_max_size" << OPTIONS[:'max-name-size'].to_s
+    args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
-    args << "--backend" << backends
-    args << "--backend_level" << backend_level unless backend_level.empty?
+    args << '--backend' << backends
+    args << '--backend_level' << backend_level unless backend_level.empty?
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
   args << '--no-muxer' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
 
-  args += ["--", folder]
+  args += ['--', folder]
 
   LOGGER.debug(cmdname)
   LOGGER.debug(args)
-  IO.popen([cmdname,*args]) do |stdout, _stdin, _pid|
+  IO.popen([cmdname, *args]) do |stdout, _stdin, _pid|
     stdout.each { |line| print line }
   end
 end
