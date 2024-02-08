@@ -15,12 +15,7 @@ class OptionParserWithDefaultAndValidation < OptionParser
 
   def define(*opts, &block)
     switch = super
-    # Parse the long name to get the key / name of the option
-    #   Should be able to get it with some instrospection, no idea how
-    # At least `define` already did the split of long, short, and arguments of opts
-    key = switch.long.first.gsub(/^--(?:\[no-\])?/, '').to_sym
-    # Save the default value
-    @defaults[key] = @tmp_default unless @tmp_default.nil?
+    @defaults[switch.switch_name] = @tmp_default unless @tmp_default.nil?
     switch
   end
 
