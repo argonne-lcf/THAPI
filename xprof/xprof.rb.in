@@ -549,39 +549,41 @@ def global_processing(folder)
   raise unless mpi_master?
 
   LOGGER.info { "postprocess #{folder}" }
+
   backends = OPTIONS[:'backend-name'].join(',')
   backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
+
+  cmdname = "#{BINDIR}/babeltrace_thapi"
+
+  args = []
 
   if OPTIONS.include?(:trace)
     if folder.include?('_interval') || folder.include?('_aggreg')
       raise 'Cannot show the trace of an interval or aggregated trace'
     end
 
-    opts = ['trace']
-    opts << '--restrict'
-    opts << '--context'
-    opts << "--backend #{backends}"
+    args += ['trace', '--restrict', '--context', '--backend', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
-
-    opts = ['timeline']
-    opts << "--backend #{backends}"
+    args += ['timeline' '--backend', backends]
   else
-    opts = ['tally']
-    opts << '--display_kernel_verbose true' if OPTIONS.include?(:'kernel-verbose')
-    opts << '--display_metadata true' if OPTIONS.include?(:metadata)
-    opts << "--display_name_max_size #{OPTIONS[:'max-name-size']}"
-    opts << '--display_mode json' if OPTIONS.include?(:json)
-    opts << "--backend #{backends}"
-    opts << "--backend_level #{backend_level}" unless backend_level.empty?
-    opts << '--display extended' if OPTIONS.include?(:extended)
+    args += ['tally']
+    args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
+    args << '--display_metadata' << 'true' if OPTIONS.include?(:metadata)
+    args << "--display_name_max_size" << OPTIONS[:'max-name-size'].to_s
+    args << '--display_mode' << 'json' if OPTIONS.include?(:json)
+    args << "--backend" << backends
+    args << "--backend_level" << backend_level unless backend_level.empty?
+    args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
-  opts << '--no-muxer' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
+  args << '--no-muxer' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
 
-  cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{folder}"
-  LOGGER.debug(cmd)
-  IO.popen(cmd) do |stdout, _stdin, _pid|
+  args += ["--", folder]
+
+  LOGGER.debug(cmdname)
+  LOGGER.debug(args)
+  IO.popen([cmdname,*args]) do |stdout, _stdin, _pid|
     stdout.each { |line| print line }
   end
 end
