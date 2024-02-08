@@ -565,7 +565,7 @@ def global_processing(folder)
     args += ['trace', '--restrict', '--context', '--backend', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
-    args += ['timeline' '--backend', backends]
+    args += ['timeline', '--backend', backends]
   else
     args += ['tally']
     args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
