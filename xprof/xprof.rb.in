@@ -1,9 +1,23 @@
 #!/usr/bin/env ruby
 
+# We Cannot use "@ .. @" for libdir, bindir, and dataroodir
+# as they will appear as bash "${exec_prefix}/lib"
+# So for now we will rely on them having the default value,
+#  (https://www.gnu.org/software/automake/manual/html_node/Standard-Directory-Variables.html)
+# Will do some gsub + eval if required latter
+EXEC_PREFIX = '@prefix@'
+BINDIR = File.join(EXEC_PREFIX, 'bin')
+LIBDIR = File.join(EXEC_PREFIX, 'lib')
+PKGLIBDIR = File.join(LIBDIR, '@PACKAGE@')
+PREFIX = '@prefix@'
+DATAROOTDIR = File.join(PREFIX, 'share')
+DATADIR = DATAROOTDIR
+
+$LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
 require 'etc'
-require 'optparse'
+require 'optparse_thapi.rb'
 require 'pty'
 require 'digest/md5'
 require 'socket'
@@ -260,20 +274,6 @@ end
 #   | _|_ _|_ ._   _    (_   _ _|_     ._
 #   |_ |_  |_ | | (_|   __) (/_ |_ |_| |_)
 #                  _|                  |
-
-# We Cannot use "@ .. @" for libdir, bindir, and dataroodir
-# as they will appear as bash "${exec_prefix}/lib"
-# So for now we will rely on them having the default value,
-#  (https://www.gnu.org/software/automake/manual/html_node/Standard-Directory-Variables.html)
-# Will do some gsub + eval if required latter
-EXEC_PREFIX = '@prefix@'
-BINDIR = File.join(EXEC_PREFIX, 'bin')
-LIBDIR = File.join(EXEC_PREFIX, 'lib')
-PKGLIBDIR = File.join(LIBDIR, '@PACKAGE@')
-PREFIX = '@prefix@'
-DATAROOTDIR = File.join(PREFIX, 'share')
-DATADIR = DATAROOTDIR
-
 def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
@@ -459,7 +459,7 @@ def setup_lttng(backends)
   # Enable backend events
   (backends + ['metadata']).each do |name|
     send("enable_events_#{name}", channel_name,
-         tracing_mode: OPTIONS[:tracing_mode],
+         tracing_mode: OPTIONS[:'tracing-mode'],
          profiling: OPTIONS[:profile])
   end
   exec("lttng start #{lttng_session_uuid}")
@@ -593,19 +593,13 @@ end
 #   |_) _. ._ _ o ._   _    /  |   |
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
-parser = OptionParser.new
-
-options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
-            analysis: true,
-            'traced-ranks': Set[-1],
-            'max-name-size': 80,
-            debug: Logger::FATAL }
+parser = OptionParserWithDefaultAndValidation.new
 
 # Tracing
-parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
-parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
+parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default', allowed:  %w[minimal default full])
+parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
           'Use -1 to mean all ranks.',
-          "Default: #{options[:'traced-ranks'].join(',')}") do |ranks|
+          default: Set[-1]) do |ranks|
   ranks.map do |r|
     if r.match?(/^\d+$/)
       r.to_i
@@ -615,13 +609,13 @@ parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
     end
   end.to_set
 end
-parser.on('--[no-]profile', 'Trigger for device activities profiling')
-parser.on('--[no-]analysis', 'Trigger for analysis')
+parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
+parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
 
 # General Options
 parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
           'Format: backend_name[:backend_level],...',
-          "Default: #{options[:backend].join(',')}")
+          default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
 # Analysis
 parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
@@ -636,16 +630,14 @@ parser.on('-k', '--kernel-verbose',
 parser.on('--max-name-size SIZE',
           OptionParser::DecimalInteger,
           'Maximum size allowed for kernels names.',
-          'Use -1 to mean no limit.',
-          "Default: #{options[:'max-name-size']}")
+          'Use -1 to mean no limit.', default: 80)
 
 parser.on('--metadata', 'Display trace Metadata')
 parser.on('-v', '--version', 'Display THAPI version')
 parser.on('-h', '--help', 'Display this message')
 
 parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-          "By default the debug level is #{options[:debug]}.",
-          "If LEVEL is omitted the debug level with be set to #{Logger::INFO}") { |d| d || Logger::INFO }
+          "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
 
 def print_help_and_exit(parser, exit_code: 1)
   puts(parser.help)
@@ -662,6 +654,7 @@ end
 # Parsing ARGV
 print_help_and_exit(parser) if ARGV.empty?
 
+options = {}
 begin
   parser.parse!(into: options)
 rescue StandardError => e
