@@ -278,6 +278,10 @@ def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
 
+def lttng_session_uuid
+  Digest::MD5.hexdigest(lttng_trace_dir_tmp)
+end
+
 def env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -444,11 +448,9 @@ end
 
 def setup_lttng(backends)
   raise unless mpi_local_master?
-
   # Spawning the sessiond Daemon will crash
   #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
-
   exec('lttng-sessiond --daemonize')
   exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
