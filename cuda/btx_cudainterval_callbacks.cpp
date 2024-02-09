@@ -132,7 +132,7 @@ entries_traffic_v2_callback(void *btx_handle, void *usr_data, int64_t ts,
                             int64_t vpid, uint64_t vtid, size_t size) {
   // save traffic size and entry ts for use in exit callback
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key = {hostname, vpid, vtid};
+  hpt_t key{hostname, vpid, vtid};
   state->entry_state.set_ts(key, ts);
   state->entry_state.set_data<size_t>(key, size);
 }
@@ -157,7 +157,7 @@ exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
 
   std::string event_class_name_stripped = strip_event_class_name(event_class_name);
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key = {hostname, vpid, vtid};
+  hpt_t key{hostname, vpid, vtid};
   const int64_t entry_ts = state->entry_state.get_ts(key);
   auto size = state->entry_state.get_data<size_t>(key);
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, entry_ts,
@@ -170,8 +170,8 @@ profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
                    const char *hostname, int64_t vpid, uint64_t vtid,
                    CUevent hStart, CUevent hStop) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
-  hp_event_t hp_event = {hostname, vpid, hStart, hStop};
+  hpt_t hpt{hostname, vpid, vtid};
+  hp_event_t hp_event{hostname, vpid, hStart, hStop};
   auto fn_name_ts = THAPI_AT(state->hpt_profiled_function_name_and_ts, hpt);
   state->hp_event_to_function_name_and_ts[hp_event] = fn_name_ts;
 }
@@ -183,7 +183,7 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
                            CUresult startStatus, CUresult stopStatus,
                            CUresult status, float ms) {
   auto state = static_cast<data_t *>(usr_data);
-  hp_event_t hp_event = {hostname, vpid, hStart, hStop};
+  hp_event_t hp_event{hostname, vpid, hStart, hStop};
 
   // Note: assume profiling_callback is always called before this results callback
   const auto [fn_name, launch_ts] =
@@ -191,7 +191,7 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
 
   // Note: assume (non_)?kernel_task_stream_(absent|present)_*_callback's
   // (both entry and exit) have been called in the current thread before this
-  hpt_function_name_t hpt_function_name = {hostname, vpid, vtid, fn_name};
+  hpt_function_name_t hpt_function_name{hostname, vpid, vtid, fn_name};
   auto dev = THAPI_AT(state->hpt_function_name_to_dev, hpt_function_name);
   bool err = cuResultIsError(startStatus) || cuResultIsError(stopStatus)
            || cuResultIsError(status);
@@ -391,10 +391,10 @@ module_get_function_exit_callback(void *btx_handle, void *usr_data,
     return;
   }
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
+  hpt_t hpt{hostname, vpid, vtid};
 
   auto kernel_name = state->entry_state.get_data<std::string>(hpt);
-  hp_kernel_t hp_kernel_key = {hostname, vpid, cuFunction};
+  hp_kernel_t hp_kernel_key{hostname, vpid, cuFunction};
   state->hp_kernel_to_name[hp_kernel_key] = kernel_name;
 }
 
@@ -413,7 +413,7 @@ task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
                   int64_t vpid, uint64_t vtid, CUstream cuStream,
                   const std::optional<CUfunction> f_optional = {}) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt = {hostname, vpid, vtid};
+  hpt_t hpt{hostname, vpid, vtid};
   auto dev = state->context_manager.get_stream_device(hpt, cuStream);
 
   std::string name = strip_event_class_name(event_class_name);
@@ -421,7 +421,7 @@ task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
     auto f = f_optional.value();
     // for device launch, get the name saved when the kernel was loaded in the
     // module get function callbacks
-    hp_kernel_t hp_kernel_key = {hostname, vpid, f};
+    hp_kernel_t hp_kernel_key{hostname, vpid, f};
     std::string name = THAPI_AT(state->hp_kernel_to_name, hp_kernel_key);
     state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
     state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);

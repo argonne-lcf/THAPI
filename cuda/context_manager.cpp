@@ -5,7 +5,7 @@
 
 CUdevice CUDAContextManager::get_device(hpt_t hpt) {
   CUcontext ctx = get_top_context(hpt);
-  hp_context_t hp_context = {std::get<0>(hpt), std::get<1>(hpt), ctx};
+  hp_context_t hp_context{std::get<0>(hpt), std::get<1>(hpt), ctx};
   return THAPI_AT(hp_ctx_to_device_, hp_context);
 }
 
@@ -22,9 +22,9 @@ CUdevice CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream) {
     // using the default stream in the top context on the stack
     return get_device(hpt);
   }
-  hp_stream_t hp_stream_key = {std::get<0>(hpt), std::get<1>(hpt), stream};
+  hp_stream_t hp_stream_key{std::get<0>(hpt), std::get<1>(hpt), stream};
   auto ctx = THAPI_AT(hp_stream_to_ctx_, hp_stream_key);
-  hp_context_t hp_context = {std::get<0>(hpt), std::get<1>(hpt), ctx};
+  hp_context_t hp_context{std::get<0>(hpt), std::get<1>(hpt), ctx};
   return THAPI_AT(hp_ctx_to_device_, hp_context);
 }
 
@@ -57,7 +57,7 @@ void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) 
     return;
   }
   auto entry_dev = entry_state_.get_data<CUdevice>(hpt);
-  hp_device_t hp_dev_key = {std::get<0>(hpt), std::get<1>(hpt), entry_dev};
+  hp_device_t hp_dev_key{std::get<0>(hpt), std::get<1>(hpt), entry_dev};
   auto ctx = THAPI_AT(hp_device_primary_ctx_, hp_dev_key);
   hp_device_primary_ctx_.erase(hp_dev_key);
   hp_ctx_to_device_.erase({std::get<0>(hpt), std::get<1>(hpt), ctx});
@@ -89,7 +89,7 @@ void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
     return;
   }
   auto entry_dev = entry_state_.get_data<CUdevice>(hpt);
-  hp_context_t hp_ctx_key = {std::get<0>(hpt), std::get<1>(hpt), ctx};
+  hp_context_t hp_ctx_key{std::get<0>(hpt), std::get<1>(hpt), ctx};
   hp_ctx_to_device_[hp_ctx_key] = entry_dev;
   hpt_ctx_stack_[hpt].push(ctx);
 }
@@ -175,6 +175,6 @@ void CUDAContextManager::stream_create_exit(hpt_t hpt, CUresult cuResult,
     return;
   }
   auto ctx = get_top_context(hpt);
-  hp_stream_t hp_stream_key = {std::get<0>(hpt), std::get<1>(hpt), cuStream}; 
+  hp_stream_t hp_stream_key{std::get<0>(hpt), std::get<1>(hpt), cuStream}; 
   hp_stream_to_ctx_[hp_stream_key] = ctx;
 }
