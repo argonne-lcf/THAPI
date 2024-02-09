@@ -153,11 +153,8 @@ void CUDAContextManager::ctx_push_current_exit(hpt_t hpt, CUresult cuResult) {
 }
 
 
-// cuCtxPopCurrent_(entry|exit)
-void CUDAContextManager::ctx_pop_current_entry(hpt_t hpt) {
-  // noop
-}
-
+// cuCtxPopCurrent_exit
+// Note: entry not needed
 void CUDAContextManager::ctx_pop_current_exit(hpt_t hpt, CUresult cuResult,
                                               CUcontext cuContext) {
   if (cuResultIsError(cuResult)) {

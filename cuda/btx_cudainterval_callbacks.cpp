@@ -208,162 +208,56 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
 // ===============================
 // Context management
 // ===============================
-static void
-primary_ctx_retain_entry_callback(void *btx_handle, void *usr_data,
-                                  int64_t ts, const char *event_class_name,
-                                  const char *hostname, int64_t vpid,
-                                  uint64_t vtid, CUdevice dev) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.primary_ctx_retain_entry({hostname, vpid, vtid}, dev);
+
+#define MAKE_ENTRY_CALLBACK1(BASE_NAME, ARG_TYPE) \
+static void \
+BASE_NAME##_callback(void *btx_handle, void *usr_data, \
+                                  int64_t ts, const char *event_class_name, \
+                                  const char *hostname, int64_t vpid, \
+                                  uint64_t vtid, ARG_TYPE arg) { \
+  auto state = static_cast<data_t *>(usr_data); \
+  state->context_manager.BASE_NAME({hostname, vpid, vtid}, arg); \
 }
 
-static void
-primary_ctx_retain_exit_callback(void *btx_handle, void *usr_data,
-                                 int64_t ts, const char *event_class_name,
-                                 const char *hostname, int64_t vpid,
-                                 uint64_t vtid, CUresult cuResult,
-                                 CUcontext ctx) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.primary_ctx_retain_exit({hostname, vpid, vtid}, cuResult, ctx);
+#define MAKE_ENTRY_CALLBACK2(BASE_NAME, ARG1_TYPE, ARG2_TYPE) \
+static void \
+BASE_NAME##_callback(void *btx_handle, void *usr_data, \
+                                  int64_t ts, const char *event_class_name, \
+                                  const char *hostname, int64_t vpid, \
+                                  uint64_t vtid, ARG1_TYPE arg1, \
+                                  ARG2_TYPE arg2) { \
+  auto state = static_cast<data_t *>(usr_data); \
+  state->context_manager.BASE_NAME({hostname, vpid, vtid}, arg1, arg2); \
 }
 
-static void
-primary_ctx_release_entry_callback(void *btx_handle, void *usr_data,
-                                   int64_t ts, const char *event_class_name,
-                                   const char *hostname, int64_t vpid,
-                                   uint64_t vtid, CUdevice dev) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.primary_ctx_release_entry({hostname, vpid, vtid}, dev);
-}
+MAKE_ENTRY_CALLBACK1(primary_ctx_retain_entry, CUdevice)
+MAKE_ENTRY_CALLBACK2(primary_ctx_retain_exit, CUresult, CUcontext)
 
-static void
-primary_ctx_release_exit_callback(void *btx_handle, void *usr_data,
-                                  int64_t ts, const char *event_class_name,
-                                  const char *hostname, int64_t vpid,
-                                  uint64_t vtid, CUresult cuResult) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.primary_ctx_release_exit({hostname, vpid, vtid}, cuResult);
-}
+MAKE_ENTRY_CALLBACK1(primary_ctx_release_entry, CUdevice)
+MAKE_ENTRY_CALLBACK1(primary_ctx_release_exit, CUresult)
 
-static void
-primary_ctx_reset_entry_callback(void *btx_handle, void *usr_data,
-                                 int64_t ts, const char *event_class_name,
-                                 const char *hostname, int64_t vpid,
-                                 uint64_t vtid, CUdevice dev) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.primary_ctx_reset_entry({hostname, vpid, vtid}, dev);
-}
+MAKE_ENTRY_CALLBACK1(primary_ctx_reset_entry, CUdevice)
+MAKE_ENTRY_CALLBACK1(primary_ctx_reset_exit, CUresult)
 
-static void
-primary_ctx_reset_exit_callback(void *btx_handle, void *usr_data,
-                                int64_t ts, const char *event_class_name,
-                                const char *hostname, int64_t vpid,
-                                uint64_t vtid, CUresult cuResult) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.primary_ctx_reset_exit({hostname, vpid, vtid}, cuResult);
-}
+MAKE_ENTRY_CALLBACK1(ctx_create_entry, CUdevice)
+MAKE_ENTRY_CALLBACK2(ctx_create_exit, CUresult, CUcontext)
 
-static void
-ctx_create_entry_callback(void *btx_handle, void *usr_data,
-                          int64_t ts, const char *event_class_name,
-                          const char *hostname, int64_t vpid,
-                          uint64_t vtid, CUdevice dev) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_create_entry({hostname, vpid, vtid}, dev);
-}
+MAKE_ENTRY_CALLBACK1(ctx_destroy_entry, CUcontext)
+MAKE_ENTRY_CALLBACK1(ctx_destroy_exit, CUresult)
 
-static void
-ctx_create_exit_callback(void *btx_handle, void *usr_data,
-                         int64_t ts, const char *event_class_name,
-                         const char *hostname, int64_t vpid,
-                         uint64_t vtid, CUresult cuResult,
-                         CUcontext ctx) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_create_exit({hostname, vpid, vtid}, cuResult, ctx);
-}
+MAKE_ENTRY_CALLBACK1(ctx_set_current_entry, CUcontext)
+MAKE_ENTRY_CALLBACK1(ctx_set_current_exit, CUresult)
 
-static void
-ctx_destroy_entry_callback(void *btx_handle, void *usr_data,
-                           int64_t ts, const char *event_class_name,
-                           const char *hostname, int64_t vpid,
-                           uint64_t vtid, CUcontext ctx) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_destroy_entry({hostname, vpid, vtid}, ctx);
-}
+MAKE_ENTRY_CALLBACK1(ctx_push_current_entry, CUcontext)
+MAKE_ENTRY_CALLBACK1(ctx_push_current_exit, CUresult)
 
-static void
-ctx_destroy_exit_callback(void *btx_handle, void *usr_data,
-                          int64_t ts, const char *event_class_name,
-                          const char *hostname, int64_t vpid,
-                          uint64_t vtid, CUresult cuResult) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_destroy_exit({hostname, vpid, vtid}, cuResult);
-}
+MAKE_ENTRY_CALLBACK2(ctx_pop_current_exit, CUresult, CUcontext)
 
-static void
-ctx_set_current_entry_callback(void *btx_handle, void *usr_data,
-                               int64_t ts, const char *event_class_name,
-                               const char *hostname, int64_t vpid,
-                               uint64_t vtid, CUcontext ctx) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_set_current_entry({hostname, vpid, vtid}, ctx);
-}
+MAKE_ENTRY_CALLBACK2(stream_create_exit, CUresult, CUstream)
 
-static void
-ctx_set_current_exit_callback(void *btx_handle, void *usr_data,
-                              int64_t ts, const char *event_class_name,
-                              const char *hostname, int64_t vpid,
-                              uint64_t vtid, CUresult cuResult) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_set_current_exit({hostname, vpid, vtid}, cuResult);
-}
+#undef MAKE_ENTRY_CALLBACK1
+#undef MAKE_ENTRY_CALLBACK2
 
-static void
-ctx_push_current_entry_callback(void *btx_handle, void *usr_data,
-                                int64_t ts, const char *event_class_name,
-                                const char *hostname, int64_t vpid,
-                                uint64_t vtid, CUcontext ctx) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_push_current_entry({hostname, vpid, vtid}, ctx);
-}
-
-static void
-ctx_push_current_exit_callback(void *btx_handle, void *usr_data,
-                               int64_t ts, const char *event_class_name,
-                               const char *hostname, int64_t vpid,
-                               uint64_t vtid, CUresult cuResult) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_push_current_exit({hostname, vpid, vtid}, cuResult);
-}
-
-static void
-ctx_pop_current_entry_callback(void *btx_handle, void *usr_data,
-                               int64_t ts, const char *event_class_name,
-                               const char *hostname, int64_t vpid,
-                               uint64_t vtid) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_pop_current_entry({hostname, vpid, vtid});
-}
-
-static void
-ctx_pop_current_exit_callback(void *btx_handle, void *usr_data,
-                              int64_t ts, const char *event_class_name,
-                              const char *hostname, int64_t vpid,
-                              uint64_t vtid, CUresult cuResult,
-                              CUcontext ctx) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.ctx_pop_current_exit({hostname, vpid, vtid}, cuResult, ctx);
-}
-
-static void
-stream_create_exit_callback(void *btx_handle, void *usr_data,
-                            int64_t ts, const char *event_class_name,
-                            const char *hostname, int64_t vpid,
-                            uint64_t vtid, CUresult cuResult,
-                            CUstream stream) {
-  auto state = static_cast<data_t *>(usr_data);
-  state->context_manager.stream_create_exit({hostname, vpid, vtid}, cuResult, stream);
-}
 // ===============================
 // END Context management
 // ===============================
@@ -533,8 +427,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_ctx_push_current_exit(btx_handle,
     &ctx_push_current_exit_callback);
 
-  btx_register_callbacks_ctx_pop_current_entry(btx_handle,
-    &ctx_pop_current_entry_callback);
   btx_register_callbacks_ctx_pop_current_exit(btx_handle,
     &ctx_pop_current_exit_callback);
 

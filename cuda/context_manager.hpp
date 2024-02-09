@@ -109,7 +109,6 @@ public:
   void ctx_push_current_entry(hpt_t hpt, CUcontext ctx);
   void ctx_push_current_exit(hpt_t hpt, CUresult cuResult);
 
-  void ctx_pop_current_entry(hpt_t hpt);
   void ctx_pop_current_exit(hpt_t hpt, CUresult cuResult, CUcontext ctx);
 
   // Note: entry callback not needed
