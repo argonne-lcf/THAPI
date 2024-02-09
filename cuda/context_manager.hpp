@@ -30,10 +30,10 @@
  *
  * The CUDA programming model uses per device contexts, which keep state like
  * memory allocations and current stream. Each thread has a hidden thread local
- * context stack to manage which context will be used by the next API call in that
- * thread. Things like cudaSetDevice in the runtime API will change the context for
- * the current thread, which we see in thapi in the underlying driver API calls
- * made to implement that functionality.
+ * context stack to manage which context will be used by the next API call in
+ * that thread. Things like cudaSetDevice in the runtime API will change the
+ * context for the current thread, which we see in thapi in the underlying
+ * driver API calls made to implement that functionality.
  *
  * The CUDA runtime API uses a single "primary context" per device per process.
  * For code written with the runtime API, this is typically the only context
@@ -71,8 +71,7 @@
  */
 class CUDAContextManager {
 public:
-  CUDAContextManager(EntryState& entry_state) : entry_state_{entry_state}
-  {}
+  CUDAContextManager(EntryState &entry_state) : entry_state_{entry_state} {}
 
   // returns true and sets output var if found, false otherwise
   CUdevice get_device(hpt_t hpt);
@@ -80,11 +79,11 @@ public:
   // returns true and sets output var if found, false otherwise
   CUcontext get_top_context(hpt_t hpt);
 
-  // Note: streams associate with a context (and a device) at create time; at time
-  // of use, they may be using a device other than the one associated with the
-  // thread's top context stack.
-  // returns true and sets output var if found, false otherwise.
-  // if stream is 0 / default, fallback to get_device (top context device)
+  // Note: streams associate with a context (and a device) at create time; at
+  // time of use, they may be using a device other than the one associated with
+  // the thread's top context stack. returns true and sets output var if found,
+  // false otherwise. if stream is 0 / default, fallback to get_device (top
+  // context device)
   CUdevice get_stream_device(hpt_t hpt, CUstream stream);
 
   // save dev
@@ -129,7 +128,7 @@ private:
   // (and thereby what device) the API call is using
   std::unordered_map<hp_stream_t, CUcontext> hp_stream_to_ctx_;
 
-  // Need to save device and context between entry/exit callbacks. Re-use same entry
-  // state instance to save memory.
-  EntryState& entry_state_;
+  // Need to save device and context between entry/exit callbacks. Re-use same
+  // entry state instance to save memory.
+  EntryState &entry_state_;
 };

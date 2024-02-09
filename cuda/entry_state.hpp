@@ -9,7 +9,6 @@
 
 #include "xprof_utils.hpp"
 
-
 class EntryState {
 public:
   template <class K,
@@ -38,29 +37,23 @@ public:
 
   template <class K,
             typename = std::enable_if_t<std::is_same_v<K, std::string>>>
-  std::enable_if_t<std::is_same_v<K, std::string>, K>
-  get_data(hpt_t hpt) {
+  std::enable_if_t<std::is_same_v<K, std::string>, K> get_data(hpt_t hpt) {
     auto &v = set_data_impl(hpt);
     const std::string res{(char *)v.value().data()};
     v.reset();
     return res;
   }
 
-  void set_ts(hpt_t hpt, int64_t ts) {
-    entry_ts[hpt] = ts;
-  }
+  void set_ts(hpt_t hpt, int64_t ts) { entry_ts[hpt] = ts; }
 
-  int64_t get_ts(hpt_t hpt) {
-    return THAPI_AT(entry_ts, hpt);
-  }
+  int64_t get_ts(hpt_t hpt) { return THAPI_AT(entry_ts, hpt); }
 
 private:
   std::unordered_map<hpt_t, std::optional<std::vector<std::byte>>> entry_data;
   std::unordered_map<hpt_t, int64_t> entry_ts;
 
   void set_data_impl(hpt_t hpt, std::vector<std::byte> &res) {
-    const auto [kv, inserted] =
-        entry_data.emplace(std::make_pair(hpt, res));
+    const auto [kv, inserted] = entry_data.emplace(std::make_pair(hpt, res));
     if (!inserted) {
       auto &v = kv->second;
 #ifndef NDEBUG
@@ -71,7 +64,5 @@ private:
     }
   }
 
-  auto &set_data_impl(hpt_t hpt) {
-    return THAPI_AT(entry_data, hpt);
-  }
+  auto &set_data_impl(hpt_t hpt) { return THAPI_AT(entry_data, hpt); }
 };
