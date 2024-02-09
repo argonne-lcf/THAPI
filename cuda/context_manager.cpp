@@ -50,6 +50,8 @@ void CUDAContextManager::primary_ctx_release_entry(hpt_t hpt, CUdevice dev) {
   entry_state_.set_data<CUdevice>(hpt, dev);
 }
 
+// Erace the context from our maps, it is unusable to the thread after
+// this is called and attempting to use it is an error
 void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) {
   if (cuResultIsError(cuResult)) {
     return;
@@ -62,6 +64,10 @@ void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) 
 }
 
 // cuPrimaryCtxReset_v2_(entry|exit)
+// Note: this differs from release in that there is no reference counting
+// and it destroys all allocations in the context. For our purposes, it has
+// a similar effect of making the context unusable to the calling thread,
+// so we can call the release callbacks.
 void CUDAContextManager::primary_ctx_reset_entry(hpt_t hpt, CUdevice dev) {
   primary_ctx_release_entry(hpt, dev);
 }
