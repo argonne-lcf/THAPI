@@ -71,17 +71,17 @@
 class CUDAContextManager {
 public:
   // returns true and sets output var if found, false otherwise
-  bool get_device(hpt_t hpt, CUdevice *pdev);
+  CUdevice get_device(hpt_t hpt);
 
   // returns true and sets output var if found, false otherwise
-  bool get_top_context(hpt_t hpt, CUcontext *pctx);
+  CUcontext get_top_context(hpt_t hpt);
 
   // Note: streams associate with a context (and a device) at create time; at time
   // of use, they may be using a device other than the one associated with the
   // thread's top context stack.
   // returns true and sets output var if found, false otherwise.
   // if stream is 0 / default, fallback to get_device (top context device)
-  bool get_stream_device(hpt_t hpt, CUstream stream, CUdevice *pdev);
+  CUdevice get_stream_device(hpt_t hpt, CUstream stream);
 
   // save dev
   void primary_ctx_retain_entry(hpt_t hpt, CUdevice dev);
@@ -112,8 +112,6 @@ public:
   void stream_create_exit(hpt_t hpt, CUresult cuResult, CUstream phStream_val);
 
 private:
-  void ensure_stack(hpt_t hpt);
-
   // There is at most once primary context per (host, process, device)
   std::unordered_map<hp_device_t, CUcontext> hp_device_primary_ctx_;
 

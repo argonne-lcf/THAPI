@@ -405,11 +405,7 @@ task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
                   const std::optional<CUfunction> f_optional = {}) {
   auto state = static_cast<data_t *>(usr_data);
   hpt_t hpt = {hostname, vpid, vtid};
-  CUdevice dev;
-  bool found = state->context_manager.get_stream_device(hpt, cuStream, &dev);
-  if (!found) {
-    THAPI_FATAL_HPT(hpt, "no device for thread in device op");
-  }
+  auto dev = state->context_manager.get_stream_device(hpt, cuStream);
 
   std::string name = strip_event_class_name(event_class_name);
   if (f_optional.has_value()) {
