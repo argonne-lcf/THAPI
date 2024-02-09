@@ -237,7 +237,7 @@
 
   # tasks that generate thapi device events
   - :set_id: task
-    :name: "(cuMemcpy|cuMemPrefetch|cuMemset|cuMemFree|cuLaunch)"
+    :name: "cuMem|cuLaunch"
     :register: false
 
   - :set_id: task_entry
