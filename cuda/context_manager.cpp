@@ -10,7 +10,6 @@ CUdevice CUDAContextManager::get_device(hpt_t hpt) {
 }
 
 CUcontext CUDAContextManager::get_top_context(hpt_t hpt) {
-  // std::cerr << "get top ctx for thread " << std::get<2>(hpt) << std::endl;
   auto& hpt_stack = THAPI_AT(hpt_ctx_stack_, hpt);
   // Note: the primary context is not used automatically, it must be pushed or set
   // current first and be on the stack
@@ -28,6 +27,7 @@ CUdevice CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream) {
   hp_context_t hp_context = {std::get<0>(hpt), std::get<1>(hpt), ctx};
   return THAPI_AT(hp_ctx_to_device_, hp_context);
 }
+
 
 // cuPrimaryCtxRetain_v2_(entry|exit)
 void CUDAContextManager::primary_ctx_retain_entry(hpt_t hpt, CUdevice dev) {
@@ -63,6 +63,7 @@ void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) 
   hp_ctx_to_device_.erase({std::get<0>(hpt), std::get<1>(hpt), ctx});
 }
 
+
 // cuPrimaryCtxReset_v2_(entry|exit)
 // Note: this differs from release in that there is no reference counting
 // and it destroys all allocations in the context. For our purposes, it has
@@ -83,7 +84,7 @@ void CUDAContextManager::ctx_create_entry(hpt_t hpt, CUdevice dev) {
 }
 
 void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
-                                             CUcontext ctx) {
+                                         CUcontext ctx) {
   if (cuResultIsError(cuResult)) {
     return;
   }
@@ -137,6 +138,7 @@ void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
   stack.push(entry_ctx);
 }
 
+
 // cuCtxSetCurrent_(entry|exit)
 void CUDAContextManager::ctx_push_current_entry(hpt_t hpt, CUcontext ctx) {
   entry_state_.set_data<CUcontext>(hpt, ctx);
@@ -163,6 +165,7 @@ void CUDAContextManager::ctx_pop_current_exit(hpt_t hpt, CUresult cuResult,
   }
   hpt_ctx_stack_[hpt].pop();
 }
+
 
 // cuStreamCreate_exit
 // Note: entry not needed
