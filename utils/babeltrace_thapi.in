@@ -3,7 +3,7 @@ DATADIR = File.join('@prefix@', 'share')
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'babeltrace2'
 require 'find'
-require 'optparse_thapi.rb'
+require 'optparse_thapi'
 
 module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
@@ -105,26 +105,6 @@ using BTComponentClassRefinement
 # Don't complain about broken pipe
 Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
-subtext = <<~HELP
-  Commonly used command are:
-     trace:     Display the trace
-     tally:     Display the tally
-     timeline:  Dump the timeline
-
-  See 'babeltrace_thapi COMMAND --help' for more information on a specific command.
-HELP
-
-$options = { backends: %w[omp cl ze cuda hip] }
-$options_tally = {
-  'display' => [String, 'compact'],
-  'name' => [String, 'demangle'],
-  'display_mode' => [String, 'human'],
-  'display_metadata' => [FalseClass, false],
-  'display_name_max_size' => [Integer, 80],
-  'display_kernel_verbose' => [FalseClass, false],
-  'backend_level' => [String, ''],
-}
-
 NameComp = Struct.new(:name, :comp)
 
 def get_components(names)
@@ -149,20 +129,20 @@ def get_components(names)
   names.flat_map do |name|
     case name
     when 'filter.intervals.interval'
-      $options[:backends].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
+      $options[:backend].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
     when 'sink.text.rubypretty'
       # Yaml and event_lambdas are required by babeltrace*_lib
       $event_lambdas = {}
       require 'yaml'
-      require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
-      require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
-      require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
-      require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
-      require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
+      require 'babeltrace_omp_lib' if $options[:backend].include?('omp')
+      require 'babeltrace_opencl_lib' if $options[:backend].include?('cl')
+      require 'babeltrace_ze_lib' if $options[:backend].include?('ze')
+      require 'babeltrace_cuda_lib' if $options[:backend].include?('cuda')
+      require 'babeltrace_hip_lib' if $options[:backend].include?('hip')
       # I guess need to put it in `babeltrace_energy_lib` at some point?
 
       $energies = {}
-      if $options[:backends].include?('ze')
+      if $options[:backend].include?('ze')
         $event_lambdas['lttng_ust_ze_sampling:gpu_energy'] = lambda { |defi|
           energy = defi['energy']
           timestamp = defi['timestamp']
@@ -241,9 +221,15 @@ def get_and_add_components(graph, names)
                           'quiet' => $options[:debug] ? false : true })
     when 'sink.btx_tally.tally'
       graph.add(comp, 'tally',
-                params: $options_tally.transform_values { |_, v| v })
+                params: { 'display' => $options[:display],
+                          'name' => $options[:name],
+                          'display_mode' => $options[:'display-mode'],
+                          'display_metadata' => $options[:'display-metadata'] ? false : true,
+                          'display_name_max_size' => $options[:'display-name-max-size'],
+                          'display_kernel_verbose' => $options[:'display-kernel-verbose'] ? false : true,
+                          'backend_level' => $options[:'backend-level'].join(',') })
     when 'filter.utils.muxer'
-      graph.add(comp, name) unless $options[:'no-muxer']
+      graph.add(comp, name) if $options[:muxer]
     else
       # `.` is not allowed in the babeltrace components name when using the CLI
       graph.add(comp, name.gsub('.', '_'))
@@ -260,102 +246,112 @@ def connects(graph, comps)
   end
 end
 
-def common_options(opts)
-  opts.on('-b', '--backend BACKEND', Array) do |v|
-    $options[:backends] = v
+#    _                       _    ___
+#   |_) _. ._ _ o ._   _    /  |   |
+#   |  (_| | _> | | | (_|   \_ |_ _|_
+#                      _|
+class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
+  def initialize
+    super
+    on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
+    on('-b', '--backend BACKEND', Array, default: %w[omp cl ze cuda hip])
+    on('--debug', default: false)
+    on('--[no-]muxer', default: true)
+    on('-v', '--version', 'Print the version string') do
+      puts File.read(File.join(DATADIR, 'version'))
+      exit
+    end
+  end
+end
+
+def print_help_and_exit(parser = nil, exit_code: 1)
+  if parser
+    puts(parser.help)
+  else
+    puts(<<~EOF
+      Usage: babeltrace_thapi [COMMAND] trace_directory...
+           trace:     Display the trace
+           tally:     Display the tally
+           timeline:  Dump the timeline
+
+        See 'babeltrace_thapi COMMAND --help' for more information on a specific command.
+    EOF
+        )
   end
 
-  opts.on('--debug') do |_v|
-    $options[:debug] = true
-  end
-
-  opts.on('--no-muxer') do |_v|
-    $options[:'no-muxer'] = true
-  end
-
-  opts.on('-v', '--version', 'Print the version string') do
-    puts File.read(File.join(DATADIR, 'version'))
-    exit
-  end
+  puts(<<~EOF
+                                                          __
+    For complaints, praises, or bug reports please use: <(o )___
+       https://github.com/argonne-lcf/THAPI              ( ._> /
+       or send email to {apl,bvideau}@anl.gov             `---'
+  EOF
+      )
+  exit(exit_code)
 end
 
 subcommands = {
   'trace' =>
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: babeltrace_thapi [OPTIONS] trace_directory...'
-      common_options(opts)
-
-      opts.on('-c', '--[no-]context', 'Add context information') do |context|
-        $options[:context] = context
-      end
-
-      opts.on('-r', '--[no-]restrict', 'Restrict output to recognized events') do |restrict|
-        $options[:restrict] = restrict
-      end
-
-      opts.on('-h', '--help', 'Prints this help') do
-        puts opts
-        exit
-      end
-
-      opts.on('--live', 'Enable live display of the trace') do
-        $options[:live] = true
-      end
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi trace [OPTIONS] trace_directory...'
+      parser.on('-c', '--[no-]context', 'Add context information')
+      parser.on('-r', '--[no-]restrict', 'Restrict output to recognized events')
+      parser.on('--live', 'Enable live display of the trace')
     end,
   'to_interval' =>
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: to_interval [OPTIONS]'
-      common_options(opts)
-      opts.on('--output=OUTPUT') do |output|
-        $options[:output] = output
-      end
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi to_interval [OPTIONS] trace_directory...'
+      parser.on('--output OUTPUT')
     end,
   'to_aggreg' =>
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: to_aggreg [OPTIONS]'
-      common_options(opts)
-      opts.on('--output=OUTPUT') do |output|
-        $options[:output] = output
-      end
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi to_aggreg [OPTIONS] trace_directory...'
+      parser.on('--output=OUTPUT')
     end,
   'tally' =>
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: tally [OPTIONS] trace_directory...'
-      common_options(opts)
-
-      $options_tally.each do |k, (t, _)|
-        opts.on("--#{k}=VALUE", t) do |v|
-          $options_tally[k] = [t, v]
-        end
-      end
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi tally [OPTIONS] trace_directory...'
+      parser.on('--display TYPE', String, default: 'compact', allowed: %w[compact extented])
+      parser.on('--name TYPE', String, default: 'demangle', allowed: %w[demangle mangle])
+      parser.on('--display-mode MODE', String, default: 'human', allowed: %w[human json])
+      parser.on('--display-metadata')
+      parser.on('--display-name-max-size SIZE', Integer, default: 80)
+      parser.on('--backend-level SIZE', Array, default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+      parser.on('--display-kernel-verbose')
     end,
   'timeline' =>
-    OptionParser.new do |opts|
-      opts.banner = 'Usage: timeline [OPTIONS] trace_directory...'
-      common_options(opts)
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi timeline [OPTIONS] trace_directory...'
     end,
 }
 
-$options.merge!($options_tally)
-if ARGV.empty? || ARGV[0] == '--help'
-  puts subtext
-  exit
-end
-
+print_help_and_exit if ARGV.empty? || ARGV[0] == '--help'
 ARGV.insert(0, 'trace') unless subcommands.include?(ARGV.first)
 command = ARGV.shift
-subcommands[command].order!
+
+$options = {}
+parser = subcommands[command]
+begin
+  parser.parse!(into: $options)
+rescue StandardError => e
+  puts("ERROR: #{e}")
+  print_help_and_exit(parser)
+end
+
 # Fix segfault
 ARGV.uniq!
 
-if $options[:'no-muxer']
-  # We need a metababel plugin to read multiple port who come from the source.
-  # And they need to be first
+unless $options[:muxer]
+  # The first filter of the grap to read multiple port (aka metababael plugin)
   h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 1, 'ze' => 0 }
-  raise if ($options[:backends] & h.filter_map { |k, v| k if v == 0 }).empty?
+  raise if ($options[:backend] & h.filter_map { |k, v| k if v == 0 }).empty?
 
-  $options[:backends] = $options[:backends].sort_by { |k| h[k] }
+  $options[:backend] = $options[:backend].sort_by { |k| h[k] }
 end
+
+#    _
+#   |_)     ._
+#   | \ |_| | |
+#
 
 thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                             'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],

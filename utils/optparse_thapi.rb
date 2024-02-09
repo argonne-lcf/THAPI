@@ -15,7 +15,7 @@ class OptionParserWithDefaultAndValidation < OptionParser
 
   def define(*opts, &block)
     switch = super
-    @defaults[switch.switch_name] = @tmp_default unless @tmp_default.nil?
+    @defaults[switch.switch_name.to_sym] = @tmp_default unless @tmp_default.nil?
     switch
   end
 

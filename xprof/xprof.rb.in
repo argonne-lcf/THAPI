@@ -17,7 +17,7 @@ $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
 require 'etc'
-require 'optparse_thapi.rb'
+require 'optparse_thapi'
 require 'pty'
 require 'digest/md5'
 require 'socket'
@@ -448,6 +448,7 @@ end
 
 def setup_lttng(backends)
   raise unless mpi_local_master?
+
   # Spawning the sessiond Daemon will crash
   #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
@@ -567,6 +568,7 @@ def global_processing(folder)
     args += ['trace', '--restrict', '--context', '--backend', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
+
     args += ['timeline', '--backend', backends]
   else
     args += ['tally']
@@ -598,7 +600,8 @@ end
 parser = OptionParserWithDefaultAndValidation.new
 
 # Tracing
-parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default', allowed:  %w[minimal default full])
+parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
+                                                                               allowed: %w[minimal default full])
 parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
           'Use -1 to mean all ranks.',
           default: Set[-1]) do |ranks|
@@ -634,9 +637,12 @@ parser.on('--max-name-size SIZE',
           'Maximum size allowed for kernels names.',
           'Use -1 to mean no limit.', default: 80)
 
-parser.on('--metadata', 'Display trace Metadata')
-parser.on('-v', '--version', 'Display THAPI version')
-parser.on('-h', '--help', 'Display this message')
+parser.on('--metadata', 'Display trace Metadata') do
+  puts File.read(File.join(DATADIR, 'version'))
+  exit
+end
+
+parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
 parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
           "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
@@ -671,13 +677,6 @@ OPTIONS = options.freeze
 LOGGER = Logger.new($stdout)
 LOGGER.level = OPTIONS[:debug]
 LOGGER.debug(OPTIONS)
-
-# We don't rely on the Parser-OPT default help, as it doesn't print the footer
-print_help_and_exit(parser, exit_code: 0) if OPTIONS.include?(:help)
-if OPTIONS.include?(:version)
-  puts(File.read(File.join(DATADIR, 'version')))
-  exit(0)
-end
 
 def last_trace_saved
   Dir[File.join(env_fetch_first('HOME'), 'thapi-traces', 'thapi*')].max_by { |f| File.mtime(f) }
