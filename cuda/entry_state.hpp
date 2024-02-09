@@ -14,33 +14,33 @@ class EntryState {
 public:
   template <class K,
             typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
-  void push_entry(hpt_t hpt, K v) {
+  void set_data(hpt_t hpt, K v) {
     const auto *b = (std::byte *)&v;
     std::vector<std::byte> res{b, b + sizeof(K)};
-    push_entry_impl(hpt, res);
+    set_data_impl(hpt, res);
   }
 
   template <class K,
             typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
-  K pop_entry(hpt_t hpt) {
-    auto &v = pop_entry_impl(hpt);
+  K get_data(hpt_t hpt) {
+    auto &v = set_data_impl(hpt);
     const K res{*(K *)(v.value().data())};
     v.reset();
     return res;
   }
 
   //-- String specialization
-  void push_entry(hpt_t hpt, const std::string s) {
+  void set_data(hpt_t hpt, const std::string s) {
     const auto *b = (std::byte *)s.data();
     std::vector<std::byte> res{b, b + s.size() + 1};
-    push_entry_impl(hpt, res);
+    set_data_impl(hpt, res);
   }
 
   template <class K,
             typename = std::enable_if_t<std::is_same_v<K, std::string>>>
   std::enable_if_t<std::is_same_v<K, std::string>, K>
-  pop_entry(hpt_t hpt) {
-    auto &v = pop_entry_impl(hpt);
+  get_data(hpt_t hpt) {
+    auto &v = set_data_impl(hpt);
     const std::string res{(char *)v.value().data()};
     v.reset();
     return res;
@@ -58,7 +58,7 @@ private:
   std::unordered_map<hpt_t, std::optional<std::vector<std::byte>>> entry_data;
   std::unordered_map<hpt_t, int64_t> entry_ts;
 
-  void push_entry_impl(hpt_t hpt, std::vector<std::byte> &res) {
+  void set_data_impl(hpt_t hpt, std::vector<std::byte> &res) {
     const auto [kv, inserted] =
         entry_data.emplace(std::make_pair(hpt, res));
     if (!inserted) {
@@ -71,7 +71,7 @@ private:
     }
   }
 
-  auto &pop_entry_impl(hpt_t hpt) {
+  auto &set_data_impl(hpt_t hpt) {
     return THAPI_AT(entry_data, hpt);
   }
 };

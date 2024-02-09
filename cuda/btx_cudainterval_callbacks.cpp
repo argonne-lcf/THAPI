@@ -15,7 +15,16 @@
 #include <metababel/metababel.h>
 
 
-struct data_s {
+class data_s {
+public:
+  data_s() : entry_state{}, 
+             hp_kernel_to_name{},
+             hpt_function_name_to_dev{},
+             hpt_profiled_function_name_and_ts{},
+             hp_event_to_function_name_and_ts{},
+             context_manager{entry_state}
+  {}
+
   // Need to store entry state per thread in order to use in exit callback if the
   // cuResult is a non-error. Keeps track of one data item (of any type) and one ts
   // for each thread.
@@ -60,7 +69,7 @@ struct data_s {
   CUDAContextManager context_manager;
 };
 
-using data_t = struct data_s;
+using data_t = data_s;
 
 static std::string strip_event_class_name(const char *str) {
   std::string temp(str);
@@ -125,7 +134,7 @@ entries_traffic_v2_callback(void *btx_handle, void *usr_data, int64_t ts,
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key = {hostname, vpid, vtid};
   state->entry_state.set_ts(key, ts);
-  state->entry_state.push_entry<size_t>(key, size);
+  state->entry_state.set_data<size_t>(key, size);
 }
 
 // Note: v1 API takes uint32_t type for size arg
@@ -150,7 +159,7 @@ exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key = {hostname, vpid, vtid};
   const int64_t entry_ts = state->entry_state.get_ts(key);
-  auto size = state->entry_state.pop_entry<size_t>(key);
+  auto size = state->entry_state.get_data<size_t>(key);
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, entry_ts,
                                  BACKEND_CUDA, event_class_name_stripped.c_str(),
                                  size);
@@ -369,7 +378,7 @@ module_get_function_entry_callback(void *btx_handle, void *usr_data,
                                    uint64_t vtid, char* name) {
   auto state = static_cast<data_t *>(usr_data);
   std::string name_str(name);
-  state->entry_state.push_entry({hostname, vpid, vtid}, name_str);
+  state->entry_state.set_data({hostname, vpid, vtid}, name_str);
 }
 
 static void
@@ -384,7 +393,7 @@ module_get_function_exit_callback(void *btx_handle, void *usr_data,
   auto state = static_cast<data_t *>(usr_data);
   hpt_t hpt = {hostname, vpid, vtid};
 
-  auto kernel_name = state->entry_state.pop_entry<std::string>(hpt);
+  auto kernel_name = state->entry_state.get_data<std::string>(hpt);
   hp_kernel_t hp_kernel_key = {hostname, vpid, cuFunction};
   state->hp_kernel_to_name[hp_kernel_key] = kernel_name;
 }

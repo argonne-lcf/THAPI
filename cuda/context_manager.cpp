@@ -31,7 +31,7 @@ CUdevice CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream) {
 
 // cuPrimaryCtxRetain_v2_(entry|exit)
 void CUDAContextManager::primary_ctx_retain_entry(hpt_t hpt, CUdevice dev) {
-  hpt_entry_dev_[hpt] = dev;
+  entry_state_.set_data<CUdevice>(hpt, dev);
 }
 
 void CUDAContextManager::primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult,
@@ -39,7 +39,7 @@ void CUDAContextManager::primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult,
   if (cuResultIsError(cuResult)) {
     return;
   }
-  auto entry_dev = THAPI_AT(hpt_entry_dev_, hpt);
+  auto entry_dev = entry_state_.get_data<CUdevice>(hpt);
   hp_device_primary_ctx_[{std::get<0>(hpt), std::get<1>(hpt), entry_dev}] = ctx;
   hp_ctx_to_device_[{std::get<0>(hpt), std::get<1>(hpt), ctx}] = entry_dev;
 }
@@ -47,14 +47,14 @@ void CUDAContextManager::primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult,
 
 // cuPrimaryCtxRelease_v2_(entry|exit)
 void CUDAContextManager::primary_ctx_release_entry(hpt_t hpt, CUdevice dev) {
-  hpt_entry_dev_[hpt] = dev;
+  entry_state_.set_data<CUdevice>(hpt, dev);
 }
 
 void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt, CUresult cuResult) {
   if (cuResultIsError(cuResult)) {
     return;
   }
-  CUdevice entry_dev = THAPI_AT(hpt_entry_dev_, hpt);
+  auto entry_dev = entry_state_.get_data<CUdevice>(hpt);
   hp_device_t hp_dev_key = {std::get<0>(hpt), std::get<1>(hpt), entry_dev};
   auto ctx = THAPI_AT(hp_device_primary_ctx_, hp_dev_key);
   hp_device_primary_ctx_.erase(hp_dev_key);
@@ -73,7 +73,7 @@ void CUDAContextManager::primary_ctx_reset_exit(hpt_t hpt, CUresult cuResult) {
 
 // cuCtxCreate_v(2|3)_(entry|exit)
 void CUDAContextManager::ctx_create_entry(hpt_t hpt, CUdevice dev) {
-  hpt_entry_dev_[hpt] = dev;
+  entry_state_.set_data<CUdevice>(hpt, dev);
 }
 
 void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
@@ -81,7 +81,7 @@ void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
   if (cuResultIsError(cuResult)) {
     return;
   }
-  auto entry_dev = THAPI_AT(hpt_entry_dev_, hpt);
+  auto entry_dev = entry_state_.get_data<CUdevice>(hpt);
   hp_context_t hp_ctx_key = {std::get<0>(hpt), std::get<1>(hpt), ctx};
   hp_ctx_to_device_[hp_ctx_key] = entry_dev;
   hpt_ctx_stack_[hpt].push(ctx);
@@ -90,51 +90,38 @@ void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
 
 // cuCtxDestroy_(entry|exit)
 void CUDAContextManager::ctx_destroy_entry(hpt_t hpt, CUcontext ctx) {
-  hpt_entry_ctx_[hpt] = ctx;
+  entry_state_.set_data<CUcontext>(hpt, ctx);
 }
 
 void CUDAContextManager::ctx_destroy_exit(hpt_t hpt, CUresult cuResult) {
   if (cuResultIsError(cuResult)) {
     return;
   }
-  CUcontext entry_ctx;
-  try {
-    entry_ctx = THAPI_AT(hpt_entry_ctx_, hpt);
-  } catch(const std::out_of_range& oor) {
-    THAPI_FATAL_HPT(hpt,
-                    "no entry device for thread in ctx destroy exit callback");
-  }
+  auto entry_ctx = entry_state_.get_data<CUcontext>(hpt);
 
-  // std::cerr << "destroy ctx " << std::get<2>(hpt) << " " << entry_ctx << std::endl;
   // context is no longer usuable after destroy, trying to use it should trigger
   // an error
   hp_ctx_to_device_.erase({std::get<0>(hpt), std::get<1>(hpt), entry_ctx});
 
   // pop thread context stack only if it's current on the calling thread
   // See https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html
-  try {
-    auto& stack = THAPI_AT(hpt_ctx_stack_, hpt);
-    if (!stack.empty() && stack.top() == entry_ctx) {
-      stack.pop();
-    }
-  } catch(const std::out_of_range& oor) {
-    THAPI_FATAL_HPT(hpt,
-                    "no ctx stack for thread in ctx detroy exit callback");
+  auto& stack = THAPI_AT(hpt_ctx_stack_, hpt);
+  if (!stack.empty() && stack.top() == entry_ctx) {
+    stack.pop();
   }
 }
 
 
 // cuCtxSetCurrent_(entry|exit)
 void CUDAContextManager::ctx_set_current_entry(hpt_t hpt, CUcontext ctx) {
-  // std::cerr << "set current entry thread " << std::get<2>(hpt) << std::endl;
-  hpt_entry_ctx_[hpt] = ctx;
+  entry_state_.set_data<CUcontext>(hpt, ctx);
 }
 
 void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
   if (cuResultIsError(cuResult)) {
     return;
   }
-  auto entry_ctx = THAPI_AT(hpt_entry_ctx_, hpt);
+  auto entry_ctx = entry_state_.get_data<CUcontext>(hpt);
   // Note: don't use THAPI_AT, we need operator[] semantics of
   // creating if the stack does not exists yet.
   auto& stack = hpt_ctx_stack_[hpt];
@@ -146,15 +133,14 @@ void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
 
 // cuCtxSetCurrent_(entry|exit)
 void CUDAContextManager::ctx_push_current_entry(hpt_t hpt, CUcontext ctx) {
-  hpt_entry_ctx_[hpt] = ctx;
+  entry_state_.set_data<CUcontext>(hpt, ctx);
 }
 
 void CUDAContextManager::ctx_push_current_exit(hpt_t hpt, CUresult cuResult) {
   if (cuResultIsError(cuResult)) {
     return;
   }
-  // Note: do use THAPI_AT, stack should already exist for valid program
-  auto entry_ctx = THAPI_AT(hpt_entry_ctx_, hpt);
+  auto entry_ctx = entry_state_.get_data<CUcontext>(hpt);
   hpt_ctx_stack_[hpt].push(entry_ctx);
 }
 

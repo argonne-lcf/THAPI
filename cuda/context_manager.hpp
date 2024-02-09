@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "btx_cudainterval_callbacks.hpp"
+#include "entry_state.hpp"
 
 /** CUDAContextManager
  *
@@ -70,6 +71,9 @@
  */
 class CUDAContextManager {
 public:
+  CUDAContextManager(EntryState& entry_state) : entry_state_{entry_state}
+  {}
+
   // returns true and sets output var if found, false otherwise
   CUdevice get_device(hpt_t hpt);
 
@@ -126,8 +130,7 @@ private:
   // (and thereby what device) the API call is using
   std::unordered_map<hp_stream_t, CUcontext> hp_stream_to_ctx_;
 
-  // Temp saves to carry args from entry to exit (since we need to wait for exit
-  // callback and check cuResult before doing anything). Need to keep track per thread.
-  std::unordered_map<hpt_t, CUcontext> hpt_entry_ctx_;
-  std::unordered_map<hpt_t, CUdevice> hpt_entry_dev_;
+  // Need to save device and context between entry/exit callbacks. Re-use same entry
+  // state instance to save memory.
+  EntryState& entry_state_;
 };
