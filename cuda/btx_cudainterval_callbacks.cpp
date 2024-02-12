@@ -357,6 +357,9 @@ static void kernel_task_stream_absent_entry_callback(
 // END Kernel name and device tracking
 // ===============================
 
+#define REGISTER_CONTEXT_MANAGER_CALLBACK(base_name) \
+  btx_register_callbacks_##base_name(btx_handle, &base_name##_callback);
+
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_component(btx_handle,
                                               &btx_initialize_component);
@@ -384,45 +387,30 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &profiling_callback_results);
 
   // Context handling
-  btx_register_callbacks_primary_ctx_retain_entry(
-      btx_handle, &primary_ctx_retain_entry_callback);
-  btx_register_callbacks_primary_ctx_retain_exit(
-      btx_handle, &primary_ctx_retain_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_retain_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_retain_exit);
 
-  btx_register_callbacks_primary_ctx_release_entry(
-      btx_handle, &primary_ctx_release_entry_callback);
-  btx_register_callbacks_primary_ctx_release_exit(
-      btx_handle, &primary_ctx_release_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_release_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_release_exit);
 
-  btx_register_callbacks_primary_ctx_reset_entry(
-      btx_handle, &primary_ctx_reset_entry_callback);
-  btx_register_callbacks_primary_ctx_reset_exit(
-      btx_handle, &primary_ctx_reset_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_reset_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_reset_exit);
 
-  btx_register_callbacks_ctx_create_entry(btx_handle,
-                                          &ctx_create_entry_callback);
-  btx_register_callbacks_ctx_create_exit(btx_handle, &ctx_create_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_create_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_create_exit);
 
-  btx_register_callbacks_ctx_destroy_entry(btx_handle,
-                                           &ctx_destroy_entry_callback);
-  btx_register_callbacks_ctx_destroy_exit(btx_handle,
-                                          &ctx_destroy_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_destroy_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_destroy_exit);
 
-  btx_register_callbacks_ctx_set_current_entry(btx_handle,
-                                               &ctx_set_current_entry_callback);
-  btx_register_callbacks_ctx_set_current_exit(btx_handle,
-                                              &ctx_set_current_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_set_current_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_set_current_exit);
 
-  btx_register_callbacks_ctx_push_current_entry(
-      btx_handle, &ctx_push_current_entry_callback);
-  btx_register_callbacks_ctx_push_current_exit(btx_handle,
-                                               &ctx_push_current_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_push_current_entry);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_push_current_exit);
 
-  btx_register_callbacks_ctx_pop_current_exit(btx_handle,
-                                              &ctx_pop_current_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_pop_current_exit);
 
-  btx_register_callbacks_stream_create_exit(btx_handle,
-                                            &stream_create_exit_callback);
+  REGISTER_CONTEXT_MANAGER_CALLBACK(stream_create_exit);
 
   // kernel name and device tracking
   btx_register_callbacks_module_get_function_entry(
@@ -440,3 +428,5 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_kernel_task_stream_absent_entry(
       btx_handle, &kernel_task_stream_absent_entry_callback);
 }
+
+#undef REGISTER_CONTEXT_MANAGER_CALLBACK
