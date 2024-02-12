@@ -170,38 +170,6 @@
       - :name: ^cuResult$
       - :name: ^pctx_val$
   
-  - :set_id: primary_ctx_release
-    :name: "cuDevicePrimaryCtxRelease"
-    :register: false
-  - :set_id: primary_ctx_release_entry
-    :domain: entries & primary_ctx_release
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^dev$
-  - :set_id: primary_ctx_release_exit
-    :domain: exits & primary_ctx_release
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^cuResult$
-  
-  - :set_id: primary_ctx_reset
-    :name: "cuDevicePrimaryCtxReset"
-    :register: false
-  - :set_id: primary_ctx_reset_entry
-    :domain: entries & primary_ctx_reset
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^dev$
-  - :set_id: primary_ctx_reset_exit
-    :domain: exits & primary_ctx_reset
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^cuResult$
-
   # Stream create
   - :set_id: stream_create
     :name: "cuStreamCreate"

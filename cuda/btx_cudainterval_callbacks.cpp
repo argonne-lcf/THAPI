@@ -14,14 +14,7 @@
 
 #include <metababel/metababel.h>
 
-// TODO: use separate EntryState in ContextManager
-class data_s {
-public:
-  data_s()
-      : entry_state{}, hp_kernel_to_name{}, hpt_function_name_to_dev{},
-        hpt_profiled_function_name_and_ts{}, hp_event_to_function_name_and_ts{},
-        context_manager{entry_state} {}
-
+struct data_s {
   // Need to store entry state per thread in order to use in exit callback if
   // the cuResult is a non-error. Keeps track of one data item (of any type) and
   // one ts for each thread.
@@ -69,7 +62,7 @@ public:
   CUDAContextManager context_manager;
 };
 
-using data_t = data_s;
+using data_t = struct data_s;
 
 static std::string strip_event_class_name(const char *str) {
   std::string temp(str);
@@ -238,12 +231,6 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
 MAKE_ENTRY_CALLBACK1(primary_ctx_retain_entry, CUdevice)
 MAKE_ENTRY_CALLBACK2(primary_ctx_retain_exit, CUresult, CUcontext)
 
-MAKE_ENTRY_CALLBACK1(primary_ctx_release_entry, CUdevice)
-MAKE_ENTRY_CALLBACK1(primary_ctx_release_exit, CUresult)
-
-MAKE_ENTRY_CALLBACK1(primary_ctx_reset_entry, CUdevice)
-MAKE_ENTRY_CALLBACK1(primary_ctx_reset_exit, CUresult)
-
 MAKE_ENTRY_CALLBACK1(ctx_create_entry, CUdevice)
 MAKE_ENTRY_CALLBACK2(ctx_create_exit, CUresult, CUcontext)
 
@@ -385,12 +372,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   // Context handling
   REGISTER_ASSOCIATED_CALLBACK(primary_ctx_retain_entry);
   REGISTER_ASSOCIATED_CALLBACK(primary_ctx_retain_exit);
-
-  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_release_entry);
-  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_release_exit);
-
-  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_reset_entry);
-  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_reset_exit);
 
   REGISTER_ASSOCIATED_CALLBACK(ctx_create_entry);
   REGISTER_ASSOCIATED_CALLBACK(ctx_create_exit);

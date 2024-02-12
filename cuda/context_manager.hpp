@@ -79,8 +79,6 @@ using hp_stream_t = std::tuple<hostname_t, process_id_t, CUstream>;
  */
 class CUDAContextManager {
 public:
-  CUDAContextManager(EntryState &entry_state) : entry_state_{entry_state} {}
-
   // returns true and sets output var if found, false otherwise
   CUdevice get_device(hpt_t hpt);
 
@@ -97,12 +95,6 @@ public:
   // save dev
   void primary_ctx_retain_entry(hpt_t hpt, CUdevice dev);
   void primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult, CUcontext ctx);
-
-  void primary_ctx_release_entry(hpt_t hpt, CUdevice dev);
-  void primary_ctx_release_exit(hpt_t hpt, CUresult cuResult);
-
-  void primary_ctx_reset_entry(hpt_t hpt, CUdevice dev);
-  void primary_ctx_reset_exit(hpt_t hpt, CUresult cuResult);
 
   void ctx_create_entry(hpt_t hpt, CUdevice dev);
   void ctx_create_exit(hpt_t hpt, CUresult cuResult, CUcontext ctx);
@@ -122,9 +114,6 @@ public:
   void stream_create_exit(hpt_t hpt, CUresult cuResult, CUstream phStream_val);
 
 private:
-  // There is at most once primary context per (host, process, device)
-  std::unordered_map<hp_device_t, CUcontext> hp_device_primary_ctx_;
-
   // Contexts must be on the per thread stack to be used, even primary contexts
   std::unordered_map<hpt_t, context_stack_t> hpt_ctx_stack_;
 
@@ -138,5 +127,5 @@ private:
 
   // Need to save device and context between entry/exit callbacks. Re-use same
   // entry state instance to save memory.
-  EntryState &entry_state_;
+  EntryState entry_state_;
 };
