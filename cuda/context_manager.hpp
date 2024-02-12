@@ -6,6 +6,14 @@
 #include "btx_cudainterval_callbacks.hpp"
 #include "entry_state.hpp"
 
+
+using hpt_context_t =
+    std::tuple<hostname_t, process_id_t, thread_id_t, CUcontext>;
+using hp_context_t = std::tuple<hostname_t, process_id_t, CUcontext>;
+using context_stack_t = std::stack<CUcontext>;
+using hp_stream_t = std::tuple<hostname_t, process_id_t, CUstream>;
+
+
 /** CUDAContextManager
  *
  * Keep track of which device is current on each (hostname, process, thread)

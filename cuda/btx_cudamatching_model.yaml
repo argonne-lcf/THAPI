@@ -206,9 +206,7 @@
   - :set_id: stream_create
     :name: "cuStreamCreate"
     :register: false
-  - :set_id: stream_create_entry
-    :domain: entries & stream_create
-    :register: false
+  # Note: entry not used
   - :set_id: stream_create_exit
     :domain: exits & stream_create
     :payload_field_class:
@@ -258,13 +256,10 @@
 
   # specialize for whether a funtion arg is present or not
   - :set_id: kernel_task_entry
+    # exclude cuLaunchHost
     :name: "cuLaunch[^H]"
     :domain: task_entry
     :register: false
-    :payload_field_class:
-      :type: structure
-      :members:
-      - :name: ^f$
 
   - :set_id: kernel_task_stream_present_entry
     :domain: task_stream_present_entry & kernel_task_entry

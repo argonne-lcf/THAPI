@@ -310,10 +310,9 @@ static void task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
 
   std::string name = strip_event_class_name(event_class_name);
   if (f_optional.has_value()) {
-    auto f = f_optional.value();
     // for device launch, get the name saved when the kernel was loaded in the
     // module get function callbacks
-    hp_kernel_t hp_kernel_key{hostname, vpid, f};
+    hp_kernel_t hp_kernel_key{hostname, vpid, f_optional.value()};
     std::string name = THAPI_AT(state->hp_kernel_to_name, hp_kernel_key);
     state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
     state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
