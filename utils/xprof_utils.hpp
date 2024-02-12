@@ -69,10 +69,8 @@ typedef std::tuple<thapi_function_name, long> fn_ts_t;
 // Most efficient possible access when NDEBUG is set; if not
 // set, use .at which can be debugged with stack trace in
 // valgrind's memcheck.
-#define THAPI_AT(map,...) __thapi_at(map, __VA_ARGS__)
-
 template <class M, class K>
-inline auto& __thapi_at(M& map, K& key) {
+inline auto& thapi_at(M& map, K key) {
 #ifdef THAPI_DEBUG
   return map.at(key);
 #else

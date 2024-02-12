@@ -14,6 +14,7 @@
 
 #include <metababel/metababel.h>
 
+// TODO: use separate EntryState in ContextManager
 class data_s {
 public:
   data_s()
@@ -111,7 +112,7 @@ static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                       ts);
 }
 
-static void exits_callback_cudaError_absent(void *btx_handle, void *usr_data,
+static void exits_cudaError_absent_callback(void *btx_handle, void *usr_data,
                                             int64_t ts,
                                             const char *event_class_name,
                                             const char *hostname, int64_t vpid,
@@ -120,7 +121,7 @@ static void exits_callback_cudaError_absent(void *btx_handle, void *usr_data,
                     vtid, false);
 }
 
-static void exits_callback_cudaError_present(void *btx_handle, void *usr_data,
+static void exits_cudaError_present_callback(void *btx_handle, void *usr_data,
                                              int64_t ts,
                                              const char *event_class_name,
                                              const char *hostname, int64_t vpid,
@@ -176,10 +177,10 @@ static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
                                const char *hostname, int64_t vpid,
                                uint64_t vtid, CUevent hStart, CUevent hStop) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt{hostname, vpid, vtid};
-  hp_event_t hp_event{hostname, vpid, hStart, hStop};
-  auto fn_name_ts = THAPI_AT(state->hpt_profiled_function_name_and_ts, hpt);
-  state->hp_event_to_function_name_and_ts[hp_event] = fn_name_ts;
+  auto fn_name_ts = thapi_at(state->hpt_profiled_function_name_and_ts,
+                             hpt_t{hostname, vpid, vtid});
+  state->hp_event_to_function_name_and_ts[{hostname, vpid, hStart, hStop}] =
+      fn_name_ts;
 }
 
 static void
@@ -188,26 +189,28 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
                            CUevent hStart, CUevent hStop, CUresult startStatus,
                            CUresult stopStatus, CUresult status, float ms) {
   auto state = static_cast<data_t *>(usr_data);
-  hp_event_t hp_event{hostname, vpid, hStart, hStop};
 
   // Note: assume profiling_callback is always called before this results
   // callback
   const auto [fn_name, launch_ts] =
-      THAPI_AT(state->hp_event_to_function_name_and_ts, hp_event);
+      thapi_at(state->hp_event_to_function_name_and_ts,
+               hp_event_t{hostname, vpid, hStart, hStop});
 
   // Note: assume (non_)?kernel_task_stream_(absent|present)_*_callback's
   // (both entry and exit) have been called in the current thread before this
-  hpt_function_name_t hpt_function_name{hostname, vpid, vtid, fn_name};
-  auto dev = THAPI_AT(state->hpt_function_name_to_dev, hpt_function_name);
+  auto dev = thapi_at(state->hpt_function_name_to_dev,
+                      hpt_function_name_t{hostname, vpid, vtid, fn_name});
   bool err = cuResultIsError(startStatus) || cuResultIsError(stopStatus) ||
              cuResultIsError(status);
 
+  // Note: THAPI uses nanoseconds
   uint64_t delta = err ? 0 : static_cast<uint64_t>(ms * 1e6);
   // Note: no subdevices in CUDA, covention is to pass the device for both
   // device and subdevice
+  const char *metadata = "";
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid, launch_ts,
                                 BACKEND_CUDA, fn_name.c_str(), delta, dev, dev,
-                                err, "");
+                                err, metadata);
 }
 
 // ===============================
@@ -271,8 +274,7 @@ static void module_get_function_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid, char *name) {
   auto state = static_cast<data_t *>(usr_data);
-  std::string name_str(name);
-  state->entry_state.set_data({hostname, vpid, vtid}, name_str);
+  state->entry_state.set_data({hostname, vpid, vtid}, std::string{name});
 }
 
 static void module_get_function_exit_callback(
@@ -283,11 +285,9 @@ static void module_get_function_exit_callback(
     return;
   }
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t hpt{hostname, vpid, vtid};
-
-  auto kernel_name = state->entry_state.get_data<std::string>(hpt);
-  hp_kernel_t hp_kernel_key{hostname, vpid, cuFunction};
-  state->hp_kernel_to_name[hp_kernel_key] = kernel_name;
+  auto kernel_name =
+      state->entry_state.get_data<std::string>({hostname, vpid, vtid});
+  state->hp_kernel_to_name[{hostname, vpid, cuFunction}] = kernel_name;
 }
 
 /**
@@ -313,7 +313,7 @@ static void task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
     // for device launch, get the name saved when the kernel was loaded in the
     // module get function callbacks
     hp_kernel_t hp_kernel_key{hostname, vpid, f_optional.value()};
-    std::string name = THAPI_AT(state->hp_kernel_to_name, hp_kernel_key);
+    std::string name = thapi_at(state->hp_kernel_to_name, hp_kernel_key);
     state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
     state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
   } else {
@@ -357,7 +357,7 @@ static void kernel_task_stream_absent_entry_callback(
 // END Kernel name and device tracking
 // ===============================
 
-#define REGISTER_CONTEXT_MANAGER_CALLBACK(base_name) \
+#define REGISTER_ASSOCIATED_CALLBACK(base_name)                           \
   btx_register_callbacks_##base_name(btx_handle, &base_name##_callback);
 
 void btx_register_usr_callbacks(void *btx_handle) {
@@ -367,18 +367,14 @@ void btx_register_usr_callbacks(void *btx_handle) {
                                             &btx_finalize_component);
 
   // generic callbacks, for host events
-  btx_register_callbacks_entries(btx_handle, &entries_callback);
-  btx_register_callbacks_exits_cudaError_absent(
-      btx_handle, &exits_callback_cudaError_absent);
-  btx_register_callbacks_exits_cudaError_present(
-      btx_handle, &exits_callback_cudaError_present);
+  REGISTER_ASSOCIATED_CALLBACK(entries);
+  REGISTER_ASSOCIATED_CALLBACK(exits_cudaError_absent);
+  REGISTER_ASSOCIATED_CALLBACK(exits_cudaError_present);
 
   // Traffic
-  btx_register_callbacks_entries_traffic_v1(btx_handle,
-                                            &entries_traffic_v1_callback);
-  btx_register_callbacks_entries_traffic_v2(btx_handle,
-                                            &entries_traffic_v2_callback);
-  btx_register_callbacks_exits_traffic(btx_handle, &exits_traffic_callback);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_v1);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_v2);
+  REGISTER_ASSOCIATED_CALLBACK(exits_traffic);
 
   // device profiling events
   btx_register_callbacks_lttng_ust_cuda_profiling_event_profiling(
@@ -387,46 +383,42 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &profiling_callback_results);
 
   // Context handling
-  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_retain_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_retain_exit);
+  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_retain_entry);
+  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_retain_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_release_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_release_exit);
+  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_release_entry);
+  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_release_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_reset_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(primary_ctx_reset_exit);
+  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_reset_entry);
+  REGISTER_ASSOCIATED_CALLBACK(primary_ctx_reset_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_create_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_create_exit);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_create_entry);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_create_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_destroy_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_destroy_exit);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_destroy_entry);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_destroy_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_set_current_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_set_current_exit);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_set_current_entry);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_set_current_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_push_current_entry);
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_push_current_exit);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_push_current_entry);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_push_current_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(ctx_pop_current_exit);
+  REGISTER_ASSOCIATED_CALLBACK(ctx_pop_current_exit);
 
-  REGISTER_CONTEXT_MANAGER_CALLBACK(stream_create_exit);
+  REGISTER_ASSOCIATED_CALLBACK(stream_create_exit);
 
   // kernel name and device tracking
-  btx_register_callbacks_module_get_function_entry(
-      btx_handle, &module_get_function_entry_callback);
-  btx_register_callbacks_module_get_function_exit(
-      btx_handle, &module_get_function_exit_callback);
+  REGISTER_ASSOCIATED_CALLBACK(module_get_function_entry);
+  REGISTER_ASSOCIATED_CALLBACK(module_get_function_exit);
 
-  btx_register_callbacks_non_kernel_task_stream_present_entry(
-      btx_handle, &non_kernel_task_stream_present_entry_callback);
-  btx_register_callbacks_non_kernel_task_stream_absent_entry(
-      btx_handle, &non_kernel_task_stream_absent_entry_callback);
+  REGISTER_ASSOCIATED_CALLBACK(non_kernel_task_stream_present_entry);
 
-  btx_register_callbacks_kernel_task_stream_present_entry(
-      btx_handle, &kernel_task_stream_present_entry_callback);
-  btx_register_callbacks_kernel_task_stream_absent_entry(
-      btx_handle, &kernel_task_stream_absent_entry_callback);
+  REGISTER_ASSOCIATED_CALLBACK(kernel_task_stream_present_entry);
+
+  REGISTER_ASSOCIATED_CALLBACK(non_kernel_task_stream_absent_entry);
+
+  REGISTER_ASSOCIATED_CALLBACK(kernel_task_stream_absent_entry);
 }
 
-#undef REGISTER_CONTEXT_MANAGER_CALLBACK
+#undef REGISTER_ASSOCIATED_CALLBACK

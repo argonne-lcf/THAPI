@@ -5,11 +5,11 @@
 CUdevice CUDAContextManager::get_device(hpt_t hpt) {
   CUcontext ctx = get_top_context(hpt);
   hp_context_t hp_context{std::get<0>(hpt), std::get<1>(hpt), ctx};
-  return THAPI_AT(hp_ctx_to_device_, hp_context);
+  return thapi_at(hp_ctx_to_device_, hp_context);
 }
 
 CUcontext CUDAContextManager::get_top_context(hpt_t hpt) {
-  auto &hpt_stack = THAPI_AT(hpt_ctx_stack_, hpt);
+  auto &hpt_stack = thapi_at(hpt_ctx_stack_, hpt);
   // Note: the primary context is not used automatically, it must be pushed or
   // set current first and be on the stack
   assert(!hpt_stack.empty());
@@ -22,9 +22,9 @@ CUdevice CUDAContextManager::get_stream_device(hpt_t hpt, CUstream stream) {
     return get_device(hpt);
   }
   hp_stream_t hp_stream_key{std::get<0>(hpt), std::get<1>(hpt), stream};
-  auto ctx = THAPI_AT(hp_stream_to_ctx_, hp_stream_key);
+  auto ctx = thapi_at(hp_stream_to_ctx_, hp_stream_key);
   hp_context_t hp_context{std::get<0>(hpt), std::get<1>(hpt), ctx};
-  return THAPI_AT(hp_ctx_to_device_, hp_context);
+  return thapi_at(hp_ctx_to_device_, hp_context);
 }
 
 // cuPrimaryCtxRetain_v2_(entry|exit)
@@ -56,7 +56,7 @@ void CUDAContextManager::primary_ctx_release_exit(hpt_t hpt,
   }
   auto entry_dev = entry_state_.get_data<CUdevice>(hpt);
   hp_device_t hp_dev_key{std::get<0>(hpt), std::get<1>(hpt), entry_dev};
-  auto ctx = THAPI_AT(hp_device_primary_ctx_, hp_dev_key);
+  auto ctx = thapi_at(hp_device_primary_ctx_, hp_dev_key);
   hp_device_primary_ctx_.erase(hp_dev_key);
   hp_ctx_to_device_.erase({std::get<0>(hpt), std::get<1>(hpt), ctx});
 }
@@ -107,7 +107,7 @@ void CUDAContextManager::ctx_destroy_exit(hpt_t hpt, CUresult cuResult) {
 
   // pop thread context stack only if it's current on the calling thread
   // See https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html
-  auto &stack = THAPI_AT(hpt_ctx_stack_, hpt);
+  auto &stack = thapi_at(hpt_ctx_stack_, hpt);
   if (!stack.empty() && stack.top() == entry_ctx) {
     stack.pop();
   }
@@ -123,7 +123,7 @@ void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
     return;
   }
   auto entry_ctx = entry_state_.get_data<CUcontext>(hpt);
-  // Note: don't use THAPI_AT, we need operator[] semantics of
+  // Note: don't use thapi_at, we need operator[] semantics of
   // creating if the stack does not exists yet.
   auto &stack = hpt_ctx_stack_[hpt];
   if (!stack.empty()) {

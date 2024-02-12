@@ -46,7 +46,7 @@ public:
 
   void set_ts(hpt_t hpt, int64_t ts) { entry_ts[hpt] = ts; }
 
-  int64_t get_ts(hpt_t hpt) { return THAPI_AT(entry_ts, hpt); }
+  int64_t get_ts(hpt_t hpt) { return thapi_at(entry_ts, hpt); }
 
 private:
   std::unordered_map<hpt_t, std::optional<std::vector<std::byte>>> entry_data;
@@ -64,5 +64,5 @@ private:
     }
   }
 
-  auto &set_data_impl(hpt_t hpt) { return THAPI_AT(entry_data, hpt); }
+  auto &set_data_impl(hpt_t hpt) { return thapi_at(entry_data, hpt); }
 };
