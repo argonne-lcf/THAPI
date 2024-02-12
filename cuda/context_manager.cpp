@@ -129,7 +129,9 @@ void CUDAContextManager::ctx_set_current_exit(hpt_t hpt, CUresult cuResult) {
   if (!stack.empty()) {
     stack.pop();
   }
-  stack.push(entry_ctx);
+  if (entry_ctx != nullptr) {
+    stack.push(entry_ctx);
+  }
 }
 
 // cuCtxSetCurrent_(entry|exit)

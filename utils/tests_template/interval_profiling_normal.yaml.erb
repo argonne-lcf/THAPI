@@ -40,6 +40,8 @@ in:
   - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_entry
   - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_exit
   - :name: lttng_ust_cuda:cuCtxSetCurrent_entry
+    :payload:
+      ctx: 1
   - :name: lttng_ust_cuda:cuCtxSetCurrent_exit
   <% end %>
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
