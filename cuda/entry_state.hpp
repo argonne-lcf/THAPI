@@ -64,5 +64,5 @@ private:
     }
   }
 
-  auto &set_data_impl(hpt_t hpt) { return thapi_at(entry_data, hpt); }
+  std::optional<std::vector<std::byte>> &set_data_impl(hpt_t hpt) { return thapi_at(entry_data, hpt); }
 };
