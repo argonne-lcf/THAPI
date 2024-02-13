@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <vector>
 #include <stdexcept>
+#include <string.h>
 
 enum backend_e {
   BACKEND_UNKNOWN = 0,
@@ -186,6 +187,25 @@ private:
 
   std::optional<std::vector<std::byte>> &set_data_impl(hpt_t hpt) { return thapi_at(entry_data, hpt); }
 };
+
+
+// ClassName Striping
+template <size_t SuffixLen>
+static inline std::string _strip_event_class_name(const char *str) {
+  const char *p = str + strlen("lttng_");
+  while (*p++ != ':') {
+  }
+  return std::string{p, strlen(p) - SuffixLen};
+}
+
+static inline std::string strip_event_class_name_entry(const char *str) {
+  return _strip_event_class_name<strlen("_entry")>(str);
+}
+
+static inline std::string strip_event_class_name_exit(const char *str) {
+  return _strip_event_class_name<strlen("_exit")>(str);
+}
+
 
 // TODO Delete them as soon as no more metabable
 

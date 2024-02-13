@@ -59,22 +59,6 @@ struct data_s {
 
 using data_t = struct data_s;
 
-template <size_t SuffixLen>
-static inline std::string _strip_event_class_name(const char *str) {
-  const char *p = str + strlen("lttng_");
-  while (*p++ != ':') {
-  }
-  return std::string{p, strlen(p) - SuffixLen};
-}
-
-static inline std::string strip_event_class_name_entry(const char *str) {
-  return _strip_event_class_name<strlen("_entry")>(str);
-}
-
-static inline std::string strip_event_class_name_exit(const char *str) {
-  return _strip_event_class_name<strlen("_exit")>(str);
-}
-
 static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               const char *event_class_name,
                               const char *hostname, int64_t vpid, uint64_t vtid,

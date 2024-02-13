@@ -8,14 +8,6 @@
 #include <string>
 #include <unordered_map>
 
-std::string strip_event_class_name(const char *str) {
-  std::string temp(str);
-  std::smatch match;
-  std::regex_search(temp, match, std::regex(":(.*?)_?(?:entry|exit)?$"));
-  assert(match.size() > 1 && "Event_class_name not matching regex.");
-  return match[1].str();
-}
-
 /*
  * Memory Interval
  */
@@ -172,7 +164,7 @@ static void exits_callback(void *btx_handle, void *usr_data, int64_t ts,
   bool err = zeResult != ZE_RESULT_SUCCESS && zeResult != ZE_RESULT_NOT_READY;
   btx_push_message_lttng_host(
       btx_handle, hostname, vpid, vtid, start, BACKEND_ZE,
-      strip_event_class_name(event_class_name).c_str(), (ts - start), err);
+      strip_event_class_name_exit(event_class_name).c_str(), (ts - start), err);
 }
 
 static void entries_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -349,7 +341,7 @@ static void eventMemory2ptr_callback(void *btx_handle, void *usr_data,
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
   std::stringstream name;
-  name << strip_event_class_name(event_class_name) << "("
+  name << strip_event_class_name_entry(event_class_name) << "("
        << memory_location(data, hp, (uintptr_t)srcptr) << "2"
        << memory_location(data, hp, (uintptr_t)dstptr) << ")";
   std::string metadata = "";
@@ -373,7 +365,7 @@ static void eventMemory1ptr_callback(void *btx_handle, void *usr_data,
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
   std::stringstream name;
-  name << strip_event_class_name(event_class_name) << "("
+  name << strip_event_class_name_entry(event_class_name) << "("
        << memory_location(data, hp, (uintptr_t)ptr) << ")";
 
   std::string metadata = "";
@@ -395,7 +387,7 @@ static void memory_but_no_event_callback(void *btx_handle, void *usr_data,
 
   btx_push_message_lttng_traffic(
       btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
-      strip_event_class_name(event_class_name).c_str(), size);
+      strip_event_class_name_entry(event_class_name).c_str(), size);
 }
 
 // Barrier
@@ -407,7 +399,7 @@ static void hSignalEvent_rest_callback(void *btx_handle, void *usr_data,
                                        ze_command_list_handle_t hCommandList) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  std::string name = strip_event_class_name(event_class_name);
+  std::string name = strip_event_class_name_entry(event_class_name);
   std::string metadata = "";
 
   const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
