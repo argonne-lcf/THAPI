@@ -649,6 +649,8 @@ static void lttng_ust_ze_sampling_copyEngine_callback(
 /*
  * Register
  */
+#define REGISTER_ASSOCIATED_CALLBACK(base_name)                                \
+  btx_register_callbacks_##base_name(btx_handle, &base_name##_callback);
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_component(btx_handle,
@@ -657,8 +659,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
                                             &btx_finalize_component);
 
   /* Host*/
-  btx_register_callbacks_entries(btx_handle, &entries_callback);
-  btx_register_callbacks_exits(btx_handle, &exits_callback);
+  REGISTER_ASSOCIATED_CALLBACK(entries);
+  REGISTER_ASSOCIATED_CALLBACK(exits);
 
   /* Memory */
   btx_register_callbacks_entries_alloc(btx_handle, &entries_alloc_callback);
