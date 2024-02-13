@@ -213,7 +213,7 @@ static void property_subdevice_callback(
 /*
  * Map command list to device
  */
-static void command_list_entry(void *btx_handle, void *usr_data, int64_t ts,
+static void command_list_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
                                const char *event_class_name,
                                const char *hostname, int64_t vpid,
                                uint64_t vtid,
@@ -222,7 +222,7 @@ static void command_list_entry(void *btx_handle, void *usr_data, int64_t ts,
   data->entry_state.set_data({hostname, vpid, vtid}, hDevice);
 }
 
-static void command_list_exit(void *btx_handle, void *usr_data, int64_t ts,
+static void command_list_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
                               const char *event_class_name,
                               const char *hostname, int64_t vpid, uint64_t vtid,
                               ze_command_list_handle_t phCommandList_val) {
@@ -289,7 +289,7 @@ property_kernel_callback(void *btx_handle, void *usr_data, int64_t ts,
 /*
  * Profiling Command (everything who signal an event on completion)
  * */
-static void hSignalEvent_launchKernel_with_group_entry_callback(
+static void hSignalEvent_hKernel_with_group_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
     ze_command_list_handle_t hCommandList, ze_kernel_handle_t hKernel,
@@ -314,7 +314,7 @@ static void hSignalEvent_launchKernel_with_group_entry_callback(
       hCommandList, name, metadata.str(), device, ts};
 }
 
-static void hSignalEvent_launchKernel_without_group_entry_callback(
+static void hSignalEvent_hKernel_without_group_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
     ze_command_list_handle_t hCommandList, ze_kernel_handle_t hKernel) {
@@ -328,7 +328,7 @@ static void hSignalEvent_launchKernel_without_group_entry_callback(
       hCommandList, name, metadata, device, ts};
 }
 
-static void eventMemory2ptr_callback(void *btx_handle, void *usr_data,
+static void hSignalEvent_eventMemory_2ptr_entry_callback(void *btx_handle, void *usr_data,
                                      int64_t ts, const char *event_class_name,
                                      const char *hostname, int64_t vpid,
                                      uint64_t vtid,
@@ -352,7 +352,7 @@ static void eventMemory2ptr_callback(void *btx_handle, void *usr_data,
                                  BACKEND_ZE, name.str().c_str(), size);
 }
 
-static void eventMemory1ptr_callback(void *btx_handle, void *usr_data,
+static void hSignalEvent_eventMemory_1ptr_entry_callback(void *btx_handle, void *usr_data,
                                      int64_t ts, const char *event_class_name,
                                      const char *hostname, int64_t vpid,
                                      uint64_t vtid,
@@ -376,7 +376,7 @@ static void eventMemory1ptr_callback(void *btx_handle, void *usr_data,
                                  BACKEND_ZE, name.str().c_str(), size);
 }
 
-static void memory_but_no_event_callback(void *btx_handle, void *usr_data,
+static void eventMemory_without_hSignalEvent_entry_callback(void *btx_handle, void *usr_data,
                                          int64_t ts,
                                          const char *event_class_name,
                                          const char *hostname, int64_t vpid,
@@ -388,7 +388,7 @@ static void memory_but_no_event_callback(void *btx_handle, void *usr_data,
 }
 
 // Barrier
-static void hSignalEvent_rest_callback(void *btx_handle, void *usr_data,
+static void hSignalEvent_rest_entry_callback(void *btx_handle, void *usr_data,
                                        int64_t ts, const char *event_class_name,
                                        const char *hostname, int64_t vpid,
                                        uint64_t vtid,
@@ -663,9 +663,9 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(exits);
 
   /* Memory */
-  btx_register_callbacks_entries_alloc(btx_handle, &entries_alloc_callback);
-  btx_register_callbacks_exits_alloc(btx_handle, &exits_alloc_callback);
-  btx_register_callbacks_zeModule_entry(btx_handle, &zeModule_entry_callback);
+  REGISTER_ASSOCIATED_CALLBACK(entries_alloc);
+  REGISTER_ASSOCIATED_CALLBACK(exits_alloc);
+  REGISTER_ASSOCIATED_CALLBACK(zeModule_entry);
 
   /* Device and Subdevice property */
   btx_register_callbacks_lttng_ust_ze_properties_device(
@@ -674,17 +674,16 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &property_subdevice_callback);
 
   /* Map command list to device */
-  btx_register_callbacks_command_list_entry(btx_handle, &command_list_entry);
-  btx_register_callbacks_command_list_exit(btx_handle, &command_list_exit);
+  REGISTER_ASSOCIATED_CALLBACK(command_list_entry);
+  REGISTER_ASSOCIATED_CALLBACK(command_list_exit);
 
   /*  Name of the Function Profiled  */
-  btx_register_callbacks_zeKernelCreate_entry(btx_handle,
-                                              &zeKernelCreate_entry_callback);
-  btx_register_callbacks_zeKernelCreate_exit(btx_handle,
-                                             &zeKernelCreate_exit_callback);
+  REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_entry);
+  REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_exit);
 
-  btx_register_callbacks_lttng_ust_ze_zeKernelSetGroupSize_entry(
+ btx_register_callbacks_lttng_ust_ze_zeKernelSetGroupSize_entry(
       btx_handle, &zeKernelSetGroupSize_entry_callback);
+
   btx_register_callbacks_lttng_ust_ze_properties_kernel(
       btx_handle, &property_kernel_callback);
 
@@ -693,22 +692,19 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &property_device_timer_callback);
 
   /* Profiling Command (everything who signal an event on completion)  */
-  btx_register_callbacks_hSignalEvent_hKernel_with_group_entry(
-      btx_handle, &hSignalEvent_launchKernel_with_group_entry_callback);
-  btx_register_callbacks_hSignalEvent_hKernel_without_group_entry(
-      btx_handle, &hSignalEvent_launchKernel_without_group_entry_callback);
-  btx_register_callbacks_hSignalEvent_eventMemory_2ptr_entry(
-      btx_handle, &eventMemory2ptr_callback);
-  btx_register_callbacks_hSignalEvent_eventMemory_1ptr_entry(
-      btx_handle, &eventMemory1ptr_callback);
-  btx_register_callbacks_eventMemory_without_hSignalEvent_entry(
-      btx_handle, &memory_but_no_event_callback);
-  btx_register_callbacks_hSignalEvent_rest_entry(btx_handle,
-                                                 &hSignalEvent_rest_callback);
+  REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_hKernel_with_group_entry);
+  REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_hKernel_without_group_entry);
+
+  REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_eventMemory_2ptr_entry);
+  REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_eventMemory_1ptr_entry);
+
+  REGISTER_ASSOCIATED_CALLBACK(eventMemory_without_hSignalEvent_entry);
+  REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_rest_entry);
 
   /* Remove Memory */
-  btx_register_callbacks_memFree_entry(btx_handle, &memFree_entry_callback);
-  btx_register_callbacks_memFree_exit(btx_handle, &memFree_exit_callback);
+  REGISTER_ASSOCIATED_CALLBACK(memFree_entry);
+  REGISTER_ASSOCIATED_CALLBACK(memFree_exit);
+
   btx_register_callbacks_lttng_ust_ze_zeModuleGetGlobalPointer_exit(
       btx_handle, &zeModuleGetGlobalPointer_exit_callback);
   btx_register_callbacks_lttng_ust_ze_zeModuleDestroy_exit(
