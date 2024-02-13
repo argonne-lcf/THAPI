@@ -1,0 +1,256 @@
+# Note: all API calls seen by THAPI are driver API calls, even when the
+# application uses only runtime API (since runtime API is just high level
+# wrapper around driver API).
+#
+# See also:
+#  https://docs.nvidia.com/cuda/cuda-driver-api/driver-vs-runtime-api.html
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: ^vpid$
+      :field_class:
+        :type: integer_signed
+    - :name: ^vtid$
+      :field_class:
+        :type: integer_unsigned
+  :event_classes:
+  - :set_id: entries
+    :name: "_entry$"
+  - :set_id: exits
+    :register: false
+    :name: "_exit$"
+
+  - :set_id: exits_cudaError_present
+    :domain: exits
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+        :field_class:
+          # Note: cast_type needed here because of the one API call
+          # cuexpDevice_get_primary_context_refcount_exit, which we do
+          # not need to handle and for some reason has a different type
+          :cast_type: ^CUresult$
+
+  - :set_id: exits_cudaError_absent
+    :domain: exits - exits_cudaError_present 
+
+  # Memory traffic
+  - :set_id: traffic
+    :name: "cuMemcpy"
+    :register: false
+  - :set_id: entries_traffic
+    :domain: entries & traffic
+    :register: false
+  - :set_id: entries_traffic_v2
+    :domain: entries_traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ByteCount$
+        # Note: not all APIs with size_t have v2 in the name, so we
+        # need to use the actual type to distinguish newer APIs and
+        # the older ones below using 32 bit unsigned
+        :field_class:
+          :cast_type: size_t
+  - :set_id: entries_traffic_v1
+    :domain: entries_traffic - entries_traffic_v2
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ByteCount$
+  - :set_id: exits_traffic
+    :domain: exits & traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+
+  # Context create/destroy
+  - :set_id: ctx_create
+    :name: "cuCtxCreate"
+    :register: false
+  - :set_id: ctx_create_entry
+    :domain: entries & ctx_create
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^dev$
+  - :set_id: ctx_create_exit
+    :domain: exits & ctx_create
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^pctx_val$
+  
+  - :set_id: ctx_destroy
+    :name: "cuCtxDestroy"
+    :register: false
+  - :set_id: ctx_destroy_entry
+    :domain: entries & ctx_destroy
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ctx$
+  - :set_id: ctx_destroy_exit
+    :domain: exits & ctx_destroy
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  # Context stack management
+  - :set_id: ctx_set_current
+    :name: "cuCtxSetCurrent"
+    :register: false
+  - :set_id: ctx_set_current_entry
+    :domain: entries & ctx_set_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ctx$
+  - :set_id: ctx_set_current_exit
+    :domain: exits & ctx_set_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  - :set_id: ctx_push_current
+    :name: "cuCtxPushCurrent"
+    :register: false
+  - :set_id: ctx_push_current_entry
+    :domain: entries & ctx_push_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ctx$
+  - :set_id: ctx_push_current_exit
+    :domain: exits & ctx_push_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+  
+  - :set_id: ctx_pop_current
+    :name: "cuCtxPopCurrent"
+    :register: false
+  - :set_id: ctx_pop_current_entry
+    :domain: entries & ctx_pop_current
+  - :set_id: ctx_pop_current_exit
+    :domain: exits & ctx_pop_current
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^pctx_val$
+  
+  # Device primary context management
+  - :set_id: primary_ctx_retain
+    :name: "cuDevicePrimaryCtxRetain"
+    :register: false
+  - :set_id: primary_ctx_retain_entry
+    :domain: entries & primary_ctx_retain
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^dev$
+  - :set_id: primary_ctx_retain_exit
+    :domain: exits & primary_ctx_retain
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^pctx_val$
+  
+  # Stream create
+  - :set_id: stream_create
+    :name: "cuStreamCreate"
+    :register: false
+  # Note: entry not used
+  - :set_id: stream_create_exit
+    :domain: exits & stream_create
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^phStream_val$
+
+  # kernel function name tracking
+  - :set_id: module_get_function
+    :name: "cuModuleGetFunction"
+    :register: false
+  - :set_id: module_get_function_entry
+    :domain: entries & module_get_function
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^name_val$
+  - :set_id: module_get_function_exit
+    :domain: exits & module_get_function
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^cuResult$
+      - :name: ^hfunc_val$
+
+  # tasks that generate thapi device events
+  - :set_id: task
+    :name: "cuMemcpy|cuMemPrefetch|cuMemset|cuLaunch"
+    :register: false
+
+  - :set_id: task_entry
+    :domain: entries & task
+    :register: false
+
+  - :set_id: task_stream_present_entry
+    :domain: task_entry
+    :register: false
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hStream$
+
+  - :set_id: task_stream_absent_entry
+    :domain: task_entry - task_stream_present_entry
+    :register: false
+
+  # specialize for whether a funtion arg is present or not
+  - :set_id: kernel_task_entry
+    # exclude cuLaunchHost
+    :name: "cuLaunch[^H]"
+    :domain: task_entry
+    :register: false
+
+  - :set_id: kernel_task_stream_present_entry
+    :domain: task_stream_present_entry & kernel_task_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hStream$
+      - :name: ^f$
+
+  - :set_id: kernel_task_stream_absent_entry
+    :domain: kernel_task_entry - kernel_task_stream_present_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^f$
+
+  # specialize for whether a funtion arg is present or not
+  - :set_id: non_kernel_task_stream_present_entry
+    :domain: task_stream_present_entry - kernel_task_stream_present_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hStream$
+
+  - :set_id: non_kernel_task_stream_absent_entry
+    :domain: task_stream_absent_entry - kernel_task_stream_absent_entry

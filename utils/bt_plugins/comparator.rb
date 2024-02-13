@@ -36,8 +36,18 @@ class Comparator
         j_value = j.send("get_#{tf}_field")
         j_value = j_value.value if j_value
         unless i_value == j_value
-          pp({ in0: i_value, in1: j_value })
-          raise "Traces for #{tf} fields are different!"
+          i_hash = {}
+          j_hash = {}
+          %w[payload specific_context common_context].each do |tf|
+            i_value = i.send("get_#{tf}_field")
+            i_value = i_value.value if i_value
+            j_value = j.send("get_#{tf}_field")
+            j_value = j_value.value if j_value
+            i_hash[tf] = i_value
+            j_hash[tf] = j_value
+          end
+          pp({ in0: i_hash, in1: j_hash })
+          raise "Traces for event #{i.name}, #{tf} fields are different!"
         end
       end
     end

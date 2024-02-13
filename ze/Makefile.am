@@ -316,7 +316,8 @@ tests/ze_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_normal.yaml
+	tests/interval_profiling_normal.yaml \
+	tests/interval_profiling_multithread.yaml
 
 $(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
 	$(ERB) be="ze" $< > $@

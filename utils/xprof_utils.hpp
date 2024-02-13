@@ -66,6 +66,18 @@ typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
 
+// Most efficient possible access when NDEBUG is set; if not
+// set, use .at which can be debugged with stack trace in
+// valgrind's memcheck.
+template <class M, class K>
+inline auto& thapi_at(M& map, K key) {
+#ifdef THAPI_DEBUG
+  return map.at(key);
+#else
+  return map[key];
+#endif
+}
+
 // NOTE: Required to generate the hash of a tuple.
 // REFERENCE:
 // https://stackoverflow.com/questions/7110301/generic-hash-for-tuples-in-unordered-map-unordered-set

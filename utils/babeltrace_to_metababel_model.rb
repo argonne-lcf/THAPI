@@ -28,7 +28,6 @@ DATA_TYPES_DICT = {
 
 # Not supported in the metababel model
 INGONRE_PROPERTIES = [
-  :length, 
   :be_class,
 ]
 
@@ -65,6 +64,10 @@ def get_field_class_properties(field, member_name)
   field_element_field_class = field.key?(:field) ? get_element_field_class(field.delete(:field), field) : {}
   field_properties = (field.to_a + class_properties.to_a + field_element_field_class.to_a ).filter_map {|k,v| translate_key_value(k,v) unless INGONRE_PROPERTIES.include?(k) }.to_h
   field_properties[:length_field_path] = "EVENT_PAYLOAD[\"_#{member_name}_length\"]" if field_properties[:type] == 'array_dynamic'
+  # Doesn't know why old model need the size of string.
+  # In metababel we always compute is as "sizeof((cast_type)#{var})".
+  # It look like ot be same same in the cuda model
+  field_properties.delete(:length) if field_properties[:type] == 'string'
 
   # Special casting case for struct <-> string.
   field_properties[:cast_type_is_struct] = true if STRUCT_TYPES.include?(field[:cast_type])

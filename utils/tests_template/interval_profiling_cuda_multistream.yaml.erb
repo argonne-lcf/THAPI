@@ -1,23 +1,14 @@
-<% case be
-   when "opencl"
-     event = "event"
-     prof_end = "end"
-     mulfactor = 1
-     profiled_call = "clEnqueueSVMFree"
-     backend = 2
-   when "ze"
-     event = "hEvent"
-     prof_end = "globalEnd"
-     mulfactor = 1
-     profiled_call = "zeCommandListAppendBarrier"
-     backend = 1
-   when "cuda"
-     event = "hStop"
-     prof_end = "milliseconds"
-     mulfactor = 1000000
-     profiled_call = "cuLaunchHostFunc"
-     backend = 3
-   end %>
+<% event = "hStop"
+   prof_end = "milliseconds"
+   mulfactor = 1000000
+   profiled_call = "cuLaunchHostFunc"
+   backend = 3
+   context1 = 7
+   stream1 = 7
+   dev1 = 7
+   context2 = 100
+   dev2 = 100
+%>
 
 in:
   :hostname: aurora12.gov
@@ -36,16 +27,26 @@ in:
   - :name: stream0
     :class: stream_class
   :events:
-  <% if be == "cuda" %>
-  - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_entry
-  - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_exit
-  - :name: lttng_ust_cuda:cuCtxSetCurrent_entry
+  - :name: lttng_ust_cuda:cuCtxCreate_entry
     :payload:
-      ctx: 1
-  - :name: lttng_ust_cuda:cuCtxSetCurrent_exit
-  <% end %>
+      dev: <%= dev1 %>
+  - :name: lttng_ust_cuda:cuCtxCreate_exit
+    :payload:
+      pctx_val: <%= context1 %>
+  - :name: lttng_ust_cuda:cuStreamCreate_entry
+  - :name: lttng_ust_cuda:cuStreamCreate_exit
+    :payload:
+      phStream_val: <%= stream1 %>
+  - :name: lttng_ust_cuda:cuCtxCreate_entry
+    :payload:
+      dev: <%= dev2 %>
+  - :name: lttng_ust_cuda:cuCtxCreate_exit
+    :payload:
+      pctx_val: <%= context2 %>
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
+    :payload:
+      hStream: <%= stream1 %>
   - :name: lttng_ust_<%= be %>_profiling:event_profiling
     :payload:
       <%= event %>: 12
@@ -76,13 +77,12 @@ ref:
   - :name: stream0
     :class: interval_class
   :events:
-  <% if be == "cuda" %>
   - :name: lttng:host
     :common_context:
       hostname: aurora12.gov
       backend: <%= backend %>
     :payload:
-      name: cuDevicePrimaryCtxRetain
+      name: cuCtxCreate
       dur: 1
   - :name: lttng:host
     :common_context:
@@ -90,9 +90,16 @@ ref:
       backend: <%= backend %>
       ts: 2
     :payload:
-      name: cuCtxSetCurrent
+      name: cuStreamCreate
       dur: 1
-  <% end %>
+  - :name: lttng:host
+    :common_context:
+      hostname: aurora12.gov
+      backend: <%= backend %>
+      ts: 4
+    :payload:
+      name: cuCtxCreate
+      dur: 1
   - :name: lttng:host
     :common_context:
       hostname: aurora12.gov
@@ -103,11 +110,9 @@ ref:
   - :name: lttng:device
     :common_context:
       hostname: aurora12.gov
-<% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
-<% else %>
-      backend: 0
-<% end %>
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
+      did: <%= dev1 %>
+      sdid: <%= dev1 %>

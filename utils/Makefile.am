@@ -11,6 +11,12 @@ noinst_HEADERS = \
 	include/json.hpp \
 	tests_template/interval_profiling_block.yaml.erb \
 	tests_template/interval_profiling_normal.yaml.erb \
+	tests_template/interval_profiling_cuda_driver_api.yaml.erb \
+	tests_template/interval_profiling_cuda_multictx.yaml.erb \
+	tests_template/interval_profiling_cuda_multistream.yaml.erb \
+	tests_template/interval_profiling_cuda_memcpy.yaml.erb \
+	tests_template/interval_profiling_multithread.yaml.erb \
+	tests_template/interval_profiling_kernel_name.yaml.erb \
 	tests_template/interval_common.dust.erb \
 	xprof_utils.cpp \
 	xprof_utils.hpp
