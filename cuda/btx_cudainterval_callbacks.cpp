@@ -116,7 +116,7 @@ static void entries_traffic_v2_callback(void *btx_handle, void *usr_data,
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
   state->entry_state.set_ts(key, ts);
-  state->entry_state.set_data<size_t>(key, size);
+  state->entry_state.set_data(key, size);
 }
 
 // Note: v1 API takes uint32_t type for size arg
