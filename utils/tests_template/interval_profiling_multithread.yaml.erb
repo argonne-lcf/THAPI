@@ -38,22 +38,63 @@ in:
   :events:
   <% if be == "cuda" %>
   - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_entry
+    :common_context:
+      vtid: 1
   - :name: lttng_ust_cuda:cuDevicePrimaryCtxRetain_exit
+    :common_context:
+      vtid: 1
   - :name: lttng_ust_cuda:cuCtxSetCurrent_entry
     :payload:
       ctx: 1
+    :common_context:
+      vtid: 1
   - :name: lttng_ust_cuda:cuCtxSetCurrent_exit
+    :common_context:
+      vtid: 1
+  - :name: lttng_ust_cuda:cuCtxCreate_entry
+    :common_context:
+      vtid: 2
+  - :name: lttng_ust_cuda:cuCtxCreate_exit
+    :common_context:
+      vtid: 2
   <% end %>
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
     :clock_snapshot_value: 0
+    :common_context:
+      vtid: 1
+  - :name: lttng_ust_<%= be %>:<%= profiled_call %>_entry
+    :clock_snapshot_value: 0
+    :common_context:
+      vtid: 2
   - :name: lttng_ust_<%= be %>_profiling:event_profiling
+    :common_context:
+      vtid: 1
+    :payload:
+      <%= event %>: 11
+  - :name: lttng_ust_<%= be %>_profiling:event_profiling
+    :common_context:
+      vtid: 2
     :payload:
       <%= event %>: 12
   - :name: lttng_ust_<%= be %>:<%= profiled_call %>_exit
+    :common_context:
+      vtid: 2
+    :clock_snapshot_value: 3
+  - :name: lttng_ust_<%= be %>:<%= profiled_call %>_exit
+    :common_context:
+      vtid: 1
     :clock_snapshot_value: 3
   - :name: lttng_ust_<%= be %>_profiling:event_profiling_results
+    :common_context:
+      vtid: 2
     :payload:
       <%= event %>: 12
+      <%= prof_end %>: 10
+  - :name: lttng_ust_<%= be %>_profiling:event_profiling_results
+    :common_context:
+      vtid: 1
+    :payload:
+      <%= event %>: 11
       <%= prof_end %>: 10
 ref:
   :default_stream: stream0
@@ -79,6 +120,7 @@ ref:
   <% if be == "cuda" %>
   - :name: lttng:host
     :common_context:
+      vtid: 1
       hostname: aurora12.gov
       backend: <%= backend %>
     :payload:
@@ -86,22 +128,57 @@ ref:
       dur: 1
   - :name: lttng:host
     :common_context:
+      vtid: 1
       hostname: aurora12.gov
       backend: <%= backend %>
       ts: 2
     :payload:
       name: cuCtxSetCurrent
       dur: 1
+  - :name: lttng:host
+    :common_context:
+      vtid: 2
+      hostname: aurora12.gov
+      backend: <%= backend %>
+      ts: 4
+    :payload:
+      name: cuCtxCreate
+      dur: 1
   <% end %>
   - :name: lttng:host
     :common_context:
+      vtid: 2
       hostname: aurora12.gov
       backend: <%= backend %>
     :payload:
       name: <%= profiled_call %>
       dur: 3
+
+  - :name: lttng:host
+    :common_context:
+      vtid: 1
+      hostname: aurora12.gov
+      backend: <%= backend %>
+    :payload:
+      name: <%= profiled_call %>
+      dur: 3
+
   - :name: lttng:device
     :common_context:
+      vtid: 2
+      hostname: aurora12.gov
+<% if ["ze", "cuda"].include?(be) %>
+      backend: <%= backend %>
+<% else %>
+      backend: 0
+<% end %>
+    :payload:
+      name: <%= profiled_call %>
+      dur: <%= 10 * mulfactor %>
+
+  - :name: lttng:device
+    :common_context:
+      vtid: 1
       hostname: aurora12.gov
 <% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
