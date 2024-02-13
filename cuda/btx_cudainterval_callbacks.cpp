@@ -5,12 +5,8 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
-
 #include "btx_cudainterval_callbacks.hpp"
-
 #include "context_manager.hpp"
-#include "entry_state.hpp"
-
 #include <metababel/metababel.h>
 
 struct data_s {
@@ -62,22 +58,6 @@ struct data_s {
 };
 
 using data_t = struct data_s;
-
-template <size_t SuffixLen>
-static inline std::string _strip_event_class_name(const char *str) {
-  const char *p = str + strlen("lttng_");
-  while (*p++ != ':') {
-  }
-  return std::string{p, strlen(p) - SuffixLen};
-}
-
-static inline std::string strip_event_class_name_entry(const char *str) {
-  return _strip_event_class_name<strlen("_entry")>(str);
-}
-
-static inline std::string strip_event_class_name_exit(const char *str) {
-  return _strip_event_class_name<strlen("_exit")>(str);
-}
 
 static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               const char *event_class_name,
@@ -136,7 +116,7 @@ static void entries_traffic_v2_callback(void *btx_handle, void *usr_data,
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
   state->entry_state.set_ts(key, ts);
-  state->entry_state.set_data<size_t>(key, size);
+  state->entry_state.set_data(key, size);
 }
 
 // Note: v1 API takes uint32_t type for size arg
