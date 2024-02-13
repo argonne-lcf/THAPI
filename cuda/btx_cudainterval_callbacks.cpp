@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <optional>
-#include <regex>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -64,16 +63,20 @@ struct data_s {
 
 using data_t = struct data_s;
 
-static std::string strip_event_class_name(const char *str) {
-  std::string temp(str);
-  std::smatch match;
-  std::regex_search(temp, match, std::regex(":(.*?)_?(?:entry|exit)?$"));
+template <size_t SuffixLen>
+static inline std::string _strip_event_class_name(const char *str) {
+  const char *p = str + strlen("lttng_");
+  while (*p++ != ':') {
+  }
+  return std::string{p, strlen(p) - SuffixLen};
+}
 
-  // The entire match is hold in the first item, sub_expressions
-  // (parentheses delimited groups) are stored after.
-  assert(match.size() > 1 && "Event_class_name not matching regex.");
+static inline std::string strip_event_class_name_entry(const char *str) {
+  return _strip_event_class_name<strlen("_entry")>(str);
+}
 
-  return match[1].str();
+static inline std::string strip_event_class_name_exit(const char *str) {
+  return _strip_event_class_name<strlen("_exit")>(str);
 }
 
 static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
@@ -81,7 +84,7 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               const char *hostname, int64_t vpid, uint64_t vtid,
                               bool err) {
   std::string event_class_name_striped =
-      strip_event_class_name(event_class_name);
+      strip_event_class_name_exit(event_class_name);
   const int64_t entry_ts = static_cast<data_t *>(usr_data)->entry_state.get_ts(
       {hostname, vpid, vtid});
 
@@ -156,7 +159,7 @@ static void exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 
   std::string event_class_name_stripped =
-      strip_event_class_name(event_class_name);
+      strip_event_class_name_exit(event_class_name);
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
   const int64_t entry_ts = state->entry_state.get_ts(key);
@@ -295,7 +298,6 @@ static void task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
   hpt_t hpt{hostname, vpid, vtid};
   auto dev = state->context_manager.get_stream_device(hpt, cuStream);
 
-  std::string name = strip_event_class_name(event_class_name);
   if (f_optional.has_value()) {
     // for device launch, get the name saved when the kernel was loaded in the
     // module get function callbacks
@@ -306,6 +308,7 @@ static void task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
   } else {
     // for host launch and non launch tasks like cuMemcpy, the device op name
     // is just the function name
+    std::string name = strip_event_class_name_entry(event_class_name);
     state->hpt_function_name_to_dev[{hostname, vpid, vtid, name}] = dev;
     state->hpt_profiled_function_name_and_ts[hpt] = fn_ts_t(name, ts);
   }
@@ -344,7 +347,7 @@ static void kernel_task_stream_absent_entry_callback(
 // END Kernel name and device tracking
 // ===============================
 
-#define REGISTER_ASSOCIATED_CALLBACK(base_name)                           \
+#define REGISTER_ASSOCIATED_CALLBACK(base_name)                                \
   btx_register_callbacks_##base_name(btx_handle, &base_name##_callback);
 
 void btx_register_usr_callbacks(void *btx_handle) {
