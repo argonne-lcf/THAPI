@@ -12,40 +12,21 @@
 
 
 struct data_s {
-  std::unordered_map<hpt_t, int64_t> entry_ts;
+  EntryState entry_state;
 };
 
 typedef struct data_s data_t;
-
-void set_entry_ts(data_t *data, hpt_t hpt, int64_t ts) {
-  data->entry_ts[hpt] = ts;
-}
-
-int64_t get_entry_ts(data_t *data, hpt_t hpt) {
-  return data->entry_ts.at(hpt);
-}
-
-std::string strip_event_class_name(const char *str) {
-  std::string temp(str);
-  std::smatch match;
-  std::regex_search(temp, match, std::regex(":(.*?)_?(?:entry|exit)?$"));
-
-  // The entire match is hold in the first item, sub_expressions 
-  // (parentheses delimited groups) are stored after.
-  assert( match.size() > 1 && "Event_class_name not matching regex.");
-
-  return match[1].str();
-}
 
 static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
                               const char *event_class_name, const char *hostname, int64_t vpid,
                               uint64_t vtid, bool err) {
 
-  std::string event_class_name_striped = strip_event_class_name(event_class_name);
-  const int64_t _start = get_entry_ts(static_cast<data_t *>(usr_data), {hostname, vpid, vtid});
+  std::string event_class_name_striped = strip_event_class_name_exit(event_class_name);
+  const int64_t entry_ts = static_cast<data_t *>(usr_data)->entry_state.get_ts(
+      {hostname, vpid, vtid});
 
-  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, _start, BACKEND_HIP,
-                              event_class_name_striped.c_str(), (ts - _start), err);
+  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_HIP,
+                              event_class_name_striped.c_str(), (ts - entry_ts), err);
 }
 
 void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
@@ -57,7 +38,8 @@ void btx_finalize_component(void *usr_data) {
 static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
                              const char *event_class_name, const char *hostname, int64_t vpid,
                              uint64_t vtid) {
-  set_entry_ts(((data_t *)usr_data), {hostname, vpid, vtid}, ts);
+  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid},
+                                                      ts);
 }
 
 static void exits_callback_hipError_absent(void *btx_handle, void *usr_data, int64_t ts,

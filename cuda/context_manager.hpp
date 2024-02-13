@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "btx_cudainterval_callbacks.hpp"
-#include "entry_state.hpp"
+#include "xprof_utils.hpp"
 
 
 using hpt_context_t =
