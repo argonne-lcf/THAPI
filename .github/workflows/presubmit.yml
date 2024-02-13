@@ -61,7 +61,7 @@ jobs:
     name: Build and Check ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/cache@v4
         id: babeltrace2
         env:
@@ -101,7 +101,7 @@ jobs:
     name: Build in Tree ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/cache@v4
         id: babeltrace2
         env:
@@ -137,7 +137,7 @@ jobs:
     name: Distcheck ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/cache@v4
         id: babeltrace2
         env:
@@ -167,7 +167,7 @@ jobs:
     name: Dist and Check ubuntu-latest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/cache@v4
         id: babeltrace2
         env:
