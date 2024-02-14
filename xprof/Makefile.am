@@ -10,9 +10,8 @@ bin_SCRIPTS = \
 	iprof \
 	sync_daemon_fs
 
-iprof: $(top_builddir)/xprof/xprof.rb
-	cp $(top_builddir)/xprof/xprof.rb $@
-	chmod a+x $@
+iprof: xprof.rb
+	cp xprof.rb $@
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
