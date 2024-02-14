@@ -180,80 +180,49 @@ end
 #   |_)  _. ._ ._ o  _  ._
 #   |_) (_| |  |  | (/_ |
 #
-def count_file(folder)
-  # \ls to avoid alias. Counter `.` and `..`, so remove them
-  #  Will return -2 for a empty directory
-  stdout_str = exec("\\ls -afq #{folder}", debug: false)
-  stdout_str.lines.size - 2
-end
+class Sync_daemon
+  SIGRTMIN = 34
+  RT_SIGNAL_READY = SIGRTMIN
+  RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
+  RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
+  RT_SIGNAL_FINISH = SIGRTMIN + 3
 
-FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
-# Put the user name, to avoid permission issue for people sharing nodes
-SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
-SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
+  def lazy_exec(&block)
+    return unless in_mpi_env?
 
-# Use a log distribution seems to be a good tradeoff
-# between being nice to the FileSystem (not too many calls)
-# but not waiting to much
-def busy_wait(&block)
-  (2..).take_while { |i| block.call && sleep(Math.log(i)) }
-end
+    Signal.trap(RT_SIGNAL_READY) do
+      return
+    end
+    block.call
+    sleep
+  end
 
-# We know the local size, and the local id
-#   Each process write a file, then we wait until all of them did it
-#
-# We cannot remove the local_path; this can lead to deadlock
-#   One process finish and remove the file,
-#   when another process is sleeping
-# Hence, each local barrier should have a unique name
-def local_barier(name)
-  LOGGER.info { "Local_barier #{name}" }
-  return unless in_mpi_env?
+  def initialize
+    LOGGER.debug { 'Init Sync_daemon' }
+    lazy_exec do
+      @pid = spawn("#{__dir__}/sync_daemon_fs #{Process.pid}")
+    end
+  end
 
-  folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
-  FileUtils.mkdir_p(File.join(folder, mpi_local_rank_id.to_s))
-  busy_wait { count_file(folder) != mpi_local_size }
-end
+  def finalize
+    lazy_exec do
+      `kill -#{RT_SIGNAL_FINISH} #{@pid}`
+    end
+  end
 
-# We don't know the total number of ranks
-#   -`PALS_NRANKS` looks interesting but is not exported by default
-#   - We may want to call `MPI_INIT()` our self, but that mean liking against MPI
-#     making it a pain to install / configure THAPI
-# We don't know either how many local masters we have
-#   - MPI is not required to round-robin process between hosts
-#   - We cannot use `PBS_NODEFILE`, as people can request N nodes, but launch <N process
-#
-# At the beginning of the script, each master will create a folder.
-# Then, when hitting the barrier, each local master will remove his file
-#  and wait until no more folders exist.
-#
-# This is racy! If one thread exits the barrier before any other enters it,
-#    this thread will pass the barrier.
-# We rely/We hope, that user will call an MPI_Barrier() && that we do enough work...
-def init_global_barrier
-  LOGGER.info { 'Init_global_barrier' }
-  return unless in_mpi_env?
+  def local_barrier(name)
+    LOGGER.info { "Local_barrier #{name}" }
+    lazy_exec do
+      `kill -#{RT_SIGNAL_LOCAL_BARRIER} #{@pid}`
+    end
+  end
 
-  f = File.join(SHARED_GLOBAL_FILESYSTEM, mpi_rank_id.to_s)
-  FileUtils.mkdir_p(f)
-  f
-end
-
-def global_barrier(f)
-  LOGGER.info { 'Global_barrier' }
-  return unless in_mpi_env?
-
-  # Block until all the process have removed their sentinel,
-  #    then master will clean the folder to be nice to the user
-  #
-  # Note that `mpi_master` can see the folder empty, and hence remove it
-  #   at the same time as other threads sleep. They will wake up
-  #   and see a deleted folder.
-  # Fortunately `count_file` will return -2 for a non exciting folder
-  #   hence we test for > 0 and not `!= 0`
-  FileUtils.rm_rf(f)
-  busy_wait { count_file(SHARED_GLOBAL_FILESYSTEM) > 0 }
-  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+  def global_barrier
+    LOGGER.info { 'global_barrier' }
+    lazy_exec do
+      `kill -#{RT_SIGNAL_GLOBAL_BARRIER} #{@pid}`
+    end
+  end
 end
 
 #                        __
@@ -485,7 +454,7 @@ end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
 
-def on_node_processing(_backends, global_barrier_h)
+def on_node_processing(_backends, syncd)
   raise unless mpi_local_master?
 
   opts = if OPTIONS.include?(:trace)
@@ -508,7 +477,7 @@ def on_node_processing(_backends, global_barrier_h)
   end
 
   # Global Barrier
-  global_barrier(global_barrier_h)
+  syncd.global_barrier
 
   # Replace mpi_job_id with a better name
   return unless mpi_master?
@@ -521,7 +490,7 @@ end
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
   # All masters setup a future global barrier
-  global_barrier_h = init_global_barrier if mpi_local_master?
+  syncd = Sync_daemon.new
 
   # Load Tracers and APILoaders Lib
   backends, h = env_tracers
@@ -531,18 +500,18 @@ def trace_and_on_node_processing(usr_argv)
   ENV['LTTNG_HOME'] = lttng_home_dir
   # Only local master spawn LTTNG daemon and start session
   setup_lttng(backends) if mpi_local_master?
-  local_barier('waiting_for_lttng_setup')
+  syncd.local_barrier('waiting_for_lttng_setup')
   # Launch User Command
   launch_usr_bin(h, usr_argv)
 
   # We need to be sure that all the local ranks finished
   # before local master stops the lttng session
-  local_barier('waiting_for_application_ending')
+  syncd.local_barrier('waiting_for_application_ending')
   return unless mpi_local_master?
 
   teardown_lttng
   # Preprocess trace
-  on_node_processing(backends, global_barrier_h)
+  on_node_processing(backends, syncd)
 end
 
 def global_processing(folder)
@@ -565,6 +534,7 @@ def global_processing(folder)
     args += ['trace', '--restrict', '--context', '--backend', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
+
     args += ['timeline', '--backend', backends]
   else
     args += ['tally']

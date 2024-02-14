@@ -6,7 +6,9 @@ else
   WERROR =
 endif
 
-bin_SCRIPTS = iprof
+bin_SCRIPTS = \
+	iprof \
+	sync_daemon_fs
 
 iprof: $(top_builddir)/xprof/xprof.rb
 	cp $(top_builddir)/xprof/xprof.rb $@
@@ -156,16 +158,17 @@ data_DATA = \
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
-    btx_aggreg_model.yaml \
+	btx_aggreg_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
 	btx_aggreg_params.yaml \
-    interval_model.yaml \
+	interval_model.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto \
 	interval.c.erb \
-	interval.h.erb
+	interval.h.erb \
+	sync_daemon_fs
 
 CLEANFILES = \
 	iprof \

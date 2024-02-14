@@ -1,0 +1,129 @@
+#!/usr/bin/env ruby
+
+SIGRTMIN = 34
+RT_SIGNAL_READY = SIGRTMIN
+RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
+RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
+RT_SIGNAL_FINISH = SIGRTMIN + 3
+
+require 'open3'
+require 'fileutils'
+require 'securerandom'
+require 'etc'
+
+def env_fetch_first(*args, default: nil)
+  ENV.values_at(*args).compact.first || default
+end
+
+def mpi_job_id
+  env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
+end
+
+def mpi_rank_id
+  env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+end
+
+def mpi_local_rank_id
+  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
+end
+
+def mpi_local_size
+  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
+end
+
+def mpi_local_master?
+  mpi_local_rank_id == 0
+end
+
+def mpi_master?
+  mpi_rank_id == 0
+end
+
+FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
+SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
+SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
+
+def exec(cmd, opts: {}, debug: true)
+  return Open3.capture3(opts, cmd).first unless debug
+
+  LOGGER.info { cmd }
+  LOGGER.debug { opts } unless opts.empty?
+
+  stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
+  raise "#{cmd} failed" unless status.success?
+
+  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
+  LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
+  stdout_str
+end
+
+# Use a log distribution seem to be a good tradeoff
+# between being nice to the FileSystem (not to many call)
+# but not waiting to much
+def busy_wait(&block)
+  (2..).take_while { |i| block.call && sleep(Math.log(i)) }
+end
+
+def count_file(folder)
+  # \ls to avoid alias. Counter `.` and `..`, so remove them
+  #  Will return -2 for a empty directory
+  stdout_str = exec("\\ls -afq #{folder}", debug: false)
+  stdout_str.lines.size - 2
+end
+
+def init_global_barrier
+  return unless mpi_local_master?
+
+  f = File.join(SHARED_GLOBAL_FILESYSTEM, mpi_rank_id.to_s)
+  FileUtils.mkdir_p(f)
+  f
+end
+
+def global_barrier(f)
+  return unless mpi_local_master?
+
+  # Block until all the process have removed their sentinel,
+  #    then master will clean the folder to be nice to the user
+  #
+  # Note that `mpi_master` can see the folder empty, and hence remove it
+  #   at the same time as others threads sleep. They will wake up
+  #   and see a deleted folder.
+  # Fortunately `count_file` will return -2 for a non exciting folder
+  #   hence we test for > 0 and not `!= 0`
+  FileUtils.rm_rf(f)
+  busy_wait { count_file(SHARED_GLOBAL_FILESYSTEM) > 0 }
+  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+end
+
+def local_barier(name)
+  folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
+  FileUtils.mkdir_p(File.join(folder, mpi_local_rank_id.to_s))
+  busy_wait { count_file(folder) != mpi_local_size }
+end
+
+# Init global barrier
+global_handle = init_global_barrier
+# Get parent pid
+parent_pid = ARGV[0]
+
+# Set trap
+Signal.trap(RT_SIGNAL_GLOBAL_BARRIER) do
+  global_barrier(global_handle)
+  `kill -#{RT_SIGNAL_READY} #{parent_pid}`
+end
+
+local_barier_count = 0
+Signal.trap(RT_SIGNAL_LOCAL_BARRIER) do
+  local_barier(local_barier_count.to_s)
+  local_barier_count += 1
+  `kill -#{RT_SIGNAL_READY} #{parent_pid}`
+end
+
+Signal.trap(RT_SIGNAL_FINISH) do
+  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+  FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
+  return
+end
+
+`kill -#{RT_SIGNAL_READY} #{parent_pid}`
+sleep
