@@ -43,20 +43,6 @@ FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
 SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
 
-def exec(cmd, opts: {}, debug: true)
-  return Open3.capture3(opts, cmd).first unless debug
-
-  LOGGER.info { cmd }
-  LOGGER.debug { opts } unless opts.empty?
-
-  stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
-  raise "#{cmd} failed" unless status.success?
-
-  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
-  LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
-  stdout_str
-end
-
 # Use a log distribution seem to be a good tradeoff
 # between being nice to the FileSystem (not to many call)
 # but not waiting to much
@@ -67,7 +53,7 @@ end
 def count_file(folder)
   # \ls to avoid alias. Counter `.` and `..`, so remove them
   #  Will return -2 for a empty directory
-  stdout_str = exec("\\ls -afq #{folder}", debug: false)
+  stdout_str = Open3.capture3("\\ls -afq #{folder}").first
   stdout_str.lines.size - 2
 end
 
@@ -101,29 +87,30 @@ def local_barier(name)
   busy_wait { count_file(folder) != mpi_local_size }
 end
 
-# Init global barrier
-global_handle = init_global_barrier
-# Get parent pid
-parent_pid = ARGV[0]
+global_handle = nil
+parent_pid = nil
 
 # Set trap
 Signal.trap(RT_SIGNAL_GLOBAL_BARRIER) do
   global_barrier(global_handle)
-  `kill -#{RT_SIGNAL_READY} #{parent_pid}`
+  Process.kill(RT_SIGNAL_READY, parent_pid)
 end
 
 local_barier_count = 0
 Signal.trap(RT_SIGNAL_LOCAL_BARRIER) do
   local_barier(local_barier_count.to_s)
   local_barier_count += 1
-  `kill -#{RT_SIGNAL_READY} #{parent_pid}`
+  Process.kill(RT_SIGNAL_READY, parent_pid)
 end
 
 Signal.trap(RT_SIGNAL_FINISH) do
   FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
   FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
-  return
+  exit
 end
 
-`kill -#{RT_SIGNAL_READY} #{parent_pid}`
+# Init global barrier
+global_handle = init_global_barrier
+parent_pid = ARGV[0].to_i
+Process.kill(RT_SIGNAL_READY, parent_pid)
 sleep
