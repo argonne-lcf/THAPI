@@ -25,13 +25,7 @@ class OptionParserWithDefaultAndValidation < OptionParser
     opts << "Values allowed: #{allowed}" unless allowed.nil?
     # Default can containt Array (or Set).
     # We cannot use the [a].flatten trick.
-    # So we use the respond_to one
-    #   irb(main):028:0> default = Set[-1,2]
-    #   => #<Set: {-1, 2}>
-    #   irb(main):029:0> [default].flatten.join(',')
-    #   => "#<Set: {-1, 2}>"
-    #   irb(main):030:0> default.respond_to?(:flatten)? default.flatten.join(',') : default
-    #   => "-1,2"
+    # So we use the respond_to join
     opts << "Default: #{default.respond_to?(:join) ? default.join(',') : default}" unless default.nil?
     # Create a new block where
     #   we append our validation layer before the usr block
