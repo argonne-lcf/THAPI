@@ -56,10 +56,13 @@ bin_SCRIPTS = \
 version:
 	git describe --abbrev=7 --dirty --always --tags > version || echo $(PACKAGE_VERSION) > version
 
-data_DATA = version
+data_DATA = \
+	version \
+	optparse_thapi.rb
 
 CLEANFILES = \
 	version \
+	optparse_thapi.rb \
 	lttng/tracepoint_gen.h \
 	$(BUILT_SOURCES)
 
@@ -82,4 +85,5 @@ EXTRA_DIST = \
 	gen_babeltrace_emitter.rb \
 	thapi_metadata_tracepoints.tp \
 	command.rb \
-	meta_parameters.rb
+	meta_parameters.rb \
+	optparse_thapi.rb
