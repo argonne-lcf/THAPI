@@ -538,6 +538,7 @@ def global_processing(folder)
     args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
+
     args += ['timeline', '--backends', backends]
   else
     args += ['tally']
@@ -572,94 +573,93 @@ end
 
 # Avoid load problem
 if __FILE__ == $0
-parser = OptionParserWithDefaultAndValidation.new
+  parser = OptionParserWithDefaultAndValidation.new
 
-# Tracing
-parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
-                                                                               allowed: %w[minimal default full])
-parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
-          'Use -1 to mean all ranks.',
-          default: Set[-1]) do |ranks|
-  ranks.map do |r|
-    if r.match?(/^\d+$/)
-      r.to_i
-    else
-      raise(OptionParser::ParseError,
-            "Invalid value (#{r}). Only integer accepted")
-    end
-  end.to_set
-end
-parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
-parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
+  # Tracing
+  parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
+                                                                                 allowed: %w[minimal default full])
+  parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
+            'Use -1 to mean all ranks.',
+            default: Set[-1]) do |ranks|
+    ranks.map do |r|
+      if r.match?(/^\d+$/)
+        r.to_i
+      else
+        raise(OptionParser::ParseError,
+              "Invalid value (#{r}). Only integer accepted")
+      end
+    end.to_set
+  end
+  parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
+  parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
 
-# General Options
-parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
-          'Format: backend_name[:backend_level],...',
-          default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+  # General Options
+  parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
+            'Format: backend_name[:backend_level],...',
+            default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
-# Analysis
-parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
-parser.on('-t', '--trace', 'Pretty print the trace')
-parser.on('-l', '--timeline', 'Dump a timeline of the trace.',
-          "This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer")
-## Tally Specific Options
-parser.on('-j', '--json', 'The tally will be dumped as json')
-parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
-parser.on('-k', '--kernel-verbose',
-          'The tally will report kernels execution time with SIMD width and global/local sizes')
-parser.on('--max-name-size SIZE',
-          OptionParser::DecimalInteger,
-          'Maximum size allowed for kernels names.',
-          'Use -1 to mean no limit.', default: 80)
+  # Analysis
+  parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
+  parser.on('-t', '--trace', 'Pretty print the trace')
+  parser.on('-l', '--timeline', 'Dump a timeline of the trace.',
+            "This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer")
+  ## Tally Specific Options
+  parser.on('-j', '--json', 'The tally will be dumped as json')
+  parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
+  parser.on('-k', '--kernel-verbose',
+            'The tally will report kernels execution time with SIMD width and global/local sizes')
+  parser.on('--max-name-size SIZE',
+            OptionParser::DecimalInteger,
+            'Maximum size allowed for kernels names.',
+            'Use -1 to mean no limit.', default: 80)
 
-parser.on('--metadata', 'Display trace Metadata') do
-  puts File.read(File.join(DATADIR, 'version'))
-  exit
-end
+  parser.on('--metadata', 'Display trace Metadata') do
+    puts File.read(File.join(DATADIR, 'version'))
+    exit
+  end
 
-parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
+  parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
-parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-          "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
+  parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
+            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
 
-def print_help_and_exit(parser, exit_code: 1)
-  puts(parser.help)
-  puts(<<~EOF
-                                                          __
-    For complaints, praises, or bug reports please use: <(o )___
-       https://github.com/argonne-lcf/THAPI              ( ._> /
-       or send email to {apl,bvideau}@anl.gov             `---'
-  EOF
-      )
-  exit(exit_code)
-end
+  def print_help_and_exit(parser, exit_code: 1)
+    puts(parser.help)
+    puts(<<~EOF
+                                                            __
+      For complaints, praises, or bug reports please use: <(o )___
+         https://github.com/argonne-lcf/THAPI              ( ._> /
+         or send email to {apl,bvideau}@anl.gov             `---'
+    EOF
+        )
+    exit(exit_code)
+  end
 
-# Parsing ARGV
-print_help_and_exit(parser) if ARGV.empty?
+  # Parsing ARGV
+  print_help_and_exit(parser) if ARGV.empty?
 
-options = {}
-begin
-  parser.parse!(into: options)
-rescue StandardError => e
-  puts("ERROR: #{e}")
-  print_help_and_exit(parser)
-end
+  options = {}
+  begin
+    parser.parse!(into: options)
+  rescue StandardError => e
+    puts("ERROR: #{e}")
+    print_help_and_exit(parser)
+  end
 
-options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
-OPTIONS = options.freeze
+  options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
+  OPTIONS = options.freeze
 
-# Setup Logger
-LOGGER = Logger.new($stdout)
-LOGGER.level = OPTIONS[:debug]
-LOGGER.debug(OPTIONS)
+  # Setup Logger
+  LOGGER = Logger.new($stdout)
+  LOGGER.level = OPTIONS[:debug]
+  LOGGER.debug(OPTIONS)
 
-
-# Right now, `replay` means no tracing.
-# But we don't have a way of disabling post-processing
-folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
-if mpi_master?
-  puts("THAPI: Trace Location #{folder}")
-  global_processing(folder) if OPTIONS[:analysis]
-end
+  # Right now, `replay` means no tracing.
+  # But we don't have a way of disabling post-processing
+  folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
+  if mpi_master?
+    puts("THAPI: Trace Location #{folder}")
+    global_processing(folder) if OPTIONS[:analysis]
+  end
 
 end
