@@ -471,8 +471,8 @@ def on_node_processing(backends, syncd)
          end
 
   if opts && OPTIONS[:analysis]
-    opts << "--output #{thapi_trace_dir_tmp}"
-    opts << "--backends #{backends.join(',')}"
+    opts << "--output #{thapi_trace_dir_tmp} "
+    opts << "--backends #{backends.join(',')} "
     exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
