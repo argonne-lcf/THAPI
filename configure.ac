@@ -95,18 +95,19 @@ AC_FUNC_ALLOCA
 AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strtoull])
+AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strtoull strlen strchr])
 
-AC_CONFIG_FILES([Makefile
-                 utils/Makefile
-                 sampling/Makefile
-                 xprof/xprof.rb
-                 opencl/Makefile
-                 ze/Makefile
-                 xprof/Makefile
-                 cuda/Makefile
-                 omp/Makefile
-                 hip/Makefile])
+AC_CONFIG_FILES([
+	Makefile
+	sampling/Makefile
+	opencl/Makefile
+	ze/Makefile
+	cuda/Makefile
+	omp/Makefile
+	hip/Makefile
+	xprof/Makefile
+	utils/Makefile
+])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
 AC_CONFIG_FILES([opencl/test_wrapper.sh], [chmod +x opencl/test_wrapper.sh])
@@ -114,9 +115,10 @@ AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
 AC_CONFIG_FILES([ze/test_wrapper.sh], [chmod +x ze/test_wrapper.sh])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([cuda/test_wrapper.sh], [chmod +x cuda/test_wrapper.sh])
-AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
-AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
 AC_CONFIG_FILES([hip/tracer_hip.sh], [chmod +x hip/tracer_hip.sh])
 AC_CONFIG_FILES([hip/test_wrapper.sh], [chmod +x hip/test_wrapper.sh])
+AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
+AC_CONFIG_FILES([xprof/test_wrapper.sh], [chmod +x xprof/test_wrapper.sh])
+AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
 AC_OUTPUT

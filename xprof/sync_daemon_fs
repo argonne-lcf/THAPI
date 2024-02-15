@@ -1,0 +1,86 @@
+#!/usr/bin/env ruby
+
+# Cannot use require_relative as iprof is not a rb file
+# Load mpi_* and RT_SIGNAL_*
+load(File.join(__dir__,'iprof'))
+
+require 'open3'
+require 'fileutils'
+require 'securerandom'
+require 'etc'
+
+FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
+SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
+SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
+
+# Use a log distribution seem to be a good tradeoff
+# between being nice to the FileSystem (not to many call)
+# but not waiting to much
+def busy_wait(&block)
+  (2..).take_while { |i| block.call && sleep(Math.log(i)) }
+end
+
+def count_file(folder)
+  # \ls to avoid alias. Counter `.` and `..`, so remove them
+  #  Will return -2 for a empty directory
+  stdout_str = Open3.capture3("\\ls -afq #{folder}").first
+  stdout_str.lines.size - 2
+end
+
+def init_global_barrier
+  return unless mpi_local_master?
+
+  f = File.join(SHARED_GLOBAL_FILESYSTEM, mpi_rank_id.to_s)
+  FileUtils.mkdir_p(f)
+  f
+end
+
+def global_barrier(f)
+  return unless mpi_local_master?
+
+  # Block until all the process have removed their sentinel,
+  #    then master will clean the folder to be nice to the user
+  #
+  # Note that `mpi_master` can see the folder empty, and hence remove it
+  #   at the same time as others threads sleep. They will wake up
+  #   and see a deleted folder.
+  # Fortunately `count_file` will return -2 for a non exciting folder
+  #   hence we test for > 0 and not `!= 0`
+  FileUtils.rm_rf(f)
+  busy_wait { count_file(SHARED_GLOBAL_FILESYSTEM) > 0 }
+  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+end
+
+def local_barier(name)
+  folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
+  FileUtils.mkdir_p(File.join(folder, mpi_local_rank_id.to_s))
+  busy_wait { count_file(folder) != mpi_local_size }
+end
+
+global_handle = nil
+parent_pid = nil
+
+# Set trap
+Signal.trap(Sync_daemon::RT_SIGNAL_GLOBAL_BARRIER) do
+  global_barrier(global_handle)
+  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+end
+
+local_barier_count = 0
+Signal.trap(Sync_daemon::RT_SIGNAL_LOCAL_BARRIER) do
+  local_barier(local_barier_count.to_s)
+  local_barier_count += 1
+  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+end
+
+Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
+  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+  FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
+  exit
+end
+
+# Init global barrier
+global_handle = init_global_barrier
+parent_pid = ARGV[0].to_i
+Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+sleep

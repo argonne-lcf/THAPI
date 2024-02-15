@@ -192,9 +192,7 @@ private:
 // ClassName Striping
 template <size_t SuffixLen>
 static inline std::string _strip_event_class_name(const char *str) {
-  const char *p = str + strlen("lttng_");
-  while (*p++ != ':') {
-  }
+  const char *p = strchr(str + strlen("lttng_"), ':') + 1;
   return std::string{p, strlen(p) - SuffixLen};
 }
 
