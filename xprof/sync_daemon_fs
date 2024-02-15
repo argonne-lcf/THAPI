@@ -1,43 +1,13 @@
 #!/usr/bin/env ruby
 
-SIGRTMIN = 34
-RT_SIGNAL_READY = SIGRTMIN
-RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
-RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
-RT_SIGNAL_FINISH = SIGRTMIN + 3
+# Cannot use require_relative as iprof is not a rb file
+# Load mpi_* and RT_SIGNAL_*
+load(File.join(__dir__,'iprof'))
 
 require 'open3'
 require 'fileutils'
 require 'securerandom'
 require 'etc'
-
-def env_fetch_first(*args, default: nil)
-  ENV.values_at(*args).compact.first || default
-end
-
-def mpi_job_id
-  env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
-end
-
-def mpi_rank_id
-  env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
-end
-
-def mpi_local_rank_id
-  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
-end
-
-def mpi_local_size
-  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
-end
-
-def mpi_local_master?
-  mpi_local_rank_id == 0
-end
-
-def mpi_master?
-  mpi_rank_id == 0
-end
 
 FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
@@ -91,19 +61,19 @@ global_handle = nil
 parent_pid = nil
 
 # Set trap
-Signal.trap(RT_SIGNAL_GLOBAL_BARRIER) do
+Signal.trap(Sync_daemon::RT_SIGNAL_GLOBAL_BARRIER) do
   global_barrier(global_handle)
-  Process.kill(RT_SIGNAL_READY, parent_pid)
+  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
 end
 
 local_barier_count = 0
-Signal.trap(RT_SIGNAL_LOCAL_BARRIER) do
+Signal.trap(Sync_daemon::RT_SIGNAL_LOCAL_BARRIER) do
   local_barier(local_barier_count.to_s)
   local_barier_count += 1
-  Process.kill(RT_SIGNAL_READY, parent_pid)
+  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
 end
 
-Signal.trap(RT_SIGNAL_FINISH) do
+Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
   FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
   FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
   exit
@@ -112,5 +82,5 @@ end
 # Init global barrier
 global_handle = init_global_barrier
 parent_pid = ARGV[0].to_i
-Process.kill(RT_SIGNAL_READY, parent_pid)
+Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
 sleep
