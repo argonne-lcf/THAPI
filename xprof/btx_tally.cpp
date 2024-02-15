@@ -101,7 +101,7 @@ struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
 
-  std::array<int, BACKEND_MAX> backend_level;
+  std::array<int, BACKEND_MAX> backend_levels;
 
   std::map<backend_level_t, std::set<std::string>> host_backend_name;
   std::map<backend_level_t, std::set<std::string>> traffic_backend_name;
@@ -179,7 +179,7 @@ static void initialize_component_callback(void **usr_data) {
   *usr_data = data;
 
   /* Backend information must match enum backend_e in xprof_utils.hpp */
-  data->backend_level = {
+  data->backend_levels = {
       2, // BACKEND_UNKNOWN
       2, // BACKEND_ZE
       2, // BACKEND_OPENCL
@@ -196,7 +196,7 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   data->params = usr_params;
 
   // Consumes key:value pairs in the stringstream k1:v1,..,kn:vn
-  std::stringstream tokens{data->params->backend_level};
+  std::stringstream tokens{data->params->backend_levels};
   std::string tmp;
   while (std::getline(tokens, tmp, ',')) {
     std::stringstream tmp_string{tmp};
@@ -205,7 +205,7 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
     int id = get_backend_id(k);
     assert((id > 0) && "Backend not found. Please check --backend-level format.");
     std::getline(tmp_string, v);
-    data->backend_level[id] = std::stoi(v);
+    data->backend_levels[id] = std::stoi(v);
   }
 }
 
@@ -295,7 +295,7 @@ static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *h
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
 
-  const int level = data->backend_level[backend];
+  const int level = data->backend_levels[backend];
   data->host_backend_name[level].insert(backend_name[backend]);
   data->host[level][{hostname, vpid, vtid, name}] += {total, err, count, min, max};
 }
@@ -321,7 +321,7 @@ static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char
                                     uint64_t backend) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-  const int level = data->backend_level[backend];
+  const int level = data->backend_levels[backend];
   data->traffic_backend_name[level].insert(backend_name[backend]);
   data->traffic[level][{hostname, vpid, vtid, name}] += {total, 0, count, min, max};
   ;

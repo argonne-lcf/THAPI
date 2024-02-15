@@ -1,9 +1,23 @@
 #!/usr/bin/env ruby
 
+# We Cannot use "@ .. @" for libdir, bindir, and dataroodir
+# as they will appear as bash "${exec_prefix}/lib"
+# So for now we will rely on them having the default value,
+#  (https://www.gnu.org/software/automake/manual/html_node/Standard-Directory-Variables.html)
+# Will do some gsub + eval if required latter
+EXEC_PREFIX = '@prefix@'
+BINDIR = File.join(EXEC_PREFIX, 'bin')
+LIBDIR = File.join(EXEC_PREFIX, 'lib')
+PKGLIBDIR = File.join(LIBDIR, '@PACKAGE@')
+PREFIX = '@prefix@'
+DATAROOTDIR = File.join(PREFIX, 'share')
+DATADIR = DATAROOTDIR
+
+$LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
 require 'etc'
-require 'optparse'
+require 'optparse_thapi'
 require 'pty'
 require 'digest/md5'
 require 'socket'
@@ -260,19 +274,9 @@ end
 #   | _|_ _|_ ._   _    (_   _ _|_     ._
 #   |_ |_  |_ | | (_|   __) (/_ |_ |_| |_)
 #                  _|                  |
-
-# We Cannot use "@ .. @" for libdir, bindir, and dataroodir
-# as they will appear as bash "${exec_prefix}/lib"
-# So for now we will rely on them having the default value,
-#  (https://www.gnu.org/software/automake/manual/html_node/Standard-Directory-Variables.html)
-# Will do some gsub + eval if required latter
-EXEC_PREFIX = '@prefix@'
-BINDIR = File.join(EXEC_PREFIX, 'bin')
-LIBDIR = File.join(EXEC_PREFIX, 'lib')
-PKGLIBDIR = File.join(LIBDIR, '@PACKAGE@')
-PREFIX = '@prefix@'
-DATAROOTDIR = File.join(PREFIX, 'share')
-DATADIR = DATAROOTDIR
+def lttng_session_uuid
+  Digest::MD5.hexdigest(lttng_trace_dir_tmp)
+end
 
 def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
@@ -295,7 +299,7 @@ def env_tracers
    %w[cuda cuda libcuda libTracerCUDA],
    %w[hip hip libamdhip64 libTracerHIP]].each do |name, bt_name, lib, libtracer|
     # Backend requested, skip omp. It will be handled in a custom case bellow
-    next unless OPTIONS[:'backend-name'].include?(bt_name)
+    next unless OPTIONS[:'backend-names'].include?(bt_name)
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
@@ -318,9 +322,9 @@ def env_tracers
   end
 
   # Customization
-  h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-name'].include?('ze') && OPTIONS[:profile]
+  h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-names'].include?('ze') && OPTIONS[:profile]
 
-  if OPTIONS[:'backend-name'].include?('omp')
+  if OPTIONS[:'backend-names'].include?('omp')
     backends << 'omp'
     h['LTTNG_UST_OMP_INTEL'] = 1
     h['OMP_TOOL_LIBRARIES'] = File.join(PKGLIBDIR, 'libTracerOMPT.so')
@@ -448,7 +452,6 @@ def setup_lttng(backends)
   # Spawning the sessiond Daemon will crash
   #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
-
   exec('lttng-sessiond --daemonize')
   exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
@@ -459,7 +462,7 @@ def setup_lttng(backends)
   # Enable backend events
   (backends + ['metadata']).each do |name|
     send("enable_events_#{name}", channel_name,
-         tracing_mode: OPTIONS[:tracing_mode],
+         tracing_mode: OPTIONS[:'tracing-mode'],
          profiling: OPTIONS[:profile])
   end
   exec("lttng start #{lttng_session_uuid}")
@@ -485,7 +488,7 @@ end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
 
-def on_node_processing(_backends, global_barrier_h)
+def on_node_processing(backends, global_barrier_h)
   raise unless mpi_local_master?
 
   opts = if OPTIONS.include?(:trace)
@@ -500,6 +503,7 @@ def on_node_processing(_backends, global_barrier_h)
 
   if opts && OPTIONS[:analysis]
     opts << "--output #{thapi_trace_dir_tmp}"
+    opts << "--backends #{backends.join(',')}"
     exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
@@ -550,8 +554,8 @@ def global_processing(folder)
 
   LOGGER.info { "postprocess #{folder}" }
 
-  backends = OPTIONS[:'backend-name'].join(',')
-  backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
+  backends = OPTIONS[:'backend-names'].join(',')
+  backend_levels = OPTIONS[:backends].filter { |nl| nl.include?(':') }.join(',')
 
   cmdname = "#{BINDIR}/babeltrace_thapi"
 
@@ -562,18 +566,19 @@ def global_processing(folder)
       raise 'Cannot show the trace of an interval or aggregated trace'
     end
 
-    args += ['trace', '--restrict', '--context', '--backend', backends]
+    args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
-    args += ['timeline', '--backend', backends]
+
+    args += ['timeline', '--backends', backends]
   else
     args += ['tally']
     args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
     args << '--display_metadata' << 'true' if OPTIONS.include?(:metadata)
     args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
-    args << '--backend' << backends
-    args << '--backend_level' << backend_level unless backend_level.empty?
+    args << '--backends' << backends
+    args << '--backend_levels' << backend_levels unless backend_levels.empty?
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
@@ -593,19 +598,14 @@ end
 #   |_) _. ._ _ o ._   _    /  |   |
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
-parser = OptionParser.new
-
-options = { tracing_mode: 'default', profile: true, backend: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'],
-            analysis: true,
-            'traced-ranks': Set[-1],
-            'max-name-size': 80,
-            debug: Logger::FATAL }
+parser = OptionParserWithDefaultAndValidation.new
 
 # Tracing
-parser.on('-m', '--tracing-mode=MODE', %w[minimal default full], 'Define the category of events traced')
-parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
+parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
+                                                                               allowed: %w[minimal default full])
+parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
           'Use -1 to mean all ranks.',
-          "Default: #{options[:'traced-ranks'].join(',')}") do |ranks|
+          default: Set[-1]) do |ranks|
   ranks.map do |r|
     if r.match?(/^\d+$/)
       r.to_i
@@ -615,13 +615,13 @@ parser.on('--traced-ranks=RANK', Array, 'Select with MPI rank will be traced.',
     end
   end.to_set
 end
-parser.on('--[no-]profile', 'Trigger for device activities profiling')
-parser.on('--[no-]analysis', 'Trigger for analysis')
+parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
+parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
 
 # General Options
-parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
+parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
           'Format: backend_name[:backend_level],...',
-          "Default: #{options[:backend].join(',')}")
+          default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
 # Analysis
 parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
@@ -636,16 +636,17 @@ parser.on('-k', '--kernel-verbose',
 parser.on('--max-name-size SIZE',
           OptionParser::DecimalInteger,
           'Maximum size allowed for kernels names.',
-          'Use -1 to mean no limit.',
-          "Default: #{options[:'max-name-size']}")
+          'Use -1 to mean no limit.', default: 80)
 
-parser.on('--metadata', 'Display trace Metadata')
-parser.on('-v', '--version', 'Display THAPI version')
-parser.on('-h', '--help', 'Display this message')
+parser.on('--metadata', 'Display trace Metadata') do
+  puts File.read(File.join(DATADIR, 'version'))
+  exit
+end
+
+parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
 parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-          "By default the debug level is #{options[:debug]}.",
-          "If LEVEL is omitted the debug level with be set to #{Logger::INFO}") { |d| d || Logger::INFO }
+          "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
 
 def print_help_and_exit(parser, exit_code: 1)
   puts(parser.help)
@@ -662,6 +663,7 @@ end
 # Parsing ARGV
 print_help_and_exit(parser) if ARGV.empty?
 
+options = {}
 begin
   parser.parse!(into: options)
 rescue StandardError => e
@@ -669,20 +671,13 @@ rescue StandardError => e
   print_help_and_exit(parser)
 end
 
-options[:'backend-name'] = options[:backend].map { |name_level| name_level.split(':').first }
+options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
 OPTIONS = options.freeze
 
 # Setup Logger
 LOGGER = Logger.new($stdout)
 LOGGER.level = OPTIONS[:debug]
 LOGGER.debug(OPTIONS)
-
-# We don't rely on the Parser-OPT default help, as it doesn't print the footer
-print_help_and_exit(parser, exit_code: 0) if OPTIONS.include?(:help)
-if OPTIONS.include?(:version)
-  puts(File.read(File.join(DATADIR, 'version')))
-  exit(0)
-end
 
 def last_trace_saved
   Dir[File.join(env_fetch_first('HOME'), 'thapi-traces', 'thapi*')].max_by { |f| File.mtime(f) }
