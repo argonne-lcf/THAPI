@@ -72,6 +72,10 @@ AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 AX_RUBY_EXTENSION([metababel >= 1.0.3], [yes])
 
+# Check for MPI
+AC_LANG(C++)
+AX_MPI()
+
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stddef.h stdint.h stdlib.h string.h unistd.h])
 

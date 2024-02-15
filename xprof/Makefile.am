@@ -8,7 +8,11 @@ endif
 
 bin_SCRIPTS = \
 	iprof \
-	sync_daemon_fs
+	sync_daemon_fs \
+	sync_daemon_mpi
+
+sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
+	$(MPICXX) $(srcdir)/sync_daemon_mpi.cpp -o sync_daemon_mpi
 
 iprof: xprof.rb
 	cp xprof.rb $@
