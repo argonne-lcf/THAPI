@@ -129,20 +129,20 @@ def get_components(names)
   names.flat_map do |name|
     case name
     when 'filter.intervals.interval'
-      $options[:backend].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
+      $options[:backends].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
     when 'sink.text.rubypretty'
       # Yaml and event_lambdas are required by babeltrace*_lib
       $event_lambdas = {}
       require 'yaml'
-      require 'babeltrace_omp_lib' if $options[:backend].include?('omp')
-      require 'babeltrace_opencl_lib' if $options[:backend].include?('cl')
-      require 'babeltrace_ze_lib' if $options[:backend].include?('ze')
-      require 'babeltrace_cuda_lib' if $options[:backend].include?('cuda')
-      require 'babeltrace_hip_lib' if $options[:backend].include?('hip')
+      require 'babeltrace_omp_lib' if $options[:backends].include?('omp')
+      require 'babeltrace_opencl_lib' if $options[:backends].include?('cl')
+      require 'babeltrace_ze_lib' if $options[:backends].include?('ze')
+      require 'babeltrace_cuda_lib' if $options[:backends].include?('cuda')
+      require 'babeltrace_hip_lib' if $options[:backends].include?('hip')
       # I guess need to put it in `babeltrace_energy_lib` at some point?
 
       $energies = {}
-      if $options[:backend].include?('ze')
+      if $options[:backends].include?('ze')
         $event_lambdas['lttng_ust_ze_sampling:gpu_energy'] = lambda { |defi|
           energy = defi['energy']
           timestamp = defi['timestamp']
@@ -227,7 +227,7 @@ def get_and_add_components(graph, names)
                           'display_metadata' => $options[:'display-metadata'] ? false : true,
                           'display_name_max_size' => $options[:'display-name-max-size'],
                           'display_kernel_verbose' => $options[:'display-kernel-verbose'] ? false : true,
-                          'backend_level' => $options[:'backend-level'].join(',') })
+                          'backend_levels' => $options[:'backend-levels'].join(',') })
     when 'filter.utils.muxer'
       graph.add(comp, name) if $options[:muxer]
     else
@@ -254,7 +254,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
   def initialize
     super
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
-    on('-b', '--backend BACKEND', Array, default: %w[omp cl ze cuda hip])
+    on('-b', '--backends BACKENDS', Array, default: %w[omp cl ze cuda hip])
     on('--debug', default: false)
     on('--[no-]muxer', default: true)
     on('-v', '--version', 'Print the version string') do
@@ -305,7 +305,7 @@ subcommands = {
   'to_aggreg' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi to_aggreg [OPTIONS] trace_directory...'
-      parser.on('--output=OUTPUT')
+      parser.on('--output OUTPUT')
     end,
   'tally' =>
     BabeltraceParserThapi.new do |parser|
@@ -315,7 +315,7 @@ subcommands = {
       parser.on('--display-mode MODE', String, default: 'human', allowed: %w[human json])
       parser.on('--display-metadata')
       parser.on('--display-name-max-size SIZE', Integer, default: 80)
-      parser.on('--backend-level SIZE', Array, default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+      parser.on('--backend-levels SIZE', Array, default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
       parser.on('--display-kernel-verbose')
     end,
   'timeline' =>
@@ -343,9 +343,9 @@ ARGV.uniq!
 unless $options[:muxer]
   # The first filter of the grap to read multiple port (aka metababael plugin)
   h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 1, 'ze' => 0 }
-  raise if ($options[:backend] & h.filter_map { |k, v| k if v == 0 }).empty?
+  raise if ($options[:backends] & h.filter_map { |k, v| k if v == 0 }).empty?
 
-  $options[:backend] = $options[:backend].sort_by { |k| h[k] }
+  $options[:backends] = $options[:backends].sort_by { |k| h[k] }
 end
 
 #    _

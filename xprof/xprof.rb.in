@@ -299,7 +299,7 @@ def env_tracers
    %w[cuda cuda libcuda libTracerCUDA],
    %w[hip hip libamdhip64 libTracerHIP]].each do |name, bt_name, lib, libtracer|
     # Backend requested, skip omp. It will be handled in a custom case bellow
-    next unless OPTIONS[:'backend-name'].include?(bt_name)
+    next unless OPTIONS[:'backend-names'].include?(bt_name)
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
@@ -322,9 +322,9 @@ def env_tracers
   end
 
   # Customization
-  h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-name'].include?('ze') && OPTIONS[:profile]
+  h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-names'].include?('ze') && OPTIONS[:profile]
 
-  if OPTIONS[:'backend-name'].include?('omp')
+  if OPTIONS[:'backend-names'].include?('omp')
     backends << 'omp'
     h['LTTNG_UST_OMP_INTEL'] = 1
     h['OMP_TOOL_LIBRARIES'] = File.join(PKGLIBDIR, 'libTracerOMPT.so')
@@ -488,7 +488,7 @@ end
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
 
-def on_node_processing(_backends, global_barrier_h)
+def on_node_processing(backends, global_barrier_h)
   raise unless mpi_local_master?
 
   opts = if OPTIONS.include?(:trace)
@@ -503,6 +503,7 @@ def on_node_processing(_backends, global_barrier_h)
 
   if opts && OPTIONS[:analysis]
     opts << "--output #{thapi_trace_dir_tmp}"
+    opts << "--backends #{backends.join(',')}"
     exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
@@ -553,8 +554,8 @@ def global_processing(folder)
 
   LOGGER.info { "postprocess #{folder}" }
 
-  backends = OPTIONS[:'backend-name'].join(',')
-  backend_level = OPTIONS[:backend].filter { |nl| nl.include?(':') }.join(',')
+  backends = OPTIONS[:'backend-names'].join(',')
+  backend_levels = OPTIONS[:backends].filter { |nl| nl.include?(':') }.join(',')
 
   cmdname = "#{BINDIR}/babeltrace_thapi"
 
@@ -565,19 +566,19 @@ def global_processing(folder)
       raise 'Cannot show the trace of an interval or aggregated trace'
     end
 
-    args += ['trace', '--restrict', '--context', '--backend', backends]
+    args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
     raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
 
-    args += ['timeline', '--backend', backends]
+    args += ['timeline', '--backends', backends]
   else
     args += ['tally']
     args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
     args << '--display_metadata' << 'true' if OPTIONS.include?(:metadata)
     args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
-    args << '--backend' << backends
-    args << '--backend_level' << backend_level unless backend_level.empty?
+    args << '--backends' << backends
+    args << '--backend_levels' << backend_levels unless backend_levels.empty?
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
@@ -618,7 +619,7 @@ parser.on('--[no-]profile', 'Trigger for device activities profiling', default: 
 parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
 
 # General Options
-parser.on('-b', '--backend BACKEND', Array, "Select which and how backends' need to handled.",
+parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
           'Format: backend_name[:backend_level],...',
           default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
@@ -670,7 +671,7 @@ rescue StandardError => e
   print_help_and_exit(parser)
 end
 
-options[:'backend-name'] = options[:backend].map { |name_level| name_level.split(':').first }
+options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
 OPTIONS = options.freeze
 
 # Setup Logger
