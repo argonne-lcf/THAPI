@@ -32,7 +32,7 @@ class OptionParserWithDefaultAndValidation < OptionParser
     #   => "#<Set: {-1, 2}>"
     #   irb(main):030:0> default.respond_to?(:flatten)? default.flatten.join(',') : default
     #   => "-1,2"
-    opts << "Default: #{default.respond_to?(:flatten) ? default.flatten.join(',') : default}" unless default.nil?
+    opts << "Default: #{default.respond_to?(:join) ? default.join(',') : default}" unless default.nil?
     # Create a new block where
     #   we append our validation layer before the usr block
     new_block = proc do |a|
