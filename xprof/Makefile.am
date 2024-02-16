@@ -10,12 +10,12 @@ bin_SCRIPTS = \
 	iprof \
 	sync_daemon_fs
 
-if HAVE_MPI
+if FOUND_MPI
   bin_SCRIPTS += sync_daemon_mpi
 endif
 
-sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
-	$(MPICXX) $< -o $@
+sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.c
+	$(MPICC) $(CFLAGS) $< -o $@
 
 iprof: xprof.rb
 	cp xprof.rb $@
@@ -186,6 +186,6 @@ CLEANFILES = \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_AGGREG_GENERATED)
 
-if HAVE_MPI
+if FOUND_MPI
   CLEANFILES += sync_daemon_mpi
 endif
