@@ -10,6 +10,13 @@ bin_SCRIPTS = \
 	iprof \
 	sync_daemon_fs
 
+if HAVE_MPI
+  bin_SCRIPTS += sync_daemon_mpi
+endif
+
+sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
+	$(MPICXX) $< -o $@
+
 iprof: xprof.rb
 	cp xprof.rb $@
 
@@ -178,3 +185,7 @@ CLEANFILES = \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_AGGREG_GENERATED)
+
+if HAVE_MPI
+  CLEANFILES += sync_daemon_mpi
+endif

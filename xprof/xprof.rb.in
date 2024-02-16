@@ -214,7 +214,12 @@ class Sync_daemon
   def initialize
     LOGGER.debug { 'Init Sync_daemon' }
     lazy_exec do
-      @pid = spawn("#{__dir__}/sync_daemon_fs #{Process.pid}")
+      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi")
+                 "#{__dir__}/sync_daemon_mpi"
+               else
+                 "#{__dir__}/sync_daemon_fs"
+               end
+      @pid = spawn("#{daemon} #{Process.pid}")
     end
   end
 
