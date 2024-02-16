@@ -1,7 +1,7 @@
 #include <mpi.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 // Define real-time signals
 #define RT_SIGNAL_READY SIGRTMIN
@@ -13,9 +13,17 @@ int main(int argc, char **argv) {
 
   // Initialization
   MPI_Init(&argc, &argv);
+
+  int global_rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
+  int global_size;
+  MPI_Comm_size(MPI_COMM_WORLD, &global_size);
+
   MPI_Comm MPI_COMM_NODE;
   MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
                       &MPI_COMM_NODE);
+  int local_size;
+  MPI_Comm_size(MPI_COMM_NODE, &local_size);
 
   // Initialize signal set and add signals
   sigset_t signal_set;
@@ -37,17 +45,10 @@ int main(int argc, char **argv) {
     if (signum == RT_SIGNAL_FINISH) {
       break;
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
-      // Only local masters should receiv the signal
-      int local_size;
-      MPI_Comm_size(MPI_COMM_NODE, &local_size);
-      int global_rank;
-      MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
-
+      // Only local master should send signal
       if (global_rank != 0) {
         MPI_Send(&local_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
       } else {
-        int global_size;
-        MPI_Comm_size(MPI_COMM_WORLD, &global_size);
         int sum_local_size_recv = local_size;
         while (sum_local_size_recv != global_size) {
           int local_size_recv;
