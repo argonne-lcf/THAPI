@@ -637,9 +637,9 @@ if __FILE__ == $0
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
             'If PATH is omitted, it will be set to the newest trace in $HOME/thapi-traces/')
   parser.on('-t', '--trace', 'Pretty print the trace')
-  parser.on('-l', '--timeline [PATH]', 'Dump a timeline of the trace.',
-            'By default will create at PATH file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer',
-            'if PATH is obmited, `out.pftrace` will be used') do |p|
+  parser.on('-l', '--timeline [PATH]', 'Dump the timeline of the trace to a binary file',
+            'If PATH is obmited it will be set to `out.pftrace`',
+            'Open trace with perfetto: https://ui.perfetto.dev/#!/viewer') do |p|
               p || 'out.pftrace'
             end
   ## Tally Specific Options
