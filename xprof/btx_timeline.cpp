@@ -35,7 +35,7 @@ struct timeline_dispatch_s {
   std::unordered_map<hp_ddomain_t, perfetto_uuid_t> hp_ddomain2pwrtracks;
   std::unordered_map<hp_dsdev_t, perfetto_uuid_t> hp_dsdev2cpetracks;
   std::unordered_map<hp_dsdev_t, perfetto_uuid_t> hp_dsdev2cpytracks;
-  
+
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
@@ -109,7 +109,7 @@ static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, 
 }
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
                                              uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
-  //Extra leading space in the name field to make GPU Power the first track 
+  //Extra leading space in the name field to make GPU Power the first track
   return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  GPU Power", hostname, process_id, did, domain);
 }
 
@@ -350,7 +350,7 @@ void btx_finalize_component_callback(void *usr_data) {
   if ( path.empty()) {
 	path = "out.pftrace";
   }
-   
+
   // Write the new address book back to disk.
   std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
   if (!dispatch->trace.SerializeToOstream(&output))
