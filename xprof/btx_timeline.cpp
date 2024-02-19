@@ -20,6 +20,9 @@ using perfetto_uuid_t = uint64_t;
 // Based on https://perfetto.dev/docs/reference/synthetic-track-event
 
 struct timeline_dispatch_s {
+  // User params provided to the user component.
+  btx_params_t *params;
+
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
   std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> thread2uuid;
   std::unordered_map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
@@ -329,6 +332,11 @@ void btx_initialize_component_callback(void **usr_data) {
   *usr_data = new timeline_dispatch_t;
 }
 
+static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
+  auto *data = static_cast<timeline_dispatch_t *>(usr_data);
+  data->params = usr_params;
+}
+
 void btx_finalize_component_callback(void *usr_data) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   for (auto &[uuid, s] : dispatch->uuid2stack) {
@@ -338,13 +346,17 @@ void btx_finalize_component_callback(void *usr_data) {
     }
   }
 
-  std::string path{"out.pftrace"};
+  std::string path{ dispatch->params->output_path};
+  if ( path.empty()) {
+	path = "out.pftrace";
+  }
+   
   // Write the new address book back to disk.
   std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
   if (!dispatch->trace.SerializeToOstream(&output))
-    std::cerr << "Failed to write the trace." << std::endl;
+    std::cerr << "THAPI: Failed to write the trace at location: " << path << std::endl;
   else
-    std::cout << "Perfetto trace saved: " << path << std::endl;
+    std::cout << "THAPI: Perfetto trace location: " << path << std::endl;
   google::protobuf::ShutdownProtobufLibrary();
 
   delete dispatch;
@@ -401,5 +413,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_computeEU(btx_handle, &computeEU_usr_callback);
   btx_register_callbacks_lttng_copyEU(btx_handle, &copyEU_usr_callback);
   btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component_callback);
+  btx_register_callbacks_read_params(btx_handle, &read_params_callback);
   btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component_callback);
 }

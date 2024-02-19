@@ -228,6 +228,9 @@ def get_and_add_components(graph, names)
                           'display_name_max_size' => $options[:'display-name-max-size'],
                           'display_kernel_verbose' => $options[:'display-kernel-verbose'] ? false : true,
                           'backend_levels' => $options[:'backend-levels'].join(',') })
+    when 'sink.btx_timeline.timeline'
+      graph.add(comp, 'timeline',
+                params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
       graph.add(comp, name) if $options[:muxer]
     else
@@ -321,6 +324,7 @@ subcommands = {
   'timeline' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi timeline [OPTIONS] trace_directory...'
+      parser.on('--output-path PATH', String, default: 'out.pftrace')
     end,
 }
 

@@ -125,7 +125,7 @@ end
 #   | (_) | (_| (/_ |    |  (_|  |_ | |
 #
 
-# Prefex of the thapi_trace_dir
+# Prefix of the thapi_trace_dir
 def prefix_processed_trace
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
     ''
@@ -146,7 +146,7 @@ end
 #     Each nodes need to aggree on a root folder to write into.
 #  - thapi_trace_dir_root
 #     Final directory exposed to the user. The `master rank`  rename the `thapi_trace_dir_tmp`
-#     with a more "friendly" name.
+#     with a more "friendly" name. No required if `analsys-output` is set
 #
 #  - lttng_home_dir
 #     Home of the lttng daemon
@@ -156,6 +156,8 @@ def lttng_trace_dir_tmp
 end
 
 def thapi_trace_dir_tmp
+  return File.join(OPTIONS[:'trace-output'], Socket.gethostname) if OPTIONS[:'trace-output']
+
   File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{mpi_job_id}",
             Socket.gethostname)
 end
@@ -167,13 +169,14 @@ end
 def thapi_trace_dir_root
   raise unless mpi_master?
 
+  return File.join(OPTIONS[:'trace-output']) if OPTIONS[:'trace-output']
+
   @thapi_trace_dir_root ||= begin
     # Multiple thapi can run concurrently.
     #   To avoid any race-conditions, we try to MKDIR until we succeed
 
     # This is solving a consensus for the name,
     # make it simpler and only allow "rank" per job to do it
-
     date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
     (0..).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
@@ -466,22 +469,24 @@ end
 def on_node_processing(backends, syncd)
   raise unless mpi_local_master?
 
-  opts = if OPTIONS.include?(:trace)
+  type = if OPTIONS.include?(:trace)
            # Do move to $home
            nil
          elsif OPTIONS.include?(:timeline)
            # Write Interval
-           'to_interval '
+           'interval'
          else
-           'to_aggreg '
+           'aggreg'
          end
 
-  if opts && OPTIONS[:analysis]
-    opts << "--output #{thapi_trace_dir_tmp} "
-    opts << "--backends #{backends.join(',')} "
-    exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
+  if type && OPTIONS[:analysis]
+    opts = ["to_#{type}"]
+    opts << "--output #{thapi_trace_dir_tmp}"
+    opts << "--backends #{backends.join(',')}"
+    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
+    LOGGER.info { "mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}" }
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
     FileUtils.mv(lttng_trace_dir_tmp, thapi_trace_dir_tmp)
   end
@@ -493,7 +498,13 @@ def on_node_processing(backends, syncd)
   return unless mpi_master?
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-  FileUtils.mv(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
+  File.write(File.join(thapi_trace_dir_root, 'thapi_type.txt'), type, mode: 'w')
+
+  unless OPTIONS[:'trace-output']
+    LOGGER.info { "mv #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}" }
+    FileUtils.mv(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
+  end
+
   thapi_trace_dir_root
 end
 
@@ -536,16 +547,16 @@ def global_processing(folder)
 
   args = []
 
+  type = File.read(File.join(folder, 'thapi_type.txt'))
+
   if OPTIONS.include?(:trace)
-    if folder.include?('_interval') || folder.include?('_aggreg')
-      raise 'Cannot show the trace of an interval or aggregated trace'
-    end
+    raise 'Cannot show the trace of an interval or aggregated trace' if %w[interval aggreg].include?(type)
 
     args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
-    raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
+    raise 'Cannot show the trace of an aggreg trace' if %w[aggreg].include?(type)
 
-    args += ['timeline', '--backends', backends]
+    args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
   else
     args += ['tally']
     args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
@@ -557,15 +568,24 @@ def global_processing(folder)
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
-  args << '--no-muxer' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
+  args << '--no-muxer' if %w[interval aggreg].include?(File.read(File.join(folder, 'thapi_type.txt')))
 
   args += ['--', folder]
 
   LOGGER.debug(cmdname)
   LOGGER.debug(args)
-  IO.popen([cmdname, *args]) do |stdout, _stdin, _pid|
-    stdout.each { |line| print line }
+
+  fo = if OPTIONS[:'analysis-output']
+         File.open(OPTIONS[:'analysis-output'], 'w')
+       else
+         $stdout.dup
+       end
+
+  IO.popen([cmdname, *args]) do |pipe|
+    fo.puts(pipe.readlines)
   end
+
+  fo.close
 end
 
 #
@@ -581,6 +601,15 @@ end
 if __FILE__ == $0
   parser = OptionParserWithDefaultAndValidation.new
 
+  parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
+            'Default path is something like: $HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss') do |p|
+    raise(OptionParser::ParseError, "#{p} already exists") if File.exist?(p)
+
+    p
+  end
+
+  parser.on('--analysis-output PATH',
+            'Define where the output of the analysis (summary, pretty printing,...) will be saved')
   # Tracing
   parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
                                                                                  allowed: %w[minimal default full])
@@ -605,10 +634,14 @@ if __FILE__ == $0
             default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
   # Analysis
-  parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
+  parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
+            'If PATH is omitted, it will be set to the newest trace in $HOME/thapi-traces/')
   parser.on('-t', '--trace', 'Pretty print the trace')
-  parser.on('-l', '--timeline', 'Dump a timeline of the trace.',
-            "This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer")
+  parser.on('-l', '--timeline [PATH]', 'Dump a timeline of the trace.',
+            'By default will create at PATH file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer',
+            'if PATH is obmited, `out.pftrace` will be used') do |p|
+              p || 'out.pftrace'
+            end
   ## Tally Specific Options
   parser.on('-j', '--json', 'The tally will be dumped as json')
   parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
@@ -664,7 +697,7 @@ if __FILE__ == $0
   # But we don't have a way of disabling post-processing
   folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
   if mpi_master?
-    puts("THAPI: Trace Location #{folder}")
+    warn("THAPI: Trace location: #{folder}")
     global_processing(folder) if OPTIONS[:analysis]
   end
 
