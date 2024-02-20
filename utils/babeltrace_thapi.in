@@ -377,6 +377,8 @@ end
 # Fix segfault
 ARGV.uniq!
 
+raise_if_command_unvalid(command, ARGV.first)
+
 unless need_muxer(command, ARGV.first)
   # The first filter of the graph need to read multiple port (aka metababael plugin)
   h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 1, 'ze' => 0 }
