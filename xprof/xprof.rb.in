@@ -24,6 +24,7 @@ require 'socket'
 require 'logger'
 require 'set'
 require 'securerandom'
+require 'yaml'
 
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
@@ -430,8 +431,11 @@ def setup_lttng(backends)
   # Spawning the sessiond Daemon will crash
   #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
+  FileUtils.mkdir_p(lttng_trace_dir_tmp)
   exec('lttng-sessiond --daemonize')
   exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
+
+  File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
 
   channel_name = 'blocking-channel'
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
@@ -488,7 +492,7 @@ def on_node_processing(backends, syncd)
   else
     LOGGER.info { "mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}" }
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
-    FileUtils.mv(lttng_trace_dir_tmp, thapi_trace_dir_tmp)
+    FileUtils.rename(lttng_trace_dir_tmp, thapi_trace_dir_tmp)
   end
 
   # Global Barrier
@@ -498,11 +502,18 @@ def on_node_processing(backends, syncd)
   return unless mpi_master?
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-  File.write(File.join(thapi_trace_dir_root, 'thapi_type.txt'), type, mode: 'w')
+
+  LOGGER.info do
+    "mv #{File.join(thapi_trace_dir_tmp,
+                    'thapi_metadata.yaml')} #{File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml')}"
+  end
+
+  FileUtils.cp(File.join(thapi_trace_dir_tmp, 'thapi_metadata.yaml'),
+               File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
   unless OPTIONS[:'trace-output']
     LOGGER.info { "mv #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}" }
-    FileUtils.mv(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
+    File.rename(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
   end
 
   thapi_trace_dir_root
@@ -546,16 +557,9 @@ def global_processing(folder)
   cmdname = "#{BINDIR}/babeltrace_thapi"
 
   args = []
-
-  type = File.read(File.join(folder, 'thapi_type.txt'))
-
   if OPTIONS.include?(:trace)
-    raise 'Cannot show the trace of an interval or aggregated trace' if %w[interval aggreg].include?(type)
-
     args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
-    raise 'Cannot show the trace of an aggreg trace' if %w[aggreg].include?(type)
-
     args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
   else
     args += ['tally']
@@ -567,8 +571,6 @@ def global_processing(folder)
     args << '--backend_levels' << backend_levels unless backend_levels.empty?
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
-
-  args << '--no-muxer' if %w[interval aggreg].include?(File.read(File.join(folder, 'thapi_type.txt')))
 
   args += ['--', folder]
 
