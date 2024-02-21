@@ -278,9 +278,9 @@ end
 def raise_if_command_invalid(command, trace)
   case command
   when 'trace'
-    raise('Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(thapi_metadata(trace)[:type])
+    raise('THAPI Trace: Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(thapi_metadata(trace)[:type])
   when 'timeline'
-    raise('Cannot show the trace of an aggreg trace') if %w[aggreg].include?(thapi_metadata(trace)[:type])
+    raise('THAPi Timeline: Cannot show the trace of an aggreg trace') if %w[aggreg].include?(thapi_metadata(trace)[:type])
   end
 end
 
