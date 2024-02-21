@@ -95,6 +95,39 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
+  build-install-and-integration_tests:
+    needs: [babeltrace2, pre_job]
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Build and Install and Integration Tests ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+     #- uses: mpi4py/setup-mpi@v1
+      - uses: actions/cache@v4
+        id: babeltrace2
+        env:
+          cache-name: cache-babeltrace2
+        with:
+          path: ~/babeltrace2/2.0.4
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler bats libpocl2 clinfo
+      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
+      - name: Load Babeltrace2
+        run: |
+          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - run: mkdir -p build
+      - run: ./autogen.sh
+      - run: ../configure --prefix=`pwd`/ici
+        working-directory: build
+      - run: make -j install
+        working-directory: build
+      - run: |
+         IPROF=./build/ici/bin/iprof THAPI_TEST_BIN=clinfo bats integration_tests/test.bats
+
   build-in-tree:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
