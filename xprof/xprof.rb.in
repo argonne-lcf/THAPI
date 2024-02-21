@@ -156,10 +156,14 @@ def lttng_trace_dir_tmp
   File.join('/', 'tmp', "thapi--#{mpi_job_id}", Socket.gethostname)
 end
 
+def thapi_trace_home
+  File.join(env_fetch_first('THAPI_HOME', 'HOME'), 'thapi-traces')
+end
+
 def thapi_trace_dir_tmp
   return File.join(OPTIONS[:'trace-output'], Socket.gethostname) if OPTIONS[:'trace-output']
 
-  File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{mpi_job_id}",
+  File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{mpi_job_id}",
             Socket.gethostname)
 end
 
@@ -182,7 +186,7 @@ def thapi_trace_dir_root
     (0..).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
       thapi_uuid = date + prefix
-      path = File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{thapi_uuid}")
+      path = File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{thapi_uuid}")
       begin
         Dir.mkdir(path)
       rescue SystemCallError
@@ -469,10 +473,10 @@ end
 #
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
-# Note: I don't understand `mv` 
+# Note: I don't understand `mv`
 #       File.mv(a, b) will put a into b
 #       FileUtils.rename(a,b) will move a as b, but will may
-#         Invalid cross-device 
+#         Invalid cross-device
 #       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing(backends, syncd)
   raise unless mpi_local_master?
@@ -509,9 +513,7 @@ def on_node_processing(backends, syncd)
   FileUtils.cp(File.join(thapi_trace_dir_tmp, 'thapi_metadata.yaml'),
                File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
-  unless OPTIONS[:'trace-output']
-    exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}")
-  end
+  exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
 
   thapi_trace_dir_root
 end
@@ -593,7 +595,7 @@ end
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
 def last_trace_saved
-  Dir[File.join(env_fetch_first('HOME'), 'thapi-traces', 'thapi*')].max_by { |f| File.mtime(f) }
+  Dir[File.join(thapi_trace_home, 'thapi*')].max_by { |f| File.mtime(f) }
 end
 
 # Avoid load problem
@@ -601,7 +603,8 @@ if __FILE__ == $0
   parser = OptionParserWithDefaultAndValidation.new
 
   parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
-            'Default path is something like: $HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss') do |p|
+            'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
+            '$THAPI_HOME is an env variable, is not set will default to $HOME') do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if File.exist?(p)
 
     p
