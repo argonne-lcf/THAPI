@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mpi4py/setup-mpi@v1
+     #- uses: mpi4py/setup-mpi@v1
       - uses: actions/cache@v4
         id: babeltrace2
         env:
