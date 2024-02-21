@@ -114,11 +114,11 @@ def mpi_local_rank_id
 end
 
 def mpi_local_master?
-  mpi_local_rank_id == 0
+  mpi_local_rank_id.zero?
 end
 
 def mpi_master?
-  mpi_rank_id == 0
+  mpi_rank_id.zero?
 end
 
 #    _                    _
@@ -261,10 +261,6 @@ def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
 
-def lttng_session_uuid
-  Digest::MD5.hexdigest(lttng_trace_dir_tmp)
-end
-
 def env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -326,10 +322,10 @@ def launch_usr_bin(env, cmd)
   # Transform list to bash env
   #   prepending to current env if already existing
   #   we don't modify `ENV` direclly to avoid by-construction any side-effect
-  bash_env = env.map do |k, v|
+  bash_env = env.to_h do |k, v|
     v.append(env_fetch_first(k)) if env_fetch_first(k)
     [k, [v].flatten.join(':')]
-  end.to_h
+  end
 
   begin
     PTY.spawn(bash_env, *cmd) do |stdout, _stdin, _pid|
@@ -599,7 +595,7 @@ def last_trace_saved
 end
 
 # Avoid load problem
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   parser = OptionParserWithDefaultAndValidation.new
 
   parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
@@ -618,14 +614,14 @@ if __FILE__ == $0
   parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
             'Use -1 to mean all ranks.',
             default: Set[-1]) do |ranks|
-    ranks.map do |r|
+    ranks.to_set do |r|
       if r.match?(/^\d+$/)
         r.to_i
       else
         raise(OptionParser::ParseError,
               "Invalid value (#{r}). Only integer accepted")
       end
-    end.to_set
+    end
   end
   parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
   parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
@@ -662,7 +658,9 @@ if __FILE__ == $0
   parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
   parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
+            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) do |d|
+              d || Logger::INFO
+            end
 
   def print_help_and_exit(parser, exit_code: 1)
     puts(parser.help)
