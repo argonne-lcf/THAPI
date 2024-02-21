@@ -147,7 +147,7 @@ end
 #     Each nodes need to aggree on a root folder to write into.
 #  - thapi_trace_dir_root
 #     Final directory exposed to the user. The `master rank`  rename the `thapi_trace_dir_tmp`
-#     with a more "friendly" name. No required if `analsys-output` is set
+#     with a more "friendly" name. Not required if `analysis-output` is set
 #
 #  - lttng_home_dir
 #     Home of the lttng daemon
