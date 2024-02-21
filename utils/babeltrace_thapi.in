@@ -275,7 +275,7 @@ def modify_metadata(command, trace)
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
 end
 
-def raise_if_command_unvalid(command, trace)
+def raise_if_command_invalid(command, trace)
   case command
   when 'trace'
     raise('Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(thapi_metadata(trace)[:type])
@@ -379,7 +379,7 @@ end
 # Fix segfault
 ARGV.uniq!
 
-raise_if_command_unvalid(command, ARGV.first)
+raise_if_command_invalid(command, ARGV.first)
 
 unless need_muxer(ARGV.first)
   # The first filter of the graph need to read multiple port (aka metababael plugin)
