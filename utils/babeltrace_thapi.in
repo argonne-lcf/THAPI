@@ -233,7 +233,7 @@ def get_and_add_components(graph, command, names)
       graph.add(comp, 'timeline',
                 params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
-      graph.add(comp, name) if need_muxer(command, ARGV.first)
+      graph.add(comp, name) if need_muxer(ARGV.first)
     else
       # `.` is not allowed in the babeltrace components name when using the CLI
       graph.add(comp, name.gsub('.', '_'))
@@ -257,23 +257,13 @@ end
 
 THAPI_METADATA_FILE = 'thapi_metadata.yaml'
 
-def raise_if_command_unvalid(command, trace)
-  y = YAML.load_file(File.join(trace, THAPI_METADATA_FILE))
-  case command
-  when 'trace'
-    raise('Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(y[:type])
-  when 'timeline'
-    raise('Cannot show the trace of an aggreg trace') if %w[aggreg].include?(y[:type])
-  end
-end
-
-def need_muxer(_command, trace)
-  y = YAML.load_file(File.join(trace, THAPI_METADATA_FILE))
-  $options[:muxer] || y[:type] == 'lttng'
+def thapi_metadata(trace)
+  @thapi_metadata ||= {}
+  @thapi_metadata[trace] ||= YAML.load_file(File.join(trace, THAPI_METADATA_FILE))
 end
 
 def modify_metadata(command, trace)
-  y = YAML.load_file(File.join(trace, THAPI_METADATA_FILE))
+  y = thapi_metadata(trace)
   case command
   when 'to_interval'
     y[:type] = 'interval'
@@ -282,8 +272,20 @@ def modify_metadata(command, trace)
   else
     return
   end
-
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
+end
+
+def raise_if_command_unvalid(command, trace)
+  case command
+  when 'trace'
+    raise('Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(thapi_metadata(trace)[:type])
+  when 'timeline'
+    raise('Cannot show the trace of an aggreg trace') if %w[aggreg].include?(thapi_metadata(trace)[:type])
+  end
+end
+
+def need_muxer(trace)
+  $options[:muxer] || thapi_metadata(trace)[:type] == 'lttng'
 end
 
 class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
@@ -379,7 +381,7 @@ ARGV.uniq!
 
 raise_if_command_unvalid(command, ARGV.first)
 
-unless need_muxer(command, ARGV.first)
+unless need_muxer(ARGV.first)
   # The first filter of the graph need to read multiple port (aka metababael plugin)
   h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 1, 'ze' => 0 }
   raise if ($options[:backends] & h.filter_map { |k, v| k if v == 0 }).empty?
