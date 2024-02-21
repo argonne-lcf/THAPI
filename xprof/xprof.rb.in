@@ -174,7 +174,7 @@ def thapi_trace_dir_root
     # This is solving a consensus for the name,
     # make it simpler and only allow "rank" per job to do it
     # Use ISO8601 extended format
-    date = Time.now.strftime('%Y-%m-%dT%H:%M:%S')
+    date = DateTime.now.iso8601
     (0..).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
       thapi_uuid = date + prefix
