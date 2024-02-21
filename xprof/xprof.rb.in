@@ -24,6 +24,7 @@ require 'socket'
 require 'logger'
 require 'set'
 require 'securerandom'
+require 'yaml'
 
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
@@ -113,11 +114,11 @@ def mpi_local_rank_id
 end
 
 def mpi_local_master?
-  mpi_local_rank_id == 0
+  mpi_local_rank_id.zero?
 end
 
 def mpi_master?
-  mpi_rank_id == 0
+  mpi_rank_id.zero?
 end
 
 #    _                    _
@@ -125,7 +126,7 @@ end
 #   | (_) | (_| (/_ |    |  (_|  |_ | |
 #
 
-# Prefex of the thapi_trace_dir
+# Prefix of the thapi_trace_dir
 def prefix_processed_trace
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
     ''
@@ -146,7 +147,7 @@ end
 #     Each nodes need to aggree on a root folder to write into.
 #  - thapi_trace_dir_root
 #     Final directory exposed to the user. The `master rank`  rename the `thapi_trace_dir_tmp`
-#     with a more "friendly" name.
+#     with a more "friendly" name. Not required if `analysis-output` is set
 #
 #  - lttng_home_dir
 #     Home of the lttng daemon
@@ -155,8 +156,14 @@ def lttng_trace_dir_tmp
   File.join('/', 'tmp', "thapi--#{mpi_job_id}", Socket.gethostname)
 end
 
+def thapi_trace_home
+  File.join(env_fetch_first('THAPI_HOME', 'HOME'), 'thapi-traces')
+end
+
 def thapi_trace_dir_tmp
-  File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{mpi_job_id}",
+  return File.join(OPTIONS[:'trace-output'], Socket.gethostname) if OPTIONS[:'trace-output']
+
+  File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{mpi_job_id}",
             Socket.gethostname)
 end
 
@@ -167,18 +174,19 @@ end
 def thapi_trace_dir_root
   raise unless mpi_master?
 
+  return File.join(OPTIONS[:'trace-output']) if OPTIONS[:'trace-output']
+
   @thapi_trace_dir_root ||= begin
     # Multiple thapi can run concurrently.
     #   To avoid any race-conditions, we try to MKDIR until we succeed
 
     # This is solving a consensus for the name,
     # make it simpler and only allow "rank" per job to do it
-
     date = Time.now.strftime('%Y-%m-%d--%Hh%Mm%Ss')
     (0..).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
       thapi_uuid = date + prefix
-      path = File.join(env_fetch_first('HOME'), 'thapi-traces', "thapi#{prefix_processed_trace}--#{thapi_uuid}")
+      path = File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{thapi_uuid}")
       begin
         Dir.mkdir(path)
       rescue SystemCallError
@@ -253,10 +261,6 @@ def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
 
-def lttng_session_uuid
-  Digest::MD5.hexdigest(lttng_trace_dir_tmp)
-end
-
 def env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -318,10 +322,10 @@ def launch_usr_bin(env, cmd)
   # Transform list to bash env
   #   prepending to current env if already existing
   #   we don't modify `ENV` direclly to avoid by-construction any side-effect
-  bash_env = env.map do |k, v|
+  bash_env = env.to_h do |k, v|
     v.append(env_fetch_first(k)) if env_fetch_first(k)
     [k, [v].flatten.join(':')]
-  end.to_h
+  end
 
   begin
     PTY.spawn(bash_env, *cmd) do |stdout, _stdin, _pid|
@@ -427,8 +431,11 @@ def setup_lttng(backends)
   # Spawning the sessiond Daemon will crash
   #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
+  FileUtils.mkdir_p(lttng_trace_dir_tmp)
   exec('lttng-sessiond --daemonize')
   exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
+
+  File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
 
   channel_name = 'blocking-channel'
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
@@ -462,28 +469,33 @@ end
 #
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
-
+# Note: I don't understand `mv`
+#       File.mv(a, b) will put a into b
+#       FileUtils.rename(a,b) will move a as b, but may 
+#         raise Invalid cross-device error.
+#       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing(backends, syncd)
   raise unless mpi_local_master?
 
-  opts = if OPTIONS.include?(:trace)
+  type = if OPTIONS.include?(:trace)
            # Do move to $home
            nil
          elsif OPTIONS.include?(:timeline)
            # Write Interval
-           'to_interval '
+           'interval'
          else
-           'to_aggreg '
+           'aggreg'
          end
 
-  if opts && OPTIONS[:analysis]
-    opts << "--output #{thapi_trace_dir_tmp} "
-    opts << "--backends #{backends.join(',')} "
-    exec("#{BINDIR}/babeltrace_thapi #{opts} -- #{lttng_trace_dir_tmp}")
+  if type && OPTIONS[:analysis]
+    opts = ["to_#{type}"]
+    opts << "--output #{thapi_trace_dir_tmp}"
+    opts << "--backends #{backends.join(',')}"
+    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
-    FileUtils.mv(lttng_trace_dir_tmp, thapi_trace_dir_tmp)
+    exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
   end
 
   # Global Barrier
@@ -493,7 +505,12 @@ def on_node_processing(backends, syncd)
   return unless mpi_master?
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-  FileUtils.mv(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
+
+  FileUtils.cp(File.join(thapi_trace_dir_tmp, 'thapi_metadata.yaml'),
+               File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
+
+  exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
+
   thapi_trace_dir_root
 end
 
@@ -535,17 +552,10 @@ def global_processing(folder)
   cmdname = "#{BINDIR}/babeltrace_thapi"
 
   args = []
-
   if OPTIONS.include?(:trace)
-    if folder.include?('_interval') || folder.include?('_aggreg')
-      raise 'Cannot show the trace of an interval or aggregated trace'
-    end
-
     args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
-    raise 'Cannot show the trace of an aggreg trace' if folder.include?('_aggreg')
-
-    args += ['timeline', '--backends', backends]
+    args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
   else
     args += ['tally']
     args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
@@ -557,15 +567,22 @@ def global_processing(folder)
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
-  args << '--no-muxer' if folder.include?('thapi_interval') || folder.include?('thapi_aggreg')
-
   args += ['--', folder]
 
   LOGGER.debug(cmdname)
   LOGGER.debug(args)
-  IO.popen([cmdname, *args]) do |stdout, _stdin, _pid|
-    stdout.each { |line| print line }
+
+  fo = if OPTIONS[:'analysis-output']
+         File.open(OPTIONS[:'analysis-output'], 'w')
+       else
+         $stdout.dup
+       end
+
+  IO.popen([cmdname, *args]) do |pipe|
+    fo.puts(pipe.readlines)
   end
+  fo.close
+  exit(1) unless $?.success?
 end
 
 #
@@ -574,27 +591,37 @@ end
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
 def last_trace_saved
-  Dir[File.join(env_fetch_first('HOME'), 'thapi-traces', 'thapi*')].max_by { |f| File.mtime(f) }
+  Dir[File.join(thapi_trace_home, 'thapi*')].max_by { |f| File.mtime(f) }
 end
 
 # Avoid load problem
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   parser = OptionParserWithDefaultAndValidation.new
 
+  parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
+            'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
+            '$THAPI_HOME defaults to $HOME') do |p|
+    raise(OptionParser::ParseError, "#{p} already exists") if File.exist?(p)
+
+    p
+  end
+
+  parser.on('--analysis-output PATH',
+            'Define where the output of the analysis (summary, pretty printing,...) will be saved')
   # Tracing
   parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
                                                                                  allowed: %w[minimal default full])
   parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
             'Use -1 to mean all ranks.',
             default: Set[-1]) do |ranks|
-    ranks.map do |r|
+    ranks.to_set do |r|
       if r.match?(/^\d+$/)
         r.to_i
       else
         raise(OptionParser::ParseError,
               "Invalid value (#{r}). Only integer accepted")
       end
-    end.to_set
+    end
   end
   parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
   parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
@@ -605,10 +632,14 @@ if __FILE__ == $0
             default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
   # Analysis
-  parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis')
+  parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
+            'If PATH is omitted, it will be set to the newest trace in $HOME/thapi-traces/')
   parser.on('-t', '--trace', 'Pretty print the trace')
-  parser.on('-l', '--timeline', 'Dump a timeline of the trace.',
-            "This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer")
+  parser.on('-l', '--timeline [PATH]', 'Dump the timeline of the trace to a binary file',
+            'If PATH is obmited it will be set to `out.pftrace`',
+            'Open trace with perfetto: https://ui.perfetto.dev/#!/viewer') do |p|
+              p || 'out.pftrace'
+            end
   ## Tally Specific Options
   parser.on('-j', '--json', 'The tally will be dumped as json')
   parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
@@ -627,7 +658,9 @@ if __FILE__ == $0
   parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
   parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) { |d| d || Logger::INFO }
+            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) do |d|
+              d || Logger::INFO
+            end
 
   def print_help_and_exit(parser, exit_code: 1)
     puts(parser.help)
@@ -664,7 +697,7 @@ if __FILE__ == $0
   # But we don't have a way of disabling post-processing
   folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
   if mpi_master?
-    puts("THAPI: Trace Location #{folder}")
+    warn("THAPI: Trace location: #{folder}")
     global_processing(folder) if OPTIONS[:analysis]
   end
 
