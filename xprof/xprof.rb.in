@@ -469,7 +469,11 @@ end
 #
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
-
+# Note: I don't understand `mv` 
+#       File.mv(a, b) will put a into b
+#       FileUtils.rename(a,b) will move a as b, but will may
+#         Invalid cross-device 
+#       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing(backends, syncd)
   raise unless mpi_local_master?
 
@@ -490,9 +494,8 @@ def on_node_processing(backends, syncd)
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
-    LOGGER.info { "mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}" }
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
-    FileUtils.rename(lttng_trace_dir_tmp, thapi_trace_dir_tmp)
+    exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
   end
 
   # Global Barrier
@@ -503,17 +506,11 @@ def on_node_processing(backends, syncd)
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
 
-  LOGGER.info do
-    "mv #{File.join(thapi_trace_dir_tmp,
-                    'thapi_metadata.yaml')} #{File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml')}"
-  end
-
   FileUtils.cp(File.join(thapi_trace_dir_tmp, 'thapi_metadata.yaml'),
                File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
   unless OPTIONS[:'trace-output']
-    LOGGER.info { "mv #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}" }
-    File.rename(thapi_trace_dir_tmp_root, thapi_trace_dir_root)
+    exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}")
   end
 
   thapi_trace_dir_root
