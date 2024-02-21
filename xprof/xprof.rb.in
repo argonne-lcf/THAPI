@@ -587,7 +587,6 @@ def global_processing(folder)
   end
   fo.close
   exit(1) unless $?.success?
-
 end
 
 #
