@@ -4,6 +4,7 @@ $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'babeltrace2'
 require 'find'
 require 'optparse_thapi'
+require 'yaml'
 
 module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
@@ -190,7 +191,7 @@ def get_components(names)
   end
 end
 
-def get_and_add_components(graph, names)
+def get_and_add_components(graph, command, names)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
@@ -228,8 +229,11 @@ def get_and_add_components(graph, names)
                           'display_name_max_size' => $options[:'display-name-max-size'],
                           'display_kernel_verbose' => $options[:'display-kernel-verbose'] ? false : true,
                           'backend_levels' => $options[:'backend-levels'].join(',') })
+    when 'sink.btx_timeline.timeline'
+      graph.add(comp, 'timeline',
+                params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
-      graph.add(comp, name) if $options[:muxer]
+      graph.add(comp, name) if need_muxer(ARGV.first)
     else
       # `.` is not allowed in the babeltrace components name when using the CLI
       graph.add(comp, name.gsub('.', '_'))
@@ -250,13 +254,47 @@ end
 #   |_) _. ._ _ o ._   _    /  |   |
 #   |  (_| | _> | | | (_|   \_ |_ _|_
 #                      _|
+
+THAPI_METADATA_FILE = 'thapi_metadata.yaml'
+
+def thapi_metadata(trace)
+  @thapi_metadata ||= {}
+  @thapi_metadata[trace] ||= YAML.load_file(File.join(trace, THAPI_METADATA_FILE))
+end
+
+def modify_metadata(command, trace)
+  y = thapi_metadata(trace)
+  case command
+  when 'to_interval'
+    y[:type] = 'interval'
+  when 'to_aggreg'
+    y[:type] = 'aggreg'
+  else
+    return
+  end
+  File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
+end
+
+def raise_if_command_invalid(command, trace)
+  case command
+  when 'trace'
+    raise('THAPI Trace: Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(thapi_metadata(trace)[:type])
+  when 'timeline'
+    raise('THAPi Timeline: Cannot show the timeline of an aggregated trace') if %w[aggreg].include?(thapi_metadata(trace)[:type])
+  end
+end
+
+def need_muxer(trace)
+  $options[:muxer] || thapi_metadata(trace)[:type] == 'lttng'
+end
+
 class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
   def initialize
     super
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, default: %w[omp cl ze cuda hip])
     on('--debug', default: false)
-    on('--[no-]muxer', default: true)
+    on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do
       puts File.read(File.join(DATADIR, 'version'))
       exit
@@ -321,6 +359,7 @@ subcommands = {
   'timeline' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi timeline [OPTIONS] trace_directory...'
+      parser.on('--output-path PATH', String, default: 'out.pftrace')
     end,
 }
 
@@ -340,8 +379,10 @@ end
 # Fix segfault
 ARGV.uniq!
 
-unless $options[:muxer]
-  # The first filter of the grap to read multiple port (aka metababael plugin)
+raise_if_command_invalid(command, ARGV.first)
+
+unless need_muxer(ARGV.first)
+  # The first filter of the graph need to read multiple port (aka metababael plugin)
   h = { 'cl' => 1, 'omp' => 1, 'hip' => 0, 'cuda' => 1, 'ze' => 0 }
   raise if ($options[:backends] & h.filter_map { |k, v| k if v == 0 }).empty?
 
@@ -366,7 +407,8 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
 graph = BT2::BTGraph.new
 
 command = 'trace_live' if command == 'trace' && $options[:live]
-comp = get_and_add_components(graph, thapi_graph[command])
+
+comp = get_and_add_components(graph, command, thapi_graph[command])
 connects(graph, comp)
 
 if $options[:debug]
@@ -379,3 +421,4 @@ if $options[:debug]
 end
 
 graph.run
+modify_metadata(command, ARGV.first)

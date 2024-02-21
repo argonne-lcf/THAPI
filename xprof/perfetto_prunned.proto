@@ -75,7 +75,7 @@ message TracePacket {
     uint32 trusted_packet_sequence_id = 10;
   }
 
-  required TracePacketDefaults trace_packet_defaults = 59;
+  optional TracePacketDefaults trace_packet_defaults = 59;
   optional bool previous_packet_dropped = 42;
 }
 
