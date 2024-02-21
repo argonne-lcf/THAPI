@@ -600,7 +600,7 @@ if __FILE__ == $PROGRAM_NAME
 
   parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
             'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
-            '$THAPI_HOME is an env variable, is not set will default to $HOME') do |p|
+            '$THAPI_HOME default to $HOME') do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if File.exist?(p)
 
     p
