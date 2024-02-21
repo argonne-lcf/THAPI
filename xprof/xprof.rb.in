@@ -585,8 +585,9 @@ def global_processing(folder)
   IO.popen([cmdname, *args]) do |pipe|
     fo.puts(pipe.readlines)
   end
-
   fo.close
+  exit(1) unless $?.success?
+
 end
 
 #
