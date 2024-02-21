@@ -471,8 +471,8 @@ end
 # TODO: Use babeltrace_thapi as a LIB not a binary
 # Note: I don't understand `mv`
 #       File.mv(a, b) will put a into b
-#       FileUtils.rename(a,b) will move a as b, but will may
-#         Invalid cross-device
+#       FileUtils.rename(a,b) will move a as b, but may 
+#         raise Invalid cross-device error.
 #       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing(backends, syncd)
   raise unless mpi_local_master?
