@@ -561,8 +561,7 @@ def global_processing(folder)
     args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
   else
     args += ['tally']
-    args << '--display_kernel_verbose' << 'true' if OPTIONS.include?(:'kernel-verbose')
-    args << '--display_metadata' << 'true' if OPTIONS.include?(:metadata)
+    args << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
     args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
     args << '--backends' << backends
@@ -653,11 +652,10 @@ if __FILE__ == $PROGRAM_NAME
             'Maximum size allowed for kernels names.',
             'Use -1 to mean no limit.', default: 80)
 
-  parser.on('--metadata', 'Display trace Metadata') do
+  parser.on('-v', '--version', 'Print the Version String') do
     puts File.read(File.join(DATADIR, 'version'))
     exit
   end
-
   parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
   parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
