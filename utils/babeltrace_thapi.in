@@ -225,9 +225,9 @@ def get_and_add_components(graph, command, names)
                 params: { 'display' => $options[:display],
                           'name' => $options[:name],
                           'display_mode' => $options[:'display-mode'],
-                          'display_metadata' => $options[:'display-metadata'] ? false : true,
+                          'display_metadata' => $options[:'display-metadata'],
                           'display_name_max_size' => $options[:'display-name-max-size'],
-                          'display_kernel_verbose' => $options[:'display-kernel-verbose'] ? false : true,
+                          'display_kernel_verbose' => $options[:'display-kernel-verbose'],
                           'backend_levels' => $options[:'backend-levels'].join(',') })
     when 'sink.btx_timeline.timeline'
       graph.add(comp, 'timeline',
@@ -351,10 +351,10 @@ subcommands = {
       parser.on('--display TYPE', String, default: 'compact', allowed: %w[compact extented])
       parser.on('--name TYPE', String, default: 'demangle', allowed: %w[demangle mangle])
       parser.on('--display-mode MODE', String, default: 'human', allowed: %w[human json])
-      parser.on('--display-metadata')
+      parser.on('--display-metadata', default: false)
       parser.on('--display-name-max-size SIZE', Integer, default: 80)
       parser.on('--backend-levels SIZE', Array, default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
-      parser.on('--display-kernel-verbose')
+      parser.on('--display-kernel-verbose', default: false)
     end,
   'timeline' =>
     BabeltraceParserThapi.new do |parser|
