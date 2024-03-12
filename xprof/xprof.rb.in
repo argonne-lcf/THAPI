@@ -349,6 +349,7 @@ def launch_usr_bin(env, cmd)
     # Else we just warm and do nothing
     elsif env_fetch_first(k)
       LOGGER.warn { "#{k} already existed in ENV. We will not overwrite it" }
+      next
     else
       [k, v.to_s]
     end
