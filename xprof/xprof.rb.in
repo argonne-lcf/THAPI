@@ -316,11 +316,7 @@ def env_tracers
   if OPTIONS[:sample]
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
-
-    if OPTIONS[:'backend-names'].include?('ze')
-      h['ZES_ENABLE_SYSMAN'] = 1
-      h['ZET_ENABLE_METRICS'] = 1
-    end
+    h['ZES_ENABLE_SYSMAN'] = 1 if OPTIONS[:'backend-names'].include?('ze')
   end
 
   backends = [] unless need_backend
