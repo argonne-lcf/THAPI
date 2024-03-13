@@ -296,9 +296,9 @@ def env_tracers
     end
     backends << bt_name
     # Add our "stud" library to the path
-    h['LD_LIBRARY_PATH'] << File.join(PKGLIBDIR, name)
+    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
     # Preload our own lib
-    h['LD_PRELOAD'] << File.join(LIBDIR, "#{libtracer}.so")
+    h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, "#{libtracer}.so")
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end
@@ -310,6 +310,13 @@ def env_tracers
     backends << 'omp'
     h['LTTNG_UST_OMP_INTEL'] = 1
     h['OMP_TOOL_LIBRARIES'] = File.join(PKGLIBDIR, 'libTracerOMPT.so')
+  end
+
+  # Sample
+  if OPTIONS[:sample]
+    h['LTTNG_UST_SAMPLING'] = 1
+    h['LTTNG_UST_SAMPLING_ENERGY'] = 1
+    h['ZES_ENABLE_SYSMAN'] = 1 if OPTIONS[:'backend-names'].include?('ze')
   end
 
   backends = [] unless need_backend
@@ -325,10 +332,25 @@ def launch_usr_bin(env, cmd)
   # Transform list to bash env
   #   prepending to current env if already existing
   #   we don't modify `ENV` direclly to avoid by-construction any side-effect
-  bash_env = env.to_h do |k, v|
-    v.append(env_fetch_first(k)) if env_fetch_first(k)
-    [k, [v].flatten.join(':')]
-  end
+  bash_env = env.filter_map do |k0, v|
+    # Add default mode to k0
+    k, mode = ([k0] + ['ignore']).flatten[0..1]
+    vs = [v].flatten
+    case mode
+    when 'ignore'
+      if env_fetch_first(k)
+        LOGGER.warn { "#{k} already existed in ENV. We will not overwrite it" }
+        next
+      end
+    when 'prepend'
+      if (cv = env_fetch_first(k))
+        LOGGER.warn { "#{k} already existed in ENV. The value #{v} will be prepended to it" }
+        vs.append(cv)
+      end
+    end
+
+    [k, vs.join(':')]
+  end.to_h
 
   begin
     PTY.spawn(bash_env, *cmd) do |stdout, _stdin, _pid|
@@ -450,6 +472,18 @@ def setup_lttng(backends)
          tracing_mode: OPTIONS[:'tracing-mode'],
          profiling: OPTIONS[:profile])
   end
+
+  if OPTIONS.include?(:sample)
+    channel_name = 'non-blocking-channel'
+    exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} #{channel_name}")
+    exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
+    exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_sampling:*")
+
+    if OPTIONS[:'backend-names'].include?('ze')
+      exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_ze_sampling:*")
+    end
+
+  end
   exec("lttng start #{lttng_session_uuid}")
 end
 
@@ -474,7 +508,7 @@ end
 # TODO: Use babeltrace_thapi as a LIB not a binary
 # Note: I don't understand `mv`
 #       File.mv(a, b) will put a into b
-#       FileUtils.rename(a,b) will move a as b, but may 
+#       FileUtils.rename(a,b) will move a as b, but may
 #         raise Invalid cross-device error.
 #       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing(backends, syncd)
@@ -653,7 +687,9 @@ if __FILE__ == $PROGRAM_NAME
             'Maximum size allowed for kernels names.',
             'Use -1 to mean no limit.', default: 80)
 
-  parser.on( '--metadata', 'Display the trace metadata')
+  parser.on('-s', '--sample', 'Enabling counters sampling')
+
+  parser.on('--metadata', 'Display the trace metadata')
   parser.on('-v', '--version', 'Print the Version String') do
     puts File.read(File.join(DATADIR, 'version'))
     exit
