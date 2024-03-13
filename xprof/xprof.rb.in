@@ -296,9 +296,9 @@ def env_tracers
     end
     backends << bt_name
     # Add our "stud" library to the path
-    h[['LD_LIBRARY_PATH', true]] << File.join(PKGLIBDIR, name)
+    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
     # Preload our own lib
-    h[['LD_PRELOAD', true]] << File.join(LIBDIR, "#{libtracer}.so")
+    h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, "#{libtracer}.so")
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end
@@ -336,23 +336,24 @@ def launch_usr_bin(env, cmd)
   # Transform list to bash env
   #   prepending to current env if already existing
   #   we don't modify `ENV` direclly to avoid by-construction any side-effect
-  bash_env = env.filter_map do |k, v|
-    # If Array we append if exists
-    if k.is_a?(Array)
-      k, do_append = k
-      vs = [v].flatten
-      if env_fetch_first(k) && do_append
-        LOGGER.warn { "#{k} already existed in ENV. The value #{v} will be appended to it" }
-        vs.append(env_fetch_first(k))
+  bash_env = env.filter_map do |k0, v|
+    # Add default mode to k0
+    k, mode = ([k0] + ['ignore']).flatten[0..1]
+    vs = [v].flatten
+    case mode
+    when 'ignore'
+      if env_fetch_first(k)
+        LOGGER.warn { "#{k} already existed in ENV. We will not overwrite it" }
+        next
       end
-      [k, vs.join(':')]
-    # Else we just warm and do nothing
-    elsif env_fetch_first(k)
-      LOGGER.warn { "#{k} already existed in ENV. We will not overwrite it" }
-      next
-    else
-      [k, v.to_s]
+    when 'prepend'
+      if (cv = env_fetch_first(k))
+        LOGGER.warn { "#{k} already existed in ENV. The value #{v} will be prepended to it" }
+        vs.append(cv)
+      end
     end
+
+    [k, vs.join(':')]
   end.to_h
 
   begin
