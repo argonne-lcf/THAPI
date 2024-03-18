@@ -316,59 +316,40 @@ tests/ze_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_normal.yaml \
-	tests/interval_profiling_multithread.yaml
+	tests/interval_profiling_normal.thapilog \
+	tests/interval_profiling_multithread.thapilog \
+	tests/interval_profiling_API_call.thapilog \
+	tests/interval_profiling_fast.thapilog \
+	tests/interval_profiling_interleave_process.thapilog \
+	tests/interval_profiling_ignore.thapilog
 
-$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
-	$(ERB) be="ze" $< > $@
-
-DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
+TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
 
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
 	$(ERB) be="ze" interval="zeinterval" namespace="$@" $< > $@
 
-TRACE_SPECIFC = \
-	tests/API_call.yaml \
-	tests/profiling_fast.yaml \
-	tests/profiling_interleave_process.yaml \
-	tests/interval_API_call.yaml \
-	tests/interval_profiling_normal.yaml \
-	tests/interval_profiling_fast.yaml \
-	tests/interval_profiling_interleave_process.yaml \
-	tests/profiling_ignore.yaml \
-	tests/interval_profiling_ignore.yaml
-
-DUST_SPECIFIC = \
-	tests/interval_API_call.dust \
-	tests/interval_profiling_fast.dust \
-	tests/interval_profiling_interleave_process.dust \
-	tests/interval_profiling_ignore.dust
-
-$(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
-	$(ERB) namespace="$@" $< > $@
-
 TESTS = \
 	tests/ze_dummy_trace.dust \
-	$(DUST_COMMON) \
-	$(DUST_SPECIFIC)
+	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust
+TEST_EXTENSIONS = .dust .thapilog
 DUST_LOG_COMPILER = ./test_wrapper.sh
+THAPILOG_LOG_COMPILER = ./test_wrapper_thapilog.sh
 
 check_DATA = \
 	test_wrapper.sh \
+	test_wrapper_thapilog.sh \
 	ze_library.rb \
 	tests/ze_dummy_trace.yaml \
-	$(TRACE_COMMON) \
-	$(TRACE_SPECIFC)
+	$(TRACE_COMMON)
 
 EXTRA_DIST += \
 	$(TRACE_SPECIFC) \
 	tests/ze_dummy_trace.dust \
-	tests/interval.dust.erb
+	tests/interval.dust.erb \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
 
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
-	$(DUST_COMMON) \
-	$(DUST_SPECIFIC) \
 	$(TRACE_COMMON)

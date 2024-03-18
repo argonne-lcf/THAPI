@@ -1,0 +1,8 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_entry: { pctx: 0x0000000000000000, flags: 0, dev: 3 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x1000000000000000 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuModuleGetFunction_entry: { hfunc: 0x0000000000000000, hmod: 0x0000000000000000, name: 0x0000000000000000, name_val: "testkernel" }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuModuleGetFunction_exit: { cuResult: CUDA_SUCCESS, hfunc_val: 0x1000000000000000 }
+12:00:00.020000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchKernel_entry: { f: 0x1000000000000000, gridDimX: 1, gridDimY: 1, gridDimZ: 1, blockDimX: 1, blockDimY: 1, blockDimZ: 1, sharedMemBytes: 0, hStream: 0x0000000000000000, kernelParams: 0x0000000000000000, extra: 0x0000000000000000, extra_vals: [  ] }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling: { hStart: 0x1000000000000000, hStop: 0x2000000000000000 }
+12:00:00.040000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchKernel_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.050000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling_results: { hStart: 0x1000000000000000, hStop: 0x2000000000000000, startStatus: CUDA_SUCCESS, stopStatus: CUDA_SUCCESS, status: CUDA_SUCCESS, milliseconds: 1.0 }

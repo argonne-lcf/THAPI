@@ -11,10 +11,6 @@ noinst_HEADERS = \
 	include/json.hpp \
 	tests_template/interval_profiling_block.yaml.erb \
 	tests_template/interval_profiling_normal.yaml.erb \
-	tests_template/interval_profiling_cuda_driver_api.yaml.erb \
-	tests_template/interval_profiling_cuda_multictx.yaml.erb \
-	tests_template/interval_profiling_cuda_multistream.yaml.erb \
-	tests_template/interval_profiling_cuda_memcpy.yaml.erb \
 	tests_template/interval_profiling_multithread.yaml.erb \
 	tests_template/interval_profiling_kernel_name.yaml.erb \
 	tests_template/interval_common.dust.erb \
@@ -86,4 +82,7 @@ EXTRA_DIST = \
 	thapi_metadata_tracepoints.tp \
 	command.rb \
 	meta_parameters.rb \
-	optparse_thapi.rb
+	optparse_thapi.rb \
+	thapi_gen_source_callbacks.rb \
+	thapi_model_remove_packet_context_fields.rb \
+	thapilog_set_ts.rb

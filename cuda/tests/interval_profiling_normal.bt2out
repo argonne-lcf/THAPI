@@ -1,0 +1,4 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 3 }, { name = "cuDevicePrimaryCtxRetain", dur = 10, err = false }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 3 }, { name = "cuCtxSetCurrent", dur = 10, err = false }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000040, backend = 3 }, { name = "cuLaunchHostFunc", dur = 30, err = false }
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000040, backend = 3 }, { name = "cuLaunchHostFunc", dur = 1000000, did = 3, sdid = 3, err = false, metadata = "" }

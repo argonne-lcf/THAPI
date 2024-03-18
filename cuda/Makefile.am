@@ -423,41 +423,37 @@ tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltr
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_normal.yaml \
-	tests/interval_profiling_cuda_driver_api.yaml \
-	tests/interval_profiling_cuda_multictx.yaml \
-	tests/interval_profiling_cuda_multistream.yaml \
-	tests/interval_profiling_cuda_memcpy.yaml \
-	tests/interval_profiling_multithread.yaml \
-	tests/interval_profiling_kernel_name.yaml
+		tests/interval_profiling_normal.thapilog \
+		tests/interval_profiling_cuda_driver_api.thapilog \
+		tests/interval_profiling_cuda_multictx.thapilog \
+		tests/interval_profiling_cuda_multistream.thapilog \
+		tests/interval_profiling_cuda_memcpy.thapilog \
+		tests/interval_profiling_multithread.thapilog \
+		tests/interval_profiling_kernel_name.thapilog
 
-# TODO: add multi-thread / multi context, a couple more
-
-$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
-	$(ERB) be="cuda" $< > $@
-
-DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
-
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
-	$(ERB) be="cuda" interval="cudainterval" namespace="$@" $< > $@
+TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
 
 TESTS = \
-	tests/cuda_dummy_trace.dust \
-	$(DUST_COMMON)
+		tests/cuda_dummy_trace.dust \
+		$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust
+TEST_EXTENSIONS = .thapilog .dust
+THAPILOG_LOG_COMPILER = ./test_wrapper_thapilog.sh
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
+	test_wrapper_thapilog.sh \
 	tests/cuda_dummy_trace.yaml \
-	$(TRACE_COMMON)
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
 
 EXTRA_DIST += \
 	tests/cuda_dummy_trace.dust \
-	tests/interval.dust.erb
+	tests/interval.dust.erb \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
 
 CLEANFILES += \
 	tests/cuda_dummy_trace.yaml \
-	$(TRACE_COMMON) \
-	$(DUST_COMMON)
+	$(TRACE_COMMON)

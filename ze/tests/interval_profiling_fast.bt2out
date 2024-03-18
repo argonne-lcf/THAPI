@@ -1,0 +1,2 @@
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 1 }, { name = "zeCommandListAppendBarrier", dur = 10, did = 0, sdid = 0, err = false, metadata = "" }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 1 }, { name = "zeCommandListAppendBarrier", dur = 30, err = false }

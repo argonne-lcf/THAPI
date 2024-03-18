@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_hip:hipLaunchHostFunc_entry: { hStream: 0x0000000000000000, fn: 0x0000000000000000, userData: 0x0000000000000000 }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_hip:hipLaunchHostFunc_exit: { hipResult: HIP_SUCCESS }

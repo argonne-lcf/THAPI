@@ -1,0 +1,6 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_entry: { pctx: 0x0000000000000000, flags: 0, dev: 3 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x1000000000000000 }
+12:00:00.020000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuMemcpyHtoD_v2_entry: { dstDevice: 0x00007f0000000000, srcHost: 0x0000500000000000, ByteCount: 400 }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling: { hStart: 0x1000000000000000, hStop: 0x2000000000000000 }
+12:00:00.040000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuMemcpyHtoD_v2_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.050000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling_results: { hStart: 0x1000000000000000, hStop: 0x2000000000000000, startStatus: CUDA_SUCCESS, stopStatus: CUDA_SUCCESS, status: CUDA_SUCCESS, milliseconds: 1.0 }

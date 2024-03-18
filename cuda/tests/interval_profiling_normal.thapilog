@@ -1,0 +1,8 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuDevicePrimaryCtxRetain_entry: { pctx: 0x0000000000000000, dev: 3 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuDevicePrimaryCtxRetain_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x1000000000000000 }
+12:00:00.020000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxSetCurrent_entry: { ctx: 0x1000000000000000 }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxSetCurrent_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.040000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_entry: { hStream: 0x0000000000000000, fn: 0x0000000000000000, userData: 0x0000000000000000 }
+12:00:00.050000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling: { hStart: 0x1000000000000000, hStop: 0x2000000000000000 }
+12:00:00.070000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.070000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling_results: { hStart: 0x1000000000000000, hStop: 0x2000000000000000, startStatus: CUDA_SUCCESS, stopStatus: CUDA_SUCCESS, status: CUDA_SUCCESS, milliseconds: 1.0 }

@@ -1,0 +1,14 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_entry: { pctx: 0x0000000000000000, flags: 0, dev: 123 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x1230000000000000 }
+12:00:00.020000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_entry: { hStream: 0x0000000000000000, fn: 0x0000000000000000, userData: 0x0000000000000000 }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling: { hStart: 0x1000000000000000, hStop: 0x2000000000000000 }
+12:00:00.040000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.050000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling_results: { hStart: 0x1000000000000000, hStop: 0x2000000000000000, startStatus: CUDA_SUCCESS, stopStatus: CUDA_SUCCESS, status: CUDA_SUCCESS, milliseconds: 1.0 }
+12:00:00.060000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxDestroy_v2_entry: { ctx: 0x1230000000000000 }
+12:00:00.070000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxDestroy_v2_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.080000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_entry: { pctx: 0x1000000000000000, flags: 0, dev: 456 }
+12:00:00.090000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x4560000000000000 }
+12:00:00.100000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_entry: { hStream: 0x0000000000000000, fn: 0x0000000000000000, userData: 0x0000000000000000 }
+12:00:00.110000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling: { hStart: 0x3000000000000000, hStop: 0x4000000000000000 }
+12:00:00.120000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.130000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling_results: { hStart: 0x3000000000000000, hStop: 0x4000000000000000, startStatus: CUDA_SUCCESS, stopStatus: CUDA_SUCCESS, status: CUDA_SUCCESS, milliseconds: 1.0 }

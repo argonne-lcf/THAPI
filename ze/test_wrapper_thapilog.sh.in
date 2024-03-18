@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+: "${CC:=gcc}"
+
+btx_model_path="@builddir@/btx_ze_model.yaml"
+trace_path="$1"
+trace_name="$(basename $trace_path)"
+trace_name="${trace_name%.thapilog}"
+expected_output_path="$(dirname $trace_path)/${trace_name}.bt2out"
+out_dir="@abs_builddir@/tests/$trace_name"
+metababel_out_dir="${out_dir}/btx_source"
+cleaned_model_path="${out_dir}/btx_model.yaml"
+
+mkdir -p "${out_dir}"
+@top_srcdir@/utils/thapi_model_remove_packet_context_fields.rb \
+  "$btx_model_path" "${cleaned_model_path}"
+
+trace_fname=$(basename "$trace_path")
+source_c_fname="${trace_fname%.thapilog}.c"
+source_c_path="${out_dir}/${source_c_fname}"
+
+set -x
+
+@top_srcdir@/utils/thapi_gen_source_callbacks.rb -y "$cleaned_model_path" \
+  -i "$trace_path" -o "$source_c_path"
+
+metababel -d "$cleaned_model_path" -t SOURCE -o "${metababel_out_dir}" \
+  -p generated -i ze.h.include
+
+${CC} -g -Werror -o ${out_dir}/btx_source.so \
+  -I ${metababel_out_dir} -I @top_srcdir@/utils/include \
+  -I @srcdir@ -I @srcdir@/include -I @builddir@ \
+  $(pkg-config --cflags babeltrace2) \
+  $(pkg-config --libs babeltrace2) \
+  -fPIC --shared \
+  "${source_c_path}" \
+  "${metababel_out_dir}"/*.c \
+  "${metababel_out_dir}"/metababel/*.c
+
+babeltrace_pretty_out="${out_dir}"/thapi-events-babeltrace.txt
+valgrind \
+  babeltrace2 --plugin-path="${out_dir}:@builddir@/.libs/" \
+  --component=source.generated.btx \
+  --component=filter.zeinterval.interval \
+  > "${babeltrace_pretty_out}"
+
+diff "$expected_output_path" "$babeltrace_pretty_out"
