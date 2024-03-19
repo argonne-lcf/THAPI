@@ -316,14 +316,14 @@ tests/ze_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_normal.thapilog \
-	tests/interval_profiling_multithread.thapilog \
-	tests/interval_profiling_API_call.thapilog \
-	tests/interval_profiling_fast.thapilog \
-	tests/interval_profiling_interleave_process.thapilog \
-	tests/interval_profiling_ignore.thapilog
+	tests/interval_profiling_normal.thapi_text_pretty \
+	tests/interval_profiling_multithread.thapi_text_pretty \
+	tests/interval_profiling_API_call.thapi_text_pretty \
+	tests/interval_profiling_fast.thapi_text_pretty \
+	tests/interval_profiling_interleave_process.thapi_text_pretty \
+	tests/interval_profiling_ignore.thapi_text_pretty
 
-TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
 	$(ERB) be="ze" interval="zeinterval" namespace="$@" $< > $@
@@ -332,13 +332,13 @@ TESTS = \
 	tests/ze_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust .thapilog
+TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
-THAPILOG_LOG_COMPILER = ./test_wrapper_thapilog.sh
+THAPI_TEXT_PRETTY_LOG_COMPILER = ./test_wrapper_thapi_text_pretty.sh
 
 check_DATA = \
 	test_wrapper.sh \
-	test_wrapper_thapilog.sh \
+	test_wrapper_thapi_text_pretty.sh \
 	ze_library.rb \
 	tests/ze_dummy_trace.yaml \
 	$(TRACE_COMMON)

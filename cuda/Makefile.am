@@ -423,27 +423,27 @@ tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltr
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_normal.thapilog \
-	tests/interval_profiling_cuda_driver_api.thapilog \
-	tests/interval_profiling_cuda_multictx.thapilog \
-	tests/interval_profiling_cuda_multistream.thapilog \
-	tests/interval_profiling_cuda_memcpy.thapilog \
-	tests/interval_profiling_multithread.thapilog \
-	tests/interval_profiling_kernel_name.thapilog
+	tests/interval_profiling_normal.thapi_text_pretty \
+	tests/interval_profiling_cuda_driver_api.thapi_text_pretty \
+	tests/interval_profiling_cuda_multictx.thapi_text_pretty \
+	tests/interval_profiling_cuda_multistream.thapi_text_pretty \
+	tests/interval_profiling_cuda_memcpy.thapi_text_pretty \
+	tests/interval_profiling_multithread.thapi_text_pretty \
+	tests/interval_profiling_kernel_name.thapi_text_pretty
 
-TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
 	tests/cuda_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .thapilog .dust
-THAPILOG_LOG_COMPILER = ./test_wrapper_thapilog.sh
+TEST_EXTENSIONS = .thapi_text_pretty .dust
+THAPI_TEXT_PRETTY_LOG_COMPILER = ./test_wrapper_thapi_text_pretty.sh
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
-	test_wrapper_thapilog.sh \
+	test_wrapper_thapi_text_pretty.sh \
 	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)

@@ -408,19 +408,19 @@ tests/hip_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb hip_babeltrac
 	$(RUBY) $< hip_babeltrace_model.yaml > $@
 
 TRACE_COMMON = \
-		tests/interval_profiling_simple.thapilog
+		tests/interval_profiling_simple.thapi_text_pretty
 
-TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
-TRACE_BUILD_DIRS = $(TRACE_COMMON:.thapilog=)
+TRACE_BUILD_DIRS = $(TRACE_COMMON:.thapi_text_pretty=)
 
 TESTS = \
 	tests/hip_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust .thapilog
+TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
-THAPILOG_LOG_COMPILER = ./test_wrapper_thapilog.sh
+THAPI_TEXT_PRETTY_LOG_COMPILER = ./test_wrapper_thapi_text_pretty.sh
 
 check_DATA = \
 	test_wrapper.sh \
