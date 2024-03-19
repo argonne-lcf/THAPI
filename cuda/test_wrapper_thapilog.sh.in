@@ -5,8 +5,7 @@ set -euxo pipefail
 
 btx_model_path="@builddir@/btx_cuda_model.yaml"
 trace_path="$1"
-trace_name="$(basename $trace_path)"
-trace_name="${trace_name%.thapilog}"
+trace_name="$(basename ${trace_path%.thapilog})"
 expected_output_path="$(dirname $trace_path)/${trace_name}.bt2out"
 out_dir="@abs_builddir@/tests/$trace_name"
 metababel_out_dir="${out_dir}/btx_source"
