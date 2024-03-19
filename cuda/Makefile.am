@@ -423,19 +423,19 @@ tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltr
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-		tests/interval_profiling_normal.thapilog \
-		tests/interval_profiling_cuda_driver_api.thapilog \
-		tests/interval_profiling_cuda_multictx.thapilog \
-		tests/interval_profiling_cuda_multistream.thapilog \
-		tests/interval_profiling_cuda_memcpy.thapilog \
-		tests/interval_profiling_multithread.thapilog \
-		tests/interval_profiling_kernel_name.thapilog
+	tests/interval_profiling_normal.thapilog \
+	tests/interval_profiling_cuda_driver_api.thapilog \
+	tests/interval_profiling_cuda_multictx.thapilog \
+	tests/interval_profiling_cuda_multistream.thapilog \
+	tests/interval_profiling_cuda_memcpy.thapilog \
+	tests/interval_profiling_multithread.thapilog \
+	tests/interval_profiling_kernel_name.thapilog
 
 TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
 
 TESTS = \
-		tests/cuda_dummy_trace.dust \
-		$(TRACE_COMMON)
+	tests/cuda_dummy_trace.dust \
+	$(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapilog .dust
 THAPILOG_LOG_COMPILER = ./test_wrapper_thapilog.sh

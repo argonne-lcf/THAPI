@@ -415,8 +415,8 @@ TRACE_OUT = $(TRACE_COMMON:.thapilog=.bt2out)
 TRACE_BUILD_DIRS = $(TRACE_COMMON:.thapilog=)
 
 TESTS = \
-	  tests/hip_dummy_trace.dust \
-    $(TRACE_COMMON)
+	tests/hip_dummy_trace.dust \
+	$(TRACE_COMMON)
 
 TEST_EXTENSIONS = .dust .thapilog
 DUST_LOG_COMPILER = ./test_wrapper.sh
