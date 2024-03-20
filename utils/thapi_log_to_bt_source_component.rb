@@ -29,11 +29,9 @@ SOURCE_TEMPLATE = <<~TEXT.freeze
       <%- end -%>
 
       <%- data.each do | entry | -%>
-      <%- entry.fetch(:times,1).times do -%>
       btx_push_message_<%= entry[:name] %>(btx_handle<%= ', ' if not entry[:field_values].empty? %><%= 
        entry[:field_casts].zip(entry[:field_values].map{ |v| v.to_s }).map{ |cv| '(' + cv[0] + ')' + cv[1] }.join(', ')
       %>);
-      <%- end -%>
       <%- end -%>
 
       *status = BTX_SOURCE_END;

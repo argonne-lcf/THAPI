@@ -83,6 +83,6 @@ EXTRA_DIST = \
 	command.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \
-	thapi_gen_source_callbacks.rb \
+	thapi_log_to_bt_source_component.rb \
 	thapi_model_remove_packet_context_fields.rb \
 	thapilog_set_ts.rb

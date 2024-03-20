@@ -21,7 +21,7 @@ source_c_path="${out_dir}/${source_c_fname}"
 
 set -x
 
-@top_srcdir@/utils/thapi_gen_source_callbacks.rb -y "$cleaned_model_path" \
+@top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "$cleaned_model_path" \
   -i "$trace_path" -o "$source_c_path"
 
 metababel -d "$cleaned_model_path" -t SOURCE -o "${metababel_out_dir}" \
