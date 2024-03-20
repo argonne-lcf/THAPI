@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
 
-# Fix timestamps in a babeltrace_thapi -c log file
+# Script to help set timestamps in manually edited THAPI text pretty
+# format files (i.e. the babeltrace_thapi -c format).
 
-def fix_timestamps(inpath, outpath)
+def set_timestamps(inpath, outpath)
   outfile = File.open(outpath, "w")
   line_num = 0
   File.readlines(inpath).each do |line|
@@ -16,5 +17,5 @@ def fix_timestamps(inpath, outpath)
 end
 
 if __FILE__ == $PROGRAM_NAME
-  fix_timestamps(ARGV[0], ARGV[1])
+  set_timestamps(ARGV[0], ARGV[1])
 end

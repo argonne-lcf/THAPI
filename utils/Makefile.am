@@ -85,5 +85,5 @@ EXTRA_DIST = \
 	optparse_thapi.rb \
 	thapi_log_to_bt_source_component.rb \
 	thapi_model_remove_packet_context_fields.rb \
-	thapilog_set_ts.rb \
+	thapi_text_pretty_set_ts.rb \
 	test_wrapper_thapi_text_pretty.sh
