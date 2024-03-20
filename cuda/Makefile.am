@@ -438,12 +438,12 @@ TESTS = \
 	$(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_text_pretty .dust
-THAPI_TEXT_PRETTY_LOG_COMPILER = ./test_wrapper_thapi_text_pretty.sh
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
-	test_wrapper_thapi_text_pretty.sh \
 	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)

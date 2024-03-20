@@ -420,7 +420,8 @@ TESTS = \
 
 TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
-THAPI_TEXT_PRETTY_LOG_COMPILER = ./test_wrapper_thapi_text_pretty.sh
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip
 
 check_DATA = \
 	test_wrapper.sh \

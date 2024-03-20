@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
+#
+# Usage: test_wrapper_thapi_text_pretty.sh cuda|hip|ze /path/to/trac.bt_text_pretty
+# 
 set -euxo pipefail
 
 : "${CC:=gcc}"
 
-btx_model_path="@builddir@/btx_hip_model.yaml"
-trace_path="$1"
+be="$1"
+trace_path="$2"
+
+btx_model_path="@top_builddir@/${be}/btx_${be}_model.yaml"
 trace_name="$(basename ${trace_path%.thapi_text_pretty})"
 expected_output_path="$(dirname $trace_path)/${trace_name}.bt_text_pretty"
-out_dir="@abs_builddir@/tests/$trace_name"
+out_dir="@top_builddir@/${be}/tests/$trace_name"
 metababel_out_dir="${out_dir}/btx_source"
 cleaned_model_path="${out_dir}/btx_model.yaml"
 
@@ -25,11 +30,11 @@ set -x
   -i "$trace_path" -o "$source_c_path"
 
 metababel -d "$cleaned_model_path" -t SOURCE -o "${metababel_out_dir}" \
-  -p generated -i hip.h.include
+  -p generated -i ${be}.h.include
 
 ${CC} -g -Werror -o ${out_dir}/btx_source.so \
   -I ${metababel_out_dir} -I @top_srcdir@/utils/include \
-  -I @srcdir@ -I @srcdir@/include -I @builddir@ \
+  -I @top_srcdir@/${be} -I @top_srcdir@/${be}/include -I @top_builddir@/${be} \
   $(pkg-config --cflags babeltrace2) \
   $(pkg-config --libs babeltrace2) \
   -fPIC --shared \
@@ -37,11 +42,14 @@ ${CC} -g -Werror -o ${out_dir}/btx_source.so \
   "${metababel_out_dir}"/*.c \
   "${metababel_out_dir}"/metababel/*.c
 
+bt2_cmd="babeltrace2"
+if [[ -v THAPI_VALGRIND ]]; then
+  bt2_cmd="valgrind --suppressions=@top_srcdir@/.valgrind/dlopen.supp --error-exitcode=1 --leak-check=full --quiet -- $bt2_cmd"
+fi
 babeltrace_pretty_out="${out_dir}"/thapi-events-babeltrace.txt
-valgrind \
-  babeltrace2 --plugin-path="${out_dir}:@builddir@/.libs/" \
+$bt2_cmd --plugin-path="${out_dir}:@top_builddir@/${be}/.libs/" \
   --component=source.generated.btx \
-  --component=filter.hipinterval.interval \
+  --component=filter.${be}interval.interval \
   > "${babeltrace_pretty_out}"
 
 diff "$expected_output_path" "$babeltrace_pretty_out"
