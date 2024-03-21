@@ -68,17 +68,12 @@ def get_values(name, value)
   [0, "EMPTY_ARRAY"]
 end
 
+# expects commas separated list of name: value pairs
 def parse_field_values(fields_string, exclude_fields)
-  # expects commas separated list of name: value pairs
-  values = []
-  fields_string.split(/, */).each do |nv_pair|
-    name, value = nv_pair.split(/: /)
-    name.strip!
-    if not exclude_fields.member?(name)
-      values += get_values(name, value)
-    end
-  end
-  values
+  fields_string.split(/, */).filter_map do |nv_pair|
+    name, value = nv_pair.split(': ', 2).map(&:strip)
+    get_values(name, value) unless exclude_fields.member?(name)
+  end.flatten
 end
 
 def get_fields(model, event_name, stream_class=0)
@@ -88,16 +83,11 @@ def get_fields(model, event_name, stream_class=0)
   sc[:event_common_context_field_class][:members].each do |field_info|
     fields[field_info[:name]] = field_info[:field_class][:cast_type]
   end
-  sc[:event_classes].each do |eclass|
-    if eclass[:name] != event_name
-      next
-    end
-    eclass[:payload_field_class][:members].each do |field_info|
-      fields[field_info[:name]] = field_info[:field_class][:cast_type]
-    end
-    break
-  end
-  fields
+  eclass = sc[:event_classes].find { |eclass| eclass[:name] == event_name }
+  field_class = eclass[:payload_field_class][:members].to_h { |field_info|
+     [ field_info[:name], field_info[:field_class][:cast_type] ]
+  }
+  fields.update(field_class)
 end
 
 def combine_date_time(date, time)

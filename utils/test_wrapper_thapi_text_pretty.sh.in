@@ -20,8 +20,7 @@ mkdir -p "${out_dir}"
 @top_srcdir@/utils/thapi_model_remove_packet_context_fields.rb \
   "$btx_model_path" "${cleaned_model_path}"
 
-trace_fname=$(basename "$trace_path")
-source_c_fname="${trace_fname%.bt_text_pretty}.c"
+source_c_fname="${trace_name}.c"
 source_c_path="${out_dir}/${source_c_fname}"
 
 set -x
