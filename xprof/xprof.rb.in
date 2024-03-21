@@ -376,6 +376,8 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_ze_profiling:*") if profiling
     exec("#{lttng_enable} lttng_ust_ze_properties:*")
     exec("#{lttng_enable} lttng_ust_ze:*")
+    exec("#{lttng_enable} lttng_ust_zes:*")
+    exec("#{lttng_enable} lttng_ust_zet:*")
   when 'default'
     exec("#{lttng_enable} lttng_ust_ze_build:log*")
     exec("#{lttng_enable} lttng_ust_ze_profiling:*") if profiling
