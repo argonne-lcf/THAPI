@@ -112,15 +112,12 @@ def parse_event(model, line, exclude_fields)
         name: nil,
         field_values: [],
         field_casts: [] }
-  # First 18 characters are the timestmap
-  t = combine_date_time(BASE_DATE, Time.parse(line[0..17]))
+
+  ts_string, h[:hostname], context, event = line.strip.split(' - ', 4)
+
+  t = combine_date_time(BASE_DATE, Time.parse(ts_string))
   # Need to convert in nasosecond, store as first field
   h[:field_values] << ((t.to_i * 1_000_000_000) + t.nsec)
-
-  # Next 3 characters are ' - ', skip them
-  tail = line[21..]
-  # Split remaining line on ' - '
-  h[:hostname], context, event = tail.strip.split(' - ', 3)
 
   # context fields are next after timestamp
   h[:field_values] += parse_field_values(context, exclude_fields)
