@@ -722,7 +722,7 @@ if __FILE__ == $PROGRAM_NAME
   begin
     parser.parse!(into: options)
   rescue OptionParser::InvalidOption => e
-    puts("ERROR: #{e}. Did you forget --?")
+    puts("ERROR: #{e}. Maybe missing --?")
     print_help_and_exit(parser)
   rescue StandardError => e
     puts("ERROR: #{e}")
