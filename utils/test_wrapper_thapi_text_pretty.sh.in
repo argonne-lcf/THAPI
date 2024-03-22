@@ -14,21 +14,18 @@ trace_name="$(basename ${trace_path%.thapi_text_pretty})"
 expected_output_path="$(dirname $trace_path)/${trace_name}.bt_text_pretty"
 out_dir="@top_builddir@/${be}/tests/$trace_name"
 metababel_out_dir="${out_dir}/btx_source"
-cleaned_model_path="${out_dir}/btx_model.yaml"
 
 mkdir -p "${out_dir}"
-@top_srcdir@/utils/thapi_model_remove_packet_context_fields.rb \
-  "$btx_model_path" "${cleaned_model_path}"
 
 source_c_fname="${trace_name}.c"
 source_c_path="${out_dir}/${source_c_fname}"
 
 set -x
 
-@top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "$cleaned_model_path" \
+@top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "$btx_model_path" \
   -i "$trace_path" -o "$source_c_path"
 
-metababel -d "$cleaned_model_path" -t SOURCE -o "${metababel_out_dir}" \
+metababel -d "$btx_model_path" -t SOURCE -o "${metababel_out_dir}" \
   -p generated -i ${be}.h.include
 
 ${CC} -g -Werror -o ${out_dir}/btx_source.so \
