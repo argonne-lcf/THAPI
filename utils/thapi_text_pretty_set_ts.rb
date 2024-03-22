@@ -5,13 +5,11 @@
 
 def set_timestamps(inpath, outpath)
   outfile = File.open(outpath, "w")
-  line_num = 0
-  File.readlines(inpath).each do |line|
+  File.readlines(inpath).each_with_index do |line, line_num|
     _, tail = line.split(" - ", 2)
     outfile.write("12:00:00.%03d000000" % line_num)
     outfile.write(" - ")
     outfile.write(tail)
-    line_num += 1
   end
   outfile.close
 end
