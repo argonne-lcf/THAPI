@@ -69,7 +69,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -86,6 +86,8 @@ jobs:
         working-directory: build
       - run: make check
         working-directory: build
+        env:
+          THAPI_VALGRIND: 1
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
@@ -110,7 +112,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler bats libpocl2 clinfo
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler bats libpocl2 clinfo valgrind
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -142,7 +144,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -155,6 +157,8 @@ jobs:
       - run: ./configure
       - run: make -j
       - run: make check
+        env:
+          THAPI_VALGRIND: 1
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
@@ -178,7 +182,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -193,6 +197,8 @@ jobs:
         working-directory: build
       - run: make distcheck -j
         working-directory: build
+        env:
+          THAPI_VALGRIND: 1
 
   dist-check:
     needs: [babeltrace2, pre_job]
@@ -208,7 +214,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -239,6 +245,8 @@ jobs:
           cd build
           make -j check
         working-directory: build
+        env:
+          THAPI_VALGRIND: 1
       - uses: actions/upload-artifact@v3
         if: failure()
         with:

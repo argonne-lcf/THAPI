@@ -1,0 +1,4 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 3 }, { name = "cuCtxCreate_v2", dur = 10, err = false }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 3 }, { name = "cuMemcpyHtoD_v2", dur = 20, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 3 }, { name = "cuMemcpyHtoD_v2", size = 400 }
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 3 }, { name = "cuMemcpyHtoD_v2", dur = 1000000, did = 3, sdid = 3, err = false, metadata = "" }

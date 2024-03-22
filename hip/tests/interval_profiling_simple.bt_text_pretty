@@ -1,0 +1,1 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 6 }, { name = "hipLaunchHostFunc", dur = 30, err = false }

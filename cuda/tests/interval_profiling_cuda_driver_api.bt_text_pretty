@@ -1,0 +1,3 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 3 }, { name = "cuCtxCreate_v2", dur = 10, err = false }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 3 }, { name = "cuLaunchHostFunc", dur = 20, err = false }
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 3 }, { name = "cuLaunchHostFunc", dur = 1000000, did = 3, sdid = 3, err = false, metadata = "" }

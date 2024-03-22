@@ -1,0 +1,4 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_ze:zeEventHostSignal_entry: { hEvent: 0x1000000000000000 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_ze_profiling:event_profiling: { hEvent: 0x2000000000000000 }
+12:00:00.020000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_ze:zeEventHostSignal_exit: { zeResult: ZE_RESULT_SUCCESS }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_ze_profiling:event_profiling_results: { hEvent: 0x2000000000000000, status: ZE_RESULT_SUCCESS, timestampStatus: ZE_RESULT_SUCCESS, globalStart: 0, globalEnd: 10, contextStart: 0, contextEnd: 10 }

@@ -73,7 +73,7 @@ PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
-AX_RUBY_EXTENSION([metababel >= 1.0.3], [yes])
+AX_RUBY_EXTENSION([metababel >= 1.0.4], [yes])
 
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stddef.h stdint.h stdlib.h string.h unistd.h])
@@ -111,6 +111,7 @@ AC_CONFIG_FILES([
 	xprof/Makefile
 	utils/Makefile
 ])
+AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
 AC_CONFIG_FILES([opencl/test_wrapper.sh], [chmod +x opencl/test_wrapper.sh])

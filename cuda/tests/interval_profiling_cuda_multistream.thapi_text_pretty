@@ -1,0 +1,10 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_entry: { pctx: 0x0000000000000000, flags: 0, dev: 3 }
+12:00:00.001000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x1000000000000000 }
+12:00:00.002000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuStreamCreate_entry: { phStream: 0x0000000000000000, Flags: 0 }
+12:00:00.003000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuStreamCreate_exit: { cuResult: CUDA_SUCCESS, phStream_val: 0x1000000000000000 }
+12:00:00.004000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_entry: { pctx: 0x0000000000000000, flags: 0, dev: 100 }
+12:00:00.005000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuCtxCreate_v2_exit: { cuResult: CUDA_SUCCESS, pctx_val: 0x2000000000000000 }
+12:00:00.006000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_entry: { hStream: 0x0000000000000000, fn: 0x0000000000000000, userData: 0x0000000000000000 }
+12:00:00.007000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling: { hStart: 0x1000000000000000, hStop: 0x2000000000000000 }
+12:00:00.008000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda:cuLaunchHostFunc_exit: { cuResult: CUDA_SUCCESS }
+12:00:00.009000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_cuda_profiling:event_profiling_results: { hStart: 0x1000000000000000, hStop: 0x2000000000000000, startStatus: CUDA_SUCCESS, stopStatus: CUDA_SUCCESS, status: CUDA_SUCCESS, milliseconds: 1.0 }

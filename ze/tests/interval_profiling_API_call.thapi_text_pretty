@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_ze:zeDriverGet_entry: { pCount: 1, phDrivers: 0, pCount_val: 1 }
+12:00:00.030000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_ze:zeDriverGet_exit: { zeResult: ZE_RESULT_SUCCESS, pCount_val: 1, _phDrivers_vals_length: 0, phDrivers_vals: 0 }

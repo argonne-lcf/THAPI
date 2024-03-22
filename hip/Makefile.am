@@ -181,6 +181,7 @@ $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
+	$(RM) -r tests
 
 EXTRA_DIST += \
 	$(srcdir)/include \
@@ -406,18 +407,30 @@ CLEANFILES += \
 tests/hip_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb hip_babeltrace_model.yaml tests/.tag
 	$(RUBY) $< hip_babeltrace_model.yaml > $@
 
-TESTS = \
-	tests/hip_dummy_trace.dust
+TRACE_COMMON = \
+		tests/interval_profiling_simple.thapi_text_pretty
 
-TEST_EXTENSIONS = .dust
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
+
+TRACE_BUILD_DIRS = $(TRACE_COMMON:.thapi_text_pretty=)
+
+TESTS = \
+	tests/hip_dummy_trace.dust \
+	$(TRACE_COMMON)
+
+TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip
 
 check_DATA = \
 	test_wrapper.sh \
 	tests/hip_dummy_trace.yaml
 
 EXTRA_DIST += \
-	tests/hip_dummy_trace.dust
+	tests/hip_dummy_trace.dust \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
 
 CLEANFILES += \
 	tests/hip_dummy_trace.yaml
