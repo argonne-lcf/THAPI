@@ -637,6 +637,8 @@ end
 if __FILE__ == $PROGRAM_NAME
   parser = OptionParserWithDefaultAndValidation.new
 
+  parser.banner = "Usage: #{File.basename($PROGRAM_NAME)} [options] [--] [command]"
+
   parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
             'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
             '$THAPI_HOME defaults to $HOME') do |p|
@@ -721,6 +723,9 @@ if __FILE__ == $PROGRAM_NAME
   options = {}
   begin
     parser.parse!(into: options)
+  rescue OptionParser::InvalidOption => e
+    puts("ERROR: #{e}. Maybe missing --?")
+    print_help_and_exit(parser)
   rescue StandardError => e
     puts("ERROR: #{e}")
     print_help_and_exit(parser)
