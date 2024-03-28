@@ -43,14 +43,20 @@ BTX_TIMELINE_GENERATED = \
 	btx_sink_timeline/btx_main.c
 
 BTX_AGGREG_GENERATED = \
-        btx_filter_aggreg/metababel/metababel.h \
-        btx_filter_aggreg/metababel/btx_component.h \
-        btx_filter_aggreg/metababel/btx_component.c \
-        btx_filter_aggreg/metababel/btx_upstream.h \
-        btx_filter_aggreg/metababel/btx_upstream.c \
-        btx_filter_aggreg/metababel/btx_downstream.h \
-        btx_filter_aggreg/metababel/btx_downstream.c \
-        btx_filter_aggreg/btx_main.c
+	btx_filter_aggreg/metababel/metababel.h \
+	btx_filter_aggreg/metababel/btx_component.h \
+	btx_filter_aggreg/metababel/btx_component.c \
+	btx_filter_aggreg/metababel/btx_upstream.h \
+	btx_filter_aggreg/metababel/btx_upstream.c \
+	btx_filter_aggreg/metababel/btx_downstream.h \
+	btx_filter_aggreg/metababel/btx_downstream.c \
+	btx_filter_aggreg/btx_main.c
+
+BTX_STRIPPER_GENERATED = \
+	btx_filter_aggreg/metababel/metababel.h \
+	btx_filter_aggreg/metababel/btx_component.h \
+	btx_filter_aggreg/metababel/btx_component.c \
+	btx_filter_aggreg/btx_main.c
 
 $(BTX_TIMELINE_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_timeline_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -t SINK -o btx_sink_timeline -p btx_timeline -c timeline --params $(srcdir)/btx_timeline_params.yaml
@@ -61,16 +67,24 @@ $(BTX_TALLY_GENERATED) &: $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_tally_pa
 $(BTX_AGGREG_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_aggreg_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
 
+$(BTX_STRIPPER_GENERATED) &:
+	$(METABABEL) -t FILTER -p btx_stripper -c stripper --enable-callbacks on_downstream
+
+btx_stripper_callbacks.cpp:
+	cp $(shell metababel --display-paths-shared stripper) $@
+
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_TIMELINE_GENERATED) \
-        $(BTX_AGGREG_GENERATED) \
+	$(BTX_AGGREG_GENERATED) \
+	$(BTX_STRIPPER_GENERATED) \
+	btx_stripper_callbacks.cpp \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
 # Library to be packaged
-lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la
+lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la
 
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
@@ -84,8 +98,12 @@ nodist_libXTimeline_la_SOURCES = \
 	perfetto_prunned.pb.cc
 
 nodist_libXAggreg_la_SOURCES = \
-        $(BTX_AGGREG_GENERATED) \
+	$(BTX_AGGREG_GENERATED) \
 	xprof_utils.hpp
+
+nodist_libXStripper_la_SOURCES = \
+	$(BTX_AGGREG_GENERATED) \
+	btx_stripper_callbacks.cpp
 
 # File not generated
 libXTally_la_SOURCES = \
@@ -116,11 +134,15 @@ libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast
 libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
 
-
 libXAggreg_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
 libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+libXStripper_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
+libXStripper_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXStripper_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXStripper_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
@@ -182,9 +204,11 @@ CLEANFILES = \
 	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
+	btx_stripper_callbacks.cpp \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED) \
-	$(BTX_AGGREG_GENERATED)
+	$(BTX_AGGREG_GENERATED) \
+	$(BTX_STRIPPER_GENERATED) \
 
 if FOUND_MPI
   CLEANFILES += sync_daemon_mpi
