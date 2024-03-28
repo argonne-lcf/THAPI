@@ -71,7 +71,7 @@ $(BTX_STRIPPER_GENERATED) &:
 	$(METABABEL) -t FILTER -p btx_stripper -c stripper --enable-callbacks on_downstream
 
 btx_stripper_callbacks.cpp:
-	cp $(shell metababel --display-paths-shared stripper) $@
+	$(METABABEL) --display-shared-callback stripper > $@
 
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
