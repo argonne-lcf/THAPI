@@ -400,9 +400,9 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                                'sink.btx_timeline.timeline'],
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
                 'trace_live' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'sink.ctf.fs'],
+                'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_stripper.stripper', 'sink.ctf.fs'],
                 'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                'filter.btx_aggreg.aggreg', 'sink.ctf.fs'] }
+                                'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
 
 graph = BT2::BTGraph.new
 
