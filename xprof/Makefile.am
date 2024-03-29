@@ -53,10 +53,10 @@ BTX_AGGREG_GENERATED = \
 	btx_filter_aggreg/btx_main.c
 
 BTX_STRIPPER_GENERATED = \
-	btx_filter_aggreg/metababel/metababel.h \
-	btx_filter_aggreg/metababel/btx_component.h \
-	btx_filter_aggreg/metababel/btx_component.c \
-	btx_filter_aggreg/btx_main.c
+	btx_filter_stripper/metababel/metababel.h \
+	btx_filter_stripper/metababel/btx_component.h \
+	btx_filter_stripper/metababel/btx_component.c \
+	btx_filter_stripper/btx_main.c
 
 $(BTX_TIMELINE_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_timeline_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -t SINK -o btx_sink_timeline -p btx_timeline -c timeline --params $(srcdir)/btx_timeline_params.yaml
@@ -139,7 +139,7 @@ libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-m
 libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-libXStripper_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
+libXStripper_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_stripper
 libXStripper_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXStripper_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXStripper_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
