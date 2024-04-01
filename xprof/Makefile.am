@@ -56,6 +56,10 @@ BTX_STRIPPER_GENERATED = \
 	btx_filter_stripper/metababel/metababel.h \
 	btx_filter_stripper/metababel/btx_component.h \
 	btx_filter_stripper/metababel/btx_component.c \
+	btx_filter_stripper/metababel/btx_upstream.h \
+	btx_filter_stripper/metababel/btx_upstream.c \
+	btx_filter_stripper/metababel/btx_downstream.h \
+	btx_filter_stripper/metababel/btx_downstream.c \
 	btx_filter_stripper/btx_main.c
 
 $(BTX_TIMELINE_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_timeline_params.yaml
@@ -68,7 +72,7 @@ $(BTX_AGGREG_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_aggre
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
 
 $(BTX_STRIPPER_GENERATED) &:
-	$(METABABEL) -t FILTER -p btx_stripper -c stripper --enable-callbacks on_downstream
+	$(METABABEL) -t FILTER -o btx_filter_stripper -p btx_stripper -c stripper --enable-callbacks on_downstream
 
 btx_stripper_callbacks.cpp:
 	$(METABABEL) --display-shared-callback stripper > $@
@@ -102,7 +106,7 @@ nodist_libXAggreg_la_SOURCES = \
 	xprof_utils.hpp
 
 nodist_libXStripper_la_SOURCES = \
-	$(BTX_AGGREG_GENERATED) \
+	$(BTX_STRIPPER_GENERATED) \
 	btx_stripper_callbacks.cpp
 
 # File not generated
@@ -149,9 +153,10 @@ install-exec-hook:
 	$(LN) -f $(DESTDIR)$(libdir)/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so
 	$(LN) -f $(DESTDIR)$(libdir)/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so
 	$(LN) -f $(DESTDIR)$(libdir)/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
+	$(LN) -f $(DESTDIR)$(libdir)/libXStripper.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so
 
 uninstall-hook:
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
+	$(RM) $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so}
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
