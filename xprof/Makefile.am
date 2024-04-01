@@ -156,7 +156,7 @@ install-exec-hook:
 	$(LN) -f $(DESTDIR)$(libdir)/libXStripper.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so
 
 uninstall-hook:
-	$(RM) $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so}
+	$(RM) $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
