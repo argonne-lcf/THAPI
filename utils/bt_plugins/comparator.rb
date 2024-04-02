@@ -29,7 +29,13 @@ class Comparator
   end
 
   def verify_messages
+    if @stack_messages.values.uniq{ |data| data.length }.length > 1
+      raise "Traces have different number of messages"
+    end
     @stack_messages.values.transpose.each do |i, j|
+      if i.name != j.name
+        raise "Trace messages have different names: #{i.name} != #{j.name}"
+      end
       %w[payload specific_context common_context].each do |tf|
         i_value = i.send("get_#{tf}_field")
         i_value = i_value.value if i_value
