@@ -656,11 +656,11 @@ if __FILE__ == $PROGRAM_NAME
             'Use -1 to mean all ranks.',
             default: Set[-1]) do |ranks|
     ranks.to_set do |r|
-      if r.match?(/^\d+$/)
+      if r.match?(/^\d+$/) || r == "-1"
         r.to_i
       else
         raise(OptionParser::ParseError,
-              "Invalid value (#{r}). Only integer accepted")
+              "Invalid value (#{r}). Only positive integers and -1 accepted")
       end
     end
   end
