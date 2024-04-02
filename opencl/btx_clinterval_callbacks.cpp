@@ -15,10 +15,10 @@ struct data_s {
   std::map<hpt_t, bool> last_enqueue_entry_is_traffic;
   std::map<hp_device_t, thapi_device_id> device_to_root_device;
   std::map<hp_command_queue_t, dsd_t> command_queue_to_device;
-  std::map<hp_kernel_t, const char*> kernel_to_name;
-  std::map<hpt_t, fn_ts_t> profiled_function_name_and_ts;
-  std::map<hpt_function_name_t, dsd_t> function_name_to_dsd;
-  std::map<hp_event_t, tfn_ts_t> event_to_function_name_and_ts;
+  std::map<hp_kernel_t, std::string> kernel_to_name;
+  std::map<hpt_t, fn_ts_cl_t> profiled_function_name_and_ts;
+  std::map<hpt_function_name_cl_t, dsd_t> function_name_to_dsd;
+  std::map<hp_event_t, tfn_ts_cl_t> event_to_function_name_and_ts;
   std::map<hp_device_t, int64_t> device_ts_to_llng_ts;
   std::map<hp_event_t, sd_t> event_result_to_start_and_delta;
 };
@@ -136,8 +136,8 @@ static void create_sub_devices_entry_callback(void *btx_handle, void *usr_data, 
                                               const char *hostname, int64_t vpid,
                                               uint64_t vtid, cl_device_id in_device) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key{hostname, vpid, vtid};
-  state->entry_state.set_data(key, reinterpret_cast<thapi_device_id>(in_device));
+  state->entry_state.set_data({hostname, vpid, vtid},
+                              reinterpret_cast<thapi_device_id>(in_device));
 }
 
 
@@ -149,8 +149,7 @@ static void create_sub_devices_exit_callback(void *btx_handle, void *usr_data, i
                                              cl_device_id *out_devices_vals) {
   auto state = static_cast<data_t *>(usr_data);
   if ((out_devices_vals != nullptr) && (errcode_ret_val == CL_SUCCESS)) {
-    hpt_t key{hostname, vpid, vtid};
-    auto in_device = state->entry_state.get_data<thapi_device_id>(key);
+    auto in_device = state->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
     const thapi_device_id root_device =
       state->device_to_root_device[{hostname, vpid, in_device}];
     for (unsigned int i=0; i < num_devices_ret_val; i++ ) {
@@ -165,8 +164,8 @@ static void create_command_queue_entry_callback(void *btx_handle, void *usr_data
                                                 const char *hostname, int64_t vpid,
                                                 uint64_t vtid, cl_device_id device) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key{hostname, vpid, vtid};
-  state->entry_state.set_data(key, reinterpret_cast<thapi_device_id>(device));
+  state->entry_state.set_data({hostname, vpid, vtid},
+                              reinterpret_cast<thapi_device_id>(device));
 }
 
 static void create_command_queue_exit_callback(void *btx_handle, void *usr_data,
@@ -176,8 +175,7 @@ static void create_command_queue_exit_callback(void *btx_handle, void *usr_data,
                                                cl_command_queue command_queue,
                                                cl_int errcode_ret_val) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key{hostname, vpid, vtid};
-  auto entry_device = state->entry_state.get_data<thapi_device_id>(key);
+  auto entry_device = state->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
   const auto root_device = state->device_to_root_device[
                                               hp_device_t(hostname, vpid, entry_device)];
   hp_command_queue_t cq_key{hostname, vpid, command_queue};
@@ -193,8 +191,6 @@ static void kernel_info_callback(void *btx_handle, void *usr_data, int64_t ts,
                                  int64_t vpid, uint64_t vtid, cl_kernel kernel,
                                  char *function_name) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key{hostname, vpid, vtid};
-  // TODO: do we need to save a copy?
   state->kernel_to_name[{hostname, vpid, kernel}] = function_name;
 }
 
@@ -204,10 +200,9 @@ static void launch_kernel_entry_callback(void *btx_handle, void *usr_data, int64
                                          uint64_t vtid, cl_command_queue command_queue,
                                          cl_kernel kernel) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key{hostname, vpid, vtid};
   auto name = state->kernel_to_name[{hostname, vpid, kernel}];
-  state->profiled_function_name_and_ts[key] = fn_ts_t(name, ts);
-  state->function_name_to_dsd[hpt_function_name_t(hostname, vpid, vtid, name)] =
+  state->profiled_function_name_and_ts[{hostname, vpid, vtid}] = {name, ts};
+  state->function_name_to_dsd[{hostname, vpid, vtid, name}] =
     state->command_queue_to_device[{hostname, vpid, command_queue}];
 }
 
@@ -217,10 +212,9 @@ static void launch_function_entry_callback(void *btx_handle, void *usr_data, int
                                            uint64_t vtid,
                                            cl_command_queue command_queue) {
   auto state = static_cast<data_t *>(usr_data);
-  hpt_t key{hostname, vpid, vtid};
   auto name_str = strip_event_class_name_entry(event_class_name);
   const char *name = name_str.c_str();
-  state->profiled_function_name_and_ts[key] = fn_ts_t(name, ts);
+  state->profiled_function_name_and_ts[{hostname, vpid, vtid}] = {name, ts};
   state->function_name_to_dsd[{hostname, vpid, vtid, name}] =
     state->command_queue_to_device[{hostname, vpid, command_queue}];
 }
@@ -240,7 +234,7 @@ static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
   } else {
     const auto [start_ts, delta] = state->event_result_to_start_and_delta[hp_event];
     const auto [device, subdevice] =
-      state->function_name_to_dsd[hpt_function_name_t(hostname, vpid, vtid, function_name)];
+      state->function_name_to_dsd[{hostname, vpid, vtid, function_name}];
 
     const char *metadata = "";
     // Note: delta == 0 is used to flag error state when results event happens before
@@ -274,7 +268,7 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
     const auto [thread_id, function_name, launch_ts] =
       state->event_to_function_name_and_ts[hp_event];
     const auto [device, subdevice] =
-      state->function_name_to_dsd[hpt_function_name_t(hostname, vpid, vtid, function_name)];
+      state->function_name_to_dsd[{hostname, vpid, vtid, function_name}];
 
     const hp_device_t hp_device{hostname, vpid, device};
     // This need to be commented due to intel bugs where clGetEventProfilingInfo return
@@ -290,7 +284,7 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
     state->event_to_function_name_and_ts.erase(hp_event);
   } else {
     const auto [function_name, launch_ts] =
-      state->profiled_function_name_and_ts[hpt_t(hostname, vpid, vtid)];
+      state->profiled_function_name_and_ts[{hostname, vpid, vtid}];
     // This need to be commented due to intel bugs where clGetEventProfilingInfo return host time
     //const auto [device,subdevice] = state->function_name_to_dsd[hpt_function_name_t(hostname,process_id,thread_id, function_name)];
     //const hp_device_t hp_device{hostname, process_id, device};
