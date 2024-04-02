@@ -5,6 +5,7 @@ require 'babeltrace2'
 require 'find'
 require 'optparse_thapi'
 require 'yaml'
+require 'logger'
 
 module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
@@ -191,7 +192,7 @@ def get_components(names)
   end
 end
 
-def get_and_add_components(graph, command, names)
+def get_and_add_components(graph, _command, names)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
@@ -203,18 +204,23 @@ def get_and_add_components(graph, command, names)
                 params: { 'inputs' => $options[:inputs],
                           'session-not-found-action' => 'end' })
     when 'source.ctf.fs'
-      Find.find(*ARGV)
-          .reject { |path| FileTest.directory?(path) }
-          .filter_map { |path| File.dirname(path) if File.basename(path) == 'metadata' }
-          .select do |path|
+      s = Find.find(*ARGV)
+              .reject { |path| FileTest.directory?(path) }
+              .filter_map { |path| File.dirname(path) if File.basename(path) == 'metadata' }
+              .select do |path|
             qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
                                           params: { 'input' => path, 'type' => 'directory' })
             qe.query.value['weight'] > 0.5
           end
-          .each_with_index.map do |trace_location, i|
-            graph.add(comp, "source_#{i}",
-                      params: { 'inputs' => [trace_location] })
-          end
+              .each_with_index.map do |trace_location, i|
+        graph.add(comp, "source_#{i}",
+                  params: { 'inputs' => [trace_location] })
+      end
+      if s.empty?
+        LOGGER.warn("No source found in #{ARGV}")
+        raise NotImplementedError
+      end
+      s
     when 'sink.ctf.fs'
       graph.add(comp, 'ctf_sink',
                 params: { 'path' => $options[:output],
@@ -278,9 +284,12 @@ end
 def raise_if_command_invalid(command, trace)
   case command
   when 'trace'
-    raise('THAPI Trace: Cannot show the trace of an interval or aggregated trace') if %w[interval aggreg].include?(thapi_metadata(trace)[:type])
+    raise('THAPI Trace: Cannot show the trace of an interval or aggregated trace') if %w[interval
+                                                                                         aggreg].include?(thapi_metadata(trace)[:type])
   when 'timeline'
-    raise('THAPi Timeline: Cannot show the timeline of an aggregated trace') if %w[aggreg].include?(thapi_metadata(trace)[:type])
+    if %w[aggreg].include?(thapi_metadata(trace)[:type])
+      raise('THAPI Timeline: Cannot show the timeline of an aggregated trace')
+    end
   end
 end
 
@@ -393,6 +402,8 @@ end
 #   |_)     ._
 #   | \ |_| | |
 #
+# Setup Logger
+LOGGER = Logger.new($stdout)
 
 thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                             'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
@@ -400,7 +411,8 @@ thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inter
                                'sink.btx_timeline.timeline'],
                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
                 'trace_live' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_stripper.stripper', 'sink.ctf.fs'],
+                'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                                  'filter.btx_stripper.stripper', 'sink.ctf.fs'],
                 'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                 'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
 
