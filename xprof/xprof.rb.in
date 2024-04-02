@@ -660,7 +660,7 @@ if __FILE__ == $PROGRAM_NAME
         r.to_i
       else
         raise(OptionParser::ParseError,
-              "Invalid value (#{r}). Only integers and - 1 accepted")
+              "Invalid value (#{r}). Only integers and -1 accepted")
       end
     end
   end
