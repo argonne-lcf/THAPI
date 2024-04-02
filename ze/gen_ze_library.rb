@@ -319,6 +319,8 @@ module ZE
     alias to_int to_i
   end
 
+  typedef :uint, :"unsigned int"
+
 EOF
 
 def print_union(name, union)
@@ -418,7 +420,7 @@ EOF
 end
 
 $int_scalars.each { |k, v|
-  next if to_ffi_name(k).match("_flags_t")
+  next if to_ffi_name(k).match("_flags_t") && !to_ffi_name(k).match("_packed_")
   puts <<EOF
   typedef #{to_ffi_name(v)}, #{to_ffi_name(k)}
 

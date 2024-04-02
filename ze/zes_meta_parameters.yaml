@@ -3,6 +3,12 @@ meta_parameters:
   zesDriverGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phDrivers, pCount ]
+  zesDriverGetExtensionProperties:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pExtensionProperties, pCount ]
+  zesDriverGetExtensionFunctionAddress:
+    - [ InString, name ]
+    - [ OutScalar, ppFunctionAddress ]
   zesDeviceGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phDevices, pCount ]
@@ -10,6 +16,8 @@ meta_parameters:
     - [ OutScalar, pProperties ]
   zesDeviceGetState:
     - [ OutScalar, pState ]
+  zesDeviceResetExt:
+    - [ InScalar, pProperties ]
   zesDeviceProcessesGetState:
     - [ InOutScalar, pCount ]
     - [ OutArray, pProcesses, pCount ]
@@ -103,6 +111,9 @@ meta_parameters:
     - [ OutScalar, pThroughput ]
   zesFabricPortGetFabricErrorCounters:
     - [ OutScalar, pErrors ]
+  zesFabricPortGetMultiPortThroughput:
+    - [ InArray, phPort, numPorts ]
+    - [ OutArray, pThroughput, numPorts ]
   zesDeviceEnumFans:
     - [ InOutScalar, pCount ]
     - [ OutArray, phFan, pCount ]
@@ -121,6 +132,11 @@ meta_parameters:
     - [ OutArray, phFirmware, pCount ]
   zesFirmwareGetProperties:
     - [ OutScalar, pProperties ]
+  zesFirmwareGetFlashProgress:
+    - [ OutScalar, pCompletionPercent ]
+  zesFirmwareGetConsoleLogs:
+    - [ InOutScalar, pSize ]
+    - [ OutArray, pFirmwareLog, pSize ]
   zesDeviceEnumFrequencyDomains:
     - [ InOutScalar, pCount ]
     - [ OutArray, phFrequency, pCount ]
@@ -257,11 +273,41 @@ meta_parameters:
   zesPowerSetLimitsExt:
     - [ InScalar, pCount ]
     - [ InArray, pSustained, pCount ]
+  zesEngineGetActivityExt:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pStats, pCount ]
+  zesRasGetStateExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pState, pCount ]
+  zesFirmwareGetSecurityVersionExp:
+    - [ OutString, pVersion ]
+  zesDeviceGetSubDevicePropertiesExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pSubdeviceProps, pCount ]
+  zesDriverGetDeviceByUuidExp:
+    - [ OutScalar, phDevice ]
+    - [ OutScalar, onSubdevice ]
+    - [ OutScalar, subdeviceId ]
+  zesDeviceEnumActiveVFExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phVFhandle, pCount ]
+  zesVFManagementGetVFPropertiesExp:
+    - [ OutScalar, pProperties ]
+  zesVFManagementGetVFMemoryUtilizationExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pMemUtil, pCount ]
+  zesVFManagementGetVFEngineUtilizationExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pEngineUtil, pCount ]
   zesGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable]
   zesGetDeviceProcAddrTable:
     - [ OutScalar, pDdiTable]
+  zesGetDeviceExpProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zesGetDriverProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zesGetDriverExpProcAddrTable:
     - [ OutScalar, pDdiTable]
   zesGetOverclockProcAddrTable:
     - [ OutScalar, pDdiTable]
@@ -279,6 +325,8 @@ meta_parameters:
     - [ OutScalar, pDdiTable]
   zesGetFirmwareProcAddrTable:
     - [ OutScalar, pDdiTable]
+  zesGetFirmwareExpProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zesGetMemoryProcAddrTable:
     - [ OutScalar, pDdiTable]
   zesGetFabricPortProcAddrTable:
@@ -293,6 +341,9 @@ meta_parameters:
     - [ OutScalar, pDdiTable]
   zesGetRasProcAddrTable:
     - [ OutScalar, pDdiTable]
+  zesGetRasExpProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zesGetDiagnosticsProcAddrTable:
     - [ OutScalar, pDdiTable]
-
+  zesGetVFManagementExpProcAddrTable:
+    - [ OutScalar, pDdiTable]

@@ -37,6 +37,13 @@ zelLoaderDriverCheck(ze_init_flags_t flags);
 
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Internal function for Setting the ddi tables for the Tracing Layer.
+///
+ZE_DLLEXPORT ze_result_t ZE_APICALL
+zelLoaderTracingLayerInit(void *zeDdiTable, void *zetDdiTable, void *zesDdiTable);
+
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Exported function for getting tracing lib handle
 ///
 /// @returns

@@ -45,6 +45,30 @@ meta_parameters:
     - [ InOutScalar, pTotalMetricValueCount ]
     - [ OutArray, pMetricCounts, pSetCount ]
     - [ OutArray, pMetricValues, pTotalMetricValueCount ]
+  zetMetricProgrammableGetExp:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phMetricProgrammables, pCount ]
+  zetMetricProgrammableGetPropertiesExp:
+    - [ OutScalar, pProperties ]
+  zetMetricProgrammableGetParamInfoExp:
+    - [ InOutScalar, pParameterCount ]
+    - [ OutArray, pParameterInfo, pParameterCount ]
+  zetMetricProgrammableGetParamValueInfoExp:
+    - [ InOutScalar, pValueInfoCount ]
+    - [ OutArray, pValueInfo, pValueInfoCount ]
+  zetMetricCreateFromProgrammableExp:
+    - [ InArray, pParameterValues, parameterCount ]
+    - [ InString, pName ]
+    - [ InString, pDescription ]
+    - [ InOutScalar, pMetricHandleCount ]
+    - [ OutArray, phMetricHandles, pMetricHandleCount ]
+  zetMetricGroupCreateExp:
+    - [ InString, pName ]
+    - [ InString, pDescription ]
+    - [ OutScalar, phMetricGroup ]
+  zetMetricGroupAddMetricExp:
+    - [ InOutScalar, pErrorStringSize ]
+    - [ OutArray, pErrorString, pErrorStringSize ]
   zetMetricGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phMetrics, pCount ]
@@ -77,6 +101,8 @@ meta_parameters:
     - [ InScalar, pCoreCbs ]
   zetTracerExpSetEpilogues:
     - [ InScalar, pCoreCbs ]
+  zetGetMetricProgrammableExpProcAddrTable:
+    - [ OutScalar, pDdiTable]
   zetGetDeviceProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetContextProcAddrTable:
@@ -92,6 +118,8 @@ meta_parameters:
   zetGetMetricGroupExpProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricProcAddrTable:
+    - [ OutScalar, pDdiTable]
+  zetGetMetricExpProcAddrTable:
     - [ OutScalar, pDdiTable]
   zetGetMetricStreamerProcAddrTable:
     - [ OutScalar, pDdiTable]

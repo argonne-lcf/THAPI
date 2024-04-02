@@ -1,6 +1,6 @@
-diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing_api.h
---- include/layers/zel_tracing_api.h	2022-05-11 11:47:59.544181073 -0500
-+++ modified_include/layers/zel_tracing_api.h	2022-05-11 12:04:58.036650198 -0500
+diff -u4 -r --new-file include/layers/zel_tracing_api.h modified_include/layers/zel_tracing_api.h
+--- include/layers/zel_tracing_api.h	2024-04-02 10:40:17.625021869 -0500
++++ modified_include/layers/zel_tracing_api.h	2024-04-02 13:06:28.056000505 -0500
 @@ -54,9 +54,9 @@
  {
      ZEL_STRUCTURE_TYPE_TRACER_DESC = 0x1  ,///< ::zel_tracer_desc_t
@@ -12,9 +12,9 @@ diff -u4 -r include/layers/zel_tracing_api.h modified_include/layers/zel_tracing
  
  } zel_structure_type_t;
  
-diff -u4 -r include/layers/zel_tracing_register_cb.h modified_include/layers/zel_tracing_register_cb.h
---- include/layers/zel_tracing_register_cb.h	2022-05-11 11:47:59.544181073 -0500
-+++ modified_include/layers/zel_tracing_register_cb.h	2022-05-11 12:04:58.036650198 -0500
+diff -u4 -r --new-file include/layers/zel_tracing_register_cb.h modified_include/layers/zel_tracing_register_cb.h
+--- include/layers/zel_tracing_register_cb.h	2024-04-02 18:30:39.225008820 -0500
++++ modified_include/layers/zel_tracing_register_cb.h	2024-04-02 18:26:48.488474369 -0500
 @@ -21,9 +21,9 @@
  #endif
  
@@ -26,9 +26,22 @@ diff -u4 -r include/layers/zel_tracing_register_cb.h modified_include/layers/zel
  /// Callback definitions for all API released in LevelZero spec 1.1 or newer
  /// Callbacks for APIs included in spec 1.0 are contained in ze_api.helper
  
-diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
---- include/loader/ze_loader_api.h	2022-05-11 11:48:46.944049246 -0500
-+++ modified_include/loader/ze_loader_api.h	2022-05-11 12:04:58.036650198 -0500
+@@ -3242,10 +3242,10 @@
+     ze_pfnCommandListUpdateMutableCommandWaitEventsExpCb_t pfnUpdateMutableCommandWaitEventsExpCb
+     );
+ 
+ 
+-ZE_APIEXPORT ze_result_t ZE_APICALL
+-zelTracerResetAllCallbacks(zel_tracer_handle_t hTracer);
++//ZE_APIEXPORT ze_result_t ZE_APICALL
++//zelTracerResetAllCallbacks(zel_tracer_handle_t hTracer);
+ 
+ 
+ #if defined(__cplusplus)
+ } // extern "C"
+diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
+--- include/loader/ze_loader_api.h	2024-04-02 13:42:16.693493309 -0500
++++ modified_include/loader/ze_loader_api.h	2024-04-02 13:11:54.060768340 -0500
 @@ -7,10 +7,12 @@
   * @file ze_loader_api.cpp
   *
@@ -44,15 +57,11 @@ diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api
  #define TRACING_COMP_NAME "loader"
  
  #if defined(__cplusplus)
-@@ -43,31 +45,7 @@
- ///     - ::handle to tracing library
- ZE_DLLEXPORT HMODULE ZE_APICALL
- zeLoaderGetTracingHandle();
+@@ -54,27 +56,10 @@
  
--
--///////////////////////////////////////////////////////////////////////////////
--/// @brief Exported function for getting version
--///
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Exported function for getting version
+ ///
 -ZE_DLLEXPORT ze_result_t ZE_APICALL
 -zelLoaderGetVersion(zel_component_version_t *version);
 -
@@ -72,26 +81,21 @@ diff -u4 -r include/loader/ze_loader_api.h modified_include/loader/ze_loader_api
 -   void *handleIn,                        //Input: handle to translate from loader handle to driver handle 
 -   void **handleOut);                      //Output: Pointer to handleOut is set to driver handle if successful
 -
--
++//ZE_DLLEXPORT ze_result_t ZE_APICALL
++//zelLoaderGetVersion(zel_component_version_t *version);
+ 
  #if defined(__cplusplus)
  }
  #endif
 \ No newline at end of file
-diff -u4 -r include/loader/ze_loader.h modified_include/loader/ze_loader.h
---- include/loader/ze_loader.h	2022-05-11 11:48:14.912138332 -0500
-+++ modified_include/loader/ze_loader.h	2022-05-11 12:04:58.036650198 -0500
-@@ -38,8 +38,23 @@
+diff -u4 -r --new-file include/loader/ze_loader.h modified_include/loader/ze_loader.h
+--- include/loader/ze_loader.h	2024-04-02 10:41:37.857153755 -0500
++++ modified_include/loader/ze_loader.h	2024-04-02 13:06:28.056000505 -0500
+@@ -38,8 +38,16 @@
  zelLoaderGetVersions(
     size_t *num_elems,                     //Pointer to num versions to get.  
     zel_component_version_t *versions);    //Pointer to array of versions. If set to NULL, num_elems is returned
  
-+///////////////////////////////////////////////////////////////////////////////
-+/// @brief Exported function for getting version
-+///
-+ZE_DLLEXPORT ze_result_t ZE_APICALL
-+zelLoaderGetVersion(zel_component_version_t *version);
-+
-+
 +///////////////////////////////////////////////////////////////////////////////
 +/// @brief Exported function for getting versions of all components
 +///
@@ -104,24 +108,27 @@ diff -u4 -r include/loader/ze_loader.h modified_include/loader/ze_loader.h
     ZEL_HANDLE_DRIVER,
     ZEL_HANDLE_DEVICE,
     ZEL_HANDLE_CONTEXT,
-@@ -63,8 +78,14 @@
-    zel_handle_type_t handleType,   //Handle Type
+@@ -64,8 +72,17 @@
     void *handleIn,                  //Input: handle to translate from loader handle to driver handle
     void **handleOut);                //Output: Pointer to handleOut is set to driver handle if successful
  
+ ///////////////////////////////////////////////////////////////////////////////
++/// @brief Exported function for Enabling the Tracing Layer During Runtime.
++///
 +ZE_DLLEXPORT ze_result_t ZE_APICALL
 +zelLoaderTranslateHandleInternal(
 +   zel_handle_type_t handleType,         //Handle type
 +   void *handleIn,                        //Input: handle to translate from loader handle to driver handle 
 +   void **handleOut);                      //Output: Pointer to handleOut is set to driver handle if successful
 +
- ///////////////////////////////////////////////////////////////////////////////
++///////////////////////////////////////////////////////////////////////////////
  /// @brief Exported function for handling calls to released drivers in teardown.
  ///
  ZE_DLLEXPORT ze_result_t ZE_APICALL
-diff -u4 -r include/ze_api.h modified_include/ze_api.h
---- include/ze_api.h	2022-05-11 11:47:31.708258490 -0500
-+++ modified_include/ze_api.h	2022-05-11 12:04:58.040650249 -0500
+ zelSetDriverTeardown();
+diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
+--- include/ze_api.h	2024-04-02 10:39:40.584915276 -0500
++++ modified_include/ze_api.h	2024-04-02 14:11:43.479473336 -0500
 @@ -14,10 +14,10 @@
  #pragma once
  #endif
@@ -185,8 +192,8 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Defines Return/Error codes
  typedef enum _ze_result_t
-@@ -401,369 +401,369 @@
- /// @brief Forces all shared allocations into device memory
+@@ -447,493 +447,493 @@
+ ///        implementation
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare ze_ipc_mem_handle_t
@@ -202,6 +209,11 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  /// @brief Forward-declare ze_uuid_t
 -typedef struct _ze_uuid_t ze_uuid_t;
 +//typedef struct _ze_uuid_t ze_uuid_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_base_cb_params_t
+-typedef struct _ze_base_cb_params_t ze_base_cb_params_t;
++//typedef struct _ze_base_cb_params_t ze_base_cb_params_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare ze_base_properties_t
@@ -487,7 +499,7 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
  /// @brief Forward-declare ze_image_memory_properties_exp_t
 -typedef struct _ze_image_memory_properties_exp_t ze_image_memory_properties_exp_t;
 +//typedef struct _ze_image_memory_properties_exp_t ze_image_memory_properties_exp_t;
-
+ 
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare ze_image_view_planar_ext_desc_t
 -typedef struct _ze_image_view_planar_ext_desc_t ze_image_view_planar_ext_desc_t;
@@ -643,13 +655,184 @@ diff -u4 -r include/ze_api.h modified_include/ze_api.h
 -typedef struct _ze_event_query_kernel_timestamps_results_ext_properties_t ze_event_query_kernel_timestamps_results_ext_properties_t;
 +//typedef struct _ze_event_query_kernel_timestamps_results_ext_properties_t ze_event_query_kernel_timestamps_results_ext_properties_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_exp_desc_t
+-typedef struct _ze_rtas_builder_exp_desc_t ze_rtas_builder_exp_desc_t;
++//typedef struct _ze_rtas_builder_exp_desc_t ze_rtas_builder_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_exp_properties_t
+-typedef struct _ze_rtas_builder_exp_properties_t ze_rtas_builder_exp_properties_t;
++//typedef struct _ze_rtas_builder_exp_properties_t ze_rtas_builder_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_parallel_operation_exp_properties_t
+-typedef struct _ze_rtas_parallel_operation_exp_properties_t ze_rtas_parallel_operation_exp_properties_t;
++//typedef struct _ze_rtas_parallel_operation_exp_properties_t ze_rtas_parallel_operation_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_device_exp_properties_t
+-typedef struct _ze_rtas_device_exp_properties_t ze_rtas_device_exp_properties_t;
++//typedef struct _ze_rtas_device_exp_properties_t ze_rtas_device_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_float3_exp_t
+-typedef struct _ze_rtas_float3_exp_t ze_rtas_float3_exp_t;
++//typedef struct _ze_rtas_float3_exp_t ze_rtas_float3_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_transform_float3x4_column_major_exp_t
+-typedef struct _ze_rtas_transform_float3x4_column_major_exp_t ze_rtas_transform_float3x4_column_major_exp_t;
++//typedef struct _ze_rtas_transform_float3x4_column_major_exp_t ze_rtas_transform_float3x4_column_major_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_transform_float3x4_aligned_column_major_exp_t
+-typedef struct _ze_rtas_transform_float3x4_aligned_column_major_exp_t ze_rtas_transform_float3x4_aligned_column_major_exp_t;
++//typedef struct _ze_rtas_transform_float3x4_aligned_column_major_exp_t ze_rtas_transform_float3x4_aligned_column_major_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_transform_float3x4_row_major_exp_t
+-typedef struct _ze_rtas_transform_float3x4_row_major_exp_t ze_rtas_transform_float3x4_row_major_exp_t;
++//typedef struct _ze_rtas_transform_float3x4_row_major_exp_t ze_rtas_transform_float3x4_row_major_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_aabb_exp_t
+-typedef struct _ze_rtas_aabb_exp_t ze_rtas_aabb_exp_t;
++//typedef struct _ze_rtas_aabb_exp_t ze_rtas_aabb_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_triangle_indices_uint32_exp_t
+-typedef struct _ze_rtas_triangle_indices_uint32_exp_t ze_rtas_triangle_indices_uint32_exp_t;
++//typedef struct _ze_rtas_triangle_indices_uint32_exp_t ze_rtas_triangle_indices_uint32_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_quad_indices_uint32_exp_t
+-typedef struct _ze_rtas_quad_indices_uint32_exp_t ze_rtas_quad_indices_uint32_exp_t;
++//typedef struct _ze_rtas_quad_indices_uint32_exp_t ze_rtas_quad_indices_uint32_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_geometry_info_exp_t
+-typedef struct _ze_rtas_builder_geometry_info_exp_t ze_rtas_builder_geometry_info_exp_t;
++//typedef struct _ze_rtas_builder_geometry_info_exp_t ze_rtas_builder_geometry_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_triangles_geometry_info_exp_t
+-typedef struct _ze_rtas_builder_triangles_geometry_info_exp_t ze_rtas_builder_triangles_geometry_info_exp_t;
++//typedef struct _ze_rtas_builder_triangles_geometry_info_exp_t ze_rtas_builder_triangles_geometry_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_quads_geometry_info_exp_t
+-typedef struct _ze_rtas_builder_quads_geometry_info_exp_t ze_rtas_builder_quads_geometry_info_exp_t;
++//typedef struct _ze_rtas_builder_quads_geometry_info_exp_t ze_rtas_builder_quads_geometry_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_geometry_aabbs_exp_cb_params_t
+-typedef struct _ze_rtas_geometry_aabbs_exp_cb_params_t ze_rtas_geometry_aabbs_exp_cb_params_t;
++//typedef struct _ze_rtas_geometry_aabbs_exp_cb_params_t ze_rtas_geometry_aabbs_exp_cb_params_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_procedural_geometry_info_exp_t
+-typedef struct _ze_rtas_builder_procedural_geometry_info_exp_t ze_rtas_builder_procedural_geometry_info_exp_t;
++//typedef struct _ze_rtas_builder_procedural_geometry_info_exp_t ze_rtas_builder_procedural_geometry_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_instance_geometry_info_exp_t
+-typedef struct _ze_rtas_builder_instance_geometry_info_exp_t ze_rtas_builder_instance_geometry_info_exp_t;
++//typedef struct _ze_rtas_builder_instance_geometry_info_exp_t ze_rtas_builder_instance_geometry_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_rtas_builder_build_op_exp_desc_t
+-typedef struct _ze_rtas_builder_build_op_exp_desc_t ze_rtas_builder_build_op_exp_desc_t;
++//typedef struct _ze_rtas_builder_build_op_exp_desc_t ze_rtas_builder_build_op_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_event_pool_counter_based_exp_desc_t
+-typedef struct _ze_event_pool_counter_based_exp_desc_t ze_event_pool_counter_based_exp_desc_t;
++//typedef struct _ze_event_pool_counter_based_exp_desc_t ze_event_pool_counter_based_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_bindless_exp_desc_t
+-typedef struct _ze_image_bindless_exp_desc_t ze_image_bindless_exp_desc_t;
++//typedef struct _ze_image_bindless_exp_desc_t ze_image_bindless_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_image_pitched_exp_desc_t
+-typedef struct _ze_image_pitched_exp_desc_t ze_image_pitched_exp_desc_t;
++//typedef struct _ze_image_pitched_exp_desc_t ze_image_pitched_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_device_pitched_alloc_exp_properties_t
+-typedef struct _ze_device_pitched_alloc_exp_properties_t ze_device_pitched_alloc_exp_properties_t;
++//typedef struct _ze_device_pitched_alloc_exp_properties_t ze_device_pitched_alloc_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_command_id_exp_desc_t
+-typedef struct _ze_mutable_command_id_exp_desc_t ze_mutable_command_id_exp_desc_t;
++//typedef struct _ze_mutable_command_id_exp_desc_t ze_mutable_command_id_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_command_list_exp_properties_t
+-typedef struct _ze_mutable_command_list_exp_properties_t ze_mutable_command_list_exp_properties_t;
++//typedef struct _ze_mutable_command_list_exp_properties_t ze_mutable_command_list_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_command_list_exp_desc_t
+-typedef struct _ze_mutable_command_list_exp_desc_t ze_mutable_command_list_exp_desc_t;
++//typedef struct _ze_mutable_command_list_exp_desc_t ze_mutable_command_list_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_commands_exp_desc_t
+-typedef struct _ze_mutable_commands_exp_desc_t ze_mutable_commands_exp_desc_t;
++//typedef struct _ze_mutable_commands_exp_desc_t ze_mutable_commands_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_kernel_argument_exp_desc_t
+-typedef struct _ze_mutable_kernel_argument_exp_desc_t ze_mutable_kernel_argument_exp_desc_t;
++//typedef struct _ze_mutable_kernel_argument_exp_desc_t ze_mutable_kernel_argument_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_group_count_exp_desc_t
+-typedef struct _ze_mutable_group_count_exp_desc_t ze_mutable_group_count_exp_desc_t;
++//typedef struct _ze_mutable_group_count_exp_desc_t ze_mutable_group_count_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_group_size_exp_desc_t
+-typedef struct _ze_mutable_group_size_exp_desc_t ze_mutable_group_size_exp_desc_t;
++//typedef struct _ze_mutable_group_size_exp_desc_t ze_mutable_group_size_exp_desc_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare ze_mutable_global_offset_exp_desc_t
+-typedef struct _ze_mutable_global_offset_exp_desc_t ze_mutable_global_offset_exp_desc_t;
++//typedef struct _ze_mutable_global_offset_exp_desc_t ze_mutable_global_offset_exp_desc_t;
+ 
  
  #if !defined(__GNUC__)
  #pragma endregion
-diff -u4 -r include/zes_api.h modified_include/zes_api.h
---- include/zes_api.h	2022-05-11 11:47:31.708258490 -0500
-+++ modified_include/zes_api.h	2022-05-11 12:04:58.036650198 -0500
-@@ -183,281 +183,281 @@
+@@ -7544,14 +7544,14 @@
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Cache Reservation Region
+ typedef enum _ze_cache_ext_region_t
+ {
+-    ZE_CACHE_EXT_REGION_ZE_CACHE_REGION_DEFAULT = 0,                        ///< [DEPRECATED] utilize driver default scheme. Use
+-                                                                            ///< ::ZE_CACHE_EXT_REGION_DEFAULT.
+-    ZE_CACHE_EXT_REGION_ZE_CACHE_RESERVE_REGION = 1,                        ///< [DEPRECATED] utilize reserved region. Use
+-                                                                            ///< ::ZE_CACHE_EXT_REGION_RESERVED.
+-    ZE_CACHE_EXT_REGION_ZE_CACHE_NON_RESERVED_REGION = 2,                   ///< [DEPRECATED] utilize non-reserverd region. Use
+-                                                                            ///< ::ZE_CACHE_EXT_REGION_NON_RESERVED.
++//    ZE_CACHE_EXT_REGION_ZE_CACHE_REGION_DEFAULT = 0,                        ///< [DEPRECATED] utilize driver default scheme. Use
++//                                                                            ///< ::ZE_CACHE_EXT_REGION_DEFAULT.
++//    ZE_CACHE_EXT_REGION_ZE_CACHE_RESERVE_REGION = 1,                        ///< [DEPRECATED] utilize reserved region. Use
++//                                                                            ///< ::ZE_CACHE_EXT_REGION_RESERVED.
++//    ZE_CACHE_EXT_REGION_ZE_CACHE_NON_RESERVED_REGION = 2,                   ///< [DEPRECATED] utilize non-reserverd region. Use
++//                                                                            ///< ::ZE_CACHE_EXT_REGION_NON_RESERVED.
+     ZE_CACHE_EXT_REGION_DEFAULT = 0,                                        ///< utilize driver default scheme
+     ZE_CACHE_EXT_REGION_RESERVED = 1,                                       ///< utilize reserved region
+     ZE_CACHE_EXT_REGION_NON_RESERVED = 2,                                   ///< utilize non-reserverd region
+     ZE_CACHE_EXT_REGION_FORCE_UINT32 = 0x7fffffff
+diff -u4 -r --new-file include/zes_api.h modified_include/zes_api.h
+--- include/zes_api.h	2024-04-02 18:12:14.546658929 -0500
++++ modified_include/zes_api.h	2024-04-02 18:28:43.360746334 -0500
+@@ -212,341 +212,341 @@
  } zes_base_capability_t;
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -678,14 +861,34 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
 +//typedef struct _zes_base_capability_t zes_base_capability_t;
  
  ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_driver_extension_properties_t
+-typedef struct _zes_driver_extension_properties_t zes_driver_extension_properties_t;
++//typedef struct _zes_driver_extension_properties_t zes_driver_extension_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_device_state_t
 -typedef struct _zes_device_state_t zes_device_state_t;
 +//typedef struct _zes_device_state_t zes_device_state_t;
  
  ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_reset_properties_t
+-typedef struct _zes_reset_properties_t zes_reset_properties_t;
++//typedef struct _zes_reset_properties_t zes_reset_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_uuid_t
+-typedef struct _zes_uuid_t zes_uuid_t;
++//typedef struct _zes_uuid_t zes_uuid_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_device_properties_t
 -typedef struct _zes_device_properties_t zes_device_properties_t;
 +//typedef struct _zes_device_properties_t zes_device_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_device_ext_properties_t
+-typedef struct _zes_device_ext_properties_t zes_device_ext_properties_t;
++//typedef struct _zes_device_ext_properties_t zes_device_ext_properties_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_process_state_t
@@ -731,17 +934,17 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
  /// @brief Forward-declare zes_overclock_properties_t
 -typedef struct _zes_overclock_properties_t zes_overclock_properties_t;
 +//typedef struct _zes_overclock_properties_t zes_overclock_properties_t;
-
+ 
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_control_property_t
 -typedef struct _zes_control_property_t zes_control_property_t;
 +//typedef struct _zes_control_property_t zes_control_property_t;
-
+ 
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_vf_property_t
 -typedef struct _zes_vf_property_t zes_vf_property_t;
 +//typedef struct _zes_vf_property_t zes_vf_property_t;
-
+ 
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_diag_test_t
 -typedef struct _zes_diag_test_t zes_diag_test_t;
@@ -806,6 +1009,11 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
  /// @brief Forward-declare zes_fabric_port_throughput_t
 -typedef struct _zes_fabric_port_throughput_t zes_fabric_port_throughput_t;
 +//typedef struct _zes_fabric_port_throughput_t zes_fabric_port_throughput_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_fabric_port_error_counters_t
+-typedef struct _zes_fabric_port_error_counters_t zes_fabric_port_error_counters_t;
++//typedef struct _zes_fabric_port_error_counters_t zes_fabric_port_error_counters_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_fan_speed_t
@@ -891,6 +1099,11 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
  /// @brief Forward-declare zes_mem_bandwidth_t
 -typedef struct _zes_mem_bandwidth_t zes_mem_bandwidth_t;
 +//typedef struct _zes_mem_bandwidth_t zes_mem_bandwidth_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_mem_ext_bandwidth_t
+-typedef struct _zes_mem_ext_bandwidth_t zes_mem_ext_bandwidth_t;
++//typedef struct _zes_mem_ext_bandwidth_t zes_mem_ext_bandwidth_t;
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zes_perf_properties_t
@@ -997,14 +1210,79 @@ diff -u4 -r include/zes_api.h modified_include/zes_api.h
 -typedef struct _zes_power_ext_properties_t zes_power_ext_properties_t;
 +//typedef struct _zes_power_ext_properties_t zes_power_ext_properties_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_engine_ext_properties_t
+-typedef struct _zes_engine_ext_properties_t zes_engine_ext_properties_t;
++//typedef struct _zes_engine_ext_properties_t zes_engine_ext_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_ras_state_exp_t
+-typedef struct _zes_ras_state_exp_t zes_ras_state_exp_t;
++//typedef struct _zes_ras_state_exp_t zes_ras_state_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_mem_page_offline_state_exp_t
+-typedef struct _zes_mem_page_offline_state_exp_t zes_mem_page_offline_state_exp_t;
++//typedef struct _zes_mem_page_offline_state_exp_t zes_mem_page_offline_state_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_mem_bandwidth_counter_bits_exp_properties_t
+-typedef struct _zes_mem_bandwidth_counter_bits_exp_properties_t zes_mem_bandwidth_counter_bits_exp_properties_t;
++//typedef struct _zes_mem_bandwidth_counter_bits_exp_properties_t zes_mem_bandwidth_counter_bits_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_power_domain_exp_properties_t
+-typedef struct _zes_power_domain_exp_properties_t zes_power_domain_exp_properties_t;
++//typedef struct _zes_power_domain_exp_properties_t zes_power_domain_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_subdevice_exp_properties_t
+-typedef struct _zes_subdevice_exp_properties_t zes_subdevice_exp_properties_t;
++//typedef struct _zes_subdevice_exp_properties_t zes_subdevice_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_vf_exp_properties_t
+-typedef struct _zes_vf_exp_properties_t zes_vf_exp_properties_t;
++//typedef struct _zes_vf_exp_properties_t zes_vf_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_vf_util_mem_exp_t
+-typedef struct _zes_vf_util_mem_exp_t zes_vf_util_mem_exp_t;
++//typedef struct _zes_vf_util_mem_exp_t zes_vf_util_mem_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zes_vf_util_engine_exp_t
+-typedef struct _zes_vf_util_engine_exp_t zes_vf_util_engine_exp_t;
++//typedef struct _zes_vf_util_engine_exp_t zes_vf_util_engine_exp_t;
+ 
  
  #if !defined(__GNUC__)
  #pragma endregion
-diff -u4 -r include/zet_api.h modified_include/zet_api.h
---- include/zet_api.h	2022-05-11 11:47:31.708258490 -0500
-+++ modified_include/zet_api.h	2022-05-11 12:04:58.040650249 -0500
-@@ -147,93 +147,93 @@
- } zet_typed_value_t;
+Binary files include/.zes_api.h.swp and modified_include/.zes_api.h.swp differ
+diff -u4 -r --new-file include/zet_api.h modified_include/zet_api.h
+--- include/zet_api.h	2024-04-02 10:39:40.588915290 -0500
++++ modified_include/zet_api.h	2024-04-02 13:06:28.056000505 -0500
+@@ -88,14 +88,14 @@
+     ZET_STRUCTURE_TYPE_PROFILE_PROPERTIES = 0x5,                            ///< ::zet_profile_properties_t
+     ZET_STRUCTURE_TYPE_DEVICE_DEBUG_PROPERTIES = 0x6,                       ///< ::zet_device_debug_properties_t
+     ZET_STRUCTURE_TYPE_DEBUG_MEMORY_SPACE_DESC = 0x7,                       ///< ::zet_debug_memory_space_desc_t
+     ZET_STRUCTURE_TYPE_DEBUG_REGSET_PROPERTIES = 0x8,                       ///< ::zet_debug_regset_properties_t
+-    ZET_STRUCTURE_TYPE_GLOBAL_METRICS_TIMESTAMPS_EXP_PROPERTIES = 0x9,      ///< ::zet_metric_global_timestamps_resolution_exp_t. Deprecated, use
+-                                                                            ///< ::ZET_STRUCTURE_TYPE_METRIC_GLOBAL_TIMESTAMPS_RESOLUTION_EXP.
++//    ZET_STRUCTURE_TYPE_GLOBAL_METRICS_TIMESTAMPS_EXP_PROPERTIES = 0x9,      ///< ::zet_metric_global_timestamps_resolution_exp_t. Deprecated, use
++//                                                                            ///< ::ZET_STRUCTURE_TYPE_METRIC_GLOBAL_TIMESTAMPS_RESOLUTION_EXP.
+     ZET_STRUCTURE_TYPE_METRIC_GLOBAL_TIMESTAMPS_RESOLUTION_EXP = 0x9,       ///< ::zet_metric_global_timestamps_resolution_exp_t
+     ZET_STRUCTURE_TYPE_TRACER_EXP_DESC = 0x00010001,                        ///< ::zet_tracer_exp_desc_t
+-    ZET_STRUCTURE_TYPE_METRICS_CALCULATE_EXP_DESC = 0x00010002,             ///< ::zet_metric_calculate_exp_desc_t. Deprecated, use
+-                                                                            ///< ::ZET_STRUCTURE_TYPE_METRIC_CALCULATE_EXP_DESC.
++//    ZET_STRUCTURE_TYPE_METRICS_CALCULATE_EXP_DESC = 0x00010002,             ///< ::zet_metric_calculate_exp_desc_t. Deprecated, use
++//                                                                            ///< ::ZET_STRUCTURE_TYPE_METRIC_CALCULATE_EXP_DESC.
+     ZET_STRUCTURE_TYPE_METRIC_CALCULATE_EXP_DESC = 0x00010002,              ///< ::zet_metric_calculate_exp_desc_t
+     ZET_STRUCTURE_TYPE_METRIC_PROGRAMMABLE_EXP_PROPERTIES = 0x00010003,     ///< ::zet_metric_programmable_exp_properties_t
+     ZET_STRUCTURE_TYPE_METRIC_PROGRAMMABLE_PARAM_INFO_EXP = 0x00010004,     ///< ::zet_metric_programmable_param_info_exp_t
+     ZET_STRUCTURE_TYPE_METRIC_PROGRAMMABLE_PARAM_VALUE_INFO_EXP = 0x00010005,   ///< ::zet_metric_programmable_param_value_info_exp_t
+@@ -171,113 +171,113 @@
+ /// @brief Enables driver instrumentation and dependencies for program debugging
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Forward-declare zet_base_properties_t
@@ -1116,6 +1394,44 @@ diff -u4 -r include/zet_api.h modified_include/zet_api.h
 -typedef struct _zet_metric_calculate_exp_desc_t zet_metric_calculate_exp_desc_t;
 +//typedef struct _zet_metric_calculate_exp_desc_t zet_metric_calculate_exp_desc_t;
  
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_programmable_exp_properties_t
+-typedef struct _zet_metric_programmable_exp_properties_t zet_metric_programmable_exp_properties_t;
++//typedef struct _zet_metric_programmable_exp_properties_t zet_metric_programmable_exp_properties_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_value_uint64_range_exp_t
+-typedef struct _zet_value_uint64_range_exp_t zet_value_uint64_range_exp_t;
++//typedef struct _zet_value_uint64_range_exp_t zet_value_uint64_range_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_programmable_param_info_exp_t
+-typedef struct _zet_metric_programmable_param_info_exp_t zet_metric_programmable_param_info_exp_t;
++//typedef struct _zet_metric_programmable_param_info_exp_t zet_metric_programmable_param_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_programmable_param_value_info_exp_t
+-typedef struct _zet_metric_programmable_param_value_info_exp_t zet_metric_programmable_param_value_info_exp_t;
++//typedef struct _zet_metric_programmable_param_value_info_exp_t zet_metric_programmable_param_value_info_exp_t;
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Forward-declare zet_metric_programmable_param_value_exp_t
+-typedef struct _zet_metric_programmable_param_value_exp_t zet_metric_programmable_param_value_exp_t;
++//typedef struct _zet_metric_programmable_param_value_exp_t zet_metric_programmable_param_value_exp_t;
+ 
  
  #if !defined(__GNUC__)
  #pragma endregion
+@@ -986,10 +986,10 @@
+     ZET_METRIC_TYPE_TIMESTAMP = 4,                                          ///< Metric type: timestamp
+     ZET_METRIC_TYPE_FLAG = 5,                                               ///< Metric type: flag
+     ZET_METRIC_TYPE_RATIO = 6,                                              ///< Metric type: ratio
+     ZET_METRIC_TYPE_RAW = 7,                                                ///< Metric type: raw
+-    ZET_METRIC_TYPE_IP_EXP = 0x7ffffffe,                                    ///< Metric type: instruction pointer. Deprecated, use
+-                                                                            ///< ::ZET_METRIC_TYPE_IP.
++//    ZET_METRIC_TYPE_IP_EXP = 0x7ffffffe,                                    ///< Metric type: instruction pointer. Deprecated, use
++//                                                                            ///< ::ZET_METRIC_TYPE_IP.
+     ZET_METRIC_TYPE_IP = 0x7ffffffe,                                        ///< Metric type: instruction pointer
+     ZET_METRIC_TYPE_FORCE_UINT32 = 0x7fffffff
+ 
+ } zet_metric_type_t;

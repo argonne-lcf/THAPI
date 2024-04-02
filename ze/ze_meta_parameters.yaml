@@ -20,6 +20,8 @@ meta_parameters:
   zeDeviceGet:
     - [ InOutScalar, pCount ]
     - [ OutArray, phDevices, pCount ]
+  zeDeviceGetRootDevice:
+    - [ OutScalar, phRootDevice ]
   zeDeviceGetSubDevices:
     - [ InOutScalar, pCount ]
     - [ OutArray, phSubdevices, pCount ]
@@ -63,6 +65,10 @@ meta_parameters:
     - [ OutScalar, phCommandQueue ]
   zeCommandQueueExecuteCommandLists:
     - [ InArray, phCommandLists, numCommandLists ]
+  zeCommandQueueGetOrdinal:
+    - [ OutScalar, pOrdinal ]
+  zeCommandQueueGetIndex:
+    - [ OutScalar, pIndex ]
   zeCommandListCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phCommandList ]
@@ -71,6 +77,16 @@ meta_parameters:
     - [ OutScalar, phCommandList ]
   zeCommandListAppendWriteGlobalTimestamp:
     - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListGetDeviceHandle:
+    - [ OutScalar, phDevice ]
+  zeCommandListGetContextHandle:
+    - [ OutScalar, phContext ]
+  zeCommandListGetOrdinal:
+    - [ OutScalar, pOrdinal ]
+  zeCommandListImmediateGetIndex:
+    - [ OutScalar, pIndex ]
+  zeCommandListIsImmediate:
+    - [ OutScalar, pIsImmediate ]
   zeCommandListAppendBarrier:
     - [ InArray, phWaitEvents, numWaitEvents ]
   zeCommandListAppendMemoryRangesBarrier:
@@ -119,6 +135,16 @@ meta_parameters:
     - [ InArray, phEvents, numEvents ]
     - [ InArray, pOffsets, numEvents ]
     - [ InArray, phWaitEvents, numWaitEvents ]
+  zeEventGetEventPool:
+    - [ OutScalar, phEventPool ]
+  zeEventGetSignalScope:
+    - [ OutScalar, pSignalScope ]
+  zeEventGetWaitScope:
+    - [ OutScalar, pWaitScope ]
+  zeEventPoolGetContextHandle:
+    - [ OutScalar, phContext ]
+  zeEventPoolGetFlags:
+    - [ OutScalar, pFlags ]
   zeFenceCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phFence ]
@@ -152,6 +178,8 @@ meta_parameters:
     - [ OutScalar, pHandle ]
   zeMemOpenIpcHandle:
     - [ OutScalar, pptr ]
+  zeMemGetAtomicAccessAttributeExp:
+    - [ OutScalar, pAttr ]
   zeModuleCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phModule ]
@@ -278,9 +306,45 @@ meta_parameters:
   zeEventQueryKernelTimestampsExt:
     - [ InOutScalar, pCount ]
     - [ OutArray, pResults, pCount ]
+  zeRTASBuilderCreateExp:
+    - [ InScalar, pDescriptor ]
+    - [ OutScalar, phBuilder ]
+  zeRTASBuilderGetBuildPropertiesExp:
+    - [ InScalar, pBuildOpDescriptor ]
+    - [ OutScalar, pProperties ]
+  zeRTASBuilderBuildExp:
+    - [ InScalar, pBuildOpDescriptor ]
+    - [ OutScalar, pBounds ]
+    - [ OutScalar, pRtasBufferSizeBytes ]
+  zeRTASParallelOperationCreateExp:
+    - [ OutScalar, phParallelOperation ]
+  zeRTASParallelOperationGetPropertiesExp:
+    - [ OutScalar, pProperties ]
+  zeMemGetPitchFor2dImage:
+    - [ OutScalar, rowPitch ]
+  zeImageGetDeviceOffsetExp:
+    - [ OutScalar, pDeviceOffset ]
+  zeCommandListCreateCloneExp:
+    - [ OutScalar, phClonedCommandList ]
+  zeCommandListImmediateAppendCommandListsExp:
+    - [ InArray, phCommandLists, numCommandLists ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListGetNextCommandIdExp:
+    - [ InScalar, desc ]
+    - [ OutScalar, pCommandId ]
+  zeCommandListUpdateMutableCommandsExp:
+    - [ InScalar, desc ]
+  zeCommandListUpdateMutableCommandWaitEventsExp:
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeGetRTASBuilderExpProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetRTASParallelOperationExpProcAddrTable:
+    - [ OutScalar, pDdiTable ]
   zeGetGlobalProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDriverProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetDriverExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetDeviceProcAddrTable:
     - [ OutScalar, pDdiTable ]
@@ -289,6 +353,12 @@ meta_parameters:
   zeGetCommandQueueProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetCommandListProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetCommandListExpProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetMemProcAddrTable:
+    - [ OutScalar, pDdiTable ]
+  zeGetMemExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetFenceProcAddrTable:
     - [ OutScalar, pDdiTable ]
@@ -313,10 +383,6 @@ meta_parameters:
   zeGetSamplerProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetPhysicalMemProcAddrTable:
-    - [ OutScalar, pDdiTable ]
-  zeGetMemProcAddrTable:
-    - [ OutScalar, pDdiTable ]
-  zeGetMemExpProcAddrTable:
     - [ OutScalar, pDdiTable ]
   zeGetVirtualMemProcAddrTable:
     - [ OutScalar, pDdiTable ]
