@@ -18,15 +18,10 @@
 - :name: stream0
   :class: interval_class
 :events:
-- :name: lttng:traffic
-  :common_context:
-    hostname: aurora12.gov
-    backend: 2
-  :payload:
-    name: clEnqueueWriteBuffer
 - :name: lttng:device
   :common_context:
     hostname: aurora12.gov
+    backend: 2
   :payload:
     name: clEnqueueWriteBuffer
     dur: 10
@@ -37,3 +32,9 @@
   :payload:
     name: clEnqueueWriteBuffer
     dur: 3
+- :name: lttng:traffic
+  :common_context:
+    hostname: aurora12.gov
+    backend: 2
+  :payload:
+    name: clEnqueueWriteBuffer

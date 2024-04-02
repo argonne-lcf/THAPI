@@ -1,0 +1,111 @@
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: ^vpid$
+      :field_class:
+        :type: integer_signed
+    - :name: ^vtid$
+      :field_class:
+        :type: integer_unsigned
+  :event_classes:
+  - :set_id: entries
+    :name: "_entry$"
+  - :set_id: exits
+    :register: false
+    :name: "_exit$"
+  - :set_id: exits_error_present
+    :domain: exits
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^errcode_ret_val$
+  - :set_id: exits_error_absent
+    :domain: exits - exits_error_present
+
+  # Memory traffic
+  - :set_id: traffic_entry
+    :domain: entries
+    :name: "clEnqueue"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^size$
+  - :set_id: enqueue_exit
+    :domain: exits
+    :name: "clEnqueue"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^errcode_ret_val$
+
+  # Device mapping
+  - :set_id: get_device_ids_exit
+    :domain: exits
+    :name: "clGetDeviceIDs"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^errcode_ret_val$
+      - :name: ^num_devices_val$
+      - :name: ^devices_vals$
+  - :set_id: create_sub_devices_entry
+    :domain: entries
+    :name: "clCreateSubDevices"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^in_device$
+  - :set_id: create_sub_devices_exit
+    :domain: exits
+    :name: "clCreateSubDevices"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^errcode_ret_val$
+      - :name: ^num_devices_ret_val$
+      - :name: ^out_devices_vals$
+
+  - :set_id: create_command_queue_entry
+    :domain: entries
+    :name: "clCreateCommandQueue"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^device$
+  - :set_id: create_command_queue_exit
+    :domain: exits
+    :name: "clCreateCommandQueue"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^command_queue$
+      - :name: ^errcode_ret_val$
+
+  # function name
+  - :set_id: kernel_info
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^kernel$
+      - :name: ^function_name$
+
+  - :set_id: launch_kernel_entry
+    :domain: entries
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^command_queue$
+      - :name: ^kernel$
+
+  - :set_id: launch_function_entry
+    :domain: entries - launch_kernel_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^command_queue$

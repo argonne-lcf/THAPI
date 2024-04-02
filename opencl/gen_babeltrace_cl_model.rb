@@ -62,8 +62,8 @@ def parse_field(field)
   when 'ctf_enum'
     d[:class] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
     enum_type = field['enum_type']
-    d[:mapping] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map { |f|
-      { label: f[:name], integer_range_set: f[:value] }
+    d[:mappings] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map { |f|
+      { label: f[:name], integer_range_set: [f[:value],f[:value]] }
     }
   end
   d
@@ -92,6 +92,47 @@ schema_event = OPENCL_MODEL['events'].map { |name, fields|
   { name: name, payload: payload_fields }
 }
 
+environment = [
+  {
+    name: 'hostname',
+    class: 'string',
+  }
+]
+
+packet_context = [
+  {
+    name: 'cpu_id',
+    class: 'unsigned',
+    cast_type: 'uint64_t',
+    class_properties: {
+      field_value_range: 32
+    }
+  }
+]
+
+common_context = [
+  {
+    name: 'vpid',
+    class: 'signed',
+    cast_type: 'int64_t',
+    class_properties: {
+      field_value_range: 64,
+    }
+  },
+  {
+    name: 'vtid',
+    class: 'unsigned',
+    cast_type: 'uint64_t',
+    class_properties: {
+      field_value_range: 64,
+    }
+  }
+]
+
 puts YAML.dump({
   name: 'thapi_opencl',
+  environment: environment,
+  clock_snapshot_value: true,
+  packet_context: packet_context,
+  common_context: common_context,
   event_classes: schema_event })
