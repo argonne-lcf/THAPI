@@ -72,7 +72,7 @@ BTX_ZE_GENERATED_SOURCE_TEST = \
 noinst_LTLIBRARIES = libcrtnn.la
 libcrtnn_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
 libcrtnn_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_ze_test/
-libcrtnn_la_CFLAGS = -fpic -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libcrtnn_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 $(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
 	$(METABABEL) -d btx_ze_model.yaml -t SOURCE  -o btx_source_ze_test -p zetest -c test  -i ze.h.include
@@ -351,7 +351,7 @@ TESTS = \
 TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze .libs/libcrtnn.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ./btx_source_ze_test .libs/libcrtnn.a
 
 check_DATA = \
 	test_wrapper.sh \
