@@ -61,22 +61,6 @@ btx_ze_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb ze_babel
 $(BTX_ZE_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_zematching_model.yaml btx_ze_model.yaml
 	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_ze -p zeinterval -c interval --matching $(srcdir)/btx_zematching_model.yaml -i ze.h.include
 
-BTX_ZE_GENERATED_SOURCE_TEST = \
-        btx_source_ze_test/metababel/metababel.h \
-        btx_source_ze_test/metababel/btx_component.h \
-        btx_source_ze_test/metababel/btx_component.c \
-        btx_source_ze_test/metababel/btx_downstream.h \
-        btx_source_ze_test/metababel/btx_downstream.c \
-        btx_source_ze_test/btx_main.c
-
-noinst_LTLIBRARIES = libcrtnn.la
-libcrtnn_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
-libcrtnn_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_ze_test/
-libcrtnn_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-
-$(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
-	$(METABABEL) -d btx_ze_model.yaml -t SOURCE  -o btx_source_ze_test -p zetest -c test  -i ze.h.include
-
 $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
@@ -180,7 +164,7 @@ CLEANFILES += tracer_ze.c
 bin_SCRIPTS = \
 	tracer_ze.sh
 
-noinst_LTLIBRARIES += libzetracepoints.la
+noinst_LTLIBRARIES = libzetracepoints.la
 
 nodist_libzetracepoints_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
@@ -339,6 +323,22 @@ TRACE_COMMON = \
 	tests/interval_profiling_interleave_process.thapi_text_pretty \
 	tests/interval_profiling_ignore.thapi_text_pretty
 
+BTX_ZE_GENERATED_SOURCE_TEST = \
+        btx_source_ze_test/metababel/metababel.h \
+        btx_source_ze_test/metababel/btx_component.h \
+        btx_source_ze_test/metababel/btx_component.c \
+        btx_source_ze_test/metababel/btx_downstream.h \
+        btx_source_ze_test/metababel/btx_downstream.c \
+        btx_source_ze_test/btx_main.c
+
+$(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
+	$(METABABEL) -d btx_ze_model.yaml -t SOURCE  -o btx_source_ze_test -p zetest -c test  -i ze.h.include
+
+noinst_LTLIBRARIES += libcrtnn.la
+libcrtnn_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
+libcrtnn_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_ze_test/
+libcrtnn_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
@@ -351,7 +351,7 @@ TESTS = \
 TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ./btx_source_ze_test .libs/libcrtnn.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ./btx_source_ze_test/ .libs/libcrtnn.a
 
 check_DATA = \
 	test_wrapper.sh \
