@@ -789,7 +789,7 @@ typedef struct {
     uint64_t copyActive;
 } copyEngineData;
 
-void intializeFrequency() {
+static void intializeFrequency() {
   ze_result_t res;
   _sampling_hFrequencies = (zes_freq_handle_t***) malloc(_sampling_driverCount * sizeof(zes_freq_handle_t**));
   _sampling_freqDomainCounts = (uint32_t**) malloc(_sampling_driverCount * sizeof(uint32_t));
@@ -818,7 +818,7 @@ void intializeFrequency() {
   _sampling_freq_initialized = 1;
 }
 
-void intializePower() {
+static void intializePower() {
   ze_result_t res;
   _sampling_hPowers = (zes_pwr_handle_t***) malloc(_sampling_driverCount * sizeof(zes_pwr_handle_t**));
   _sampling_powerDomainCounts = (uint32_t**) malloc(_sampling_driverCount * sizeof(uint32_t*));
@@ -847,7 +847,7 @@ void intializePower() {
   _sampling_pwr_initialized = 1;
 }
 
-void intializeEngines() {
+static void intializeEngines() {
   ze_result_t res;
   _sampling_engineProps = (zes_engine_properties_t***) malloc(_sampling_driverCount * sizeof(zes_engine_properties_t**));
   _sampling_engineHandles = (zes_engine_handle_t***) malloc(_sampling_driverCount * sizeof(zes_engine_handle_t**));
@@ -887,7 +887,7 @@ void intializeEngines() {
   _sampling_engines_initialized = 1;
 }
 
-int initializeHandles() {
+static int initializeHandles() {
   ze_result_t res;
   const char *e = getenv("ZES_ENABLE_SYSMAN");
   if (!(e && e[0] == '1'))  {
@@ -953,7 +953,7 @@ int initializeHandles() {
   return 0;
 }
 
-void readFrequency(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, uint32_t *frequency) {
+static void readFrequency(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, uint32_t *frequency) {
   if (!_sampling_freq_initialized) return;
   ze_result_t result;
   *frequency=0;
@@ -966,7 +966,7 @@ void readFrequency(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, u
   *frequency = freqState.actual;
 }
 
-void readEnergy(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_t *energy_uj) {
+static void readEnergy(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_t *energy_uj) {
   if (!_sampling_pwr_initialized) return;
   ze_result_t result;
   *ts_us = 0;
@@ -981,7 +981,7 @@ void readEnergy(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, uint
   *energy_uj = energyCounter.energy;
 }
 
-void readComputeE(uint32_t driverIdx, uint32_t deviceIdx, computeEngineData *computeData ){
+static void readComputeE(uint32_t driverIdx, uint32_t deviceIdx, computeEngineData *computeData ){
   if (!_sampling_engines_initialized) return;
   ze_result_t result;
   for (uint32_t subDevIdx = 0; subDevIdx < _sampling_subDeviceCount[driverIdx][deviceIdx]; subDevIdx++) {
@@ -1007,7 +1007,7 @@ void readComputeE(uint32_t driverIdx, uint32_t deviceIdx, computeEngineData *com
   }
 }
 
-void readCopyE(uint32_t driverIdx, uint32_t deviceIdx, copyEngineData *copyData ){
+static void readCopyE(uint32_t driverIdx, uint32_t deviceIdx, copyEngineData *copyData ){
   if (!_sampling_engines_initialized) return;
   ze_result_t result;
   for (uint32_t subDevIdx = 0; subDevIdx < _sampling_subDeviceCount[driverIdx][deviceIdx]; subDevIdx++) {
