@@ -176,8 +176,7 @@ static void create_command_queue_exit_callback(void *btx_handle, void *usr_data,
                                                cl_int errcode_ret_val) {
   auto state = static_cast<data_t *>(usr_data);
   auto entry_device = state->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
-  const auto root_device = state->device_to_root_device[
-                                              hp_device_t(hostname, vpid, entry_device)];
+  const auto root_device = state->device_to_root_device[{hostname, vpid, entry_device}];
   hp_command_queue_t cq_key{hostname, vpid, command_queue};
   if (root_device != 0) {
     state->command_queue_to_device[cq_key] = dsd_t(root_device, entry_device) ;
@@ -226,7 +225,7 @@ static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
 
   const hp_event_t hp_event{hostname, vpid, event};
   const auto [function_name, launch_ts] =
-    state->profiled_function_name_and_ts[hpt_t(hostname, vpid, vtid)];
+    state->profiled_function_name_and_ts[{hostname, vpid, vtid}];
 
   if (!state->event_to_function_name_and_ts.count(hp_event)){
       state->event_to_function_name_and_ts[hp_event] =
@@ -270,10 +269,10 @@ profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
     const auto [device, subdevice] =
       state->function_name_to_dsd[{hostname, vpid, vtid, function_name}];
 
-    const hp_device_t hp_device{hostname, vpid, device};
     // This need to be commented due to intel bugs where clGetEventProfilingInfo return
     // host time
     //const uint64_t start_event = state->device_ts_to_llng_ts.count(hp_device) ? state->device_ts_to_llng_ts[hp_device] + start:  ts + (start - queued);
+    // const hp_device_t hp_device{hostname, vpid, device};
     const uint64_t start_event_ts = launch_ts + (start - queued);
 
     const char *metadata = "";
