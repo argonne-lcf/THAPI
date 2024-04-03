@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file ze_api.h
- * @version v1.6-r1.6.10
+ * @version v1.9-r1.9.1
  *
  */
 #ifndef _ZE_API_H
@@ -199,14 +199,20 @@ typedef enum _ze_result_t
     ZE_RESULT_ERROR_MODULE_LINK_FAILURE = 0x70000005,                       ///< [Core] error occurred when linking modules, see build log for details
     ZE_RESULT_ERROR_DEVICE_REQUIRES_RESET = 0x70000006,                     ///< [Core] device requires a reset
     ZE_RESULT_ERROR_DEVICE_IN_LOW_POWER_STATE = 0x70000007,                 ///< [Core] device currently in low power state
-    ZE_RESULT_EXP_ERROR_DEVICE_IS_NOT_VERTEX = 0x7ff00001,                  ///< [Core, Expoerimental] device is not represented by a fabric vertex
+    ZE_RESULT_EXP_ERROR_DEVICE_IS_NOT_VERTEX = 0x7ff00001,                  ///< [Core, Experimental] device is not represented by a fabric vertex
     ZE_RESULT_EXP_ERROR_VERTEX_IS_NOT_DEVICE = 0x7ff00002,                  ///< [Core, Experimental] fabric vertex does not represent a device
-    ZE_RESULT_EXP_ERROR_REMOTE_DEVICE = 0x7ff00003,                         ///< [Core, Expoerimental] fabric vertex represents a remote device or
+    ZE_RESULT_EXP_ERROR_REMOTE_DEVICE = 0x7ff00003,                         ///< [Core, Experimental] fabric vertex represents a remote device or
                                                                             ///< subdevice
+    ZE_RESULT_EXP_ERROR_OPERANDS_INCOMPATIBLE = 0x7ff00004,                 ///< [Core, Experimental] operands of comparison are not compatible
+    ZE_RESULT_EXP_RTAS_BUILD_RETRY = 0x7ff00005,                            ///< [Core, Experimental] ray tracing acceleration structure build
+                                                                            ///< operation failed due to insufficient resources, retry with a larger
+                                                                            ///< acceleration structure buffer allocation
+    ZE_RESULT_EXP_RTAS_BUILD_DEFERRED = 0x7ff00006,                         ///< [Core, Experimental] ray tracing acceleration structure build
+                                                                            ///< operation deferred to parallel operation join
     ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS = 0x70010000,                  ///< [Sysman] access denied due to permission level
     ZE_RESULT_ERROR_NOT_AVAILABLE = 0x70010001,                             ///< [Sysman] resource already in use and simultaneous access not allowed
                                                                             ///< or resource was removed
-    ZE_RESULT_ERROR_DEPENDENCY_UNAVAILABLE = 0x70020000,                    ///< [Tools] external required dependency is unavailable or missing
+    ZE_RESULT_ERROR_DEPENDENCY_UNAVAILABLE = 0x70020000,                    ///< [Common] external required dependency is unavailable or missing
     ZE_RESULT_WARNING_DROPPED_DATA = 0x70020001,                            ///< [Tools] data may have been dropped
     ZE_RESULT_ERROR_UNINITIALIZED = 0x78000001,                             ///< [Validation] driver is not initialized
     ZE_RESULT_ERROR_UNSUPPORTED_VERSION = 0x78000002,                       ///< [Validation] generic error code for unsupported versions
@@ -304,6 +310,7 @@ typedef enum _ze_structure_type_t
     ZE_STRUCTURE_TYPE_IMAGE_VIEW_PLANAR_EXT_DESC = 0x10010,                 ///< ::ze_image_view_planar_ext_desc_t
     ZE_STRUCTURE_TYPE_EVENT_QUERY_KERNEL_TIMESTAMPS_EXT_PROPERTIES = 0x10011,   ///< ::ze_event_query_kernel_timestamps_ext_properties_t
     ZE_STRUCTURE_TYPE_EVENT_QUERY_KERNEL_TIMESTAMPS_RESULTS_EXT_PROPERTIES = 0x10012,   ///< ::ze_event_query_kernel_timestamps_results_ext_properties_t
+    ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_EXT_PROPERTIES = 0x10013,       ///< ::ze_kernel_max_group_size_ext_properties_t
     ZE_STRUCTURE_TYPE_RELAXED_ALLOCATION_LIMITS_EXP_DESC = 0x00020001,      ///< ::ze_relaxed_allocation_limits_exp_desc_t
     ZE_STRUCTURE_TYPE_MODULE_PROGRAM_EXP_DESC = 0x00020002,                 ///< ::ze_module_program_exp_desc_t
     ZE_STRUCTURE_TYPE_SCHEDULING_HINT_EXP_PROPERTIES = 0x00020003,          ///< ::ze_scheduling_hint_exp_properties_t
@@ -317,6 +324,24 @@ typedef enum _ze_structure_type_t
     ZE_STRUCTURE_TYPE_FABRIC_VERTEX_EXP_PROPERTIES = 0x0002000B,            ///< ::ze_fabric_vertex_exp_properties_t
     ZE_STRUCTURE_TYPE_FABRIC_EDGE_EXP_PROPERTIES = 0x0002000C,              ///< ::ze_fabric_edge_exp_properties_t
     ZE_STRUCTURE_TYPE_MEMORY_SUB_ALLOCATIONS_EXP_PROPERTIES = 0x0002000D,   ///< ::ze_memory_sub_allocations_exp_properties_t
+    ZE_STRUCTURE_TYPE_RTAS_BUILDER_EXP_DESC = 0x0002000E,                   ///< ::ze_rtas_builder_exp_desc_t
+    ZE_STRUCTURE_TYPE_RTAS_BUILDER_BUILD_OP_EXP_DESC = 0x0002000F,          ///< ::ze_rtas_builder_build_op_exp_desc_t
+    ZE_STRUCTURE_TYPE_RTAS_BUILDER_EXP_PROPERTIES = 0x00020010,             ///< ::ze_rtas_builder_exp_properties_t
+    ZE_STRUCTURE_TYPE_RTAS_PARALLEL_OPERATION_EXP_PROPERTIES = 0x00020011,  ///< ::ze_rtas_parallel_operation_exp_properties_t
+    ZE_STRUCTURE_TYPE_RTAS_DEVICE_EXP_PROPERTIES = 0x00020012,              ///< ::ze_rtas_device_exp_properties_t
+    ZE_STRUCTURE_TYPE_RTAS_GEOMETRY_AABBS_EXP_CB_PARAMS = 0x00020013,       ///< ::ze_rtas_geometry_aabbs_exp_cb_params_t
+    ZE_STRUCTURE_TYPE_COUNTER_BASED_EVENT_POOL_EXP_DESC = 0x00020014,       ///< ::ze_event_pool_counter_based_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_COMMAND_LIST_EXP_PROPERTIES = 0x00020015,     ///< ::ze_mutable_command_list_exp_properties_t
+    ZE_STRUCTURE_TYPE_MUTABLE_COMMAND_LIST_EXP_DESC = 0x00020016,           ///< ::ze_mutable_command_list_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_COMMAND_ID_EXP_DESC = 0x00020017,             ///< ::ze_mutable_command_id_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_COMMANDS_EXP_DESC = 0x00020018,               ///< ::ze_mutable_commands_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_KERNEL_ARGUMENT_EXP_DESC = 0x00020019,        ///< ::ze_mutable_kernel_argument_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_GROUP_COUNT_EXP_DESC = 0x0002001A,            ///< ::ze_mutable_group_count_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_GROUP_SIZE_EXP_DESC = 0x0002001B,             ///< ::ze_mutable_group_size_exp_desc_t
+    ZE_STRUCTURE_TYPE_MUTABLE_GLOBAL_OFFSET_EXP_DESC = 0x0002001C,          ///< ::ze_mutable_global_offset_exp_desc_t
+    ZE_STRUCTURE_TYPE_PITCHED_ALLOC_DEVICE_EXP_PROPERTIES = 0x0002001D,     ///< ::ze_device_pitched_alloc_exp_properties_t
+    ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC = 0x0002001E,                 ///< ::ze_image_bindless_exp_desc_t
+    ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC = 0x0002001F,                  ///< ::ze_image_pitched_exp_desc_t
     ZE_STRUCTURE_TYPE_FORCE_UINT32 = 0x7fffffff
 
 } ze_structure_type_t;
@@ -378,6 +403,16 @@ typedef struct _ze_uuid_t
 } ze_uuid_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Base for all callback function parameter types
+typedef struct _ze_base_cb_params_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+
+} ze_base_cb_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Base for all properties types
 typedef struct _ze_base_properties_t
 {
@@ -408,6 +443,10 @@ typedef struct _ze_base_desc_t
 /// @brief Forces all shared allocations into device memory
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Defines the device hierarchy model exposed by Level Zero driver
+///        implementation
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_ipc_mem_handle_t
 typedef struct _ze_ipc_mem_handle_t ze_ipc_mem_handle_t;
 
@@ -418,6 +457,10 @@ typedef struct _ze_ipc_event_pool_handle_t ze_ipc_event_pool_handle_t;
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_uuid_t
 typedef struct _ze_uuid_t ze_uuid_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_base_cb_params_t
+typedef struct _ze_base_cb_params_t ze_base_cb_params_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare ze_base_properties_t
@@ -771,6 +814,126 @@ typedef struct _ze_synchronized_timestamp_result_ext_t ze_synchronized_timestamp
 /// @brief Forward-declare ze_event_query_kernel_timestamps_results_ext_properties_t
 typedef struct _ze_event_query_kernel_timestamps_results_ext_properties_t ze_event_query_kernel_timestamps_results_ext_properties_t;
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_exp_desc_t
+typedef struct _ze_rtas_builder_exp_desc_t ze_rtas_builder_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_exp_properties_t
+typedef struct _ze_rtas_builder_exp_properties_t ze_rtas_builder_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_parallel_operation_exp_properties_t
+typedef struct _ze_rtas_parallel_operation_exp_properties_t ze_rtas_parallel_operation_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_device_exp_properties_t
+typedef struct _ze_rtas_device_exp_properties_t ze_rtas_device_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_float3_exp_t
+typedef struct _ze_rtas_float3_exp_t ze_rtas_float3_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_transform_float3x4_column_major_exp_t
+typedef struct _ze_rtas_transform_float3x4_column_major_exp_t ze_rtas_transform_float3x4_column_major_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_transform_float3x4_aligned_column_major_exp_t
+typedef struct _ze_rtas_transform_float3x4_aligned_column_major_exp_t ze_rtas_transform_float3x4_aligned_column_major_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_transform_float3x4_row_major_exp_t
+typedef struct _ze_rtas_transform_float3x4_row_major_exp_t ze_rtas_transform_float3x4_row_major_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_aabb_exp_t
+typedef struct _ze_rtas_aabb_exp_t ze_rtas_aabb_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_triangle_indices_uint32_exp_t
+typedef struct _ze_rtas_triangle_indices_uint32_exp_t ze_rtas_triangle_indices_uint32_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_quad_indices_uint32_exp_t
+typedef struct _ze_rtas_quad_indices_uint32_exp_t ze_rtas_quad_indices_uint32_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_geometry_info_exp_t
+typedef struct _ze_rtas_builder_geometry_info_exp_t ze_rtas_builder_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_triangles_geometry_info_exp_t
+typedef struct _ze_rtas_builder_triangles_geometry_info_exp_t ze_rtas_builder_triangles_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_quads_geometry_info_exp_t
+typedef struct _ze_rtas_builder_quads_geometry_info_exp_t ze_rtas_builder_quads_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_geometry_aabbs_exp_cb_params_t
+typedef struct _ze_rtas_geometry_aabbs_exp_cb_params_t ze_rtas_geometry_aabbs_exp_cb_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_procedural_geometry_info_exp_t
+typedef struct _ze_rtas_builder_procedural_geometry_info_exp_t ze_rtas_builder_procedural_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_instance_geometry_info_exp_t
+typedef struct _ze_rtas_builder_instance_geometry_info_exp_t ze_rtas_builder_instance_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_rtas_builder_build_op_exp_desc_t
+typedef struct _ze_rtas_builder_build_op_exp_desc_t ze_rtas_builder_build_op_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_event_pool_counter_based_exp_desc_t
+typedef struct _ze_event_pool_counter_based_exp_desc_t ze_event_pool_counter_based_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_image_bindless_exp_desc_t
+typedef struct _ze_image_bindless_exp_desc_t ze_image_bindless_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_image_pitched_exp_desc_t
+typedef struct _ze_image_pitched_exp_desc_t ze_image_pitched_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_device_pitched_alloc_exp_properties_t
+typedef struct _ze_device_pitched_alloc_exp_properties_t ze_device_pitched_alloc_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_command_id_exp_desc_t
+typedef struct _ze_mutable_command_id_exp_desc_t ze_mutable_command_id_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_command_list_exp_properties_t
+typedef struct _ze_mutable_command_list_exp_properties_t ze_mutable_command_list_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_command_list_exp_desc_t
+typedef struct _ze_mutable_command_list_exp_desc_t ze_mutable_command_list_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_commands_exp_desc_t
+typedef struct _ze_mutable_commands_exp_desc_t ze_mutable_commands_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_kernel_argument_exp_desc_t
+typedef struct _ze_mutable_kernel_argument_exp_desc_t ze_mutable_kernel_argument_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_group_count_exp_desc_t
+typedef struct _ze_mutable_group_count_exp_desc_t ze_mutable_group_count_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_group_size_exp_desc_t
+typedef struct _ze_mutable_group_size_exp_desc_t ze_mutable_group_size_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare ze_mutable_global_offset_exp_desc_t
+typedef struct _ze_mutable_global_offset_exp_desc_t ze_mutable_global_offset_exp_desc_t;
+
 
 #if !defined(__GNUC__)
 #pragma endregion
@@ -872,7 +1035,10 @@ typedef enum _ze_api_version_t
     ZE_API_VERSION_1_4 = ZE_MAKE_VERSION( 1, 4 ),                           ///< version 1.4
     ZE_API_VERSION_1_5 = ZE_MAKE_VERSION( 1, 5 ),                           ///< version 1.5
     ZE_API_VERSION_1_6 = ZE_MAKE_VERSION( 1, 6 ),                           ///< version 1.6
-    ZE_API_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 6 ),                       ///< latest known version
+    ZE_API_VERSION_1_7 = ZE_MAKE_VERSION( 1, 7 ),                           ///< version 1.7
+    ZE_API_VERSION_1_8 = ZE_MAKE_VERSION( 1, 8 ),                           ///< version 1.8
+    ZE_API_VERSION_1_9 = ZE_MAKE_VERSION( 1, 9 ),                           ///< version 1.9
+    ZE_API_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 9 ),                       ///< latest known version
     ZE_API_VERSION_FORCE_UINT32 = 0x7fffffff
 
 } ze_api_version_t;
@@ -1152,9 +1318,42 @@ zeDeviceGet(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves the root-device of a device handle
+/// 
+/// @details
+///     - When the device handle passed does not belong to any root-device,
+///       nullptr is returned.
+///     - Multiple calls to this function will return the same device handle.
+///     - The root-device handle returned by this function does not have access
+///       automatically to the resources
+///       created with the associated sub-device, unless those resources have
+///       been created with a context
+///       explicitly containing both handles.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phRootDevice`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeDeviceGetRootDevice(
+    ze_device_handle_t hDevice,                                             ///< [in] handle of the device object
+    ze_device_handle_t* phRootDevice                                        ///< [in,out] parent root device.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Retrieves a sub-device from a device
 /// 
 /// @details
+///     - When the device handle passed does not contain any sub-device, a
+///       pCount of 0 is returned.
 ///     - Multiple calls to this function will return identical device handles,
 ///       in the same order.
 ///     - The number of handles returned from this function is affected by the
@@ -2137,6 +2336,15 @@ typedef enum _ze_command_queue_flag_t
                                                                             ///< work across multiple engines.
                                                                             ///< this flag should be used when applications want full control over
                                                                             ///< multi-engine submission and scheduling.
+    ZE_COMMAND_QUEUE_FLAG_IN_ORDER = ZE_BIT(1),                             ///< To be used only when creating immediate command lists. Commands
+                                                                            ///< appended to the immediate command
+                                                                            ///< list are executed in-order, with driver implementation enforcing
+                                                                            ///< dependencies between them.
+                                                                            ///< Application is not required to have the signal event of a given
+                                                                            ///< command being the wait event of
+                                                                            ///< the next to define an in-order list, and application is allowed to
+                                                                            ///< pass signal and wait events
+                                                                            ///< to each appended command to implement more complex dependency graphs.
     ZE_COMMAND_QUEUE_FLAG_FORCE_UINT32 = 0x7fffffff
 
 } ze_command_queue_flag_t;
@@ -2212,7 +2420,7 @@ typedef struct _ze_command_queue_desc_t
 ///         + `nullptr == desc`
 ///         + `nullptr == phCommandQueue`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
-///         + `0x1 < desc->flags`
+///         + `0x3 < desc->flags`
 ///         + `::ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS < desc->mode`
 ///         + `::ZE_COMMAND_QUEUE_PRIORITY_PRIORITY_HIGH < desc->priority`
 ZE_APIEXPORT ze_result_t ZE_APICALL
@@ -2272,6 +2480,8 @@ zeCommandQueueDestroy(
 ///     - The application must use a fence created using the same command queue.
 ///     - The application must ensure the command queue, command list and fence
 ///       were created on the same context.
+///     - The application must ensure the command lists being executed are not
+///       immediate command lists.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
 /// 
@@ -2331,6 +2541,52 @@ zeCommandQueueSynchronize(
                                                                             ///< value allowed by the accuracy of those dependencies.
     );
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the command queue group ordinal.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandQueue`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pOrdinal`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandQueueGetOrdinal(
+    ze_command_queue_handle_t hCommandQueue,                                ///< [in] handle of the command queue
+    uint32_t* pOrdinal                                                      ///< [out] command queue group ordinal
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the command queue index within the group.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandQueue`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pIndex`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandQueueGetIndex(
+    ze_command_queue_handle_t hCommandQueue,                                ///< [in] handle of the command queue
+    uint32_t* pIndex                                                        ///< [out] command queue index within the group
+    );
+
 #if !defined(__GNUC__)
 #pragma endregion
 #endif
@@ -2357,6 +2613,17 @@ typedef enum _ze_command_list_flag_t
                                                                             ///< work across multiple engines.
                                                                             ///< this flag should be used when applications want full control over
                                                                             ///< multi-engine submission and scheduling.
+    ZE_COMMAND_LIST_FLAG_IN_ORDER = ZE_BIT(3),                              ///< commands appended to this command list are executed in-order, with
+                                                                            ///< driver implementation
+                                                                            ///< enforcing dependencies between them. Application is not required to
+                                                                            ///< have the signal event
+                                                                            ///< of a given command being the wait event of the next to define an
+                                                                            ///< in-order list, and
+                                                                            ///< application is allowed to pass signal and wait events to each appended
+                                                                            ///< command to implement
+                                                                            ///< more complex dependency graphs. Cannot be combined with ::ZE_COMMAND_LIST_FLAG_RELAXED_ORDERING.
+    ZE_COMMAND_LIST_FLAG_EXP_CLONEABLE = ZE_BIT(4),                         ///< this command list may be cloned using ::zeCommandListCreateCloneExp
+                                                                            ///< after ::zeCommandListClose.
     ZE_COMMAND_LIST_FLAG_FORCE_UINT32 = 0x7fffffff
 
 } ze_command_list_flag_t;
@@ -2402,7 +2669,7 @@ typedef struct _ze_command_list_desc_t
 ///         + `nullptr == desc`
 ///         + `nullptr == phCommandList`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
-///         + `0x7 < desc->flags`
+///         + `0x1f < desc->flags`
 ZE_APIEXPORT ze_result_t ZE_APICALL
 zeCommandListCreate(
     ze_context_handle_t hContext,                                           ///< [in] handle of the context object
@@ -2418,6 +2685,8 @@ zeCommandListCreate(
 ///     - An immediate command list is used for low-latency submission of
 ///       commands.
 ///     - An immediate command list creates an implicit command queue.
+///     - Immediate command lists must not be passed to
+///       ::zeCommandQueueExecuteCommandLists.
 ///     - Commands appended into an immediate command list may execute
 ///       synchronously, by blocking until the command is complete.
 ///     - The command list is created in the 'open' state and never needs to be
@@ -2440,7 +2709,7 @@ zeCommandListCreate(
 ///         + `nullptr == altdesc`
 ///         + `nullptr == phCommandList`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
-///         + `0x1 < altdesc->flags`
+///         + `0x3 < altdesc->flags`
 ///         + `::ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS < altdesc->mode`
 ///         + `::ZE_COMMAND_QUEUE_PRIORITY_PRIORITY_HIGH < altdesc->priority`
 ZE_APIEXPORT ze_result_t ZE_APICALL
@@ -2602,6 +2871,129 @@ zeCommandListHostSynchronize(
                                                                             ///< device is lost.
                                                                             ///< Due to external dependencies, timeout may be rounded to the closest
                                                                             ///< value allowed by the accuracy of those dependencies.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the handle of the device on which the command list was created.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phDevice`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListGetDeviceHandle(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    ze_device_handle_t* phDevice                                            ///< [out] handle of the device on which the command list was created
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the handle of the context on which the command list was created.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phContext`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListGetContextHandle(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    ze_context_handle_t* phContext                                          ///< [out] handle of the context on which the command list was created
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the command queue group ordinal to which the command list is
+///        submitted.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pOrdinal`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListGetOrdinal(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    uint32_t* pOrdinal                                                      ///< [out] command queue group ordinal to which command list is submitted
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the command queue index within the group to which the immediate
+///        command list is submitted.
+/// 
+/// @details
+///     - The application must call this function only with command lists
+///       created with ::zeCommandListCreateImmediate.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandListImmediate`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pIndex`
+///     - ::ZE_RESULT_ERROR_INVALID_ARGUMENT
+///         + handle does not correspond to an immediate command list
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListImmediateGetIndex(
+    ze_command_list_handle_t hCommandListImmediate,                         ///< [in] handle of the immediate command list
+    uint32_t* pIndex                                                        ///< [out] command queue index within the group to which the immediate
+                                                                            ///< command list is submitted
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Query whether a command list is an immediate command list.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pIsImmediate`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListIsImmediate(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    ze_bool_t* pIsImmediate                                                 ///< [out] Boolean indicating whether the command list is an immediate
+                                                                            ///< command list (true) or not (false)
     );
 
 #if !defined(__GNUC__)
@@ -3212,13 +3604,16 @@ zeCommandListAppendMemoryPrefetch(
 typedef enum _ze_memory_advice_t
 {
     ZE_MEMORY_ADVICE_SET_READ_MOSTLY = 0,                                   ///< hint that memory will be read from frequently and written to rarely
-    ZE_MEMORY_ADVICE_CLEAR_READ_MOSTLY = 1,                                 ///< removes the affect of ::ZE_MEMORY_ADVICE_SET_READ_MOSTLY
+    ZE_MEMORY_ADVICE_CLEAR_READ_MOSTLY = 1,                                 ///< removes the effect of ::ZE_MEMORY_ADVICE_SET_READ_MOSTLY
     ZE_MEMORY_ADVICE_SET_PREFERRED_LOCATION = 2,                            ///< hint that the preferred memory location is the specified device
-    ZE_MEMORY_ADVICE_CLEAR_PREFERRED_LOCATION = 3,                          ///< removes the affect of ::ZE_MEMORY_ADVICE_SET_PREFERRED_LOCATION
+    ZE_MEMORY_ADVICE_CLEAR_PREFERRED_LOCATION = 3,                          ///< removes the effect of ::ZE_MEMORY_ADVICE_SET_PREFERRED_LOCATION
     ZE_MEMORY_ADVICE_SET_NON_ATOMIC_MOSTLY = 4,                             ///< hints that memory will mostly be accessed non-atomically
-    ZE_MEMORY_ADVICE_CLEAR_NON_ATOMIC_MOSTLY = 5,                           ///< removes the affect of ::ZE_MEMORY_ADVICE_SET_NON_ATOMIC_MOSTLY
+    ZE_MEMORY_ADVICE_CLEAR_NON_ATOMIC_MOSTLY = 5,                           ///< removes the effect of ::ZE_MEMORY_ADVICE_SET_NON_ATOMIC_MOSTLY
     ZE_MEMORY_ADVICE_BIAS_CACHED = 6,                                       ///< hints that memory should be cached
     ZE_MEMORY_ADVICE_BIAS_UNCACHED = 7,                                     ///< hints that memory should be not be cached
+    ZE_MEMORY_ADVICE_SET_SYSTEM_MEMORY_PREFERRED_LOCATION = 8,              ///< hint that the preferred memory location is host memory
+    ZE_MEMORY_ADVICE_CLEAR_SYSTEM_MEMORY_PREFERRED_LOCATION = 9,            ///< removes the effect of
+                                                                            ///< ::ZE_MEMORY_ADVICE_SET_SYSTEM_MEMORY_PREFERRED_LOCATION
     ZE_MEMORY_ADVICE_FORCE_UINT32 = 0x7fffffff
 
 } ze_memory_advice_t;
@@ -3259,7 +3654,7 @@ typedef enum _ze_memory_advice_t
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
 ///         + `nullptr == ptr`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
-///         + `::ZE_MEMORY_ADVICE_BIAS_UNCACHED < advice`
+///         + `::ZE_MEMORY_ADVICE_CLEAR_SYSTEM_MEMORY_PREFERRED_LOCATION < advice`
 ZE_APIEXPORT ze_result_t ZE_APICALL
 zeCommandListAppendMemAdvise(
     ze_command_list_handle_t hCommandList,                                  ///< [in] handle of command list
@@ -3543,6 +3938,18 @@ zeEventPoolPutIpcHandle(
 ///       unique event pool handles.
 ///     - The event handle in this process should not be freed with
 ///       ::zeEventPoolDestroy, but rather with ::zeEventPoolCloseIpcHandle.
+///     - If the original event pool has been created for a device containing a
+///       number of sub-devices, then the event pool
+///       returned by this call may be used on a device containing the same
+///       number of sub-devices, or on any of
+///       those sub-devices.
+///     - However, if the original event pool has been created for a sub-device,
+///       then the event pool returned by this call
+///       cannot be used on a device containing any number of sub-devices, and
+///       must be used only in a sub-device. This ensures
+///       functional correctness for any implementation or optimizations the
+///       underlying Level Zero driver may do on
+///       event pools and events.
 ///     - The application may call this function from simultaneous threads.
 /// 
 /// @returns
@@ -3910,6 +4317,126 @@ zeCommandListAppendQueryKernelTimestamps(
                                                                             ///< must be 0 if `nullptr == phWaitEvents`
     ze_event_handle_t* phWaitEvents                                         ///< [in][optional][range(0, numWaitEvents)] handle of the events to wait
                                                                             ///< on before executing query
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the handle of the event pool for the event.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hEvent`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phEventPool`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeEventGetEventPool(
+    ze_event_handle_t hEvent,                                               ///< [in] handle of the event
+    ze_event_pool_handle_t* phEventPool                                     ///< [out] handle of the event pool for the event
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the signal event scope.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hEvent`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pSignalScope`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeEventGetSignalScope(
+    ze_event_handle_t hEvent,                                               ///< [in] handle of the event
+    ze_event_scope_flags_t* pSignalScope                                    ///< [out] signal event scope. This is the scope of relevant cache
+                                                                            ///< hierarchies that are flushed on a signal action before the event is
+                                                                            ///< triggered. May be 0 or a valid combination of ::ze_event_scope_flag_t.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the wait event scope.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hEvent`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pWaitScope`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeEventGetWaitScope(
+    ze_event_handle_t hEvent,                                               ///< [in] handle of the event
+    ze_event_scope_flags_t* pWaitScope                                      ///< [out] wait event scope. This is the scope of relevant cache
+                                                                            ///< hierarchies invalidated on a wait action after the event is complete.
+                                                                            ///< May be 0 or a valid combination of ::ze_event_scope_flag_t.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the handle of the context on which the event pool was created.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hEventPool`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phContext`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeEventPoolGetContextHandle(
+    ze_event_pool_handle_t hEventPool,                                      ///< [in] handle of the event pool
+    ze_context_handle_t* phContext                                          ///< [out] handle of the context on which the event pool was created
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the creation flags used to create the event pool.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hEventPool`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pFlags`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeEventPoolGetFlags(
+    ze_event_pool_handle_t hEventPool,                                      ///< [in] handle of the event pool
+    ze_event_pool_flags_t* pFlags                                           ///< [out] creation flags used to create the event pool; may be 0 or a
+                                                                            ///< valid combination of ::ze_event_pool_flag_t
     );
 
 #if !defined(__GNUC__)
@@ -4981,6 +5508,105 @@ typedef struct _ze_external_memory_export_win32_handle_t
     void* handle;                                                           ///< [out] the exported Win32 handle representing the allocation.
 
 } ze_external_memory_export_win32_handle_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief atomic access attribute flags
+typedef uint32_t ze_memory_atomic_attr_exp_flags_t;
+typedef enum _ze_memory_atomic_attr_exp_flag_t
+{
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_NO_ATOMICS = ZE_BIT(0),                  ///< Atomics on the pointer are not allowed
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_NO_HOST_ATOMICS = ZE_BIT(1),             ///< Host atomics on the pointer are not allowed
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_HOST_ATOMICS = ZE_BIT(2),                ///< Host atomics on the pointer are allowed. Requires
+                                                                            ///< ::ZE_MEMORY_ACCESS_CAP_FLAG_ATOMIC returned by
+                                                                            ///< ::zeDeviceGetMemoryAccessProperties.
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_NO_DEVICE_ATOMICS = ZE_BIT(3),           ///< Device atomics on the pointer are not allowed
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_DEVICE_ATOMICS = ZE_BIT(4),              ///< Device atomics on the pointer are allowed. Requires
+                                                                            ///< ::ZE_MEMORY_ACCESS_CAP_FLAG_ATOMIC returned by
+                                                                            ///< ::zeDeviceGetMemoryAccessProperties.
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_NO_SYSTEM_ATOMICS = ZE_BIT(5),           ///< Concurrent atomics on the pointer from both host and device are not
+                                                                            ///< allowed
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_SYSTEM_ATOMICS = ZE_BIT(6),              ///< Concurrent atomics on the pointer from both host and device are
+                                                                            ///< allowed. Requires ::ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT_ATOMIC
+                                                                            ///< returned by ::zeDeviceGetMemoryAccessProperties.
+    ZE_MEMORY_ATOMIC_ATTR_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_memory_atomic_attr_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Sets atomic access attributes for a shared allocation
+/// 
+/// @details
+///     - If the shared-allocation is owned by multiple devices (i.e. nullptr
+///       was passed to ::zeMemAllocShared when creating it), then hDevice may be
+///       passed to set the attributes in that specific device. If nullptr is
+///       passed in hDevice, then the atomic attributes are set in all devices
+///       associated with the allocation.
+///     - If the atomic access attribute select is not supported by the driver,
+///       ::ZE_RESULT_INVALID_ARGUMENT is returned.
+///     - The atomic access attribute may be only supported at a device-specific
+///       granularity, such as at a page boundary. In this case, the memory range
+///       may be expanded such that the start and end of the range satisfy granularity
+///       requirements.
+///     - When calling this function multiple times with different flags, only the
+///       attributes from last call are honored.
+///     - The application must not call this function for shared-allocations currently
+///       being used by the device.
+///     - The application must **not** call this function from simultaneous threads
+///       with the same pointer.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hContext`
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == ptr`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `0x7f < attr`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeMemSetAtomicAccessAttributeExp(
+    ze_context_handle_t hContext,                                           ///< [in] handle of context
+    ze_device_handle_t hDevice,                                             ///< [in] device associated with the memory advice
+    const void* ptr,                                                        ///< [in] Pointer to the start of the memory range
+    size_t size,                                                            ///< [in] Size in bytes of the memory range
+    ze_memory_atomic_attr_exp_flags_t attr                                  ///< [in] Atomic access attributes to set for the specified range.
+                                                                            ///< Must be 0 (default) or a valid combination of ::ze_memory_atomic_attr_exp_flag_t.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves the atomic access attributes previously set for a shared
+///        allocation
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads
+///       with the same pointer.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hContext`
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == ptr`
+///         + `nullptr == pAttr`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeMemGetAtomicAccessAttributeExp(
+    ze_context_handle_t hContext,                                           ///< [in] handle of context
+    ze_device_handle_t hDevice,                                             ///< [in] device associated with the memory advice
+    const void* ptr,                                                        ///< [in] Pointer to the start of the memory range
+    size_t size,                                                            ///< [in] Size in bytes of the memory range
+    ze_memory_atomic_attr_exp_flags_t* pAttr                                ///< [out] Atomic access attributes for the specified range
+    );
 
 #if !defined(__GNUC__)
 #pragma endregion
@@ -6187,6 +6813,8 @@ typedef struct _ze_raytracing_mem_alloc_ext_desc_t
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
 ///         + `nullptr == ptr`
+///     - ::ZE_RESULT_ERROR_INVALID_ARGUMENT
+///         + ptr is not recognized by the implementation
 ZE_APIEXPORT ze_result_t ZE_APICALL
 zeContextMakeMemoryResident(
     ze_context_handle_t hContext,                                           ///< [in] handle of context object
@@ -6917,9 +7545,15 @@ typedef enum _ze_cache_reservation_ext_version_t
 /// @brief Cache Reservation Region
 typedef enum _ze_cache_ext_region_t
 {
-    ZE_CACHE_EXT_REGION_ZE_CACHE_REGION_DEFAULT = 0,                        ///< utilize driver default scheme
-    ZE_CACHE_EXT_REGION_ZE_CACHE_RESERVE_REGION = 1,                        ///< utilize reserved region
-    ZE_CACHE_EXT_REGION_ZE_CACHE_NON_RESERVED_REGION = 2,                   ///< utilize non-reserverd region
+    ZE_CACHE_EXT_REGION_ZE_CACHE_REGION_DEFAULT = 0,                        ///< [DEPRECATED] utilize driver default scheme. Use
+                                                                            ///< ::ZE_CACHE_EXT_REGION_DEFAULT.
+    ZE_CACHE_EXT_REGION_ZE_CACHE_RESERVE_REGION = 1,                        ///< [DEPRECATED] utilize reserved region. Use
+                                                                            ///< ::ZE_CACHE_EXT_REGION_RESERVED.
+    ZE_CACHE_EXT_REGION_ZE_CACHE_NON_RESERVED_REGION = 2,                   ///< [DEPRECATED] utilize non-reserverd region. Use
+                                                                            ///< ::ZE_CACHE_EXT_REGION_NON_RESERVED.
+    ZE_CACHE_EXT_REGION_DEFAULT = 0,                                        ///< utilize driver default scheme
+    ZE_CACHE_EXT_REGION_RESERVED = 1,                                       ///< utilize reserved region
+    ZE_CACHE_EXT_REGION_NON_RESERVED = 2,                                   ///< utilize non-reserverd region
     ZE_CACHE_EXT_REGION_FORCE_UINT32 = 0x7fffffff
 
 } ze_cache_ext_region_t;
@@ -6988,7 +7622,7 @@ zeDeviceReserveCacheExt(
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
 ///         + `nullptr == ptr`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
-///         + `::ZE_CACHE_EXT_REGION_::ZE_CACHE_NON_RESERVED_REGION < cacheRegion`
+///         + `::ZE_CACHE_EXT_REGION_NON_RESERVED < cacheRegion`
 ZE_APIEXPORT ze_result_t ZE_APICALL
 zeDeviceSetCacheAdviceExt(
     ze_device_handle_t hDevice,                                             ///< [in] handle of the device object
@@ -8638,7 +9272,7 @@ typedef struct _ze_device_memory_ext_properties_t
                                                                             ///< structure (i.e. contains stype and pNext).
     ze_device_memory_ext_type_t type;                                       ///< [out] The memory type
     uint64_t physicalSize;                                                  ///< [out] Physical memory size in bytes. A value of 0 indicates that this
-                                                                            ///< property is not known. However, a call to $sMemoryGetState() will
+                                                                            ///< property is not known. However, a call to ::zesMemoryGetState() will
                                                                             ///< correctly return the total size of usable memory.
     uint32_t readBandwidth;                                                 ///< [out] Design bandwidth for reads
     uint32_t writeBandwidth;                                                ///< [out] Design bandwidth for writes
@@ -8749,6 +9383,10 @@ typedef struct _ze_kernel_max_group_size_properties_ext_t
                                                                             ///< ::ze_device_compute_properties_t.
 
 } ze_kernel_max_group_size_properties_ext_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief compiler-independent type
+typedef ze_kernel_max_group_size_properties_ext_t ze_kernel_max_group_size_ext_properties_t;
 
 #if !defined(__GNUC__)
 #pragma endregion
@@ -8935,12 +9573,1486 @@ zeEventQueryKernelTimestampsExt(
                                                                             ///< available, the driver shall update the value with the correct value.
                                                                             ///<    - Buffer(s) for query results must be sized by the application to
                                                                             ///< accommodate a minimum of `*pCount` elements.
-    ze_event_query_kernel_timestamps_results_ext_properties_t* pResults     ///< [in][optional] pointer to event query properties structure(s).
+    ze_event_query_kernel_timestamps_results_ext_properties_t* pResults     ///< [in,out][optional][range(0, *pCount)] pointer to event query
+                                                                            ///< properties structure(s).
                                                                             ///<    - This parameter may be null when `*pCount` is zero.
                                                                             ///<    - if `*pCount` is less than the number of event packets available,
                                                                             ///< the driver may only update `*pCount` elements, starting at element zero.
                                                                             ///<    - if `*pCount` is greater than the number of event packets
                                                                             ///< available, the driver may only update the valid elements.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Extension for supporting ray tracing acceleration structure builder.
+#if !defined(__GNUC__)
+#pragma region RTASBuilder
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZE_RTAS_BUILDER_EXP_NAME
+/// @brief Ray Tracing Acceleration Structure Builder Extension Name
+#define ZE_RTAS_BUILDER_EXP_NAME  "ZE_experimental_rtas_builder"
+#endif // ZE_RTAS_BUILDER_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray Tracing Acceleration Structure Builder Extension Version(s)
+typedef enum _ze_rtas_builder_exp_version_t
+{
+    ZE_RTAS_BUILDER_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),              ///< version 1.0
+    ZE_RTAS_BUILDER_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),          ///< latest known version
+    ZE_RTAS_BUILDER_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure device flags
+typedef uint32_t ze_rtas_device_exp_flags_t;
+typedef enum _ze_rtas_device_exp_flag_t
+{
+    ZE_RTAS_DEVICE_EXP_FLAG_RESERVED = ZE_BIT(0),                           ///< reserved for future use
+    ZE_RTAS_DEVICE_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_device_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure format
+/// 
+/// @details
+///     - This is an opaque ray tracing acceleration structure format
+///       identifier.
+typedef enum _ze_rtas_format_exp_t
+{
+    ZE_RTAS_FORMAT_EXP_INVALID = 0,                                         ///< Invalid acceleration structure format
+    ZE_RTAS_FORMAT_EXP_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_format_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder flags
+typedef uint32_t ze_rtas_builder_exp_flags_t;
+typedef enum _ze_rtas_builder_exp_flag_t
+{
+    ZE_RTAS_BUILDER_EXP_FLAG_RESERVED = ZE_BIT(0),                          ///< Reserved for future use
+    ZE_RTAS_BUILDER_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder parallel operation flags
+typedef uint32_t ze_rtas_parallel_operation_exp_flags_t;
+typedef enum _ze_rtas_parallel_operation_exp_flag_t
+{
+    ZE_RTAS_PARALLEL_OPERATION_EXP_FLAG_RESERVED = ZE_BIT(0),               ///< Reserved for future use
+    ZE_RTAS_PARALLEL_OPERATION_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_parallel_operation_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder geometry flags
+typedef uint32_t ze_rtas_builder_geometry_exp_flags_t;
+typedef enum _ze_rtas_builder_geometry_exp_flag_t
+{
+    ZE_RTAS_BUILDER_GEOMETRY_EXP_FLAG_NON_OPAQUE = ZE_BIT(0),               ///< non-opaque geometries invoke an any-hit shader
+    ZE_RTAS_BUILDER_GEOMETRY_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_geometry_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Packed ray tracing acceleration structure builder geometry flags (see
+///        ::ze_rtas_builder_geometry_exp_flags_t)
+typedef uint8_t ze_rtas_builder_packed_geometry_exp_flags_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder instance flags
+typedef uint32_t ze_rtas_builder_instance_exp_flags_t;
+typedef enum _ze_rtas_builder_instance_exp_flag_t
+{
+    ZE_RTAS_BUILDER_INSTANCE_EXP_FLAG_TRIANGLE_CULL_DISABLE = ZE_BIT(0),    ///< disables culling of front-facing and back-facing triangles
+    ZE_RTAS_BUILDER_INSTANCE_EXP_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE = ZE_BIT(1),  ///< reverses front and back face of triangles
+    ZE_RTAS_BUILDER_INSTANCE_EXP_FLAG_TRIANGLE_FORCE_OPAQUE = ZE_BIT(2),    ///< forces instanced geometry to be opaque, unless ray flag forces it to
+                                                                            ///< be non-opaque
+    ZE_RTAS_BUILDER_INSTANCE_EXP_FLAG_TRIANGLE_FORCE_NON_OPAQUE = ZE_BIT(3),///< forces instanced geometry to be non-opaque, unless ray flag forces it
+                                                                            ///< to be opaque
+    ZE_RTAS_BUILDER_INSTANCE_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_instance_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Packed ray tracing acceleration structure builder instance flags (see
+///        ::ze_rtas_builder_instance_exp_flags_t)
+typedef uint8_t ze_rtas_builder_packed_instance_exp_flags_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder build operation flags
+/// 
+/// @details
+///     - These flags allow the application to tune the acceleration structure
+///       build operation.
+///     - The acceleration structure builder implementation might choose to use
+///       spatial splitting to split large or long primitives into smaller
+///       pieces. This may result in any-hit shaders being invoked multiple
+///       times for non-opaque primitives, unless
+///       ::ZE_RTAS_BUILDER_BUILD_OP_EXP_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION is specified.
+///     - Usage of any of these flags may reduce ray tracing performance.
+typedef uint32_t ze_rtas_builder_build_op_exp_flags_t;
+typedef enum _ze_rtas_builder_build_op_exp_flag_t
+{
+    ZE_RTAS_BUILDER_BUILD_OP_EXP_FLAG_COMPACT = ZE_BIT(0),                  ///< build more compact acceleration structure
+    ZE_RTAS_BUILDER_BUILD_OP_EXP_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION = ZE_BIT(1),   ///< guarantees single any-hit shader invocation per primitive
+    ZE_RTAS_BUILDER_BUILD_OP_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_build_op_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder build quality hint
+/// 
+/// @details
+///     - Depending on use case different quality modes for acceleration
+///       structure build are supported.
+///     - A low-quality build builds an acceleration structure fast, but at the
+///       cost of some reduction in ray tracing performance. This mode is
+///       recommended for dynamic content, such as animated characters.
+///     - A medium-quality build uses a compromise between build quality and ray
+///       tracing performance. This mode should be used by default.
+///     - Higher ray tracing performance can be achieved by using a high-quality
+///       build, but acceleration structure build performance might be
+///       significantly reduced.
+typedef enum _ze_rtas_builder_build_quality_hint_exp_t
+{
+    ZE_RTAS_BUILDER_BUILD_QUALITY_HINT_EXP_LOW = 0,                         ///< build low-quality acceleration structure (fast)
+    ZE_RTAS_BUILDER_BUILD_QUALITY_HINT_EXP_MEDIUM = 1,                      ///< build medium-quality acceleration structure (slower)
+    ZE_RTAS_BUILDER_BUILD_QUALITY_HINT_EXP_HIGH = 2,                        ///< build high-quality acceleration structure (slow)
+    ZE_RTAS_BUILDER_BUILD_QUALITY_HINT_EXP_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_build_quality_hint_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder geometry type
+typedef enum _ze_rtas_builder_geometry_type_exp_t
+{
+    ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_TRIANGLES = 0,                        ///< triangle mesh geometry type
+    ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_QUADS = 1,                            ///< quad mesh geometry type
+    ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_PROCEDURAL = 2,                       ///< procedural geometry type
+    ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_INSTANCE = 3,                         ///< instance geometry type
+    ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_geometry_type_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Packed ray tracing acceleration structure builder geometry type (see
+///        ::ze_rtas_builder_geometry_type_exp_t)
+typedef uint8_t ze_rtas_builder_packed_geometry_type_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure data buffer element format
+/// 
+/// @details
+///     - Specifies the format of data buffer elements.
+///     - Data buffers may contain instancing transform matrices, triangle/quad
+///       vertex indices, etc...
+typedef enum _ze_rtas_builder_input_data_format_exp_t
+{
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FLOAT3 = 0,                       ///< 3-component float vector (see ::ze_rtas_float3_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FLOAT3X4_COLUMN_MAJOR = 1,        ///< 3x4 affine transformation in column-major format (see
+                                                                            ///< ::ze_rtas_transform_float3x4_column_major_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FLOAT3X4_ALIGNED_COLUMN_MAJOR = 2,///< 3x4 affine transformation in column-major format (see
+                                                                            ///< ::ze_rtas_transform_float3x4_aligned_column_major_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FLOAT3X4_ROW_MAJOR = 3,           ///< 3x4 affine transformation in row-major format (see
+                                                                            ///< ::ze_rtas_transform_float3x4_row_major_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_AABB = 4,                         ///< 3-dimensional axis-aligned bounding-box (see ::ze_rtas_aabb_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_TRIANGLE_INDICES_UINT32 = 5,      ///< Unsigned 32-bit triangle indices (see
+                                                                            ///< ::ze_rtas_triangle_indices_uint32_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_QUAD_INDICES_UINT32 = 6,          ///< Unsigned 32-bit quad indices (see ::ze_rtas_quad_indices_uint32_exp_t)
+    ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FORCE_UINT32 = 0x7fffffff
+
+} ze_rtas_builder_input_data_format_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Packed ray tracing acceleration structure data buffer element format
+///        (see ::ze_rtas_builder_input_data_format_exp_t)
+typedef uint8_t ze_rtas_builder_packed_input_data_format_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Handle of ray tracing acceleration structure builder object
+typedef struct _ze_rtas_builder_exp_handle_t *ze_rtas_builder_exp_handle_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Handle of ray tracing acceleration structure builder parallel
+///        operation object
+typedef struct _ze_rtas_parallel_operation_exp_handle_t *ze_rtas_parallel_operation_exp_handle_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder descriptor
+typedef struct _ze_rtas_builder_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_rtas_builder_exp_version_t builderVersion;                           ///< [in] ray tracing acceleration structure builder version
+
+} ze_rtas_builder_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder properties
+typedef struct _ze_rtas_builder_exp_properties_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_rtas_builder_exp_flags_t flags;                                      ///< [out] ray tracing acceleration structure builder flags
+    size_t rtasBufferSizeBytesExpected;                                     ///< [out] expected size (in bytes) required for acceleration structure buffer
+                                                                            ///<    - When using an acceleration structure buffer of this size, the
+                                                                            ///< build is expected to succeed; however, it is possible that the build
+                                                                            ///< may fail with ::ZE_RESULT_EXP_RTAS_BUILD_RETRY
+    size_t rtasBufferSizeBytesMaxRequired;                                  ///< [out] worst-case size (in bytes) required for acceleration structure buffer
+                                                                            ///<    - When using an acceleration structure buffer of this size, the
+                                                                            ///< build is guaranteed to not run out of memory.
+    size_t scratchBufferSizeBytes;                                          ///< [out] scratch buffer size (in bytes) required for acceleration
+                                                                            ///< structure build.
+
+} ze_rtas_builder_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder parallel operation
+///        properties
+typedef struct _ze_rtas_parallel_operation_exp_properties_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_rtas_parallel_operation_exp_flags_t flags;                           ///< [out] ray tracing acceleration structure builder parallel operation
+                                                                            ///< flags
+    uint32_t maxConcurrency;                                                ///< [out] maximum number of threads that may join the parallel operation
+
+} ze_rtas_parallel_operation_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure device properties
+/// 
+/// @details
+///     - This structure may be passed to ::zeDeviceGetProperties, via `pNext`
+///       member of ::ze_device_properties_t.
+///     - The implementation shall populate `format` with a value other than
+///       ::ZE_RTAS_FORMAT_EXP_INVALID when the device supports ray tracing.
+typedef struct _ze_rtas_device_exp_properties_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_rtas_device_exp_flags_t flags;                                       ///< [out] ray tracing acceleration structure device flags
+    ze_rtas_format_exp_t rtasFormat;                                        ///< [out] ray tracing acceleration structure format
+    uint32_t rtasBufferAlignment;                                           ///< [out] required alignment of acceleration structure buffer
+
+} ze_rtas_device_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief A 3-component vector type
+typedef struct _ze_rtas_float3_exp_t
+{
+    float x;                                                                ///< [in] x-coordinate of float3 vector
+    float y;                                                                ///< [in] y-coordinate of float3 vector
+    float z;                                                                ///< [in] z-coordinate of float3 vector
+
+} ze_rtas_float3_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief 3x4 affine transformation in column-major layout
+/// 
+/// @details
+///     - A 3x4 affine transformation in column major layout, consisting of vectors
+///          - vx=(vx_x, vx_y, vx_z),
+///          - vy=(vy_x, vy_y, vy_z),
+///          - vz=(vz_x, vz_y, vz_z), and
+///          - p=(p_x, p_y, p_z)
+///     - The transformation transforms a point (x, y, z) to: `x*vx + y*vy +
+///       z*vz + p`.
+typedef struct _ze_rtas_transform_float3x4_column_major_exp_t
+{
+    float vx_x;                                                             ///< [in] element 0 of column 0 of 3x4 matrix
+    float vx_y;                                                             ///< [in] element 1 of column 0 of 3x4 matrix
+    float vx_z;                                                             ///< [in] element 2 of column 0 of 3x4 matrix
+    float vy_x;                                                             ///< [in] element 0 of column 1 of 3x4 matrix
+    float vy_y;                                                             ///< [in] element 1 of column 1 of 3x4 matrix
+    float vy_z;                                                             ///< [in] element 2 of column 1 of 3x4 matrix
+    float vz_x;                                                             ///< [in] element 0 of column 2 of 3x4 matrix
+    float vz_y;                                                             ///< [in] element 1 of column 2 of 3x4 matrix
+    float vz_z;                                                             ///< [in] element 2 of column 2 of 3x4 matrix
+    float p_x;                                                              ///< [in] element 0 of column 3 of 3x4 matrix
+    float p_y;                                                              ///< [in] element 1 of column 3 of 3x4 matrix
+    float p_z;                                                              ///< [in] element 2 of column 3 of 3x4 matrix
+
+} ze_rtas_transform_float3x4_column_major_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief 3x4 affine transformation in column-major layout with aligned column
+///        vectors
+/// 
+/// @details
+///     - A 3x4 affine transformation in column major layout, consisting of vectors
+///        - vx=(vx_x, vx_y, vx_z),
+///        - vy=(vy_x, vy_y, vy_z),
+///        - vz=(vz_x, vz_y, vz_z), and
+///        - p=(p_x, p_y, p_z)
+///     - The transformation transforms a point (x, y, z) to: `x*vx + y*vy +
+///       z*vz + p`.
+///     - The column vectors are aligned to 16-bytes and pad members are
+///       ignored.
+typedef struct _ze_rtas_transform_float3x4_aligned_column_major_exp_t
+{
+    float vx_x;                                                             ///< [in] element 0 of column 0 of 3x4 matrix
+    float vx_y;                                                             ///< [in] element 1 of column 0 of 3x4 matrix
+    float vx_z;                                                             ///< [in] element 2 of column 0 of 3x4 matrix
+    float pad0;                                                             ///< [in] ignored padding
+    float vy_x;                                                             ///< [in] element 0 of column 1 of 3x4 matrix
+    float vy_y;                                                             ///< [in] element 1 of column 1 of 3x4 matrix
+    float vy_z;                                                             ///< [in] element 2 of column 1 of 3x4 matrix
+    float pad1;                                                             ///< [in] ignored padding
+    float vz_x;                                                             ///< [in] element 0 of column 2 of 3x4 matrix
+    float vz_y;                                                             ///< [in] element 1 of column 2 of 3x4 matrix
+    float vz_z;                                                             ///< [in] element 2 of column 2 of 3x4 matrix
+    float pad2;                                                             ///< [in] ignored padding
+    float p_x;                                                              ///< [in] element 0 of column 3 of 3x4 matrix
+    float p_y;                                                              ///< [in] element 1 of column 3 of 3x4 matrix
+    float p_z;                                                              ///< [in] element 2 of column 3 of 3x4 matrix
+    float pad3;                                                             ///< [in] ignored padding
+
+} ze_rtas_transform_float3x4_aligned_column_major_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief 3x4 affine transformation in row-major layout
+/// 
+/// @details
+///     - A 3x4 affine transformation in row-major layout, consisting of vectors
+///          - vx=(vx_x, vx_y, vx_z),
+///          - vy=(vy_x, vy_y, vy_z),
+///          - vz=(vz_x, vz_y, vz_z), and
+///          - p=(p_x, p_y, p_z)
+///     - The transformation transforms a point (x, y, z) to: `x*vx + y*vy +
+///       z*vz + p`.
+typedef struct _ze_rtas_transform_float3x4_row_major_exp_t
+{
+    float vx_x;                                                             ///< [in] element 0 of row 0 of 3x4 matrix
+    float vy_x;                                                             ///< [in] element 1 of row 0 of 3x4 matrix
+    float vz_x;                                                             ///< [in] element 2 of row 0 of 3x4 matrix
+    float p_x;                                                              ///< [in] element 3 of row 0 of 3x4 matrix
+    float vx_y;                                                             ///< [in] element 0 of row 1 of 3x4 matrix
+    float vy_y;                                                             ///< [in] element 1 of row 1 of 3x4 matrix
+    float vz_y;                                                             ///< [in] element 2 of row 1 of 3x4 matrix
+    float p_y;                                                              ///< [in] element 3 of row 1 of 3x4 matrix
+    float vx_z;                                                             ///< [in] element 0 of row 2 of 3x4 matrix
+    float vy_z;                                                             ///< [in] element 1 of row 2 of 3x4 matrix
+    float vz_z;                                                             ///< [in] element 2 of row 2 of 3x4 matrix
+    float p_z;                                                              ///< [in] element 3 of row 2 of 3x4 matrix
+
+} ze_rtas_transform_float3x4_row_major_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief A 3-dimensional axis-aligned bounding-box with lower and upper bounds
+///        in each dimension
+typedef struct _ze_rtas_aabb_exp_t
+{
+    ze_rtas_float3_exp_t lower;                                             ///< [in] lower bounds of AABB
+    ze_rtas_float3_exp_t upper;                                             ///< [in] upper bounds of AABB
+
+} ze_rtas_aabb_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Triangle represented using 3 vertex indices
+/// 
+/// @details
+///     - Represents a triangle using 3 vertex indices that index into a vertex
+///       array that needs to be provided together with the index array.
+///     - The linear barycentric u/v parametrization of the triangle is defined as:
+///          - (u=0, v=0) at v0,
+///          - (u=1, v=0) at v1, and
+///          - (u=0, v=1) at v2
+typedef struct _ze_rtas_triangle_indices_uint32_exp_t
+{
+    uint32_t v0;                                                            ///< [in] first index pointing to the first triangle vertex in vertex array
+    uint32_t v1;                                                            ///< [in] second index pointing to the second triangle vertex in vertex
+                                                                            ///< array
+    uint32_t v2;                                                            ///< [in] third index pointing to the third triangle vertex in vertex array
+
+} ze_rtas_triangle_indices_uint32_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Quad represented using 4 vertex indices
+/// 
+/// @details
+///     - Represents a quad composed of 4 indices that index into a vertex array
+///       that needs to be provided together with the index array.
+///     - A quad is a triangle pair represented using 4 vertex indices v0, v1,
+///       v2, v3.
+///       The first triangle is made out of indices v0, v1, v3 and the second triangle
+///       from indices v2, v3, v1. The piecewise linear barycentric u/v parametrization
+///       of the quad is defined as:
+///          - (u=0, v=0) at v0,
+///          - (u=1, v=0) at v1,
+///          - (u=0, v=1) at v3, and
+///          - (u=1, v=1) at v2
+///       This is achieved by correcting the u'/v' coordinates of the second
+///       triangle by
+///       *u = 1-u'* and *v = 1-v'*, yielding a piecewise linear parametrization.
+typedef struct _ze_rtas_quad_indices_uint32_exp_t
+{
+    uint32_t v0;                                                            ///< [in] first index pointing to the first quad vertex in vertex array
+    uint32_t v1;                                                            ///< [in] second index pointing to the second quad vertex in vertex array
+    uint32_t v2;                                                            ///< [in] third index pointing to the third quad vertex in vertex array
+    uint32_t v3;                                                            ///< [in] fourth index pointing to the fourth quad vertex in vertex array
+
+} ze_rtas_quad_indices_uint32_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder geometry info
+typedef struct _ze_rtas_builder_geometry_info_exp_t
+{
+    ze_rtas_builder_packed_geometry_type_exp_t geometryType;                ///< [in] geometry type
+
+} ze_rtas_builder_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder triangle mesh geometry info
+/// 
+/// @details
+///     - The linear barycentric u/v parametrization of the triangle is defined as:
+///          - (u=0, v=0) at v0,
+///          - (u=1, v=0) at v1, and
+///          - (u=0, v=1) at v2
+typedef struct _ze_rtas_builder_triangles_geometry_info_exp_t
+{
+    ze_rtas_builder_packed_geometry_type_exp_t geometryType;                ///< [in] geometry type, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_TRIANGLES
+    ze_rtas_builder_packed_geometry_exp_flags_t geometryFlags;              ///< [in] 0 or some combination of ::ze_rtas_builder_geometry_exp_flag_t
+                                                                            ///< bits representing the geometry flags for all primitives of this
+                                                                            ///< geometry
+    uint8_t geometryMask;                                                   ///< [in] 8-bit geometry mask for ray masking
+    ze_rtas_builder_packed_input_data_format_exp_t triangleFormat;          ///< [in] format of triangle buffer data, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_TRIANGLE_INDICES_UINT32
+    ze_rtas_builder_packed_input_data_format_exp_t vertexFormat;            ///< [in] format of vertex buffer data, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FLOAT3
+    uint32_t triangleCount;                                                 ///< [in] number of triangles in triangle buffer
+    uint32_t vertexCount;                                                   ///< [in] number of vertices in vertex buffer
+    uint32_t triangleStride;                                                ///< [in] stride (in bytes) of triangles in triangle buffer
+    uint32_t vertexStride;                                                  ///< [in] stride (in bytes) of vertices in vertex buffer
+    void* pTriangleBuffer;                                                  ///< [in] pointer to array of triangle indices in specified format
+    void* pVertexBuffer;                                                    ///< [in] pointer to array of triangle vertices in specified format
+
+} ze_rtas_builder_triangles_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder quad mesh geometry info
+/// 
+/// @details
+///     - A quad is a triangle pair represented using 4 vertex indices v0, v1,
+///       v2, v3.
+///       The first triangle is made out of indices v0, v1, v3 and the second triangle
+///       from indices v2, v3, v1. The piecewise linear barycentric u/v parametrization
+///       of the quad is defined as:
+///          - (u=0, v=0) at v0,
+///          - (u=1, v=0) at v1,
+///          - (u=0, v=1) at v3, and
+///          - (u=1, v=1) at v2
+///       This is achieved by correcting the u'/v' coordinates of the second
+///       triangle by
+///       *u = 1-u'* and *v = 1-v'*, yielding a piecewise linear parametrization.
+typedef struct _ze_rtas_builder_quads_geometry_info_exp_t
+{
+    ze_rtas_builder_packed_geometry_type_exp_t geometryType;                ///< [in] geometry type, must be ::ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_QUADS
+    ze_rtas_builder_packed_geometry_exp_flags_t geometryFlags;              ///< [in] 0 or some combination of ::ze_rtas_builder_geometry_exp_flag_t
+                                                                            ///< bits representing the geometry flags for all primitives of this
+                                                                            ///< geometry
+    uint8_t geometryMask;                                                   ///< [in] 8-bit geometry mask for ray masking
+    ze_rtas_builder_packed_input_data_format_exp_t quadFormat;              ///< [in] format of quad buffer data, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_QUAD_INDICES_UINT32
+    ze_rtas_builder_packed_input_data_format_exp_t vertexFormat;            ///< [in] format of vertex buffer data, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_INPUT_DATA_FORMAT_EXP_FLOAT3
+    uint32_t quadCount;                                                     ///< [in] number of quads in quad buffer
+    uint32_t vertexCount;                                                   ///< [in] number of vertices in vertex buffer
+    uint32_t quadStride;                                                    ///< [in] stride (in bytes) of quads in quad buffer
+    uint32_t vertexStride;                                                  ///< [in] stride (in bytes) of vertices in vertex buffer
+    void* pQuadBuffer;                                                      ///< [in] pointer to array of quad indices in specified format
+    void* pVertexBuffer;                                                    ///< [in] pointer to array of quad vertices in specified format
+
+} ze_rtas_builder_quads_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief AABB callback function parameters
+typedef struct _ze_rtas_geometry_aabbs_exp_cb_params_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint32_t primID;                                                        ///< [in] first primitive to return bounds for
+    uint32_t primIDCount;                                                   ///< [in] number of primitives to return bounds for
+    void* pGeomUserPtr;                                                     ///< [in] pointer provided through geometry descriptor
+    void* pBuildUserPtr;                                                    ///< [in] pointer provided through ::zeRTASBuilderBuildExp function
+    ze_rtas_aabb_exp_t* pBoundsOut;                                         ///< [out] destination buffer to write AABB bounds to
+
+} ze_rtas_geometry_aabbs_exp_cb_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function pointer type to return AABBs for a range of
+///        procedural primitives
+typedef void (*ze_rtas_geometry_aabbs_cb_exp_t)(
+        ze_rtas_geometry_aabbs_exp_cb_params_t* params                          ///< [in] callback function parameters structure
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder procedural primitives
+///        geometry info
+/// 
+/// @details
+///     - A host-side bounds callback function is invoked by the acceleration
+///       structure builder to query the bounds of procedural primitives on
+///       demand. The callback is passed some `pGeomUserPtr` that can point to
+///       an application-side representation of the procedural primitives.
+///       Further, a second `pBuildUserPtr`, which is set by a parameter to
+///       ::zeRTASBuilderBuildExp, is passed to the callback. This allows the
+///       build to change the bounds of the procedural geometry, for example, to
+///       build a BVH only over a short time range to implement multi-segment
+///       motion blur.
+typedef struct _ze_rtas_builder_procedural_geometry_info_exp_t
+{
+    ze_rtas_builder_packed_geometry_type_exp_t geometryType;                ///< [in] geometry type, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_PROCEDURAL
+    ze_rtas_builder_packed_geometry_exp_flags_t geometryFlags;              ///< [in] 0 or some combination of ::ze_rtas_builder_geometry_exp_flag_t
+                                                                            ///< bits representing the geometry flags for all primitives of this
+                                                                            ///< geometry
+    uint8_t geometryMask;                                                   ///< [in] 8-bit geometry mask for ray masking
+    uint8_t reserved;                                                       ///< [in] reserved for future use
+    uint32_t primCount;                                                     ///< [in] number of primitives in geometry
+    ze_rtas_geometry_aabbs_cb_exp_t pfnGetBoundsCb;                         ///< [in] pointer to callback function to get the axis-aligned bounding-box
+                                                                            ///< for a range of primitives
+    void* pGeomUserPtr;                                                     ///< [in] user data pointer passed to callback
+
+} ze_rtas_builder_procedural_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ray tracing acceleration structure builder instance geometry info
+typedef struct _ze_rtas_builder_instance_geometry_info_exp_t
+{
+    ze_rtas_builder_packed_geometry_type_exp_t geometryType;                ///< [in] geometry type, must be
+                                                                            ///< ::ZE_RTAS_BUILDER_GEOMETRY_TYPE_EXP_INSTANCE
+    ze_rtas_builder_packed_instance_exp_flags_t instanceFlags;              ///< [in] 0 or some combination of ::ze_rtas_builder_geometry_exp_flag_t
+                                                                            ///< bits representing the geometry flags for all primitives of this
+                                                                            ///< geometry
+    uint8_t geometryMask;                                                   ///< [in] 8-bit geometry mask for ray masking
+    ze_rtas_builder_packed_input_data_format_exp_t transformFormat;         ///< [in] format of the specified transformation
+    uint32_t instanceUserID;                                                ///< [in] user-specified identifier for the instance
+    void* pTransform;                                                       ///< [in] object-to-world instance transformation in specified format
+    ze_rtas_aabb_exp_t* pBounds;                                            ///< [in] object-space axis-aligned bounding-box of the instanced
+                                                                            ///< acceleration structure
+    void* pAccelerationStructure;                                           ///< [in] pointer to acceleration structure to instantiate
+
+} ze_rtas_builder_instance_geometry_info_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief 
+typedef struct _ze_rtas_builder_build_op_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_rtas_format_exp_t rtasFormat;                                        ///< [in] ray tracing acceleration structure format
+    ze_rtas_builder_build_quality_hint_exp_t buildQuality;                  ///< [in] acceleration structure build quality hint
+    ze_rtas_builder_build_op_exp_flags_t buildFlags;                        ///< [in] 0 or some combination of ::ze_rtas_builder_build_op_exp_flag_t
+                                                                            ///< flags
+    const ze_rtas_builder_geometry_info_exp_t** ppGeometries;               ///< [in][optional][range(0, `numGeometries`)] NULL or a valid array of
+                                                                            ///< pointers to geometry infos
+    uint32_t numGeometries;                                                 ///< [in] number of geometries in geometry infos array, can be zero when
+                                                                            ///< `ppGeometries` is NULL
+
+} ze_rtas_builder_build_op_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a ray tracing acceleration structure builder object
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe.
+///     - The implementation must support ::ZE_experimental_rtas_builder
+///       extension.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pDescriptor`
+///         + `nullptr == phBuilder`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZE_RTAS_BUILDER_EXP_VERSION_CURRENT < pDescriptor->builderVersion`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASBuilderCreateExp(
+    ze_driver_handle_t hDriver,                                             ///< [in] handle of driver object
+    const ze_rtas_builder_exp_desc_t* pDescriptor,                          ///< [in] pointer to builder descriptor
+    ze_rtas_builder_exp_handle_t* phBuilder                                 ///< [out] handle of builder object
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves ray tracing acceleration structure builder properties
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hBuilder`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pBuildOpDescriptor`
+///         + `nullptr == pProperties`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZE_RTAS_FORMAT_EXP_INVALID < pBuildOpDescriptor->rtasFormat`
+///         + `::ZE_RTAS_BUILDER_BUILD_QUALITY_HINT_EXP_HIGH < pBuildOpDescriptor->buildQuality`
+///         + `0x3 < pBuildOpDescriptor->buildFlags`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASBuilderGetBuildPropertiesExp(
+    ze_rtas_builder_exp_handle_t hBuilder,                                  ///< [in] handle of builder object
+    const ze_rtas_builder_build_op_exp_desc_t* pBuildOpDescriptor,          ///< [in] pointer to build operation descriptor
+    ze_rtas_builder_exp_properties_t* pProperties                           ///< [in,out] query result for builder properties
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Checks ray tracing acceleration structure format compatibility
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZE_RTAS_FORMAT_EXP_INVALID < rtasFormatA`
+///         + `::ZE_RTAS_FORMAT_EXP_INVALID < rtasFormatB`
+///     - ::ZE_RESULT_SUCCESS
+///         + An acceleration structure built with `rtasFormatA` is compatible with devices that report `rtasFormatB`.
+///     - ::ZE_RESULT_EXP_ERROR_OPERANDS_INCOMPATIBLE
+///         + An acceleration structure built with `rtasFormatA` is **not** compatible with devices that report `rtasFormatB`.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeDriverRTASFormatCompatibilityCheckExp(
+    ze_driver_handle_t hDriver,                                             ///< [in] handle of driver object
+    ze_rtas_format_exp_t rtasFormatA,                                       ///< [in] operand A
+    ze_rtas_format_exp_t rtasFormatB                                        ///< [in] operand B
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Build ray tracing acceleration structure
+/// 
+/// @details
+///     - This function builds an acceleration structure of the scene consisting
+///       of the specified geometry information and writes the acceleration
+///       structure to the provided destination buffer. All types of geometries
+///       can get freely mixed inside a scene.
+///     - It is the user's responsibility to manage the acceleration structure
+///       buffer allocation, de-allocation, and potential prefetching to the
+///       device memory. The required size of the acceleration structure buffer
+///       can be queried with the ::zeRTASBuilderGetBuildPropertiesExp function.
+///       The acceleration structure buffer must be a shared USM allocation and
+///       should be present on the host at build time. The referenced scene data
+///       (index- and vertex- buffers) can be standard host allocations, and
+///       will not be referenced into by the build acceleration structure.
+///     - Before an acceleration structure can be built, the user must allocate
+///       the memory for the acceleration structure buffer and scratch buffer
+///       using sizes based on a query for the estimated size properties.
+///     - When using the "worst-case" size for the acceleration structure
+///       buffer, the acceleration structure construction will never fail with ::ZE_RESULT_EXP_RTAS_BUILD_RETRY.
+///     - When using the "expected" size for the acceleration structure buffer,
+///       the acceleration structure construction may fail with
+///       ::ZE_RESULT_EXP_RTAS_BUILD_RETRY. If this happens, the user may resize
+///       their acceleration structure buffer using the returned
+///       `*pRtasBufferSizeBytes` value, which will be updated with an improved
+///       size estimate that will likely result in a successful build.
+///     - The acceleration structure construction is run on the host and is
+///       synchronous, thus after the function returns with a successful result,
+///       the acceleration structure may be used.
+///     - All provided data buffers must be host-accessible.
+///     - The acceleration structure buffer must be a USM allocation.
+///     - A successfully constructed acceleration structure is entirely
+///       self-contained. There is no requirement for input data to persist
+///       beyond build completion.
+///     - A successfully constructed acceleration structure is non-copyable.
+///     - Acceleration structure construction may be parallelized by passing a
+///       valid handle to a parallel operation object and joining that parallel
+///       operation using ::zeRTASParallelOperationJoinExp with user-provided
+///       worker threads.
+///     - **Additional Notes**
+///        - "The geometry infos array, geometry infos, and scratch buffer must
+///       all be standard host memory allocations."
+///        - "A pointer to a geometry info can be a null pointer, in which case
+///       the geometry is treated as empty."
+///        - "If no parallel operation handle is provided, the build is run
+///       sequentially on the current thread."
+///        - "A parallel operation object may only be associated with a single
+///       acceleration structure build at a time."
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hBuilder`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pBuildOpDescriptor`
+///         + `nullptr == pScratchBuffer`
+///         + `nullptr == pRtasBuffer`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZE_RTAS_FORMAT_EXP_INVALID < pBuildOpDescriptor->rtasFormat`
+///         + `::ZE_RTAS_BUILDER_BUILD_QUALITY_HINT_EXP_HIGH < pBuildOpDescriptor->buildQuality`
+///         + `0x3 < pBuildOpDescriptor->buildFlags`
+///     - ::ZE_RESULT_EXP_RTAS_BUILD_DEFERRED
+///         + Acceleration structure build completion is deferred to parallel operation join.
+///     - ::ZE_RESULT_EXP_RTAS_BUILD_RETRY
+///         + Acceleration structure build failed due to insufficient resources, retry the build operation with a larger acceleration structure buffer allocation.
+///     - ::ZE_RESULT_ERROR_HANDLE_OBJECT_IN_USE
+///         + Acceleration structure build failed due to parallel operation object participation in another build operation.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASBuilderBuildExp(
+    ze_rtas_builder_exp_handle_t hBuilder,                                  ///< [in] handle of builder object
+    const ze_rtas_builder_build_op_exp_desc_t* pBuildOpDescriptor,          ///< [in] pointer to build operation descriptor
+    void* pScratchBuffer,                                                   ///< [in][range(0, `scratchBufferSizeBytes`)] scratch buffer to be used
+                                                                            ///< during acceleration structure construction
+    size_t scratchBufferSizeBytes,                                          ///< [in] size of scratch buffer, in bytes
+    void* pRtasBuffer,                                                      ///< [in] pointer to destination buffer
+    size_t rtasBufferSizeBytes,                                             ///< [in] destination buffer size, in bytes
+    ze_rtas_parallel_operation_exp_handle_t hParallelOperation,             ///< [in][optional] handle to parallel operation object
+    void* pBuildUserPtr,                                                    ///< [in][optional] pointer passed to callbacks
+    ze_rtas_aabb_exp_t* pBounds,                                            ///< [in,out][optional] pointer to destination address for acceleration
+                                                                            ///< structure bounds
+    size_t* pRtasBufferSizeBytes                                            ///< [out][optional] updated acceleration structure size requirement, in
+                                                                            ///< bytes
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Destroys a ray tracing acceleration structure builder object
+/// 
+/// @details
+///     - The implementation of this function may immediately release any
+///       internal Host and Device resources associated with this builder.
+///     - The application must **not** call this function from simultaneous
+///       threads with the same builder handle.
+///     - The implementation of this function must be thread-safe.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hBuilder`
+///     - ::ZE_RESULT_ERROR_HANDLE_OBJECT_IN_USE
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASBuilderDestroyExp(
+    ze_rtas_builder_exp_handle_t hBuilder                                   ///< [in][release] handle of builder object to destroy
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a ray tracing acceleration structure builder parallel
+///        operation object
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe.
+///     - The implementation must support ::ZE_experimental_rtas_builder
+///       extension.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phParallelOperation`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASParallelOperationCreateExp(
+    ze_driver_handle_t hDriver,                                             ///< [in] handle of driver object
+    ze_rtas_parallel_operation_exp_handle_t* phParallelOperation            ///< [out] handle of parallel operation object
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves ray tracing acceleration structure builder parallel
+///        operation properties
+/// 
+/// @details
+///     - The application must first bind the parallel operation object to a
+///       build operation before it may query the parallel operation properties.
+///       In other words, the application must first call
+///       ::zeRTASBuilderBuildExp with **hParallelOperation** before calling
+///       this function.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hParallelOperation`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pProperties`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASParallelOperationGetPropertiesExp(
+    ze_rtas_parallel_operation_exp_handle_t hParallelOperation,             ///< [in] handle of parallel operation object
+    ze_rtas_parallel_operation_exp_properties_t* pProperties                ///< [in,out] query result for parallel operation properties
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Joins a parallel build operation
+/// 
+/// @details
+///     - All worker threads return the same error code for the parallel build
+///       operation upon build completion
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hParallelOperation`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASParallelOperationJoinExp(
+    ze_rtas_parallel_operation_exp_handle_t hParallelOperation              ///< [in] handle of parallel operation object
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Destroys a ray tracing acceleration structure builder parallel
+///        operation object
+/// 
+/// @details
+///     - The implementation of this function may immediately release any
+///       internal Host and Device resources associated with this parallel
+///       operation.
+///     - The application must **not** call this function from simultaneous
+///       threads with the same parallel operation handle.
+///     - The implementation of this function must be thread-safe.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hParallelOperation`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeRTASParallelOperationDestroyExp(
+    ze_rtas_parallel_operation_exp_handle_t hParallelOperation              ///< [in][release] handle of parallel operation object to destroy
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Extension APIs for Counter-based Event Pools
+#if !defined(__GNUC__)
+#pragma region counterbasedeventpool
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZE_EVENT_POOL_COUNTER_BASED_EXP_NAME
+/// @brief Counter-based Event Pools Extension Name
+#define ZE_EVENT_POOL_COUNTER_BASED_EXP_NAME  "ZE_experimental_event_pool_counter_based"
+#endif // ZE_EVENT_POOL_COUNTER_BASED_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Counter-based Event Pools Extension Version(s)
+typedef enum _ze_event_pool_counter_based_exp_version_t
+{
+    ZE_EVENT_POOL_COUNTER_BASED_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),  ///< version 1.0
+    ZE_EVENT_POOL_COUNTER_BASED_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),  ///< latest known version
+    ZE_EVENT_POOL_COUNTER_BASED_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} ze_event_pool_counter_based_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Supported event flags for defining counter-based event pools.
+typedef uint32_t ze_event_pool_counter_based_exp_flags_t;
+typedef enum _ze_event_pool_counter_based_exp_flag_t
+{
+    ZE_EVENT_POOL_COUNTER_BASED_EXP_FLAG_IMMEDIATE = ZE_BIT(0),             ///< Counter-based event pool is used for immediate command lists (default)
+    ZE_EVENT_POOL_COUNTER_BASED_EXP_FLAG_NON_IMMEDIATE = ZE_BIT(1),         ///< Counter-based event pool is for non-immediate command lists
+    ZE_EVENT_POOL_COUNTER_BASED_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_event_pool_counter_based_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Event pool descriptor for counter-based events. This structure may be
+///        passed to ::zeEventPoolCreate as pNext member of
+///        ::ze_event_pool_desc_t.
+typedef struct _ze_event_pool_counter_based_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_event_pool_counter_based_exp_flags_t flags;                          ///< [in] mode flags.
+                                                                            ///< must be 0 (default) or a valid value of ::ze_event_pool_counter_based_exp_flag_t
+                                                                            ///< default behavior is counter-based event pool is only used for
+                                                                            ///< immediate command lists.
+
+} ze_event_pool_counter_based_exp_desc_t;
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Extension for supporting bindless images.
+#if !defined(__GNUC__)
+#pragma region bindlessimages
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZE_BINDLESS_IMAGE_EXP_NAME
+/// @brief Image Memory Properties Extension Name
+#define ZE_BINDLESS_IMAGE_EXP_NAME  "ZE_experimental_bindless_image"
+#endif // ZE_BINDLESS_IMAGE_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Bindless Image Extension Version(s)
+typedef enum _ze_bindless_image_exp_version_t
+{
+    ZE_BINDLESS_IMAGE_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),            ///< version 1.0
+    ZE_BINDLESS_IMAGE_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),        ///< latest known version
+    ZE_BINDLESS_IMAGE_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} ze_bindless_image_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Image flags for Bindless images
+typedef uint32_t ze_image_bindless_exp_flags_t;
+typedef enum _ze_image_bindless_exp_flag_t
+{
+    ZE_IMAGE_BINDLESS_EXP_FLAG_BINDLESS = ZE_BIT(0),                        ///< Bindless images are created with ::zeImageCreate. The image handle
+                                                                            ///< created with this flag is valid on both host and device.
+    ZE_IMAGE_BINDLESS_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_image_bindless_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Image descriptor for bindless images. This structure may be passed to
+///        ::zeImageCreate via pNext member of ::ze_image_desc_t.
+typedef struct _ze_image_bindless_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_image_bindless_exp_flags_t flags;                                    ///< [in] image flags.
+                                                                            ///< must be 0 (default) or a valid value of ::ze_image_bindless_exp_flag_t
+                                                                            ///< default behavior is bindless images are not used when creating handles
+                                                                            ///< via ::zeImageCreate.
+                                                                            ///< When the flag is passed to ::zeImageCreate, then only the memory for
+                                                                            ///< the image is allocated.
+                                                                            ///< Additional image handles can be created with ::zeImageViewCreateExt.
+
+} ze_image_bindless_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Image descriptor for bindless images created from pitched allocations.
+///        This structure may be passed to ::zeImageCreate via pNext member of
+///        ::ze_image_desc_t.
+typedef struct _ze_image_pitched_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    void* ptr;                                                              ///< [in] pointer to pitched device allocation allocated using ::zeMemAllocDevice
+
+} ze_image_pitched_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Device specific properties for pitched allocations
+/// 
+/// @details
+///     - This structure may be passed to ::zeDeviceGetImageProperties via the
+///       pNext member of ::ze_device_image_properties_t.
+typedef struct _ze_device_pitched_alloc_exp_properties_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    size_t maxImageLinearWidth;                                             ///< [out] Maximum image linear width.
+    size_t maxImageLinearHeight;                                            ///< [out] Maximum image linear height.
+
+} ze_device_pitched_alloc_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Allocate pitched USM memory for images
+/// 
+/// @details
+///     - Retrieves pitch for 2D image given the width, height and size in bytes
+///     - The memory is then allocated using ::zeMemAllocDevice by providing
+///       input size calculated as the returned pitch value multiplied by image height
+///     - The application may call this function from simultaneous threads
+///     - The implementation of this function must be thread-safe.
+///     - The implementation of this function should be lock-free.
+///     - The implementation must support ::ZE_experimental_bindless_image extension.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hContext`
+///         + `nullptr == hDevice`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeMemGetPitchFor2dImage(
+    ze_context_handle_t hContext,                                           ///< [in] handle of the context object
+    ze_device_handle_t hDevice,                                             ///< [in] handle of the device
+    size_t imageWidth,                                                      ///< [in] imageWidth
+    size_t imageHeight,                                                     ///< [in] imageHeight
+    unsigned int elementSizeInBytes,                                        ///< [in] Element size in bytes
+    size_t * rowPitch                                                       ///< [out] rowPitch
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get bindless device offset for image
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads
+///     - The implementation of this function must be thread-safe.
+///     - The implementation of this function should be lock-free.
+///     - The implementation must support ::ZE_experimental_bindless_image
+///       extension.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hImage`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pDeviceOffset`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeImageGetDeviceOffsetExp(
+    ze_image_handle_t hImage,                                               ///< [in] handle of the image
+    uint64_t* pDeviceOffset                                                 ///< [out] bindless device offset for image
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Extension for supporting compute graphs.
+#if !defined(__GNUC__)
+#pragma region commandListClone
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZE_COMMAND_LIST_CLONE_EXP_NAME
+/// @brief Command List Clone Extension Name
+#define ZE_COMMAND_LIST_CLONE_EXP_NAME  "ZE_experimental_command_list_clone"
+#endif // ZE_COMMAND_LIST_CLONE_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Command List Clone Extension Version(s)
+typedef enum _ze_command_list_clone_exp_version_t
+{
+    ZE_COMMAND_LIST_CLONE_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),        ///< version 1.0
+    ZE_COMMAND_LIST_CLONE_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),    ///< latest known version
+    ZE_COMMAND_LIST_CLONE_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} ze_command_list_clone_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a command list as the clone of another command list.
+/// 
+/// @details
+///     - The source command list must be created with the
+///       ::ZE_COMMAND_LIST_FLAG_EXP_CLONEABLE flag.
+///     - The source command list must be closed prior to cloning.
+///     - The source command list may be cloned while it is running on the
+///       device.
+///     - The cloned command list inherits all properties of the source command
+///       list.
+///     - The cloned command list must be destroyed prior to the source command
+///       list.
+///     - The application must only use the command list for the device, or its
+///       sub-devices, which was provided during creation.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phClonedCommandList`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListCreateCloneExp(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle to source command list (the command list to clone)
+    ze_command_list_handle_t* phClonedCommandList                           ///< [out] pointer to handle of the cloned command list
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Extension for supporting compute graphs.
+#if !defined(__GNUC__)
+#pragma region immediateCommandListAppend
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZE_IMMEDIATE_COMMAND_LIST_APPEND_EXP_NAME
+/// @brief Immediate Command List Append Extension Name
+#define ZE_IMMEDIATE_COMMAND_LIST_APPEND_EXP_NAME  "ZE_experimental_immediate_command_list_append"
+#endif // ZE_IMMEDIATE_COMMAND_LIST_APPEND_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Immediate Command List Append Extension Version(s)
+typedef enum _ze_immediate_command_list_append_exp_version_t
+{
+    ZE_IMMEDIATE_COMMAND_LIST_APPEND_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ), ///< version 1.0
+    ZE_IMMEDIATE_COMMAND_LIST_APPEND_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ), ///< latest known version
+    ZE_IMMEDIATE_COMMAND_LIST_APPEND_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} ze_immediate_command_list_append_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Appends command lists to dispatch from an immediate command list.
+/// 
+/// @details
+///     - The application must call this function only with command lists
+///       created with ::zeCommandListCreateImmediate.
+///     - The command lists passed to this function in the `phCommandLists`
+///       argument must be regular command lists (i.e. not immediate command
+///       lists).
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandListImmediate`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phCommandLists`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListImmediateAppendCommandListsExp(
+    ze_command_list_handle_t hCommandListImmediate,                         ///< [in] handle of the immediate command list
+    uint32_t numCommandLists,                                               ///< [in] number of command lists
+    ze_command_list_handle_t* phCommandLists,                               ///< [in][range(0, numCommandLists)] handles of command lists
+    ze_event_handle_t hSignalEvent,                                         ///< [in][optional] handle of the event to signal on completion
+                                                                            ///<    - if not null, this event is signaled after the completion of all
+                                                                            ///< appended command lists
+    uint32_t numWaitEvents,                                                 ///< [in][optional] number of events to wait on before executing appended
+                                                                            ///< command lists; must be 0 if nullptr == phWaitEvents
+    ze_event_handle_t* phWaitEvents                                         ///< [in][optional][range(0, numWaitEvents)] handle of the events to wait
+                                                                            ///< on before executing appended command lists.
+                                                                            ///<    - if not null, all wait events must be satisfied prior to the start
+                                                                            ///< of any appended command list(s)
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Extension for supporting compute graphs with dynamic properties.
+#if !defined(__GNUC__)
+#pragma region mutableCommandList
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZE_MUTABLE_COMMAND_LIST_EXP_NAME
+/// @brief Mutable Command List Extension Name
+#define ZE_MUTABLE_COMMAND_LIST_EXP_NAME  "ZE_experimental_mutable_command_list"
+#endif // ZE_MUTABLE_COMMAND_LIST_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable Command List Extension Version(s)
+typedef enum _ze_mutable_command_list_exp_version_t
+{
+    ZE_MUTABLE_COMMAND_LIST_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),      ///< version 1.0
+    ZE_MUTABLE_COMMAND_LIST_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),  ///< latest known version
+    ZE_MUTABLE_COMMAND_LIST_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} ze_mutable_command_list_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable command flags
+typedef uint32_t ze_mutable_command_exp_flags_t;
+typedef enum _ze_mutable_command_exp_flag_t
+{
+    ZE_MUTABLE_COMMAND_EXP_FLAG_KERNEL_ARGUMENTS = ZE_BIT(0),               ///< kernel arguments
+    ZE_MUTABLE_COMMAND_EXP_FLAG_GROUP_COUNT = ZE_BIT(1),                    ///< kernel group count
+    ZE_MUTABLE_COMMAND_EXP_FLAG_GROUP_SIZE = ZE_BIT(2),                     ///< kernel group size
+    ZE_MUTABLE_COMMAND_EXP_FLAG_GLOBAL_OFFSET = ZE_BIT(3),                  ///< kernel global offset
+    ZE_MUTABLE_COMMAND_EXP_FLAG_SIGNAL_EVENT = ZE_BIT(4),                   ///< command signal event
+    ZE_MUTABLE_COMMAND_EXP_FLAG_WAIT_EVENTS = ZE_BIT(5),                    ///< command wait events
+    ZE_MUTABLE_COMMAND_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_mutable_command_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable command identifier descriptor
+typedef struct _ze_mutable_command_id_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_mutable_command_exp_flags_t flags;                                   ///< [in] mutable command flags.
+                                                                            ///<  - must be 0 (default, equivalent to setting all flags), or a valid
+                                                                            ///< combination of ::ze_mutable_command_exp_flag_t
+
+} ze_mutable_command_id_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable command list flags
+typedef uint32_t ze_mutable_command_list_exp_flags_t;
+typedef enum _ze_mutable_command_list_exp_flag_t
+{
+    ZE_MUTABLE_COMMAND_LIST_EXP_FLAG_RESERVED = ZE_BIT(0),                  ///< reserved
+    ZE_MUTABLE_COMMAND_LIST_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} ze_mutable_command_list_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable command list properties
+typedef struct _ze_mutable_command_list_exp_properties_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_mutable_command_list_exp_flags_t mutableCommandListFlags;            ///< [out] mutable command list flags
+    ze_mutable_command_exp_flags_t mutableCommandFlags;                     ///< [out] mutable command flags
+
+} ze_mutable_command_list_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable command list descriptor
+typedef struct _ze_mutable_command_list_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_mutable_command_list_exp_flags_t flags;                              ///< [in] mutable command list flags.
+                                                                            ///<  - must be 0 (default) or a valid combination of ::ze_mutable_command_list_exp_flag_t
+
+} ze_mutable_command_list_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable commands descriptor
+typedef struct _ze_mutable_commands_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint32_t flags;                                                         ///< [in] must be 0, this field is reserved for future use
+
+} ze_mutable_commands_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable kernel argument descriptor
+typedef struct _ze_mutable_kernel_argument_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint64_t commandId;                                                     ///< [in] command identifier
+    uint32_t argIndex;                                                      ///< [in] kernel argument index
+    size_t argSize;                                                         ///< [in] kernel argument size
+    const void* pArgValue;                                                  ///< [in] pointer to kernel argument value
+
+} ze_mutable_kernel_argument_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable kernel group count descriptor
+typedef struct _ze_mutable_group_count_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint64_t commandId;                                                     ///< [in] command identifier
+    const ze_group_count_t* pGroupCount;                                    ///< [in] pointer to group count
+
+} ze_mutable_group_count_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable kernel group size descriptor
+typedef struct _ze_mutable_group_size_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint64_t commandId;                                                     ///< [in] command identifier
+    uint32_t groupSizeX;                                                    ///< [in] group size for X dimension to use for the kernel
+    uint32_t groupSizeY;                                                    ///< [in] group size for Y dimension to use for the kernel
+    uint32_t groupSizeZ;                                                    ///< [in] group size for Z dimension to use for the kernel
+
+} ze_mutable_group_size_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Mutable kernel global offset descriptor
+typedef struct _ze_mutable_global_offset_exp_desc_t
+{
+    ze_structure_type_t stype;                                              ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint64_t commandId;                                                     ///< [in] command identifier
+    uint32_t offsetX;                                                       ///< [in] global offset for X dimension to use for this kernel
+    uint32_t offsetY;                                                       ///< [in] global offset for Y dimension to use for this kernel
+    uint32_t offsetZ;                                                       ///< [in] global offset for Z dimension to use for this kernel
+
+} ze_mutable_global_offset_exp_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Returns a unique command identifier for the next command to be
+///        appended to a command list.
+/// 
+/// @details
+///     - This function may only be called for a mutable command list.
+///     - This function may not be called on a closed command list.
+///     - This function may be called from simultaneous threads with the same
+///       command list handle.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == desc`
+///         + `nullptr == pCommandId`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `0x3f < desc->flags`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListGetNextCommandIdExp(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    const ze_mutable_command_id_exp_desc_t* desc,                           ///< [in] pointer to mutable command identifier descriptor
+    uint64_t* pCommandId                                                    ///< [out] pointer to mutable command identifier to be written
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Updates mutable commands.
+/// 
+/// @details
+///     - This function may only be called for a mutable command list.
+///     - The application must synchronize mutable command list execution before
+///       calling this function.
+///     - The application must close a mutable command list after completing all
+///       updates.
+///     - This function must not be called from simultaneous threads with the
+///       same command list handle.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == desc`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListUpdateMutableCommandsExp(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    const ze_mutable_commands_exp_desc_t* desc                              ///< [in] pointer to mutable commands descriptor; multiple descriptors may
+                                                                            ///< be chained via `pNext` member
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Updates the signal event for a mutable command in a mutable command
+///        list.
+/// 
+/// @details
+///     - This function may only be called for a mutable command list.
+///     - The type, scope and flags of the signal event must match those of the
+///       source command.
+///     - Passing a null pointer as the signal event will update the command to
+///       not issue a signal.
+///     - The application must synchronize mutable command list execution before
+///       calling this function.
+///     - The application must close a mutable command list after completing all
+///       updates.
+///     - This function must not be called from simultaneous threads with the
+///       same command list handle.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListUpdateMutableCommandSignalEventExp(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    uint64_t commandId,                                                     ///< [in] command identifier
+    ze_event_handle_t hSignalEvent                                          ///< [in][optional] handle of the event to signal on completion
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Updates the wait events for a mutable command in a mutable command
+///        list.
+/// 
+/// @details
+///     - This function may only be called for a mutable command list.
+///     - The number of wait events must match that of the source command.
+///     - The type, scope and flags of the wait events must match those of the
+///       source command.
+///     - Passing `nullptr` as the wait events will update the command to not
+///       wait on any events prior to dispatch.
+///     - Passing `nullptr` as an event on event wait list will remove event
+///       dependency from this wait list slot.
+///     - The application must synchronize mutable command list execution before
+///       calling this function.
+///     - The application must close a mutable command list after completing all
+///       updates.
+///     - This function must not be called from simultaneous threads with the
+///       same command list handle.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hCommandList`
+///     - ::ZE_RESULT_ERROR_INVALID_SIZE
+///         + The `numWaitEvents` parameter does not match that of the original command.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zeCommandListUpdateMutableCommandWaitEventsExp(
+    ze_command_list_handle_t hCommandList,                                  ///< [in] handle of the command list
+    uint64_t commandId,                                                     ///< [in] command identifier
+    uint32_t numWaitEvents,                                                 ///< [in][optional] the number of wait events
+    ze_event_handle_t* phWaitEvents                                         ///< [in][optional][range(0, numWaitEvents)] handle of the events to wait
+                                                                            ///< on before launching
     );
 
 #if !defined(__GNUC__)
@@ -10560,6 +12672,248 @@ typedef struct _ze_image_callbacks_t
 } ze_image_callbacks_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemAllocShared 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_alloc_shared_params_t
+{
+    ze_context_handle_t* phContext;
+    const ze_device_mem_alloc_desc_t** pdevice_desc;
+    const ze_host_mem_alloc_desc_t** phost_desc;
+    size_t* psize;
+    size_t* palignment;
+    ze_device_handle_t* phDevice;
+    void*** ppptr;
+} ze_mem_alloc_shared_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemAllocShared 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemAllocSharedCb_t)(
+    ze_mem_alloc_shared_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemAllocDevice 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_alloc_device_params_t
+{
+    ze_context_handle_t* phContext;
+    const ze_device_mem_alloc_desc_t** pdevice_desc;
+    size_t* psize;
+    size_t* palignment;
+    ze_device_handle_t* phDevice;
+    void*** ppptr;
+} ze_mem_alloc_device_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemAllocDevice 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemAllocDeviceCb_t)(
+    ze_mem_alloc_device_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemAllocHost 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_alloc_host_params_t
+{
+    ze_context_handle_t* phContext;
+    const ze_host_mem_alloc_desc_t** phost_desc;
+    size_t* psize;
+    size_t* palignment;
+    void*** ppptr;
+} ze_mem_alloc_host_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemAllocHost 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemAllocHostCb_t)(
+    ze_mem_alloc_host_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemFree 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_free_params_t
+{
+    ze_context_handle_t* phContext;
+    void** pptr;
+} ze_mem_free_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemFree 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemFreeCb_t)(
+    ze_mem_free_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemGetAllocProperties 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_get_alloc_properties_params_t
+{
+    ze_context_handle_t* phContext;
+    const void** pptr;
+    ze_memory_allocation_properties_t** ppMemAllocProperties;
+    ze_device_handle_t** pphDevice;
+} ze_mem_get_alloc_properties_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemGetAllocProperties 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemGetAllocPropertiesCb_t)(
+    ze_mem_get_alloc_properties_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemGetAddressRange 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_get_address_range_params_t
+{
+    ze_context_handle_t* phContext;
+    const void** pptr;
+    void*** ppBase;
+    size_t** ppSize;
+} ze_mem_get_address_range_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemGetAddressRange 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemGetAddressRangeCb_t)(
+    ze_mem_get_address_range_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemGetIpcHandle 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_get_ipc_handle_params_t
+{
+    ze_context_handle_t* phContext;
+    const void** pptr;
+    ze_ipc_mem_handle_t** ppIpcHandle;
+} ze_mem_get_ipc_handle_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemGetIpcHandle 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemGetIpcHandleCb_t)(
+    ze_mem_get_ipc_handle_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemOpenIpcHandle 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_open_ipc_handle_params_t
+{
+    ze_context_handle_t* phContext;
+    ze_device_handle_t* phDevice;
+    ze_ipc_mem_handle_t* phandle;
+    ze_ipc_memory_flags_t* pflags;
+    void*** ppptr;
+} ze_mem_open_ipc_handle_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemOpenIpcHandle 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemOpenIpcHandleCb_t)(
+    ze_mem_open_ipc_handle_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function parameters for zeMemCloseIpcHandle 
+/// @details Each entry is a pointer to the parameter passed to the function;
+///     allowing the callback the ability to modify the parameter's value
+typedef struct _ze_mem_close_ipc_handle_params_t
+{
+    ze_context_handle_t* phContext;
+    const void** pptr;
+} ze_mem_close_ipc_handle_params_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Callback function-pointer for zeMemCloseIpcHandle 
+/// @param[in] params Parameters passed to this instance
+/// @param[in] result Return value
+/// @param[in] pTracerUserData Per-Tracer user data
+/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
+typedef void (ZE_APICALL *ze_pfnMemCloseIpcHandleCb_t)(
+    ze_mem_close_ipc_handle_params_t* params,
+    ze_result_t result,
+    void* pTracerUserData,
+    void** ppTracerInstanceUserData
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Table of Mem callback functions pointers
+typedef struct _ze_mem_callbacks_t
+{
+    ze_pfnMemAllocSharedCb_t                                        pfnAllocSharedCb;
+    ze_pfnMemAllocDeviceCb_t                                        pfnAllocDeviceCb;
+    ze_pfnMemAllocHostCb_t                                          pfnAllocHostCb;
+    ze_pfnMemFreeCb_t                                               pfnFreeCb;
+    ze_pfnMemGetAllocPropertiesCb_t                                 pfnGetAllocPropertiesCb;
+    ze_pfnMemGetAddressRangeCb_t                                    pfnGetAddressRangeCb;
+    ze_pfnMemGetIpcHandleCb_t                                       pfnGetIpcHandleCb;
+    ze_pfnMemOpenIpcHandleCb_t                                      pfnOpenIpcHandleCb;
+    ze_pfnMemCloseIpcHandleCb_t                                     pfnCloseIpcHandleCb;
+} ze_mem_callbacks_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Callback function parameters for zeFenceCreate 
 /// @details Each entry is a pointer to the parameter passed to the function;
 ///     allowing the callback the ability to modify the parameter's value
@@ -11657,248 +14011,6 @@ typedef struct _ze_physical_mem_callbacks_t
     ze_pfnPhysicalMemCreateCb_t                                     pfnCreateCb;
     ze_pfnPhysicalMemDestroyCb_t                                    pfnDestroyCb;
 } ze_physical_mem_callbacks_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemAllocShared 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_alloc_shared_params_t
-{
-    ze_context_handle_t* phContext;
-    const ze_device_mem_alloc_desc_t** pdevice_desc;
-    const ze_host_mem_alloc_desc_t** phost_desc;
-    size_t* psize;
-    size_t* palignment;
-    ze_device_handle_t* phDevice;
-    void*** ppptr;
-} ze_mem_alloc_shared_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemAllocShared 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemAllocSharedCb_t)(
-    ze_mem_alloc_shared_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemAllocDevice 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_alloc_device_params_t
-{
-    ze_context_handle_t* phContext;
-    const ze_device_mem_alloc_desc_t** pdevice_desc;
-    size_t* psize;
-    size_t* palignment;
-    ze_device_handle_t* phDevice;
-    void*** ppptr;
-} ze_mem_alloc_device_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemAllocDevice 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemAllocDeviceCb_t)(
-    ze_mem_alloc_device_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemAllocHost 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_alloc_host_params_t
-{
-    ze_context_handle_t* phContext;
-    const ze_host_mem_alloc_desc_t** phost_desc;
-    size_t* psize;
-    size_t* palignment;
-    void*** ppptr;
-} ze_mem_alloc_host_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemAllocHost 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemAllocHostCb_t)(
-    ze_mem_alloc_host_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemFree 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_free_params_t
-{
-    ze_context_handle_t* phContext;
-    void** pptr;
-} ze_mem_free_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemFree 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemFreeCb_t)(
-    ze_mem_free_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemGetAllocProperties 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_get_alloc_properties_params_t
-{
-    ze_context_handle_t* phContext;
-    const void** pptr;
-    ze_memory_allocation_properties_t** ppMemAllocProperties;
-    ze_device_handle_t** pphDevice;
-} ze_mem_get_alloc_properties_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemGetAllocProperties 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemGetAllocPropertiesCb_t)(
-    ze_mem_get_alloc_properties_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemGetAddressRange 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_get_address_range_params_t
-{
-    ze_context_handle_t* phContext;
-    const void** pptr;
-    void*** ppBase;
-    size_t** ppSize;
-} ze_mem_get_address_range_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemGetAddressRange 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemGetAddressRangeCb_t)(
-    ze_mem_get_address_range_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemGetIpcHandle 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_get_ipc_handle_params_t
-{
-    ze_context_handle_t* phContext;
-    const void** pptr;
-    ze_ipc_mem_handle_t** ppIpcHandle;
-} ze_mem_get_ipc_handle_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemGetIpcHandle 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemGetIpcHandleCb_t)(
-    ze_mem_get_ipc_handle_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemOpenIpcHandle 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_open_ipc_handle_params_t
-{
-    ze_context_handle_t* phContext;
-    ze_device_handle_t* phDevice;
-    ze_ipc_mem_handle_t* phandle;
-    ze_ipc_memory_flags_t* pflags;
-    void*** ppptr;
-} ze_mem_open_ipc_handle_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemOpenIpcHandle 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemOpenIpcHandleCb_t)(
-    ze_mem_open_ipc_handle_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function parameters for zeMemCloseIpcHandle 
-/// @details Each entry is a pointer to the parameter passed to the function;
-///     allowing the callback the ability to modify the parameter's value
-typedef struct _ze_mem_close_ipc_handle_params_t
-{
-    ze_context_handle_t* phContext;
-    const void** pptr;
-} ze_mem_close_ipc_handle_params_t;
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Callback function-pointer for zeMemCloseIpcHandle 
-/// @param[in] params Parameters passed to this instance
-/// @param[in] result Return value
-/// @param[in] pTracerUserData Per-Tracer user data
-/// @param[in,out] ppTracerInstanceUserData Per-Tracer, Per-Instance user data
-typedef void (ZE_APICALL *ze_pfnMemCloseIpcHandleCb_t)(
-    ze_mem_close_ipc_handle_params_t* params,
-    ze_result_t result,
-    void* pTracerUserData,
-    void** ppTracerInstanceUserData
-    );
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Table of Mem callback functions pointers
-typedef struct _ze_mem_callbacks_t
-{
-    ze_pfnMemAllocSharedCb_t                                        pfnAllocSharedCb;
-    ze_pfnMemAllocDeviceCb_t                                        pfnAllocDeviceCb;
-    ze_pfnMemAllocHostCb_t                                          pfnAllocHostCb;
-    ze_pfnMemFreeCb_t                                               pfnFreeCb;
-    ze_pfnMemGetAllocPropertiesCb_t                                 pfnGetAllocPropertiesCb;
-    ze_pfnMemGetAddressRangeCb_t                                    pfnGetAddressRangeCb;
-    ze_pfnMemGetIpcHandleCb_t                                       pfnGetIpcHandleCb;
-    ze_pfnMemOpenIpcHandleCb_t                                      pfnOpenIpcHandleCb;
-    ze_pfnMemCloseIpcHandleCb_t                                     pfnCloseIpcHandleCb;
-} ze_mem_callbacks_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Callback function parameters for zeVirtualMemReserve 

@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zes_api.h
- * @version v1.6-r1.6.10
+ * @version v1.9-r1.9.1
  *
  */
 #ifndef _ZES_API_H
@@ -98,6 +98,10 @@ typedef struct _zes_diag_handle_t *zes_diag_handle_t;
 typedef struct _zes_overclock_handle_t *zes_overclock_handle_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Handle for a Sysman virtual function management domain
+typedef struct _zes_vf_handle_t *zes_vf_handle_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Defines structure types
 typedef enum _zes_structure_type_t
 {
@@ -142,6 +146,17 @@ typedef enum _zes_structure_type_t
     ZES_STRUCTURE_TYPE_POWER_LIMIT_EXT_DESC = 0x27,                         ///< ::zes_power_limit_ext_desc_t
     ZES_STRUCTURE_TYPE_POWER_EXT_PROPERTIES = 0x28,                         ///< ::zes_power_ext_properties_t
     ZES_STRUCTURE_TYPE_OVERCLOCK_PROPERTIES = 0x29,                         ///< ::zes_overclock_properties_t
+    ZES_STRUCTURE_TYPE_FABRIC_PORT_ERROR_COUNTERS = 0x2a,                   ///< ::zes_fabric_port_error_counters_t
+    ZES_STRUCTURE_TYPE_ENGINE_EXT_PROPERTIES = 0x2b,                        ///< ::zes_engine_ext_properties_t
+    ZES_STRUCTURE_TYPE_RESET_PROPERTIES = 0x2c,                             ///< ::zes_reset_properties_t
+    ZES_STRUCTURE_TYPE_DEVICE_EXT_PROPERTIES = 0x2d,                        ///< ::zes_device_ext_properties_t
+    ZES_STRUCTURE_TYPE_POWER_DOMAIN_EXP_PROPERTIES = 0x00020001,            ///< ::zes_power_domain_exp_properties_t
+    ZES_STRUCTURE_TYPE_MEM_BANDWIDTH_COUNTER_BITS_EXP_PROPERTIES = 0x00020002,  ///< ::zes_mem_bandwidth_counter_bits_exp_properties_t
+    ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP = 0x00020003,          ///< ::zes_mem_page_offline_state_exp_t
+    ZES_STRUCTURE_TYPE_SUBDEVICE_EXP_PROPERTIES = 0x00020004,               ///< ::zes_subdevice_exp_properties_t
+    ZES_STRUCTURE_TYPE_VF_EXP_PROPERTIES = 0x00020005,                      ///< ::zes_vf_exp_properties_t
+    ZES_STRUCTURE_TYPE_VF_UTIL_MEM_EXP = 0x00020006,                        ///< ::zes_vf_util_mem_exp_t
+    ZES_STRUCTURE_TYPE_VF_UTIL_ENGINE_EXP = 0x00020007,                     ///< ::zes_vf_util_engine_exp_t
     ZES_STRUCTURE_TYPE_FORCE_UINT32 = 0x7fffffff
 
 } zes_structure_type_t;
@@ -217,12 +232,28 @@ typedef struct _zes_base_config_t zes_base_config_t;
 typedef struct _zes_base_capability_t zes_base_capability_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_driver_extension_properties_t
+typedef struct _zes_driver_extension_properties_t zes_driver_extension_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_device_state_t
 typedef struct _zes_device_state_t zes_device_state_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_reset_properties_t
+typedef struct _zes_reset_properties_t zes_reset_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_uuid_t
+typedef struct _zes_uuid_t zes_uuid_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_device_properties_t
 typedef struct _zes_device_properties_t zes_device_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_device_ext_properties_t
+typedef struct _zes_device_ext_properties_t zes_device_ext_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_process_state_t
@@ -321,6 +352,10 @@ typedef struct _zes_fabric_port_state_t zes_fabric_port_state_t;
 typedef struct _zes_fabric_port_throughput_t zes_fabric_port_throughput_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_fabric_port_error_counters_t
+typedef struct _zes_fabric_port_error_counters_t zes_fabric_port_error_counters_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_fan_speed_t
 typedef struct _zes_fan_speed_t zes_fan_speed_t;
 
@@ -387,6 +422,10 @@ typedef struct _zes_mem_state_t zes_mem_state_t;
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_mem_bandwidth_t
 typedef struct _zes_mem_bandwidth_t zes_mem_bandwidth_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_mem_ext_bandwidth_t
+typedef struct _zes_mem_ext_bandwidth_t zes_mem_ext_bandwidth_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_perf_properties_t
@@ -471,6 +510,42 @@ typedef struct _zes_power_limit_ext_desc_t zes_power_limit_ext_desc_t;
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_power_ext_properties_t
 typedef struct _zes_power_ext_properties_t zes_power_ext_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_engine_ext_properties_t
+typedef struct _zes_engine_ext_properties_t zes_engine_ext_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_ras_state_exp_t
+typedef struct _zes_ras_state_exp_t zes_ras_state_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_mem_page_offline_state_exp_t
+typedef struct _zes_mem_page_offline_state_exp_t zes_mem_page_offline_state_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_mem_bandwidth_counter_bits_exp_properties_t
+typedef struct _zes_mem_bandwidth_counter_bits_exp_properties_t zes_mem_bandwidth_counter_bits_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_power_domain_exp_properties_t
+typedef struct _zes_power_domain_exp_properties_t zes_power_domain_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_subdevice_exp_properties_t
+typedef struct _zes_subdevice_exp_properties_t zes_subdevice_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_vf_exp_properties_t
+typedef struct _zes_vf_exp_properties_t zes_vf_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_vf_util_mem_exp_t
+typedef struct _zes_vf_util_mem_exp_t zes_vf_util_mem_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_vf_util_engine_exp_t
+typedef struct _zes_vf_util_engine_exp_t zes_vf_util_engine_exp_t;
 
 
 #if !defined(__GNUC__)
@@ -558,6 +633,79 @@ zesDriverGet(
                                                                             ///< loader shall only retrieve that number of sysman drivers.
     );
 
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_MAX_EXTENSION_NAME
+/// @brief Maximum extension name string size
+#define ZES_MAX_EXTENSION_NAME  256
+#endif // ZES_MAX_EXTENSION_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension properties queried using ::zesDriverGetExtensionProperties
+typedef struct _zes_driver_extension_properties_t
+{
+    char name[ZES_MAX_EXTENSION_NAME];                                      ///< [out] extension name
+    uint32_t version;                                                       ///< [out] extension version using ::ZE_MAKE_VERSION
+
+} zes_driver_extension_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves extension properties
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDriverGetExtensionProperties(
+    zes_driver_handle_t hDriver,                                            ///< [in] handle of the driver instance
+    uint32_t* pCount,                                                       ///< [in,out] pointer to the number of extension properties.
+                                                                            ///< if count is zero, then the driver shall update the value with the
+                                                                            ///< total number of extension properties available.
+                                                                            ///< if count is greater than the number of extension properties available,
+                                                                            ///< then the driver shall update the value with the correct number of
+                                                                            ///< extension properties available.
+    zes_driver_extension_properties_t* pExtensionProperties                 ///< [in,out][optional][range(0, *pCount)] array of query results for
+                                                                            ///< extension properties.
+                                                                            ///< if count is less than the number of extension properties available,
+                                                                            ///< then driver shall only retrieve that number of extension properties.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves function pointer for vendor-specific or experimental
+///        extensions
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == name`
+///         + `nullptr == ppFunctionAddress`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDriverGetExtensionFunctionAddress(
+    zes_driver_handle_t hDriver,                                            ///< [in] handle of the driver instance
+    const char* name,                                                       ///< [in] extension function name
+    void** ppFunctionAddress                                                ///< [out] pointer to function pointer
+    );
+
 #if !defined(__GNUC__)
 #pragma endregion
 #endif
@@ -572,8 +720,8 @@ zesDriverGet(
 ///     - Multiple calls to this function will return identical sysman device
 ///       handles, in the same order.
 ///     - The number and order of handles returned from this function is NOT
-///       affected by the ::ZE_AFFINITY_MASK or ::ZE_ENABLE_PCI_ID_DEVICE_ORDER
-///       environment variables.
+///       affected by the ::ZE_AFFINITY_MASK, ::ZE_ENABLE_PCI_ID_DEVICE_ORDER,
+///       or ::ZE_FLAT_DEVICE_HIERARCHY environment variables.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
 /// 
@@ -606,6 +754,12 @@ zesDeviceGet(
 /// @brief Maximum number of characters in string properties.
 #define ZES_STRING_PROPERTY_SIZE  64
 #endif // ZES_STRING_PROPERTY_SIZE
+
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_MAX_UUID_SIZE
+/// @brief Maximum device universal unique id (UUID) size in bytes.
+#define ZES_MAX_UUID_SIZE  16
+#endif // ZES_MAX_UUID_SIZE
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Types of accelerator engines
@@ -646,6 +800,17 @@ typedef enum _zes_reset_reason_flag_t
 } zes_reset_reason_flag_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Device reset type
+typedef enum _zes_reset_type_t
+{
+    ZES_RESET_TYPE_WARM = 0,                                                ///< Apply warm reset
+    ZES_RESET_TYPE_COLD = 1,                                                ///< Apply cold reset
+    ZES_RESET_TYPE_FLR = 2,                                                 ///< Apply FLR reset
+    ZES_RESET_TYPE_FORCE_UINT32 = 0x7fffffff
+
+} zes_reset_type_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Device state
 typedef struct _zes_device_state_t
 {
@@ -659,35 +824,99 @@ typedef struct _zes_device_state_t
 } zes_device_state_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Device reset properties
+typedef struct _zes_reset_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    ze_bool_t force;                                                        ///< [in] If set to true, all applications that are currently using the
+                                                                            ///< device will be forcibly killed.
+    zes_reset_type_t resetType;                                             ///< [in] Type of reset needs to be performed
+
+} zes_reset_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Device universal unique id (UUID)
+typedef struct _zes_uuid_t
+{
+    uint8_t id[ZES_MAX_UUID_SIZE];                                          ///< [out] opaque data representing a device UUID
+
+} zes_uuid_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Supported device types
+typedef enum _zes_device_type_t
+{
+    ZES_DEVICE_TYPE_GPU = 1,                                                ///< Graphics Processing Unit
+    ZES_DEVICE_TYPE_CPU = 2,                                                ///< Central Processing Unit
+    ZES_DEVICE_TYPE_FPGA = 3,                                               ///< Field Programmable Gate Array
+    ZES_DEVICE_TYPE_MCA = 4,                                                ///< Memory Copy Accelerator
+    ZES_DEVICE_TYPE_VPU = 5,                                                ///< Vision Processing Unit
+    ZES_DEVICE_TYPE_FORCE_UINT32 = 0x7fffffff
+
+} zes_device_type_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Supported device property flags
+typedef uint32_t zes_device_property_flags_t;
+typedef enum _zes_device_property_flag_t
+{
+    ZES_DEVICE_PROPERTY_FLAG_INTEGRATED = ZE_BIT(0),                        ///< Device is integrated with the Host.
+    ZES_DEVICE_PROPERTY_FLAG_SUBDEVICE = ZE_BIT(1),                         ///< Device handle used for query represents a sub-device.
+    ZES_DEVICE_PROPERTY_FLAG_ECC = ZE_BIT(2),                               ///< Device supports error correction memory access.
+    ZES_DEVICE_PROPERTY_FLAG_ONDEMANDPAGING = ZE_BIT(3),                    ///< Device supports on-demand page-faulting.
+    ZES_DEVICE_PROPERTY_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} zes_device_property_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Device properties
 typedef struct _zes_device_properties_t
 {
     zes_structure_type_t stype;                                             ///< [in] type of this structure
     void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
                                                                             ///< structure (i.e. contains stype and pNext).
-    ze_device_properties_t core;                                            ///< [out] Core device properties
+    ze_device_properties_t core;                                            ///< [out] (Deprecated, use ::zes_uuid_t in the extended structure) Core
+                                                                            ///< device properties
     uint32_t numSubdevices;                                                 ///< [out] Number of sub-devices. A value of 0 indicates that this device
                                                                             ///< doesn't have sub-devices.
-    char serialNumber[ZES_STRING_PROPERTY_SIZE];                            ///< [out] Manufacturing serial number (NULL terminated string value). Will
-                                                                            ///< be set to the string "unkown" if this cannot be determined for the
-                                                                            ///< device.
-    char boardNumber[ZES_STRING_PROPERTY_SIZE];                             ///< [out] Manufacturing board number (NULL terminated string value). Will
-                                                                            ///< be set to the string "unkown" if this cannot be determined for the
-                                                                            ///< device.
+    char serialNumber[ZES_STRING_PROPERTY_SIZE];                            ///< [out] Manufacturing serial number (NULL terminated string value). This
+                                                                            ///< value is intended to reflect the Part ID/SoC ID assigned by
+                                                                            ///< manufacturer that is unique for a SoC. Will be set to the string
+                                                                            ///< "unknown" if this cannot be determined for the device.
+    char boardNumber[ZES_STRING_PROPERTY_SIZE];                             ///< [out] Manufacturing board number (NULL terminated string value).
+                                                                            ///< Alternatively "boardSerialNumber", this value is intended to reflect
+                                                                            ///< the string printed on board label by manufacturer. Will be set to the
+                                                                            ///< string "unknown" if this cannot be determined for the device.
     char brandName[ZES_STRING_PROPERTY_SIZE];                               ///< [out] Brand name of the device (NULL terminated string value). Will be
-                                                                            ///< set to the string "unkown" if this cannot be determined for the
+                                                                            ///< set to the string "unknown" if this cannot be determined for the
                                                                             ///< device.
     char modelName[ZES_STRING_PROPERTY_SIZE];                               ///< [out] Model name of the device (NULL terminated string value). Will be
-                                                                            ///< set to the string "unkown" if this cannot be determined for the
+                                                                            ///< set to the string "unknown" if this cannot be determined for the
                                                                             ///< device.
     char vendorName[ZES_STRING_PROPERTY_SIZE];                              ///< [out] Vendor name of the device (NULL terminated string value). Will
-                                                                            ///< be set to the string "unkown" if this cannot be determined for the
+                                                                            ///< be set to the string "unknown" if this cannot be determined for the
                                                                             ///< device.
     char driverVersion[ZES_STRING_PROPERTY_SIZE];                           ///< [out] Installed driver version (NULL terminated string value). Will be
-                                                                            ///< set to the string "unkown" if this cannot be determined for the
+                                                                            ///< set to the string "unknown" if this cannot be determined for the
                                                                             ///< device.
 
 } zes_device_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Device properties
+typedef struct _zes_device_ext_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    zes_uuid_t uuid;                                                        ///< [out] universal unique identifier. Note: uuid obtained from Sysman API
+                                                                            ///< is the same as from core API. Subdevices will have their own uuid.
+    zes_device_type_t type;                                                 ///< [out] generic device type
+    zes_device_property_flags_t flags;                                      ///< [out] 0 (none) or a valid combination of ::zes_device_property_flag_t
+
+} zes_device_ext_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Get properties about the device
@@ -746,8 +975,9 @@ zesDeviceGetState(
 ///       this function.
 ///     - If the force argument is specified, all applications using the device
 ///       will be forcibly killed.
-///     - The function will block until the device has restarted or a timeout
-///       occurred waiting for the reset to complete.
+///     - The function will block until the device has restarted or an
+///       implementation defined timeout occurred waiting for the reset to
+///       complete.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -768,6 +998,42 @@ zesDeviceReset(
     zes_device_handle_t hDevice,                                            ///< [in] Sysman handle for the device
     ze_bool_t force                                                         ///< [in] If set to true, all applications that are currently using the
                                                                             ///< device will be forcibly killed.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Reset device extension
+/// 
+/// @details
+///     - Performs a PCI bus reset of the device. This will result in all
+///       current device state being lost.
+///     - Prior to calling this function, user is responsible for closing
+///       applications using the device unless force argument is specified.
+///     - If the force argument is specified, all applications using the device
+///       will be forcibly killed.
+///     - The function will block until the device has restarted or a
+///       implementation specific timeout occurred waiting for the reset to
+///       complete.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pProperties`
+///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
+///         + User does not have permissions to perform this operation.
+///     - ::ZE_RESULT_ERROR_HANDLE_OBJECT_IN_USE
+///         + Reset cannot be performed because applications are using this device.
+///     - ::ZE_RESULT_ERROR_UNKNOWN
+///         + There were problems unloading the device driver, performing a bus reset or reloading the device driver.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceResetExt(
+    zes_device_handle_t hDevice,                                            ///< [in] Sysman handle for the device
+    zes_reset_properties_t* pProperties                                     ///< [in] Device reset properties to apply
     );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2097,16 +2363,8 @@ typedef enum _zes_engine_group_t
                                                                             ///< engines so activity of such an engine may not be indicative of the
                                                                             ///< underlying resource utilization - use
                                                                             ///< ::ZES_ENGINE_GROUP_3D_RENDER_COMPUTE_ALL for that.
-    ZES_ENGINE_GROUP_MEDIA_DECODE_SINGLE = 6,                               ///< Access information about a single media decode engine. Note that
-                                                                            ///< single engines may share the same underlying accelerator resources as
-                                                                            ///< other engines so activity of such an engine may not be indicative of
-                                                                            ///< the underlying resource utilization - use ::ZES_ENGINE_GROUP_MEDIA_ALL
-                                                                            ///< for that.
-    ZES_ENGINE_GROUP_MEDIA_ENCODE_SINGLE = 7,                               ///< Access information about a single media encode engine. Note that
-                                                                            ///< single engines may share the same underlying accelerator resources as
-                                                                            ///< other engines so activity of such an engine may not be indicative of
-                                                                            ///< the underlying resource utilization - use ::ZES_ENGINE_GROUP_MEDIA_ALL
-                                                                            ///< for that.
+    ZES_ENGINE_GROUP_MEDIA_DECODE_SINGLE = 6,                               ///< [DEPRECATED] No longer supported.
+    ZES_ENGINE_GROUP_MEDIA_ENCODE_SINGLE = 7,                               ///< [DEPRECATED] No longer supported.
     ZES_ENGINE_GROUP_COPY_SINGLE = 8,                                       ///< Access information about a single media encode engine. Note that
                                                                             ///< single engines may share the same underlying accelerator resources as
                                                                             ///< other engines so activity of such an engine may not be indicative of
@@ -2117,16 +2375,16 @@ typedef enum _zes_engine_group_t
                                                                             ///< other engines so activity of such an engine may not be indicative of
                                                                             ///< the underlying resource utilization - use ::ZES_ENGINE_GROUP_MEDIA_ALL
                                                                             ///< for that.
-    ZES_ENGINE_GROUP_3D_SINGLE = 10,                                        ///< Access information about a single 3D engine - this is an engine that
-                                                                            ///< can process 3D content only. Note that single engines may share the
-                                                                            ///< same underlying accelerator resources as other engines so activity of
-                                                                            ///< such an engine may not be indicative of the underlying resource
-                                                                            ///< utilization - use ::ZES_ENGINE_GROUP_3D_RENDER_COMPUTE_ALL for that.
-    ZES_ENGINE_GROUP_3D_RENDER_COMPUTE_ALL = 11,                            ///< Access information about all 3D/render/compute engines combined.
+    ZES_ENGINE_GROUP_3D_SINGLE = 10,                                        ///< [DEPRECATED] No longer supported.
+    ZES_ENGINE_GROUP_3D_RENDER_COMPUTE_ALL = 11,                            ///< [DEPRECATED] No longer supported.
     ZES_ENGINE_GROUP_RENDER_ALL = 12,                                       ///< Access information about all render engines combined. Render engines
                                                                             ///< are those than process both 3D content and compute kernels.
-    ZES_ENGINE_GROUP_3D_ALL = 13,                                           ///< Access information about all 3D engines combined. 3D engines can
-                                                                            ///< process 3D content only (no compute kernels).
+    ZES_ENGINE_GROUP_3D_ALL = 13,                                           ///< [DEPRECATED] No longer supported.
+    ZES_ENGINE_GROUP_MEDIA_CODEC_SINGLE = 14,                               ///< Access information about a single media engine. Note that single
+                                                                            ///< engines may share the same underlying accelerator resources as other
+                                                                            ///< engines so activity of such an engine may not be indicative of the
+                                                                            ///< underlying resource utilization - use ::ZES_ENGINE_GROUP_MEDIA_ALL for
+                                                                            ///< that.
     ZES_ENGINE_GROUP_FORCE_UINT32 = 0x7fffffff
 
 } zes_engine_group_t;
@@ -2152,18 +2410,24 @@ typedef struct _zes_engine_properties_t
 ///     - Percent utilization is calculated by taking two snapshots (s1, s2) and
 ///       using the equation: %util = (s2.activeTime - s1.activeTime) /
 ///       (s2.timestamp - s1.timestamp)
+///     - The `activeTime` time units are implementation-specific since the
+///       value is only intended to be used for calculating utilization
+///       percentage.
+///     - The `timestamp` should only be used to calculate delta between
+///       snapshots of this structure.
+///     - The application should never take the delta of `timestamp` with the
+///       timestamp from a different structure since they are not guaranteed to
+///       have the same base.
+///     - When taking the delta, the difference between `timestamp` samples
+///       could be `0`, if the frequency of sampling the snapshots is higher
+///       than the frequency of the timestamp update.
+///     - The absolute value of `timestamp` is only valid during within the
+///       application and may be different on the next execution.
 typedef struct _zes_engine_stats_t
 {
-    uint64_t activeTime;                                                    ///< [out] Monotonic counter for time in microseconds that this resource is
-                                                                            ///< actively running workloads.
-    uint64_t timestamp;                                                     ///< [out] Monotonic timestamp counter in microseconds when activeTime
-                                                                            ///< counter was sampled.
-                                                                            ///< This timestamp should only be used to calculate delta time between
-                                                                            ///< snapshots of this structure.
-                                                                            ///< Never take the delta of this timestamp with the timestamp from a
-                                                                            ///< different structure since they are not guaranteed to have the same base.
-                                                                            ///< The absolute value of the timestamp is only valid during within the
-                                                                            ///< application and may be different on the next execution.
+    uint64_t activeTime;                                                    ///< [out] Monotonic counter where the resource is actively running
+                                                                            ///< workloads.
+    uint64_t timestamp;                                                     ///< [out] Monotonic counter when activeTime counter was sampled.
 
 } zes_engine_stats_t;
 
@@ -2224,9 +2488,11 @@ zesEngineGetProperties(
     );
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Get the activity stats for an engine group
+/// @brief Get the activity stats for an engine group.
 /// 
 /// @details
+///     - This function also returns the engine activity inside a Virtual
+///       Machine (VM), in the presence of hardware virtualization (SRIOV)
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
 /// 
@@ -2286,6 +2552,7 @@ typedef enum _zes_event_type_flag_t
                                                                             ///< default).
     ZES_EVENT_TYPE_FLAG_DEVICE_RESET_REQUIRED = ZE_BIT(14),                 ///< Event is triggered when the device needs to be reset (use
                                                                             ///< ::zesDeviceGetState() to determine the reasons for the reset).
+    ZES_EVENT_TYPE_FLAG_SURVIVABILITY_MODE_DETECTED = ZE_BIT(15),           ///< Event is triggered when graphics driver encounter an error condition.
     ZES_EVENT_TYPE_FLAG_FORCE_UINT32 = 0x7fffffff
 
 } zes_event_type_flag_t;
@@ -2306,7 +2573,7 @@ typedef enum _zes_event_type_flag_t
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
-///         + `0x7fff < events`
+///         + `0xffff < events`
 ZE_APIEXPORT ze_result_t ZE_APICALL
 zesDeviceEventRegister(
     zes_device_handle_t hDevice,                                            ///< [in] The device handle.
@@ -2588,6 +2855,20 @@ typedef struct _zes_fabric_port_throughput_t
 } zes_fabric_port_throughput_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Fabric Port Error Counters
+typedef struct _zes_fabric_port_error_counters_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint64_t linkFailureCount;                                              ///< [out] Link Failure Error Count reported per port
+    uint64_t fwCommErrorCount;                                              ///< [out] Firmware Communication Error Count reported per device
+    uint64_t fwErrorCount;                                                  ///< [out] Firmware reported Error Count reported per device
+    uint64_t linkDegradeCount;                                              ///< [out] Link Degrade Error Count reported per port
+
+} zes_fabric_port_error_counters_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Get handle of Fabric ports in a device
 /// 
 /// @details
@@ -2762,6 +3043,62 @@ ZE_APIEXPORT ze_result_t ZE_APICALL
 zesFabricPortGetThroughput(
     zes_fabric_port_handle_t hPort,                                         ///< [in] Handle for the component.
     zes_fabric_port_throughput_t* pThroughput                               ///< [in,out] Will contain the Fabric port throughput counters.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get Fabric Port Error Counters
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+///     - The memory backing the arrays for phPorts and ppThroughputs must be
+///       allocated in system memory by the user who is also responsible for
+///       releasing them when they are no longer needed.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hPort`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pErrors`
+///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
+///         + User does not have permissions to query this telemetry.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesFabricPortGetFabricErrorCounters(
+    zes_fabric_port_handle_t hPort,                                         ///< [in] Handle for the component.
+    zes_fabric_port_error_counters_t* pErrors                               ///< [in,out] Will contain the Fabric port Error counters.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get Fabric port throughput from multiple ports in a single call
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phPort`
+///         + `nullptr == pThroughput`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesFabricPortGetMultiPortThroughput(
+    zes_device_handle_t hDevice,                                            ///< [in] Sysman handle of the device.
+    uint32_t numPorts,                                                      ///< [in] Number of ports enumerated in function ::zesDeviceEnumFabricPorts
+    zes_fabric_port_handle_t* phPort,                                       ///< [in][range(0, numPorts)] array of fabric port handles provided by user
+                                                                            ///< to gather throughput values. 
+    zes_fabric_port_throughput_t** pThroughput                              ///< [out][range(0, numPorts)] array of fabric port throughput counters
+                                                                            ///< from multiple ports of type ::zes_fabric_port_throughput_t.
     );
 
 #if !defined(__GNUC__)
@@ -3146,8 +3483,12 @@ zesFirmwareGetProperties(
 /// @brief Flash a new firmware image
 /// 
 /// @details
+///     - Any running workload must be gracefully closed before invoking this
+///       function.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - This is a non-blocking call. Application may call
+///       ::zesFirmwareGetFlashProgress to get completion status.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3166,6 +3507,56 @@ zesFirmwareFlash(
     zes_firmware_handle_t hFirmware,                                        ///< [in] Handle for the component.
     void* pImage,                                                           ///< [in] Image of the new firmware to flash.
     uint32_t size                                                           ///< [in] Size of the flash image.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get Firmware Flash Progress
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hFirmware`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCompletionPercent`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesFirmwareGetFlashProgress(
+    zes_firmware_handle_t hFirmware,                                        ///< [in] Handle for the component.
+    uint32_t* pCompletionPercent                                            ///< [in,out] Pointer to the Completion Percentage of Firmware Update
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get Firmware Console Logs
+/// 
+/// @details
+///     - The caller may pass nullptr for pFirmwareLog and set pSize to zero
+///       when querying only for size.
+///     - The caller must provide memory for Firmware log.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hFirmware`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pSize`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesFirmwareGetConsoleLogs(
+    zes_firmware_handle_t hFirmware,                                        ///< [in] Handle for the component.
+    size_t* pSize,                                                          ///< [in,out] size of firmware log
+    char* pFirmwareLog                                                      ///< [in,out][optional] pointer to null-terminated string of the log.
     );
 
 #if !defined(__GNUC__)
@@ -3307,6 +3698,9 @@ typedef struct _zes_freq_throttle_time_t
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Overclocking modes
+/// 
+/// @details
+///     - [DEPRECATED] No longer supported.
 typedef enum _zes_oc_mode_t
 {
     ZES_OC_MODE_OFF = 0,                                                    ///< Overclocking if off - hardware is running using factory default
@@ -3335,6 +3729,7 @@ typedef enum _zes_oc_mode_t
 /// @details
 ///     - Provides all the overclocking capabilities and properties supported by
 ///       the device for the frequency domain.
+///     - [DEPRECATED] No longer supported.
 typedef struct _zes_oc_capabilities_t
 {
     zes_structure_type_t stype;                                             ///< [in] type of this structure
@@ -3485,6 +3880,9 @@ zesFrequencyGetRange(
 /// @brief Set frequency range between which the hardware can operate.
 /// 
 /// @details
+///     - The application may call this function with the frequency range min
+///       and max values set to `-1` to request the frequency be (re)set to the
+///       default values.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
 /// 
@@ -3561,6 +3959,7 @@ zesFrequencyGetThrottleTime(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3585,6 +3984,7 @@ zesFrequencyOcGetCapabilities(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3620,6 +4020,7 @@ zesFrequencyOcGetFrequencyTarget(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3652,6 +4053,7 @@ zesFrequencyOcSetFrequencyTarget(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3689,6 +4091,7 @@ zesFrequencyOcGetVoltageTarget(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3723,6 +4126,7 @@ zesFrequencyOcSetVoltageTarget(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3754,6 +4158,7 @@ zesFrequencyOcSetMode(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3785,6 +4190,7 @@ zesFrequencyOcGetMode(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3813,6 +4219,7 @@ zesFrequencyOcGetIccMax(
 ///     - Setting ocIccMax to 0.0 will return the value to the factory default.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3843,6 +4250,7 @@ zesFrequencyOcSetIccMax(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -3870,6 +4278,7 @@ zesFrequencyOcGetTjMax(
 ///     - Setting ocTjMax to 0.0 will return the value to the factory default.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -4179,6 +4588,12 @@ typedef struct _zes_mem_state_t
 ///       using the equation: %bw = 10^6 * ((s2.readCounter - s1.readCounter) +
 ///       (s2.writeCounter - s1.writeCounter)) / (s2.maxBandwidth *
 ///       (s2.timestamp - s1.timestamp))
+///     - Counter can roll over and rollover needs to be handled by comparing
+///       the current read against the previous read
+///     - Counter is a 32 byte transaction count, which means the calculated
+///       delta (delta = current_value - previous_value or delta = 2^32 -
+///       previous_value + current_value in case of rollover) needs to be
+///       multiplied by 32 to get delta between samples in actual byte count
 typedef struct _zes_mem_bandwidth_t
 {
     uint64_t readCounter;                                                   ///< [out] Total bytes read from memory
@@ -4193,6 +4608,18 @@ typedef struct _zes_mem_bandwidth_t
                                                                             ///< application and may be different on the next execution.
 
 } zes_mem_bandwidth_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension properties for Memory bandwidth
+/// 
+/// @details
+///     - Number of counter bits
+///     - [DEPRECATED] No longer supported.
+typedef struct _zes_mem_ext_bandwidth_t
+{
+    uint32_t memoryTimestampValidBits;                                      ///< [out] Returns the number of valid bits in the timestamp values
+
+} zes_mem_ext_bandwidth_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Get handle of memory modules
@@ -4445,6 +4872,8 @@ typedef enum _zes_power_domain_t
     ZES_POWER_DOMAIN_CARD = 1,                                              ///< The PUnit power domain is a card-level power domain.
     ZES_POWER_DOMAIN_PACKAGE = 2,                                           ///< The PUnit power domain is a package-level power domain.
     ZES_POWER_DOMAIN_STACK = 3,                                             ///< The PUnit power domain is a stack-level power domain.
+    ZES_POWER_DOMAIN_MEMORY = 4,                                            ///< The PUnit power domain is a memory-level power domain.
+    ZES_POWER_DOMAIN_GPU = 5,                                               ///< The PUnit power domain is a GPU-level power domain.
     ZES_POWER_DOMAIN_FORCE_UINT32 = 0x7fffffff
 
 } zes_power_domain_t;
@@ -4542,6 +4971,7 @@ typedef struct _zes_power_energy_counter_t
 ///     - The power controller (Punit) will throttle the operating frequency if
 ///       the power averaged over a window (typically seconds) exceeds this
 ///       limit.
+///     - [DEPRECATED] No longer supported.
 typedef struct _zes_power_sustained_limit_t
 {
     ze_bool_t enabled;                                                      ///< [in,out] indicates if the limit is enabled (true) or ignored (false)
@@ -4559,6 +4989,7 @@ typedef struct _zes_power_sustained_limit_t
 ///       limit known as PL2. Typically PL2 > PL1 so that it permits the
 ///       frequency to burst higher for short periods than would be otherwise
 ///       permitted by PL1.
+///     - [DEPRECATED] No longer supported.
 typedef struct _zes_power_burst_limit_t
 {
     ze_bool_t enabled;                                                      ///< [in,out] indicates if the limit is enabled (true) or ignored (false)
@@ -4579,6 +5010,7 @@ typedef struct _zes_power_burst_limit_t
 ///       power controller will throttle the device frequencies down to min. It
 ///       is thus better to tune the PL4 value in order to avoid such
 ///       excursions.
+///     - [DEPRECATED] No longer supported.
 typedef struct _zes_power_peak_limit_t
 {
     int32_t powerAC;                                                        ///< [in,out] power limit in milliwatts for the AC power source.
@@ -4642,6 +5074,7 @@ zesDeviceEnumPowerDomains(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -4714,8 +5147,7 @@ zesPowerGetEnergyCounter(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
-///     - Note: This function is deprecated and replaced by
-///       ::zesPowerGetLimitsExt.
+///     - [DEPRECATED] Use ::zesPowerGetLimitsExt.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -4742,8 +5174,7 @@ zesPowerGetLimits(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
-///     - Note: This function is deprecated and replaced by
-///       ::zesPowerSetLimitsExt.
+///     - [DEPRECATED] Use ::zesPowerSetLimitsExt.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -5255,10 +5686,7 @@ typedef enum _zes_sched_mode_t
                                                                             ///< without being preempted or terminated. All pending work for other
                                                                             ///< contexts must wait until the running context completes with no further
                                                                             ///< submitted work.
-    ZES_SCHED_MODE_COMPUTE_UNIT_DEBUG = 3,                                  ///< This is a special mode that must ben enabled when debugging an
-                                                                            ///< application that uses this device e.g. using the Level0 Debug API. It
-                                                                            ///< has the effect of disabling any timeouts on workload execution time
-                                                                            ///< and will change workload scheduling to ensure debug accuracy.
+    ZES_SCHED_MODE_COMPUTE_UNIT_DEBUG = 3,                                  ///< [DEPRECATED] No longer supported.
     ZES_SCHED_MODE_FORCE_UINT32 = 0x7fffffff
 
 } zes_sched_mode_t;
@@ -5576,6 +6004,7 @@ zesSchedulerSetExclusiveMode(
 ///       without enforcing any scheduler fairness policies.
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - [DEPRECATED] No longer supported.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
@@ -5760,6 +6189,8 @@ typedef enum _zes_temp_sensors_t
     ZES_TEMP_SENSORS_GLOBAL_MIN = 3,                                        ///< The minimum temperature across all device sensors
     ZES_TEMP_SENSORS_GPU_MIN = 4,                                           ///< The minimum temperature across all sensors in the GPU
     ZES_TEMP_SENSORS_MEMORY_MIN = 5,                                        ///< The minimum temperature across all sensors in the local device memory
+    ZES_TEMP_SENSORS_GPU_BOARD = 6,                                         ///< The maximum temperature across all sensors in the GPU Board
+    ZES_TEMP_SENSORS_GPU_BOARD_MIN = 7,                                     ///< The minimum temperature across all sensors in the GPU Board
     ZES_TEMP_SENSORS_FORCE_UINT32 = 0x7fffffff
 
 } zes_temp_sensors_t;
@@ -6110,6 +6541,766 @@ zesPowerSetLimitsExt(
     zes_pwr_handle_t hPower,                                                ///< [in] Handle for the component.
     uint32_t* pCount,                                                       ///< [in] Pointer to the number of power limit descriptors.
     zes_power_limit_ext_desc_t* pSustained                                  ///< [in][optional][range(0, *pCount)] Array of power limit descriptors.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Engine Activity
+#if !defined(__GNUC__)
+#pragma region engineActivity
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_ENGINE_ACTIVITY_EXT_NAME
+/// @brief Engine Activity Extension Name
+#define ZES_ENGINE_ACTIVITY_EXT_NAME  "ZES_extension_engine_activity"
+#endif // ZES_ENGINE_ACTIVITY_EXT_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Engine Activity Extension Version(s)
+typedef enum _zes_engine_activity_ext_version_t
+{
+    ZES_ENGINE_ACTIVITY_EXT_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),          ///< version 1.0
+    ZES_ENGINE_ACTIVITY_EXT_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),      ///< latest known version
+    ZES_ENGINE_ACTIVITY_EXT_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_engine_activity_ext_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension properties related to Engine Groups
+/// 
+/// @details
+///     - This structure may be passed to ::zesEngineGetProperties by having the
+///       pNext member of ::zes_engine_properties_t point at this struct.
+///     - Used for SRIOV per Virtual Function device utilization by
+///       ::zes_engine_group_t
+typedef struct _zes_engine_ext_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint32_t countOfVirtualFunctionInstance;                                ///< [out] Number of Virtual Function(VF) instances associated with engine
+                                                                            ///< to monitor the utilization of hardware across all Virtual Function
+                                                                            ///< from a Physical Function (PF) instance.
+                                                                            ///< These VF-by-VF views should provide engine group and individual engine
+                                                                            ///< level granularity.
+                                                                            ///< This count represents the number of VF instances that are actively
+                                                                            ///< using the resource represented by the engine handle.
+
+} zes_engine_ext_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get activity stats for Physical Function (PF) and each Virtual
+///        Function (VF) associated with engine group.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hEngine`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE - "Engine activity extension is not supported in the environment."
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesEngineGetActivityExt(
+    zes_engine_handle_t hEngine,                                            ///< [in] Handle for the component.
+    uint32_t* pCount,                                                       ///< [in,out] Pointer to the number of VF engine stats descriptors.
+                                                                            ///<  - if count is zero, the driver shall update the value with the total
+                                                                            ///< number of engine stats available.
+                                                                            ///<  - if count is greater than the total number of engine stats
+                                                                            ///< available, the driver shall update the value with the correct number
+                                                                            ///< of engine stats available.
+                                                                            ///<  - The count returned is the sum of number of VF instances currently
+                                                                            ///< available and the PF instance.
+    zes_engine_stats_t* pStats                                              ///< [in,out][optional][range(0, *pCount)] array of engine group activity counters.
+                                                                            ///<  - if count is less than the total number of engine stats available,
+                                                                            ///< then driver shall only retrieve that number of stats.
+                                                                            ///<  - the implementation shall populate the vector with engine stat for
+                                                                            ///< PF at index 0 of the vector followed by user provided pCount-1 number
+                                                                            ///< of VF engine stats.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for RAS Get State and Clear State
+#if !defined(__GNUC__)
+#pragma region rasState
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_RAS_GET_STATE_EXP_NAME
+/// @brief RAS Get State Extension Name
+#define ZES_RAS_GET_STATE_EXP_NAME  "ZES_extension_ras_state"
+#endif // ZES_RAS_GET_STATE_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief RAS Get State Extension Version(s)
+typedef enum _zes_ras_state_exp_version_t
+{
+    ZES_RAS_STATE_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),                ///< version 1.0
+    ZES_RAS_STATE_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),            ///< latest known version
+    ZES_RAS_STATE_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_ras_state_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief RAS error categories
+typedef enum _zes_ras_error_category_exp_t
+{
+    ZES_RAS_ERROR_CATEGORY_EXP_RESET = 0,                                   ///< The number of accelerator engine resets attempted by the driver
+    ZES_RAS_ERROR_CATEGORY_EXP_PROGRAMMING_ERRORS = 1,                      ///< The number of hardware exceptions generated by the way workloads have
+                                                                            ///< programmed the hardware
+    ZES_RAS_ERROR_CATEGORY_EXP_DRIVER_ERRORS = 2,                           ///< The number of low level driver communication errors have occurred
+    ZES_RAS_ERROR_CATEGORY_EXP_COMPUTE_ERRORS = 3,                          ///< The number of errors that have occurred in the compute accelerator
+                                                                            ///< hardware
+    ZES_RAS_ERROR_CATEGORY_EXP_NON_COMPUTE_ERRORS = 4,                      ///< The number of errors that have occurred in the fixed-function
+                                                                            ///< accelerator hardware
+    ZES_RAS_ERROR_CATEGORY_EXP_CACHE_ERRORS = 5,                            ///< The number of errors that have occurred in caches (L1/L3/register
+                                                                            ///< file/shared local memory/sampler)
+    ZES_RAS_ERROR_CATEGORY_EXP_DISPLAY_ERRORS = 6,                          ///< The number of errors that have occurred in the display
+    ZES_RAS_ERROR_CATEGORY_EXP_MEMORY_ERRORS = 7,                           ///< The number of errors that have occurred in Memory
+    ZES_RAS_ERROR_CATEGORY_EXP_SCALE_ERRORS = 8,                            ///< The number of errors that have occurred in Scale Fabric
+    ZES_RAS_ERROR_CATEGORY_EXP_L3FABRIC_ERRORS = 9,                         ///< The number of errors that have occurred in L3 Fabric
+    ZES_RAS_ERROR_CATEGORY_EXP_FORCE_UINT32 = 0x7fffffff
+
+} zes_ras_error_category_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension structure for providing RAS error counters for different
+///        error sets
+typedef struct _zes_ras_state_exp_t
+{
+    zes_ras_error_category_exp_t category;                                  ///< [out] category for which error counter is provided.
+    uint64_t errorCounter;                                                  ///< [out] Current value of RAS counter for specific error category.
+
+} zes_ras_state_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ras Get State
+/// 
+/// @details
+///     - This function retrieves error counters for different RAS error
+///       categories.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hRas`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesRasGetStateExp(
+    zes_ras_handle_t hRas,                                                  ///< [in] Handle for the component.
+    uint32_t* pCount,                                                       ///< [in,out] pointer to the number of RAS state structures that can be retrieved.
+                                                                            ///< if count is zero, then the driver shall update the value with the
+                                                                            ///< total number of error categories for which state can be retrieved.
+                                                                            ///< if count is greater than the number of RAS states available, then the
+                                                                            ///< driver shall update the value with the correct number of RAS states available.
+    zes_ras_state_exp_t* pState                                             ///< [in,out][optional][range(0, *pCount)] array of query results for RAS
+                                                                            ///< error states for different categories.
+                                                                            ///< if count is less than the number of RAS states available, then driver
+                                                                            ///< shall only retrieve that number of RAS states.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Ras Clear State
+/// 
+/// @details
+///     - This function clears error counters for a RAS error category.
+///     - Clearing errors will affect other threads/applications - the counter
+///       values will start from zero.
+///     - Clearing errors requires write permissions.
+///     - The application should not call this function from simultaneous
+///       threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hRas`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_RAS_ERROR_CATEGORY_EXP_L3FABRIC_ERRORS < category`
+///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
+///         + Don't have permissions to clear error counters.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesRasClearStateExp(
+    zes_ras_handle_t hRas,                                                  ///< [in] Handle for the component.
+    zes_ras_error_category_exp_t category                                   ///< [in] category for which error counter is to be cleared.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Memory State
+#if !defined(__GNUC__)
+#pragma region memPageOfflineState
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_MEM_PAGE_OFFLINE_STATE_EXP_NAME
+/// @brief Memory State Extension Name
+#define ZES_MEM_PAGE_OFFLINE_STATE_EXP_NAME  "ZES_extension_mem_state"
+#endif // ZES_MEM_PAGE_OFFLINE_STATE_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Memory State Extension Version(s)
+typedef enum _zes_mem_page_offline_state_exp_version_t
+{
+    ZES_MEM_PAGE_OFFLINE_STATE_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),   ///< version 1.0
+    ZES_MEM_PAGE_OFFLINE_STATE_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),   ///< latest known version
+    ZES_MEM_PAGE_OFFLINE_STATE_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_mem_page_offline_state_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension properties for Memory State
+/// 
+/// @details
+///     - This structure may be returned from ::zesMemoryGetState via the
+///       `pNext` member of ::zes_mem_state_t
+///     - These additional parameters get Memory Page Offline Metrics
+typedef struct _zes_mem_page_offline_state_exp_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint32_t memoryPageOffline;                                             ///< [out] Returns the number of Memory Pages Offline
+    uint32_t maxMemoryPageOffline;                                          ///< [out] Returns the Allowed Memory Pages Offline
+
+} zes_mem_page_offline_state_exp_t;
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Memory Bandwidth Counter Valid Bits
+#if !defined(__GNUC__)
+#pragma region memoryBwCounterValidBits
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_MEMORY_BANDWIDTH_COUNTER_BITS_EXP_PROPERTIES_NAME
+/// @brief Memory Bandwidth Counter Valid Bits Extension Name
+#define ZES_MEMORY_BANDWIDTH_COUNTER_BITS_EXP_PROPERTIES_NAME  "ZES_extension_mem_bandwidth_counter_bits_properties"
+#endif // ZES_MEMORY_BANDWIDTH_COUNTER_BITS_EXP_PROPERTIES_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Memory Bandwidth Counter Valid Bits Extension Version(s)
+typedef enum _zes_mem_bandwidth_counter_bits_exp_version_t
+{
+    ZES_MEM_BANDWIDTH_COUNTER_BITS_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),   ///< version 1.0
+    ZES_MEM_BANDWIDTH_COUNTER_BITS_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),   ///< latest known version
+    ZES_MEM_BANDWIDTH_COUNTER_BITS_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_mem_bandwidth_counter_bits_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension properties for reporting valid bit count for memory
+///        bandwidth counter value
+/// 
+/// @details
+///     - Number of valid read and write counter bits of memory bandwidth
+///     - This structure may be returned from ::zesMemoryGetProperties via the
+///       `pNext` member of ::zes_mem_properties_t.
+///     - Used for denoting number of valid bits in the counter value returned
+///       in ::zes_mem_bandwidth_t.
+typedef struct _zes_mem_bandwidth_counter_bits_exp_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint32_t validBitsCount;                                                ///< [out] Returns the number of valid bits in the counter values
+
+} zes_mem_bandwidth_counter_bits_exp_properties_t;
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Power Domain Properties
+#if !defined(__GNUC__)
+#pragma region powerDomainProperties
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_POWER_DOMAIN_PROPERTIES_EXP_NAME
+/// @brief Power Domain Properties Name
+#define ZES_POWER_DOMAIN_PROPERTIES_EXP_NAME  "ZES_extension_power_domain_properties"
+#endif // ZES_POWER_DOMAIN_PROPERTIES_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Power Domain Properties Extension Version(s)
+typedef enum _zes_power_domain_properties_exp_version_t
+{
+    ZES_POWER_DOMAIN_PROPERTIES_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),  ///< version 1.0
+    ZES_POWER_DOMAIN_PROPERTIES_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),  ///< latest known version
+    ZES_POWER_DOMAIN_PROPERTIES_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_power_domain_properties_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension structure for providing power domain information associated
+///        with a power handle
+/// 
+/// @details
+///     - This structure may be returned from ::zesPowerGetProperties via the
+///       `pNext` member of ::zes_power_properties_t.
+///     - Used for associating a power handle with a power domain.
+typedef struct _zes_power_domain_exp_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    zes_power_domain_t powerDomain;                                         ///< [out] Power domain associated with the power handle.
+
+} zes_power_domain_exp_properties_t;
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for firmware security version
+#if !defined(__GNUC__)
+#pragma region firmwareSecurityVersion
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_FIRMWARE_SECURITY_VERSION_EXP_NAME
+/// @brief Firmware security version
+#define ZES_FIRMWARE_SECURITY_VERSION_EXP_NAME  "ZES_experimental_firmware_security_version"
+#endif // ZES_FIRMWARE_SECURITY_VERSION_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Firmware security version Extension Version(s)
+typedef enum _zes_firmware_security_exp_version_t
+{
+    ZES_FIRMWARE_SECURITY_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),        ///< version 1.0
+    ZES_FIRMWARE_SECURITY_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),    ///< latest known version
+    ZES_FIRMWARE_SECURITY_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_firmware_security_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get the firmware security version number of the currently running
+///        firmware
+/// 
+/// @details
+///     - The application should create a character array of size
+///       ::ZES_STRING_PROPERTY_SIZE and reference it for the `pVersion`
+///       parameter.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hFirmware`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pVersion`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesFirmwareGetSecurityVersionExp(
+    zes_firmware_handle_t hFirmware,                                        ///< [in] Handle for the component.
+    char* pVersion                                                          ///< [in,out] NULL terminated string value. The string "unknown" will be
+                                                                            ///< returned if this property cannot be determined.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Set the firmware security version number
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hFirmware`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesFirmwareSetSecurityVersionExp(
+    zes_firmware_handle_t hFirmware                                         ///< [in] Handle for the component.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Sysman Device Mapping
+#if !defined(__GNUC__)
+#pragma region sysmanDeviceMapping
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_SYSMAN_DEVICE_MAPPING_EXP_NAME
+/// @brief Sysman Device Mapping Extension Name
+#define ZES_SYSMAN_DEVICE_MAPPING_EXP_NAME  "ZES_experimental_sysman_device_mapping"
+#endif // ZES_SYSMAN_DEVICE_MAPPING_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Sysman Device Mapping Extension Version(s)
+typedef enum _zes_sysman_device_mapping_exp_version_t
+{
+    ZES_SYSMAN_DEVICE_MAPPING_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),    ///< version 1.0
+    ZES_SYSMAN_DEVICE_MAPPING_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),///< latest known version
+    ZES_SYSMAN_DEVICE_MAPPING_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_sysman_device_mapping_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Sub Device Properties
+typedef struct _zes_subdevice_exp_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    uint32_t subdeviceId;                                                   ///< [out] this gives the ID of the sub device
+    zes_uuid_t uuid;                                                        ///< [out] universal unique identifier of the sub device.
+
+} zes_subdevice_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves sub device properties for the given sysman device handle
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceGetSubDevicePropertiesExp(
+    zes_device_handle_t hDevice,                                            ///< [in] Sysman handle of the device.
+    uint32_t* pCount,                                                       ///< [in,out] pointer to the number of sub devices.
+                                                                            ///< if count is zero, then the driver shall update the value with the
+                                                                            ///< total number of sub devices currently attached to the device.
+                                                                            ///< if count is greater than the number of sub devices currently attached
+                                                                            ///< to the device, then the driver shall update the value with the correct
+                                                                            ///< number of sub devices.
+    zes_subdevice_exp_properties_t* pSubdeviceProps                         ///< [in,out][optional][range(0, *pCount)] array of sub device property structures.
+                                                                            ///< if count is less than the number of sysman sub devices available, then
+                                                                            ///< the driver shall only retrieve that number of sub device property structures.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves sysman device and subdevice index for the given UUID and
+///        sysman driver
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == phDevice`
+///         + `nullptr == onSubdevice`
+///         + `nullptr == subdeviceId`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDriverGetDeviceByUuidExp(
+    zes_driver_handle_t hDriver,                                            ///< [in] handle of the sysman driver instance
+    zes_uuid_t uuid,                                                        ///< [in] universal unique identifier.
+    zes_device_handle_t* phDevice,                                          ///< [out] Sysman handle of the device.
+    ze_bool_t* onSubdevice,                                                 ///< [out] True if the UUID belongs to the sub-device; false means that
+                                                                            ///< UUID belongs to the root device.
+    uint32_t* subdeviceId                                                   ///< [out] If onSubdevice is true, this gives the ID of the sub-device
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Virtual Function Management Properties
+#if !defined(__GNUC__)
+#pragma region virtualFunctionManagement
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_VIRTUAL_FUNCTION_MANAGEMENT_EXP_NAME
+/// @brief Virtual Function Management Extension Name
+#define ZES_VIRTUAL_FUNCTION_MANAGEMENT_EXP_NAME  "ZES_experimental_virtual_function_management"
+#endif // ZES_VIRTUAL_FUNCTION_MANAGEMENT_EXP_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Virtual Function Management Extension Version(s)
+typedef enum _zes_vf_management_exp_version_t
+{
+    ZES_VF_MANAGEMENT_EXP_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ),            ///< version 1.0
+    ZES_VF_MANAGEMENT_EXP_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ),        ///< latest known version
+    ZES_VF_MANAGEMENT_EXP_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_vf_management_exp_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Virtual function memory types
+typedef uint32_t zes_vf_info_mem_type_exp_flags_t;
+typedef enum _zes_vf_info_mem_type_exp_flag_t
+{
+    ZES_VF_INFO_MEM_TYPE_EXP_FLAG_MEM_TYPE_SYSTEM = ZE_BIT(0),              ///< System memory
+    ZES_VF_INFO_MEM_TYPE_EXP_FLAG_MEM_TYPE_DEVICE = ZE_BIT(1),              ///< Device local memory
+    ZES_VF_INFO_MEM_TYPE_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} zes_vf_info_mem_type_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Virtual function utilization flag bit fields
+typedef uint32_t zes_vf_info_util_exp_flags_t;
+typedef enum _zes_vf_info_util_exp_flag_t
+{
+    ZES_VF_INFO_UTIL_EXP_FLAG_INFO_NONE = ZE_BIT(0),                        ///< No info associated with virtual function
+    ZES_VF_INFO_UTIL_EXP_FLAG_INFO_MEM_CPU = ZE_BIT(1),                     ///< System memory utilization associated with virtual function
+    ZES_VF_INFO_UTIL_EXP_FLAG_INFO_MEM_GPU = ZE_BIT(2),                     ///< Device memory utilization associated with virtual function
+    ZES_VF_INFO_UTIL_EXP_FLAG_INFO_ENGINE = ZE_BIT(3),                      ///< Engine utilization associated with virtual function
+    ZES_VF_INFO_UTIL_EXP_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} zes_vf_info_util_exp_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Virtual function management properties
+typedef struct _zes_vf_exp_properties_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    void* pNext;                                                            ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    zes_pci_address_t address;                                              ///< [out] Virtual function BDF address
+    zes_uuid_t uuid;                                                        ///< [out] universal unique identifier of the device
+    zes_vf_info_util_exp_flags_t flags;                                     ///< [out] utilization flags available. May be 0 or a valid combination of
+                                                                            ///< ::zes_vf_info_util_exp_flag_t.
+
+} zes_vf_exp_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Provides memory utilization values for a virtual function
+typedef struct _zes_vf_util_mem_exp_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    zes_vf_info_mem_type_exp_flags_t memTypeFlags;                          ///< [out] Memory type flags.
+    uint64_t free;                                                          ///< [out] Free memory size in bytes.
+    uint64_t size;                                                          ///< [out] Total allocatable memory in bytes.
+    uint64_t timestamp;                                                     ///< [out] Wall clock time from VF when value was sampled.
+
+} zes_vf_util_mem_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Provides engine utilization values for a virtual function
+typedef struct _zes_vf_util_engine_exp_t
+{
+    zes_structure_type_t stype;                                             ///< [in] type of this structure
+    const void* pNext;                                                      ///< [in][optional] must be null or a pointer to an extension-specific
+                                                                            ///< structure (i.e. contains stype and pNext).
+    zes_engine_group_t type;                                                ///< [out] The engine group.
+    uint64_t activeCounterValue;                                            ///< [out] Represents active counter.
+    uint64_t samplingCounterValue;                                          ///< [out] Represents counter value when activeCounterValue was sampled.
+    uint64_t timestamp;                                                     ///< [out] Wall clock time when the activeCounterValue was sampled.
+
+} zes_vf_util_engine_exp_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get handle of virtual function modules
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceEnumActiveVFExp(
+    zes_device_handle_t hDevice,                                            ///< [in] Sysman handle of the device.
+    uint32_t* pCount,                                                       ///< [in,out] pointer to the number of components of this type.
+                                                                            ///< if count is zero, then the driver shall update the value with the
+                                                                            ///< total number of components of this type that are available.
+                                                                            ///< if count is greater than the number of components of this type that
+                                                                            ///< are available, then the driver shall update the value with the correct
+                                                                            ///< number of components.
+    zes_vf_handle_t* phVFhandle                                             ///< [in,out][optional][range(0, *pCount)] array of handle of components of
+                                                                            ///< this type.
+                                                                            ///< if count is less than the number of components of this type that are
+                                                                            ///< available, then the driver shall only retrieve that number of
+                                                                            ///< component handles.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get virtual function management properties
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hVFhandle`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pProperties`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesVFManagementGetVFPropertiesExp(
+    zes_vf_handle_t hVFhandle,                                              ///< [in] Sysman handle for the VF component.
+    zes_vf_exp_properties_t* pProperties                                    ///< [in,out] Will contain VF properties.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get memory activity stats for each available memory types associated
+///        with Virtual Function (VF)
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hVFhandle`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesVFManagementGetVFMemoryUtilizationExp(
+    zes_vf_handle_t hVFhandle,                                              ///< [in] Sysman handle for the component.
+    uint32_t* pCount,                                                       ///< [in,out] Pointer to the number of VF memory stats descriptors.
+                                                                            ///<  - if count is zero, the driver shall update the value with the total
+                                                                            ///< number of memory stats available.
+                                                                            ///<  - if count is greater than the total number of memory stats
+                                                                            ///< available, the driver shall update the value with the correct number
+                                                                            ///< of memory stats available.
+                                                                            ///<  - The count returned is the sum of number of VF instances currently
+                                                                            ///< available and the PF instance.
+    zes_vf_util_mem_exp_t* pMemUtil                                         ///< [in,out][optional][range(0, *pCount)] array of memory group activity counters.
+                                                                            ///<  - if count is less than the total number of memory stats available,
+                                                                            ///< then driver shall only retrieve that number of stats.
+                                                                            ///<  - the implementation shall populate the vector pCount-1 number of VF
+                                                                            ///< memory stats.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get engine activity stats for each available engine group associated
+///        with Virtual Function (VF)
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hVFhandle`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesVFManagementGetVFEngineUtilizationExp(
+    zes_vf_handle_t hVFhandle,                                              ///< [in] Sysman handle for the component.
+    uint32_t* pCount,                                                       ///< [in,out] Pointer to the number of VF engine stats descriptors.
+                                                                            ///<  - if count is zero, the driver shall update the value with the total
+                                                                            ///< number of engine stats available.
+                                                                            ///<  - if count is greater than the total number of engine stats
+                                                                            ///< available, the driver shall update the value with the correct number
+                                                                            ///< of engine stats available.
+                                                                            ///<  - The count returned is the sum of number of VF instances currently
+                                                                            ///< available and the PF instance.
+    zes_vf_util_engine_exp_t* pEngineUtil                                   ///< [in,out][optional][range(0, *pCount)] array of engine group activity counters.
+                                                                            ///<  - if count is less than the total number of engine stats available,
+                                                                            ///< then driver shall only retrieve that number of stats.
+                                                                            ///<  - the implementation shall populate the vector pCount-1 number of VF
+                                                                            ///< engine stats.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Configure utilization telemetry enabled or disabled associated with
+///        Virtual Function (VF)
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hVFhandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `0xf < flags`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesVFManagementSetVFTelemetryModeExp(
+    zes_vf_handle_t hVFhandle,                                              ///< [in] Sysman handle for the component.
+    zes_vf_info_util_exp_flags_t flags,                                     ///< [in] utilization flags to enable or disable. May be 0 or a valid
+                                                                            ///< combination of ::zes_vf_info_util_exp_flag_t.
+    ze_bool_t enable                                                        ///< [in] Enable utilization telemetry.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Set sampling interval to monitor for a particular utilization
+///        telemetry associated with Virtual Function (VF)
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hVFhandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `0xf < flag`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesVFManagementSetVFTelemetrySamplingIntervalExp(
+    zes_vf_handle_t hVFhandle,                                              ///< [in] Sysman handle for the component.
+    zes_vf_info_util_exp_flags_t flag,                                      ///< [in] utilization flags to set sampling interval. May be 0 or a valid
+                                                                            ///< combination of ::zes_vf_info_util_exp_flag_t.
+    uint64_t samplingInterval                                               ///< [in] Sampling interval value.
     );
 
 #if !defined(__GNUC__)
