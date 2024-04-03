@@ -175,7 +175,7 @@ nodist_libzetracepoints_la_SOURCES = \
 libzetracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerZE.la libZEInterval.la 
+lib_LTLIBRARIES = libTracerZE.la libZEInterval.la
 
 nodist_libTracerZE_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
