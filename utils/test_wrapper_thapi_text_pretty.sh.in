@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 #
-# Usage: test_wrapper_thapi_text_pretty.sh cuda|hip|ze objetc... /path/to/log.bt_text_pretty
+# Usage: test_wrapper_thapi_text_pretty.sh cuda|hip|ze objetc... /path/to/log.thapi_text_pretty
 # 
 set -euxo pipefail
 
 be="$1"
-source_other_o=${@:2:$#-2}
-input_thapi_text_pretty="${#-1}"
+source_other_o="$2"
+input_thapi_text_pretty="$3"
 
+source_folder="./btx_source_ze_test"
 # Already present file
 expected_output_text_pretty=${input_thapi_text_pretty/.thapi_text_pretty/.bt_text_pretty/}
 be_btx_model_path="@top_builddir@/${be}/btx_${be}_model.yaml"
 
 # Generated file
-folder_name="test_"$(basename ${input_thapi_text_pretty})
-current_output_text_pretty=$(folder_name)"/log.bt_text_pretty"
-source_callback_c=$(folder_name)"/callback.c"
-source_callback_o==$(folder_name)"/callback.o"
-source_plugin_so==$(folder_name)"/plugin.so"
+folder_name="test_"$(basename ${input_thapi_text_pretty} .thapi_text_pretty)
+current_output_text_pretty="${folder_name}/log.bt_text_pretty"
+source_callback_c="${folder_name}/callback.c"
+source_plugin_so="${folder_name}/plugin.so"
 
 # Generate tmp folder
 mkdir -p $folder_name
@@ -26,20 +26,22 @@ mkdir -p $folder_name
 @top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "$be_btx_model_path" \
   -i "$input_thapi_text_pretty" -o $source_callback_c
 # Compile source (assume running in the build dirrectory for include
-${CC} -g -Werrror ${source_callback_c} -o ${source_callback_o} -I . $(pkg-config --cflags babeltrace2)
 # Link plugin
 ${CC} -o ${source_plugin_so} \
-  ${source_callback_o} ${source_other_o} \
-  $(pkg-config --libs babeltrace2) \
-  -fPIC --shared 
+  -I @top_srcdir@/utils/include -I@top_srcdir@/${be}/include \
+  -I @top_srcdir@/${be}/ \
+  -I ${source_folder} \
+  $(pkg-config --cflags babeltrace2) -fpic -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Werror \
+  $(pkg-config --libs babeltrace2) --shared \
+  ${source_callback_c} ${source_other_o}
 
 # Run Plugin
 bt2_cmd="babeltrace2"
 if [[ -v THAPI_VALGRIND ]]; then
   bt2_cmd="valgrind --suppressions=@top_srcdir@/.valgrind/dlopen.supp --error-exitcode=1 --leak-check=full --quiet -- $bt2_cmd"
 fi
-$bt2_cmd --plugin-path="${folder_name}:top_builddir@/${be}/.libs/" \
-  --component=source.generated.btx \
+$bt2_cmd --plugin-path="${folder_name}:@top_builddir@/${be}/.libs/" \
+  --component=source.${be}test.test \
   --component=filter.${be}interval.interval \
   > "${current_output_text_pretty}"
 
