@@ -25,7 +25,7 @@ mkdir -p "$folder_name"
 # Generate source callbacks
 @top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "$be_btx_model_path" \
   -i "$input_thapi_text_pretty" -o "$source_callback_c"
-# Compile source (assume running in the build dirrectory for include
+
 # Link plugin
 ${CC} -o "${source_plugin_so}" \
   -I @top_srcdir@/utils/include -I@top_srcdir@/"${be}"/include \
