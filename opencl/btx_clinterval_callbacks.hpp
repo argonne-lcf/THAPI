@@ -1,7 +1,5 @@
 #pragma once
 
-#include <iostream>
-
 #include "cl.h.include"
 
 #include "xprof_utils.hpp"
