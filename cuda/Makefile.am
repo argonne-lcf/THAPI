@@ -431,6 +431,22 @@ TRACE_COMMON = \
 	tests/interval_profiling_multithread.thapi_text_pretty \
 	tests/interval_profiling_kernel_name.thapi_text_pretty
 
+BTX_CUDA_GENERATED_SOURCE_TEST = \
+	btx_source_cuda_test/metababel/metababel.h \
+	btx_source_cuda_test/metababel/btx_component.h \
+	btx_source_cuda_test/metababel/btx_component.c \
+	btx_source_cuda_test/metababel/btx_downstream.h \
+	btx_source_cuda_test/metababel/btx_downstream.c \
+	btx_source_cuda_test/btx_main.c
+
+$(BTX_CUDA_GENERATED_SOURCE_TEST) &: btx_cuda_model.yaml
+	$(METABABEL) -d btx_cuda_model.yaml -t SOURCE  -o btx_source_cuda_test -p cudatest -c test  -i cuda.h.include
+
+noinst_LTLIBRARIES += libtestcudasource.la
+libtestcudasource_la_SOURCES = $(BTX_CUDA_GENERATED_SOURCE_TEST)
+libtestcudasource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_cuda_test/
+libtestcudasource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
@@ -439,7 +455,7 @@ TESTS = \
 
 TEST_EXTENSIONS = .thapi_text_pretty .dust
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda ./btx_source_cuda_test/ .libs/libtestcudasource.a
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
@@ -456,4 +472,5 @@ EXTRA_DIST += \
 
 CLEANFILES += \
 	tests/cuda_dummy_trace.yaml \
-	$(TRACE_COMMON)
+	$(TRACE_COMMON) \
+	$(BTX_CUDA_GENERATED_SOURCE_TEST)

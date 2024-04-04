@@ -47,6 +47,9 @@ bin_PROGRAMS = thapi_metadata
 bin_SCRIPTS = \
 	babeltrace_thapi
 
+noinst_SCRIPTS = \
+	test_wrapper_thapi_text_pretty.sh
+
 .PHONY: version
 
 version:

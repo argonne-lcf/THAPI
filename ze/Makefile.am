@@ -324,6 +324,22 @@ TRACE_COMMON = \
 	tests/interval_profiling_interleave_process.thapi_text_pretty \
 	tests/interval_profiling_ignore.thapi_text_pretty
 
+BTX_ZE_GENERATED_SOURCE_TEST = \
+        btx_source_ze_test/metababel/metababel.h \
+        btx_source_ze_test/metababel/btx_component.h \
+        btx_source_ze_test/metababel/btx_component.c \
+        btx_source_ze_test/metababel/btx_downstream.h \
+        btx_source_ze_test/metababel/btx_downstream.c \
+        btx_source_ze_test/btx_main.c
+
+$(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
+	$(METABABEL) -d btx_ze_model.yaml -t SOURCE  -o btx_source_ze_test -p zetest -c test  -i ze.h.include
+
+noinst_LTLIBRARIES += libtestzesource.la
+libtestzesource_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
+libtestzesource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_ze_test/
+libtestzesource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 $(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
@@ -336,7 +352,7 @@ TESTS = \
 TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
 	test_wrapper.sh \
@@ -353,4 +369,5 @@ EXTRA_DIST += \
 
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
-	$(TRACE_COMMON)
+	$(TRACE_COMMON) \
+	$(BTX_ZE_GENERATED_SOURCE_TEST)
