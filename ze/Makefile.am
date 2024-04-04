@@ -202,7 +202,8 @@ uninstall-hook:
 
 tmplibdir = $(libdir)/tmp
 tmplib_LTLIBRARIES = libBabeltraceZE.la
-install-data-hook::
+
+install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 ZE_LIB_GEN = \
