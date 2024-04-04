@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Usage: test_wrapper_thapi_text_pretty.sh cuda|hip|ze objetc... /path/to/log.thapi_text_pretty
+# Usage: test_wrapper_thapi_text_pretty.sh backend archive /path/to/log.thapi_text_pretty
 #
 set -euxo pipefail
 
