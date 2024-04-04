@@ -167,11 +167,7 @@ ref:
     :common_context:
       vtid: 2
       hostname: aurora12.gov
-<% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
-<% else %>
-      backend: 0
-<% end %>
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>
@@ -180,11 +176,7 @@ ref:
     :common_context:
       vtid: 1
       hostname: aurora12.gov
-<% if ["ze", "cuda"].include?(be) %>
       backend: <%= backend %>
-<% else %>
-      backend: 0
-<% end %>
     :payload:
       name: <%= profiled_call %>
       dur: <%= 10 * mulfactor %>

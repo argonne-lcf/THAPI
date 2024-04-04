@@ -42,11 +42,27 @@ OPENCL_MODEL = \
 	$(ML_FILES) \
 	cl.xml.patched
 
+BTX_OPENCL_GENERATED = \
+	btx_filter_opencl/metababel/metababel.h \
+	btx_filter_opencl/metababel/btx_component.h \
+	btx_filter_opencl/metababel/btx_component.c \
+	btx_filter_opencl/metababel/btx_upstream.h \
+	btx_filter_opencl/metababel/btx_upstream.c \
+	btx_filter_opencl/metababel/btx_downstream.h \
+	btx_filter_opencl/metababel/btx_downstream.c \
+	btx_filter_opencl/btx_main.c
+
 opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+btx_opencl_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb opencl_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+
+$(BTX_OPENCL_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_openclmatching_model.yaml btx_opencl_model.yaml
+	$(METABABEL) -u btx_opencl_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_opencl -p clinterval -c interval --matching $(srcdir)/btx_openclmatching_model.yaml -i cl.h.include
 
 data_DATA = \
 	opencl_model.yaml \
@@ -54,14 +70,19 @@ data_DATA = \
 
 CLEANFILES += \
 	opencl_model.yaml \
-	opencl_babeltrace_model.yaml
+	opencl_babeltrace_model.yaml \
+	btx_opencl_model.yaml \
+	$(BTX_OPENCL_GENERATED)
 
 EXTRA_DIST += \
 	$(TRACEPOINT_GEN) \
 	$(ML_FILES) \
 	gen_opencl_model.rb \
 	babeltrace_opencl_lib.rb \
-	gen_babeltrace_cl_model.rb
+	gen_babeltrace_cl_model.rb \
+	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
+	$(top_srcdir)/xprof/btx_interval_model.yaml \
+	btx_openclmatching_model.yaml
 
 OPENCL_PROBES = \
 	opencl_tracepoints
@@ -211,24 +232,6 @@ libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/includ
 libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
-babeltrace_clinterval_callbacks.cpp: $(srcdir)/gen_clinterval_callbacks.rb $(srcdir)/clinterval_callbacks.cpp.erb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-babeltrace_clinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
-
-babeltrace_clinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
-
-babeltrace_clinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ clinterval > $@
-
-babeltrace_clinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) namespace="clinterval" $< > $@
-
-babeltrace_clinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) namespace="clinterval" $< > $@
-
 # opencl/Makefile.am:248: warning: source file '$(top_srcdir)/utils/xprof_utils.cpp' is in a subdirectory,
 # opencl/Makefile.am:248: but option 'subdir-objects' is disabled
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
@@ -237,41 +240,25 @@ xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
-EXTRA_DIST += \
-	clinterval_callbacks.cpp.erb \
-	gen_clinterval_callbacks.rb
-
 CLEANFILES += \
-	babeltrace_clinterval_callbacks.cpp \
-	babeltrace_clinterval_callbacks.h \
-	babeltrace_clinterval_dispatchers.c \
-	babeltrace_clinterval_emitter.h \
-	babeltrace_clinterval.h \
-	babeltrace_clinterval.c \
+	$(BTX_OPENCL_GENERATED) \
 	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	babeltrace_clinterval_callbacks.h \
-	babeltrace_clinterval.h \
-	babeltrace_clinterval_emitter.h \
+	$(BTX_OPENCL_GENERATED) \
 	xprof_utils.hpp
 
 nodist_libCLInterval_la_SOURCES = \
-	babeltrace_clinterval.c \
-	babeltrace_clinterval.h \
-	babeltrace_clinterval_callbacks.h \
-	babeltrace_clinterval_dispatchers.c \
-	babeltrace_clinterval_callbacks.cpp \
-	babeltrace_clinterval_emitter.h \
-	tracer_opencl.h \
+	$(BTX_OPENCL_GENERATED) \
 	xprof_utils.hpp \
 	xprof_utils.cpp
 
 libCLInterval_la_SOURCES = \
-	clinterval_callbacks.hpp
+	btx_clinterval_callbacks.cpp \
+	btx_clinterval_callbacks.hpp
 
-libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_opencl
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module

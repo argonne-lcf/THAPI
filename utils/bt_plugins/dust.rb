@@ -17,7 +17,7 @@ def create_datastructure(trace_class, l)
 
   def populate_enumeration_class(field, d)
     populate_integer_field_class(field, d)
-    d[:mapping].each { |f| field.add_mapping(f[:label], f[:integer_range_set]) }
+    d[:mappings].each { |f| field.add_mapping(f[:label], f[:integer_range_set]) }
   end
 
   # Callbacks
