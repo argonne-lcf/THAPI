@@ -368,4 +368,5 @@ EXTRA_DIST += \
 
 CLEANFILES += \
 	tests/ze_dummy_trace.yaml \
-	$(TRACE_COMMON)
+	$(TRACE_COMMON) \
+	$(BTX_ZE_GENERATED_SOURCE_TEST)

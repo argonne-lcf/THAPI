@@ -449,4 +449,5 @@ EXTRA_DIST += \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/hip_dummy_trace.yaml
+	tests/hip_dummy_trace.yaml \
+	$(BTX_HIP_GENERATED_SOURCE_TEST)

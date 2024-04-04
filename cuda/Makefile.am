@@ -472,4 +472,5 @@ EXTRA_DIST += \
 
 CLEANFILES += \
 	tests/cuda_dummy_trace.yaml \
-	$(TRACE_COMMON)
+	$(TRACE_COMMON) \
+	$(BTX_CUDA_GENERATED_SOURCE_TEST)
