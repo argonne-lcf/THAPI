@@ -408,7 +408,23 @@ tests/hip_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb hip_babeltrac
 	$(RUBY) $< hip_babeltrace_model.yaml > $@
 
 TRACE_COMMON = \
-		tests/interval_profiling_simple.thapi_text_pretty
+	tests/interval_profiling_simple.thapi_text_pretty
+
+BTX_HIP_GENERATED_SOURCE_TEST = \
+	btx_source_hip_test/metababel/metababel.h \
+	btx_source_hip_test/metababel/btx_component.h \
+	btx_source_hip_test/metababel/btx_component.c \
+	btx_source_hip_test/metababel/btx_downstream.h \
+	btx_source_hip_test/metababel/btx_downstream.c \
+	btx_source_hip_test/btx_main.c
+
+$(BTX_HIP_GENERATED_SOURCE_TEST) &: btx_hip_model.yaml
+	$(METABABEL) -d btx_hip_model.yaml -t SOURCE  -o btx_source_hip_test -p hiptest -c test  -i hip.h.include
+
+noinst_LTLIBRARIES += libtesthipsource.la
+libtesthipsource_la_SOURCES = $(BTX_HIP_GENERATED_SOURCE_TEST)
+libtesthipsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_hip_test/
+libtesthipsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
@@ -421,7 +437,7 @@ TESTS = \
 TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip ./btx_source_hip_test/ .libs/libtesthipsource.a
 
 check_DATA = \
 	test_wrapper.sh \
