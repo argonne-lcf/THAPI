@@ -308,7 +308,6 @@ def env_tracers
 
   if OPTIONS[:'backend-names'].include?('omp')
     backends << 'omp'
-    h['LTTNG_UST_OMP_INTEL'] = 1
     h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
   end
 

@@ -236,7 +236,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
                                         ompt_scope_endpoint_t endpoint,
                                         int device_num, ompt_data_t *task_data,
                                         ompt_id_t target_id,
-@@ -724,25 +767,33 @@
+@@ -724,25 +767,41 @@
  typedef void (*ompt_callback_target_map_t)(ompt_id_t target_id,
                                             unsigned int nitems,
                                             void **host_addr, void **device_addr,
@@ -264,6 +264,14 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
 +    ompt_scope_endpoint_t endpoint,
 +    ompt_id_t target_id,
 +    ompt_id_t host_op_id,
++    unsigned int requested_num_teams
++);
++
++
++typedef void (*ompt_callback_target_submit_emi_t) (
++    ompt_scope_endpoint_t endpoint,
++    ompt_data_t *target_data,
++    ompt_id_t *host_op_id,
 +    unsigned int requested_num_teams
 +);
 +
