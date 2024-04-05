@@ -48,6 +48,16 @@ OMP_MODEL = \
 	$(srcdir)/../utils/LTTng.rb \
 	$(OMP_EXTRACTED)
 
+BTX_OMP_GENERATED = \
+	btx_filter_omp/metababel/metababel.h \
+	btx_filter_omp/metababel/btx_component.h \
+	btx_filter_omp/metababel/btx_component.c \
+	btx_filter_omp/metababel/btx_upstream.h \
+	btx_filter_omp/metababel/btx_upstream.c \
+	btx_filter_omp/metababel/btx_downstream.h \
+	btx_filter_omp/metababel/btx_downstream.c \
+	btx_filter_omp/btx_main.c
+
 OMP_LIB_GEN = \
 	$(srcdir)/../utils/gen_library_base.rb \
 	$(srcdir)/gen_omp_library_base.rb \
@@ -60,7 +70,15 @@ EXTRA_DIST += \
 omp_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_omp_model.rb $(OMP_LIB_GEN) $(OMP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-CLEANFILES += omp_babeltrace_model.yaml
+btx_omp_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb omp_babeltrace_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+
+$(BTX_OMP_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_ompmatching_model.yaml btx_omp_model.yaml
+	$(METABABEL) -u btx_omp_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_omp -p clinterval -c interval --matching $(srcdir)/btx_ompmatching_model.yaml -i ompt.h.include
+
+CLEANFILES += \
+  omp_babeltrace_model.yaml \
+	btx_omp_model.yaml
 
 EXTRA_DIST += \
 	ompt_model.rb \
@@ -139,24 +157,6 @@ uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libOMPInterval.so
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
-babeltrace_ompinterval_callbacks.cpp: $(srcdir)/gen_ompinterval_callbacks.rb $(srcdir)/ompinterval_callbacks.cpp.erb omp_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-babeltrace_ompinterval_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb omp_babeltrace_model.yaml ompt.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
-
-babeltrace_ompinterval_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb omp_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
-
-babeltrace_ompinterval_emitter.h: $(top_srcdir)/utils/gen_babeltrace_emitter.rb $(top_srcdir)/xprof/interval_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ ompinterval > $@
-
-babeltrace_ompinterval.h: $(top_srcdir)/xprof/interval.h.erb
-	$(ERB) -T 1 namespace="ompinterval" $< > $@
-
-babeltrace_ompinterval.c: $(top_srcdir)/xprof/interval.c.erb
-	$(ERB) -T 1 namespace="ompinterval" $< > $@
-
 xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
 	cp $< $@
 
@@ -165,40 +165,24 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 
 EXTRA_DIST += ompt.h.include
 
-EXTRA_DIST += \
-	gen_ompinterval_callbacks.rb \
-	ompinterval_callbacks.cpp.erb
-
 CLEANFILES += \
-	babeltrace_ompinterval_callbacks.cpp \
-	babeltrace_ompinterval_callbacks.h \
-	babeltrace_ompinterval_dispatchers.c \
-	babeltrace_ompinterval_emitter.h \
-	babeltrace_ompinterval.h \
-	babeltrace_ompinterval.c \
+	$(BTX_OMP_GENERATED) \
 	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	babeltrace_ompinterval.h \
-	babeltrace_ompinterval_callbacks.h \
-	babeltrace_ompinterval_emitter.h \
+	$(BTX_OMP_GENERATED) \
 	xprof_utils.hpp
 
 nodist_libOMPInterval_la_SOURCES = \
-	babeltrace_ompinterval.c \
-	babeltrace_ompinterval.h \
-	babeltrace_ompinterval_callbacks.h \
-	babeltrace_ompinterval_dispatchers.c \
-	babeltrace_ompinterval_callbacks.cpp \
-	babeltrace_ompinterval_emitter.h \
+	$(BTX_OMP_GENERATED) \
 	xprof_utils.hpp \
 	xprof_utils.cpp
 
 libOMPInterval_la_SOURCES = \
-	ompinterval_callbacks.hpp
+	btx_ompinterval_callbacks.cpp
 
-libOMPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./
+libOMPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ -I./btx_filter_omp
 libOMPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libOMPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libOMPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
