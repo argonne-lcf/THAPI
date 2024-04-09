@@ -221,3 +221,50 @@ CLEANFILES += $(OMP_BINDINGS)
 
 data_DATA = \
 	$(OMP_BINDINGS)
+
+# Tests
+
+TRACE_COMMON = \
+	tests/data_op.thapi_text_pretty \
+	tests/target.thapi_text_pretty \
+	tests/submit.thapi_text_pretty \
+	tests/data_op_emi.thapi_text_pretty \
+	tests/target_emi.thapi_text_pretty \
+	tests/submit_emi.thapi_text_pretty
+
+BTX_OMP_GENERATED_SOURCE_TEST = \
+	btx_source_omp_test/metababel/metababel.h \
+	btx_source_omp_test/metababel/btx_component.h \
+	btx_source_omp_test/metababel/btx_component.c \
+	btx_source_omp_test/metababel/btx_downstream.h \
+	btx_source_omp_test/metababel/btx_downstream.c \
+	btx_source_omp_test/btx_main.c
+
+$(BTX_OMP_GENERATED_SOURCE_TEST) &: btx_omp_model.yaml
+	$(METABABEL) -d btx_omp_model.yaml -t SOURCE  -o btx_source_omp_test -p omptest -c test -i ompt.h.include
+
+noinst_LTLIBRARIES += libtestompsource.la
+libtestompsource_la_SOURCES = $(BTX_OMP_GENERATED_SOURCE_TEST)
+libtestompsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I$(srcdir) -I./btx_source_omp_test/
+libtestompsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
+
+TESTS = \
+	$(TRACE_COMMON)
+
+TEST_EXTENSIONS = .thapi_text_pretty
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = omp ./btx_source_omp_test/ .libs/libtestompsource.a
+
+check_DATA = \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
+
+EXTRA_DIST += \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
+
+CLEANFILES += \
+	$(TRACE_COMMON) \
+	$(BTX_CUDA_GENERATED_SOURCE_TEST)

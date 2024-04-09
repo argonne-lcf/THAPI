@@ -1,0 +1,1 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ompt:ompt_callback_target_data_op: { target_id: 1, host_op_id: 0x00007ff07bf6f078, optype: ompt_target_data_alloc, src_addr: 0x00007ffd717c787c, src_device_num: 1, dest_addr: 0x0000000000000000, dest_device_num: 0, bytes: 4, codeptr_ra: 0x00007ff07aeeb2e3 }

@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ompt:ompt_callback_target: { kind: ompt_target, endpoint: ompt_scope_begin, device_num: 0, task_data: 0x00007ff0755cfe80, task_data: 0x00007ff0755eac98, target_id: 1, codeptr_ra: 0x00007ff07af1643a }
+12:00:00.001000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ompt:ompt_callback_target_emi: { kind: ompt_target, endpoint: ompt_scope_end, device_num: 0, task_data: 0x00007ff0755cfe80, task_data: 0x00007ff0755eac98, target_id: 1, codeptr_ra: 0x00007ff07af1643a }
