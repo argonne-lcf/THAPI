@@ -65,7 +65,7 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
   <% elsif names.size == 2 %>
 
     if (do_callbacks_emi) {
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names.last%>);
+       _OMPT_SET_CALLBACK(<%= names.last%>, <%= names.last%>);
     } else {
        _OMPT_SET_CALLBACK(<%= val%>, <%= names.first%>);
     }
@@ -73,9 +73,10 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
   <% else %>
 
     if (do_callbacks_intel) {
+       // Note: intel callbacks do not have their own enum value!?
        _OMPT_SET_CALLBACK(<%= val%>, <%= names[2]%>);
     } else if (do_callbacks_emi) {
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names[1]%>);
+       _OMPT_SET_CALLBACK(<%= names[1] %>, <%= names[1]%>);
     } else {
        _OMPT_SET_CALLBACK(<%= val%>, <%= names[0]%>);
     }

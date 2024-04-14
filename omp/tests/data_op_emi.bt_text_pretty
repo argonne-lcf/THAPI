@@ -1,1 +1,2 @@
 lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 5 }, { name = "ompt_target_data_alloc", dur = 1, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 5 }, { name = "ompt_target_data_alloc", size = 4 }
