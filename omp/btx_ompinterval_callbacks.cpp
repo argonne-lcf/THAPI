@@ -72,10 +72,13 @@ static void _data_op_callback(void *btx_handle, void *usr_data, int64_t ts,
   auto state = static_cast<data_t *>(usr_data);
   if (endpoint == ompt_scope_begin) {
     state->host_start[{hostname, vpid, vtid, op_name}] = ts;
-  } else if (endpoint == ompt_scope_end) {
-    // TODO: detect error?
+  } else {
+    // TODO: can we detect error case?
     const bool err = false;
-    auto start_ts = state->host_start[{hostname, vpid, vtid, op_name}];
+    int64_t start_ts = ts; // fallback for ompt_scope_beginend
+    if (endpoint == ompt_scope_end) {
+      start_ts = state->host_start[{hostname, vpid, vtid, op_name}];
+    }
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts,
                                 BACKEND_OMP, op_name.c_str(), (ts - start_ts),
                                 err);
@@ -86,15 +89,14 @@ static void _data_op_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-static void ompt_callback_target_data_op_intel_callback(
+static void ompt_callback_target_data_op_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
-    ompt_id_t target_id, ompt_id_t host_op_id, ompt_target_data_op_t optype,
-    void *src_addr, int src_device_num, void *dest_addr, int dest_device_num,
-    size_t bytes, void *codeptr_ra) {
+    int64_t vpid, uint64_t vtid, ompt_id_t target_id, ompt_id_t host_op_id,
+    ompt_target_data_op_t optype, void *src_addr, int src_device_num,
+    void *dest_addr, int dest_device_num, size_t bytes, void *codeptr_ra) {
   auto op_name = std::string(magic_enum::enum_name(optype));
-  _data_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
-                    bytes, op_name);
+  _data_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid,
+                    ompt_scope_beginend, bytes, op_name);
 }
 
 static void ompt_callback_target_data_op_emi_callback(
@@ -135,15 +137,6 @@ static void _submit_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-static void ompt_callback_target_submit_intel_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
-    ompt_id_t target_id, ompt_id_t host_op_id,
-    unsigned int requested_num_teams) {
-  _submit_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
-                   "ompt_target_submit_intel");
-}
-
 static void ompt_callback_target_submit_emi_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
     int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
@@ -164,10 +157,9 @@ void btx_register_usr_callbacks(void *btx_handle) {
                                             &btx_finalize_component);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_emi);
-  REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op_intel);
+  REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op_emi);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_submit);
-  REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_submit_intel);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_submit_emi);
 }
 
