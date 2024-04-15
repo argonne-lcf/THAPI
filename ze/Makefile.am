@@ -300,22 +300,6 @@ tests/.tag:
 
 CLEANFILES += tests/.tag
 
-tests/ze_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml tests/.tag
-	mkdir -p tests
-	$(RUBY) $< ze_babeltrace_model.yaml > $@
-
-# To run test we need to catageory of file:
-# - One are the `yaml` file who containt the traces
-# - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file.
-
-# Test by themself are splited into two type:
-# - The one who are common to each backend.
-# - The specific for this backend
-
-# We generate lot of file using:
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-
 TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \
 	tests/interval_profiling_multithread.thapi_text_pretty \
@@ -342,32 +326,22 @@ libtestzesource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) 
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
-	$(ERB) be="ze" interval="zeinterval" namespace="$@" $< > $@
-
 TESTS = \
-	tests/ze_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust .thapi_text_pretty
-DUST_LOG_COMPILER = ./test_wrapper.sh
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
-	test_wrapper.sh \
 	ze_library.rb \
-	tests/ze_dummy_trace.yaml \
 	$(TRACE_COMMON)
 
 EXTRA_DIST += \
 	$(TRACE_SPECIFC) \
-	tests/ze_dummy_trace.dust \
-	tests/interval.dust.erb \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/ze_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(BTX_ZE_GENERATED_SOURCE_TEST)
