@@ -201,7 +201,6 @@ uninstall-hook:
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceZE.la
 
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
@@ -213,31 +212,7 @@ ZE_LIB_GEN = \
 
 EXTRA_DIST += $(ZE_LIB_GEN)
 
-babeltrace_ze_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
-
-BUILT_SOURCES += babeltrace_ze_callbacks.h
-
-babeltrace_ze_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
-
 EXTRA_DIST += ze.h.include
-
-CLEANFILES += \
-	babeltrace_ze_callbacks.h \
-	babeltrace_ze_dispatchers.c
-
-nodist_libBabeltraceZE_la_SOURCES = \
-	babeltrace_ze_callbacks.h \
-	babeltrace_ze_dispatchers.c
-
-libBabeltraceZE_la_SOURCES = \
-	babeltrace_ze.c \
-	babeltrace_ze.h
-
-libBabeltraceZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceZE_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceZE_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 ze_library.rb: $(srcdir)/gen_ze_library.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
