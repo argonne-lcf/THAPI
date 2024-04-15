@@ -442,7 +442,6 @@ THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_p
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda ./btx_source_cuda_test/ .libs/libtestcudasource.a
 
 check_DATA = \
-	test_wrapper.sh \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
