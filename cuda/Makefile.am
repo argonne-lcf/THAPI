@@ -5,7 +5,6 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 CUDA_HDR = \
 	$(srcdir)/include/cuda.h \
@@ -270,14 +269,16 @@ nodist_libcudatracepoints_la_SOURCES = \
 	$(CUDA_STATIC_PROBES_INCL) \
 	$(CUDA_STATIC_PROBES_SRC)
 
-libcudatracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libcudatracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libcudatracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libcudatracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 nodist_libcudarttracepoints_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	$(CUDART_PROBES_SRC)
 
-libcudarttracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libcudarttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libcudarttracepoints_la_CFLAGS = $(LTTNG_UST_CFLAGS)
 libcudarttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la libCUDAInterval.la

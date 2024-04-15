@@ -5,37 +5,25 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 ZE_NAMESPACES = ze zet zes zel
 ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
-ZE_HDR = \
-	$(srcdir)/include/ze_api.h \
-	$(srcdir)/include/ze_ddi.h \
-	$(srcdir)/include/zes_api.h \
-	$(srcdir)/include/zes_ddi.h \
-	$(srcdir)/include/zet_api.h \
-	$(srcdir)/include/zet_ddi.h \
-	$(srcdir)/include/loader/ze_loader_api.h \
-	$(srcdir)/include/layers/zel_tracing_api.h \
-	$(srcdir)/include/layers/zel_tracing_ddi.h \
-	$(srcdir)/include/layers/zel_tracing_register_cb.h \
-	$(srcdir)/include/loader/ze_loader.h
+ZE_HDR_ROOT = \
+	ze_api.h \
+        ze_ddi.h \
+        zes_api.h \
+        zes_ddi.h \
+        zet_api.h \
+        zet_ddi.h \
+        loader/ze_loader_api.h \
+        layers/zel_tracing_api.h \
+        layers/zel_tracing_ddi.h \
+        layers/zel_tracing_register_cb.h \
+        loader/ze_loader.h
 
-MODIFIED_ZE_HDR = \
-	modified_include/ze_api.h \
-	modified_include/ze_ddi.h \
-	modified_include/zes_api.h \
-	modified_include/zes_ddi.h \
-	modified_include/zet_api.h \
-	modified_include/zet_ddi.h \
-	modified_include/loader/ze_loader_api.h \
-	modified_include/layers/zel_tracing_api.h \
-	modified_include/layers/zel_tracing_ddi.h \
-	modified_include/layers/zel_tracing_register_cb.h \
-	modified_include/loader/ze_loader.h
-
+ZE_HDR = $(ZE_HDR_ROOT:%=$(srcdir)/include/%)
+MODIFIED_ZE_HDR = $(ZE_HDR_ROOT:%=modified_include/%)
 
 BTX_ZE_GENERATED = \
 	btx_filter_ze/metababel/metababel.h \
@@ -172,7 +160,8 @@ nodist_libzetracepoints_la_SOURCES = \
 	$(ZE_PROBES_SRC) \
 	$(ZE_STATIC_PROBES_SRC)
 
-libzetracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = libTracerZE.la libZEInterval.la

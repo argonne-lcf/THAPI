@@ -5,7 +5,6 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 cl.xml.patched: $(srcdir)/cl.xml $(srcdir)/cl.xml.patch
 	$(PATCH) $(srcdir)/cl.xml $(srcdir)/cl.xml.patch -o cl.xml.patched
@@ -152,16 +151,16 @@ EXTRA_DIST += \
 	tracer_opencl_helpers.include.c \
 	gen_opencl.rb
 
-noinst_LTLIBRARIES = libtracepoints.la
+noinst_LTLIBRARIES = libOpenCLtracepoints.la
 
-nodist_libtracepoints_la_SOURCES = \
+nodist_libOpenCLtracepoints_la_SOURCES = \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_PROBES_SRC) \
 	$(OPENCL_STATIC_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_SRC)
 
-libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
-libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
+libopenOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libopenOpenCLtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 
 lib_LTLIBRARIES = libTracerOpenCL.la libCLInterval.la
 
@@ -176,7 +175,7 @@ libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LIBF
 libTracerOpenCL_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libTracerOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -version-info 1:0:0
 libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
-libTracerOpenCL_la_LIBADD = libtracepoints.la
+libTracerOpenCL_la_LIBADD = libOpenCLtracepoints.la
 
 thapi_session: libTracerOpenCL.la
 	$(top_srcdir)/utils/lttng_dummy_trace.sh ./.libs/libTracerOpenCL.so lttng_ust_opencl:\*,lttng_ust_opencl_build:\*,lttng_ust_opencl_arguments:\*,lttng_ust_opencl_dump:\*,lttng_ust_opencl_profiling:\*,lttng_ust_opencl_source:\*,lttng_ust_opencl_devices:\*
