@@ -75,10 +75,8 @@ module BTComponentClassRefinement
   refine(BT2::BTGraph) do
     attr_accessor :plugins_path, :cli_v
 
-    def bt2_escape(str, escapes = '*?[.:')
-      str.chars.map do |c|
-        escapes.include?(c) ? '\\' + c : c
-      end.join
+    def bt2_escape(str)
+      str.gsub(/([*?\[.:\\])/,'\\\\\1')
     end
 
     def add(component_class, name, params: {},
