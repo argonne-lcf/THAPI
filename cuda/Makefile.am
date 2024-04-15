@@ -407,21 +407,6 @@ tests/.tag:
 
 CLEANFILES += tests/.tag
 
-tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml tests/.tag
-	$(RUBY) $< cuda_babeltrace_model.yaml > $@
-
-# To run test we need to catageory of file:
-# - One are the `yaml` file who containt the traces
-# - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file.
-
-# Test by themself are splited into two type:
-# - The one who are common to each backend.
-# - The specific for this backend
-
-# We generate lot of file using:
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-
 TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \
 	tests/interval_profiling_cuda_driver_api.thapi_text_pretty \
@@ -450,27 +435,21 @@ libtestcudasource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
-	tests/cuda_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .thapi_text_pretty .dust
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda ./btx_source_cuda_test/ .libs/libtestcudasource.a
-DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
-	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 EXTRA_DIST += \
-	tests/cuda_dummy_trace.dust \
-	tests/interval.dust.erb \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(BTX_CUDA_GENERATED_SOURCE_TEST)
