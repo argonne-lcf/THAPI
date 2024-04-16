@@ -75,19 +75,35 @@ module BTComponentClassRefinement
   refine(BT2::BTGraph) do
     attr_accessor :plugins_path, :cli_v
 
+    def bt2_escape(str)
+      str.gsub(/([*?\[.:\\])/,'\\\\\1')
+    end
+
     def add(component_class, name, params: {},
             logging_level: BT2::BTLogging.default_level,
             initialize_method_data: nil)
 
       @plugins_path << component_class.plugin.path
       @cli_v << "--component #{name}:#{component_class.type.to_s.split('_').last.downcase}.#{component_class.plugin.name}.#{component_class.name}"
-      str_params = params.filter_map { |k, v| "#{k}=#{v}" unless v.instance_of?(String) && v.empty? }.join(',')
-      @cli_v << "--params #{str_params.dump}" unless str_params.empty?
+
+      # https://babeltrace.org/docs/v2.0/man1/babeltrace2-run.1/#doc-opt--params
+      str_params = params.filter_map do |k, v|
+        v = v.to_s
+        v = %("#{v}") if v.include?(',')
+        "#{k}=#{v}"
+      end.join(',')
+      @cli_v << "--params '#{str_params}'" unless str_params.empty?
       super
     end
 
     def connect_ports(upstream_port, downstream_port)
-      @cli_v << "--connect \"#{upstream_port.component.name}.#{upstream_port.name}:#{downstream_port.component.name}.#{downstream_port.name}\""
+      # https://babeltrace.org/docs/v2.0/man1/babeltrace2-run.1/#doc-connect-comps
+      # UP-COMP-PAT[.UP-PORT-PAT]:DOWN-COMP-PAT[.DOWN-PORT-PAT]
+      up_comp = bt2_escape(upstream_port.component.name)
+      up_port = bt2_escape(upstream_port.name)
+      down_comp = bt2_escape(downstream_port.component.name)
+      down_port = bt2_escape(downstream_port.name)
+      @cli_v << "--connect \"#{up_comp}.#{up_port}:#{down_comp}.#{down_port}\""
       super
     end
 
