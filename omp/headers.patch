@@ -1,3 +1,4 @@
+diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
 --- include/omp-tools.h	2024-04-17 22:43:21.000000000 +0000
 +++ modified_include/omp-tools.h	2024-04-17 22:40:15.000000000 +0000
 @@ -163,8 +163,10 @@
