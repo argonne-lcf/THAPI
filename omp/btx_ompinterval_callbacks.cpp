@@ -1,14 +1,9 @@
 #include <metababel/metababel.h>
-
 #include <string>
 #include <unordered_map>
-
 #include <iostream>
-
 #include "ompt.h.include"
-
 #include "xprof_utils.hpp"
-
 #include "magic_enum.hpp"
 
 using hpt_function_name_omp_t =
@@ -17,7 +12,6 @@ using hpt_function_name_omp_t =
 struct data_s {
   std::unordered_map<hpt_function_name_omp_t, uint64_t> host_start;
 };
-
 typedef struct data_s data_t;
 
 static void btx_initialize_component(void **usr_data) {
@@ -50,7 +44,7 @@ static void ompt_callback_target_callback(
     int64_t vpid, uint64_t vtid, ompt_target_t kind,
     ompt_scope_endpoint_t endpoint, int device_num, ompt_data_t *task_data,
     ompt_id_t target_id, void *codeptr_ra) {
-  auto op_name = std::string(magic_enum::enum_name(kind));
+std::string op_name(magic_enum::enum_name(kind));
   _target_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
                    op_name);
 }
