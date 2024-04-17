@@ -1,8 +1,6 @@
-diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
---- include/omp-tools.h	2022-04-07 21:46:21.855636000 +0000
-+++ modified_include/omp-tools.h	2022-05-03 18:57:18.099250000 +0000
-@@ -163,8 +163,10 @@
-   ompt_native_overhead = 0x40,
+--- include/omp-tools.h	2024-04-15 10:03:11.855008118 -0500
++++ modified_include/omp-tools.h	2024-04-17 11:37:07.695281396 -0500
+@@ -164,6 +164,8 @@
    ompt_native_idleness = 0x80
  } ompt_native_mon_flag_t;
  
@@ -11,9 +9,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef enum ompt_task_flag_t {
    ompt_task_initial = 0x00000001,
    ompt_task_implicit = 0x00000002,
-   ompt_task_explicit = 0x00000004,
-@@ -176,8 +178,10 @@
-   ompt_task_mergeable = 0x40000000,
+@@ -177,6 +179,8 @@
    ompt_task_merged = 0x80000000
  } ompt_task_flag_t;
  
@@ -22,9 +18,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef enum ompt_task_status_t {
    ompt_task_complete = 1,
    ompt_task_yield = 2,
-   ompt_task_cancel = 3,
-@@ -206,8 +210,10 @@
-   ompt_parallel_league = 0x40000000,
+@@ -207,6 +211,8 @@
    ompt_parallel_team = 0x80000000
  } ompt_parallel_flag_t;
  
@@ -33,9 +27,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef enum ompt_target_map_flag_t {
    ompt_target_map_flag_to = 0x01,
    ompt_target_map_flag_from = 0x02,
-   ompt_target_map_flag_alloc = 0x04,
-@@ -219,8 +225,10 @@
-   ompt_target_map_flag_close = 0x100,
+@@ -220,6 +226,8 @@
    ompt_target_map_flag_shared = 0x200
  } ompt_target_map_flag_t;
  
@@ -44,9 +36,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef enum ompt_dependence_type_t {
    ompt_dependence_type_in = 1,
    ompt_dependence_type_out = 2,
-   ompt_dependence_type_inout = 3,
-@@ -244,8 +252,10 @@
-   ompt_cancel_detected = 0x20,
+@@ -245,6 +253,8 @@
    ompt_cancel_discarded_task = 0x40
  } ompt_cancel_flag_t;
  
@@ -55,9 +45,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef uint64_t ompt_hwid_t;
  
  typedef enum ompt_state_t {
-   ompt_state_work_serial = 0x000,
-@@ -285,8 +295,10 @@
-   ompt_frame_framepointer = 0x20,
+@@ -286,6 +296,8 @@
    ompt_frame_stackaddress = 0x30
  } ompt_frame_flag_t;
  
@@ -66,9 +54,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef uint64_t ompt_wait_id_t;
  
  typedef uint64_t (*ompt_get_unique_id_t)(void);
- 
-@@ -341,10 +353,10 @@
- 
+@@ -342,8 +354,8 @@
  typedef struct ompt_frame_t {
    ompt_data_t exit_frame;
    ompt_data_t enter_frame;
@@ -79,9 +65,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  } ompt_frame_t;
  
  typedef void (*ompt_callback_t)(void);
- 
-@@ -424,9 +436,9 @@
- typedef int (*ompt_get_parallel_info_t)(int ancestor_level,
+@@ -425,7 +437,7 @@
                                          ompt_data_t **parallel_data,
                                          int *team_size);
  
@@ -90,9 +74,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
                                      ompt_data_t **task_data,
                                      ompt_frame_t **task_frame,
                                      ompt_data_t **parallel_data,
-                                     int *thread_num);
-@@ -452,9 +464,9 @@
-                                                    unsigned int enable,
+@@ -453,7 +465,7 @@
                                                     unsigned int etype);
  
  typedef ompt_set_result_t (*ompt_set_trace_native_t)(ompt_device_t *device,
@@ -101,9 +83,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  
  typedef int (*ompt_start_trace_t)(ompt_device_t *device,
                                    ompt_callback_buffer_request_t request,
-                                   ompt_callback_buffer_complete_t complete);
-@@ -491,26 +503,26 @@
- 
+@@ -492,24 +504,24 @@
  typedef void (*ompt_callback_parallel_begin_t)(
      ompt_data_t *encountering_task_data,
      const ompt_frame_t *encountering_task_frame, ompt_data_t *parallel_data,
@@ -132,9 +112,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
    const void *codeptr_ra;
  } ompt_record_parallel_end_t;
  
- typedef void (*ompt_callback_work_t)(ompt_work_t work_type,
-@@ -542,14 +554,14 @@
- 
+@@ -543,12 +555,12 @@
  typedef void (*ompt_callback_task_create_t)(
      ompt_data_t *encountering_task_data,
      const ompt_frame_t *encountering_task_frame, ompt_data_t *new_task_data,
@@ -149,9 +127,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
    int has_dependences;
    const void *codeptr_ra;
  } ompt_record_task_create_t;
- 
-@@ -584,17 +596,17 @@
- typedef void (*ompt_callback_implicit_task_t)(ompt_scope_endpoint_t endpoint,
+@@ -585,7 +597,7 @@
                                                ompt_data_t *parallel_data,
                                                ompt_data_t *task_data,
                                                unsigned int actual_parallelism,
@@ -160,7 +136,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  
  typedef struct ompt_record_implicit_task_t {
    ompt_scope_endpoint_t endpoint;
-   ompt_id_t parallel_id;
+@@ -593,7 +605,7 @@
    ompt_id_t task_id;
    unsigned int actual_parallelism;
    unsigned int index;
@@ -169,9 +145,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  } ompt_record_implicit_task_t;
  
  typedef void (*ompt_callback_masked_t)(ompt_scope_endpoint_t endpoint,
-                                        ompt_data_t *parallel_data,
-@@ -661,14 +673,14 @@
- typedef struct ompt_record_flush_t {
+@@ -662,12 +674,12 @@
    const void *codeptr_ra;
  } ompt_record_flush_t;
  
@@ -186,9 +160,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
    const void *codeptr_ra;
  } ompt_record_cancel_t;
  
- typedef void (*ompt_callback_device_initialize_t)(int device_num,
-@@ -688,8 +700,29 @@
- 
+@@ -689,6 +701,20 @@
  typedef void (*ompt_callback_device_unload_t)(int device_num,
                                                uint64_t module_id);
  
@@ -206,19 +178,10 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
 +  const void *codeptr_ra
 +);
 +
-+typedef void (*ompt_callback_target_data_op_intel_t)(
-+    ompt_scope_endpoint_t endpoint, ompt_id_t target_id,
-+    ompt_id_t host_op_id, ompt_target_data_op_t optype,
-+    void *src_addr, int src_device_num,
-+    void *dest_addr, int dest_device_num,
-+    size_t bytes, const void *codeptr_ra);
-+
  typedef void (*ompt_callback_target_data_op_t)(
      ompt_id_t target_id, ompt_id_t host_op_id, ompt_target_data_op_t optype,
      void *src_addr, int src_device_num, void *dest_addr, int dest_device_num,
-     size_t bytes, const void *codeptr_ra);
-@@ -705,8 +738,18 @@
-   ompt_device_time_t end_time;
+@@ -706,6 +732,16 @@
    const void *codeptr_ra;
  } ompt_record_target_data_op_t;
  
@@ -235,9 +198,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef void (*ompt_callback_target_t)(ompt_target_t kind,
                                         ompt_scope_endpoint_t endpoint,
                                         int device_num, ompt_data_t *task_data,
-                                        ompt_id_t target_id,
-@@ -724,25 +767,41 @@
- typedef void (*ompt_callback_target_map_t)(ompt_id_t target_id,
+@@ -725,7 +761,7 @@
                                             unsigned int nitems,
                                             void **host_addr, void **device_addr,
                                             size_t *bytes,
@@ -246,8 +207,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
                                             const void *codeptr_ra);
  
  typedef struct ompt_record_target_map_t {
-   ompt_id_t target_id;
-   unsigned int nitems;
+@@ -734,7 +770,7 @@
    void **host_addr;
    void **device_addr;
    size_t *bytes;
@@ -256,17 +216,10 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
    const void *codeptr_ra;
  } ompt_record_target_map_t;
  
- typedef void (*ompt_callback_target_submit_t)(ompt_id_t target_id,
+@@ -742,6 +778,15 @@
                                                ompt_id_t host_op_id,
                                                unsigned int requested_num_teams);
  
-+typedef void (*ompt_callback_target_submit_intel_t) (
-+    ompt_scope_endpoint_t endpoint,
-+    ompt_id_t target_id,
-+    ompt_id_t host_op_id,
-+    unsigned int requested_num_teams
-+);
-+
 +
 +typedef void (*ompt_callback_target_submit_emi_t) (
 +    ompt_scope_endpoint_t endpoint,
@@ -279,9 +232,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  typedef struct ompt_record_target_kernel_t {
    ompt_id_t host_op_id;
    unsigned int requested_num_teams;
-   unsigned int granted_num_teams;
-@@ -798,11 +849,8 @@
- 
+@@ -799,9 +844,6 @@
  ompt_start_tool_result_t *ompt_start_tool(unsigned int omp_version,
                                            const char *runtime_version);
  
@@ -291,9 +242,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  ompd_rc_t ompd_get_api_version(ompd_word_t *version);
  
  ompd_rc_t ompd_get_version_string(const char **string);
- 
-@@ -980,8 +1028,11 @@
-   ompd_callback_get_thread_context_for_thread_id_fn_t
+@@ -981,6 +1023,9 @@
        get_thread_context_for_thread_id;
  } ompd_callbacks_t;
  
@@ -303,4 +252,3 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  void ompd_bp_parallel_begin(void);
  
  void ompd_bp_parallel_end(void);
- 

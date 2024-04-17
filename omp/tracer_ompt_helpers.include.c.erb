@@ -33,7 +33,6 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     (void) initial_device_num;
     (void) tool_data;
     int do_callbacks_emi = 1;
-    int do_callbacks_intel = 0;
     int verbose = 0;
 
     thapi_sampling_init();
@@ -46,9 +45,6 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     */
     if (getenv("LTTNG_UST_OMP_NO_EMI")) {
         do_callbacks_emi = 0;
-        if (getenv("LTTNG_UST_OMP_INTEL")) {
-            do_callbacks_intel = 1;
-        }
     }
     if (getenv("LTTNG_UST_OMP_VERBOSE")) {
         verbose = 1;
@@ -67,18 +63,7 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     if (do_callbacks_emi) {
        _OMPT_SET_CALLBACK(<%= names.last%>, <%= names.last%>);
     } else {
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names.first%>);
-    }
-
-  <% else %>
-
-    if (do_callbacks_intel) {
-       // Note: intel callbacks do not have their own enum value!?
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names[2]%>);
-    } else if (do_callbacks_emi) {
-       _OMPT_SET_CALLBACK(<%= names[1] %>, <%= names[1]%>);
-    } else {
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names[0]%>);
+       _OMPT_SET_CALLBACK(<%= names.first%>, <%= names.first%>);
     }
 
   <% end %>
