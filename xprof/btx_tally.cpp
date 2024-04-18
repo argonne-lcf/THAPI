@@ -1,5 +1,5 @@
 #include <metababel/metababel.h>
-
+#include "magic_enum.hpp"
 #include "btx_tally.hpp"
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
@@ -101,7 +101,7 @@ struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
 
-  std::array<int, BACKEND_MAX> backend_levels;
+  std::array<int, magic_enum::enum_count<backend_t>()> backend_levels;
 
   std::map<backend_level_t, std::set<std::string>> host_backend_name;
   std::map<backend_level_t, std::set<std::string>> traffic_backend_name;
@@ -124,7 +124,7 @@ static std::string join_iterator(const std::set<std::string> &x, std::string del
 }
 
 static int get_backend_id(std::string name) {
-  for (int i = 0; i < BACKEND_MAX; ++i)
+  for (size_t i = 0; i < magic_enum::enum_count<backend_t>(); ++i)
     // backend_name is located in xprof_utils.hpp
     if (std::string{pretty_backend_name[i]} == name)
       return i;
@@ -294,9 +294,9 @@ static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *h
                                  uint64_t err) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-
   const int level = data->backend_levels[backend];
-  data->host_backend_name[level].insert(backend_name[backend]);
+  std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
+  data->host_backend_name[level].insert(backend_name);
   data->host[level][{hostname, vpid, vtid, name}] += {total, err, count, min, max};
 }
 
@@ -322,7 +322,8 @@ static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   const int level = data->backend_levels[backend];
-  data->traffic_backend_name[level].insert(backend_name[backend]);
+  std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
+  data->traffic_backend_name[level].insert(backend_name);
   data->traffic[level][{hostname, vpid, vtid, name}] += {total, 0, count, min, max};
   ;
 }
