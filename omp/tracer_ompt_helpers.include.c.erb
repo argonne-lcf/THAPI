@@ -44,12 +44,10 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
         do_callbacks_emi = 0;
     }
     */
-    if (getenv("LTTNG_UST_OMP_NO_EMI")) {
+    if (getenv("LTTNG_UST_OMP_NO_EMI"))
         do_callbacks_emi = 0;
-    }
-    if (getenv("LTTNG_UST_OMP_VERBOSE")) {
+    if (getenv("LTTNG_UST_OMP_VERBOSE")) 
         verbose = 1;
-    }
 
     ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) lookup("ompt_set_callback");
     if (ompt_set_callback == NULL)
