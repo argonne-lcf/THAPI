@@ -1,10 +1,11 @@
 #include "thapi_sampling.h"
 
 <% require "yaml" %>
+<% require "set" %>
 
 #define _OMPT_SET_CALLBACK(value, name) \
 do { \
-    const ompt_set_result_t _res = ompt_set_callback(value, (ompt_callback_t) (uintptr_t) name ## _func); \
+    const ompt_set_result_t _res = ompt_set_callback(value, (ompt_callback_t) name ## _func); \
     if (!verbose) \
         break; \
     switch (_res) { \
@@ -30,41 +31,58 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
                             int initial_device_num,
                             ompt_data_t *tool_data)
 {
-    (void) tool_data;
     (void) initial_device_num;
-    int do_callbacks_intel = 0;
+    (void) tool_data;
+    int do_callbacks_emi = 1;
     int verbose = 0;
 
     thapi_sampling_init();
 
-    if (getenv("LTTNG_UST_OMP_INTEL"))
-        do_callbacks_intel = 1;
-    if (getenv("LTTNG_UST_OMP_VERBOSE"))
+    /* TODO: enable when oneAPI updates ompt runtime omp_version
+    if (tool_data->value < 202011) {
+        // Note: version 202011 is 5.1, where the emi callbacks were added
+        do_callbacks_emi = 0;
+    }
+    */
+    if (getenv("LTTNG_UST_OMP_NO_EMI"))
+        do_callbacks_emi = 0;
+    if (getenv("LTTNG_UST_OMP_VERBOSE")) 
         verbose = 1;
 
-    ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) (uintptr_t) lookup("ompt_set_callback");
+    ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) lookup("ompt_set_callback");
     if (ompt_set_callback == NULL)
         return 0;
-<% YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")).each do | val, names| %>
-  <% if names.size == 1 %>
+<% d = YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")) %>
+<% k_all = d.keys.to_set %>
+<% k_emi = d.keys.filter{ |k| k.end_with?("_emi") }.to_set %>
+<% k_no_emi_variant = k_emi.map { |k| k.delete_suffix("_emi") }.to_set & k_all %>
 
-    _OMPT_SET_CALLBACK(<%= val%>, <%= names.first%>);
-  <% else %>
+    <% (k_all - (k_emi + k_no_emi_variant) ).each do |ompt_callbacks_t| %>
+      <% d[ompt_callbacks_t].each do |kind| %>
+    _OMPT_SET_CALLBACK(<%= ompt_callbacks_t  %>, <%= kind %>);
+      <% end %>
+    <% end %>
 
-    if (do_callbacks_intel) {
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names.last%>);
+    if (do_callbacks_emi) {
+      <% k_emi.each do |ompt_callbacks_t| %>
+        <% d[ompt_callbacks_t].each do |kind| %>
+        _OMPT_SET_CALLBACK(<%= ompt_callbacks_t  %>, <%= kind %>);
+        <% end %>
+      <% end %>
     } else {
-       _OMPT_SET_CALLBACK(<%= val%>, <%= names.first%>);
+      <% k_no_emi_variant.each do |ompt_callbacks_t| %>
+        <% d[ompt_callbacks_t].each do |kind| %>
+        _OMPT_SET_CALLBACK(<%= ompt_callbacks_t  %>, <%= kind %>);
+        <% end %>
+      <% end %>
     }
-  <% end %>
-<% end %>
     return 1;
 }
 
-static ompt_start_tool_result_t _ompt_start_tool_result = {&_ompt_initialize, &_ompt_finalize, (ompt_data_t) {.ptr=NULL} };
+static ompt_start_tool_result_t _ompt_start_tool_result = {&_ompt_initialize, &_ompt_finalize, (ompt_data_t) {.value=0} };
 
 ompt_start_tool_result_t* ompt_start_tool(unsigned int omp_version, const char* runtime_version) {
-    (void) omp_version;
     (void) runtime_version;
+    _ompt_start_tool_result.tool_data.value = omp_version;
     return &_ompt_start_tool_result;
 }

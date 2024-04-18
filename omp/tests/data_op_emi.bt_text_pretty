@@ -1,0 +1,6 @@
+lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 5 }, { name = "ompt_target_data_alloc", dur = 1, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 5 }, { name = "ompt_target_data_alloc", size = 4 }
+lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000002, backend = 5 }, { name = "ompt_target_data_delete", dur = 1, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000002, backend = 5 }, { name = "ompt_target_data_delete", size = 4 }
+lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000004, backend = 5 }, { name = "ompt_target_data_associate", dur = 1, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000004, backend = 5 }, { name = "ompt_target_data_associate", size = 4 }
