@@ -233,15 +233,11 @@ libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # opencl/Makefile.am:248: warning: source file '$(top_srcdir)/utils/xprof_utils.cpp' is in a subdirectory,
 # opencl/Makefile.am:248: but option 'subdir-objects' is disabled
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
 	$(BTX_OPENCL_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -250,8 +246,7 @@ BUILT_SOURCES += \
 
 nodist_libCLInterval_la_SOURCES = \
 	$(BTX_OPENCL_GENERATED) \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.hpp
 
 libCLInterval_la_SOURCES = \
 	btx_clinterval_callbacks.cpp \

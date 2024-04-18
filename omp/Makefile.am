@@ -157,9 +157,6 @@ uninstall-hook:
 	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libOMPInterval.so
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
@@ -167,7 +164,6 @@ EXTRA_DIST += ompt.h.include
 
 CLEANFILES += \
 	$(BTX_OMP_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -176,8 +172,7 @@ BUILT_SOURCES += \
 
 nodist_libOMPInterval_la_SOURCES = \
 	$(BTX_OMP_GENERATED) \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.hpp
 
 libOMPInterval_la_SOURCES = \
 	btx_ompinterval_callbacks.cpp \

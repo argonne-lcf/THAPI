@@ -346,15 +346,11 @@ CLEANFILES += $(CUDA_BINDINGS)
 
 data_DATA = $(CUDA_BINDINGS)
 
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
 	$(BTX_CUDA_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -363,8 +359,7 @@ BUILT_SOURCES += \
 
 nodist_libCUDAInterval_la_SOURCES = \
 	$(BTX_CUDA_GENERATED) \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.hpp
 
 libCUDAInterval_la_SOURCES = \
 	btx_cudainterval_callbacks.cpp \

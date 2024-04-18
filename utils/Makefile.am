@@ -15,7 +15,6 @@ noinst_HEADERS = \
 	tests_template/interval_profiling_multithread.yaml.erb \
 	tests_template/interval_profiling_kernel_name.yaml.erb \
 	tests_template/interval_common.dust.erb \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h

@@ -371,15 +371,11 @@ CLEANFILES += \
 data_DATA = \
 	$(HIP_BINDINGS)
 
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
 	$(BTX_HIP_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
