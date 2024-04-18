@@ -9,6 +9,7 @@ noinst_HEADERS = \
 	include/uthash.h \
 	include/utlist.h \
 	include/json.hpp \
+	include/magic_enum.hpp \
 	tests_template/interval_profiling_block.yaml.erb \
 	tests_template/interval_profiling_normal.yaml.erb \
 	tests_template/interval_profiling_multithread.yaml.erb \
