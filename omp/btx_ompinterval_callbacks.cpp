@@ -18,7 +18,7 @@ static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; 
 static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
 // Get the start of the "ompt_scope" or return empty optional
-static std::optional<int64_t> set_or_gs_start(void *usr_data, hpt_function_name_omp_t key,
+static std::optional<int64_t> set_or_get_start(void *usr_data, hpt_function_name_omp_t key,
                                               ompt_scope_endpoint_t endpoint, int64_t ts) {
   auto state = static_cast<data_t *>(usr_data);
   switch (endpoint) {
@@ -37,7 +37,7 @@ static std::optional<int64_t> set_or_gs_start(void *usr_data, hpt_function_name_
 static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
                              int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
                              std::string const &op_name) {
-  if (auto start_ts = set_or_gs_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
+  if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     const bool err = false;
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
                                 op_name.c_str(), (ts - start_ts.value()), err);
@@ -48,7 +48,7 @@ static void host_and_traffic_op_callback(void *btx_handle, void *usr_data, int64
                                          const char *hostname, int64_t vpid, uint64_t vtid,
                                          ompt_scope_endpoint_t endpoint, size_t bytes,
                                          std::string const &op_name) {
-  if (auto start_ts = set_or_gs_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
+  if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     const bool err = false;
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
                                 op_name.c_str(), (ts - start_ts.value()), err);
