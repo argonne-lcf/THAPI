@@ -212,6 +212,7 @@ def get_and_add_components(graph, _command, names)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
+    raise "#{name} plugins was not found" unless comp
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
