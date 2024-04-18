@@ -1,6 +1,7 @@
 #include "thapi_sampling.h"
 
 <% require "yaml" %>
+<% require "set" %>
 
 #define _OMPT_SET_CALLBACK(value, name) \
 do { \
@@ -53,21 +54,30 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) (uintptr_t) lookup("ompt_set_callback");
     if (ompt_set_callback == NULL)
         return 0;
-<% YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")).each do | val, names| %>
-  <% if names.size == 1 %>
+<% d = YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")) %>
+<% k_all = d.keys.to_set %>
+<% k_emi = d.keys.filter{ |k| k.end_with?("_emi") }.to_set %>
+<% k_no_emi_variant = k_emi.map { |k| k.delete_suffix("_emi") }.to_set & k_emi %>
 
-    _OMPT_SET_CALLBACK(<%= val%>, <%= names.first%>);
-
-  <% elsif names.size == 2 %>
+    <% (k_all - (k_emi + k_no_emi_variant) ).each do |ompt_callbacks_t| %>
+      <% d[ompt_callbacks_t].each do |kind| %>
+    _OMPT_SET_CALLBACK(<%= ompt_callbacks_t  %>, <%= kind %>);
+      <% end %>
+    <% end %>
 
     if (do_callbacks_emi) {
-       _OMPT_SET_CALLBACK(<%= names.last%>, <%= names.last%>);
+      <% k_emi.each do |ompt_callbacks_t| %>
+        <% d[ompt_callbacks_t].each do |kind| %>
+        _OMPT_SET_CALLBACK(<%= ompt_callbacks_t  %>, <%= kind %>);
+        <% end %>
+      <% end %>
     } else {
-       _OMPT_SET_CALLBACK(<%= names.first%>, <%= names.first%>);
+      <% k_no_emi_variant.each do |ompt_callbacks_t| %>
+        <% d[ompt_callbacks_t].each do |kind| %>
+        _OMPT_SET_CALLBACK(<%= ompt_callbacks_t  %>, <%= kind %>);
+        <% end %>
+      <% end %>
     }
-
-  <% end %>
-<% end %>
     return 1;
 }
 

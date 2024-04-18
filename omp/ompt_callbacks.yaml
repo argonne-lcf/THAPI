@@ -15,13 +15,10 @@ ompt_callback_implicit_task:
   - ompt_callback_implicit_task
 ompt_callback_target:
   - ompt_callback_target
-  - ompt_callback_target_emi
 ompt_callback_target_data_op:
   - ompt_callback_target_data_op
-  - ompt_callback_target_data_op_emi
 ompt_callback_target_submit:
   - ompt_callback_target_submit
-  - ompt_callback_target_submit_emi
 ompt_callback_device_initialize:
   - ompt_callback_device_initialize
 ompt_callback_device_finalize:
@@ -64,5 +61,13 @@ ompt_callback_reduction:
   - ompt_callback_sync_region
 ompt_callback_dispatch:
   - ompt_callback_dispatch
+ompt_callback_target_emi:
+  - ompt_callback_target_emi
+ompt_callback_target_data_op_emi:
+  - ompt_callback_target_data_op_emi
+ompt_callback_target_submit_emi:
+  - ompt_callback_target_submit_emi
+#ompt_callback_target_map_emi:
+#  - ompt_callback_target_map_emi
 ompt_callback_error:
   - ompt_callback_error
