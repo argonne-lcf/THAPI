@@ -5,7 +5,7 @@
 
 #define _OMPT_SET_CALLBACK(value, name) \
 do { \
-    const ompt_set_result_t _res = ompt_set_callback(value, (ompt_callback_t) (uintptr_t) name ## _func); \
+    const ompt_set_result_t _res = ompt_set_callback(value, (ompt_callback_t) name ## _func); \
     if (!verbose) \
         break; \
     switch (_res) { \
@@ -51,7 +51,7 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
         verbose = 1;
     }
 
-    ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) (uintptr_t) lookup("ompt_set_callback");
+    ompt_set_callback_t ompt_set_callback = (ompt_set_callback_t) lookup("ompt_set_callback");
     if (ompt_set_callback == NULL)
         return 0;
 <% d = YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")) %>
