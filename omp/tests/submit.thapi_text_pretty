@@ -1,0 +1,1 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ompt:ompt_callback_target_submit: { target_id: 1, host_op_id: 0x0000000000000009, requested_num_teams: 3823427656 }

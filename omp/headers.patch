@@ -1,6 +1,6 @@
 diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
---- include/omp-tools.h	2022-04-07 21:46:21.855636000 +0000
-+++ modified_include/omp-tools.h	2022-05-03 18:57:18.099250000 +0000
+--- include/omp-tools.h	2024-04-17 22:43:21.000000000 +0000
++++ modified_include/omp-tools.h	2024-04-18 00:35:16.000000000 +0000
 @@ -163,8 +163,10 @@
    ompt_native_overhead = 0x40,
    ompt_native_idleness = 0x80
@@ -187,7 +187,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  } ompt_record_cancel_t;
  
  typedef void (*ompt_callback_device_initialize_t)(int device_num,
-@@ -688,8 +700,29 @@
+@@ -688,8 +700,22 @@
  
  typedef void (*ompt_callback_device_unload_t)(int device_num,
                                                uint64_t module_id);
@@ -206,18 +206,11 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
 +  const void *codeptr_ra
 +);
 +
-+typedef void (*ompt_callback_target_data_op_intel_t)(
-+    ompt_scope_endpoint_t endpoint, ompt_id_t target_id,
-+    ompt_id_t host_op_id, ompt_target_data_op_t optype,
-+    void *src_addr, int src_device_num,
-+    void *dest_addr, int dest_device_num,
-+    size_t bytes, const void *codeptr_ra);
-+
  typedef void (*ompt_callback_target_data_op_t)(
      ompt_id_t target_id, ompt_id_t host_op_id, ompt_target_data_op_t optype,
      void *src_addr, int src_device_num, void *dest_addr, int dest_device_num,
      size_t bytes, const void *codeptr_ra);
-@@ -705,8 +738,18 @@
+@@ -705,8 +731,18 @@
    ompt_device_time_t end_time;
    const void *codeptr_ra;
  } ompt_record_target_data_op_t;
@@ -236,7 +229,21 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
                                         ompt_scope_endpoint_t endpoint,
                                         int device_num, ompt_data_t *task_data,
                                         ompt_id_t target_id,
-@@ -724,25 +767,33 @@
+@@ -720,29 +756,48 @@
+   ompt_id_t target_id;
+   const void *codeptr_ra;
+ } ompt_record_target_t;
+ 
++typedef void (*ompt_callback_target_map_emi_t) (
++  ompt_data_t *target_data,
++  unsigned int nitems,
++  void **host_addr,
++  void **device_addr,
++  size_t *bytes,
++  unsigned int *mapping_flags,
++  const void *codeptr_ra
++);
++
  typedef void (*ompt_callback_target_map_t)(ompt_id_t target_id,
                                             unsigned int nitems,
                                             void **host_addr, void **device_addr,
@@ -260,10 +267,11 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
                                                ompt_id_t host_op_id,
                                                unsigned int requested_num_teams);
  
-+typedef void (*ompt_callback_target_submit_intel_t) (
++
++typedef void (*ompt_callback_target_submit_emi_t) (
 +    ompt_scope_endpoint_t endpoint,
-+    ompt_id_t target_id,
-+    ompt_id_t host_op_id,
++    ompt_data_t *target_data,
++    ompt_id_t *host_op_id,
 +    unsigned int requested_num_teams
 +);
 +
@@ -272,7 +280,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
    ompt_id_t host_op_id;
    unsigned int requested_num_teams;
    unsigned int granted_num_teams;
-@@ -798,11 +849,8 @@
+@@ -798,11 +853,8 @@
  
  ompt_start_tool_result_t *ompt_start_tool(unsigned int omp_version,
                                            const char *runtime_version);
@@ -284,7 +292,7 @@ diff -u4 -r include/omp-tools.h modified_include/omp-tools.h
  
  ompd_rc_t ompd_get_version_string(const char **string);
  
-@@ -980,8 +1028,11 @@
+@@ -980,8 +1032,11 @@
    ompd_callback_get_thread_context_for_thread_id_fn_t
        get_thread_context_for_thread_id;
  } ompd_callbacks_t;

@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ompt:ompt_callback_target_submit_emi: { endpoint: ompt_scope_begin, target_data: 0x0000000000000008, host_op_id: 0x0000000000000009, requested_num_teams: 3823427656 }
+12:00:00.001000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ompt:ompt_callback_target_submit_emi: { endpoint: ompt_scope_end, target_data: 0x0000000000000008, host_op_id: 0x0000000000000009, requested_num_teams: 3823427656 }
