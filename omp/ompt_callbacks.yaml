@@ -67,7 +67,7 @@ ompt_callback_target_data_op_emi:
   - ompt_callback_target_data_op_emi
 ompt_callback_target_submit_emi:
   - ompt_callback_target_submit_emi
-#ompt_callback_target_map_emi:
-#  - ompt_callback_target_map_emi
+ompt_callback_target_map_emi:
+  - ompt_callback_target_map_emi
 ompt_callback_error:
   - ompt_callback_error

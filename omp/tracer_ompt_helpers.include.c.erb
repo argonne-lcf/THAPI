@@ -57,7 +57,7 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
 <% d = YAML.load_file(File.join(ENV["SRC_DIR"],"ompt_callbacks.yaml")) %>
 <% k_all = d.keys.to_set %>
 <% k_emi = d.keys.filter{ |k| k.end_with?("_emi") }.to_set %>
-<% k_no_emi_variant = k_emi.map { |k| k.delete_suffix("_emi") }.to_set & k_emi %>
+<% k_no_emi_variant = k_emi.map { |k| k.delete_suffix("_emi") }.to_set & k_all %>
 
     <% (k_all - (k_emi + k_no_emi_variant) ).each do |ompt_callbacks_t| %>
       <% d[ompt_callbacks_t].each do |kind| %>
