@@ -23,10 +23,10 @@ static void btx_finalize_component(void *usr_data) {
 }
 
 // returns start_ts, for use in traffic or other messages on scope end
-static int64_t _host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                 const char *hostname, int64_t vpid,
-                                 uint64_t vtid, ompt_scope_endpoint_t endpoint,
-                                 std::string const &op_name) {
+static int64_t host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                const char *hostname, int64_t vpid,
+                                uint64_t vtid, ompt_scope_endpoint_t endpoint,
+                                std::string const &op_name) {
   auto state = static_cast<data_t *>(usr_data);
   if (endpoint == ompt_scope_begin) {
     state->host_start[{hostname, vpid, vtid, op_name}] = ts;
@@ -34,9 +34,9 @@ static int64_t _host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
     // TODO: detect error?
     const bool err = false;
     auto start_ts = state->host_start[{hostname, vpid, vtid, op_name}];
-    if (start_ts == 0) {
+    // for endpoint == ompt_scope_beginend case, there is no start_ts from start
+    if (start_ts == 0)
       start_ts = ts;
-    }
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts,
                                 BACKEND_OMP, op_name.c_str(), (ts - start_ts),
                                 err);
@@ -51,8 +51,8 @@ static void ompt_callback_target_callback(
     ompt_scope_endpoint_t endpoint, int device_num, ompt_data_t *task_data,
     ompt_id_t target_id, void *codeptr_ra) {
   std::string op_name(magic_enum::enum_name(kind));
-  _host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
-                    op_name);
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
+                   op_name);
 }
 
 static void ompt_callback_target_emi_callback(
@@ -61,16 +61,16 @@ static void ompt_callback_target_emi_callback(
     ompt_scope_endpoint_t endpoint, int device_num, ompt_data_t *task_data,
     ompt_data_t *target_task_data, ompt_data_t *target_data, void *codeptr_ra) {
   std::string op_name(magic_enum::enum_name(kind));
-  _host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
-                    op_name);
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
+                   op_name);
 }
 
 static void _data_op_callback(void *btx_handle, void *usr_data, int64_t ts,
                               const char *hostname, int64_t vpid, uint64_t vtid,
                               ompt_scope_endpoint_t endpoint, size_t bytes,
                               std::string const &op_name) {
-  auto start_ts = _host_op_callback(btx_handle, usr_data, ts, hostname, vpid,
-                                    vtid, endpoint, op_name);
+  auto start_ts = host_op_callback(btx_handle, usr_data, ts, hostname, vpid,
+                                   vtid, endpoint, op_name);
   if (endpoint != ompt_scope_begin &&
       op_name.compare("ompt_target_data_alloc") == 0) {
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, start_ts,
@@ -115,8 +115,8 @@ static void ompt_callback_target_submit_emi_callback(
     int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
     ompt_data_t *target_data, ompt_id_t *host_op_id,
     unsigned int requested_num_teams) {
-  _host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
-                    "ompt_target_submit_emi");
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint,
+                   "ompt_target_submit_emi");
 }
 
 #define REGISTER_ASSOCIATED_CALLBACK(base_name)                                \
