@@ -240,7 +240,7 @@ TESTS = \
 
 TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = omp ./btx_source_omp_test/ .libs/libtestompsource.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = omp omp ./btx_source_omp_test/ .libs/libtestompsource.a
 
 check_DATA = \
 	$(TRACE_COMMON) \

@@ -58,11 +58,11 @@ opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
 opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-btx_opencl_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb opencl_babeltrace_model.yaml
+btx_cl_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb opencl_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
 
-$(BTX_OPENCL_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_openclmatching_model.yaml btx_opencl_model.yaml
-	$(METABABEL) -u btx_opencl_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_opencl -p clinterval -c interval --matching $(srcdir)/btx_openclmatching_model.yaml -i cl.h.include
+$(BTX_OPENCL_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_clmatching_model.yaml btx_cl_model.yaml
+	$(METABABEL) -u btx_cl_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_opencl -p clinterval -c interval --matching $(srcdir)/btx_clmatching_model.yaml -i cl.h.include
 
 data_DATA = \
 	opencl_model.yaml \
@@ -71,7 +71,7 @@ data_DATA = \
 CLEANFILES += \
 	opencl_model.yaml \
 	opencl_babeltrace_model.yaml \
-	btx_opencl_model.yaml \
+	btx_cl_model.yaml \
 	$(BTX_OPENCL_GENERATED)
 
 EXTRA_DIST += \
@@ -82,7 +82,7 @@ EXTRA_DIST += \
 	gen_babeltrace_cl_model.rb \
 	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
-	btx_openclmatching_model.yaml
+	btx_clmatching_model.yaml
 
 OPENCL_PROBES = \
 	opencl_tracepoints
@@ -288,78 +288,56 @@ tests/opencl_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb opencl_bab
 #https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
-	tests/interval_profiling_block.yaml \
-	tests/interval_profiling_normal.yaml
+	tests/api_call.thapi_text_pretty \
+	tests/nd_range_kernel.thapi_text_pretty \
+	tests/enqueue_read_buffer_fast.thapi_text_pretty \
+	tests/interleave_thread.thapi_text_pretty \
+	tests/interleave_process.thapi_text_pretty \
+	tests/results_first.thapi_text_pretty \
+	tests/command_queue.thapi_text_pretty \
+	tests/command_queue_other_thread.thapi_text_pretty \
+	tests/with_error.thapi_text_pretty
 
-$(TRACE_COMMON): tests/%.yaml: $(top_srcdir)/utils/tests_template/%.yaml.erb tests/.tag
-	$(ERB) be="opencl" $< > $@
+BTX_OPENCL_GENERATED_SOURCE_TEST = \
+	btx_source_cl_test/metababel/metababel.h \
+	btx_source_cl_test/metababel/btx_component.h \
+	btx_source_cl_test/metababel/btx_component.c \
+	btx_source_cl_test/metababel/btx_downstream.h \
+	btx_source_cl_test/metababel/btx_downstream.c \
+	btx_source_cl_test/btx_main.c
 
-DUST_COMMON = $(TRACE_COMMON:.yaml=.dust)
+$(BTX_OPENCL_GENERATED_SOURCE_TEST) &: btx_cl_model.yaml
+	$(METABABEL) -d btx_cl_model.yaml -t SOURCE -o btx_source_cl_test -p cltest -c test -i cl.h.include
 
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
-	$(ERB) be="opencl" interval="clinterval" namespace="$@" $< > $@
+noinst_LTLIBRARIES += libtestclsource.la
+libtestclsource_la_SOURCES = $(BTX_OPENCL_GENERATED_SOURCE_TEST)
+libtestclsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_cl_test/
+libtestclsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
-TRACE_SPECIFC = \
-	tests/profiling_inversed.yaml \
-	tests/profiling_fast.yaml \
-	tests/profiling_interleave_thread.yaml \
-	tests/profiling_interleave_process.yaml \
-	tests/profiling_normal_command_queue.yaml \
-	tests/profiling_with_error.yaml \
-	tests/profiling_normal_command_queue_created_in_other_thread.yaml \
-	tests/device_name.yaml \
-	tests/kernel_name.yaml \
-	tests/profiling_normal_nd_range_kernel_name.yaml \
-	tests/API_call.yaml \
-	tests/trace.yaml \
-	tests/interval_profiling_inversed.yaml \
-	tests/interval_profiling_fast.yaml \
-	tests/interval_profiling_interleave_thread.yaml \
-	tests/interval_profiling_interleave_process.yaml \
-	tests/interval_profiling_normal_command_queue.yaml \
-	tests/interval_profiling_with_error.yaml \
-	tests/interval_profiling_normal_command_queue_created_in_other_thread.yaml \
-	tests/interval_profiling_normal_nd_range_kernel_name.yaml
-
-DUST_SPECIFIC = \
-	tests/interval_profiling_inversed.dust \
-	tests/interval_profiling_fast.dust \
-	tests/interval_profiling_interleave_thread.dust \
-	tests/interval_profiling_interleave_process.dust \
-	tests/interval_profiling_normal_command_queue.dust \
-	tests/interval_profiling_with_error.dust \
-	tests/interval_profiling_normal_command_queue_created_in_other_thread.dust \
-	tests/interval_profiling_normal_nd_range_kernel_name.dust
-
-$(DUST_SPECIFIC): tests/interval_%.dust: tests/interval.dust.erb
-	$(ERB) namespace="$@" $< > $@
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
 	tests/opencl_dummy_trace.dust \
-	tests/trace.dust \
-	tests/test_interval.dust \
-	$(DUST_COMMON) \
-	$(DUST_SPECIFIC)
+	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust
+TEST_EXTENSIONS = .thapi_text_pretty .dust
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = opencl cl ./btx_source_cl_test/ .libs/libtestclsource.a
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
 	tests/opencl_dummy_trace.yaml \
 	$(TRACE_COMMON) \
-	$(TRACE_SPECIFC)
+	$(TRACE_OUT)
 
 EXTRA_DIST += \
-	extract_enqueues \
-	$(TRACE_SPECIFC) \
-	tests/trace.dust \
-	tests/test_interval.dust \
 	tests/opencl_dummy_trace.dust \
-	tests/interval.dust.erb
+	tests/interval.dust.erb \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
 
 CLEANFILES += \
 	tests/opencl_dummy_trace.yaml \
-	$(DUST_COMMON) \
-	$(DUST_SPECIFIC) \
-	$(TRACE_COMMON) 
+	$(TRACE_COMMON) \
+	$(BTX_OPENCL_GENERATED_SOURCE_TEST)

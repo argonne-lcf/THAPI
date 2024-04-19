@@ -4,10 +4,11 @@
 #
 set -euxo pipefail
 
-be="$1"
-source_path="$2"
-source_archive="$3"
-input_thapi_text_pretty="$4"
+subdir="$1"
+be="$2"
+source_path="$3"
+source_archive="$4"
+input_thapi_text_pretty="$5"
 
 # Generated tmp folder
 folder_name="tests/"$(basename "${input_thapi_text_pretty}" .thapi_text_pretty)
@@ -16,17 +17,17 @@ mkdir -p "$folder_name"
 # Generate source callback and link plugin
 source_callback_c="${folder_name}/callback.c"
 
-@top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "@top_builddir@/${be}/btx_${be}_model.yaml" \
+@top_srcdir@/utils/thapi_log_to_bt_source_component.rb -y "@top_builddir@/${subdir}/btx_${be}_model.yaml" \
   -i "${input_thapi_text_pretty}" -o "${source_callback_c}"
 
 modified_include_arg=""
 if [ "$be" = "omp" ]; then
-  modified_include_arg="-I @top_builddir@/${be}/modified_include"
+  modified_include_arg="-I @top_builddir@/${subdir}/modified_include"
 fi
 
 ${CC:-gcc} -o "${folder_name}/libTestSource.so" \
   $modified_include_arg \
-  -I @top_srcdir@/utils/include -I @top_srcdir@/"${be}" -I @top_srcdir@/"${be}"/include \
+  -I @top_srcdir@/utils/include -I @top_srcdir@/"${subdir}" -I @top_srcdir@/"${subdir}"/include \
   -I . -I "${source_path}" \
   $(pkg-config --cflags babeltrace2) -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Werror \
   $(pkg-config --libs babeltrace2) --shared \
@@ -41,7 +42,8 @@ fi
 
 current_output_bt_text_pretty="${folder_name}/current.bt_text_pretty"
 
-ln -f @top_builddir@/${be}/.libs/lib${be^^}Interval.so ${folder_name}/
+# hack because opencl components and libs use just 'cl'
+ln -f @top_builddir@/${subdir}/.libs/"lib${be^^}Interval.so" ${folder_name}/
 $bt2_cmd --plugin-path="${folder_name}" \
   --component=source."${be}"test.test \
   --component=filter."${be}"interval.interval \
