@@ -29,6 +29,11 @@ class OptionParserWithDefaultAndValidation < OptionParser
     opts << "Default: #{default.respond_to?(:join) ? default.join(',') : default}" unless default.nil?
     # Create a new block where
     #   we append our validation layer before the usr block
+
+    # Fix "wrong number of arguments" when using newer optparse and
+    #  babeltrace_thapi to_aggreg --output $OUT --backends cl,ze,omp -- $IN
+    return super(*opts, &block) unless allowed
+
     new_block = proc do |a|
       unless allowed.nil? || allowed.include?(a)
         raise(OptionParser::ParseError,
