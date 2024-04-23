@@ -199,8 +199,6 @@ EXTRA_DIST = \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto \
-	interval.c.erb \
-	interval.h.erb \
 	sync_daemon_fs
 
 CLEANFILES = \
