@@ -22,7 +22,7 @@ static void add_memory(data_t *state, hp_t hp, uintptr_t ptr, size_t size,
   else if (source == "lttng_ust_ze:zeMemAllocShared_exit")
     mi = &state->rangeset_memory_shared;
   else
-    std::cout << "WARNING Adding unknow memory " << source << "ptr " << ptr
+    std::cout << "WARNING Adding unknown memory " << source << "ptr " << ptr
               << std::endl;
 
   (*mi)[hp][ptr] = ptr + size;
@@ -258,13 +258,12 @@ static void zeKernelCreate_exit_callback(void *btx_handle, void *usr_data,
   // No need to check for Error, if not success, people should will not use it.
   const auto kernelName =
       data->entry_state.get_data<std::string>({hostname, vpid, vtid});
-  std::cout << phKernel_val << " " << kernelName << std::endl;
   data->kernel_name[{hostname, vpid, phKernel_val}] = kernelName;
 }
 
-// It's possible to by pass zeKernelCreate,
-// 	as a workarround for now, hope that people will call
-// 	zeKernelGetName to get the pointer name
+// It's possible to bypass zeKernelCreate,
+// 	as a workaround for now, hoping that people will call
+// 	zeKernelGetName
 static void zeKernelGetName_entry_callback(void *btx_handle, void *usr_data,
                                           int64_t ts,
                                           const char *event_class_name,
@@ -291,7 +290,6 @@ static void zeKernelGetName_exit_callback(void *btx_handle, void *usr_data,
   if (_pName_val_length == 0)
     return;
   auto *data = static_cast<data_t *>(usr_data);
-  // No need to check for Error, if not success, people should will not use it.
   const auto hKernel =
       data->entry_state.get_data<ze_kernel_handle_t>({hostname, vpid, vtid});
   data->kernel_name[{hostname, vpid, hKernel}] = std::string(pName_val);
