@@ -589,7 +589,7 @@ def global_processing(folder)
 
   args = []
   if OPTIONS.include?(:trace)
-    args += ['trace', '--restrict', '--context', '--backends',  backends]
+    args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
     args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
   else
