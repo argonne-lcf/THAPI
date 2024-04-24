@@ -584,10 +584,8 @@ def global_processing(folder)
 
   LOGGER.info { "postprocess #{folder}" }
 
-  backends = OPTIONS[:'backend-names'].join(',')
-  backend_levels = OPTIONS[:backends].filter { |nl| nl.include?(':') }.join(',')
-
   cmdname = "#{BINDIR}/babeltrace_thapi"
+  backends = OPTIONS[:backends].join(',')
 
   args = []
   if OPTIONS.include?(:trace)
@@ -601,7 +599,6 @@ def global_processing(folder)
     args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
     args << '--backends' << backends
-    args << '--backend_levels' << backend_levels unless backend_levels.empty?
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
