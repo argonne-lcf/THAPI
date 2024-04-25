@@ -400,9 +400,6 @@ tests/.tag:
 CLEANFILES += \
 	tests/.tag
 
-tests/hip_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb hip_babeltrace_model.yaml tests/.tag
-	$(RUBY) $< hip_babeltrace_model.yaml > $@
-
 TRACE_COMMON = \
 	tests/interval_profiling_simple.thapi_text_pretty
 
@@ -427,23 +424,19 @@ TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 TRACE_BUILD_DIRS = $(TRACE_COMMON:.thapi_text_pretty=)
 
 TESTS = \
-	tests/hip_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust .thapi_text_pretty
+TEST_EXTENSIONS = .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip hip ./btx_source_hip_test/ .libs/libtesthipsource.a
 
 check_DATA = \
-	test_wrapper.sh \
-	tests/hip_dummy_trace.yaml
+	test_wrapper.sh
 
 EXTRA_DIST += \
-	tests/hip_dummy_trace.dust \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/hip_dummy_trace.yaml \
 	$(BTX_HIP_GENERATED_SOURCE_TEST)
