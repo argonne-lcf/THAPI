@@ -4,6 +4,8 @@
 #
 set -euxo pipefail
 
+# Note: separate arguments for subdir and be to handle opencl, which uses
+# subdir=opencl and be=cl. Other backends pass the same string for both.
 subdir="$1"
 be="$2"
 source_path="$3"
@@ -42,7 +44,6 @@ fi
 
 current_output_bt_text_pretty="${folder_name}/current.bt_text_pretty"
 
-# hack because opencl components and libs use just 'cl'
 ln -f @top_builddir@/${subdir}/.libs/"lib${be^^}Interval.so" ${folder_name}/
 $bt2_cmd --plugin-path="${folder_name}" \
   --component=source."${be}"test.test \
