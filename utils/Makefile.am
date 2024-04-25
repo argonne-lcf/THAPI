@@ -10,11 +10,6 @@ noinst_HEADERS = \
 	include/utlist.h \
 	include/json.hpp \
 	include/magic_enum.hpp \
-	tests_template/interval_profiling_block.yaml.erb \
-	tests_template/interval_profiling_normal.yaml.erb \
-	tests_template/interval_profiling_multithread.yaml.erb \
-	tests_template/interval_profiling_kernel_name.yaml.erb \
-	tests_template/interval_common.dust.erb \
 	xprof_utils.hpp
 
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h
