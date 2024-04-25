@@ -403,9 +403,6 @@ TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip hip ./btx_source_hip_test/ .libs/libtesthipsource.a
 
-check_DATA = \
-	test_wrapper.sh
-
 EXTRA_DIST += \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
