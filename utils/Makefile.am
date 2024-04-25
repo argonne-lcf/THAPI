@@ -61,7 +61,6 @@ CLEANFILES = \
 	$(BUILT_SOURCES)
 
 EXTRA_DIST = \
-	lttng_dummy_trace.sh \
 	LTTng.rb \
 	gen_babeltrace_lib_helper.rb \
 	gen_babeltrace_model_helper.rb \
