@@ -199,37 +199,11 @@ uninstall-hook:
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la
 
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-babeltrace_cl_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
-
-babeltrace_cl_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
-
 EXTRA_DIST += cl.h.include
-
-CLEANFILES += \
-	babeltrace_cl_callbacks.h \
-	babeltrace_cl_dispatchers.c
-
-BUILT_SOURCES += \
-	babeltrace_cl_callbacks.h
-
-nodist_libBabeltraceCL_la_SOURCES = \
-	babeltrace_cl_dispatchers.c \
-	babeltrace_cl_callbacks.h
-
-libBabeltraceCL_la_SOURCES = \
-	babeltrace_cl.c \
-	babeltrace_cl.h
-
-libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # opencl/Makefile.am:248: warning: source file '$(top_srcdir)/utils/xprof_utils.cpp' is in a subdirectory,
 # opencl/Makefile.am:248: but option 'subdir-objects' is disabled

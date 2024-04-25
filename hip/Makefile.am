@@ -317,39 +317,12 @@ uninstall-hook:
 
 tmplibdir = $(libdir)/tmp
 
-tmplib_LTLIBRARIES = libBabeltraceHIP.la
-
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
-
-babeltrace_hip_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb hip_babeltrace_model.yaml hip.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
-
-babeltrace_hip_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb hip_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
 
 EXTRA_DIST += \
 	hip.h.include \
 	hip.map
-
-BUILT_SOURCES += \
-	babeltrace_hip_callbacks.h
-
-CLEANFILES += \
-	babeltrace_hip_callbacks.h \
-	babeltrace_hip_dispatchers.c
-
-nodist_libBabeltraceHIP_la_SOURCES = \
-	babeltrace_hip_callbacks.h \
-	babeltrace_hip_dispatchers.c
-
-libBabeltraceHIP_la_SOURCES = \
-	babeltrace_hip.c \
-	babeltrace_hip.h
-
-libBabeltraceHIP_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceHIP_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceHIP_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
