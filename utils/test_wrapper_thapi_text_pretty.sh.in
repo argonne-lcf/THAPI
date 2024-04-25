@@ -44,7 +44,7 @@ fi
 
 current_output_bt_text_pretty="${folder_name}/current.bt_text_pretty"
 
-ln -f @top_builddir@/${subdir}/.libs/"lib${be^^}Interval.so" "${folder_name}/"
+ln -f @top_builddir@/${subdir}/.libs/lib"${be^^}"Interval.so "${folder_name}/"
 ${bt2_cmd} --plugin-path="${folder_name}" \
   --component=source."${be}"test.test \
   --component=filter."${be}"interval.interval \
