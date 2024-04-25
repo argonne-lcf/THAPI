@@ -22,7 +22,7 @@ static void add_memory(data_t *state, hp_t hp, uintptr_t ptr, size_t size,
   else if (source == "lttng_ust_ze:zeMemAllocShared_exit")
     mi = &state->rangeset_memory_shared;
   else
-    std::cout << "WARNING Adding unknow memory " << source << "ptr " << ptr
+    std::cout << "WARNING Adding unknown memory " << source << "ptr " << ptr
               << std::endl;
 
   (*mi)[hp][ptr] = ptr + size;
@@ -259,6 +259,40 @@ static void zeKernelCreate_exit_callback(void *btx_handle, void *usr_data,
   const auto kernelName =
       data->entry_state.get_data<std::string>({hostname, vpid, vtid});
   data->kernel_name[{hostname, vpid, phKernel_val}] = kernelName;
+}
+
+// It's possible to bypass zeKernelCreate,
+// 	as a workaround for now, hoping that people will call
+// 	zeKernelGetName
+static void zeKernelGetName_entry_callback(void *btx_handle, void *usr_data,
+                                          int64_t ts,
+                                          const char *event_class_name,
+                                          const char *hostname, int64_t vpid,
+                                          uint64_t vtid,
+					  ze_kernel_handle_t hKernel,
+					  size_t pSize_val) {
+
+  if (pSize_val == 0)
+    return;
+  auto *data = static_cast<data_t *>(usr_data);
+  data->entry_state.set_data({hostname, vpid, vtid},
+                             hKernel);
+}
+
+static void zeKernelGetName_exit_callback(void *btx_handle, void *usr_data,
+                                          int64_t ts,
+                                          const char *event_class_name,
+                                          const char *hostname, int64_t vpid,
+                                          uint64_t vtid,
+					  size_t _pName_val_length,
+					  char *pName_val) {
+
+  if (_pName_val_length == 0)
+    return;
+  auto *data = static_cast<data_t *>(usr_data);
+  const auto hKernel =
+      data->entry_state.get_data<ze_kernel_handle_t>({hostname, vpid, vtid});
+  data->kernel_name[{hostname, vpid, hKernel}] = std::string(pName_val);
 }
 
 static void zeKernelSetGroupSize_entry_callback(
@@ -680,6 +714,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   /*  Name of the Function Profiled  */
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_entry);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_exit);
+  REGISTER_ASSOCIATED_CALLBACK(zeKernelGetName_entry);
+  REGISTER_ASSOCIATED_CALLBACK(zeKernelGetName_exit);
 
  btx_register_callbacks_lttng_ust_ze_zeKernelSetGroupSize_entry(
       btx_handle, &zeKernelSetGroupSize_entry_callback);

@@ -478,7 +478,7 @@ def setup_lttng(backends)
     channel_name = 'non-blocking-channel'
     exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} #{channel_name}")
     exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
-    exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_sampling:*")
+    exec("lttng enable-event   --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_sampling:*")
 
     if OPTIONS[:'backend-names'].include?('ze')
       exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_ze_sampling:*")
@@ -493,8 +493,8 @@ def teardown_lttng
   # Need to kill the sessiond Daemon. It's safe because each job has their own
   #
   # In theory, opening the lttng-sessiond.pid file is racy.
-  # It's possible that the sessiond spawned, and didn't yet wrote the file
-  # In practice, there is lot of work between the spawn and the write, so should be ok
+  # It's possible that the sessiond spawned and didn't yet write the file
+  # In practice, there is a lot of work between the spawn and the write, so it should be ok
   pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
   LOGGER.info('Killing sessiond')
   Process.kill('SIGKILL', pid)
@@ -554,7 +554,7 @@ end
 
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
-  # All masters setup a future global barrier
+  # All masters set a future global barrier
   syncd = Sync_daemon.new
 
   # Load Tracers and APILoaders Lib
@@ -569,8 +569,8 @@ def trace_and_on_node_processing(usr_argv)
   # Launch User Command
   launch_usr_bin(h, usr_argv)
 
-  # We need to be sure that all the local ranks finished
-  # before local master stops the lttng session
+  # We need to be sure that all the local ranks are finished
+  # before the local master stops the lttng session
   syncd.local_barrier('waiting_for_application_ending')
   return unless mpi_local_master?
 
@@ -584,10 +584,8 @@ def global_processing(folder)
 
   LOGGER.info { "postprocess #{folder}" }
 
-  backends = OPTIONS[:'backend-names'].join(',')
-  backend_levels = OPTIONS[:backends].filter { |nl| nl.include?(':') }.join(',')
-
   cmdname = "#{BINDIR}/babeltrace_thapi"
+  backends = OPTIONS[:backends].join(',')
 
   args = []
   if OPTIONS.include?(:trace)
@@ -601,7 +599,6 @@ def global_processing(folder)
     args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
     args << '--backends' << backends
-    args << '--backend_levels' << backend_levels unless backend_levels.empty?
     args << '--display' << 'extended' if OPTIONS.include?(:extended)
   end
 
@@ -676,7 +673,7 @@ if __FILE__ == $PROGRAM_NAME
             'If PATH is omitted, it will be set to the newest trace in $HOME/thapi-traces/')
   parser.on('-t', '--trace', 'Pretty print the trace')
   parser.on('-l', '--timeline [PATH]', 'Dump the timeline of the trace to a binary file',
-            'If PATH is obmited it will be set to `out.pftrace`',
+            'If PATH is omitted it will be set to `out.pftrace`',
             'Open trace with perfetto: https://ui.perfetto.dev/#!/viewer') do |p|
               p || 'out.pftrace'
             end

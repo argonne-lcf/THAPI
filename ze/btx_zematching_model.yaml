@@ -51,6 +51,24 @@
       :type: structure
       :members:
       - :name: ^phKernel_val$
+  - # Name of the Function Profiled
+    :set_id: zeKernelGetName
+    :name: "zeKernelGetName"
+    :register: false
+  - :set_id: zeKernelGetName_entry
+    :domain: entries & zeKernelGetName
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hKernel$
+      - :name: ^pSize_val$
+  - :set_id: zeKernelGetName_exit
+    :domain: exits & zeKernelGetName
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^_pName_val_length$
+      - :name: ^pName_val$
   - # Handling of Allocation
     :set_id: alloc
     :name: "zeMemAlloc"
