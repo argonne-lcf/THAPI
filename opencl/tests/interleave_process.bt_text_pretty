@@ -1,0 +1,6 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 2 }, { name = "clEnqueueReadBuffer", dur = 4, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 2 }, { name = "clEnqueueReadBuffer", size = 1024 }
+lttng:host: { hostname = "testhost", vpid = 20, vtid = 1, ts = 1704110400000000001, backend = 2 }, { name = "clEnqueueReadBuffer", dur = 4, err = false }
+lttng:traffic: { hostname = "testhost", vpid = 20, vtid = 1, ts = 1704110400000000001, backend = 2 }, { name = "clEnqueueReadBuffer", size = 1024 }
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 2 }, { name = "clEnqueueReadBuffer", dur = 10, did = 0, sdid = 0, err = false, metadata = "" }
+lttng:device: { hostname = "testhost", vpid = 20, vtid = 1, ts = 1704110400000000001, backend = 2 }, { name = "clEnqueueReadBuffer", dur = 20, did = 0, sdid = 0, err = false, metadata = "" }

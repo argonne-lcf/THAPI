@@ -352,7 +352,7 @@ TESTS = \
 TEST_EXTENSIONS = .dust .thapi_text_pretty
 DUST_LOG_COMPILER = ./test_wrapper.sh
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ./btx_source_ze_test/ .libs/libtestzesource.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
 	test_wrapper.sh \

@@ -1,0 +1,2 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000001, backend = 2 }, { name = "clEnqueueNDRangeKernel", dur = 2, err = false }
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000001, backend = 2 }, { name = "foo", dur = 10, did = 0, sdid = 0, err = false, metadata = "" }

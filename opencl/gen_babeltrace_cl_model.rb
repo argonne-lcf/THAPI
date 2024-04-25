@@ -63,7 +63,7 @@ def parse_field(field)
     d[:class] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
     enum_type = field['enum_type']
     d[:mappings] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map { |f|
-      { label: f[:name], integer_range_set: [f[:value],f[:value]] }
+      { label: f[:name], integer_range_set: [[f[:value],f[:value]]] }
     }
   end
   d

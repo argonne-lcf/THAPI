@@ -129,6 +129,11 @@ def parse_event(model, line, exclude_fields)
     h[:field_values] += parse_field_values(event_fields, exclude_fields)
   end
   h[:field_casts] += get_fields(model, event_name).values
+  if (h[:field_values].length != h[:field_casts].length)
+    puts "WARN: field values / casts mismatch"
+    pp h[:field_values]
+    pp h[:field_casts]
+  end
   h
 end
 

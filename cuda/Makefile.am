@@ -455,7 +455,7 @@ TESTS = \
 
 TEST_EXTENSIONS = .thapi_text_pretty .dust
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda ./btx_source_cuda_test/ .libs/libtestcudasource.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda cuda ./btx_source_cuda_test/ .libs/libtestcudasource.a
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
