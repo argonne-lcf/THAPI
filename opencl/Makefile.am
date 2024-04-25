@@ -266,21 +266,6 @@ clean-local:
 
 CLEANFILES += tests/.tag
 
-tests/opencl_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml tests/.tag
-	$(RUBY) $< opencl_babeltrace_model.yaml > $@
-
-# To run test we need to catageory of file:
-# - One are the `yaml` file who containt the traces
-# - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file.
-
-# Test by themself are splited into two type:
-# - The one who are common to each backend.
-# - The specific for this backend
-
-# We generate lot of file using:
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-
 TRACE_COMMON = \
 	tests/api_call.thapi_text_pretty \
 	tests/nd_range_kernel.thapi_text_pretty \
@@ -311,27 +296,22 @@ libtestclsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
-	tests/opencl_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .thapi_text_pretty .dust
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = opencl cl ./btx_source_cl_test/ .libs/libtestclsource.a
 DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
 	test_wrapper.sh \
-	tests/opencl_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 EXTRA_DIST += \
-	tests/opencl_dummy_trace.dust \
-	tests/interval.dust.erb \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/opencl_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(BTX_OPENCL_GENERATED_SOURCE_TEST)
