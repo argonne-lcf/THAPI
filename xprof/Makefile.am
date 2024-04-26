@@ -168,26 +168,55 @@ tmplibdir = $(libdir)/tmp
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-TALLY_DUST_FILES = \
-	tests/interval_profiling_normal.dust
+BTX_INTERVAL_GENERATED_SOURCE_TEST = \
+	btx_source_interval_test/metababel/metababel.h \
+	btx_source_interval_test/metababel/btx_component.h \
+	btx_source_interval_test/metababel/btx_component.c \
+	btx_source_interval_test/metababel/btx_downstream.h \
+	btx_source_interval_test/metababel/btx_downstream.c \
+	btx_source_interval_test/btx_main.c
 
-$(TALLY_DUST_FILES): tests/%.dust: tests/tally.dust.erb
-	mkdir -p tests/
-	$(ERB) namespace="$@" $< > $@
+$(BTX_INTERVAL_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_interval_model.yaml
+	$(METABABEL) -d $< -t SOURCE  -o btx_source_interval_test -p intervaltest -c test
 
-TESTS = \
-	$(TALLY_DUST_FILES)
+noinst_LTLIBRARIES = libtestintervalsource.la libtestaggregsource.la
+libtestintervalsource_la_SOURCES = $(BTX_INTERVAL_GENERATED_SOURCE_TEST)
+libtestintervalsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_interval_test/
+libtestintervalsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+
+BTX_AGGREG_GENERATED_SOURCE_TEST = \
+	btx_source_aggreg_test/metababel/metababel.h \
+	btx_source_aggreg_test/metababel/btx_component.h \
+	btx_source_aggreg_test/metababel/btx_component.c \
+	btx_source_aggreg_test/metababel/btx_downstream.h \
+	btx_source_aggreg_test/metababel/btx_downstream.c \
+	btx_source_aggreg_test/btx_main.c
+
+$(BTX_AGGREG_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_aggreg_model.yaml
+	$(METABABEL) -d $< -t SOURCE  -o btx_source_aggreg_test -p aggregtest -c test
+
+libtestaggregsource_la_SOURCES = $(BTX_AGGREG_GENERATED_SOURCE_TEST)
+libtestaggregsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_aggreg_test/
+libtestaggregsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 TRACE_FILES = \
-	tests/interval_profiling_normal.yaml
+	tests/interval_to_aggreg.thapi_interval_text_pretty \
+	tests/aggreg_to_tally.thapi_aggreg_text_pretty
 
-TEST_EXTENSIONS = .dust
-DUST_LOG_COMPILER = ./test_wrapper.sh
-check_DATA = \
-	test_wrapper.sh
+TRACE_OUT = $(TRACE_FILES:.*=.bt_text_pretty)
+
+TESTS = \
+	$(TRACE_FILES)
+
+TEST_EXTENSIONS = .thapi_interval_text_pretty .thapi_aggreg_text_pretty
+THAPI_INTERVAL_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_INTERVAL_TEXT_PRETTY_LOG_FLAGS = xprof interval ./btx_source_interval_test/ .libs/libtestintervalsource.a
+THAPI_AGGREG_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_AGGREG_TEXT_PRETTY_LOG_FLAGS = xprof aggreg ./btx_source_aggreg_test/ .libs/libtestaggregsource.a
 
 data_DATA = \
-	$(TRACE_FILES)
+	$(TRACE_FILES) \
+	$(TRACE_OUT)
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
@@ -197,7 +226,7 @@ EXTRA_DIST = \
 	btx_aggreg_params.yaml \
 	interval_model.yaml \
 	$(TRACE_FILES) \
-	tests/tally.dust.erb \
+	$(TRACE_OUT) \
 	perfetto_prunned.proto \
 	interval.c.erb \
 	interval.h.erb \
@@ -206,14 +235,15 @@ EXTRA_DIST = \
 CLEANFILES = \
 	iprof \
 	xprof_utils.hpp \
-	$(TALLY_DUST_FILES) \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
 	btx_stripper_callbacks.cpp \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_AGGREG_GENERATED) \
-	$(BTX_STRIPPER_GENERATED)
+	$(BTX_STRIPPER_GENERATED) \
+	$(BTX_INTERVAL_GENERATED_SOURCE_TEST) \
+	$(BTX_AGGREG_GENERATED_SOURCE_TEST)
 
 if FOUND_MPI
   CLEANFILES += sync_daemon_mpi
