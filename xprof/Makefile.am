@@ -177,9 +177,9 @@ BTX_INTERVAL_GENERATED_SOURCE_TEST = \
 	btx_source_interval_test/btx_main.c
 
 $(BTX_INTERVAL_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_interval_model.yaml
-	$(METABABEL) -d $< -t SOURCE  -o btx_source_interval_test -p intervaltest -c test
+	$(METABABEL) -d $(srcdir)/btx_interval_model.yaml -t SOURCE  -o btx_source_interval_test -p intervaltest -c test
 
-noinst_LTLIBRARIES = libtestintervalsource.la libtestaggregsource.la
+noinst_LTLIBRARIES = libtestintervalsource.la
 libtestintervalsource_la_SOURCES = $(BTX_INTERVAL_GENERATED_SOURCE_TEST)
 libtestintervalsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_interval_test/
 libtestintervalsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
@@ -193,20 +193,21 @@ BTX_AGGREG_GENERATED_SOURCE_TEST = \
 	btx_source_aggreg_test/btx_main.c
 
 $(BTX_AGGREG_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_aggreg_model.yaml
-	$(METABABEL) -d $< -t SOURCE  -o btx_source_aggreg_test -p aggregtest -c test
+	$(METABABEL) -d $(srcdir)/btx_aggreg_model.yaml -t SOURCE  -o btx_source_aggreg_test -p aggregtest -c test
 
+noinst_LTLIBRARIES += libtestaggregsource.la
 libtestaggregsource_la_SOURCES = $(BTX_AGGREG_GENERATED_SOURCE_TEST)
 libtestaggregsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_aggreg_test/
 libtestaggregsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
-TRACE_FILES = \
+TRACE_COMMON = \
 	tests/interval_to_aggreg.thapi_interval_text_pretty \
 	tests/aggreg_to_tally.thapi_aggreg_text_pretty
 
-TRACE_OUT = $(TRACE_FILES:.*=.bt_text_pretty)
+TRACE_OUT = $(TRACE_COMMON:.*=.bt_text_pretty)
 
 TESTS = \
-	$(TRACE_FILES)
+	$(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_interval_text_pretty .thapi_aggreg_text_pretty
 THAPI_INTERVAL_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
@@ -215,9 +216,7 @@ THAPI_AGGREG_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi
 AM_THAPI_AGGREG_TEXT_PRETTY_LOG_FLAGS = xprof aggreg ./btx_source_aggreg_test/ .libs/libtestaggregsource.a
 
 check_DATA = \
-	$(TRACE_FILES) \
-	$(TRACE_OUT) \
-	$(srcdir)/btx_interval_model.yaml
+	$(TRACE_COMMON)
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
@@ -226,7 +225,7 @@ EXTRA_DIST = \
 	btx_tally_params.yaml \
 	btx_aggreg_params.yaml \
 	interval_model.yaml \
-	$(TRACE_FILES) \
+	$(TRACE_COMMON)\
 	$(TRACE_OUT) \
 	perfetto_prunned.proto \
 	interval.c.erb \
