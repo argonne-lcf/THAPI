@@ -239,6 +239,12 @@ jobs:
           cd build
           ../configure
         working-directory: build
+      - name: make -j
+        run: |
+          cd `find . -type d -name "thapi-*"`
+          cd build
+          make -j
+        working-directory: build
       - name: make -j check
         run: |
           cd `find . -type d -name "thapi-*"`
