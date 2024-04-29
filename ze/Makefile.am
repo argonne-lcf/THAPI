@@ -302,7 +302,6 @@ check_DATA = \
 	$(TRACE_COMMON)
 
 EXTRA_DIST += \
-	$(TRACE_SPECIFC) \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
