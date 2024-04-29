@@ -214,9 +214,10 @@ AM_THAPI_INTERVAL_TEXT_PRETTY_LOG_FLAGS = xprof interval ./btx_source_interval_t
 THAPI_AGGREG_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_AGGREG_TEXT_PRETTY_LOG_FLAGS = xprof aggreg ./btx_source_aggreg_test/ .libs/libtestaggregsource.a
 
-data_DATA = \
+check_DATA = \
 	$(TRACE_FILES) \
-	$(TRACE_OUT)
+	$(TRACE_OUT) \
+	$(srcdir)/btx_interval_model.yaml
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
