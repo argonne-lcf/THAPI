@@ -227,7 +227,6 @@ EXTRA_DIST = \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
 	btx_aggreg_params.yaml \
-	interval_model.yaml \
 	$(TRACE_COMMON)\
 	$(TRACE_OUT) \
 	perfetto_prunned.proto \
