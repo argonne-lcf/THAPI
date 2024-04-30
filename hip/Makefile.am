@@ -388,13 +388,11 @@ $(BTX_HIP_GENERATED_SOURCE_TEST) &: btx_hip_model.yaml
 	$(METABABEL) -d btx_hip_model.yaml -t SOURCE  -o btx_source_hip_test -p hiptest -c test  -i hip.h.include
 
 noinst_LTLIBRARIES += libtesthipsource.la
-libtesthipsource_la_SOURCES = $(BTX_HIP_GENERATED_SOURCE_TEST)
+nodist_libtesthipsource_la_SOURCES = $(BTX_HIP_GENERATED_SOURCE_TEST)
 libtesthipsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_hip_test/
 libtesthipsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
-
-TRACE_BUILD_DIRS = $(TRACE_COMMON:.thapi_text_pretty=)
 
 TESTS = \
 	$(TRACE_COMMON)

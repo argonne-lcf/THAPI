@@ -66,8 +66,6 @@ def get_values(name, value)
     value = values[0]
   end
   [count, value]
-  # hack: always return empty array
-  [0, $empty_array_name]
 end
 
 # expects commas separated list of name: value pairs
@@ -105,15 +103,24 @@ def parse_event(model, line, exclude_fields)
         field_values: [],
         field_casts: [] }
 
-  ts_string, h[:hostname], context, event = line.strip.split(' - ', 4)
+  parts = line.strip.split(' - ', 4)
 
-  t = combine_date_time(BASE_DATE, Time.parse(ts_string))
-  # Need to convert in nasosecond, store as first field
-  h[:field_values] << ((t.to_i * 1_000_000_000) + t.nsec)
+  if parts.length == 4
+    # backend model
+    ts_string, h[:hostname], context, event = parts
+    t = combine_date_time(BASE_DATE, Time.parse(ts_string))
+    # Need to convert in nasosecond, store as first field
+    h[:field_values] << ((t.to_i * 1_000_000_000) + t.nsec)
+    h[:field_casts] << 'int64_t'
+  elsif parts.length == 2
+    # interval model, no hostname or ts
+    context, event = parts
+  else
+    raise "unable to parse input line, length #{parts.length}: #{line.strip}"
+  end
 
   # context fields are next after timestamp
   h[:field_values] += parse_field_values(context, exclude_fields)
-  h[:field_casts] += ['int64_t']
 
   # handle event name and fields
   event_name, event_fields = event.split('{', 2)

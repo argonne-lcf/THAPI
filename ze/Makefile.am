@@ -284,7 +284,7 @@ $(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
 	$(METABABEL) -d btx_ze_model.yaml -t SOURCE  -o btx_source_ze_test -p zetest -c test  -i ze.h.include
 
 noinst_LTLIBRARIES += libtestzesource.la
-libtestzesource_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
+nodist_libtestzesource_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
 libtestzesource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_ze_test/
 libtestzesource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
