@@ -24,9 +24,6 @@ struct data_s {
   /* Host */
   EntryState entry_state;
 
-  /* Useful State */
-  std::unordered_map<hpt_t, std::optional<std::vector<std::byte>>> last_command;
-
   /* Handle memory copy */
   std::unordered_map<hp_module_t, std::unordered_set<uint64_t>>
       module_global_pointer;
@@ -42,6 +39,8 @@ struct data_s {
   std::unordered_map<hp_kernel_t, std::string> kernel_simdsize_str;
 
   std::unordered_map<hp_command_list_t, thapi_device_id> command_list_device;
+  std::unordered_map<hp_command_list_t, ze_command_queue_desc_t> command_list_command_queue_desct;
+  std::unordered_map<hpt_t, std::pair<ze_device_handle_t, ze_command_queue_desc_t>> imm_tmp;
 
   std::unordered_map<hpt_t,
                      std::tuple<ze_command_list_handle_t, thapi_function_name,
