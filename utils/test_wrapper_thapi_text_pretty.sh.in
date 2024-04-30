@@ -25,15 +25,14 @@ mkdir -p "${folder_name}"
 source_callback_c="${folder_name}/callback.c"
 
 if [ "${subdir}" = "xprof" ]; then
-  # note: for xprof, the input model is passed in the "be" arg
-  @top_srcdir@/utils/thapi_log_to_bt_source_component.rb \
-    -y "@top_srcdir@/xprof/btx_${be}_model.yaml" \
-    -i "${input_thapi_text_pretty}" -o "${source_callback_c}"
+  model="@top_srcdir@/${subdir}/btx_${be}_model.yaml"
 else
-  @top_srcdir@/utils/thapi_log_to_bt_source_component.rb \
-    -y "@top_builddir@/${subdir}/btx_${be}_model.yaml" \
-    -i "${input_thapi_text_pretty}" -o "${source_callback_c}"
+  model="@top_builddir@/${subdir}/btx_${be}_model.yaml"
 fi
+
+@top_srcdir@/utils/thapi_log_to_bt_source_component.rb \
+  -y "${model}" \
+  -i "${input_thapi_text_pretty}" -o "${source_callback_c}"
 
 modified_include_arg=""
 if [ "${be}" = "omp" ]; then
@@ -57,19 +56,18 @@ fi
 
 current_output_bt_text_pretty="${folder_name}/current.bt_text_pretty"
 
-test_component=""
-if [ "${subdir}" = "xprof" ]; then
-  ln -f @top_builddir@/${subdir}/.libs/libXAggreg.so "${folder_name}/"
-  ln -f @top_builddir@/${subdir}/.libs/libXTally.so "${folder_name}/"
-  if [ "${be}" = "interval" ]; then
-    test_component=filter.btx_aggreg.aggreg
-  else
-    test_component=sink.btx_tally.tally
-  fi
+if [ "${be}" = "interval" ]; then
+  test_component=filter.btx_aggreg.aggreg
+  lib_name=libXAggreg.so
+elif [ "${be}" = "aggreg" ]; then
+  test_component=sink.btx_tally.tally
+  lib_name=libXTally.so
 else
   test_component=filter."${be}"interval.interval
-  ln -f @top_builddir@/${subdir}/.libs/lib"${be^^}"Interval.so "${folder_name}/"
+  lib_name=lib"${be^^}"Interval.so
 fi
+
+ln -f @top_builddir@/${subdir}/.libs/"${lib_name}" "${folder_name}/"
 
 ${bt2_cmd} --plugin-path="${folder_name}" \
   --component=source."${be}"test.test \
