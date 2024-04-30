@@ -310,7 +310,7 @@ $(BTX_OPENCL_GENERATED_SOURCE_TEST) &: btx_cl_model.yaml
 	$(METABABEL) -d btx_cl_model.yaml -t SOURCE -o btx_source_cl_test -p cltest -c test -i cl.h.include
 
 noinst_LTLIBRARIES += libtestclsource.la
-libtestclsource_la_SOURCES = $(BTX_OPENCL_GENERATED_SOURCE_TEST)
+nodist_libtestclsource_la_SOURCES = $(BTX_OPENCL_GENERATED_SOURCE_TEST)
 libtestclsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_cl_test/
 libtestclsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 

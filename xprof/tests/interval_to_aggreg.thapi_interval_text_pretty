@@ -1,0 +1,4 @@
+hostname: "testhost", vpid: 10, vtid: 1, ts: 100, backend: 2 - lttng:traffic: { name: "clEnqueueReadBuffer", size: 400 }
+hostname: "testhost", vpid: 10, vtid: 1, ts: 101, backend: 2 - lttng:host: { name: "clEnqueueReadBuffer", dur: 10, err: false }
+hostname: "testhost", vpid: 10, vtid: 1, ts: 101, backend: 2 - lttng:host: { name: "clEnqueueReadBuffer", dur: 100, err: false }
+hostname: "testhost", vpid: 10, vtid: 1, ts: 101, backend: 2 - lttng:host: { name: "clEnqueueReadBuffer", dur: 10, err: true }
