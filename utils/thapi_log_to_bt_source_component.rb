@@ -66,8 +66,6 @@ def get_values(name, value)
     value = values[0]
   end
   [count, value]
-  # hack: always return empty array
-  [0, $empty_array_name]
 end
 
 # expects commas separated list of name: value pairs
@@ -113,7 +111,7 @@ def parse_event(model, line, exclude_fields)
     t = combine_date_time(BASE_DATE, Time.parse(ts_string))
     # Need to convert in nasosecond, store as first field
     h[:field_values] << ((t.to_i * 1_000_000_000) + t.nsec)
-    h[:field_casts] += ['int64_t']
+    h[:field_casts] << 'int64_t'
   elsif parts.length == 2
     # interval model, no hostname or ts
     context, event = parts
