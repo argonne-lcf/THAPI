@@ -233,6 +233,7 @@ EXTRA_DIST = \
 	perfetto_prunned.proto \
 	interval.c.erb \
 	interval.h.erb \
+	sync_daemon_mpi.c \
 	sync_daemon_fs
 
 CLEANFILES = \
