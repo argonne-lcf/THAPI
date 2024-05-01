@@ -1,3 +1,4 @@
+```mermaid
 graph TD
 
     q([ze_command_queue_desc_t]) 
@@ -16,3 +17,4 @@ graph TD
     zeCommandListAppend*_exit -- if Immediate--> epr
 
     zeCommandQueueExecuteCommandLists --> epr
+```
