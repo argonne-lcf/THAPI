@@ -14,6 +14,7 @@ graph TD
     zeCommandListCreateImmediate --> a
     k([ze_kernel_desc_t]) --> zeKernelCreate
     zeKernelCreate --> zeKernelSetGroupSize -. For LaunchKernel Variant .-> a
+    zeKernelCreate --> zeKernelGetProperties --> p([ze_kernel_properties_t])
     c([ze_group_count_t]) -. For LaunchKernel Variant .-> a
     a --> ep
     ep --> zeCommandListAppend*_exit
