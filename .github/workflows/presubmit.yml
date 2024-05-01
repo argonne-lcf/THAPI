@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-     #- uses: mpi4py/setup-mpi@v1
+      - uses: mpi4py/setup-mpi@v1
       - uses: actions/cache@v4
         id: babeltrace2
         env:
@@ -251,6 +251,51 @@ jobs:
         if: failure()
         with:
           name: dist-check
+          path: |
+            build/**/*.log
+            build/config.log
+            build/**/tests/*.log
+
+  mpi-build-and-check:
+    needs: [babeltrace2, pre_job]
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: MPI Build and Check ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mpi4py/setup-mpi@v1
+      - uses: actions/cache@v4
+        id: babeltrace2
+        env:
+          cache-name: cache-babeltrace2
+        with:
+          path: ~/babeltrace2/2.0.4
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
+      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
+      - name: Load Babeltrace2
+        run: |
+          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - run: mkdir -p build
+      - run: ./autogen.sh
+      - run: ../configure
+        working-directory: build
+      - run: make -j
+        working-directory: build
+      - run: ls -l xprof/sync_daemon_mpi
+        working-directory: build
+      - run: make check
+        working-directory: build
+        env:
+          THAPI_VALGRIND: 1
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: build-and-check
           path: |
             build/**/*.log
             build/config.log

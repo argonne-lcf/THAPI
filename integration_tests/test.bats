@@ -21,9 +21,9 @@ teardown_file() {
    then
       skip
    fi
-   mpirun -n 12 -- $IPROF $THAPI_TEST_BIN
-   mpirun -n 12 -- $IPROF -t $THAPI_TEST_BIN | wc -l
-   mpirun -n 12 -- $IPROF -l -- $THAPI_TEST_BIN
+   mpirun -n 12 $IPROF $THAPI_TEST_BIN
+   mpirun -n 12 $IPROF -t $THAPI_TEST_BIN | wc -l
+   mpirun -n 12 $IPROF -l -- $THAPI_TEST_BIN
    rm out.pftrace
 }
 
