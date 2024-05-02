@@ -78,7 +78,6 @@ $(MODIFIED_CUDA_HDR) &: $(CUDA_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r tests
 
 EXTRA_DIST += $(srcdir)/include headers.patch
 
@@ -139,11 +138,11 @@ CUDA_MODEL = \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/yaml_ast_lttng.rb \
-	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb \
-	$(srcdir)/../utils/command.rb \
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb \
+	$(top_srcdir)/utils/command.rb \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
 
@@ -151,10 +150,10 @@ CUDART_MODEL = \
 	$(srcdir)/cudart_model.rb \
 	$(ML_CUDART_FILES) \
 	$(CUDART_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/yaml_ast_lttng.rb \
-	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb \
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb \
 	$(srcdir)/cudart.h.include
 
 cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
@@ -269,7 +268,7 @@ nodist_libcudatracepoints_la_SOURCES = \
 	$(CUDA_STATIC_PROBES_INCL) \
 	$(CUDA_STATIC_PROBES_SRC)
 
-libcudatracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libcudatracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libcudatracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libcudatracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -277,7 +276,7 @@ nodist_libcudarttracepoints_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	$(CUDART_PROBES_SRC)
 
-libcudarttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libcudarttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libcudarttracepoints_la_CFLAGS = $(LTTNG_UST_CFLAGS)
 libcudarttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -287,7 +286,7 @@ nodist_libTracerCUDA_la_SOURCES = \
 	$(CUDA_PROBES_INCL) \
 	tracer_cuda.c
 
-libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I../utils -I./
+libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./
 libTracerCUDA_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDA_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libTracerCUDA_la_LDFLAGS += -version-info 1:0:0
@@ -297,7 +296,7 @@ nodist_libTracerCUDART_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	tracer_cudart.c
 
-libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I../utils -I./
+libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./
 libTracerCUDART_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libTracerCUDART_la_LDFLAGS += -version-number 12:1:55 -Wl,--version-script,tracer_cudart.map
@@ -331,7 +330,7 @@ EXTRA_DIST += cuda.h.include cudart.h.include
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(srcdir)/../utils/gen_library_base.rb $(CUDA_MODEL) cuda_babeltrace_model.yaml
+babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(CUDA_MODEL) cuda_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CUDA_BINDINGS = \
@@ -371,12 +370,6 @@ libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/includ
 libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-tests/.tag:
-	mkdir -p tests
-	touch tests/.tag
-
-CLEANFILES += tests/.tag
 
 TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \

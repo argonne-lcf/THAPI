@@ -159,8 +159,9 @@ nodist_libOpenCLtracepoints_la_SOURCES = \
 	$(OPENCL_STATIC_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_SRC)
 
-libOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libOpenCLtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
+libOpenCLtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = libTracerOpenCL.la libCLInterval.la
 
@@ -223,19 +224,10 @@ libCLInterval_la_SOURCES = \
 	btx_clinterval_callbacks.cpp \
 	btx_clinterval_callbacks.hpp
 
-libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_opencl
+libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_opencl -DCL_TARGET_OPENCL_VERSION=300
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-tests/.tag:
-	mkdir -p tests
-	touch tests/.tag
-
-clean-local:
-	$(RM) -r tests
-
-CLEANFILES += tests/.tag
 
 TRACE_COMMON = \
 	tests/api_call.thapi_text_pretty \

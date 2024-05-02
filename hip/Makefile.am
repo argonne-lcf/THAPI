@@ -5,7 +5,6 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 HIP_HDR = \
 	$(srcdir)/include/hip/hip_runtime_api.h \
@@ -181,7 +180,6 @@ $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r tests
 
 EXTRA_DIST += \
 	$(srcdir)/include \
@@ -218,10 +216,10 @@ HIP_MODEL = \
 	$(ML_HIP_FILES) \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/yaml_ast_lttng.rb \
-	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb \
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb \
 	hip.h.include
 
 hip_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL)
@@ -283,7 +281,8 @@ nodist_libhiptracepoints_la_SOURCES = \
 	$(HIP_PROBES_INCL) \
 	$(HIP_PROBES_SRC)
 
-libhiptracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libhiptracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libhiptracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libhiptracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = \
@@ -327,7 +326,7 @@ EXTRA_DIST += \
 hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(srcdir)/../utils/gen_library_base.rb $(HIP_MODEL) hip_babeltrace_model.yaml
+babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(HIP_MODEL) hip_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 HIP_BINDINGS = \
@@ -365,13 +364,6 @@ libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include
 libHIPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-tests/.tag:
-	mkdir -p tests
-	touch tests/.tag
-
-CLEANFILES += \
-	tests/.tag
 
 TRACE_COMMON = \
 	tests/interval_profiling_simple.thapi_text_pretty

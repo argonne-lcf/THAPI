@@ -20,7 +20,6 @@ modified_include/omp-tools.h: $(OMP_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r tests
 
 EXTRA_DIST = $(srcdir)/include headers.patch
 
@@ -41,10 +40,10 @@ OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
 	$(srcdir)/ompt_meta_parameters.yaml \
 	$(srcdir)/gen_probe_base.rb \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/yaml_ast_lttng.rb \
-	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb \
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb \
 	$(OMP_EXTRACTED)
 
 BTX_OMP_GENERATED = \
@@ -58,7 +57,7 @@ BTX_OMP_GENERATED = \
 	btx_filter_omp/btx_main.c
 
 OMP_LIB_GEN = \
-	$(srcdir)/../utils/gen_library_base.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_omp_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
@@ -130,7 +129,7 @@ nodist_libompttracepoints_la_SOURCES = \
 	$(OMP_PROBES_INCL) \
 	$(OMP_PROBES_SRC)
 
-libompttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I../utils -I./ 
+libompttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ 
 libompttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libompttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -140,7 +139,7 @@ nodist_libTracerOMPT_la_SOURCES = \
 	$(OMP_PROBES_INCL) \
 	tracer_ompt.c
 
-libTracerOMPT_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I./modified_include -I../utils -I./
+libTracerOMPT_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I./modified_include -I./
 libTracerOMPT_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libTracerOMPT_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module ../sampling/libThapiSampling.la
 libTracerOMPT_la_LIBADD = libompttracepoints.la
@@ -225,13 +224,12 @@ $(BTX_OMP_GENERATED_SOURCE_TEST) &: btx_omp_model.yaml
 
 noinst_LTLIBRARIES += libtestompsource.la
 nodist_libtestompsource_la_SOURCES = $(BTX_OMP_GENERATED_SOURCE_TEST)
-libtestompsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I$(srcdir) -I./btx_source_omp_test/
+libtestompsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_source_omp_test/
 libtestompsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
-TESTS = \
-	$(TRACE_COMMON)
+TESTS = $(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
