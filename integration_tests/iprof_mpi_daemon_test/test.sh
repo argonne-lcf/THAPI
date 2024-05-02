@@ -39,32 +39,28 @@ PARENT_PID=$$
 DAEMON_PID=$!
 
 # Function to send signals, using adjusted SIGRTMIN corresponding to MPI signal daemon defines
-send_signal() {
+send_signal_blocking() {
     kill -$1 $DAEMON_PID
+    wait_for_signal
 }
 
 # Wait for daemon to be ready
 wait_for_signal
 
 # Send signals to mpi_daemon to test synchronization
-send_signal $RT_SIGNAL_LOCAL_BARRIER
-wait_for_signal
+send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 
-send_signal $RT_SIGNAL_GLOBAL_BARRIER
-wait_for_signal
+send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 
 # Run mpi_hello_world
 ./mpi_hello_world
 
 # Final synchronization after mpi_hello_world execution
-send_signal $RT_SIGNAL_LOCAL_BARRIER
-wait_for_signal
+send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 
-send_signal $RT_SIGNAL_GLOBAL_BARRIER
-wait_for_signal
+send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 
 # Signal to terminate the mpi_daemon
-send_signal $RT_SIGNAL_FINISH
-wait_for_signal
+send_signal_blocking $RT_SIGNAL_FINISH
 
 wait $DAEMON_PID  # Ensure daemon exits cleanly
