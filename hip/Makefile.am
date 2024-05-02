@@ -5,7 +5,7 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I$(top_sircdir)/utils -I./
 
 HIP_HDR = \
 	$(srcdir)/include/hip/hip_runtime_api.h \
@@ -181,8 +181,6 @@ $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r btx_source_hip_test
-	$(RM) -r btx_filter_hip
 
 EXTRA_DIST += \
 	$(srcdir)/include \
@@ -219,10 +217,10 @@ HIP_MODEL = \
 	$(ML_HIP_FILES) \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/yaml_ast_lttng.rb \
-	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb \
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb \
 	hip.h.include
 
 hip_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL)
@@ -328,7 +326,7 @@ EXTRA_DIST += \
 hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(srcdir)/../utils/gen_library_base.rb $(HIP_MODEL) hip_babeltrace_model.yaml
+babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(HIP_MODEL) hip_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 HIP_BINDINGS = \

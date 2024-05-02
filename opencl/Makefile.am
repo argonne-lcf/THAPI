@@ -223,14 +223,10 @@ libCLInterval_la_SOURCES = \
 	btx_clinterval_callbacks.cpp \
 	btx_clinterval_callbacks.hpp
 
-libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_opencl
+libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_opencl -DCL_TARGET_OPENCL_VERSION=300
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCLInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-clean-local:
-	$(RM) -r btx_source_cl_test
-	$(RM) -r btx_filter_opencl
 
 TRACE_COMMON = \
 	tests/api_call.thapi_text_pretty \

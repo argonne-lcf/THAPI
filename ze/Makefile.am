@@ -57,8 +57,6 @@ $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r btx_source_ze_test
-	$(RM) -r btx_filter_ze
 
 EXTRA_DIST += \
 	$(srcdir)/include \
@@ -85,10 +83,10 @@ ZE_MODEL = \
 	$(srcdir)/ze_model.rb \
 	$(ML_FILES) \
 	$(ZE_EXTRACTED) \
-	$(srcdir)/../utils/yaml_ast.rb \
-	$(srcdir)/../utils/yaml_ast_lttng.rb \
-	$(srcdir)/../utils/meta_parameters.rb \
-	$(srcdir)/../utils/LTTng.rb
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb
 
 ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -161,7 +159,7 @@ nodist_libzetracepoints_la_SOURCES = \
 	$(ZE_PROBES_SRC) \
 	$(ZE_STATIC_PROBES_SRC)
 
-libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -172,7 +170,7 @@ nodist_libTracerZE_la_SOURCES = \
 	$(ZE_STATIC_PROBES_INCL) \
 	tracer_ze.c
 
-libTracerZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I../utils -I./
+libTracerZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I$(top_srcdir)/utils -I./
 libTracerZE_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libTracerZE_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libTracerZE_la_LIBADD = libzetracepoints.la
@@ -196,7 +194,7 @@ install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 ZE_LIB_GEN = \
-	$(srcdir)/../utils/gen_library_base.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_ze_library_base.rb \
 	$(srcdir)/gen_probe_base.rb
 
