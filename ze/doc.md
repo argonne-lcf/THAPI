@@ -2,13 +2,14 @@
 
 ```mermaid
 graph TD
-    q([ze_command_queue_desc_t]) 
+    q([ze_command_queue_desc_t])
     ep[[event_profiling]]
     epr[[event_profiling_result]]
     a[zeCommandListAppend*_entry]
     kp[[ze_properties_kernel]]
-    zeDeviceGet --> zeCommandListCreateImmediate
-    zeDeviceGet --> zeCommandListCreate
+    d([hDevice])
+    d --> zeCommandListCreateImmediate
+    d --> zeCommandListCreate
     q --> zeCommandQueueCreate
     q --> zeCommandListCreateImmediate
     zeCommandListCreate          --> a
@@ -22,5 +23,5 @@ graph TD
     zeCommandQueueCreate --> zeCommandQueueExecuteCommandLists
     zeCommandListAppend*_exit -- if not Immediate --> zeCommandQueueExecuteCommandLists
     zeCommandListAppend*_exit -- if Immediate--> epr
-    zeCommandQueueExecuteCommandLists --> epr   
+    zeCommandQueueExecuteCommandLists --> epr
 ```
