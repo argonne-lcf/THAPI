@@ -224,13 +224,12 @@ $(BTX_OMP_GENERATED_SOURCE_TEST) &: btx_omp_model.yaml
 
 noinst_LTLIBRARIES += libtestompsource.la
 nodist_libtestompsource_la_SOURCES = $(BTX_OMP_GENERATED_SOURCE_TEST)
-libtestompsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I$(srcdir) -I./btx_source_omp_test/
+libtestompsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_source_omp_test/
 libtestompsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
-TESTS = \
-	$(TRACE_COMMON)
+TESTS = $(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh

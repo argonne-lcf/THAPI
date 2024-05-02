@@ -283,16 +283,15 @@ libtestzesource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) 
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
-TESTS = \
-	$(TRACE_COMMON)
+TESTS = $(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
-	ze_library.rb \
-	$(TRACE_COMMON)
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
 
 EXTRA_DIST += \
 	$(TRACE_COMMON) \

@@ -159,8 +159,9 @@ nodist_libOpenCLtracepoints_la_SOURCES = \
 	$(OPENCL_STATIC_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_SRC)
 
-libOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libOpenCLtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
+libOpenCLtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = libTracerOpenCL.la libCLInterval.la
 

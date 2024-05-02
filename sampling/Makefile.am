@@ -3,8 +3,6 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
-
 
 TRACEPOINT_GEN = \
 	$(srcdir)/sampling_events.yaml
@@ -24,14 +22,16 @@ $(SAMPLING_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_sampling_custom_probes.rb $(TR
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
-noinst_LTLIBRARIES = libtracepoints.la
+noinst_LTLIBRARIES = libsamplingtracepoints.la
 
-nodist_libtracepoints_la_SOURCES = \
+nodist_libsamplingtracepoints_la_SOURCES = \
 	$(SAMPLING_STATIC_PROBES_INCL) \
 	$(SAMPLING_STATIC_PROBES_SRC)
 
-libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
-libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
+libsamplingtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libsamplingtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
+libsamplingtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
+
 
 EXTRA_DIST = \
 	sampling_events.yaml \
@@ -54,6 +54,6 @@ libThapiSampling_la_SOURCES = \
 
 libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include
 libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0
-libThapiSampling_la_LIBADD = libtracepoints.la
+libThapiSampling_la_LIBADD = libsamplingtracepoints.la
 
 lib_LTLIBRARIES = libThapiSampling.la
