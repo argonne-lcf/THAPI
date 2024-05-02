@@ -230,6 +230,7 @@ EXTRA_DIST = \
 	$(TRACE_COMMON)\
 	$(TRACE_OUT) \
 	perfetto_prunned.proto \
+	sync_daemon_mpi.c \
 	sync_daemon_fs
 
 CLEANFILES = \
