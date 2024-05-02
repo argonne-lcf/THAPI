@@ -5,7 +5,6 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 CUDA_HDR = \
 	$(srcdir)/include/cuda.h \
@@ -270,14 +269,16 @@ nodist_libcudatracepoints_la_SOURCES = \
 	$(CUDA_STATIC_PROBES_INCL) \
 	$(CUDA_STATIC_PROBES_SRC)
 
-libcudatracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libcudatracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libcudatracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libcudatracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 nodist_libcudarttracepoints_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	$(CUDART_PROBES_SRC)
 
-libcudarttracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libcudarttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libcudarttracepoints_la_CFLAGS = $(LTTNG_UST_CFLAGS)
 libcudarttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la libCUDAInterval.la
@@ -322,35 +323,10 @@ uninstall-hook:
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCUDA.la
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-babeltrace_cuda_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb cuda_babeltrace_model.yaml cuda.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
-
-BUILT_SOURCES += babeltrace_cuda_callbacks.h
-
-babeltrace_cuda_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ cuda > $@
-
 EXTRA_DIST += cuda.h.include cudart.h.include
-
-CLEANFILES += \
-	babeltrace_cuda_callbacks.h \
-	babeltrace_cuda_dispatchers.c
-
-nodist_libBabeltraceCUDA_la_SOURCES = \
-	babeltrace_cuda_callbacks.h \
-	babeltrace_cuda_dispatchers.c
-
-libBabeltraceCUDA_la_SOURCES = \
-	babeltrace_cuda.c \
-	babeltrace_cuda.h
-
-libBabeltraceCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceCUDA_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceCUDA_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -370,15 +346,11 @@ CLEANFILES += $(CUDA_BINDINGS)
 
 data_DATA = $(CUDA_BINDINGS)
 
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
 	$(BTX_CUDA_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -387,8 +359,7 @@ BUILT_SOURCES += \
 
 nodist_libCUDAInterval_la_SOURCES = \
 	$(BTX_CUDA_GENERATED) \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.hpp
 
 libCUDAInterval_la_SOURCES = \
 	btx_cudainterval_callbacks.cpp \
@@ -406,21 +377,6 @@ tests/.tag:
 	touch tests/.tag
 
 CLEANFILES += tests/.tag
-
-tests/cuda_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb cuda_babeltrace_model.yaml tests/.tag
-	$(RUBY) $< cuda_babeltrace_model.yaml > $@
-
-# To run test we need to catageory of file:
-# - One are the `yaml` file who containt the traces
-# - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file.
-
-# Test by themself are splited into two type:
-# - The one who are common to each backend.
-# - The specific for this backend
-
-# We generate lot of file using:
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \
@@ -450,27 +406,20 @@ libtestcudasource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
-	tests/cuda_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .thapi_text_pretty .dust
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = cuda cuda ./btx_source_cuda_test/ .libs/libtestcudasource.a
-DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
-	test_wrapper.sh \
-	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 EXTRA_DIST += \
-	tests/cuda_dummy_trace.dust \
-	tests/interval.dust.erb \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/cuda_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(BTX_CUDA_GENERATED_SOURCE_TEST)

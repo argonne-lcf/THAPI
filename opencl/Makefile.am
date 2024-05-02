@@ -5,7 +5,6 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 cl.xml.patched: $(srcdir)/cl.xml $(srcdir)/cl.xml.patch
 	$(PATCH) $(srcdir)/cl.xml $(srcdir)/cl.xml.patch -o cl.xml.patched
@@ -152,16 +151,16 @@ EXTRA_DIST += \
 	tracer_opencl_helpers.include.c \
 	gen_opencl.rb
 
-noinst_LTLIBRARIES = libtracepoints.la
+noinst_LTLIBRARIES = libOpenCLtracepoints.la
 
-nodist_libtracepoints_la_SOURCES = \
+nodist_libOpenCLtracepoints_la_SOURCES = \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_PROBES_SRC) \
 	$(OPENCL_STATIC_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_SRC)
 
-libtracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
-libtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
+libOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libOpenCLtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 
 lib_LTLIBRARIES = libTracerOpenCL.la libCLInterval.la
 
@@ -176,10 +175,7 @@ libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LIBF
 libTracerOpenCL_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libTracerOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -version-info 1:0:0
 libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
-libTracerOpenCL_la_LIBADD = libtracepoints.la
-
-thapi_session: libTracerOpenCL.la
-	$(top_srcdir)/utils/lttng_dummy_trace.sh ./.libs/libTracerOpenCL.so lttng_ust_opencl:\*,lttng_ust_opencl_build:\*,lttng_ust_opencl_arguments:\*,lttng_ust_opencl_dump:\*,lttng_ust_opencl_profiling:\*,lttng_ust_opencl_source:\*,lttng_ust_opencl_devices:\*
+libTracerOpenCL_la_LIBADD = libOpenCLtracepoints.la
 
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/opencl
@@ -200,49 +196,19 @@ uninstall-hook:
 #   only built non shared version :-( So, declaring the libs as
 #   pkglib_LTLIBRARIES and using an install hook to remove them.
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceCL.la
 
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-babeltrace_cl_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb opencl_babeltrace_model.yaml cl.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
-
-babeltrace_cl_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ cl > $@
-
 EXTRA_DIST += cl.h.include
-
-CLEANFILES += \
-	babeltrace_cl_callbacks.h \
-	babeltrace_cl_dispatchers.c
-
-BUILT_SOURCES += \
-	babeltrace_cl_callbacks.h
-
-nodist_libBabeltraceCL_la_SOURCES = \
-	babeltrace_cl_dispatchers.c \
-	babeltrace_cl_callbacks.h
-
-libBabeltraceCL_la_SOURCES = \
-	babeltrace_cl.c \
-	babeltrace_cl.h
-
-libBabeltraceCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceCL_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # opencl/Makefile.am:248: warning: source file '$(top_srcdir)/utils/xprof_utils.cpp' is in a subdirectory,
 # opencl/Makefile.am:248: but option 'subdir-objects' is disabled
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
 	$(BTX_OPENCL_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -251,8 +217,7 @@ BUILT_SOURCES += \
 
 nodist_libCLInterval_la_SOURCES = \
 	$(BTX_OPENCL_GENERATED) \
-	xprof_utils.hpp \
-	xprof_utils.cpp
+	xprof_utils.hpp
 
 libCLInterval_la_SOURCES = \
 	btx_clinterval_callbacks.cpp \
@@ -271,21 +236,6 @@ clean-local:
 	$(RM) -r tests
 
 CLEANFILES += tests/.tag
-
-tests/opencl_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb opencl_babeltrace_model.yaml tests/.tag
-	$(RUBY) $< opencl_babeltrace_model.yaml > $@
-
-# To run test we need to catageory of file:
-# - One are the `yaml` file who containt the traces
-# - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file.
-
-# Test by themself are splited into two type:
-# - The one who are common to each backend.
-# - The specific for this backend
-
-# We generate lot of file using:
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
 
 TRACE_COMMON = \
 	tests/api_call.thapi_text_pretty \
@@ -317,27 +267,20 @@ libtestclsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
-	tests/opencl_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .thapi_text_pretty .dust
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = opencl cl ./btx_source_cl_test/ .libs/libtestclsource.a
-DUST_LOG_COMPILER = ./test_wrapper.sh
 
 check_DATA = \
-	test_wrapper.sh \
-	tests/opencl_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 EXTRA_DIST += \
-	tests/opencl_dummy_trace.dust \
-	tests/interval.dust.erb \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/opencl_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(BTX_OPENCL_GENERATED_SOURCE_TEST)
