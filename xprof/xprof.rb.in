@@ -225,7 +225,8 @@ class Sync_daemon
   def initialize
     LOGGER.info { 'Init Sync_daemon' }
     lazy_exec do
-      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi")
+      daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
+      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
                  "#{__dir__}/sync_daemon_mpi"
                else
                  "#{__dir__}/sync_daemon_fs"
