@@ -77,7 +77,7 @@ EXTRA_DIST += \
 
 ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
-$(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
+$(ZE_EXTRACTED)&: %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
 CLEANFILES += $(ZE_EXTRACTED)
@@ -126,10 +126,10 @@ ZE_STATIC_PROBES_INCL = $(ZE_STATIC_PROBES:=.h)
 ZE_STATIC_PROBES_SRC = $(ZE_STATIC_PROBES:=.c)
 ZE_GEN_TRACEPOINTS = $(ZE_PROBES:%=gen_%.rb)
 
-$(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb $(srcdir)/ze.h.include
+$(ZE_PROBES_TP)&: %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb $(srcdir)/ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(ZE_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL) $(srcdir)/ze.h.include
+$(ZE_STATIC_PROBES_TP)&: %.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL) $(srcdir)/ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp
