@@ -19,7 +19,6 @@ enum backend_e {
   BACKEND_OMP_TARGET_OPERATIONS = 4,
   BACKEND_OMP = 5,
   BACKEND_HIP = 6,
-  BACKEND_MAX,
 };
 
 constexpr const char *pretty_backend_name[] = {
@@ -30,16 +29,6 @@ constexpr const char *pretty_backend_name[] = {
     "omp_target",
     "omp",
     "hip",
-};
-
-constexpr const char *backend_name[] = {
-    "BACKEND_UNKNOWN",
-    "BACKEND_ZE",
-    "BACKEND_OPENCL",
-    "BACKEND_CUDA",
-    "BACKEND_OMP_TARGET_OPERATIONS",
-    "BACKEND_OMP",
-    "BACKEND_HIP",
 };
 
 typedef enum backend_e backend_t;
@@ -203,48 +192,3 @@ static inline std::string strip_event_class_name_entry(const char *str) {
 static inline std::string strip_event_class_name_exit(const char *str) {
   return _strip_event_class_name<strlen("_exit")>(str);
 }
-
-
-// TODO Delete them as soon as no more metabable
-
-const char *borrow_hostname(const bt_event *);
-process_id_t borrow_process_id(const bt_event *);
-thread_id_t borrow_thread_id(const bt_event *);
-
-bt_message* create_power_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
-                                 const uintptr_t hDevice, const uint32_t domain, const uint64_t power, const uint64_t ts,
-                                 bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
-
-bt_message* create_frequency_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
-                                     const uintptr_t hDevice, const uint32_t domain, const uint64_t ts, const uint64_t frequency,
-                                     bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
-
-bt_message* create_computeEU_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
-                                     const uintptr_t hDevice, const uint32_t subDevice, const float activeTime, const uint64_t ts,
-                                     bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
-
-bt_message* create_copyEU_message(const char* hostname, const process_id_t proprocess_id, const thread_id_t thread_id,
-                                  const uintptr_t hDevice, const uint32_t subDevice, const float activeTime, const uint64_t ts,
-                                  bt_event_class *event_class, bt_self_message_iterator *message_iterator, bt_stream *stream, backend_t backend = BACKEND_UNKNOWN);
-
-bt_message *create_host_message(const char *hostname, const process_id_t, const thread_id_t,
-                                const char *name, const uint64_t ts, const uint64_t duration,
-                                const bool err, bt_event_class *, bt_self_message_iterator *,
-                                bt_stream *, backend_t = BACKEND_UNKNOWN);
-
-bt_message *create_device_message(const char *hostname, const process_id_t, const thread_id_t,
-                                  const thapi_device_id, const thapi_device_id, const char *name,
-                                  const uint64_t ts, const uint64_t duration, const bool err,
-                                  const char *metadata, bt_event_class *,
-                                  bt_self_message_iterator *, bt_stream *);
-
-bt_message *create_device_name_message(const char *hostname, const process_id_t process_id,
-                                       const thapi_device_id device_id, const char *name,
-                                       bt_event_class *event_class,
-                                       bt_self_message_iterator *message_iterator,
-                                       bt_stream *stream);
-
-bt_message *create_traffic_message(const char *hostname, const process_id_t, const thread_id_t,
-                                   const char *name, const uint64_t size, bt_event_class *,
-                                   bt_self_message_iterator *, bt_stream *,
-                                   backend_t = BACKEND_UNKNOWN);

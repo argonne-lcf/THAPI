@@ -317,39 +317,12 @@ uninstall-hook:
 
 tmplibdir = $(libdir)/tmp
 
-tmplib_LTLIBRARIES = libBabeltraceHIP.la
-
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
-
-babeltrace_hip_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb hip_babeltrace_model.yaml hip.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
-
-babeltrace_hip_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb hip_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ hip > $@
 
 EXTRA_DIST += \
 	hip.h.include \
 	hip.map
-
-BUILT_SOURCES += \
-	babeltrace_hip_callbacks.h
-
-CLEANFILES += \
-	babeltrace_hip_callbacks.h \
-	babeltrace_hip_dispatchers.c
-
-nodist_libBabeltraceHIP_la_SOURCES = \
-	babeltrace_hip_callbacks.h \
-	babeltrace_hip_dispatchers.c
-
-libBabeltraceHIP_la_SOURCES = \
-	babeltrace_hip.c \
-	babeltrace_hip.h
-
-libBabeltraceHIP_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceHIP_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceHIP_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -371,15 +344,11 @@ CLEANFILES += \
 data_DATA = \
 	$(HIP_BINDINGS)
 
-xprof_utils.cpp: $(top_srcdir)/utils/xprof_utils.cpp
-	cp $< $@
-
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
 
 CLEANFILES += \
 	$(BTX_HIP_GENERATED) \
-	xprof_utils.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -404,9 +373,6 @@ tests/.tag:
 CLEANFILES += \
 	tests/.tag
 
-tests/hip_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb hip_babeltrace_model.yaml tests/.tag
-	$(RUBY) $< hip_babeltrace_model.yaml > $@
-
 TRACE_COMMON = \
 	tests/interval_profiling_simple.thapi_text_pretty
 
@@ -429,23 +395,15 @@ libtesthipsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR)
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
 TESTS = \
-	tests/hip_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust .thapi_text_pretty
-DUST_LOG_COMPILER = ./test_wrapper.sh
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = hip hip ./btx_source_hip_test/ .libs/libtesthipsource.a
 
-check_DATA = \
-	test_wrapper.sh \
-	tests/hip_dummy_trace.yaml
-
 EXTRA_DIST += \
-	tests/hip_dummy_trace.dust \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/hip_dummy_trace.yaml \
 	$(BTX_HIP_GENERATED_SOURCE_TEST)

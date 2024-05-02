@@ -5,37 +5,25 @@ if STRICT
 else
   WERROR =
 endif
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
 
 ZE_NAMESPACES = ze zet zes zel
 ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
-ZE_HDR = \
-	$(srcdir)/include/ze_api.h \
-	$(srcdir)/include/ze_ddi.h \
-	$(srcdir)/include/zes_api.h \
-	$(srcdir)/include/zes_ddi.h \
-	$(srcdir)/include/zet_api.h \
-	$(srcdir)/include/zet_ddi.h \
-	$(srcdir)/include/loader/ze_loader_api.h \
-	$(srcdir)/include/layers/zel_tracing_api.h \
-	$(srcdir)/include/layers/zel_tracing_ddi.h \
-	$(srcdir)/include/layers/zel_tracing_register_cb.h \
-	$(srcdir)/include/loader/ze_loader.h
+ZE_HDR_ROOT = \
+	ze_api.h \
+        ze_ddi.h \
+        zes_api.h \
+        zes_ddi.h \
+        zet_api.h \
+        zet_ddi.h \
+        loader/ze_loader_api.h \
+        layers/zel_tracing_api.h \
+        layers/zel_tracing_ddi.h \
+        layers/zel_tracing_register_cb.h \
+        loader/ze_loader.h
 
-MODIFIED_ZE_HDR = \
-	modified_include/ze_api.h \
-	modified_include/ze_ddi.h \
-	modified_include/zes_api.h \
-	modified_include/zes_ddi.h \
-	modified_include/zet_api.h \
-	modified_include/zet_ddi.h \
-	modified_include/loader/ze_loader_api.h \
-	modified_include/layers/zel_tracing_api.h \
-	modified_include/layers/zel_tracing_ddi.h \
-	modified_include/layers/zel_tracing_register_cb.h \
-	modified_include/loader/ze_loader.h
-
+ZE_HDR = $(ZE_HDR_ROOT:%=$(srcdir)/include/%)
+MODIFIED_ZE_HDR = $(ZE_HDR_ROOT:%=modified_include/%)
 
 BTX_ZE_GENERATED = \
 	btx_filter_ze/metababel/metababel.h \
@@ -172,7 +160,8 @@ nodist_libzetracepoints_la_SOURCES = \
 	$(ZE_PROBES_SRC) \
 	$(ZE_STATIC_PROBES_SRC)
 
-libzetracepoints_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I../utils -I./
+libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 lib_LTLIBRARIES = libTracerZE.la libZEInterval.la
@@ -201,7 +190,6 @@ uninstall-hook:
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
-tmplib_LTLIBRARIES = libBabeltraceZE.la
 
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
@@ -213,31 +201,7 @@ ZE_LIB_GEN = \
 
 EXTRA_DIST += $(ZE_LIB_GEN)
 
-babeltrace_ze_callbacks.h: $(top_srcdir)/utils/gen_babeltrace_callbacks.rb ze_babeltrace_model.yaml ze.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
-
-BUILT_SOURCES += babeltrace_ze_callbacks.h
-
-babeltrace_ze_dispatchers.c: $(top_srcdir)/utils/gen_babeltrace_dispatchers.rb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ ze > $@
-
 EXTRA_DIST += ze.h.include
-
-CLEANFILES += \
-	babeltrace_ze_callbacks.h \
-	babeltrace_ze_dispatchers.c
-
-nodist_libBabeltraceZE_la_SOURCES = \
-	babeltrace_ze_callbacks.h \
-	babeltrace_ze_dispatchers.c
-
-libBabeltraceZE_la_SOURCES = \
-	babeltrace_ze.c \
-	babeltrace_ze.h
-
-libBabeltraceZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libBabeltraceZE_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libBabeltraceZE_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 ze_library.rb: $(srcdir)/gen_ze_library.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -300,22 +264,6 @@ tests/.tag:
 
 CLEANFILES += tests/.tag
 
-tests/ze_dummy_trace.yaml: $(top_srcdir)/utils/gen_dummy_trace.rb ze_babeltrace_model.yaml tests/.tag
-	mkdir -p tests
-	$(RUBY) $< ze_babeltrace_model.yaml > $@
-
-# To run test we need to catageory of file:
-# - One are the `yaml` file who containt the traces
-# - The other is the `dust` file who containt the babeltrace processing graph
-#   The dust file will use the `yaml` file.
-
-# Test by themself are splited into two type:
-# - The one who are common to each backend.
-# - The specific for this backend
-
-# We generate lot of file using:
-#https://www.gnu.org/software/make/manual/html_node/Static-Usage.html
-
 TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \
 	tests/interval_profiling_multithread.thapi_text_pretty \
@@ -342,32 +290,21 @@ libtestzesource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) 
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
 
-$(DUST_COMMON): tests/interval_%.dust: $(top_srcdir)/utils/tests_template/interval_common.dust.erb tests/.tag
-	$(ERB) be="ze" interval="zeinterval" namespace="$@" $< > $@
-
 TESTS = \
-	tests/ze_dummy_trace.dust \
 	$(TRACE_COMMON)
 
-TEST_EXTENSIONS = .dust .thapi_text_pretty
-DUST_LOG_COMPILER = ./test_wrapper.sh
+TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
 AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
-	test_wrapper.sh \
 	ze_library.rb \
-	tests/ze_dummy_trace.yaml \
 	$(TRACE_COMMON)
 
 EXTRA_DIST += \
-	$(TRACE_SPECIFC) \
-	tests/ze_dummy_trace.dust \
-	tests/interval.dust.erb \
 	$(TRACE_COMMON) \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	tests/ze_dummy_trace.yaml \
 	$(TRACE_COMMON) \
 	$(BTX_ZE_GENERATED_SOURCE_TEST)
