@@ -181,7 +181,8 @@ $(MODIFIED_HIP_HDR) &: $(HIP_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r tests
+	$(RM) -r btx_source_hip_test
+	$(RM) -r btx_filter_hip
 
 EXTRA_DIST += \
 	$(srcdir)/include \
@@ -365,13 +366,6 @@ libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include
 libHIPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-tests/.tag:
-	mkdir -p tests
-	touch tests/.tag
-
-CLEANFILES += \
-	tests/.tag
 
 TRACE_COMMON = \
 	tests/interval_profiling_simple.thapi_text_pretty

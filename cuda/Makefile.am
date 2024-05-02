@@ -78,7 +78,8 @@ $(MODIFIED_CUDA_HDR) &: $(CUDA_HDR) $(srcdir)/headers.patch
 
 clean-local:
 	$(RM) -r modified_include
-	$(RM) -r tests
+	$(RM) -r btx_source_cuda_test
+	$(RM) -r btx_filter_cuda
 
 EXTRA_DIST += $(srcdir)/include headers.patch
 
@@ -371,12 +372,6 @@ libCUDAInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/includ
 libCUDAInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libCUDAInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-tests/.tag:
-	mkdir -p tests
-	touch tests/.tag
-
-CLEANFILES += tests/.tag
 
 TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \
