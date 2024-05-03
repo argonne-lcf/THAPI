@@ -15,15 +15,29 @@ teardown_file() {
    rm out.pftrace
 }
 
-@test "default_mpi" {
+@test "default_mpi_sync_fs" {
    run type mpirun
    if [ "$status" != 0 ]
    then
       skip
    fi
-   mpirun -n 12 $IPROF $THAPI_TEST_BIN
+   export THAPI_SYNC_DAEMON=fs
+   mpirun -n 12 $IPROF --debug 0 $THAPI_TEST_BIN
    mpirun -n 12 $IPROF -t $THAPI_TEST_BIN | wc -l
-   mpirun -n 12 $IPROF -l -- $THAPI_TEST_BIN
+   mpirun -n 12 $IPROF --debug 0 -l -- $THAPI_TEST_BIN
+   rm out.pftrace
+}
+
+@test "default_mpi_sync_mpi" {
+   run type mpirun
+   if [ "$status" != 0 ]
+   then
+      skip
+   fi
+   export THAPI_SYNC_DAEMON=mpi
+   mpirun -n 12 $IPROF --debug 0 $THAPI_TEST_BIN
+   mpirun -n 12 $IPROF -t $THAPI_TEST_BIN | wc -l
+   mpirun -n 12 $IPROF --debug 0 -l -- $THAPI_TEST_BIN
    rm out.pftrace
 }
 
