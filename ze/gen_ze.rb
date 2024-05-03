@@ -167,8 +167,10 @@ EOF
   }
 
   if c.has_return_type?
-    puts <<EOF
+    puts <<EOF unless c.name.match(/(ze|zet|zes)Get.*ProcAddrTable/)
   #{c.type} _retval;
+EOF
+    puts <<EOF
   _retval = #{ZE_POINTER_NAMES[c]}(#{params.join(", ")});
 EOF
   else
@@ -220,12 +222,24 @@ EOF
 
 $ze_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
+  puts <<EOF unless c.name.match(/zeGet.*ProcAddrTable/)
+#{c.decl_hidden_alias};
+
+EOF
 }
 $zet_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zet, zet_struct_types)
+  puts <<EOF unless c.name.match(/zetGet.*ProcAddrTable/)
+#{c.decl_hidden_alias};
+
+EOF
 }
 $zes_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zes, zes_struct_types)
+  puts <<EOF unless c.name.match(/zesGet.*ProcAddrTable/)
+#{c.decl_hidden_alias};
+
+EOF
 }
 $zel_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)

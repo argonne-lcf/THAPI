@@ -358,3 +358,32 @@ register_epilogue "zeKernelCreate", <<EOF
     _dump_kernel_properties(*phKernel);
  }
 EOF
+
+($ze_commands + $zet_commands + $zes_commands + $zel_commands).select { |c|
+  c.name.match(/(ze|zet|zes)Get.*ProcAddrTable/)
+}.each { |c|
+  parent_type = c['pDdiTable'].type.type.to_s + "_"
+  child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }
+  str = <<EOF
+  #{c.type} _retval;
+  if (pDdiTable && version <= ZE_API_VERSION_CURRENT) {
+EOF
+  str << "   "
+  str << child_types.reverse_each.collect { |k, v|
+    version = k.match(/_t_(\d+)_(\d+)/)[1..2]
+    sstr = " if (version >= ZE_MAKE_VERSION(#{version[0]},#{version[1]})) {\n"
+    v.each { |m|
+      sstr << "      pDdiTable->#{m.name} = #{m.type.to_s.sub(/_t$/,"").sub("_pfn","")}_hid;\n"
+    }
+    sstr << "      _retval = ZE_RESULT_SUCCESS;\n"
+    sstr << "    } else"
+  }.join
+  str << "\n"
+  str << "      goto ukn;\n"
+  str << "  } else {\n"
+  str << "ukn:\n"
+  register_prologue c.name, str
+  register_epilogue c.name, <<EOF
+  }
+EOF
+}
