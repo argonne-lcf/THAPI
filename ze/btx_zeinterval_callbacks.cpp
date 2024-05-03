@@ -274,15 +274,15 @@ static void zeKernelSetGroupSize_entry_callback(
 }
 
 
-//           _                                 _                                    _
-//   _   _  /   _  ._ _  ._ _   _. ._   _|  / / \      _       _    |  o  _ _|_ \  /  ._ _   _. _|_  _
-//   /_ (/_ \_ (_) | | | | | | (_| | | (_| |  \_X |_| (/_ |_| (/_ o |_ | _>  |_  | \_ | (/_ (_|  |_ (/_
-//                                          \                     /             /
-//
+/*           _                                 _                                    _
+ *  _   _  /   _  ._ _  ._ _   _. ._   _|  / / \      _       _    |  o  _ _|_ \  /  ._ _   _. _|_  _
+ *  /_ (/_ \_ (_) | | | | | | (_| | | (_| |  \_X |_| (/_ |_| (/_ o |_ | _>  |_  | \_ | (/_ (_|  |_ (/_
+ *                                         \                     /             /
+ */
 static void zeCommandListCreateImmediate_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
     int64_t vpid,
-  uint64_t vtid, 
+  uint64_t vtid,
     ze_context_handle_t hContext,
   ze_device_handle_t hDevice,
   ze_command_queue_desc_t * altdesc,
@@ -340,7 +340,7 @@ static void zeCommandQueueCreate_entry_callback(
   ze_command_queue_desc_t * desc,
   ze_command_queue_handle_t * phCommandQueue,
   size_t _desc_val_length,
-  ze_command_queue_desc_t * desc_val) {   
+  ze_command_queue_desc_t * desc_val) {  
 
   auto *data = static_cast<data_t *>(usr_data);
   data->entry_state.set_data({hostname, vpid, vtid}, *desc_val);
@@ -362,10 +362,10 @@ zeCommandQueueCreate_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
  data->commandQueueToDesc[{hostname, vpid, hCommandQueue}] = desc;
 }
 
-//           _                                                                      
-//   _   _  /   _  ._ _  ._ _   _. ._   _| |  o  _ _|_  /\  ._  ._   _  ._   _| \|/ 
-//   /_ (/_ \_ (_) | | | | | | (_| | | (_| |_ | _>  |_ /--\ |_) |_) (/_ | | (_| /|\
-// 
+/*           _                                                                      
+ *   _   _  /   _  ._ _  ._ _   _. ._   _| |  o  _ _|_  /\  ._  ._   _  ._   _| \|/ 
+ *   /_ (/_ \_ (_) | | | | | | (_| | | (_| |_ | _>  |_ /--\ |_) |_) (/_ | | (_| /|\
+ */ 
 static void hSignalEvent_hKernel_with_group_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
@@ -479,10 +479,10 @@ static void hSignalEvent_rest_entry_callback(
                                                           metadata};
 }
 
-//           _                              _                   _                       _
-//   _   _  /   _  ._ _  ._ _   _. ._   _| / \      _       _  |_     _   _    _|_  _  /   _  ._ _  ._ _   _. ._   _| |  o  _ _|_  _
-//   /_ (/_ \_ (_) | | | | | | (_| | | (_| \_X |_| (/_ |_| (/_ |_ >< (/_ (_ |_| |_ (/_ \_ (_) | | | | | | (_| | | (_| |_ | _>  |_ _>
-//
+/*           _                              _                   _                       _
+ *   _   _  /   _  ._ _  ._ _   _. ._   _| / \      _       _  |_     _   _    _|_  _  /   _  ._ _  ._ _   _. ._   _| |  o  _ _|_  _
+ *   /_ (/_ \_ (_) | | | | | | (_| | | (_| \_X |_| (/_ |_| (/_ |_ >< (/_ (_ |_| |_ (/_ \_ (_) | | | | | | (_| | | (_| |_ | _>  |_ _>
+ */
 static void zeCommandQueueExecuteCommandLists_entry_callback(void *btx_handle, void *usr_data, int64_t _timestamp,
   const char* hostname,
   int64_t vpid,
@@ -503,11 +503,11 @@ auto *data = static_cast<data_t *>(usr_data);
 }}}
 
 
-//    _                         __                         _                                
-//   |_) _|_    |\/|  _  ._ _  /__  _ _|_  /\  | |  _   _ |_) ._ _  ._   _  ._ _|_ o  _   _ 
-//   |_)  |_ >< |  | (/_ | | | \_| (/_ |_ /--\ | | (_) (_ |   | (_) |_) (/_ |   |_ | (/_ _> 
-//                                                                  |                       
-//
+/*    _                         __                         _                                
+ *   |_) _|_    |\/|  _  ._ _  /__  _ _|_  /\  | |  _   _ |_) ._ _  ._   _  ._ _|_ o  _   _ 
+ *   |_)  |_ >< |  | (/_ | | | \_| (/_ |_ /--\ | | (_) (_ |   | (_) |_) (/_ |   |_ | (/_ _> 
+ *                                                                  |                       
+ */
 // zeModuleGetGlobalPointer and zeModuleDestroy
 static void zeModule_entry_callback(void *btx_handle, void *usr_data,
                                     int64_t ts, const char *event_class_name,
@@ -604,10 +604,10 @@ static void memFree_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-//    _          _
-//   |_) _|_    /  |  _   _ |
-//   |_)  |_ >< \_ | (_) (_ |<
-//
+/*    _          _
+ *   |_) _|_    /  |  _   _ |
+ *   |_)  |_ >< \_ | (_) (_ |<
+ */
 static void property_device_timer_callback(void *btx_handle, void *usr_data,
                                            int64_t ts, const char *hostname,
                                            int64_t vpid, uint64_t vtid,
