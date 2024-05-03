@@ -28,10 +28,12 @@ using btx_kernel_desct_t =
 using btx_launch_desc_t =
     std::tuple<ze_command_list_handle_t, std::string /*name*/, std::string /*metadata*/>;
 using btx_event_desct_t =
-    std::tuple<thread_id_t, ze_command_queue_desc_t, ze_command_list_handle_t , ze_device_handle_t, std::string /*name*/,
-               std::string /*metadata*/, int64_t /*ts born min*/, clock_lttng_device_t /* clock sync pair */>;
-using btx_command_list_desc_t = 
-	std::tuple<ze_command_queue_desc_t, ze_device_handle_t>;
+    std::tuple<thread_id_t, ze_command_queue_desc_t, ze_command_list_handle_t,
+               bool /*hCommandListIsImmediate*/, ze_device_handle_t, std::string /*name*/,
+               std::string /*metadata*/, int64_t /*ts born min*/,
+               clock_lttng_device_t /* clock sync pair */>;
+using btx_command_list_desc_t =
+    std::tuple<ze_command_queue_desc_t, ze_device_handle_t, bool /*hCommandListIsImmediate*/>;
 
 struct data_s {
   /* Host */
