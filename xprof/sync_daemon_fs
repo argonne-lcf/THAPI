@@ -76,6 +76,7 @@ end
 Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
   FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
   FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
+  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
   exit
 end
 
