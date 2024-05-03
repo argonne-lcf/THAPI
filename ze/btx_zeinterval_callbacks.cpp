@@ -161,26 +161,6 @@ static void exits_callback(void *btx_handle, void *usr_data, int64_t ts,
       strip_event_class_name_exit(event_class_name).c_str(), (ts - start), err);
 }
 
-static void entries_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                   const char *event_class_name,
-                                   const char *hostname, int64_t vpid,
-                                   uint64_t vtid, size_t size) {
-  auto *data = static_cast<data_t *>(usr_data);
-  data->entry_state.set_data({hostname, vpid, vtid}, size);
-}
-
-static void exits_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                 const char *event_class_name,
-                                 const char *hostname, int64_t vpid,
-                                 uint64_t vtid, ze_result_t zeResult,
-                                 void *pptr_val) {
-  auto *data = static_cast<data_t *>(usr_data);
-  auto size = data->entry_state.get_data<size_t>({hostname, vpid, vtid});
-  if (zeResult == ZE_RESULT_SUCCESS)
-    add_memory(data, {hostname, vpid}, (uintptr_t)pptr_val, size,
-               event_class_name);
-}
-
 /*
  * Device and Subdevice property
  */
@@ -209,64 +189,23 @@ static void property_subdevice_callback(
   data->device_property[hpd] = *pDeviceProperties_val;
   data->subdevice_parent[hpd] = (thapi_device_id)hDevice;
 }
-/*
- * Associate Command List to Commanque Queue ze_command_queue_desc_t
- * and device
- */
 
-static void zeCommandListCreateImmediate_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid, ze_context_handle_t hContext,
-    ze_device_handle_t hDevice, ze_command_queue_desc_t *altdesc,
-    ze_command_list_handle_t *phCommandList, size_t _altdesc_val_length,
-    ze_command_queue_desc_t *altdesc_val) {
-
-  auto *data = static_cast<data_t *>(usr_data);
-  data->imm_tmp[{hostname, vpid, vtid}] = {hDevice, *altdesc_val};
-}
-
-static void zeCommandListCreateImmediate_exit_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid, ze_result_t zeResult,
-    ze_command_list_handle_t phCommandList_val) {
-  auto *data = static_cast<data_t *>(usr_data);
-  auto [device, altdesc] = data->imm_tmp[{hostname, vpid, vtid}];
-  data->command_list_device[{hostname, vpid, phCommandList_val}] =
-      (thapi_device_id)device;
-  data->command_list_command_queue_desct[{hostname, vpid, phCommandList_val}] =
-      altdesc;
-}
-
-static void zeCommandListCreate_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-    int64_t vpid, uint64_t vtid, ze_context_handle_t hContext,
-    ze_device_handle_t hDevice, ze_command_list_desc_t *desc,
-    ze_command_list_handle_t *phCommandList, size_t _desc_val_length,
-    ze_command_list_desc_t *desc_val) {
-
-  auto *data = static_cast<data_t *>(usr_data);
-  data->entry_state.set_data({hostname, vpid, vtid}, hDevice);
-}
-
+//
+//   _   _  |/  _  ._ ._   _  |
+//   /_ (/_ |\ (/_ |  | | (/_ |
+//
 static void
-zeCommandListCreate_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                  const char *hostname, int64_t vpid,
-                                  uint64_t vtid, ze_result_t zeResult,
-                                  ze_command_list_handle_t phCommandList_val) {
+property_kernel_callback(void *btx_handle, void *usr_data, int64_t ts,
+                         const char *hostname, int64_t vpid, uint64_t vtid,
+                         ze_kernel_handle_t hKernel,
+                         size_t _pKernelProperties_val_length,
+                         ze_kernel_properties_t *pKernelProperties_val) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  const auto device =
-      data->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
-
-  if (zeResult != ZE_RESULT_SUCCESS)
-    return;
-
-  data->command_list_device[{hostname, vpid, phCommandList_val}] = device;
+  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
+  std::get<ze_kernel_properties_t>(a) = *pKernelProperties_val;
 }
 
-/*
- * Name of the Function Profiled
- */
 static void zeKernelCreate_entry_callback(void *btx_handle, void *usr_data,
                                           int64_t ts,
                                           const char *event_class_name,
@@ -284,18 +223,19 @@ static void zeKernelCreate_exit_callback(void *btx_handle, void *usr_data,
                                          const char *event_class_name,
                                          const char *hostname, int64_t vpid,
                                          uint64_t vtid,
-                                         ze_kernel_handle_t phKernel_val) {
+                                         ze_kernel_handle_t hKernel) {
 
   auto *data = static_cast<data_t *>(usr_data);
   // No need to check for Error, if not success, people should will not use it.
   const auto kernelName =
       data->entry_state.get_data<std::string>({hostname, vpid, vtid});
-  data->kernel_name[{hostname, vpid, phKernel_val}] = kernelName;
+  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
+  std::get<std::string>(a) = kernelName;
 }
 
 // It's possible to bypass zeKernelCreate,
-// 	as a workaround for now, hoping that people will call
-// 	zeKernelGetName
+//      as a workaround for now, hoping that people will call
+//      zeKernelGetName
 static void zeKernelGetName_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
@@ -318,37 +258,114 @@ zeKernelGetName_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
   auto *data = static_cast<data_t *>(usr_data);
   const auto hKernel =
       data->entry_state.get_data<ze_kernel_handle_t>({hostname, vpid, vtid});
-  data->kernel_name[{hostname, vpid, hKernel}] = std::string(pName_val);
+  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
+  std::get<std::string>(a) = pName_val;
 }
 
+// TODO: Need to handle error!
 static void zeKernelSetGroupSize_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
     int64_t vpid, uint64_t vtid, ze_kernel_handle_t hKernel,
     uint32_t groupSizeX, uint32_t groupSizeY, uint32_t groupSizeZ) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  std::stringstream groupsize;
-  groupsize << "{" << groupSizeX << "," << groupSizeY << "," << groupSizeZ
-            << "}";
-  data->kernel_groupsize_str[{hostname, vpid, hKernel}] = groupsize.str();
+  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
+  std::get<btx_kernel_group_size_t>(a) = {groupSizeX, groupSizeY, groupSizeZ};
+}
+
+
+//           _                                 _                                    _
+//   _   _  /   _  ._ _  ._ _   _. ._   _|  / / \      _       _    |  o  _ _|_ \  /  ._ _   _. _|_  _
+//   /_ (/_ \_ (_) | | | | | | (_| | | (_| |  \_X |_| (/_ |_| (/_ o |_ | _>  |_  | \_ | (/_ (_|  |_ (/_
+//                                          \                     /             /
+//
+static void zeCommandListCreateImmediate_entry_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid,
+  uint64_t vtid, 
+    ze_context_handle_t hContext,
+  ze_device_handle_t hDevice,
+  ze_command_queue_desc_t * altdesc,
+    ze_command_list_handle_t *phCommandList, size_t _altdesc_val_length,
+    ze_command_queue_desc_t *altdesc_val) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  data->imm_tmp[{hostname, vpid, vtid}] = {hDevice, *altdesc_val};
+}
+
+static void zeCommandListCreateImmediate_exit_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid, ze_result_t zeResult,
+    ze_command_list_handle_t hCommandList) {
+  auto *data = static_cast<data_t *>(usr_data);
+  if (zeResult != ZE_RESULT_SUCCESS)
+	return;
+
+  auto [hDevice, commandQueueDesc] = data->imm_tmp[{hostname, vpid, vtid}];
+  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {commandQueueDesc, hDevice};
+}
+
+static void zeCommandListCreate_entry_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid, ze_context_handle_t hContext,
+    ze_device_handle_t hDevice, ze_command_list_desc_t *desc,
+    ze_command_list_handle_t *phCommandList, size_t _desc_val_length,
+    ze_command_list_desc_t *desc_val) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  data->entry_state.set_data({hostname, vpid, vtid}, hDevice);
 }
 
 static void
-property_kernel_callback(void *btx_handle, void *usr_data, int64_t ts,
-                         const char *hostname, int64_t vpid, uint64_t vtid,
-                         ze_kernel_handle_t hKernel,
-                         size_t _pKernelProperties_val_length,
-                         ze_kernel_properties_t *pKernelProperties_val) {
+zeCommandListCreate_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                  const char *hostname, int64_t vpid,
+                                  uint64_t vtid, ze_result_t zeResult,
+                                  ze_command_list_handle_t phCommandList_val) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  // SIMD Size ~= maxGroupSize
-  data->kernel_simdsize_str[{hostname, vpid, hKernel}] =
-      "SIMD" + std::to_string(pKernelProperties_val->maxSubgroupSize);
+  const auto hDevice =
+      data->entry_state.get_data<ze_device_handle_t>({hostname, vpid, vtid});
+  if (zeResult != ZE_RESULT_SUCCESS)
+    return;
+
+ auto &a = data->commandListToBtxDesc[{hostname, vpid, phCommandList_val}];
+ std::get<ze_device_handle_t>(a) = hDevice;
 }
 
-/*
- * Profiling Command (everything who signal an event on completion)
- * */
+static void zeCommandQueueCreate_entry_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+    int64_t vpid, uint64_t vtid,
+  ze_context_handle_t hContext,
+  ze_device_handle_t hDevice,
+  ze_command_queue_desc_t * desc,
+  ze_command_queue_handle_t * phCommandQueue,
+  size_t _desc_val_length,
+  ze_command_queue_desc_t * desc_val) {   
+
+  auto *data = static_cast<data_t *>(usr_data);
+  data->entry_state.set_data({hostname, vpid, vtid}, *desc_val);
+}
+
+static void
+zeCommandQueueCreate_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                  const char *hostname, int64_t vpid,
+                                  uint64_t vtid, ze_result_t zeResult,
+                                  ze_command_queue_handle_t hCommandQueue) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  const auto desc =
+      data->entry_state.get_data<ze_command_queue_desc_t>({hostname, vpid, vtid});
+
+  if (zeResult != ZE_RESULT_SUCCESS)
+    return;
+
+ data->commandQueueToDesc[{hostname, vpid, hCommandQueue}] = desc;
+}
+
+//           _                                                                      
+//   _   _  /   _  ._ _  ._ _   _. ._   _| |  o  _ _|_  /\  ._  ._   _  ._   _| \|/ 
+//   /_ (/_ \_ (_) | | | | | | (_| | | (_| |_ | _>  |_ /--\ |_) |_) (/_ | | (_| /|\
+// 
 static void hSignalEvent_hKernel_with_group_entry_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
     const char *hostname, int64_t vpid, uint64_t vtid,
@@ -356,22 +373,25 @@ static void hSignalEvent_hKernel_with_group_entry_callback(
     ze_group_count_t *pLaunchFuncArgs_val) {
 
   auto *data = static_cast<data_t *>(usr_data);
+  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
 
-  const hp_kernel_t hpk{hostname, vpid, hKernel};
-  std::string name = data->kernel_name[hpk];
+  std::string name = std::get<std::string>(a);
+  std::string metadata;
+  {
+    auto &[groupSizeX, groupSizeY, groupSizeZ] =
+        std::get<btx_kernel_group_size_t>(a);
 
-  std::stringstream metadata;
-  metadata << data->kernel_simdsize_str[hpk] << ", ";
-  metadata << "{" << pLaunchFuncArgs_val->groupCountX << ","
-           << pLaunchFuncArgs_val->groupCountY << ","
-           << pLaunchFuncArgs_val->groupCountZ << "}"
-           << ", " << data->kernel_groupsize_str[hpk];
-
-  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
-  // Not sure why need to store the command list and the device, as we never
-  // remove anything from `command_list_device`
-  data->command_partial_payload[{hostname, vpid, vtid}] = {
-      hCommandList, name, metadata.str(), device, ts};
+    std::stringstream metadata_s;
+    metadata_s << "SIMD" << std::get<ze_kernel_properties_t>(a).maxSubgroupSize
+               << ", {" << pLaunchFuncArgs_val->groupCountX << ","
+               << pLaunchFuncArgs_val->groupCountY << ","
+               << pLaunchFuncArgs_val->groupCountZ << "}"
+               << ", {" << groupSizeX << "," << groupSizeY << "," << groupSizeZ
+               << "}";
+    metadata = metadata_s.str();
+  }
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name,
+                                                          metadata};
 }
 
 static void hSignalEvent_hKernel_without_group_entry_callback(
@@ -380,12 +400,11 @@ static void hSignalEvent_hKernel_without_group_entry_callback(
     ze_command_list_handle_t hCommandList, ze_kernel_handle_t hKernel) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  std::string name = data->kernel_name[{hostname, vpid, hKernel}];
-  std::string metadata = "";
-
-  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
-  data->command_partial_payload[{hostname, vpid, vtid}] = {
-      hCommandList, name, metadata, device, ts};
+  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
+  const std::string name = std::get<std::string>(a);
+  const std::string metadata = "";
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name,
+                                                          metadata};
 }
 
 static void hSignalEvent_eventMemory_2ptr_entry_callback(
@@ -396,23 +415,22 @@ static void hSignalEvent_eventMemory_2ptr_entry_callback(
 
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
-  std::stringstream name;
-  name << strip_event_class_name_entry(event_class_name) << "("
-       << memory_location(data, hp, (uintptr_t)srcptr) << "2"
-       << memory_location(data, hp, (uintptr_t)dstptr) << ")";
 
-  ze_command_queue_desc_t desc =
-      data->command_list_command_queue_desct[{hostname, vpid, hCommandList}];
-  std::stringstream metadata;
-  metadata << "ordinal: " << desc.ordinal << ", "
-           << "index: " << desc.index;
-  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
-  data->command_partial_payload[{hostname, vpid, vtid}] = {
-      hCommandList, name.str(), metadata.str(), device, ts};
+  std::string name;
+  {
+    std::stringstream name_s;
+    name_s << strip_event_class_name_entry(event_class_name) << "("
+           << memory_location(data, hp, (uintptr_t)srcptr) << "2"
+           << memory_location(data, hp, (uintptr_t)dstptr) << ")";
+    name = name_s.str();
+  }
+  std::string metadata = "";
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name,
+                                                          metadata};
 
   // Should we check Error ? Send with Error?
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts,
-                                 BACKEND_ZE, name.str().c_str(), size);
+                                 BACKEND_ZE, name.c_str(), size);
 }
 
 static void hSignalEvent_eventMemory_1ptr_entry_callback(
@@ -422,19 +440,20 @@ static void hSignalEvent_eventMemory_1ptr_entry_callback(
 
   auto *data = static_cast<data_t *>(usr_data);
   const hp_t hp{hostname, vpid};
-  std::stringstream name;
-  name << strip_event_class_name_entry(event_class_name) << "("
-       << memory_location(data, hp, (uintptr_t)ptr) << ")";
 
+  std::string name;
+  {
+    std::stringstream name_s;
+    name_s << strip_event_class_name_entry(event_class_name) << "("
+           << memory_location(data, hp, (uintptr_t)ptr) << ")";
+    name = name_s.str();
+  }
   std::string metadata = "";
-
-  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
-  data->command_partial_payload[{hostname, vpid, vtid}] = {
-      hCommandList, name.str(), metadata, device, ts};
-
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name,
+                                                          metadata};
   // Should we check Error ? Send with Error?
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts,
-                                 BACKEND_ZE, name.str().c_str(), size);
+                                 BACKEND_ZE, name.c_str(), size);
 }
 
 static void eventMemory_without_hSignalEvent_entry_callback(
@@ -456,14 +475,39 @@ static void hSignalEvent_rest_entry_callback(
   std::string name = strip_event_class_name_entry(event_class_name);
   std::string metadata = "";
 
-  const auto device = data->command_list_device[{hostname, vpid, hCommandList}];
-
-  data->command_partial_payload[{hostname, vpid, vtid}] = {
-      hCommandList, name, metadata, device, ts};
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name,
+                                                          metadata};
 }
 
-// Handle Global
+//           _                              _                   _                       _
+//   _   _  /   _  ._ _  ._ _   _. ._   _| / \      _       _  |_     _   _    _|_  _  /   _  ._ _  ._ _   _. ._   _| |  o  _ _|_  _
+//   /_ (/_ \_ (_) | | | | | | (_| | | (_| \_X |_| (/_ |_| (/_ |_ >< (/_ (_ |_| |_ (/_ \_ (_) | | | | | | (_| | | (_| |_ | _>  |_ _>
+//
+static void zeCommandQueueExecuteCommandLists_entry_callback(void *btx_handle, void *usr_data, int64_t _timestamp,
+  const char* hostname,
+  int64_t vpid,
+  uint64_t vtid,
+  ze_command_queue_handle_t hCommandQueue,
+  uint32_t numCommandLists,
+  ze_command_list_handle_t * phCommandLists,
+  ze_fence_handle_t hFence,
+  size_t _phCommandLists_vals_length,
+  ze_command_list_handle_t * phCommandLists_vals){
 
+auto *data = static_cast<data_t *>(usr_data);
+
+ const auto commandQueueDesc = data->commandQueueToDesc[{hostname, vpid, hCommandQueue}];
+ for (size_t i=0; i < _phCommandLists_vals_length; i++) {
+    for (auto& hEvent: data->commandListToEvents[{hostname, vpid, phCommandLists_vals[i]}])  {
+	    std::get<ze_command_queue_desc_t>(data->eventToBtxDesct[{hostname, vpid, hEvent}]) = commandQueueDesc;
+}}}
+
+
+//    _                         __                         _                                
+//   |_) _|_    |\/|  _  ._ _  /__  _ _|_  /\  | |  _   _ |_) ._ _  ._   _  ._ _|_ o  _   _ 
+//   |_)  |_ >< |  | (/_ | | | \_| (/_ |_ /--\ | | (_) (_ |   | (_) |_) (/_ |   |_ | (/_ _> 
+//                                                                  |                       
+//
 // zeModuleGetGlobalPointer and zeModuleDestroy
 static void zeModule_entry_callback(void *btx_handle, void *usr_data,
                                     int64_t ts, const char *event_class_name,
@@ -516,6 +560,26 @@ static void zeModuleDestroy_exit_callback(void *btx_handle, void *usr_data,
   s.erase(it);
 }
 
+static void entries_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                   const char *event_class_name,
+                                   const char *hostname, int64_t vpid,
+                                   uint64_t vtid, size_t size) {
+  auto *data = static_cast<data_t *>(usr_data);
+  data->entry_state.set_data({hostname, vpid, vtid}, size);
+}
+
+static void exits_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                 const char *event_class_name,
+                                 const char *hostname, int64_t vpid,
+                                 uint64_t vtid, ze_result_t zeResult,
+                                 void *pptr_val) {
+  auto *data = static_cast<data_t *>(usr_data);
+  if (zeResult == ZE_RESULT_SUCCESS) {
+       auto size = data->entry_state.get_data<size_t>({hostname, vpid, vtid});
+	  add_memory(data, {hostname, vpid}, (uintptr_t)pptr_val, size,
+               event_class_name);
+  }
+}
 /*
  * Remove Memory
  */
@@ -540,10 +604,10 @@ static void memFree_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-/*
- * Timestamp Shift
- */
-
+//    _          _
+//   |_) _|_    /  |  _   _ |
+//   |_)  |_ >< \_ | (_) (_ |<
+//
 static void property_device_timer_callback(void *btx_handle, void *usr_data,
                                            int64_t ts, const char *hostname,
                                            int64_t vpid, uint64_t vtid,
@@ -565,30 +629,36 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
 
   auto *data = static_cast<data_t *>(usr_data);
 
-  auto it_pp = data->command_partial_payload.find({hostname, vpid, vtid});
+  auto it_pp = data->threadToLastLaunchInfo.find({hostname, vpid, vtid});
   // We didn't find the command who initiated this even_profiling,
   // This mean we should ignore it, Either mean nothing, instaneous
   // or not supported
   //
   // zeCommandListAppendSignalEvent|zeCommandListAppendLaunchMultipleKernelsIndirect...
   //
-  if (it_pp == data->command_partial_payload.end())
+  if (it_pp == data->threadToLastLaunchInfo.end())
     return;
 
   // Don't put an `&` is break the metadata / commandName... Not sure why
-  const auto [hCommandList, commandName, metadata, device, lltngMin] =
-      it_pp->second;
-  data->command_partial_payload.erase(it_pp);
+  const auto [hCommandList, commandName, metadata] = it_pp->second;
+  data->threadToLastLaunchInfo.erase(it_pp);
+
+  auto [commandQueueDesc, hDevice]  = data->commandListToBtxDesc[{hostname, vpid, hCommandList}];
 
   // Got the timestamp pair reference
   clock_lttng_device_t clockLttngDevice;
-  const auto &m0 = data->device_timestamps_pair_ref;
-  const auto it0 = m0.find({hostname, vpid, device});
-  if (it0 != m0.cend())
-    clockLttngDevice = it0->second;
-  // Do we handle the case where it's nul??
-  data->event_payload[{hostname, vpid, hEvent}] = {
-      vtid, commandName, metadata, device, lltngMin, clockLttngDevice};
+  {
+    const auto &m0 = data->device_timestamps_pair_ref;
+    const auto it0 = m0.find({hostname, vpid, (thapi_device_id)hDevice});
+    if (it0 != m0.cend())
+      clockLttngDevice = it0->second;
+  }
+
+  // If not IMM will be commandQueueDesc overwrited latter
+  data->eventToBtxDesct[{hostname, vpid, hEvent}] = {
+      vtid, commandQueueDesc, hDevice, commandName, metadata, ts, clockLttngDevice};
+  // Prepare job for non IMM
+  data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
 }
 
 static void event_profiling_result_callback(
@@ -602,14 +672,25 @@ static void event_profiling_result_callback(
 
   auto *data = static_cast<data_t *>(usr_data);
 
+  // TODO: Should  we always find the eventToBtxDesct?
   // We didn't find the partial payload, that mean we should ignore it
-  const auto it_p = data->event_payload.find({hostname, vpid, hEvent});
-  if (it_p == data->event_payload.cend())
+  const auto it_p = data->eventToBtxDesct.find({hostname, vpid, hEvent});
+  if (it_p == data->eventToBtxDesct.cend())
     return;
-
-  const auto &[vtid_submission, commandName, metadata, device, lltngMin,
-               clockLttngDevice] = it_p->second;
   // We don't erase, may have one entry for multiple result
+  //TODO: Add command_list so we can remove commandListToEvents.
+  const auto &[vtid_submission, commandQueueDesc, device, commandName, metadata,
+               lltngMin, clockLttngDevice] = it_p->second;
+  // Create additional Medatata of the Command Queue
+  std::stringstream queue_metadata;
+  if (!metadata.empty())
+	  queue_metadata << ", ";
+
+  queue_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
+ 	        << "index: " << commandQueueDesc.index
+  		<< "}";
+
+  std::string full_metadata = metadata + queue_metadata.str();
 
   const bool err =
       ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
@@ -618,7 +699,8 @@ static void event_profiling_result_callback(
   uint64_t delta = globalEnd - globalStart;
   uint64_t start = lltngMin;
   uintptr_t device_hash = 0;
-  const auto it0 = data->device_property.find({hostname, vpid, device});
+  const auto it0 =
+      data->device_property.find({hostname, vpid, (thapi_device_id)device});
   if (it0 != data->device_property.cend()) {
     if (!err) {
       delta = compute_and_convert_delta(globalStart, globalEnd, it0->second);
@@ -628,7 +710,8 @@ static void event_profiling_result_callback(
     device_hash = hash_device(it0->second);
   }
   uintptr_t subdevice_hash = 0;
-  const auto it1 = data->subdevice_parent.find({hostname, vpid, device});
+  const auto it1 =
+      data->subdevice_parent.find({hostname, vpid, (thapi_device_id)device});
   if (it1 != data->subdevice_parent.cend()) {
     subdevice_hash = device_hash;
     const auto it2 = data->device_property.find({hostname, vpid, it1->second});
@@ -639,7 +722,7 @@ static void event_profiling_result_callback(
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission,
                                 start, BACKEND_ZE, commandName.c_str(), delta,
                                 device_hash, subdevice_hash, err,
-                                metadata.c_str());
+                                full_metadata.c_str());
 }
 
 static void zeEventDestroy_entry_callback(void *btx_handle, void *usr_data,
@@ -663,7 +746,7 @@ static void zeEventDestroy_exit_callback(void *btx_handle, void *usr_data,
   if (zeResult != ZE_RESULT_SUCCESS)
     return;
 
-  data->event_payload.erase({hostname, vpid, hEvent});
+  data->eventToBtxDesct.erase({hostname, vpid, hEvent});
 }
 
 /*
@@ -742,6 +825,14 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, zeCommandListCreate_entry_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_exit(
       btx_handle, zeCommandListCreate_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_entry(
+      btx_handle, zeCommandQueueCreate_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_exit(
+      btx_handle, zeCommandQueueCreate_exit_callback);
+
+  btx_register_callbacks_lttng_ust_ze_zeCommandQueueExecuteCommandLists_entry(
+  btx_handle, zeCommandQueueExecuteCommandLists_entry_callback);
+
 
   /*  Name of the Function Profiled  */
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_entry);
