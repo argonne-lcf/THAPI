@@ -222,7 +222,7 @@ EOF
 
 $ze_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
-  puts <<EOF unless c.name.match(/zeGet.*ProcAddrTable/)
+  puts <<EOF unless c.name.match(/zeGet.*ProcAddrTable/) unless c.name.match(/zeLoaderInit|zelLoaderDriverCheck|zelLoaderTracingLayerInit|zeLoaderGetTracingHandle/)
 #{c.decl_hidden_alias};
 
 EOF
