@@ -656,7 +656,7 @@ static void event_profiling_callback(void *btx_handle, void *usr_data,
 
   // If not IMM will be commandQueueDesc overwrited latter
   data->eventToBtxDesct[{hostname, vpid, hEvent}] = {
-      vtid, commandQueueDesc, hDevice, commandName, metadata, ts, clockLttngDevice};
+      vtid, commandQueueDesc,hCommandList,  hDevice, commandName, metadata, ts, clockLttngDevice};
   // Prepare job for non IMM
   data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
 }
@@ -678,8 +678,7 @@ static void event_profiling_result_callback(
   if (it_p == data->eventToBtxDesct.cend())
     return;
   // We don't erase, may have one entry for multiple result
-  //TODO: Add command_list so we can remove commandListToEvents.
-  const auto &[vtid_submission, commandQueueDesc, device, commandName, metadata,
+  const auto &[vtid_submission, commandQueueDesc, hCommandList, device, commandName, metadata,
                lltngMin, clockLttngDevice] = it_p->second;
   // Create additional Medatata of the Command Queue
   std::stringstream queue_metadata;
@@ -689,8 +688,10 @@ static void event_profiling_result_callback(
   queue_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
  	        << "index: " << commandQueueDesc.index
   		<< "}";
-
   std::string full_metadata = metadata + queue_metadata.str();
+
+  // Only if not IMM
+  data->commandListToEvents[{hostname, vpid, hCommandList} ].erase(hEvent);
 
   const bool err =
       ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
