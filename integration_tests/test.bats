@@ -2,6 +2,7 @@
 
 setup_file() {
    export THAPI_HOME=$PWD
+   export IPROF=$THAPI_BIN_DIR/iprof
 }
 
 teardown_file() {
@@ -12,32 +13,6 @@ teardown_file() {
    $IPROF $THAPI_TEST_BIN
    $IPROF -t $THAPI_TEST_BIN | wc -l
    $IPROF -l -- $THAPI_TEST_BIN
-   rm out.pftrace
-}
-
-@test "default_mpi_sync_fs" {
-   run type mpirun
-   if [ "$status" != 0 ]
-   then
-      skip
-   fi
-   export THAPI_SYNC_DAEMON=fs
-   mpirun -n 12 $IPROF --debug 0 $THAPI_TEST_BIN
-   mpirun -n 12 $IPROF -t $THAPI_TEST_BIN | wc -l
-   mpirun -n 12 $IPROF --debug 0 -l -- $THAPI_TEST_BIN
-   rm out.pftrace
-}
-
-@test "default_mpi_sync_mpi" {
-   run type mpirun
-   if [ "$status" != 0 ]
-   then
-      skip
-   fi
-   export THAPI_SYNC_DAEMON=mpi
-   mpirun -n 12 $IPROF --debug 0 $THAPI_TEST_BIN
-   mpirun -n 12 $IPROF -t $THAPI_TEST_BIN | wc -l
-   mpirun -n 12 $IPROF --debug 0 -l -- $THAPI_TEST_BIN
    rm out.pftrace
 }
 

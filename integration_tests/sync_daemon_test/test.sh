@@ -1,4 +1,7 @@
 #!/bin/bash
+# Usage: IPROF_BIN_DIR=/path/to/iprof/bin THAPI_SYNC_DAEMON=mpi|fs test.sh
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Get base real-time signal number
 SIGRTMIN=$(kill -l SIGRTMIN)
@@ -47,8 +50,8 @@ send_signal_blocking() {
 
 # Get the PID of this script
 PARENT_PID=$$
-# Start mpi_daemon in the background
-./mpi_daemon $PARENT_PID &
+# Start sync daemon in the background
+${THAPI_BIN_DIR}/sync_daemon_${THAPI_SYNC_DAEMON} $PARENT_PID &
 DAEMON_PID=$!
 # Wait for daemon to be ready
 wait_for_signal
@@ -59,7 +62,7 @@ send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 # Run mpi_hello_world
 log "Running mpi hello..."
-./mpi_hello_world
+${SCRIPT_DIR}/mpi_hello_world
 log "done"
 
 # Final synchronization after mpi_hello_world execution
