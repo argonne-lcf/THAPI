@@ -3,6 +3,7 @@ require_relative 'extract_base.rb'
 preprocessed_sources_ze_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
 #include <ze_api.h>
 #include <ze_ddi.h>
+#include <ze_ddi_ver.h>
 #include <loader/ze_loader_api.h>
 EOF
 
