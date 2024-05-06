@@ -10,39 +10,30 @@ RT_SIGNAL_GLOBAL_BARRIER=$((SIGRTMIN + 1))
 RT_SIGNAL_LOCAL_BARRIER=$((SIGRTMIN + 2))
 RT_SIGNAL_FINISH=$((SIGRTMIN + 3))
 
-SENT_COUNT=0
-READY_RECV=0
-
 # Initialize a variable to track signal reception
-SIGNAL_RECEIVED=0
-
+SIGNAL_RECEIVED="false"
 # Signal handler for capturing signals
-handle_ready_signal() {
-    SIGNAL_RECEIVED=$((SIGNAL_RECEIVED + 1))
-}
-
-log() {
-    echo "$OMPI_COMM_WORLD_RANK$PMI_RANK:" "$@"
+handle_signal() {
+    echo "Received signal $1 from mpi_daemon"
+    if [ "$1" == "RT_SIGNAL_READY" ]; then
+        SIGNAL_RECEIVED="true"
+    fi
 }
 
 # Setup trap for ready signal sent from signal daemon
-trap 'handle_ready_signal' $RT_SIGNAL_READY
+trap 'handle_signal RT_SIGNAL_READY' $RT_SIGNAL_READY
 
 # Function to wait for RT_SIGNAL_READY
 wait_for_signal() {
-    log "waiting for signal..."
-    while [[ "$SIGNAL_RECEIVED" = 0 ]]; do
+    SIGNAL_RECEIVED="false"
+    while [[ "$SIGNAL_RECEIVED" == "false" ]]; do
         sleep 0.1  # Small sleep to prevent busy looping
     done
-    SIGNAL_RECEIVED=$((SIGNAL_RECEIVED - 1))
-    READY_RECV=$((READY_RECV + 1))
 }
 
 # Function to send signals, using adjusted SIGRTMIN corresponding to MPI signal daemon defines
 send_signal_blocking() {
-    log "send signal $1"
     kill -$1 $DAEMON_PID
-    SENT_COUNT=$((SENT_COUNT + 1))
     wait_for_signal
 }
 
@@ -53,23 +44,16 @@ ${THAPI_BIN_DIR}/sync_daemon_${THAPI_SYNC_DAEMON} $PARENT_PID &
 DAEMON_PID=$!
 # Wait for daemon to be ready
 wait_for_signal
-log "Daemon ready"
-
 # Send signals to mpi_daemon to test synchronization
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
-# Run mpi_hello_world
-log "Running $TEST_EXE..."
+
+# Run test program
 $TEST_EXE
-log "done"
 
 # Final synchronization after mpi_hello_world execution
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 # Signal to terminate the mpi_daemon
 send_signal_blocking $RT_SIGNAL_FINISH
-
-log SENT_COUNT=$SENT_COUNT
-log READY_RECV=$READY_RECV
-
 wait $DAEMON_PID  # Ensure daemon exits cleanly
