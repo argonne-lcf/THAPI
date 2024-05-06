@@ -127,8 +127,6 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
-      - run: ls -l bin/sync_daemon_mpi
-        working-directory: build/ici
       - name: iprof non-mpi tests
         run: |
           bats integration_tests/test.bats
