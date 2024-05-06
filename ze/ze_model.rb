@@ -360,7 +360,7 @@ register_epilogue "zeKernelCreate", <<EOF
 EOF
 
 ($ze_commands + $zet_commands + $zes_commands + $zel_commands).select { |c|
-  c.name.match(/(ze|zet|zes)Get.*ProcAddrTable/)
+  c.name.match(/(ze|zet|zes|zel)Get.*ProcAddrTable/)
 }.each { |c|
   parent_type = c['pDdiTable'].type.type.to_s + "_"
   child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }

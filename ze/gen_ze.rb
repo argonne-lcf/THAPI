@@ -167,7 +167,7 @@ EOF
   }
 
   if c.has_return_type?
-    puts <<EOF unless c.name.match(/(ze|zet|zes)Get.*ProcAddrTable/)
+    puts <<EOF unless c.name.match(/(ze|zet|zes|zel)Get.*ProcAddrTable/)
   #{c.type} _retval;
 EOF
     puts <<EOF
@@ -243,4 +243,8 @@ EOF
 }
 $zel_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
+  puts <<EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$/)
+#{c.decl_hidden_alias};
+
+EOF
 }

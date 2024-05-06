@@ -22,6 +22,7 @@ ZE_HDR_ROOT = \
         loader/ze_loader_api.h \
         layers/zel_tracing_api.h \
         layers/zel_tracing_ddi.h \
+        layers/zel_tracing_ddi_ver.h \
         layers/zel_tracing_register_cb.h \
         loader/ze_loader.h
 
