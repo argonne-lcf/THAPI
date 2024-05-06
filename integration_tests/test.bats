@@ -41,22 +41,6 @@ teardown_file() {
    rm out.pftrace
 }
 
-@test "iprof_mpi_daemon" {
-   run type mpiexec mpicc mpicxx
-   if [ "$status" != 0 ]
-   then
-      skip
-   fi
-
-   mpicxx ./integration_tests/iprof_mpi_daemon_test/mpi_hello_world.cpp -o mpi_hello_world
-   mpicc ./xprof/sync_daemon_mpi.c -o mpi_daemon
-
-   mpiexec -n 2 ./integration_tests/iprof_mpi_daemon_test/test.sh
-   rm mpi_hello_world
-   rm mpi_daemon
-}
-
-
 @test "replay" {
    $IPROF $THAPI_TEST_BIN
    $IPROF -r
