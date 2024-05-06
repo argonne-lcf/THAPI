@@ -1,7 +1,5 @@
 #!/bin/bash
-# Usage: IPROF_BIN_DIR=/path/to/iprof/bin THAPI_SYNC_DAEMON=mpi|fs test.sh
-
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+# Usage: IPROF_BIN_DIR=/path/to/iprof/bin THAPI_SYNC_DAEMON=mpi|fs TEST_EXE=clinfo test.sh
 
 # Get base real-time signal number
 SIGRTMIN=$(kill -l SIGRTMIN)
@@ -61,8 +59,8 @@ log "Daemon ready"
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 # Run mpi_hello_world
-log "Running mpi hello..."
-${SCRIPT_DIR}/mpi_hello_world
+log "Running $TEST_EXE..."
+$TEST_EXE
 log "done"
 
 # Final synchronization after mpi_hello_world execution
