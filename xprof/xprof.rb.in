@@ -225,7 +225,8 @@ class Sync_daemon
   def initialize
     LOGGER.info { 'Init Sync_daemon' }
     lazy_exec do
-      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi")
+      daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
+      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
                  "#{__dir__}/sync_daemon_mpi"
                else
                  "#{__dir__}/sync_daemon_fs"
@@ -236,6 +237,7 @@ class Sync_daemon
   end
 
   def finalize
+    LOGGER.info { "finalize Sync_daemon" }
     lazy_exec do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
@@ -538,6 +540,7 @@ def on_node_processing(backends, syncd)
 
   # Global Barrier
   syncd.global_barrier
+  syncd.finalize
 
   # Replace mpi_job_id with a better name
   return unless mpi_master?

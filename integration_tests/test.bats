@@ -2,6 +2,7 @@
 
 setup_file() {
    export THAPI_HOME=$PWD
+   export IPROF=$THAPI_BIN_DIR/iprof
 }
 
 teardown_file() {
@@ -14,34 +15,6 @@ teardown_file() {
    $IPROF -l -- $THAPI_TEST_BIN
    rm out.pftrace
 }
-
-@test "default_mpi" {
-   run type mpirun
-   if [ "$status" != 0 ]
-   then
-      skip
-   fi
-   mpirun -n 12 -- $IPROF $THAPI_TEST_BIN
-   mpirun -n 12 -- $IPROF -t $THAPI_TEST_BIN | wc -l
-   mpirun -n 12 -- $IPROF -l -- $THAPI_TEST_BIN
-   rm out.pftrace
-}
-
-@test "iprof_mpi_daemon" {
-   run type mpiexec mpicc mpicxx
-   if [ "$status" != 0 ]
-   then
-      skip
-   fi
-
-   mpicxx ./integration_tests/iprof_mpi_daemon_test/mpi_hello_world.cpp -o mpi_hello_world
-   mpicc ./xprof/sync_daemon_mpi.c -o mpi_daemon
-
-   mpiexec -n2 ./integration_tests/iprof_mpi_daemon_test/test.sh
-   rm mpi_hello_world
-   rm mpi_daemon
-}
-
 
 @test "replay" {
    $IPROF $THAPI_TEST_BIN

@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-     #- uses: mpi4py/setup-mpi@v1
+      - uses: mpi4py/setup-mpi@v1
       - uses: actions/cache@v4
         id: babeltrace2
         env:
@@ -127,8 +127,38 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
-      - run: |
-         IPROF=./build/ici/bin/iprof THAPI_TEST_BIN=clinfo bats integration_tests/test.bats
+      - name: iprof non-mpi tests
+        run: |
+          bats integration_tests/test.bats
+        env:
+          THAPI_TEST_BIN: clinfo
+          THAPI_BIN_DIR: ./build/ici/bin
+      - name: iprof mpi tests sync-fs
+        run: |
+          bats integration_tests/mpi_test.bats
+        env:
+          THAPI_TEST_BIN: clinfo
+          THAPI_BIN_DIR: ./build/ici/bin
+          TAHPI_SYNC_DAEMON: fs
+      - name: iprof mpi tests sync-mpi
+        run: |
+          bats integration_tests/mpi_test.bats
+        env:
+          THAPI_TEST_BIN: clinfo
+          THAPI_BIN_DIR: ./build/ici/bin
+          THAPI_SYNC_DAEMON: mpi
+      - name: test sync_daemon_fs
+        run: |
+          bats integration_tests/sync_daemon_test.bats
+        env:
+          THAPI_BIN_DIR: ./build/ici/bin
+          THAPI_SYNC_DAEMON: fs
+      - name: test sync_daemon_mpi
+        run: |
+          bats integration_tests/sync_daemon_test.bats
+        env:
+          THAPI_BIN_DIR: ./build/ici/bin
+          THAPI_SYNC_DAEMON: mpi
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
