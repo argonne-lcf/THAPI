@@ -4,7 +4,7 @@ setup_file() {
    export MPIRUN=${MPIRUN:-mpirun}
    export MPICXX=${MPICXX:-mpicxx}
    export THAPI_SYNC_DAEMON=${THAPI_SYNC_DAEMON:-mpi}
-   export TEST_EXE=clinfo
+   export TEST_EXE=${TEST_EXE:-clinfo}
 
    # TODO: disabled for now because of issue with having two
    # MPI_Init within one mpirun invocation, which happens
