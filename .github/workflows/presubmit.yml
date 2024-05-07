@@ -97,11 +97,21 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
-  build-install-and-integration_tests:
+  integration-tests:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and Install and Integration Tests ubuntu-latest
+    name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        thapi_sync_daemon: [ 'fs', 'mpi' ]
+        bats_file: ['mpi_test', 'sync_daemon_test']
+        include:
+          - bats_file: no_mpi
+    env:
+      THAPI_TEST_BIN: clinfo
+      THAPI_BIN_DIR: ./build/ici/bin
+      THAPI_SYNC_DAEMON: ${{ matrix.thapi_sync_daemon }}
     steps:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
@@ -127,38 +137,9 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
-      - name: iprof non-mpi tests
+      - name: integration test ${{ matrix.bats_file }}
         run: |
-          bats integration_tests/test.bats
-        env:
-          THAPI_TEST_BIN: clinfo
-          THAPI_BIN_DIR: ./build/ici/bin
-      - name: iprof mpi tests sync-fs
-        run: |
-          bats integration_tests/mpi_test.bats
-        env:
-          THAPI_TEST_BIN: clinfo
-          THAPI_BIN_DIR: ./build/ici/bin
-          TAHPI_SYNC_DAEMON: fs
-      - name: iprof mpi tests sync-mpi
-        run: |
-          bats integration_tests/mpi_test.bats
-        env:
-          THAPI_TEST_BIN: clinfo
-          THAPI_BIN_DIR: ./build/ici/bin
-          THAPI_SYNC_DAEMON: mpi
-      - name: test sync_daemon_fs
-        run: |
-          bats integration_tests/sync_daemon_test.bats
-        env:
-          THAPI_BIN_DIR: ./build/ici/bin
-          THAPI_SYNC_DAEMON: fs
-      - name: test sync_daemon_mpi
-        run: |
-          bats integration_tests/sync_daemon_test.bats
-        env:
-          THAPI_BIN_DIR: ./build/ici/bin
-          THAPI_SYNC_DAEMON: mpi
+          bats integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
