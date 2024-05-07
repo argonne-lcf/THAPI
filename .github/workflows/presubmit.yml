@@ -97,82 +97,18 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
-  build-install-mpi-enabled:
+  integration-tests:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and Install for Integration tests ubuntu-latest
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: mpi4py/setup-mpi@v1
-      - uses: actions/cache@v4
-        id: babeltrace2
-        env:
-          cache-name: cache-babeltrace2
-        with:
-          path: ~/babeltrace2/2.0.4
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler bats libpocl2 clinfo valgrind
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Babeltrace2
-        run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-      - run: mkdir -p build
-      - run: ./autogen.sh
-      - run: ../configure --prefix=`pwd`/ici
-        working-directory: build
-      - run: make -j install
-        working-directory: build
-
-  integration-test-non-mpi:
-    needs: [babeltrace2, pre_job]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Integration Tests (non MPI) ubuntu-latest
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: mpi4py/setup-mpi@v1
-      - uses: actions/cache@v4
-        id: babeltrace2
-        env:
-          cache-name: cache-babeltrace2
-        with:
-          path: ~/babeltrace2/2.0.4
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler bats libpocl2 clinfo valgrind
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Babeltrace2
-        run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-      - run: mkdir -p build
-      - run: ./autogen.sh
-      - run: ../configure --prefix=`pwd`/ici
-        working-directory: build
-      - run: make -j install
-        working-directory: build
-      - name: iprof non-mpi tests
-        run: |
-          bats integration_tests/test.bats
-        env:
-          THAPI_TEST_BIN: clinfo
-          THAPI_BIN_DIR: ./build/ici/bin
-
-  integration-test-mpi:
-    needs: [babeltrace2, pre_job]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Integration Tests (MPI) ubuntu-latest
+    name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         thapi_sync_daemon: [ 'fs', 'mpi' ]
+        bats_file: ['test', 'mpi_test', 'sync_daemon_test']
+        exclude:
+          - bats_file: test
+            thapi_sync_daemon: mpi
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ./build/ici/bin
@@ -202,12 +138,9 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
-      - name: iprof mpi tests sync-fs
+      - name: integration test ${{ matrix.bats_file }}
         run: |
-        bats integration_tests/mpi_test.bats
-      - name: test sync_daemon
-        run: |
-          bats integration_tests/sync_daemon_test.bats
+          bats integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
