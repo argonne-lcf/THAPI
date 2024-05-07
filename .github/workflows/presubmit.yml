@@ -105,10 +105,10 @@ jobs:
     strategy:
       matrix:
         thapi_sync_daemon: [ 'fs', 'mpi' ]
-        bats_file: ['test', 'mpi_test', 'sync_daemon_test']
-        exclude:
+        bats_file: ['mpi_test', 'sync_daemon_test']
+        include:
           - bats_file: test
-            thapi_sync_daemon: mpi
+
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ./build/ici/bin
