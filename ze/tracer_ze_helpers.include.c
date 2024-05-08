@@ -32,6 +32,19 @@ struct _ze_device_obj_data {
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
 
+pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct ze_closure {
+  void *ptr;
+  void *c_ptr;
+  UT_hash_handle hh;
+  ffi_cif cif;
+  ffi_closure *closure;
+  ffi_type **types;
+};
+
+struct ze_closure * ze_closures = NULL;
+
 typedef enum _ze_command_list_flag {
   _ZE_IMMEDIATE = ZE_BIT(0),
   _ZE_EXECUTED  = ZE_BIT(1)

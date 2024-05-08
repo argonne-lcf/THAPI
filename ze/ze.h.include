@@ -7,6 +7,7 @@
 #include <zet_ddi.h>
 #include <zes_api.h>
 #include <zes_ddi.h>
+#include <zex_api.h>
 #include <layers/zel_tracing_api.h>
 #include <layers/zel_tracing_ddi.h>
 #include <layers/zel_tracing_register_cb.h>
