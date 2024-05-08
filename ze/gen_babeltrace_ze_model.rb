@@ -67,11 +67,13 @@ def get_fields_types_name(c, dir)
   fields
 end
 
-event_classes = 
+event_classes =
 [[:lttng_ust_ze, $ze_commands],
  [:lttng_ust_zet, $zet_commands],
  [:lttng_ust_zes, $zes_commands],
- [:lttng_ust_zel, $zel_commands]].collect { |provider, commands|
+ [:lttng_ust_zel, $zel_commands],
+ [:lttng_ust_zex, $zex_commands],
+].collect { |provider, commands|
   commands.collect { |c|
     [gen_event_bt_model(provider, c, :start),
     gen_event_bt_model(provider, c, :stop)]
@@ -126,7 +128,9 @@ event_classes +=
 [[:lttng_ust_ze_structs, get_structs_types(:ze, $ze_api["typedefs"], $ze_api["structs"])],
  [:lttng_ust_zet_structs, get_structs_types(:zet, $zet_api["typedefs"], $zet_api["structs"])],
  [:lttng_ust_zes_structs, get_structs_types(:zes, $zes_api["typedefs"], $zes_api["structs"])],
- [:lttng_ust_zel_structs, get_structs_types(:zel, $zel_api["typedefs"], $zel_api["structs"])]].collect { |provider, structs|
+ [:lttng_ust_zel_structs, get_structs_types(:zel, $zel_api["typedefs"], $zel_api["structs"])],
+ [:lttng_ust_zex_structs, get_structs_types(:zex, $zes_api["typedefs"], $zes_api["structs"])],
+].collect { |provider, structs|
   structs.collect { |struct|
     gen_struct_event_bt_model(provider, struct)
   }
