@@ -6,25 +6,26 @@ else
   WERROR =
 endif
 
-ZE_NAMESPACES = ze zet zes zel
+ZE_NAMESPACES = ze zet zes zel zex
 ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
 ZE_HDR_ROOT = \
 	ze_api.h \
-        ze_ddi.h \
-        ze_ddi_ver.h \
-        zes_api.h \
-        zes_ddi.h \
-        zes_ddi_ver.h \
-        zet_api.h \
-        zet_ddi.h \
-        zet_ddi_ver.h \
-        loader/ze_loader_api.h \
-        layers/zel_tracing_api.h \
-        layers/zel_tracing_ddi.h \
-        layers/zel_tracing_ddi_ver.h \
-        layers/zel_tracing_register_cb.h \
-        loader/ze_loader.h
+	ze_ddi.h \
+	ze_ddi_ver.h \
+	zes_api.h \
+	zes_ddi.h \
+	zes_ddi_ver.h \
+	zet_api.h \
+	zet_ddi.h \
+	zet_ddi_ver.h \
+	zex_api.h \
+	loader/ze_loader_api.h \
+	layers/zel_tracing_api.h \
+	layers/zel_tracing_ddi.h \
+	layers/zel_tracing_ddi_ver.h \
+	layers/zel_tracing_register_cb.h \
+	loader/ze_loader.h
 
 ZE_HDR = $(ZE_HDR_ROOT:%=$(srcdir)/include/%)
 MODIFIED_ZE_HDR = $(ZE_HDR_ROOT:%=modified_include/%)

@@ -54,6 +54,7 @@ struct data_s {
   std::unordered_map<hp_t, memory_interval_t> rangeset_memory_device;
   std::unordered_map<hp_t, memory_interval_t> rangeset_memory_host;
   std::unordered_map<hp_t, memory_interval_t> rangeset_memory_shared;
+  std::unordered_map<hpt_t, std::unordered_map<hp_t, memory_interval_t>*> rangeset_tmp;
 
   std::unordered_map<hp_device_t, ze_device_properties_t> device_property;
   std::unordered_map<hp_device_t, thapi_device_id> subdevice_parent;

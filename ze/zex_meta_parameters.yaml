@@ -1,0 +1,8 @@
+---
+meta_parameters:
+  zexMemGetIpcHandles:
+    - [InOutScalar, numIpcHandles]
+    - [OutArray, pIpcHandles, numIpcHandles]
+  zexMemOpenIpcHandles:
+    - [InArray, pIpcHandles, numIpcHandles]
+    - [OutScalar, pptr]

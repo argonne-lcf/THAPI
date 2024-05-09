@@ -18,19 +18,22 @@ $ze_api_yaml = YAML::load_file("ze_api.yaml")
 $zet_api_yaml = YAML::load_file("zet_api.yaml")
 $zes_api_yaml = YAML::load_file("zes_api.yaml")
 $zel_api_yaml = YAML::load_file("zel_api.yaml")
+$zex_api_yaml = YAML::load_file("zex_api.yaml")
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
 $zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
 $zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
 $zel_api = YAMLCAst.from_yaml_ast($zel_api_yaml)
+$zex_api = YAMLCAst.from_yaml_ast($zex_api_yaml)
 
 ze_funcs_e = $ze_api["functions"]
 zet_funcs_e = $zet_api["functions"]
 zes_funcs_e = $zes_api["functions"]
 zel_funcs_e = $zel_api["functions"]
+zex_funcs_e = $zex_api["functions"]
 
-typedefs = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"] + $zel_api["typedefs"]
-structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"]
+typedefs = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"] + $zel_api["typedefs"] + $zex_api["typedefs"]
+structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"] + $zex_api["structs"]
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
@@ -81,6 +84,13 @@ $zel_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
+$zex_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zex_meta_parameters.yaml"))
+$zex_meta_parameters["meta_parameters"].each  { |func, list|
+  list.each { |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  }
+}
+
 $ze_commands = ze_funcs_e.collect { |func|
   Command::new(func)
 }
@@ -97,13 +107,21 @@ $zel_commands = zel_funcs_e.collect { |func|
   Command::new(func)
 }
 
+$zex_commands = zex_funcs_e.collect { |func|
+  Command::new(func)
+}
+
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-ZE_POINTER_NAMES = ($ze_commands + $zet_commands + $zes_commands + $zel_commands).collect { |c|
+ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands).collect { |c|
   [c, upper_snake_case(c.pointer_name)]
-}.to_h
+}
+ze_pointer_names += $zex_commands.collect { |c|
+  [c, c.pointer_name]
+}
+ZE_POINTER_NAMES = ze_pointer_names.to_h
 
 register_epilogue "zeDeviceGet", <<EOF
   if (_do_state()) {
@@ -211,14 +229,16 @@ memory_info_dump = lambda { |ptr_name|
 
 memory_info_prologue = lambda { |ptr_names|
   s = <<EOF
-  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+  if (_do_paranoid_memory_location &&
+      (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range))) {
     #{ptr_names.collect { |ptr_name| memory_info_dump.call(ptr_name) }.join(";\n    ")};
   }
 EOF
 }
 
 register_prologue "zeCommandListAppendMemoryRangesBarrier", <<EOF
-  if ((tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+  if (_do_paranoid_memory_location &&
+      (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) &&
       numRanges && pRangeSizes && pRanges && hCommandList)
     for (uint32_t _i = 0; _i < numRanges; _i++)
@@ -228,9 +248,10 @@ EOF
 register_prologue "zeCommandListAppendMemoryCopy", memory_info_prologue.call(["dstptr", "srcptr"])
 register_prologue "zeCommandListAppendMemoryFill", memory_info_prologue.call(["ptr"])
 register_prologue "zeCommandListAppendMemoryCopyRegion", memory_info_prologue.call(["dstptr", "srcptr"])
-register_prologue "zeCommandListAppendMemoryCopyFromContext", <<EOF
-  if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
-      tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) {
+  register_prologue "zeCommandListAppendMemoryCopyFromContext", <<EOF
+  if (_do_paranoid_memory_location &&
+      (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
+       tracepoint_enabled(lttng_ust_ze_properties, memory_info_range))) {
     if (hCommandList)
       _dump_memory_info(hCommandList, dstptr);
     if (hContextSrc)
@@ -273,7 +294,7 @@ EOF
 }
 
 paranoid_drift_prologue = <<EOF
-  if (_paranoid_drift &&
+  if (_do_paranoid_drift &&
       ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
       tracepoint_enabled(lttng_ust_ze_properties, device_timer))
     _dump_command_list_device_timer(hCommandList);
@@ -387,3 +408,80 @@ EOF
   }
 EOF
 }
+
+def get_ffi_type(a)
+  if a.type.kind_of?(YAMLCAst::Void)
+    "ffi_type_void"
+  elsif a.type.kind_of?(YAMLCAst::Pointer)
+    "ffi_type_pointer"
+  elsif FFI_TYPE_MAP["#{a.type}"]
+    FFI_TYPE_MAP["#{a.type}"]
+  else
+    raise "Unsupported type: #{a.type}"
+  end
+end
+
+str = <<EOF
+  if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
+EOF
+str << $zex_commands.collect { |c|
+  sstr = <<EOF
+    if (tracepoint_enabled(lttng_ust_zex, #{c.name}_#{START}) && strcmp(name, "#{c.name}") == 0) {
+      struct ze_closure *closure = NULL;
+      pthread_mutex_lock(&ze_closures_mutex);
+      HASH_FIND_PTR(ze_closures, ppFunctionAddress, closure);
+      pthread_mutex_unlock(&ze_closures_mutex);
+      if (closure != NULL) {
+        tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, _retval);
+        *ppFunctionAddress = closure->c_ptr;
+        return _retval;
+      }
+      closure = (struct ze_closure *)malloc(sizeof(struct ze_closure) + #{c.parameters.size} * sizeof(ffi_type *));
+      if (closure != NULL) {
+        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct ze_closure));
+        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
+        if (closure->closure != NULL) {
+          closure->ptr = *ppFunctionAddress;
+EOF
+  c.parameters.each_with_index { |a, i|
+    sstr << <<EOF
+          closure->types[#{i}] = &#{get_ffi_type(a)};
+EOF
+  }
+  sstr << <<EOF
+          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
+            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, *ppFunctionAddress, closure->c_ptr) == FFI_OK) {
+              pthread_mutex_lock(&ze_closures_mutex);
+              HASH_ADD_PTR(ze_closures, ptr, closure);
+              pthread_mutex_unlock(&ze_closures_mutex);
+              tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, _retval);
+              *ppFunctionAddress = closure->c_ptr;
+              return _retval;
+            }
+          }
+          ffi_closure_free(closure->closure);
+        }
+        free(closure);
+      }
+    }
+EOF
+}.join(<<EOF)
+    else
+EOF
+str << <<EOF
+  }
+EOF
+
+register_epilogue "zeDriverGetExtensionFunctionAddress", str
+
+register_epilogue "zeMemOpenIpcHandle", <<EOF
+  if (_retval == ZE_RESULT_SUCCESS && pptr) {
+    _dump_memory_info_ctx(hContext, *pptr);
+  }
+EOF
+
+register_epilogue "zexMemOpenIpcHandles", <<EOF
+  if (_retval == ZE_RESULT_SUCCESS && pptr) {
+    _dump_memory_info_ctx(hContext, *pptr);
+  }
+EOF

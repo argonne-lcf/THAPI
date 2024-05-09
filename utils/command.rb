@@ -29,7 +29,7 @@ class Command
   end
 
   def decl_ffi_wrapper
-    "void #{ffi_name}(ffi_cif *cif, void *ffi_ret, void **args, #{pointer_type_name} #{pointer_name})"
+    "void #{ffi_name}(ffi_cif *cif, #{type} *ffi_ret, void **args, #{pointer_type_name} #{pointer_name})"
   end
 
   def hidden_alias_name

@@ -20,10 +20,12 @@ puts <<EOF
 #include "zet_tracepoints.h"
 #include "zes_tracepoints.h"
 #include "zel_tracepoints.h"
+#include "zex_tracepoints.h"
 #include "ze_structs_tracepoints.h"
 #include "zet_structs_tracepoints.h"
 #include "zes_structs_tracepoints.h"
 #include "zel_structs_tracepoints.h"
+#include "zex_structs_tracepoints.h"
 #include "ze_sampling.h"
 #include "ze_profiling.h"
 #include "ze_properties.h"
@@ -88,11 +90,13 @@ ze_struct_types = get_structs_types(:ze, $ze_api["typedefs"], $ze_api["structs"]
 zet_struct_types = get_structs_types(:zet, $zet_api["typedefs"], $zet_api["structs"])
 zes_struct_types = get_structs_types(:zes, $zes_api["typedefs"], $zes_api["structs"])
 zel_struct_types = get_structs_types(:zel, $zel_api["typedefs"], $zel_api["structs"])
+zex_struct_types = get_structs_types(:zex, $zex_api["typedefs"], $zex_api["structs"])
+
 gen_struct_printer(:ze, ze_struct_types)
 gen_struct_printer(:zet, zet_struct_types)
 gen_struct_printer(:zes, zes_struct_types)
 gen_struct_printer(:zel, zel_struct_types)
-
+#gen_struct_printer(:zex, zex_struct_types)
 
 all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands
 (all_commands).each { |c|
@@ -104,6 +108,14 @@ all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands
 
 #{c.decl_pointer(c.pointer_type_name)};
 static #{c.pointer_type_name} #{ZE_POINTER_NAMES[c]} = (void *) 0x0;
+EOF
+}
+
+($zex_commands).each { |c|
+  puts <<EOF
+
+#{c.decl_pointer(c.pointer_type_name)};
+static #{c.decl_ffi_wrapper};
 EOF
 }
 
@@ -218,7 +230,7 @@ EOF
 }
 
 EOF
-} 
+}
 
 $ze_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
@@ -245,6 +257,28 @@ $zel_commands.each { |c|
   normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
   puts <<EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$/)
 #{c.decl_hidden_alias};
+
+EOF
+}
+
+$zex_commands.each { |c|
+  puts <<EOF
+static #{c.decl_ffi_wrapper} {
+  (void)cif;
+EOF
+  c.parameters.each_with_index { |p, i|
+    puts <<EOF
+  #{p} = *(#{p.type} *)args[#{i}];
+EOF
+  }
+  common_block.call(c, :lttng_ust_zex, zex_struct_types)
+  if c.has_return_type?
+    puts <<EOF
+  *ffi_ret = _retval;
+EOF
+  end
+  puts <<EOF
+}
 
 EOF
 }

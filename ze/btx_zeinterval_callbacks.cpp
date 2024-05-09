@@ -20,9 +20,11 @@ static void add_memory(data_t *state, hp_t hp, uintptr_t ptr, size_t size, std::
     mi = &state->rangeset_memory_device;
   else if (source == "lttng_ust_ze:zeMemAllocShared_exit")
     mi = &state->rangeset_memory_shared;
-  else
-    std::cout << "WARNING Adding unknown memory " << source << "ptr " << ptr << std::endl;
-
+  else {
+    std::cout << "WARNING Tried to add unrecognized memory " << source << "ptr " << ptr
+              << std::endl;
+    return;
+  }
   (*mi)[hp][ptr] = ptr + size;
 }
 
@@ -530,6 +532,40 @@ static void exits_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
     add_memory(data, {hostname, vpid}, (uintptr_t)pptr_val, size, event_class_name);
   }
 }
+
+static void memory_info_properties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_context_handle_t hContext, void *ptr, size_t _pMemAllocProperties_val_length,
+    ze_memory_allocation_properties_t *pMemAllocProperties_val, ze_device_handle_t hDevice) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+
+  std::unordered_map<hp_t, memory_interval_t> *mi = nullptr;
+  if (pMemAllocProperties_val->type == ZE_MEMORY_TYPE_HOST)
+    mi = &data->rangeset_memory_host;
+  else if (pMemAllocProperties_val->type == ZE_MEMORY_TYPE_DEVICE)
+    mi = &data->rangeset_memory_device;
+  else if (pMemAllocProperties_val->type == ZE_MEMORY_TYPE_SHARED)
+    mi = &data->rangeset_memory_shared;
+  else if (pMemAllocProperties_val->type == ZE_MEMORY_TYPE_UNKNOWN)
+    return;
+  else {
+    std::cout << "WARNING Unknow memory_info_properties: " << pMemAllocProperties_val->type
+              << std::endl;
+    return;
+  }
+  data->rangeset_tmp[{hostname, vpid, vtid}] = mi;
+}
+
+static void memory_info_range_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                       const char *hostname, int64_t vpid, uint64_t vtid,
+                                       ze_context_handle_t hContext, void *ptr, void *base,
+                                       size_t size) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  auto *mi = data->rangeset_tmp[{hostname, vpid, vtid}];
+  (*mi)[{hostname, vpid}][(uintptr_t)base] = (uintptr_t)base + size;
+}
 /*
  * Remove Memory
  */
@@ -753,6 +789,10 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(entries_alloc);
   REGISTER_ASSOCIATED_CALLBACK(exits_alloc);
   REGISTER_ASSOCIATED_CALLBACK(zeModule_entry);
+  btx_register_callbacks_lttng_ust_ze_properties_memory_info_properties(
+      btx_handle, &memory_info_properties_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_memory_info_range(btx_handle,
+                                                                   &memory_info_range_callback);
 
   /* Device and Subdevice property */
   btx_register_callbacks_lttng_ust_ze_properties_device(btx_handle, &property_device_callback);

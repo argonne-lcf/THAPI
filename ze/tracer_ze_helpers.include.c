@@ -31,6 +31,21 @@ struct _ze_device_obj_data {
 
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
+static int _do_paranoid_drift = 0;
+static int _do_paranoid_memory_location = 0;
+
+pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct ze_closure {
+  void *ptr;
+  void *c_ptr;
+  UT_hash_handle hh;
+  ffi_cif cif;
+  ffi_closure *closure;
+  ffi_type **types;
+};
+
+struct ze_closure * ze_closures = NULL;
 
 typedef enum _ze_command_list_flag {
   _ZE_IMMEDIATE = ZE_BIT(0),
@@ -606,7 +621,6 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile unsigned int _initialized = 0;
-static int _paranoid_drift = 0;
 
 static inline int _do_state() {
   return _do_profile ||
@@ -1113,18 +1127,25 @@ static void _load_tracer(void) {
 
   if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device) || tracepoint_enabled(lttng_ust_ze_properties, subdevice))
     _dump_properties();
+
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
     _do_profile = 1;
+
   s = getenv("LTTNG_UST_ZE_PARANOID_DRIFT");
   if (s) {
     if (_do_profile)
-      _paranoid_drift = 1;
+      _do_paranoid_drift = 1;
     else if (verbose)
       fprintf(stderr, "Warning: LTTNG_UST_ZE_PARANOID_DRIFT not activated without LTTNG_UST_ZE_PROFILE\n");
   }
 
-  if (getenv("LTTNG_UST_SAMPLING_ENERGY")) {
+  s = getenv("LTTNG_UST_ZE_PARANOID_MEMORY_LOCATION");
+  if (s)
+     _do_paranoid_memory_location = 1;
+
+  s = getenv("LTTNG_UST_SAMPLING_ENERGY");
+  if (s) {
     initializeHandles();
     /* TODO: make it configurable */
     interval.tv_sec = 0;

@@ -379,17 +379,16 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_ze:*")
     exec("#{lttng_enable} lttng_ust_zes:*")
     exec("#{lttng_enable} lttng_ust_zet:*")
+    exec("#{lttng_enable} lttng_ust_zex:*")
   when 'default'
-    exec("#{lttng_enable} lttng_ust_ze_build:log*")
-    exec("#{lttng_enable} lttng_ust_ze_profiling:*") if profiling
     # Wildcard using the * character are supported at the end of tracepoint names.
     #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
     # Disable-event doesn't have wildcards
     # So we enable and disable on the same line
-    ze_properties_disable = ['lttng_ust_ze_properties:memory_info_properties',
-                             'lttng_ust_ze_properties:memory_info_range']
-    exec("#{lttng_enable} lttng_ust_ze_properties:* -x #{ze_properties_disable.join(',')}")
-
+    exec("#{lttng_enable} lttng_ust_ze_build:log*")
+    exec("#{lttng_enable} lttng_ust_ze_profiling:*") if profiling
+    exec("#{lttng_enable} lttng_ust_zex:*")
+    exec("#{lttng_enable} lttng_ust_ze_properties:*")
     ze_disable_events = ['lttng_ust_ze:zeKernelSetArgumentValue*', 'lttng_ust_ze:ze*Get*Properties*',
                          'lttng_ust_ze:zeKernelGetName']
     ze_disable_query = ['lttng_ust_ze:*QueryStatus', 'lttng_ust_ze:*ProcAddrTable*']
