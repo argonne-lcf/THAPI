@@ -377,7 +377,7 @@ subcommands = {
   'tally' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi tally [OPTIONS] trace_directory...'
-      parser.on('--display TYPE', String, default: 'compact', allowed: %w[compact extented])
+      parser.on('--display TYPE', String, default: 'compact', allowed: %w[compact extended])
       parser.on('--name TYPE', String, default: 'demangle', allowed: %w[demangle mangle])
       parser.on('--display-mode MODE', String, default: 'human', allowed: %w[human json])
       parser.on('--display-metadata', default: false)
