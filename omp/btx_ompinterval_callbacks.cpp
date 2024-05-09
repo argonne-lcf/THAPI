@@ -53,7 +53,7 @@ static void host_and_traffic_op_callback(void *btx_handle, void *usr_data, int64
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
                                 op_name.c_str(), (ts - start_ts.value()), err);
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
-                                   op_name.c_str(), bytes);
+                                   op_name.c_str(), bytes, "");
   }
 }
 

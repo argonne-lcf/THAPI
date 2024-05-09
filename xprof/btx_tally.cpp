@@ -318,13 +318,18 @@ static void aggreg_device_callback(void *btx_handle, void *usr_data, const char 
 static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
                                     int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
                                     uint64_t max, uint64_t total, uint64_t count,
-                                    uint64_t backend) {
+                                    uint64_t backend, const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   const int level = data->backend_levels[backend];
   std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
   data->traffic_backend_name[level].insert(backend_name);
-  data->traffic[level][{hostname, vpid, vtid, name}] += {total, 0, count, min, max};
+
+  std::string sname{name};
+  const auto name_with_metadata = (data->params->display_kernel_verbose && strlen(metadata) != 0)
+                                      ? sname + "[" + metadata + "]"
+                                      : sname;
+  data->traffic[level][{hostname, vpid, vtid, name_with_metadata}] += {total, 0, count, min, max};
   ;
 }
 

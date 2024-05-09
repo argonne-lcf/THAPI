@@ -25,13 +25,25 @@ using btx_kernel_group_size_t = std::tuple<uint32_t, uint32_t, uint32_t>;
 using btx_kernel_desct_t =
     std::tuple<std::string /*ze_kernel_desc_t*/, ze_kernel_properties_t, btx_kernel_group_size_t>;
 
+using btx_traffic_t =
+   std::tuple<int64_t /*ts*/,
+   size_t /*size*/>;
+
+enum class btx_event_t { COPY, KERNEL, OTHER };
+
 using btx_launch_desc_t =
-    std::tuple<ze_command_list_handle_t, std::string /*name*/, std::string /*metadata*/>;
+    std::tuple<ze_command_list_handle_t, std::string /*name*/, std::string /*metadata*/,
+    btx_event_t /* type of enum */,
+     void * /* pointer to additional data */>
+     ;
 using btx_event_desct_t =
     std::tuple<thread_id_t, ze_command_queue_desc_t, ze_command_list_handle_t,
                bool /*hCommandListIsImmediate*/, ze_device_handle_t, std::string /*name*/,
                std::string /*metadata*/, int64_t /*ts born min*/,
-               clock_lttng_device_t /* clock sync pair */>;
+               clock_lttng_device_t /* clock sync pair */,
+	       btx_event_t /* type of enum */,
+	       void * /* pointer to additional data */>;
+
 using btx_command_list_desc_t =
     std::tuple<ze_command_queue_desc_t, ze_device_handle_t, bool /*hCommandListIsImmediate*/>;
 

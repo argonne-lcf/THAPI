@@ -7,12 +7,14 @@
 using name_t = std::string;
 using metadata_t = std::string;
 using _hptbn_t = std::tuple<hostname_t, process_id_t, thread_id_t, backend_t, name_t>;
+
+using _hptbnm_t = std::tuple<hostname_t, process_id_t, thread_id_t, backend_t, name_t, metadata_t>;
 using _hptn_dsb_nm_t = std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id,
                                   thapi_device_id, name_t, metadata_t>;
 
 struct aggreg_s {
   std::unordered_map<_hptbn_t, TallyCoreBase> host;
-  std::unordered_map<_hptbn_t, TallyCoreBase> traffic;
+  std::unordered_map<_hptbnm_t, TallyCoreBase> traffic;
   std::unordered_map<_hptn_dsb_nm_t, TallyCoreBase> device;
 };
 using aggreg_t = struct aggreg_s;
@@ -36,9 +38,9 @@ static void finalize_processing_callback(void *btx_handle, void *usr_data) {
   }
   // Traffic
   for (const auto &[hptb_function_name, t] : data->traffic) {
-    const auto &[hostname, vpid, vtid, backend_id, name] = hptb_function_name;
+    const auto &[hostname, vpid, vtid, backend_id, name, metadata] = hptb_function_name;
     btx_push_message_aggreg_traffic(btx_handle, hostname.c_str(), vpid, vtid, name.c_str(), t.min,
-                                    t.max, t.duration, t.count, (int64_t)backend_id);
+                                    t.max, t.duration, t.count, (int64_t)backend_id, metadata.c_str());
   }
 
   // Device
@@ -58,10 +60,10 @@ static void host_usr_callback(void *btx_handle, void *usr_data, const char *host
 
 static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                  int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend_id,
-                                 const char *name, uint64_t size) {
+                                 const char *name, uint64_t size, const char *metadata) {
 
   auto *data = static_cast<aggreg_t *>(usr_data);
-  data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name}] += {size, false};
+  data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name, metadata}] += {size, false};
 }
 
 static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
