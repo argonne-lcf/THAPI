@@ -409,6 +409,18 @@ EOF
 EOF
 }
 
+def get_ffi_type(a)
+  if a.type.kind_of?(YAMLCAst::Void)
+    "ffi_type_void"
+  elsif a.type.kind_of?(YAMLCAst::Pointer)
+    "ffi_type_pointer"
+  elsif FFI_TYPE_MAP["#{a.type}"]
+    FFI_TYPE_MAP["#{a.type}"]
+  else
+    raise "Unsupported type: #{a.type}"
+  end
+end
+
 str = <<EOF
   if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
 EOF
@@ -432,28 +444,12 @@ str << $zex_commands.collect { |c|
           closure->ptr = *ppFunctionAddress;
 EOF
   c.parameters.each_with_index { |a, i|
-    if a.type.kind_of?(YAMLCAst::Pointer)
-      ffi_type = "ffi_type_pointer"
-    elsif FFI_TYPE_MAP["#{a.type}"]
-      ffi_type = FFI_TYPE_MAP["#{a.type}"]
-    else
-      raise "Unsupported type: #{a.type}"
-    end
     sstr << <<EOF
-          closure->types[#{i}] = &#{ffi_type};
+          closure->types[#{i}] = &#{get_ffi_type(a)};
 EOF
   }
-  if c.type.kind_of?(YAMLCAst::Void)
-    ffi_ret_type = "ffi_type_void"
-  elsif c.type.kind_of?(YAMLCAst::Pointer)
-    ffi_ret_type = "ffi_type_pointer"
-  elsif FFI_TYPE_MAP["#{c.type}"]
-    ffi_ret_type = FFI_TYPE_MAP["#{c.type}"]
-  else
-    raise "Unsupported type: #{c.type}"
-  end
   sstr << <<EOF
-          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{ffi_ret_type}, closure->types) == FFI_OK) {
+          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
             if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, *ppFunctionAddress, closure->c_ptr) == FFI_OK) {
               pthread_mutex_lock(&ze_closures_mutex);
               HASH_ADD_PTR(ze_closures, ptr, closure);
