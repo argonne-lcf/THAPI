@@ -755,7 +755,7 @@ static inline void _dump_memory_info_ctx(ze_context_handle_t hContext, const voi
       do_tracepoint(lttng_ust_ze_properties, memory_info_range, hContext, ptr, base, size);
   }
 }
-
+/*
 static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, const void *ptr) {
   struct _ze_obj_h *o_h = NULL;
   FIND_ZE_OBJ(&hCommandList, o_h);
@@ -764,7 +764,7 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
     _dump_memory_info_ctx(hContext, ptr);
   }
 }
-
+*/
 ////////////////////////////////////////////
 #define _ZE_ERROR_MSG(NAME,RES) do {\
   fprintf(stderr,"%s() failed at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
