@@ -83,6 +83,10 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: metadata
+              :field_class:
+                :type: string
+                :cast_type: const char*
   - :name: interval
     :event_common_context_field_class:
       :type: structure

@@ -152,6 +152,13 @@
       :type: structure
       :members:
       - :name: ^size$
+  - :set_id: eventMemory_without_hSignalEvent_exit
+    :domain: n = eventMemory_without_hSignalEvent_entry.map { |b| b.name.sub("_entry","_exit") }; exits.filter { |a| n.include?(a.name) }.to_set
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^zeResult$
+
   - ## Rest
     :set_id: hSignalEvent_rest_entry
     :domain: hSignalEvent_entry - (hSignalEvent_hKernel_with_group_entry + hSignalEvent_hKernel_without_group_entry + hSignalEvent_eventMemory_entry)

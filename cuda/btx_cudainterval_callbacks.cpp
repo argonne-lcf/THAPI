@@ -146,7 +146,7 @@ static void exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
   auto size = state->entry_state.get_data<size_t>(key);
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, entry_ts,
                                  BACKEND_CUDA,
-                                 event_class_name_stripped.c_str(), size);
+                                 event_class_name_stripped.c_str(), size, "");
 }
 
 static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
