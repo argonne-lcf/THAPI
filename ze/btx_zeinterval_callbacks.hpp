@@ -26,12 +26,11 @@ using btx_kernel_group_size_t = std::tuple<uint32_t, uint32_t, uint32_t>;
 using btx_kernel_desct_t =
     std::tuple<std::string /*ze_kernel_desc_t*/, ze_kernel_properties_t, btx_kernel_group_size_t>;
 
+enum class btx_event_t { TRAFFIC, KERNEL, OTHER };
 using btx_additional_info_traffic_t = std::tuple<int64_t /*ts*/, size_t /*size*/>;
 using btx_additional_info_kernel_t = std::string /*metadata*/;
-
 using btx_additional_info =
-    std::optional<std::variant<btx_additional_info_traffic_t, btx_additional_info_kernel_t>>;
-enum class btx_event_t { COPY, KERNEL, OTHER };
+    std::variant<std::monostate, btx_additional_info_traffic_t, btx_additional_info_kernel_t>;
 
 using btx_launch_desc_t =
     std::tuple<ze_command_list_handle_t, std::string /*name*/, btx_event_t /* type of enum */,

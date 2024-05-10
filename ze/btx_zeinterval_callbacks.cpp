@@ -386,7 +386,7 @@ static void hSignalEvent_eventMemory_2ptr_entry_callback(void *btx_handle, void 
             << memory_location(data, hp, (uintptr_t)dstptr) << ")";
     name = ss_name.str();
   }
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::COPY,
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::TRAFFIC,
                                                           btx_additional_info_traffic_t{ts, size}};
 }
 
@@ -407,7 +407,7 @@ static void hSignalEvent_eventMemory_1ptr_entry_callback(void *btx_handle, void 
            << memory_location(data, hp, (uintptr_t)ptr) << ")";
     name = name_s.str();
   }
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::COPY,
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::TRAFFIC,
                                                           btx_additional_info_traffic_t{ts, size}};
 }
 
@@ -680,7 +680,7 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   {
     std::stringstream ss_metadata;
     if ((type == btx_event_t::KERNEL) && (status == ZE_RESULT_SUCCESS))
-      ss_metadata << std::get<btx_additional_info_kernel_t>(ptr.value()) << ", ";
+      ss_metadata << std::get<btx_additional_info_kernel_t>(ptr) << ", ";
     // Create additional Medatata of the Command Queue
     ss_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
                 << "index: " << commandQueueDesc.index << "}";
@@ -689,8 +689,8 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].erase(hEvent);
 
-  if ((type == btx_event_t::COPY) && (status == ZE_RESULT_SUCCESS)) {
-    auto &[ts, size] = std::get<btx_additional_info_traffic_t>(ptr.value());
+  if ((type == btx_event_t::TRAFFIC) && (status == ZE_RESULT_SUCCESS)) {
+    auto &[ts, size] = std::get<btx_additional_info_traffic_t>(ptr);
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
                                    commandName.c_str(), size, metadata.c_str());
   }
