@@ -300,7 +300,7 @@ static void zeCommandListCreate_exit_callback(void *btx_handle, void *usr_data, 
   const auto hDevice = data->entry_state.get_data<ze_device_handle_t>({hostname, vpid, vtid});
   if (zeResult != ZE_RESULT_SUCCESS)
     return;
-  // Command Queue will be binded during CommandQueue Execute
+  // ze_command_queue_desc_t  will be binded during CommandQueue Execute
   data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {ze_command_queue_desc_t{}, hDevice,
                                                                 false};
 }
@@ -341,7 +341,7 @@ static void hSignalEvent_hKernel_with_group_entry_callback(
   auto *data = static_cast<data_t *>(usr_data);
   auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
 
-  std::string name = std::get<std::string>(a);
+  auto name = std::get<std::string>(a);
   std::string metadata;
   {
     auto &[groupSizeX, groupSizeY, groupSizeZ] = std::get<btx_kernel_group_size_t>(a);
@@ -353,8 +353,8 @@ static void hSignalEvent_hKernel_with_group_entry_callback(
                << ", {" << groupSizeX << "," << groupSizeY << "," << groupSizeZ << "}";
     metadata = metadata_s.str();
   }
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, metadata,
-                                                          btx_event_t::OTHER, nullptr};
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::KERNEL,
+                                                          btx_additional_info_kernel_t{metadata}};
 }
 
 static void hSignalEvent_hKernel_without_group_entry_callback(
@@ -363,11 +363,9 @@ static void hSignalEvent_hKernel_without_group_entry_callback(
     ze_kernel_handle_t hKernel) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  auto &a = data->kernelToDesct[{hostname, vpid, hKernel}];
-  const std::string name = std::get<std::string>(a);
-  const std::string metadata = "";
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, metadata,
-                                                          btx_event_t::OTHER, nullptr};
+  auto name = std::get<std::string>(data->kernelToDesct[{hostname, vpid, hKernel}]);
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {
+      hCommandList, name, btx_event_t::OTHER, {}};
 }
 
 static void hSignalEvent_eventMemory_2ptr_entry_callback(void *btx_handle, void *usr_data,
@@ -382,17 +380,14 @@ static void hSignalEvent_eventMemory_2ptr_entry_callback(void *btx_handle, void 
 
   std::string name;
   {
-    std::stringstream name_s;
-    name_s << strip_event_class_name_entry(event_class_name) << "("
-           << memory_location(data, hp, (uintptr_t)srcptr) << "2"
-           << memory_location(data, hp, (uintptr_t)dstptr) << ")";
-    name = name_s.str();
+    std::stringstream ss_name;
+    ss_name << strip_event_class_name_entry(event_class_name) << "("
+            << memory_location(data, hp, (uintptr_t)srcptr) << "2"
+            << memory_location(data, hp, (uintptr_t)dstptr) << ")";
+    name = ss_name.str();
   }
-  std::string metadata = "";
-
-  auto *m = new btx_traffic_t{ts, size};
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, metadata,
-                                                          btx_event_t::COPY, (void *)m};
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::COPY,
+                                                          btx_additional_info_traffic_t{ts, size}};
 }
 
 static void hSignalEvent_eventMemory_1ptr_entry_callback(void *btx_handle, void *usr_data,
@@ -412,11 +407,8 @@ static void hSignalEvent_eventMemory_1ptr_entry_callback(void *btx_handle, void 
            << memory_location(data, hp, (uintptr_t)ptr) << ")";
     name = name_s.str();
   }
-  std::string metadata = "";
-
-  auto *m = new btx_traffic_t{ts, size};
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, metadata,
-                                                          btx_event_t::COPY, (void *)m};
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, btx_event_t::COPY,
+                                                          btx_additional_info_traffic_t{ts, size}};
 }
 
 static void eventMemory_without_hSignalEvent_entry_callback(void *btx_handle, void *usr_data,
@@ -450,10 +442,8 @@ static void hSignalEvent_rest_entry_callback(void *btx_handle, void *usr_data, i
 
   auto *data = static_cast<data_t *>(usr_data);
   std::string name = strip_event_class_name_entry(event_class_name);
-  std::string metadata = "";
-
-  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {hCommandList, name, metadata,
-                                                          btx_event_t::OTHER, nullptr};
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {
+      hCommandList, name, btx_event_t::OTHER, {}};
 }
 
 /*
@@ -639,7 +629,7 @@ static void event_profiling_callback(void *btx_handle, void *usr_data, int64_t t
     return;
 
   // Don't put an `&` is break the metadata / commandName... Not sure why
-  const auto [hCommandList, commandName, metadata, type, ptr] = it_pp->second;
+  const auto [hCommandList, commandName, type, ptr] = it_pp->second;
   data->threadToLastLaunchInfo.erase(it_pp);
 
   auto [commandQueueDesc, hDevice, hCommandListIsImmediate] =
@@ -655,10 +645,11 @@ static void event_profiling_callback(void *btx_handle, void *usr_data, int64_t t
   }
 
   // If not IMM will be commandQueueDesc overwrited latter
-  data->eventToBtxDesct[{hostname, vpid, hEvent}] = {
-      vtid,        commandQueueDesc, hCommandList, hCommandListIsImmediate, hDevice,
-      commandName, metadata,         ts,           clockLttngDevice,        type,
-      ptr};
+  data->eventToBtxDesct[{hostname, vpid, hEvent}] = {vtid,         commandQueueDesc,
+                                                     hCommandList, hCommandListIsImmediate,
+                                                     hDevice,      commandName,
+                                                     ts,           clockLttngDevice,
+                                                     type,         ptr};
   // Prepare job for non IMM
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
@@ -683,25 +674,26 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
     return;
   // We don't erase, may have one entry for multiple result
   const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
-               commandName, metadata, lltngMin, clockLttngDevice, type, ptr] = it_p->second;
-  // Create additional Medatata of the Command Queue
-  std::stringstream queue_metadata;
-  if (!metadata.empty())
-    queue_metadata << ", ";
+               commandName, lltngMin, clockLttngDevice, type, ptr] = it_p->second;
 
-  queue_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
-                 << "index: " << commandQueueDesc.index << "}";
-  std::string full_metadata = metadata + queue_metadata.str();
-
+  std::string metadata = "";
+  {
+    std::stringstream ss_metadata;
+    if ((type == btx_event_t::KERNEL) && (status == ZE_RESULT_SUCCESS))
+      ss_metadata << std::get<btx_additional_info_kernel_t>(ptr.value()) << ", ";
+    // Create additional Medatata of the Command Queue
+    ss_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
+                << "index: " << commandQueueDesc.index << "}";
+    metadata = ss_metadata.str();
+  }
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].erase(hEvent);
 
   if ((type == btx_event_t::COPY) && (status == ZE_RESULT_SUCCESS)) {
-    auto &[ts, size] = *(btx_traffic_t *)ptr;
+    auto &[ts, size] = std::get<btx_additional_info_traffic_t>(ptr.value());
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
-                                   commandName.c_str(), size, full_metadata.c_str());
+                                   commandName.c_str(), size, metadata.c_str());
   }
-
   const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
   // No device information. No conversion to ns, no looping
   uint64_t delta = globalEnd - globalStart;
@@ -726,7 +718,7 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
 
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission, start, BACKEND_ZE,
                                 commandName.c_str(), delta, device_hash, subdevice_hash, err,
-                                full_metadata.c_str());
+                                metadata.c_str());
 }
 
 static void zeEventDestroy_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
