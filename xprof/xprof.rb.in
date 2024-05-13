@@ -314,7 +314,7 @@ def env_tracers
   end
 
   # Sample
-  if OPTIONS[:sample]
+  if OPTIONS[:sample] && mpi_local_master?
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
     h['ZES_ENABLE_SYSMAN'] = 1 if OPTIONS[:'backend-names'].include?('ze')
