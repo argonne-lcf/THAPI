@@ -790,6 +790,12 @@ static void lttng_ust_ze_sampling_computeEngine_callback(
     return;
   auto &[prev_activeTime, prev_sampling_ts, prev_ts] = it->second;
 
+  /* Per doc: When taking the delta, the difference between timestamp samples
+   * could be 0, if the frequency of sampling the snapshots is higher than the
+   * frequency of the timestamp update. */
+  if (prev_sampling_ts == sampling_ts)
+    return;
+
   btx_push_message_lttng_computeEU(
       btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice, subDevice,
       (activeTime - prev_activeTime) / (double)(sampling_ts - prev_sampling_ts));
@@ -809,6 +815,12 @@ static void lttng_ust_ze_sampling_copyEngine_callback(void *btx_handle, void *us
   if (inserted)
     return;
   auto &[prev_activeTime, prev_sampling_ts, prev_ts] = it->second;
+
+  /* Per doc: When taking the delta, the difference between timestamp samples
+   * could be 0, if the frequency of sampling the snapshots is higher than the
+   * frequency of the timestamp update. */
+  if (prev_sampling_ts == sampling_ts)
+    return;
 
   btx_push_message_lttng_copyEU(
       btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice, subDevice,
