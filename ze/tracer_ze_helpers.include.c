@@ -633,10 +633,10 @@ static inline int _do_state() {
 static void __attribute__((destructor))
 _lib_cleanup() {
   if (_do_cleanup) {
-    if (_sampling_handle)
-      thapi_unregister_sampling(_sampling_handle);
     if (_do_profile)
       _event_cleanup();
+    if (_sampling_handle)
+      thapi_unregister_sampling(_sampling_handle);
   }
 }
 
