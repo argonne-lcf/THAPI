@@ -39,7 +39,8 @@ struct timeline_dispatch_s {
   perfetto_pruned::Trace trace;
 };
 using timeline_dispatch_t = struct timeline_dispatch_s;
-using uuid_getter_t = perfetto_uuid_t(*)(timeline_dispatch_t*, std::string, uint64_t, uintptr_t, uint32_t);
+using uuid_getter_t = perfetto_uuid_t (*)(timeline_dispatch_t *, std::string, uint64_t, uintptr_t,
+                                          uint32_t);
 static perfetto_uuid_t gen_perfetto_uuid() {
   // Start at one, Look like UUID 0 is special
   static std::atomic<perfetto_uuid_t> uuid{1};
@@ -47,9 +48,11 @@ static perfetto_uuid_t gen_perfetto_uuid() {
 }
 
 static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispatch,
-                                                     std::string hostname, uint64_t process_id, thapi_device_id did ) {
+                                                     std::string hostname, uint64_t process_id,
+                                                     thapi_device_id did) {
   perfetto_uuid_t hp_uuid = 0;
-  auto [it, inserted] = dispatch->hp_device2countertracks.insert({{hostname, process_id, did}, hp_uuid});
+  auto [it, inserted] =
+      dispatch->hp_device2countertracks.insert({{hostname, process_id, did}, hp_uuid});
   auto &potential_uuid = it->second;
   // Exists
   if (!inserted)
@@ -69,15 +72,17 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
   auto *process = track_descriptor->mutable_process();
   process->set_pid(hp_uuid);
   std::ostringstream oss;
-  oss << "Hostname " << hostname << " | Process " << process_id << " | Device " << did ;
-  //oss << " | " << track_name << " | uuid ";
+  oss << "Hostname " << hostname << " | Process " << process_id << " | Device " << did;
+  // oss << " | " << track_name << " | uuid ";
   process->set_process_name(oss.str());
   return hp_uuid;
 }
 
-static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
-                                               std::unordered_map<hp_ddomain_t, perfetto_uuid_t> &counter_tracks, const std::string track_name,
-                                              std::string hostname, uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
+static perfetto_uuid_t
+get_counter_track_uuuid(timeline_dispatch_t *dispatch,
+                        std::unordered_map<hp_ddomain_t, perfetto_uuid_t> &counter_tracks,
+                        const std::string track_name, std::string hostname, uint64_t process_id,
+                        thapi_device_id did, thapi_domain_idx domain, int64_t unit_multiplier = 1) {
   perfetto_uuid_t hp_dev_uuid = 0;
   auto [it, inserted] = counter_tracks.insert({{hostname, process_id, did, domain}, hp_dev_uuid});
   auto &potential_uuid = it->second;
@@ -99,33 +104,45 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
   std::ostringstream oss;
   oss << track_name << " | Domain " << domain;
   track_descriptor->set_name(oss.str());
-  track_descriptor->mutable_counter();
+
+  auto *counter_descriptor = track_descriptor->mutable_counter();
+  counter_descriptor->set_unit_multiplier(unit_multiplier);
+
   return hp_dev_uuid;
 }
 
-static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                                 uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, " GPU Frequency", hostname, process_id, did, domain);
+static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch,
+                                                 std::string hostname, uint64_t process_id,
+                                                 thapi_device_id did, thapi_domain_idx domain) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, " GPU Frequency",
+                                 hostname, process_id, did, domain);
 }
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                             uint64_t process_id, thapi_device_id did, thapi_domain_idx domain) {
-  //Extra leading space in the name field to make GPU Power the first track
-  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  GPU Power", hostname, process_id, did, domain);
+                                             uint64_t process_id, thapi_device_id did,
+                                             thapi_domain_idx domain) {
+  // Extra leading space in the name field to make GPU Power the first track
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  GPU Power", hostname,
+                                 process_id, did, domain);
 }
 
-static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                                 uint64_t process_id, thapi_device_id did, thapi_sdevice_idx subDevice) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeEngine (%)", hostname, process_id, did, subDevice);
+static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch,
+                                                 std::string hostname, uint64_t process_id,
+                                                 thapi_device_id did, thapi_sdevice_idx subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeEngine (%)",
+                                 hostname, process_id, did, subDevice, 100);
 }
 
 static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch, std::string hostname,
-                                              uint64_t process_id, thapi_device_id did, thapi_sdevice_idx subDevice) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyEngine (%)", hostname, process_id, did, subDevice);
+                                              uint64_t process_id, thapi_device_id did,
+                                              thapi_sdevice_idx subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyEngine (%)", hostname,
+                                 process_id, did, subDevice, 100);
 }
 
-static void add_event_DTelemetry(timeline_dispatch_t *dispatch, std::string hostname, uint64_t process_id,
-                                 uint64_t thread_id, uintptr_t did, uint32_t subDevice, uint64_t timestamp,
-                                 float value, uuid_getter_t uuid_getter, const std::string& eventName) {
+static void add_event_DTelemetry(timeline_dispatch_t *dispatch, std::string hostname,
+                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
+                                 uint32_t subDevice, uint64_t timestamp, float value,
+                                 uuid_getter_t uuid_getter, const std::string &eventName) {
   perfetto_uuid_t track_uuid = uuid_getter(dispatch, hostname, process_id, did, subDevice);
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
@@ -139,30 +156,29 @@ static void add_event_DTelemetry(timeline_dispatch_t *dispatch, std::string host
 static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
                                 uint32_t domain, uint64_t timestamp, float frequency) {
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, domain,
-                       timestamp, frequency, get_frequency_track_uuuid, "Frequency");
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, domain, timestamp, frequency,
+                       get_frequency_track_uuuid, "Frequency");
 }
 
 static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
-                            uint64_t process_id, uint64_t thread_id, uintptr_t did,
-                            uint32_t domain, uint64_t timestamp, float power)
-{
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, domain,
-                       timestamp, power, get_power_track_uuuid, "Power");
+                            uint64_t process_id, uint64_t thread_id, uintptr_t did, uint32_t domain,
+                            uint64_t timestamp, float power) {
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, domain, timestamp, power,
+                       get_power_track_uuuid, "Power");
 }
 
 static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
                                 uint32_t subDevice, uint64_t timestamp, float activeTime) {
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice,
-                       timestamp, activeTime, get_computeEU_track_uuuid, "ComputeEngine");
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice, timestamp,
+                       activeTime, get_computeEU_track_uuuid, "ComputeEngine");
 }
 
 static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname,
                              uint64_t process_id, uint64_t thread_id, uintptr_t did,
                              uint32_t subDevice, uint64_t timestamp, float activeTime) {
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice,
-                       timestamp, activeTime, get_copyEU_track_uuuid, "CopyEngine");
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice, timestamp,
+                       activeTime, get_copyEU_track_uuuid, "CopyEngine");
 }
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
@@ -327,9 +343,7 @@ static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
   add_event_end(dispatch, track_uuid, end);
 }
 
-void btx_initialize_component_callback(void **usr_data) {
-  *usr_data = new timeline_dispatch_t;
-}
+void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeline_dispatch_t; }
 
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *data = static_cast<timeline_dispatch_t *>(usr_data);
@@ -345,9 +359,9 @@ void btx_finalize_component_callback(void *usr_data) {
     }
   }
 
-  std::string path{ dispatch->params->output_path};
-  if ( path.empty()) {
-	path = "out.pftrace";
+  std::string path{dispatch->params->output_path};
+  if (path.empty()) {
+    path = "out.pftrace";
   }
 
   // Write the new address book back to disk.
@@ -383,9 +397,9 @@ static void frequency_usr_callback(void *btx_handle, void *usr_data, const char 
   add_event_frequency(dispatch, hostname, vpid, vtid, did, domain, ts, frequency);
 }
 
-static void power_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                               int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                               uint64_t did, uint32_t domain, uint64_t power) {
+static void power_usr_callback(void *btx_handle, void *usr_data, const char *hostname, int64_t vpid,
+                               uint64_t vtid, int64_t ts, int64_t backend, uint64_t did,
+                               uint32_t domain, uint64_t power) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   add_event_power(dispatch, hostname, vpid, vtid, did, domain, ts, power);
 }
