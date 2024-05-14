@@ -20,9 +20,13 @@ static UT_array *thapi_sampling_events = NULL;
 
 static pthread_once_t thapi_init_once = PTHREAD_ONCE_INIT;
 static volatile int thapi_sampling_finished = 0;
+static volatile int thapi_sampling_initialized = 0;
 static pthread_t thapi_sampling_thread;
 
-static void thapi_sampling_cleanup() {
+static void __attribute__((destructor))
+thapi_sampling_cleanup() {
+  if (!thapi_sampling_initialized)
+    return;
   thapi_sampling_finished = 1;
   pthread_join(thapi_sampling_thread, NULL);
   pthread_mutex_lock(&thapi_sampling_mutex);
@@ -111,7 +115,7 @@ void thapi_sampling_init_once() {
     thapi_register_sampling(&thapi_sampling_heartbeat2, &interval);
   }
   if (!pthread_create(&thapi_sampling_thread, NULL, &thapi_sampling_loop, NULL))
-    atexit(&thapi_sampling_cleanup);
+    thapi_sampling_initialized = 1;
 }
 
 int thapi_sampling_init() {
@@ -120,11 +124,11 @@ int thapi_sampling_init() {
   return 1;
 }
 
-void thapi_register_sampling(void (*pfn)(void), struct timespec *interval) {
+thapi_sampling_handle_t thapi_register_sampling(void (*pfn)(void), struct timespec *interval) {
   struct sampling_entry *entry = NULL;
   struct timespec now, next;
   if(clock_gettime(CLOCK_REALTIME, &now))
-    return;
+    return NULL;
   time_add(&next, &now, interval);
 
   pthread_mutex_lock(&thapi_sampling_mutex);
@@ -139,5 +143,24 @@ void thapi_register_sampling(void (*pfn)(void), struct timespec *interval) {
   utarray_push_back(thapi_sampling_events, &entry);
   utarray_sort(thapi_sampling_events, sampling_entry_cmpw);
 end:
+  pthread_mutex_unlock(&thapi_sampling_mutex);
+  return entry;
+}
+
+void thapi_unregister_sampling(thapi_sampling_handle_t handle)
+{
+  if (!handle)
+    return;
+  struct sampling_entry *entry = (struct sampling_entry *)handle;
+  pthread_mutex_lock(&thapi_sampling_mutex);
+  unsigned int len = utarray_len(thapi_sampling_events);
+  for (unsigned int i = 0; i < len; i++) {
+    struct sampling_entry **p =
+      (struct sampling_entry **)utarray_eltptr(thapi_sampling_events, i);
+    if (*p == entry) {
+      utarray_erase(thapi_sampling_events, i, 1);
+      break;
+    }
+  }
   pthread_mutex_unlock(&thapi_sampling_mutex);
 }

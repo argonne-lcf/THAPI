@@ -30,9 +30,11 @@ struct _ze_device_obj_data {
 };
 
 static int _do_profile = 0;
+static int _do_cleanup = 0;
 static int _do_chained_structs = 0;
 static int _do_paranoid_drift = 0;
 static int _do_paranoid_memory_location = 0;
+thapi_sampling_handle_t _sampling_handle = NULL;
 
 pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -628,9 +630,13 @@ static inline int _do_state() {
          tracepoint_enabled(lttng_ust_ze_properties, memory_info_range);
 }
 
-static void _lib_cleanup() {
-  if (_do_profile) {
-    _event_cleanup();
+static void __attribute__((destructor))
+_lib_cleanup() {
+  if (_do_cleanup) {
+    if (_sampling_handle)
+      thapi_unregister_sampling(_sampling_handle);
+    if (_do_profile)
+      _event_cleanup();
   }
 }
 
@@ -1144,11 +1150,10 @@ static void _load_tracer(void) {
     interval.tv_sec = 0;
     interval.tv_nsec = 50000000;
     thapi_sampling_energy();
-    thapi_register_sampling(&thapi_sampling_energy, &interval);
+    _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
   }
 
-  if (_do_profile)
-    atexit(&_lib_cleanup);
+  _do_cleanup = 1;
 }
 
 static inline void _init_tracer(void) {

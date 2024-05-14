@@ -289,7 +289,8 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
   }
 }
 
-static int     _do_profile = 0;
+static int _do_profile = 0;
+static int _do_cleanup = 0;
 static pthread_mutex_t _cuda_events_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct _cuda_event_s;
@@ -476,9 +477,12 @@ static inline void _primary_context_reset(CUdevice dev) {
   pthread_mutex_unlock(&_primary_contexts_mutex);
 }
 
-static void _lib_cleanup() {
-  if (_do_profile) {
-    _event_cleanup();
+static void __attribute__((destructor))
+_lib_cleanup() {
+  if (_do_cleanup) {
+    if (_do_profile) {
+      _event_cleanup();
+    }
   }
 }
 
@@ -520,6 +524,7 @@ static void _load_tracer(void) {
   if(tracepoint_enabled(lttng_ust_cuda_exports, export_called))
     _do_trace_export_tables = 1;
 
+  _do_cleanup = 1;
 }
 
 static pthread_once_t _init_tracer_once = PTHREAD_ONCE_INIT;
@@ -542,8 +547,6 @@ static void _init_tracer(void) {
 
 static void _load_cuda(void) {
   _dump_properties();
-  if (_do_profile)
-    atexit(&_lib_cleanup);
 }
 
 static pthread_once_t _init_cuda_once = PTHREAD_ONCE_INIT;
