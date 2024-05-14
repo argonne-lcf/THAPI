@@ -86,6 +86,7 @@ static uint64_t convert_device_cycle(uint64_t device_cycle,
                                      const uint64_t lttng_min,
                                      const ze_device_properties_t &device_property) {
 
+  std::cout << "device_cycle " << device_cycle << " | lttng_min " << lttng_min << std::endl;
   const auto &[lttng_ref, device_cycle_ref] = timestamp_pair_ref;
 
   assert(device_property.kernelTimestampValidBits <= 64);
@@ -98,9 +99,13 @@ static uint64_t convert_device_cycle(uint64_t device_cycle,
   device_cycle &= device_cycle_max_val;
   do {
     const uint64_t device_ns = device_cycle * device_property.timerResolution;
-    lttng = device_ns + (lttng_ref - device_ref_ns);
+    lttng = device_ns + lttng_ref - device_ref_ns;
+    std::cout << "  lttng " << lttng << std::endl;
     device_cycle += device_cycle_max_val;
   } while (lttng < lttng_min);
+
+  if (lttng == 1715647333025902947)
+    std::cout << "WTF" << std::endl;
   return lttng;
 }
 
@@ -278,7 +283,8 @@ static void zeCommandListCreateImmediate_exit_callback(void *btx_handle, void *u
     return;
 
   auto [hDevice, commandQueueDesc] = data->imm_tmp[{hostname, vpid, vtid}];
-  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {commandQueueDesc, hDevice, ts, true};
+  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {
+      commandQueueDesc, hDevice, data->entry_state.get_ts({hostname, vpid, vtid}), true};
 }
 
 static void zeCommandListCreate_entry_callback(
@@ -301,8 +307,8 @@ static void zeCommandListCreate_exit_callback(void *btx_handle, void *usr_data, 
   if (zeResult != ZE_RESULT_SUCCESS)
     return;
   // ze_command_queue_desc_t  will be binded during CommandQueue Execute
-  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {ze_command_queue_desc_t{}, hDevice, ts,
-                                                                false};
+  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {
+      ze_command_queue_desc_t{}, hDevice, data->entry_state.get_ts({hostname, vpid, vtid}), false};
 }
 
 static void zeCommandQueueCreate_entry_callback(
@@ -453,8 +459,8 @@ static void hSignalEvent_rest_entry_callback(void *btx_handle, void *usr_data, i
  *
  */
 static void zeCommandQueueExecuteCommandLists_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid,
-    uint64_t vtid, ze_command_queue_handle_t hCommandQueue, uint32_t numCommandLists,
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_command_queue_handle_t hCommandQueue, uint32_t numCommandLists,
     ze_command_list_handle_t *phCommandLists, ze_fence_handle_t hFence,
     size_t _phCommandLists_vals_length, ze_command_list_handle_t *phCommandLists_vals) {
 
@@ -700,6 +706,7 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   uint64_t delta = globalEnd - globalStart;
   uint64_t start = lltngMin;
   uintptr_t device_hash = 0;
+
   const auto it0 = data->device_property.find({hostname, vpid, (thapi_device_id)device});
   if (it0 != data->device_property.cend()) {
     if (!err) {
@@ -708,6 +715,7 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
     }
     device_hash = hash_device(it0->second);
   }
+
   uintptr_t subdevice_hash = 0;
   const auto it1 = data->subdevice_parent.find({hostname, vpid, (thapi_device_id)device});
   if (it1 != data->subdevice_parent.cend()) {
@@ -716,7 +724,6 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
     if (it2 != data->device_property.cend())
       subdevice_hash = hash_device(it2->second);
   }
-
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission, start, BACKEND_ZE,
                                 commandName.c_str(), delta, device_hash, subdevice_hash, err,
                                 metadata.c_str());
