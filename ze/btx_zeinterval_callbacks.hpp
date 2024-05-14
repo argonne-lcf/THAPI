@@ -44,7 +44,8 @@ using btx_event_desct_t =
                btx_additional_info /* pointer to additional data */>;
 
 using btx_command_list_desc_t =
-    std::tuple<ze_command_queue_desc_t, ze_device_handle_t, bool /*hCommandListIsImmediate*/>;
+    std::tuple<ze_command_queue_desc_t, ze_device_handle_t, bool /*hCommandListIsImmediate*/,
+               int64_t /*ts born min*/>;
 
 struct data_s {
   /* Host */

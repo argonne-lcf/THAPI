@@ -278,7 +278,7 @@ static void zeCommandListCreateImmediate_exit_callback(void *btx_handle, void *u
     return;
 
   auto [hDevice, commandQueueDesc] = data->imm_tmp[{hostname, vpid, vtid}];
-  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {commandQueueDesc, hDevice, true};
+  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {commandQueueDesc, hDevice, ts, true};
 }
 
 static void zeCommandListCreate_entry_callback(
@@ -301,7 +301,7 @@ static void zeCommandListCreate_exit_callback(void *btx_handle, void *usr_data, 
   if (zeResult != ZE_RESULT_SUCCESS)
     return;
   // ze_command_queue_desc_t  will be binded during CommandQueue Execute
-  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {ze_command_queue_desc_t{}, hDevice,
+  data->commandListToBtxDesc[{hostname, vpid, hCommandList}] = {ze_command_queue_desc_t{}, hDevice, ts,
                                                                 false};
 }
 
@@ -453,7 +453,7 @@ static void hSignalEvent_rest_entry_callback(void *btx_handle, void *usr_data, i
  *
  */
 static void zeCommandQueueExecuteCommandLists_entry_callback(
-    void *btx_handle, void *usr_data, int64_t _timestamp, const char *hostname, int64_t vpid,
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid,
     uint64_t vtid, ze_command_queue_handle_t hCommandQueue, uint32_t numCommandLists,
     ze_command_list_handle_t *phCommandLists, ze_fence_handle_t hFence,
     size_t _phCommandLists_vals_length, ze_command_list_handle_t *phCommandLists_vals) {
@@ -463,8 +463,9 @@ static void zeCommandQueueExecuteCommandLists_entry_callback(
   const auto commandQueueDesc = data->commandQueueToDesc[{hostname, vpid, hCommandQueue}];
   for (size_t i = 0; i < _phCommandLists_vals_length; i++) {
     for (auto &hEvent : data->commandListToEvents[{hostname, vpid, phCommandLists_vals[i]}]) {
-      std::get<ze_command_queue_desc_t>(data->eventToBtxDesct[{hostname, vpid, hEvent}]) =
-          commandQueueDesc;
+      auto &h = data->eventToBtxDesct[{hostname, vpid, hEvent}];
+      std::get<ze_command_queue_desc_t>(h) = commandQueueDesc;
+      std::get<int64_t>(h) = ts;
     }
   }
 }
@@ -632,7 +633,7 @@ static void event_profiling_callback(void *btx_handle, void *usr_data, int64_t t
   const auto [hCommandList, commandName, type, ptr] = it_pp->second;
   data->threadToLastLaunchInfo.erase(it_pp);
 
-  auto [commandQueueDesc, hDevice, hCommandListIsImmediate] =
+  auto [commandQueueDesc, hDevice, ts_min, hCommandListIsImmediate] =
       data->commandListToBtxDesc[{hostname, vpid, hCommandList}];
 
   // Got the timestamp pair reference
@@ -648,7 +649,7 @@ static void event_profiling_callback(void *btx_handle, void *usr_data, int64_t t
   data->eventToBtxDesct[{hostname, vpid, hEvent}] = {vtid,         commandQueueDesc,
                                                      hCommandList, hCommandListIsImmediate,
                                                      hDevice,      commandName,
-                                                     ts,           clockLttngDevice,
+                                                     ts_min,       clockLttngDevice,
                                                      type,         ptr};
   // Prepare job for non IMM
   if (!hCommandListIsImmediate)
