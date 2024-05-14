@@ -133,7 +133,6 @@ static void add_event_DTelemetry(timeline_dispatch_t *dispatch, std::string host
   auto *track_event = packet->mutable_track_event();
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
   track_event->set_track_uuid(track_uuid);
-  track_event->set_name(eventName);
   track_event->set_double_counter_value(value);
 }
 

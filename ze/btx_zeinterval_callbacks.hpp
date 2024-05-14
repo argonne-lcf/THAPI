@@ -19,8 +19,13 @@ typedef std::tuple<hostname_t, process_id_t, ze_command_queue_handle_t> hp_comma
 typedef std::tuple<hostname_t, process_id_t, ze_module_handle_t> hp_module_t;
 
 typedef std::map<uintptr_t, uintptr_t> memory_interval_t;
-
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
+typedef std::tuple<uint64_t, uint64_t, uint64_t> energy_timestamp_t;
+typedef std::tuple<uint64_t, uint64_t, uint64_t> computeEngine_timestamp_t;
+typedef std::tuple<uint64_t, uint64_t, uint64_t> copyEngine_timestamp_t;
+
+typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdd_t;
+typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdsd_t;
 
 using btx_kernel_group_size_t = std::tuple<uint32_t, uint32_t, uint32_t>;
 using btx_kernel_desct_t =
@@ -73,5 +78,9 @@ struct data_s {
   std::unordered_map<hpt_t, std::pair<ze_device_handle_t, ze_command_queue_desc_t>> imm_tmp;
 
   std::unordered_map<hp_device_t, clock_lttng_device_t> device_timestamps_pair_ref;
+  /* Sampling */
+  std::unordered_map<hpdd_t, energy_timestamp_t> device_energy_ref;
+  std::unordered_map<hpdsd_t, computeEngine_timestamp_t> device_computeEngine_ref;
+  std::unordered_map<hpdsd_t, copyEngine_timestamp_t> device_copyEngine_ref;
 };
 typedef struct data_s data_t;

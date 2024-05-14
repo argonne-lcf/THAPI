@@ -752,8 +752,20 @@ static void lttng_ust_ze_sampling_gpu_energy_callback(void *btx_handle, void *us
                                                       uint32_t domain, uint64_t energy,
                                                       uint64_t sampling_ts) {
 
-  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, (uint64_t)hDevice,
-                               domain, energy);
+  auto *data = static_cast<data_t *>(usr_data);
+  auto [it, inserted] = data->device_energy_ref.insert(
+      {{hostname, vpid, hDevice, domain}, {energy, sampling_ts, ts}});
+  // First entry
+  if (inserted)
+    return;
+  auto &[prev_energy, prev_sampling_ts, prev_ts] = it->second;
+
+  // Watt conversion
+  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice,
+                               (thapi_domain_idx)domain,
+                               (energy - prev_energy) / (double)(sampling_ts - prev_sampling_ts));
+
+  it->second = {energy, sampling_ts, ts};
 }
 
 static void lttng_ust_ze_sampling_gpu_frequency_callback(void *btx_handle, void *usr_data,
@@ -770,8 +782,19 @@ static void lttng_ust_ze_sampling_computeEngine_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
     ze_device_handle_t hDevice, uint32_t subDevice, uint64_t activeTime, uint64_t sampling_ts) {
 
-  btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, (uint64_t)hDevice,
-                                   subDevice, activeTime);
+  auto *data = static_cast<data_t *>(usr_data);
+  auto [it, inserted] = data->device_computeEngine_ref.insert(
+      {{hostname, vpid, hDevice, subDevice}, {activeTime, sampling_ts, ts}});
+  // First entry
+  if (inserted)
+    return;
+  auto &[prev_activeTime, prev_sampling_ts, prev_ts] = it->second;
+
+  btx_push_message_lttng_computeEU(
+      btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice, subDevice,
+      (activeTime - prev_activeTime) / (double)(sampling_ts - prev_sampling_ts));
+
+  it->second = {activeTime, sampling_ts, ts};
 }
 
 static void lttng_ust_ze_sampling_copyEngine_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -779,9 +802,19 @@ static void lttng_ust_ze_sampling_copyEngine_callback(void *btx_handle, void *us
                                                       uint64_t vtid, ze_device_handle_t hDevice,
                                                       uint32_t subDevice, uint64_t activeTime,
                                                       uint64_t sampling_ts) {
+  auto *data = static_cast<data_t *>(usr_data);
+  auto [it, inserted] = data->device_copyEngine_ref.insert(
+      {{hostname, vpid, hDevice, subDevice}, {activeTime, sampling_ts, ts}});
+  // First entry
+  if (inserted)
+    return;
+  auto &[prev_activeTime, prev_sampling_ts, prev_ts] = it->second;
 
-  btx_push_message_lttng_copyEU(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, (uint64_t)hDevice,
-                                subDevice, activeTime);
+  btx_push_message_lttng_copyEU(
+      btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice, subDevice,
+      (activeTime - prev_activeTime) / (double)(sampling_ts - prev_sampling_ts));
+
+  it->second = {activeTime, sampling_ts, ts};
 }
 
 /*
@@ -844,7 +877,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_ust_ze_properties_device_timer(btx_handle,
                                                               &property_device_timer_callback);
 
-  /* Profiling Command (everything who signal an event on completion)  */
+  /* Profiling Command (everything who signal an event on completion)
+   */
   REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_hKernel_with_group_entry);
   REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_hKernel_without_group_entry);
 
