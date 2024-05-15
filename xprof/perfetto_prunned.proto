@@ -31,6 +31,7 @@ message ThreadDescriptor {
 }
 
 message CounterDescriptor {
+  optional int64 unit_multiplier = 4;
 }
 
 message TrackDescriptor {

@@ -98,7 +98,7 @@ AC_FUNC_ALLOCA
 AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([atexit clock_gettime ftruncate memmove memset strdup strstr strtoull strlen strchr])
+AC_CHECK_FUNCS([clock_gettime ftruncate memmove memset strdup strstr strtoull strlen strchr])
 
 AC_CONFIG_FILES([
 	Makefile
