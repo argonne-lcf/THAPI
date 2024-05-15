@@ -1,2 +1,2 @@
 lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 1 }, { name = "zeCommandListAppendBarrier", dur = 20, err = false }
-lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000010, backend = 1 }, { name = "zeCommandListAppendBarrier", dur = 10, did = 0, sdid = 0, err = false, metadata = "{ordinal: 0, index: 0}" }
+lttng:device: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 1 }, { name = "zeCommandListAppendBarrier", dur = 10, did = 0, sdid = 0, err = false, metadata = "{ordinal: 0, index: 0}" }
