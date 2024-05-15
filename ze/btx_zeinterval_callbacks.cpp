@@ -718,6 +718,7 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
     if (it2 != data->device_property.cend())
       subdevice_hash = hash_device(it2->second);
   }
+
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission, start, BACKEND_ZE,
                                 commandName.c_str(), delta, device_hash, subdevice_hash, err,
                                 metadata.c_str());
