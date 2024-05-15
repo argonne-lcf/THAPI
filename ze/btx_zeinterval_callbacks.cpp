@@ -700,7 +700,6 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   uint64_t delta = globalEnd - globalStart;
   uint64_t start = lltngMin;
   uintptr_t device_hash = 0;
-
   const auto it0 = data->device_property.find({hostname, vpid, (thapi_device_id)device});
   if (it0 != data->device_property.cend()) {
     if (!err) {
