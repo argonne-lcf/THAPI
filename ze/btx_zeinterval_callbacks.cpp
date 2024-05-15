@@ -709,7 +709,6 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
     }
     device_hash = hash_device(it0->second);
   }
-
   uintptr_t subdevice_hash = 0;
   const auto it1 = data->subdevice_parent.find({hostname, vpid, (thapi_device_id)device});
   if (it1 != data->subdevice_parent.cend()) {
