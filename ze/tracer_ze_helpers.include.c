@@ -788,7 +788,7 @@ static int _sampling_pwr_initialized = 0;
 static int _sampling_engines_initialized = 0;
 // Static handles to stay throughout the execution
 static ze_driver_handle_t*  _sampling_hDrivers = NULL;
-static ze_device_handle_t** _sampling_hDevices = NULL;
+static zes_device_handle_t** _sampling_hDevices = NULL;
 static zes_freq_handle_t*** _sampling_hFrequencies = NULL;
 static zes_pwr_handle_t*** _sampling_hPowers = NULL;
 static zes_engine_handle_t*** _sampling_engineHandles = NULL;
@@ -908,13 +908,6 @@ static int initializeHandles() {
     fprintf(stderr,"ZES_ENABLE_SYSMAN needs to be set!\n");
     return -1;
   }
-#ifdef CALL_ZEINIT
-  res = zeInit(ZE_INIT_FLAG_GPU_ONLY);
-  if (res != ZE_RESULT_SUCCESS) {
-    _ZE_ERROR_MSG("zeInit", res);
-    return -1;
-  }
-#endif
 
   // Query driver
   _sampling_driverCount = 0;
@@ -934,27 +927,30 @@ static int initializeHandles() {
   _sampling_hDevices = (ze_device_handle_t**) calloc(_sampling_driverCount, sizeof(ze_device_handle_t*));
   // Query device count
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    res = ZE_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], NULL);
+    res = ZES_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], NULL);
     if (res != ZE_RESULT_SUCCESS || _sampling_deviceCount[driverIdx] == 0) {
       fprintf(stderr, "ERROR: No device found!\n");
-      _ZE_ERROR_MSG("1st ZE_DEVICE_GET_PTR", res);
+      _ZE_ERROR_MSG("1st ZES_DEVICE_GET_PTR", res);
       return -1;
     }
     _sampling_hDevices[driverIdx] = (ze_device_handle_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(ze_device_handle_t));
-    res = ZE_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], _sampling_hDevices[driverIdx]);
+    res = ZES_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], _sampling_hDevices[driverIdx]);
     if (res != ZE_RESULT_SUCCESS) {
-      _ZE_ERROR_MSG("2nd ZE_DEVICE_GET_PTR", res);
+      _ZE_ERROR_MSG("2nd ZES_DEVICE_GET_PTR", res);
       free(_sampling_hDevices[driverIdx]);
       return -1;
     }
     //Get no sub-devices
     _sampling_subDeviceCount[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
-      res = ZE_DEVICE_GET_SUB_DEVICES_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_subDeviceCount[driverIdx][deviceIdx], NULL);
+      zes_device_properties_t deviceProperties = {0};
+      deviceProperties.stype = ZES_STRUCTURE_TYPE_DEVICE_PROPERTIES;
+      res = ZES_DEVICE_GET_PROPERTIES_PTR(_sampling_hDevices[driverIdx][deviceIdx], &deviceProperties);
       if (res != ZE_RESULT_SUCCESS) {
-        _ZE_ERROR_MSG("ZE_DEVICE_GET_SUB_DEVICES_PTR", res);
+        _ZE_ERROR_MSG("ZES_DEVICE_GET_PROPERTIES_PTR", res);
         _sampling_subDeviceCount[driverIdx][deviceIdx] = 0;
-      }
+      } else
+        _sampling_subDeviceCount[driverIdx][deviceIdx] = deviceProperties.numSubdevices;
       if (_sampling_subDeviceCount[driverIdx][deviceIdx] == 0) {
         _sampling_subDeviceCount[driverIdx][deviceIdx] = 1;
       }
