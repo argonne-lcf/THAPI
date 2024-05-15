@@ -98,7 +98,7 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
   track_descriptor->set_parent_uuid(hp_uuid);
   std::ostringstream oss;
   oss << track_name << " | Domain " << domain;
-  //track_descriptor->set_name(oss.str());
+  track_descriptor->set_name(oss.str());
   track_descriptor->mutable_counter();
   return hp_dev_uuid;
 }
