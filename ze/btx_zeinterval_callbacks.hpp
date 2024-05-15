@@ -38,8 +38,8 @@ using btx_additional_info =
     std::variant<std::monostate, btx_additional_info_traffic_t, btx_additional_info_kernel_t>;
 
 using btx_launch_desc_t =
-    std::tuple<ze_command_list_handle_t, std::string /*name*/, btx_event_t /* type of enum */,
-               btx_additional_info /* additional data */>;
+    std::tuple<ze_command_list_handle_t, std::string /*name*/, int64_t /*ts min */,
+               btx_event_t /* type of enum */, btx_additional_info /* additional data */>;
 
 using btx_event_desct_t =
     std::tuple<thread_id_t, ze_command_queue_desc_t, ze_command_list_handle_t,
