@@ -98,7 +98,7 @@ static uint64_t convert_device_cycle(uint64_t device_cycle,
   device_cycle &= device_cycle_max_val;
   do {
     const uint64_t device_ns = device_cycle * device_property.timerResolution;
-    lttng = device_ns + lttng_ref - device_ref_ns;
+    lttng = device_ns + (lttng_ref - device_ref_ns);
     device_cycle += device_cycle_max_val;
   } while (lttng < lttng_min);
   return lttng;
