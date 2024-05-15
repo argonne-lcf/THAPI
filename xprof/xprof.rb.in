@@ -266,6 +266,11 @@ def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
 
+def sampling?
+  return false unless OPTIONS[:sample]
+  env_fetch_first('LTTNG_UST_SAMPLING_MASTER_ONLY', default: '0') == '0' || mpi_local_master?
+end
+
 def env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -314,7 +319,8 @@ def env_tracers
   end
 
   # Sample
-  if OPTIONS[:sample]
+  if sampling?
+    LOGGER.debug("Sampling Enabled")
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
     h['ZES_ENABLE_SYSMAN'] = 1 if OPTIONS[:'backend-names'].include?('ze')
