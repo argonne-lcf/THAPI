@@ -790,6 +790,7 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
 } while (0)
 
 static int _sampling_freq_initialized = 0;
+static int _sampling_fabricPorts_initialized = 0;
 static int _sampling_pwr_initialized = 0;
 static int _sampling_engines_initialized = 0;
 // Static handles to stay throughout the execution
@@ -799,10 +800,13 @@ static zes_freq_handle_t*** _sampling_hFrequencies = NULL;
 static zes_pwr_handle_t*** _sampling_hPowers = NULL;
 static zes_engine_handle_t*** _sampling_engineHandles = NULL;
 static zes_engine_properties_t*** _sampling_engineProps = NULL;
+static zes_fabric_port_handle_t*** _sampling_hFabricPort = NULL;
+static zes_fabric_port_properties_t*** _sampling_fabricPortProps = NULL;
 static uint32_t _sampling_driverCount = 0;
 static uint32_t* _sampling_deviceCount = NULL;
 static uint32_t** _sampling_subDeviceCount = NULL;
 static uint32_t** _sampling_freqDomainCounts = NULL;
+static uint32_t** _sampling_fabricPortCount = NULL;
 static uint32_t** _sampling_powerDomainCounts = NULL;
 static uint32_t** _sampling_engineCounts = NULL;
 
@@ -907,6 +911,44 @@ static void intializeEngines() {
   _sampling_engines_initialized = 1;
 }
 
+static void intializeFabricPorts() {
+  ze_result_t res;
+  _sampling_hFabricPort = (zes_fabric_port_handle_t***) calloc(_sampling_driverCount, sizeof(zes_fabric_port_handle_t**));
+  _sampling_fabricPortProps = (zes_fabric_port_properties_t***) calloc(_sampling_driverCount, sizeof(zes_fabric_port_properties_t**));
+  _sampling_fabricPortCount = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t));
+  for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
+    _sampling_fabricPortCount[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_hFabricPort[driverIdx] = (zes_fabric_port_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_fabric_port_handle_t*));
+    _sampling_fabricPortProps[driverIdx] = (zes_fabric_port_properties_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_fabric_port_properties_t*));
+    for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
+      // Get fabric ports for each device
+      res = ZES_DEVICE_ENUM_FABRIC_PORTS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_fabricPortCount[driverIdx][deviceIdx], NULL);
+      if (res != ZE_RESULT_SUCCESS) {
+        _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_FABRIC_PORTS_PTR", res);
+        _sampling_fabricPortCount[driverIdx][deviceIdx] = 0;
+        continue;
+      }
+      _sampling_hFabricPort[driverIdx][deviceIdx] = (zes_fabric_port_handle_t*) calloc(_sampling_fabricPortCount[driverIdx][deviceIdx], sizeof(zes_fabric_port_handle_t));
+      res = ZES_DEVICE_ENUM_FABRIC_PORTS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_fabricPortCount[driverIdx][deviceIdx], _sampling_hFabricPort[driverIdx][deviceIdx]);
+      if (res != ZE_RESULT_SUCCESS) {
+        _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_FABRIC_PORTS_PTR", res);
+        _sampling_fabricPortCount[driverIdx][deviceIdx] = 0;
+        free(_sampling_hFabricPort[driverIdx][deviceIdx]);
+      }
+      _sampling_fabricPortProps[driverIdx][deviceIdx] = (zes_fabric_port_properties_t*) calloc(_sampling_fabricPortCount[driverIdx][deviceIdx], sizeof(zes_fabric_port_properties_t));
+      for (uint32_t fabricPortIdx = 0; fabricPortIdx < _sampling_fabricPortCount[driverIdx][deviceIdx]; ++fabricPortIdx) {
+         res = ZES_FABRIC_PORT_GET_PROPERTIES_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][fabricPortIdx], &_sampling_fabricPortProps[driverIdx][deviceIdx][fabricPortIdx]);
+         if (res != ZE_RESULT_SUCCESS) {
+           _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_PROPERTIES_PTR", res);
+         }
+         //Dump fabricPortProperties once
+         do_tracepoint(lttng_ust_ze_sampling, fabricPortProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_fabric_port_handle_t)_sampling_hFabricPort[driverIdx][deviceIdx][fabricPortIdx], &_sampling_fabricPortProps[driverIdx][deviceIdx][fabricPortIdx]);
+      }
+    }
+  }
+  _sampling_fabricPorts_initialized = 1;
+}
+
 static int initializeHandles() {
   ze_result_t res;
   res = ZES_INIT_PTR(0);
@@ -965,6 +1007,7 @@ static int initializeHandles() {
   intializeFrequency();
   intializePower();
   intializeEngines();
+  intializeFabricPorts();
   return 0;
 }
 
@@ -979,6 +1022,20 @@ static void readFrequency(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domai
     return;
   }
   *frequency = freqState.actual;
+}
+
+static void readFabricPorts(uint32_t driverIdx, uint32_t deviceIdx, uint32_t portIdx, zes_fabric_port_throughput_t *throughput, zes_fabric_port_state_t *portState ) {
+  if (!_sampling_fabricPorts_initialized) return;
+  ze_result_t result;
+  result = ZES_FABRIC_PORT_GET_STATE_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][portIdx], portState);
+  if (result != ZE_RESULT_SUCCESS) {
+     _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_STATE_PTR", result);
+  }
+
+  result = ZES_FABRIC_PORT_GET_THROUGHPUT_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][portIdx], throughput);
+  if (result != ZE_RESULT_SUCCESS) {
+   _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_THROUGHPUT_PTR", result);
+  }
 }
 
 static void readEnergy(uint32_t driverIdx, uint32_t deviceIdx, uint32_t domainIdx, uint64_t *ts_us, uint64_t *energy_uj) {
@@ -1054,6 +1111,15 @@ static void thapi_sampling_energy() {
   uint32_t frequency = 0;
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
+      if (tracepoint_enabled(lttng_ust_ze_sampling, fabricPort)) {
+        for (uint32_t portIdx = 0; portIdx <  _sampling_fabricPortCount[driverIdx][deviceIdx]; portIdx++ ) {
+          static zes_fabric_port_throughput_t throughput = {0};
+          static zes_fabric_port_state_t portState = {0};
+          portState.stype = ZES_STRUCTURE_TYPE_FABRIC_PORT_STATE;
+          readFabricPorts(driverIdx, deviceIdx, portIdx, &throughput, &portState);
+          do_tracepoint(lttng_ust_ze_sampling, fabricPort, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_fabric_port_handle_t)_sampling_hFabricPort[driverIdx][deviceIdx][portIdx], &portState, &throughput);
+        }
+      }
       if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)){
         for (uint32_t domainIdx = 0; domainIdx < _sampling_freqDomainCounts[driverIdx][deviceIdx]; domainIdx++) {
           readFrequency(driverIdx, deviceIdx, domainIdx, &frequency);
