@@ -1115,7 +1115,7 @@ static void thapi_sampling_energy() {
   uint32_t frequency;
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
-      if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)) {
+      if (tracepoint_enabled(lttng_ust_ze_sampling, fabricPort)) {
         for (uint32_t portIdx = 0; portIdx <  _sampling_fabricPortCount[driverIdx][deviceIdx]; portIdx++ ) {
           static zes_fabric_port_throughput_t throughput = {0};
           static zes_fabric_port_state_t portState = {0};
