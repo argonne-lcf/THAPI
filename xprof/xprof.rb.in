@@ -107,11 +107,11 @@ def mpi_rank_id
 end
 
 def mpi_local_size
-  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
+  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS', default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
+  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID', default: 0).to_i
 end
 
 def mpi_local_master?
