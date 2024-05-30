@@ -62,7 +62,11 @@ AS_IF([test "x$using_demangle" != xyes],
 AC_ARG_ENABLE([strict], AS_HELP_STRING([--enable-strict], [Enable -Werror]), [], [enable_strict=yes])
 AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 
-AX_MPI([found_mpi=yes], [found_mpi=no])
+AC_ARG_ENABLE([mpi],
+  AS_HELP_STRING([--disable-mpi], [Disable mpi sync daemon]), [found_mpi=yes], [found_mpi=no])
+AS_IF([test "x$enable_mpi" != xno], [
+  AX_MPI([found_mpi=yes], [found_mpi=no])
+])
 AM_CONDITIONAL([FOUND_MPI], [test "x$found_mpi" = xyes])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
