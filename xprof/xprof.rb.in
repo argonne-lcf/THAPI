@@ -93,25 +93,41 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 def in_mpi_env?
-  !env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
+  !env_fetch_first('THAPI_JOBID', 'PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
+end
+
+def env_fetch_first_mpi(*args, default: nil)
+  v = env_fetch_first(*args)
+  if in_mpi_env?
+      if v.nil?
+        LOGGER.fatal { "A MPI JOBID is set but some sone MPI env are missing" }
+        exit(1)
+      else
+        return v
+      end
+  else
+    # Not in a MPI env but some var a defined
+    LOGGER.warn { "A MPI JOBIB haven't be set, but some args have been set, ignoring them"} unless v.nil?
+    return default
+  end
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
 def mpi_job_id
-  @mpi_job_id ||= env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
+  @mpi_job_id ||= env_fetch_first('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
 end
 
 def mpi_rank_id
-  env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+  env_fetch_first_mpi('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
 end
 
 def mpi_local_size
-  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS', default: 1).to_i
+  env_fetch_first_mpi('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS', default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID', default: 0).to_i
+  env_fetch_first_mpi('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID', default: 0).to_i
 end
 
 def mpi_local_master?

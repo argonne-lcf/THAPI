@@ -12,8 +12,8 @@ teardown_file() {
 }
 
 @test "default_mpi_sync_${THAPI_SYNC_DAEMON}" {
-   $MPIRUN -n 12 $IPROF --debug 0 $THAPI_TEST_BIN
-   $MPIRUN -n 12 $IPROF --debug 0 $THAPI_TEST_BIN
-   $MPIRUN -n 12 $IPROF --debug 0 -l -- $THAPI_TEST_BIN
+   THAPI_JOBID=0 $MPIRUN -n 12 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   THAPI_JOBID=1 $MPIRUN -n 12 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   THAPI_JOBID=2 $MPIRUN -n 12 $IPROF --debug 0 -l -- $THAPI_TEST_BIN
    rm out.pftrace
 }
