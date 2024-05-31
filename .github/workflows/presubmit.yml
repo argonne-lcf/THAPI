@@ -140,7 +140,7 @@ jobs:
       - name: Checkout bats
         uses: actions/checkout@v4
         with:
-          repository: bats-core/bats-core.git
+          repository: bats-core/bats-core
           path: bats-core
       - name: integration test ${{ matrix.bats_file }}
         run: |
