@@ -142,6 +142,9 @@ jobs:
         with:
           repository: bats-core/bats-core
           path: bats-core
+      - name: print-env
+        run: |
+          mpirun -n 1 env
       - name: integration test ${{ matrix.bats_file }}
         run: |
           BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --verbose-run integration_tests/${{ matrix.bats_file }}.bats
