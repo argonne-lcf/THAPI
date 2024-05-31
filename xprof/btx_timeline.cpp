@@ -177,19 +177,19 @@ static perfetto_uuid_t get_fabricPort_track_uuuid(timeline_dispatch_t *dispatch,
 
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
                                              uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "Power", hostname,
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  Power", hostname,
                                  process_id, did, subDevice, 100, std::nullopt);
 }
 
 static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
                                                  uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
- return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, "Ferquency", hostname, 
+ return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, " Ferquency", hostname,
                                 process_id, did, subDevice, 100, std::nullopt);
 }
 
 static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
                                                  uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
- return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "CopyEngine (%)", hostname,
+ return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeEngine (%)", hostname,
                                 process_id, did, subDevice, 100, std::nullopt);
 }
 
@@ -222,8 +222,6 @@ static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostn
 static void add_event_fabricPort(timeline_dispatch_t *dispatch, std::string hostname,
                                  uint64_t process_id, uint64_t thread_id, uintptr_t did, uintptr_t hFabricPort,
                                  uint32_t subDevice, uint64_t timestamp, float rxSpeed, float txSpeed) {
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, hFabricPort, subDevice, timestamp,
-                       rxSpeed, get_fabricPort_track_uuuid, "FabricPort");
   add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, hFabricPort, subDevice, timestamp,
                        txSpeed, get_fabricPort_track_uuuid, "FabricPort");
 }
