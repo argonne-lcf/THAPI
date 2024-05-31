@@ -122,7 +122,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler bats libpocl2 clinfo valgrind
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libpocl2 clinfo valgrind
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -137,9 +137,10 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
+      - run: git clone git@github.com:bats-core/bats-core.git
       - name: integration test ${{ matrix.bats_file }}
         run: |
-          BATS_TEST_TIMEOUT=30 bats --verbose-run integration_tests/${{ matrix.bats_file }}.bats
+          BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --verbose-run integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
