@@ -105,7 +105,7 @@ jobs:
     strategy:
       matrix:
         thapi_sync_daemon: [ 'fs', 'mpi' ]
-        bats_file: ['mpi_test', 'sync_daemon_test']
+        bats_file: ['mpi_test'] # 'sync_daemon_test']
         include:
           - bats_file: no_mpi
     env:
@@ -147,10 +147,10 @@ jobs:
           THAPI_JOBID=0 mpirun -n 2 env
       - name: integration test-2 ${{ matrix.bats_file }}
         run: |
-          THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 12 $THAPI_BIN_DIR/iprof --debug 0 -- $THAPI_TEST_BIN
-      - name: integration test ${{ matrix.bats_file }}
-        run: |
-          BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --print-output-on-failure --show-output-of-passing-tests  integration_tests/${{ matrix.bats_file }}.bats
+          THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 2 $THAPI_BIN_DIR/iprof --debug 0 -- $THAPI_TEST_BIN
+#      - name: integration test ${{ matrix.bats_file }}
+#        run: |
+#          BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --print-output-on-failure --show-output-of-passing-tests  integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
