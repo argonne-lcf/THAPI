@@ -939,6 +939,59 @@ static void lttng_ust_ze_sampling_engineProperties_callback(void *btx_handle, vo
   data->engine_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_engine_handle_t)hEngine}] = *pEngineProperties_val;
 }
 
+static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                                      const char *hostname, int64_t vpid,
+                                                      uint64_t vtid, ze_device_handle_t hDevice,
+                                                      zes_fabric_port_handle_t hFabricPort,
+                                                      size_t _pFabricPortState_val_length,
+                                                      zes_fabric_port_state_t *pFabricPortState_val,
+                                                      size_t _pFabricPortThroughput_val_length,
+                                                      zes_fabric_port_throughput_t *pFabricPortThroughput_val) {
+  auto *data = static_cast<data_t *>(usr_data);
+  const auto it0 = data->fabricPort_property.find({hostname, vpid, hDevice, hFabricPort});
+  if (it0 != data->fabricPort_property.cend()) {
+    //Get the subdevice ID
+    auto subDevice = it0->second.subdeviceId;
+    // Insert the current throughput data with timestamp
+    auto [it, inserted] = data->device_fabricPort_ref.insert(
+            {{hostname, vpid, hDevice, hFabricPort, subDevice}, {*pFabricPortThroughput_val, ts}});
+    if (inserted) {
+            return;
+        }
+        // Access the previous throughput data
+    auto &[prev_throughput, prev_ts] = it->second;
+    // Calculate the time difference in seconds
+    double time_diff = static_cast<double>(pFabricPortThroughput_val->timestamp - prev_throughput.timestamp) / 1e9;
+    // Calculate the RX and TX speeds
+    //double rxSpeed = static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) / (double)time_diff;
+    //double txSpeed = static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) / (double)time_diff;
+
+    // Update the stored values with the current throughput and timestamp
+    it->second = {*pFabricPortThroughput_val, ts};
+    // Print or store the calculated speeds as needed
+    //btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts,
+      //                                BACKEND_ZE, (uint64_t)hDevice,(uint64_t)hFabricPort,
+       //                               subDevice, rxSpeed, txSpeed);
+    btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts,
+                                      BACKEND_ZE, (uint64_t)hDevice,(uint64_t)hFabricPort,
+                                      subDevice, (pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter), (pFabricPortThroughput_val->txCounter - prev_throughput.txCounter));
+    } else {
+        std::cerr << "Fabric port property not found!" << std::endl;
+    }
+
+}
+
+// fabricPort Property
+static void lttng_ust_ze_sampling_fabricPortProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                     const char *hostname, int64_t vpid, uint64_t vtid,
+                                     ze_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
+                                     size_t _pFabricPortProperties_val_length,
+                                     zes_fabric_port_properties_t *pFabricPortProperties_val) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  data->fabricPort_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_fabric_port_handle_t)hFabricPort}] = *pFabricPortProperties_val;
+} 
+
 /*
  * Register
  */
