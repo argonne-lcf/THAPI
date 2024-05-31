@@ -206,19 +206,19 @@ static perfetto_uuid_t get_fabricPort_track_uuuid(timeline_dispatch_t *dispatch,
 
 static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
                                              uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
-  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "Power", hostname,
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "  Power", hostname,
                                  process_id, did, subDevice, 100, std::nullopt);
 }
 
 static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
                                                  uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
- return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, "Ferquency", hostname, 
+ return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, " Ferquency", hostname,
                                 process_id, did, subDevice, 100, std::nullopt);
 }
 
 static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
                                                  uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
- return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "CopyEngine (%)", hostname,
+ return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "ComputeEngine (%)", hostname,
                                 process_id, did, subDevice, 100, std::nullopt);
 }
 
