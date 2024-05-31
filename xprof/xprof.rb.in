@@ -106,7 +106,6 @@ def env_fetch_first_mpi(*args, default: nil)
         return v
       end
   else
-    # Not in a MPI env but some var a defined
     LOGGER.warn { "A MPI JOBIB haven't be set, but some args have been set, ignoring them"} unless v.nil?
     return default
   end
@@ -161,7 +160,7 @@ end
 #     When "on the fly" analys will be possible, this should not potential OOM
 # - thapi_trace_dir_tmp
 #     Where the "pre-processed / analysed / condensed" trace a saved.
-#     Each nodes need to aggree on a root folder to write into.
+#     Each nodes need to agree on a root folder to write into.
 #  - thapi_trace_dir_root
 #     Final directory exposed to the user. The `master rank`  rename the `thapi_trace_dir_tmp`
 #     with a more "friendly" name. Not required if `analysis-output` is set
