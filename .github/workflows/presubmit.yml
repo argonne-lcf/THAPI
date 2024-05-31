@@ -144,7 +144,7 @@ jobs:
           path: bats-core
       - name: print-env
         run: |
-          mpirun -n 2 env
+          THAPI_JOBID=0 mpirun -n 2 env
       - name: integration test ${{ matrix.bats_file }}
         run: |
           BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --verbose-run integration_tests/${{ matrix.bats_file }}.bats
