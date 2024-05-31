@@ -167,3 +167,30 @@
               :field_class:
                 :type: single
                 :cast_type: float
+      - :name: lttng:fabricPort
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: hFabricPort
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: subDevice
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: rxSpeed
+              :field_class:
+                :type: single
+                :cast_type: float
+            - :name: txSpeed
+              :field_class:
+                :type: single
+                :cast_type: float
