@@ -137,7 +137,11 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
-      - run: git clone git@github.com:bats-core/bats-core.git
+      - name: Checkout bats
+        uses: actions/checkout@v4
+        with:
+          repository: bats-core/bats-core.git
+          path: bats-core
       - name: integration test ${{ matrix.bats_file }}
         run: |
           BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --verbose-run integration_tests/${{ matrix.bats_file }}.bats
