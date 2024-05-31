@@ -865,28 +865,24 @@ static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *us
     // Insert the current throughput data with timestamp
     auto [it, inserted] = data->device_fabricPort_ref.insert(
             {{hostname, vpid, hDevice, hFabricPort, subDevice}, {*pFabricPortThroughput_val, ts}});
-    if (inserted) {
-            return;
-        }
-        // Access the previous throughput data
-    auto &[prev_throughput, prev_ts] = it->second;
-    // Calculate the time difference in seconds
-    double time_diff = static_cast<double>(pFabricPortThroughput_val->timestamp - prev_throughput.timestamp) / 1e9;
-    // Calculate the RX and TX speeds
-    //double rxSpeed = static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) / (double)time_diff;
-    //double txSpeed = static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) / (double)time_diff;
+    if (inserted)
+      return;
 
-    // Update the stored values with the current throughput and timestamp
+    //  previous throughput data
+    auto &[prev_throughput, prev_ts] = it->second;
+    //  time difference
+    double time_diff = static_cast<double>(pFabricPortThroughput_val->timestamp - prev_throughput.timestamp);
+    // Calculate the RX and TX speeds
+    double rxSpeed = static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) / double(time_diff);
+    double txSpeed = static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) / double(time_diff);
+
+    // Update the stored values
     it->second = {*pFabricPortThroughput_val, ts};
-    // Print or store the calculated speeds as needed
-    //btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts,
-      //                                BACKEND_ZE, (uint64_t)hDevice,(uint64_t)hFabricPort,
-       //                               subDevice, rxSpeed, txSpeed);
     btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts,
                                       BACKEND_ZE, (uint64_t)hDevice,(uint64_t)hFabricPort,
-                                      subDevice, (pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter), (pFabricPortThroughput_val->txCounter - prev_throughput.txCounter));
+                                      subDevice, rxSpeed, txSpeed);
     } else {
-        std::cerr << "Fabric port property not found!" << std::endl;
+      std::cerr << "Fabric port property not found!" << std::endl;
     }
 
 }
