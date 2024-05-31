@@ -139,7 +139,7 @@ jobs:
         working-directory: build
       - name: integration test ${{ matrix.bats_file }}
         run: |
-          bats integration_tests/${{ matrix.bats_file }}.bats
+          BATS_TEST_TIMEOUT=30 bats --verbose-run integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
