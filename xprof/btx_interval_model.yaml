@@ -188,9 +188,9 @@
                 :cast_type: uint32_t
             - :name: rxSpeed
               :field_class:
-                :type: single
+                :type: double
                 :cast_type: float
             - :name: txSpeed
               :field_class:
-                :type: single
+                :type: double
                 :cast_type: float
