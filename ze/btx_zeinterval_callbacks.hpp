@@ -25,7 +25,6 @@ typedef std::tuple<zes_fabric_port_throughput_t, uint64_t> fabricPort_timestamp_
 typedef std::tuple<zes_power_energy_counter_t, uint64_t> energy_timestamp_t;
 typedef std::tuple<zes_engine_stats_t, uint64_t> engines_timestamp_t;
 
-
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdd_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdsd_t;
 

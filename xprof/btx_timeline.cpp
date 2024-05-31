@@ -10,6 +10,10 @@
 #include <unordered_map>
 #include <utility> // pair
 
+#include <sstream>
+#include <tuple>
+
+
 #include "perfetto_prunned.pb.h"
 
 #define TRUSTED_PACKED_SEQUENCE_ID 10
@@ -55,6 +59,7 @@ static perfetto_uuid_t gen_perfetto_uuid() {
   static std::atomic<perfetto_uuid_t> uuid{1};
   return uuid++;
 }
+
 
 static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispatch,
                                                      std::string hostname, uint64_t process_id,
@@ -174,12 +179,66 @@ static void add_event_DTelemetry(timeline_dispatch_t *dispatch, const std::strin
   }
 
   auto *packet = dispatch->trace.add_packet();
+  packet->set_timestamp(0);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
-  packet->set_timestamp(timestamp);
-  auto *track_event = packet->mutable_track_event();
-  track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
-  track_event->set_track_uuid(track_uuid);
-  track_event->set_double_counter_value(value);
+  auto *track_descriptor = packet->mutable_track_descriptor();
+  track_descriptor->set_uuid(hp_dev_uuid);
+  track_descriptor->set_parent_uuid(hp_uuid);
+  std::ostringstream oss;
+  oss << track_name << " | Domain " << domain;
+  track_descriptor->set_name(oss.str());
+  auto *counter_descriptor = track_descriptor->mutable_counter();
+  counter_descriptor->set_unit_multiplier(unit_multiplier);
+  return hp_dev_uuid;
+}
+
+static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
+                                              uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpytracks, "CopyEngine (%)", hostname,
+                                 process_id, did, subDevice, 100, hFabricPort);
+}
+
+static perfetto_uuid_t get_fabricPort_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
+                                                  uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "FabricPort Speed", hostname,
+                                 process_id, did, subDevice, 100, hFabricPort, &dispatch->hp_dfsdev2fptracks);
+}
+
+static perfetto_uuid_t get_power_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
+                                             uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
+  return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2pwrtracks, "Power", hostname,
+                                 process_id, did, subDevice, 100, std::nullopt);
+}
+
+static perfetto_uuid_t get_frequency_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
+                                                 uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
+ return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2frqtracks, "Ferquency", hostname, 
+                                process_id, did, subDevice, 100, std::nullopt);
+}
+
+static perfetto_uuid_t get_computeEU_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id, 
+                                                 uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice) {
+ return get_counter_track_uuuid(dispatch, dispatch->hp_dsdev2cpetracks, "CopyEngine (%)", hostname,
+                                process_id, did, subDevice, 100, std::nullopt);
+}
+
+static void add_event_DTelemetry(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id,
+                                 uint64_t thread_id, uintptr_t did, std::optional<uintptr_t> hFabricPort, uint32_t subDevice,
+                                 uint64_t timestamp, float value, uuid_getter_t uuid_getter, const std::string &eventName) {
+  perfetto_uuid_t track_uuid;
+  if (hFabricPort.has_value()) {
+     track_uuid = uuid_getter(dispatch, hostname, process_id, did, hFabricPort, subDevice);
+    } else {
+        track_uuid = uuid_getter(dispatch, hostname, process_id, did, std::nullopt, subDevice);
+    }
+
+    auto *packet = dispatch->trace.add_packet();
+    packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+    packet->set_timestamp(timestamp);
+    auto *track_event = packet->mutable_track_event();
+    track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+    track_event->set_track_uuid(track_uuid);
+    track_event->set_double_counter_value(value);
 }
 
 static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostname,
@@ -213,14 +272,14 @@ static void add_event_power(timeline_dispatch_t *dispatch, std::string hostname,
 static void add_event_computeEU(timeline_dispatch_t *dispatch, std::string hostname,
                                 uint64_t process_id, uint64_t thread_id, uintptr_t did,
                                 uint32_t subDevice, uint64_t timestamp, float activeTime) {
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice, timestamp,
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, std::nullopt, subDevice, timestamp,
                        activeTime, get_computeEU_track_uuuid, "ComputeEngine");
 }
 
 static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname,
                              uint64_t process_id, uint64_t thread_id, uintptr_t did,
                              uint32_t subDevice, uint64_t timestamp, float activeTime) {
-  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, subDevice, timestamp,
+  add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, std::nullopt, subDevice, timestamp,
                        activeTime, get_copyEU_track_uuuid, "CopyEngine");
 }
 
