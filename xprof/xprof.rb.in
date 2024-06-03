@@ -27,6 +27,17 @@ require 'securerandom'
 require 'yaml'
 require 'date'
 
+module LoggerRefinement
+  refine(Logger) do
+  def info_block(message, &block)
+      self.info(message+": entry") if message
+      block.call
+      self.info(message+": exit") if message
+  end
+end
+end
+using LoggerRefinement
+
 
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
@@ -239,11 +250,11 @@ class Sync_daemon
   end
 
   def lazy_exec(message=nil, &block)
-    LOGGER.info(message+": entry") if message
+    LOGGER.info_block(message) do
     # Don't inline, it Trap doesn't work with logger
     # https://bugs.ruby-lang.org/issues/7917
-    _lazy_exec(&block) 
-    LOGGER.info(message+": exit") if message
+    _lazy_exec(&block)
+    end
   end
 
   def initialize
@@ -636,6 +647,8 @@ def global_processing(folder)
   LOGGER.debug(cmdname)
   LOGGER.debug(args)
 
+  LOGGER.info_block('IO dump') do
+
   fo = if OPTIONS[:'analysis-output']
          File.open(OPTIONS[:'analysis-output'], 'w')
        else
@@ -645,8 +658,10 @@ def global_processing(folder)
   IO.popen([cmdname, *args]) do |pipe|
     fo.puts(pipe.readlines)
   end
-  LOGGER.info('Finish printing output')
+
   fo.close
+  
+end
   exit(1) unless $?.success?
 end
 
