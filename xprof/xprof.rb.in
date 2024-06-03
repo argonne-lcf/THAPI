@@ -602,8 +602,6 @@ end
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
   # All masters set a future global barrier
-  syncd = Sync_daemon.new
-
   Sync_daemon.open do |syncd|
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
