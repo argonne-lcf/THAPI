@@ -287,6 +287,13 @@ class Sync_daemon
       `kill -#{RT_SIGNAL_GLOBAL_BARRIER} #{@pid}`
     end
   end
+
+  def self.open
+    yield f = new
+  ensure
+      f.finalize
+  end
+
 end
 
 #                        __
@@ -533,10 +540,11 @@ def teardown_lttng
   # In theory, opening the lttng-sessiond.pid file is racy.
   # It's possible that the sessiond spawned and didn't yet write the file
   # In practice, there is a lot of work between the spawn and the write, so it should be ok
-  pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
-  LOGGER.info('Killing sessiond')
-  Process.kill('SIGKILL', pid)
-  FileUtils.rm_f(lttng_home_dir)
+  LOGGER.info_block('Killing sessiond')  {
+    pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
+    Process.kill('SIGKILL', pid)
+    FileUtils.rm_f(lttng_home_dir)
+  }
 end
 
 #    _                                   _
@@ -595,6 +603,7 @@ def trace_and_on_node_processing(usr_argv)
   # All masters set a future global barrier
   syncd = Sync_daemon.new
 
+  Sync_daemon.open do |syncd|
   # Load Tracers and APILoaders Lib
   backends, h = env_tracers
 
@@ -614,9 +623,9 @@ def trace_and_on_node_processing(usr_argv)
 
   teardown_lttng
   # Preprocess trace
-  path = on_node_processing(backends, syncd)
-  syncd.finalize
-  path
+  on_node_processing(backends, syncd)
+  end
+
 end
 
 def global_processing(folder)
