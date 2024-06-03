@@ -173,7 +173,6 @@ jobs:
       - name: integration test ${{ matrix.bats_file }}
         run: |
           bats integration_tests/${{ matrix.bats_file }}.bats
-        working-directory: build
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
