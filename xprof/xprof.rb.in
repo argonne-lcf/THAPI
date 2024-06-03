@@ -259,8 +259,8 @@ class Sync_daemon
   end
 
   def initialize
-    lazy_exec('Initialize Sync_daemon') do
-      daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
+    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
+    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
       daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
                  "#{__dir__}/sync_daemon_mpi"
                else
