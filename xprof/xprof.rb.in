@@ -576,7 +576,6 @@ def on_node_processing(backends, syncd)
 
   # Global Barrier
   syncd.global_barrier
-  syncd.finalize
 
   # Replace mpi_job_id with a better name
   return unless mpi_master?
@@ -615,7 +614,9 @@ def trace_and_on_node_processing(usr_argv)
 
   teardown_lttng
   # Preprocess trace
-  on_node_processing(backends, syncd)
+  path = on_node_processing(backends, syncd)
+  syncd.finalize
+  path
 end
 
 def global_processing(folder)
