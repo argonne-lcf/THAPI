@@ -100,7 +100,7 @@ jobs:
   install_with_mpi:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and Check ubuntu-latest
+    name: Install with MPI daemon support
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -153,7 +153,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libpocl2 clinfo valgrind
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libpocl2 clinfo valgrind bats
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
         run: |
@@ -164,7 +164,7 @@ jobs:
           echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - name: integration test ${{ matrix.bats_file }}
         run: |
-          ./bats-core/bin/bats integration_tests/${{ matrix.bats_file }}.bats
+          bats integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
