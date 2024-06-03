@@ -631,7 +631,7 @@ end
 def global_processing(folder)
   raise unless mpi_master?
 
-  LOGGER.info { "postprocess #{folder}" }
+  LOGGER.info { "Postprocess #{folder}" }
 
   cmdname = "#{BINDIR}/babeltrace_thapi"
   backends = OPTIONS[:backends].join(',')
@@ -681,10 +681,6 @@ end
 #                      _|
 def last_trace_saved
   Dir[File.join(thapi_trace_home, 'thapi*')].max_by { |f| File.mtime(f) }
-end
-
-at_exit do
-  LOGGER.info("THAPI exited")
 end
 
 # Avoid load problem
