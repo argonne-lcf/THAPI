@@ -274,7 +274,6 @@ class Sync_daemon
     lazy_exec("Finalize Sync_daemon") do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
-    LOGGER.info("Finalize Sync_daemon: exit") 
   end
 
   def local_barrier(name)
@@ -787,5 +786,6 @@ if __FILE__ == $PROGRAM_NAME
     warn("THAPI: Trace location: #{folder}")
     global_processing(folder) if OPTIONS[:analysis]
   end
-
+  LOGGER.info("Done")
+  exit(0)
 end

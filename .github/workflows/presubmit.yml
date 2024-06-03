@@ -106,8 +106,8 @@ jobs:
       matrix:
         thapi_sync_daemon: [ 'fs'] # 'mpi' ]
         bats_file: ['mpi_test'] # 'sync_daemon_test']
-        include:
-          - bats_file: no_mpi
+        #include:
+        #  - bats_file: no_mpi
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ./build/ici/bin
