@@ -127,6 +127,10 @@ jobs:
         working-directory: build
       - run: make -j install
         working-directory: build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thapi-bin
+          path: ./build/ici/
 
   integration-tests:
     needs: [babeltrace2, pre_job, install_with_mpi]
@@ -153,6 +157,10 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: thapi-bin
+          path: ./build/ici/
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libpocl2 clinfo valgrind bats
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
@@ -165,6 +173,7 @@ jobs:
       - name: integration test ${{ matrix.bats_file }}
         run: |
           bats integration_tests/${{ matrix.bats_file }}.bats
+        working-directory: build
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
