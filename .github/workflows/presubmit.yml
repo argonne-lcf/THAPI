@@ -145,6 +145,9 @@ jobs:
       - name: print-env
         run: |
           THAPI_JOBID=0 mpirun -n 2 env
+      - name: SANITY
+        run: |
+          THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 2 ruby -e "puts 'OK'"
       - name: integration test-2 ${{ matrix.bats_file }}
         run: |
           THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 2 $THAPI_BIN_DIR/iprof --debug 0 -- $THAPI_TEST_BIN

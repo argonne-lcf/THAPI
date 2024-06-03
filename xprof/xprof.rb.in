@@ -673,6 +673,10 @@ def last_trace_saved
   Dir[File.join(thapi_trace_home, 'thapi*')].max_by { |f| File.mtime(f) }
 end
 
+at_exit do
+  LOGGER.info("THAPI exited")
+end
+
 # Avoid load problem
 if __FILE__ == $PROGRAM_NAME
   parser = OptionParserWithDefaultAndValidation.new
@@ -786,6 +790,4 @@ if __FILE__ == $PROGRAM_NAME
     warn("THAPI: Trace location: #{folder}")
     global_processing(folder) if OPTIONS[:analysis]
   end
-  LOGGER.info("Done")
-  exit(0)
 end
