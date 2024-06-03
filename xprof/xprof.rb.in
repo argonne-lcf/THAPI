@@ -27,6 +27,7 @@ require 'securerandom'
 require 'yaml'
 require 'date'
 
+
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
 
@@ -227,7 +228,7 @@ class Sync_daemon
   RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
-  def lazy_exec(&block)
+  def _lazy_exec(&block)
     return unless in_mpi_env?
 
     Signal.trap(RT_SIGNAL_READY) do
@@ -237,9 +238,16 @@ class Sync_daemon
     sleep
   end
 
+  def lazy_exec(message=nil, &block)
+    LOGGER.info(message+": entry") if message
+    # Don't inline, it Trap doesn't work with logger
+    # https://bugs.ruby-lang.org/issues/7917
+    _lazy_exec(&block) 
+    LOGGER.info(message+": exit") if message
+  end
+
   def initialize
-    LOGGER.info { 'Init Sync_daemon' }
-    lazy_exec do
+    lazy_exec('Initialize Sync_daemon') do
       daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
       daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
                  "#{__dir__}/sync_daemon_mpi"
@@ -252,22 +260,20 @@ class Sync_daemon
   end
 
   def finalize
-    LOGGER.info { "finalize Sync_daemon" }
-    lazy_exec do
+    lazy_exec("Finalize Sync_daemon") do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
+    LOGGER.info("Finalize Sync_daemon: exit") 
   end
 
   def local_barrier(name)
-    LOGGER.info { "Local_barrier #{name}" }
-    lazy_exec do
+    lazy_exec("Local_barrier #{name}") do
       `kill -#{RT_SIGNAL_LOCAL_BARRIER} #{@pid}`
     end
   end
 
   def global_barrier
-    LOGGER.info { 'global_barrier' }
-    lazy_exec do
+    lazy_exec("Global_barrier") do
       `kill -#{RT_SIGNAL_GLOBAL_BARRIER} #{@pid}`
     end
   end
@@ -639,6 +645,7 @@ def global_processing(folder)
   IO.popen([cmdname, *args]) do |pipe|
     fo.puts(pipe.readlines)
   end
+  LOGGER.info('Finish printing output')
   fo.close
   exit(1) unless $?.success?
 end

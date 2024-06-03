@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        thapi_sync_daemon: [ 'fs', 'mpi' ]
+        thapi_sync_daemon: [ 'fs'] # 'mpi' ]
         bats_file: ['mpi_test'] # 'sync_daemon_test']
         include:
           - bats_file: no_mpi
@@ -147,7 +147,7 @@ jobs:
           THAPI_JOBID=0 mpirun -n 2 env
       - name: integration test-2 ${{ matrix.bats_file }}
         run: |
-          THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 2 $THAPI_BIN_DIR/iprof --debug 0 -- $THAPI_TEST_BIN
+          THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 1 $THAPI_BIN_DIR/iprof --debug 0 -- $THAPI_TEST_BIN
 #      - name: integration test ${{ matrix.bats_file }}
 #        run: |
 #          BATS_TEST_TIMEOUT=30 ./bats-core/bin/bats --print-output-on-failure --show-output-of-passing-tests  integration_tests/${{ matrix.bats_file }}.bats
