@@ -141,7 +141,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        thapi_sync_daemon: ['fs'] # 'mpi' ]
+        thapi_sync_daemon: ['fs', 'mpi']
         bats_file: ['mpi_sync_daemon', 'mpi_iprof']
         include:
           - bats_file: 'iprof'
