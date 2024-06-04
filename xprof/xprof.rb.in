@@ -289,6 +289,8 @@ class Sync_daemon
     end
   end
 
+  # Context manager, ensure that when the block yield is exited
+  # we always call clean-up the daemon
   def self.open
     yield f = new
   ensure
