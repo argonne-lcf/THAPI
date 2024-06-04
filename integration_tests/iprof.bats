@@ -9,19 +9,25 @@ teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
 }
 
-@test "default" {
+@test "default_summary" {
    $IPROF $THAPI_TEST_BIN
+}
+
+@test "default_trace" {
    $IPROF -t $THAPI_TEST_BIN | wc -l
+}
+
+@test "default_timeline" {
    $IPROF -l -- $THAPI_TEST_BIN
    rm out.pftrace
 }
 
-@test "replay" {
+@test "replay_summary" {
    $IPROF $THAPI_TEST_BIN
    $IPROF -r
 }
 
-@test "no-analsysis" {
+@test "no-analysis_all" {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
    $IPROF -r 
    $IPROF -t -r | wc -l
@@ -29,7 +35,7 @@ teardown_file() {
    rm out.pftrace 
 }
 
-@test "trace-output" {
+@test "trace-output_all" {
    $IPROF --trace-output trace_1 -- $THAPI_TEST_BIN
    $IPROF -r trace_1
    rm -rf trace_1
@@ -43,13 +49,13 @@ teardown_file() {
    rm -rf trace_3 out.pftrace
 }
 
-@test "timeline output" {
+@test "timeline_output" {
    $IPROF -l roger -- $THAPI_TEST_BIN
    rm roger
 }
 
 # Assert Failure
-@test "failure of replay" {
+@test "replay_negative" {
    $IPROF  -- $THAPI_TEST_BIN
    run $IPROF -t -r
    [ "$status" != 0 ]
