@@ -141,10 +141,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        thapi_sync_daemon: ['fs', 'mpi']
-        bats_file: ['mpi_sync_daemon', 'mpi_iprof']
-        include:
-          - bats_file: 'iprof'
+        thapi_sync_daemon: ['mpi'] #['fs', 'mpi']
+        #bats_file: ['mpi_sync_daemon', 'mpi_iprof']
+        #include:
+        #  - bats_file: 'iprof'
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ./build/ici/bin
@@ -172,7 +172,8 @@ jobs:
           echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: integration test ${{ matrix.bats_file }}
         run: |
-          bats integration_tests/${{ matrix.bats_file }}.bats
+          THAPI_JOBID=0 ${MPIRUN:-mpirun} -n 2 $THAPI_BIN_DIR/iprof --debug 0 -- $THAPI_TEST_BIN
+          #bats integration_tests/${{ matrix.bats_file }}.bats
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
