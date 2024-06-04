@@ -112,6 +112,7 @@ AC_CONFIG_FILES([
 	cuda/Makefile
 	omp/Makefile
 	hip/Makefile
+	mpi/Makefile
 	xprof/Makefile
 	utils/Makefile
 ])
