@@ -1,4 +1,4 @@
-require_relative 'ompt_model'
+require_relative 'mpi_model'
 
 puts <<EOF
 #include <stdint.h>

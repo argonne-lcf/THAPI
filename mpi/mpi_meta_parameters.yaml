@@ -1,2 +1,5 @@
 ---
 meta_parameters:
+  MPI_Init:
+    - [ InScalar, argc ]
+    - [ InArray, argv, argc ]

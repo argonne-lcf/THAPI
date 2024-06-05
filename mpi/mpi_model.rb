@@ -11,34 +11,30 @@ else
   SRC_DIR = "."
 end
 
-RESULT_NAME = "ompResult"
+RESULT_NAME = "mpiResult"
 
 $mpi_api_yaml = YAML::load_file("mpi_api.yaml")
 $mpi_api = YAMLCAst.from_yaml_ast($mpi_api_yaml)
 
-typedefs = $mpi_api["typedefs"]
-structs = $mpi_api["structs"]
+typedefs = $mpi_api.fetch("typedefs",[])
+structs = $mpi_api.fetch("structs",[])
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
-MPI_CALLBACKS = typedefs.select { |t|
-  t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function) 
-}.collect { |t|
-   YAMLCAst::Declaration.new(name: t.name.gsub(/_t\z/,"")+"_func", type: t.type.type)
-}
+mpi_funcs_e = $mpi_api["functions"]
 
 INIT_FUNCTIONS=/None/
 
 $mpi_meta_parameters = YAML::load_file(File.join(SRC_DIR, "mpi_meta_parameters.yaml"))
-$mpi_meta_parameters["meta_parameters"].each  { |func, list|
+$mpi_meta_parameters.fetch("meta_parameters",[]).each  { |func, list|
   list.each { |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   }
 }
 
-$mpi_commands = OMPT_CALLBACKS.collect { |func|
+$mpi_commands = mpi_funcs_e.collect { |func|
   Command::new(func)
 }
 
@@ -46,7 +42,7 @@ def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-OMPT_POINTER_NAMES = $ompt_commands.collect { |c|
+MPI_POINTER_NAMES = $mpi_commands.collect { |c|
   [c, upper_snake_case(c.pointer_name)]
 }.to_h
 

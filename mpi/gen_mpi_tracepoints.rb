@@ -8,7 +8,8 @@ puts <<EOF
 #include <mpi.h.include>
 EOF
 
-$ompt_commands.each { |c|
+$mpi_commands.each { |c|
   next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
-  $tracepoint_lambda.call(provider, c)
+  $tracepoint_lambda.call(provider, c, :start)
+  $tracepoint_lambda.call(provider, c, :stop)
 }
