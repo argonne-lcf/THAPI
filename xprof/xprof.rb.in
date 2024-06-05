@@ -27,6 +27,17 @@ require 'securerandom'
 require 'yaml'
 require 'date'
 
+module LoggerRefinement
+  refine(Logger) do
+    def info_block(message, &block)
+      info(message + ': entry') if message
+      block.call
+      info(message + ': exit') if message
+    end
+  end
+end
+using LoggerRefinement
+
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
 
@@ -93,25 +104,42 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 def in_mpi_env?
-  !env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
+  !env_fetch_first('THAPI_JOBID', 'PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
+end
+
+def env_fetch_first_mpi(*args, default: nil)
+  v = env_fetch_first(*args)
+  if in_mpi_env?
+    return v unless v.nil?
+
+    LOGGER.fatal { 'A MPI JOBID is set but some sone MPI env are missing' }
+    exit(1)
+
+  else
+    LOGGER.warn { "A MPI JOBIB haven't be set, but some args have been set, ignoring them" } unless v.nil?
+    default
+  end
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
 # so use a random hex by default
 def mpi_job_id
-  @mpi_job_id ||= env_fetch_first('PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid', default: SecureRandom.hex)
+  @mpi_job_id ||= env_fetch_first_mpi('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid',
+                                      default: SecureRandom.hex)
 end
 
 def mpi_rank_id
-  env_fetch_first('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+  env_fetch_first_mpi('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
 end
 
 def mpi_local_size
-  env_fetch_first('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', default: 1).to_i
+  env_fetch_first_mpi('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS',
+                      default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetch_first('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', default: 0).to_i
+  env_fetch_first_mpi('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID',
+                      default: 0).to_i
 end
 
 def mpi_local_master?
@@ -145,7 +173,7 @@ end
 #     When "on the fly" analys will be possible, this should not potential OOM
 # - thapi_trace_dir_tmp
 #     Where the "pre-processed / analysed / condensed" trace a saved.
-#     Each nodes need to aggree on a root folder to write into.
+#     Each nodes need to agree on a root folder to write into.
 #  - thapi_trace_dir_root
 #     Final directory exposed to the user. The `master rank`  rename the `thapi_trace_dir_tmp`
 #     with a more "friendly" name. Not required if `analysis-output` is set
@@ -212,7 +240,7 @@ class Sync_daemon
   RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
-  def lazy_exec(&block)
+  def _lazy_exec(&block)
     return unless in_mpi_env?
 
     Signal.trap(RT_SIGNAL_READY) do
@@ -222,10 +250,17 @@ class Sync_daemon
     sleep
   end
 
+  def lazy_exec(message = nil, &block)
+    LOGGER.info_block(message) do
+      # Don't inline, it Trap doesn't work with logger
+      # https://bugs.ruby-lang.org/issues/7917
+      _lazy_exec(&block)
+    end
+  end
+
   def initialize
-    LOGGER.info { 'Init Sync_daemon' }
-    lazy_exec do
-      daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
+    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
+    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
       daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
                  "#{__dir__}/sync_daemon_mpi"
                else
@@ -237,24 +272,29 @@ class Sync_daemon
   end
 
   def finalize
-    LOGGER.info { "finalize Sync_daemon" }
-    lazy_exec do
+    lazy_exec('Finalize Sync_daemon') do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
   end
 
   def local_barrier(name)
-    LOGGER.info { "Local_barrier #{name}" }
-    lazy_exec do
+    lazy_exec("Local_barrier #{name}") do
       `kill -#{RT_SIGNAL_LOCAL_BARRIER} #{@pid}`
     end
   end
 
   def global_barrier
-    LOGGER.info { 'global_barrier' }
-    lazy_exec do
+    lazy_exec('Global_barrier') do
       `kill -#{RT_SIGNAL_GLOBAL_BARRIER} #{@pid}`
     end
+  end
+
+  # Context manager, ensure that when the block yield is exited
+  # we always call clean-up the daemon
+  def self.open
+    yield f = new
+  ensure
+    f.finalize
   end
 end
 
@@ -268,6 +308,7 @@ end
 
 def sampling?
   return false unless OPTIONS[:sample]
+
   env_fetch_first('LTTNG_UST_SAMPLING_MASTER_ONLY', default: '0') == '0' || mpi_local_master?
 end
 
@@ -320,7 +361,7 @@ def env_tracers
 
   # Sample
   if sampling?
-    LOGGER.debug("Sampling Enabled")
+    LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
     h['ZES_ENABLE_SYSMAN'] = 1 if OPTIONS[:'backend-names'].include?('ze')
@@ -502,10 +543,11 @@ def teardown_lttng
   # In theory, opening the lttng-sessiond.pid file is racy.
   # It's possible that the sessiond spawned and didn't yet write the file
   # In practice, there is a lot of work between the spawn and the write, so it should be ok
-  pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
-  LOGGER.info('Killing sessiond')
-  Process.kill('SIGKILL', pid)
-  FileUtils.rm_f(lttng_home_dir)
+  LOGGER.info_block('Killing sessiond') do
+    pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
+    Process.kill('SIGKILL', pid)
+    FileUtils.rm_f(lttng_home_dir)
+  end
 end
 
 #    _                                   _
@@ -545,7 +587,6 @@ def on_node_processing(backends, syncd)
 
   # Global Barrier
   syncd.global_barrier
-  syncd.finalize
 
   # Replace mpi_job_id with a better name
   return unless mpi_master?
@@ -563,34 +604,34 @@ end
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
   # All masters set a future global barrier
-  syncd = Sync_daemon.new
+  Sync_daemon.open do |syncd|
+    # Load Tracers and APILoaders Lib
+    backends, h = env_tracers
 
-  # Load Tracers and APILoaders Lib
-  backends, h = env_tracers
+    # All ranks need to set the LLTTNG_HOME env
+    # so they can have access to the daemon
+    ENV['LTTNG_HOME'] = lttng_home_dir
+    # Only local master spawn LTTNG daemon and start session
+    setup_lttng(backends) if mpi_local_master?
+    syncd.local_barrier('waiting_for_lttng_setup')
+    # Launch User Command
+    launch_usr_bin(h, usr_argv)
 
-  # All ranks need to set the LLTTNG_HOME env
-  # so they can have access to the daemon
-  ENV['LTTNG_HOME'] = lttng_home_dir
-  # Only local master spawn LTTNG daemon and start session
-  setup_lttng(backends) if mpi_local_master?
-  syncd.local_barrier('waiting_for_lttng_setup')
-  # Launch User Command
-  launch_usr_bin(h, usr_argv)
+    # We need to be sure that all the local ranks are finished
+    # before the local master stops the lttng session
+    syncd.local_barrier('waiting_for_application_ending')
+    return unless mpi_local_master?
 
-  # We need to be sure that all the local ranks are finished
-  # before the local master stops the lttng session
-  syncd.local_barrier('waiting_for_application_ending')
-  return unless mpi_local_master?
-
-  teardown_lttng
-  # Preprocess trace
-  on_node_processing(backends, syncd)
+    teardown_lttng
+    # Preprocess trace
+    on_node_processing(backends, syncd)
+  end
 end
 
 def global_processing(folder)
   raise unless mpi_master?
 
-  LOGGER.info { "postprocess #{folder}" }
+  LOGGER.info { "Postprocess #{folder}" }
 
   cmdname = "#{BINDIR}/babeltrace_thapi"
   backends = OPTIONS[:backends].join(',')
@@ -615,16 +656,19 @@ def global_processing(folder)
   LOGGER.debug(cmdname)
   LOGGER.debug(args)
 
-  fo = if OPTIONS[:'analysis-output']
-         File.open(OPTIONS[:'analysis-output'], 'w')
-       else
-         $stdout.dup
-       end
+  LOGGER.info_block('IO dump') do
+    fo = if OPTIONS[:'analysis-output']
+           File.open(OPTIONS[:'analysis-output'], 'w')
+         else
+           $stdout.dup
+         end
 
-  IO.popen([cmdname, *args]) do |pipe|
-    fo.puts(pipe.readlines)
+    IO.popen([cmdname, *args]) do |pipe|
+      fo.puts(pipe.readlines)
+    end
+
+    fo.close
   end
-  fo.close
   exit(1) unless $?.success?
 end
 
@@ -660,7 +704,7 @@ if __FILE__ == $PROGRAM_NAME
             'Use -1 to mean all ranks.',
             default: Set[-1]) do |ranks|
     ranks.to_set do |r|
-      if r.match?(/^\d+$/) || r == "-1"
+      if r.match?(/^\d+$/) || r == '-1'
         r.to_i
       else
         raise(OptionParser::ParseError,
@@ -750,5 +794,4 @@ if __FILE__ == $PROGRAM_NAME
     warn("THAPI: Trace location: #{folder}")
     global_processing(folder) if OPTIONS[:analysis]
   end
-
 end
