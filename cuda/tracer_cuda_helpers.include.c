@@ -14,7 +14,7 @@
 //struct cuda_closure * cuda_closures = NULL;
 //
 
-#if (defined(THAPI_CLEANUP) && THAPI_CLEANUP == DESTRUCTOR)
+#ifdef THAPI_USE_DESTRUCTORS
 #define THAPI_ATTRIBUTE_DESTRUCTOR __attribute__((destructor))
 #else
 #define THAPI_ATTRIBUTE_DESTRUCTOR
@@ -531,7 +531,7 @@ static void _load_tracer(void) {
     _do_trace_export_tables = 1;
 
   _do_cleanup = 1;
-#if (!defined(THAPI_CLEANUP) || THAPI_CLEANUP == ATEXIT)
+#ifndef THAPI_USE_DESTRUCTORS
   atexit(_lib_cleanup);
 #endif
 }
