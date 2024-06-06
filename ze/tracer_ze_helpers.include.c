@@ -15,6 +15,12 @@
 #define THAPI_DBGLOG_NO_ARGS(fmt) do { } while (0)
 #endif
 
+#ifdef THAPI_USE_DESTRUCTORS
+#define THAPI_ATTRIBUTE_DESTRUCTOR __attribute__((destructor))
+#else
+#define THAPI_ATTRIBUTE_DESTRUCTOR
+#endif
+
 enum _ze_obj_type {
   UNKNOWN = 0,
   DRIVER,
@@ -630,7 +636,7 @@ static inline int _do_state() {
          tracepoint_enabled(lttng_ust_ze_properties, memory_info_range);
 }
 
-static void __attribute__((destructor))
+static void THAPI_ATTRIBUTE_DESTRUCTOR
 _lib_cleanup() {
   if (_do_cleanup) {
     if (_do_profile)
@@ -1154,6 +1160,9 @@ static void _load_tracer(void) {
   }
 
   _do_cleanup = 1;
+#ifndef THAPI_USE_DESTRUCTORS
+  atexit(_lib_cleanup);
+#endif
 }
 
 static inline void _init_tracer(void) {
