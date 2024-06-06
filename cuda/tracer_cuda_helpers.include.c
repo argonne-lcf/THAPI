@@ -14,6 +14,12 @@
 //struct cuda_closure * cuda_closures = NULL;
 //
 
+#ifdef THAPI_USE_DESTRUCTORS
+#define THAPI_ATTRIBUTE_DESTRUCTOR __attribute__((destructor))
+#else
+#define THAPI_ATTRIBUTE_DESTRUCTOR
+#endif
+
 static void _log_export(CUuuid *pExportTableId, size_t exportOffset) {
   tracepoint(lttng_ust_cuda_exports, export_called, pExportTableId, exportOffset);
 }
@@ -477,7 +483,7 @@ static inline void _primary_context_reset(CUdevice dev) {
   pthread_mutex_unlock(&_primary_contexts_mutex);
 }
 
-static void __attribute__((destructor))
+static void THAPI_ATTRIBUTE_DESTRUCTOR
 _lib_cleanup() {
   if (_do_cleanup) {
     if (_do_profile) {
@@ -525,6 +531,9 @@ static void _load_tracer(void) {
     _do_trace_export_tables = 1;
 
   _do_cleanup = 1;
+#ifndef THAPI_USE_DESTRUCTORS
+  atexit(_lib_cleanup);
+#endif
 }
 
 static pthread_once_t _init_tracer_once = PTHREAD_ONCE_INIT;
