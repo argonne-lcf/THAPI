@@ -74,7 +74,7 @@ typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_fabricPort_i
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_domain_idx> hp_ddomain_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_sdevice_idx> hp_dsdev_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_fabricPort_id, thapi_sdevice_idx> hp_dfsdev_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_fabricPort_id, thapi_sdevice_idx, bool> hp_dfsdev_t;
 typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
