@@ -11,7 +11,7 @@
 int main(int argc, char* argv[]) {
 
    cl_int err;
-    
+
    //  _              _                      _
    // |_) |  _. _|_ _|_ _  ._ ._ _    ()    | \  _     o  _  _
    // |   | (_|  |_  | (_) |  | | |   (_X   |_/ (/_ \/ | (_ (/_
@@ -25,9 +25,9 @@ int main(int argc, char* argv[]) {
       platform_idx = (cl_uint) atoi(argv[1]);
     if (argc > 2)
       device_idx = (cl_uint) atoi(argv[2]);
-    
+
     char name[128];
-    /* - - - 
+    /* - - -
     Plateform
     - - - - */
     //A platform is a specific OpenCL implementation, for instance AMD, NVIDIA or Intel.
@@ -66,11 +66,11 @@ int main(int argc, char* argv[]) {
     check_error(err, "clGetPlatformInfo");
 
     printf("-- Device #%d: %s\n", device_idx, name);
-    
-    //  _                               _                  
-    // /   _  ._ _|_  _    _|_   ()    / \      _       _  
-    // \_ (_) | | |_ (/_ >< |_   (_X   \_X |_| (/_ |_| (/_ 
-    //                                                     
+
+    //
+    // /   _  ._ _|_  _    _|_   ()    / \
+    // \_ (_) | | |_ (/_ >< |_   (_X   \_X |_| (/_ |_| (/_
+    //
 
     /* - - - -
     Context
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
       offset += batch_size;
     }
 
-    //  _                         
+    //
     // /  |  _   _. ._  o ._   _  
     // \_ | (/_ (_| | | | | | (_| 
     //                         _|

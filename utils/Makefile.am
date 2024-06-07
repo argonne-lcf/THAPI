@@ -4,6 +4,9 @@ else
   WERROR =
 endif
 
+include_HEADERS = \
+	include/thapi.h
+
 noinst_HEADERS = \
 	include/utarray.h \
 	include/uthash.h \
