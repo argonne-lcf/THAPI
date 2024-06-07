@@ -322,6 +322,10 @@ def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
 
+def lttng_session_uuid_bookkeeping
+  lttng_session_uuid + "-bookkeeping"
+end
+
 def sampling?
   return false unless OPTIONS[:sample]
 
@@ -465,6 +469,15 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
 end
 
 def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable_bookkeeping = "lttng enable-event --userspace --session=#{lttng_session_uuid_bookkeeping} --channel=#{channel_name}"
+  bookkeeping_events = [
+    "lttng_ust_opencl:clGetDeviceIDs",
+    "lttng_ust_opencl:clCreatSubDevices",
+    "lttng_ust_opencl:clCreateCommandQueue",
+    "lttng_ust_opencl_arguments:kernel_info",
+  ]
+  exec("#{lttng_enable_bookkeeping} #{bookkeeping_events.join(',')}")
+
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   case tracing_mode
   when 'full'
@@ -484,7 +497,7 @@ def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
     # So we enable and disable on the same line
     opencl_disable = ['lttng_ust_opencl:clSetKernelArg*', 'lttng_ust_opencl:clGetKernelArg*',
                       'lttng_ust_opencl:clSetKernelExecInfo*', 'lttng_ust_opencl:clGetKernelInfo*',
-                      'lttng_ust_opencl:clGetMemAllocInfoINTEL*']
+                      'lttng_ust_opencl:clGetMemAllocInfoINTEL*'] + bookkeeping_events
 
     exec("#{lttng_enable} lttng_ust_opencl:* -x #{opencl_disable.join(',')}")
   when 'minimal'
@@ -523,12 +536,20 @@ def setup_lttng(backends)
   #   if LTTNG_HOME doesn't exist
   FileUtils.mkdir_p(lttng_home_dir)
   FileUtils.mkdir_p(lttng_trace_dir_tmp)
+  FileUtils.mkdir_p(lttng_trace_dir_tmp + "/bookkeeping")
+  FileUtils.mkdir_p(lttng_trace_dir_tmp + "/main")
   exec('lttng-sessiond --daemonize')
-  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
+  # TODO: need different subdirs to merge later?
+  exec("lttng create #{lttng_session_uuid_bookkeeping} -o #{lttng_trace_dir_tmp}/bookkeeping")
+  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}/main")
 
   File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
 
   channel_name = 'blocking-channel'
+
+  exec("lttng enable-channel --userspace --session=#{lttng_session_uuid_bookkeeping} --blocking-timeout=inf #{channel_name}")
+  exec("lttng add-context    --userspace --session=#{lttng_session_uuid_bookkeeping} --channel=#{channel_name} -t vpid -t vtid")
+
   exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
   exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
@@ -550,11 +571,15 @@ def setup_lttng(backends)
     end
 
   end
-  exec("lttng start #{lttng_session_uuid}")
+  exec("lttng start #{lttng_session_uuid_bookkeeping}")
+  if OPTIONS[:'profile-from-start']
+    exec("lttng start #{lttng_session_uuid}")
+  end
 end
 
 def teardown_lttng
   exec("lttng destroy #{lttng_session_uuid}")
+  exec("lttng destroy #{lttng_session_uuid_bookkeeping}")
   # Need to kill the sessiond Daemon. It's safe because each job has their own
   #
   # In theory, opening the lttng-sessiond.pid file is racy.
@@ -628,6 +653,10 @@ def trace_and_on_node_processing(usr_argv)
     # All ranks need to set the LLTTNG_HOME env
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
+
+    # Used by C api thapi_start/thapi_stop
+    ENV['THAPI_LTTNG_SESSION_ID'] = lttng_session_uuid
+
     # Only local master spawn LTTNG daemon and start session
     setup_lttng(backends) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
@@ -731,6 +760,7 @@ if __FILE__ == $PROGRAM_NAME
   end
   parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
   parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
+  parser.on('--[no-]profile-from-start', 'Enable profiling at start (disable to to application directed focused profiling using thapi_start/stop C API)', default: true)
 
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
