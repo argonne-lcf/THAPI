@@ -114,6 +114,7 @@ AC_CONFIG_FILES([
 	hip/Makefile
 	xprof/Makefile
 	utils/Makefile
+  libthapictl/Makefile
 ])
 AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])
 AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
