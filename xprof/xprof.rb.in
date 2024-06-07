@@ -508,8 +508,17 @@ def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
 end
 
 def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable_bookkeeping = "lttng enable-event --userspace --session=#{lttng_session_uuid_bookkeeping} --channel=#{channel_name}"
+  bookkeeping_events = [
+    "lttng_ust_cuda:cuCtx*",
+    "lttng_ust_cuda:cuDevicePrimaryCtxRetain",
+    "lttng_ust_cuda:cuStreamCreate",
+    "lttng_ust_cuda:cuModuleGetFunction"
+  ].join(',')
+  exec("#{lttng_enable_bookkeeping} #{bookkeeping_events}")
+
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
-  exec("#{lttng_enable} lttng_ust_cuda:*")
+  exec("#{lttng_enable} lttng_ust_cuda:* -x #{bookkeeping_events}")
   exec("#{lttng_enable} lttng_ust_cuda_properties")
   exec("#{lttng_enable} lttng_ust_cuda_profiling:*") if profiling
 end
