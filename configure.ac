@@ -123,6 +123,7 @@ AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
 AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
 AC_CONFIG_FILES([hip/tracer_hip.sh], [chmod +x hip/tracer_hip.sh])
+AC_CONFIG_FILES([mpi/tracer_mpi.sh], [chmod +x mpi/tracer_mpi.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
 AC_OUTPUT
