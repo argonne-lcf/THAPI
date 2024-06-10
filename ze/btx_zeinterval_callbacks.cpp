@@ -656,6 +656,25 @@ static void event_profiling_callback(void *btx_handle, void *usr_data, int64_t t
     data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
 }
 
+static void zeCommandListReset_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                              const char *hostname, int64_t vpid, uint64_t vtid,
+                                              ze_command_list_handle_t hCommandList) {
+  auto *data = static_cast<data_t *>(usr_data);
+  data->entry_state.set_data({hostname, vpid, vtid}, hCommandList);
+}
+
+static void zeCommandListReset_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                             const char *hostname, int64_t vpid, uint64_t vtid,
+                                             ze_result_t zeResult) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  if (zeResult == ZE_RESULT_SUCCESS) {
+    auto hCommandList =
+        data->entry_state.get_data<ze_command_list_handle_t>({hostname, vpid, vtid});
+    data->commandListToEvents[{hostname, vpid, hCommandList}].clear();
+  }
+}
+
 static void event_profiling_result_callback(void *btx_handle, void *usr_data, int64_t ts,
                                             const char *hostname, int64_t vpid, uint64_t vtid,
                                             ze_event_handle_t hEvent, ze_result_t status,
@@ -676,7 +695,6 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   // We don't erase, may have one entry for multiple result
   const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
                commandName, lltngMin, clockLttngDevice, type, ptr] = it_p->second;
-
   std::string metadata = "";
   {
     std::stringstream ss_metadata;
@@ -921,6 +939,11 @@ void btx_register_usr_callbacks(void *btx_handle) {
                                                            &zeEventDestroy_entry_callback);
   btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(btx_handle,
                                                           &zeEventDestroy_exit_callback);
+
+  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_entry(btx_handle,
+                                                               &zeCommandListReset_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_exit(btx_handle,
+                                                              &zeCommandListReset_exit_callback);
 
   /* Sampling */
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(
