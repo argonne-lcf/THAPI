@@ -19,7 +19,7 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
   const int64_t entry_ts = static_cast<data_t *>(usr_data)->entry_state.get_ts(
       {hostname, vpid, vtid});
 
-  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_HIP,
+  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_MPI,
                               event_class_name_striped.c_str(), (ts - entry_ts), err);
 }
 

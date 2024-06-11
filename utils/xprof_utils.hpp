@@ -19,6 +19,7 @@ enum backend_e {
   BACKEND_OMP_TARGET_OPERATIONS = 4,
   BACKEND_OMP = 5,
   BACKEND_HIP = 6,
+  BACKEND_MPI = 7,
 };
 
 constexpr const char *pretty_backend_name[] = {
@@ -29,6 +30,7 @@ constexpr const char *pretty_backend_name[] = {
     "omp_target",
     "omp",
     "hip",
+    "mpi",
 };
 
 typedef enum backend_e backend_t;

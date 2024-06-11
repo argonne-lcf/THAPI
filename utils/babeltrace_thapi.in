@@ -152,6 +152,7 @@ def get_components(names)
       # Yaml and event_lambdas are required by babeltrace*_lib
       $event_lambdas = {}
       require 'yaml'
+      require 'babeltrace_mpi_lib' if $options[:'backend-names'].include?('mpi')
       require 'babeltrace_omp_lib' if $options[:'backend-names'].include?('omp')
       require 'babeltrace_opencl_lib' if $options[:'backend-names'].include?('cl')
       require 'babeltrace_ze_lib' if $options[:'backend-names'].include?('ze')
@@ -300,7 +301,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
-            default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+            default: ['mpi':3, 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
     on('--debug', default: false)
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do

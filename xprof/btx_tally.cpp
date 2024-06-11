@@ -180,13 +180,14 @@ static void initialize_component_callback(void **usr_data) {
 
   /* Backend information must match enum backend_e in xprof_utils.hpp */
   data->backend_levels = {
-      2, // BACKEND_UNKNOWN
-      2, // BACKEND_ZE
-      2, // BACKEND_OPENCL
-      2, // BACKEND_CUDA
-      1, // BACKEND_OMP_TARGET_OPERATIONS
-      0, // BACKEND_OMP
-      2, // BACKEND_HIP
+      0, // BACKEND_UNKNOWN
+      1, // BACKEND_ZE
+      1, // BACKEND_OPENCL
+      1, // BACKEND_CUDA
+      2, // BACKEND_OMP_TARGET_OPERATIONS
+      2, // BACKEND_OMP
+      1, // BACKEND_HIP
+      3, // BACKEND_MPI
   };
 }
 
