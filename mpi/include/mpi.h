@@ -1,6 +1,11 @@
 #ifndef MPI_H_ABI
 #define MPI_H_ABI
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
 enum {
     MPI_SUCCESS                        =  0,
 };
@@ -11,5 +16,9 @@ double MPI_Wtick(void);
 double MPI_Wtime(void);
 double PMPI_Wtick(void);
 double PMPI_Wtime(void);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif  /* MPI_H_ABI */

@@ -138,12 +138,12 @@ def get_components(names)
 
   # THAPI components
   thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib', '@PACKAGE@', 'bt2'))
-  thapi_plugins.map do |pg|
+  thapi_plugins.each do |pg|
     pg.source_component_classes.each { |c| components_classes["source.#{pg.name}.#{c.name}"] = c }
     pg.filter_component_classes.each { |c| components_classes["filter.#{pg.name}.#{c.name}"] = c }
     pg.sink_component_classes.each { |c| components_classes["sink.#{pg.name}.#{c.name}"] = c }
   end
-
+ 
   names.flat_map do |name|
     case name
     when 'filter.intervals.interval'
@@ -192,7 +192,7 @@ def get_and_add_components(graph, _command, names)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
-    raise "#{name} plugins was not found" unless comp
+    raise "#{name} plugin was not found" unless comp
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
@@ -301,7 +301,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
-            default: ['mpi':3, 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
     on('--debug', default: false)
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do

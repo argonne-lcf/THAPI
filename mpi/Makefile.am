@@ -118,13 +118,17 @@ libTracerMPI_la_LIBADD = libmpitracepoints.la
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/mpi
 	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerMPI.so.1.0.0 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1
-	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cuda/libmpi.so.1 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libMPIInterval.so $(DESTDIR)$(pkglibdir)/bt2/libMPIInterval.so
 
 
 uninstall-hook:
 	$(RM) -f $(DESTDIR)$(libdir)/libTracerMPI.so.1.0.0 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1
 	$(RM) -f $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so
 	-rmdir $(DESTDIR)$(pkglibdir)/mpi
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libMPIInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
 install-data-hook:
