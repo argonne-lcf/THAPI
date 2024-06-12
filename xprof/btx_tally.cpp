@@ -1,9 +1,9 @@
-#include <metababel/metababel.h>
-#include "magic_enum.hpp"
 #include "btx_tally.hpp"
+#include "magic_enum.hpp"
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
 #include <array>
+#include <metababel/metababel.h>
 #include <sstream> // std::stringstream, std::stringbuf
 #include <string>
 #include <tuple>
@@ -12,17 +12,17 @@
 
 class TallyCoreTime : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
+
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
   virtual const std::array<std::string, nfields> to_string() override {
-    return std::array{
-        (count == error) ? "" : this->format_time(duration),
-        (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
-        this->to_pretty_string(count, "", 0),
-        (count == error) ? "" : this->format_time(average()),
-        (count == error) ? "" : this->format_time(min),
-        (count == error) ? "" : this->format_time(max),
-        this->to_pretty_string(error, "", 0)};
+    return std::array{(count == error) ? "" : this->format_time(duration),
+                      (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
+                      this->to_pretty_string(count, "", 0),
+                      (count == error) ? "" : this->format_time(average()),
+                      (count == error) ? "" : this->format_time(min),
+                      (count == error) ? "" : this->format_time(max),
+                      this->to_pretty_string(error, "", 0)};
   }
 
 private:
@@ -54,16 +54,17 @@ private:
 
 class TallyCoreByte : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
+
 public:
   static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
   virtual const std::array<std::string, nfields> to_string() override {
-    return std::array {format_byte(duration),
-                                    this->to_pretty_string(100. * duration_ratio, "%"),
-                                    this->to_pretty_string(count, "", 0),
-                                    this->format_byte(average()),
-                                    this->format_byte(min),
-                                    this->format_byte(max),
-                                    this->to_pretty_string(error, "", 0)};
+    return std::array{format_byte(duration),
+                      this->to_pretty_string(100. * duration_ratio, "%"),
+                      this->to_pretty_string(count, "", 0),
+                      this->format_byte(average()),
+                      this->format_byte(min),
+                      this->format_byte(max),
+                      this->to_pretty_string(error, "", 0)};
   }
 
 private:
@@ -92,7 +93,6 @@ private:
     return this->to_pretty_string(duration, "B");
   }
 };
-
 
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
@@ -129,6 +129,10 @@ static int get_backend_id(std::string name) {
     if (std::string{pretty_backend_name[i]} == name)
       return i;
   return -1;
+}
+
+static int get_flipped_bakend_level(int i) {
+  return std::numeric_limits<std::underlying_type<backend_t>::type>::max() - i;
 }
 
 static thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
@@ -208,10 +212,9 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
     data->backend_levels[id] = std::stoi(v);
   }
 
-  //Reverse the order of level, so we print orignal level in descending order
-  for (auto &level: data->backend_levels)
-    level = std::numeric_limits<std::underlying_type<backend_t>::type>::max() - level;
-
+  // Reverse the order of level, so we print orignal level in descending order
+  for (auto &level : data->backend_levels)
+    level = get_flipped_bakend_level(level);
 }
 
 static void finalize_component_callback(void *usr_data) {
@@ -264,18 +267,21 @@ static void finalize_component_callback(void *usr_data) {
       j["metadata"] = data->metadata;
 
     if (strcmp(data->params->display, "compact") == 0) {
-      for (auto &[level, host] : data->host)
-        j["host"][level] = json_compact(host);
+      for (auto &[level, host] : data->host) {
+        j["host"][std::to_string(get_flipped_bakend_level(level))] = json_compact(host);
+      }
 
       if (!data->device.empty())
         j["device"] = json_compact(data->device);
 
       for (auto &[level, traffic] : data->traffic)
-        j["traffic"][level] = json_compact(traffic);
+        j["traffic"][std::to_string(get_flipped_bakend_level(level))] = json_compact(traffic);
 
     } else {
-      for (auto &[level, host] : data->host)
-        j["host"][level] = json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
+      for (auto &[level, host] : data->host) {
+        j["host"][std::to_string(get_flipped_bakend_level(level))] =
+            json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
+      }
 
       if (!data->device.empty())
         j["device"] =
@@ -283,7 +289,7 @@ static void finalize_component_callback(void *usr_data) {
                                                         "Device pointer", "Subdevice pointer"));
 
       for (auto &[level, traffic] : data->traffic)
-        j["traffic"][level] =
+        j["traffic"][std::to_string(get_flipped_bakend_level(level))] =
             json_extented(traffic, std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;
@@ -322,8 +328,8 @@ static void aggreg_device_callback(void *btx_handle, void *usr_data, const char 
 
 static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
                                     int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
-                                    uint64_t max, uint64_t total, uint64_t count,
-                                    uint64_t backend, const char *metadata) {
+                                    uint64_t max, uint64_t total, uint64_t count, uint64_t backend,
+                                    const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   const int level = data->backend_levels[backend];

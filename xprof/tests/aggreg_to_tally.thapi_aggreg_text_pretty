@@ -1,2 +1,2 @@
- hostname: "testhost", vpid: 10, vtid: 1, name: "clEnqueueReadBuffer", min: 10, max: 10, total: 10, count: 1 - aggreg:host: { backend: 2, err_count: 0 }
+hostname: "testhost", vpid: 10, vtid: 1, name: "clEnqueueReadBuffer", min: 10, max: 10, total: 10, count: 1 - aggreg:host: { backend: 2, err_count: 0 }
 hostname: "testhost", vpid: 10, vtid: 1, name: "clEnqueueReadBuffer", min: 400, max: 400, total: 400, count: 1 - aggreg:traffic: { backend: 2, metadata: "" }
