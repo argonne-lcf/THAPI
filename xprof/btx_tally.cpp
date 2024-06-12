@@ -195,7 +195,6 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
-
   // Consumes key:value pairs in the stringstream k1:v1,..,kn:vn
   std::stringstream tokens{data->params->backend_levels};
   std::string tmp;
@@ -208,6 +207,11 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
     std::getline(tmp_string, v);
     data->backend_levels[id] = std::stoi(v);
   }
+
+  //Reverse the order of level, so we print orignal level in descending order
+  for (auto &level: data->backend_levels)
+    level = std::numeric_limits<magic_enum::underlying_type<backend_t>::type>::max() - level;
+
 }
 
 static void finalize_component_callback(void *usr_data) {
