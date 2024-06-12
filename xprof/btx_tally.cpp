@@ -210,7 +210,7 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
 
   //Reverse the order of level, so we print orignal level in descending order
   for (auto &level: data->backend_levels)
-    level = std::numeric_limits<magic_enum::underlying_type<backend_t>::type>::max() - level;
+    level = std::numeric_limits<std::underlying_type<backend_t>::type>::max() - level;
 
 }
 
