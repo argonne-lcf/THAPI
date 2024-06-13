@@ -47,7 +47,8 @@ struct FabricDetails {
 };
 
 using timeline_dispatch_t = struct timeline_dispatch_s;
-using uuid_getter_t = perfetto_uuid_t (*)(timeline_dispatch_t *, const std::string &, uint64_t, uintptr_t, uint32_t, std::optional<FabricDetails>);
+using uuid_getter_t = perfetto_uuid_t (*)(timeline_dispatch_t *, const std::string &, uint64_t, uintptr_t, 
+                                          uint32_t, std::optional<FabricDetails>);
 
 static perfetto_uuid_t gen_perfetto_uuid() {
   // Start at one, Look like UUID 0 is special
@@ -188,7 +189,7 @@ static void add_event_frequency(timeline_dispatch_t *dispatch, std::string hostn
                        frequency, get_frequency_track_uuuid, "Frequency");
 }
 
-static void add_event_fabricPort( timeline_dispatch_t *dispatch, std::string hostname,
+static void add_event_fabricPort(timeline_dispatch_t *dispatch, std::string hostname,
                                  uint64_t process_id, uint64_t thread_id, uintptr_t did, uintptr_t hFabricPort,
                                  uint32_t subDevice, uint64_t timestamp, uint32_t fabricId, uint32_t remotePortId, 
                                  float rxThroughput, float txThroughput, float rxSpeed, float txSpeed) {
