@@ -1,6 +1,7 @@
 require_relative 'mpi_model'
 
 puts <<~EOF
+  #include <stdint.h>
   #include <mpi.h>
   #include "mpi_tracepoints.h"
 EOF
