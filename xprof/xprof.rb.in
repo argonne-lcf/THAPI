@@ -509,16 +509,55 @@ end
 
 def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable_bookkeeping = "lttng enable-event --userspace --session=#{lttng_session_uuid_bookkeeping} --channel=#{channel_name}"
-  bookkeeping_events = [
-    "lttng_ust_cuda:cuCtx*",
-    "lttng_ust_cuda:cuDevicePrimaryCtxRetain",
-    "lttng_ust_cuda:cuStreamCreate",
-    "lttng_ust_cuda:cuModuleGetFunction"
+  required_events = [
+    "lttng_ust_cuda:cuGetProcAddress_v2_entry",
+    "lttng_ust_cuda:cuGetProcAddress_v2_exit",
   ].join(',')
-  exec("#{lttng_enable_bookkeeping} #{bookkeeping_events}")
+    #"lttng_ust_cuda:cuGetExportTable_entry",
+    #"lttng_ust_cuda:cuGetExportTable_exit"
+    #"lttng_ust_cuda:cuGetProcAddress_v2_entry",
+    #"lttng_ust_cuda:cuGetProcAddress_v2_exit",
+    #"lttng_ust_cuda:cuDeviceGetCount_entry",
+    #"lttng_ust_cuda:cuDeviceGetCount_exit",
+    #"lttng_ust_cuda:cuDeviceGet_entry",
+    #"lttng_ust_cuda:cuDeviceGet_exit",
+    #"lttng_ust_cuda:cuDeviceGetName_entry",
+    #"lttng_ust_cuda:cuDeviceGetName_exit",
+  bookkeeping_events = [
+    "lttng_ust_cuda:cuCtxCreate_entry",
+    "lttng_ust_cuda:cuCtxCreate_exit",
+    "lttng_ust_cuda:cuCtxCreate_v2_entry",
+    "lttng_ust_cuda:cuCtxCreate_v2_exit",
+    "lttng_ust_cuda:cuCtxCreate_v3_entry",
+    "lttng_ust_cuda:cuCtxCreate_v3_exit",
+    "lttng_ust_cuda:cuCtxDestroy_entry",
+    "lttng_ust_cuda:cuCtxDestroy_exit",
+    "lttng_ust_cuda:cuCtxDestroy_v2_entry",
+    "lttng_ust_cuda:cuCtxDestroy_v2_exit",
+    "lttng_ust_cuda:cuCtxSetCurrent_entry",
+    "lttng_ust_cuda:cuCtxSetCurrent_exit",
+    "lttng_ust_cuda:cuCtxPushCurrent_entry",
+    "lttng_ust_cuda:cuCtxPushCurrent_exit",
+    "lttng_ust_cuda:cuCtxPushCurrent_v2_entry",
+    "lttng_ust_cuda:cuCtxPushCurrent_v2_exit",
+    "lttng_ust_cuda:cuCtxPopCurrent_entry",
+    "lttng_ust_cuda:cuCtxPopCurrent_exit",
+    "lttng_ust_cuda:cuCtxPopCurrent_v2_entry",
+    "lttng_ust_cuda:cuCtxPopCurrent_v2_exit",
+    "lttng_ust_cuda:cuDevicePrimaryCtxRetain_entry",
+    "lttng_ust_cuda:cuDevicePrimaryCtxRetain_exit",
+    "lttng_ust_cuda:cuStreamCreate_entry",
+    "lttng_ust_cuda:cuStreamCreate_exit",
+    "lttng_ust_cuda:cuStreamCreateWithPriority_entry",
+    "lttng_ust_cuda:cuStreamCreateWithPriority_exit",
+    "lttng_ust_cuda:cuModuleGetFunction_entry",
+    "lttng_ust_cuda:cuModuleGetFunction_exit"
+  ].join(',')
+  exec("#{lttng_enable_bookkeeping} #{bookkeeping_events},#{required_events}")
 
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_cuda:* -x #{bookkeeping_events}")
+  exec("#{lttng_enable} #{required_events}")
   exec("#{lttng_enable} lttng_ust_cuda_properties")
   exec("#{lttng_enable} lttng_ust_cuda_profiling:*") if profiling
 end
