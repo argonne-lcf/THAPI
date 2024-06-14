@@ -74,14 +74,14 @@ int main(int argc, char** argv)
 
   for (int i = 0; i < 10; i++) {
     if (i % 2 == 1)
-      thapi_start_tracing();
+      thapi_ctl_start();
 
     d_axpy = gt::eval(expr);
     h_axpy = gt::empty_like(h_x);
     gt::copy(d_axpy, h_axpy);
 
     if (i % 2 == 1)
-      thapi_stop_tracing();
+      thapi_ctl_stop();
   }
 
   // Define a slice to print a subset of elements for spot checking the

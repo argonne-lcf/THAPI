@@ -11,9 +11,9 @@ int main(int argc, char **argv) {
   // for now just makes sure can compile and run without blowing up
   for (int i = 0; i < 10; i++) {
     if (i % 2 == 1)
-      thapi_start_tracing();
+      thapi_ctl_start();
     printf("loop %d\n", i);
     if (i % 2 == 1)
-      thapi_stop_tracing();
+      thapi_ctl_stop();
   }
 }
