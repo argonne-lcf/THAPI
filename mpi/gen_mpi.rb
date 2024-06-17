@@ -1,11 +1,5 @@
 require_relative 'mpi_model'
 
-puts <<~EOF
-  #include <stdint.h>
-  #include <mpi.h>
-  #include "mpi_tracepoints.h"
-EOF
-
 def common_block(c, provider)
   params = c.parameters.collect(&:name)
   tp_params = c.parameters.collect do |p|
@@ -31,10 +25,10 @@ EOF
   if c.has_return_type?
     puts <<EOF
   #{c.type} _retval;
-  _retval = P#{c.name}(#{params.join(', ')});
+  _retval = #{MPI_POINTER_NAMES[c]}(#{params.join(', ')});
 EOF
   else
-    puts "  P#{c.name}(#{params.join(', ')});"
+    puts "  #{MPI_POINTER_NAMES[c]}(#{params.join(', ')});"
   end
   c.tracepoint_parameters.each do |p|
     puts p.init if p.after?
@@ -50,6 +44,8 @@ def normal_wrapper(c, provider)
   puts <<~EOF
     #{c.decl} {
   EOF
+  puts "  _init_tracer();" if c.init?
+
   common_block(c, provider)
   puts <<~EOF
     }
@@ -57,7 +53,48 @@ def normal_wrapper(c, provider)
   EOF
 end
 
+def define_and_find_mpi_symbols()
+
+  $mpi_commands.each { |c|
+    puts <<EOF
+#define #{MPI_POINTER_NAMES[c]} #{c.pointer_name}
+#{c.decl_pointer(c.pointer_type_name)};
+static #{c.pointer_type_name} #{MPI_POINTER_NAMES[c]} = (void *) 0x0;
+
+EOF
+}
+
+  puts <<EOF
+
+static void find_mpi_symbols(void * handle, int verbose) {
+EOF
+  $mpi_commands.each { |c|
+     puts <<EOF
+
+    #{MPI_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
+    if (!#{MPI_POINTER_NAMES[c]} && verbose)
+      fprintf(stderr, "THAPI: Missing symbol #{c.name}!\\n");
+EOF
+  }
+
+puts <<EOF
+}
+
+EOF
+end
+
+puts <<~EOF
+  #include <stdint.h>
+  #include <mpi.h>
+  #include "mpi_tracepoints.h"
+  #include <dlfcn.h>
+  #include <pthread.h>
+EOF
+
+define_and_find_mpi_symbols
+
+puts File::read(File.join(SRC_DIR,"tracer_mpi_helpers.include.c"))
+
 $mpi_commands.each do |c|
-  next if c.name.start_with?("PMPI")
   normal_wrapper(c, :lttng_ust_mpi)
 end

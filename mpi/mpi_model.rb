@@ -25,7 +25,7 @@ gen_ffi_type_map(typedefs)
 
 mpi_funcs_e = $mpi_api["functions"]
 
-INIT_FUNCTIONS=/None/
+INIT_FUNCTIONS=/MPI_Init|MPI_Init_thread/
 
 $mpi_meta_parameters = YAML::load_file(File.join(SRC_DIR, "mpi_meta_parameters.yaml"))
 $mpi_meta_parameters.fetch("meta_parameters",[]).each  { |func, list|
@@ -39,7 +39,7 @@ $mpi_commands = mpi_funcs_e.collect { |func|
 }
 
 def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
+  str.gsub(/([a-z][a-z0-9]*)/, '_\1').upcase
 end
 
 MPI_POINTER_NAMES = $mpi_commands.collect { |c|
