@@ -83,11 +83,12 @@ BUILT_SOURCES = \
         $(MODIFIED_MPI_HDR) \
         $(MPI_PROBES_INCL)
 
-tracer_mpi.c: $(srcdir)/gen_mpi.rb $(MPI_MODEL) $(MPI_PROBES_INCL)
+tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
-	gen_mpi.rb
+	gen_mpi.rb \
+	tracer_mpi_helpers.include.c
 
 CLEANFILES += \
 	tracer_mpi.c
