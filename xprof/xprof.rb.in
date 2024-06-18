@@ -437,7 +437,8 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_zex:*")
     exec("#{lttng_enable} lttng_ust_ze_properties:*")
     ze_disable_events = ['lttng_ust_ze:zeKernelSetArgumentValue*', 'lttng_ust_ze:ze*Get*Properties*',
-                         'lttng_ust_ze:zeKernelGetName*']
+                         'lttng_ust_ze:zeKernelGetName*', 'lttng_ust_ze:zeKernelSetGlobalOffsetExp*',
+                         'lttng_ust_ze:zeKernelSuggestGroupSize*']
     ze_disable_query = ['lttng_ust_ze:*QueryStatus*', 'lttng_ust_ze:*ProcAddrTable*']
     ze_disable_loader = ['lttng_ust_ze:*Loader*']
     ze_disable = ze_disable_events + ze_disable_query + ze_disable_loader
