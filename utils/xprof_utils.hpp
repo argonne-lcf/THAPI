@@ -1,15 +1,16 @@
 #pragma once
 
 #include "babeltrace2/babeltrace.h"
+#include "magic_enum.hpp"
 #include <map>
-#include <string>
-#include <tuple>
-#include <unordered_map>
 #include <optional>
-#include <type_traits>
-#include <vector>
 #include <stdexcept>
 #include <string.h>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
 
 enum backend_e {
   BACKEND_UNKNOWN = 0,
@@ -21,14 +22,25 @@ enum backend_e {
   BACKEND_HIP = 6,
 };
 
-constexpr const char *pretty_backend_name[] = {
-    "unknown",
-    "ze",
-    "cl",
-    "cuda",
-    "omp_target",
-    "omp",
-    "hip",
+// Should be ordered by the value of the backend_e
+constexpr const char *pretty_backend_name_g[magic_enum::enum_count<backend_e>()] = {
+    "unknown",    // BACKEND_UNKNOWN
+    "ze",         // BACKEND_ZE
+    "cl",         // BACKEND_OPENCL
+    "cuda",       // BACKEND_CUDA
+    "omp_target", // BACKEND_OMP_TARGET_OPERATIONS
+    "omp",        // BACKEND_OMP
+    "hip",        // BACKEND_HIP
+};
+
+constexpr const int backend_levels_g[magic_enum::enum_count<backend_e>()] = {
+    0, // BACKEND_UNKNOWN
+    1, // BACKEND_ZE
+    1, // BACKEND_OPENCL
+    1, // BACKEND_CUDA
+    2, // BACKEND_OMP_TARGET_OPERATIONS
+    2, // BACKEND_OMP
+    1, // BACKEND_HIP
 };
 
 typedef enum backend_e backend_t;
@@ -64,8 +76,7 @@ typedef std::tuple<thapi_function_name, long> fn_ts_t;
 // Most efficient possible access when NDEBUG is set; if not
 // set, use .at which can be debugged with stack trace in
 // valgrind's memcheck.
-template <class M, class K>
-inline auto& thapi_at(M& map, K key) {
+template <class M, class K> inline auto &thapi_at(M &map, K key) {
 #ifdef THAPI_DEBUG
   return map.at(key);
 #else
@@ -117,20 +128,17 @@ template <typename... TT> struct hash<std::pair<TT...>> {
 };
 } // namespace std
 
-
 // Save Entry State so can be accessed in Exit
 class EntryState {
 public:
-  template <class K,
-            typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
+  template <class K, typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
   void set_data(hpt_t hpt, K v) {
     const auto *b = (std::byte *)&v;
     std::vector<std::byte> res{b, b + sizeof(K)};
     set_data_impl(hpt, res);
   }
 
-  template <class K,
-            typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
+  template <class K, typename = std::enable_if_t<std::is_trivially_copyable_v<K>>>
   K get_data(hpt_t hpt) {
     auto &v = set_data_impl(hpt);
     const K res{*(K *)(v.value().data())};
@@ -145,8 +153,7 @@ public:
     set_data_impl(hpt, res);
   }
 
-  template <class K,
-            typename = std::enable_if_t<std::is_same_v<K, std::string>>>
+  template <class K, typename = std::enable_if_t<std::is_same_v<K, std::string>>>
   std::enable_if_t<std::is_same_v<K, std::string>, K> get_data(hpt_t hpt) {
     auto &v = set_data_impl(hpt);
     const std::string res{(char *)v.value().data()};
@@ -174,13 +181,13 @@ private:
     }
   }
 
-  std::optional<std::vector<std::byte>> &set_data_impl(hpt_t hpt) { return thapi_at(entry_data, hpt); }
+  std::optional<std::vector<std::byte>> &set_data_impl(hpt_t hpt) {
+    return thapi_at(entry_data, hpt);
+  }
 };
 
-
 // ClassName Striping
-template <size_t SuffixLen>
-static inline std::string _strip_event_class_name(const char *str) {
+template <size_t SuffixLen> static inline std::string _strip_event_class_name(const char *str) {
   const char *p = strchr(str + strlen("lttng_"), ':') + 1;
   return std::string{p, strlen(p) - SuffixLen};
 }
