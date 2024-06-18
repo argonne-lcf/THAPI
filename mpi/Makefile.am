@@ -22,7 +22,7 @@ clean-local:
 	$(RM) -r modified_include
 
 EXTRA_DIST = \
-	$(srcdir)/include
+	$(srcdir)/include \
 	headers.patch
 
 MPI_NAMESPACES = mpi
