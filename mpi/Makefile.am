@@ -12,15 +12,18 @@ MPI_HDR = \
 MODIFIED_MPI_HDR = \
 	modified_include/mpi.h
 
-modified_include/mpi.h: $(MPI_HDR)
+modified_include/mpi.h &: $(MPI_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
+	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include
 
-EXTRA_DIST = $(srcdir)/include
+EXTRA_DIST = \
+	$(srcdir)/include
+	headers.patch
 
 MPI_NAMESPACES = mpi
 
@@ -111,9 +114,9 @@ nodist_libTracerMPI_la_SOURCES = \
 	$(MPI_PROBES_INCL) \
 	tracer_mpi.c
 
-libTracerMPI_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./utils -I./
+libTracerMPI_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
 libTracerMPI_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerMPI_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libTracerMPI_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread
 libTracerMPI_la_LIBADD = libmpitracepoints.la
 
 install-exec-hook:
