@@ -343,7 +343,9 @@ def env_tracers
   [%w[opencl cl libOpenCL libTracerOpenCL],
    %w[ze ze libze_loader libTracerZE],
    %w[cuda cuda libcuda libTracerCUDA],
-   %w[hip hip libamdhip64 libTracerHIP]].each do |name, bt_name, lib, libtracer|
+   %w[hip hip libamdhip64 libTracerHIP],
+   %w[mpi mpi libmpi libTracerMPI],
+  ].each do |name, bt_name, lib, libtracer|
     # Backend requested, skip omp. It will be handled in a custom case bellow
     next unless OPTIONS[:'backend-names'].include?(bt_name)
 
@@ -509,6 +511,11 @@ end
 def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_ompt:*target*")
+end
+
+def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_mpi:*")
 end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
@@ -748,7 +755,7 @@ if __FILE__ == $PROGRAM_NAME
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
-            default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
