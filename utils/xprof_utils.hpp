@@ -21,30 +21,30 @@ enum backend_e {
   BACKEND_OMP = 5,
   BACKEND_HIP = 6,
 };
-
-// Should be ordered by the value of the backend_e
-constexpr const char *pretty_backend_name_g[magic_enum::enum_count<backend_e>()] = {
-    "unknown",    // BACKEND_UNKNOWN
-    "ze",         // BACKEND_ZE
-    "cl",         // BACKEND_OPENCL
-    "cuda",       // BACKEND_CUDA
-    "omp_target", // BACKEND_OMP_TARGET_OPERATIONS
-    "omp",        // BACKEND_OMP
-    "hip",        // BACKEND_HIP
-};
-
-constexpr const int backend_levels_g[magic_enum::enum_count<backend_e>()] = {
-    0, // BACKEND_UNKNOWN
-    1, // BACKEND_ZE
-    1, // BACKEND_OPENCL
-    1, // BACKEND_CUDA
-    2, // BACKEND_OMP_TARGET_OPERATIONS
-    2, // BACKEND_OMP
-    1, // BACKEND_HIP
-};
-
 typedef enum backend_e backend_t;
 typedef unsigned backend_level_t;
+
+// Should be ordered by the value of the backend_e
+const std::unordered_map<std::string, backend_t> pretty_backend_name_g = {
+    {"unknown", BACKEND_UNKNOWN},
+    {"ze", BACKEND_ZE},
+    {"cl", BACKEND_OPENCL},
+    {"cuda", BACKEND_CUDA},
+    {"omp_target", BACKEND_OMP_TARGET_OPERATIONS},
+    {"omp", BACKEND_OMP},
+    {"hip", BACKEND_HIP},
+};
+
+const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
+    {BACKEND_UNKNOWN, 0},
+    {BACKEND_ZE, 1},
+    {BACKEND_OPENCL, 1},
+    {BACKEND_CUDA, 1},
+    {BACKEND_OMP_TARGET_OPERATIONS, 2},
+    {BACKEND_OMP, 2},
+    {BACKEND_HIP, 1},
+};
+
 typedef std::string thapi_metadata_t;
 
 // Datatypes representing string classes (or messages) common data.

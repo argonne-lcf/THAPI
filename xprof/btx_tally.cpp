@@ -101,7 +101,7 @@ struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
 
-  std::unordered_map<int, backend_level_t> backend_traced_levels;
+  std::unordered_map<backend_t, backend_level_t> backend_traced_levels;
 
   std::map<backend_level_t, std::set<std::string>> host_backend_name;
   std::map<backend_level_t, std::set<std::string>> traffic_backend_name;
@@ -176,31 +176,29 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
 
-  // pretty_backend_name and backend_levels store in xprof_utils.hpp
-  auto get_backend_id = [](std::string name) {
-    for (size_t i = 0; i < magic_enum::enum_count<backend_t>(); ++i)
-      if (std::string{pretty_backend_name_g[i]} == name)
-        return int(i);
-    return -1;
-  };
-
   // Consumes key:value pairs in the stringstream b1:l1,...
   std::stringstream tokens{data->params->backend_levels};
   for (std::string bl; std::getline(tokens, bl, ',');) {
     auto pos = bl.find(':');
-    int backend_id = get_backend_id(bl.substr(0, pos));
-    if (backend_id == -1)
+
+    // Find backend enum
+    std::string backend_name = bl.substr(0, pos);
+    auto it = pretty_backend_name_g.find(backend_name);
+    if (it == pretty_backend_name_g.end())
       continue;
+    backend_t backend = it->second;
+
+    // See if Level
     if (pos != std::string::npos) {
       int level = std::stoi(bl.substr(pos + 1, bl.length()));
-      data->backend_traced_levels[backend_id] = level;
+      data->backend_traced_levels[backend] = level;
     } else
-      data->backend_traced_levels[backend_id] = backend_levels_g[backend_id];
+      data->backend_traced_levels[backend] = backend_levels_g.at(backend);
   }
-  if (data->backend_traced_levels.empty()) {
-    for (size_t backend_id = 0; backend_id < magic_enum::enum_count<backend_e>(); backend_id++)
-      data->backend_traced_levels[backend_id] = backend_levels_g[backend_id];
-  }
+
+  // Use Default if nothing was passed
+  if (data->backend_traced_levels.empty())
+    data->backend_traced_levels = backend_levels_g;
 }
 
 static void finalize_component_callback(void *usr_data) {
@@ -290,10 +288,16 @@ static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *h
                                  uint64_t err) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-  const auto key = data->backend_traced_levels.find(backend);
-  if (key == data->backend_traced_levels.end())
+
+  auto backend_e_v = magic_enum::enum_cast<backend_t>(backend);
+  if (!backend_e_v) {
+    std::cerr << "THAPI: Wrong Backend passed " << backend << std::endl;
     return;
-  const int level = key->second;
+  }
+  const auto it = data->backend_traced_levels.find(backend_e_v.value());
+  if (it == data->backend_traced_levels.end())
+    return;
+  const backend_level_t level = it->second;
   std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
   data->host_backend_name[level].insert(backend_name);
   data->host[level][{hostname, vpid, vtid, name}] += {total, err, count, min, max};
@@ -320,11 +324,16 @@ static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char
                                     const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-
-  const auto key = data->backend_traced_levels.find(backend);
-  if (key == data->backend_traced_levels.end())
+  auto backend_e_v = magic_enum::enum_cast<backend_t>(backend);
+  if (!backend_e_v) {
+    std::cerr << "Wrong Backend passed " << backend << std::endl;
     return;
-  const int level = key->second;
+  }
+  const auto it = data->backend_traced_levels.find(backend_e_v.value());
+  if (it == data->backend_traced_levels.end())
+    return;
+
+  const backend_level_t level = it->second;
   std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
   data->traffic_backend_name[level].insert(backend_name);
 
