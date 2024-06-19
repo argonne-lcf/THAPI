@@ -1,9 +1,9 @@
-#include <metababel/metababel.h>
-#include "magic_enum.hpp"
 #include "btx_tally.hpp"
+#include "magic_enum.hpp"
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
 #include <array>
+#include <metababel/metababel.h>
 #include <sstream> // std::stringstream, std::stringbuf
 #include <string>
 #include <tuple>
@@ -12,17 +12,17 @@
 
 class TallyCoreTime : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
+
 public:
   static constexpr std::array headers{"Time", "Time(%)", "Calls", "Average", "Min", "Max", "Error"};
   virtual const std::array<std::string, nfields> to_string() override {
-    return std::array{
-        (count == error) ? "" : this->format_time(duration),
-        (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
-        this->to_pretty_string(count, "", 0),
-        (count == error) ? "" : this->format_time(average()),
-        (count == error) ? "" : this->format_time(min),
-        (count == error) ? "" : this->format_time(max),
-        this->to_pretty_string(error, "", 0)};
+    return std::array{(count == error) ? "" : this->format_time(duration),
+                      (count == error) ? "" : this->to_pretty_string(100. * duration_ratio, "%"),
+                      this->to_pretty_string(count, "", 0),
+                      (count == error) ? "" : this->format_time(average()),
+                      (count == error) ? "" : this->format_time(min),
+                      (count == error) ? "" : this->format_time(max),
+                      this->to_pretty_string(error, "", 0)};
   }
 
 private:
@@ -54,16 +54,17 @@ private:
 
 class TallyCoreByte : public TallyCoreString {
   using TallyCoreString::TallyCoreString;
+
 public:
   static constexpr std::array headers{"Byte", "Byte(%)", "Calls", "Average", "Min", "Max", "Error"};
   virtual const std::array<std::string, nfields> to_string() override {
-    return std::array {format_byte(duration),
-                                    this->to_pretty_string(100. * duration_ratio, "%"),
-                                    this->to_pretty_string(count, "", 0),
-                                    this->format_byte(average()),
-                                    this->format_byte(min),
-                                    this->format_byte(max),
-                                    this->to_pretty_string(error, "", 0)};
+    return std::array{format_byte(duration),
+                      this->to_pretty_string(100. * duration_ratio, "%"),
+                      this->to_pretty_string(count, "", 0),
+                      this->format_byte(average()),
+                      this->format_byte(min),
+                      this->format_byte(max),
+                      this->to_pretty_string(error, "", 0)};
   }
 
 private:
@@ -93,7 +94,6 @@ private:
   }
 };
 
-
 //! User data collection structure.
 //! It is used to collect interval messages data, once data is collected,
 //! it is aggregated and tabulated for printing.
@@ -101,7 +101,7 @@ struct tally_dispatch_s {
   //! User params provided to the user component.
   btx_params_t *params;
 
-  std::array<int, magic_enum::enum_count<backend_t>()> backend_levels;
+  std::unordered_map<backend_t, backend_level_t> backend_traced_levels;
 
   std::map<backend_level_t, std::set<std::string>> host_backend_name;
   std::map<backend_level_t, std::set<std::string>> traffic_backend_name;
@@ -121,14 +121,6 @@ static std::string join_iterator(const std::set<std::string> &x, std::string del
                          [&delimiter](const std::string &a, const std::string &b) {
                            return a.empty() ? b : a + delimiter + b;
                          });
-}
-
-static int get_backend_id(std::string name) {
-  for (size_t i = 0; i < magic_enum::enum_count<backend_t>(); ++i)
-    // backend_name is located in xprof_utils.hpp
-    if (std::string{pretty_backend_name[i]} == name)
-      return i;
-  return -1;
 }
 
 static thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
@@ -177,17 +169,6 @@ static void initialize_component_callback(void **usr_data) {
   /* User allocates its own data structure */
   auto *data = new tally_dispatch_t;
   *usr_data = data;
-
-  /* Backend information must match enum backend_e in xprof_utils.hpp */
-  data->backend_levels = {
-      2, // BACKEND_UNKNOWN
-      2, // BACKEND_ZE
-      2, // BACKEND_OPENCL
-      2, // BACKEND_CUDA
-      1, // BACKEND_OMP_TARGET_OPERATIONS
-      0, // BACKEND_OMP
-      2, // BACKEND_HIP
-  };
 }
 
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
@@ -195,18 +176,29 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->params = usr_params;
 
-  // Consumes key:value pairs in the stringstream k1:v1,..,kn:vn
+  // Consumes key:value pairs in the stringstream b1:l1,...
   std::stringstream tokens{data->params->backend_levels};
-  std::string tmp;
-  while (std::getline(tokens, tmp, ',')) {
-    std::stringstream tmp_string{tmp};
-    std::string k, v;
-    std::getline(tmp_string, k, ':');
-    int id = get_backend_id(k);
-    assert((id > 0) && "Backend not found. Please check --backend-level format.");
-    std::getline(tmp_string, v);
-    data->backend_levels[id] = std::stoi(v);
+  for (std::string bl; std::getline(tokens, bl, ',');) {
+    auto pos = bl.find(':');
+
+    // Find backend enum
+    std::string backend_name = bl.substr(0, pos);
+    auto it = pretty_backend_name_g.find(backend_name);
+    if (it == pretty_backend_name_g.end())
+      continue;
+    backend_t backend = it->second;
+
+    // See if Level
+    if (pos != std::string::npos) {
+      int level = std::stoi(bl.substr(pos + 1, bl.length()));
+      data->backend_traced_levels[backend] = level;
+    } else
+      data->backend_traced_levels[backend] = backend_levels_g.at(backend);
   }
+
+  // Use Default if nothing was passed
+  if (data->backend_traced_levels.empty())
+    data->backend_traced_levels = backend_levels_g;
 }
 
 static void finalize_component_callback(void *usr_data) {
@@ -221,7 +213,7 @@ static void finalize_component_callback(void *usr_data) {
 
     if (strcmp(data->params->display, "compact") == 0) {
 
-      for (const auto &[level, host] : data->host) {
+      for (const auto &[level, host] : reverse(data->host)) {
         std::string s = join_iterator(data->host_backend_name[level]);
         print_compact(s, host, std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
@@ -229,13 +221,13 @@ static void finalize_component_callback(void *usr_data) {
                     std::make_tuple("Hostnames", "Processes", "Threads", "Devices", "Subdevices"),
                     max_name_size);
 
-      for (const auto &[level, traffic] : data->traffic) {
+      for (const auto &[level, traffic] : reverse(data->traffic)) {
         std::string s = join_iterator(data->traffic_backend_name[level]);
         print_compact("Explicit memory traffic (" + s + ")", traffic,
                       std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
     } else {
-      for (const auto &[level, host] : data->host) {
+      for (const auto &[level, host] : reverse(data->host)) {
         std::string s = join_iterator(data->host_backend_name[level]);
         print_extended(s, host, std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
       }
@@ -244,14 +236,13 @@ static void finalize_component_callback(void *usr_data) {
           std::make_tuple("Hostname", "Process", "Thread", "Device pointer", "Subdevice pointer"),
           max_name_size);
 
-      for (const auto &[level, traffic] : data->traffic) {
+      for (const auto &[level, traffic] : reverse(data->traffic)) {
         std::string s = join_iterator(data->traffic_backend_name[level]);
         print_extended("Explicit memory traffic (" + s + ")", traffic,
                        std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
       }
     }
   } else {
-
     nlohmann::json j;
     j["units"] = {{"time", "ns"}, {"size", "bytes"}};
 
@@ -259,26 +250,29 @@ static void finalize_component_callback(void *usr_data) {
       j["metadata"] = data->metadata;
 
     if (strcmp(data->params->display, "compact") == 0) {
-      for (auto &[level, host] : data->host)
-        j["host"][level] = json_compact(host);
+      for (auto &[level, host] : reverse(data->host)) {
+        j["host"][std::to_string(level)] = json_compact(host);
+      }
 
       if (!data->device.empty())
         j["device"] = json_compact(data->device);
 
-      for (auto &[level, traffic] : data->traffic)
-        j["traffic"][level] = json_compact(traffic);
+      for (auto &[level, traffic] : reverse(data->traffic))
+        j["traffic"][std::to_string(level)] = json_compact(traffic);
 
     } else {
-      for (auto &[level, host] : data->host)
-        j["host"][level] = json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
+      for (auto &[level, host] : reverse(data->host)) {
+        j["host"][std::to_string(level)] =
+            json_extented(host, std::make_tuple("Hostname", "Process", "Thread"));
+      }
 
       if (!data->device.empty())
         j["device"] =
             json_extented(data->device, std::make_tuple("Hostname", "Process", "Thread",
                                                         "Device pointer", "Subdevice pointer"));
 
-      for (auto &[level, traffic] : data->traffic)
-        j["traffic"][level] =
+      for (auto &[level, traffic] : reverse(data->traffic))
+        j["traffic"][std::to_string(level)] =
             json_extented(traffic, std::make_tuple("Hostname", "Process", "Thread"));
     }
     std::cout << j << std::endl;
@@ -294,7 +288,16 @@ static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *h
                                  uint64_t err) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-  const int level = data->backend_levels[backend];
+
+  auto backend_e_v = magic_enum::enum_cast<backend_t>(backend);
+  if (!backend_e_v) {
+    std::cerr << "THAPI: Wrong Backend passed " << backend << std::endl;
+    return;
+  }
+  const auto it = data->backend_traced_levels.find(backend_e_v.value());
+  if (it == data->backend_traced_levels.end())
+    return;
+  const backend_level_t level = it->second;
   std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
   data->host_backend_name[level].insert(backend_name);
   data->host[level][{hostname, vpid, vtid, name}] += {total, err, count, min, max};
@@ -317,11 +320,20 @@ static void aggreg_device_callback(void *btx_handle, void *usr_data, const char 
 
 static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
                                     int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
-                                    uint64_t max, uint64_t total, uint64_t count,
-                                    uint64_t backend, const char *metadata) {
+                                    uint64_t max, uint64_t total, uint64_t count, uint64_t backend,
+                                    const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
-  const int level = data->backend_levels[backend];
+  auto backend_e_v = magic_enum::enum_cast<backend_t>(backend);
+  if (!backend_e_v) {
+    std::cerr << "Wrong Backend passed " << backend << std::endl;
+    return;
+  }
+  const auto it = data->backend_traced_levels.find(backend_e_v.value());
+  if (it == data->backend_traced_levels.end())
+    return;
+
+  const backend_level_t level = it->second;
   std::string backend_name(magic_enum::enum_names<backend_t>()[backend]);
   data->traffic_backend_name[level].insert(backend_name);
 

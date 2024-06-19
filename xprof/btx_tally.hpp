@@ -462,3 +462,24 @@ nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h)
   }
   return j;
 }
+
+
+// Wrapper type that does reversal
+template <typename Range>
+class Reverser {
+    Range& r_;
+  public:
+    using iterator_type = std::reverse_iterator<decltype(std::begin(r_))>;
+
+    Reverser(Range& r) : r_(r) {}
+
+    iterator_type begin() { return iterator_type(std::end(r_)); }
+    iterator_type end()   { return iterator_type(std::begin(r_)); }
+};
+
+// Helper creation function
+template <typename Range>
+Reverser<Range> reverse(Range& r)
+{
+    return Reverser<Range>(r);
+}
