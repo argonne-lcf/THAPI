@@ -1,0 +1,31 @@
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: ^vpid$
+      :field_class:
+        :type: integer_signed
+    - :name: ^vtid$
+      :field_class:
+        :type: integer_unsigned
+  :event_classes:
+  - :set_id: entries
+    :name: "_entry$"
+  - :set_id: exits
+    :register: false
+    :name: "_exit$"
+  - :set_id: exits_mpiError_present
+    :domain: exits
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^mpiResult$
+        :field_class:
+          :type: integer_signed
+  - :set_id: exits_mpiError_absent
+    :domain: exits - exits_mpiError_present
