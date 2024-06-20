@@ -33,7 +33,7 @@ const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
     {BACKEND_OMP_TARGET_OPERATIONS, 2},
     {BACKEND_OMP, 2},
     {BACKEND_HIP, 1},
-);
+};
 
 typedef std::string thapi_metadata_t;
 

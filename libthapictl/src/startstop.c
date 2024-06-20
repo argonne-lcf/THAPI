@@ -11,8 +11,8 @@
 #include "backends.h"
 
 
-#define THAPI_LTTNG_SESSION_ID_NAME "THAPI_LTTNG_SESSION_ID"
-#define THAPI_CHANNEL_NAME "blocking-channel"
+#define THAPI_LTTNG_SESSION_ID_ENV "THAPI_LTTNG_SESSION_ID"
+#define THAPI_LTTNG_CHANNEL_NAME_ENV "THAPI_LTTNG_CHANNEL_NAME"
 
 #define THAPI_CTL_DEFAULT_LOG_LEVEL THAPI_CTL_LOG_LEVEL_ERROR
 
@@ -61,11 +61,12 @@ static int* thapi_ctl_enabled_backends() {
 }
 
 
-static void log_events(struct lttng_handle* handle, const char *prefix) {
+static void log_events(struct lttng_handle* handle, const char *channel_name,
+                       const char *prefix) {
   int ret;
   struct lttng_event *event_list = NULL;
   struct lttng_event *event = NULL;
-  int n_events = lttng_list_events(handle, THAPI_CHANNEL_NAME, &event_list);
+  int n_events = lttng_list_events(handle, channel_name, &event_list);
   if (n_events < 0) {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "[%s] error getting events: %d",
                   prefix, n_events);
@@ -108,19 +109,39 @@ static const char* thapi_ctl_lttng_session_id() {
   static char *session_id = NULL;
   if (session_id == NULL) {
     // first call, initialize static vars
-    session_id = getenv(THAPI_LTTNG_SESSION_ID_NAME);
+    session_id = getenv(THAPI_LTTNG_SESSION_ID_ENV);
     if (session_id == NULL) {
       // not called with iprof
       session_id = "\0";
       thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG,
                     "No env var '%s', application not launched using iprof, disable",
-                    THAPI_LTTNG_SESSION_ID_NAME);
+                    THAPI_LTTNG_SESSION_ID_ENV);
     } else {
       thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG,
                     "THAPI session id: %s", session_id);
     }
   }
   return session_id;
+}
+
+
+static const char* thapi_ctl_lttng_channel_name() {
+  static char *channel_name = NULL;
+  if (channel_name == NULL) {
+    // first call, initialize static vars
+    channel_name = getenv(THAPI_LTTNG_CHANNEL_NAME_ENV);
+    if (channel_name == NULL) {
+      // not called with iprof
+      channel_name = "\0";
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG,
+                    "No env var '%s', application not launched using iprof, disable",
+                    THAPI_LTTNG_CHANNEL_NAME_ENV);
+    } else {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG,
+                    "THAPI session id: %s", channel_name);
+    }
+  }
+  return channel_name;
 }
 
 
@@ -152,17 +173,20 @@ void thapi_ctl_destroy_lttng_handle(struct lttng_handle *handle) {
 
 int thapi_ctl_init() {
   const char *session_id = thapi_ctl_lttng_session_id();
+  const char *channel_name = thapi_ctl_lttng_channel_name();
+  if (strlen(session_id) == 0 || strlen(channel_name) == 0)
+    return -100;
   struct lttng_handle *handle = thapi_ctl_create_lttng_handle(session_id);
   if (handle == NULL)
     return 0;
 
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "init backends '%s'", session_id);
-  // log_events(handle, "before");
+  // log_events(handle, channel_name, "before");
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
-    thapi_cuda_init(handle, THAPI_CHANNEL_NAME);
+    thapi_cuda_init(handle, channel_name);
   }
-  // log_events(handle, "after");
+  // log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
   return 0;
 }
@@ -170,17 +194,20 @@ int thapi_ctl_init() {
 
 int thapi_ctl_start() {
   const char *session_id = thapi_ctl_lttng_session_id();
+  const char *channel_name = thapi_ctl_lttng_channel_name();
+  if (strlen(session_id) == 0 || strlen(channel_name) == 0)
+    return -100;
   struct lttng_handle *handle = thapi_ctl_create_lttng_handle(session_id);
   if (handle == NULL)
     return 0;
 
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "start tracing '%s'", session_id);
-  // log_events(handle, "before");
+  // log_events(handle, channel_name, "before");
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
-    thapi_cuda_enable_tracing_events(handle, THAPI_CHANNEL_NAME);
+    thapi_cuda_enable_tracing_events(handle, channel_name);
   }
-  log_events(handle, "after");
+  log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
   return 0;
 }
@@ -188,19 +215,22 @@ int thapi_ctl_start() {
 
 int thapi_ctl_stop() {
   const char *session_id = thapi_ctl_lttng_session_id();
+  const char *channel_name = thapi_ctl_lttng_channel_name();
+  if (strlen(session_id) == 0 || strlen(channel_name) == 0)
+    return -100;
   struct lttng_handle *handle = thapi_ctl_create_lttng_handle(session_id);
   if (handle == NULL)
     return 0;
 
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "stop tracing '%s'",
                 session_id);
-  // log_events(handle, "before");
+  // log_events(handle, channel_name, "before");
 
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
-    thapi_cuda_disable_tracing_events(handle, THAPI_CHANNEL_NAME);
+    thapi_cuda_disable_tracing_events(handle, channel_name);
   }
-  log_events(handle, "after");
+  log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
   return 0;
 }
@@ -208,13 +238,16 @@ int thapi_ctl_stop() {
 
 void thapi_ctl_print_events() {
   const char *session_id = thapi_ctl_lttng_session_id();
+  const char *channel_name = thapi_ctl_lttng_channel_name();
+  if (strlen(session_id) == 0 || strlen(channel_name) == 0)
+    return -100;
   struct lttng_handle *handle = thapi_ctl_create_lttng_handle(session_id);
   if (handle == NULL)
     return;
 
   int ret;
   struct lttng_event *event_list = NULL;
-  int n_events = lttng_list_events(handle, THAPI_CHANNEL_NAME, &event_list);
+  int n_events = lttng_list_events(handle, channel_name, &event_list);
   if (n_events < 0) {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "error getting events: %d",
                   n_events);
