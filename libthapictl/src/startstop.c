@@ -70,6 +70,7 @@ static void log_events(struct lttng_handle* handle, const char *channel_name,
   if (n_events < 0) {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "[%s] error getting events: %d",
                   prefix, n_events);
+    return;
   }
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "[%s] %d events", prefix, n_events);
   const char *filter_str;
