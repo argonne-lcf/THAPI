@@ -68,8 +68,18 @@ MPI_PROBES_TP = $(MPI_PROBES:=.tp)
 MPI_PROBES_INCL = $(MPI_PROBES:=.h)
 MPI_PROBES_SRC = $(MPI_PROBES:=.c)
 
+#MPI_STATIC_PROBES
+
+MPI_STATIC_PROBES_TP = $(MPI_STATIC_PROBES:=.tp)
+MPI_STATIC_PROBES_INCL = $(MPI_STATIC_PROBES:=.h)
+MPI_STATIC_PROBES_SRC = $(MPI_STATIC_PROBES:=.c)
+MPI_GEN_TRACEPOINTS = $(MPI_PROBES:%=gen_%.rb)
+
 $(MPI_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(MPI_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+$(MPI_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_mpi_custom_probes.rb $(MPO_MODEL) $(srcdir)/mpi.h.include
+	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -77,16 +87,20 @@ $(MPI_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(MPI_MODEL)
 CLEANFILES += \
 	$(MPI_PROBES_TP) \
 	$(MPI_PROBES_INCL) \
-	$(MPI_PROBES_SRC)
+	$(MPI_PROBES_SRC) \
+	$(MPI_STATIC_PROBES_TP) \
+	$(MPI_STATIC_PROBES_INCL) \
+	$(MPI_STATIC_PROBES_SRC)
 
 EXTRA_DIST += \
 	gen_mpi_tracepoints.rb
 
 BUILT_SOURCES = \
-        $(MODIFIED_MPI_HDR) \
-        $(MPI_PROBES_INCL)
+	$(MODIFIED_MPI_HDR) \
+	$(MPI_PROBES_INCL) \
+	$(MPI_STATIC_PROBES_INCL)
 
-tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL)
+tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL) $(MPI_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
@@ -104,7 +118,9 @@ noinst_LTLIBRARIES = \
 
 nodist_libmpitracepoints_la_SOURCES = \
 	$(MPI_PROBES_INCL) \
-	$(MPI_PROBES_SRC)
+	$(MPI_PROBES_SRC) \
+	$(MPI_STATIC_PROBES_INCL) \
+	$(MPI_STATIC_PROBES_SRC)
 
 libmpitracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libmpitracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
@@ -112,6 +128,7 @@ libmpitracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 nodist_libTracerMPI_la_SOURCES = \
 	$(MPI_PROBES_INCL) \
+	$(MPI_STATIC_PROBES_INCL) \
 	tracer_mpi.c
 
 libTracerMPI_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./

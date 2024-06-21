@@ -29,3 +29,25 @@
           :type: integer_signed
   - :set_id: exits_mpiError_absent
     :domain: exits - exits_mpiError_present
+  - :set_id: traffic_MPI_Count_entry
+    :domain: entries
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^(count|origin_count)$
+        :field_class:
+          :cast_type: ^MPI_Count$
+      - :name: ^(datatype|origin_count)$
+        :field_class:
+          :cast_type: MPI_Datatype
+  - :set_id: traffic_int_entry
+    :domain: entries
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^(count|origin_count)$
+        :field_class:
+          :cast_type: ^int$
+      - :name: ^(datatype|origin_count)$
+        :field_class:
+          :cast_type: MPI_Datatype
