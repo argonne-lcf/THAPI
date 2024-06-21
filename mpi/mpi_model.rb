@@ -38,12 +38,20 @@ $mpi_commands = mpi_funcs_e.collect { |func|
   Command::new(func)
 }
 
-def upper_snake_case(str)
-  str.gsub(/([a-z][a-z0-9]*)/, '_\1').upcase
+#https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-underscore
+#As a rule of thumb you can think of underscore as the inverse of camelize,
+def underscore(camel_cased_word)
+  return camel_cased_word.to_s.dup unless /[A-Z-]|::/.match?(camel_cased_word)
+  word = camel_cased_word.to_s.gsub("::", "/")
+  word.gsub!(/(?=a)b/) { "#{$1 && '_' }#{$2.downcase}" }
+  word.gsub!(/(?<=[A-Z])(?=[A-Z][a-z])|(?<=[a-z\d])(?=[A-Z])/, "_")
+  word.tr!("-", "_")
+  word.downcase!
+  word
 end
 
 MPI_POINTER_NAMES = $mpi_commands.collect { |c|
-  [c, upper_snake_case(c.pointer_name)]
+  [c, underscore(c.pointer_name).upcase]
 }.to_h
 
 
