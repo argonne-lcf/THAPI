@@ -122,7 +122,12 @@ static void traffic_MPI_Count_entry_callback(void *btx_handle, void *usr_data, i
                                              int64_t vpid, uint64_t vtid, MPI_Count count,
                                              MPI_Datatype datatype) {
 
-  auto &[str, size] = mpi_datatype_info[(uint64_t)datatype];
+  auto it = mpi_datatype_info.find((uint64_t)datatype);
+  if (it == mpi_datatype_info.end()) {
+    std::cerr << "THAPI: Warning MPI datatype " << datatype << " unknow" << std::endl;
+    return;
+  }
+  auto &[str, size] = it->second;
 
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_MPI,
                                  strip_event_class_name_entry(event_class_name).c_str(),
@@ -134,7 +139,12 @@ static void traffic_int_entry_callback(void *btx_handle, void *usr_data, int64_t
                                        int64_t vpid, uint64_t vtid, int count,
                                        MPI_Datatype datatype) {
 
-  auto &[str, size] = mpi_datatype_info[(uint64_t)datatype];
+  auto it = mpi_datatype_info.find((uint64_t)datatype);
+  if (it == mpi_datatype_info.end()) {
+    std::cerr << "THAPI: Warning MPI datatype " << datatype << " unknow" << std::endl;
+    return;
+  }
+  auto &[str, size] = it->second;
 
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_MPI,
                                  strip_event_class_name_entry(event_class_name).c_str(),
