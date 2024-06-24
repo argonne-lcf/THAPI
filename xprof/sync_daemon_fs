@@ -11,7 +11,7 @@ require 'etc'
 
 FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
-SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('HOME'), FOLDER_JOBID)
+SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('THAPI_SHARED_PATH', 'HOME'), FOLDER_JOBID)
 
 # Use a log distribution seem to be a good tradeoff
 # between being nice to the FileSystem (not to many call)

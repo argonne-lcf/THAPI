@@ -30,9 +30,9 @@ require 'date'
 module LoggerRefinement
   refine(Logger) do
     def info_block(message, &block)
-      info(message + ': entry') if message
+      info("#{message}: entry") if message
       block.call
-      info(message + ': exit') if message
+      info("#{message}: exit") if message
     end
   end
 end
@@ -259,14 +259,28 @@ class Sync_daemon
   end
 
   def initialize
-    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
-    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
-      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
+    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
+    daemon = case daemon_type
+             when nil
+               # Default is MPI
+               if File.exist?("#{__dir__}/sync_daemon_mpi")
                  "#{__dir__}/sync_daemon_mpi"
                else
+                 LOGGER.warn("No #{__dir__}/sync_daemon_mpi binary. Fall back to #{__dir__}/syc_daemon_f'")
                  "#{__dir__}/sync_daemon_fs"
                end
-      LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
+             when 'mpi'
+               raise("No #{__dir__}/sync_daemon_mpi binary") unless File.exist?("#{__dir__}/sync_daemon_mpi")
+
+               "#{__dir__}/sync_daemon_mpi"
+             when 'fs'
+               "#{__dir__}/sync_daemon_fs"
+             else
+               raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) if not supported. Allowed: [mpi,fs] ")
+             end
+
+    LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
+    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
       @pid = spawn("#{daemon} #{Process.pid}")
     end
   end
@@ -293,8 +307,10 @@ class Sync_daemon
   # we always call clean-up the daemon
   def self.open
     yield f = new
+  rescue StandardError
+    raise
   ensure
-    f.finalize
+    f.finalize if f
   end
 end
 
