@@ -62,7 +62,9 @@ def exec_thapi_ctl(command, session_id, backends)
   backends.each do |name|
     ENV["THAPI_LTTNG_BACKEND_#{name.upcase}_ENABLED"] = '1'
   end
+  # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
   exec("thapi-ctl #{command}")
+  # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
 end
 
 #    _

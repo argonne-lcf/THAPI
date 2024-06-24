@@ -92,6 +92,24 @@ static void log_events(struct lttng_handle* handle, const char *channel_name,
       thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "[%s]   + filter str '%s'",
                     prefix, filter_str);
     }
+
+    ret = lttng_event_get_exclusion_name_count(event);
+    if (ret < 0) {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "can't get exclusion name count %d", ret);
+    } else if (ret > 0) {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "ex count %d", ret);
+      for (int j = 0; j < ret; j++) {
+        const char *exclusion_name;
+        ret = lttng_event_get_exclusion_name(event, j, &exclusion_name);
+        if (ret < 0) {
+          thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                        "can't get exclusion name[%d] %d", j, ret);
+        } else {
+          thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "[%s]   + exclude %d '%s'",
+                        prefix, j, exclusion_name);
+        }
+      }
+    }
   }
   if (event_list != NULL)
     free(event_list);
@@ -213,7 +231,7 @@ int thapi_ctl_start() {
 
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "start tracing '%s' (channel '%s')",
                 session_id, channel_name);
-  // log_events(handle, channel_name, "before");
+  log_events(handle, channel_name, "before");
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
     thapi_cuda_enable_tracing_events(handle, channel_name);
@@ -233,7 +251,7 @@ int thapi_ctl_stop() {
 
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "stop tracing '%s' (channel '%s')",
                 session_id, channel_name);
-  // log_events(handle, channel_name, "before");
+  log_events(handle, channel_name, "before");
 
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {

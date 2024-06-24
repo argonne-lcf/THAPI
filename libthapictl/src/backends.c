@@ -7,7 +7,10 @@
 #include "thapi-ctl.h"
 
 
-static const char* cuda_bookkeeping_events[] = {
+#define ARRAY_LENGTH(a) (sizeof(a) / sizeof(*a));
+
+
+static char* cuda_bookkeeping_events[] = {
   "lttng_ust_cuda:cuGetProcAddress_v2_entry",
   "lttng_ust_cuda:cuGetProcAddress_v2_exit",
   "lttng_ust_cuda:cuCtxCreate_entry",
@@ -49,17 +52,25 @@ static const char* cuda_tracing_events[] = {
 };
 
 
+static int inline is_wildcard(const char *event_pattern) {
+  return (strchr(event_pattern, '*') != NULL);
+}
+
+
 static void thapi_enable_events_by_pattern(struct lttng_handle* handle,
                                            struct lttng_event* ev,
                                            const char* event_pattern,
-                                           const char* channel_name) {
+                                           const char* channel_name,
+                                           int exclusion_count,
+                                           char **exclusion_list) {
   // thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "Enabling event '%s' on channel '%s'",
   //               event_pattern, channel_name);
   memset(ev, 0, sizeof(*ev));
   strncpy(ev->name, event_pattern, LTTNG_SYMBOL_NAME_LEN);
   ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
   ev->type = LTTNG_EVENT_TRACEPOINT;
-  int rval = lttng_enable_event(handle, ev, channel_name);
+  int rval = lttng_enable_event_with_exclusions(handle, ev, channel_name, NULL,
+                                                exclusion_count, exclusion_list);
   if (rval < 0 && rval != -LTTNG_ERR_UST_EVENT_ENABLED) {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
                   "Failed to enable event '%s': %d",
@@ -98,10 +109,10 @@ void thapi_cuda_init(struct lttng_handle *h, const char *channel_name) {
     return;
   }
 
-  int n_bookkeeping_events = sizeof(cuda_bookkeeping_events)
-                             / sizeof(*cuda_bookkeeping_events);
+  int n_bookkeeping_events = ARRAY_LENGTH(cuda_bookkeeping_events);
   for (int i = 0; i < n_bookkeeping_events; i++) {
-    thapi_enable_events_by_pattern(h, ev, cuda_bookkeeping_events[i], channel_name);
+    thapi_enable_events_by_pattern(h, ev, cuda_bookkeeping_events[i],
+                                   channel_name, 0, NULL);
   }
 
   lttng_event_destroy(ev);
@@ -118,10 +129,18 @@ void thapi_cuda_enable_tracing_events(struct lttng_handle *h, const char *channe
     return;
   }
 
-  int n_tracing_events = sizeof(cuda_tracing_events)
-                         / sizeof(*cuda_tracing_events);
+  int n_bookkeeping_events = ARRAY_LENGTH(cuda_bookkeeping_events);
+  int n_tracing_events = ARRAY_LENGTH(cuda_tracing_events);
   for (int i = 0; i < n_tracing_events; i++) {
-    thapi_enable_events_by_pattern(h, ev, cuda_tracing_events[i], channel_name);
+    const char *event_pattern = cuda_tracing_events[i];
+    // exclude bookkeeping events if there is a wildcard in the pattern
+    if (is_wildcard(event_pattern)) {
+      thapi_enable_events_by_pattern(h, ev, event_pattern, channel_name,
+                                     n_bookkeeping_events, cuda_bookkeeping_events);
+    } else {
+      thapi_enable_events_by_pattern(h, ev, event_pattern, channel_name,
+                                     0, NULL);
+    }
   }
 
   lttng_event_destroy(ev);
