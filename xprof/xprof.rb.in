@@ -259,14 +259,23 @@ class Sync_daemon
   end
 
   def initialize
-    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi')
-    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
-      daemon = if File.exist?("#{__dir__}/sync_daemon_mpi") && daemon_type == 'mpi'
+    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi').downcase
+    daemon = case daemon_type
+             when 'mpi'
+               if File.exist?("#{__dir__}/sync_daemon_mpi")
                  "#{__dir__}/sync_daemon_mpi"
                else
+                 LOGGER.warm('THAPI_SYNC_DAEMON, mpi daemon requested but no sync_daemon_mpi binary')
                  "#{__dir__}/sync_daemon_fs"
                end
-      LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
+             when 'fs'
+               "#{__dir__}/sync_daemon_fs"
+             else
+               raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) if not supported. Allowed: [mpi,fs] ")
+             end
+
+    LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
+    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
       @pid = spawn("#{daemon} #{Process.pid}")
     end
   end
@@ -293,8 +302,10 @@ class Sync_daemon
   # we always call clean-up the daemon
   def self.open
     yield f = new
+  rescue StandardError
+    raise
   ensure
-    f.finalize
+    f.finalize if f
   end
 end
 
