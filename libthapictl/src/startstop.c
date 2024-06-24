@@ -93,19 +93,19 @@ static void log_events(struct lttng_handle* handle, const char *channel_name,
                     prefix, filter_str);
     }
 
-    ret = lttng_event_get_exclusion_name_count(event);
-    if (ret < 0) {
-      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "can't get exclusion name count %d", ret);
-    } else if (ret > 0) {
-      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "ex count %d", ret);
-      for (int j = 0; j < ret; j++) {
+    int n_exclusions = lttng_event_get_exclusion_name_count(event);
+    if (n_exclusions < 0) {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                    "can't get exclusion name count %d", n_exclusions);
+    } else if (n_exclusions > 0) {
+      for (int j = 0; j < n_exclusions; j++) {
         const char *exclusion_name;
         ret = lttng_event_get_exclusion_name(event, j, &exclusion_name);
         if (ret < 0) {
           thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
                         "can't get exclusion name[%d] %d", j, ret);
         } else {
-          thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "[%s]   + exclude %d '%s'",
+          thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "[%s]   + exclude %02d '%s'",
                         prefix, j, exclusion_name);
         }
       }
