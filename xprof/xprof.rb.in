@@ -30,9 +30,9 @@ require 'date'
 module LoggerRefinement
   refine(Logger) do
     def info_block(message, &block)
-      info(message + ': entry') if message
+      info("#{message}: entry") if message
       block.call
-      info(message + ': exit') if message
+      info("#{message}: exit") if message
     end
   end
 end
@@ -259,15 +259,20 @@ class Sync_daemon
   end
 
   def initialize
-    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON', default: 'mpi').downcase
+    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
     daemon = case daemon_type
-             when 'mpi'
+             when nil
+               # Default is MPI
                if File.exist?("#{__dir__}/sync_daemon_mpi")
                  "#{__dir__}/sync_daemon_mpi"
                else
-                 LOGGER.warm('THAPI_SYNC_DAEMON, mpi daemon requested but no sync_daemon_mpi binary')
+                 LOGGER.warn("No #{__dir__}/sync_daemon_mpi binary. Fall back to #{__dir__}/syc_daemon_f'")
                  "#{__dir__}/sync_daemon_fs"
                end
+             when 'mpi'
+               raise("No #{__dir__}/sync_daemon_mpi binary") unless File.exist?("#{__dir__}/sync_daemon_mpi")
+
+               "#{__dir__}/sync_daemon_mpi"
              when 'fs'
                "#{__dir__}/sync_daemon_fs"
              else
