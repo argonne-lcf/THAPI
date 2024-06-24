@@ -49,6 +49,7 @@ def exec(cmd, opts: {}, debug: true)
 
   LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
+
   stdout_str
 end
 
@@ -58,15 +59,10 @@ def exec_thapi_ctl(command, session_id, backends)
   # Used by C api thapi_start/thapi_stop
   ENV['THAPI_LTTNG_SESSION_ID'] = lttng_session_uuid
   ENV['THAPI_LTTNG_CHANNEL_NAME'] = channel_name
-  ENV['THAPI_CTL_LOG_LEVEL'] = "4"
   backends.each do |name|
-    ENV['THAPI_LTTNG_BACKEND_#{name}_ENABLED'] = '1'
+    ENV["THAPI_LTTNG_BACKEND_#{name.upcase}_ENABLED"] = '1'
   end
-  # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
-  # exec("thapi-ctl list")
   exec("thapi-ctl #{command}")
-  # exec("thapi-ctl list")
-  # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
 end
 
 #    _

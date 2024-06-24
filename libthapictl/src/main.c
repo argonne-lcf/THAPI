@@ -17,6 +17,8 @@ int main(int argc, char **argv) {
   }
 
   const char* cmd = argv[1];
+  printf("cmd '%s'\n", cmd);
+  fflush(stdout);
   if (strcmp(cmd, "init") == 0) {
     thapi_ctl_init(); // enable bookkeeping
   } else if (strcmp(cmd, "start") == 0) {

@@ -38,6 +38,12 @@ static int thapi_ctl_log_level() {
       if (*endptr != '\0') {
         level = THAPI_CTL_DEFAULT_LOG_LEVEL;
       }
+      if (level > THAPI_CTL_LOG_LEVEL_DEBUG || level < THAPI_CTL_LOG_LEVEL_ERROR) {
+        fprintf(stderr,
+                "libthapi-ctl[WARN]: unknown log level '%s', falling back to ERROR",
+                log_level_str);
+        level = THAPI_CTL_DEFAULT_LOG_LEVEL;
+      }
     }
   }
   return level;
@@ -66,6 +72,7 @@ static void log_events(struct lttng_handle* handle, const char *channel_name,
   int ret;
   struct lttng_event *event_list = NULL;
   struct lttng_event *event = NULL;
+  thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "channel name %s", channel_name);
   int n_events = lttng_list_events(handle, channel_name, &event_list);
   if (n_events < 0) {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "[%s] error getting events: %d",
@@ -84,7 +91,6 @@ static void log_events(struct lttng_handle* handle, const char *channel_name,
     } else if (filter_str) {
       thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "[%s]   + filter str '%s'",
                     prefix, filter_str);
-      
     }
   }
   if (event_list != NULL)
@@ -102,6 +108,9 @@ void thapi_ctl_log(int log_level, const char *fmt, ...) {
     vfprintf(stderr, fmt, va);
     va_end(va);
     fprintf(stderr, "\n");
+  }
+  if (log_level >= THAPI_CTL_LOG_LEVEL_DEBUG) {
+    fflush(stderr);
   }
 }
 
@@ -181,12 +190,15 @@ int thapi_ctl_init() {
 
   thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "init backends '%s' (channel '%s'",
                 session_id, channel_name);
-  // log_events(handle, channel_name, "before");
+  log_events(handle, channel_name, "before");
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "cuda enabled");
     thapi_cuda_init(handle, channel_name);
+  } else {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "cuda DISABLED");
   }
-  // log_events(handle, channel_name, "after");
+  log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
   return 0;
 }
