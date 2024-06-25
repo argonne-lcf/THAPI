@@ -11,8 +11,23 @@
 #include "backends.h"
 
 
-#define THAPI_LTTNG_SESSION_ID_ENV "THAPI_LTTNG_SESSION_ID"
-#define THAPI_LTTNG_CHANNEL_NAME_ENV "THAPI_LTTNG_CHANNEL_NAME"
+#define THAPI_LTTNG_SESSION_ID_ENV "LTTNG_UST_SESSION_ID"
+#define THAPI_LTTNG_CHANNEL_NAME_ENV "LTTNG_UST_CHANNEL_NAME"
+
+
+typedef enum {
+  THAPI_TRACING_MODE_MINIMAL=0,
+  THAPI_TRACING_MODE_DEFAULT=1,
+  THAPI_TRACING_MODE_FULL=2,
+} tracing_mode;
+
+
+static const char* thapi_tracing_mode_names[] = {
+  "minimal",
+  "default",
+  "full",
+};
+
 
 #define THAPI_CTL_DEFAULT_LOG_LEVEL THAPI_CTL_LOG_LEVEL_ERROR
 
@@ -54,14 +69,14 @@ static int* thapi_ctl_enabled_backends() {
   static int enabled_backends[] = {-1, -1, -1, -1, -1, -1, -1 };
   if (enabled_backends[BACKEND_UNKNOWN] == -1) {
     enabled_backends[BACKEND_UNKNOWN] = 0;
-    enabled_backends[BACKEND_ZE] = (getenv("THAPI_LTTNG_BACKEND_ZE_ENABLED") != NULL);
+    enabled_backends[BACKEND_ZE] = (getenv("LTTNG_UST_BACKEND_ZE_ENABLED") != NULL);
     enabled_backends[BACKEND_OPENCL] =
-      (getenv("THAPI_LTTNG_BACKEND_OPENCL_ENABLED") != NULL);
-    enabled_backends[BACKEND_CUDA] = (getenv("THAPI_LTTNG_BACKEND_CUDA_ENABLED") != NULL);
+      (getenv("LTTNG_UST_BACKEND_OPENCL_ENABLED") != NULL);
+    enabled_backends[BACKEND_CUDA] = (getenv("LTTNG_UST_BACKEND_CUDA_ENABLED") != NULL);
     enabled_backends[BACKEND_OMP_TARGET_OPERATIONS] =
-      (getenv("THAPI_LTTNG_BACKEND_OMP_TARGET_OPERATIONS_ENABLED") != NULL);
-    enabled_backends[BACKEND_OMP] = (getenv("THAPI_LTTNG_BACKEND_OMP_ENABLED") != NULL);
-    enabled_backends[BACKEND_HIP] = (getenv("THAPI_LTTNG_BACKEND_HIP_ENABLED") != NULL);
+      (getenv("LTTNG_UST_BACKEND_OMP_TARGET_OPERATIONS_ENABLED") != NULL);
+    enabled_backends[BACKEND_OMP] = (getenv("LTTNG_UST_BACKEND_OMP_ENABLED") != NULL);
+    enabled_backends[BACKEND_HIP] = (getenv("LTTNG_UST_BACKEND_HIP_ENABLED") != NULL);
   }
   return enabled_backends;
 }
@@ -281,12 +296,51 @@ void thapi_ctl_print_events() {
   printf("%d events\n", n_events);
   const char *filter_str;
   for (int i = 0; i < n_events; i++) {
-    printf("%s (enabled: %d)", event_list[i].name, event_list[i].enabled);
-    ret = lttng_event_get_filter_expression(&event_list[i], &filter_str);
+    struct lttng_event *event = &event_list[i];
+    printf("%s (enabled: %d)", event->name, event->enabled);
+    ret = lttng_event_get_filter_expression(event, &filter_str);
     if (ret != 0) {
-      printf("Error getting filter expression: %d", ret);
+      fprintf(stderr, "Error getting filter expression: %d", ret);
     } else if (filter_str) {
       printf(" (filter '%s')", filter_str);
+    }
+
+    int n_exclusions = lttng_event_get_exclusion_name_count(event);
+    if (n_exclusions < 0) {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                    "can't get exclusion name count %d", n_exclusions);
+    } else if (n_exclusions > 0) {
+      // make room for max event name lengths plus commas and null terminator
+      size_t exclusions_string_max_length = n_exclusions * (LTTNG_SYMBOL_NAME_LEN + 1);
+      char *exclusions_string = malloc(exclusions_string_max_length);
+      assert(exclusions_string != NULL);
+      char *exclusions_offset = exclusions_string;
+      for (int j = 0; j < n_exclusions; j++) {
+        const char *exclusion_name;
+        ret = lttng_event_get_exclusion_name(event, j, &exclusion_name);
+        if (ret < 0) {
+          thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                        "can't get exclusion name[%d] %d", j, ret);
+          break;
+        } else {
+          int nchar = snprintf(exclusions_offset, LTTNG_SYMBOL_NAME_LEN,
+                               "%s", exclusion_name);
+          if (nchar < 0 || nchar >= LTTNG_SYMBOL_NAME_LEN) {
+            thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                          "Error formatting event exclusions: ", j, nchar);
+            break;
+          } else {
+            exclusions_offset += nchar;
+          }
+          if (j < n_exclusions  - 1) {
+            sprintf(exclusions_offset, ",");
+            exclusions_offset++;
+          }
+        }
+        assert(exclusions_offset < (exclusions_string + exclusions_string_max_length));
+        *exclusions_offset = '\0';
+      }
+      printf(" (exclude '%s')", exclusions_string);
     }
     printf("\n");
   }
