@@ -1,10 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <lttng/lttng.h>
 
 #include "thapi.h"
 #include "thapi-ctl.h"
+
+
+enum tracing_mode_e {
+  THAPI_CTL_TRACING_MODE_UNSET=0,
+  THAPI_CTL_TRACING_MODE_MINIMAL=1,
+  THAPI_CTL_TRACING_MODE_DEFAULT=2,
+  THAPI_CTL_TRACING_MODE_FULL=3,
+};
+typedef enum tracing_mode_e tracing_mode_t;
 
 
 #define ARRAY_LENGTH(a) (sizeof(a) / sizeof(*a));
@@ -58,56 +68,110 @@ static char* cuda_bookkeeping_events[] = {
 };
 
 
-static const char* cuda_tracing_events[] = {
+// TODO: encapsulate all env vars into a single struct
+static tracing_mode_t thapi_ctl_tracing_mode() {
+  static tracing_mode_t mode = THAPI_CTL_TRACING_MODE_UNSET;
+  if (mode == THAPI_CTL_TRACING_MODE_UNSET) {
+    const char *mode_env = getenv("LTTNG_UST_TRACING_MODE");
+    if (mode_env == NULL) {
+      mode = THAPI_CTL_TRACING_MODE_DEFAULT;
+    } else if (strcmp(mode_env, "minimal") == 0) {
+      mode = THAPI_CTL_TRACING_MODE_MINIMAL;
+    } else if (strcmp(mode_env, "full") == 0) {
+      mode = THAPI_CTL_TRACING_MODE_FULL;
+    } else if (strcmp(mode_env, "default") == 0) {
+      mode = THAPI_CTL_TRACING_MODE_DEFAULT;
+    } else {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_WARN,
+                    "Unknown tracing mode: %s, using default", mode_env);
+      mode = THAPI_CTL_TRACING_MODE_DEFAULT;
+    }
+  }
+  return mode;
+}
+
+
+static int thapi_ctl_profiling() {
+  static int profiling = -1;
+  if (profiling == -1) {
+    const char *profiling_env = getenv("LTTNG_UST_PROFILING");
+    if (profiling_env == NULL || strcmp(profiling_env, "1") == 0) {
+      profiling = 1;
+    } else {
+      profiling = 0;
+    }
+  }
+  return profiling;
+}
+
+
+static char* cuda_tracing_events[] = {
   "lttng_ust_cuda:*",
   "lttng_ust_cuda_properties",
   "lttng_ust_cuda_profiling:event_profiling",
 };
 
 
-static int inline is_wildcard(const char *event_pattern) {
+static inline int is_wildcard(const char *event_pattern) {
   return (strchr(event_pattern, '*') != NULL);
 }
 
 
 static void thapi_enable_events_by_pattern(struct lttng_handle* handle,
                                            struct lttng_event* ev,
-                                           const char* event_pattern,
+                                           int n_patterns,
+                                           char** event_patterns,
                                            const char* channel_name,
                                            int exclusion_count,
                                            char **exclusion_list) {
-  // thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "Enabling event '%s' on channel '%s'",
-  //               event_pattern, channel_name);
   memset(ev, 0, sizeof(*ev));
-  strncpy(ev->name, event_pattern, LTTNG_SYMBOL_NAME_LEN);
-  ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
   ev->type = LTTNG_EVENT_TRACEPOINT;
-  int rval = lttng_enable_event_with_exclusions(handle, ev, channel_name, NULL,
+
+  for (int i = 0; i < n_patterns; i++) {
+    const char *pattern = event_patterns[i];
+    // thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "Enabling event '%s' on channel '%s'",
+    //               pattern, channel_name);
+    strncpy(ev->name, pattern, LTTNG_SYMBOL_NAME_LEN);
+    ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+    int rval = 0;
+    if (exclusion_count > 0 && is_wildcard(pattern)) {
+      rval = lttng_enable_event_with_exclusions(handle, ev, channel_name, NULL,
                                                 exclusion_count, exclusion_list);
-  if (rval < 0 && rval != -LTTNG_ERR_UST_EVENT_ENABLED) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Failed to enable event '%s': %d",
-                  event_pattern, rval);
+    } else {
+      rval = lttng_enable_event_with_exclusions(handle, ev, channel_name, NULL,
+                                                0, NULL);
+    }
+
+    if (rval < 0 && rval != -LTTNG_ERR_UST_EVENT_ENABLED) {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                    "Failed to enable event '%s': %d",
+                    pattern, rval);
+    }
   }
 }
 
 
 static void thapi_disable_events_by_pattern(struct lttng_handle* handle,
                                             struct lttng_event* ev,
-                                            const char* event_pattern,
+                                            int n_patterns,
+                                            char** event_patterns,
                                             const char* channel_name) {
-  // thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "Disabling event '%s' on channel '%s'",
-  //               event_pattern, channel_name);
   memset(ev, 0, sizeof(*ev));
-  strncpy(ev->name, event_pattern, LTTNG_SYMBOL_NAME_LEN);
-  ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
   ev->type = LTTNG_EVENT_ALL; // match any event type
   ev->loglevel = -1; // match any log level
-  int rval = lttng_disable_event_ext(handle, ev, channel_name, NULL);
-  if (rval < 0) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Failed to disable event '%s': %d",
-                  event_pattern, rval);
+
+  for (int i = 0; i < n_patterns; i++) {
+    const char *pattern = event_patterns[i];
+    // thapi_ctl_log(THAPI_CTL_LOG_LEVEL_DEBUG, "Disabling event '%s' on channel '%s'",
+    //               pattern, channel_name);
+    strncpy(ev->name, pattern, LTTNG_SYMBOL_NAME_LEN);
+    ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+    int rval = lttng_disable_event_ext(handle, ev, channel_name, NULL);
+    if (rval < 0) {
+      thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                    "Failed to disable event '%s': %d",
+                    pattern, rval);
+    }
   }
 }
 
@@ -123,10 +187,8 @@ void thapi_cuda_init(struct lttng_handle *h, const char *channel_name) {
   }
 
   int n_bookkeeping_events = ARRAY_LENGTH(cuda_bookkeeping_events);
-  for (int i = 0; i < n_bookkeeping_events; i++) {
-    thapi_enable_events_by_pattern(h, ev, cuda_bookkeeping_events[i],
-                                   channel_name, 0, NULL);
-  }
+  thapi_enable_events_by_pattern(h, ev, n_bookkeeping_events, cuda_bookkeeping_events,
+                                 channel_name, 0, NULL);
 
   lttng_event_destroy(ev);
 }
@@ -144,17 +206,8 @@ void thapi_cuda_enable_tracing_events(struct lttng_handle *h, const char *channe
 
   int n_bookkeeping_events = ARRAY_LENGTH(cuda_bookkeeping_events);
   int n_tracing_events = ARRAY_LENGTH(cuda_tracing_events);
-  for (int i = 0; i < n_tracing_events; i++) {
-    const char *event_pattern = cuda_tracing_events[i];
-    // exclude bookkeeping events if there is a wildcard in the pattern
-    if (is_wildcard(event_pattern)) {
-      thapi_enable_events_by_pattern(h, ev, event_pattern, channel_name,
-                                     n_bookkeeping_events, cuda_bookkeeping_events);
-    } else {
-      thapi_enable_events_by_pattern(h, ev, event_pattern, channel_name,
-                                     0, NULL);
-    }
-  }
+  thapi_enable_events_by_pattern(h, ev, n_tracing_events, cuda_tracing_events, channel_name,
+                                 n_bookkeeping_events, cuda_bookkeeping_events);
 
   lttng_event_destroy(ev);
 }
@@ -172,9 +225,8 @@ void thapi_cuda_disable_tracing_events(struct lttng_handle *h, const char *chann
 
   int n_tracing_events = sizeof(cuda_tracing_events)
                          / sizeof(*cuda_tracing_events);
-  for (int i = 0; i < n_tracing_events; i++) {
-    thapi_disable_events_by_pattern(h, ev, cuda_tracing_events[i], channel_name);
-  }
+  thapi_disable_events_by_pattern(h, ev, n_tracing_events,
+                                  cuda_tracing_events, channel_name);
 
   lttng_event_destroy(ev);
 }
@@ -185,41 +237,112 @@ static char* opencl_bookkeeping_events[] = {
   "lttng_ust_opencl:clCreatSubDevices",
   "lttng_ust_opencl:clCreateCommandQueue",
   "lttng_ust_opencl_arguments:kernel_info",
+  "lttng_ust_opencl_profiling:event_profiling_results"
 };
 
-
-static char* opencl_tracing_events[] = {
-  "lttng_ust_opencl:*",
-  "lttng_ust_opencl_profiling:*",
+static char* opencl_tracing_default_events[] = {
   "lttng_ust_opencl_devices:*",
   "lttng_ust_opencl_arguments:*",
   "lttng_ust_opencl_build:infos*",
 };
 
+static char* opencl_tracing_default_exclude_events[] = {
+  "lttng_ust_opencl:clSetKernelArg*"
+  "lttng_ust_opencl:clGetKernelArg*",
+  "lttng_ust_opencl:clSetKernelExecInfo*"
+  "lttng_ust_opencl:clGetKernelInfo*",
+  "lttng_ust_opencl:clGetMemAllocInfoINTEL*"
+};
 
-/*
-  when 'full'
-    exec("#{lttng_enable} lttng_ust_opencl:*")
-    exec("#{lttng_enable} lttng_ust_opencl_profiling:*") if profiling
-    exec("#{lttng_enable} lttng_ust_opencl_devices:*")
-    exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
-    exec("#{lttng_enable} lttng_ust_opencl_build:infos*")
-  when 'default'
-    exec("#{lttng_enable} lttng_ust_opencl_profiling:*") if profiling
-    exec("#{lttng_enable} lttng_ust_opencl_devices:*")
-    exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
-    exec("#{lttng_enable} lttng_ust_opencl_build:infos*")
-    # Wildcard using the * character are supported at the end of tracepoint names.
-    #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
-    # Disable-event doesn't have wildcards
-    # So we enable and disable on the same line
-    opencl_disable = ['lttng_ust_opencl:clSetKernelArg*', 'lttng_ust_opencl:clGetKernelArg*',
-                      'lttng_ust_opencl:clSetKernelExecInfo*', 'lttng_ust_opencl:clGetKernelInfo*',
-                      'lttng_ust_opencl:clGetMemAllocInfoINTEL*']
+static char* opencl_profiling_events[] = {
+  "lttng_ust_opencl_profiling:event_profiling",
+};
 
-    exec("#{lttng_enable} lttng_ust_opencl:* -x #{opencl_disable.join(',')}")
-  when 'minimal'
-    LOGGER.debug("Tracing mode #{tracing_mode} not supported for OpenCL")
-  else
-    raise("Tracing mode #{tracing_mode} not supported")
-  end */
+
+void thapi_opencl_init(struct lttng_handle *h, const char *channel_name) {
+  int rval = 0;
+
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                  "Error creating event: %d", rval);
+    return;
+  }
+
+  int n_bookkeeping_events = ARRAY_LENGTH(opencl_bookkeeping_events);
+  thapi_enable_events_by_pattern(h, ev, n_bookkeeping_events, opencl_bookkeeping_events,
+                                 channel_name, 0, NULL);
+
+  lttng_event_destroy(ev);
+}
+
+
+void thapi_opencl_enable_tracing_events(struct lttng_handle *h, const char *channel_name) {
+  int rval = 0;
+
+  tracing_mode_t mode = thapi_ctl_tracing_mode();
+
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                  "Error creating event: %d", rval);
+    return;
+  }
+
+  char *host_events_pattern = "lttng_ust_opencl:*";
+  if (mode == THAPI_CTL_TRACING_MODE_MINIMAL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_WARN,
+                  "mode minimal no supproted by opencl backend, using default mode");
+    mode = THAPI_CTL_TRACING_MODE_DEFAULT;
+  }
+
+  if (mode == THAPI_CTL_TRACING_MODE_FULL) {
+    thapi_enable_events_by_pattern(h, ev, 1, &host_events_pattern, channel_name,
+                                   0, NULL);
+  } else { // MODE_DEFAULT, add same pattern but with exclusion list
+    int n_exclude_default = ARRAY_LENGTH(opencl_tracing_default_exclude_events);
+    thapi_enable_events_by_pattern(h, ev, 1, &host_events_pattern, channel_name,
+                                   n_exclude_default,
+                                   opencl_tracing_default_exclude_events);
+  }
+
+  int n_tracing_default = ARRAY_LENGTH(opencl_tracing_default_events);
+  thapi_enable_events_by_pattern(h, ev, n_tracing_default, opencl_tracing_default_events,
+                                 channel_name, 0, NULL);
+
+  if (thapi_ctl_profiling()) {
+    int n_profiling = ARRAY_LENGTH(opencl_profiling_events);
+    thapi_enable_events_by_pattern(h, ev, n_profiling, opencl_profiling_events,
+                                   channel_name, 0, NULL);
+  }
+
+  lttng_event_destroy(ev);
+}
+
+
+void thapi_opencl_disable_tracing_events(struct lttng_handle *h, const char *channel_name) {
+  int rval = 0;
+
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
+                  "Error creating event: %d", rval);
+    return;
+  }
+
+  int n_tracing_default_events = sizeof(opencl_tracing_default_events)
+                               / sizeof(*opencl_tracing_default_events);
+  thapi_disable_events_by_pattern(h, ev, n_tracing_default_events,
+                                  opencl_tracing_default_events, channel_name);
+
+  char *host_events_pattern = "lttng_ust_opencl:*";
+  thapi_disable_events_by_pattern(h, ev, 1, &host_events_pattern, channel_name);
+
+  if (thapi_ctl_profiling()) {
+    int n_profiling = ARRAY_LENGTH(opencl_profiling_events);
+    thapi_disable_events_by_pattern(h, ev, n_profiling, opencl_profiling_events,
+                                    channel_name);
+  }
+
+  lttng_event_destroy(ev);
+}

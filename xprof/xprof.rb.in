@@ -58,13 +58,15 @@ def lttng_env()
 end
 
 # TODO: should we just apply this to ENV once and use everywhere?
-def thapi_env(backends, tracing_mode, trace_from_start)
+def thapi_env(backends, tracing_mode, trace_from_start, profiling)
   rval = lttng_env.dup
   rval.merge!({
     'LTTNG_UST_SESSION_ID' => lttng_session_uuid,
     'LTTNG_UST_CHANNEL_NAME' => lttng_blocking_channel_name,
     'LTTNG_UST_TRACING_MODE' => tracing_mode,
-    'LTTNG_UST_TRACE_FROM_START' => trace_from_start.to_s
+    'LTTNG_UST_TRACE_FROM_START' => trace_from_start.to_s,
+    # TODO: combine with LTTNG_UST_{be}_PROFILE???
+    'LTTNG_UST_PROFILING' => profiling ? "1" : "0"
   })
   backends.each do |name|
     rval["LTTNG_UST_BACKEND_#{name.upcase}_ENABLED"] = '1'
@@ -72,8 +74,8 @@ def thapi_env(backends, tracing_mode, trace_from_start)
   rval
 end
 
-def exec_thapi_ctl(command, backends, tracing_mode, trace_from_start)
-  ENV.merge!(thapi_env(backends, tracing_mode, trace_from_start))
+def exec_thapi_ctl(command, backends, tracing_mode, trace_from_start, profiling)
+  ENV.merge!(thapi_env(backends, tracing_mode, trace_from_start, profiling))
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
   exec("thapi-ctl list")
   exec("thapi-ctl #{command}")
@@ -500,6 +502,12 @@ end
 
 def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true,
                      trace_from_start: true)
+  exec_thapi_ctl("init", ["opencl"], tracing_mode, trace_from_start, profiling)
+  if trace_from_start
+    exec_thapi_ctl("start", ["opencl"], tracing_mode, trace_from_start, profiling)
+  end
+  return
+
   # lttng_enable_bookkeeping = "lttng enable-event --userspace --session=#{lttng_session_uuid_bookkeeping} --channel=#{channel_name}"
   # bookkeeping_events = [
   #   "lttng_ust_opencl:clGetDeviceIDs",
@@ -540,9 +548,9 @@ end
 
 def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true,
                        trace_from_start: true)
-  exec_thapi_ctl("init", ["cuda"], tracing_mode, trace_from_start)
+  exec_thapi_ctl("init", ["cuda"], tracing_mode, trace_from_start, profiling)
   if trace_from_start
-    exec_thapi_ctl("start", ["cuda"], tracing_mode, trace_from_start)
+    exec_thapi_ctl("start", ["cuda"], tracing_mode, trace_from_start, profiling)
   end
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
   return
@@ -734,7 +742,9 @@ def trace_and_on_node_processing(usr_argv, options)
     backends, h = env_tracers
 
     # TODO: set in one place, or pass per command?
-    ENV.merge!(thapi_env(backends, options[:'tracing-mode'], options[:'trace-from-start']))
+    ENV.merge!(thapi_env(backends, options[:'tracing-mode'],
+                         options[:'trace-from-start'],
+                         options[:'profile']))
 
     # Only local master spawn LTTNG daemon and start session
     setup_lttng(backends) if mpi_local_master?
