@@ -40,7 +40,7 @@ typedef intptr_t process_id_t;
 typedef uintptr_t thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_function_name;
-typedef uintptr_t thapi_device_id;
+typedef uint64_t thapi_device_id;
 typedef uintptr_t thapi_fabricPort_id;
 typedef uint32_t thapi_domain_idx;
 typedef uint32_t thapi_sdevice_idx;
