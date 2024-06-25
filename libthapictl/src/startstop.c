@@ -15,20 +15,6 @@
 #define THAPI_LTTNG_CHANNEL_NAME_ENV "LTTNG_UST_CHANNEL_NAME"
 
 
-typedef enum {
-  THAPI_TRACING_MODE_MINIMAL=0,
-  THAPI_TRACING_MODE_DEFAULT=1,
-  THAPI_TRACING_MODE_FULL=2,
-} tracing_mode;
-
-
-static const char* thapi_tracing_mode_names[] = {
-  "minimal",
-  "default",
-  "full",
-};
-
-
 #define THAPI_CTL_DEFAULT_LOG_LEVEL THAPI_CTL_LOG_LEVEL_ERROR
 
 
@@ -231,6 +217,12 @@ int thapi_ctl_init() {
   } else {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "cuda DISABLED");
   }
+  if (backends_enabled[BACKEND_OPENCL]) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "opencl enabled");
+    thapi_opencl_init(handle, channel_name);
+  } else {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "opencl DISABLED");
+  }
   log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
   return 0;
@@ -250,6 +242,9 @@ int thapi_ctl_start() {
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
     thapi_cuda_enable_tracing_events(handle, channel_name);
+  }
+  if (backends_enabled[BACKEND_OPENCL]) {
+    thapi_opencl_enable_tracing_events(handle, channel_name);
   }
   log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
@@ -271,6 +266,9 @@ int thapi_ctl_stop() {
   int *backends_enabled = thapi_ctl_enabled_backends();
   if (backends_enabled[BACKEND_CUDA]) {
     thapi_cuda_disable_tracing_events(handle, channel_name);
+  }
+  if (backends_enabled[BACKEND_OPENCL]) {
+    thapi_opencl_disable_tracing_events(handle, channel_name);
   }
   log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);

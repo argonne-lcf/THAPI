@@ -27,7 +27,7 @@ teardown_file() {
 }
 
 @test "startstop-cl-no-profile-from-start" {
-   $IPROF --no-profile-from-start --debug 0 $THAPI_TEST_BIN
+   $IPROF --no-trace-from-start --debug 0 $THAPI_TEST_BIN
    write_count=$($IPROF -r -j | jq '.device.data.clEnqueueWriteBuffer.call')
    # 5 odd calls, does not include 0 since profiling should be disabled at start
    [ $write_count -eq 5 ]
