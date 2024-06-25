@@ -10,6 +10,19 @@
 #define ARRAY_LENGTH(a) (sizeof(a) / sizeof(*a));
 
 
+/*
+ *  "lttng_ust_cuda:cuDriverGetVersion_entry",
+  "lttng_ust_cuda:cuDriverGetVersion_exit",
+  "lttng_ust_cuda:cuDriverGetAttribute_entry",
+  "lttng_ust_cuda:cuDriverGetAttribute_exit",
+  "lttng_ust_cuda:cuInit_entry",
+  "lttng_ust_cuda:cuInit_exit",
+  "lttng_ust_cuda:cuGetExportTable_entry",
+  "lttng_ust_cuda:cuGetExportTable_exit",
+  "lttng_ust_cuda:cuCtxGetCurrent_entry",
+  "lttng_ust_cuda:cuCtxGetCurrent_exit",
+  */
+
 static char* cuda_bookkeeping_events[] = {
   "lttng_ust_cuda:cuGetProcAddress_v2_entry",
   "lttng_ust_cuda:cuGetProcAddress_v2_exit",
@@ -41,14 +54,14 @@ static char* cuda_bookkeeping_events[] = {
   "lttng_ust_cuda:cuStreamCreateWithPriority_exit",
   "lttng_ust_cuda:cuModuleGetFunction_entry",
   "lttng_ust_cuda:cuModuleGetFunction_exit",
-  "lttng_ust_cuda_profiling:event_profiling",
   "lttng_ust_cuda_profiling:event_profiling_results",
 };
 
 
 static const char* cuda_tracing_events[] = {
-  "lttng_ust_cuda_properties",
   "lttng_ust_cuda:*",
+  "lttng_ust_cuda_properties",
+  "lttng_ust_cuda_profiling:event_profiling",
 };
 
 
@@ -165,3 +178,48 @@ void thapi_cuda_disable_tracing_events(struct lttng_handle *h, const char *chann
 
   lttng_event_destroy(ev);
 }
+
+
+static char* opencl_bookkeeping_events[] = {
+  "lttng_ust_opencl:clGetDeviceIDs",
+  "lttng_ust_opencl:clCreatSubDevices",
+  "lttng_ust_opencl:clCreateCommandQueue",
+  "lttng_ust_opencl_arguments:kernel_info",
+};
+
+
+static char* opencl_tracing_events[] = {
+  "lttng_ust_opencl:*",
+  "lttng_ust_opencl_profiling:*",
+  "lttng_ust_opencl_devices:*",
+  "lttng_ust_opencl_arguments:*",
+  "lttng_ust_opencl_build:infos*",
+};
+
+
+/*
+  when 'full'
+    exec("#{lttng_enable} lttng_ust_opencl:*")
+    exec("#{lttng_enable} lttng_ust_opencl_profiling:*") if profiling
+    exec("#{lttng_enable} lttng_ust_opencl_devices:*")
+    exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
+    exec("#{lttng_enable} lttng_ust_opencl_build:infos*")
+  when 'default'
+    exec("#{lttng_enable} lttng_ust_opencl_profiling:*") if profiling
+    exec("#{lttng_enable} lttng_ust_opencl_devices:*")
+    exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
+    exec("#{lttng_enable} lttng_ust_opencl_build:infos*")
+    # Wildcard using the * character are supported at the end of tracepoint names.
+    #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
+    # Disable-event doesn't have wildcards
+    # So we enable and disable on the same line
+    opencl_disable = ['lttng_ust_opencl:clSetKernelArg*', 'lttng_ust_opencl:clGetKernelArg*',
+                      'lttng_ust_opencl:clSetKernelExecInfo*', 'lttng_ust_opencl:clGetKernelInfo*',
+                      'lttng_ust_opencl:clGetMemAllocInfoINTEL*']
+
+    exec("#{lttng_enable} lttng_ust_opencl:* -x #{opencl_disable.join(',')}")
+  when 'minimal'
+    LOGGER.debug("Tracing mode #{tracing_mode} not supported for OpenCL")
+  else
+    raise("Tracing mode #{tracing_mode} not supported")
+  end */

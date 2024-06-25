@@ -73,15 +73,20 @@ int main(int argc, char** argv)
   auto expr = a * d_x + d_y;
 
   for (int i = 0; i < 10; i++) {
-    if (i % 2 == 1)
+    if (i % 2 == 1) {
       thapi_ctl_start();
+      gt::synchronize();
+    }
 
     d_axpy = gt::eval(expr);
     h_axpy = gt::empty_like(h_x);
     gt::copy(d_axpy, h_axpy);
+    gt::synchronize();
 
-    if (i % 2 == 1)
+    if (i % 2 == 1) {
       thapi_ctl_stop();
+      gt::synchronize();
+    }
   }
 
   // Define a slice to print a subset of elements for spot checking the

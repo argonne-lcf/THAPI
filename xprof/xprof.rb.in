@@ -53,17 +53,31 @@ def exec(cmd, opts: {}, debug: true)
   stdout_str
 end
 
-def exec_thapi_ctl(command, session_id, backends)
-  channel_name = lttng_blocking_channel_name
-  ENV['LTTNG_HOME'] = lttng_home_dir
-  # Used by C api thapi_start/thapi_stop
-  ENV['THAPI_LTTNG_SESSION_ID'] = lttng_session_uuid
-  ENV['THAPI_LTTNG_CHANNEL_NAME'] = channel_name
+def lttng_env()
+  { 'LTTNG_HOME' => lttng_home_dir }
+end
+
+# TODO: should we just apply this to ENV once and use everywhere?
+def thapi_env(backends, tracing_mode, trace_from_start)
+  rval = lttng_env.dup
+  rval.merge!({
+    'LTTNG_UST_SESSION_ID' => lttng_session_uuid,
+    'LTTNG_UST_CHANNEL_NAME' => lttng_blocking_channel_name,
+    'LTTNG_UST_TRACING_MODE' => tracing_mode,
+    'LTTNG_UST_TRACE_FROM_START' => trace_from_start.to_s
+  })
   backends.each do |name|
-    ENV["THAPI_LTTNG_BACKEND_#{name.upcase}_ENABLED"] = '1'
+    rval["LTTNG_UST_BACKEND_#{name.upcase}_ENABLED"] = '1'
   end
+  rval
+end
+
+def exec_thapi_ctl(command, backends, tracing_mode, trace_from_start)
+  ENV.merge!(thapi_env(backends, tracing_mode, trace_from_start))
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
+  exec("thapi-ctl list")
   exec("thapi-ctl #{command}")
+  exec("thapi-ctl list")
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
 end
 
@@ -449,7 +463,7 @@ def launch_usr_bin(env, cmd)
 end
 
 def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true,
-                     profile_from_start: true)
+                     trace_from_start: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   case tracing_mode
   when 'minimal'
@@ -485,7 +499,7 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true,
 end
 
 def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true,
-                     profile_from_start: true)
+                     trace_from_start: true)
   # lttng_enable_bookkeeping = "lttng enable-event --userspace --session=#{lttng_session_uuid_bookkeeping} --channel=#{channel_name}"
   # bookkeeping_events = [
   #   "lttng_ust_opencl:clGetDeviceIDs",
@@ -525,10 +539,10 @@ def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true,
 end
 
 def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true,
-                       profile_from_start: true)
-  exec_thapi_ctl("init", lttng_session_uuid, ["cuda"])
-  if profile_from_start
-    exec_thapi_ctl("start", lttng_session_uuid, ["cuda"])
+                       trace_from_start: true)
+  exec_thapi_ctl("init", ["cuda"], tracing_mode, trace_from_start)
+  if trace_from_start
+    exec_thapi_ctl("start", ["cuda"], tracing_mode, trace_from_start)
   end
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
   return
@@ -589,19 +603,19 @@ def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true,
 end
 
 def enable_events_hip(channel_name, tracing_mode: 'default', profiling: true,
-                      profile_from_start: true)
+                      trace_from_start: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_hip:*")
 end
 
 def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true,
-                      profile_from_start: true)
+                      trace_from_start: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_ompt:*target*")
 end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true,
-                           profile_from_start: true)
+                           trace_from_start: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
@@ -628,7 +642,7 @@ def setup_lttng(backends)
     send("enable_events_#{name}", channel_name,
          tracing_mode: OPTIONS[:'tracing-mode'],
          profiling: OPTIONS[:profile],
-         profile_from_start: OPTIONS[:'profile-from-start'])
+         trace_from_start: OPTIONS[:'trace-from-start'])
   end
 
   if OPTIONS.include?(:sample)
@@ -713,19 +727,14 @@ def on_node_processing(backends, syncd)
 end
 
 # Start, Stop lttng, amd do the on-node analsysis
-def trace_and_on_node_processing(usr_argv)
+def trace_and_on_node_processing(usr_argv, options)
   # All masters set a future global barrier
   Sync_daemon.open do |syncd|
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
-    # All ranks need to set the LLTTNG_HOME env
-    # so they can have access to the daemon
-    ENV['LTTNG_HOME'] = lttng_home_dir
-
-    # Used by C api thapi_start/thapi_stop
-    ENV['THAPI_LTTNG_SESSION_ID'] = lttng_session_uuid
-    ENV['THAPI_LTTNG_CHANNEL_NAME'] = lttng_blocking_channel_name
+    # TODO: set in one place, or pass per command?
+    ENV.merge!(thapi_env(backends, options[:'tracing-mode'], options[:'trace-from-start']))
 
     # Only local master spawn LTTNG daemon and start session
     setup_lttng(backends) if mpi_local_master?
@@ -830,7 +839,8 @@ if __FILE__ == $PROGRAM_NAME
   end
   parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
   parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
-  parser.on('--[no-]profile-from-start', 'Enable profiling at start (disable to to application directed focused profiling using thapi_start/stop C API)', default: true)
+  parser.on('--[no-]trace-from-start', 'Disable tracing at start (default enabled)',
+            default: true)
 
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
@@ -906,7 +916,7 @@ if __FILE__ == $PROGRAM_NAME
 
   # Right now, `replay` means no tracing.
   # But we don't have a way of disabling post-processing
-  folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
+  folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV, options)
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
     global_processing(folder) if OPTIONS[:analysis]
