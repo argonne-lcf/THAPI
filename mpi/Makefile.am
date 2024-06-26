@@ -68,7 +68,8 @@ MPI_PROBES_TP = $(MPI_PROBES:=.tp)
 MPI_PROBES_INCL = $(MPI_PROBES:=.h)
 MPI_PROBES_SRC = $(MPI_PROBES:=.c)
 
-#MPI_STATIC_PROBES
+MPI_STATIC_PROBES = \
+	mpi_type
 
 MPI_STATIC_PROBES_TP = $(MPI_STATIC_PROBES:=.tp)
 MPI_STATIC_PROBES_INCL = $(MPI_STATIC_PROBES:=.h)
@@ -78,7 +79,7 @@ MPI_GEN_TRACEPOINTS = $(MPI_PROBES:%=gen_%.rb)
 $(MPI_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(MPI_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(MPI_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_mpi_custom_probes.rb $(MPO_MODEL) $(srcdir)/mpi.h.include
+$(MPI_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_mpi_custom_probes.rb $(MPI_MODEL) $(srcdir)/mpi.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
 
 %.h %.c: %.tp

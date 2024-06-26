@@ -4,6 +4,7 @@
 #include <mpi.h.include>
 #include <string>
 #include <tuple>
+#include <sstream>
 
 struct data_s {
   EntryState entry_state;
@@ -117,6 +118,13 @@ std::unordered_map<uint64_t, std::tuple<std::string, int>> mpi_datatype_info = {
     {0x4c00102a, {"MPI_COMPLEX16", 16}},
 };
 
+static void type_property_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                             const char *hostname,
+                                             int64_t vpid, uint64_t vtid, MPI_Datatype datatype, int size ) {
+
+	mpi_datatype_info[(uint64_t) datatype] = { std::to_string( (uint64_t) datatype), size} ;
+}
+
 static void traffic_MPI_Count_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
                                              const char *event_class_name, const char *hostname,
                                              int64_t vpid, uint64_t vtid, MPI_Count count,
@@ -128,10 +136,12 @@ static void traffic_MPI_Count_entry_callback(void *btx_handle, void *usr_data, i
     return;
   }
   auto &[str, size] = it->second;
+  std::ostringstream oss;
+  oss << str << ", " << count;
 
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_MPI,
                                  strip_event_class_name_entry(event_class_name).c_str(),
-                                 count * size, "");
+                                 count * size, oss.str().c_str());
 }
 
 static void traffic_int_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -144,12 +154,17 @@ static void traffic_int_entry_callback(void *btx_handle, void *usr_data, int64_t
     std::cerr << "THAPI: Warning MPI datatype " << datatype << " unknow" << std::endl;
     return;
   }
+
   auto &[str, size] = it->second;
+  std::ostringstream oss;
+  oss << str << ", " << count;
 
   btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_MPI,
                                  strip_event_class_name_entry(event_class_name).c_str(),
-                                 count * size, "");
+                                 count * size, oss.str().c_str());
 }
+
+
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
@@ -160,4 +175,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   btx_register_callbacks_traffic_MPI_Count_entry(btx_handle, &traffic_MPI_Count_entry_callback);
   btx_register_callbacks_traffic_int_entry(btx_handle, &traffic_int_entry_callback);
+
+  btx_register_callbacks_lttng_ust_mpi_type_property(btx_handle, &type_property_callback);
 }
