@@ -1,2 +1,11 @@
 ---
-{}
+lttng_ust_mpi_type:
+  events:
+  - name: property
+    args:
+    - [ MPI_Datatype, datatype]
+    - [ int, size]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, datatype, "(uintptr_t)datatype" ]
+    - [ ctf_integer, int, size, size ]
+
