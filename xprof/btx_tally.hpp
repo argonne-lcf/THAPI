@@ -41,9 +41,9 @@ public:
   void update_max_size(std::array<long, nfields> &m) {
     const auto current_string = to_string();
     for (auto i = 0UL; i < m.size(); i++)
-        m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
-    }
- 
+      m[i] = std::max(m[i], static_cast<long>(current_string[i].size()));
+  }
+
 private:
   // Pure virtual function
   virtual const std::array<std::string, nfields> to_string() = 0;
@@ -145,13 +145,12 @@ EXAMPLE:
           }
   output  tuple{ set {"iris01","iris02"}, set{232,123,890}, set{789,890}, set{"getDeviceInfo"} }
 */
-template <class... K,  size_t... I>
-void add_to_set(std::tuple<std::set<K>...> &s,
-                std::tuple<K...> t, std::index_sequence<I...>) {
+template <class... K, size_t... I>
+void add_to_set(std::tuple<std::set<K>...> &s, std::tuple<K...> t, std::index_sequence<I...>) {
   (std::get<I>(s).insert(std::get<I>(t)), ...);
 }
 
-template<typename... K, typename V>
+template <typename... K, typename V>
 auto get_uniq_tally(std::unordered_map<std::tuple<K...>, V> &input) {
   auto tuple_set = std::make_tuple(std::set<K>{}...);
   constexpr auto s = std::make_index_sequence<sizeof...(K)>();
@@ -202,8 +201,7 @@ EXAMPLE:
           }
 
 */
-template <typename K, typename V> 
-auto sort_by_value(const std::unordered_map<K, V> &m) {
+template <typename K, typename V> auto sort_by_value(const std::unordered_map<K, V> &m) {
   std::vector<std::pair<K, V>> v;
   std::copy(m.begin(), m.end(), std::back_inserter<std::vector<std::pair<K, V>>>(v));
   std::sort(v.begin(), v.end(), [=](auto &a, auto &b) { return a.second > b.second; });
@@ -246,9 +244,8 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
   long name_max = header_name.size();
 
   // Know at compile time
-  auto tallycore_max =
-      std::apply([](auto &&...e) { return std::array{(static_cast<long>(strlen(e)))...}; },
-                 header_tallycore);
+  auto tallycore_max = std::apply(
+      [](auto &&...e) { return std::array{(static_cast<long>(strlen(e)))...}; }, header_tallycore);
 
   for (auto &[name, tallycore] : m) {
     name_max = std::max(static_cast<long>(name.size()), name_max);
@@ -273,14 +270,14 @@ auto max_string_size(std::vector<std::pair<thapi_function_name, TC>> &m,
 
 // We use 3 function, because my template skill are poor...
 template <size_t SIZE>
-std::ostream &operator<<(std::ostream &os,
-                         const std::pair<std::array<const char *, SIZE>, std::array<long, SIZE>> &_tup) {
+std::ostream &
+operator<<(std::ostream &os,
+           const std::pair<std::array<const char *, SIZE>, std::array<long, SIZE>> &_tup) {
   auto &[c, column_width] = _tup;
   for (auto i = 0U; i < c.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
-      os << ""
-         << "   ";
+      os << "" << "   ";
     else
       os << c[i] << " | ";
   }
@@ -288,15 +285,15 @@ std::ostream &operator<<(std::ostream &os,
 }
 
 // Print the TallyCore
-template <size_t SIZE, typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
+template <size_t SIZE, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreString, TC>>>
 std::ostream &operator<<(std::ostream &os, std::pair<TC, std::array<long, SIZE>> &_tup) {
   auto &[c, column_width] = _tup;
   const auto v = c.to_string();
   for (auto i = 0U; i < v.size(); i++) {
     os << std::setw(std::abs(column_width[i]));
     if (column_width[i] <= 0)
-      os << ""
-         << "   ";
+      os << "" << "   ";
     else
       os << v[i] << " | ";
   }
@@ -311,7 +308,7 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
 template <class... T, class... T2, size_t... I>
 void print_tally_header(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
-                 std::index_sequence<I...>) {
+                        std::index_sequence<I...>) {
   ((std::get<I>(s).size() ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
                           : os << ""),
    ...);
@@ -319,7 +316,7 @@ void print_tally_header(std::ostream &os, const std::tuple<T...> &s, const std::
 
 template <class... T, class... T2>
 void print_tally_header(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
-                 const std::tuple<T2...> &h) {
+                        const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
   print_tally_header(os, s, h, seq);
@@ -379,7 +376,7 @@ void print_tally(const std::unordered_map<thapi_function_name, TC> &m, int displ
 template <typename K, typename T, typename TC,
           typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
 void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_string,
-                   int display_name_max_size) {
+                   int display_name_max_size, bool average = true) {
 
   if (m.empty())
     return;
@@ -387,10 +384,19 @@ void print_compact(std::string title, std::unordered_map<K, TC> m, T &&keys_stri
   // Printing the summary of the number of Hostname, Process and co
   // We will iterator over the map and compute the number of unique elements of each category
   const auto tuple_tally = get_uniq_tally(m);
+
+  if (average)
+    title += " | AVG By Processes";
+
   print_tally_header(std::cout, title, tuple_tally, keys_string);
   std::cout << std::endl;
 
   auto aggregated_by_name = aggregate_by_name(m);
+  int total_num_processes = std::get<0>(tuple_tally).size() * std::get<2>(tuple_tally).size();
+  if (average)
+    for (auto &[k, v] : aggregated_by_name)
+      v /= total_num_processes;
+
   print_tally(aggregated_by_name, display_name_max_size);
 }
 
@@ -408,6 +414,50 @@ void print_extended(std::string title, std::unordered_map<K, TC> m, T &&keys_str
     std::cout << std::endl;
     print_tally(aggregated_by_name, display_name_max_size);
   }
+}
+
+template <typename K, typename T, typename TC,
+          typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
+void print_extremun(std::string title, std::unordered_map<K, TC> m, T &&keys_string,
+                    int display_name_max_size) {
+
+  if (m.empty())
+    return;
+
+  TC extremun_TC_min(std::numeric_limits<uint64_t>::max(), false);
+  TC extremun_TC_max{};
+
+  // Now working of the body of the table
+  auto aggregated_nested = aggregate_nested(m);
+
+  typedef decltype(make_tuple_without_last(std::declval<K>())) Minusone;
+  Minusone extremun_key_min;
+  Minusone extremun_key_max;
+
+  for (auto &[k, aggregated_by_name] : aggregated_nested) {
+
+    TC tot{};
+    for (auto const &[_, nt] : aggregated_by_name)
+      tot += nt;
+
+    if (tot > extremun_TC_max) {
+      extremun_TC_max = tot;
+      extremun_key_max = k;
+    }
+
+    if (tot < extremun_TC_min) {
+      extremun_TC_min = tot;
+      extremun_key_min = k;
+    }
+  }
+
+  print_named_tuple(std::cout, title + " | MIN", extremun_key_min, keys_string);
+  std::cout << std::endl;
+  print_tally(aggregated_nested[extremun_key_min], display_name_max_size);
+
+  print_named_tuple(std::cout, title + " | MAX", extremun_key_max, keys_string);
+  std::cout << std::endl;
+  print_tally(aggregated_nested[extremun_key_max], display_name_max_size);
 }
 
 //        __  _
@@ -463,23 +513,18 @@ nlohmann::json json_extented(std::unordered_map<K, TC> &m, std::tuple<T...> &&h)
   return j;
 }
 
-
 // Wrapper type that does reversal
-template <typename Range>
-class Reverser {
-    Range& r_;
-  public:
-    using iterator_type = std::reverse_iterator<decltype(std::begin(r_))>;
+template <typename Range> class Reverser {
+  Range &r_;
 
-    Reverser(Range& r) : r_(r) {}
+public:
+  using iterator_type = std::reverse_iterator<decltype(std::begin(r_))>;
 
-    iterator_type begin() { return iterator_type(std::end(r_)); }
-    iterator_type end()   { return iterator_type(std::begin(r_)); }
+  Reverser(Range &r) : r_(r) {}
+
+  iterator_type begin() { return iterator_type(std::end(r_)); }
+  iterator_type end() { return iterator_type(std::begin(r_)); }
 };
 
 // Helper creation function
-template <typename Range>
-Reverser<Range> reverse(Range& r)
-{
-    return Reverser<Range>(r);
-}
+template <typename Range> Reverser<Range> reverse(Range &r) { return Reverser<Range>(r); }

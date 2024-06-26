@@ -1,30 +1,30 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <limits>
+#include <vector>
 
 class TallyCoreBase {
 public:
   TallyCoreBase() {}
 
-  TallyCoreBase(uint64_t _dur, bool _err) : error{ (uint64_t) _err}, count{1} {
+  TallyCoreBase(uint64_t _dur, bool _err) : error{(uint64_t)_err}, count{1} {
     if (!_err) {
       duration = _dur;
       min = _dur;
       max = _dur;
-    } 
+    }
   }
 
-  TallyCoreBase(uint64_t _dur, uint64_t _err, uint64_t _count, uint64_t _min, uint64_t _max) :
-	  duration{_dur}, error{_err}, count{_count}, min{_min}, max{_max} {}
+  TallyCoreBase(uint64_t _dur, uint64_t _err, uint64_t _count, uint64_t _min, uint64_t _max)
+      : duration{_dur}, error{_err}, count{_count}, min{_min}, max{_max} {}
 
   uint64_t duration{0};
   uint64_t error{0};
   uint64_t count{0};
   uint64_t min{std::numeric_limits<uint64_t>::max()};
   uint64_t max{0};
-  double duration_ratio{std::numeric_limits<double>::quiet_NaN() };
+  double duration_ratio{std::numeric_limits<double>::quiet_NaN()};
 
   TallyCoreBase &operator+=(const TallyCoreBase &rhs) {
     this->duration += rhs.duration;
@@ -36,6 +36,17 @@ public:
   }
 
   bool operator>(const TallyCoreBase &rhs) { return duration > rhs.duration; }
+
+  bool operator<(const TallyCoreBase &rhs) { return duration < rhs.duration; }
+
+  TallyCoreBase operator/=(uint64_t count) {
+    this->duration /= count;
+    this->min /= count;
+    this->max /= count;
+    this->count /= count;
+    this->error /= count;
+    return *this;
+  }
 
   double average() {
     return (count && count != error) ? static_cast<double>(duration) / (count - error) : 0.;

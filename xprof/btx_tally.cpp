@@ -226,7 +226,7 @@ static void finalize_component_callback(void *usr_data) {
         print_compact("Explicit memory traffic (" + s + ")", traffic,
                       std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size);
       }
-    } else {
+    } else if (strcmp(data->params->display, "extended") == 0) {
       for (const auto &[level, host] : reverse(data->host)) {
         std::string s = join_iterator(data->host_backend_name[level]);
         print_extended(s, host, std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
@@ -240,6 +240,28 @@ static void finalize_component_callback(void *usr_data) {
         std::string s = join_iterator(data->traffic_backend_name[level]);
         print_extended("Explicit memory traffic (" + s + ")", traffic,
                        std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
+      }
+    } else if (strcmp(data->params->display, "extremun") == 0) {
+      for (const auto &[level, host] : reverse(data->host)) {
+        std::string s = join_iterator(data->host_backend_name[level]);
+        print_extremun(s, host, std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
+        print_compact(s, host, std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size,
+                      true);
+      }
+      print_extremun(
+          "Device profiling", data->device,
+          std::make_tuple("Hostname", "Process", "Thread", "Device pointer", "Subdevice pointer"),
+          max_name_size);
+      print_compact("Device profiling", data->device,
+                    std::make_tuple("Hostnames", "Processes", "Threads", "Devices", "Subdevices"),
+                    max_name_size, true);
+
+      for (const auto &[level, traffic] : reverse(data->traffic)) {
+        std::string s = join_iterator(data->traffic_backend_name[level]);
+        print_extremun("Explicit memory traffic (" + s + ")", traffic,
+                       std::make_tuple("Hostname", "Process", "Thread"), max_name_size);
+        print_compact("Explicit memory traffic (" + s + ")", traffic,
+                      std::make_tuple("Hostnames", "Processes", "Threads"), max_name_size, true);
       }
     }
   } else {

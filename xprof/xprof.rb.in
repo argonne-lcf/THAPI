@@ -665,7 +665,7 @@ def global_processing(folder)
     args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
     args << '--display_mode' << 'json' if OPTIONS.include?(:json)
     args << '--backends' << backends
-    args << '--display' << 'extended' if OPTIONS.include?(:extended)
+    args << '--display' << OPTIONS[:'tally-display']
   end
 
   args += ['--', folder]
@@ -748,7 +748,9 @@ if __FILE__ == $PROGRAM_NAME
             end
   ## Tally Specific Options
   parser.on('-j', '--json', 'The tally will be dumped as json')
-  parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
+  parser.on('--tally-display MODE',
+            'The tally will be printed for each Hostname / Process / Thread / Device', default: 'compact',
+                                                                                       allowed: %(compact extended extremun))
   parser.on('-k', '--kernel-verbose',
             'The tally will report kernels execution time with SIMD width and global/local sizes')
   parser.on('--max-name-size SIZE',
