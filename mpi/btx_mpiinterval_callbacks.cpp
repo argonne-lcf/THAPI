@@ -32,7 +32,7 @@ static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
                              uint64_t vtid) {
   static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
 }
-
+/
 static void exits_callback_mpiError_absent(void *btx_handle, void *usr_data, int64_t ts,
                                            const char *event_class_name, const char *hostname,
                                            int64_t vpid, uint64_t vtid) {
@@ -48,7 +48,7 @@ static void exits_callback_mpiError_present(void *btx_handle, void *usr_data, in
                     mpiResult != MPI_SUCCESS);
 }
 
-// MPICH ABI
+// MPICH ABI (https://github.com/pmodels/mpich/blob/main/src/mpi/datatype/typerep/src/typerep_ext32.c)
 std::unordered_map<uint64_t, std::tuple<std::string, int>> mpi_datatype_info = {
     {0xc000000, {"MPI_DATATYPE_NULL", 0}},
     {0x4c000843, {"MPI_AINT", 8}},
@@ -80,12 +80,12 @@ std::unordered_map<uint64_t, std::tuple<std::string, int>> mpi_datatype_info = {
     {0x4c00100c, {"MPI_LONG_DOUBLE", 16}},
     {0x4c002042, {"MPI_C_LONG_DOUBLE_COMPLEX", 32}},
     {0x4c002036, {"MPI_CXX_LONG_DOUBLE_COMPLEX", 32}},
-    {0xffffffff8c000000, {"MPI_FLOAT_INT", 0}},
-    {0xffffffff8c000001, {"MPI_DOUBLE_INT", 0}},
-    {0xffffffff8c000002, {"MPI_LONG_INT", 0}},
+    {0xffffffff8c000000, {"MPI_FLOAT_INT", 8}},
+    {0xffffffff8c000001, {"MPI_DOUBLE_INT", 12}},
+    {0xffffffff8c000002, {"MPI_LONG_INT", 12}},
     {0x4c000816, {"MPI_2INT", 8}},
-    {0xffffffff8c000003, {"MPI_SHORT_INT", 0}},
-    {0xffffffff8c000004, {"MPI_LONG_DOUBLE_INT", 0}},
+    {0xffffffff8c000003, {"MPI_SHORT_INT", 6}},
+    {0xffffffff8c000004, {"MPI_LONG_DOUBLE_INT", 20}},
     {0x4c000821, {"MPI_2REAL", 8}},
     {0x4c001023, {"MPI_2DOUBLE_PRECISION", 16}},
     {0x4c000820, {"MPI_2INTEGER", 8}},
@@ -112,7 +112,7 @@ std::unordered_map<uint64_t, std::tuple<std::string, int>> mpi_datatype_info = {
     {0x4c000831, {"MPI_INTEGER8", 8}},
     {0x4c000829, {"MPI_REAL8", 8}},
     {0x4c000828, {"MPI_COMPLEX8", 8}},
-    {0xc000000, {"MPI_INTEGER16", 0}},
+    {0xc000000, {"MPI_INTEGER16", 16}},
     {0x4c00102b, {"MPI_REAL16", 16}},
     {0x4c00102a, {"MPI_COMPLEX16", 16}},
 };
