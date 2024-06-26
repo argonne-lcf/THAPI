@@ -20,11 +20,14 @@ int main(int argc, char* argv[]) {
 
     cl_uint platform_idx = 0;
     cl_uint device_idx = 0;
+    cl_bool run_kernel = CL_FALSE;
 
     if (argc > 1)
       platform_idx = (cl_uint) atoi(argv[1]);
     if (argc > 2)
       device_idx = (cl_uint) atoi(argv[2]);
+    if (argc > 3)
+      run_kernel = CL_TRUE;
 
     char name[128];
     /* - - -
@@ -79,6 +82,12 @@ int main(int argc, char* argv[]) {
     cl_context context = clCreateContext(0, device_count, devices, NULL, NULL, &err);
     check_error(err,"clCreateContext");
 
+    const char *kernelstring =
+        "__kernel void hello_world() {"
+        "   const int world_rank = get_global_id(0);" 
+        "   printf(\"Hello world from rank %d \\n\", world_rank);" 
+        "}";
+
     /* - - - -
     Command queue
     - - - - */
@@ -98,11 +107,64 @@ int main(int argc, char* argv[]) {
     cl_mem d_a = clCreateBuffer(context, CL_MEM_READ_WRITE, a_bytes, NULL, &err);
     check_error(err,"cclCreateBuffer");
 
+    // define program and kernel variables, used if run_kernel was requested in
+    // 3rd arg
+    cl_program program;
+    cl_kernel kernel;
+#define WORK_DIM 1
+
+    // Describe the number of global work-items in work_dim dimensions that will execute the kernel function
+    const size_t global[WORK_DIM] = { 64 };
+
+    // Describe the number of work-items that make up a work-group (also referred to as the size of the work-group).
+    // local_work_size can also be a NULL value in which case the OpenCL implementation will determine how to be break the global work-items into appropriate work-group instances.
+    const size_t local[WORK_DIM] = { 32 };
+
+    if (run_kernel) {
+      // Create the program
+      program = clCreateProgramWithSource(context, 1, &kernelstring, NULL, &err);
+      check_error(err,"clCreateProgramWithSource");
+
+      //Build / Compile the program executable
+      err = clBuildProgram(program, device_count, devices, "-cl-unsafe-math-optimizations", NULL, NULL);
+      if (err != CL_SUCCESS)
+      {
+          printf("Error: Failed to build program executable!\n");
+
+          size_t logSize;
+          clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &logSize);
+
+          // there's no information in the reference whether the string is 0 terminated or not.
+          char* messages = (char*)malloc((1+logSize)*sizeof(char));
+          clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, logSize, messages, NULL);
+          messages[logSize] = '\0';
+
+          printf("%s", messages);
+          free(messages);
+          return EXIT_FAILURE;
+      }
+
+     /* - - - -
+      Create
+      - - - - */
+      kernel = clCreateKernel(program, "hello_world", &err);
+      check_error(err,"clCreateKernel");
+
+      /* - - - -
+      ND range
+      - - - - */
+      printf(">>> NDrange configuration...\n");
+
+      printf("Global work size: %zu \n", global[0]);
+      printf("Local work size: %zu \n", local[0]);
+
+    }
+
     /* - - - -
     Execute
     - - - - */
     for (unsigned int i = 0; i < NLOOP; i++) {
-      printf(">>> Kernel Execution [%d]...\n", i);
+      printf(">>> WriteBuffer Execution [%d]...\n", i);
 
       // trace only odd executions
       if (i % 2 == 1)
@@ -111,6 +173,20 @@ int main(int argc, char* argv[]) {
     // (cl_command_queue command_queue, cl_mem buffer, cl_bool blocking_write, size_t offset, size_t size, const void *ptr, cl_uint num_events_in_wait_list, const cl_event *event_wait_list, cl_event *event);
       err  = clEnqueueWriteBuffer(queue, d_a, CL_TRUE, offset * sizeof(float), batch_size * sizeof(float), h_a, 0, NULL, NULL);
       check_error(err,"clEnqueueWriteBuffer");
+
+      if (run_kernel) {
+        printf(">>> Kernel Execution [%d]...\n", i);
+        err  = clEnqueueNDRangeKernel(queue, kernel, WORK_DIM, NULL, global, local, 0, NULL, NULL);
+        check_error(err,"clEnqueueNDRangeKernel");
+      }
+
+      /* - - -
+      Sync & check
+      - - - */
+
+       // Wait for the command queue to get serviced before reading back results
+      clFinish(queue);
+
 
       /* - - -
       Sync & check
@@ -134,6 +210,11 @@ int main(int argc, char* argv[]) {
     clReleaseCommandQueue(queue);
     clReleaseMemObject(d_a);
     clReleaseContext(context);
+
+    if (run_kernel) {
+      clReleaseProgram(program);
+      clReleaseKernel(kernel);
+    }
 
     // Exit
     return 0;
