@@ -31,6 +31,11 @@ def common_block(c, provider)
   tracepoint_params = c.tracepoint_parameters.collect(&:name)
   tp_params.push '_retval' if c.has_return_type?
   puts "  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params + tracepoint_params).join(', ')});"
+
+  c.epilogues.each do |p|
+    puts p
+  end
+
   puts '  return _retval;' if c.has_return_type?
 end
 
@@ -70,6 +75,7 @@ puts <<~EOF
   #include <stdint.h>
   #include <mpi.h>
   #include "mpi_tracepoints.h"
+  #include "mpi_type.h"
   #include <dlfcn.h>
   #include <pthread.h>
 EOF

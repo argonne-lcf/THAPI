@@ -516,6 +516,7 @@ end
 def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_mpi:*")
+  exec("#{lttng_enable} lttng_ust_mpi_type:*")
 end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
