@@ -72,6 +72,7 @@ AM_CONDITIONAL([FOUND_MPI], [test "x$found_mpi" = xyes])
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
+PKG_CHECK_MODULES([LTTNG_CTL], [lttng-ctl >= 2.13.13])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
