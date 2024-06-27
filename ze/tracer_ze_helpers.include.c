@@ -807,7 +807,6 @@ static uint32_t** _sampling_freqDomainCounts = NULL;
 static uint32_t** _sampling_fabricPortCount = NULL;
 static uint32_t** _sampling_powerDomainCounts = NULL;
 static uint32_t** _sampling_engineCounts = NULL;
-
 static void intializeFrequency() {
   ze_result_t res;
   _sampling_hFrequencies = (zes_freq_handle_t***) calloc(_sampling_driverCount, sizeof(zes_freq_handle_t**));
@@ -832,15 +831,15 @@ static void intializeFrequency() {
         free(_sampling_hFrequencies[driverIdx][deviceIdx]);
       }
       for (uint32_t domainIdx = 0; domainIdx <  _sampling_freqDomainCounts[driverIdx][deviceIdx]; domainIdx++) {
-        zes_freq_properties_t freqProperties ={0};
-        freqProperties.stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES;
-        res = ZES_FREQUENCY_GET_PROPERTIES_PTR(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProperties);
+        zes_freq_properties_t freqProps ={0};
+        freqProps.stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES;
+        res = ZES_FREQUENCY_GET_PROPERTIES_PTR(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProps);
         if (res != ZE_RESULT_SUCCESS) {
           _ZE_ERROR_MSG("ZES_FREQUENCY_GET_PROPERTIES_PTR", res);
           free(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx]);
         }
         do_tracepoint(lttng_ust_ze_sampling, freqProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                      (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProperties);      
+                      (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProps);
       }
     }
   }
@@ -1043,7 +1042,7 @@ static void readFrequency_dump(uint32_t driverIdx, uint32_t deviceIdx) {
       _ZE_ERROR_MSG("ZES_FREQUENCY_GET_STATE_PTR", result);
       continue;
     }
-    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqState);
+    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], domainIdx, &freqState);
   }
 }
 
@@ -1079,7 +1078,7 @@ static void readEnergy_dump(uint32_t driverIdx, uint32_t deviceIdx) {
       _ZE_ERROR_MSG("ZES_POWER_GET_ENERGY_COUNTER_PTR", result);
       continue;
     }
-    do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_pwr_handle_t)_sampling_hPowers[driverIdx][deviceIdx][domainIdx], &energyCounter);
+    do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_pwr_handle_t)_sampling_hPowers[driverIdx][deviceIdx][domainIdx], domainIdx, &energyCounter);
   }
 }
 static void readEngines_dump(uint32_t driverIdx, uint32_t deviceIdx){

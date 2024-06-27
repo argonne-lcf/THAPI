@@ -360,7 +360,7 @@ def env_tracers
   end
 
   # Sample
-  if sampling?
+  if sampling? && mpi_local_master?
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
