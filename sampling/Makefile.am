@@ -52,8 +52,8 @@ libThapiSampling_la_SOURCES = \
 	thapi_sampling.h \
 	thapi_sampling.c
 
-libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include
-libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0
+libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include $(LTTNG_UST_CFLAGS)
+libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0 $(LTTNG_UST_LIBS)
 libThapiSampling_la_LIBADD = libsamplingtracepoints.la
 
 lib_LTLIBRARIES = libThapiSampling.la
