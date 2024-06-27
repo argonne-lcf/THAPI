@@ -102,6 +102,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: hFrequency
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
             - :name: domain
               :field_class:
                 :type: integer_unsigned
@@ -117,6 +122,11 @@
           :type: structure
           :members:
             - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: hPower
               :field_class:
                 :type: integer_unsigned
                 :field_value_range: 64
@@ -140,6 +150,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: hEngine
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
             - :name: subDevice
               :field_class:
                 :type: integer_unsigned
@@ -158,6 +173,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: hEngine
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
             - :name: subDevice
               :field_class:
                 :type: integer_unsigned
@@ -166,4 +186,49 @@
             - :name: activeTime
               :field_class:
                 :type: single
+                :cast_type: float
+      - :name: lttng:fabricPort
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: did
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: hFabricPort
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
+            - :name: subDevice
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: portId
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: remotePortId
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
+            - :name: rxThroughput
+              :field_class:
+                :type: double
+                :cast_type: float
+            - :name: txThroughput
+              :field_class:
+                :type: double
+                :cast_type: float
+            - :name: rxSpeed
+              :field_class:
+                :type: double
+                :cast_type: float
+            - :name: txSpeed
+              :field_class:
+                :type: double
                 :cast_type: float
