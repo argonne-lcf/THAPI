@@ -32,10 +32,12 @@ lttng_ust_ze_sampling:
     args:
     - [ ze_device_handle_t, hDevice ]
     - [ zes_pwr_handle_t, hPowers ]
+    - [ uint32_t, domainIdx ]
     - [ zes_power_energy_counter_t *, pEnergyCounter ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer_hex, uintptr_t, hPowers, "(uintptr_t)hPowers" ]
+    - [ ctf_integer, uint32_t, domainIdx, "domainIdx" ]
     - [ ctf_sequence_text, uint8_t, pEnergyCounter_val, pEnergyCounter, size_t, "sizeof(zes_power_energy_counter_t)" ]
   - name: freqProperties
     args:
@@ -50,10 +52,12 @@ lttng_ust_ze_sampling:
     args:
     - [ ze_device_handle_t, hDevice ]
     - [ zes_freq_handle_t, hFrequency ]
+    - [ uint32_t, domainIdx ]
     - [ zes_freq_state_t *, pFreqState ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer_hex, uintptr_t, hFrequency, "(uintptr_t)hFrequency" ]
+    - [ ctf_integer, uint32_t, domainIdx, "domainIdx" ]
     - [ ctf_sequence_text, uint8_t, pFreqState_val, pFreqState, size_t, "sizeof(zes_freq_state_t)" ]
   - name: fabricPortProperties
     args:

@@ -837,14 +837,14 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
         return;
 
       double time_diff = static_cast<double>(pEngineStats_val->timestamp - prev_engineStats.timestamp);
-      double activeTime = static_cast<double>(pEngineStats_val->activeTime - prev_engineStats.activeTime) / time_diff;
+      double activeTime = static_cast<double>(pEngineStats_val->activeTime - prev_engineStats.activeTime) * 100 / time_diff;
 
       if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL) {
         btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                        (uint64_t)hDevice,  subDevice, activeTime);
-      } else {
+                                        (uint64_t)hDevice, (uint64_t)hEngine, subDevice, int(activeTime));
+      } if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
         btx_push_message_lttng_copyEU(btx_handle, hostname,0, 0, prev_ts, BACKEND_ZE,
-                                     (uint64_t)hDevice, subDevice, activeTime);
+                                     (uint64_t)hDevice, (uint64_t)hEngine, subDevice, int(activeTime));
       }
       it->second = {*pEngineStats_val, ts};
     } 
@@ -856,52 +856,38 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
 static void lttng_ust_ze_sampling_gpu_energy_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                       const char *hostname, int64_t vpid,
                                                       uint64_t vtid, ze_device_handle_t hDevice,
-                                                      zes_pwr_handle_t hPower,
+                                                      zes_pwr_handle_t hPower, uint32_t domainIdx,
                                                       size_t _pEnergyCounter_val_length,
                                                       zes_power_energy_counter_t *pEnergyCounter_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  const auto it0 = data->power_property.find({hostname, vpid, hDevice, hPower});
-  if (it0 != data->power_property.cend()) {
-    const auto& powerProps = it0->second;
-    uint32_t domain = (powerProps.onSubdevice) ? powerProps.subdeviceId + 1 : 0;
-    auto [it, inserted] = data->device_energy_ref.insert(
-            {{hostname, vpid, hDevice, hPower, domain}, {*pEnergyCounter_val, ts}});
-    if (inserted)
-      return;
+  auto [it, inserted] = data->device_energy_ref.insert(
+                        {{hostname, vpid, hDevice, hPower, domainIdx}, {*pEnergyCounter_val, ts}});
+  if (inserted)
+    return;
 
-    auto &[prev_EnergyCounter, prev_ts] = it->second;
-    if (pEnergyCounter_val->timestamp == prev_EnergyCounter.timestamp)
-      return;
+  auto &[prev_EnergyCounter, prev_ts] = it->second;
+  if (pEnergyCounter_val->timestamp == prev_EnergyCounter.timestamp)
+    return;
 
-    double time_diff = static_cast<double>(pEnergyCounter_val->timestamp - prev_EnergyCounter.timestamp);
-    double power = static_cast<double>(pEnergyCounter_val->energy - prev_EnergyCounter.energy) / time_diff;
-    btx_push_message_lttng_power(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice,
-                               (thapi_domain_idx)domain, power);
-    it->second = {*pEnergyCounter_val, ts};
-  } else {
-    std::cerr << "Power property not found for device: " << hDevice << std::endl;
-  }
+  double time_diff = static_cast<double>(pEnergyCounter_val->timestamp - prev_EnergyCounter.timestamp);
+  double power = static_cast<double>(pEnergyCounter_val->energy - prev_EnergyCounter.energy) / time_diff;
+  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, (uint64_t)hDevice, (uint64_t)hPower,
+                               (thapi_domain_idx)domainIdx, power);
+  it->second = {*pEnergyCounter_val, ts};
 }
 
 
 static void lttng_ust_ze_sampling_gpu_frequency_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                          const char *hostname, int64_t vpid,
                                                          uint64_t vtid, ze_device_handle_t hDevice,
-                                                         zes_freq_handle_t hFrequency,
+                                                         zes_freq_handle_t hFrequency,  uint32_t domainIdx,
                                                          size_t _pFreqState_val_length,
                                                          zes_freq_state_t *pFreqState_val) {
-  auto *data = static_cast<data_t *>(usr_data);
-  const auto it0 = data->frequency_property.find({hostname, vpid, hDevice, hFrequency});
-  if (it0 != data->frequency_property.cend()) {
-    const auto& freqProps = it0->second;
-    uint32_t domain = (freqProps.onSubdevice) ? freqProps.subdeviceId : 0;
-    
-    btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, (uint64_t)hDevice,
-                               (thapi_domain_idx)domain, pFreqState_val->actual);
-  }else {
-   std::cerr << "Frequency property not found for device: " << hDevice << std::endl;
-  }
+    printf("frequency: %f\n",  pFreqState_val->actual);
+    btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, (uint64_t)hDevice, (uint64_t)hFrequency,
+                               (thapi_domain_idx)domainIdx, pFreqState_val->actual);
 }
+
 // Properties
 static void lttng_ust_ze_sampling_fabricPortProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                                 const char *hostname, int64_t vpid, uint64_t vtid,

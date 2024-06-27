@@ -56,6 +56,7 @@ typedef uintptr_t thread_id_t;
 typedef std::string hostname_t;
 typedef std::string thapi_function_name;
 typedef uint64_t thapi_device_id;
+typedef uint64_t thapi_telemetry_handle;
 typedef uintptr_t thapi_fabricPort_id;
 typedef uint32_t thapi_domain_idx;
 typedef uint32_t thapi_sdevice_idx;
@@ -70,11 +71,12 @@ typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi
                    thapi_function_name>
     hpt_device_function_name_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
+typedef std::tuple<hostname_t,  thapi_device_id> h_device_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_fabricPort_id> hpd_fabricPort_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_domain_idx> hp_ddomain_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_sdevice_idx> hp_dsdev_t;
-typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_fabricPort_id, thapi_sdevice_idx, bool> hp_dfsdev_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_telemetry_handle> hp_ddomain_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_telemetry_handle, thapi_sdevice_idx> hp_dsdev_t;
+typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_telemetry_handle, bool> hp_dfsdev_t;
 typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
