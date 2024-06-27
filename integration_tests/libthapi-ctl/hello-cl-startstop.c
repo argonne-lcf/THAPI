@@ -70,11 +70,6 @@ int main(int argc, char* argv[]) {
 
     printf("-- Device #%d: %s\n", device_idx, name);
 
-    //
-    // /   _  ._ _|_  _    _|_   ()    / \
-    // \_ (_) | | |_ (/_ >< |_   (_X   \_X |_| (/_ |_| (/_
-    //
-
     /* - - - -
     Context
     - - - - */
