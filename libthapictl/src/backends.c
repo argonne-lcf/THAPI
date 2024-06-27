@@ -177,12 +177,9 @@ static void thapi_disable_events_by_pattern(struct lttng_handle* handle,
 
 
 void thapi_cuda_init(struct lttng_handle *h, const char *channel_name) {
-  int rval = 0;
-
   struct lttng_event *ev = lttng_event_create();
   if (ev == NULL) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Error creating event: %d", rval);
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
     return;
   }
 
@@ -195,12 +192,9 @@ void thapi_cuda_init(struct lttng_handle *h, const char *channel_name) {
 
 
 void thapi_cuda_enable_tracing_events(struct lttng_handle *h, const char *channel_name) {
-  int rval = 0;
-
   struct lttng_event *ev = lttng_event_create();
   if (ev == NULL) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Error creating event: %d", rval);
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
     return;
   }
 
@@ -214,12 +208,9 @@ void thapi_cuda_enable_tracing_events(struct lttng_handle *h, const char *channe
 
 
 void thapi_cuda_disable_tracing_events(struct lttng_handle *h, const char *channel_name) {
-  int rval = 0;
-
   struct lttng_event *ev = lttng_event_create();
   if (ev == NULL) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Error creating event: %d", rval);
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
     return;
   }
 
@@ -260,12 +251,9 @@ static char* opencl_profiling_events[] = {
 
 
 void thapi_opencl_init(struct lttng_handle *h, const char *channel_name) {
-  int rval = 0;
-
   struct lttng_event *ev = lttng_event_create();
   if (ev == NULL) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Error creating event: %d", rval);
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
     return;
   }
 
@@ -278,14 +266,11 @@ void thapi_opencl_init(struct lttng_handle *h, const char *channel_name) {
 
 
 void thapi_opencl_enable_tracing_events(struct lttng_handle *h, const char *channel_name) {
-  int rval = 0;
-
   tracing_mode_t mode = thapi_ctl_tracing_mode();
 
   struct lttng_event *ev = lttng_event_create();
   if (ev == NULL) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Error creating event: %d", rval);
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
     return;
   }
 
@@ -321,12 +306,9 @@ void thapi_opencl_enable_tracing_events(struct lttng_handle *h, const char *chan
 
 
 void thapi_opencl_disable_tracing_events(struct lttng_handle *h, const char *channel_name) {
-  int rval = 0;
-
   struct lttng_event *ev = lttng_event_create();
   if (ev == NULL) {
-    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR,
-                  "Error creating event: %d", rval);
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
     return;
   }
 
@@ -344,5 +326,38 @@ void thapi_opencl_disable_tracing_events(struct lttng_handle *h, const char *cha
                                     channel_name);
   }
 
+  lttng_event_destroy(ev);
+}
+
+
+static char *omp_events_pattern = "lttng_ust_ompt:*target*";
+
+
+void thapi_omp_init(struct lttng_handle *h, const char *channel_name) {
+  (void)h;
+  (void)channel_name;
+  // no-op, no bookkeeping events for omp
+  return;
+}
+
+
+void thapi_omp_enable_tracing_events(struct lttng_handle *h, const char *channel_name) {
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
+    return;
+  }
+  thapi_enable_events_by_pattern(h, ev, 1, &omp_events_pattern, channel_name, 0, NULL);
+  lttng_event_destroy(ev);
+}
+
+
+void thapi_omp_disable_tracing_events(struct lttng_handle *h, const char *channel_name) {
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
+    return;
+  }
+  thapi_disable_events_by_pattern(h, ev, 1, &omp_events_pattern, channel_name);
   lttng_event_destroy(ev);
 }

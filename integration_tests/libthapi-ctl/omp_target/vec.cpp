@@ -2,7 +2,12 @@
 /* Copyright (c) 2021 ENCCS */
 #include <stdio.h>
 #include <math.h>
+
+#include "thapi-ctl.h"
+
 #define NX 102400
+
+#define NITER 10
 
 int main(void)
 {
@@ -15,10 +20,18 @@ int main(void)
      vecB[i] = 1.0;
   }
 
-/* dot product of two vectors */
-  #pragma omp target teams distribute parallel for
-  for (int i = 0; i < NX; i++) {
-     vecC[i] = vecA[i] * vecB[i];
+  for (int n = 0; n < NITER; n++) {
+    if (n % 2 == 1)
+      thapi_ctl_start();
+
+    /* dot product of two vectors */
+    #pragma omp target teams distribute parallel for
+    for (int i = 0; i < NX; i++) {
+       vecC[i] = vecA[i] * vecB[i];
+    }
+
+    if (n % 2 == 1)
+      thapi_ctl_stop();
   }
 
   double sum = 0.0;

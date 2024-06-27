@@ -618,8 +618,12 @@ end
 
 def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true,
                       trace_from_start: true)
-  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
-  exec("#{lttng_enable} lttng_ust_ompt:*target*")
+  # lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  # exec("#{lttng_enable} lttng_ust_ompt:*target*")
+  exec_thapi_ctl("init", ["omp"], tracing_mode, trace_from_start, profiling)
+  if trace_from_start
+    exec_thapi_ctl("start", ["omp"], tracing_mode, trace_from_start, profiling)
+  end
 end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true,

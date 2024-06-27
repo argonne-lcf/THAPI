@@ -9,3 +9,7 @@ void thapi_cuda_disable_tracing_events(struct lttng_handle *h, const char *chann
 void thapi_opencl_init(struct lttng_handle *h, const char *channel_name);
 void thapi_opencl_enable_tracing_events(struct lttng_handle *h, const char *channel_name);
 void thapi_opencl_disable_tracing_events(struct lttng_handle *h, const char *channel_name);
+
+void thapi_omp_init(struct lttng_handle *h, const char *channel_name);
+void thapi_omp_enable_tracing_events(struct lttng_handle *h, const char *channel_name);
+void thapi_omp_disable_tracing_events(struct lttng_handle *h, const char *channel_name);
