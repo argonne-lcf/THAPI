@@ -4,7 +4,9 @@ else
   WERROR =
 endif
 
-include_HEADERS = include/thapi-ctl.h
+include_HEADERS = \
+	include/thapi-ctl.h \
+	include/backends.h
 
 lib_LTLIBRARIES = libthapi-ctl.la
 
