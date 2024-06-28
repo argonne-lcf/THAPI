@@ -1,133 +1,53 @@
 ---
 :meta_parameters:
-  MPI_Abort:
-  - - InScalar
-    - comm
-  - - InScalar
-    - errorcode
+  MPI_Abort: []
   MPI_Accumulate:
   - - InScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - win
   MPI_Add_error_class:
   - - OutScalar
     - errorclass
   MPI_Add_error_code:
-  - - InScalar
-    - errorclass
   - - OutScalar
     - errorcode
   MPI_Add_error_string:
   - - InScalar
-    - errorcode
-  - - InScalar
     - string
-  MPI_Aint_add:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - base
-  - - InScalar
-    - disp
-  MPI_Aint_diff:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - addr1
-  - - InScalar
-    - addr2
+  MPI_Aint_add: []
+  MPI_Aint_diff: []
   MPI_Allgather:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Allgather_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Allgatherv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Allgatherv_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Alloc_mem:
-  - - InScalar
-    - size
-  - - InScalar
-    - info
   - - OutScalar
     - baseptr
   MPI_Allreduce:
@@ -135,63 +55,23 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   MPI_Allreduce_init:
   - - InScalar
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Alltoall:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Alltoall_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Alltoallv:
@@ -201,18 +81,12 @@
     - sendcounts
   - - InScalar
     - sdispls
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - rdispls
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Alltoallv_init:
   - - InScalar
     - sendbuf
@@ -220,20 +94,12 @@
     - sendcounts
   - - InScalar
     - sdispls
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - rdispls
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Alltoallw:
@@ -253,8 +119,6 @@
     - rdispls
   - - InScalar
     - recvtypes
-  - - InScalar
-    - comm
   MPI_Alltoallw_init:
   - - InScalar
     - sendbuf
@@ -272,102 +136,40 @@
     - rdispls
   - - InScalar
     - recvtypes
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
-  MPI_Attr_delete:
-  - - InScalar
-    - comm
-  - - InScalar
-    - keyval
+  MPI_Attr_delete: []
   MPI_Attr_get:
-  - - InScalar
-    - comm
-  - - InScalar
-    - keyval
   - - OutScalar
     - attribute_val
   - - OutScalar
     - flag
   MPI_Attr_put:
   - - InScalar
-    - comm
-  - - InScalar
-    - keyval
-  - - InScalar
     - attribute_val
-  MPI_Barrier:
-  - - InScalar
-    - comm
+  MPI_Barrier: []
   MPI_Barrier_init:
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Bcast:
   - - InScalar
     - buffer
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   MPI_Bcast_init:
   - - InScalar
     - buffer
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Bsend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   MPI_Bsend_init:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Buffer_attach:
   - - InScalar
     - buffer
-  - - InScalar
-    - size
   MPI_Buffer_detach:
   - - OutScalar
     - buffer_addr
@@ -377,92 +179,24 @@
   MPI_Buffer_iflush:
   - - OutScalar
     - request
-  MPI_COMM_DUP_FN:
-  - - InScalar
-    - oldcomm
-  - - InScalar
-    - comm_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
-  MPI_COMM_NULL_COPY_FN:
-  - - InScalar
-    - oldcomm
-  - - InScalar
-    - comm_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
-  MPI_COMM_NULL_DELETE_FN:
-  - - InScalar
-    - comm
-  - - InScalar
-    - comm_keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
-  MPI_CONVERSION_FN_NULL:
-  - - InScalar
-    - userbuf
-  - - InScalar
-    - datatype
-  - - InScalar
-    - count
-  - - InScalar
-    - filebuf
-  - - InScalar
-    - position
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
+  MPI_COMM_DUP_FN: []
+  MPI_COMM_NULL_COPY_FN: []
+  MPI_COMM_NULL_DELETE_FN: []
+  MPI_CONVERSION_FN_NULL: []
   MPI_Cancel:
   - - InScalar
     - request
   MPI_Cart_coords:
-  - - InScalar
-    - comm
-  - - InScalar
-    - rank
-  - - InScalar
-    - maxdims
   - - OutScalar
     - coords
   MPI_Cart_create:
   - - InScalar
-    - comm_old
-  - - InScalar
-    - ndims
-  - - InScalar
     - dims
   - - InScalar
     - periods
-  - - InScalar
-    - reorder
   - - OutScalar
     - comm_cart
   MPI_Cart_get:
-  - - InScalar
-    - comm
-  - - InScalar
-    - maxdims
   - - OutScalar
     - dims
   - - OutScalar
@@ -471,10 +205,6 @@
     - coords
   MPI_Cart_map:
   - - InScalar
-    - comm
-  - - InScalar
-    - ndims
-  - - InScalar
     - dims
   - - InScalar
     - periods
@@ -482,32 +212,20 @@
     - newrank
   MPI_Cart_rank:
   - - InScalar
-    - comm
-  - - InScalar
     - coords
   - - OutScalar
     - rank
   MPI_Cart_shift:
-  - - InScalar
-    - comm
-  - - InScalar
-    - direction
-  - - InScalar
-    - disp
   - - OutScalar
     - rank_source
   - - OutScalar
     - rank_dest
   MPI_Cart_sub:
   - - InScalar
-    - comm
-  - - InScalar
     - remain_dims
   - - OutScalar
     - newcomm
   MPI_Cartdim_get:
-  - - InScalar
-    - comm
   - - OutScalar
     - ndims
   MPI_Close_port:
@@ -516,76 +234,28 @@
   MPI_Comm_accept:
   - - InScalar
     - port_name
-  - - InScalar
-    - info
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - newcomm
   MPI_Comm_attach_buffer:
   - - InScalar
-    - comm
-  - - InScalar
     - buffer
-  - - InScalar
-    - size
   MPI_Comm_detach_buffer:
-  - - InScalar
-    - comm
   - - OutScalar
     - buffer_addr
   - - OutScalar
     - size
-  MPI_Comm_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - comm
-  MPI_Comm_call_errhandler:
-  - - InScalar
-    - comm
-  - - InScalar
-    - errorcode
+  MPI_Comm_c2f: []
+  MPI_Comm_call_errhandler: []
   MPI_Comm_compare:
-  - - InScalar
-    - comm1
-  - - InScalar
-    - comm2
   - - OutScalar
     - result
   MPI_Comm_connect:
   - - InScalar
     - port_name
-  - - InScalar
-    - info
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - newcomm
-  MPI_Comm_copy_attr_function:
-  - - InScalar
-    - oldcomm
-  - - InScalar
-    - comm_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - OutScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
+  MPI_Comm_copy_attr_function: []
   MPI_Comm_create:
-  - - InScalar
-    - comm
-  - - InScalar
-    - group
   - - OutScalar
     - newcomm
   MPI_Comm_create_errhandler:
@@ -595,22 +265,10 @@
     - errhandler
   MPI_Comm_create_from_group:
   - - InScalar
-    - group
-  - - InScalar
     - stringtag
-  - - InScalar
-    - info
-  - - InScalar
-    - errhandler
   - - InScalar
     - newcomm
   MPI_Comm_create_group:
-  - - InScalar
-    - comm
-  - - InScalar
-    - group
-  - - InScalar
-    - tag
   - - OutScalar
     - newcomm
   MPI_Comm_create_keyval:
@@ -622,54 +280,20 @@
     - comm_keyval
   - - InScalar
     - extra_state
-  MPI_Comm_delete_attr:
-  - - InScalar
-    - comm
-  - - InScalar
-    - comm_keyval
-  MPI_Comm_delete_attr_function:
-  - - InScalar
-    - comm
-  - - InScalar
-    - comm_keyval
-  - - OutScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
+  MPI_Comm_delete_attr: []
+  MPI_Comm_delete_attr_function: []
   MPI_Comm_disconnect:
   - - InScalar
     - comm
   MPI_Comm_dup:
-  - - InScalar
-    - comm
   - - OutScalar
     - newcomm
   MPI_Comm_dup_with_info:
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - newcomm
-  MPI_Comm_errhandler_function:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - comm
-  - - InScalar
-    - error_code
-  - - InScalar
-    - varargs
-  MPI_Comm_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - comm
-  MPI_Comm_flush_buffer:
-  - - InScalar
-    - comm
+  MPI_Comm_errhandler_function: []
+  MPI_Comm_f2c: []
+  MPI_Comm_flush_buffer: []
   MPI_Comm_free:
   - - InScalar
     - comm
@@ -677,27 +301,17 @@
   - - InScalar
     - comm_keyval
   MPI_Comm_get_attr:
-  - - InScalar
-    - comm
-  - - InScalar
-    - comm_keyval
   - - OutScalar
     - attribute_val
   - - OutScalar
     - flag
   MPI_Comm_get_errhandler:
-  - - InScalar
-    - comm
   - - OutScalar
     - errhandler
   MPI_Comm_get_info:
-  - - InScalar
-    - comm
   - - OutScalar
     - info_used
   MPI_Comm_get_name:
-  - - InScalar
-    - comm
   - - OutScalar
     - comm_name
   - - OutScalar
@@ -706,76 +320,42 @@
   - - OutScalar
     - parent
   MPI_Comm_group:
-  - - InScalar
-    - comm
   - - OutScalar
     - group
   MPI_Comm_idup:
-  - - InScalar
-    - comm
   - - OutScalar
     - newcomm
   - - OutScalar
     - request
   MPI_Comm_idup_with_info:
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - newcomm
   - - OutScalar
     - request
   MPI_Comm_iflush_buffer:
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Comm_join:
-  - - InScalar
-    - fd
   - - OutScalar
     - intercomm
   MPI_Comm_rank:
-  - - InScalar
-    - comm
   - - OutScalar
     - rank
   MPI_Comm_remote_group:
-  - - InScalar
-    - comm
   - - OutScalar
     - group
   MPI_Comm_remote_size:
-  - - InScalar
-    - comm
   - - OutScalar
     - size
   MPI_Comm_set_attr:
   - - InScalar
-    - comm
-  - - InScalar
-    - comm_keyval
-  - - InScalar
     - attribute_val
-  MPI_Comm_set_errhandler:
-  - - InScalar
-    - comm
-  - - InScalar
-    - errhandler
-  MPI_Comm_set_info:
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
+  MPI_Comm_set_errhandler: []
+  MPI_Comm_set_info: []
   MPI_Comm_set_name:
-  - - InScalar
-    - comm
   - - InScalar
     - comm_name
   MPI_Comm_size:
-  - - InScalar
-    - comm
   - - OutScalar
     - size
   MPI_Comm_spawn:
@@ -783,21 +363,11 @@
     - command
   - - InScalar
     - argv
-  - - InScalar
-    - maxprocs
-  - - InScalar
-    - info
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - intercomm
   - - OutScalar
     - array_of_errcodes
   MPI_Comm_spawn_multiple:
-  - - InScalar
-    - count
   - - InScalar
     - array_of_commands
   - - InScalar
@@ -806,37 +376,17 @@
     - array_of_maxprocs
   - - InScalar
     - array_of_info
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - intercomm
   - - OutScalar
     - array_of_errcodes
   MPI_Comm_split:
-  - - InScalar
-    - comm
-  - - InScalar
-    - color
-  - - InScalar
-    - key
   - - OutScalar
     - newcomm
   MPI_Comm_split_type:
-  - - InScalar
-    - comm
-  - - InScalar
-    - split_type
-  - - InScalar
-    - key
-  - - InScalar
-    - info
   - - OutScalar
     - newcomm
   MPI_Comm_test_inter:
-  - - InScalar
-    - comm
   - - OutScalar
     - flag
   MPI_Compare_and_swap:
@@ -846,91 +396,15 @@
     - compare_addr
   - - OutScalar
     - result_addr
-  - - InScalar
-    - datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - win
-  MPI_Copy_function:
-  - - InScalar
-    - oldcomm
-  - - InScalar
-    - keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - OutScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierr
-  MPI_DUP_FN:
-  - - InScalar
-    - oldcomm
-  - - InScalar
-    - keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierr
-  MPI_Datarep_conversion_function:
-  - - InScalar
-    - userbuf
-  - - InScalar
-    - datatype
-  - - InScalar
-    - count
-  - - InScalar
-    - filebuf
-  - - InScalar
-    - position
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
-  MPI_Datarep_extent_function:
-  - - InScalar
-    - datatype
-  - - OutScalar
-    - extent
-  - - OutScalar
-    - extra_state
-  - - InScalar
-    - ierror
-  MPI_Delete_function:
-  - - InScalar
-    - comm
-  - - InScalar
-    - keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierr
+  MPI_Copy_function: []
+  MPI_DUP_FN: []
+  MPI_Datarep_conversion_function: []
+  MPI_Datarep_extent_function: []
+  MPI_Delete_function: []
   MPI_Dims_create:
-  - - InScalar
-    - nnodes
-  - - InScalar
-    - ndims
   - - InScalar
     - dims
   MPI_Dist_graph_create:
-  - - InScalar
-    - comm_old
-  - - InScalar
-    - "n"
   - - InScalar
     - sources
   - - InScalar
@@ -940,77 +414,43 @@
   - - InScalar
     - weights
   - - InScalar
-    - info
-  - - InScalar
-    - reorder
-  - - InScalar
     - comm_dist_graph
   MPI_Dist_graph_create_adjacent:
-  - - InScalar
-    - comm_old
-  - - InScalar
-    - indegree
   - - InScalar
     - sources
   - - InScalar
     - sourceweights
-  - - InScalar
-    - outdegree
   - - InScalar
     - destinations
   - - InScalar
     - destweights
   - - InScalar
-    - info
-  - - InScalar
-    - reorder
-  - - InScalar
     - comm_dist_graph
   MPI_Dist_graph_neighbors:
-  - - InScalar
-    - comm
-  - - InScalar
-    - maxindegree
   - - OutScalar
     - sources
   - - OutScalar
     - sourceweights
-  - - InScalar
-    - maxoutdegree
   - - OutScalar
     - destinations
   - - OutScalar
     - destweights
   MPI_Dist_graph_neighbors_count:
-  - - InScalar
-    - comm
   - - OutScalar
     - indegree
   - - OutScalar
     - outdegree
   - - OutScalar
     - weighted
-  MPI_Errhandler_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - errhandler
-  MPI_Errhandler_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - errhandler
+  MPI_Errhandler_c2f: []
+  MPI_Errhandler_f2c: []
   MPI_Errhandler_free:
   - - InScalar
     - errhandler
   MPI_Error_class:
-  - - InScalar
-    - errorcode
   - - OutScalar
     - errorclass
   MPI_Error_string:
-  - - InScalar
-    - errorcode
   - - OutScalar
     - string
   - - OutScalar
@@ -1020,59 +460,21 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   MPI_Exscan_init:
   - - InScalar
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
-  MPI_F_sync_reg:
-  - - InScalar
-    - buf
+  MPI_F_sync_reg: []
   MPI_Fetch_and_op:
   - - InScalar
     - origin_addr
   - - OutScalar
     - result_addr
-  - - InScalar
-    - datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - op
-  - - InScalar
-    - win
-  MPI_File_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - file
-  MPI_File_call_errhandler:
-  - - InScalar
-    - fh
-  - - InScalar
-    - errorcode
+  MPI_File_c2f: []
+  MPI_File_call_errhandler: []
   MPI_File_close:
   - - InScalar
     - fh
@@ -1084,79 +486,39 @@
   MPI_File_delete:
   - - InScalar
     - filename
-  - - InScalar
-    - info
-  MPI_File_errhandler_function:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - file
-  - - InScalar
-    - error_code
-  - - InScalar
-    - varargs
-  MPI_File_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - file
+  MPI_File_errhandler_function: []
+  MPI_File_f2c: []
   MPI_File_get_amode:
-  - - InScalar
-    - fh
   - - OutScalar
     - amode
   MPI_File_get_atomicity:
-  - - InScalar
-    - fh
   - - OutScalar
     - flag
   MPI_File_get_byte_offset:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
   - - OutScalar
     - disp
   MPI_File_get_errhandler:
-  - - InScalar
-    - file
   - - OutScalar
     - errhandler
   MPI_File_get_group:
-  - - InScalar
-    - fh
   - - OutScalar
     - group
   MPI_File_get_info:
-  - - InScalar
-    - fh
   - - OutScalar
     - info_used
   MPI_File_get_position:
-  - - InScalar
-    - fh
   - - OutScalar
     - offset
   MPI_File_get_position_shared:
-  - - InScalar
-    - fh
   - - OutScalar
     - offset
   MPI_File_get_size:
-  - - InScalar
-    - fh
   - - OutScalar
     - size
   MPI_File_get_type_extent:
-  - - InScalar
-    - fh
-  - - InScalar
-    - datatype
   - - OutScalar
     - extent
   MPI_File_get_view:
-  - - InScalar
-    - fh
   - - OutScalar
     - disp
   - - OutScalar
@@ -1166,427 +528,177 @@
   - - OutScalar
     - datarep
   MPI_File_iread:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iread_all:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iread_at:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iread_at_all:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iread_shared:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iwrite:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iwrite_all:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iwrite_at:
   - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iwrite_at_all:
   - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_iwrite_shared:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - request
   MPI_File_open:
   - - InScalar
-    - comm
-  - - InScalar
     - filename
-  - - InScalar
-    - amode
-  - - InScalar
-    - info
   - - OutScalar
     - fh
-  MPI_File_preallocate:
-  - - InScalar
-    - fh
-  - - InScalar
-    - size
+  MPI_File_preallocate: []
   MPI_File_read:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_read_all:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_read_all_begin:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   MPI_File_read_all_end:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
   - - OutScalar
     - status
   MPI_File_read_at:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_read_at_all:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_read_at_all_begin:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   MPI_File_read_at_all_end:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
   - - OutScalar
     - status
   MPI_File_read_ordered:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_read_ordered_begin:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   MPI_File_read_ordered_end:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
   - - OutScalar
     - status
   MPI_File_read_shared:
-  - - InScalar
-    - fh
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
-  MPI_File_seek:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
-    - whence
-  MPI_File_seek_shared:
-  - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
-    - whence
-  MPI_File_set_atomicity:
-  - - InScalar
-    - fh
-  - - InScalar
-    - flag
-  MPI_File_set_errhandler:
-  - - InScalar
-    - file
-  - - InScalar
-    - errhandler
-  MPI_File_set_info:
-  - - InScalar
-    - fh
-  - - InScalar
-    - info
-  MPI_File_set_size:
-  - - InScalar
-    - fh
-  - - InScalar
-    - size
+  MPI_File_seek: []
+  MPI_File_seek_shared: []
+  MPI_File_set_atomicity: []
+  MPI_File_set_errhandler: []
+  MPI_File_set_info: []
+  MPI_File_set_size: []
   MPI_File_set_view:
   - - InScalar
-    - fh
-  - - InScalar
-    - disp
-  - - InScalar
-    - etype
-  - - InScalar
-    - filetype
-  - - InScalar
     - datarep
-  - - InScalar
-    - info
-  MPI_File_sync:
-  - - InScalar
-    - fh
+  MPI_File_sync: []
   MPI_File_write:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_write_all:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_write_all_begin:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   MPI_File_write_all_end:
-  - - InScalar
-    - fh
   - - InScalar
     - buf
   - - OutScalar
     - status
   MPI_File_write_at:
   - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_write_at_all:
   - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_write_at_all_begin:
   - - InScalar
-    - fh
-  - - InScalar
-    - offset
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   MPI_File_write_at_all_end:
-  - - InScalar
-    - fh
   - - InScalar
     - buf
   - - OutScalar
     - status
   MPI_File_write_ordered:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_File_write_ordered_begin:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   MPI_File_write_ordered_end:
-  - - InScalar
-    - fh
   - - InScalar
     - buf
   - - OutScalar
     - status
   MPI_File_write_shared:
   - - InScalar
-    - fh
-  - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
   - - OutScalar
     - status
   MPI_Finalize: []
@@ -1599,125 +711,43 @@
   MPI_Gather:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   MPI_Gather_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Gatherv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   MPI_Gatherv_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Get:
   - - OutScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - win
   MPI_Get_accumulate:
   - - InScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
   - - OutScalar
     - result_addr
-  - - InScalar
-    - result_count
-  - - InScalar
-    - result_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - win
   MPI_Get_address:
   - - InScalar
     - location
@@ -1726,22 +756,16 @@
   MPI_Get_count:
   - - InScalar
     - status
-  - - InScalar
-    - datatype
   - - OutScalar
     - count
   MPI_Get_elements:
   - - InScalar
     - status
-  - - InScalar
-    - datatype
   - - OutScalar
     - count
   MPI_Get_elements_x:
   - - InScalar
     - status
-  - - InScalar
-    - datatype
   - - OutScalar
     - count
   MPI_Get_hw_resource_info:
@@ -1764,84 +788,32 @@
     - subversion
   MPI_Graph_create:
   - - InScalar
-    - comm_old
-  - - InScalar
-    - nnodes
-  - - InScalar
-    - index
-  - - InScalar
     - edges
-  - - InScalar
-    - reorder
   - - OutScalar
     - comm_graph
   MPI_Graph_get:
   - - InScalar
-    - comm
-  - - InScalar
-    - maxindex
-  - - InScalar
-    - maxedges
-  - - InScalar
-    - index
-  - - InScalar
     - edges
   MPI_Graph_map:
-  - - InScalar
-    - comm
-  - - InScalar
-    - nnodes
-  - - InScalar
-    - index
   - - InScalar
     - edges
   - - OutScalar
     - newrank
   MPI_Graph_neighbors:
-  - - InScalar
-    - comm
-  - - InScalar
-    - rank
-  - - InScalar
-    - maxneighbors
   - - OutScalar
     - neighbors
   MPI_Graph_neighbors_count:
-  - - InScalar
-    - comm
-  - - InScalar
-    - rank
   - - OutScalar
     - nneighbors
   MPI_Graphdims_get:
   - - InScalar
-    - comm
-  - - InScalar
     - nnodes
   - - InScalar
     - nedges
-  MPI_Grequest_cancel_function:
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - complete
-  - - InScalar
-    - ierror
-  MPI_Grequest_complete:
-  - - InScalar
-    - request
-  MPI_Grequest_free_function:
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
-  MPI_Grequest_query_function:
-  - - InScalar
-    - extra_state
-  - - OutScalar
-    - status
-  - - InScalar
-    - ierror
+  MPI_Grequest_cancel_function: []
+  MPI_Grequest_complete: []
+  MPI_Grequest_free_function: []
+  MPI_Grequest_query_function: []
   MPI_Grequest_start:
   - - InScalar
     - query_fn
@@ -1853,145 +825,67 @@
     - extra_state
   - - OutScalar
     - request
-  MPI_Group_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - group
+  MPI_Group_c2f: []
   MPI_Group_compare:
-  - - InScalar
-    - group1
-  - - InScalar
-    - group2
   - - OutScalar
     - result
   MPI_Group_difference:
-  - - InScalar
-    - group1
-  - - InScalar
-    - group2
   - - OutScalar
     - newgroup
   MPI_Group_excl:
   - - InScalar
-    - group
-  - - InScalar
-    - "n"
-  - - InScalar
     - ranks
   - - OutScalar
     - newgroup
-  MPI_Group_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - group
+  MPI_Group_f2c: []
   MPI_Group_free:
   - - InScalar
     - group
   MPI_Group_from_session_pset:
-  - - InScalar
-    - session
   - - InScalar
     - pset_name
   - - OutScalar
     - newgroup
   MPI_Group_incl:
   - - InScalar
-    - group
-  - - InScalar
-    - "n"
-  - - InScalar
     - ranks
   - - OutScalar
     - newgroup
   MPI_Group_intersection:
-  - - InScalar
-    - group1
-  - - InScalar
-    - group2
   - - OutScalar
     - newgroup
-  MPI_Group_range_excl:
-  - - InScalar
-    - group
-  - - InScalar
-    - "n"
-  - - InScalar
-    - ranges
-  - - OutScalar
-    - newgroup
-  MPI_Group_range_incl:
-  - - InScalar
-    - group
-  - - InScalar
-    - "n"
-  - - InScalar
-    - ranges
-  - - OutScalar
-    - newgroup
+  MPI_Group_range_excl: []
+  MPI_Group_range_incl: []
   MPI_Group_rank:
-  - - InScalar
-    - group
   - - OutScalar
     - rank
   MPI_Group_size:
-  - - InScalar
-    - group
   - - OutScalar
     - size
   MPI_Group_translate_ranks:
   - - InScalar
-    - group1
-  - - InScalar
-    - "n"
-  - - InScalar
     - ranks1
-  - - InScalar
-    - group2
   - - OutScalar
     - ranks2
   MPI_Group_union:
-  - - InScalar
-    - group1
-  - - InScalar
-    - group2
   - - OutScalar
     - newgroup
   MPI_Iallgather:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Iallgatherv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Iallreduce:
@@ -1999,31 +893,13 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ialltoall:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ialltoallv:
@@ -2033,18 +909,12 @@
     - sendcounts
   - - InScalar
     - sdispls
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - rdispls
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ialltoallw:
@@ -2064,41 +934,19 @@
     - rdispls
   - - InScalar
     - recvtypes
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ibarrier:
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ibcast:
   - - InScalar
     - buffer
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ibsend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Iexscan:
@@ -2106,63 +954,27 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Igather:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Igatherv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Improbe:
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - flag
   - - OutScalar
@@ -2173,64 +985,32 @@
   - - OutScalar
     - buf
   - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
     - message
   - - OutScalar
     - request
   MPI_Ineighbor_allgather:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ineighbor_allgatherv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ineighbor_alltoall:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ineighbor_alltoallv:
@@ -2240,18 +1020,12 @@
     - sendcounts
   - - InScalar
     - sdispls
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - rdispls
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ineighbor_alltoallw:
@@ -2271,69 +1045,41 @@
     - rdispls
   - - InScalar
     - recvtypes
-  - - InScalar
-    - comm
   - - OutScalar
     - request
-  MPI_Info_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - info
+  MPI_Info_c2f: []
   MPI_Info_create:
   - - OutScalar
     - info
   MPI_Info_create_env:
-  - - InScalar
-    - argc
   - - InScalar
     - argv
   - - OutScalar
     - info
   MPI_Info_delete:
   - - InScalar
-    - info
-  - - InScalar
     - key
   MPI_Info_dup:
-  - - InScalar
-    - info
   - - OutScalar
     - newinfo
-  MPI_Info_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - info
+  MPI_Info_f2c: []
   MPI_Info_free:
   - - InScalar
     - info
   MPI_Info_get:
   - - InScalar
-    - info
-  - - InScalar
     - key
-  - - InScalar
-    - valuelen
   - - OutScalar
     - value
   - - OutScalar
     - flag
   MPI_Info_get_nkeys:
-  - - InScalar
-    - info
   - - OutScalar
     - nkeys
   MPI_Info_get_nthkey:
-  - - InScalar
-    - info
-  - - InScalar
-    - "n"
   - - OutScalar
     - key
   MPI_Info_get_string:
-  - - InScalar
-    - info
   - - InScalar
     - key
   - - InScalar
@@ -2344,16 +1090,12 @@
     - flag
   MPI_Info_get_valuelen:
   - - InScalar
-    - info
-  - - InScalar
     - key
   - - OutScalar
     - valuelen
   - - OutScalar
     - flag
   MPI_Info_set:
-  - - InScalar
-    - info
   - - InScalar
     - key
   - - InScalar
@@ -2368,57 +1110,23 @@
     - argc
   - - InScalar
     - argv
-  - - InScalar
-    - required
   - - OutScalar
     - provided
   MPI_Initialized:
   - - OutScalar
     - flag
   MPI_Intercomm_create:
-  - - InScalar
-    - local_comm
-  - - InScalar
-    - local_leader
-  - - InScalar
-    - peer_comm
-  - - InScalar
-    - remote_leader
-  - - InScalar
-    - tag
   - - OutScalar
     - newintercomm
   MPI_Intercomm_create_from_groups:
   - - InScalar
-    - local_group
-  - - InScalar
-    - local_leader
-  - - InScalar
-    - remote_group
-  - - InScalar
-    - remote_leader
-  - - InScalar
     - stringtag
-  - - InScalar
-    - info
-  - - InScalar
-    - errhandler
   - - InScalar
     - newintercomm
   MPI_Intercomm_merge:
-  - - InScalar
-    - intercomm
-  - - InScalar
-    - high
   - - OutScalar
     - newintracomm
   MPI_Iprobe:
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - flag
   - - OutScalar
@@ -2426,16 +1134,6 @@
   MPI_Irecv:
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ireduce:
@@ -2443,16 +1141,6 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ireduce_scatter:
@@ -2462,12 +1150,6 @@
     - recvbuf
   - - InScalar
     - recvcounts
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Ireduce_scatter_block:
@@ -2475,29 +1157,11 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Irsend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Is_thread_main:
@@ -2508,33 +1172,13 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Iscatter:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Iscatterv:
@@ -2544,92 +1188,30 @@
     - sendcounts
   - - InScalar
     - displs
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Isend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Isendrecv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
-  - - InScalar
-    - dest
-  - - InScalar
-    - sendtag
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - source
-  - - InScalar
-    - recvtag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Isendrecv_replace:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - sendtag
-  - - InScalar
-    - source
-  - - InScalar
-    - recvtag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Issend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Keyval_create:
@@ -2647,27 +1229,11 @@
   MPI_Lookup_name:
   - - InScalar
     - service_name
-  - - InScalar
-    - info
   - - OutScalar
     - port_name
-  MPI_Message_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - message
-  MPI_Message_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - message
+  MPI_Message_c2f: []
+  MPI_Message_f2c: []
   MPI_Mprobe:
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - message
   - - OutScalar
@@ -2676,143 +1242,53 @@
   - - OutScalar
     - buf
   - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
     - message
   - - OutScalar
     - status
-  MPI_NULL_COPY_FN:
-  - - InScalar
-    - oldcomm
-  - - InScalar
-    - keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierr
-  MPI_NULL_DELETE_FN:
-  - - InScalar
-    - comm
-  - - InScalar
-    - keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
+  MPI_NULL_COPY_FN: []
+  MPI_NULL_DELETE_FN: []
   MPI_Neighbor_allgather:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Neighbor_allgather_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Neighbor_allgatherv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Neighbor_allgatherv_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - displs
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Neighbor_alltoall:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Neighbor_alltoall_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Neighbor_alltoallv:
@@ -2822,18 +1298,12 @@
     - sendcounts
   - - InScalar
     - sdispls
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - rdispls
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
   MPI_Neighbor_alltoallv_init:
   - - InScalar
     - sendbuf
@@ -2841,20 +1311,12 @@
     - sendcounts
   - - InScalar
     - sdispls
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
   - - InScalar
     - recvcounts
   - - InScalar
     - rdispls
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Neighbor_alltoallw:
@@ -2874,8 +1336,6 @@
     - rdispls
   - - InScalar
     - recvtypes
-  - - InScalar
-    - comm
   MPI_Neighbor_alltoallw_init:
   - - InScalar
     - sendbuf
@@ -2893,244 +1353,94 @@
     - rdispls
   - - InScalar
     - recvtypes
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
-  MPI_Op_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - op
+  MPI_Op_c2f: []
   MPI_Op_commutative:
-  - - InScalar
-    - op
   - - OutScalar
     - commute
   MPI_Op_create:
   - - InScalar
     - user_fn
-  - - InScalar
-    - commute
   - - OutScalar
     - op
-  MPI_Op_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - op
+  MPI_Op_f2c: []
   MPI_Op_free:
   - - InScalar
     - op
   MPI_Open_port:
-  - - InScalar
-    - info
   - - OutScalar
     - port_name
   MPI_Pack:
   - - InScalar
     - inbuf
-  - - InScalar
-    - incount
-  - - InScalar
-    - datatype
   - - OutScalar
     - outbuf
   - - InScalar
-    - outsize
-  - - InScalar
     - position
-  - - InScalar
-    - comm
   MPI_Pack_external:
   - - InScalar
     - datarep
   - - InScalar
     - inbuf
-  - - InScalar
-    - incount
-  - - InScalar
-    - datatype
   - - OutScalar
     - outbuf
-  - - InScalar
-    - outsize
   - - InScalar
     - position
   MPI_Pack_external_size:
   - - InScalar
     - datarep
-  - - InScalar
-    - incount
-  - - InScalar
-    - datatype
   - - OutScalar
     - size
   MPI_Pack_size:
-  - - InScalar
-    - incount
-  - - InScalar
-    - datatype
-  - - InScalar
-    - comm
   - - OutScalar
     - size
   MPI_Parrived:
-  - - InScalar
-    - request
-  - - InScalar
-    - partition
   - - OutScalar
     - flag
-  MPI_Pcontrol:
-  - - InScalar
-    - level
-  - - InScalar
-    - varargs
-  MPI_Pready:
-  - - InScalar
-    - partition
-  - - InScalar
-    - request
+  MPI_Pcontrol: []
+  MPI_Pready: []
   MPI_Pready_list:
   - - InScalar
-    - length
-  - - InScalar
     - array_of_partitions
-  - - InScalar
-    - request
-  MPI_Pready_range:
-  - - InScalar
-    - partition_low
-  - - InScalar
-    - partition_high
-  - - InScalar
-    - request
+  MPI_Pready_range: []
   MPI_Precv_init:
   - - InScalar
     - buf
   - - InScalar
-    - partitions
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
-  - - InScalar
     - request
   MPI_Probe:
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - status
   MPI_Psend_init:
   - - InScalar
     - buf
   - - InScalar
-    - partitions
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
-  - - InScalar
     - request
   MPI_Publish_name:
   - - InScalar
     - service_name
   - - InScalar
-    - info
-  - - InScalar
     - port_name
   MPI_Put:
   - - InScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - win
   MPI_Query_thread:
   - - OutScalar
     - provided
   MPI_Raccumulate:
   - - InScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - win
   - - OutScalar
     - request
   MPI_Recv:
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - status
   MPI_Recv_init:
   - - OutScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - source
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Reduce:
@@ -3138,33 +1448,11 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   MPI_Reduce_init:
   - - InScalar
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Reduce_local:
@@ -3172,12 +1460,6 @@
     - inbuf
   - - InScalar
     - inoutbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
   MPI_Reduce_scatter:
   - - InScalar
     - sendbuf
@@ -3185,40 +1467,16 @@
     - recvbuf
   - - InScalar
     - recvcounts
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   MPI_Reduce_scatter_block:
   - - InScalar
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   MPI_Reduce_scatter_block_init:
   - - InScalar
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Reduce_scatter_init:
@@ -3228,14 +1486,6 @@
     - recvbuf
   - - InScalar
     - recvcounts
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Register_datarep:
@@ -3249,38 +1499,20 @@
     - dtype_file_extent_fn
   - - InScalar
     - extra_state
-  MPI_Remove_error_class:
-  - - InScalar
-    - errorclass
-  MPI_Remove_error_code:
-  - - InScalar
-    - errorcode
-  MPI_Remove_error_string:
-  - - InScalar
-    - errorcode
-  MPI_Request_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - request
-  MPI_Request_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - request
+  MPI_Remove_error_class: []
+  MPI_Remove_error_code: []
+  MPI_Remove_error_string: []
+  MPI_Request_c2f: []
+  MPI_Request_f2c: []
   MPI_Request_free:
   - - InScalar
     - request
   MPI_Request_get_status:
-  - - InScalar
-    - request
   - - OutScalar
     - flag
   - - OutScalar
     - status
   MPI_Request_get_status_all:
-  - - InScalar
-    - count
   - - InScalar
     - array_of_requests
   - - OutScalar
@@ -3289,18 +1521,12 @@
     - array_of_statuses
   MPI_Request_get_status_any:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_requests
-  - - OutScalar
-    - index
   - - OutScalar
     - flag
   - - OutScalar
     - status
   MPI_Request_get_status_some:
-  - - InScalar
-    - incount
   - - InScalar
     - array_of_requests
   - - OutScalar
@@ -3312,94 +1538,26 @@
   MPI_Rget:
   - - OutScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - win
   - - OutScalar
     - request
   MPI_Rget_accumulate:
   - - InScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
   - - OutScalar
     - result_addr
-  - - InScalar
-    - result_count
-  - - InScalar
-    - result_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - win
   - - OutScalar
     - request
   MPI_Rput:
   - - InScalar
     - origin_addr
-  - - InScalar
-    - origin_count
-  - - InScalar
-    - origin_datatype
-  - - InScalar
-    - target_rank
-  - - InScalar
-    - target_disp
-  - - InScalar
-    - target_count
-  - - InScalar
-    - target_datatype
-  - - InScalar
-    - win
   - - OutScalar
     - request
   MPI_Rsend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   MPI_Rsend_init:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Scan:
@@ -3407,67 +1565,23 @@
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
   MPI_Scan_init:
   - - InScalar
     - sendbuf
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - op
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Scatter:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   MPI_Scatter_init:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Scatterv:
@@ -3477,18 +1591,8 @@
     - sendcounts
   - - InScalar
     - displs
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
   MPI_Scatterv_init:
   - - InScalar
     - sendbuf
@@ -3496,226 +1600,84 @@
     - sendcounts
   - - InScalar
     - displs
-  - - InScalar
-    - sendtype
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - root
-  - - InScalar
-    - comm
-  - - InScalar
-    - info
   - - OutScalar
     - request
   MPI_Send:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   MPI_Send_init:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Sendrecv:
   - - InScalar
     - sendbuf
-  - - InScalar
-    - sendcount
-  - - InScalar
-    - sendtype
-  - - InScalar
-    - dest
-  - - InScalar
-    - sendtag
   - - OutScalar
     - recvbuf
-  - - InScalar
-    - recvcount
-  - - InScalar
-    - recvtype
-  - - InScalar
-    - source
-  - - InScalar
-    - recvtag
-  - - InScalar
-    - comm
   - - OutScalar
     - status
   MPI_Sendrecv_replace:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - sendtag
-  - - InScalar
-    - source
-  - - InScalar
-    - recvtag
-  - - InScalar
-    - comm
   - - OutScalar
     - status
   MPI_Session_attach_buffer:
   - - InScalar
-    - session
-  - - InScalar
     - buffer
-  - - InScalar
-    - size
   MPI_Session_detach_buffer:
-  - - InScalar
-    - session
   - - OutScalar
     - buffer_addr
   - - OutScalar
     - size
-  MPI_Session_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - session
-  MPI_Session_call_errhandler:
-  - - InScalar
-    - session
-  - - InScalar
-    - errorcode
+  MPI_Session_c2f: []
+  MPI_Session_call_errhandler: []
   MPI_Session_create_errhandler:
   - - InScalar
     - session_errhandler_fn
   - - OutScalar
     - errhandler
-  MPI_Session_errhandler_function:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - session
-  - - InScalar
-    - error_code
-  - - InScalar
-    - varargs
-  MPI_Session_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - session
+  MPI_Session_errhandler_function: []
+  MPI_Session_f2c: []
   MPI_Session_finalize:
   - - InScalar
     - session
-  MPI_Session_flush_buffer:
-  - - InScalar
-    - session
+  MPI_Session_flush_buffer: []
   MPI_Session_get_errhandler:
-  - - InScalar
-    - session
   - - OutScalar
     - errhandler
   MPI_Session_get_info:
   - - InScalar
-    - session
-  - - InScalar
     - info_used
   MPI_Session_get_nth_pset:
-  - - InScalar
-    - session
-  - - InScalar
-    - info
-  - - InScalar
-    - "n"
   - - InScalar
     - pset_len
   - - InScalar
     - pset_name
   MPI_Session_get_num_psets:
   - - InScalar
-    - session
-  - - InScalar
-    - info
-  - - InScalar
     - npset_names
   MPI_Session_get_pset_info:
-  - - InScalar
-    - session
   - - InScalar
     - pset_name
   - - InScalar
     - info
   MPI_Session_iflush_buffer:
-  - - InScalar
-    - session
   - - OutScalar
     - request
   MPI_Session_init:
   - - InScalar
-    - info
-  - - InScalar
-    - errhandler
-  - - InScalar
     - session
-  MPI_Session_set_errhandler:
-  - - InScalar
-    - session
-  - - InScalar
-    - errhandler
-  MPI_Sizeof:
-  - - InScalar
-    - x
-  - - OutScalar
-    - size
+  MPI_Session_set_errhandler: []
+  MPI_Sizeof: []
   MPI_Ssend:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   MPI_Ssend_init:
   - - InScalar
     - buf
-  - - InScalar
-    - count
-  - - InScalar
-    - datatype
-  - - InScalar
-    - dest
-  - - InScalar
-    - tag
-  - - InScalar
-    - comm
   - - OutScalar
     - request
   MPI_Start:
@@ -3723,26 +1685,18 @@
     - request
   MPI_Startall:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_requests
   MPI_Status_c2f:
-  - - InScalar
-    - ".return"
   - - InScalar
     - c_status
   - - OutScalar
     - f_status
   MPI_Status_c2f08:
   - - InScalar
-    - ".return"
-  - - InScalar
     - c_status
   - - OutScalar
     - f08_status
   MPI_Status_f082c:
-  - - InScalar
-    - ".return"
   - - InScalar
     - f08_status
   - - OutScalar
@@ -3753,8 +1707,6 @@
   - - OutScalar
     - f_status
   MPI_Status_f2c:
-  - - InScalar
-    - ".return"
   - - InScalar
     - f_status
   - - OutScalar
@@ -3782,100 +1734,34 @@
   MPI_Status_set_error:
   - - InScalar
     - status
-  - - InScalar
-    - error
   MPI_Status_set_source:
   - - InScalar
     - status
-  - - InScalar
-    - source
   MPI_Status_set_tag:
   - - InScalar
     - status
-  - - InScalar
-    - tag
   MPI_Status_set_cancelled:
   - - InScalar
     - status
-  - - InScalar
-    - flag
   MPI_Status_set_elements:
   - - InScalar
     - status
-  - - InScalar
-    - datatype
-  - - InScalar
-    - count
   MPI_Status_set_elements_x:
   - - InScalar
     - status
-  - - InScalar
-    - datatype
-  - - InScalar
-    - count
-  MPI_TYPE_DUP_FN:
-  - - InScalar
-    - oldtype
-  - - InScalar
-    - type_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
-  MPI_TYPE_NULL_COPY_FN:
-  - - InScalar
-    - oldtype
-  - - InScalar
-    - type_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
-  MPI_TYPE_NULL_DELETE_FN:
-  - - InScalar
-    - datatype
-  - - InScalar
-    - type_keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - OutScalar
-    - ierror
+  MPI_TYPE_DUP_FN: []
+  MPI_TYPE_NULL_COPY_FN: []
+  MPI_TYPE_NULL_DELETE_FN: []
   MPI_T_category_changed:
   - - OutScalar
     - update_number
   MPI_T_category_get_categories:
-  - - InScalar
-    - cat_index
-  - - InScalar
-    - len
   - - OutScalar
     - indices
   MPI_T_category_get_cvars:
-  - - InScalar
-    - cat_index
-  - - InScalar
-    - len
   - - OutScalar
     - indices
   MPI_T_category_get_events:
-  - - InScalar
-    - cat_index
-  - - InScalar
-    - len
   - - OutScalar
     - indices
   MPI_T_category_get_index:
@@ -3884,8 +1770,6 @@
   - - OutScalar
     - cat_index
   MPI_T_category_get_info:
-  - - InScalar
-    - cat_index
   - - OutScalar
     - name
   - - InScalar
@@ -3904,15 +1788,9 @@
   - - OutScalar
     - num_cat
   MPI_T_category_get_num_events:
-  - - InScalar
-    - cat_index
   - - OutScalar
     - num_events
   MPI_T_category_get_pvars:
-  - - InScalar
-    - cat_index
-  - - InScalar
-    - len
   - - OutScalar
     - indices
   MPI_T_cvar_get_index:
@@ -3921,8 +1799,6 @@
   - - OutScalar
     - cvar_index
   MPI_T_cvar_get_info:
-  - - InScalar
-    - cvar_index
   - - OutScalar
     - name
   - - InScalar
@@ -3946,8 +1822,6 @@
     - num_cvar
   MPI_T_cvar_handle_alloc:
   - - InScalar
-    - cvar_index
-  - - InScalar
     - obj_handle
   - - OutScalar
     - handle
@@ -3957,18 +1831,12 @@
   - - InScalar
     - handle
   MPI_T_cvar_read:
-  - - InScalar
-    - handle
   - - OutScalar
     - buf
   MPI_T_cvar_write:
   - - InScalar
-    - handle
-  - - InScalar
     - buf
   MPI_T_enum_get_info:
-  - - InScalar
-    - enumtype
   - - OutScalar
     - num
   - - OutScalar
@@ -3976,10 +1844,6 @@
   - - InScalar
     - name_len
   MPI_T_enum_get_item:
-  - - InScalar
-    - enumtype
-  - - InScalar
-    - index
   - - OutScalar
     - value
   - - OutScalar
@@ -3987,22 +1851,10 @@
   - - InScalar
     - name_len
   MPI_T_event_callback_get_info:
-  - - InScalar
-    - event_registration
-  - - InScalar
-    - cb_safety
   - - OutScalar
     - info_used
-  MPI_T_event_callback_set_info:
-  - - InScalar
-    - event_registration
-  - - InScalar
-    - cb_safety
-  - - InScalar
-    - info
+  MPI_T_event_callback_set_info: []
   MPI_T_event_copy:
-  - - InScalar
-    - event_instance
   - - OutScalar
     - buffer
   MPI_T_event_get_index:
@@ -4011,8 +1863,6 @@
   - - OutScalar
     - event_index
   MPI_T_event_get_info:
-  - - InScalar
-    - event_index
   - - OutScalar
     - name
   - - InScalar
@@ -4039,80 +1889,36 @@
   - - OutScalar
     - num_events
   MPI_T_event_get_source:
-  - - InScalar
-    - event_instance
   - - OutScalar
     - source_index
   MPI_T_event_get_timestamp:
-  - - InScalar
-    - event_instance
   - - OutScalar
     - event_timestamp
   MPI_T_event_handle_alloc:
   - - InScalar
-    - event_index
-  - - InScalar
     - obj_handle
-  - - InScalar
-    - info
   - - OutScalar
     - event_registration
-  MPI_T_event_handle_free:
-  - - InScalar
-    - event_registration
-  - - InScalar
-    - user_data
-  - - InScalar
-    - free_cb_function
+  MPI_T_event_handle_free: []
   MPI_T_event_handle_get_info:
-  - - InScalar
-    - event_registration
   - - OutScalar
     - info_used
-  MPI_T_event_handle_set_info:
-  - - InScalar
-    - event_registration
-  - - InScalar
-    - info
+  MPI_T_event_handle_set_info: []
   MPI_T_event_read:
-  - - InScalar
-    - event_instance
-  - - InScalar
-    - element_index
   - - OutScalar
     - buffer
-  MPI_T_event_register_callback:
-  - - InScalar
-    - event_registration
-  - - InScalar
-    - cb_safety
-  - - InScalar
-    - info
-  - - InScalar
-    - user_data
-  - - InScalar
-    - event_cb_function
-  MPI_T_event_set_dropped_handler:
-  - - InScalar
-    - event_registration
-  - - InScalar
-    - dropped_cb_function
+  MPI_T_event_register_callback: []
+  MPI_T_event_set_dropped_handler: []
   MPI_T_finalize: []
   MPI_T_init_thread:
-  - - InScalar
-    - required
   - - OutScalar
     - provided
   MPI_T_pvar_get_index:
   - - InScalar
     - name
-  - - InScalar
-    - var_class
   - - OutScalar
     - pvar_index
   MPI_T_pvar_get_info:
-  - - InScalar
-    - pvar_index
   - - OutScalar
     - name
   - - InScalar
@@ -4142,10 +1948,6 @@
     - num_pvar
   MPI_T_pvar_handle_alloc:
   - - InScalar
-    - session
-  - - InScalar
-    - pvar_index
-  - - InScalar
     - obj_handle
   - - OutScalar
     - handle
@@ -4153,54 +1955,26 @@
     - count
   MPI_T_pvar_handle_free:
   - - InScalar
-    - session
-  - - InScalar
     - handle
   MPI_T_pvar_read:
-  - - InScalar
-    - session
-  - - InScalar
-    - handle
   - - OutScalar
     - buf
   MPI_T_pvar_readreset:
-  - - InScalar
-    - session
-  - - InScalar
-    - handle
   - - OutScalar
     - buf
-  MPI_T_pvar_reset:
-  - - InScalar
-    - session
-  - - InScalar
-    - handle
+  MPI_T_pvar_reset: []
   MPI_T_pvar_session_create:
   - - OutScalar
     - session
   MPI_T_pvar_session_free:
   - - InScalar
     - session
-  MPI_T_pvar_start:
-  - - InScalar
-    - session
-  - - InScalar
-    - handle
-  MPI_T_pvar_stop:
-  - - InScalar
-    - session
-  - - InScalar
-    - handle
+  MPI_T_pvar_start: []
+  MPI_T_pvar_stop: []
   MPI_T_pvar_write:
-  - - InScalar
-    - session
-  - - InScalar
-    - handle
   - - InScalar
     - buf
   MPI_T_source_get_info:
-  - - InScalar
-    - source_index
   - - OutScalar
     - name
   - - InScalar
@@ -4221,8 +1995,6 @@
   - - OutScalar
     - num_sources
   MPI_T_source_get_timestamp:
-  - - InScalar
-    - source_index
   - - OutScalar
     - timestamp
   MPI_Test:
@@ -4239,8 +2011,6 @@
     - flag
   MPI_Testall:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_requests
   - - OutScalar
     - flag
@@ -4248,18 +2018,12 @@
     - array_of_statuses
   MPI_Testany:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_requests
-  - - OutScalar
-    - index
   - - OutScalar
     - flag
   - - OutScalar
     - status
   MPI_Testsome:
-  - - InScalar
-    - incount
   - - InScalar
     - array_of_requests
   - - OutScalar
@@ -4270,46 +2034,16 @@
     - array_of_statuses
   MPI_Topo_test:
   - - InScalar
-    - comm
-  - - InScalar
     - status
-  MPI_Type_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - datatype
+  MPI_Type_c2f: []
   MPI_Type_commit:
   - - InScalar
     - datatype
   MPI_Type_contiguous:
-  - - InScalar
-    - count
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
-  MPI_Type_copy_attr_function:
-  - - InScalar
-    - oldtype
-  - - InScalar
-    - type_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
+  MPI_Type_copy_attr_function: []
   MPI_Type_create_darray:
-  - - InScalar
-    - size
-  - - InScalar
-    - rank
-  - - InScalar
-    - ndims
   - - InScalar
     - array_of_gsizes
   - - InScalar
@@ -4318,73 +2052,35 @@
     - array_of_dargs
   - - InScalar
     - array_of_psizes
-  - - InScalar
-    - order
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Type_create_f90_complex:
-  - - InScalar
-    - p
-  - - InScalar
-    - r
   - - OutScalar
     - newtype
   MPI_Type_create_f90_integer:
-  - - InScalar
-    - r
   - - OutScalar
     - newtype
   MPI_Type_create_f90_real:
-  - - InScalar
-    - p
-  - - InScalar
-    - r
   - - OutScalar
     - newtype
   MPI_Type_create_hindexed:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_blocklengths
   - - InScalar
     - array_of_displacements
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Type_create_hindexed_block:
   - - InScalar
-    - count
-  - - InScalar
-    - blocklength
-  - - InScalar
     - array_of_displacements
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Type_create_hvector:
-  - - InScalar
-    - count
-  - - InScalar
-    - blocklength
-  - - InScalar
-    - stride
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Type_create_indexed_block:
   - - InScalar
-    - count
-  - - InScalar
-    - blocklength
-  - - InScalar
     - array_of_displacements
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Type_create_keyval:
@@ -4397,17 +2093,9 @@
   - - InScalar
     - extra_state
   MPI_Type_create_resized:
-  - - InScalar
-    - oldtype
-  - - InScalar
-    - lb
-  - - InScalar
-    - extent
   - - OutScalar
     - newtype
   MPI_Type_create_struct:
-  - - InScalar
-    - count
   - - InScalar
     - array_of_blocklengths
   - - InScalar
@@ -4418,45 +2106,19 @@
     - newtype
   MPI_Type_create_subarray:
   - - InScalar
-    - ndims
-  - - InScalar
     - array_of_sizes
   - - InScalar
     - array_of_subsizes
   - - InScalar
     - array_of_starts
-  - - InScalar
-    - order
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
-  MPI_Type_delete_attr:
-  - - InScalar
-    - datatype
-  - - InScalar
-    - type_keyval
-  MPI_Type_delete_attr_function:
-  - - InScalar
-    - datatype
-  - - InScalar
-    - type_keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
+  MPI_Type_delete_attr: []
+  MPI_Type_delete_attr_function: []
   MPI_Type_dup:
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
-  MPI_Type_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - datatype
+  MPI_Type_f2c: []
   MPI_Type_free:
   - - InScalar
     - datatype
@@ -4464,228 +2126,104 @@
   - - InScalar
     - type_keyval
   MPI_Type_get_attr:
-  - - InScalar
-    - datatype
-  - - InScalar
-    - type_keyval
   - - OutScalar
     - attribute_val
   - - OutScalar
     - flag
   MPI_Type_get_contents:
-  - - InScalar
-    - datatype
-  - - InScalar
-    - max_integers
-  - - InScalar
-    - max_addresses
-  - - InScalar
-    - max_large_counts
-  - - InScalar
-    - max_datatypes
   - - OutScalar
     - array_of_integers
   - - OutScalar
     - array_of_addresses
   - - OutScalar
-    - array_of_large_counts
-  - - OutScalar
     - array_of_datatypes
   MPI_Type_get_envelope:
-  - - InScalar
-    - datatype
   - - OutScalar
     - num_integers
   - - OutScalar
     - num_addresses
   - - OutScalar
-    - num_large_counts
-  - - OutScalar
     - num_datatypes
   - - OutScalar
     - combiner
   MPI_Type_get_extent:
-  - - InScalar
-    - datatype
   - - OutScalar
     - lb
   - - OutScalar
     - extent
   MPI_Type_get_extent_x:
-  - - InScalar
-    - datatype
   - - OutScalar
     - lb
   - - OutScalar
     - extent
   MPI_Type_get_name:
-  - - InScalar
-    - datatype
   - - OutScalar
     - type_name
   - - OutScalar
     - resultlen
   MPI_Type_get_true_extent:
-  - - InScalar
-    - datatype
   - - OutScalar
     - true_lb
   - - OutScalar
     - true_extent
   MPI_Type_get_true_extent_x:
-  - - InScalar
-    - datatype
   - - OutScalar
     - true_lb
   - - OutScalar
     - true_extent
   MPI_Type_get_value_index:
-  - - InScalar
-    - value_type
-  - - InScalar
-    - index_type
   - - OutScalar
     - pair_type
   MPI_Type_indexed:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_blocklengths
   - - InScalar
     - array_of_displacements
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Type_match_size:
-  - - InScalar
-    - typeclass
-  - - InScalar
-    - size
   - - OutScalar
     - datatype
   MPI_Type_set_attr:
   - - InScalar
-    - datatype
-  - - InScalar
-    - type_keyval
-  - - InScalar
     - attribute_val
   MPI_Type_set_name:
   - - InScalar
-    - datatype
-  - - InScalar
     - type_name
   MPI_Type_size:
-  - - InScalar
-    - datatype
   - - OutScalar
     - size
   MPI_Type_size_x:
-  - - InScalar
-    - datatype
   - - OutScalar
     - size
   MPI_Type_vector:
-  - - InScalar
-    - count
-  - - InScalar
-    - blocklength
-  - - InScalar
-    - stride
-  - - InScalar
-    - oldtype
   - - OutScalar
     - newtype
   MPI_Unpack:
   - - InScalar
     - inbuf
   - - InScalar
-    - insize
-  - - InScalar
     - position
   - - OutScalar
     - outbuf
-  - - InScalar
-    - outcount
-  - - InScalar
-    - datatype
-  - - InScalar
-    - comm
   MPI_Unpack_external:
   - - InScalar
     - datarep
   - - InScalar
     - inbuf
   - - InScalar
-    - insize
-  - - InScalar
     - position
   - - OutScalar
     - outbuf
-  - - InScalar
-    - outcount
-  - - InScalar
-    - datatype
   MPI_Unpublish_name:
   - - InScalar
     - service_name
   - - InScalar
-    - info
-  - - InScalar
     - port_name
-  MPI_User_function:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - invec
-  - - InScalar
-    - inoutvec
-  - - InScalar
-    - len
-  - - InScalar
-    - datatype
-  MPI_WIN_DUP_FN:
-  - - InScalar
-    - oldwin
-  - - InScalar
-    - win_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
-  MPI_WIN_NULL_COPY_FN:
-  - - InScalar
-    - oldwin
-  - - InScalar
-    - win_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - InScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
-  MPI_WIN_NULL_DELETE_FN:
-  - - InScalar
-    - win
-  - - InScalar
-    - win_keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
+  MPI_User_function: []
+  MPI_WIN_DUP_FN: []
+  MPI_WIN_NULL_COPY_FN: []
+  MPI_WIN_NULL_DELETE_FN: []
   MPI_Wait:
   - - InScalar
     - request
@@ -4693,23 +2231,15 @@
     - status
   MPI_Waitall:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_requests
   - - OutScalar
     - array_of_statuses
   MPI_Waitany:
   - - InScalar
-    - count
-  - - InScalar
     - array_of_requests
-  - - OutScalar
-    - index
   - - OutScalar
     - status
   MPI_Waitsome:
-  - - InScalar
-    - incount
   - - InScalar
     - array_of_requests
   - - OutScalar
@@ -4719,84 +2249,28 @@
   - - OutScalar
     - array_of_statuses
   MPI_Win_allocate:
-  - - InScalar
-    - size
-  - - InScalar
-    - disp_unit
-  - - InScalar
-    - info
-  - - InScalar
-    - comm
   - - OutScalar
     - baseptr
   - - OutScalar
     - win
   MPI_Win_allocate_shared:
-  - - InScalar
-    - size
-  - - InScalar
-    - disp_unit
-  - - InScalar
-    - info
-  - - InScalar
-    - comm
   - - OutScalar
     - baseptr
   - - OutScalar
     - win
   MPI_Win_attach:
   - - InScalar
-    - win
-  - - InScalar
     - base
-  - - InScalar
-    - size
-  MPI_Win_c2f:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - win
-  MPI_Win_call_errhandler:
-  - - InScalar
-    - win
-  - - InScalar
-    - errorcode
-  MPI_Win_complete:
-  - - InScalar
-    - win
-  MPI_Win_copy_attr_function:
-  - - InScalar
-    - oldwin
-  - - InScalar
-    - win_keyval
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - attribute_val_in
-  - - OutScalar
-    - attribute_val_out
-  - - OutScalar
-    - flag
-  - - InScalar
-    - ierror
+  MPI_Win_c2f: []
+  MPI_Win_call_errhandler: []
+  MPI_Win_complete: []
+  MPI_Win_copy_attr_function: []
   MPI_Win_create:
   - - InScalar
     - base
-  - - InScalar
-    - size
-  - - InScalar
-    - disp_unit
-  - - InScalar
-    - info
-  - - InScalar
-    - comm
   - - OutScalar
     - win
   MPI_Win_create_dynamic:
-  - - InScalar
-    - info
-  - - InScalar
-    - comm
   - - OutScalar
     - win
   MPI_Win_create_errhandler:
@@ -4813,62 +2287,18 @@
     - win_keyval
   - - InScalar
     - extra_state
-  MPI_Win_delete_attr:
-  - - InScalar
-    - win
-  - - InScalar
-    - win_keyval
-  MPI_Win_delete_attr_function:
-  - - InScalar
-    - win
-  - - InScalar
-    - win_keyval
-  - - InScalar
-    - attribute_val
-  - - InScalar
-    - extra_state
-  - - InScalar
-    - ierror
+  MPI_Win_delete_attr: []
+  MPI_Win_delete_attr_function: []
   MPI_Win_detach:
   - - InScalar
-    - win
-  - - InScalar
     - base
-  MPI_Win_errhandler_function:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - win
-  - - InScalar
-    - error_code
-  - - InScalar
-    - varargs
-  MPI_Win_f2c:
-  - - InScalar
-    - ".return"
-  - - InScalar
-    - win
-  MPI_Win_fence:
-  - - InScalar
-    - assert
-  - - InScalar
-    - win
-  MPI_Win_flush:
-  - - InScalar
-    - rank
-  - - InScalar
-    - win
-  MPI_Win_flush_all:
-  - - InScalar
-    - win
-  MPI_Win_flush_local:
-  - - InScalar
-    - rank
-  - - InScalar
-    - win
-  MPI_Win_flush_local_all:
-  - - InScalar
-    - win
+  MPI_Win_errhandler_function: []
+  MPI_Win_f2c: []
+  MPI_Win_fence: []
+  MPI_Win_flush: []
+  MPI_Win_flush_all: []
+  MPI_Win_flush_local: []
+  MPI_Win_flush_local_all: []
   MPI_Win_free:
   - - InScalar
     - win
@@ -4876,119 +2306,49 @@
   - - InScalar
     - win_keyval
   MPI_Win_get_attr:
-  - - InScalar
-    - win
-  - - InScalar
-    - win_keyval
   - - OutScalar
     - attribute_val
   - - OutScalar
     - flag
   MPI_Win_get_errhandler:
-  - - InScalar
-    - win
   - - OutScalar
     - errhandler
   MPI_Win_get_group:
-  - - InScalar
-    - win
   - - OutScalar
     - group
   MPI_Win_get_info:
-  - - InScalar
-    - win
   - - OutScalar
     - info_used
   MPI_Win_get_name:
-  - - InScalar
-    - win
   - - OutScalar
     - win_name
   - - OutScalar
     - resultlen
-  MPI_Win_lock:
-  - - InScalar
-    - lock_type
-  - - InScalar
-    - rank
-  - - InScalar
-    - assert
-  - - InScalar
-    - win
-  MPI_Win_lock_all:
-  - - InScalar
-    - assert
-  - - InScalar
-    - win
-  MPI_Win_post:
-  - - InScalar
-    - group
-  - - InScalar
-    - assert
-  - - InScalar
-    - win
+  MPI_Win_lock: []
+  MPI_Win_lock_all: []
+  MPI_Win_post: []
   MPI_Win_set_attr:
   - - InScalar
-    - win
-  - - InScalar
-    - win_keyval
-  - - InScalar
     - attribute_val
-  MPI_Win_set_errhandler:
-  - - InScalar
-    - win
-  - - InScalar
-    - errhandler
-  MPI_Win_set_info:
-  - - InScalar
-    - win
-  - - InScalar
-    - info
+  MPI_Win_set_errhandler: []
+  MPI_Win_set_info: []
   MPI_Win_set_name:
-  - - InScalar
-    - win
   - - InScalar
     - win_name
   MPI_Win_shared_query:
-  - - InScalar
-    - win
-  - - InScalar
-    - rank
   - - OutScalar
     - size
   - - OutScalar
     - disp_unit
   - - OutScalar
     - baseptr
-  MPI_Win_start:
-  - - InScalar
-    - group
-  - - InScalar
-    - assert
-  - - InScalar
-    - win
-  MPI_Win_sync:
-  - - InScalar
-    - win
+  MPI_Win_start: []
+  MPI_Win_sync: []
   MPI_Win_test:
-  - - InScalar
-    - win
   - - OutScalar
     - flag
-  MPI_Win_unlock:
-  - - InScalar
-    - rank
-  - - InScalar
-    - win
-  MPI_Win_unlock_all:
-  - - InScalar
-    - win
-  MPI_Win_wait:
-  - - InScalar
-    - win
-  MPI_Wtick:
-  - - InScalar
-    - ".return"
-  MPI_Wtime:
-  - - InScalar
-    - ".return"
+  MPI_Win_unlock: []
+  MPI_Win_unlock_all: []
+  MPI_Win_wait: []
+  MPI_Wtick: []
+  MPI_Wtime: []
