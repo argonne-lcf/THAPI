@@ -229,6 +229,12 @@ int thapi_ctl_init() {
   } else {
     thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "omp DISABLED");
   }
+  if (backends_enabled[BACKEND_HIP]) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "hip enabled");
+    thapi_hip_init(handle, channel_name);
+  } else {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_INFO, "hip DISABLED");
+  }
   log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
   return 0;
@@ -254,6 +260,9 @@ int thapi_ctl_start() {
   }
   if (backends_enabled[BACKEND_OMP]) {
     thapi_omp_enable_tracing_events(handle, channel_name);
+  }
+  if (backends_enabled[BACKEND_HIP]) {
+    thapi_hip_enable_tracing_events(handle, channel_name);
   }
   log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
@@ -281,6 +290,9 @@ int thapi_ctl_stop() {
   }
   if (backends_enabled[BACKEND_OMP]) {
     thapi_omp_disable_tracing_events(handle, channel_name);
+  }
+  if (backends_enabled[BACKEND_HIP]) {
+    thapi_hip_disable_tracing_events(handle, channel_name);
   }
   log_events(handle, channel_name, "after");
   thapi_ctl_destroy_lttng_handle(handle);
