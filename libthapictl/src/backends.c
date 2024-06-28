@@ -361,3 +361,36 @@ void thapi_omp_disable_tracing_events(struct lttng_handle *h, const char *channe
   thapi_disable_events_by_pattern(h, ev, 1, &omp_events_pattern, channel_name);
   lttng_event_destroy(ev);
 }
+
+
+static char *hip_events_pattern = "lttng_ust_hip:*";
+
+
+void thapi_hip_init(struct lttng_handle *h, const char *channel_name) {
+  (void)h;
+  (void)channel_name;
+  // no-op, no bookkeeping events for hip
+  return;
+}
+
+
+void thapi_hip_enable_tracing_events(struct lttng_handle *h, const char *channel_name) {
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
+    return;
+  }
+  thapi_enable_events_by_pattern(h, ev, 1, &hip_events_pattern, channel_name, 0, NULL);
+  lttng_event_destroy(ev);
+}
+
+
+void thapi_hip_disable_tracing_events(struct lttng_handle *h, const char *channel_name) {
+  struct lttng_event *ev = lttng_event_create();
+  if (ev == NULL) {
+    thapi_ctl_log(THAPI_CTL_LOG_LEVEL_ERROR, "Error creating event");
+    return;
+  }
+  thapi_disable_events_by_pattern(h, ev, 1, &hip_events_pattern, channel_name);
+  lttng_event_destroy(ev);
+}

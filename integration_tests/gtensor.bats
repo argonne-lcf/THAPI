@@ -3,10 +3,11 @@
 setup_file() {
    export IPROF=$THAPI_INSTALL_DIR/bin/iprof
 
-   bdir=build-$GTENSOR_DEVICE
+   bdir="build-$GTENSOR_DEVICE"
 
    (cd integration_tests/gtensor;
-    cmake -S . -B $bdir -DGTENSOR_DEVICE=$GTENSOR_DEVICE -DTHAPI_PATH=$THAPI_INSTALL_DIR \
+    cmake -S . -B $bdir -DGTENSOR_DEVICE=$GTENSOR_DEVICE \
+       -DTHAPI_PATH=$THAPI_INSTALL_DIR \
     && cmake --build $bdir)
 
    export THAPI_TEST_BIN=$(pwd)/integration_tests/gtensor/$bdir/axpy_start_stop
