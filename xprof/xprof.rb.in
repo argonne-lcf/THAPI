@@ -77,9 +77,9 @@ end
 def exec_thapi_ctl(command, backends, tracing_mode, trace_from_start, profiling)
   ENV.merge!(thapi_env(backends, tracing_mode, trace_from_start, profiling))
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
-  exec("thapi-ctl list")
-  exec("thapi-ctl #{command}")
-  exec("thapi-ctl list")
+  # exec("#{BINDIR}/thapi-ctl list")
+  exec("#{BINDIR}/thapi-ctl #{command}")
+  # exec("#{BINDIR}/thapi-ctl list")
   # exec("lttng list --channel #{channel_name} --userspace #{lttng_session_uuid}")
 end
 
