@@ -150,6 +150,7 @@ jobs:
           - bats_file: 'iprof'
             thapi_sync_daemon: 'fs' # Need to force, if not `THAPI_SYNC_DAEMON` will be set to empty list
           - bats_file: 'libthapi-ctl'
+            thapi_sync_daemon: 'fs'
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ${{ github.workspace }}/build/ici/bin
