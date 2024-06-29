@@ -3,7 +3,9 @@
 
 #include <gtensor/gtensor.h>
 
+#ifndef NO_THAPI_CTL
 #include "thapi-ctl.h"
+#endif
 
 // provides convenient shortcuts for common gtensor functions, for example
 // underscore ('_') to represent open slice ends.
@@ -73,20 +75,24 @@ int main(int argc, char** argv)
   auto expr = a * d_x + d_y;
 
   for (int i = 0; i < 10; i++) {
+#ifndef NO_THAPI_CTL
     if (i % 2 == 1) {
       thapi_ctl_start();
-      gt::synchronize();
     }
+#endif
 
     d_axpy = gt::eval(expr);
     h_axpy = gt::empty_like(h_x);
     gt::copy(d_axpy, h_axpy);
     gt::synchronize();
 
+    std::cout << "axpy(10) = " << h_axpy(10) << std::endl;
+
+#ifndef NO_THAPI_CTL
     if (i % 2 == 1) {
       thapi_ctl_stop();
-      gt::synchronize();
     }
+#endif
   }
 
   // Define a slice to print a subset of elements for spot checking the
