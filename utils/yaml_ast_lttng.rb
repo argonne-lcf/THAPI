@@ -184,6 +184,7 @@ module YAMLCAst
           ev.type = :uint8_t
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(uint8_t)"
+            ev.length_type = "size_t"
           end
         when *OBJECT_TYPES, *POINTER_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
@@ -202,6 +203,7 @@ module YAMLCAst
           ev.type = :uint8_t
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(#{type.name})"
+            ev.length_type = "size_t"
           end
         else
           super
