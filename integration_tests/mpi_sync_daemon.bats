@@ -9,5 +9,5 @@ setup_file() {
 
 @test "sync_daemon_${THAPI_SYNC_DAEMON}" {
    export THAPI_JOBID=0
-   timeout 20s -- $MPIRUN -n 2 ./integration_tests/sync_daemon_test/test.sh
+   timeout 20s $MPIRUN -n 2 ./integration_tests/sync_daemon_test/test.sh
 }
