@@ -307,7 +307,7 @@ EOF
         fullname = "#{name}#{versions.size - i > 1 ? "_v#{versions.size - i}" : ""}#{suffix}"
         fullname = "#{name}_v2#{suffix}" unless command_names.include?(fullname)
         sstr = <<EOF
-    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{suffixes.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
+    if ((!_trace_from_start() || tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START})) #{suffixes.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
       wrap_#{fullname}(pfn);
     }
 EOF
