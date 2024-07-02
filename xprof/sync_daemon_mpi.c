@@ -39,15 +39,15 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
   }
   valuelen = sizeof(out_value);
   MPI_Info_get_string(tinfo, mt_key, &valuelen, out_value, &flag);
-  if (0 == flag) {
-    printf("Could not find key %s\n", mt_key);
-    ret = -1;
-    goto fn_exit;
+  if (flag == 0) {
+    fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Could not find key %s\n", mt_key);
+    //ret = -1;
+    //goto fn_exit;
   }
   if (strcmp(out_value, mt_value)) {
-    printf("Did not get thread multiple support, got %s\n", out_value);
-    ret = -1;
-    goto fn_exit;
+    fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get MPI_THREAD_SINGLE, got %s\n", out_value);
+    //ret = -1;
+    //goto fn_exit;
   }
   /*
    * create a group from the WORLD process set
@@ -71,7 +71,8 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
  * free group, library doesn’t need it.
  */
 fn_exit:
-  MPI_Group_free(&wgroup);
+  if (wgroup != MPI_GROUP_NULL)
+    MPI_Group_free(&wgroup);
   if (sinfo != MPI_INFO_NULL)
     MPI_Info_free(&sinfo);
   if (tinfo != MPI_INFO_NULL)
