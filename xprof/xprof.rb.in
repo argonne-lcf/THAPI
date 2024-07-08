@@ -366,10 +366,10 @@ def env_tracers
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end
-
+  # Usr Apps need to be launched with this to support blocking.
+  h['LTTNG_UST_ALLOW_BLOCKING'] = 1
   # Customization
   h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-names'].include?('ze') && OPTIONS[:profile]
-
   if OPTIONS[:'backend-names'].include?('omp')
     backends << 'omp'
     h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
