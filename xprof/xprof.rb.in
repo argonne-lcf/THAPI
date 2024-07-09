@@ -473,7 +473,10 @@ def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
     exec("#{lttng_enable} lttng_ust_opencl_build:infos*")
   when 'default'
-    exec("#{lttng_enable} lttng_ust_opencl_profiling:*") if profiling
+    if profiling
+      exec("#{lttng_enable} lttng_ust_opencl_profiling:*")
+      exec("#{lttng_enable} lttng_ust_opencl_arguments:kernel_info")
+    end
     # Wildcard using the * character are supported at the end of tracepoint names.
     #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
     # Disable-event doesn't have wildcards
