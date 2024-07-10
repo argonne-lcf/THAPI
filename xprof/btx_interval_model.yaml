@@ -102,6 +102,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: deviceIdx
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
             - :name: hFrequency
               :field_class:
                 :type: integer_unsigned
@@ -126,6 +131,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: deviceIdx
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
             - :name: hPower
               :field_class:
                 :type: integer_unsigned
@@ -150,6 +160,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: deviceIdx
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
             - :name: hEngine
               :field_class:
                 :type: integer_unsigned
@@ -173,6 +188,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: deviceIdx
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
             - :name: hEngine
               :field_class:
                 :type: integer_unsigned
@@ -196,6 +216,11 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
+            - :name: deviceIdx
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 32
+                :cast_type: uint32_t
             - :name: hFabricPort
               :field_class:
                 :type: integer_unsigned
