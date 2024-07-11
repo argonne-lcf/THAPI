@@ -71,11 +71,14 @@ $(BTX_TALLY_GENERATED) &: $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_tally_pa
 $(BTX_AGGREG_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_aggreg_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
 
-$(BTX_STRIPPER_GENERATED) &:
-	$(METABABEL) -t FILTER -o btx_filter_stripper -p btx_stripper -c stripper --enable-callbacks on_downstream
+$(BTX_STRIPPER_GENERATED) &: btx_stripper_param.yaml
+	$(METABABEL) -t FILTER -o btx_filter_stripper -p btx_stripper -c stripper --enable-callbacks on_downstream --params btx_stripper_param.yaml
 
 btx_stripper_callbacks.cpp:
-	$(METABABEL) --display-shared-callback stripper > $@
+	$(METABABEL) --display-shared-callback stripper.cpp > $@
+
+btx_stripper_param.yaml:
+	$(METABABEL) --display-shared-callback stripper_params.yaml > $@
 
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
@@ -239,6 +242,7 @@ CLEANFILES = \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc \
 	btx_stripper_callbacks.cpp \
+	btx_stripper_param.yaml \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_AGGREG_GENERATED) \

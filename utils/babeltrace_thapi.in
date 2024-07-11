@@ -76,7 +76,7 @@ module BTComponentClassRefinement
     attr_accessor :plugins_path, :cli_v
 
     def bt2_escape(str)
-      str.gsub(/([*?\[.:\\])/,'\\\\\1')
+      str.gsub(/([*?\[.:\\])/, '\\\\\1')
     end
 
     def add(component_class, name, params: {},
@@ -187,11 +187,12 @@ def get_components(names)
   end
 end
 
-def get_and_add_components(graph, _command, names)
+def get_and_add_components(graph, command, names)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
     raise "#{name} plugins was not found" unless comp
+
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
@@ -236,6 +237,18 @@ def get_and_add_components(graph, _command, names)
                 params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
       graph.add(comp, name) if need_muxer(ARGV.first)
+    when 'filter.btx_stripper.stripper'
+      filter_prefix = case command
+                      when 'to_interval'
+                        'lttng:'
+                      when 'to_aggreg'
+                        'aggreg:'
+                      else
+                        raise("#{command} for 'filter.btx_stripper.stripper' not supported")
+                      end
+      graph.add(comp, 'filter_btx_stripper_stripper',
+                params: { 'filter_prefix' => filter_prefix })
+
     else
       # `.` is not allowed in the babeltrace components name when using the CLI
       graph.add(comp, name.gsub('.', '_'))
@@ -299,8 +312,8 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     super
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
-            'Format: backend_name[:backend_level],...',
-            default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+       'Format: backend_name[:backend_level],...',
+       default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
     on('--debug', default: false)
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do
