@@ -76,7 +76,7 @@ module BTComponentClassRefinement
     attr_accessor :plugins_path, :cli_v
 
     def bt2_escape(str)
-      str.gsub(/([*?\[.:\\])/,'\\\\\1')
+      str.gsub(/([*?\[.:\\])/, '\\\\\1')
     end
 
     def add(component_class, name, params: {},
@@ -187,11 +187,12 @@ def get_components(names)
   end
 end
 
-def get_and_add_components(graph, _command, names)
+def get_and_add_components(graph, _command, names, l_inputs)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
     raise "#{name} plugins was not found" unless comp
+
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
@@ -200,7 +201,7 @@ def get_and_add_components(graph, _command, names)
                 params: { 'inputs' => $options[:inputs],
                           'session-not-found-action' => 'end' })
     when 'source.ctf.fs'
-      s = Find.find(*ARGV)
+      s = Find.find(*l_inputs)
               .reject { |path| FileTest.directory?(path) }
               .filter_map { |path| File.dirname(path) if File.basename(path) == 'metadata' }
               .select do |path|
@@ -252,11 +253,6 @@ def connects(graph, comps)
   end
 end
 
-#    _                       _    ___
-#   |_) _. ._ _ o ._   _    /  |   |
-#   |  (_| | _> | | | (_|   \_ |_ _|_
-#                      _|
-
 THAPI_METADATA_FILE = 'thapi_metadata.yaml'
 
 def thapi_metadata(trace)
@@ -277,6 +273,33 @@ def modify_metadata(command, trace)
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
 end
 
+def create_and_run_graph(command, inputs)
+  def no_gc(command, inputs)
+    graph = BT2::BTGraph.new
+    comp = get_and_add_components(graph, command, $thapi_graph[command], inputs)
+    connects(graph, comp)
+
+    if $options[:debug]
+      cli = graph.cli
+      name = "babeltrace_thapi_cli_#{command}.sh"
+      # puts cli
+      puts "babeltrace_thapi: babeltrace2 cli command will be saved in ./#{name}"
+      $stdout.flush
+      File.write(name, cli)
+    end
+
+    graph.run
+    modify_metadata(command, inputs.first)
+  end
+
+  no_gc(command, inputs)
+  GC.start
+end
+
+#    _                       _    ___
+#   |_) _. ._ _ o ._   _    /  |   |
+#   |  (_| | _> | | | (_|   \_ |_ _|_
+#                      _|
 def raise_if_command_invalid(command, trace)
   case command
   when 'trace'
@@ -299,8 +322,8 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     super
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
-            'Format: backend_name[:backend_level],...',
-            default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+       'Format: backend_name[:backend_level],...',
+       default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
     on('--debug', default: false)
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do
@@ -397,32 +420,16 @@ $options[:'backend-names'] = $options[:backends].map { |name_level| name_level.s
 # Setup Logger
 LOGGER = Logger.new($stdout)
 
-thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                            'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
-                'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                               'sink.btx_timeline.timeline'],
-                'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                'trace_live' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                  'filter.btx_stripper.stripper', 'sink.ctf.fs'],
-                'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
-
-graph = BT2::BTGraph.new
+$thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                             'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
+                 'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                                'sink.btx_timeline.timeline'],
+                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
+                 'trace_live' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'sink.text.rubypretty'],
+                 'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                                   'filter.btx_stripper.stripper', 'sink.ctf.fs'],
+                 'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
+                                 'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
 
 command = 'trace_live' if command == 'trace' && $options[:live]
-
-comp = get_and_add_components(graph, command, thapi_graph[command])
-connects(graph, comp)
-
-if $options[:debug]
-  cli = graph.cli
-  name = "babeltrace_thapi_cli_#{command}.sh"
-  # puts cli
-  puts "babeltrace_thapi: babeltrace2 cli command will be saved in ./#{name}"
-  $stdout.flush
-  File.write(name, cli)
-end
-
-graph.run
-modify_metadata(command, ARGV.first)
+create_and_run_graph(command, ARGV)
