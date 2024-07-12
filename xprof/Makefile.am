@@ -69,7 +69,7 @@ $(BTX_TALLY_GENERATED) &: $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_tally_pa
 	$(METABABEL) -u $(srcdir)/btx_aggreg_model.yaml -t SINK -o btx_sink_tally -p btx_tally -c tally --params $(srcdir)/btx_tally_params.yaml
 
 $(BTX_AGGREG_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_aggreg_params.yaml
-	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml,$(srcdir)/btx_aggreg_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
+	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml,$(srcdir)/btx_aggreg_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml --drop
 
 $(BTX_STRIPPER_GENERATED) &:
 	$(METABABEL) -t FILTER -o btx_filter_stripper -p btx_stripper -c stripper --enable-callbacks on_downstream

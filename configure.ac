@@ -77,7 +77,7 @@ PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
-AX_RUBY_EXTENSION([metababel >= 1.1.1], [yes])
+AX_RUBY_EXTENSION([metababel >= 1.1.2], [yes])
 
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stddef.h stdint.h stdlib.h string.h unistd.h])
