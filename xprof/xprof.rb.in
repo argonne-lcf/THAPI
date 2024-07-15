@@ -590,7 +590,6 @@ def on_node_processing(backends, syncd)
          else
            'aggreg'
          end
-
   if type && OPTIONS[:analysis]
     opts = ["to_#{type}"]
     opts << "--output #{thapi_trace_dir_tmp}"
@@ -610,7 +609,8 @@ def on_node_processing(backends, syncd)
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
 
-  FileUtils.cp(File.join(thapi_trace_dir_tmp, 'thapi_metadata.yaml'),
+  # Because of `traced-rank`, `mpi_master` may not have any trace avalaible.
+  FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
                File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
