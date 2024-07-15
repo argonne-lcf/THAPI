@@ -287,13 +287,18 @@ def create_and_run_graph(command, inputs)
       $stdout.flush
       File.write(name, cli)
     end
-
     graph.run
-    modify_metadata(command, inputs.first)
   end
 
-  no_gc(command, inputs)
-  GC.start
+  begin
+    no_gc(command, inputs)
+  rescue ArgumentError
+    # No source, no output folder, no metadata
+  else
+    modify_metadata(command, inputs.first)
+  ensure
+    GC.start
+  end
 end
 
 #    _                       _    ___
