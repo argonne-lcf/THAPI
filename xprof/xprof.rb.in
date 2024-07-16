@@ -31,8 +31,9 @@ module LoggerRefinement
   refine(Logger) do
     def info_block(message, &block)
       info("#{message}: entry") if message
-      block.call
+      r = block.call
       info("#{message}: exit") if message
+      r
     end
   end
 end
@@ -609,13 +610,15 @@ def on_node_processing(backends, syncd)
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
 
-  # Because of `traced-rank`, `mpi_master` may not have any trace avalaible.
-  FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
-               File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
+  LOGGER.info_block('Move and metadata update') do
+    # Because of `traced-rank`, `mpi_master` may not have any trace avalaible.
+    FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
+                 File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
-  exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
+    exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
 
-  thapi_trace_dir_root
+    thapi_trace_dir_root
+  end
 end
 
 # Start, Stop lttng, amd do the on-node analsysis
@@ -708,6 +711,7 @@ if __FILE__ == $PROGRAM_NAME
             'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
             '$THAPI_HOME defaults to $HOME') do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if mpi_master? && File.exist?(p)
+
     p
   end
 
