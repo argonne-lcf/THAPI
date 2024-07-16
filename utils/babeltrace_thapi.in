@@ -430,11 +430,10 @@ $thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.inte
                  'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                 'sink.btx_timeline.timeline'],
                  'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                 'trace_live' => ['source.ctf.lttng_live', 'filter.utils.muxer', 'sink.text.rubypretty'],
                  'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                    'filter.btx_stripper.stripper', 'sink.ctf.fs'],
                  'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
                                  'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
 
-command = 'trace_live' if command == 'trace' && $options[:live]
+$thapi_graph[command][0] = 'source.ctf.lttng_live' if $options[:live]
 create_and_run_graph(command, ARGV)
