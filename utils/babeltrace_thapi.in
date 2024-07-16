@@ -187,7 +187,7 @@ def get_components(names)
   end
 end
 
-def get_and_add_components(graph, _command, names, l_inputs)
+def get_and_add_components(graph, names, l_inputs)
   get_components(names).filter_map do |nc|
     name = nc.name
     comp = nc.comp
@@ -273,10 +273,30 @@ def modify_metadata(command, trace)
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
 end
 
+def bt_graphs
+  h = { 'tally' => ['filter.utils.muxer', 'filter.intervals.interval',
+                    'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
+        'timeline' => ['filter.utils.muxer', 'filter.intervals.interval',
+                       'sink.btx_timeline.timeline'],
+        'trace' => ['filter.utils.muxer', 'sink.text.rubypretty'],
+        'to_interval' => ['filter.utils.muxer', 'filter.intervals.interval',
+                          'filter.btx_stripper.stripper', 'sink.ctf.fs'],
+        'to_aggreg' => ['filter.utils.muxer', 'filter.intervals.interval',
+                        'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
+  # Add Source
+  source_comp = if $options[:live]
+                  'source.ctf.lttng_live'
+                else
+                  'source.ctf.fs'
+                end
+  h.transform_values { |l| [source_comp] + l }
+end
+
 def create_and_run_graph(command, inputs)
   def no_gc(command, inputs)
     graph = BT2::BTGraph.new
-    comp = get_and_add_components(graph, command, $thapi_graph[command], inputs)
+    thapi_graph = bt_graphs[command]
+    comp = get_and_add_components(graph, thapi_graph, inputs)
     connects(graph, comp)
 
     if $options[:debug]
@@ -425,15 +445,4 @@ $options[:'backend-names'] = $options[:backends].map { |name_level| name_level.s
 # Setup Logger
 LOGGER = Logger.new($stdout)
 
-$thapi_graph = { 'tally' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                             'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
-                 'timeline' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                'sink.btx_timeline.timeline'],
-                 'trace' => ['source.ctf.fs', 'filter.utils.muxer', 'sink.text.rubypretty'],
-                 'to_interval' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                   'filter.btx_stripper.stripper', 'sink.ctf.fs'],
-                 'to_aggreg' => ['source.ctf.fs', 'filter.utils.muxer', 'filter.intervals.interval',
-                                 'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
-
-$thapi_graph[command][0] = 'source.ctf.lttng_live' if $options[:live]
 create_and_run_graph(command, ARGV)
