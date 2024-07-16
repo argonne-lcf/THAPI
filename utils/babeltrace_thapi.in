@@ -274,29 +274,27 @@ def modify_metadata(command, trace)
 end
 
 def bt_graphs
-  h = { 'tally' => ['filter.utils.muxer', 'filter.intervals.interval',
-                    'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
-        'timeline' => ['filter.utils.muxer', 'filter.intervals.interval',
-                       'sink.btx_timeline.timeline'],
-        'trace' => ['filter.utils.muxer', 'sink.text.rubypretty'],
-        'to_interval' => ['filter.utils.muxer', 'filter.intervals.interval',
-                          'filter.btx_stripper.stripper', 'sink.ctf.fs'],
-        'to_aggreg' => ['filter.utils.muxer', 'filter.intervals.interval',
-                        'filter.btx_aggreg.aggreg', 'filter.btx_stripper.stripper', 'sink.ctf.fs'] }
-  # Add Source
   source_comp = if $options[:live]
                   'source.ctf.lttng_live'
                 else
                   'source.ctf.fs'
                 end
-  h.transform_values { |l| [source_comp] + l }
+
+  { 'tally' => ['filter.utils.muxer', 'filter.intervals.interval',
+                'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
+    'timeline' => ['filter.utils.muxer', 'filter.intervals.interval',
+                   'sink.btx_timeline.timeline'],
+    'trace' => ['filter.utils.muxer', 'sink.text.rubypretty'],
+    'to_interval' => ['filter.utils.muxer', 'filter.intervals.interval',
+                      'filter.btx_stripper.stripper', 'sink.ctf.fs'],
+    'to_aggreg' => ['filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_aggreg.aggreg',
+                    'filter.btx_stripper.stripper', 'sink.ctf.fs'] }.transform_values { |l| [source_comp] + l }
 end
 
-def create_and_run_graph(command, inputs)
-  def no_gc(command, inputs)
+def create_and_run_graph(command, graph_str, inputs)
+  def no_gc(command, graph_str, inputs)
     graph = BT2::BTGraph.new
-    thapi_graph = bt_graphs[command]
-    comp = get_and_add_components(graph, thapi_graph, inputs)
+    comp = get_and_add_components(graph, graph_str, inputs)
     connects(graph, comp)
 
     if $options[:debug]
@@ -311,7 +309,7 @@ def create_and_run_graph(command, inputs)
   end
 
   begin
-    no_gc(command, inputs)
+    no_gc(command, graph_str, inputs)
   rescue ArgumentError
     # No source, no output folder, no metadata
   else
@@ -444,5 +442,4 @@ $options[:'backend-names'] = $options[:backends].map { |name_level| name_level.s
 #
 # Setup Logger
 LOGGER = Logger.new($stdout)
-
-create_and_run_graph(command, ARGV)
+create_and_run_graph(command, bt_graphs[command], ARGV)
