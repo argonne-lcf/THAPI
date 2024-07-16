@@ -203,7 +203,7 @@ end
 def thapi_trace_dir_root
   raise unless mpi_master?
 
-  return File.join(OPTIONS[:'trace-output']) if OPTIONS[:'trace-output']
+  return OPTIONS[:'trace-output'] if OPTIONS[:'trace-output']
 
   @thapi_trace_dir_root ||= begin
     # Multiple thapi can run concurrently.
@@ -573,38 +573,42 @@ end
 #
 
 # TODO: Use babeltrace_thapi as a LIB not a binary
-# Note: I don't understand `mv`
-#       File.mv(a, b) will put a into b
+
+def on_node_processing_babeltrace(backends)
+  raise unless mpi_local_master?
+  # No need to run babeltrace_thapi
+  return if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
+
+  type = OPTIONS.include?(:timeline) ? 'interval' : 'aggreg'
+  opts = ["to_#{type}"]
+  opts << "--output #{thapi_trace_dir_tmp}"
+  opts << "--backends #{backends.join(',')}"
+  exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+end
+
+# NOTE: I don't understand `mv`
+#       File.mv(a, b) will put a into b (aka a/b)
 #       FileUtils.rename(a,b) will move a as b, but may
 #         raise Invalid cross-device error.
 #       So we use `exec(mv -T a b)`, this have the added benefice of logging
-def on_node_processing(backends, syncd)
+#
+def on_node_processing_sync_and_rename(syncd)
   raise unless mpi_local_master?
 
-  type = if OPTIONS.include?(:trace)
-           # Do move to $home
-           nil
-         elsif OPTIONS.include?(:timeline)
-           # Write Interval
-           'interval'
-         else
-           'aggreg'
-         end
-  if type && OPTIONS[:analysis]
-    opts = ["to_#{type}"]
-    opts << "--output #{thapi_trace_dir_tmp}"
-    opts << "--backends #{backends.join(',')}"
-    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
-    FileUtils.rm_f(lttng_trace_dir_tmp)
-  else
+  if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
+    # The Apps finished, lttng finished, need to move to the shared tmp folder
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
     exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
+  else
+    # Babeltrace_thapi finished, can remove `tmp` folder
+    FileUtils.rm_f(lttng_trace_dir_tmp)
   end
 
-  # Global Barrier
+  # Global Barrier, ensure that all on_node_processessing finished
   syncd.global_barrier
 
-  # Replace mpi_job_id with a better name
+  # Replace mpi_job_id with a better name and update medatada,
+  # Only done by mpi_master
   return unless mpi_master?
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
@@ -614,7 +618,6 @@ def on_node_processing(backends, syncd)
                File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
-
   thapi_trace_dir_root
 end
 
@@ -641,7 +644,8 @@ def trace_and_on_node_processing(usr_argv)
 
     teardown_lttng
     # Preprocess trace
-    on_node_processing(backends, syncd)
+    on_node_processing_babeltrace(backends)
+    on_node_processing_sync_and_rename(syncd)
   end
 end
 
@@ -708,6 +712,7 @@ if __FILE__ == $PROGRAM_NAME
             'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
             '$THAPI_HOME defaults to $HOME') do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if mpi_master? && File.exist?(p)
+
     p
   end
 
