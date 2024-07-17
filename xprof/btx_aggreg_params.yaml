@@ -1,14 +1,4 @@
 :type: map
 :entries:
-  - :name: display
-    :type: string
-  - :name: name
-    :type: string
-  - :name: display_mode
-    :type: string
-  - :name: display_metadata
-    :type: bool
-  - :name: display_name_max_size
-    :type: integer_unsigned
-  - :name: display_kernel_verbose
+  - :name: discard_metadata
     :type: bool

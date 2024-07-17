@@ -235,8 +235,14 @@ def get_and_add_components(graph, names, l_inputs)
     when 'sink.btx_timeline.timeline'
       graph.add(comp, 'timeline',
                 params: { 'output_path' => $options[:'output-path'] })
+    when 'sink.btx_timeline.timeline'
+      graph.add(comp, 'timeline',
+                params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
       graph.add(comp, name) if need_muxer(ARGV.first)
+    when 'filter.btx_aggreg.aggreg'
+      graph.add(comp, 'aggreg',
+                params: { 'discard_metadata' => $options[:'discard-metadata'] })
     else
       # `.` is not allowed in the babeltrace components name when using the CLI
       graph.add(comp, name.gsub('.', '_'))
@@ -399,6 +405,7 @@ subcommands = {
   'to_aggreg' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi to_aggreg [OPTIONS] trace_directory...'
+      parser.on('--[no-]discard-metadata', default: true)
       parser.on('--output OUTPUT')
     end,
   'tally' =>
@@ -410,6 +417,7 @@ subcommands = {
       parser.on('--display-metadata', default: false)
       parser.on('--display-name-max-size SIZE', Integer, default: 80)
       parser.on('--display-kernel-verbose', default: false)
+      parser.on('--[no-]discard-metadata', default: false)
     end,
   'timeline' =>
     BabeltraceParserThapi.new do |parser|
@@ -417,7 +425,6 @@ subcommands = {
       parser.on('--output-path PATH', String, default: 'out.pftrace')
     end,
 }
-
 print_help_and_exit if ARGV.empty? || ARGV[0] == '--help'
 ARGV.insert(0, 'trace') unless subcommands.include?(ARGV.first)
 command = ARGV.shift

@@ -583,6 +583,7 @@ def on_node_processing_babeltrace(backends)
   opts = ["to_#{type}"]
   opts << "--output #{thapi_trace_dir_tmp}"
   opts << "--backends #{backends.join(',')}"
+  opts << '--no-discard-metadata' if type == 'aggreg' && OPTIONS.include?(:'kernel-verbose')
   exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
 end
 
