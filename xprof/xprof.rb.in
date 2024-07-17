@@ -594,6 +594,8 @@ def on_node_processing(backends, syncd)
     opts = ["to_#{type}"]
     opts << "--output #{thapi_trace_dir_tmp}"
     opts << "--backends #{backends.join(',')}"
+    opts << '--no-discard-metadata' if  type == 'aggreg' && OPTIONS.include?(:'kernel-verbose')
+
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     FileUtils.rm_f(lttng_trace_dir_tmp)
   else
@@ -708,6 +710,7 @@ if __FILE__ == $PROGRAM_NAME
             'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
             '$THAPI_HOME defaults to $HOME') do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if mpi_master? && File.exist?(p)
+
     p
   end
 
