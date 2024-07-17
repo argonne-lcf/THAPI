@@ -274,21 +274,23 @@ def modify_metadata(command, trace)
 end
 
 def bt_graphs
-  source_comp = if $options[:live]
-                  'source.ctf.lttng_live'
-                else
-                  'source.ctf.fs'
-                end
+  @bt_graphs ||= begin
+    source_comp = if $options[:live]
+                    'source.ctf.lttng_live'
+                  else
+                    'source.ctf.fs'
+                  end
 
-  { 'tally' => ['filter.utils.muxer', 'filter.intervals.interval',
-                'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
-    'timeline' => ['filter.utils.muxer', 'filter.intervals.interval',
-                   'sink.btx_timeline.timeline'],
-    'trace' => ['filter.utils.muxer', 'sink.text.rubypretty'],
-    'to_interval' => ['filter.utils.muxer', 'filter.intervals.interval',
-                      'filter.btx_stripper.stripper', 'sink.ctf.fs'],
-    'to_aggreg' => ['filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_aggreg.aggreg',
-                    'filter.btx_stripper.stripper', 'sink.ctf.fs'] }.transform_values { |l| [source_comp] + l }
+    { 'tally' => ['filter.utils.muxer', 'filter.intervals.interval',
+                  'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
+      'timeline' => ['filter.utils.muxer', 'filter.intervals.interval',
+                     'sink.btx_timeline.timeline'],
+      'trace' => ['filter.utils.muxer', 'sink.text.rubypretty'],
+      'to_interval' => ['filter.utils.muxer', 'filter.intervals.interval',
+                        'filter.btx_stripper.stripper', 'sink.ctf.fs'],
+      'to_aggreg' => ['filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_aggreg.aggreg',
+                      'filter.btx_stripper.stripper', 'sink.ctf.fs'] }.transform_values { |l| [source_comp] + l }
+  end
 end
 
 def create_and_run_graph(command, graph_str, inputs)
