@@ -235,9 +235,6 @@ def get_and_add_components(graph, names, l_inputs)
     when 'sink.btx_timeline.timeline'
       graph.add(comp, 'timeline',
                 params: { 'output_path' => $options[:'output-path'] })
-    when 'sink.btx_timeline.timeline'
-      graph.add(comp, 'timeline',
-                params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
       graph.add(comp, name) if need_muxer(ARGV.first)
     when 'filter.btx_aggreg.aggreg'
