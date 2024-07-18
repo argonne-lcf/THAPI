@@ -16,10 +16,16 @@ struct aggreg_s {
   std::unordered_map<_hptbn_t, TallyCoreBase> host;
   std::unordered_map<_hptbnm_t, TallyCoreBase> traffic;
   std::unordered_map<_hptn_dsb_nm_t, TallyCoreBase> device;
+  bool discard_metadata;
 };
 using aggreg_t = struct aggreg_s;
 
 static void initialize_component_callback(void **usr_data) { *usr_data = new aggreg_t; }
+
+static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
+  auto *data = static_cast<aggreg_t *>(usr_data);
+  data->discard_metadata = !!usr_params->discard_metadata;
+}
 
 static void finalize_component_callback(void *usr_data) {
   auto *data = static_cast<aggreg_t *>(usr_data);
@@ -62,7 +68,11 @@ static void traffic_usr_callback(void *btx_handle, void *usr_data, const char *h
                                  const char *name, uint64_t size, const char *metadata) {
 
   auto *data = static_cast<aggreg_t *>(usr_data);
-  data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name, metadata}] += {size, false};
+  if (data->discard_metadata)
+    data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name, "discarded_metadata"}] +=
+        {size, false};
+  else
+    data->traffic[{hostname, vpid, vtid, (backend_t)backend_id, name, metadata}] += {size, false};
 }
 
 static void device_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
@@ -71,7 +81,10 @@ static void device_usr_callback(void *btx_handle, void *usr_data, const char *ho
                                 bt_bool err, const char *metadata) {
 
   auto *data = static_cast<aggreg_t *>(usr_data);
-  data->device[{hostname, vpid, vtid, did, sdid, name, metadata}] += {dur, (bool)err};
+  if (data->discard_metadata)
+    data->device[{hostname, vpid, vtid, did, sdid, name, "discarded_metadata"}] += {dur, (bool)err};
+  else
+    data->device[{hostname, vpid, vtid, did, sdid, name, metadata}] += {dur, (bool)err};
 }
 
 // Merge all the aggreg messages in the same trace
@@ -104,6 +117,8 @@ static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_component(btx_handle, &initialize_component_callback);
+  btx_register_callbacks_read_params(btx_handle, &read_params_callback);
+
   btx_register_callbacks_finalize_processing(btx_handle, &finalize_processing_callback);
   btx_register_callbacks_finalize_component(btx_handle, &finalize_component_callback);
 
