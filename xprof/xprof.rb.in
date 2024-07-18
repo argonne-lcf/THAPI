@@ -648,7 +648,8 @@ def trace_and_on_node_processing(usr_argv)
 
     # Stop Lttng session
     lttng_teardown_session
-    # All lttng are sure to be finished
+    # Lttng session is finished,
+    # we can kill the session-d
     lttng_kill_sessiond
 
     # Preprocess trace
