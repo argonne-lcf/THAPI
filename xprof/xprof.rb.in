@@ -553,8 +553,11 @@ def setup_lttng(backends)
   exec("lttng start #{lttng_session_uuid}")
 end
 
-def teardown_lttng
+def lttng_teardown_session
   exec("lttng destroy #{lttng_session_uuid}")
+end
+
+def lttng_kill_sessiond
   # Need to kill the sessiond Daemon. It's safe because each job has their own
   #
   # In theory, opening the lttng-sessiond.pid file is racy.
@@ -643,7 +646,11 @@ def trace_and_on_node_processing(usr_argv)
     syncd.local_barrier('waiting_for_application_ending')
     return unless mpi_local_master?
 
-    teardown_lttng
+    # Stop Lttng session
+    lttng_teardown_session
+    # All lttng are sure to be finished
+    lttng_kill_sessiond
+
     # Preprocess trace
     on_node_processing_babeltrace(backends)
     on_node_processing_sync_and_rename(syncd)
