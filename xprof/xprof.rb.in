@@ -590,7 +590,12 @@ end
 #   |_)  _. |_   _  | _|_ ._ _.  _  _     )
 #   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
 #
+<<<<<<< HEAD
 def lm_babeltrace(backends)
+=======
+
+def on_node_processing_babeltrace(backends)
+>>>>>>> minize diff
   raise unless mpi_local_master?
   # No need to run babeltrace_thapi
   return if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
@@ -633,6 +638,11 @@ def lm_move_to_shared
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
     # The Apps finished, lttng finished, need to move to the shared tmp folder
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
+    # NOTE: I don't understand `mv`
+    #       File.mv(a, b) will put a into b (aka a/b)
+    #       FileUtils.rename(a,b) will move a as b, but may
+    #         raise Invalid cross-device error.
+    #       So we use `exec(mv -T a b)`, this have the added benefice of logging
     exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
   else
     # `lm_babeltrace` finished, can remove `tmp` folder
