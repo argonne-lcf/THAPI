@@ -561,7 +561,7 @@ def lm_setup_lttng(backends)
 
   end
 
-  exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=50M --timer=60s") if OPTIONS.include?(:archive)
+  exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=50M --timer=60s") if OPTIONS[:archive]
   exec("lttng start #{lttng_session_uuid}")
   lttng_session_uuid
 end
@@ -688,12 +688,11 @@ def trace_and_on_node_processing(usr_argv)
     # Only local master spawn LTTNG daemon, start session, and possible babeltrace archibe
     pids = if mpi_local_master?
        lm_setup_lttng(backends)
-       lm_babeltrace(backends) if OPTIONS.include?(:archive)
+       lm_babeltrace(backends) if OPTIONS[:archive]
     end
 
     # Other local node cannot start before lttng and the daemon
     syncd.local_barrier('waiting_for_lttng_setup')
-
     # Launch User Command
     launch_usr_bin(h, usr_argv)
     # We need to be sure that all the local ranks are finished
@@ -705,7 +704,7 @@ def trace_and_on_node_processing(usr_argv)
 
     # Stop Lttng session
     lm_lttng_teardown_session
-    if OPTIONS.include?(:archive)
+    if OPTIONS[:archive]
       LOGGER.debug("Waiting for babeltrace_thapi and laurence #{pids} to finish")
       pids.each { |pid| Process.wait(pid) }
     end
@@ -713,7 +712,7 @@ def trace_and_on_node_processing(usr_argv)
     # we can kill the session daemon
     lm_lttng_kill_sessiond
     # Preprocess trace
-    lm_babeltrace(backends) unless OPTIONS.include?(:archive)
+    lm_babeltrace(backends) unless OPTIONS[:archive]
     lm_move_to_shared
   end
   gm_rename_folder if mpi_master?
