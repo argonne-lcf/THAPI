@@ -624,7 +624,7 @@ def on_node_processing_sync_and_rename(syncd)
     FileUtils.rm_f(lttng_trace_dir_tmp)
   end
 
-  # Global Barrier, ensure that all on_node_processessing finished
+  # Global Barrier, ensure that all on_node_processing finished
   syncd.global_barrier
 
   # Replace mpi_job_id with a better name and update medatada,
