@@ -563,7 +563,6 @@ def lm_setup_lttng(backends)
 
   exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=50M --timer=60s") if OPTIONS[:archive]
   exec("lttng start #{lttng_session_uuid}")
-  lttng_session_uuid
 end
 
 def lm_lttng_teardown_session
