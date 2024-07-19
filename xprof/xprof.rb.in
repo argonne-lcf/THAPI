@@ -589,12 +589,7 @@ end
 #   |_)  _. |_   _  | _|_ ._ _.  _  _     )
 #   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
 #
-<<<<<<< HEAD
 def lm_babeltrace(backends)
-=======
-
-def on_node_processing_babeltrace(backends)
->>>>>>> minize diff
   raise unless mpi_local_master?
   # No need to run babeltrace_thapi
   return if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
@@ -651,7 +646,6 @@ end
 
 def gm_rename_folder
   raise unless mpi_master?
-
   # All process have put their file into `thapi_trace_dir_tmp/hostname`.
   # `thapi_trace_dir_tmp` is using the MPI_JOB_ID
   # Replace it with a better name, and update the root metadata.
