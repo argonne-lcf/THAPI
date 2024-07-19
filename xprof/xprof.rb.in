@@ -578,24 +578,7 @@ end
 #   |_)  _. |_   _  | _|_ ._ _.  _  _     )
 #   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
 #
-def on_node_processing_babeltrace(backends)
-  raise unless mpi_local_master?
-  # No need to run babeltrace_thapi
-  return if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
 
-  type = OPTIONS.include?(:timeline) ? 'interval' : 'aggreg'
-  opts = ["to_#{type}"]
-  opts << "--output #{thapi_trace_dir_tmp}"
-  opts << "--backends #{backends.join(',')}"
-  opts << '--no-discard-metadata' if type == 'aggreg' && OPTIONS.include?(:'kernel-verbose')
-  exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
-end
-
-# NOTE: I don't understand `mv`
-#       File.mv(a, b) will put a into b
-#       FileUtils.rename(a,b) will move a as b, but may
-#         raise Invalid cross-device error.
-#       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing_babeltrace(backends)
   raise unless mpi_local_master?
   # No need to run babeltrace_thapi
@@ -625,6 +608,11 @@ def on_node_processing_babeltrace(backends)
   end
 end
 
+# NOTE: I don't understand `mv`
+#       File.mv(a, b) will put a into b (aka a/b)
+#       FileUtils.rename(a,b) will move a as b, but may
+#         raise Invalid cross-device error.
+#       So we use `exec(mv -T a b)`, this have the added benefice of logging
 def on_node_processing_sync_and_rename(syncd)
   raise unless mpi_local_master?
 
