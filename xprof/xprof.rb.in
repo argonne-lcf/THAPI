@@ -524,8 +524,8 @@ def setup_lttng(backends)
   FileUtils.mkdir_p(lttng_home_dir)
   FileUtils.mkdir_p(lttng_trace_dir_tmp)
   exec('lttng-sessiond --daemonize')
-  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
+  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
   File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
 
   channel_name = 'blocking-channel'
@@ -550,10 +550,14 @@ def setup_lttng(backends)
     end
 
   end
+
+  exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=50M --timer=60s") if OPTIONS.include?(:archive)
   exec("lttng start #{lttng_session_uuid}")
+  lttng_session_uuid
 end
 
 def lttng_teardown_session
+  exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
   exec("lttng destroy #{lttng_session_uuid}")
 end
 
@@ -574,9 +578,6 @@ end
 #   |_)  _. |_   _  | _|_ ._ _.  _  _     )
 #   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
 #
-
-# TODO: Use babeltrace_thapi as a LIB not a binary
-
 def on_node_processing_babeltrace(backends)
   raise unless mpi_local_master?
   # No need to run babeltrace_thapi
@@ -591,21 +592,63 @@ def on_node_processing_babeltrace(backends)
 end
 
 # NOTE: I don't understand `mv`
-#       File.mv(a, b) will put a into b (aka a/b)
+#       File.mv(a, b) will put a into b
 #       FileUtils.rename(a,b) will move a as b, but may
 #         raise Invalid cross-device error.
 #       So we use `exec(mv -T a b)`, this have the added benefice of logging
-#
-def on_node_processing_sync_and_rename(syncd)
+def on_node_processing_head(backends, _syncd)
   raise unless mpi_local_master?
 
-  if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
-    # The Apps finished, lttng finished, need to move to the shared tmp folder
+  type = if OPTIONS.include?(:trace)
+           # Do move to $home
+           nil
+         elsif OPTIONS.include?(:timeline)
+           # Write Interval
+           'interval'
+         else
+           'aggreg'
+         end
+  return unless type && OPTIONS[:analysis]
+
+  opts = ["to_#{type}"]
+  opts << "--output #{thapi_trace_dir_tmp}"
+  opts << "--backends #{backends.join(',')}"
+
+  if OPTIONS[:archive]
+    read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
+    opts << "--archive #{lttng_session_uuid} --session-found-file-path=#{read_file}"
+    cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}"
+    LOGGER.debug(cmd)
+    pid_bt = spawn(cmd)
+
+    cmd = "laurence.py --log-level=CRITICAL #{lttng_session_uuid} 500"
+    LOGGER.debug(cmd)
+    pid_laurence = spawn(cmd)
+
+    sleep(1) until File.exist?(read_file)
+    [pid_bt, pid_laurence]
+  else
+    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+  end
+end
+
+def on_node_processing_tail(_backends, syncd)
+  raise unless mpi_local_master?
+
+  type = if OPTIONS.include?(:trace)
+           # Do move to $home
+           nil
+         elsif OPTIONS.include?(:timeline)
+           # Write Interval
+           'interval'
+         else
+           'aggreg'
+         end
+  if type && OPTIONS[:analysis]
+    FileUtils.rm_f(lttng_trace_dir_tmp)
+  else
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
     exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
-  else
-    # Babeltrace_thapi finished, can remove `tmp` folder
-    FileUtils.rm_f(lttng_trace_dir_tmp)
   end
 
   # Global Barrier, ensure that all on_node_processessing finished
@@ -635,12 +678,14 @@ def trace_and_on_node_processing(usr_argv)
     # All ranks need to set the LLTTNG_HOME env
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
+    LOGGER.debug("LTTNG_HOME = #{ENV.fetch('LTTNG_HOME', nil)}")
     # Only local master spawn LTTNG daemon and start session
     setup_lttng(backends) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
+
+    pids = on_node_processing_head(backends, syncd) if OPTIONS.include?(:archive)
     # Launch User Command
     launch_usr_bin(h, usr_argv)
-
     # We need to be sure that all the local ranks are finished
     # before the local master stops the lttng session
     syncd.local_barrier('waiting_for_application_ending')
@@ -648,13 +693,18 @@ def trace_and_on_node_processing(usr_argv)
 
     # Stop Lttng session
     lttng_teardown_session
-    # Lttng session is finished,
+    if OPTIONS.include?(:archive)
+      LOGGER.debug("Waiting for babeltrace_thapi and laurence #{pids} to finish")
+      pids.each { |pid| Process.wait(pid) }
+    end
+
+    # Lttng session, and babeltrace2 finished,
     # we can kill the session daemon
     lttng_kill_sessiond
 
     # Preprocess trace
-    on_node_processing_babeltrace(backends)
-    on_node_processing_sync_and_rename(syncd)
+    on_node_processing_head(backends, syncd) unless OPTIONS.include?(:archive)
+    on_node_processing_tail(backends, syncd)
   end
 end
 
@@ -749,6 +799,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
             default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+  parser.on('--[no-]archive', 'Trigger for ardhive support', default: false)
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
