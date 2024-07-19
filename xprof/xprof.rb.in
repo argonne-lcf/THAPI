@@ -773,7 +773,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
             default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
-  parser.on('--[no-]archive', 'Trigger for ardhive support', default: false)
+  parser.on('--[no-]archive', 'Trigger for archive support', default: false)
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
