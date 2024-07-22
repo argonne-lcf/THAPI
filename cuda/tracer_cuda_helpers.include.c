@@ -483,6 +483,15 @@ static inline void _primary_context_reset(CUdevice dev) {
   pthread_mutex_unlock(&_primary_contexts_mutex);
 }
 
+static int _trace_from_start() {
+  static int trace_from_start = -1;
+  if (trace_from_start == -1) {
+    const char *env_value = getenv("LTTNG_UST_TRACE_FROM_START");
+    trace_from_start = (env_value == NULL || strcmp(env_value, "1") == 0);
+  }
+  return trace_from_start;
+}
+
 static void THAPI_ATTRIBUTE_DESTRUCTOR
 _lib_cleanup() {
   if (_do_cleanup) {

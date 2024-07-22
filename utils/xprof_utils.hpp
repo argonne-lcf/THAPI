@@ -12,17 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-enum backend_e {
-  BACKEND_UNKNOWN = 0,
-  BACKEND_ZE = 1,
-  BACKEND_OPENCL = 2,
-  BACKEND_CUDA = 3,
-  BACKEND_OMP_TARGET_OPERATIONS = 4,
-  BACKEND_OMP = 5,
-  BACKEND_HIP = 6,
-};
-typedef enum backend_e backend_t;
-typedef unsigned backend_level_t;
+#include "thapi.h"
 
 // Should be ordered by the value of the backend_e
 const std::unordered_map<std::string, backend_t> pretty_backend_name_g = {
