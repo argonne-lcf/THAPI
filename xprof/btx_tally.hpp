@@ -158,7 +158,14 @@ auto get_uniq_tally(std::unordered_map<std::tuple<K...>, V> &input) {
 
   for (auto const &m : input)
     add_to_set(tuple_set, m.first, s);
-  return tuple_set;
+  //return tuple_set;
+
+  std::vector<size_t> a;
+  auto N = (sizeof...(K));
+  for (unsigned long i=0; i < N; i++) {
+	  a.push_back(10);
+  }
+  return a;
 }
 
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
@@ -309,16 +316,16 @@ std::ostream &operator<<(std::ostream &os, std::pair<std::string, long> &pair) {
 }
 
 // Print 2 Tuple correspond to the hostname, process, ... device, subdevice.
-template <class... T, class... T2, size_t... I>
-void print_tally_header(std::ostream &os, const std::tuple<T...> &s, const std::tuple<T2...> &h,
+template <class T, class... T2, size_t... I>
+void print_tally_header(std::ostream &os, const std::vector<T> &s, const std::tuple<T2...> &h,
                  std::index_sequence<I...>) {
-  ((std::get<I>(s).size() ? os << std::get<I>(s).size() << " " << std::get<I>(h) << " | "
+  (( (I < s.size() ) ? os << s[I] << " " << std::get<I>(h) << " | "
                           : os << ""),
    ...);
 }
 
-template <class... T, class... T2>
-void print_tally_header(std::ostream &os, const std::string &header, const std::tuple<T...> &s,
+template <class T, class... T2>
+void print_tally_header(std::ostream &os, const std::string &header, const std::vector<T> &s,
                  const std::tuple<T2...> &h) {
   os << header << " | ";
   constexpr auto seq = std::make_index_sequence<sizeof...(T2)>();
