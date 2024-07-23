@@ -236,7 +236,7 @@ def get_and_add_components(graph, names, l_inputs)
       graph.add(comp, 'timeline',
                 params: { 'output_path' => $options[:'output-path'] })
     when 'filter.utils.muxer'
-      graph.add(comp, name) if need_muxer(ARGV.first)
+      graph.add(comp, name)
     when 'filter.btx_aggreg.aggreg'
       graph.add(comp, 'aggreg',
                 params: { 'discard_metadata' => $options[:'discard-metadata'] })
@@ -276,23 +276,28 @@ def modify_metadata(command, trace)
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
 end
 
-def bt_graphs
-  @bt_graphs ||= begin
-    source_comp = if $options[:live]
-                    'source.ctf.lttng_live'
-                  else
-                    'source.ctf.fs'
-                  end
+def bt_graphs(inputs)
+  @bt_graphs ||= {}
+  @bt_graphs[inputs] ||= begin
+    g_comps = [if $options[:live]
+                 'source.ctf.lttng_live'
+               else
+                 'source.ctf.fs'
+               end]
 
-    { 'tally' => ['filter.utils.muxer', 'filter.intervals.interval',
+    if $options[:muxer] || inputs.any? { |trace| thapi_metadata(trace)[:type] == 'lttng' }
+      g_comps << 'filter.utils.muxer'
+    end
+
+    { 'tally' => ['filter.intervals.interval',
                   'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
-      'timeline' => ['filter.utils.muxer', 'filter.intervals.interval',
+      'timeline' => ['filter.intervals.interval',
                      'sink.btx_timeline.timeline'],
-      'trace' => ['filter.utils.muxer', 'sink.text.rubypretty'],
-      'to_interval' => ['filter.utils.muxer', 'filter.intervals.interval',
+      'trace' => ['sink.text.rubypretty'],
+      'to_interval' => ['filter.intervals.interval',
                         'filter.btx_stripper.stripper', 'sink.ctf.fs'],
-      'to_aggreg' => ['filter.utils.muxer', 'filter.intervals.interval', 'filter.btx_aggreg.aggreg',
-                      'filter.btx_stripper.stripper', 'sink.ctf.fs'] }.transform_values { |l| [source_comp] + l }
+      'to_aggreg' => ['filter.intervals.interval', 'filter.btx_aggreg.aggreg',
+                      'filter.btx_stripper.stripper', 'sink.ctf.fs'] }.transform_values { |l| g_comps + l }
   end
 end
 
@@ -339,10 +344,6 @@ def raise_if_command_invalid(command, trace)
       raise('THAPI Timeline: Cannot show the timeline of an aggregated trace')
     end
   end
-end
-
-def need_muxer(trace)
-  $options[:muxer] || thapi_metadata(trace)[:type] == 'lttng'
 end
 
 class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
@@ -448,4 +449,4 @@ $options[:'backend-names'] = $options[:backends].map { |name_level| name_level.s
 #
 # Setup Logger
 LOGGER = Logger.new($stdout)
-create_and_run_graph(command, bt_graphs[command], ARGV)
+create_and_run_graph(command, bt_graphs(ARGV)[command], ARGV)
