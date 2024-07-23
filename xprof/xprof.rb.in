@@ -689,7 +689,6 @@ def trace_and_on_node_processing(usr_argv)
        lm_setup_lttng(backends)
        lm_babeltrace(backends) if OPTIONS[:archive]
     end
-
     # Other local node cannot start before lttng and the daemon
     syncd.local_barrier('waiting_for_lttng_setup')
     # Launch User Command
