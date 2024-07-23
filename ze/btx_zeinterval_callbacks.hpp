@@ -23,6 +23,7 @@ typedef std::tuple<hostname_t, process_id_t, ze_module_handle_t> hp_module_t;
 typedef std::map<uintptr_t, uintptr_t> memory_interval_t;
 typedef std::tuple<uint64_t, uint64_t> clock_lttng_device_t;
 
+typedef std::tuple<zes_mem_bandwidth_t, uint64_t> memModule_timestamp_t;
 typedef std::tuple<zes_fabric_port_throughput_t, uint64_t> fabricPort_timestamp_t;
 typedef std::tuple<zes_power_energy_counter_t, uint64_t> energy_timestamp_t;
 typedef std::tuple<zes_engine_stats_t, uint64_t> engines_timestamp_t;
@@ -34,10 +35,12 @@ typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdd_
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdsd_t;
 
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_fabric_port_handle_t> hpdf_t;
+typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_mem_handle_t> hpdm_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_pwr_handle_t> hpdpwr_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_freq_handle_t> hpdfreq_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_engine_handle_t> hpdeng_t;
 
+typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_mem_handle_t, uint32_t> hpdmsd_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_fabric_port_handle_t, uint32_t> hpdfsd_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_engine_handle_t, uint32_t> hpdesd_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_pwr_handle_t, uint32_t> hpdpwrd_t;
@@ -103,6 +106,7 @@ struct data_s {
   std::unordered_map<hpd_t, deviceProperty_id_t> sampling_device_property;
   std::unordered_map<hpd_t, ze_device_properties_t> sampling_sub_device_property;
   std::unordered_map<hpdf_t, zes_fabric_port_properties_t> fabricPort_property;
+  std::unordered_map<hpdm_t, zes_mem_properties_t> memModule_property;
   std::unordered_map<hpdpwr_t, zes_power_properties_t> power_property;
   std::unordered_map<hpdfreq_t, zes_freq_properties_t> frequency_property;
   std::unordered_map<hpdeng_t, zes_engine_properties_t> engine_property;
@@ -110,5 +114,6 @@ struct data_s {
   std::unordered_map<hpdpwrd_t, energy_timestamp_t> device_energy_ref;
   std::unordered_map<hpdesd_t, engines_timestamp_t> device_engines_ref;
   std::unordered_map<hpdfsd_t, fabricPort_timestamp_t> device_fabricPort_ref;
+  std::unordered_map<hpdmsd_t, memModule_timestamp_t> device_memModule_ref;
 };
 typedef struct data_s data_t;

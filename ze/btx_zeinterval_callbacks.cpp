@@ -797,7 +797,7 @@ static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *us
     auto subDevice = it0->second.subdeviceId;
     auto fabricId = it0->second.portId.fabricId;
     auto remotePortId = pFabricPortState_val->remotePortId.fabricId;
-    // Current Speed 
+    // Current Speed (not used currently in the timeline)
     double rxSpeed = static_cast<double>(pFabricPortState_val->rxSpeed.bitRate * pFabricPortState_val->rxSpeed.width)/8.0;
     double txSpeed = static_cast<double>(pFabricPortState_val->txSpeed.bitRate * pFabricPortState_val->txSpeed.width)/8.0;
    
@@ -832,6 +832,47 @@ static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *us
     }
 }
 
+static void lttng_ust_ze_sampling_memStats_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                                    const char *hostname, int64_t vpid,
+                                                    uint64_t vtid, ze_device_handle_t hDevice,
+                                                    zes_mem_handle_t hMemModule,
+                                                    size_t _pMemState_val_length,
+                                                    zes_mem_state_t *pMemState_val,
+                                                    size_t _pMemBandwidth_val_length,
+                                                    zes_mem_bandwidth_t *pMemBandwidth_val) {
+  auto *data = static_cast<data_t *>(usr_data);
+  const auto it0 = data->memModule_property.find({hostname, vpid, hDevice, hMemModule});
+  if (it0 != data->memModule_property.cend()) {
+    // Get memModule properties: subdevice ID ...
+    auto subDevice = it0->second.subdeviceId;
+    // Insert the current bandwidth data with timestamp
+    auto [it, inserted] = data->device_memModule_ref.insert(
+            {{hostname, vpid, hDevice, hMemModule, subDevice}, {*pMemBandwidth_val, ts}});
+    if (inserted)
+      return;
+
+    // Previous bandwidth data
+    auto &[prev_bandwidth, prev_ts] = it->second;
+
+    if (pMemBandwidth_val->timestamp == prev_bandwidth.timestamp)
+      return;
+    // Calculate the RD and WT bandwidth
+    //https://spec.oneapi.io/level-zero/latest/sysman/api.html#_CPPv419zes_mem_bandwidth_t
+    double allocation = static_cast<double>(pMemState_val->size - pMemState_val->free) * 100.0 / static_cast<double>(pMemState_val->size);
+    double time_diff = static_cast<double>(pMemBandwidth_val->timestamp - prev_bandwidth.timestamp);
+    double rdBandwidth = static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+    double wtBandwidth = static_cast<double>(pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter) * 1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+    DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
+    btx_push_message_lttng_memModule(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
+                                      uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hMemModule, subDevice,
+                                      rdBandwidth, wtBandwidth, allocation);
+    // Update the stored values
+    it->second = {*pMemBandwidth_val, ts};
+    } else {
+      std::cerr << "Memory property not found!" << std::endl;
+    }
+}
+
 static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                        const char *hostname, int64_t vpid,
                                                        uint64_t vtid, ze_device_handle_t hDevice,
@@ -842,7 +883,7 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
   const auto it0 = data->engine_property.find({hostname, vpid, hDevice, hEngine});
   if (it0 != data->engine_property.cend()) {
     const auto& engineProps = it0->second;
-    uint32_t subDevice = engineProps.subdeviceId; // (engineProps.onSubdevice) ? engineProps.subdeviceId : 0;
+    uint32_t subDevice = engineProps.subdeviceId;
 
     if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL || engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
       auto [it, inserted] = data->device_engines_ref.insert(
@@ -930,6 +971,16 @@ static void lttng_ust_ze_sampling_fabricPortProperties_callback(void *btx_handle
   auto *data = static_cast<data_t *>(usr_data);
   data->fabricPort_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_fabric_port_handle_t)hFabricPort}] = *pFabricPortProperties_val;
 } 
+
+static void lttng_ust_ze_sampling_memoryProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                                                const char *hostname, int64_t vpid, uint64_t vtid,
+                                                                ze_device_handle_t hDevice, zes_mem_handle_t hMemModule,
+                                                                size_t _pMemModuleProperties_val_length,
+                                                                zes_mem_properties_t *pMemModuleProperties_val) {
+  auto *data = static_cast<data_t *>(usr_data);
+  data->memModule_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_mem_handle_t)hMemModule}] = *pMemModuleProperties_val;
+}
+
 
 static void lttng_ust_ze_sampling_powerProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                            const char *hostname, int64_t vpid, uint64_t vtid,
@@ -1070,8 +1121,12 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &lttng_ust_ze_sampling_engineProperties_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_freqProperties(
       btx_handle, &lttng_ust_ze_sampling_freqProperties_callback);
+  btx_register_callbacks_lttng_ust_ze_sampling_memoryProperties(
+      btx_handle, &lttng_ust_ze_sampling_memoryProperties_callback);
 
   // Telemetries
+  btx_register_callbacks_lttng_ust_ze_sampling_memStats(
+      btx_handle, &lttng_ust_ze_sampling_memStats_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_fabricPort(
       btx_handle, &lttng_ust_ze_sampling_fabricPort_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(
