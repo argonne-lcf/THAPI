@@ -1,6 +1,5 @@
 AllCops:
   NewCops: enable
-  TargetRubyVersion: 3.X
 
 Style/TrailingCommaInArrayLiteral:
   EnforcedStyleForMultiline: comma
