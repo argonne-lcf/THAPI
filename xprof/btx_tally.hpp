@@ -139,33 +139,38 @@ auto aggregate_by_name(std::unordered_map<std::tuple<T...>, TC> &m) {
 /*
 EXAMPLE:
   input   umap{
-                ("iris01",232,789,"getDeviceInfo") : CoreTime,
-                ("iris02",123,890,"getDeviceInfo") : CoreTime,
-                ("iris02",890,890,"getDeviceInfo") : CoreTime
+                ("iris01",0,0,"getDeviceInfo") : CoreTime,
+                ("iris01",0,1,"getDeviceInfo") : CoreTime,
+                ("iris01",1,0,"getDeviceInfo") : CoreTime
           }
-  output  tuple{ set {"iris01","iris02"}, set{232,123,890}, set{789,890}, set{"getDeviceInfo"} }
+  output  tuple{ set {1, 2, 3, 3 }
 */
-template <class... K,  size_t... I>
-void add_to_set(std::tuple<std::set<K>...> &s,
-                std::tuple<K...> t, std::index_sequence<I...>) {
-  (std::get<I>(s).insert(std::get<I>(t)), ...);
+
+// Base case
+inline void get_uniq_tally2(std::set<std::tuple<>>, std::vector<size_t>&) {}
+
+template <class... T>
+void get_uniq_tally2(std::set<std::tuple<T...>> &tp, std::vector<size_t> &r) {
+        r.push_back(tp.size());
+        typedef decltype(make_tuple_without_last(std::declval<std::tuple<T...>>())) Minusone;
+        std::set<Minusone> reduced;
+        for (auto &m: tp)
+                reduced.insert(make_tuple_without_last(m));
+        get_uniq_tally2(reduced, r);
 }
 
-template<typename... K, typename V>
-auto get_uniq_tally(std::unordered_map<std::tuple<K...>, V> &input) {
-  auto tuple_set = std::make_tuple(std::set<K>{}...);
-  constexpr auto s = std::make_index_sequence<sizeof...(K)>();
+template <class... T, class K>
+auto get_uniq_tally(std::unordered_map<std::tuple<T...>,K> &m) {
 
-  for (auto const &m : input)
-    add_to_set(tuple_set, m.first, s);
-  //return tuple_set;
+	std::set<std::tuple<T...>> s;
+	for (auto &[k,v] : m) 
+		s.insert(k);
 
-  std::vector<size_t> a;
-  auto N = (sizeof...(K));
-  for (unsigned long i=0; i < N; i++) {
-	  a.push_back(10);
-  }
-  return a;
+        std::vector<size_t> c{};
+        get_uniq_tally2(s,c);
+
+	std::reverse(c.begin(),c.end());
+        return c;
 }
 
 template <typename TC, typename = std::enable_if_t<std::is_base_of_v<TallyCoreBase, TC>>>
