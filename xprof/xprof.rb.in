@@ -603,7 +603,7 @@ def on_node_processing_babeltrace(backends)
     LOGGER.debug(cmd)
     pid_bt = spawn(cmd)
 
-    cmd = "laurence.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
+    cmd = "dirwatch.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
     LOGGER.debug(cmd)
     pid_laurence = spawn(cmd)
 
