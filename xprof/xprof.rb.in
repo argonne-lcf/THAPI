@@ -13,6 +13,11 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
+LTTNG_ARCHIVE_SIZE = '50M'
+LTTNG_ARCHIVE_TIMER = '60s'
+LTTNG_DIRWATCH_SIZE = '500' # In MiB
+LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
+
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
@@ -561,7 +566,9 @@ def lm_setup_lttng(backends)
 
   end
 
-  exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=50M --timer=60s") if OPTIONS[:archive]
+  if OPTIONS[:archive]
+    exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=#{LTTNG_ARCHIVE_SIZE} --timer=#{LTTNG_ARCHIVE_TIMER}")
+  end
   exec("lttng start #{lttng_session_uuid}")
 end
 
@@ -607,11 +614,11 @@ def lm_babeltrace(backends)
     LOGGER.debug(cmd)
     pid_bt = spawn(cmd)
 
-    cmd = "laurence.py --log-level=CRITICAL #{lttng_session_uuid} 500"
+    cmd = "laurence.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
     LOGGER.debug(cmd)
     pid_laurence = spawn(cmd)
 
-    sleep(1) until File.exist?(read_file)
+    sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY) until File.exist?(read_file)
     [pid_bt, pid_laurence]
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
@@ -664,7 +671,6 @@ def gm_rename_folder
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
   thapi_trace_dir_root
 end
-
 
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
