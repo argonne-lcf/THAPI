@@ -204,7 +204,7 @@ def get_and_add_components(graph, names, l_inputs)
     when 'source.ctf.lttng_archive'
       graph.add(comp, 'source_archive',
                 params: { 'session-name' => $options[:archive],
-                          'session-found-file-path' => $options[:'session-found-file-path'] })
+                          'session-found-file-path' => $options[:'archive-session-found-file-path'] })
     when 'source.ctf.fs'
       s = Find.find(*l_inputs)
               .reject { |path| FileTest.directory?(path) }
@@ -362,7 +362,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
         default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
     on('--debug', default: false)
     on('--archive SESSION-NAME')
-    on('--session-found-file-path PATH')
+    on('--archive-session-found-file-path PATH')
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do
       puts File.read(File.join(DATADIR, 'version'))

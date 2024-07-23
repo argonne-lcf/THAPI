@@ -609,7 +609,7 @@ def lm_babeltrace(backends)
 
   if OPTIONS[:archive]
     read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
-    opts << "--archive #{lttng_session_uuid} --session-found-file-path=#{read_file}"
+    opts << "--archive #{lttng_session_uuid} --archive-session-found-file-path=#{read_file}"
     cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}"
     LOGGER.debug(cmd)
     pid_bt = spawn(cmd)
