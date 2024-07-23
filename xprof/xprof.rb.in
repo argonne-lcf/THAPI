@@ -658,7 +658,6 @@ def trace_and_on_node_processing(usr_argv)
     # All ranks need to set the LLTTNG_HOME env
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
-    LOGGER.debug("LTTNG_HOME = #{ENV.fetch('LTTNG_HOME', nil)}")
     # Only local master spawn LTTNG daemon and start session
     setup_lttng(backends) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
