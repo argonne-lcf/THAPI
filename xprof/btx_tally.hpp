@@ -143,7 +143,7 @@ EXAMPLE:
                 ("iris01",0,1,"getDeviceInfo") : CoreTime,
                 ("iris01",1,0,"getDeviceInfo") : CoreTime
           }
-  output  vector<size_t>{1, 2, 3, 3 }
+  output  vector<size_t>{1, 2, 3}
 */
 
 // Base case to stop recursion
@@ -159,10 +159,11 @@ template <class... T> void _get_uniq_tally(std::set<std::tuple<T...>> &s, std::v
 }
 // Exposed Class
 template <class... T, class K> auto get_uniq_tally(std::unordered_map<std::tuple<T...>, K> &m) {
-  // Map to Set
-  std::set<std::tuple<T...>> s;
+  // Map to Set. Can remove the last elements who is the `api name`
+  typedef decltype(make_tuple_without_last(std::declval<std::tuple<T...>>())) Minusone;
+  std::set<Minusone> s;
   for (auto &[k, v] : m)
-    s.insert(k);
+    s.insert(make_tuple_without_last(k));
   // Get the Tally
   std::vector<size_t> v{};
   _get_uniq_tally(s, v);
