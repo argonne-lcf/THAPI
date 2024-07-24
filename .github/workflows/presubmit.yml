@@ -139,17 +139,9 @@ jobs:
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        thapi_sync_daemon: ['fs', 'mpi']
-        bats_file: ['mpi_sync_daemon', 'mpi_iprof']
-        include:
-          - bats_file: 'iprof'
-            thapi_sync_daemon: 'fs' # Need to force, if not `THAPI_SYNC_DAEMON` will be set to empty list
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ./build/ici/bin
-      THAPI_SYNC_DAEMON: ${{ matrix.thapi_sync_daemon }}
     steps:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
@@ -171,9 +163,9 @@ jobs:
         run: |
           echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-      - name: integration test ${{ matrix.bats_file }}
+      - name: integration test
         run: |
-          bats integration_tests/${{ matrix.bats_file }}.bats
+          bats integration_tests/
 
   build-in-tree:
     needs: [babeltrace2, pre_job]
