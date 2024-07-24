@@ -37,9 +37,10 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
   /*
    * check we got thread support level foo library needs
    */
+/*
   CHECK_MPI(MPI_Session_get_info(*lib_shandle, &tinfo));
   {
-    char out_value[100]; /* large enough */
+    char out_value[100]; //
     int valuelen = sizeof(out_value);
     int flag;
     CHECK_MPI(MPI_Info_get_string(tinfo, mt_key, &valuelen, out_value, &flag));
@@ -49,6 +50,7 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get MPI_THREAD_SINGLE, got %s\n",
               out_value);
   }
+*/
   /*
    * create a group from the WORLD process set
    */
