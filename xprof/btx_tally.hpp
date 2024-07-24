@@ -147,7 +147,7 @@ EXAMPLE:
 */
 
 // Base case to stop recursion
-inline void _get_uniq_tally(std::set<std::tuple<>>, std::vector<size_t> &) {}
+inline void _get_uniq_tally(std::set<std::tuple<>> &, std::vector<size_t> &) {}
 // General recursive case
 template <class... T> void _get_uniq_tally(std::set<std::tuple<T...>> &s, std::vector<size_t> &v) {
   v.push_back(s.size());
@@ -157,7 +157,7 @@ template <class... T> void _get_uniq_tally(std::set<std::tuple<T...>> &s, std::v
     s_reduced.insert(make_tuple_without_last(t));
   _get_uniq_tally(s_reduced, v);
 }
-// Exposed Class
+// Exposed function
 template <class... T, class K> auto get_uniq_tally(std::unordered_map<std::tuple<T...>, K> &m) {
   // Map to Set. Can remove the last elements who is the `api name`
   typedef decltype(make_tuple_without_last(std::declval<std::tuple<T...>>())) Minusone;
