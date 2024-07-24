@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-# Usage: IPROF_BIN_DIR=/path/to/iprof/bin THAPI_SYNC_DAEMON=mpi|fs TEST_EXE=clinfo test.sh
 
 # Get base real-time signal number
 SIGRTMIN=$(kill -l SIGRTMIN)
@@ -50,7 +49,7 @@ send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 
 # Run test program
-$TEST_EXE
+"$@"
 
 # Final synchronization after mpi_hello_world execution
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
