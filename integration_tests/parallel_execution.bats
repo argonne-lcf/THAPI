@@ -26,12 +26,7 @@ teardown_file() {
    THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0 $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
 }
 
-@test "iprof_mpi_mpi_app" {
-   mpicc ~/THAPI/integration_tests/
-   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0 $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
-}
-
 @test "sync_daemon_mpi_launching_mpi_app" {
-   mpicc ~/THAPI/integration_tests/mpi_helloworld.c -o mpi_helloworld
+   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
    THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0 timeout 20s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh -- ./mpi_helloworld
 }
