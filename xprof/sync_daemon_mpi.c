@@ -143,12 +143,16 @@ int main(int argc, char **argv) {
   ret = signal_loop(parent_pid, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
 
 fn_exit:
+  printf("MPI_Comm_free: MPI_COMM_NODE\n");
   if (MPI_COMM_NODE != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_NODE);
+  printf("MPI_Comm_free: MPI_COMM_WORLD_THAPI\n");
   if (MPI_COMM_WORLD_THAPI != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_WORLD_THAPI);
+  printf("MPI_Session_finalize\n");
   if (lib_shandle != MPI_SESSION_NULL)
     MPI_Session_finalize(&lib_shandle);
+  printf("Signal RT_SIGNAL_READY \n");
   if (parent_pid != 0)
     kill(parent_pid, RT_SIGNAL_READY);
   return ret;
