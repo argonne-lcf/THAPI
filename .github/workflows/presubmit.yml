@@ -97,7 +97,7 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
-  install_with_mpi:
+  install-with-mpi:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
@@ -134,7 +134,7 @@ jobs:
           name: thapi-bin
           path: thapi.tar
 
-  Integration-tests:
+  integration-tests:
     needs: [babeltrace2, pre_job, install_with_mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
@@ -163,7 +163,7 @@ jobs:
         run: |
           echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-      - name: integration test
+      - name: Integration test
         run: |
           bats integration_tests/
 
@@ -266,17 +266,17 @@ jobs:
         working-directory: build
       - run: make dist
         working-directory: build
-      - name: extract
+      - name: Extract
         run: tar -xzvf thapi-*
         working-directory: build
-      - name: configure
+      - name: Configure
         run: |
           cd `find . -type d -name "thapi-*"`
           mkdir -p build
           cd build
           ../configure
         working-directory: build
-      - name: make -j check
+      - name: Check
         run: |
           cd `find . -type d -name "thapi-*"`
           cd build
