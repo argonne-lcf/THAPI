@@ -134,7 +134,7 @@ jobs:
           name: thapi-bin
           path: thapi.tar
 
-  integration-tests:
+  Integration-tests:
     needs: [babeltrace2, pre_job, install_with_mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
