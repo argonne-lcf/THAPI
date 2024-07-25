@@ -45,9 +45,9 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
     CHECK_MPI(MPI_Info_get(tinfo, mt_key, &valuelen, out_value, &flag));
     if (flag == 0)
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Could not find key %s\n", mt_key);
-    if (strcmp(out_value, mt_value))
-      fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get MPI_THREAD_SINGLE, got %s\n",
-              out_value);
+    else if (strcmp(out_value, mt_value))
+      fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get %s, got %s\n",
+              mt_value, out_value);
   }
   /*
    * create a group from the WORLD process set
