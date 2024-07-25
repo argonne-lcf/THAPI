@@ -37,22 +37,18 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
   /*
    * check we got thread support level foo library needs
    */
-
-  /* Intel MPI doesn't support MPI_Info_get_string
   CHECK_MPI(MPI_Session_get_info(*lib_shandle, &tinfo));
   {
-    char out_value[100];
+    char out_value[100] = {0};
     int valuelen = sizeof(out_value);
     int flag;
-    CHECK_MPI(MPI_Info_get_string(tinfo, mt_key, &valuelen, out_value, &flag));
+    CHECK_MPI(MPI_Info_get(tinfo, mt_key, &valuelen, out_value, &flag));
     if (flag == 0)
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Could not find key %s\n", mt_key);
     if (strcmp(out_value, mt_value))
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get MPI_THREAD_SINGLE, got %s\n",
               out_value);
   }
-  */
-
   /*
    * create a group from the WORLD process set
    */
