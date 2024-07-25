@@ -42,7 +42,7 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
     char out_value[100] = {0};
     int valuelen = sizeof(out_value);
     int flag;
-    CHECK_MPI(MPI_Info_get(tinfo, mt_key, &valuelen, out_value, &flag));
+    CHECK_MPI(MPI_Info_get(tinfo, mt_key, valuelen, out_value, &flag));
     if (flag == 0)
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Could not find key %s\n", mt_key);
     else if (strcmp(out_value, mt_value))
