@@ -13,6 +13,11 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
+LTTNG_ARCHIVE_SIZE = '50M'
+LTTNG_ARCHIVE_TIMER = '60s'
+LTTNG_DIRWATCH_SIZE = '500' # In MiB
+LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
+
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
@@ -524,8 +529,8 @@ def setup_lttng(backends)
   FileUtils.mkdir_p(lttng_home_dir)
   FileUtils.mkdir_p(lttng_trace_dir_tmp)
   exec('lttng-sessiond --daemonize')
-  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
+  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
   File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
 
   channel_name = 'blocking-channel'
@@ -550,10 +555,15 @@ def setup_lttng(backends)
     end
 
   end
+
+  if OPTIONS[:archive]
+    exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=#{LTTNG_ARCHIVE_SIZE} --timer=#{LTTNG_ARCHIVE_TIMER}")
+  end
   exec("lttng start #{lttng_session_uuid}")
 end
 
 def lttng_teardown_session
+  exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
   exec("lttng destroy #{lttng_session_uuid}")
 end
 
@@ -575,8 +585,6 @@ end
 #   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
 #
 
-# TODO: Use babeltrace_thapi as a LIB not a binary
-
 def on_node_processing_babeltrace(backends)
   raise unless mpi_local_master?
   # No need to run babeltrace_thapi
@@ -587,7 +595,23 @@ def on_node_processing_babeltrace(backends)
   opts << "--output #{thapi_trace_dir_tmp}"
   opts << "--backends #{backends.join(',')}"
   opts << '--no-discard-metadata' if type == 'aggreg' && OPTIONS.include?(:'kernel-verbose')
-  exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+
+  if OPTIONS[:archive]
+    read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
+    opts << "--archive #{lttng_session_uuid} --archive-session-found-file-path=#{read_file}"
+    cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}"
+    LOGGER.debug(cmd)
+    pid_bt = spawn(cmd)
+
+    cmd = "dirwatch.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
+    LOGGER.debug(cmd)
+    pid_laurence = spawn(cmd)
+
+    sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY) until File.exist?(read_file)
+    [pid_bt, pid_laurence]
+  else
+    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+  end
 end
 
 # NOTE: I don't understand `mv`
@@ -595,7 +619,6 @@ end
 #       FileUtils.rename(a,b) will move a as b, but may
 #         raise Invalid cross-device error.
 #       So we use `exec(mv -T a b)`, this have the added benefice of logging
-#
 def on_node_processing_sync_and_rename(syncd)
   raise unless mpi_local_master?
 
@@ -608,7 +631,7 @@ def on_node_processing_sync_and_rename(syncd)
     FileUtils.rm_f(lttng_trace_dir_tmp)
   end
 
-  # Global Barrier, ensure that all on_node_processessing finished
+  # Global Barrier, ensure that all on_node_processing finished
   syncd.global_barrier
 
   # Replace mpi_job_id with a better name and update medatada,
@@ -638,9 +661,10 @@ def trace_and_on_node_processing(usr_argv)
     # Only local master spawn LTTNG daemon and start session
     setup_lttng(backends) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
+
+    pids = on_node_processing_babeltrace(backends) if OPTIONS[:archive]
     # Launch User Command
     launch_usr_bin(h, usr_argv)
-
     # We need to be sure that all the local ranks are finished
     # before the local master stops the lttng session
     syncd.local_barrier('waiting_for_application_ending')
@@ -648,12 +672,17 @@ def trace_and_on_node_processing(usr_argv)
 
     # Stop Lttng session
     lttng_teardown_session
-    # Lttng session is finished,
+    if OPTIONS[:archive]
+      LOGGER.debug("Waiting for babeltrace_thapi and laurence #{pids} to finish")
+      pids.each { |pid| Process.wait(pid) }
+    end
+
+    # Lttng session, and babeltrace2 finished,
     # we can kill the session daemon
     lttng_kill_sessiond
 
     # Preprocess trace
-    on_node_processing_babeltrace(backends)
+    on_node_processing_babeltrace(backends) unless OPTIONS[:archive]
     on_node_processing_sync_and_rename(syncd)
   end
 end
@@ -749,6 +778,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
             default: ['omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+  parser.on('--[no-]archive', 'Trigger for archive support', default: false)
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
