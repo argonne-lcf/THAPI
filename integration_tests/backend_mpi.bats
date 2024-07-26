@@ -8,7 +8,7 @@ setup_file() {
 
 @test "sync_daemon_mpi_launching_mpi_app" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   $MPIRUN -n 1 $iprof --backend mpi --analysis-output out.txt -- ./mpi_helloworld
+   $MPIRUN -n 1 $iprof --backends mpi --analysis-output out.txt -- ./mpi_helloworld
    grep MPI_Init out.txt
    grep MPI_Finalize out.txt
 }
