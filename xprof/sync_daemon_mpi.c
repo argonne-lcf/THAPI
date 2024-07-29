@@ -102,6 +102,7 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
   while (true) {
     int signum;
     sigwait(&signal_set, &signum);
+    fprintf(stderr,"Received Signal %d \n",signum);
     if (signum == RT_SIGNAL_FINISH) {
       break;
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {

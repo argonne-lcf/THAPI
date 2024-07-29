@@ -55,9 +55,11 @@ echo "Send Local and Global Barrier signal"
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 
 # Only one rank should signal global barrier
-env
+
+# Racy as if RANK != 0 send message, will be blocked on SEND
 if [[ $(ps -aux | grep "/bin/bash $0" | head -n 1 | awk '{print $2}') -eq $$ ]]; then
     send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
+    sleep 10
 fi
 
 echo "Send Termination signal"
