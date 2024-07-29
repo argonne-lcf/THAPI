@@ -153,8 +153,8 @@ fn_exit:
   if (MPI_COMM_WORLD_THAPI != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_WORLD_THAPI);
   fprintf(stderr,"MPI_Session_finalize\n");
-  if (lib_shandle != MPI_SESSION_NULL)
-    MPI_Session_finalize(&lib_shandle);
+  //if (lib_shandle != MPI_SESSION_NULL)
+  //  MPI_Session_finalize(&lib_shandle);
   fprintf(stderr,"RT_SIGNAL_READY\n");
   if (parent_pid != 0) {
     kill(parent_pid, RT_SIGNAL_READY);
