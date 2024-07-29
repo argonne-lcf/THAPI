@@ -66,3 +66,4 @@ echo "Send Termination signal"
 send_signal_blocking $RT_SIGNAL_FINISH
 echo "Wait for daemon to quit"
 wait $DAEMON_PID
+exit(1)
