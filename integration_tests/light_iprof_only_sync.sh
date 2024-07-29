@@ -59,11 +59,11 @@ send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 # Racy as if RANK != 0 send message, will be blocked on SEND
 if [[ $(ps -aux | grep "/bin/bash $0" | head -n 1 | awk '{print $2}') -eq $$ ]]; then
     send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
-    sleep 10
 fi
 
 echo "Send Termination signal"
 send_signal_blocking $RT_SIGNAL_FINISH
 echo "Wait for daemon to quit"
 wait $DAEMON_PID
-exit(1)
+sleep 10
+exit 1
