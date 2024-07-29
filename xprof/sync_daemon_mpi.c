@@ -121,6 +121,7 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
     } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
       MPI_Barrier(MPI_COMM_NODE);
     }
+    fprintf(stderr,"Ready Sent\n");
     kill(parent_pid, RT_SIGNAL_READY);
   }
   return 0;
@@ -142,15 +143,21 @@ int main(int argc, char **argv) {
 
   parent_pid = atoi(argv[1]);
   ret = signal_loop(parent_pid, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
+  fprintf(stderr,"Exited Processing Loop\n");
 
 fn_exit:
+  fprintf(stderr,"free MPI_COMM_NODE\n");
   if (MPI_COMM_NODE != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_NODE);
+  fprintf(stderr,"free MPI_COMM_WORLD_THAPI\n");
   if (MPI_COMM_WORLD_THAPI != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_WORLD_THAPI);
+  fprintf(stderr,"MPI_Session_finalize\n");
   if (lib_shandle != MPI_SESSION_NULL)
     MPI_Session_finalize(&lib_shandle);
-  if (parent_pid != 0)
+  fprintf(stderr,"RT_SIGNAL_READY\n");
+  if (parent_pid != 0) {
     kill(parent_pid, RT_SIGNAL_READY);
+  }
   return ret;
 }
