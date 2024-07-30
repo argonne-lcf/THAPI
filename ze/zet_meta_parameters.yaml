@@ -97,7 +97,3 @@ meta_parameters:
   zetTracerExpCreate:
     - [ InScalar, desc ]
     - [ OutScalar, phTracer ]
-  zetTracerExpSetPrologues:
-    - [ InScalar, pCoreCbs ]
-  zetTracerExpSetEpilogues:
-    - [ InScalar, pCoreCbs ]
