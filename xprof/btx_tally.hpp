@@ -159,11 +159,11 @@ template <class... T> void _get_uniq_tally(std::set<std::tuple<T...>> &s, std::v
 }
 // Exposed function
 template <class... T, class K> auto get_uniq_tally(std::unordered_map<std::tuple<T...>, K> &m) {
-  // Map to Set. Can remove the last elements who is the `api name`
+  // Map to Set. Can remove the last element who is the `api name`
   typedef decltype(make_tuple_without_last(std::declval<std::tuple<T...>>())) Minusone;
   std::set<Minusone> s;
-  for (auto &[k, v] : m)
-    s.insert(make_tuple_without_last(k));
+  for (auto &kv : m)
+    s.insert(make_tuple_without_last(kv.first));
   // Get the Tally
   std::vector<size_t> v{};
   _get_uniq_tally(s, v);
