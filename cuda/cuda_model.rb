@@ -299,7 +299,9 @@ register_proc_callbacks = lambda { |method|
   str = <<EOF
   const int pt_condition = #{pt_condition};
   const int normal_condition = #{normal_condition};
-  if (_retval == CUDA_SUCCESS && pfn && *pfn) {
+  if (_retval == CUDA_SUCCESS && cudaVersion > CUDA_VERSION) {
+    fprintf(stderr, "THAPI: CUDA version %d is unsupported, could not wrap %s symbol\\n", cudaVersion, symbol);
+  } else if (_retval == CUDA_SUCCESS && pfn && *pfn) {
 EOF
   str << $cuda_api_versions_yaml.map { |name, suffixes|
     suffixes.map { |suffix, versions|
