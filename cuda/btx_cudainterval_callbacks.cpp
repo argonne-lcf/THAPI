@@ -129,6 +129,52 @@ static void entries_traffic_v1_callback(void *btx_handle, void *usr_data,
                               hostname, vpid, vtid, static_cast<size_t>(size));
 }
 
+static void entries_traffic_2d_callback(void *btx_handle, void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname, int64_t vpid,
+                                        uint64_t vtid, CUDA_MEMCPY2D* pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
+                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height));
+}
+
+static void entries_traffic_2d_v1_callback(void *btx_handle, void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname, int64_t vpid,
+                                        uint64_t vtid, CUDA_MEMCPY2D_v1* pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
+                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height));
+}
+
+static void entries_traffic_3d_callback(void *btx_handle, void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname, int64_t vpid,
+                                        uint64_t vtid, CUDA_MEMCPY3D* pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
+                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height*pCopy_val->Depth));
+}
+
+static void entries_traffic_3d_v1_callback(void *btx_handle, void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname, int64_t vpid,
+                                        uint64_t vtid, CUDA_MEMCPY3D_v1* pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
+                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height*pCopy_val->Depth));
+}
+
+static void entries_traffic_3d_peer_callback(void *btx_handle, void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname, int64_t vpid,
+                                        uint64_t vtid, CUDA_MEMCPY3D_PEER* pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
+                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height*pCopy_val->Depth));
+}
+
+
 static void exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
                                    const char *event_class_name,
                                    const char *hostname, int64_t vpid,
@@ -344,6 +390,11 @@ void btx_register_usr_callbacks(void *btx_handle) {
   // Traffic
   REGISTER_ASSOCIATED_CALLBACK(entries_traffic_v1);
   REGISTER_ASSOCIATED_CALLBACK(entries_traffic_v2);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_2d);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_2d_v1);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_3d);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_3d_v1);
+  REGISTER_ASSOCIATED_CALLBACK(entries_traffic_3d_peer);
   REGISTER_ASSOCIATED_CALLBACK(exits_traffic);
 
   // device profiling events
