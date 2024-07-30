@@ -2,10 +2,6 @@
 meta_parameters:
   zelTracerCreate:
     - [ InScalar, desc ]
-  zelTracerSetPrologues:
-    - [ InScalar, pCoreCbs ]
-  zelTracerSetEpilogues:
-    - [ InScalar, pCoreCbs ]
   zelLoaderGetVersions:
     - [ InOutScalar, num_elems ]
     - [ OutArray, versions, num_elems ]

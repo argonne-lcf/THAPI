@@ -49,7 +49,7 @@ MPI_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(MPI_EXTRACTED)
 
-mpi_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_MODEL)
+mpi_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \

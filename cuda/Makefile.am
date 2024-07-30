@@ -156,7 +156,7 @@ CUDART_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(srcdir)/cudart.h.include
 
-cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL)
+cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \
