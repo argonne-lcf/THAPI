@@ -199,6 +199,7 @@ install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
 ZE_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_ze_library_base.rb \
 	$(srcdir)/gen_probe_base.rb

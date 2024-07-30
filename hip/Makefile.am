@@ -222,7 +222,7 @@ HIP_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	hip.h.include
 
-hip_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL)
+hip_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \

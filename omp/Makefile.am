@@ -57,6 +57,7 @@ BTX_OMP_GENERATED = \
 	btx_filter_omp/btx_main.c
 
 OMP_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_omp_library_base.rb \
 	$(srcdir)/gen_probe_base.rb

@@ -13,6 +13,8 @@ def get_extra_fields_types_name(event)
   }.flatten(1)
 end
 
+$types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
+
 def gen_bt_field_model(lttng_name, type, name, lttng)
   field = { name: name, cast_type: type}
   case lttng_name
@@ -42,16 +44,15 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:length] = lttng.length
   when 'ctf_string'
     field[:class] = 'string'
-  when 'ctf_sequence_text'
+  when 'ctf_sequence_text', 'ctf_array_text'
     field[:class] = 'string'
-    if $all_struct_names.include?(type.sub(" *", ""))
-      field[:be_class] = to_scoped_class_name(type.sub(" *", ""))
+    field[:length] = lttng.length if lttng_name == 'ctf_array_text'
+    t = type.sub(" *", "")
+    while $types_by_name.include?(t) && $types_by_name[t].type.kind_of?(YAMLCAst::CustomType)
+      t = $types_by_name[t].type.name
     end
-  when 'ctf_array_text'
-    field[:class] = 'string'
-    field[:length] = lttng.length
-    if $all_struct_names.include?(type.sub(" *", ""))
-      field[:be_class] = to_scoped_class_name(type.sub(" *", ""))
+    if $all_struct_names.include?(t)
+      field[:be_class] = to_scoped_class_name(t)
     end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
