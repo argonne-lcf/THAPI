@@ -532,6 +532,7 @@ static void _load_tracer(void) {
 
   _do_cleanup = 1;
 #ifndef THAPI_USE_DESTRUCTORS
+  CU_INIT_PTR(0);
   atexit(_lib_cleanup);
 #endif
 }
