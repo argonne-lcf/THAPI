@@ -39,7 +39,7 @@
           :cast_type: ^CUresult$
 
   - :set_id: exits_cudaError_absent
-    :domain: exits - exits_cudaError_present 
+    :domain: exits - exits_cudaError_present
 
   # Memory traffic
   - :set_id: traffic
@@ -65,6 +65,46 @@
       :type: structure
       :members:
       - :name: ^ByteCount$
+  - :set_id: entries_traffic_2d
+    :domain: entries_traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+          - :name: ^pCopy_val$
+            :field_class:
+              :cast_type: ^CUDA_MEMCPY2D \*$
+  - :set_id: entries_traffic_2d_v1
+    :domain: entries_traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+          - :name: ^pCopy_val$
+            :field_class:
+              :cast_type: ^CUDA_MEMCPY2D_v1 \*$
+  - :set_id: entries_traffic_3d
+    :domain: entries_traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+          - :name: ^pCopy_val$
+            :field_class:
+              :cast_type: ^CUDA_MEMCPY3D \*$
+  - :set_id: entries_traffic_3d_v1
+    :domain: entries_traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+          - :name: ^pCopy_val$
+            :field_class:
+              :cast_type: ^CUDA_MEMCPY3D_v1 \*$
+  - :set_id: entries_traffic_3d_peer
+    :domain: entries_traffic
+    :payload_field_class:
+      :type: structure
+      :members:
+          - :name: ^pCopy_val$
+            :field_class:
+              :cast_type: ^CUDA_MEMCPY3D_PEER \*$
   - :set_id: exits_traffic
     :domain: exits & traffic
     :payload_field_class:
@@ -89,7 +129,7 @@
       :members:
       - :name: ^cuResult$
       - :name: ^pctx_val$
-  
+
   - :set_id: ctx_destroy
     :name: "cuCtxDestroy"
     :register: false
@@ -105,7 +145,7 @@
       :type: structure
       :members:
       - :name: ^cuResult$
-  
+
   # Context stack management
   - :set_id: ctx_set_current
     :name: "cuCtxSetCurrent"
@@ -122,7 +162,7 @@
       :type: structure
       :members:
       - :name: ^cuResult$
-  
+
   - :set_id: ctx_push_current
     :name: "cuCtxPushCurrent"
     :register: false
@@ -138,7 +178,7 @@
       :type: structure
       :members:
       - :name: ^cuResult$
-  
+
   - :set_id: ctx_pop_current
     :name: "cuCtxPopCurrent"
     :register: false
@@ -151,7 +191,7 @@
       :members:
       - :name: ^cuResult$
       - :name: ^pctx_val$
-  
+
   # Device primary context management
   - :set_id: primary_ctx_retain
     :name: "cuDevicePrimaryCtxRetain"
@@ -169,7 +209,7 @@
       :members:
       - :name: ^cuResult$
       - :name: ^pctx_val$
-  
+
   # Stream create
   - :set_id: stream_create
     :name: "cuStreamCreate"
