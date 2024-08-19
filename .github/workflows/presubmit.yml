@@ -33,8 +33,7 @@ jobs:
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git babeltrace2-2.0.5
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
-          wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/d2d2e6cc_cpp.patch
-          patch -p1 < d2d2e6cc_cpp.patch
+          patch -p1 < ../THAPI/.github/workflows/str_nullptr.patch
         if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.5
       - run: mkdir -p babeltrace2-2.0.5/build

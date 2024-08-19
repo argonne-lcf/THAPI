@@ -1,0 +1,17 @@
+diff --git a/src/plugins/ctf/common/src/msg-iter.cpp b/src/plugins/ctf/common/src/msg-iter.cpp
+index 36e2088b..eacce78a 100644
+--- a/src/plugins/ctf/common/src/msg-iter.cpp
++++ b/src/plugins/ctf/common/src/msg-iter.cpp
+@@ -775,12 +775,6 @@ void MsgIter::_handleStrRawDataItem(const RawDataItem& item)
+             }
+         });
+
+-        if (afterNullCpIt) {
+-            /* Found U+0000 */
+-            endIt = *afterNullCpIt;
+-            _mHaveNullChar = true;
+-        }
+-
+         /* Append to current string buffer */
+         _mStrBuf.insert(_mStrBuf.end(), item.data().begin(), endIt);
+     }
