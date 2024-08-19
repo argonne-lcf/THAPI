@@ -20,7 +20,7 @@ jobs:
     name: Build lttng-tools
     runs-on: ubuntu-latest
     steps:
-      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev
+      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev liburcu-dev
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
       - run: |
          ./bootstrap
