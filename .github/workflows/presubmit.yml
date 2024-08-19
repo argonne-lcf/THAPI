@@ -28,7 +28,7 @@ jobs:
          make -j 32 install
         working-directory: userspace-rcu
   lttng-tools:
-    needs: pre_job
+    needs: [pre_job, userspace-rcu]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build lttng-tools
     runs-on: ubuntu-latest
