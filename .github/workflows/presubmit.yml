@@ -35,20 +35,15 @@ jobs:
       - run: |
           wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch 
           patch -p1 < str_nullptr.patch
+        working-directory: babeltrace2-2.0.5
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
+      - run: |
+          ./bootstrap
+          ./configure --prefix=$HOME/babeltrace2/2.0.5
+          make -j
+          make install
         if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.5
-      - run: mkdir -p babeltrace2-2.0.5/build
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: ../configure --prefix=$HOME/babeltrace2/2.0.5
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5/build
-      - run: make -j
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5/build
-      - run: make -j install
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5/build
-
   build-and-check:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
