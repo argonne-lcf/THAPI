@@ -14,9 +14,22 @@ jobs:
           skip_after_successful_duplicate: 'true'
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
-
-  babeltrace2:
+  lttng-tools:
     needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Build lttng-tools
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt update; sudo apt install -y gcc g++
+      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
+      - run: |
+         ./bootstrap
+         ./configure --disable-bin-lttng-crash --prefix=$HOME/babeltrace2/2.0.4
+         make -j
+         make install
+        working-directory: lttng-tools
+  babeltrace2:
+    needs: [pre_job,lttng-tools]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and cache Babeltrace2
     runs-on: ubuntu-24.04
