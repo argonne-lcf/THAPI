@@ -19,7 +19,7 @@ jobs:
     needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and cache Babeltrace2
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/cache@v4
         id: babeltrace2
@@ -58,8 +58,8 @@ jobs:
   build-and-check:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and Check ubuntu-latest
-    runs-on: ubuntu-latest
+    name: Build and Check ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -101,7 +101,7 @@ jobs:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
@@ -140,7 +140,7 @@ jobs:
     needs: [babeltrace2, pre_job, install-with-mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       THAPI_TEST_BIN: clinfo
       THAPI_BIN_DIR: ./build/ici/bin
@@ -174,8 +174,8 @@ jobs:
   build-in-tree:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build in Tree ubuntu-latest
-    runs-on: ubuntu-latest
+    name: Build in Tree ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -212,8 +212,8 @@ jobs:
   distcheck:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Distcheck ubuntu-latest
-    runs-on: ubuntu-latest
+    name: Distcheck ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -244,8 +244,8 @@ jobs:
   dist-check:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Dist and Check ubuntu-latest
-    runs-on: ubuntu-latest
+    name: Dist and Check ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
