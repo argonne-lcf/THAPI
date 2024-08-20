@@ -117,6 +117,8 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
       break;
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
       fprintf(stderr, "Enter global Barrier\n");
+      fprintf(stderr, "Local rank %d\n",local_rank);
+      fprintf(stderr, "Global rank %d\n",global_rank);
       // Non local master are not participing to the barrier
       if (local_rank != 0)
          kill(parent_pid, RT_SIGNAL_READY);
