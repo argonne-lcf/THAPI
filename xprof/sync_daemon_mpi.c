@@ -152,6 +152,7 @@ int main(int argc, char **argv) {
   ret = signal_loop(parent_pid, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
 
 fn_exit:
+  MPI_Barrier(MPI_COMM_WORLD_THAPI);
   if (MPI_COMM_NODE != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_NODE);
   if (MPI_COMM_WORLD_THAPI != MPI_COMM_NULL)
