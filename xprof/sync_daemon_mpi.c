@@ -10,7 +10,7 @@
 #define RT_SIGNAL_GLOBAL_BARRIER SIGRTMIN + 1
 #define RT_SIGNAL_LOCAL_BARRIER SIGRTMIN + 2
 #define RT_SIGNAL_FINISH SIGRTMIN + 3
-#define MPI_TAG_GLOBAL_BARRIER = 23
+#define MPI_TAG_GLOBAL_BARRIER 23
 
 #define DCALL(x)                      \
  do {                                 \
