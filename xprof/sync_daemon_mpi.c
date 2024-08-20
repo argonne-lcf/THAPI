@@ -47,8 +47,8 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
     if (flag == 0)
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Could not find key %s\n", mt_key);
     else if (strcmp(out_value, mt_value))
-      fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get %s, got %s\n",
-              mt_value, out_value);
+      fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get %s, got %s\n", mt_value,
+              out_value);
   }
   /*
    * create a group from the WORLD process set
@@ -78,8 +78,6 @@ fn_exit:
 }
 
 int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_NODE) {
-  fprintf(stderr, "Enter signal_loop\n");
-
   // Required MPI info
   int global_rank;
   MPI_Comm_rank(MPI_COMM_WORLD_THAPI, &global_rank);
@@ -107,35 +105,40 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
     int signum;
     sigwait(&signal_set, &signum);
     if (signum == RT_SIGNAL_FINISH) {
-      break;
+      return 0;
+    } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
+      MPI_Barrier(MPI_COMM_NODE);
+      goto next_iteration;
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
       // Non master are not participing to the barrier
       if (local_rank != 0 && global_rank != 0) {
-         kill(parent_pid, RT_SIGNAL_READY);
-         continue;
+        goto next_iteration;
       }
       // Local master who are not the global master, send a message
       if (global_rank != 0) {
         MPI_Send(&local_size, 1, MPI_INT, 0, MPI_TAG_GLOBAL_BARRIER, MPI_COMM_WORLD_THAPI);
-        kill(parent_pid, RT_SIGNAL_READY);
-        continue;
+        goto next_iteration;
       }
       // Global Master wait until receiving messages from all local masters.
       int sum_local_size_recv = local_size;
       while (sum_local_size_recv != global_size) {
         int local_size_recv;
-       
-        MPI_Recv(&local_size_recv, 1, MPI_INT, MPI_ANY_SOURCE, MPI_TAG_GLOBAL_BARRIER, MPI_COMM_WORLD_THAPI,
-                 MPI_STATUS_IGNORE);
+
+        MPI_Recv(&local_size_recv, 1, MPI_INT, MPI_ANY_SOURCE, MPI_TAG_GLOBAL_BARRIER,
+                 MPI_COMM_WORLD_THAPI, MPI_STATUS_IGNORE);
         sum_local_size_recv += local_size_recv;
       }
-      kill(parent_pid, RT_SIGNAL_READY);
-    } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
-      MPI_Barrier(MPI_COMM_NODE);
-      kill(parent_pid, RT_SIGNAL_READY);
+      goto next_iteration;
+    } else {
+      fprintf(stderr, "Wrong signal rreseved %d. Exiting", signum);
+      return 1;
     }
+    next_iteration:
+      kill(parent_pid, RT_SIGNAL_READY);
   }
-  return 0;
+  // Unreachable
+  fprintf(stderr, "Wrong signal_loop exit");
+  return 1;
 }
 
 int main(int argc, char **argv) {
