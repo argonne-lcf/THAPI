@@ -84,7 +84,7 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
   int global_size;
   MPI_Comm_size(MPI_COMM_WORLD_THAPI, &global_size);
   int local_rank;
-  MPI_Comm_size(MPI_COMM_NODE, &local_rank);
+  MPI_Comm_rank(MPI_COMM_NODE, &local_rank);
   int local_size;
   MPI_Comm_size(MPI_COMM_NODE, &local_size);
 
