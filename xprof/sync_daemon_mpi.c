@@ -109,10 +109,12 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
       // Non local master are not participing to the barrier
       if (local_rank != 0)
+         kill(parent_pid, RT_SIGNAL_READY);
          continue;
       // Local master who are not the global master, send a message
       if (global_rank != 0) {
         MPI_Send(&local_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD_THAPI);
+        kill(parent_pid, RT_SIGNAL_READY);
         continue;
       }
       // Global Master wait until receiving messages from all local masters.
@@ -123,10 +125,11 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
                  MPI_STATUS_IGNORE);
         sum_local_size_recv += local_size_recv;
       }
+      kill(parent_pid, RT_SIGNAL_READY);
     } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
       MPI_Barrier(MPI_COMM_NODE);
+      kill(parent_pid, RT_SIGNAL_READY);
     }
-    kill(parent_pid, RT_SIGNAL_READY);
   }
   return 0;
 }
