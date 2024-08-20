@@ -26,34 +26,32 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.4.tar.bz2
+      - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.5.tar.bz2
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: tar -xjvf babeltrace2-2.0.4.tar.bz2
+      - run: tar -xjvf babeltrace2-2.0.5.tar.bz2
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
           wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/d2d2e6cc.patch
-          wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/0db1832.patch
           patch -p1 < d2d2e6cc.patch
-          patch -p1 < 0db1832.patch
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.4
-      - run: mkdir -p babeltrace2-2.0.4/build
+        working-directory: babeltrace2-2.0.5
+      - run: mkdir -p babeltrace2-2.0.5/build
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: ../configure --prefix=$HOME/babeltrace2/2.0.4
+      - run: ../configure --prefix=$HOME/babeltrace2/2.0.5
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.4/build
+        working-directory: babeltrace2-2.0.5/build
       - run: make -j
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.4/build
+        working-directory: babeltrace2-2.0.5/build
       - run: make -j install
         if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.4/build
+        working-directory: babeltrace2-2.0.5/build
 
   build-and-check:
     needs: [babeltrace2, pre_job]
@@ -67,17 +65,17 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
@@ -112,17 +110,17 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure --prefix=`pwd`/ici
@@ -154,7 +152,7 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - uses: actions/download-artifact@v4
         with:
@@ -165,8 +163,8 @@ jobs:
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: Integration test
         run: |
           bats integration_tests/
@@ -183,17 +181,17 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: ./autogen.sh
       - run: ./configure
       - run: make -j
@@ -221,17 +219,17 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
@@ -253,17 +251,17 @@ jobs:
         env:
           cache-name: cache-babeltrace2
         with:
-          path: ~/babeltrace2/2.0.4
+          path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.4/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.4/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
