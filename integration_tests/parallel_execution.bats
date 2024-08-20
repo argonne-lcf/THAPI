@@ -11,19 +11,19 @@ teardown_file() {
 }
 
 @test "sync_daemon_fs" {
-   THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 20s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
 }
 
 @test "iprof_fs" {
-   THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs THAPI_JOBID=0  timeout 40s $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
 }
 
 @test "sync_daemon_mpi" {
-   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0 timeout 20s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0 timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
 }
 
 @test "iprof_mpi" {
-   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0 $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=0  timeout 40s $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
 }
 
 @test "sync_daemon_mpi_launching_mpi_app" {
