@@ -105,8 +105,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: intelmpi 
+        #with:
+        #  mpi: intelmpi 
       - uses: actions/cache@v4
         id: babeltrace2
         env:
@@ -147,8 +147,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: intelmpi
+        #with:
+        #  mpi: intelmpi
       - uses: actions/cache@v4
         id: babeltrace2
         env:
