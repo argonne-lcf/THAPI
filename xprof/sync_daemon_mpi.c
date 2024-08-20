@@ -10,6 +10,7 @@
 #define RT_SIGNAL_GLOBAL_BARRIER SIGRTMIN + 1
 #define RT_SIGNAL_LOCAL_BARRIER SIGRTMIN + 2
 #define RT_SIGNAL_FINISH SIGRTMIN + 3
+#define MPI_TAG_GLOBAL_BARRIER = 23
 
 #define DCALL(x)                      \
  do {                                 \
@@ -84,6 +85,7 @@ fn_exit:
 }
 
 int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_NODE) {
+  fprintf(stderr, "Enter signal_loop\n");
 
   // Required MPI info
   int global_rank;
@@ -114,6 +116,7 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
     if (signum == RT_SIGNAL_FINISH) {
       break;
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
+      fprintf(stderr, "Enter global Barrier\n");
       // Non local master are not participing to the barrier
       if (local_rank != 0)
          kill(parent_pid, RT_SIGNAL_READY);
@@ -121,21 +124,21 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
       // Local master who are not the global master, send a message
       if (global_rank != 0) {
         printf("Send to master %d\n",local_size);
-        MPI_Send(&local_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD_THAPI);
+        MPI_Send(&local_size, 1, MPI_INT, 0, MPI_TAG_GLOBAL_BARRIER, MPI_COMM_WORLD_THAPI);
         kill(parent_pid, RT_SIGNAL_READY);
         continue;
       }
       // Global Master wait until receiving messages from all local masters.
       int sum_local_size_recv = local_size;
-      printf("sum_local_size_recv %d\n", sum_local_size_recv);
-      printf("global_size %d\n", global_size);
+      fprintf(stderr, "sum_local_size_recv %d\n", sum_local_size_recv);
+      fprintf(stderr, "global_size %d\n", global_size);
       while (sum_local_size_recv != global_size) {
         int local_size_recv;
        
-        DCALL(MPI_Recv(&local_size_recv, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD_THAPI,
+        DCALL(MPI_Recv(&local_size_recv, 1, MPI_INT, MPI_ANY_SOURCE, MPI_TAG_GLOBAL_BARRIER, MPI_COMM_WORLD_THAPI,
                  MPI_STATUS_IGNORE));
         sum_local_size_recv += local_size_recv;
-       printf("inside sum_local_size_recv %d\n", sum_local_size_recv);
+        fprintf(stderr, "inside sum_local_size_recv %d\n", sum_local_size_recv);
       }
       kill(parent_pid, RT_SIGNAL_READY);
     } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
@@ -143,6 +146,7 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
       kill(parent_pid, RT_SIGNAL_READY);
     }
   }
+  fprintf(stderr, "Exit signal_loop\n");
   return 0;
 }
 
