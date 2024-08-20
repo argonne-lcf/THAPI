@@ -34,6 +34,12 @@ jobs:
          ./configure --prefix=$HOME/babeltrace2/2.0.4
          make -j 32 install
         working-directory: userspace-rcu
+      - run: git clone https://github.com/lttng/lttng-ust
+      - run: |
+         ./bootstrap
+         ./configure --prefix=$HOME/babeltrace2/2.0.4
+         make -j 32 install
+        working-directory: lttng-ust
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
       - run: |
          ./bootstrap
