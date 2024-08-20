@@ -11,6 +11,13 @@
 #define RT_SIGNAL_LOCAL_BARRIER SIGRTMIN + 2
 #define RT_SIGNAL_FINISH SIGRTMIN + 3
 
+#define DCALL(x)                      \
+ do {                                 \
+     fprintf(stderr, "Enter %s", #x); \
+     (x);                             \
+     fprintf(stderr, "Exit %s", #x);  \
+ } while (0)                          \
+
 #define CHECK_MPI(x)                                                                               \
   do {                                                                                             \
     int retval = (x);                                                                              \
@@ -152,14 +159,14 @@ int main(int argc, char **argv) {
   ret = signal_loop(parent_pid, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
 
 fn_exit:
-  MPI_Barrier(MPI_COMM_WORLD_THAPI);
+  DCALL(MPI_Barrier(MPI_COMM_WORLD_THAPI));
   if (MPI_COMM_NODE != MPI_COMM_NULL)
-    MPI_Comm_free(&MPI_COMM_NODE);
+    DCALL(MPI_Comm_free(&MPI_COMM_NODE));
   if (MPI_COMM_WORLD_THAPI != MPI_COMM_NULL)
-    MPI_Comm_free(&MPI_COMM_WORLD_THAPI);
+    DCALL(MPI_Comm_free(&MPI_COMM_WORLD_THAPI));
   if (lib_shandle != MPI_SESSION_NULL)
-    MPI_Session_finalize(&lib_shandle);
+    DCALL(MPI_Session_finalize(&lib_shandle));
   if (parent_pid != 0)
-    kill(parent_pid, RT_SIGNAL_READY);
+    DCALL(kill(parent_pid, RT_SIGNAL_READY));
   return ret;
 }
