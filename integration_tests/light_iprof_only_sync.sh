@@ -44,16 +44,15 @@ ${THAPI_BIN_DIR}/sync_daemon_${THAPI_SYNC_DAEMON} $PARENT_PID &
 DAEMON_PID=$!
 echo "Wait for daemon to be ready"
 wait_for_signal
-echo "Send Local and Global Barrier signal"
+echo "Send Local Barrier signal"
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
-send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
-
 # Run test program
 "$@"
 
 # Final synchronization after mpi_hello_world execution
-echo "Send Local and Global Barrier signal"
+echo "Send Local Barrier signal"
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
+echo "Send Global Barrier signal"
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 echo "Send Termination signal"
 send_signal_blocking $RT_SIGNAL_FINISH
