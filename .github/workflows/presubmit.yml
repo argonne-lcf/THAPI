@@ -28,7 +28,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
         if: steps.babeltrace2.outputs.cache-hit != 'true'
@@ -69,7 +69,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -114,7 +114,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler 
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -161,7 +161,7 @@ jobs:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
-      - run: sudo apt update; sudo apt install -y lttng-tools liblttng-ust-dev ruby ruby-dev libprotobuf-dev libpocl2 clinfo bats coreutils
+      - run: sudo apt update; sudo apt install -y lttng-tools liblttng-ust-dev ruby ruby-dev libprotobuf-dev libpocl2 clinfo bats coreutils libglib2.0-dev
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
         run: |
@@ -185,7 +185,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -223,7 +223,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
@@ -255,7 +255,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.4
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind
+      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
