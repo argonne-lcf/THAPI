@@ -27,7 +27,7 @@ jobs:
           echo "CPATH=$HOME/babeltrace2/2.0.4/include:$CPATH" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.4/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev liblttng-ust-dev
+      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev libnuma-dev
       - run: git clone https://github.com/urcu/userspace-rcu
       - run: |
          ./bootstrap
