@@ -161,7 +161,7 @@ jobs:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
-      - run: sudo apt update; sudo apt install -y lttng-tools liblttng-ust-dev ruby ruby-dev libprotobuf-dev libpocl2 clinfo bats coreutils valgrind
+      - run: sudo apt update; sudo apt install -y lttng-tools liblttng-ust-dev ruby ruby-dev libprotobuf-dev libpocl2 clinfo bats coreutils
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
         run: |

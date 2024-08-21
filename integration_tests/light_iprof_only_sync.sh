@@ -40,7 +40,7 @@ send_signal_blocking() {
 # Get the PID of this script
 PARENT_PID=$$
 # Start sync daemon in the background
-valgrind ${THAPI_BIN_DIR}/sync_daemon_${THAPI_SYNC_DAEMON} $PARENT_PID &
+${THAPI_BIN_DIR}/sync_daemon_${THAPI_SYNC_DAEMON} $PARENT_PID &
 DAEMON_PID=$!
 echo "Wait for daemon to be ready"
 wait_for_signal
