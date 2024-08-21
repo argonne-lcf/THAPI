@@ -310,14 +310,16 @@ class Sync_daemon
   rescue StandardError
     raise
   ensure
-    f.finalize if f
+    return unless f
+    f.global_barrier
+    f.finalize
   end
 end
 
-#                        __
-#   | _|_ _|_ ._   _    (_   _ _|_     ._
-#   |_ |_  |_ | | (_|   __) (/_ |_ |_| |_)
-#                  _|                  |
+#
+#   | _|_ _|_ ._   _
+#   |_ |_  |_ | | (_|
+#                  _|
 def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
 end
@@ -524,7 +526,7 @@ def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: tru
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
 
-def setup_lttng(backends)
+def lm_setup_lttng(backends)
   raise unless mpi_local_master?
 
   # Spawning the sessiond Daemon will crash
@@ -561,11 +563,13 @@ def setup_lttng(backends)
   exec("lttng start #{lttng_session_uuid}")
 end
 
-def lttng_teardown_session
+def lm_lttng_teardown_session
+  raise unless mpi_local_master?
   exec("lttng destroy #{lttng_session_uuid}")
 end
 
-def lttng_kill_sessiond
+def lm_lttng_kill_sessiond
+  raise unless mpi_local_master?
   # Need to kill the sessiond Daemon. It's safe because each job has their own
   #
   # In theory, opening the lttng-sessiond.pid file is racy.
@@ -582,10 +586,7 @@ end
 #   |_)  _. |_   _  | _|_ ._ _.  _  _     )
 #   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
 #
-
-# TODO: Use babeltrace_thapi as a LIB not a binary
-
-def on_node_processing_babeltrace(backends)
+def lm_babeltrace(backends)
   raise unless mpi_local_master?
   # No need to run babeltrace_thapi
   return if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
@@ -598,13 +599,16 @@ def on_node_processing_babeltrace(backends)
   exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
 end
 
-# NOTE: I don't understand `mv`
-#       File.mv(a, b) will put a into b (aka a/b)
-#       FileUtils.rename(a,b) will move a as b, but may
-#         raise Invalid cross-device error.
-#       So we use `exec(mv -T a b)`, this have the added benefice of logging
-#
-def on_node_processing_sync_and_rename(syncd)
+#   _
+#  |_) ._ _   _  _   _  _ o ._   _
+#  |   | (_) (_ (/_ _> _> | | | (_|
+#                                _|
+
+# Some naming convension
+# lm == function executed only local_master
+# gm ==  function executed only global_master
+
+def lm_move_to_shared
   raise unless mpi_local_master?
 
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
@@ -612,30 +616,36 @@ def on_node_processing_sync_and_rename(syncd)
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
     exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
   else
-    # Babeltrace_thapi finished, can remove `tmp` folder
+    # `lm_babeltrace` finished, can remove `tmp` folder
     FileUtils.rm_f(lttng_trace_dir_tmp)
   end
+end
 
-  # Global Barrier, ensure that all on_node_processessing finished
-  syncd.global_barrier
+def gm_rename_folder
+  raise unless mpi_master?
 
-  # Replace mpi_job_id with a better name and update medatada,
-  # Only done by mpi_master
-  return unless mpi_master?
+  # All process have put their file into `thapi_trace_dir_tmp/hostname`.
+  # `thapi_trace_dir_tmp` is using the MPI_JOB_ID
+  # Replace it with a better name, and update the root metadata.
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-
-  # Because of `traced-rank`, `mpi_master` may not have any trace avalaible.
+  # Because of `traced-rank`, `mpi_master` may not have any trace avalaible,
+  # so find the first hostname who have a metadata
   FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
                File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
+  # NOTE: I don't understand `mv`
+  #       File.mv(a, b) will put a into b (aka a/b)
+  #       FileUtils.rename(a,b) will move a as b, but may
+  #         raise Invalid cross-device error.
+  #       So we use `exec(mv -T a b)`, this have the added benefice of logging
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
   thapi_trace_dir_root
 end
 
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
-  # All masters set a future global barrier
+  # Global barrier at exit
   Sync_daemon.open do |syncd|
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
@@ -644,7 +654,7 @@ def trace_and_on_node_processing(usr_argv)
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
     # Only local master spawn LTTNG daemon and start session
-    setup_lttng(backends) if mpi_local_master?
+    lm_setup_lttng(backends) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
     # Launch User Command
     launch_usr_bin(h, usr_argv)
@@ -655,18 +665,18 @@ def trace_and_on_node_processing(usr_argv)
     return unless mpi_local_master?
 
     # Stop Lttng session
-    lttng_teardown_session
+    lm_lttng_teardown_session
     # Lttng session is finished,
     # we can kill the session daemon
-    lttng_kill_sessiond
-
+    lm_lttng_kill_sessiond
     # Preprocess trace
-    on_node_processing_babeltrace(backends)
-    on_node_processing_sync_and_rename(syncd)
+    lm_babeltrace(backends)
+    lm_move_to_shared
   end
+  gm_rename_folder if mpi_master?
 end
 
-def global_processing(folder)
+def gm_processing(folder)
   raise unless mpi_master?
 
   LOGGER.info { "Postprocess #{folder}" }
@@ -830,6 +840,6 @@ if __FILE__ == $PROGRAM_NAME
   folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    global_processing(folder) if OPTIONS[:analysis]
+    gm_processing(folder) if OPTIONS[:analysis]
   end
 end
