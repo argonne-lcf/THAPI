@@ -14,36 +14,11 @@ jobs:
           skip_after_successful_duplicate: 'true'
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
-  userspace-rcu:
+
+  babeltrace2:
     needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build urcu and lttng-tools
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Load Env
-        run: |
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-      - run: ls /usr/include/
-      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev libnuma-dev liburcu-dev libc-dev
-      - run: git clone https://github.com/lttng/lttng-ust
-      - run: |
-         ./bootstrap
-         ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
-         make -j
-         make install
-        working-directory: lttng-ust
-      # lttng-tools need lttng-ust 2.14+
-      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
-      - run: |
-         ./bootstrap
-         ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/babeltrace2/2.0.5
-         make -j
-         make install
-        working-directory: lttng-tools
-  babeltrace2:
-    needs: [pre_job,userspace-rcu]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and cache Babeltrace2
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/cache@v4
@@ -53,7 +28,29 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
+      - name: Load Env
+        run: |
+          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev libnuma-dev liburcu-dev libc-dev
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
+      - run: git clone https://github.com/lttng/lttng-ust
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
+      - run: |
+          ./bootstrap
+          ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
+          make -j
+          make install
+        working-directory: lttng-ust
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
+      # lttng-tools need lttng-ust 2.14+
+      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
+      - run: |
+          ./bootstrap
+          ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/babeltrace2/2.0.5
+          make -j
+          make install
+        working-directory: lttng-tools
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git babeltrace2-2.0.5
         if: steps.babeltrace2.outputs.cache-hit != 'true'
@@ -67,8 +64,9 @@ jobs:
           ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
           make -j
           make install
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
         working-directory: babeltrace2-2.0.5
+        if: steps.babeltrace2.outputs.cache-hit != 'true'
+
   build-and-check:
     needs: [babeltrace2, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
