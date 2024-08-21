@@ -33,12 +33,13 @@ jobs:
           echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev libnuma-dev liburcu-dev libc-dev
         if: steps.babeltrace2.outputs.cache-hit != 'true'
+      # lttng-ust
       - run: git clone https://github.com/lttng/lttng-ust
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
           ./bootstrap
           ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
-          make -j
+          make -j$(nproc)
           make install
         working-directory: lttng-ust
         if: steps.babeltrace2.outputs.cache-hit != 'true'
@@ -48,10 +49,11 @@ jobs:
       - run: |
           ./bootstrap
           ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/babeltrace2/2.0.5
-          make -j
+          make -j$(nproc)
           make install
         working-directory: lttng-tools
         if: steps.babeltrace2.outputs.cache-hit != 'true'
+     # babeltrace
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git babeltrace2-2.0.5
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
@@ -62,7 +64,7 @@ jobs:
       - run: |
           ./bootstrap
           ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
-          make -j
+          make -j$(nproc)
           make install
         working-directory: babeltrace2-2.0.5
         if: steps.babeltrace2.outputs.cache-hit != 'true'
@@ -81,7 +83,7 @@ jobs:
         with:
           path: ~/babeltrace2/2.0.5
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y gcc g++ ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
