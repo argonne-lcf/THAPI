@@ -47,6 +47,7 @@ jobs:
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
+          export CPLUS_INCLUDE_PATH=./src/bin/lttng-sessiond/:$CPLUS_INCLUDE_PATH
           ./bootstrap
           ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/babeltrace2/2.0.5
           make -j$(nproc)
