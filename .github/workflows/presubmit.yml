@@ -31,7 +31,7 @@ jobs:
       - name: Load Env
         run: |
           echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev libnuma-dev liburcu-dev libc-dev libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y gcc g++ libpopt-dev libnuma-dev liburcu-dev libc-dev libglib2.0-dev elfutils libelf-dev
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       # lttng-ust
       - run: git clone https://github.com/lttng/lttng-ust
