@@ -57,19 +57,19 @@ jobs:
         working-directory: lttng-tools
         if: steps.babeltrace2.outputs.cache-hit != 'true'
      # babeltrace
-      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git babeltrace2-2.0.5
+      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
           wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch 
           patch -p1 < str_nullptr.patch
-        working-directory: babeltrace2-2.0.5
+        working-directory: babeltrace
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
           ./bootstrap
           ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
           make -j$(nproc)
           make install
-        working-directory: babeltrace2-2.0.5
+        working-directory: babeltrace
         if: steps.babeltrace2.outputs.cache-hit != 'true'
 
   build-and-check:
