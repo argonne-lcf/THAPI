@@ -37,9 +37,9 @@ jobs:
       - run: git clone https://github.com/lttng/lttng-ust
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
-           # Avoid https://github.com/lttng/lttng-ust/commit/b187bcd5d99cde54dececee0e5028524d55aa314 who change the signature of 
-           # lttng_ust_ctl_recv_register_event used by lttng-tool anl-ms3
-           git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69 
+          # Avoid https://github.com/lttng/lttng-ust/commit/b187bcd5d99cde54dececee0e5028524d55aa314 who change the signature of 
+          # lttng_ust_ctl_recv_register_event used by lttng-tool anl-ms3
+          git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69 
           ./bootstrap
           ./configure --disable-man-pages --prefix=$HOME/babeltrace2/2.0.5
           make -j$(nproc)
