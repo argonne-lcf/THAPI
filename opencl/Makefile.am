@@ -221,8 +221,7 @@ nodist_libCLInterval_la_SOURCES = \
 	xprof_utils.hpp
 
 libCLInterval_la_SOURCES = \
-	btx_clinterval_callbacks.cpp \
-	btx_clinterval_callbacks.hpp
+	btx_clinterval_callbacks.cpp
 
 libCLInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_opencl -DCL_TARGET_OPENCL_VERSION=300
 libCLInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
