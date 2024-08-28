@@ -1053,9 +1053,9 @@ static void readCopyE(uint32_t driverIdx, uint32_t deviceIdx, copyEngineData *co
 }
 
 static void thapi_sampling_energy() {
-  uint64_t ts_us;
-  uint64_t energy_uj;
-  uint32_t frequency;
+  uint64_t ts_us = 0;
+  uint64_t energy_uj = 0;
+  uint32_t frequency = 0;
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)){
