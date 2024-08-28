@@ -62,6 +62,8 @@ jobs:
       - run: |
           wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch 
           patch -p1 < str_nullptr.patch
+          wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/bt_makefile.patch
+          patch -p1 < bt_makefile.patch
         working-directory: babeltrace
         if: steps.babeltrace2.outputs.cache-hit != 'true'
       - run: |
