@@ -99,7 +99,7 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
     } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
       MPI_Barrier(MPI_COMM_WORLD_THAPI);
     } else {
-      fprintf(stderr, "Wrong signal rreseved %d. Exiting", signum);
+      fprintf(stderr, "Wrong signal received %d. Exiting", signum);
       return 1;
     }
     kill(parent_pid, RT_SIGNAL_READY);

@@ -74,8 +74,15 @@ Signal.trap(Sync_daemon::RT_SIGNAL_LOCAL_BARRIER) do
 end
 
 Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
-  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
-  FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
+  # We cannot delete SHARED_LOCAL_FILESYSTEM
+  # Some rank can exit the `global_barier` (hence calling this function)
+  #   when others ranks are still in the `local_barrier`
+  # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
+  #
+  # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
+  #   is to make all ranks busy_wait in the `global_barrier`.
+  # This will ensure that every-one exited the `local_barrier`.
+  #   but given the poor performance of our FS, we will avoid that for now...
   Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
   exit
 end

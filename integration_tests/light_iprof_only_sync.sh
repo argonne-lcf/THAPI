@@ -14,7 +14,7 @@ RT_SIGNAL_FINISH=$((SIGRTMIN + 3))
 SIGNAL_RECEIVED="false"
 # Signal handler for capturing signals
 handle_signal() {
-    echo "--Received signal $1 from mpi_daemon"
+    echo "$PARENT_PID |   Received signal $1 from mpi_daemon"
     if [ "$1" == "RT_SIGNAL_READY" ]; then
         SIGNAL_RECEIVED="true"
     fi
@@ -42,19 +42,19 @@ PARENT_PID=$$
 # Start sync daemon in the background
 ${THAPI_BIN_DIR}/sync_daemon_${THAPI_SYNC_DAEMON} $PARENT_PID &
 DAEMON_PID=$!
-echo "Wait for daemon to be ready"
+echo "$PARENT_PID | Wait for daemon to be ready"
 wait_for_signal
-echo "Send Local Barrier signal"
+echo "$PARENT_PID | Send Local Barrier signal"
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 # Run test program
 "$@"
 
 # Final synchronization after mpi_hello_world execution
-echo "Send Local Barrier signal"
+echo "$PARENT_PID | Send Local Barrier signal"
 send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
-echo "Send Global Barrier signal"
+echo "$PARENT_PID | Send Global Barrier signal"
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
-echo "Send Termination signal"
+echo "$PARENT_PID | Send Termination signal"
 send_signal_blocking $RT_SIGNAL_FINISH
-echo "Wait for daemon to quit"
+echo "$PARENT_PID | Wait for daemon to quit"
 wait $DAEMON_PID
