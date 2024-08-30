@@ -75,13 +75,12 @@ end
 
 Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
   # We cannot delete SHARED_LOCAL_FILESYSTEM
-  # As `local_barrier` count up to a number of file
-  # So some ranks  maybe `sleeping` waiting for the correct number of file.
-  # If we remove `SHARED_LOCAL_FILESYSTEM`, it will deadlock
-
-  # We can always `SHARED_lOCAL_FILESYSTEM`, as it's count down to 0.
-  # Check `global_barrier`
-  Dir.rmdir(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+  # As even some rank can exit the `global_barier`
+  #   when some other are still in the `local_barrier`
+  # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
+  #   if to make all rank busy_wait in the `global_barrier`.
+  #   This will ensure that everoone exited the `local_barrier`.
+  #     but given the poor performance of our FS, we will avoid that for now...
   Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
   exit
 end
