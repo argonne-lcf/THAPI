@@ -75,8 +75,8 @@ end
 
 Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
   # We cannot delete SHARED_LOCAL_FILESYSTEM
-  # Some rank can exit the `global_barier`, as hence call this function
-  #   when others rake are still in the `local_barrier`
+  # Some rank can exit the `global_barier` (hence calling this function)
+  #   when others ranks are still in the `local_barrier`
   # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
   #
   # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
