@@ -74,10 +74,17 @@ Signal.trap(Sync_daemon::RT_SIGNAL_LOCAL_BARRIER) do
 end
 
 Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
-  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
-  FileUtils.rm_rf(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
-  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
-  exit
+  # Rmdir will raise if the directory not empty
+  # Some process may still be in the `busy_wait` of the barrier
+  #   when other finished.
+  # If we remove the folder, it will deadlock
+  begin
+    Dir.rmdir(SHARED_LOCAL_FILESYSTEM) if mpi_local_master?
+    Dir.rmdir(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+  rescue
+    sleep(1)
+    retry
+  end
 end
 
 # Init global barrier
