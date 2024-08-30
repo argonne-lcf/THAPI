@@ -10,9 +10,6 @@ teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
 }
 
-# To avoid race condition, the HAPI_SYNC_DAEMON=f tests need to be run:
-#   - on one node,
-#   - or tracing a MPI appplication
 @test "sync_daemon_fs" {
    THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 20s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
 }
