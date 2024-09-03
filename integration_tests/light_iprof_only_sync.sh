@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+
 # For loging and Daemon to send signal to us
 PARENT_PID=$$
 
@@ -14,7 +15,7 @@ RT_SIGNAL_FINISH=$((SIGRTMIN + 3))
 
 # Signal handler for capturing signals
 handle_signal() {
-    echo "$PARENT_PID $(date) |   Received signal $1 from mpi_daemon"
+    echo "$PARENT_PID $(date) |   Received signal $1 from sync_daemon"
     if [ "$1" == "RT_SIGNAL_READY" ]; then
         SIGNAL_RECEIVED="true"
     fi
@@ -34,7 +35,7 @@ wait_for_signal() {
 #   before spawning or signaling the daemon
 spawn_daemon_blocking() {
     SIGNAL_RECEIVED="false"
-    "${THAPI_BIN_DIR}"/sync_daemon_"${THAPI_SYNC_DAEMON}" PARENT_PID &
+    "${THAPI_BIN_DIR}"/sync_daemon_"${THAPI_SYNC_DAEMON}" $PARENT_PID &
     DAEMON_PID=$!
     wait_for_signal
 }
