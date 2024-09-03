@@ -54,7 +54,9 @@ jobs:
           ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/babeltrace2/2.0.5
           make -j$(nproc)
           make install
-          cp dirwatch.py $HOME/babeltrace2/2.0.5/bin/
+          # Put in path
+          cat "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/babeltrace2/2.0.5/bin/dirwatch.py
+          chmod 755 $HOME/babeltrace2/2.0.5/bin/dirwatch.py
         working-directory: lttng-tools
         if: steps.babeltrace2.outputs.cache-hit != 'true'
      # babeltrace
