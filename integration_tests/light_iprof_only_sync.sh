@@ -1,5 +1,7 @@
 #!/bin/bash
 set -euo pipefail
+# For loging and Daemon to send signal to us
+PARENT_PID=$$
 
 # Get base real-time signal number
 SIGRTMIN=$(kill -l SIGRTMIN)
@@ -31,9 +33,8 @@ wait_for_signal() {
 # To avoid race condition, `SIGNAL_RECEIVED` need to be set
 #   before spawning or signaling the daemon
 spawn_daemon_blocking() {
-    local parent_pid=$$
     SIGNAL_RECEIVED="false"
-    "${THAPI_BIN_DIR}"/sync_daemon_"${THAPI_SYNC_DAEMON}" parent_pid &
+    "${THAPI_BIN_DIR}"/sync_daemon_"${THAPI_SYNC_DAEMON}" PARENT_PID &
     DAEMON_PID=$!
     wait_for_signal
 }
