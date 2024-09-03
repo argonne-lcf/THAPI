@@ -1,7 +1,7 @@
 .DELETE_ON_ERROR:
 
 if STRICT
-  WERROR = -Werror
+  WERROR = -Werror -Wno-error=nonnull
 else
   WERROR =
 endif
