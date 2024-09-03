@@ -55,7 +55,7 @@ jobs:
           make -j$(nproc)
           make install
           # Put in path
-          cat "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/babeltrace2/2.0.5/bin/dirwatch.py
+          echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/babeltrace2/2.0.5/bin/dirwatch.py
           chmod 755 $HOME/babeltrace2/2.0.5/bin/dirwatch.py
         working-directory: lttng-tools
         if: steps.babeltrace2.outputs.cache-hit != 'true'
