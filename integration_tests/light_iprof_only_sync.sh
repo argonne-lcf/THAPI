@@ -15,7 +15,7 @@ RT_SIGNAL_FINISH=$((SIGRTMIN + 3))
 
 # Signal handler for capturing signals
 handle_signal() {
-    echo "$PARENT_PID $(date) |   Received signal $1 from sync_daemon"
+    echo "$PARENT_PID $(date) |   Received signal $1 from mpi_daemon"
     if [ "$1" == "RT_SIGNAL_READY" ]; then
         SIGNAL_RECEIVED="true"
     fi
