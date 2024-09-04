@@ -2,7 +2,7 @@ name: Presubmit
 on: [push, pull_request]
 
 env:
-  APT_PACKAGE: gcc g++ ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
+  APT_PACKAGE: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
 
 jobs:
   pre_job:
