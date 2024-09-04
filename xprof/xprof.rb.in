@@ -20,6 +20,11 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
+LTTNG_ARCHIVE_SIZE = '50M'
+LTTNG_ARCHIVE_TIMER = '60s'
+LTTNG_DIRWATCH_SIZE = '500' # In MiB
+LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
+
 class XprofExitCode
   @@exit_code = 0
   def self.update(status, name)
@@ -607,12 +612,18 @@ def lm_setup_lttng(backends)
     end
 
   end
+  # This is required to force the creation of an trace,
+  # so that dirwatch doesn't complain about empty trace
+  if OPTIONS[:archive]
+    exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=#{LTTNG_ARCHIVE_SIZE} --timer=#{LTTNG_ARCHIVE_TIMER}")
+  end
   exec("lttng start #{lttng_session_uuid}")
 end
 
 def lm_lttng_teardown_session
   raise unless mpi_local_master?
 
+  exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
   exec("lttng destroy #{lttng_session_uuid}")
 end
 
@@ -645,7 +656,27 @@ def lm_babeltrace(backends)
   opts << "--output #{thapi_trace_dir_tmp}"
   opts << "--backends #{backends.join(',')}"
   opts << '--no-discard-metadata' if type == 'aggreg' && OPTIONS.include?(:'kernel-verbose')
-  exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+
+  if OPTIONS[:archive]
+    read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
+    opts << "--archive #{lttng_session_uuid} --archive-session-found-file-path=#{read_file}"
+    cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}"
+    LOGGER.debug(cmd)
+    pid_bt = spawn(cmd)
+
+    cmd = "dirwatch.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
+    LOGGER.debug(cmd)
+    pid_dirwatch = spawn(cmd)
+
+    until File.exist?(read_file)
+      # Ensure that dirwatch.py didn't crash, and deadlock
+      Process.wait(pid_dirwatch, Process::WNOHANG)
+      sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY)
+    end
+    [pid_bt, pid_dirwatch]
+  else
+    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+  end
 end
 
 #   _
@@ -663,6 +694,11 @@ def lm_move_to_shared
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
     # The Apps finished, lttng finished, need to move to the shared tmp folder
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
+    # NOTE: I don't understand `mv`
+    #       File.mv(a, b) will put a into b (aka a/b)
+    #       FileUtils.rename(a,b) will move a as b, but may
+    #         raise Invalid cross-device error.
+    #       So we use `exec(mv -T a b)`, this have the added benefice of logging
     exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
   else
     # `lm_babeltrace` finished, can remove `tmp` folder
@@ -694,15 +730,25 @@ end
 
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
-  def teardown_lttng(syncd)
+  def teardown_lttng(syncd, pids)
     # We need to be sure that all the local ranks are finished
-    # before the local master stops the lttng session
     syncd.local_barrier('waiting_for_application_ending')
+
+    # Everything from now on, is some local-master processing
+    # The `Sync_daemon` context will handle the call to the global barrier
+    # for the early exiting ranks
     return unless mpi_local_master?
 
-    # Stop Lttng session
+    # Stop Lttng session and babeltrace daemons
     lm_lttng_teardown_session
-    # Lttng session is finished,
+    if OPTIONS[:archive]
+      LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
+      pids.each do |pid|
+        Process.wait(pid)
+        XprofExitCode.update($?.exitstatus) 
+        Logger.warn("#{pid} failed") unless $?.success?
+      end
+    end
     # we can kill the session daemon
     lm_lttng_kill_sessiond
   end
@@ -715,24 +761,30 @@ def trace_and_on_node_processing(usr_argv)
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
     # Only local master spawn LTTNG daemon and start session
-    lm_setup_lttng(backends) if mpi_local_master?
+    pids = if mpi_local_master?
+             lm_setup_lttng(backends)
+             lm_babeltrace(backends) if OPTIONS[:archive]
+            end
+    
     syncd.local_barrier('waiting_for_lttng_setup')
 
     # Launch User Command
     begin
       XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(' '))
     rescue Errno::ENOENT
-      teardown_lttng(syncd)
+      teardown_lttng(syncd, pids)
       raise
     end
 
-    teardown_lttng(syncd)
+    teardown_lttng(syncd, pids)
     return unless mpi_local_master?
 
     # Preprocess trace
-    lm_babeltrace(backends)
+    lm_babeltrace(backends) unless OPTIONS[:archive]
     lm_move_to_shared
   end
+  # Global master rename the unique trace folder to a more
+  # human friendly name
   gm_rename_folder if mpi_master?
 end
 
@@ -826,6 +878,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
             'Format: backend_name[:backend_level],...',
             default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+  parser.on('--[no-]archive', 'Trigger for ardhive support', default: false)
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
