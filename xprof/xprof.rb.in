@@ -565,7 +565,8 @@ def lm_setup_lttng(backends)
     end
 
   end
-
+  # This is required to force the creation of an trace,
+  # so that dirwatch doesn't complain about empty trace
   if OPTIONS[:archive]
     exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=#{LTTNG_ARCHIVE_SIZE} --timer=#{LTTNG_ARCHIVE_TIMER}")
   end
