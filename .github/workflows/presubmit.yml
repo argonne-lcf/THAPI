@@ -1,6 +1,9 @@
 name: Presubmit
 on: [push, pull_request]
 
+env:
+  APT_PACKAGE: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
+
 jobs:
   pre_job:
     runs-on: ubuntu-24.04
@@ -15,65 +18,93 @@ jobs:
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
 
-  babeltrace2:
+  efficios_dep:
     needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and cache Babeltrace2
+    name: Build and Cache Efficios Dependencies
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: wget https://www.efficios.com/files/babeltrace/babeltrace2-2.0.5.tar.bz2
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: tar -xjvf babeltrace2-2.0.5.tar.bz2
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: |
-          wget https://github.com/argonne-lcf/THAPI-spack/raw/main/packages/babeltrace2/d2d2e6cc.patch
-          patch -p1 < d2d2e6cc.patch
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5
-      - run: mkdir -p babeltrace2-2.0.5/build
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-      - run: ../configure --prefix=$HOME/babeltrace2/2.0.5
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5/build
-      - run: make -j
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5/build
-      - run: make -j install
-        if: steps.babeltrace2.outputs.cache-hit != 'true'
-        working-directory: babeltrace2-2.0.5/build
+      - name: Set PKG_CONFIG
+        run: |
+          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+     # lttng-ust
+      - run: git clone https://github.com/lttng/lttng-ust
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      - name: Install lttng-ust
+        run: |
+          # Avoid https://github.com/lttng/lttng-ust/commit/b187bcd5d99cde54dececee0e5028524d55aa314 who change the signature of
+          # lttng_ust_ctl_recv_register_event used by lttng-tool anl-ms3
+          git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69
+          ./bootstrap
+          ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
+          make -j$(nproc)
+          make install
+        working-directory: lttng-ust
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      # lttng-tools need lttng-ust 2.14+
+      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      - name: Install lttng-tools
+        run: |
+          ./bootstrap
+          ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
+          make -j$(nproc)
+          make install
+          #Todo, this will need to be added in the spack repo as a patch
+          echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/efficios_dep/bin/dirwatch.py
+          chmod 755 $HOME/efficios_dep/bin/dirwatch.py
+        working-directory: lttng-tools
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      # babeltrace
+      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      - name: Install Babeltrace
+        run: |
+          #Todo, grab file from Spack
+          wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
+          patch -p1 < str_nullptr.patch
+          wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
+          patch -p1 < bt_makefile.patch
+          ./bootstrap
+          ./configure --disable-man-pages --prefix=$HOME/efficios_dep
+          make -j$(nproc)
+          make install
+        working-directory: babeltrace
+        if: steps.efficios_dep.outputs.cache-hit != 'true'
 
   build-and-check:
-    needs: [babeltrace2, pre_job]
+    needs: [efficios_dep, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
@@ -94,7 +125,7 @@ jobs:
             build/**/tests/*.log
 
   install-with-mpi:
-    needs: [babeltrace2, pre_job]
+    needs: [efficios_dep, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
@@ -102,23 +133,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
         with:
-          mpi: intelmpi 
+          mpi: intelmpi
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure --prefix=`pwd`/ici
@@ -133,7 +164,7 @@ jobs:
           path: thapi.tar
 
   integration-tests:
-    needs: [babeltrace2, pre_job, install-with-mpi]
+    needs: [efficios_dep, pre_job, install-with-mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
@@ -146,50 +177,50 @@ jobs:
         with:
           mpi: intelmpi
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - uses: actions/download-artifact@v4
         with:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
-      - run: sudo apt update; sudo apt install -y lttng-tools liblttng-ust-dev ruby ruby-dev libprotobuf-dev libpocl2 clinfo bats coreutils libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE bats coreutils libpocl2 clinfo
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: Integration test
         run: |
           bats integration_tests/
 
-  build-in-tree:
-    needs: [babeltrace2, pre_job]
+  build-in-tree-and-check:
+    needs: [efficios_dep, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: ./autogen.sh
       - run: ./configure
       - run: make -j
@@ -206,28 +237,28 @@ jobs:
             ./**/tests/*.log
 
   distcheck:
-    needs: [babeltrace2, pre_job]
+    needs: [efficios_dep, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
@@ -238,28 +269,28 @@ jobs:
           THAPI_VALGRIND: 1
 
   dist-check:
-    needs: [babeltrace2, pre_job]
+    needs: [efficios_dep, pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
-        id: babeltrace2
+        id: efficios_dep
         env:
-          cache-name: cache-babeltrace2
+          cache-name: cache-efficios_dep
         with:
-          path: ~/babeltrace2/2.0.5
+          path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - name: Load Babeltrace2
         run: |
-          echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/babeltrace2/2.0.5/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
+          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
