@@ -22,6 +22,10 @@ teardown_file() {
    rm out.pftrace
 }
 
+@test "archive_summary" {
+   $IPROF  --archive $THAPI_TEST_BIN
+}
+
 @test "replay_summary" {
    $IPROF $THAPI_TEST_BIN
    $IPROF -r
