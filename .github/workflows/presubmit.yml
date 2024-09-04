@@ -69,7 +69,7 @@ jobs:
       - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git
         if: steps.efficios_dep.outputs.cache-hit != 'true'
       - name: Install Babeltrace
-      - run: |
+        run: |
           #Todo, grab file from Spack
           wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
           patch -p1 < str_nullptr.patch
