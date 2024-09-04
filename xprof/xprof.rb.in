@@ -316,6 +316,7 @@ class Sync_daemon
     raise
   ensure
     return unless f
+
     f.global_barrier
     f.finalize
   end
@@ -575,12 +576,14 @@ end
 
 def lm_lttng_teardown_session
   raise unless mpi_local_master?
+
   exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
   exec("lttng destroy #{lttng_session_uuid}")
 end
 
 def lm_lttng_kill_sessiond
   raise unless mpi_local_master?
+
   # Need to kill the sessiond Daemon. It's safe because each job has their own
   #
   # In theory, opening the lttng-sessiond.pid file is racy.
@@ -619,7 +622,11 @@ def lm_babeltrace(backends)
     LOGGER.debug(cmd)
     pid_dirwatch = spawn(cmd)
 
-    sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY) until File.exist?(read_file)
+    until File.exist?(read_file)
+      # Ensure that dirwatch.py didn't crash, and deadlock
+      Process.wait(pid_dirwatch, Process::WNOHANG)
+      sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY)
+    end
     [pid_bt, pid_dirwatch]
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
@@ -631,12 +638,13 @@ end
 #  |   | (_) (_ (/_ _> _> | | | (_|
 #                                _|
 
-# Some naming convention 
+# Some naming convention
 # lm == function executed only local_master
 # gm ==  function executed only global_master
 
 def lm_move_to_shared
   raise unless mpi_local_master?
+
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
     # The Apps finished, lttng finished, need to move to the shared tmp folder
     FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
@@ -654,6 +662,7 @@ end
 
 def gm_rename_folder
   raise unless mpi_master?
+
   # All process have put their file into `thapi_trace_dir_tmp/hostname`.
   # `thapi_trace_dir_tmp` is using the MPI_JOB_ID
   # Replace it with a better name, and update the root metadata.
@@ -688,9 +697,9 @@ def trace_and_on_node_processing(usr_argv)
     # Only local master spawn daemons (lttng, and babeltrace)
     #  and the start the lttng-session
     pids = if mpi_local_master?
-       lm_setup_lttng(backends)
-       lm_babeltrace(backends) if OPTIONS[:archive]
-    end
+             lm_setup_lttng(backends)
+             lm_babeltrace(backends) if OPTIONS[:archive]
+           end
     # Other local node cannot start before lttng and the daemon
     syncd.local_barrier('waiting_for_lttng_setup')
     # Launch User Command
@@ -709,7 +718,10 @@ def trace_and_on_node_processing(usr_argv)
     lm_lttng_teardown_session
     if OPTIONS[:archive]
       LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
-      pids.each { |pid| Process.wait(pid) }
+      pids.each do |pid|
+        Process.wait(pid)
+        raise "#{pid} failed" unless $?.success?
+      end
     end
     # we can kill the session daemon
     lm_lttng_kill_sessiond
