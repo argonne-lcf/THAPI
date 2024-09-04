@@ -188,7 +188,7 @@ jobs:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
+      - run: sudo apt update; sudo apt install -y $APT_PACKAGE bats coreutils libpocl2 clinfo
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
       - name: Load Babeltrace2
         run: |
