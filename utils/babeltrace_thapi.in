@@ -130,6 +130,7 @@ def get_components(names)
   components_classes = {
     'source.ctf.fs' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs'),
     'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
+    'source.ctf.lttng_archive' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-archive'),
     'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
     'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
     'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
@@ -200,6 +201,10 @@ def get_and_add_components(graph, names, l_inputs)
       graph.add(comp, 'source_live',
                 params: { 'inputs' => $options[:inputs],
                           'session-not-found-action' => 'end' })
+    when 'source.ctf.lttng_archive'
+      graph.add(comp, 'source_archive',
+                params: { 'session-name' => $options[:archive],
+                          'session-found-file-path' => $options[:'archive-session-found-file-path'] })
     when 'source.ctf.fs'
       s = Find.find(*l_inputs)
               .reject { |path| FileTest.directory?(path) }
@@ -287,6 +292,8 @@ def bt_graphs(inputs)
   @bt_graphs[inputs] ||= begin
     g_comps = [if $options[:live]
                  'source.ctf.lttng_live'
+               elsif $options[:archive]
+                  'source.ctf.lttng_archive'
                else
                  'source.ctf.fs'
                end]
@@ -360,6 +367,8 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
        'Format: backend_name[:backend_level],...',
         default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
     on('--debug', default: false)
+    on('--archive SESSION-NAME')
+    on('--archive-session-found-file-path PATH')
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do
       puts File.read(File.join(DATADIR, 'version'))
