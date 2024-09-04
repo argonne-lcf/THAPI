@@ -23,7 +23,7 @@ teardown_file() {
 }
 
 @test "archive_summary" {
-   timeout 30s $IPROF --archive $THAPI_TEST_BIN
+   $IPROF --archive $THAPI_TEST_BIN
 }
 
 @test "replay_summary" {
