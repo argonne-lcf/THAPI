@@ -909,9 +909,9 @@ static void intializeEngines() {
 
 static int initializeHandles() {
   ze_result_t res;
-  const char *e = getenv("ZES_ENABLE_SYSMAN");
-  if (!(e && e[0] == '1'))  {
-    fprintf(stderr,"ZES_ENABLE_SYSMAN needs to be set!\n");
+  res = zesInit(0);
+  if (res != ZE_RESULT_SUCCESS) {
+    _ZE_ERROR_MSG("zesInit", res);
     return -1;
   }
 
