@@ -821,6 +821,7 @@ static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *us
     double rxThroughput = static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) / time_diff;
     double txThroughput = static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) / time_diff;
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
+    if (rxThroughput != 0)
     btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, 
                                       uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hFabricPort, subDevice,
                                       fabricId, remotePortId, rxThroughput, txThroughput, 
@@ -856,16 +857,19 @@ static void lttng_ust_ze_sampling_memStats_callback(void *btx_handle, void *usr_
 
     if (pMemBandwidth_val->timestamp == prev_bandwidth.timestamp)
       return;
+
     // Calculate the RD and WT bandwidth
     //https://spec.oneapi.io/level-zero/latest/sysman/api.html#_CPPv419zes_mem_bandwidth_t
+
     double allocation = static_cast<double>(pMemState_val->size - pMemState_val->free) * 100.0 / static_cast<double>(pMemState_val->size);
     double time_diff = static_cast<double>(pMemBandwidth_val->timestamp - prev_bandwidth.timestamp);
-    double rdBandwidth = static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
-    double wtBandwidth = static_cast<double>(pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter) * 1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+    double pBandwidth = static_cast<double>((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) + (pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter)) * 1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+    double rdBandwidth = static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 / (time_diff);
+    double wtBandwidth = static_cast<double>(pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter) * 1e6 / (time_diff);
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
     btx_push_message_lttng_memModule(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                      uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hMemModule, subDevice,
-                                      rdBandwidth, wtBandwidth, allocation);
+                                     uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hMemModule,
+                                     subDevice, pBandwidth, rdBandwidth, wtBandwidth, allocation);
     // Update the stored values
     it->second = {*pMemBandwidth_val, ts};
     } else {
@@ -893,9 +897,15 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
       auto &[prev_engineStats, prev_ts] = it->second;
       if (pEngineStats_val->timestamp == prev_engineStats.timestamp)
         return;
-
-      double time_diff = static_cast<double>(pEngineStats_val->timestamp - prev_engineStats.timestamp);
-      double activeTime = static_cast<double>(pEngineStats_val->activeTime - prev_engineStats.activeTime) * 100 / time_diff;
+      double time_diff = pEngineStats_val->timestamp >= prev_engineStats.timestamp ?
+                         static_cast<double>(pEngineStats_val->timestamp - prev_engineStats.timestamp) :
+                         static_cast<double>(pEngineStats_val->timestamp +
+                         (UINT64_MAX - prev_engineStats.timestamp) + 1);
+      double activeTime = 0;
+      if(pEngineStats_val->activeTime > prev_engineStats.activeTime)
+         activeTime = static_cast<double>(pEngineStats_val->activeTime - prev_engineStats.activeTime) * 100 / time_diff;
+      else
+         activeTime = static_cast<double>((UINT64_MAX - prev_engineStats.activeTime) + pEngineStats_val->activeTime + 1) * 100 / time_diff;
       DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
       if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL) {
         btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,

@@ -281,6 +281,10 @@
                 :type: integer_unsigned
                 :field_value_range: 32
                 :cast_type: uint32_t
+            - :name: pBandwidth
+              :field_class:
+                :type: double
+                :cast_type: float
             - :name: rdBandwidth
               :field_class:
                 :type: double

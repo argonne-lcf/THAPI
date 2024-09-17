@@ -129,15 +129,21 @@ static perfetto_uuid_t get_counter_track_uuuid(timeline_dispatch_t *dispatch,
     oss << track_name << " Module " << domain;
     oss <<  " | " <<(details->RxTx ? "WR BW" : "RD BW");
   }
-  else if (track_name==" Memory Allocation (%)") {
+  else if (track_name=="Allocated Memory (%)") {
     oss << track_name << " Module " << domain;
   }
   else if (track_name==" CopyEngine (%)" || track_name==" ComputeEngine (%)") {
     oss << track_name << " | SubDevice " << domain;
   }
-  else {
-    oss << track_name << " | Domain " << domain;
+  else if (track_name=="   Power") {
+    if(domain==0){
+      oss <<"    Total Power";
+    }
+    else
+      oss << track_name << " | SubDevice " << domain-1;
   }
+  else
+    oss << track_name << " | Domain " << domain;
   track_descriptor->set_name(oss.str());
   track_descriptor->mutable_counter();
   return hp_dev_uuid;
@@ -177,7 +183,7 @@ static perfetto_uuid_t get_Bandwidth_track_uuuid(timeline_dispatch_t *dispatch, 
 
 static perfetto_uuid_t get_Occupancy_track_uuuid(timeline_dispatch_t *dispatch, const std::string &hostname, uint64_t process_id,
                                                  uint64_t did, uint32_t deviceIdx, uint64_t hMemModule, uint32_t subDevice,  std::optional<Details> options) {
-     return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2telmtracks, " Memory Allocation $", hostname, process_id, did, deviceIdx, hMemModule, subDevice);
+     return get_counter_track_uuuid(dispatch, dispatch->hp_ddomain2telmtracks, "Allocated Memory (%)", hostname, process_id, did, deviceIdx, hMemModule, subDevice);
 }
 
 
@@ -198,7 +204,7 @@ static void add_event_DTelemetry(timeline_dispatch_t *dispatch, const std::strin
 }
 
 static void add_event_memModule( timeline_dispatch_t *dispatch, std::string hostname,
-                                 uint64_t process_id, uint64_t thread_id, uint64_t did, uint32_t deviceIdx, uintptr_t hMemModule, uint32_t subDevice, uint64_t timestamp, float rdBandwidth, float wtBandwidth, float occupancy) {
+                                 uint64_t process_id, uint64_t thread_id, uint64_t did, uint32_t deviceIdx, uintptr_t hMemModule, uint32_t subDevice, uint64_t timestamp, float pBandwidth, float rdBandwidth, float wtBandwidth, float occupancy) {
   // Define details for RX throughput.
   Details details = {false, 0, 0};
   add_event_DTelemetry(dispatch, hostname, process_id, thread_id, did, deviceIdx, hMemModule, subDevice, timestamp,
@@ -502,10 +508,11 @@ static void fabricPort_usr_callback(void *btx_handle, void *usr_data, const char
 
 static void memModule_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
                                    int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                   uint64_t did, uint32_t deviceIdx, uint64_t hMemModule,  uint32_t subDevice,
-                                   float rdBandwidth, float wtBandwidth, float occupancy) {
+                                   uint64_t did, uint32_t deviceIdx, uint64_t hMemModule,
+                                   uint32_t subDevice, float pBandwidth,  float rdBandwidth,
+                                   float wtBandwidth, float occupancy) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
-  add_event_memModule(dispatch, hostname, vpid, vtid, did, deviceIdx, hMemModule, subDevice, ts, rdBandwidth, wtBandwidth, occupancy);
+  add_event_memModule(dispatch, hostname, vpid, vtid, did, deviceIdx, hMemModule, subDevice, ts, pBandwidth, rdBandwidth, wtBandwidth, occupancy);
 }
 
 
