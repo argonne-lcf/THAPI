@@ -385,7 +385,7 @@ def env_tracers
   end
 
   # Sample
-  #   Currently the same so doesn't the tracing, and the sampling
+  #   Currently the same `so` does the tracing, and the sampling
   #   This mean that is the local rank is not part of the `traced-ranks`
   #   No sampling will be performed
   if sampling?
