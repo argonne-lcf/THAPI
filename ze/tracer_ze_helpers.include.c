@@ -909,7 +909,7 @@ static void intializeEngines() {
 
 static int initializeHandles() {
   ze_result_t res;
-  res = zesInit(0);
+  res = ZES_INIT_PTR(0);
   if (res != ZE_RESULT_SUCCESS) {
     _ZE_ERROR_MSG("zesInit", res);
     return -1;
