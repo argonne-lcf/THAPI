@@ -911,7 +911,7 @@ static int initializeHandles() {
   ze_result_t res;
   res = ZES_INIT_PTR(0);
   if (res != ZE_RESULT_SUCCESS) {
-    _ZE_ERROR_MSG("zesInit", res);
+    _ZE_ERROR_MSG("ZES_INIT_PTR", res);
     return -1;
   }
 
