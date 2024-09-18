@@ -28,22 +28,22 @@ typedef std::tuple<zes_fabric_port_throughput_t, uint64_t> fabricPort_timestamp_
 typedef std::tuple<zes_power_energy_counter_t, uint64_t> energy_timestamp_t;
 typedef std::tuple<zes_engine_stats_t, uint64_t> engines_timestamp_t;
 
-typedef std::tuple<ze_device_properties_t, uint32_t> deviceProperty_id_t;
+typedef std::tuple<zes_device_properties_t, uint32_t> deviceProperty_id_t;
 
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t> hpd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t> hpd_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdd_t;
 typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, uint32_t> hpdsd_t;
 
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_fabric_port_handle_t> hpdf_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_mem_handle_t> hpdm_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_pwr_handle_t> hpdpwr_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_freq_handle_t> hpdfreq_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_engine_handle_t> hpdeng_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_fabric_port_handle_t> hpdf_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_mem_handle_t> hpdm_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_pwr_handle_t> hpdpwr_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_freq_handle_t> hpdfreq_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_engine_handle_t> hpdeng_t;
 
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_mem_handle_t, uint32_t> hpdmsd_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_fabric_port_handle_t, uint32_t> hpdfsd_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_engine_handle_t, uint32_t> hpdesd_t;
-typedef std::tuple<hostname_t, process_id_t, ze_device_handle_t, zes_pwr_handle_t, uint32_t> hpdpwrd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_mem_handle_t, uint32_t> hpdmsd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_fabric_port_handle_t, uint32_t> hpdfsd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_engine_handle_t, uint32_t> hpdesd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_pwr_handle_t, uint32_t> hpdpwrd_t;
 
 using btx_kernel_group_size_t = std::tuple<uint32_t, uint32_t, uint32_t>;
 using btx_kernel_desct_t =
