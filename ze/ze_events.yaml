@@ -3,25 +3,25 @@ lttng_ust_ze_sampling:
   events:
   - name: deviceProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ uint32_t, deviceIdx ]
-    - [ ze_device_properties_t *, pDeviceProperties ]
+    - [ zes_device_properties_t *, pDeviceProperties ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer, uint32_t, deviceIdx, "deviceIdx" ]
     - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
   - name: subDeviceProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ ze_device_handle_t, hSubDevice ]
-    - [ ze_device_properties_t *, pSubDeviceProperties ]
+    - [ zes_device_properties_t *, pSubDeviceProperties ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer_hex, uintptr_t, hSubDevice, "(uintptr_t)hSubDevice" ]
     - [ ctf_sequence_text, uint8_t, pSubDeviceProperties_val, pSubDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
   - name: engineProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_engine_handle_t, hEngines ]
     - [ zes_engine_properties_t *, pEngineProperties ]
     fields:
@@ -30,7 +30,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pEngineProperties_val, pEngineProperties, size_t, "sizeof(zes_engine_properties_t)" ]
   - name: engineStats
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_engine_handle_t, hEngines ]
     - [ zes_engine_stats_t *, pEngineStats ]
     fields:
@@ -39,7 +39,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pEngineStats_val, pEngineStats, size_t, "sizeof(zes_engine_stats_t)" ]
   - name: powerProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_pwr_handle_t, hPowers ]
     - [ zes_power_properties_t *, pPowerProperties ]
     fields:
@@ -48,7 +48,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pPowerProperties_val, pPowerProperties, size_t, "sizeof(zes_power_properties_t)" ]
   - name: gpu_energy
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_pwr_handle_t, hPowers ]
     - [ uint32_t, domainIdx ]
     - [ zes_power_energy_counter_t *, pEnergyCounter ]
@@ -59,7 +59,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pEnergyCounter_val, pEnergyCounter, size_t, "sizeof(zes_power_energy_counter_t)" ]
   - name: freqProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_freq_handle_t, hFrequency ]
     - [ zes_freq_properties_t *, pFreqProperties ]
     fields:
@@ -68,7 +68,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pFreqProperties_val, pFreqProperties, size_t, "sizeof(zes_freq_properties_t)" ]
   - name: gpu_frequency
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_freq_handle_t, hFrequency ]
     - [ uint32_t, domainIdx ]
     - [ zes_freq_state_t *, pFreqState ]
@@ -79,7 +79,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pFreqState_val, pFreqState, size_t, "sizeof(zes_freq_state_t)" ]
   - name: fabricPortProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_fabric_port_handle_t, hFabricPort ]
     - [ zes_fabric_port_properties_t *, pFabricPortProperties ]
     fields:
@@ -88,7 +88,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pFabricPortProperties_val, pFabricPortProperties, size_t, "sizeof(zes_fabric_port_properties_t)" ]
   - name: fabricPort
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_fabric_port_handle_t, hFabricPort ]
     - [ zes_fabric_port_state_t *, pFabricPortState ]
     - [ zes_fabric_port_throughput_t *, pFabricPortThroughput ]
@@ -99,7 +99,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pFabricPortThroughput_val, pFabricPortThroughput, size_t, "sizeof(zes_fabric_port_throughput_t)" ]
   - name: memoryProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_mem_handle_t, hMemModule ]
     - [ zes_mem_properties_t *, pMemModuleProperties ]
     fields:
@@ -108,7 +108,7 @@ lttng_ust_ze_sampling:
     - [ ctf_sequence_text, uint8_t, pMemModuleProperties_val, pMemModuleProperties, size_t, "sizeof(zes_mem_properties_t)" ]
   - name: memStats
     args:
-    - [ ze_device_handle_t, hDevice ]
+    - [ zes_device_handle_t, hDevice ]
     - [ zes_mem_handle_t, hMemModule ]
     - [ zes_mem_state_t *, pMemState ]
     - [ zes_mem_bandwidth_t *, pMemBandwidth ]

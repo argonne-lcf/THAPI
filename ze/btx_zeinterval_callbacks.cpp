@@ -773,7 +773,7 @@ DeviceHash get_device_hash(void *usr_data, const char *hostname, int64_t vpid, z
 
     uint64_t hash = 0xcbf29ce484222325; // FNV offset basis
     for (int i = 0; i < ZE_MAX_DEVICE_UUID_SIZE; i++) {
-      hash ^= (uint64_t)deviceProp.uuid.id[i];
+      hash ^= (uint64_t)deviceProp.core.uuid.id[i];
       hash *= 0x100000001b3; // FNV prime
     }
 
@@ -959,42 +959,42 @@ static void lttng_ust_ze_sampling_gpu_frequency_callback(void *btx_handle, void 
 // Properties
 static void lttng_ust_ze_sampling_deviceProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                                 const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                ze_device_handle_t hDevice, uint32_t deviceIdx,size_t _pDeviceProperties_val_length,
-                                                                ze_device_properties_t *pDeviceProperties_val) {
+                                                                zes_device_handle_t hDevice, uint32_t deviceIdx,size_t _pDeviceProperties_val_length,
+                                                                zes_device_properties_t *pDeviceProperties_val) {
 auto *data = static_cast<data_t *>(usr_data);
     data->sampling_device_property[{hostname, vpid, hDevice}] = {*pDeviceProperties_val, deviceIdx};
 }
-
+/*
 static void lttng_ust_ze_sampling_subDeviceProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                                 const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                ze_device_handle_t hDevice,  ze_device_handle_t hSubDevice, size_t _pSubDeviceProperties_val_length,
+                                                                zes_device_handle_t hDevice,  ze_device_handle_t hSubDevice, size_t _pSubDeviceProperties_val_length,
                                                                 ze_device_properties_t *pSubDeviceProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
   data->sampling_sub_device_property[{hostname, vpid, (ze_device_handle_t)hSubDevice}] = *pSubDeviceProperties_val;
 }
-
+*/
 static void lttng_ust_ze_sampling_fabricPortProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                                 const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                ze_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
+                                                                zes_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
                                                                 size_t _pFabricPortProperties_val_length,
                                                                 zes_fabric_port_properties_t *pFabricPortProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->fabricPort_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_fabric_port_handle_t)hFabricPort}] = *pFabricPortProperties_val;
+  data->fabricPort_property[{hostname, vpid, (zes_device_handle_t)hDevice, (zes_fabric_port_handle_t)hFabricPort}] = *pFabricPortProperties_val;
 } 
 
 static void lttng_ust_ze_sampling_memoryProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                                 const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                ze_device_handle_t hDevice, zes_mem_handle_t hMemModule,
+                                                                zes_device_handle_t hDevice, zes_mem_handle_t hMemModule,
                                                                 size_t _pMemModuleProperties_val_length,
                                                                 zes_mem_properties_t *pMemModuleProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->memModule_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_mem_handle_t)hMemModule}] = *pMemModuleProperties_val;
+  data->memModule_property[{hostname, vpid, (zes_device_handle_t)hDevice, (zes_mem_handle_t)hMemModule}] = *pMemModuleProperties_val;
 }
 
 
 static void lttng_ust_ze_sampling_powerProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                            const char *hostname, int64_t vpid, uint64_t vtid,
-                                                           ze_device_handle_t hDevice, zes_pwr_handle_t hPower,
+                                                           zes_device_handle_t hDevice, zes_pwr_handle_t hPower,
                                                            size_t _pPowerProperties_val_length,
                                                            zes_power_properties_t *pPowerProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
@@ -1003,20 +1003,20 @@ static void lttng_ust_ze_sampling_powerProperties_callback(void *btx_handle, voi
 
 static void lttng_ust_ze_sampling_freqProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                           const char *hostname, int64_t vpid, uint64_t vtid,
-                                                          ze_device_handle_t hDevice, zes_freq_handle_t hFrequency,
+                                                          zes_device_handle_t hDevice, zes_freq_handle_t hFrequency,
                                                           size_t _pfreqProperties_val_length,
                                                           zes_freq_properties_t *pFreqProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->frequency_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_freq_handle_t)hFrequency}] = *pFreqProperties_val;
+  data->frequency_property[{hostname, vpid, (zes_device_handle_t)hDevice, (zes_freq_handle_t)hFrequency}] = *pFreqProperties_val;
 }
 
 static void lttng_ust_ze_sampling_engineProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                             const char *hostname, int64_t vpid, uint64_t vtid,
-                                                            ze_device_handle_t hDevice, zes_engine_handle_t hEngine,
+                                                            zes_device_handle_t hDevice, zes_engine_handle_t hEngine,
                                                             size_t _pEngineProperties_val_length,
                                                             zes_engine_properties_t *pEngineProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->engine_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_engine_handle_t)hEngine}] = *pEngineProperties_val;
+  data->engine_property[{hostname, vpid, (zes_device_handle_t)hDevice, (zes_engine_handle_t)hEngine}] = *pEngineProperties_val;
 }
 
 static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -1295,8 +1295,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   //Properties
   btx_register_callbacks_lttng_ust_ze_sampling_deviceProperties(
       btx_handle, &lttng_ust_ze_sampling_deviceProperties_callback);
-  btx_register_callbacks_lttng_ust_ze_sampling_subDeviceProperties(
-      btx_handle, &lttng_ust_ze_sampling_subDeviceProperties_callback);
+ // btx_register_callbacks_lttng_ust_ze_sampling_subDeviceProperties(
+   //   btx_handle, &lttng_ust_ze_sampling_subDeviceProperties_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_fabricPortProperties(
       btx_handle, &lttng_ust_ze_sampling_fabricPortProperties_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_powerProperties(
