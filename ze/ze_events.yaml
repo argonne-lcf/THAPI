@@ -14,7 +14,7 @@ lttng_ust_ze_sampling:
     args:
     - [ zes_device_handle_t, hDevice ]
     - [ ze_device_handle_t, hSubDevice ]
-    - [ zes_device_properties_t *, pSubDeviceProperties ]
+    - [ ze_device_properties_t *, pSubDeviceProperties ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer_hex, uintptr_t, hSubDevice, "(uintptr_t)hSubDevice" ]
