@@ -307,6 +307,8 @@ class Sync_daemon
   # we always call clean-up the daemon
   def self.open
     yield f = new
+  rescue Errno::ENOENT
+    exit(1)
   ensure
     # https://www.rubydoc.info/gems/rubocop/RuboCop/Cop/Lint/EnsureReturn
     if f
@@ -683,7 +685,7 @@ def trace_and_on_node_processing(usr_argv)
       launch_usr_bin(h, usr_argv)
     rescue Errno::ENOENT
       teardown_lttng(syncd)
-      exit(1)
+      raise
     end
 
     teardown_lttng(syncd)
