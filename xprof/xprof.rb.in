@@ -307,12 +307,12 @@ class Sync_daemon
   # we always call clean-up the daemon
   def self.open
     yield f = new
-  rescue StandardError
-    raise
   ensure
-    return unless f
-    f.global_barrier
-    f.finalize
+    # https://www.rubydoc.info/gems/rubocop/RuboCop/Cop/Lint/EnsureReturn
+    if f
+      f.global_barrier
+      f.finalize
+    end
   end
 end
 
@@ -346,8 +346,7 @@ def env_tracers
    %w[ze ze libze_loader libTracerZE],
    %w[cuda cuda libcuda libTracerCUDA],
    %w[hip hip libamdhip64 libTracerHIP],
-   %w[mpi mpi libmpi libTracerMPI],
-  ].each do |name, bt_name, lib, libtracer|
+   %w[mpi mpi libmpi libTracerMPI]].each do |name, bt_name, lib, libtracer|
     # Backend requested, skip omp. It will be handled in a custom case bellow
     next unless OPTIONS[:'backend-names'].include?(bt_name)
 
@@ -430,6 +429,9 @@ def launch_usr_bin(env, cmd)
     LOGGER.warn { 'Application Exited' }
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
+  rescue Errno::ENOENT
+    warn("#{__FILE__}: Can't find executable #{cmd.first}")
+    raise Errno::ENOENT
   end
 end
 
@@ -570,11 +572,13 @@ end
 
 def lm_lttng_teardown_session
   raise unless mpi_local_master?
+
   exec("lttng destroy #{lttng_session_uuid}")
 end
 
 def lm_lttng_kill_sessiond
   raise unless mpi_local_master?
+
   # Need to kill the sessiond Daemon. It's safe because each job has their own
   #
   # In theory, opening the lttng-sessiond.pid file is racy.
@@ -650,20 +654,7 @@ end
 
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
-  # Global barrier at exit
-  Sync_daemon.open do |syncd|
-    # Load Tracers and APILoaders Lib
-    backends, h = env_tracers
-
-    # All ranks need to set the LLTTNG_HOME env
-    # so they can have access to the daemon
-    ENV['LTTNG_HOME'] = lttng_home_dir
-    # Only local master spawn LTTNG daemon and start session
-    lm_setup_lttng(backends) if mpi_local_master?
-    syncd.local_barrier('waiting_for_lttng_setup')
-    # Launch User Command
-    launch_usr_bin(h, usr_argv)
-
+  def teardown_lttng(syncd)
     # We need to be sure that all the local ranks are finished
     # before the local master stops the lttng session
     syncd.local_barrier('waiting_for_application_ending')
@@ -674,6 +665,30 @@ def trace_and_on_node_processing(usr_argv)
     # Lttng session is finished,
     # we can kill the session daemon
     lm_lttng_kill_sessiond
+  end
+
+  Sync_daemon.open do |syncd|
+    # Load Tracers and APILoaders Lib
+    backends, h = env_tracers
+
+    # All ranks need to set the LLTTNG_HOME env
+    # so they can have access to the daemon
+    ENV['LTTNG_HOME'] = lttng_home_dir
+    # Only local master spawn LTTNG daemon and start session
+    lm_setup_lttng(backends) if mpi_local_master?
+    syncd.local_barrier('waiting_for_lttng_setup')
+
+    # Launch User Command
+    begin
+      launch_usr_bin(h, usr_argv)
+    rescue Errno::ENOENT
+      teardown_lttng(syncd)
+      exit(1)
+    end
+
+    teardown_lttng(syncd)
+    return unless mpi_local_master?
+
     # Preprocess trace
     lm_babeltrace(backends)
     lm_move_to_shared
