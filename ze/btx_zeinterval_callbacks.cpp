@@ -821,7 +821,7 @@ static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *us
     double rxThroughput = static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) / time_diff;
     double txThroughput = static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) / time_diff;
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-    if (rxThroughput != 0)
+    if (rxThroughput != 0 || txThroughput != 0)
     btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, 
                                       uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hFabricPort, subDevice,
                                       fabricId, remotePortId, rxThroughput, txThroughput, 
