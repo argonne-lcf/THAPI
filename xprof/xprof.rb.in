@@ -385,11 +385,16 @@ def env_tracers
   end
 
   # Sample
-  if sampling? 
+  #   Currently the same `so` does the tracing, and the sampling
+  #   This mean that is the local rank is not part of the `traced-ranks`
+  #   No sampling will be performed
+  if sampling?
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
-    h['ZES_ENABLE_SYSMAN'] = 0  if OPTIONS[:'backend-names'].include?('ze')
+    # The current only reliable way to use zes api
+    #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
+    h['ZES_ENABLE_SYSMAN'] = 0 if OPTIONS[:'backend-names'].include?('ze')
   end
 
   backends = [] unless need_backend
@@ -522,7 +527,12 @@ end
 
 def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
-  exec("#{lttng_enable} lttng_ust_mpi:*")
+  case tracing_mode
+  when 'full'
+    exec("#{lttng_enable} lttng_ust_mpi:*")
+  when 'default'
+    exec("#{lttng_enable} lttng_ust_mpi:* -x lttng_ust_mpi:MPI_WTime*")
+  end
   exec("#{lttng_enable} lttng_ust_mpi_type:*")
 end
 
