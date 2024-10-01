@@ -1,11 +1,7 @@
 .DELETE_ON_ERROR:
 
 if STRICT
-  # We disable `nonnull`  check due to
-  #  ././ze_tracepoints.h: In function 'lttng_ust__event_get_size__lttng_ust_ze___zeModuleCreate_entry':
-  # [...]/lttng/ust-tracepoint-event.h:578:17: error: argument 1 null where non-null expected [-Werror=nonnull]
-  # 578 |                 strlen((_src) ? (_src) : LTTNG_UST__NULL_STRING) + 1;
-  WERROR = -Werror -Wno-error=nonnull
+  WERROR = -Werror
 else
   WERROR =
 endif
