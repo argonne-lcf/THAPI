@@ -71,4 +71,7 @@ teardown_file() {
 @test "exit_code_propagated" {
   run $IPROF -- bash -c "exit 55"
   [ "$status" == 55 ]
+
+  run $IPROF --no-analysis -- bash -c "exit 55"
+  [ "$status" == 55 ]
 }
