@@ -423,14 +423,17 @@ def launch_usr_bin(env, cmd)
 
   begin
     PTY.spawn(bash_env, *cmd) do |stdout, _stdin, _pid|
+      # Reading stdout will trigger Errno::EIO
       stdout.each { |line| print line }
     rescue Errno::EIO
+      # Wait for the PTY to finish, to set $?
+      Process.wait(_pid)
+      $?
     end
-  # Not sure how this exception can be triggered
-  rescue PTY::ChildExited
-    LOGGER.warn { 'Application Exited' }
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
+    #SigINT is 2
+    2
   rescue Errno::ENOENT
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
