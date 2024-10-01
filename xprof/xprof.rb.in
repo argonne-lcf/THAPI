@@ -233,7 +233,7 @@ end
 #   |_)  _. ._ ._ o  _  ._
 #   |_) (_| |  |  | (/_ |
 #
-class Sync_daemon
+class SyncDaemon
   SIGRTMIN = 34
   RT_SIGNAL_READY = SIGRTMIN
   RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
@@ -280,13 +280,13 @@ class Sync_daemon
              end
 
     LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
-    lazy_exec("Initialize Sync_daemon #{daemon_type}") do
+    lazy_exec("Initialize SyncDaemon #{daemon_type}") do
       @pid = spawn("#{daemon} #{Process.pid}")
     end
   end
 
   def finalize
-    lazy_exec('Finalize Sync_daemon') do
+    lazy_exec('Finalize SyncDaemon') do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
   end
@@ -306,14 +306,14 @@ class Sync_daemon
   # Context manager, ensure that when the block yield is exited
   # we always call clean-up the daemon
   def self.open
-    yield f = new
+    yield syncd = new
   rescue Errno::ENOENT
     exit(1)
   ensure
     # https://www.rubydoc.info/gems/rubocop/RuboCop/Cop/Lint/EnsureReturn
-    if f
-      f.global_barrier
-      f.finalize
+    if syncd
+      syncd.global_barrier
+      syncd.finalize
     end
   end
 end
@@ -669,7 +669,7 @@ def trace_and_on_node_processing(usr_argv)
     lm_lttng_kill_sessiond
   end
 
-  Sync_daemon.open do |syncd|
+  SyncDaemon.open do |syncd|
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
