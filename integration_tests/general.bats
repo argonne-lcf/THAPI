@@ -67,3 +67,8 @@ teardown_file() {
    [ "$status" != 0 ]
    rm out.pftrace
 }
+
+@test "exit_code_propagated" {
+  run $IPROF -- bash -c "exit 55"
+  [ "$status" == 55 ]
+}
