@@ -159,7 +159,7 @@ jobs:
         run: tar -xvf thapi.tar
       - run: sudo apt update; sudo apt install -y lttng-tools liblttng-ust-dev ruby ruby-dev libprotobuf-dev libpocl2 clinfo bats coreutils libglib2.0-dev
       - run: sudo gem install babeltrace2 opencl_ruby_ffi
-      - name: Load Efficios Dependencies
+      - name: Load Babeltrace2
         run: |
           echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=$HOME/babeltrace2/2.0.5/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
@@ -183,7 +183,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Efficios Dependencies
+      - name: Load Babeltrace2
         run: |
           echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
           echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
@@ -221,7 +221,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Efficios Dependencies
+      - name: Load Babeltrace2
         run: |
           echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
           echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
@@ -253,7 +253,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y gcc g++ lttng-tools liblttng-ust-dev ruby ruby-dev elfutils libelf-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Efficios Dependencie
+      - name: Load Babeltrace2
         run: |
           echo "$HOME/babeltrace2/2.0.5/bin" >> $GITHUB_PATH
           echo "PKG_CONFIG_PATH=$HOME/babeltrace2/2.0.5/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
