@@ -13,6 +13,8 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
+$EXIT_CODE_USER_BINARY = 0
+
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
@@ -428,11 +430,11 @@ def launch_usr_bin(env, cmd)
     rescue Errno::EIO
       # Wait for the PTY to finish, to set $?
       Process.wait(_pid)
-      $?
+      return $?.exitstatus
     end
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
-    #SigINT is 2
+    # SigINT is 2
     2
   rescue Errno::ENOENT
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
@@ -685,7 +687,7 @@ def trace_and_on_node_processing(usr_argv)
 
     # Launch User Command
     begin
-      launch_usr_bin(h, usr_argv)
+      $EXIT_CODE_USER_BINARY = launch_usr_bin(h, usr_argv)
     rescue Errno::ENOENT
       teardown_lttng(syncd)
       raise
@@ -742,7 +744,7 @@ def gm_processing(folder)
 
     fo.close
   end
-  exit(1) unless $?.success?
+  exit($?.success? ? $EXIT_CODE_USER_BINARY : $?.exitstatus)
 end
 
 #
