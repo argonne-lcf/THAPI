@@ -13,7 +13,16 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
-$EXIT_CODE_XPROF = 0
+class XprofExitCode
+  @@exit_code = 0
+  def self.update(exit_code)
+    @@exit_code = exit_code unless exit_code.zero?
+  end
+
+  def self.get
+    @@exit_code
+  end
+end
 
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
@@ -687,7 +696,7 @@ def trace_and_on_node_processing(usr_argv)
 
     # Launch User Command
     begin
-      $EXIT_CODE_XPROF |= launch_usr_bin(h, usr_argv)
+      XprofExitCode.update(launch_usr_bin(h, usr_argv))
     rescue Errno::ENOENT
       teardown_lttng(syncd)
       raise
@@ -868,9 +877,9 @@ if __FILE__ == $PROGRAM_NAME
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    $EXIT_CODE_XPROF |= gm_processing(folder) if OPTIONS[:analysis]
+    XprofExitCode.update(gm_processing(folder)) if OPTIONS[:analysis]
   end
 
-  exit($EXIT_CODE_XPROF)
+  exit(XprofExitCode.get)
 
 end
