@@ -16,7 +16,8 @@ DATADIR = DATAROOTDIR
 class XprofExitCode
   @@exit_code = 0
   def self.update(exit_code)
-    @@exit_code = exit_code unless exit_code.zero?
+    # Keep only the first error
+    @@exit_code = exit_code if @@exit_code == 0
   end
 
   def self.get
