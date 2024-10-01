@@ -13,6 +13,18 @@ PREFIX = '@prefix@'
 DATAROOTDIR = File.join(PREFIX, 'share')
 DATADIR = DATAROOTDIR
 
+class XprofExitCode
+  @@exit_code = 0
+  def self.update(exit_code)
+    # Keep only the first error
+    @@exit_code = exit_code if @@exit_code == 0
+  end
+
+  def self.get
+    @@exit_code
+  end
+end
+
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
@@ -423,14 +435,17 @@ def launch_usr_bin(env, cmd)
 
   begin
     PTY.spawn(bash_env, *cmd) do |stdout, _stdin, _pid|
+      # Reading stdout will trigger Errno::EIO
       stdout.each { |line| print line }
     rescue Errno::EIO
+      # Wait for the PTY to finish, to set $?
+      Process.wait(_pid)
+      return $?.exitstatus
     end
-  # Not sure how this exception can be triggered
-  rescue PTY::ChildExited
-    LOGGER.warn { 'Application Exited' }
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
+    # SigINT is 2
+    2
   rescue Errno::ENOENT
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
@@ -682,7 +697,7 @@ def trace_and_on_node_processing(usr_argv)
 
     # Launch User Command
     begin
-      launch_usr_bin(h, usr_argv)
+      XprofExitCode.update(launch_usr_bin(h, usr_argv))
     rescue Errno::ENOENT
       teardown_lttng(syncd)
       raise
@@ -739,7 +754,7 @@ def gm_processing(folder)
 
     fo.close
   end
-  exit(1) unless $?.success?
+  $?.exitstatus
 end
 
 #
@@ -860,8 +875,12 @@ if __FILE__ == $PROGRAM_NAME
   # Right now, `replay` means no tracing.
   # But we don't have a way of disabling post-processing
   folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
+
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    gm_processing(folder) if OPTIONS[:analysis]
+    XprofExitCode.update(gm_processing(folder)) if OPTIONS[:analysis]
   end
+
+  exit(XprofExitCode.get)
+
 end
