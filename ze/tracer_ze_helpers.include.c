@@ -795,55 +795,67 @@ static int _sampling_memModules_initialized = 0;
 static int _sampling_pwr_initialized = 0;
 static int _sampling_engines_initialized = 0;
 // Static handles to stay throughout the execution
-static zes_driver_handle_t*  _sampling_hDrivers = NULL;
-static zes_device_handle_t** _sampling_hDevices = NULL;
-static ze_device_handle_t*** _sampling_hSubDevices = NULL;
-static zes_freq_handle_t*** _sampling_hFrequencies = NULL;
-static zes_pwr_handle_t*** _sampling_hPowers = NULL;
-static zes_engine_handle_t*** _sampling_engineHandles = NULL;
-static zes_fabric_port_handle_t*** _sampling_hFabricPort = NULL;
-static zes_mem_handle_t*** _sampling_hMemModule = NULL;
+static zes_driver_handle_t *_sampling_hDrivers = NULL;
+static zes_device_handle_t **_sampling_hDevices = NULL;
+static ze_device_handle_t ***_sampling_hSubDevices = NULL;
+static zes_freq_handle_t ***_sampling_hFrequencies = NULL;
+static zes_pwr_handle_t ***_sampling_hPowers = NULL;
+static zes_engine_handle_t ***_sampling_engineHandles = NULL;
+static zes_fabric_port_handle_t ***_sampling_hFabricPort = NULL;
+static zes_mem_handle_t ***_sampling_hMemModule = NULL;
 static uint32_t _sampling_driverCount = 0;
-static uint32_t* _sampling_deviceCount = NULL;
-static uint32_t** _sampling_subDeviceCount = NULL;
-static uint32_t** _sampling_freqDomainCounts = NULL;
-static uint32_t** _sampling_fabricPortCount = NULL;
-static uint32_t** _sampling_memModuleCount = NULL;
-static uint32_t** _sampling_powerDomainCounts = NULL;
-static uint32_t** _sampling_engineCounts = NULL;
+static uint32_t *_sampling_deviceCount = NULL;
+static uint32_t **_sampling_subDeviceCount = NULL;
+static uint32_t **_sampling_freqDomainCounts = NULL;
+static uint32_t **_sampling_fabricPortCount = NULL;
+static uint32_t **_sampling_memModuleCount = NULL;
+static uint32_t **_sampling_powerDomainCounts = NULL;
+static uint32_t **_sampling_engineCounts = NULL;
 
 static void intializeFrequency() {
   ze_result_t res;
-  _sampling_hFrequencies = (zes_freq_handle_t***) calloc(_sampling_driverCount, sizeof(zes_freq_handle_t**));
-  _sampling_freqDomainCounts = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t*));
+  _sampling_hFrequencies =
+      (zes_freq_handle_t ***)calloc(_sampling_driverCount, sizeof(zes_freq_handle_t **));
+  _sampling_freqDomainCounts = (uint32_t **)calloc(_sampling_driverCount, sizeof(uint32_t *));
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    _sampling_freqDomainCounts[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
-    _sampling_hFrequencies[driverIdx] = (zes_freq_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_freq_handle_t*));
+    _sampling_freqDomainCounts[driverIdx] =
+        (uint32_t *)calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_hFrequencies[driverIdx] =
+        (zes_freq_handle_t **)calloc(_sampling_deviceCount[driverIdx], sizeof(zes_freq_handle_t *));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       // Get frequency domains for each device
-      res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_freqDomainCounts[driverIdx][deviceIdx], NULL);
+      res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                                  &_sampling_freqDomainCounts[driverIdx][deviceIdx],
+                                                  NULL);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR", res);
         _sampling_freqDomainCounts[driverIdx][deviceIdx] = 0;
         continue;
       }
-      _sampling_hFrequencies[driverIdx][deviceIdx] = (zes_freq_handle_t*) calloc(_sampling_freqDomainCounts[driverIdx][deviceIdx], sizeof(zes_freq_handle_t));
-      res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_freqDomainCounts[driverIdx][deviceIdx], _sampling_hFrequencies[driverIdx][deviceIdx]);
+      _sampling_hFrequencies[driverIdx][deviceIdx] = (zes_freq_handle_t *)calloc(
+          _sampling_freqDomainCounts[driverIdx][deviceIdx], sizeof(zes_freq_handle_t));
+      res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                                  &_sampling_freqDomainCounts[driverIdx][deviceIdx],
+                                                  _sampling_hFrequencies[driverIdx][deviceIdx]);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR", res);
         _sampling_freqDomainCounts[driverIdx][deviceIdx] = 0;
         free(_sampling_hFrequencies[driverIdx][deviceIdx]);
       }
-      for (uint32_t domainIdx = 0; domainIdx <  _sampling_freqDomainCounts[driverIdx][deviceIdx]; domainIdx++) {
-        zes_freq_properties_t freqProps ={0};
+      for (uint32_t domainIdx = 0; domainIdx < _sampling_freqDomainCounts[driverIdx][deviceIdx];
+           domainIdx++) {
+        zes_freq_properties_t freqProps = {0};
         freqProps.stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES;
-        res = ZES_FREQUENCY_GET_PROPERTIES_PTR(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProps);
+        res = ZES_FREQUENCY_GET_PROPERTIES_PTR(
+            _sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProps);
         if (res != ZE_RESULT_SUCCESS) {
           _ZE_ERROR_MSG("ZES_FREQUENCY_GET_PROPERTIES_PTR", res);
           free(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx]);
         }
-        do_tracepoint(lttng_ust_ze_sampling, freqProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                      (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProps);
+        do_tracepoint(lttng_ust_ze_sampling, freqProperties,
+                      (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                      (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx],
+                      &freqProps);
       }
     }
   }
@@ -852,37 +864,48 @@ static void intializeFrequency() {
 
 static void intializePower() {
   ze_result_t res;
-  _sampling_hPowers = (zes_pwr_handle_t***) calloc(_sampling_driverCount, sizeof(zes_pwr_handle_t**));
-  _sampling_powerDomainCounts = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t*));
+  _sampling_hPowers =
+      (zes_pwr_handle_t ***)calloc(_sampling_driverCount, sizeof(zes_pwr_handle_t **));
+  _sampling_powerDomainCounts = (uint32_t **)calloc(_sampling_driverCount, sizeof(uint32_t *));
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    _sampling_hPowers[driverIdx] = (zes_pwr_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_pwr_handle_t*));
-    _sampling_powerDomainCounts[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_hPowers[driverIdx] =
+        (zes_pwr_handle_t **)calloc(_sampling_deviceCount[driverIdx], sizeof(zes_pwr_handle_t *));
+    _sampling_powerDomainCounts[driverIdx] =
+        (uint32_t *)calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       // Get power domains for each device
-      res = ZES_DEVICE_ENUM_POWER_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_powerDomainCounts[driverIdx][deviceIdx], NULL);
+      res = ZES_DEVICE_ENUM_POWER_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                              &_sampling_powerDomainCounts[driverIdx][deviceIdx],
+                                              NULL);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_POWER_DOMAINS_PTR", res);
         _sampling_powerDomainCounts[driverIdx][deviceIdx] = 0;
         continue;
       }
-      _sampling_hPowers[driverIdx][deviceIdx] = (zes_pwr_handle_t*) calloc(_sampling_powerDomainCounts[driverIdx][deviceIdx], sizeof(zes_pwr_handle_t));
-      res = ZES_DEVICE_ENUM_POWER_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_powerDomainCounts[driverIdx][deviceIdx],
+      _sampling_hPowers[driverIdx][deviceIdx] = (zes_pwr_handle_t *)calloc(
+          _sampling_powerDomainCounts[driverIdx][deviceIdx], sizeof(zes_pwr_handle_t));
+      res = ZES_DEVICE_ENUM_POWER_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                              &_sampling_powerDomainCounts[driverIdx][deviceIdx],
                                               _sampling_hPowers[driverIdx][deviceIdx]);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_POWER_DOMAINS_PTR", res);
         _sampling_powerDomainCounts[driverIdx][deviceIdx] = 0;
         free(_sampling_hPowers[driverIdx][deviceIdx]);
       }
-      for (uint32_t domainIdx = 0; domainIdx <  _sampling_powerDomainCounts[driverIdx][deviceIdx]; domainIdx++) {
-        zes_power_properties_t powerProperties ={0};
+      for (uint32_t domainIdx = 0; domainIdx < _sampling_powerDomainCounts[driverIdx][deviceIdx];
+           domainIdx++) {
+        zes_power_properties_t powerProperties = {0};
         powerProperties.stype = ZES_STRUCTURE_TYPE_POWER_PROPERTIES;
-        res = ZES_POWER_GET_PROPERTIES_PTR(_sampling_hPowers[driverIdx][deviceIdx][domainIdx], &powerProperties);
+        res = ZES_POWER_GET_PROPERTIES_PTR(_sampling_hPowers[driverIdx][deviceIdx][domainIdx],
+                                           &powerProperties);
         if (res != ZE_RESULT_SUCCESS) {
           _ZE_ERROR_MSG("ZES_POWER_GET_PROPERTIES_PTR", res);
           free(_sampling_hPowers[driverIdx][deviceIdx][domainIdx]);
         }
-        do_tracepoint(lttng_ust_ze_sampling, powerProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                      (zes_pwr_handle_t)_sampling_hPowers[driverIdx][deviceIdx][domainIdx], &powerProperties);
+        do_tracepoint(lttng_ust_ze_sampling, powerProperties,
+                      (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                      (zes_pwr_handle_t)_sampling_hPowers[driverIdx][deviceIdx][domainIdx],
+                      &powerProperties);
       }
     }
   }
@@ -891,35 +914,46 @@ static void intializePower() {
 
 static void intializeEngines() {
   ze_result_t res;
-  _sampling_engineHandles = (zes_engine_handle_t***) calloc(_sampling_driverCount, sizeof(zes_engine_handle_t**));
-  _sampling_engineCounts = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t*));
+  _sampling_engineHandles =
+      (zes_engine_handle_t ***)calloc(_sampling_driverCount, sizeof(zes_engine_handle_t **));
+  _sampling_engineCounts = (uint32_t **)calloc(_sampling_driverCount, sizeof(uint32_t *));
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    _sampling_engineHandles[driverIdx] = (zes_engine_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_engine_handle_t*));
-    _sampling_engineCounts[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_engineHandles[driverIdx] = (zes_engine_handle_t **)calloc(
+        _sampling_deviceCount[driverIdx], sizeof(zes_engine_handle_t *));
+    _sampling_engineCounts[driverIdx] =
+        (uint32_t *)calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       // Get engine counts for each device
-      res = ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_engineCounts[driverIdx][deviceIdx], NULL);
+      res = ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                              &_sampling_engineCounts[driverIdx][deviceIdx], NULL);
       if (res != ZE_RESULT_SUCCESS || _sampling_engineCounts[driverIdx][deviceIdx] == 0) {
         _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR", res);
         _sampling_engineCounts[driverIdx][deviceIdx] = 0;
         continue;
       }
-      _sampling_engineHandles[driverIdx][deviceIdx] = (zes_engine_handle_t*) calloc(_sampling_engineCounts[driverIdx][deviceIdx], sizeof(zes_engine_handle_t));
-      res = ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_engineCounts[driverIdx][deviceIdx], _sampling_engineHandles[driverIdx][deviceIdx]);
+      _sampling_engineHandles[driverIdx][deviceIdx] = (zes_engine_handle_t *)calloc(
+          _sampling_engineCounts[driverIdx][deviceIdx], sizeof(zes_engine_handle_t));
+      res = ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                              &_sampling_engineCounts[driverIdx][deviceIdx],
+                                              _sampling_engineHandles[driverIdx][deviceIdx]);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR", res);
         _sampling_engineCounts[driverIdx][deviceIdx] = 0;
         free(_sampling_engineHandles[driverIdx][deviceIdx]);
       }
-      for (uint32_t engineIdx = 0; engineIdx < _sampling_engineCounts[driverIdx][deviceIdx]; ++engineIdx) {
+      for (uint32_t engineIdx = 0; engineIdx < _sampling_engineCounts[driverIdx][deviceIdx];
+           ++engineIdx) {
         zes_engine_properties_t engineProps = {0};
         engineProps.stype = ZES_STRUCTURE_TYPE_ENGINE_PROPERTIES;
-        res = ZES_ENGINE_GET_PROPERTIES_PTR(_sampling_engineHandles[driverIdx][deviceIdx][engineIdx], &engineProps);
+        res = ZES_ENGINE_GET_PROPERTIES_PTR(
+            _sampling_engineHandles[driverIdx][deviceIdx][engineIdx], &engineProps);
         if (res != ZE_RESULT_SUCCESS) {
           _ZE_ERROR_MSG("ZES_ENGINE_GET_PROPERTIES_PTR", res);
         }
-        do_tracepoint(lttng_ust_ze_sampling, engineProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                      (zes_engine_handle_t)_sampling_engineHandles[driverIdx][deviceIdx][engineIdx], &engineProps);
+        do_tracepoint(lttng_ust_ze_sampling, engineProperties,
+                      (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                      (zes_engine_handle_t)_sampling_engineHandles[driverIdx][deviceIdx][engineIdx],
+                      &engineProps);
       }
     }
   }
@@ -928,37 +962,49 @@ static void intializeEngines() {
 
 static void intializeFabricPorts() {
   ze_result_t res;
-  _sampling_hFabricPort = (zes_fabric_port_handle_t***) calloc(_sampling_driverCount, sizeof(zes_fabric_port_handle_t**));
-  _sampling_fabricPortCount = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t*));
+  _sampling_hFabricPort = (zes_fabric_port_handle_t ***)calloc(_sampling_driverCount,
+                                                               sizeof(zes_fabric_port_handle_t **));
+  _sampling_fabricPortCount = (uint32_t **)calloc(_sampling_driverCount, sizeof(uint32_t *));
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    _sampling_fabricPortCount[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
-    _sampling_hFabricPort[driverIdx] = (zes_fabric_port_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_fabric_port_handle_t*));
+    _sampling_fabricPortCount[driverIdx] =
+        (uint32_t *)calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_hFabricPort[driverIdx] = (zes_fabric_port_handle_t **)calloc(
+        _sampling_deviceCount[driverIdx], sizeof(zes_fabric_port_handle_t *));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       // Get fabric ports for each device
-      res = ZES_DEVICE_ENUM_FABRIC_PORTS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_fabricPortCount[driverIdx][deviceIdx], NULL);
+      res =
+          ZES_DEVICE_ENUM_FABRIC_PORTS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                           &_sampling_fabricPortCount[driverIdx][deviceIdx], NULL);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_FABRIC_PORTS_PTR", res);
         _sampling_fabricPortCount[driverIdx][deviceIdx] = 0;
         continue;
       }
-      _sampling_hFabricPort[driverIdx][deviceIdx] = (zes_fabric_port_handle_t*) calloc(_sampling_fabricPortCount[driverIdx][deviceIdx], sizeof(zes_fabric_port_handle_t));
-      res = ZES_DEVICE_ENUM_FABRIC_PORTS_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_fabricPortCount[driverIdx][deviceIdx], _sampling_hFabricPort[driverIdx][deviceIdx]);
+      _sampling_hFabricPort[driverIdx][deviceIdx] = (zes_fabric_port_handle_t *)calloc(
+          _sampling_fabricPortCount[driverIdx][deviceIdx], sizeof(zes_fabric_port_handle_t));
+      res = ZES_DEVICE_ENUM_FABRIC_PORTS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                             &_sampling_fabricPortCount[driverIdx][deviceIdx],
+                                             _sampling_hFabricPort[driverIdx][deviceIdx]);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_FABRIC_PORTS_PTR", res);
         _sampling_fabricPortCount[driverIdx][deviceIdx] = 0;
         free(_sampling_hFabricPort[driverIdx][deviceIdx]);
       }
-      for (uint32_t fabricPortIdx = 0; fabricPortIdx < _sampling_fabricPortCount[driverIdx][deviceIdx]; ++fabricPortIdx) {
+      for (uint32_t fabricPortIdx = 0;
+           fabricPortIdx < _sampling_fabricPortCount[driverIdx][deviceIdx]; ++fabricPortIdx) {
 
-         zes_fabric_port_properties_t fabricPortProps = {0};
-         res = ZES_FABRIC_PORT_GET_PROPERTIES_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][fabricPortIdx], &fabricPortProps);
-         if (res != ZE_RESULT_SUCCESS) {
-           _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_PROPERTIES_PTR", res);
-         }
-         //Dump fabricPortProperties once
-         do_tracepoint(lttng_ust_ze_sampling, fabricPortProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                       (zes_fabric_port_handle_t)_sampling_hFabricPort[driverIdx][deviceIdx][fabricPortIdx], 
-                       &fabricPortProps);
+        zes_fabric_port_properties_t fabricPortProps = {0};
+        res = ZES_FABRIC_PORT_GET_PROPERTIES_PTR(
+            _sampling_hFabricPort[driverIdx][deviceIdx][fabricPortIdx], &fabricPortProps);
+        if (res != ZE_RESULT_SUCCESS) {
+          _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_PROPERTIES_PTR", res);
+        }
+        // Dump fabricPortProperties once
+        do_tracepoint(
+            lttng_ust_ze_sampling, fabricPortProperties,
+            (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+            (zes_fabric_port_handle_t)_sampling_hFabricPort[driverIdx][deviceIdx][fabricPortIdx],
+            &fabricPortProps);
       }
     }
   }
@@ -967,37 +1013,48 @@ static void intializeFabricPorts() {
 
 static void intializeMemModules() {
   ze_result_t res;
-  _sampling_hMemModule = (zes_mem_handle_t***) calloc(_sampling_driverCount, sizeof(zes_mem_handle_t**));
-  _sampling_memModuleCount = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t*));
+  _sampling_hMemModule =
+      (zes_mem_handle_t ***)calloc(_sampling_driverCount, sizeof(zes_mem_handle_t **));
+  _sampling_memModuleCount = (uint32_t **)calloc(_sampling_driverCount, sizeof(uint32_t *));
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    _sampling_memModuleCount[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
-    _sampling_hMemModule[driverIdx] = (zes_mem_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_mem_handle_t*));
+    _sampling_memModuleCount[driverIdx] =
+        (uint32_t *)calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_hMemModule[driverIdx] =
+        (zes_mem_handle_t **)calloc(_sampling_deviceCount[driverIdx], sizeof(zes_mem_handle_t *));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       // Get fabric ports for each device
-      res = ZES_DEVICE_ENUM_MEMORY_MODULES_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_memModuleCount[driverIdx][deviceIdx], NULL);
+      res =
+          ZES_DEVICE_ENUM_MEMORY_MODULES_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                             &_sampling_memModuleCount[driverIdx][deviceIdx], NULL);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("1st ZES_DEVICE_ENUM_MEMORY_MODULES_PTR", res);
         _sampling_memModuleCount[driverIdx][deviceIdx] = 0;
         continue;
       }
-      _sampling_hMemModule[driverIdx][deviceIdx] = (zes_mem_handle_t*) calloc(_sampling_memModuleCount[driverIdx][deviceIdx], sizeof(zes_mem_handle_t));
-      res = ZES_DEVICE_ENUM_MEMORY_MODULES_PTR(_sampling_hDevices[driverIdx][deviceIdx], &_sampling_memModuleCount[driverIdx][deviceIdx], _sampling_hMemModule[driverIdx][deviceIdx]);
+      _sampling_hMemModule[driverIdx][deviceIdx] = (zes_mem_handle_t *)calloc(
+          _sampling_memModuleCount[driverIdx][deviceIdx], sizeof(zes_mem_handle_t));
+      res = ZES_DEVICE_ENUM_MEMORY_MODULES_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+                                               &_sampling_memModuleCount[driverIdx][deviceIdx],
+                                               _sampling_hMemModule[driverIdx][deviceIdx]);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("2nd ZES_DEVICE_ENUM_MEMORY_MODULES_PTR", res);
         _sampling_memModuleCount[driverIdx][deviceIdx] = 0;
         free(_sampling_hMemModule[driverIdx][deviceIdx]);
       }
-      for (uint32_t memModuleIdx = 0; memModuleIdx < _sampling_memModuleCount[driverIdx][deviceIdx]; ++memModuleIdx) {
+      for (uint32_t memModuleIdx = 0; memModuleIdx < _sampling_memModuleCount[driverIdx][deviceIdx];
+           ++memModuleIdx) {
         zes_mem_properties_t memProps = {0};
         memProps.stype = ZES_STRUCTURE_TYPE_MEM_PROPERTIES;
-        res = ZES_MEMORY_GET_PROPERTIES_PTR(_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx], &memProps);
+        res = ZES_MEMORY_GET_PROPERTIES_PTR(
+            _sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx], &memProps);
         if (res != ZE_RESULT_SUCCESS) {
-           _ZE_ERROR_MSG("ZES_MEMORY_GET_PROPERTIES_PTR", res);
+          _ZE_ERROR_MSG("ZES_MEMORY_GET_PROPERTIES_PTR", res);
         }
-         //Dump fabricPortProperties once
-        do_tracepoint(lttng_ust_ze_sampling, memoryProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                       (zes_mem_handle_t)_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx],
-                       &memProps);
+        // Dump fabricPortProperties once
+        do_tracepoint(lttng_ust_ze_sampling, memoryProperties,
+                      (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                      (zes_mem_handle_t)_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx],
+                      &memProps);
       }
     }
   }
@@ -1019,33 +1076,41 @@ static int initializeHandles() {
     _ZE_ERROR_MSG("1st ZES_DRIVER_GET_PTR", res);
     return -1;
   }
-  _sampling_hDrivers = (zes_driver_handle_t*) calloc(_sampling_driverCount, sizeof(zes_driver_handle_t));
+  _sampling_hDrivers =
+      (zes_driver_handle_t *)calloc(_sampling_driverCount, sizeof(zes_driver_handle_t));
   res = ZES_DRIVER_GET_PTR(&_sampling_driverCount, _sampling_hDrivers);
   if (res != ZE_RESULT_SUCCESS) {
     _ZE_ERROR_MSG("2nd ZES_DRIVER_GET_PTR", res);
     return -1;
   }
-  _sampling_deviceCount = (uint32_t*) calloc(_sampling_driverCount, sizeof(uint32_t));
-  _sampling_subDeviceCount = (uint32_t**) calloc(_sampling_driverCount, sizeof(uint32_t*));
-  _sampling_hDevices = (zes_device_handle_t**) calloc(_sampling_driverCount, sizeof(zes_device_handle_t*));
-  _sampling_hSubDevices = (ze_device_handle_t***) calloc(_sampling_driverCount, sizeof(ze_device_handle_t**));
+  _sampling_deviceCount = (uint32_t *)calloc(_sampling_driverCount, sizeof(uint32_t));
+  _sampling_subDeviceCount = (uint32_t **)calloc(_sampling_driverCount, sizeof(uint32_t *));
+  _sampling_hDevices =
+      (zes_device_handle_t **)calloc(_sampling_driverCount, sizeof(zes_device_handle_t *));
+  _sampling_hSubDevices =
+      (ze_device_handle_t ***)calloc(_sampling_driverCount, sizeof(ze_device_handle_t **));
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
-    res = ZES_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], NULL);
+    res =
+        ZES_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], NULL);
     if (res != ZE_RESULT_SUCCESS || _sampling_deviceCount[driverIdx] == 0) {
       fprintf(stderr, "ERROR: No device found!\n");
       _ZE_ERROR_MSG("1st ZES_DEVICE_GET_PTR", res);
       return -1;
     }
-    _sampling_hDevices[driverIdx] = (zes_device_handle_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(zes_device_handle_t));
-    res = ZES_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx], _sampling_hDevices[driverIdx]);
+    _sampling_hDevices[driverIdx] = (zes_device_handle_t *)calloc(_sampling_deviceCount[driverIdx],
+                                                                  sizeof(zes_device_handle_t));
+    res = ZES_DEVICE_GET_PTR(_sampling_hDrivers[driverIdx], &_sampling_deviceCount[driverIdx],
+                             _sampling_hDevices[driverIdx]);
     if (res != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("2nd ZES_DEVICE_GET_PTR", res);
       free(_sampling_hDevices[driverIdx]);
       return -1;
     }
-    //Get no sub-devices
-    _sampling_subDeviceCount[driverIdx] = (uint32_t*) calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
-    _sampling_hSubDevices[driverIdx] = (ze_device_handle_t**) calloc(_sampling_deviceCount[driverIdx], sizeof(ze_device_handle_t*));
+    // Get no sub-devices
+    _sampling_subDeviceCount[driverIdx] =
+        (uint32_t *)calloc(_sampling_deviceCount[driverIdx], sizeof(uint32_t));
+    _sampling_hSubDevices[driverIdx] = (ze_device_handle_t **)calloc(
+        _sampling_deviceCount[driverIdx], sizeof(ze_device_handle_t *));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
       zes_device_properties_t deviceProps = {0};
       deviceProps.stype = ZES_STRUCTURE_TYPE_DEVICE_PROPERTIES;
@@ -1054,33 +1119,46 @@ static int initializeHandles() {
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("ZES_DEVICE_GET_PROPERTIES_PTR", res);
       }
-      do_tracepoint(lttng_ust_ze_sampling, deviceProperties, (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], deviceIdx,
-                      &deviceProps );
+      do_tracepoint(lttng_ust_ze_sampling, deviceProperties,
+                    (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], deviceIdx,
+                    &deviceProps);
 
-      res = ZE_DEVICE_GET_SUB_DEVICES_PTR((ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], &_sampling_subDeviceCount[driverIdx][deviceIdx], NULL);
+      res = ZE_DEVICE_GET_SUB_DEVICES_PTR(
+          (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+          &_sampling_subDeviceCount[driverIdx][deviceIdx], NULL);
       if (res != ZE_RESULT_SUCCESS) {
         _ZE_ERROR_MSG("ZE_DEVICE_GET_SUB_DEVICES_PTR", res);
         _sampling_subDeviceCount[driverIdx][deviceIdx] = 0;
       }
       if (_sampling_subDeviceCount[driverIdx][deviceIdx] > 0) {
-        _sampling_hSubDevices[driverIdx][deviceIdx] = (ze_device_handle_t*) calloc(_sampling_subDeviceCount[driverIdx][deviceIdx], sizeof(ze_device_handle_t));
-        res = ZE_DEVICE_GET_SUB_DEVICES_PTR((ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], &_sampling_subDeviceCount[driverIdx][deviceIdx], _sampling_hSubDevices[driverIdx][deviceIdx]);
+        _sampling_hSubDevices[driverIdx][deviceIdx] = (ze_device_handle_t *)calloc(
+            _sampling_subDeviceCount[driverIdx][deviceIdx], sizeof(ze_device_handle_t));
+        res = ZE_DEVICE_GET_SUB_DEVICES_PTR(
+            (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+            &_sampling_subDeviceCount[driverIdx][deviceIdx],
+            _sampling_hSubDevices[driverIdx][deviceIdx]);
         if (res != ZE_RESULT_SUCCESS) {
           _ZE_ERROR_MSG("ZE_DEVICE_GET_SUB_DEVICES_PTR", res);
           free(_sampling_hSubDevices[driverIdx][deviceIdx]);
           _sampling_hSubDevices[driverIdx][deviceIdx] = NULL;
           _sampling_subDeviceCount[driverIdx][deviceIdx] = 0;
         }
-        for (uint32_t subDeviceIdx = 0; subDeviceIdx < _sampling_subDeviceCount[driverIdx][deviceIdx]; subDeviceIdx++) {
+        for (uint32_t subDeviceIdx = 0;
+             subDeviceIdx < _sampling_subDeviceCount[driverIdx][deviceIdx]; subDeviceIdx++) {
           ze_device_properties_t subDeviceProps = {0};
           subDeviceProps.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
           subDeviceProps.pNext = NULL;
-          res = ZE_DEVICE_GET_PROPERTIES_PTR(_sampling_hSubDevices[driverIdx][deviceIdx][subDeviceIdx], &subDeviceProps);
+          res = ZE_DEVICE_GET_PROPERTIES_PTR(
+              _sampling_hSubDevices[driverIdx][deviceIdx][subDeviceIdx], &subDeviceProps);
           if (res != ZE_RESULT_SUCCESS) {
-          _ZE_ERROR_MSG("ZES_DEVICE_GET_PROPERTIES_PTR", res);
+            _ZE_ERROR_MSG("ZES_DEVICE_GET_PROPERTIES_PTR", res);
           }
-          do_tracepoint(lttng_ust_ze_sampling, subDeviceProperties, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (ze_device_handle_t)_sampling_hSubDevices[driverIdx][deviceIdx][subDeviceIdx], &subDeviceProps);
-       }	
+          do_tracepoint(
+              lttng_ust_ze_sampling, subDeviceProperties,
+              (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+              (ze_device_handle_t)_sampling_hSubDevices[driverIdx][deviceIdx][subDeviceIdx],
+              &subDeviceProps);
+        }
       }
     }
   }
@@ -1093,108 +1171,137 @@ static int initializeHandles() {
 }
 
 static void readFrequency_dump(uint32_t driverIdx, uint32_t deviceIdx) {
-  if (!_sampling_freq_initialized) return;
+  if (!_sampling_freq_initialized)
+    return;
   ze_result_t result;
-  for (uint32_t domainIdx = 0; domainIdx < _sampling_freqDomainCounts[driverIdx][deviceIdx]; domainIdx++) {
+  for (uint32_t domainIdx = 0; domainIdx < _sampling_freqDomainCounts[driverIdx][deviceIdx];
+       domainIdx++) {
     zes_freq_state_t freqState = {0};
-    result = ZES_FREQUENCY_GET_STATE_PTR(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqState);
+    result = ZES_FREQUENCY_GET_STATE_PTR(_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx],
+                                         &freqState);
     if (result != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("ZES_FREQUENCY_GET_STATE_PTR", result);
       continue;
     }
-    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency, (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], domainIdx, &freqState);
+    do_tracepoint(lttng_ust_ze_sampling, gpu_frequency,
+                  (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                  (zes_freq_handle_t)_sampling_hFrequencies[driverIdx][deviceIdx][domainIdx],
+                  domainIdx, &freqState);
   }
 }
 
 static void readFabricPorts_dump(uint32_t driverIdx, uint32_t deviceIdx) {
-  if (!_sampling_fabricPorts_initialized) return;
+  if (!_sampling_fabricPorts_initialized)
+    return;
   ze_result_t result;
-  for (uint32_t portIdx = 0; portIdx <  _sampling_fabricPortCount[driverIdx][deviceIdx]; portIdx++ ) {
+  for (uint32_t portIdx = 0; portIdx < _sampling_fabricPortCount[driverIdx][deviceIdx]; portIdx++) {
     zes_fabric_port_state_t portState = {0};
     portState.pNext = NULL;
     portState.stype = ZES_STRUCTURE_TYPE_FABRIC_PORT_STATE;
-    result = ZES_FABRIC_PORT_GET_STATE_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][portIdx], &portState);
+    result = ZES_FABRIC_PORT_GET_STATE_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][portIdx],
+                                           &portState);
     if (result != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_STATE_PTR", result);
       continue;
     }
     zes_fabric_port_throughput_t throughput = {0};
-    result = ZES_FABRIC_PORT_GET_THROUGHPUT_PTR(_sampling_hFabricPort[driverIdx][deviceIdx][portIdx], &throughput);
+    result = ZES_FABRIC_PORT_GET_THROUGHPUT_PTR(
+        _sampling_hFabricPort[driverIdx][deviceIdx][portIdx], &throughput);
     if (result != ZE_RESULT_SUCCESS) {
-     _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_THROUGHPUT_PTR", result);
-     continue;
+      _ZE_ERROR_MSG("ZES_FABRIC_PORT_GET_THROUGHPUT_PTR", result);
+      continue;
     }
-    do_tracepoint(lttng_ust_ze_sampling, fabricPort, (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], 
-                (zes_fabric_port_handle_t)_sampling_hFabricPort[driverIdx][deviceIdx][portIdx], &portState, &throughput);
+    do_tracepoint(lttng_ust_ze_sampling, fabricPort,
+                  (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                  (zes_fabric_port_handle_t)_sampling_hFabricPort[driverIdx][deviceIdx][portIdx],
+                  &portState, &throughput);
   }
 }
 
 static void readMemModules_dump(uint32_t driverIdx, uint32_t deviceIdx) {
-  if (!_sampling_memModules_initialized) return;
+  if (!_sampling_memModules_initialized)
+    return;
   ze_result_t result;
-  for (uint32_t memModuleIdx = 0; memModuleIdx < _sampling_memModuleCount[driverIdx][deviceIdx]; ++memModuleIdx) {
+  for (uint32_t memModuleIdx = 0; memModuleIdx < _sampling_memModuleCount[driverIdx][deviceIdx];
+       ++memModuleIdx) {
     zes_mem_state_t memState = {0};
     memState.stype = ZES_STRUCTURE_TYPE_MEM_STATE;
     zes_mem_bandwidth_t memBandwidth = {0};
-    result = ZES_MEMORY_GET_STATE_PTR(_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx], &memState);
+    result = ZES_MEMORY_GET_STATE_PTR(_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx],
+                                      &memState);
     if (result != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("ZES_MEMORY_GET_STATE_PTR", result);
       continue;
     }
-    result = ZES_MEMORY_GET_BANDWIDTH_PTR(_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx], &memBandwidth);
+    result = ZES_MEMORY_GET_BANDWIDTH_PTR(_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx],
+                                          &memBandwidth);
     if (result != ZE_RESULT_SUCCESS) {
-     _ZE_ERROR_MSG("ZES_MEMORY_GET_BANDWIDTH_PTR", result);
-     continue;
+      _ZE_ERROR_MSG("ZES_MEMORY_GET_BANDWIDTH_PTR", result);
+      continue;
     }
-    do_tracepoint(lttng_ust_ze_sampling, memStats, (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
-                (zes_mem_handle_t)_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx], &memState, &memBandwidth);
+    do_tracepoint(lttng_ust_ze_sampling, memStats,
+                  (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                  (zes_mem_handle_t)_sampling_hMemModule[driverIdx][deviceIdx][memModuleIdx],
+                  &memState, &memBandwidth);
   }
 }
 
 static void readEnergy_dump(uint32_t driverIdx, uint32_t deviceIdx) {
-  if (!_sampling_pwr_initialized) return;
+  if (!_sampling_pwr_initialized)
+    return;
   ze_result_t result;
-  for (uint32_t domainIdx = 0; domainIdx < _sampling_powerDomainCounts[driverIdx][deviceIdx]; domainIdx++) {
+  for (uint32_t domainIdx = 0; domainIdx < _sampling_powerDomainCounts[driverIdx][deviceIdx];
+       domainIdx++) {
     zes_power_energy_counter_t energyCounter = {0};
-    result = ZES_POWER_GET_ENERGY_COUNTER_PTR(_sampling_hPowers[driverIdx][deviceIdx][domainIdx], &energyCounter);
+    result = ZES_POWER_GET_ENERGY_COUNTER_PTR(_sampling_hPowers[driverIdx][deviceIdx][domainIdx],
+                                              &energyCounter);
     if (result != ZE_RESULT_SUCCESS) {
       _ZE_ERROR_MSG("ZES_POWER_GET_ENERGY_COUNTER_PTR", result);
       continue;
     }
-    do_tracepoint(lttng_ust_ze_sampling, gpu_energy, (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_pwr_handle_t)_sampling_hPowers[driverIdx][deviceIdx][domainIdx], domainIdx, &energyCounter);
+    do_tracepoint(lttng_ust_ze_sampling, gpu_energy,
+                  (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                  (zes_pwr_handle_t)_sampling_hPowers[driverIdx][deviceIdx][domainIdx], domainIdx,
+                  &energyCounter);
   }
 }
 
-static void readEngines_dump(uint32_t driverIdx, uint32_t deviceIdx){
-  if (!_sampling_engines_initialized) return;
+static void readEngines_dump(uint32_t driverIdx, uint32_t deviceIdx) {
+  if (!_sampling_engines_initialized)
+    return;
   ze_result_t result;
-  for (uint32_t engineIdx = 0; engineIdx < _sampling_engineCounts[driverIdx][deviceIdx]; ++engineIdx) {
-      zes_engine_stats_t engineStats = {0};
-      result = ZES_ENGINE_GET_ACTIVITY_PTR(_sampling_engineHandles[driverIdx][deviceIdx][engineIdx], &engineStats);
-      if (result != ZE_RESULT_SUCCESS) {
-        _ZE_ERROR_MSG("ZES_ENGINE_GET_ACTIVITY_PTR", result);
-        continue;
-      }
-      do_tracepoint(lttng_ust_ze_sampling, engineStats, (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx], (zes_engine_handle_t)_sampling_engineHandles[driverIdx][deviceIdx][engineIdx], &engineStats);
+  for (uint32_t engineIdx = 0; engineIdx < _sampling_engineCounts[driverIdx][deviceIdx];
+       ++engineIdx) {
+    zes_engine_stats_t engineStats = {0};
+    result = ZES_ENGINE_GET_ACTIVITY_PTR(_sampling_engineHandles[driverIdx][deviceIdx][engineIdx],
+                                         &engineStats);
+    if (result != ZE_RESULT_SUCCESS) {
+      _ZE_ERROR_MSG("ZES_ENGINE_GET_ACTIVITY_PTR", result);
+      continue;
+    }
+    do_tracepoint(lttng_ust_ze_sampling, engineStats,
+                  (zes_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
+                  (zes_engine_handle_t)_sampling_engineHandles[driverIdx][deviceIdx][engineIdx],
+                  &engineStats);
   }
 }
 
 static void thapi_sampling_energy() {
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
-      if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)){
+      if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_frequency)) {
         readFrequency_dump(driverIdx, deviceIdx);
       }
-      if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_energy)){
+      if (tracepoint_enabled(lttng_ust_ze_sampling, gpu_energy)) {
         readEnergy_dump(driverIdx, deviceIdx);
       }
-      if (tracepoint_enabled(lttng_ust_ze_sampling, engineStats)){
+      if (tracepoint_enabled(lttng_ust_ze_sampling, engineStats)) {
         readEngines_dump(driverIdx, deviceIdx);
       }
       if (tracepoint_enabled(lttng_ust_ze_sampling, fabricPort)) {
         readFabricPorts_dump(driverIdx, deviceIdx);
       }
-      if (tracepoint_enabled(lttng_ust_ze_sampling, memStats)){
+      if (tracepoint_enabled(lttng_ust_ze_sampling, memStats)) {
         readMemModules_dump(driverIdx, deviceIdx);
       }
     }

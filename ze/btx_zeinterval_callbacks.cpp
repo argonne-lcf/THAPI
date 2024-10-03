@@ -349,8 +349,8 @@ static void hSignalEvent_hKernel_with_group_entry_callback(
     std::stringstream metadata_s;
     metadata_s << "SIMD" << std::get<ze_kernel_properties_t>(a).maxSubgroupSize << ", {"
                << pLaunchFuncArgs_val->groupCountX << "," << pLaunchFuncArgs_val->groupCountY << ","
-               << pLaunchFuncArgs_val->groupCountZ << "}"
-               << ", {" << groupSizeX << "," << groupSizeY << "," << groupSizeZ << "}";
+               << pLaunchFuncArgs_val->groupCountZ << "}" << ", {" << groupSizeX << ","
+               << groupSizeY << "," << groupSizeZ << "}";
     metadata = metadata_s.str();
   }
   data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {
@@ -765,11 +765,12 @@ static void zeEventDestroy_exit_callback(void *btx_handle, void *usr_data, int64
  * Sampling
  */
 
-DeviceHash get_device_hash(void *usr_data, const char *hostname, int64_t vpid, ze_device_handle_t hDevice) {
+DeviceHash get_device_hash(void *usr_data, const char *hostname, int64_t vpid,
+                           ze_device_handle_t hDevice) {
   auto *data = static_cast<data_t *>(usr_data);
   const auto it0 = data->sampling_device_property.find({hostname, vpid, hDevice});
   if (it0 != data->sampling_device_property.cend()) {
-    const auto& [deviceProp, deviceIdx] = it0->second;
+    const auto &[deviceProp, deviceIdx] = it0->second;
 
     uint64_t hash = 0xcbf29ce484222325; // FNV offset basis
     for (int i = 0; i < ZE_MAX_DEVICE_UUID_SIZE; i++) {
@@ -782,14 +783,12 @@ DeviceHash get_device_hash(void *usr_data, const char *hostname, int64_t vpid, z
   return {0, 0}; // Return 0 values if not found
 }
 
-static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                      const char *hostname, int64_t vpid,
-                                                      uint64_t vtid, ze_device_handle_t hDevice,
-                                                      zes_fabric_port_handle_t hFabricPort,
-                                                      size_t _pFabricPortState_val_length,
-                                                      zes_fabric_port_state_t *pFabricPortState_val,
-                                                      size_t _pFabricPortThroughput_val_length,
-                                                      zes_fabric_port_throughput_t *pFabricPortThroughput_val) {
+static void lttng_ust_ze_sampling_fabricPort_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
+    size_t _pFabricPortState_val_length, zes_fabric_port_state_t *pFabricPortState_val,
+    size_t _pFabricPortThroughput_val_length,
+    zes_fabric_port_throughput_t *pFabricPortThroughput_val) {
   auto *data = static_cast<data_t *>(usr_data);
   const auto it0 = data->fabricPort_property.find({hostname, vpid, hDevice, hFabricPort});
   if (it0 != data->fabricPort_property.cend()) {
@@ -798,49 +797,55 @@ static void lttng_ust_ze_sampling_fabricPort_callback(void *btx_handle, void *us
     auto fabricId = it0->second.portId.fabricId;
     auto remotePortId = pFabricPortState_val->remotePortId.fabricId;
     // Current Speed (not used currently in the timeline)
-    double rxSpeed = static_cast<double>(pFabricPortState_val->rxSpeed.bitRate * pFabricPortState_val->rxSpeed.width)/8.0;
-    double txSpeed = static_cast<double>(pFabricPortState_val->txSpeed.bitRate * pFabricPortState_val->txSpeed.width)/8.0;
-   
+    double rxSpeed = static_cast<double>(pFabricPortState_val->rxSpeed.bitRate *
+                                         pFabricPortState_val->rxSpeed.width) /
+                     8.0;
+    double txSpeed = static_cast<double>(pFabricPortState_val->txSpeed.bitRate *
+                                         pFabricPortState_val->txSpeed.width) /
+                     8.0;
+
     // Insert the current throughput data with timestamp
     auto [it, inserted] = data->device_fabricPort_ref.insert(
-            {{hostname, vpid, hDevice, hFabricPort, subDevice}, {*pFabricPortThroughput_val, ts}});
+        {{hostname, vpid, hDevice, hFabricPort, subDevice}, {*pFabricPortThroughput_val, ts}});
     if (inserted)
       return;
 
     // Previous throughput data
     auto &[prev_throughput, prev_ts] = it->second;
-    
+
     /* Per doc: When taking the delta, the difference between timestamp samples
-    * could be 0, if the frequency of sampling the snapshots is higher than the
-    * frequency of the timestamp update. */
+     * could be 0, if the frequency of sampling the snapshots is higher than the
+     * frequency of the timestamp update. */
     if (pFabricPortThroughput_val->timestamp == prev_throughput.timestamp)
       return;
 
-    double time_diff = static_cast<double>(pFabricPortThroughput_val->timestamp - prev_throughput.timestamp);
-    // Calculate the RX and TX throughput 
-    double rxThroughput = static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) / time_diff;
-    double txThroughput = static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) / time_diff;
+    double time_diff =
+        static_cast<double>(pFabricPortThroughput_val->timestamp - prev_throughput.timestamp);
+    // Calculate the RX and TX throughput
+    double rxThroughput =
+        static_cast<double>(pFabricPortThroughput_val->rxCounter - prev_throughput.rxCounter) /
+        time_diff;
+    double txThroughput =
+        static_cast<double>(pFabricPortThroughput_val->txCounter - prev_throughput.txCounter) /
+        time_diff;
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
     if (rxThroughput != 0 || txThroughput != 0)
-    btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, 
-                                      uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hFabricPort, subDevice,
-                                      fabricId, remotePortId, rxThroughput, txThroughput, 
-                                      rxSpeed, txSpeed);
+      btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
+                                        uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hFabricPort,
+                                        subDevice, fabricId, remotePortId, rxThroughput,
+                                        txThroughput, rxSpeed, txSpeed);
     // Update the stored values
     it->second = {*pFabricPortThroughput_val, ts};
-    } else {
-      std::cerr << "Fabricport property not found!" << std::endl;
-    }
+  } else {
+    std::cerr << "Fabricport property not found!" << std::endl;
+  }
 }
 
-static void lttng_ust_ze_sampling_memStats_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                    const char *hostname, int64_t vpid,
-                                                    uint64_t vtid, ze_device_handle_t hDevice,
-                                                    zes_mem_handle_t hMemModule,
-                                                    size_t _pMemState_val_length,
-                                                    zes_mem_state_t *pMemState_val,
-                                                    size_t _pMemBandwidth_val_length,
-                                                    zes_mem_bandwidth_t *pMemBandwidth_val) {
+static void lttng_ust_ze_sampling_memStats_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_mem_handle_t hMemModule, size_t _pMemState_val_length,
+    zes_mem_state_t *pMemState_val, size_t _pMemBandwidth_val_length,
+    zes_mem_bandwidth_t *pMemBandwidth_val) {
   auto *data = static_cast<data_t *>(usr_data);
   const auto it0 = data->memModule_property.find({hostname, vpid, hDevice, hMemModule});
   if (it0 != data->memModule_property.cend()) {
@@ -848,7 +853,7 @@ static void lttng_ust_ze_sampling_memStats_callback(void *btx_handle, void *usr_
     auto subDevice = it0->second.subdeviceId;
     // Insert the current bandwidth data with timestamp
     auto [it, inserted] = data->device_memModule_ref.insert(
-            {{hostname, vpid, hDevice, hMemModule, subDevice}, {*pMemBandwidth_val, ts}});
+        {{hostname, vpid, hDevice, hMemModule, subDevice}, {*pMemBandwidth_val, ts}});
     if (inserted)
       return;
 
@@ -859,22 +864,30 @@ static void lttng_ust_ze_sampling_memStats_callback(void *btx_handle, void *usr_
       return;
 
     // Calculate the RD and WT bandwidth
-    //https://spec.oneapi.io/level-zero/latest/sysman/api.html#_CPPv419zes_mem_bandwidth_t
+    // https://spec.oneapi.io/level-zero/latest/sysman/api.html#_CPPv419zes_mem_bandwidth_t
 
-    double allocation = static_cast<double>(pMemState_val->size - pMemState_val->free) * 100.0 / static_cast<double>(pMemState_val->size);
+    double allocation = static_cast<double>(pMemState_val->size - pMemState_val->free) * 100.0 /
+                        static_cast<double>(pMemState_val->size);
     double time_diff = static_cast<double>(pMemBandwidth_val->timestamp - prev_bandwidth.timestamp);
-    double pBandwidth = static_cast<double>((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) + (pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter)) * 1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
-    double rdBandwidth = static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 / (time_diff);
-    double wtBandwidth = static_cast<double>(pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter) * 1e6 / (time_diff);
+    double pBandwidth =
+        static_cast<double>((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) +
+                            (pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter)) *
+        1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+    double rdBandwidth =
+        static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 /
+        (time_diff);
+    double wtBandwidth =
+        static_cast<double>(pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter) * 1e6 /
+        (time_diff);
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-    btx_push_message_lttng_memModule(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                     uuid_idx.hash, uuid_idx.deviceIdx,  (uint64_t)hMemModule,
-                                     subDevice, pBandwidth, rdBandwidth, wtBandwidth, allocation);
+    btx_push_message_lttng_memModule(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, uuid_idx.hash,
+                                     uuid_idx.deviceIdx, (uint64_t)hMemModule, subDevice,
+                                     pBandwidth, rdBandwidth, wtBandwidth, allocation);
     // Update the stored values
     it->second = {*pMemBandwidth_val, ts};
-    } else {
-      std::cerr << "Memory property not found!" << std::endl;
-    }
+  } else {
+    std::cerr << "Memory property not found!" << std::endl;
+  }
 }
 
 static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -886,50 +899,57 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
   auto *data = static_cast<data_t *>(usr_data);
   const auto it0 = data->engine_property.find({hostname, vpid, hDevice, hEngine});
   if (it0 != data->engine_property.cend()) {
-    const auto& engineProps = it0->second;
+    const auto &engineProps = it0->second;
     uint32_t subDevice = engineProps.subdeviceId;
 
-    if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL || engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
+    if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL ||
+        engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
       auto [it, inserted] = data->device_engines_ref.insert(
-            {{hostname, vpid, hDevice, hEngine, subDevice}, {*pEngineStats_val, ts}});
+          {{hostname, vpid, hDevice, hEngine, subDevice}, {*pEngineStats_val, ts}});
       if (inserted)
         return;
       auto &[prev_engineStats, prev_ts] = it->second;
       if (pEngineStats_val->timestamp == prev_engineStats.timestamp)
         return;
-      double time_diff = pEngineStats_val->timestamp >= prev_engineStats.timestamp ?
-                         static_cast<double>(pEngineStats_val->timestamp - prev_engineStats.timestamp) :
-                         static_cast<double>(pEngineStats_val->timestamp +
-                         (UINT64_MAX - prev_engineStats.timestamp) + 1);
+      double time_diff =
+          pEngineStats_val->timestamp >= prev_engineStats.timestamp
+              ? static_cast<double>(pEngineStats_val->timestamp - prev_engineStats.timestamp)
+              : static_cast<double>(pEngineStats_val->timestamp +
+                                    (UINT64_MAX - prev_engineStats.timestamp) + 1);
       double activeTime = 0;
-      if(pEngineStats_val->activeTime > prev_engineStats.activeTime)
-         activeTime = static_cast<double>(pEngineStats_val->activeTime - prev_engineStats.activeTime) * 100 / time_diff;
+      if (pEngineStats_val->activeTime > prev_engineStats.activeTime)
+        activeTime =
+            static_cast<double>(pEngineStats_val->activeTime - prev_engineStats.activeTime) * 100 /
+            time_diff;
       else
-         activeTime = static_cast<double>((UINT64_MAX - prev_engineStats.activeTime) + pEngineStats_val->activeTime + 1) * 100 / time_diff;
+        activeTime = static_cast<double>((UINT64_MAX - prev_engineStats.activeTime) +
+                                         pEngineStats_val->activeTime + 1) *
+                     100 / time_diff;
       DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
       if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL) {
         btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                        uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine, subDevice, int(activeTime));
-      } if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
-        btx_push_message_lttng_copyEU(btx_handle, hostname,0, 0, prev_ts, BACKEND_ZE,
-                                     uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine, subDevice, int(activeTime));
+                                         uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine,
+                                         subDevice, int(activeTime));
+      }
+      if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
+        btx_push_message_lttng_copyEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
+                                      uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine,
+                                      subDevice, int(activeTime));
       }
       it->second = {*pEngineStats_val, ts};
-    } 
+    }
   } else {
     std::cerr << "Engine property not found for device: " << hDevice << std::endl;
   }
 }
-   
-static void lttng_ust_ze_sampling_gpu_energy_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                      const char *hostname, int64_t vpid,
-                                                      uint64_t vtid, ze_device_handle_t hDevice,
-                                                      zes_pwr_handle_t hPower, uint32_t domainIdx,
-                                                      size_t _pEnergyCounter_val_length,
-                                                      zes_power_energy_counter_t *pEnergyCounter_val) {
+
+static void lttng_ust_ze_sampling_gpu_energy_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_pwr_handle_t hPower, uint32_t domainIdx,
+    size_t _pEnergyCounter_val_length, zes_power_energy_counter_t *pEnergyCounter_val) {
   auto *data = static_cast<data_t *>(usr_data);
   auto [it, inserted] = data->device_energy_ref.insert(
-                        {{hostname, vpid, hDevice, hPower, domainIdx}, {*pEnergyCounter_val, ts}});
+      {{hostname, vpid, hDevice, hPower, domainIdx}, {*pEnergyCounter_val, ts}});
   if (inserted)
     return;
 
@@ -937,86 +957,89 @@ static void lttng_ust_ze_sampling_gpu_energy_callback(void *btx_handle, void *us
   if (pEnergyCounter_val->timestamp == prev_EnergyCounter.timestamp)
     return;
 
-  double time_diff = static_cast<double>(pEnergyCounter_val->timestamp - prev_EnergyCounter.timestamp);
-  double power = static_cast<double>(pEnergyCounter_val->energy - prev_EnergyCounter.energy) / time_diff;
+  double time_diff =
+      static_cast<double>(pEnergyCounter_val->timestamp - prev_EnergyCounter.timestamp);
+  double power =
+      static_cast<double>(pEnergyCounter_val->energy - prev_EnergyCounter.energy) / time_diff;
   DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hPower,
-                               (thapi_domain_idx)domainIdx, power);
+  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, uuid_idx.hash,
+                               uuid_idx.deviceIdx, (uint64_t)hPower, (thapi_domain_idx)domainIdx,
+                               power);
   it->second = {*pEnergyCounter_val, ts};
 }
 
-static void lttng_ust_ze_sampling_gpu_frequency_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                         const char *hostname, int64_t vpid,
-                                                         uint64_t vtid, ze_device_handle_t hDevice,
-                                                         zes_freq_handle_t hFrequency,  uint32_t domainIdx,
-                                                         size_t _pFreqState_val_length,
-                                                         zes_freq_state_t *pFreqState_val) {
+static void lttng_ust_ze_sampling_gpu_frequency_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_freq_handle_t hFrequency, uint32_t domainIdx,
+    size_t _pFreqState_val_length, zes_freq_state_t *pFreqState_val) {
   DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-  btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hFrequency,
-                                   domainIdx, pFreqState_val->actual);
+  btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, uuid_idx.hash,
+                                   uuid_idx.deviceIdx, (uint64_t)hFrequency, domainIdx,
+                                   pFreqState_val->actual);
 }
 
 // Properties
-static void lttng_ust_ze_sampling_deviceProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                                const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                zes_device_handle_t hDevice, uint32_t deviceIdx,size_t _pDeviceProperties_val_length,
-                                                                zes_device_properties_t *pDeviceProperties_val) {
-auto *data = static_cast<data_t *>(usr_data);
-    data->sampling_device_property[{hostname, vpid, hDevice}] = {*pDeviceProperties_val, deviceIdx};
+static void lttng_ust_ze_sampling_deviceProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    zes_device_handle_t hDevice, uint32_t deviceIdx, size_t _pDeviceProperties_val_length,
+    zes_device_properties_t *pDeviceProperties_val) {
+  auto *data = static_cast<data_t *>(usr_data);
+  data->sampling_device_property[{hostname, vpid, hDevice}] = {*pDeviceProperties_val, deviceIdx};
 }
 
-static void lttng_ust_ze_sampling_subDeviceProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                                const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                zes_device_handle_t hDevice,  ze_device_handle_t hSubDevice, size_t _pSubDeviceProperties_val_length,
-                                                                ze_device_properties_t *pSubDeviceProperties_val) {
+static void lttng_ust_ze_sampling_subDeviceProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    zes_device_handle_t hDevice, ze_device_handle_t hSubDevice,
+    size_t _pSubDeviceProperties_val_length, ze_device_properties_t *pSubDeviceProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->sampling_sub_device_property[{hostname, vpid, (ze_device_handle_t)hSubDevice}] = *pSubDeviceProperties_val;
+  data->sampling_sub_device_property[{hostname, vpid, (ze_device_handle_t)hSubDevice}] =
+      *pSubDeviceProperties_val;
 }
 
-static void lttng_ust_ze_sampling_fabricPortProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                                const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                ze_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
-                                                                size_t _pFabricPortProperties_val_length,
-                                                                zes_fabric_port_properties_t *pFabricPortProperties_val) {
+static void lttng_ust_ze_sampling_fabricPortProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
+    size_t _pFabricPortProperties_val_length,
+    zes_fabric_port_properties_t *pFabricPortProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->fabricPort_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_fabric_port_handle_t)hFabricPort}] = *pFabricPortProperties_val;
-} 
-
-static void lttng_ust_ze_sampling_memoryProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                                const char *hostname, int64_t vpid, uint64_t vtid,
-                                                                ze_device_handle_t hDevice, zes_mem_handle_t hMemModule,
-                                                                size_t _pMemModuleProperties_val_length,
-                                                                zes_mem_properties_t *pMemModuleProperties_val) {
-  auto *data = static_cast<data_t *>(usr_data);
-  data->memModule_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_mem_handle_t)hMemModule}] = *pMemModuleProperties_val;
+  data->fabricPort_property[{hostname, vpid, (ze_device_handle_t)hDevice,
+                             (zes_fabric_port_handle_t)hFabricPort}] = *pFabricPortProperties_val;
 }
 
-
-static void lttng_ust_ze_sampling_powerProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                           const char *hostname, int64_t vpid, uint64_t vtid,
-                                                           ze_device_handle_t hDevice, zes_pwr_handle_t hPower,
-                                                           size_t _pPowerProperties_val_length,
-                                                           zes_power_properties_t *pPowerProperties_val) {
+static void lttng_ust_ze_sampling_memoryProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_mem_handle_t hMemModule,
+    size_t _pMemModuleProperties_val_length, zes_mem_properties_t *pMemModuleProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->power_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_pwr_handle_t)hPower}] = *pPowerProperties_val;
+  data->memModule_property[{hostname, vpid, (ze_device_handle_t)hDevice,
+                            (zes_mem_handle_t)hMemModule}] = *pMemModuleProperties_val;
 }
 
-static void lttng_ust_ze_sampling_freqProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                          const char *hostname, int64_t vpid, uint64_t vtid,
-                                                          ze_device_handle_t hDevice, zes_freq_handle_t hFrequency,
-                                                          size_t _pfreqProperties_val_length,
-                                                          zes_freq_properties_t *pFreqProperties_val) {
+static void lttng_ust_ze_sampling_powerProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_pwr_handle_t hPower, size_t _pPowerProperties_val_length,
+    zes_power_properties_t *pPowerProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->frequency_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_freq_handle_t)hFrequency}] = *pFreqProperties_val;
+  data->power_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_pwr_handle_t)hPower}] =
+      *pPowerProperties_val;
 }
 
-static void lttng_ust_ze_sampling_engineProperties_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                            const char *hostname, int64_t vpid, uint64_t vtid,
-                                                            ze_device_handle_t hDevice, zes_engine_handle_t hEngine,
-                                                            size_t _pEngineProperties_val_length,
-                                                            zes_engine_properties_t *pEngineProperties_val) {
+static void lttng_ust_ze_sampling_freqProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_freq_handle_t hFrequency, size_t _pfreqProperties_val_length,
+    zes_freq_properties_t *pFreqProperties_val) {
   auto *data = static_cast<data_t *>(usr_data);
-  data->engine_property[{hostname, vpid, (ze_device_handle_t)hDevice, (zes_engine_handle_t)hEngine}] = *pEngineProperties_val;
+  data->frequency_property[{hostname, vpid, (ze_device_handle_t)hDevice,
+                            (zes_freq_handle_t)hFrequency}] = *pFreqProperties_val;
+}
+
+static void lttng_ust_ze_sampling_engineProperties_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_device_handle_t hDevice, zes_engine_handle_t hEngine, size_t _pEngineProperties_val_length,
+    zes_engine_properties_t *pEngineProperties_val) {
+  auto *data = static_cast<data_t *>(usr_data);
+  data->engine_property[{hostname, vpid, (ze_device_handle_t)hDevice,
+                         (zes_engine_handle_t)hEngine}] = *pEngineProperties_val;
 }
 
 /*
@@ -1039,8 +1062,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(zeModule_entry);
   btx_register_callbacks_lttng_ust_ze_properties_memory_info_properties(
       btx_handle, &memory_info_properties_callback);
-  btx_register_callbacks_lttng_ust_ze_properties_memory_info_range(btx_handle,
-                                                                   &memory_info_range_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_memory_info_range(
+      btx_handle, &memory_info_range_callback);
 
   /* Device and Subdevice property */
   btx_register_callbacks_lttng_ust_ze_properties_device(btx_handle, &property_device_callback);
@@ -1052,15 +1075,14 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, zeCommandListCreateImmediate_entry_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandListCreateImmediate_exit(
       btx_handle, zeCommandListCreateImmediate_exit_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_entry(btx_handle,
-                                                                zeCommandListCreate_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_exit(btx_handle,
-                                                               zeCommandListCreate_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_entry(
+      btx_handle, zeCommandListCreate_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_exit(
+      btx_handle, zeCommandListCreate_exit_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_entry(
       btx_handle, zeCommandQueueCreate_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_exit(btx_handle,
-                                                                zeCommandQueueCreate_exit_callback);
-
+  btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_exit(
+      btx_handle, zeCommandQueueCreate_exit_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandQueueExecuteCommandLists_entry(
       btx_handle, zeCommandQueueExecuteCommandLists_entry_callback);
 
@@ -1072,8 +1094,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   btx_register_callbacks_lttng_ust_ze_zeKernelSetGroupSize_entry(
       btx_handle, &zeKernelSetGroupSize_entry_callback);
-
-  btx_register_callbacks_lttng_ust_ze_properties_kernel(btx_handle, &property_kernel_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_kernel(
+      btx_handle, &property_kernel_callback);
 
   /* Drift */
   btx_register_callbacks_lttng_ust_ze_properties_device_timer(btx_handle,
@@ -1097,28 +1119,26 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   btx_register_callbacks_lttng_ust_ze_zeModuleGetGlobalPointer_exit(
       btx_handle, &zeModuleGetGlobalPointer_exit_callback);
-  btx_register_callbacks_lttng_ust_ze_zeModuleDestroy_exit(btx_handle,
-                                                           &zeModuleDestroy_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeModuleDestroy_exit(
+      btx_handle, &zeModuleDestroy_exit_callback);
 
   /* Handling of event */
-  btx_register_callbacks_lttng_ust_ze_profiling_event_profiling(btx_handle,
-                                                                &event_profiling_callback);
+  btx_register_callbacks_lttng_ust_ze_profiling_event_profiling(
+      btx_handle, &event_profiling_callback);
   btx_register_callbacks_lttng_ust_ze_profiling_event_profiling_results(
       btx_handle, &event_profiling_result_callback);
-
-  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_entry(btx_handle,
-                                                           &zeEventDestroy_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(btx_handle,
-                                                          &zeEventDestroy_exit_callback);
-
-  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_entry(btx_handle,
-                                                               &zeCommandListReset_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_exit(btx_handle,
-                                                              &zeCommandListReset_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_entry(
+      btx_handle, &zeEventDestroy_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(
+      btx_handle, &zeEventDestroy_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_entry(
+      btx_handle, &zeCommandListReset_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_exit(
+      btx_handle, &zeCommandListReset_exit_callback);
 
   /* Sampling */
 
-  //Properties
+  // Properties
   btx_register_callbacks_lttng_ust_ze_sampling_deviceProperties(
       btx_handle, &lttng_ust_ze_sampling_deviceProperties_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_subDeviceProperties(
