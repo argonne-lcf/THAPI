@@ -792,7 +792,7 @@ static void lttng_ust_ze_sampling_fabricPort_callback(
   auto *data = static_cast<data_t *>(usr_data);
   const auto it0 = data->fabricPort_property.find({hostname, vpid, hDevice, hFabricPort});
   if (it0 != data->fabricPort_property.cend()) {
-    // Get fabricPort properties: subdevice ID, fabeicId ...
+    // Get fabricPort properties: subdevice ID, fabricId...
     auto subDevice = it0->second.subdeviceId;
     auto fabricId = it0->second.portId.fabricId;
     auto remotePortId = pFabricPortState_val->remotePortId.fabricId;
