@@ -394,7 +394,7 @@ def env_tracers
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
     # The current only reliable way to use zes api
     #  is to call zesInit and set ZES_ENABLE_SYSMAN to 0
-    h['ZES_ENABLE_SYSMAN'] = 0  if OPTIONS[:'backend-names'].include?('ze')
+    h['ZES_ENABLE_SYSMAN'] = 0 if OPTIONS[:'backend-names'].include?('ze')
   end
 
   backends = [] unless need_backend
