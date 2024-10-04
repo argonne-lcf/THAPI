@@ -388,7 +388,7 @@ def env_tracers
   #   Currently the same `so` does the tracing, and the sampling
   #   This mean that is the local rank is not part of the `traced-ranks`
   #   No sampling will be performed
-  if sampling? 
+  if sampling?
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
