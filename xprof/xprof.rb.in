@@ -2,7 +2,7 @@
 
 
 # 2.7 for Lazy in Enumerable. 2.7 was released 25 Dec 2019
-THAPI_RUBY_MINIMAL_VERSION = '2.7.2'
+THAPI_RUBY_MINIMAL_VERSION = '2.6.0'
 if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
   warn("Your ruby version #{RUBY_VERSION} is too old. #{THAPI_RUBY_MINIMAL_VERSION} or newer required")
   exit(1)
