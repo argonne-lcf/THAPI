@@ -1,5 +1,13 @@
 #!/usr/bin/env ruby
 
+
+# 2.7 for Lazy in Enumerable. 2.7 was released 25 Dec 2019
+THAPI_RUBY_MINIMAL_VERSION = '2.6.0'
+if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
+  warn("Your ruby version #{RUBY_VERSION} is too old. #{THAPI_RUBY_MINIMAL_VERSION} or newer required")
+  exit(1)
+end
+
 # We Cannot use "@ .. @" for libdir, bindir, and dataroodir
 # as they will appear as bash "${exec_prefix}/lib"
 # So for now we will rely on them having the default value,
@@ -226,7 +234,8 @@ def thapi_trace_dir_root
     # Use ISO8601 extended format
     date = DateTime.now.iso8601
 
-    (0..).each do |i|
+    # Don't use endless range, as it trigger "syntax error" for ruby 2.5...
+    (0..Float::INFINITY).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
       thapi_uuid = date + prefix
       path = File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{thapi_uuid}")
