@@ -168,21 +168,22 @@ libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/inclu
 libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerZE.la libZEInterval.la
+lib_LTLIBRARIES = libze_loader.la libZEInterval.la
 
-nodist_libTracerZE_la_SOURCES = \
+nodist_libze_loader_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL) \
 	tracer_ze.c
 
-libTracerZE_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I$(top_srcdir)/utils -I./
-libTracerZE_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerZE_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
-libTracerZE_la_LIBADD = libzetracepoints.la
+libze_loader_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I$(top_srcdir)/utils -I./
+libze_loader_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libze_loader_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libze_loader_la_LDFLAGS += -version-info 1:0:0
+libze_loader_la_LIBADD = libzetracepoints.la
 
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ze
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerZE.so.0.0.0 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1
+	$(LN_S) -f $(DESTDIR)$(libdir)/libze_loader.so.1.0.0 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1
 	$(LN_S) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
 	$(LN) -f $(DESTDIR)$(libdir)/libZEInterval.so $(DESTDIR)$(pkglibdir)/bt2/libZEInterval.so

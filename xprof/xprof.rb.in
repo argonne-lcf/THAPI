@@ -357,7 +357,7 @@ def env_tracers
   backends = []
 
   [%w[opencl cl libOpenCL libTracerOpenCL],
-   %w[ze ze libze_loader libTracerZE],
+   %w[ze ze libze_loader libze_loader],
    %w[cuda cuda libcuda libTracerCUDA],
    %w[hip hip libamdhip64 libTracerHIP],
    %w[mpi mpi libmpi libTracerMPI]].each do |name, bt_name, lib, libtracer|
