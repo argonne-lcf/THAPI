@@ -15,8 +15,13 @@ DATADIR = DATAROOTDIR
 
 class XprofExitCode
   @@exit_code = 0
-  def self.update(exit_code)
+  def self.update(exit_code, name)
     # Keep only the first error
+    if exit_code.nil?
+      LOGGER.error("#{name} returned with a nil exit code (most probably due to a segault")
+      exit_code = 137
+    end
+
     @@exit_code = exit_code if @@exit_code == 0
   end
 
@@ -438,9 +443,9 @@ def launch_usr_bin(env, cmd)
       # Reading stdout will trigger Errno::EIO
       stdout.each { |line| print line }
     rescue Errno::EIO
-      # Wait for the PTY to finish, to set $?
-      Process.wait(_pid)
-      return $?.exitstatus
+      # Get the PTY status
+      _, status = Process.wait2(_pid)
+      return status.exitstatus
     end
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
@@ -697,7 +702,7 @@ def trace_and_on_node_processing(usr_argv)
 
     # Launch User Command
     begin
-      XprofExitCode.update(launch_usr_bin(h, usr_argv))
+      XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(" "))
     rescue Errno::ENOENT
       teardown_lttng(syncd)
       raise
@@ -834,7 +839,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
   parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) do |d|
+            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::ERROR) do |d|
               d || Logger::INFO
             end
 
@@ -878,7 +883,7 @@ if __FILE__ == $PROGRAM_NAME
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    XprofExitCode.update(gm_processing(folder)) if OPTIONS[:analysis]
+    XprofExitCode.update(gm_processing(folder), "babeltrace_thapi") if OPTIONS[:analysis]
   end
 
   exit(XprofExitCode.get)
