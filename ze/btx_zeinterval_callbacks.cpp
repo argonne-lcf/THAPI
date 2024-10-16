@@ -796,7 +796,8 @@ static void lttng_ust_ze_sampling_fabricPort_callback(
     auto subDevice = it0->second.subdeviceId;
     auto fabricId = it0->second.portId.fabricId;
     auto remotePortId = pFabricPortState_val->remotePortId.fabricId;
-    // Current Speed (not used currently in the timeline)
+    // Current Speed (bytes/sec) place holder (not used currently in the timeline)
+    // https://spec.oneapi.io/level-zero/1.9.3/sysman/PROG.html#operations-on-fabric-ports
     double rxSpeed = static_cast<double>(pFabricPortState_val->rxSpeed.bitRate *
                                          pFabricPortState_val->rxSpeed.width) /
                      8.0;
@@ -869,10 +870,12 @@ static void lttng_ust_ze_sampling_memStats_callback(
     double allocation = static_cast<double>(pMemState_val->size - pMemState_val->free) * 100.0 /
                         static_cast<double>(pMemState_val->size);
     double time_diff = static_cast<double>(pMemBandwidth_val->timestamp - prev_bandwidth.timestamp);
+    //percentage bandwidth based on the manual
     double pBandwidth =
-        static_cast<double>((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) +
+        100.0 * static_cast<double>((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) +
                             (pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter)) *
         1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+    // rd and wt bandwidth if further drilling needed (place holder for now)
     double rdBandwidth =
         static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 /
         (time_diff);
@@ -931,7 +934,7 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
                                          uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine,
                                          subDevice, int(activeTime));
       }
-      if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
+      else if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
         btx_push_message_lttng_copyEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
                                       uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine,
                                       subDevice, int(activeTime));
