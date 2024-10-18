@@ -93,7 +93,21 @@
               :field_class:
                 :type: string
                 :cast_type: const char*
-      - :name: lttng:frequency 
+  - :name: interval_sampling
+    :event_common_context_field_class:
+      :type: structure
+      :members:
+        - :name: hostname
+          :field_class:
+            :type: string
+            :cast_type: const char*
+        - :name: ts
+          :field_class:
+            :type: integer_signed
+            :field_value_range: 64
+            :cast_type: int64_t
+    :event_classes:
+      - :name: sampling:frequency
         :payload_field_class:
           :type: structure
           :members:
@@ -122,7 +136,7 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
-      - :name: lttng:power 
+      - :name: sampling:power
         :payload_field_class:
           :type: structure
           :members:
@@ -151,7 +165,7 @@
                 :type: integer_unsigned
                 :field_value_range: 64
                 :cast_type: uint64_t
-      - :name: lttng:computeEU
+      - :name: sampling:computeEU
         :payload_field_class:
           :type: structure
           :members:
@@ -179,7 +193,7 @@
               :field_class:
                 :type: single
                 :cast_type: float
-      - :name: lttng:copyEU
+      - :name: sampling:copyEU
         :payload_field_class:
           :type: structure
           :members:
@@ -207,7 +221,7 @@
               :field_class:
                 :type: single
                 :cast_type: float
-      - :name: lttng:fabricPort
+      - :name: sampling:fabricPort
         :payload_field_class:
           :type: structure
           :members:
@@ -257,7 +271,7 @@
               :field_class:
                 :type: double
                 :cast_type: float
-      - :name: lttng:memModule
+      - :name: sampling:memModule
         :payload_field_class:
           :type: structure
           :members:

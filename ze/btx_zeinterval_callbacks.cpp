@@ -831,10 +831,9 @@ static void lttng_ust_ze_sampling_fabricPort_callback(
         time_diff;
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
     if (rxThroughput != 0 || txThroughput != 0)
-      btx_push_message_lttng_fabricPort(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                        uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hFabricPort,
-                                        subDevice, fabricId, remotePortId, rxThroughput,
-                                        txThroughput, rxSpeed, txSpeed);
+      btx_push_message_sampling_fabricPort(
+          btx_handle, hostname, prev_ts, uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hFabricPort,
+          subDevice, fabricId, remotePortId, rxThroughput, txThroughput, rxSpeed, txSpeed);
     // Update the stored values
     it->second = {*pFabricPortThroughput_val, ts};
   } else {
@@ -865,16 +864,17 @@ static void lttng_ust_ze_sampling_memStats_callback(
       return;
 
     // Calculate the RD and WT bandwidth
-    // https://spec.oneapi.io/level-zero/latest/sysman/api.html#_CPPv419zes_mem_bandwidth_t
+    // https://spec.oneapi.io/level-zero/1.9.3/sysman/api.html#zes-mem-bandwidth-t
 
     double allocation = static_cast<double>(pMemState_val->size - pMemState_val->free) * 100.0 /
                         static_cast<double>(pMemState_val->size);
     double time_diff = static_cast<double>(pMemBandwidth_val->timestamp - prev_bandwidth.timestamp);
-    //percentage bandwidth based on the manual
+    // percentage bandwidth based on the manual
     double pBandwidth =
-        100.0 * static_cast<double>((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) +
-                            (pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter)) *
-        1e6 / (time_diff * pMemBandwidth_val->maxBandwidth);
+        static_cast<double>(1e6 *
+                            ((pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) +
+                             (pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter))) /
+        (time_diff * pMemBandwidth_val->maxBandwidth);
     // rd and wt bandwidth if further drilling needed (place holder for now)
     double rdBandwidth =
         static_cast<double>(pMemBandwidth_val->readCounter - prev_bandwidth.readCounter) * 1e6 /
@@ -883,9 +883,9 @@ static void lttng_ust_ze_sampling_memStats_callback(
         static_cast<double>(pMemBandwidth_val->writeCounter - prev_bandwidth.writeCounter) * 1e6 /
         (time_diff);
     DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-    btx_push_message_lttng_memModule(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, uuid_idx.hash,
-                                     uuid_idx.deviceIdx, (uint64_t)hMemModule, subDevice,
-                                     pBandwidth, rdBandwidth, wtBandwidth, allocation);
+    btx_push_message_sampling_memModule(btx_handle, hostname, prev_ts, uuid_idx.hash,
+                                        uuid_idx.deviceIdx, (uint64_t)hMemModule, subDevice,
+                                        pBandwidth, rdBandwidth, wtBandwidth, allocation);
     // Update the stored values
     it->second = {*pMemBandwidth_val, ts};
   } else {
@@ -930,14 +930,13 @@ static void lttng_ust_ze_sampling_engineStats_callback(void *btx_handle, void *u
                      100 / time_diff;
       DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
       if (engineProps.type == ZES_ENGINE_GROUP_COMPUTE_ALL) {
-        btx_push_message_lttng_computeEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                         uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine,
-                                         subDevice, int(activeTime));
-      }
-      else if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
-        btx_push_message_lttng_copyEU(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE,
-                                      uuid_idx.hash, uuid_idx.deviceIdx, (uint64_t)hEngine,
-                                      subDevice, int(activeTime));
+        btx_push_message_sampling_computeEU(btx_handle, hostname, prev_ts, uuid_idx.hash,
+                                            uuid_idx.deviceIdx, (uint64_t)hEngine, subDevice,
+                                            int(activeTime));
+      } else if (engineProps.type == ZES_ENGINE_GROUP_COPY_ALL) {
+        btx_push_message_sampling_copyEU(btx_handle, hostname, prev_ts, uuid_idx.hash,
+                                         uuid_idx.deviceIdx, (uint64_t)hEngine, subDevice,
+                                         int(activeTime));
       }
       it->second = {*pEngineStats_val, ts};
     }
@@ -965,9 +964,8 @@ static void lttng_ust_ze_sampling_gpu_energy_callback(
   double power =
       static_cast<double>(pEnergyCounter_val->energy - prev_EnergyCounter.energy) / time_diff;
   DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-  btx_push_message_lttng_power(btx_handle, hostname, 0, 0, prev_ts, BACKEND_ZE, uuid_idx.hash,
-                               uuid_idx.deviceIdx, (uint64_t)hPower, (thapi_domain_idx)domainIdx,
-                               power);
+  btx_push_message_sampling_power(btx_handle, hostname, prev_ts, uuid_idx.hash, uuid_idx.deviceIdx,
+                                  (uint64_t)hPower, (thapi_domain_idx)domainIdx, power);
   it->second = {*pEnergyCounter_val, ts};
 }
 
@@ -976,9 +974,8 @@ static void lttng_ust_ze_sampling_gpu_frequency_callback(
     ze_device_handle_t hDevice, zes_freq_handle_t hFrequency, uint32_t domainIdx,
     size_t _pFreqState_val_length, zes_freq_state_t *pFreqState_val) {
   DeviceHash uuid_idx = get_device_hash(usr_data, hostname, vpid, hDevice);
-  btx_push_message_lttng_frequency(btx_handle, hostname, 0, 0, ts, BACKEND_ZE, uuid_idx.hash,
-                                   uuid_idx.deviceIdx, (uint64_t)hFrequency, domainIdx,
-                                   pFreqState_val->actual);
+  btx_push_message_sampling_frequency(btx_handle, hostname, ts, uuid_idx.hash, uuid_idx.deviceIdx,
+                                      (uint64_t)hFrequency, domainIdx, pFreqState_val->actual);
 }
 
 // Properties
@@ -1065,8 +1062,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(zeModule_entry);
   btx_register_callbacks_lttng_ust_ze_properties_memory_info_properties(
       btx_handle, &memory_info_properties_callback);
-  btx_register_callbacks_lttng_ust_ze_properties_memory_info_range(
-      btx_handle, &memory_info_range_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_memory_info_range(btx_handle,
+                                                                   &memory_info_range_callback);
 
   /* Device and Subdevice property */
   btx_register_callbacks_lttng_ust_ze_properties_device(btx_handle, &property_device_callback);
@@ -1097,8 +1094,7 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   btx_register_callbacks_lttng_ust_ze_zeKernelSetGroupSize_entry(
       btx_handle, &zeKernelSetGroupSize_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_properties_kernel(
-      btx_handle, &property_kernel_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_kernel(btx_handle, &property_kernel_callback);
 
   /* Drift */
   btx_register_callbacks_lttng_ust_ze_properties_device_timer(btx_handle,
