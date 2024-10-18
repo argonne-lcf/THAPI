@@ -61,19 +61,19 @@ global_handle = nil
 parent_pid = nil
 
 # Set trap
-Signal.trap(Sync_daemon::RT_SIGNAL_GLOBAL_BARRIER) do
+Signal.trap(SyncDaemon::RT_SIGNAL_GLOBAL_BARRIER) do
   global_barrier(global_handle)
-  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+  Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
 end
 
 local_barier_count = 0
-Signal.trap(Sync_daemon::RT_SIGNAL_LOCAL_BARRIER) do
+Signal.trap(SyncDaemon::RT_SIGNAL_LOCAL_BARRIER) do
   local_barier(local_barier_count.to_s)
   local_barier_count += 1
-  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+  Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
 end
 
-Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
+Signal.trap(SyncDaemon::RT_SIGNAL_FINISH) do
   # We cannot delete SHARED_LOCAL_FILESYSTEM
   # Some rank can exit the `global_barier` (hence calling this function)
   #   when others ranks are still in the `local_barrier`
@@ -83,12 +83,12 @@ Signal.trap(Sync_daemon::RT_SIGNAL_FINISH) do
   #   is to make all ranks busy_wait in the `global_barrier`.
   # This will ensure that every-one exited the `local_barrier`.
   #   but given the poor performance of our FS, we will avoid that for now...
-  Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+  Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
   exit
 end
 
 # Init global barrier
 global_handle = init_global_barrier
 parent_pid = ARGV[0].to_i
-Process.kill(Sync_daemon::RT_SIGNAL_READY, parent_pid)
+Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
 sleep

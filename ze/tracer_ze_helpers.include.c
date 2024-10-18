@@ -1112,6 +1112,7 @@ static int initializeHandles() {
     _sampling_hSubDevices[driverIdx] = (ze_device_handle_t **)calloc(
         _sampling_deviceCount[driverIdx], sizeof(ze_device_handle_t *));
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
+
       zes_device_properties_t deviceProps = {0};
       deviceProps.stype = ZES_STRUCTURE_TYPE_DEVICE_PROPERTIES;
       deviceProps.pNext = NULL;
@@ -1127,7 +1128,7 @@ static int initializeHandles() {
           (ze_device_handle_t)_sampling_hDevices[driverIdx][deviceIdx],
           &_sampling_subDeviceCount[driverIdx][deviceIdx], NULL);
       if (res != ZE_RESULT_SUCCESS) {
-        _ZE_ERROR_MSG("ZE_DEVICE_GET_SUB_DEVICES_PTR", res);
+        _ZE_ERROR_MSG("ZES_DEVICE_GET_PROPERTIES_PTR", res);
         _sampling_subDeviceCount[driverIdx][deviceIdx] = 0;
       }
       if (_sampling_subDeviceCount[driverIdx][deviceIdx] > 0) {
