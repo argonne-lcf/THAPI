@@ -23,13 +23,27 @@ DATADIR = DATAROOTDIR
 
 class XprofExitCode
   @@exit_code = 0
-  def self.update(exit_code)
+  def self.update(status, name)
     # Keep only the first error
+    exit_code = if status.exitstatus.nil?
+                  LOGGER.error("#{name} : #{status}")
+                  139
+                else
+                  status.exitstatus
+                end
     @@exit_code = exit_code if @@exit_code == 0
   end
 
   def self.get
     @@exit_code
+  end
+end
+
+class XprofExitStatus
+  attr_reader :exitstatus
+
+  def initialize(exitstatus)
+    @exitstatus = exitstatus
   end
 end
 
@@ -51,8 +65,9 @@ module LoggerRefinement
   refine(Logger) do
     def info_block(message, &block)
       info("#{message}: entry") if message
-      block.call
+      r = block.call
       info("#{message}: exit") if message
+      r
     end
   end
 end
@@ -443,18 +458,18 @@ def launch_usr_bin(env, cmd)
   end.to_h
 
   begin
-    PTY.spawn(bash_env, *cmd) do |stdout, _stdin, _pid|
+    PTY.spawn(bash_env, *cmd) do |stdout, _stdin, pid|
       # Reading stdout will trigger Errno::EIO
       stdout.each { |line| print line }
     rescue Errno::EIO
-      # Wait for the PTY to finish, to set $?
-      Process.wait(_pid)
-      return $?.exitstatus
+      # Get the PTY status
+      _, status = Process.wait2(pid)
+      return status
     end
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
     # SigINT is 2
-    2
+    XprofExitStatus.new(2)
   rescue Errno::ENOENT
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
@@ -639,7 +654,7 @@ end
 #  |   | (_) (_ (/_ _> _> | | | (_|
 #                                _|
 
-# Some naming convension
+# Some naming convention
 # lm == function executed only local_master
 # gm ==  function executed only global_master
 
@@ -664,7 +679,7 @@ def gm_rename_folder
   # Replace it with a better name, and update the root metadata.
 
   thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-  # Because of `traced-rank`, `mpi_master` may not have any trace avalaible,
+  # Because of `traced-rank`, `mpi_master` may not have any trace available,
   # so find the first hostname who have a metadata
   FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
                File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
@@ -706,7 +721,7 @@ def trace_and_on_node_processing(usr_argv)
 
     # Launch User Command
     begin
-      XprofExitCode.update(launch_usr_bin(h, usr_argv))
+      XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(' '))
     rescue Errno::ENOENT
       teardown_lttng(syncd)
       raise
@@ -756,14 +771,13 @@ def gm_processing(folder)
          else
            $stdout.dup
          end
-
-    IO.popen([cmdname, *args]) do |pipe|
-      fo.puts(pipe.readlines)
-    end
-
+    pipe = IO.popen([cmdname, *args])
+    pid = pipe.pid
+    fo.puts(pipe.readlines)
     fo.close
+    _, status = Process.wait2(pid)
+    status
   end
-  $?.exitstatus
 end
 
 #
@@ -843,7 +857,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
 
   parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::FATAL) do |d|
+            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::ERROR) do |d|
               d || Logger::INFO
             end
 
@@ -887,7 +901,7 @@ if __FILE__ == $PROGRAM_NAME
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    XprofExitCode.update(gm_processing(folder)) if OPTIONS[:analysis]
+    XprofExitCode.update(gm_processing(folder), 'babeltrace_thapi') if OPTIONS[:analysis]
   end
 
   exit(XprofExitCode.get)
