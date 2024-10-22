@@ -87,9 +87,6 @@ BUILT_SOURCES = \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
-# Library to be packaged
-lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la
-
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
@@ -125,6 +122,10 @@ libXAggreg_la_SOURCES = \
 	tally_core.hpp \
 	btx_aggreg.cpp
 
+# Library to be packaged
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la
+
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
@@ -147,17 +148,6 @@ libXStripper_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I.
 libXStripper_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXStripper_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXStripper_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
-	$(LN) -f $(DESTDIR)$(libdir)/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so
-	$(LN) -f $(DESTDIR)$(libdir)/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so
-	$(LN) -f $(DESTDIR)$(libdir)/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
-	$(LN) -f $(DESTDIR)$(libdir)/libXStripper.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so
-
-uninstall-hook:
-	$(RM) $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXStripper.so
-	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
