@@ -285,34 +285,22 @@ libhiptracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/incl
 libhiptracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libhiptracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = \
-	libTracerHIP.la \
-	libHIPInterval.la
+hipdir = $(pkglibdir)/hip
+hip_LTLIBRARIES = libamdhip64.la
 
-nodist_libTracerHIP_la_SOURCES = \
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libHIPInterval.la
+
+nodist_libamdhip64_la_SOURCES = \
 	$(HIP_PROBES_INCL) \
 	tracer_hip.c
 
-libTracerHIP_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./utils -I./
-libTracerHIP_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerHIP_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
-libTracerHIP_la_LDFLAGS += -Wl,--version-script,$(srcdir)/hip.map -version-number 5:4:50400
-libTracerHIP_la_DEPENDS = $(srcdir)/hip.map
-libTracerHIP_la_LIBADD = libhiptracepoints.la
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/hip
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerHIP.so.5.4.50400 $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so.5
-	$(LN_S) -f $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so.5 $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
-	$(LN) -f $(DESTDIR)$(libdir)/libHIPInterval.so $(DESTDIR)$(pkglibdir)/bt2/libHIPInterval.so
-
-
-uninstall-hook:
-	$(RM) -f $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so.5 $(DESTDIR)$(pkglibdir)/hip/libamdhip64.so
-	-rmdir $(DESTDIR)$(pkglibdir)/hip
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libHIPInterval.so
-	-rmdir $(DESTDIR)$(pkglibdir)/bt2
+libamdhip64_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./utils -I./
+libamdhip64_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libamdhip64_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libamdhip64_la_LDFLAGS += -Wl,--version-script,$(srcdir)/hip.map -version-number 5:4:50400
+libamdhip64_la_DEPENDS = $(srcdir)/hip.map
+libamdhip64_la_LIBADD = libhiptracepoints.la
 
 tmplibdir = $(libdir)/tmp
 

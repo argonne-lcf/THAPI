@@ -82,7 +82,7 @@ then
 else
   export LD_LIBRARY_PATH=$pkglibdir/hip:$LD_LIBRARY_PATH
 fi
-export LD_PRELOAD=$libdir/libTracerHIP.so:$LD_PRELOAD
+export LD_PRELOAD=$pkglibdir/hip/libamdhip64.so:$LD_PRELOAD
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LTTNG_UST_HIP_VERBOSE=1
 lttng start

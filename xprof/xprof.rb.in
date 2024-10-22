@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 
-
 # 2.7 for Lazy in Enumerable. 2.7 was released 25 Dec 2019
 THAPI_RUBY_MINIMAL_VERSION = '2.6.0'
 if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
@@ -380,11 +379,11 @@ def env_tracers
   h = Hash.new { |h, k| h[k] = [] }
   backends = []
 
-  [%w[opencl cl libOpenCL libTracerOpenCL],
-   %w[ze ze libze_loader libze_loader],
-   %w[cuda cuda libcuda libTracerCUDA],
-   %w[hip hip libamdhip64 libTracerHIP],
-   %w[mpi mpi libmpi libTracerMPI]].each do |name, bt_name, lib, libtracer|
+  [%w[opencl cl libOpenCL],
+   %w[ze ze libze_loader],
+   %w[cuda cuda libcuda],
+   %w[hip hip libamdhip64],
+   %w[mpi mpi libmpi]].each do |name, bt_name, lib|
     # Backend requested, skip omp. It will be handled in a custom case bellow
     next unless OPTIONS[:'backend-names'].include?(bt_name)
 
@@ -403,7 +402,7 @@ def env_tracers
     # Add our "stud" library to the path
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
     # Preload our own lib
-    h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, "#{libtracer}.so")
+    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{lib}.so")
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end

@@ -7,7 +7,7 @@ static void _load_tracer(void) {
   void *handle = NULL;
   int verbose = 0;
 
-  s = getenv("LTTNG_UST_MPI_LIBMPI_LOADER");
+  s = getenv("LTTNG_UST_MPI_LIBMPI");
   if (s)
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   else

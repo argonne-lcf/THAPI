@@ -128,30 +128,22 @@ libmpitracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/incl
 libmpitracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libmpitracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-nodist_libTracerMPI_la_SOURCES = \
+mpidir = $(pkglibdir)/mpi
+mpi_LTLIBRARIES = libmpi.la
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libMPIInterval.la
+
+nodist_libmpi_la_SOURCES = \
 	$(MPI_PROBES_INCL) \
 	$(MPI_STATIC_PROBES_INCL) \
 	tracer_mpi.c
 
-libTracerMPI_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
-libTracerMPI_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerMPI_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread
-libTracerMPI_la_LIBADD = libmpitracepoints.la
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/mpi
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerMPI.so.1.0.0 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1
-	$(LN_S) -f $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
-	$(LN) -f $(DESTDIR)$(libdir)/libMPIInterval.so $(DESTDIR)$(pkglibdir)/bt2/libMPIInterval.so
-
-
-uninstall-hook:
-	$(RM) -f $(DESTDIR)$(libdir)/libTracerMPI.so.1.0.0 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1
-	$(RM) -f $(DESTDIR)$(pkglibdir)/mpi/libmpi.so.1 $(DESTDIR)$(pkglibdir)/mpi/libmpi.so
-	-rmdir $(DESTDIR)$(pkglibdir)/mpi
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libMPIInterval.so
-	-rmdir $(DESTDIR)$(pkglibdir)/bt2
+libmpi_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
+libmpi_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libmpi_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread
+libmpi_la_LDFLAGS += -version-info 1:0:0
+libmpi_la_LIBADD = libmpitracepoints.la
 
 tmplibdir = $(libdir)/tmp
 install-data-hook:
@@ -222,8 +214,3 @@ libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include
 libMPIInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
-
-lib_LTLIBRARIES = \
-	libTracerMPI.la \
-	libMPIInterval.la
-

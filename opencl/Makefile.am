@@ -163,33 +163,24 @@ libOpenCLtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/i
 libOpenCLtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libOpenCLtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerOpenCL.la libCLInterval.la
+opencldir = $(pkglibdir)/opencl
+opencl_LTLIBRARIES = libOpenCL.la
 
-nodist_libTracerOpenCL_la_SOURCES = \
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libCLInterval.la
+
+nodist_libOpenCL_la_SOURCES = \
 	$(OPENCL_PROBES_INCL) \
 	$(OPENCL_STATIC_PROBES_INCL) \
 	tracer_opencl.h \
 	tracer_opencl.c
 
-libTracerOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I../utils -I./
-libTracerOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerOpenCL_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
-libTracerOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -version-info 1:0:0
-libTracerOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
-libTracerOpenCL_la_LIBADD = libOpenCLtracepoints.la
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/opencl
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerOpenCL.so.1.0.0 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1
-	$(LN_S) -f $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
-	$(LN) -f $(DESTDIR)$(libdir)/libCLInterval.so $(DESTDIR)$(pkglibdir)/bt2/libCLInterval.so
-
-uninstall-hook:
-	$(RM) -f $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so.1 $(DESTDIR)$(pkglibdir)/opencl/libOpenCL.so
-	-rmdir $(DESTDIR)$(pkglibdir)/opencl
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libCLInterval.so
-	-rmdir $(DESTDIR)$(pkglibdir)/bt2
+libOpenCL_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I../utils -I./
+libOpenCL_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libOpenCL_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libOpenCL_la_LDFLAGS += -Wl,--version-script,$(srcdir)/tracer_opencl.map -version-info 1:0:0
+libOpenCL_la_DEPENDS = $(srcdir)/tracer_opencl.map
+libOpenCL_la_LIBADD = libOpenCLtracepoints.la
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
 # Thanks Vincent Danjean
