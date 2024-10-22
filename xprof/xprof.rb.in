@@ -384,7 +384,7 @@ def env_tracers
    %w[ze ze libze_loader] +  [File.join(PKGLIBDIR,'ze','libze_loader.so')],
    %w[cuda cuda libcuda] +  [File.join(PKGLIBDIR,'cuda','libcuda.so')],
    %w[hip hip libamdhip64] + [File.join(PKGLIBDIR,'hip', 'libamdhip64.so')],
-   %w[mpi mpi libmpi] + [File.join(LIBDIR,'libTracerMPI.so')]].each do |name, bt_name, lib, libtracer|
+   %w[mpi mpi libmpi] + [File.join(PKGLIBDIR,'mpi','libTracerMPI.so')]].each do |name, bt_name, lib, libtracer|
     # Backend requested, skip omp. It will be handled in a custom case bellow
     next unless OPTIONS[:'backend-names'].include?(bt_name)
 
