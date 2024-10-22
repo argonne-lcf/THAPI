@@ -129,7 +129,7 @@ libmpitracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-typ
 libmpitracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 mpidir = $(pkglibdir)/mpi
-mpi_LTLIBRARIES = libmpi
+mpi_LTLIBRARIES = libmpi.la
 
 bt2dir = $(pkglibdir)/bt2
 bt2_LTLIBRARIES = libMPIInterval.la
