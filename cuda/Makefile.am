@@ -280,46 +280,34 @@ libcudarttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/i
 libcudarttracepoints_la_CFLAGS = $(LTTNG_UST_CFLAGS)
 libcudarttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerCUDA.la libTracerCUDART.la libCUDAInterval.la
+cudadir = $(pkglibdir)/cuda
+cuda_LTLIBRARIES = libcuda.la
 
-nodist_libTracerCUDA_la_SOURCES = \
+cudartdir = $(pkglibdir)/cudart
+cudart_LTLIBRARIES = libcudart.la
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libCUDAInterval.la
+
+nodist_libcuda_la_SOURCES = \
 	$(CUDA_PROBES_INCL) \
 	tracer_cuda.c
 
-libTracerCUDA_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./
-libTracerCUDA_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerCUDA_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
-libTracerCUDA_la_LDFLAGS += -version-info 1:0:0
-libTracerCUDA_la_LIBADD = libcudatracepoints.la
+libcuda_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./
+libcuda_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libcuda_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libcuda_la_LDFLAGS += -version-info 1:0:0
+libcuda_la_LIBADD = libcudatracepoints.la
 
-nodist_libTracerCUDART_la_SOURCES = \
+nodist_libcudart_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	tracer_cudart.c
 
-libTracerCUDART_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./
-libTracerCUDART_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libTracerCUDART_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
-libTracerCUDART_la_LDFLAGS += -version-number 12:1:55 -Wl,--version-script,tracer_cudart.map
-libTracerCUDART_la_LIBADD = libcudarttracepoints.la
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/cudart
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/cuda
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerCUDART.so.12.1.55 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.12
-	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.12 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerCUDA.so.1.0.0 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1
-	$(LN_S) -f $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
-	$(LN) -f $(DESTDIR)$(libdir)/libCUDAInterval.so $(DESTDIR)$(pkglibdir)/bt2/libCUDAInterval.so
-
-
-uninstall-hook:
-	$(RM) -f $(DESTDIR)$(pkglibdir)/cudart/libcudart.so.12 $(DESTDIR)$(pkglibdir)/cudart/libcudart.so
-	$(RM) -f $(DESTDIR)$(pkglibdir)/cuda/libcuda.so.1 $(DESTDIR)$(pkglibdir)/cuda/libcuda.so
-	-rmdir $(DESTDIR)$(pkglibdir)/cudart
-	-rmdir $(DESTDIR)$(pkglibdir)/cuda
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libCUDAInterval.so
-	-rmdir $(DESTDIR)$(pkglibdir)/bt2
+libcudart_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./
+libcudart_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
+libcudart_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libcudart_la_LDFLAGS += -version-number 12:1:55 -Wl,--version-script,tracer_cudart.map
+libcudart_la_LIBADD = libcudarttracepoints.la
 
 tmplibdir = $(libdir)/tmp
 install-data-hook:
