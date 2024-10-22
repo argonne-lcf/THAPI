@@ -69,11 +69,7 @@ using btx_event_desct_t =
 using btx_command_list_desc_t =
     std::tuple<ze_command_queue_desc_t, ze_device_handle_t, bool /*hCommandListIsImmediate*/>;
 
-struct DeviceHash {
-    uint64_t hash;
-    uint32_t deviceIdx;
-};
-
+using DeviceHash = std::tuple<uint64_t, uint32_t>;
 
 struct data_s {
   /* Host */
