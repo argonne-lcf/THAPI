@@ -126,7 +126,7 @@ then
 else
   export LD_LIBRARY_PATH=$pkglibdir/ze:$LD_LIBRARY_PATH
 fi
-export LD_PRELOAD=$libdir/libze_loader.so:$LD_PRELOAD
+export LD_PRELOAD=$pkglibdir/ze/libze_loader.so:$LD_PRELOAD
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LTTNG_UST_ZE_VERBOSE=1
 lttng start

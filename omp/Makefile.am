@@ -134,7 +134,10 @@ libompttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/inc
 libompttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libompttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libTracerOMPT.la libOMPInterval.la
+lib_LTLIBRARIES = libTracerOMPT.la
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libOMPInterval.la
 
 nodist_libTracerOMPT_la_SOURCES = \
 	$(OMP_PROBES_INCL) \
@@ -144,18 +147,6 @@ libTracerOMPT_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include 
 libTracerOMPT_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libTracerOMPT_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module ../sampling/libThapiSampling.la
 libTracerOMPT_la_LIBADD = libompttracepoints.la
-
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ompt
-	$(LN_S) -f $(DESTDIR)$(libdir)/libTracerOMPT.so $(DESTDIR)$(pkglibdir)/ompt/libompt.so
-	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
-	$(LN) -f $(DESTDIR)$(libdir)/libOMPInterval.so $(DESTDIR)$(pkglibdir)/bt2/libOMPInterval.so
-
-uninstall-hook:
-	$(RM) -f $(DESTDIR)$(pkglibdir)/ompt/libompt.so
-	-rmdir $(DESTDIR)$(pkglibdir)/ompt
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libOMPInterval.so
-	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@

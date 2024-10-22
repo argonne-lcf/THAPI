@@ -82,7 +82,7 @@ then
 else
   export LD_LIBRARY_PATH=$pkglibdir/mpi:$LD_LIBRARY_PATH
 fi
-export LD_PRELOAD=$libdir/libTracerMPI.so:$LD_PRELOAD
+export LD_PRELOAD=$pkglibdir/mpi/libmpi.so:$LD_PRELOAD
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LTTNG_UST_MPI_VERBOSE=1
 lttng start
