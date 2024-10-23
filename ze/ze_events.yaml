@@ -10,15 +10,6 @@ lttng_ust_ze_sampling:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer, uint32_t, deviceIdx, "deviceIdx" ]
     - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
-  - name: subDeviceProperties
-    args:
-    - [ zes_device_handle_t, hDevice ]
-    - [ ze_device_handle_t, hSubDevice ]
-    - [ ze_device_properties_t *, pSubDeviceProperties ]
-    fields:
-    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
-    - [ ctf_integer_hex, uintptr_t, hSubDevice, "(uintptr_t)hSubDevice" ]
-    - [ ctf_sequence_text, uint8_t, pSubDeviceProperties_val, pSubDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
   - name: engineProperties
     args:
     - [ zes_device_handle_t, hDevice ]

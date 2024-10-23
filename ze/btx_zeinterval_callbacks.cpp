@@ -1019,15 +1019,6 @@ static void lttng_ust_ze_sampling_deviceProperties_callback(
   data->sampling_device_property[{hostname, vpid, hDevice}] = {*pDeviceProperties_val, deviceIdx};
 }
 
-static void lttng_ust_ze_sampling_subDeviceProperties_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
-    zes_device_handle_t hDevice, ze_device_handle_t hSubDevice,
-    size_t _pSubDeviceProperties_val_length, ze_device_properties_t *pSubDeviceProperties_val) {
-  auto *data = static_cast<data_t *>(usr_data);
-  data->sampling_sub_device_property[{hostname, vpid, (ze_device_handle_t)hSubDevice}] =
-      *pSubDeviceProperties_val;
-}
-
 static void lttng_ust_ze_sampling_fabricPortProperties_callback(
     void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
     ze_device_handle_t hDevice, zes_fabric_port_handle_t hFabricPort,
@@ -1167,8 +1158,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   // Properties
   btx_register_callbacks_lttng_ust_ze_sampling_deviceProperties(
       btx_handle, &lttng_ust_ze_sampling_deviceProperties_callback);
-  btx_register_callbacks_lttng_ust_ze_sampling_subDeviceProperties(
-      btx_handle, &lttng_ust_ze_sampling_subDeviceProperties_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_fabricPortProperties(
       btx_handle, &lttng_ust_ze_sampling_fabricPortProperties_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_powerProperties(

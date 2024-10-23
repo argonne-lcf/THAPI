@@ -100,7 +100,6 @@ struct data_s {
   std::unordered_map<hp_device_t, clock_lttng_device_t> device_timestamps_pair_ref;
   /* Sampling */
   std::unordered_map<hpd_t, deviceProperty_id_t> sampling_device_property;
-  std::unordered_map<hpd_t, ze_device_properties_t> sampling_sub_device_property;
   std::unordered_map<hpdf_t, zes_fabric_port_properties_t> fabricPort_property;
   std::unordered_map<hpdm_t, zes_mem_properties_t> memModule_property;
   std::unordered_map<hpdpwr_t, zes_power_properties_t> power_property;
