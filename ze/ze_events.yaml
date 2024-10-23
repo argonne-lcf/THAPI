@@ -1,48 +1,113 @@
 ---
 lttng_ust_ze_sampling:
   events:
-  - name: copyEngine
+  - name: deviceProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
-    - [ uint32_t, subDevice ]
-    - [ uint64_t, activeTime ]
-    - [ uint64_t, timestamp ]
+    - [ zes_device_handle_t, hDevice ]
+    - [ uint32_t, deviceIdx ]
+    - [ zes_device_properties_t *, pDeviceProperties ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
-    - [ ctf_integer, uint32_t, subDevice, "subDevice" ]
-    - [ ctf_integer, uint64_t, activeTime, "activeTime" ]
-    - [ ctf_integer, uint64_t, timestamp, "timestamp" ]
-  - name: computeEngine
+    - [ ctf_integer, uint32_t, deviceIdx, "deviceIdx" ]
+    - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
+  - name: engineProperties
     args:
-    - [ ze_device_handle_t, hDevice ]
-    - [ uint32_t, subDevice ]    
-    - [ uint64_t, activeTime ]
-    - [ uint64_t, timestamp ]
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_engine_handle_t, hEngines ]
+    - [ zes_engine_properties_t *, pEngineProperties ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
-    - [ ctf_integer, uint32_t, subDevice, "subDevice" ]
-    - [ ctf_integer, uint64_t, activeTime, "activeTime" ]
-    - [ ctf_integer, uint64_t, timestamp, "timestamp" ]
+    - [ ctf_integer_hex, uintptr_t, hEngines, "(uintptr_t)hEngines" ]
+    - [ ctf_sequence_text, uint8_t, pEngineProperties_val, pEngineProperties, size_t, "sizeof(zes_engine_properties_t)" ]
+  - name: engineStats
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_engine_handle_t, hEngines ]
+    - [ zes_engine_stats_t *, pEngineStats ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hEngines, "(uintptr_t)hEngines" ]
+    - [ ctf_sequence_text, uint8_t, pEngineStats_val, pEngineStats, size_t, "sizeof(zes_engine_stats_t)" ]
+  - name: powerProperties
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_pwr_handle_t, hPowers ]
+    - [ zes_power_properties_t *, pPowerProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hPowers, "(uintptr_t)hPowers" ]
+    - [ ctf_sequence_text, uint8_t, pPowerProperties_val, pPowerProperties, size_t, "sizeof(zes_power_properties_t)" ]
   - name: gpu_energy
     args:
-    - [ ze_device_handle_t, hDevice ]
-    - [ uint32_t, domain ]
-    - [ uint64_t, energy ]
-    - [ uint64_t, timestamp ]
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_pwr_handle_t, hPowers ]
+    - [ uint32_t, domainIdx ]
+    - [ zes_power_energy_counter_t *, pEnergyCounter ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
-    - [ ctf_integer, uint32_t, domain, "domain" ]
-    - [ ctf_integer, uint64_t, energy, "energy" ]
-    - [ ctf_integer, uint64_t, timestamp, "timestamp" ]
+    - [ ctf_integer_hex, uintptr_t, hPowers, "(uintptr_t)hPowers" ]
+    - [ ctf_integer, uint32_t, domainIdx, "domainIdx" ]
+    - [ ctf_sequence_text, uint8_t, pEnergyCounter_val, pEnergyCounter, size_t, "sizeof(zes_power_energy_counter_t)" ]
+  - name: freqProperties
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_freq_handle_t, hFrequency ]
+    - [ zes_freq_properties_t *, pFreqProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hFrequency, "(uintptr_t)hFrequency" ]
+    - [ ctf_sequence_text, uint8_t, pFreqProperties_val, pFreqProperties, size_t, "sizeof(zes_freq_properties_t)" ]
   - name: gpu_frequency
     args:
-    - [ ze_device_handle_t, hDevice ]
-    - [ uint32_t, domain ]
-    - [ uint64_t, frequency ]
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_freq_handle_t, hFrequency ]
+    - [ uint32_t, domainIdx ]
+    - [ zes_freq_state_t *, pFreqState ]
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
-    - [ ctf_integer, uint32_t, domain, "domain" ]
-    - [ ctf_integer, uint64_t, frequency, "frequency" ]
+    - [ ctf_integer_hex, uintptr_t, hFrequency, "(uintptr_t)hFrequency" ]
+    - [ ctf_integer, uint32_t, domainIdx, "domainIdx" ]
+    - [ ctf_sequence_text, uint8_t, pFreqState_val, pFreqState, size_t, "sizeof(zes_freq_state_t)" ]
+  - name: fabricPortProperties
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_fabric_port_handle_t, hFabricPort ]
+    - [ zes_fabric_port_properties_t *, pFabricPortProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hFabricPort, "(uintptr_t)hFabricPort" ]
+    - [ ctf_sequence_text, uint8_t, pFabricPortProperties_val, pFabricPortProperties, size_t, "sizeof(zes_fabric_port_properties_t)" ]
+  - name: fabricPort
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_fabric_port_handle_t, hFabricPort ]
+    - [ zes_fabric_port_state_t *, pFabricPortState ]
+    - [ zes_fabric_port_throughput_t *, pFabricPortThroughput ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hFabricPort, "(uintptr_t)hFabricPort" ]
+    - [ ctf_sequence_text, uint8_t, pFabricPortState_val, pFabricPortState, size_t, "sizeof(zes_fabric_port_state_t)" ]
+    - [ ctf_sequence_text, uint8_t, pFabricPortThroughput_val, pFabricPortThroughput, size_t, "sizeof(zes_fabric_port_throughput_t)" ]
+  - name: memoryProperties
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_mem_handle_t, hMemModule ]
+    - [ zes_mem_properties_t *, pMemModuleProperties ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hMemModule, "(uintptr_t)hMemModule" ]
+    - [ ctf_sequence_text, uint8_t, pMemModuleProperties_val, pMemModuleProperties, size_t, "sizeof(zes_mem_properties_t)" ]
+  - name: memStats
+    args:
+    - [ zes_device_handle_t, hDevice ]
+    - [ zes_mem_handle_t, hMemModule ]
+    - [ zes_mem_state_t *, pMemState ]
+    - [ zes_mem_bandwidth_t *, pMemBandwidth ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
+    - [ ctf_integer_hex, uintptr_t, hMemModule, "(uintptr_t)hMemModule" ]
+    - [ ctf_sequence_text, uint8_t, pMemState_val, pMemState, size_t, "sizeof(zes_mem_state_t)" ]
+    - [ ctf_sequence_text, uint8_t, pMemBandwidth_val, pMemBandwidth, size_t, "sizeof(zes_mem_bandwidth_t)" ]
 lttng_ust_ze_profiling:
   events:
   - name: event_profiling
