@@ -784,11 +784,6 @@ std::optional<DeviceHash> get_device_hash(void *usr_data, const char *hostname, 
 }
 
 uint64_t calculate_delta(uint64_t current_val, uint64_t prev_val) {
-  // return zero if equal
-  if (current_val == prev_val) {
-    return 0;
-  }
-
   // calculate the delta, considering overflow
   if (current_val >= prev_val) {
     return current_val - prev_val;
