@@ -748,8 +748,8 @@ def trace_and_on_node_processing(usr_argv)
     if OPTIONS[:archive]
       LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
       pids.each do |pid|
-        Process.wait(pid)
-        XprofExitCode.update($?.exitstatus, "babeltrace_thapi or dirwatch #{pid}")
+        _, status = Process.wait2(pid)
+        XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
       end
     end
     # we can kill the session daemon
