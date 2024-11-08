@@ -153,7 +153,14 @@ BUILT_SOURCES = \
 
 bin_PROGRAMS = sampling_daemon
 
-sampling_daemon_SOURCES = sampling_daemon.c
+sampling_daemon_SOURCES = \
+	sampling_daemon.c \
+	sampling_daemon.h
+
+nodist_sampling_daemon_SOURCES = \
+	$(ZE_PROBES_INCL) \
+	$(ZE_STATIC_PROBES_INCL)
+
 sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/ze/include -I./
 sampling_daemon_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 sampling_daemon_LDADD = libzetracepoints.la -ldl -lpthread $(LTTNG_UST_LIBS) ../sampling/libThapiSampling.la
