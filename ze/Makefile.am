@@ -106,6 +106,7 @@ EXTRA_DIST += \
 	ze_model.rb \
 	gen_babeltrace_ze_model.rb
 
+
 ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints) $(ZE_STRUCTS_NAMESPACES:=_tracepoints)
 ZE_PROBES_TP = $(ZE_PROBES:=.tp)
 ZE_PROBES_INCL = $(ZE_PROBES:=.h)
@@ -139,6 +140,8 @@ CLEANFILES += \
 	$(ZE_STATIC_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_SRC)
 
+
+
 EXTRA_DIST += \
 	gen_probe_base.rb \
 	$(ZE_GEN_TRACEPOINTS) \
@@ -148,14 +151,22 @@ BUILT_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
+bin_PROGRAMS = sampling_daemon
+
+sampling_daemon_SOURCES = sampling_daemon.c
+sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/ze/include -I./
+sampling_daemon_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+sampling_daemon_LDADD = libzetracepoints.la -ldl -lpthread $(LTTNG_UST_LIBS) ../sampling/libThapiSampling.la
+
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
 
 EXTRA_DIST += \
 	gen_ze.rb \
 	tracer_ze_helpers.include.c
 
-CLEANFILES += tracer_ze.c
+CLEANFILES += tracer_ze.c sampling_daemon
 
 bin_SCRIPTS = \
 	tracer_ze.sh
@@ -172,22 +183,31 @@ libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/inclu
 libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-zedir = $(pkglibdir)/ze
-ze_LTLIBRARIES = libze_loader.la
-
-bt2dir = $(pkglibdir)/bt2
-bt2_LTLIBRARIES = libZEInterval.la
+lib_LTLIBRARIES = libze_loader.la libZEInterval.la
 
 nodist_libze_loader_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL) \
 	tracer_ze.c
-
+	
 libze_loader_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I$(top_srcdir)/utils -I./
 libze_loader_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libze_loader_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
 libze_loader_la_LDFLAGS += -version-info 1:0:0
 libze_loader_la_LIBADD = libzetracepoints.la
+
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/ze
+	$(LN_S) -f $(DESTDIR)$(libdir)/libze_loader.so.1.0.0 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1
+	$(LN_S) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
+	$(LN) -f $(DESTDIR)$(libdir)/libZEInterval.so $(DESTDIR)$(pkglibdir)/bt2/libZEInterval.so
+
+uninstall-hook:
+	$(RM) -f $(DESTDIR)$(pkglibdir)/ze/libze_loader.so.1 $(DESTDIR)$(pkglibdir)/ze/libze_loader.so
+	-rmdir $(DESTDIR)$(pkglibdir)/ze
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libZEInterval.so
+	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 tmplibdir = $(libdir)/tmp
 

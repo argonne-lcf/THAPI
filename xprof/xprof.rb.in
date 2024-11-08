@@ -7,6 +7,10 @@ if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
   exit(1)
 end
 
+# Define signals for sampling daemon
+
+
+
 # We Cannot use "@ .. @" for libdir, bindir, and dataroodir
 # as they will appear as bash "${exec_prefix}/lib"
 # So for now we will rely on them having the default value,
@@ -238,6 +242,9 @@ end
 def lttng_home_dir
   File.join('/', 'tmp', "lttng_home--#{mpi_job_id}")
 end
+
+
+
 
 def thapi_trace_dir_root
   raise unless mpi_master?
@@ -731,10 +738,24 @@ def gm_rename_folder
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
   thapi_trace_dir_root
 end
+SIGRTMIN = 40
+RT_SIGNAL_SAMPLING_READY = SIGRTMIN
+RT_SIGNAL_SAMPLING_FINISH = SIGRTMIN + 1
+def start_sampling_daemon()
+  puts "Started sampling daemon (PID #{Process.pid}})"
+  sampling_daemon_pid = spawn("sampling_daemon #{Process.pid}")
+  Process.detach(sampling_daemon_pid)
+   puts "Started sampling daemon (PID #{sampling_daemon_pid }})"
+  sampling_daemon_pid
+end
 
+def stop_sampling_daemon(sampling_daemon_pid)
+  Process.kill(RT_SIGNAL_SAMPLING_FINISH, sampling_daemon_pid)
+  puts "Sent FINISH signal to sampling daemon (PID #{sampling_daemon_pid})"
+end
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
-  def teardown_lttng(syncd, pids)
+  def teardown_lttng(syncd, pids, sampling_daemon_pid = nil)
     # We need to be sure that all the local ranks are finished
     syncd.local_barrier('waiting_for_application_ending')
 
@@ -743,6 +764,7 @@ def trace_and_on_node_processing(usr_argv)
     # for the early exiting ranks
     return unless mpi_local_master?
 
+    stop_sampling_daemon(sampling_daemon_pid) if sampling_daemon_pid
     # Stop Lttng session and babeltrace daemons
     lm_lttng_teardown_session
     if OPTIONS[:archive]
@@ -770,6 +792,9 @@ def trace_and_on_node_processing(usr_argv)
             end
     
     syncd.local_barrier('waiting_for_lttng_setup')
+    if sampling?
+       sampling_daemon_pid = start_sampling_daemon()
+    end
 
     # Launch User Command
     begin
@@ -779,7 +804,7 @@ def trace_and_on_node_processing(usr_argv)
       raise
     end
 
-    teardown_lttng(syncd, pids)
+    teardown_lttng(syncd, pids, sampling_daemon_pid)
     return unless mpi_local_master?
 
     # Preprocess trace
