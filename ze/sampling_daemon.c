@@ -1,39 +1,38 @@
-#include <stdint.h>
-#include <stddef.h>
-#include "ze.h.include"
-#include <dlfcn.h>
-#include <dlfcn.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/mman.h>
-#include <ffi.h>
-#include "uthash.h"
-#include "utlist.h"
-
-#include "ze_tracepoints.h"
-#include "zet_tracepoints.h"
-#include "zes_tracepoints.h"
-#include "zel_tracepoints.h"
-#include "zex_tracepoints.h"
-#include "ze_structs_tracepoints.h"
-#include "zet_structs_tracepoints.h"
-#include "zes_structs_tracepoints.h"
-#include "zel_structs_tracepoints.h"
-#include "zex_structs_tracepoints.h"
-#include "ze_sampling.h"
-#include "ze_profiling.h"
-#include "ze_properties.h"
-#include "ze_build.h"
 #include "sampling_daemon.h"
 #include "../sampling/thapi_sampling.h"
-#include <signal.h>
+#include "uthash.h"
+#include "utlist.h"
+#include "ze.h.include"
+#include "ze_build.h"
+#include "ze_profiling.h"
+#include "ze_properties.h"
+#include "ze_sampling.h"
+#include "ze_structs_tracepoints.h"
+#include "ze_tracepoints.h"
+#include "zel_structs_tracepoints.h"
+#include "zel_tracepoints.h"
+#include "zes_structs_tracepoints.h"
+#include "zes_tracepoints.h"
+#include "zet_structs_tracepoints.h"
+#include "zet_tracepoints.h"
+#include "zex_structs_tracepoints.h"
+#include "zex_tracepoints.h"
+#include <dlfcn.h>
 #include <errno.h>
+#include <ffi.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
-#define RT_SIGNAL_SAMPLING_READY SIGRTMIN
-#define RT_SIGNAL_SAMPLING_FINISH  SIGRTMIN + 1
+#define SIG_SAMPLING_READY SIGRTMIN
+#define SIG_SAMPLING_FINISH (SIGRTMIN + 1)
 
 #define ZES_INIT_PTR zesInit_ptr
 
@@ -43,14 +42,11 @@
 
 #define ZES_DEVICE_GET_PROPERTIES_PTR zesDeviceGetProperties_ptr
 
-
 #define ZES_DEVICE_ENUM_POWER_DOMAINS_PTR zesDeviceEnumPowerDomains_ptr
 
 #define ZES_POWER_GET_PROPERTIES_PTR zesPowerGetProperties_ptr
 
 #define ZES_POWER_GET_ENERGY_COUNTER_PTR zesPowerGetEnergyCounter_ptr
-
-
 
 #define ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR zesDeviceEnumFrequencyDomains_ptr
 
@@ -58,14 +54,11 @@
 
 #define ZES_FREQUENCY_GET_STATE_PTR zesFrequencyGetState_ptr
 
-
 #define ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR zesDeviceEnumEngineGroups_ptr
 
 #define ZES_ENGINE_GET_PROPERTIES_PTR zesEngineGetProperties_ptr
 
 #define ZES_ENGINE_GET_ACTIVITY_PTR zesEngineGetActivity_ptr
-
-
 
 #define ZES_DEVICE_ENUM_FABRIC_PORTS_PTR zesDeviceEnumFabricPorts_ptr
 
@@ -75,8 +68,6 @@
 
 #define ZES_FABRIC_PORT_GET_THROUGHPUT_PTR zesFabricPortGetThroughput_ptr
 
-
-
 #define ZES_DEVICE_ENUM_MEMORY_MODULES_PTR zesDeviceEnumMemoryModules_ptr
 
 #define ZES_MEMORY_GET_PROPERTIES_PTR zesMemoryGetProperties_ptr
@@ -85,83 +76,91 @@
 
 #define ZES_MEMORY_GET_BANDWIDTH_PTR zesMemoryGetBandwidth_ptr
 
-
-
 typedef ze_result_t (*zesInit_t)(zes_init_flags_t flags);
-static zesInit_t ZES_INIT_PTR = (void *) 0x0;
+static zesInit_t ZES_INIT_PTR = (void *)0x0;
 
 typedef ze_result_t (*zesDriverGet_t)(uint32_t *pCount, zes_driver_handle_t *phDrivers);
-static zesDriverGet_t ZES_DRIVER_GET_PTR = (void *) 0x0;
+static zesDriverGet_t ZES_DRIVER_GET_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceGet_t)(zes_driver_handle_t hDriver, uint32_t *pCount, zes_device_handle_t *phDevices);
-static zesDeviceGet_t ZES_DEVICE_GET_PTR = (void *) 0x0;
+typedef ze_result_t (*zesDeviceGet_t)(zes_driver_handle_t hDriver, uint32_t *pCount,
+                                      zes_device_handle_t *phDevices);
+static zesDeviceGet_t ZES_DEVICE_GET_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceGetProperties_t)(zes_device_handle_t hDevice, zes_device_properties_t *pProperties);
-static zesDeviceGetProperties_t ZES_DEVICE_GET_PROPERTIES_PTR = (void *) 0x0;
+typedef ze_result_t (*zesDeviceGetProperties_t)(zes_device_handle_t hDevice,
+                                                zes_device_properties_t *pProperties);
+static zesDeviceGetProperties_t ZES_DEVICE_GET_PROPERTIES_PTR = (void *)0x0;
 
+typedef ze_result_t (*zesDeviceEnumPowerDomains_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+                                                   zes_pwr_handle_t *phPower);
+static zesDeviceEnumPowerDomains_t ZES_DEVICE_ENUM_POWER_DOMAINS_PTR = (void *)0x0;
 
+typedef ze_result_t (*zesPowerGetProperties_t)(zes_pwr_handle_t hPower,
+                                               zes_power_properties_t *pProperties);
+static zesPowerGetProperties_t ZES_POWER_GET_PROPERTIES_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumPowerDomains_t)(zes_device_handle_t hDevice, uint32_t *pCount, zes_pwr_handle_t *phPower);
-static zesDeviceEnumPowerDomains_t ZES_DEVICE_ENUM_POWER_DOMAINS_PTR = (void *) 0x0;
+typedef ze_result_t (*zesPowerGetEnergyCounter_t)(zes_pwr_handle_t hPower,
+                                                  zes_power_energy_counter_t *pEnergy);
+static zesPowerGetEnergyCounter_t ZES_POWER_GET_ENERGY_COUNTER_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesPowerGetProperties_t)(zes_pwr_handle_t hPower, zes_power_properties_t *pProperties);
-static zesPowerGetProperties_t ZES_POWER_GET_PROPERTIES_PTR = (void *) 0x0;
+typedef ze_result_t (*zesDeviceEnumFrequencyDomains_t)(zes_device_handle_t hDevice,
+                                                       uint32_t *pCount,
+                                                       zes_freq_handle_t *phFrequency);
+static zesDeviceEnumFrequencyDomains_t ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesPowerGetEnergyCounter_t)(zes_pwr_handle_t hPower, zes_power_energy_counter_t *pEnergy);
-static zesPowerGetEnergyCounter_t ZES_POWER_GET_ENERGY_COUNTER_PTR = (void *) 0x0;
+typedef ze_result_t (*zesFrequencyGetProperties_t)(zes_freq_handle_t hFrequency,
+                                                   zes_freq_properties_t *pProperties);
+static zesFrequencyGetProperties_t ZES_FREQUENCY_GET_PROPERTIES_PTR = (void *)0x0;
 
+typedef ze_result_t (*zesFrequencyGetState_t)(zes_freq_handle_t hFrequency,
+                                              zes_freq_state_t *pState);
+static zesFrequencyGetState_t ZES_FREQUENCY_GET_STATE_PTR = (void *)0x0;
 
+typedef ze_result_t (*zesDeviceEnumEngineGroups_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+                                                   zes_engine_handle_t *phEngine);
+static zesDeviceEnumEngineGroups_t ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumFrequencyDomains_t)(zes_device_handle_t hDevice, uint32_t *pCount, zes_freq_handle_t *phFrequency);
-static zesDeviceEnumFrequencyDomains_t ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR = (void *) 0x0;
+typedef ze_result_t (*zesEngineGetProperties_t)(zes_engine_handle_t hEngine,
+                                                zes_engine_properties_t *pProperties);
+static zesEngineGetProperties_t ZES_ENGINE_GET_PROPERTIES_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesFrequencyGetProperties_t)(zes_freq_handle_t hFrequency, zes_freq_properties_t *pProperties);
-static zesFrequencyGetProperties_t ZES_FREQUENCY_GET_PROPERTIES_PTR = (void *) 0x0;
+typedef ze_result_t (*zesEngineGetActivity_t)(zes_engine_handle_t hEngine,
+                                              zes_engine_stats_t *pStats);
+static zesEngineGetActivity_t ZES_ENGINE_GET_ACTIVITY_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesFrequencyGetState_t)(zes_freq_handle_t hFrequency, zes_freq_state_t *pState);
-static zesFrequencyGetState_t ZES_FREQUENCY_GET_STATE_PTR = (void *) 0x0;
+typedef ze_result_t (*zesDeviceEnumFabricPorts_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+                                                  zes_fabric_port_handle_t *phPort);
+static zesDeviceEnumFabricPorts_t ZES_DEVICE_ENUM_FABRIC_PORTS_PTR = (void *)0x0;
 
+typedef ze_result_t (*zesFabricPortGetProperties_t)(zes_fabric_port_handle_t hPort,
+                                                    zes_fabric_port_properties_t *pProperties);
+static zesFabricPortGetProperties_t ZES_FABRIC_PORT_GET_PROPERTIES_PTR = (void *)0x0;
 
+typedef ze_result_t (*zesFabricPortGetState_t)(zes_fabric_port_handle_t hPort,
+                                               zes_fabric_port_state_t *pState);
+static zesFabricPortGetState_t ZES_FABRIC_PORT_GET_STATE_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumEngineGroups_t)(zes_device_handle_t hDevice, uint32_t *pCount, zes_engine_handle_t *phEngine);
-static zesDeviceEnumEngineGroups_t ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR = (void *) 0x0;
+typedef ze_result_t (*zesFabricPortGetThroughput_t)(zes_fabric_port_handle_t hPort,
+                                                    zes_fabric_port_throughput_t *pThroughput);
+static zesFabricPortGetThroughput_t ZES_FABRIC_PORT_GET_THROUGHPUT_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesEngineGetProperties_t)(zes_engine_handle_t hEngine, zes_engine_properties_t *pProperties);
-static zesEngineGetProperties_t ZES_ENGINE_GET_PROPERTIES_PTR = (void *) 0x0;
+typedef ze_result_t (*zesDeviceEnumMemoryModules_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+                                                    zes_mem_handle_t *phMemory);
+static zesDeviceEnumMemoryModules_t ZES_DEVICE_ENUM_MEMORY_MODULES_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesEngineGetActivity_t)(zes_engine_handle_t hEngine, zes_engine_stats_t *pStats);
-static zesEngineGetActivity_t ZES_ENGINE_GET_ACTIVITY_PTR = (void *) 0x0;
-
-
-
-typedef ze_result_t (*zesDeviceEnumFabricPorts_t)(zes_device_handle_t hDevice, uint32_t *pCount, zes_fabric_port_handle_t *phPort);
-static zesDeviceEnumFabricPorts_t ZES_DEVICE_ENUM_FABRIC_PORTS_PTR = (void *) 0x0;
-
-typedef ze_result_t (*zesFabricPortGetProperties_t)(zes_fabric_port_handle_t hPort, zes_fabric_port_properties_t *pProperties);
-static zesFabricPortGetProperties_t ZES_FABRIC_PORT_GET_PROPERTIES_PTR = (void *) 0x0;
-
-typedef ze_result_t (*zesFabricPortGetState_t)(zes_fabric_port_handle_t hPort, zes_fabric_port_state_t *pState);
-static zesFabricPortGetState_t ZES_FABRIC_PORT_GET_STATE_PTR = (void *) 0x0;
-
-typedef ze_result_t (*zesFabricPortGetThroughput_t)(zes_fabric_port_handle_t hPort, zes_fabric_port_throughput_t *pThroughput);
-static zesFabricPortGetThroughput_t ZES_FABRIC_PORT_GET_THROUGHPUT_PTR = (void *) 0x0;
-
-
-typedef ze_result_t (*zesDeviceEnumMemoryModules_t)(zes_device_handle_t hDevice, uint32_t *pCount, zes_mem_handle_t *phMemory);
-static zesDeviceEnumMemoryModules_t ZES_DEVICE_ENUM_MEMORY_MODULES_PTR = (void *) 0x0;
-
-typedef ze_result_t (*zesMemoryGetProperties_t)(zes_mem_handle_t hMemory, zes_mem_properties_t *pProperties);
-static zesMemoryGetProperties_t ZES_MEMORY_GET_PROPERTIES_PTR = (void *) 0x0;
+typedef ze_result_t (*zesMemoryGetProperties_t)(zes_mem_handle_t hMemory,
+                                                zes_mem_properties_t *pProperties);
+static zesMemoryGetProperties_t ZES_MEMORY_GET_PROPERTIES_PTR = (void *)0x0;
 
 typedef ze_result_t (*zesMemoryGetState_t)(zes_mem_handle_t hMemory, zes_mem_state_t *pState);
-static zesMemoryGetState_t ZES_MEMORY_GET_STATE_PTR = (void *) 0x0;
+static zesMemoryGetState_t ZES_MEMORY_GET_STATE_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesMemoryGetBandwidth_t)(zes_mem_handle_t hMemory, zes_mem_bandwidth_t *pBandwidth);
-static zesMemoryGetBandwidth_t ZES_MEMORY_GET_BANDWIDTH_PTR = (void *) 0x0;
+typedef ze_result_t (*zesMemoryGetBandwidth_t)(zes_mem_handle_t hMemory,
+                                               zes_mem_bandwidth_t *pBandwidth);
+static zesMemoryGetBandwidth_t ZES_MEMORY_GET_BANDWIDTH_PTR = (void *)0x0;
 
-static void find_ze_symbols(void * handle, int verbose) {
+static void find_ze_symbols(void *handle, int verbose) {
 
- ZES_INIT_PTR = (zesInit_t)(intptr_t)dlsym(handle, "zesInit");
+  ZES_INIT_PTR = (zesInit_t)(intptr_t)dlsym(handle, "zesInit");
   if (!ZES_INIT_PTR && verbose)
     fprintf(stderr, "Missing symbol zesInit!\n");
 
@@ -169,81 +168,87 @@ static void find_ze_symbols(void * handle, int verbose) {
   if (!ZES_DRIVER_GET_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDriverGet!\n");
 
-ZES_DEVICE_GET_PTR = (zesDeviceGet_t)(intptr_t)dlsym(handle, "zesDeviceGet");
+  ZES_DEVICE_GET_PTR = (zesDeviceGet_t)(intptr_t)dlsym(handle, "zesDeviceGet");
   if (!ZES_DEVICE_GET_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceGet!\n");
 
-  ZES_DEVICE_GET_PROPERTIES_PTR = (zesDeviceGetProperties_t)(intptr_t)dlsym(handle, "zesDeviceGetProperties");
+  ZES_DEVICE_GET_PROPERTIES_PTR =
+      (zesDeviceGetProperties_t)(intptr_t)dlsym(handle, "zesDeviceGetProperties");
   if (!ZES_DEVICE_GET_PROPERTIES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceGetProperties!\n");
 
-
-
-ZES_DEVICE_ENUM_POWER_DOMAINS_PTR = (zesDeviceEnumPowerDomains_t)(intptr_t)dlsym(handle, "zesDeviceEnumPowerDomains");
+  ZES_DEVICE_ENUM_POWER_DOMAINS_PTR =
+      (zesDeviceEnumPowerDomains_t)(intptr_t)dlsym(handle, "zesDeviceEnumPowerDomains");
   if (!ZES_DEVICE_ENUM_POWER_DOMAINS_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceEnumPowerDomains!\n");
 
-ZES_POWER_GET_PROPERTIES_PTR = (zesPowerGetProperties_t)(intptr_t)dlsym(handle, "zesPowerGetProperties");
+  ZES_POWER_GET_PROPERTIES_PTR =
+      (zesPowerGetProperties_t)(intptr_t)dlsym(handle, "zesPowerGetProperties");
   if (!ZES_POWER_GET_PROPERTIES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesPowerGetProperties!\n");
 
-  ZES_POWER_GET_ENERGY_COUNTER_PTR = (zesPowerGetEnergyCounter_t)(intptr_t)dlsym(handle, "zesPowerGetEnergyCounter");
+  ZES_POWER_GET_ENERGY_COUNTER_PTR =
+      (zesPowerGetEnergyCounter_t)(intptr_t)dlsym(handle, "zesPowerGetEnergyCounter");
   if (!ZES_POWER_GET_ENERGY_COUNTER_PTR && verbose)
     fprintf(stderr, "Missing symbol zesPowerGetEnergyCounter!\n");
 
-
-
-ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR = (zesDeviceEnumFrequencyDomains_t)(intptr_t)dlsym(handle, "zesDeviceEnumFrequencyDomains");
+  ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR =
+      (zesDeviceEnumFrequencyDomains_t)(intptr_t)dlsym(handle, "zesDeviceEnumFrequencyDomains");
   if (!ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceEnumFrequencyDomains!\n");
 
-  ZES_FREQUENCY_GET_PROPERTIES_PTR = (zesFrequencyGetProperties_t)(intptr_t)dlsym(handle, "zesFrequencyGetProperties");
+  ZES_FREQUENCY_GET_PROPERTIES_PTR =
+      (zesFrequencyGetProperties_t)(intptr_t)dlsym(handle, "zesFrequencyGetProperties");
   if (!ZES_FREQUENCY_GET_PROPERTIES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesFrequencyGetProperties!\n");
 
- ZES_FREQUENCY_GET_STATE_PTR = (zesFrequencyGetState_t)(intptr_t)dlsym(handle, "zesFrequencyGetState");
+  ZES_FREQUENCY_GET_STATE_PTR =
+      (zesFrequencyGetState_t)(intptr_t)dlsym(handle, "zesFrequencyGetState");
   if (!ZES_FREQUENCY_GET_STATE_PTR && verbose)
     fprintf(stderr, "Missing symbol zesFrequencyGetState!\n");
 
-
-
-ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR = (zesDeviceEnumEngineGroups_t)(intptr_t)dlsym(handle, "zesDeviceEnumEngineGroups");
+  ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR =
+      (zesDeviceEnumEngineGroups_t)(intptr_t)dlsym(handle, "zesDeviceEnumEngineGroups");
   if (!ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceEnumEngineGroups!\n");
 
-  ZES_ENGINE_GET_PROPERTIES_PTR = (zesEngineGetProperties_t)(intptr_t)dlsym(handle, "zesEngineGetProperties");
+  ZES_ENGINE_GET_PROPERTIES_PTR =
+      (zesEngineGetProperties_t)(intptr_t)dlsym(handle, "zesEngineGetProperties");
   if (!ZES_ENGINE_GET_PROPERTIES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesEngineGetProperties!\n");
 
-  ZES_ENGINE_GET_ACTIVITY_PTR = (zesEngineGetActivity_t)(intptr_t)dlsym(handle, "zesEngineGetActivity");
+  ZES_ENGINE_GET_ACTIVITY_PTR =
+      (zesEngineGetActivity_t)(intptr_t)dlsym(handle, "zesEngineGetActivity");
   if (!ZES_ENGINE_GET_ACTIVITY_PTR && verbose)
     fprintf(stderr, "Missing symbol zesEngineGetActivity!\n");
 
-
-
-ZES_DEVICE_ENUM_FABRIC_PORTS_PTR = (zesDeviceEnumFabricPorts_t)(intptr_t)dlsym(handle, "zesDeviceEnumFabricPorts");
+  ZES_DEVICE_ENUM_FABRIC_PORTS_PTR =
+      (zesDeviceEnumFabricPorts_t)(intptr_t)dlsym(handle, "zesDeviceEnumFabricPorts");
   if (!ZES_DEVICE_ENUM_FABRIC_PORTS_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceEnumFabricPorts!\n");
 
-  ZES_FABRIC_PORT_GET_PROPERTIES_PTR = (zesFabricPortGetProperties_t)(intptr_t)dlsym(handle, "zesFabricPortGetProperties");
+  ZES_FABRIC_PORT_GET_PROPERTIES_PTR =
+      (zesFabricPortGetProperties_t)(intptr_t)dlsym(handle, "zesFabricPortGetProperties");
   if (!ZES_FABRIC_PORT_GET_PROPERTIES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesFabricPortGetProperties!\n");
 
-ZES_FABRIC_PORT_GET_STATE_PTR = (zesFabricPortGetState_t)(intptr_t)dlsym(handle, "zesFabricPortGetState");
+  ZES_FABRIC_PORT_GET_STATE_PTR =
+      (zesFabricPortGetState_t)(intptr_t)dlsym(handle, "zesFabricPortGetState");
   if (!ZES_FABRIC_PORT_GET_STATE_PTR && verbose)
     fprintf(stderr, "Missing symbol zesFabricPortGetState!\n");
 
-  ZES_FABRIC_PORT_GET_THROUGHPUT_PTR = (zesFabricPortGetThroughput_t)(intptr_t)dlsym(handle, "zesFabricPortGetThroughput");
+  ZES_FABRIC_PORT_GET_THROUGHPUT_PTR =
+      (zesFabricPortGetThroughput_t)(intptr_t)dlsym(handle, "zesFabricPortGetThroughput");
   if (!ZES_FABRIC_PORT_GET_THROUGHPUT_PTR && verbose)
     fprintf(stderr, "Missing symbol zesFabricPortGetThroughput!\n");
 
-
-
-ZES_DEVICE_ENUM_MEMORY_MODULES_PTR = (zesDeviceEnumMemoryModules_t)(intptr_t)dlsym(handle, "zesDeviceEnumMemoryModules");
+  ZES_DEVICE_ENUM_MEMORY_MODULES_PTR =
+      (zesDeviceEnumMemoryModules_t)(intptr_t)dlsym(handle, "zesDeviceEnumMemoryModules");
   if (!ZES_DEVICE_ENUM_MEMORY_MODULES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesDeviceEnumMemoryModules!\n");
 
-  ZES_MEMORY_GET_PROPERTIES_PTR = (zesMemoryGetProperties_t)(intptr_t)dlsym(handle, "zesMemoryGetProperties");
+  ZES_MEMORY_GET_PROPERTIES_PTR =
+      (zesMemoryGetProperties_t)(intptr_t)dlsym(handle, "zesMemoryGetProperties");
   if (!ZES_MEMORY_GET_PROPERTIES_PTR && verbose)
     fprintf(stderr, "Missing symbol zesMemoryGetProperties!\n");
 
@@ -251,10 +256,10 @@ ZES_DEVICE_ENUM_MEMORY_MODULES_PTR = (zesDeviceEnumMemoryModules_t)(intptr_t)dls
   if (!ZES_MEMORY_GET_STATE_PTR && verbose)
     fprintf(stderr, "Missing symbol zesMemoryGetState!\n");
 
-  ZES_MEMORY_GET_BANDWIDTH_PTR = (zesMemoryGetBandwidth_t)(intptr_t)dlsym(handle, "zesMemoryGetBandwidth");
+  ZES_MEMORY_GET_BANDWIDTH_PTR =
+      (zesMemoryGetBandwidth_t)(intptr_t)dlsym(handle, "zesMemoryGetBandwidth");
   if (!ZES_MEMORY_GET_BANDWIDTH_PTR && verbose)
     fprintf(stderr, "Missing symbol zesMemoryGetBandwidth!\n");
-
 }
 
 thapi_sampling_handle_t _sampling_handle = NULL;
@@ -279,17 +284,23 @@ static uint32_t **_sampling_memModuleCount = NULL;
 static uint32_t **_sampling_powerDomainCounts = NULL;
 static uint32_t **_sampling_engineCounts = NULL;
 
-
 ////////////////////////////////////////////
-#define _ZE_ERROR_MSG(NAME,RES) do {\
-  fprintf(stderr,"%s() failed at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
-} while (0)
-#define _ZE_ERROR_MSG_NOTERMINATE(NAME,RES) do {\
-  fprintf(stderr,"%s() error at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
-} while (0)
-#define _ERROR_MSG(MSG) {perror((MSG)) do {\
-  {perror((MSG)); fprintf(stderr,"errno=%d at %d(%s)",errno,__LINE__,__FILE__);\
-} while (0)
+#define _ZE_ERROR_MSG(NAME, RES)                                                                   \
+  do {                                                                                             \
+    fprintf(stderr, "%s() failed at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));         \
+  } while (0)
+#define _ZE_ERROR_MSG_NOTERMINATE(NAME, RES)                                                       \
+  do {                                                                                             \
+    fprintf(stderr, "%s() error at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));          \
+  } while (0)
+#define _ERROR_MSG(MSG)                                                                            \
+  {                                                                                                \
+    perror((MSG)) do {                                                                             \
+      {                                                                                            \
+        perror((MSG));                                                                             \
+        fprintf(stderr, "errno=%d at %d(%s)", errno, __LINE__, __FILE__);                          \
+      }                                                                                            \
+      while (0)
 
 static void intializeFrequency() {
   ze_result_t res;
@@ -313,7 +324,7 @@ static void intializeFrequency() {
       }
       _sampling_hFrequencies[driverIdx][deviceIdx] = (zes_freq_handle_t *)calloc(
           _sampling_freqDomainCounts[driverIdx][deviceIdx], sizeof(zes_freq_handle_t));
-      res =ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
+      res = ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR(_sampling_hDevices[driverIdx][deviceIdx],
                                                   &_sampling_freqDomainCounts[driverIdx][deviceIdx],
                                                   _sampling_hFrequencies[driverIdx][deviceIdx]);
       if (res != ZE_RESULT_SUCCESS) {
@@ -325,7 +336,7 @@ static void intializeFrequency() {
            domainIdx++) {
         zes_freq_properties_t freqProps = {0};
         freqProps.stype = ZES_STRUCTURE_TYPE_FREQ_PROPERTIES;
-        res =ZES_FREQUENCY_GET_PROPERTIES_PTR(
+        res = ZES_FREQUENCY_GET_PROPERTIES_PTR(
             _sampling_hFrequencies[driverIdx][deviceIdx][domainIdx], &freqProps);
         if (res != ZE_RESULT_SUCCESS) {
           _ZE_ERROR_MSG("ZES_FREQUENCY_GET_PROPERTIES_PTR", res);
@@ -439,7 +450,6 @@ static void intializeEngines() {
   _sampling_engines_initialized = 1;
 }
 
-
 static void intializeFabricPorts() {
   ze_result_t res;
   _sampling_hFabricPort = (zes_fabric_port_handle_t ***)calloc(_sampling_driverCount,
@@ -491,7 +501,6 @@ static void intializeFabricPorts() {
   _sampling_fabricPorts_initialized = 1;
 }
 
-
 static void intializeMemModules() {
   ze_result_t res;
   _sampling_hMemModule =
@@ -542,10 +551,9 @@ static void intializeMemModules() {
   _sampling_memModules_initialized = 1;
 }
 
-
 static int initializeHandles() {
   ze_result_t res;
-  //find_ze_symbols(handle, NULL);
+  // find_ze_symbols(handle, NULL);
   res = ZES_INIT_PTR(0);
   if (res != ZE_RESULT_SUCCESS) {
     _ZE_ERROR_MSG("ZES_INIT_PTR", res);
@@ -656,7 +664,6 @@ static void readFabricPorts_dump(uint32_t driverIdx, uint32_t deviceIdx) {
   }
 }
 
-
 static void readMemModules_dump(uint32_t driverIdx, uint32_t deviceIdx) {
   if (!_sampling_memModules_initialized)
     return;
@@ -684,7 +691,6 @@ static void readMemModules_dump(uint32_t driverIdx, uint32_t deviceIdx) {
                   &memState, &memBandwidth);
   }
 }
-
 
 static void readEnergy_dump(uint32_t driverIdx, uint32_t deviceIdx) {
   if (!_sampling_pwr_initialized)
@@ -726,7 +732,6 @@ static void readEngines_dump(uint32_t driverIdx, uint32_t deviceIdx) {
   }
 }
 
-
 static void thapi_sampling_energy() {
   for (uint32_t driverIdx = 0; driverIdx < _sampling_driverCount; driverIdx++) {
     for (uint32_t deviceIdx = 0; deviceIdx < _sampling_deviceCount[driverIdx]; deviceIdx++) {
@@ -748,94 +753,74 @@ static void thapi_sampling_energy() {
     }
   }
 }
-
+volatile bool running = true;
 void process_sampling() {
-    
-        struct timespec interval;
-        interval.tv_sec = 0;
-        interval.tv_nsec = 50000000; // 50ms interval
-        thapi_sampling_energy();
-        _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
-    
+
+  struct timespec interval;
+  interval.tv_sec = 0;
+  interval.tv_nsec = 50000000; // 50ms interval
+  thapi_sampling_energy();
+  _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
 }
 void cleanup_sampling() {
-    if (_sampling_handle) {
-        thapi_unregister_sampling(_sampling_handle);
-        _sampling_handle = NULL;
-    }
+  if (_sampling_handle) {
+    thapi_unregister_sampling(_sampling_handle);
+    _sampling_handle = NULL;
+  }
 }
 
-// Signal handling loop
-int signal_loop(int parent_pid) {
-    // Initialize signal set and add signals
-    sigset_t signal_set;
-    sigemptyset(&signal_set);
-    sigaddset(&signal_set, RT_SIGNAL_SAMPLING_READY);
-    sigaddset(&signal_set, RT_SIGNAL_SAMPLING_FINISH);
-
-    // Block signals 
-    sigprocmask(SIG_BLOCK, &signal_set, NULL);
-
-    // Signal the parent process READY
-    kill(parent_pid, RT_SIGNAL_SAMPLING_READY);
-
-    // Processing loop: until RT_SIGNAL_FINISH
-    while (1) {
-        int signum;
-        sigwait(&signal_set, &signum);
-
-        if (signum == RT_SIGNAL_SAMPLING_FINISH) {
-            return 0;
-        } else {
-            // Example action when READY signal is received
-            process_sampling();
-            printf("Starting \n");
-            kill(parent_pid, RT_SIGNAL_SAMPLING_READY);  // Signal parent
-        }
-    }
-
-    // Unreachable
-    fprintf(stderr, "Exited signal loop unexpectedly.\n");
-    return 1;
+void signal_handler(int signum) {
+  if (signum == SIG_SAMPLING_FINISH) {
+    printf("Received FINISH signal, stopping daemon...\n");
+    // running = false;
+    cleanup_sampling();
+    running = false;
+  }
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <parent_pid>\n", argv[0]);
-        return 1;
-    }
-    int parent_pid = atoi(argv[1]);
-    int verbose = 0;
-    thapi_sampling_init();
-    // Load necessary libraries
-    void *handle = NULL;
-    char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
-    if (s) {
-        handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-    } else {
-        handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-    }
 
-    if (!handle) {
-        fprintf(stderr, "Failure: could not load ze library!\n");
-        return 1;
-    }
-  
-    // Initialize daemon 
-    if (getenv("LTTNG_UST_SAMPLING_ENERGY")) {
-         find_ze_symbols(handle, verbose);
-         initializeHandles();
-    } else {
-        fprintf(stderr, "Sampling not enabled. Exiting.\n");
-        dlclose(handle);
-        return 0;
-    }
-    // Run the signal loop
-    int ret = signal_loop(parent_pid);
-    // Cleanup before exiting
-    cleanup_sampling();
-    dlclose(handle);
-    printf("Daemon exiting with status %d\n", ret);
-    kill(parent_pid, RT_SIGNAL_SAMPLING_READY);  // Notify parent of clean exit
-    return ret;
+  fprintf(stderr, "Entering Main.\n");
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s <parent_pid>\n", argv[0]);
+    return 1;
+  }
+  int parent_pid = atoi(argv[1]);
+  int verbose = 0;
+  fprintf(stderr, "Thapi sampling init.\n");
+  thapi_sampling_init();
+
+  // Load necessary libraries
+  void *handle = NULL;
+  char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
+  if (s) {
+    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  } else {
+    handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  }
+
+  if (!handle) {
+    fprintf(stderr, "Failure: could not load ze library!\n");
+    return 1;
+  }
+
+  // Initialize daemon
+  find_ze_symbols(handle, verbose);
+  fprintf(stderr, "Initialize the system.\n");
+  initializeHandles();
+  fprintf(stderr, "Daemon initialized and entering signal loop.\n");
+  // Run the signal loop
+  signal(SIG_SAMPLING_FINISH, signal_handler);
+  if (parent_pid > 0) {
+    kill(parent_pid, SIG_SAMPLING_READY);
+    fprintf(stderr, "Daemon sent READY signal to parent PID %d\n", parent_pid);
+  }
+  fprintf(stderr, "Daemon waiting for signals in signal_loop.\n");
+  // Clearunningnup before exiting
+  while (running) {
+    process_sampling(); // Wait for a signal to be received
+  }
+  dlclose(handle);
+  printf("Daemon exiting \n");
+  return 0;
 }

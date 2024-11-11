@@ -375,7 +375,7 @@ end
 
 def sampling?
   return false unless OPTIONS[:sample]
-  env_fetch_first('LTTNG_UST_SAMPLING_MASTER_ONLY', default: '1') == '0' || mpi_local_master?
+  mpi_local_master?
 end
 
 def env_tracers
@@ -738,22 +738,35 @@ def gm_rename_folder
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
   thapi_trace_dir_root
 end
-SIGRTMIN = 40
-RT_SIGNAL_SAMPLING_READY = SIGRTMIN
-RT_SIGNAL_SAMPLING_FINISH = SIGRTMIN + 1
-def start_sampling_daemon()
-  puts "Started sampling daemon (PID #{Process.pid}})"
-  sampling_daemon_pid = spawn("sampling_daemon #{Process.pid}")
+
+SIGRTMIN = 34
+SIG_SAMPLING_READY = SIGRTMIN
+SIG_SAMPLING_FINISH = SIGRTMIN + 1
+
+def start_sampling_daemon(parent_pid)
+  puts "Starting sampling daemon for parent process PID #{parent_pid}"
+  sampling_daemon_pid = spawn("/home/sbekele/sampling_daemon/bin/sampling_daemon #{parent_pid}")
   Process.detach(sampling_daemon_pid)
-   puts "Started sampling daemon (PID #{sampling_daemon_pid }})"
   sampling_daemon_pid
 end
 
-def stop_sampling_daemon(sampling_daemon_pid)
-  Process.kill(RT_SIGNAL_SAMPLING_FINISH, sampling_daemon_pid)
-  puts "Sent FINISH signal to sampling daemon (PID #{sampling_daemon_pid})"
+# Wait for the READY signal from the sampling daemon
+def wait_for_ready_signal
+  received_ready = false
+  Signal.trap(SIG_SAMPLING_READY) do
+    puts "Received READY signal from sampling daemon"
+    received_ready = true
+  end
+  sleep(0.1) while !received_ready  # Wait loop until READY signal is received
 end
-# Start, Stop lttng, amd do the on-node analsysis
+
+# Send the FINISH signal to terminate the sampling daemon
+def send_finish_signal(sampling_daemon_pid)
+  Process.kill(SIG_SAMPLING_FINISH, sampling_daemon_pid)
+  puts "Sent FINISH signal to sampling daemon PID #{sampling_daemon_pid}"
+end
+ 
+
 def trace_and_on_node_processing(usr_argv)
   def teardown_lttng(syncd, pids, sampling_daemon_pid = nil)
     # We need to be sure that all the local ranks are finished
@@ -764,7 +777,7 @@ def trace_and_on_node_processing(usr_argv)
     # for the early exiting ranks
     return unless mpi_local_master?
 
-    stop_sampling_daemon(sampling_daemon_pid) if sampling_daemon_pid
+    #stop_sampling_daemon(sampling_daemon_pid) if sampling_daemon_pid
     # Stop Lttng session and babeltrace daemons
     lm_lttng_teardown_session
     if OPTIONS[:archive]
@@ -792,10 +805,12 @@ def trace_and_on_node_processing(usr_argv)
             end
     
     syncd.local_barrier('waiting_for_lttng_setup')
-    if sampling?
-       sampling_daemon_pid = start_sampling_daemon()
-    end
 
+    if sampling?
+      sampling_daemon_pid = start_sampling_daemon(Process.pid)
+      puts "Started sampling daemon with PID #{sampling_daemon_pid}"
+      wait_for_ready_signal
+    end
     # Launch User Command
     begin
       XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(' '))
@@ -803,7 +818,7 @@ def trace_and_on_node_processing(usr_argv)
       teardown_lttng(syncd, pids)
       raise
     end
-
+    send_finish_signal(sampling_daemon_pid) if sampling_daemon_pid
     teardown_lttng(syncd, pids, sampling_daemon_pid)
     return unless mpi_local_master?
 
