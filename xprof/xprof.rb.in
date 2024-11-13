@@ -739,46 +739,52 @@ def gm_rename_folder
   thapi_trace_dir_root
 end
 
-SIGRTMIN = 34
-SIG_SAMPLING_READY = SIGRTMIN
-SIG_SAMPLING_FINISH = SIGRTMIN + 1
+class SamplingDaemon
+  SIGRTMIN = 34
+  SIG_SAMPLING_READY = SIGRTMIN
+  SIG_SAMPLING_FINISH = SIGRTMIN + 1
 
-def start_sampling_daemon(parent_pid)
-  puts "Starting sampling daemon for parent process PID #{parent_pid}"
-  sampling_daemon_pid = spawn("/home/sbekele/sampling_daemon/bin/sampling_daemon #{parent_pid}")
-  Process.detach(sampling_daemon_pid)
-  sampling_daemon_pid
-end
+  attr_reader :pid
 
-# Wait for the READY signal from the sampling daemon
-def wait_for_ready_signal
-  received_ready = false
-  Signal.trap(SIG_SAMPLING_READY) do
-    puts "Received READY signal from sampling daemon"
-    received_ready = true
+  def initialize
+    @pid = nil
   end
-  sleep(0.1) while !received_ready  # Wait loop until READY signal is received
-end
 
-# Send the FINISH signal to terminate the sampling daemon
-def send_finish_signal(sampling_daemon_pid)
-  Process.kill(SIG_SAMPLING_FINISH, sampling_daemon_pid)
-  puts "Sent FINISH signal to sampling daemon PID #{sampling_daemon_pid}"
+  def start(parent_pid)
+    return unless sampling?
+
+    daemon_path = "#{__dir__}/sampling_daemon"
+    raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
+    @pid = spawn("#{daemon_path} #{parent_pid}")
+    Process.detach(@pid)
+
+    wait_for_ready_signal
+  end
+
+  def finalize
+    return unless @pid
+
+    Process.kill(SIG_SAMPLING_FINISH, @pid)
+    LOGGER.debug("Sent FINISH signal to sampling daemon PID #{@pid}")
+  end
+
+  private
+
+  def wait_for_ready_signal
+    received_ready = false
+    Signal.trap(SIG_SAMPLING_READY) do
+      received_ready = true
+    end
+    sleep(0.1) while !received_ready # Wait until READY signal is received
+  end
 end
- 
 
 def trace_and_on_node_processing(usr_argv)
-  def teardown_lttng(syncd, pids, sampling_daemon_pid = nil)
-    # We need to be sure that all the local ranks are finished
+  def teardown_lttng(syncd, sampling_daemon, pids)
     syncd.local_barrier('waiting_for_application_ending')
 
-    # Everything from now on, is some local-master processing
-    # The `Sync_daemon` context will handle the call to the global barrier
-    # for the early exiting ranks
     return unless mpi_local_master?
 
-    #stop_sampling_daemon(sampling_daemon_pid) if sampling_daemon_pid
-    # Stop Lttng session and babeltrace daemons
     lm_lttng_teardown_session
     if OPTIONS[:archive]
       LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
@@ -787,47 +793,40 @@ def trace_and_on_node_processing(usr_argv)
         XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
       end
     end
-    # we can kill the session daemon
     lm_lttng_kill_sessiond
+    sampling_daemon.finalize if sampling_daemon
   end
 
   SyncDaemon.open do |syncd|
-    # Load Tracers and APILoaders Lib
+    sampling_daemon = nil
+    sampling_daemon = SamplingDaemon.new if sampling?
+    sampling_daemon&.start(Process.pid)
+
     backends, h = env_tracers
 
-    # All ranks need to set the LLTTNG_HOME env
-    # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
-    # Only local master spawn LTTNG daemon and start session
     pids = if mpi_local_master?
              lm_setup_lttng(backends)
              lm_babeltrace(backends) if OPTIONS[:archive]
-            end
-    
+           end
+
     syncd.local_barrier('waiting_for_lttng_setup')
 
-    if sampling?
-      sampling_daemon_pid = start_sampling_daemon(Process.pid)
-      puts "Started sampling daemon with PID #{sampling_daemon_pid}"
-      wait_for_ready_signal
-    end
     # Launch User Command
     begin
       XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(' '))
     rescue Errno::ENOENT
-      teardown_lttng(syncd, pids)
+      teardown_lttng(syncd, sampling_daemon, pids)
       raise
     end
-    send_finish_signal(sampling_daemon_pid) if sampling_daemon_pid
-    teardown_lttng(syncd, pids, sampling_daemon_pid)
+
+    teardown_lttng(syncd, sampling_daemon, pids)
     return unless mpi_local_master?
 
-    # Preprocess trace
     lm_babeltrace(backends) unless OPTIONS[:archive]
     lm_move_to_shared
   end
-  # Global master rename the unique trace folder to a more
-  # human friendly name
+
   gm_rename_folder if mpi_master?
 end
 

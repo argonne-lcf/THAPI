@@ -1,37 +1,20 @@
 #include "sampling_daemon.h"
 #include "../sampling/thapi_sampling.h"
-#include "uthash.h"
-#include "utlist.h"
-#include "ze.h.include"
 #include "ze_build.h"
-#include "ze_profiling.h"
-#include "ze_properties.h"
 #include "ze_sampling.h"
-#include "ze_structs_tracepoints.h"
-#include "ze_tracepoints.h"
-#include "zel_structs_tracepoints.h"
-#include "zel_tracepoints.h"
-#include "zes_structs_tracepoints.h"
-#include "zes_tracepoints.h"
-#include "zet_structs_tracepoints.h"
-#include "zet_tracepoints.h"
-#include "zex_structs_tracepoints.h"
-#include "zex_tracepoints.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <ffi.h>
-#include <pthread.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <signal.h>
+#include <unistd.h>
+#include <stdbool.h>
 
-#define SIG_SAMPLING_READY SIGRTMIN
+#define SIG_SAMPLING_READY (SIGRTMIN)
 #define SIG_SAMPLING_FINISH (SIGRTMIN + 1)
 
 #define ZES_INIT_PTR zesInit_ptr
@@ -261,7 +244,7 @@ static void find_ze_symbols(void *handle, int verbose) {
   if (!ZES_MEMORY_GET_BANDWIDTH_PTR && verbose)
     fprintf(stderr, "Missing symbol zesMemoryGetBandwidth!\n");
 }
-
+volatile bool running = true;
 thapi_sampling_handle_t _sampling_handle = NULL;
 static int _sampling_freq_initialized = 0;
 static int _sampling_fabricPorts_initialized = 0;
@@ -285,22 +268,21 @@ static uint32_t **_sampling_powerDomainCounts = NULL;
 static uint32_t **_sampling_engineCounts = NULL;
 
 ////////////////////////////////////////////
-#define _ZE_ERROR_MSG(NAME, RES)                                                                   \
-  do {                                                                                             \
-    fprintf(stderr, "%s() failed at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));         \
-  } while (0)
-#define _ZE_ERROR_MSG_NOTERMINATE(NAME, RES)                                                       \
-  do {                                                                                             \
-    fprintf(stderr, "%s() error at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));          \
-  } while (0)
-#define _ERROR_MSG(MSG)                                                                            \
-  {                                                                                                \
-    perror((MSG)) do {                                                                             \
-      {                                                                                            \
-        perror((MSG));                                                                             \
-        fprintf(stderr, "errno=%d at %d(%s)", errno, __LINE__, __FILE__);                          \
-      }                                                                                            \
-      while (0)
+#define _ZE_ERROR_MSG(NAME,RES) do {\
+  fprintf(stderr,"%s() failed at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
+} while (0)
+#define _ZE_ERROR_MSG_NOTERMINATE(NAME,RES) do {\
+  fprintf(stderr,"%s() error at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
+} while (0)
+#define _ERROR_MSG(MSG) do {\
+perror((MSG));fprintf(stderr, "errno=%d at %d(%s)\n", errno, __LINE__, __FILE__);\
+} while (0)
+#define _USAGE_MSG(MSG, ARGV0) do {\
+  fprintf(stderr, "Usage: %s %s\n", (ARGV0), (MSG));\
+} while (0)
+#define _DL_ERROR_MSG() do {\
+  fprintf(stderr, "dlopen error: %s at %d(%s)\n", dlerror(), __LINE__, __FILE__);\
+} while(0)
 
 static void intializeFrequency() {
   ze_result_t res;
@@ -753,7 +735,6 @@ static void thapi_sampling_energy() {
     }
   }
 }
-volatile bool running = true;
 void process_sampling() {
 
   struct timespec interval;
@@ -771,8 +752,6 @@ void cleanup_sampling() {
 
 void signal_handler(int signum) {
   if (signum == SIG_SAMPLING_FINISH) {
-    printf("Received FINISH signal, stopping daemon...\n");
-    // running = false;
     cleanup_sampling();
     running = false;
   }
@@ -780,15 +759,17 @@ void signal_handler(int signum) {
 
 int main(int argc, char **argv) {
 
-  fprintf(stderr, "Entering Main.\n");
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <parent_pid>\n", argv[0]);
+    _USAGE_MSG("<parent_pid>", argv[0]);
     return 1;
   }
   int parent_pid = atoi(argv[1]);
+  if (parent_pid <= 0) {
+     _ERROR_MSG("Invalid or missing parent PID. A positive integer is required.");
+     return 1;
+  }
   int verbose = 0;
-  fprintf(stderr, "Thapi sampling init.\n");
-  thapi_sampling_init();
+  thapi_sampling_init();// Initialize sampling
 
   // Load necessary libraries
   void *handle = NULL;
@@ -800,27 +781,23 @@ int main(int argc, char **argv) {
   }
 
   if (!handle) {
-    fprintf(stderr, "Failure: could not load ze library!\n");
+    _DL_ERROR_MSG();
     return 1;
   }
-
-  // Initialize daemon
+  //Find zes symbols
   find_ze_symbols(handle, verbose);
-  fprintf(stderr, "Initialize the system.\n");
+  //Initialize device and telemetry handles
   initializeHandles();
-  fprintf(stderr, "Daemon initialized and entering signal loop.\n");
   // Run the signal loop
   signal(SIG_SAMPLING_FINISH, signal_handler);
-  if (parent_pid > 0) {
-    kill(parent_pid, SIG_SAMPLING_READY);
-    fprintf(stderr, "Daemon sent READY signal to parent PID %d\n", parent_pid);
+
+  if (kill(parent_pid, SIG_SAMPLING_READY) != 0) {
+    _ERROR_MSG("Failed to send READY signal to parent");
   }
-  fprintf(stderr, "Daemon waiting for signals in signal_loop.\n");
-  // Clearunningnup before exiting
+  // Process_sampling loop until SIG_SAMPLING_FINISH signal
   while (running) {
-    process_sampling(); // Wait for a signal to be received
+    process_sampling();
   }
   dlclose(handle);
-  printf("Daemon exiting \n");
   return 0;
 }
