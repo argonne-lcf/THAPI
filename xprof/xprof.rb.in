@@ -7,9 +7,6 @@ if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
   exit(1)
 end
 
-# Define signals for sampling daemon
-
-
 
 # We Cannot use "@ .. @" for libdir, bindir, and dataroodir
 # as they will appear as bash "${exec_prefix}/lib"
@@ -779,12 +776,18 @@ class SamplingDaemon
   end
 end
 
+# Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
   def teardown_lttng(syncd, sampling_daemon, pids)
+    # We need to be sure that all the local ranks are finished
     syncd.local_barrier('waiting_for_application_ending')
 
+    # Everything from now on, is some local-master processing
+    # The `Sync_daemon` context will handle the call to the global barrier
+    # for the early exiting ranks
     return unless mpi_local_master?
 
+    # Stop Lttng session and babeltrace daemons
     lm_lttng_teardown_session
     if OPTIONS[:archive]
       LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
@@ -802,8 +805,11 @@ def trace_and_on_node_processing(usr_argv)
     sampling_daemon = SamplingDaemon.new if sampling?
     sampling_daemon&.start(Process.pid)
 
+    # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
+    # All ranks need to set the LLTTNG_HOME env
+    # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
     pids = if mpi_local_master?
              lm_setup_lttng(backends)
@@ -826,7 +832,8 @@ def trace_and_on_node_processing(usr_argv)
     lm_babeltrace(backends) unless OPTIONS[:archive]
     lm_move_to_shared
   end
-
+  # Global master rename the unique trace folder to a more
+  # human friendly name
   gm_rename_folder if mpi_master?
 end
 
