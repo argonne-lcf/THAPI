@@ -7,7 +7,6 @@ if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
   exit(1)
 end
 
-
 # We Cannot use "@ .. @" for libdir, bindir, and dataroodir
 # as they will appear as bash "${exec_prefix}/lib"
 # So for now we will rely on them having the default value,
@@ -239,9 +238,6 @@ end
 def lttng_home_dir
   File.join('/', 'tmp', "lttng_home--#{mpi_job_id}")
 end
-
-
-
 
 def thapi_trace_dir_root
   raise unless mpi_master?
@@ -796,27 +792,31 @@ def trace_and_on_node_processing(usr_argv)
         XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
       end
     end
+    # we can kill the session daemon
     lm_lttng_kill_sessiond
     sampling_daemon.finalize if sampling_daemon
   end
 
   SyncDaemon.open do |syncd|
     sampling_daemon = nil
-    sampling_daemon = SamplingDaemon.new if sampling?
-    sampling_daemon&.start(Process.pid)
-
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
     # All ranks need to set the LLTTNG_HOME env
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
+    # Only local master spawn LTTNG daemon and start session
     pids = if mpi_local_master?
              lm_setup_lttng(backends)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
 
     syncd.local_barrier('waiting_for_lttng_setup')
+
+    if sampling?
+       sampling_daemon = SamplingDaemon.new
+       sampling_daemon&.start(Process.pid)
+    end
 
     # Launch User Command
     begin
@@ -829,6 +829,7 @@ def trace_and_on_node_processing(usr_argv)
     teardown_lttng(syncd, sampling_daemon, pids)
     return unless mpi_local_master?
 
+    # Preprocess trace
     lm_babeltrace(backends) unless OPTIONS[:archive]
     lm_move_to_shared
   end
