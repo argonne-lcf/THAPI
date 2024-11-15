@@ -748,6 +748,7 @@ class SamplingDaemon
 
     daemon_path = "#{__dir__}/sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
+
     @pid = spawn("#{daemon_path} #{parent_pid}")
     Process.detach(@pid)
 
@@ -758,7 +759,8 @@ class SamplingDaemon
     return unless @pid
 
     Process.kill(SIG_SAMPLING_FINISH, @pid)
-    LOGGER.debug("Sent FINISH signal to sampling daemon PID #{@pid}")
+
+    wait_for_ready_signal
   end
 
   private
@@ -768,7 +770,7 @@ class SamplingDaemon
     Signal.trap(SIG_SAMPLING_READY) do
       received_ready = true
     end
-    sleep(0.1) while !received_ready # Wait until READY signal is received
+    sleep(0.1) until received_ready # Wait until READY signal is received
   end
 end
 
@@ -794,7 +796,7 @@ def trace_and_on_node_processing(usr_argv)
     end
     # we can kill the session daemon
     lm_lttng_kill_sessiond
-    sampling_daemon.finalize if sampling_daemon
+    sampling_daemon&.finalize
   end
 
   SyncDaemon.open do |syncd|
@@ -814,8 +816,8 @@ def trace_and_on_node_processing(usr_argv)
     syncd.local_barrier('waiting_for_lttng_setup')
 
     if sampling?
-       sampling_daemon = SamplingDaemon.new
-       sampling_daemon&.start(Process.pid)
+      sampling_daemon = SamplingDaemon.new
+      sampling_daemon&.start(Process.pid)
     end
 
     # Launch User Command

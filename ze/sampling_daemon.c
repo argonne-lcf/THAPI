@@ -1,5 +1,4 @@
-#include "sampling_daemon.h"
-#include "../sampling/thapi_sampling.h"
+#include "thapi_sampling.h"
 #include "ze_build.h"
 #include "ze_sampling.h"
 #include <dlfcn.h>
@@ -18,45 +17,25 @@
 #define SIG_SAMPLING_FINISH (SIGRTMIN + 1)
 
 #define ZES_INIT_PTR zesInit_ptr
-
 #define ZES_DRIVER_GET_PTR zesDriverGet_ptr
-
 #define ZES_DEVICE_GET_PTR zesDeviceGet_ptr
-
 #define ZES_DEVICE_GET_PROPERTIES_PTR zesDeviceGetProperties_ptr
-
 #define ZES_DEVICE_ENUM_POWER_DOMAINS_PTR zesDeviceEnumPowerDomains_ptr
-
 #define ZES_POWER_GET_PROPERTIES_PTR zesPowerGetProperties_ptr
-
 #define ZES_POWER_GET_ENERGY_COUNTER_PTR zesPowerGetEnergyCounter_ptr
-
 #define ZES_DEVICE_ENUM_FREQUENCY_DOMAINS_PTR zesDeviceEnumFrequencyDomains_ptr
-
 #define ZES_FREQUENCY_GET_PROPERTIES_PTR zesFrequencyGetProperties_ptr
-
 #define ZES_FREQUENCY_GET_STATE_PTR zesFrequencyGetState_ptr
-
 #define ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR zesDeviceEnumEngineGroups_ptr
-
 #define ZES_ENGINE_GET_PROPERTIES_PTR zesEngineGetProperties_ptr
-
 #define ZES_ENGINE_GET_ACTIVITY_PTR zesEngineGetActivity_ptr
-
 #define ZES_DEVICE_ENUM_FABRIC_PORTS_PTR zesDeviceEnumFabricPorts_ptr
-
 #define ZES_FABRIC_PORT_GET_PROPERTIES_PTR zesFabricPortGetProperties_ptr
-
 #define ZES_FABRIC_PORT_GET_STATE_PTR zesFabricPortGetState_ptr
-
 #define ZES_FABRIC_PORT_GET_THROUGHPUT_PTR zesFabricPortGetThroughput_ptr
-
 #define ZES_DEVICE_ENUM_MEMORY_MODULES_PTR zesDeviceEnumMemoryModules_ptr
-
 #define ZES_MEMORY_GET_PROPERTIES_PTR zesMemoryGetProperties_ptr
-
 #define ZES_MEMORY_GET_STATE_PTR zesMemoryGetState_ptr
-
 #define ZES_MEMORY_GET_BANDWIDTH_PTR zesMemoryGetBandwidth_ptr
 
 typedef ze_result_t (*zesInit_t)(zes_init_flags_t flags);
@@ -735,14 +714,15 @@ static void thapi_sampling_energy() {
     }
   }
 }
-void process_sampling() {
 
+void process_sampling() {
   struct timespec interval;
   interval.tv_sec = 0;
   interval.tv_nsec = 50000000; // 50ms interval
   thapi_sampling_energy();
   _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
 }
+
 void cleanup_sampling() {
   if (_sampling_handle) {
     thapi_unregister_sampling(_sampling_handle);
@@ -758,21 +738,23 @@ void signal_handler(int signum) {
 }
 
 int main(int argc, char **argv) {
-
+  
+  int parent_pid = 0;
+  int verbose = 0;
+  void *handle = NULL;
   if (argc < 2) {
     _USAGE_MSG("<parent_pid>", argv[0]);
     return 1;
   }
-  int parent_pid = atoi(argv[1]);
+  parent_pid = atoi(argv[1]);
   if (parent_pid <= 0) {
-     _ERROR_MSG("Invalid or missing parent PID. A positive integer is required.");
+     _ERROR_MSG("Invalid or missing parent PID.");
      return 1;
   }
-  int verbose = 0;
+  
   thapi_sampling_init();// Initialize sampling
 
   // Load necessary libraries
-  void *handle = NULL;
   char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
   if (s) {
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
@@ -798,6 +780,9 @@ int main(int argc, char **argv) {
   while (running) {
     process_sampling();
   }
+  if (parent_pid != 0)
+    kill(parent_pid, SIG_SAMPLING_READY);
+  
   dlclose(handle);
   return 0;
 }

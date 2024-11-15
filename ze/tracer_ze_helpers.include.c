@@ -1,6 +1,3 @@
-//#include "thapi_sampling.h"
-//#include "sampling_daemon.h"
-
 #ifdef THAPI_DEBUG
 #define TAHPI_LOG stderr
 #define THAPI_DBGLOG(fmt, ...) \
@@ -41,7 +38,6 @@ static int _do_cleanup = 0;
 static int _do_chained_structs = 0;
 static int _do_paranoid_drift = 0;
 static int _do_paranoid_memory_location = 0;
-//thapi_sampling_handle_t _sampling_handle = NULL;
 
 pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -788,15 +784,10 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
   {perror((MSG)); fprintf(stderr,"errno=%d at %d(%s)",errno,__LINE__,__FILE__);\
 } while (0)
 
-
-
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
-  //struct timespec interval;
-  //thapi_sampling_init();
-
   s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
   if (s)
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
