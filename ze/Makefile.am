@@ -106,6 +106,7 @@ EXTRA_DIST += \
 	ze_model.rb \
 	gen_babeltrace_ze_model.rb
 
+
 ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints) $(ZE_STRUCTS_NAMESPACES:=_tracepoints)
 ZE_PROBES_TP = $(ZE_PROBES:=.tp)
 ZE_PROBES_INCL = $(ZE_PROBES:=.h)
@@ -148,6 +149,18 @@ BUILT_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
+bin_PROGRAMS = sampling_daemon
+
+sampling_daemon_SOURCES = sampling_daemon.c
+
+nodist_sampling_daemon_SOURCES = \
+	$(ZE_PROBES_INCL) \
+	$(ZE_STATIC_PROBES_INCL)
+
+sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/ze/include -I./
+sampling_daemon_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+sampling_daemon_LDADD = libzetracepoints.la -ldl -lpthread $(LTTNG_UST_LIBS) ../sampling/libThapiSampling.la
+
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
@@ -155,7 +168,7 @@ EXTRA_DIST += \
 	gen_ze.rb \
 	tracer_ze_helpers.include.c
 
-CLEANFILES += tracer_ze.c
+CLEANFILES += tracer_ze.c sampling_daemon
 
 bin_SCRIPTS = \
 	tracer_ze.sh

@@ -368,7 +368,7 @@ end
 
 def sampling?
   return false unless OPTIONS[:sample]
-  env_fetch_first('LTTNG_UST_SAMPLING_MASTER_ONLY', default: '1') == '0' || mpi_local_master?
+  mpi_local_master?
 end
 
 def env_tracers
@@ -732,9 +732,51 @@ def gm_rename_folder
   thapi_trace_dir_root
 end
 
+class SamplingDaemon
+  SIGRTMIN = 34
+  SIG_SAMPLING_READY = SIGRTMIN
+  SIG_SAMPLING_FINISH = SIGRTMIN + 1
+
+  attr_reader :pid
+
+  def initialize
+    @pid = nil
+  end
+
+  def start(parent_pid)
+    return unless sampling?
+
+    daemon_path = "#{__dir__}/sampling_daemon"
+    raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
+
+    @pid = spawn("#{daemon_path} #{parent_pid}")
+    Process.detach(@pid)
+
+    wait_for_ready_signal
+  end
+
+  def finalize
+    return unless @pid
+
+    Process.kill(SIG_SAMPLING_FINISH, @pid)
+
+    wait_for_ready_signal
+  end
+
+  private
+
+  def wait_for_ready_signal
+    received_ready = false
+    Signal.trap(SIG_SAMPLING_READY) do
+      received_ready = true
+    end
+    sleep(0.1) until received_ready # Wait until READY signal is received
+  end
+end
+
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
-  def teardown_lttng(syncd, pids)
+  def teardown_lttng(syncd, sampling_daemon, pids)
     # We need to be sure that all the local ranks are finished
     syncd.local_barrier('waiting_for_application_ending')
 
@@ -754,9 +796,11 @@ def trace_and_on_node_processing(usr_argv)
     end
     # we can kill the session daemon
     lm_lttng_kill_sessiond
+    sampling_daemon&.finalize
   end
 
   SyncDaemon.open do |syncd|
+    sampling_daemon = nil
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
@@ -767,19 +811,24 @@ def trace_and_on_node_processing(usr_argv)
     pids = if mpi_local_master?
              lm_setup_lttng(backends)
              lm_babeltrace(backends) if OPTIONS[:archive]
-            end
-    
+           end
+
+    if sampling?
+      sampling_daemon = SamplingDaemon.new
+      sampling_daemon&.start(Process.pid)
+    end
+
     syncd.local_barrier('waiting_for_lttng_setup')
 
     # Launch User Command
     begin
       XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(' '))
     rescue Errno::ENOENT
-      teardown_lttng(syncd, pids)
+      teardown_lttng(syncd, sampling_daemon, pids)
       raise
     end
 
-    teardown_lttng(syncd, pids)
+    teardown_lttng(syncd, sampling_daemon, pids)
     return unless mpi_local_master?
 
     # Preprocess trace
