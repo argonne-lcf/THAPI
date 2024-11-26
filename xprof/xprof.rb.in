@@ -270,14 +270,12 @@ def thapi_trace_dir_root
 end
 
 #    _
-#   |_)  _. ._ ._ o  _  ._
-#   |_) (_| |  |  | (/_ |
+#   | \  _.  _  ._ _   _  ._
+#   |_/ (_| (/_ | | | (_) | |
 #
-class SyncDaemon
+class SpawnDaemon
   SIGRTMIN = 34
   RT_SIGNAL_READY = SIGRTMIN
-  RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
-  RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
   def _lazy_exec(&block)
@@ -297,6 +295,15 @@ class SyncDaemon
       _lazy_exec(&block)
     end
   end
+end
+
+#    _
+#   |_)  _. ._ ._ o  _  ._
+#   |_) (_| |  |  | (/_ |
+#
+class SyncDaemon < SpawnDaemon
+  RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
+  RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
 
   def initialize
     daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
@@ -358,17 +365,39 @@ class SyncDaemon
   end
 end
 
+#    __
+#   (_   _. ._ _  ._  | o ._   _
+#   __) (_| | | | |_) | | | | (_|
+#                 |            _|
+
+def sampling?
+  OPTIONS[:sample] && mpi_local_master?
+end
+
+class SamplingDaemon < SpawnDaemon
+  def initialize
+    daemon_path = "#{__dir__}/sampling_daemon"
+    raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
+
+    LOGGER.debug { "spawn(sampling_daemon) #{Process.pid})" }
+    lazy_exec('Initialize SamplingDaemon}') do
+      @pid = spawn("#{daemon_path} #{Process.pid}")
+    end
+  end
+
+  def finalize
+    lazy_exec('Finalize SamplingDaemon') do
+      `kill -#{RT_SIGNAL_FINISH} #{@pid}`
+    end
+  end
+end
+
 #
 #   | _|_ _|_ ._   _
 #   |_ |_  |_ | | (_|
 #                  _|
 def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
-end
-
-def sampling?
-  return false unless OPTIONS[:sample]
-  mpi_local_master?
 end
 
 def env_tracers
@@ -420,9 +449,6 @@ def env_tracers
   end
 
   # Sample
-  #   Currently the same `so` does the tracing, and the sampling
-  #   This mean that is the local rank is not part of the `traced-ranks`
-  #   No sampling will be performed
   if sampling?
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
@@ -605,7 +631,7 @@ def lm_setup_lttng(backends)
          profiling: OPTIONS[:profile])
   end
 
-  if OPTIONS.include?(:sample)
+  if sampling?
     channel_name = 'non-blocking-channel'
     exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} #{channel_name}")
     exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
@@ -732,48 +758,6 @@ def gm_rename_folder
   thapi_trace_dir_root
 end
 
-class SamplingDaemon
-  SIGRTMIN = 34
-  SIG_SAMPLING_READY = SIGRTMIN
-  SIG_SAMPLING_FINISH = SIGRTMIN + 1
-
-  attr_reader :pid
-
-  def initialize
-    @pid = nil
-  end
-
-  def start(parent_pid)
-    return unless sampling?
-
-    daemon_path = "#{__dir__}/sampling_daemon"
-    raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
-
-    @pid = spawn("#{daemon_path} #{parent_pid}")
-    Process.detach(@pid)
-
-    wait_for_ready_signal
-  end
-
-  def finalize
-    return unless @pid
-
-    Process.kill(SIG_SAMPLING_FINISH, @pid)
-
-    wait_for_ready_signal
-  end
-
-  private
-
-  def wait_for_ready_signal
-    received_ready = false
-    Signal.trap(SIG_SAMPLING_READY) do
-      received_ready = true
-    end
-    sleep(0.1) until received_ready # Wait until READY signal is received
-  end
-end
-
 # Start, Stop lttng, amd do the on-node analsysis
 def trace_and_on_node_processing(usr_argv)
   def teardown_lttng(syncd, sampling_daemon, pids)
@@ -800,7 +784,6 @@ def trace_and_on_node_processing(usr_argv)
   end
 
   SyncDaemon.open do |syncd|
-    sampling_daemon = nil
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
@@ -812,11 +795,8 @@ def trace_and_on_node_processing(usr_argv)
              lm_setup_lttng(backends)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
-
-    if sampling?
-      sampling_daemon = SamplingDaemon.new
-      sampling_daemon&.start(Process.pid)
-    end
+    # Spawn sampling daemon before starting user apps
+    sampling_daemon = SamplingDaemon.new if sampling?
 
     syncd.local_barrier('waiting_for_lttng_setup')
 
