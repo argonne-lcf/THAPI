@@ -813,12 +813,12 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
 
-    syncd.local_barrier('waiting_for_lttng_setup')
-
     if sampling?
       sampling_daemon = SamplingDaemon.new
       sampling_daemon&.start(Process.pid)
     end
+
+    syncd.local_barrier('waiting_for_lttng_setup')
 
     # Launch User Command
     begin

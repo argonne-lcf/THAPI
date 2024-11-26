@@ -185,7 +185,11 @@ libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/inclu
 libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libze_loader.la libZEInterval.la
+zedir = $(pkglibdir)/ze
+ze_LTLIBRARIES = libze_loader.la
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libZEInterval.la
 
 nodist_libze_loader_la_SOURCES = \
 	$(ZE_PROBES_INCL) \

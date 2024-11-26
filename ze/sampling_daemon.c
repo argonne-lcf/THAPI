@@ -742,10 +742,12 @@ int main(int argc, char **argv) {
   int parent_pid = 0;
   int verbose = 0;
   void *handle = NULL;
+
   if (argc < 2) {
     _USAGE_MSG("<parent_pid>", argv[0]);
     return 1;
   }
+
   parent_pid = atoi(argv[1]);
   if (parent_pid <= 0) {
      _ERROR_MSG("Invalid or missing parent PID.");
