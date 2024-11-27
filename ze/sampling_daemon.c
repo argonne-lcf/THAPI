@@ -4,17 +4,16 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <ffi.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <signal.h>
-#include <unistd.h>
-#include <stdbool.h>
 
-#define SIG_SAMPLING_READY (SIGRTMIN)
-#define SIG_SAMPLING_FINISH (SIGRTMIN + 1)
+#define RT_SIGNAL_READY (SIGRTMIN)
+#define RT_SIGNAL_FINISH (SIGRTMIN + 3)
 
 #define ZES_INIT_PTR zesInit_ptr
 #define ZES_DRIVER_GET_PTR zesDriverGet_ptr
@@ -247,21 +246,27 @@ static uint32_t **_sampling_powerDomainCounts = NULL;
 static uint32_t **_sampling_engineCounts = NULL;
 
 ////////////////////////////////////////////
-#define _ZE_ERROR_MSG(NAME,RES) do {\
-  fprintf(stderr,"%s() failed at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
-} while (0)
-#define _ZE_ERROR_MSG_NOTERMINATE(NAME,RES) do {\
-  fprintf(stderr,"%s() error at %d(%s): res=%x\n",(NAME),__LINE__,__FILE__,(RES));\
-} while (0)
-#define _ERROR_MSG(MSG) do {\
-perror((MSG));fprintf(stderr, "errno=%d at %d(%s)\n", errno, __LINE__, __FILE__);\
-} while (0)
-#define _USAGE_MSG(MSG, ARGV0) do {\
-  fprintf(stderr, "Usage: %s %s\n", (ARGV0), (MSG));\
-} while (0)
-#define _DL_ERROR_MSG() do {\
-  fprintf(stderr, "dlopen error: %s at %d(%s)\n", dlerror(), __LINE__, __FILE__);\
-} while(0)
+#define _ZE_ERROR_MSG(NAME, RES)                                                                   \
+  do {                                                                                             \
+    fprintf(stderr, "%s() failed at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));         \
+  } while (0)
+#define _ZE_ERROR_MSG_NOTERMINATE(NAME, RES)                                                       \
+  do {                                                                                             \
+    fprintf(stderr, "%s() error at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));          \
+  } while (0)
+#define _ERROR_MSG(MSG)                                                                            \
+  do {                                                                                             \
+    perror((MSG));                                                                                 \
+    fprintf(stderr, "errno=%d at %d(%s)\n", errno, __LINE__, __FILE__);                            \
+  } while (0)
+#define _USAGE_MSG(MSG, ARGV0)                                                                     \
+  do {                                                                                             \
+    fprintf(stderr, "Usage: %s %s\n", (ARGV0), (MSG));                                             \
+  } while (0)
+#define _DL_ERROR_MSG()                                                                            \
+  do {                                                                                             \
+    fprintf(stderr, "dlopen error: %s at %d(%s)\n", dlerror(), __LINE__, __FILE__);                \
+  } while (0)
 
 static void intializeFrequency() {
   ze_result_t res;
@@ -730,34 +735,31 @@ void cleanup_sampling() {
   }
 }
 
-void signal_handler(int signum) {
-  if (signum == SIG_SAMPLING_FINISH) {
+void signal_handler_finish(int signum) {
+  if (signum == RT_SIGNAL_FINISH) {
     cleanup_sampling();
     running = false;
   }
 }
 
 int main(int argc, char **argv) {
-  
-  int parent_pid = 0;
-  int verbose = 0;
-  void *handle = NULL;
 
+  int parent_pid = 0;
   if (argc < 2) {
     _USAGE_MSG("<parent_pid>", argv[0]);
     return 1;
   }
-
   parent_pid = atoi(argv[1]);
   if (parent_pid <= 0) {
-     _ERROR_MSG("Invalid or missing parent PID.");
-     return 1;
+    _ERROR_MSG("Invalid or missing parent PID.");
+    return 1;
   }
-  
-  thapi_sampling_init();// Initialize sampling
+
+  thapi_sampling_init(); // Initialize sampling
 
   // Load necessary libraries
   char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
+  void *handle = NULL;
   if (s) {
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   } else {
@@ -768,23 +770,24 @@ int main(int argc, char **argv) {
     _DL_ERROR_MSG();
     return 1;
   }
-  //Find zes symbols
+  // Find zes symbols
+  int verbose = 0;
   find_ze_symbols(handle, verbose);
-  //Initialize device and telemetry handles
+  // Initialize device and telemetry handles
   initializeHandles();
-  // Run the signal loop
-  signal(SIG_SAMPLING_FINISH, signal_handler);
 
-  if (kill(parent_pid, SIG_SAMPLING_READY) != 0) {
+  // Run the signal loop
+  signal(RT_SIGNAL_FINISH, signal_handler_finish);
+
+  if (kill(parent_pid, RT_SIGNAL_READY) != 0) {
     _ERROR_MSG("Failed to send READY signal to parent");
   }
   // Process_sampling loop until SIG_SAMPLING_FINISH signal
   while (running) {
     process_sampling();
   }
-  if (parent_pid != 0)
-    kill(parent_pid, SIG_SAMPLING_READY);
-  
   dlclose(handle);
+  if (parent_pid != 0)
+    kill(parent_pid, RT_SIGNAL_READY);
   return 0;
 }
