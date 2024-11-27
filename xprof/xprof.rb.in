@@ -278,9 +278,7 @@ class SpawnDaemon
   RT_SIGNAL_READY = SIGRTMIN
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
-  def _lazy_exec(&block)
-    return unless in_mpi_env?
-
+  def _lazy_exec(_cond, &block)
     Signal.trap(RT_SIGNAL_READY) do
       return
     end
@@ -288,11 +286,15 @@ class SpawnDaemon
     sleep
   end
 
-  def lazy_exec(message = nil, &block)
+  def lazy_exec(message = nil, cond, &block)
     LOGGER.info_block(message) do
-      # Don't inline, it Trap doesn't work with logger
+      unless cond
+        LOGGER.debug("#{message}: No-op")
+        return
+      end
+      # Don't inline, Trap doesn't work with logger
       # https://bugs.ruby-lang.org/issues/7917
-      _lazy_exec(&block)
+      _lazy_exec(cond, &block)
     end
   end
 end
@@ -304,6 +306,10 @@ end
 class SyncDaemon < SpawnDaemon
   RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
   RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
+
+  def lazy_exec_mpi(message = nil, &block)
+    lazy_exec(message, in_mpi_env?, &block)
+  end
 
   def initialize
     daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
@@ -327,25 +333,25 @@ class SyncDaemon < SpawnDaemon
              end
 
     LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
-    lazy_exec("Initialize SyncDaemon #{daemon_type}") do
+    lazy_exec_mpi("Initialize SyncDaemon #{daemon_type}") do
       @pid = spawn("#{daemon} #{Process.pid}")
     end
   end
 
   def finalize
-    lazy_exec('Finalize SyncDaemon') do
+    lazy_exec_mpi('Finalize SyncDaemon') do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
   end
 
   def local_barrier(name)
-    lazy_exec("Local_barrier #{name}") do
+    lazy_exec_mpi("Local_barrier #{name}") do
       `kill -#{RT_SIGNAL_LOCAL_BARRIER} #{@pid}`
     end
   end
 
   def global_barrier
-    lazy_exec('Global_barrier') do
+    lazy_exec_mpi('Global_barrier') do
       `kill -#{RT_SIGNAL_GLOBAL_BARRIER} #{@pid}`
     end
   end
@@ -375,18 +381,22 @@ def sampling?
 end
 
 class SamplingDaemon < SpawnDaemon
+  def lazy_exec_sampling(message = nil, &block)
+    lazy_exec(message, sampling?, &block)
+  end
+
   def initialize
     daemon_path = "#{__dir__}/sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
     LOGGER.debug { "spawn(sampling_daemon) #{Process.pid})" }
-    lazy_exec('Initialize SamplingDaemon}') do
+    lazy_exec_sampling('Initialize SamplingDaemon') do
       @pid = spawn("#{daemon_path} #{Process.pid}")
     end
   end
 
   def finalize
-    lazy_exec('Finalize SamplingDaemon') do
+    lazy_exec_sampling('Finalize SamplingDaemon') do
       `kill -#{RT_SIGNAL_FINISH} #{@pid}`
     end
   end
@@ -780,7 +790,7 @@ def trace_and_on_node_processing(usr_argv)
     end
     # we can kill the session daemon
     lm_lttng_kill_sessiond
-    sampling_daemon&.finalize
+    sampling_daemon.finalize
   end
 
   SyncDaemon.open do |syncd|
@@ -796,7 +806,7 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
     # Spawn sampling daemon before starting user apps
-    sampling_daemon = SamplingDaemon.new if sampling?
+    sampling_daemon = SamplingDaemon.new
 
     syncd.local_barrier('waiting_for_lttng_setup')
 
