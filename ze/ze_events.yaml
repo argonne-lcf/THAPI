@@ -9,7 +9,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice" ]
     - [ ctf_integer, uint32_t, deviceIdx, "deviceIdx" ]
-    - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)" ]
+    - [ ctf_sequence_text, uint8_t, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(zes_device_properties_t)" ]
   - name: engineProperties
     args:
     - [ zes_device_handle_t, hDevice ]
