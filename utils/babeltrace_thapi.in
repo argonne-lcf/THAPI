@@ -266,7 +266,7 @@ def thapi_metadata(trace)
     exit(1)
   end
 
-  @thapi_metadata[trace] ||= YAML.load_file(File.join(trace, THAPI_METADATA_FILE))
+  @thapi_metadata[trace] ||= YAML.load_file(full_path)
 end
 
 def modify_metadata(command, trace)
