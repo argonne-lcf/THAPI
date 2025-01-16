@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([thapi], [0.0.11], [bvideau@anl.gov])
+AC_INIT([thapi],[0.0.11],[bvideau@anl.gov])
 AC_CONFIG_SRCDIR([opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
@@ -62,12 +62,14 @@ AS_IF([test "x$using_demangle" != xyes],
 AC_ARG_ENABLE([strict], AS_HELP_STRING([--enable-strict], [Enable -Werror]), [], [enable_strict=yes])
 AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 
-AC_ARG_ENABLE([mpi],
-  AS_HELP_STRING([--disable-mpi], [Disable mpi sync daemon]), [found_mpi=yes], [found_mpi=no])
+# By default `--enable-mpi`, will set the "enable_mpi" variable
+AC_ARG_ENABLE([mpi], AS_HELP_STRING([--disable-mpi], [Disable mpi sync daemon]))
+
 AS_IF([test "x$enable_mpi" != xno], [
-  AX_MPI([found_mpi=yes], [found_mpi=no])
-])
-AM_CONDITIONAL([FOUND_MPI], [test "x$found_mpi" = xyes])
+  AX_MPI([enable_mpi=yes], [enable_mpi=no])
+  ])
+
+AM_CONDITIONAL([FOUND_MPI], [test "x$enable_mpi" != "xno"])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
