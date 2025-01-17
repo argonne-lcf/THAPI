@@ -2,11 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([thapi],[0.0.11],[bvideau@anl.gov])
+AC_INIT([thapi],[0.0.12],[bvideau@anl.gov])
 AC_CONFIG_SRCDIR([opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
-# build artefacts in separate dir
+# build artifacts in separate dir
 AC_CONFIG_AUX_DIR([m4])
 AC_CONFIG_MACRO_DIR([m4])
 
