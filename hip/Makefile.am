@@ -295,9 +295,9 @@ nodist_libamdhip64_la_SOURCES = \
 	$(HIP_PROBES_INCL) \
 	tracer_hip.c
 
-libamdhip64_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I./utils -I./
+libamdhip64_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
 libamdhip64_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libamdhip64_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libamdhip64_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libamdhip64_la_LDFLAGS += -Wl,--version-script,$(srcdir)/hip.map -version-number 5:4:50400
 libamdhip64_la_DEPENDS = $(srcdir)/hip.map
 libamdhip64_la_LIBADD = libhiptracepoints.la

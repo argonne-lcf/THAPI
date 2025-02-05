@@ -196,9 +196,9 @@ nodist_libze_loader_la_SOURCES = \
 	$(ZE_STATIC_PROBES_INCL) \
 	tracer_ze.c
 
-libze_loader_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(srcdir)/include -I$(top_srcdir)/utils -I./
+libze_loader_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I$(top_srcdir)/utils -I./
 libze_loader_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
-libze_loader_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS) ../sampling/libThapiSampling.la
+libze_loader_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libze_loader_la_LDFLAGS += -version-info 1:0:0
 libze_loader_la_LIBADD = libzetracepoints.la
 
