@@ -2,6 +2,7 @@
 
 #include "xprof_utils.hpp"
 #include <cstddef> // Bytes
+typedef bool _Bool;
 #include <metababel/metababel.h>
 #include <optional>
 #include <stdexcept>
