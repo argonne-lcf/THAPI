@@ -1,5 +1,3 @@
-#include "thapi_sampling.h"
-
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile int _initialized = 0;
@@ -8,8 +6,6 @@ static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
-
-  thapi_sampling_init();
 
   s = getenv("LTTNG_UST_CUDART_LIBCUDART");
   if (s)

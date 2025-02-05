@@ -1,5 +1,3 @@
-#include "thapi_sampling.h"
-
 //pthread_mutex_t cuda_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
 //
 //struct cuda_closure {
@@ -496,8 +494,6 @@ static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
-
-  thapi_sampling_init();
 
   s = getenv("LTTNG_UST_CUDA_LIBCUDA");
   if (s)
