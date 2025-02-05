@@ -67,6 +67,8 @@ EOF
     puts <<EOF
   case ZES_STRUCTURE_TYPE_BASE_STATE:
     break;
+  case ZES_STRUCTURE_TYPE_DEVICE_UUID:
+    break;
 EOF
   end
   puts <<EOF
@@ -219,6 +221,11 @@ EOF
     puts <<EOF
   _init_tracer();
 EOF
+    if c.name == 'zeInit'
+      puts <<EOF
+  _init_tracer_dump();
+EOF
+    end
   end
   common_block.call(c, provider, types)
   if c.has_return_type?

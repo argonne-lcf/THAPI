@@ -38,6 +38,7 @@ static int _do_cleanup = 0;
 static int _do_chained_structs = 0;
 static int _do_paranoid_drift = 0;
 static int _do_paranoid_memory_location = 0;
+static int _do_ddi_table_forward = 0;
 
 pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -627,6 +628,10 @@ static pthread_once_t _init = PTHREAD_ONCE_INIT;
 static __thread volatile int in_init = 0;
 static volatile unsigned int _initialized = 0;
 
+static pthread_once_t _init_dump = PTHREAD_ONCE_INIT;
+static __thread volatile int in_init_dump = 0;
+static volatile unsigned int _initialized_dump = 0;
+
 static inline int _do_state() {
   return _do_profile ||
          tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
@@ -814,13 +819,11 @@ static void _load_tracer(void) {
   if (s)
     _do_chained_structs = 1;
 
+  s = getenv("LTTNG_UST_ZE_DDI_TABLE_FORWARD");
+  if (s)
+    _do_ddi_table_forward = 1;
+
   find_ze_symbols(handle, verbose);
-
-  //FIX for intel tracing layer that needs to register its callbacks first...
-  ZE_INIT_PTR(0);
-
-  if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device) || tracepoint_enabled(lttng_ust_ze_properties, subdevice))
-    _dump_properties();
 
   s = getenv("LTTNG_UST_ZE_PROFILE");
   if (s)
@@ -845,6 +848,13 @@ static void _load_tracer(void) {
 #endif
 }
 
+static void _load_tracer_dump(void) {
+  //FIX for intel tracing layer that needs to register its callbacks first...
+  ZE_INIT_PTR(0);
+  if (tracepoint_enabled(lttng_ust_ze_properties, driver) || tracepoint_enabled(lttng_ust_ze_properties, device) || tracepoint_enabled(lttng_ust_ze_properties, subdevice))
+    _dump_properties();
+}
+
 static inline void _init_tracer(void) {
   if( __builtin_expect (_initialized, 1) )
     return;
@@ -857,4 +867,18 @@ static inline void _init_tracer(void) {
     in_init=0;
   }
   _initialized = 1;
+}
+
+static inline void _init_tracer_dump(void) {
+  if( __builtin_expect (_initialized_dump, 1) )
+    return;
+  /* Avoid reentrancy */
+  if (!in_init_dump) {
+    in_init_dump=1;
+    __sync_synchronize();
+    pthread_once(&_init_dump, _load_tracer_dump);
+    __sync_synchronize();
+    in_init_dump=0;
+  }
+  _initialized_dump = 1;
 }

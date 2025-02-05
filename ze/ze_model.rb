@@ -387,7 +387,7 @@ EOF
   child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }
   str = <<EOF
   #{c.type} _retval;
-  if (pDdiTable && version <= ZE_API_VERSION_CURRENT) {
+  if (!_do_ddi_table_forward && pDdiTable && version <= ZE_API_VERSION_CURRENT) {
 EOF
   str << "   "
   str << child_types.reverse_each.collect { |k, v|

@@ -42,7 +42,7 @@ diff -u4 -r --new-file include/layers/zel_tracing_register_cb.h modified_include
 diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
 --- include/loader/ze_loader_api.h	2024-04-02 13:42:16.693493309 -0500
 +++ modified_include/loader/ze_loader_api.h	2024-04-02 13:11:54.060768340 -0500
-@@ -7,10 +7,12 @@
+@@ -7,10 +7,13 @@
   * @file ze_loader_api.cpp
   *
   */
@@ -52,12 +52,13 @@ diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze
 +//#include "ze_loader_internal.h"
 +//#include "loader/ze_loader.h"
 +#include "../ze_api.h"
++#include <stdbool.h>
 +#define HMODULE void *
  
  #define TRACING_COMP_NAME "loader"
  
  #if defined(__cplusplus)
-@@ -54,27 +56,10 @@
+@@ -54,27 +57,10 @@
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Exported function for getting version
