@@ -984,6 +984,32 @@ if __FILE__ == $PROGRAM_NAME
   options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
   OPTIONS = options.freeze
 
+  if (launcher = ["mpirun","mpiexec"].find{ |b| ARGV.include?(b) } )
+    warn(<<~EOF
+      WARNING: It looks like you are trying to trace an MPI application.
+      The recommended way is to use:
+      `#{launcher} iprof cmd`
+      not
+      `iprof mpiexec cmd`
+      Using `iprof #{launcher} cmd` will only profile a *single* hostname
+      and may also profile the MPI launcher (e.g., PALS).
+
+    EOF
+    )
+
+
+    if OPTIONS[:'backend-names'].include?('ze') && !env_fetch_first('LTTNG_UST_ZE_DDI_TABLE_FORWARD')
+      warn(<<~EOF
+      ERROR: To profile PALS with the `ze` backend, you must either:
+      1. `export LTTNG_UST_ZE_DDI_TABLE_FORWARD=1`
+      2. Or disable the Level Zero backend by removing it from `--backends`.
+
+      EOF
+      )
+      exit(1)
+    end
+  end
+
   # Setup Logger
   LOGGER = Logger.new($stdout)
   LOGGER.level = OPTIONS[:debug]
