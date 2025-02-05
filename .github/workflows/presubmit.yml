@@ -115,7 +115,7 @@ jobs:
         working-directory: build
         env:
           THAPI_VALGRIND: 1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: build-and-check
@@ -227,7 +227,7 @@ jobs:
       - run: make check
         env:
           THAPI_VALGRIND: 1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: build-in-tree
@@ -315,7 +315,7 @@ jobs:
         working-directory: build
         env:
           THAPI_VALGRIND: 1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: dist-check
