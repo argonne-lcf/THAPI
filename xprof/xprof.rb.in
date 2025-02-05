@@ -990,7 +990,7 @@ if __FILE__ == $PROGRAM_NAME
       The recommended way is to use:
         `#{launcher} iprof cmd`
       not
-        `iprof mpiexec cmd`
+        `iprof #{launcher} cmd`
       Using `iprof #{launcher} cmd` will only profile a *single* hostname
       and may also profile the MPI launcher (e.g., PALS).
 
