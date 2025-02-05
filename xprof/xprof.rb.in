@@ -988,6 +988,20 @@ if __FILE__ == $PROGRAM_NAME
   options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
   OPTIONS = options.freeze
 
+  if (launcher = ["mpirun","mpiexec"].find{ |b| ARGV.include?(b) } )
+    warn(<<~EOF
+      WARNING: It looks like you are trying to trace an MPI application.
+      The recommended way is to use:
+        `#{launcher} iprof cmd`
+      not
+        `iprof #{launcher} cmd`
+      Using `iprof #{launcher} cmd` will only profile a *single* hostname
+      and may also profile the MPI launcher (e.g., PALS).
+
+    EOF
+    )
+  end
+
   # Setup Logger
   LOGGER = Logger.new($stdout)
   LOGGER.level = OPTIONS[:debug]
