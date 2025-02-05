@@ -387,7 +387,7 @@ EOF
   child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }
   str = <<EOF
   #{c.type} _retval;
-  if (!_do_ddi_table_forward && pDdiTable && version <= ZE_API_VERSION_CURRENT) {
+  if (!_do_ddi_table_forward && !_in_loader_init && pDdiTable && version <= ZE_API_VERSION_CURRENT) {
 EOF
   str << "   "
   str << child_types.reverse_each.collect { |k, v|
@@ -484,4 +484,12 @@ register_epilogue "zexMemOpenIpcHandles", <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
+EOF
+
+register_prologue "zeLoaderInit", <<EOF
+  _in_loader_init = 1;
+EOF
+
+register_epilogue "zeInit", <<EOF
+  _in_loader_init = 0;
 EOF

@@ -625,11 +625,12 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
-static __thread volatile int in_init = 0;
+static __thread volatile int _in_init = 0;
+static volatile unsigned int _in_loader_init = 0;
 static volatile unsigned int _initialized = 0;
 
 static pthread_once_t _init_dump = PTHREAD_ONCE_INIT;
-static __thread volatile int in_init_dump = 0;
+static __thread volatile int _in_init_dump = 0;
 static volatile unsigned int _initialized_dump = 0;
 
 static inline int _do_state() {
@@ -859,12 +860,12 @@ static inline void _init_tracer(void) {
   if( __builtin_expect (_initialized, 1) )
     return;
   /* Avoid reentrancy */
-  if (!in_init) {
-    in_init=1;
+  if (!_in_init) {
+    _in_init=1;
     __sync_synchronize();
     pthread_once(&_init, _load_tracer);
     __sync_synchronize();
-    in_init=0;
+    _in_init=0;
   }
   _initialized = 1;
 }
@@ -873,12 +874,12 @@ static inline void _init_tracer_dump(void) {
   if( __builtin_expect (_initialized_dump, 1) )
     return;
   /* Avoid reentrancy */
-  if (!in_init_dump) {
-    in_init_dump=1;
+  if (!_in_init_dump) {
+    _in_init_dump=1;
     __sync_synchronize();
     pthread_once(&_init_dump, _load_tracer_dump);
     __sync_synchronize();
-    in_init_dump=0;
+    _in_init_dump=0;
   }
   _initialized_dump = 1;
 }
