@@ -1,5 +1,3 @@
-#include "thapi_sampling.h"
-
 <% require "yaml" %>
 <% require "set" %>
 
@@ -35,8 +33,6 @@ static int _ompt_initialize(ompt_function_lookup_t lookup,
     (void) tool_data;
     int do_callbacks_emi = 1;
     int verbose = 0;
-
-    thapi_sampling_init();
 
     /* TODO: enable when oneAPI updates ompt runtime omp_version
     if (tool_data->value < 202011) {
