@@ -442,7 +442,7 @@ INT_TYPE_MAP = {
   "size_t" => [false, 8, "ffi_type_pointer"],
   "intptr_t" => [true, 8, "ffi_type_pointer"],
   "uintptr_t" => [false, 8, "ffi_type_pointer"],
-  "_Bool" => [false, 4, "ffi_type_uint32"],
+  "_Bool" => [false, 1, "ffi_type_uint8"],
 }
 
 INT_SIGN_MAP = INT_TYPE_MAP.map { |k, v| [k, v[0]] }.to_h
