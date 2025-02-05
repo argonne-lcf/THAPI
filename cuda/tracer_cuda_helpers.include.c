@@ -195,7 +195,7 @@ static const void * _wrap_and_cache_export_table(const void *pExportTable, const
     pthread_mutex_unlock(&_cuda_export_tables_mutex);
     return export_table_h->export_table;
   }
-  export_table_h = calloc(sizeof(struct _export_table_h), 1);
+  export_table_h = calloc(1, sizeof(struct _export_table_h));
   if (!export_table_h) {
     pthread_mutex_unlock(&_cuda_export_tables_mutex);
     return pExportTable;
@@ -311,7 +311,7 @@ struct _cuda_event_s * _events = NULL;
 static inline void _register_cuda_event(CUevent hStart, CUevent hStop, CUcontext hContext) {
   struct _cuda_event_s *ev;
 
-  ev = (struct _cuda_event_s *)calloc(sizeof(struct _cuda_event_s), 1);
+  ev = (struct _cuda_event_s *)calloc(1, sizeof(struct _cuda_event_s));
   if (!ev)
     goto error;
 
