@@ -888,21 +888,24 @@ if __FILE__ == $PROGRAM_NAME
 
   parser.banner = "Usage: #{File.basename($PROGRAM_NAME)} [options] [--] [command]"
 
-  parser.on('--trace-output PATH', 'Define where the ctf trace will be saved',
-            'Default path is something like: $THAPI_HOME/thapi-traces/thapi--%Y-%m-%d--%Hh%Mm%Ss',
-            '$THAPI_HOME defaults to $HOME') do |p|
+  parser.on('--trace-output PATH', 'Define where the CTF trace will be saved.',
+            'Default: `$THAPI_HOME/thapi-traces/thapi--[trace-type][date]`',
+            '(`$THAPI_HOME` defaults to `$HOME`,',
+            ' and `date` is formatted using ISO 8601 convention).',
+            ) do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if mpi_master? && File.exist?(p)
 
     p
   end
 
   parser.on('--analysis-output PATH',
-            'Define where the output of the analysis (summary, pretty printing,...) will be saved')
+           'Define where the analysis output (summary, pretty printing, etc.) will be saved.',
+           'Default: printed to `stdout`.')
   # Tracing
-  parser.on('-m', '--tracing-mode MODE', 'Define the category of events traced', default: 'default',
+  parser.on('-m', '--tracing-mode MODE', 'Define the category of events to trace.', default: 'default',
                                                                                  allowed: %w[minimal default full])
-  parser.on('--traced-ranks RANK', Array, 'Select with MPI rank will be traced.',
-            'Use -1 to mean all ranks.',
+  parser.on('--traced-ranks RANK', Array, 'Select which MPI ranks will be traced.',
+            'Use -1 to trace all ranks.',
             default: Set[-1]) do |ranks|
     ranks.to_set do |r|
       if r.match?(/^\d+$/) || r == '-1'
@@ -913,45 +916,46 @@ if __FILE__ == $PROGRAM_NAME
       end
     end
   end
-  parser.on('--[no-]profile', 'Trigger for device activities profiling', default: true)
-  parser.on('--[no-]analysis', 'Trigger for analysis', default: true)
+  parser.on('--[no-]profile', 'Enable or disable device profiling.', default: true)
+  parser.on('--[no-]analysis', 'Enable or disable analysis of the LTTng trace.', default: true)
 
   # General Options
-  parser.on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
+  parser.on('-b', '--backends BACKENDS', Array, "Select which backends to use and their grouping level.",
             'Format: backend_name[:backend_level],...',
             default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
-  parser.on('--[no-]archive', 'Trigger for ardhive support', default: false)
+  parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',
-            'If PATH is omitted, it will be set to the newest trace in $HOME/thapi-traces/')
-  parser.on('-t', '--trace', 'Pretty print the trace')
-  parser.on('-l', '--timeline [PATH]', 'Dump the timeline of the trace to a binary file',
-            'If PATH is omitted it will be set to `out.pftrace`',
-            'Open trace with perfetto: https://ui.perfetto.dev/#!/viewer') do |p|
+            'If `PATH` is omitted, it defaults to the newest trace in `$HOME/thapi-traces/`.')
+
+  parser.on('-t', '--trace', 'Pretty-print the LTTng trace.')
+  parser.on('-l', '--timeline [PATH]', 'Dump the trace timeline to a binary file.',
+            'If `PATH` is omitted, defaults to `out.pftrace`.',
+            'Open with Perfetto: `https://ui.perfetto.dev/#!/viewer`.') do |p|
               p || 'out.pftrace'
             end
   ## Tally Specific Options
-  parser.on('-j', '--json', 'The tally will be dumped as json')
-  parser.on('-e', '--extended', 'The tally will be printed for each Hostname / Process / Thread / Device')
+  parser.on('-j', '--json', 'Output the tally in JSON format.')
+  parser.on('-e', '--extended', 'Print the tally for for each Hostname / Process / Thread / Device.')
   parser.on('-k', '--kernel-verbose',
-            'The tally will report kernels execution time with SIMD width and global/local sizes')
+            'The tally will report kernels execution time with SIMD width and global/local sizes.')
   parser.on('--max-name-size SIZE',
             OptionParser::DecimalInteger,
-            'Maximum size allowed for kernels names.',
-            'Use -1 to mean no limit.', default: 80)
+            'Set the maximum allowed kernels name size.',
+            'Use -1 for no limit.', default: 80)
 
-  parser.on('-s', '--sample', 'Enabling counters sampling')
+  parser.on('-s', '--sample', 'Enable counters sampling.')
 
-  parser.on('--metadata', 'Display the trace metadata')
-  parser.on('-v', '--version', 'Print the Version String') do
+  parser.on('--metadata', 'Display trace metadata.')
+  parser.on('-v', '--version', 'Print the Version String.') do
     puts File.read(File.join(DATADIR, 'version'))
     exit
   end
-  parser.on('-h', '--help', 'Display this message') { print_help_and_exit(parser, exit_code: 0) }
+  parser.on('-h', '--help', 'Display this message.') { print_help_and_exit(parser, exit_code: 0) }
 
-  parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the Level of debug',
-            "If LEVEL is omitted the debug level with be set to #{Logger::INFO}", default: Logger::ERROR) do |d|
+  parser.on('--debug [LEVEL]', OptionParser::DecimalInteger, 'Set the debug level.',
+            "If `LEVEL` is omitted, it defaults to #{Logger::INFO}.", default: Logger::ERROR) do |d|
               d || Logger::INFO
             end
 
