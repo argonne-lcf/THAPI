@@ -81,6 +81,8 @@ AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 AX_RUBY_EXTENSION([metababel >= 1.1.2], [yes])
 
+AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
+
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stddef.h stdint.h stdlib.h string.h unistd.h])
 
