@@ -3,6 +3,7 @@ require_relative './yaml_ast'
 module YAMLCAst
   class Struct
     def to_ffi
+      unamed_count = 0
       res = []
       members.each { |m|
         mt = case m.type
@@ -35,7 +36,7 @@ module YAMLCAst
             to_ffi_name(m.type.name)
           end
         end
-        res.push [m.name.to_sym.inspect, mt]
+        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
       }
       res
     end
@@ -43,6 +44,7 @@ module YAMLCAst
 
   class Union
     def to_ffi
+      unamed_count = 0
       res = []
       members.each { |m|
         mt = case m.type
@@ -75,7 +77,7 @@ module YAMLCAst
             to_ffi_name(m.type.name)
           end
         end
-        res.push [m.name.to_sym.inspect, mt]
+        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
       }
       res
     end
