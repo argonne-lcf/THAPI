@@ -36,7 +36,7 @@ module YAMLCAst
             to_ffi_name(m.type.name)
           end
         end
-        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count}", mt]
+        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
       }
       res
     end
@@ -77,7 +77,7 @@ module YAMLCAst
             to_ffi_name(m.type.name)
           end
         end
-        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count}", mt]
+        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
       }
       res
     end
