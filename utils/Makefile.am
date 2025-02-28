@@ -43,6 +43,22 @@ dlinfo_wrapper_CFLAGS = -Wall -Wextra
 
 bin_PROGRAMS += thapi_metadata
 
+toggledir = $(pkglibdir)/toggle
+toggle_LTLIBRARIES = libtoggle.la
+
+BUILT_SOURCES += \
+	thapi_toggle_tracepoints.h \
+	thapi_toggle_tracepoints.c
+
+nodist_libtoggle_la_SOURCES = \
+	thapi_toggle_tracepoints.h \
+	thapi_toggle_tracepoints.c
+
+libtoggle_la_SOURCES = toggle_tracer.c
+
+libtoggle_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libtoggle_la_LDFLAGS = $(LTTNG_UST_LIBS)
+
 bin_SCRIPTS = \
 	babeltrace_thapi
 
