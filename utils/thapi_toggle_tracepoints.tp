@@ -1,0 +1,13 @@
+TRACEPOINT_EVENT(
+  lttng_ust_thapi,
+  start,
+  TP_ARGS(),
+  TP_FIELDS()
+)
+
+TRACEPOINT_EVENT(
+  lttng_ust_thapi,
+  stop,
+  TP_ARGS(),
+  TP_FIELDS()
+)
