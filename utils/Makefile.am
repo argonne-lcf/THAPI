@@ -39,21 +39,23 @@ thapi_metadata_LDFLAGS = $(LTTNG_UST_LIBS)
 
 bin_PROGRAMS = thapi_metadata
 
-toggledir = $(pkglibdir)/toggle
-toggle_LTLIBRARIES = libtoggle.la
+include_HEADERS = thapi_profiler.h
+
+ThapiProfilerdir = $(pkglibdir)
+ThapiProfiler_LTLIBRARIES = libThapiProfiler.la
 
 BUILT_SOURCES += \
-	thapi_toggle_tracepoints.h \
-	thapi_toggle_tracepoints.c
+	thapi_profiler_tracepoints.h \
+	thapi_profiler_tracepoints.c
 
-nodist_libtoggle_la_SOURCES = \
-	thapi_toggle_tracepoints.h \
-	thapi_toggle_tracepoints.c
+nodist_libThapiProfiler_la_SOURCES = \
+	thapi_profiler_tracepoints.h \
+	thapi_profiler_tracepoints.c
 
-libtoggle_la_SOURCES = toggle_tracer.c
+libThapiProfiler_la_SOURCES = thapi_profiler.c
 
-libtoggle_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
-libtoggle_la_LDFLAGS = $(LTTNG_UST_LIBS)
+libThapiProfiler_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libThapiProfiler_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 bin_SCRIPTS = \
 	babeltrace_thapi
