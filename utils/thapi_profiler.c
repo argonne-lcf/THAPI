@@ -1,4 +1,4 @@
-#include "thapi_toggle_tracepoints.h"
+#include "thapi_profiler_tracepoints.h"
 
 void thapi_stop() __attribute__((constructor));
 
