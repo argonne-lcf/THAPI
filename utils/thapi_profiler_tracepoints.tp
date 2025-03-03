@@ -1,12 +1,12 @@
 TRACEPOINT_EVENT(
-  lttng_ust_thapi,
+  lttng_ust_profiler,
   start,
   TP_ARGS(),
   TP_FIELDS()
 )
 
 TRACEPOINT_EVENT(
-  lttng_ust_thapi,
+  lttng_ust_profiler,
   stop,
   TP_ARGS(),
   TP_FIELDS()
