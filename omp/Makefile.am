@@ -29,7 +29,7 @@ OMP_EXTRACTED = $(OMP_NAMESPACES:=_api.yaml)
 
 if ENABLE_PARSERV2
 $(OMP_EXTRACTED): $(MODIFIED_OMP_HDR) $(srcdir)/ompt.h.include
-	h2yaml -xc -I $(MODIFIED_OMP_HDR) $(srcdir)/ompt.h.include > $(OMP_EXTRACTED)
+	h2yaml -xc -I modified_include/ $(srcdir)/ompt.h.include > $(OMP_EXTRACTED)
 else
 $(OMP_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_OMP_HDR) $(srcdir)/extract_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $<
