@@ -87,6 +87,9 @@ jobs:
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        config-option: ["", "--enable-parserv2"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -105,9 +108,12 @@ jobs:
           echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - name: Install dependencies for --enable-parserv2
+        if: matrix.config-option == '--enable-parserv2'
+        run: pip install https://github.com/TApplencourt/h2yaml
       - run: mkdir -p build
       - run: ./autogen.sh
-      - run: ../configure
+      - run: ../configure ${{ matrix.config-option }}
         working-directory: build
       - run: make -j
         working-directory: build
@@ -118,7 +124,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-and-check
+          name: build-and-check-${{ matrix.config-option }}
           path: |
             build/**/*.log
             build/config.log
