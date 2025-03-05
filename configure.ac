@@ -70,7 +70,7 @@ AS_IF([test "x$enable_mpi" != xno], [
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_mpi" != "xno"])
 
 AC_ARG_ENABLE([parserv2], AS_HELP_STRING([--enable-parserv2], [Enable parser clang parser]))
-AM_CONDITIONAL([ENABLE_PARSERV2], [test "x$enable_parserv2" != "xno"])
+AM_CONDITIONAL([ENABLE_PARSERV2], [test "x$enable_parserv2" = xyes])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
