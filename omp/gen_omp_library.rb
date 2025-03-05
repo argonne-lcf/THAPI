@@ -27,7 +27,7 @@ def print_bitfield(name, enum)
   counter = 0
   enum.members.each { |m|
     if m.val
-      counter = eval(m.val)
+      counter = m.kind_of?(String) ? eval(m.val) : m.val
     else
       counter += 1
     end

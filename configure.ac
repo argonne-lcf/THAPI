@@ -64,12 +64,13 @@ AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 
 # By default `--enable-mpi`, will set the "enable_mpi" variable
 AC_ARG_ENABLE([mpi], AS_HELP_STRING([--disable-mpi], [Disable mpi sync daemon]))
-
 AS_IF([test "x$enable_mpi" != xno], [
   AX_MPI([enable_mpi=yes], [enable_mpi=no])
   ])
-
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_mpi" != "xno"])
+
+AC_ARG_ENABLE([parserv2], AS_HELP_STRING([--enable-parserv2], [Enable parser clang parser]))
+AM_CONDITIONAL([ENABLE_PARSERV2], [test "x$enable_parserv2" != "xno"])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
