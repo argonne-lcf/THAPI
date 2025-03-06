@@ -43,23 +43,23 @@ dlinfo_wrapper_CFLAGS = -Wall -Wextra
 
 bin_PROGRAMS += thapi_metadata
 
-include_HEADERS = thapi_profiler.h
+include_HEADERS = thapi.h
 
-ThapiProfilerdir = $(pkglibdir)
-ThapiProfiler_LTLIBRARIES = libThapiProfiler.la
+Thapidir = $(pkglibdir)
+Thapi_LTLIBRARIES = libThapi.la
 
 BUILT_SOURCES += \
-	thapi_profiler_tracepoints.h \
-	thapi_profiler_tracepoints.c
+	thapi_tracepoints.h \
+	thapi_tracepoints.c
 
-nodist_libThapiProfiler_la_SOURCES = \
-	thapi_profiler_tracepoints.h \
-	thapi_profiler_tracepoints.c
+nodist_libThapi_la_SOURCES = \
+	thapi_tracepoints.h \
+	thapi_tracepoints.c
 
-libThapiProfiler_la_SOURCES = thapi_profiler.c
+libThapi_la_SOURCES = thapi.c
 
-libThapiProfiler_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
-libThapiProfiler_la_LDFLAGS = $(LTTNG_UST_LIBS)
+libThapi_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libThapi_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 bin_SCRIPTS = \
 	babeltrace_thapi
@@ -92,7 +92,7 @@ EXTRA_DIST = \
 	gen_library_base.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \
-	thapi_profiler_tracepoints.tp \
+	thapi_tracepoints.tp \
 	command.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \
