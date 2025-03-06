@@ -1,6 +1,5 @@
 #include "thapi_tracepoints.h"
-
-void thapi_stop() __attribute__((constructor));
+#include "thapi.h"
 
 void thapi_start(void) {
   tracepoint(lttng_ust_toggle, start);
