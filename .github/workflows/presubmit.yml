@@ -1,5 +1,12 @@
 name: Presubmit
 on: [push, pull_request]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled'
+        required: false
+        default: true
 
 env:
   APT_PACKAGE: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
@@ -31,6 +38,9 @@ jobs:
         with:
           path: ~/efficios_dep/
           key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - name: Set PKG_CONFIG
         run: |
           echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
@@ -81,6 +91,9 @@ jobs:
           make install
         working-directory: babeltrace
         if: steps.efficios_dep.outputs.cache-hit != 'true'
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
 
   build-and-check:
     needs: [efficios_dep, pre_job]
@@ -89,6 +102,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - uses: actions/cache@v4
         id: efficios_dep
         env:
@@ -123,6 +139,9 @@ jobs:
             build/**/*.log
             build/config.log
             build/**/tests/*.log
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
 
   install-with-mpi:
     needs: [efficios_dep, pre_job]
@@ -131,6 +150,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
@@ -162,6 +184,9 @@ jobs:
         with:
           name: thapi-bin
           path: thapi.tar
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
 
   integration-tests:
     needs: [efficios_dep, pre_job, install-with-mpi]
@@ -173,6 +198,9 @@ jobs:
       THAPI_BIN_DIR: ./build/ici/bin
     steps:
       - uses: actions/checkout@v4
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
@@ -197,6 +225,9 @@ jobs:
       - name: Integration test
         run: |
           bats integration_tests/
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
 
   build-in-tree-and-check:
     needs: [efficios_dep, pre_job]
@@ -205,6 +236,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - uses: actions/cache@v4
         id: efficios_dep
         env:
@@ -235,6 +269,9 @@ jobs:
             ./**/*.log
             ./config.log
             ./**/tests/*.log
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
 
   distcheck:
     needs: [efficios_dep, pre_job]
@@ -243,6 +280,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - uses: actions/cache@v4
         id: efficios_dep
         env:
@@ -267,6 +307,9 @@ jobs:
         working-directory: build
         env:
           THAPI_VALGRIND: 1
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
 
   dist-check:
     needs: [efficios_dep, pre_job]
@@ -275,6 +318,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Setup tmate session for debugging failures
+        uses: mxschmitt/action-tmate@v3.13
+        if: ${{ inputs.debug_enabled }}
       - uses: actions/cache@v4
         id: efficios_dep
         env:
@@ -323,3 +369,6 @@ jobs:
             build/**/*.log
             build/config.log
             build/**/tests/*.log
+      - name: Block to allow inspecting failures
+        run: sleep 1800
+        if: ${{ failure() && inputs.debug_enabled }}
