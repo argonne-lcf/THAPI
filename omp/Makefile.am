@@ -27,7 +27,7 @@ OMP_NAMESPACES = ompt
 
 OMP_EXTRACTED = $(OMP_NAMESPACES:=_api.yaml)
 
-if ENABLE_PARSERV2
+if ENABLE_CLANG_PARSER
 $(OMP_EXTRACTED): $(MODIFIED_OMP_HDR) $(srcdir)/ompt.h.include
 	h2yaml -xc -I modified_include/ $(srcdir)/ompt.h.include > $(OMP_EXTRACTED)
 else
