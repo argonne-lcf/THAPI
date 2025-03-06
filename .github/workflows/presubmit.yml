@@ -109,7 +109,7 @@ jobs:
           echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - name: Install dependencies for --enable-parserv2
-        if: matrix.config-option == '--enable-parserv2'
+        if: matrix.config-option == '--enable-clang-parser'
         run: pip install git+https://github.com/TApplencourt/h2yaml
       - run: mkdir -p build
       - run: ./autogen.sh
