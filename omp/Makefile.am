@@ -174,7 +174,7 @@ libOMPInterval_la_SOURCES = \
 	btx_ompinterval_callbacks.cpp \
 	$(top_srcdir)/utils/include/magic_enum.hpp
 
-libOMPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ -I./btx_filter_omp
+libOMPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_filter_omp
 libOMPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libOMPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libOMPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module

@@ -1,2 +1,4 @@
-#include "modified_include/mpi.h"
+#include <stdint.h>
+#include <stddef.h>
+#include <mpi.h>
 
