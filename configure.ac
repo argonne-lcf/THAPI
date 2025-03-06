@@ -137,22 +137,7 @@ AC_FUNC_MMAP
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([clock_gettime ftruncate memmove memset strdup strstr strtoull strlen strchr])
 
-# Check if __attribute__((constructor)) works. Source:
-# https://github.com/openucx/ucx/blob/72ae40c607067b6dfadf0d208f6811171bbf36b6/config/m4/ucs.m4#L140
-AC_DEFUN([CHECK_CROSS_COMP], [
-         AC_RUN_IFELSE([$1], [$2], [$3],
-                       [AC_LINK_IFELSE([$1], [$2], [$3])])
-])
-
-AC_MSG_CHECKING([__attribute__((constructor))])
-CHECK_CROSS_COMP([AC_LANG_SOURCE([static int rc = 1;
-                  static void constructor_test() __attribute__((constructor));
-                  static void constructor_test() { rc = 0; }
-                  int main(int argc, char** argv) { return rc; }])],
-                [AC_MSG_RESULT([yes])],
-                [AC_MSG_ERROR([Cannot continue. Please use compiler that
-                             supports __attribute__((constructor))])]
-                )
+AX_GCC_FUNC_ATTRIBUTE(constructor)
 
 # Required for configuring thapi.pc.in
 PKG_PROG_PKG_CONFIG
