@@ -103,3 +103,15 @@ bats_require_minimum_version 1.5.0
   run bats_pipe echo "FOO" \| iprof cat
   [[ "$output" =~ "FOO" ]]
 }
+
+@test "thapi_start_stop" {
+  cc -I${THAPI_INC_DIR} ./integration_tests/thapi_start_stop.c -o thapi_start_stop \
+    -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
+  $IPROF --no-analysis -- ./thapi_start_stop
+
+  start_count=`babeltrace2 $THAPI_HOME/thapi-traces | grep lttng_ust_toggle:start | wc -l`
+  [ "$start_count" -eq 1 ]
+
+  stop_count=`babeltrace2 $THAPI_HOME/thapi-traces | grep lttng_ust_toggle:stop | wc -l`
+  [ "$stop_count" -eq 2 ]
+}
