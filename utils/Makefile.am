@@ -45,9 +45,6 @@ bin_PROGRAMS += thapi_metadata
 
 include_HEADERS = thapi.h
 
-Thapidir = $(pkglibdir)
-Thapi_LTLIBRARIES = libThapi.la
-
 BUILT_SOURCES += \
 	thapi_tracepoints.h \
 	thapi_tracepoints.c
@@ -57,9 +54,10 @@ nodist_libThapi_la_SOURCES = \
 	thapi_tracepoints.c
 
 libThapi_la_SOURCES = thapi.c
-
 libThapi_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libThapi_la_LDFLAGS = $(LTTNG_UST_LIBS)
+
+lib_LTLIBRARIES = libThapi.la
 
 bin_SCRIPTS = \
 	babeltrace_thapi
