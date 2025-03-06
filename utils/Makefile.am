@@ -88,6 +88,7 @@ EXTRA_DIST = \
 	gen_library_base.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \
+	thapi_profiler_tracepoints.tp \
 	command.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \
