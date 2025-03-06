@@ -100,6 +100,7 @@ EXTRA_DIST = \
 	type_registry.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \
+	thapi_profiler_tracepoints.tp \
 	command.rb \
 	command_index.rb \
 	meta_parameter_spec.rb \
