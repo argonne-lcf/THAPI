@@ -61,7 +61,7 @@ def to_ffi_name(name)
     return ":ushort"
   when "unsigned char"
     return ":uchar"
-  when "unsigned long long int"
+  when "unsigned long long", "unsigned long long int"
     return ":uint64"
   when "size_t"
     return ":size_t"

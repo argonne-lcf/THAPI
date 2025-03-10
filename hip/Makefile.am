@@ -188,8 +188,13 @@ EXTRA_DIST += \
 HIP_EXTRACT = \
 	$(srcdir)/extract_base.rb
 
+if ENABLE_CLANG_PARSER
+hip_api.yaml: $(MODIFIED_HIP_HDR) $(srcdir)/hip.h.include
+	h2yaml -xc -DHEADER_PARSING -I modified_include/ -I ./ $(srcdir)/hip.h.include > hip_api.yaml
+else
 hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR) $(srcdir)/hip_cpp_symbols.h $(srcdir)/hip_missing_apis.h
 	SRC_DIR=$(srcdir) $(RUBY) $<
+endif
 
 HIP_EXTRACTED = \
 	hip_api.yaml
@@ -348,7 +353,7 @@ nodist_libHIPInterval_la_SOURCES = \
 libHIPInterval_la_SOURCES = \
 	btx_hipinterval_callbacks.cpp
 
-libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_hip
+libHIPInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_filter_hip
 libHIPInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libHIPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
