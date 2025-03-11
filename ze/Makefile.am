@@ -79,7 +79,7 @@ ze_api.yaml: $(srcdir)/ze.h.include
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZE --filter-header ze $< > $@
 
 zel_api.yaml: $(srcdir)/ze.h.include
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEL --filter-header zel|ze_loader $< > $@
+	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEL --filter-header "zel|ze_loader" $< > $@
 
 zes_api.yaml: $(srcdir)/ze.h.include
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZES --filter-header zes $< > $@
