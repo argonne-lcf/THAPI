@@ -75,19 +75,19 @@ ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
 if ENABLE_CLANG_PARSER
 
-ze_api.yaml: $(srcdir)/ze.h.include
+ze_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZE --filter-header ze $< > $@
 
-zel_api.yaml: $(srcdir)/ze.h.include
+zel_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEL --filter-header "zel|ze_loader" $< > $@
 
-zes_api.yaml: $(srcdir)/ze.h.include
+zes_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZES --filter-header zes $< > $@
 
-zet_api.yaml: $(srcdir)/ze.h.include
+zet_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZET --filter-header zet $< > $@
 
-zex_api.yaml: $(srcdir)/ze.h.include
+zex_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEX --filter-header zex $< > $@
 
 else
