@@ -53,7 +53,7 @@ end
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    if enum.members.find { |m| m.val && m.val.match("ZE_BIT") }
+    if enum.members.find { |m| m.val && m.val.kind_of?(String) && m.val.match("ZE_BIT") }
       $all_bitfield_names.push t.name
     else
       $all_enum_names.push t.name

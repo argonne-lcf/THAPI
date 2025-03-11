@@ -76,7 +76,7 @@ ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 if ENABLE_CLANG_PARSER
 
 ze_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZE --filter-header ze $< > $@
+	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZE $< > $@
 
 zel_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
 	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEL --filter-header "zel|ze_loader" $< > $@
