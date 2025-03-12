@@ -102,7 +102,7 @@ cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h
 cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cuda_runtime_api.h
 	SRC_DIR=$(srcdir) $(RUBY) $<
 
-cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb cuda_export_tables.c $(CUDA_EXTRACT) modified_include/cuda.h
+cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb cuda_export_tables.h $(CUDA_EXTRACT) modified_include/cuda.h
 	$(RUBY) $<
 endif
 
@@ -120,7 +120,7 @@ CUDA_EXTRACTED = \
 CUDART_EXTRACTED = \
 	cudart_api.yaml
 
-CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED) cuda_export_tables.c
+CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED) cuda_export_tables.h
 
 EXTRA_DIST += \
 	extract_base.rb \
