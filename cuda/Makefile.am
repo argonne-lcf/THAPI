@@ -126,6 +126,7 @@ EXTRA_DIST += \
 	extract_base.rb \
 	extract_cuda.rb \
 	extract_cuda_exports.rb \
+	extract_cuda_exports_table.rb \
 	extract_cuda_versions.rb \
 	extract_cudart.rb
 
