@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(HEADER_PARSING)
+#if defined(HEADER_PARSING_CUDA)
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -17,6 +17,13 @@ typedef uint32_t VdpVideoSurface;
 typedef uint32_t VdpOutputSurface;
 #include <cudaVDPAU.h>
 #include <cudaProfiler.h>
+
+#elif defined(HEADER_PARSING_CUDA_EXPORT_TABLES)
+#include <stdlib.h>
+#include <stdint.h>
+
+#include <cuda.h>
+#include <cuda_export_tables.h>
 
 #else
 
