@@ -82,13 +82,18 @@ clean-local:
 EXTRA_DIST += $(srcdir)/include headers.patch
 
 CUDA_EXTRACT = \
-	$(srcdir)/extract_base.rb
+        $(srcdir)/extract_base.rb
+
+if ENABLE_CLANG_PARSER
+cuda_api.yaml: $(srcdir)/cuda.h.include $(MODIFIED_CUDA_HDR)
+	h2yaml -xc -I modified_include/ -D__CUDA_API_VERSION_INTERNAL=1 -DHEADER_PARSING $< > $@
+else
+cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
+	SRC_DIR=$(srcdir) $(RUBY) $<
+endif
 
 cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cudaTypedefs.h modified_include/cudaVDPAUTypedefs.h modified_include/cudaProfilerTypedefs.h
 	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
-
-cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
-	SRC_DIR=$(srcdir) $(RUBY) $<
 
 cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb $(CUDA_EXTRACT) modified_include/cuda.h cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $<

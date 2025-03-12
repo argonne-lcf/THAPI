@@ -127,7 +127,8 @@ module YAMLCAst
       else
        to_ffi_name(type.name)
       end
-      [ t, length.gsub("sizeof(CUlaunchAttributeID)", "4") ]
+      length_ = length.kind_of?(String) ? length.gsub("sizeof(CUlaunchAttributeID)", "4") : length
+      [ t, length_ ]
     end
   end
 
