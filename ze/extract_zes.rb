@@ -1,14 +1,14 @@
 require_relative 'extract_base'
 
-if ENV['ENABLE_CLANG_PARSER']
-  header = "
-#{shared_header}
-#include <zes_api.h>
-#include <zes_ddi.h>
-#include <zes_ddi_ver.h>"
+zes_header = <<EOF
+    #include <zes_api.h>
+    #include <zes_ddi.h>
+    #include <zes_ddi_ver.h>
+EOF
 
+if enable_clang_parser?
+  header = [shared_header, zes_header].join("\n")
   require 'open3'
-
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zes -', stdin_data: header)
 
 else
@@ -22,9 +22,7 @@ else
 
   preprocessed_sources_zes_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
     #define _ZE_API_H
-    #include <zes_api.h>
-    #include <zes_ddi.h>
-    #include <zes_ddi_ver.h>
+    #{zes_header}
   EOF
 
   $parser.parse(preprocessed_sources_ze_api)
@@ -36,4 +34,3 @@ end
 File.open('zes_api.yaml', 'w') do |f|
   f.puts yaml
 end
-

@@ -1,13 +1,14 @@
 require_relative 'extract_base'
 
-if ENV['ENABLE_CLANG_PARSER']
-  header = "
-#{shared_header}
-#include <zex_api.h>"
+zex_header = <<~EOF
+  #include <zex_api.h>
+EOF
+
+if enable_clang_parser?
+  header = [shared_header, zex_header].join("\n")
+  puts header
   require 'open3'
-
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zex -', stdin_data: header)
-
 else
 
   preprocessed_sources_ze_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
@@ -16,7 +17,7 @@ else
 
   preprocessed_sources_zex_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
     #define _ZE_API_H
-    #include <zex_api.h>
+    #{zex_header}
   EOF
 
   $parser.parse(preprocessed_sources_ze_api)

@@ -1,24 +1,21 @@
 require_relative 'extract_base'
 
-if ENV['ENABLE_CLANG_PARSER']
-  header = "
-#{shared_header}
-#include <ze_api.h>
-#include <ze_ddi.h>
-#include <ze_ddi_ver.h>
-#include <loader/ze_loader_api.h>"
+ze_header = <<~EOF
+  #include <ze_api.h>
+  #include <ze_ddi.h>
+  #include <ze_ddi_ver.h>
+  #include <loader/ze_loader_api.h>
+EOF
 
+if enable_clang_parser?
+  header = [shared_header, ze_header].join("\n")
   require 'open3'
-
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
 
 else
 
   preprocessed_sources_ze_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
-    #include <ze_api.h>
-    #include <ze_ddi.h>
-    #include <ze_ddi_ver.h>
-    #include <loader/ze_loader_api.h>
+    #{ze_header}
   EOF
 
   ast = $parser.parse(preprocessed_sources_ze_api)

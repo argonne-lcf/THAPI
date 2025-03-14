@@ -1,6 +1,10 @@
 require 'yaml'
 
-if ENV['ENABLE_CLANG_PARSER']
+def enable_clang_parser?
+  ENV.fetch('ENABLE_CLANG_PARSER', nil)
+end
+
+if enable_clang_parser?
 
   def shared_header
     "#define ZE_MAKE_VERSION( _major, _minor )  (( _major << 16 )|( _minor & 0x0000ffff))
