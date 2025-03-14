@@ -14,7 +14,7 @@ if enable_clang_parser?
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header "zel|ze_loader" -', stdin_data: header)
 else
   require_relative 'extract_base'
-  $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+  preprocessed_sources_ze_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
     #include <ze_api.h>
     #include <ze_ddi.h>
   EOF
