@@ -74,26 +74,11 @@ EXTRA_DIST += \
 ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
 if ENABLE_CLANG_PARSER
+export ENABLE_CLANG_PARSER=1
+endif
 
-ze_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZE $< > $@
-
-zel_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEL --filter-header "zel|ze_loader" $< > $@
-
-zes_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZES --filter-header zes $< > $@
-
-zet_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZET --filter-header zet $< > $@
-
-zex_api.yaml: $(srcdir)/ze.h.include $(MODIFIED_ZE_HDR)
-	h2yaml -xc -I modified_include/ -DHEADER_PARSING -DHEADER_PARSING_ZEX --filter-header zex $< > $@
-
-else
 $(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $<
-endif
 
 CLEANFILES += $(ZE_EXTRACTED)
 
