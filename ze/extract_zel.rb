@@ -9,7 +9,7 @@ zel_header = <<EOF
 EOF
 
 if enable_clang_parser?
-  header = [shared_header, ze_header].join("\n")
+  header = [shared_header, zel_header].join("\n")
   require 'open3'
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header "zel|ze_loader" -', stdin_data: header)
 else

@@ -6,7 +6,6 @@ EOF
 
 if enable_clang_parser?
   header = [shared_header, zex_header].join("\n")
-  puts header
   require 'open3'
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zex -', stdin_data: header)
 else
