@@ -73,12 +73,8 @@ EXTRA_DIST += \
 
 ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
-if ENABLE_CLANG_PARSER
-export ENABLE_CLANG_PARSER=1
-endif
-
 $(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
 
 CLEANFILES += $(ZE_EXTRACTED)
 

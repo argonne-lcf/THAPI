@@ -1,7 +1,7 @@
 require 'yaml'
 
 def enable_clang_parser?
-  ENV.fetch('ENABLE_CLANG_PARSER', nil)
+  ENV.fetch('ENABLE_CLANG_PARSER', "0") == "1"
 end
 
 if enable_clang_parser?
