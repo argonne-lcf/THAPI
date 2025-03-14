@@ -22,7 +22,7 @@ else
     #include <ze_ddi.h>
   EOF
 
-  $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+  preprocessed_sources_zel_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
     #define _ZE_API_H
     #include <layers/zel_tracing_api.h>
     #include <layers/zel_tracing_ddi.h>
@@ -32,7 +32,7 @@ else
   EOF
 
   $parser.parse(preprocessed_sources_ze_api)
-  ast = $parser.parse(preprocessed_sources_zex_api)
+  ast = $parser.parse(preprocessed_sources_zel_api)
   yaml = ast.extract_declarations.to_yaml
 
 end

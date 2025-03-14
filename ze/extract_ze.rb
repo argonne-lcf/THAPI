@@ -21,8 +21,7 @@ else
     #include <loader/ze_loader_api.h>
   EOF
 
-  $parser.parse(preprocessed_sources_ze_api)
-  ast = $parser.parse(preprocessed_sources_zex_api)
+  ast = $parser.parse(preprocessed_sources_ze_api)
   yaml = ast.extract_declarations.to_yaml
 
 end
