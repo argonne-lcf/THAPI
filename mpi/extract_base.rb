@@ -4,13 +4,12 @@ def enable_clang_parser?
   ENV.fetch('ENABLE_CLANG_PARSER', '0') == '1'
 end
 
-if enable_clang_parser?
-
-  def shared_header
-    "#include <stdint.h>
-#include <stddef.h>"
-  end
-else
+def shared_header
+  <<~EOF
+    #include <stdint.h>
+    #include <stddef.h>
+  EOF
+end
 
   require 'cast-to-yaml'
 
@@ -23,16 +22,10 @@ else
   $cpp.macros['__asm__(a)'] = ''
   $cpp.include_path << './modified_include/'
   begin
-    preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
-      #include <stdint.h>
-      #include <stddef.h>
-    EOF
+    preprocessed_sources_libc = $cpp.preprocess(shared_header).gsub(/^#.*?$/, '')
   rescue StandardError
     C::Preprocessor.command = 'gcc -E'
-    preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
-      #include <stdint.h>
-      #include <stddef.h>
-    EOF
+    preprocessed_sources_libc = $cpp.preprocess(shared_header).gsub(/^#.*?$/, '')
   end
   $parser.parse(preprocessed_sources_libc)
 
