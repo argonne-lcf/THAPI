@@ -21,9 +21,8 @@ export_tables.each do |table|
 end
 
 if enable_clang_parser?
-  [shared_header, cuda_export_tables_header].join("\n")
+  [shared_header, src].join("\n")
   require 'open3'
-
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: src)
 
 else
