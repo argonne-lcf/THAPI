@@ -1,5 +1,7 @@
 require 'yaml'
 
+SRC_DIR = ENV.fetch('SRC_DIR', nil)
+
 def enable_clang_parser?
   ENV.fetch('ENABLE_CLANG_PARSER', '0') == '1'
 end
@@ -8,7 +10,7 @@ if enable_clang_parser?
 
   def shared_header
     <<~EOF
-      include <string.h>
+      #include <string.h>
       #include <stdint.h>
       #include <stddef.h>
       #define __HIP_PLATFORM_AMD__
@@ -17,8 +19,6 @@ if enable_clang_parser?
 else
 
   require 'cast-to-yaml'
-
-  SRC_DIR = ENV.fetch('SRC_DIR', nil)
 
   $parser = C::Parser.new
   $parser.type_names << '__builtin_va_list'

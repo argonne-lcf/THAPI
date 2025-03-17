@@ -6,7 +6,10 @@ EOF
 
 if enable_clang_parser?
   require 'open3'
-  yaml, = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: omp_header)
+  header = [shared_header, omp_header].join("\n")
+  yaml, status = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
+  exit(1) unless status.success?
+
 else
   preprocessed_sources_omp_api = $cpp.preprocess(omp_header).gsub(/^#.*?$/, '')
   ast = $parser.parse(preprocessed_sources_omp_api)

@@ -9,8 +9,8 @@ EOF
 if enable_clang_parser?
   header = [shared_header, zes_header].join("\n")
   require 'open3'
-  yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zes -', stdin_data: header)
-
+  yaml, status = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zes -', stdin_data: header)
+  exit(1) unless status.success?
 else
 
   require_relative 'extract_base'

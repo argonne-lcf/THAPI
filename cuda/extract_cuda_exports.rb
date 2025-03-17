@@ -21,10 +21,10 @@ export_tables.each do |table|
 end
 
 if enable_clang_parser?
-  [shared_header, src].join("\n")
+  header = [shared_header, '#include <cuda.h>', src].join("\n")
   require 'open3'
-  yaml, = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: src)
-
+  yaml, status = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header tmp.h -', stdin_data: header)
+  exit(1) unless status.success?
 else
 
   begin
