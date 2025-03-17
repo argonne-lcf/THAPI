@@ -29,13 +29,8 @@ MPI_NAMESPACES = mpi
 
 MPI_EXTRACTED = $(MPI_NAMESPACES:=_api.yaml)
 
-if ENABLE_CLANG_PARSER
-$(MPI_EXTRACTED): $(MODIFIED_OMP_HDR) $(srcdir)/mpi.h.include
-	h2yaml -xc -I modified_include/ $(srcdir)/mpi.h.include > $(MPI_EXTRACTED)
-else
 $(MPI_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_MPI_HDR) $(srcdir)/extract_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $<
-endif
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
 
 CLEANFILES = $(MPI_EXTRACTED)
 
