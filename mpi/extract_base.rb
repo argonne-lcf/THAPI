@@ -11,6 +11,7 @@ def shared_header
   EOF
 end
 
+if ! enable_clang_parser?
   require 'cast-to-yaml'
 
   $parser = C::Parser.new
