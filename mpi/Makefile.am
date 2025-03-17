@@ -30,7 +30,7 @@ MPI_NAMESPACES = mpi
 MPI_EXTRACTED = $(MPI_NAMESPACES:=_api.yaml)
 
 $(MPI_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_MPI_HDR) $(srcdir)/extract_base.rb
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES = $(MPI_EXTRACTED)
 

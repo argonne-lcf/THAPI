@@ -10,10 +10,7 @@ if enable_clang_parser?
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zex -', stdin_data: header)
 else
 
-  preprocessed_sources_ze_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
-    #include <ze_api.h>
-  EOF
-
+  preprocessed_sources_ze_api = $cpp.preprocess('#include <ze_api.h>').gsub(/^#.*?$/, '')
   preprocessed_sources_zex_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
     #define _ZE_API_H
     #{zex_header}

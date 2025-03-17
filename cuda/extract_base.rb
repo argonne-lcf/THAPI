@@ -7,9 +7,11 @@ end
 if enable_clang_parser?
 
   def shared_header
-    "#include <stdlib.h>
-#include <stdint.h>
-#define __CUDA_API_VERSION_INTERNAL=1"
+    <<~EOF
+      #include <stdlib.h>
+      #include <stdint.h>
+      #define __CUDA_API_VERSION_INTERNAL=1
+    EOF
   end
 
 else

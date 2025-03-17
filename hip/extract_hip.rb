@@ -13,16 +13,10 @@ if enable_clang_parser?
   header = [shared_header, hip_header].join("\n")
   require 'open3'
   Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
-
 else
-
-  preprocessed_sources_hip_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
-    #{hip_header}
-  EOF
-
+  preprocessed_sources_hip_api = $cpp.preprocess(hip_header).gsub(/^#.*?$/, '')
   ast = $parser.parse(preprocessed_sources_hip_api)
   ast.extract_declarations.to_yaml
-
 end
 
 File.open('hip_api.yaml', 'w') do |f|

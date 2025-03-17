@@ -27,13 +27,8 @@ OMP_NAMESPACES = ompt
 
 OMP_EXTRACTED = $(OMP_NAMESPACES:=_api.yaml)
 
-if ENABLE_CLANG_PARSER
-$(OMP_EXTRACTED): $(MODIFIED_OMP_HDR) $(srcdir)/ompt.h.include
-	h2yaml -xc -I modified_include/ $(srcdir)/ompt.h.include > $(OMP_EXTRACTED)
-else
 $(OMP_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_OMP_HDR) $(srcdir)/extract_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $<
-endif
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES = $(OMP_EXTRACTED)
 

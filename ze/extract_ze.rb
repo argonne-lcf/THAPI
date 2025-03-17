@@ -11,16 +11,10 @@ if enable_clang_parser?
   header = [shared_header, ze_header].join("\n")
   require 'open3'
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
-
 else
-
-  preprocessed_sources_ze_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
-    #{ze_header}
-  EOF
-
+  preprocessed_sources_ze_api = $cpp.preprocess(ze_header).gsub(/^#.*?$/, '')
   ast = $parser.parse(preprocessed_sources_ze_api)
   yaml = ast.extract_declarations.to_yaml
-
 end
 
 File.open('ze_api.yaml', 'w') do |f|

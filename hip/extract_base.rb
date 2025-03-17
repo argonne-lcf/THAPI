@@ -7,10 +7,12 @@ end
 if enable_clang_parser?
 
   def shared_header
-    "#include <string.h>
-#include <stdint.h>
-#include <stddef.h>
-#define __HIP_PLATFORM_AMD__"
+    <<~EOF
+      include <string.h>
+      #include <stdint.h>
+      #include <stddef.h>
+      #define __HIP_PLATFORM_AMD__
+    EOF
   end
 else
 

@@ -7,17 +7,19 @@ end
 if enable_clang_parser?
 
   def shared_header
-    "#define ZE_MAKE_VERSION( _major, _minor )  (( _major << 16 )|( _minor & 0x0000ffff))
-#define ZE_MAJOR_VERSION( _ver )  ( _ver >> 16 )
-#define ZE_MINOR_VERSION( _ver )  ( _ver & 0x0000ffff )
-#define ZE_BIT( _i )  ( 1 << _i )
+    <<~EOF
+      #define ZE_MAKE_VERSION( _major, _minor )  (( _major << 16 )|( _minor & 0x0000ffff))
+      #define ZE_MAJOR_VERSION( _ver )  ( _ver >> 16 )
+      #define ZE_MINOR_VERSION( _ver )  ( _ver & 0x0000ffff )
+      #define ZE_BIT( _i )  ( 1 << _i )
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
+      #include <stddef.h>
+      #include <stdint.h>
+      #include <stdbool.h>
 
-#include <ze_api.h>
-#include <ze_ddi.h>"
+      #include <ze_api.h>
+      #include <ze_ddi.h>
+    EOF
   end
 else
 
