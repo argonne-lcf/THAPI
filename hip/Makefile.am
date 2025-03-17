@@ -188,13 +188,8 @@ EXTRA_DIST += \
 HIP_EXTRACT = \
 	$(srcdir)/extract_base.rb
 
-if ENABLE_CLANG_PARSER
-hip_api.yaml: $(MODIFIED_HIP_HDR) $(srcdir)/hip.h.include
-	h2yaml -xc -DHEADER_PARSING -I modified_include/ -I ./ $(srcdir)/hip.h.include > hip_api.yaml
-else
 hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR) $(srcdir)/hip_cpp_symbols.h $(srcdir)/hip_missing_apis.h
-	SRC_DIR=$(srcdir) $(RUBY) $<
-endif
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
 
 HIP_EXTRACTED = \
 	hip_api.yaml

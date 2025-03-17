@@ -1,12 +1,4 @@
-#include <string.h>
-#include <stdint.h>
-#include <stddef.h>
 #define __HIP_PLATFORM_AMD__
 #include <hip/hip_runtime_api.h>
 #include <hip/hiprtc.h>
 #include "modified_include/hip/hip_runtime_load_api.h"
-
-#ifdef HEADER_PARSING
-#include "hip_cpp_symbols.h"
-#include "hip_missing_apis.h"
-#endif

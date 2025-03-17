@@ -1,37 +1,30 @@
-require_relative 'extract_base.rb'
+require_relative 'extract_base'
 
-begin
-  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <string.h>
-#include <stdint.h>
-#include <stddef.h>
+hip_header = <<~EOF
+  #include <hip/hip_runtime_api.h>
+  #include <hip/hiprtc.h>
+  #include <hip/hip_runtime_load_api.h>
+  #include <hip/hip_ext.h>
+  #include "hip_cpp_symbols.h"
+  #include "hip_missing_apis.h"
 EOF
-rescue
-  C::Preprocessor.command = "gcc -E"
-  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <string.h>
-#include <stdint.h>
-#include <stddef.h>
-EOF
-end
 
-$parser.parse(preprocessed_sources_libc)
+if enable_clang_parser?
+  header = [shared_header, hip_header].join("\n")
+  require 'open3'
+  Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
 
-  preprocessed_sources_hip_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <hip/hip_runtime_api.h>
-#include <hip/hiprtc.h>
-#include <hip/hip_runtime_load_api.h>
-#include <hip/hip_ext.h>
-#include "hip_cpp_symbols.h"
-#include "hip_missing_apis.h"
-EOF
-begin
+else
+
+  preprocessed_sources_hip_api = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+    #{hip_header}
+  EOF
+
   ast = $parser.parse(preprocessed_sources_hip_api)
-rescue
-  puts preprocessed_sources_hip_api
-  raise
+  ast.extract_declarations.to_yaml
+
 end
 
-File::open("hip_api.yaml", "w") { |f|
+File.open('hip_api.yaml', 'w') do |f|
   f.puts ast.extract_declarations.to_yaml
-}
+end
