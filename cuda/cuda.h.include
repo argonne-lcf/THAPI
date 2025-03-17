@@ -1,32 +1,5 @@
-#pragma once
-
-#if defined(HEADER_PARSING_CUDA)
-#include <stdlib.h>
-#include <stdint.h>
-
-#include <cuda.h>
-typedef int32_t VdpStatus;
-typedef uint32_t VdpFuncId;
-typedef uint32_t VdpDevice;
-typedef VdpStatus  VdpGetProcAddress(
-     VdpDevice device,
-     VdpFuncId function_id,
-     void * *  function_pointer
-);
-typedef uint32_t VdpVideoSurface;
-typedef uint32_t VdpOutputSurface;
-#include <cudaVDPAU.h>
-#include <cudaProfiler.h>
-
-#elif defined(HEADER_PARSING_CUDA_EXPORT_TABLES)
-#include <stdlib.h>
-#include <stdint.h>
-
-#include <cuda.h>
-#include <cuda_export_tables.h>
-
-#else
-
+#ifndef CUDA_H_INCLUDE_
+#define CUDA_H_INCLUDE_
 #define __CUDA_API_VERSION_INTERNAL 1
 #include <cuda.h>
 typedef int32_t VdpStatus;
@@ -42,5 +15,4 @@ typedef uint32_t VdpOutputSurface;
 #include <cudaVDPAU.h>
 #include <cudaProfiler.h>
 #include "cuda_exports.h.include"
-
 #endif

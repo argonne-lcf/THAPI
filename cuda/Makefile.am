@@ -82,35 +82,19 @@ clean-local:
 EXTRA_DIST += $(srcdir)/include headers.patch
 
 CUDA_EXTRACT = \
-        $(srcdir)/extract_base.rb
-
-if ENABLE_CLANG_PARSER
-cuda_api.yaml: $(srcdir)/cuda.h.include $(MODIFIED_CUDA_HDR)
-	h2yaml -xc -I modified_include/ -D__CUDA_API_VERSION_INTERNAL=1 -DHEADER_PARSING_CUDA $< > $@
-
-cudart_api.yaml: $(srcdir)/cudart.h.include $(MODIFIED_CUDA_HDR)
-	h2yaml -xc -I modified_include/ -D__CUDA_API_VERSION_INTERNAL=1 -DHEADER_PARSING $< > $@
-
-cuda_exports_api.yaml: $(srcdir)/cuda.h.include cuda_export_tables.h $(CUDA_EXTRACT) 
-	h2yaml -xc -I modified_include/ -I ./ -D__CUDA_API_VERSION_INTERNAL=1 -DHEADER_PARSING_CUDA_EXPORT_TABLES --filter-header cuda_export $< > $@
-
-else
-
-cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
-	SRC_DIR=$(srcdir) $(RUBY) $<
-
-cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cuda_runtime_api.h
-	SRC_DIR=$(srcdir) $(RUBY) $<
-
-cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb cuda_export_tables.h $(CUDA_EXTRACT) modified_include/cuda.h
-	$(RUBY) $<
-endif
-
-cuda_export_tables.h: $(srcdir)/extract_cuda_exports_table.rb cuda_export_tables.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+	$(srcdir)/extract_base.rb
 
 cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cudaTypedefs.h modified_include/cudaVDPAUTypedefs.h modified_include/cudaProfilerTypedefs.h
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+	$(RUBY) $^ > $@
+
+cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
+
+cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb $(CUDA_EXTRACT) modified_include/cuda.h cuda_export_tables.yaml
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
+
+cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cuda_runtime_api.h
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
 
 CUDA_EXTRACTED = \
 	cuda_api.yaml \
@@ -120,13 +104,12 @@ CUDA_EXTRACTED = \
 CUDART_EXTRACTED = \
 	cudart_api.yaml
 
-CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED) cuda_export_tables.h
+CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
 
 EXTRA_DIST += \
 	extract_base.rb \
 	extract_cuda.rb \
 	extract_cuda_exports.rb \
-	extract_cuda_exports_table.rb \
 	extract_cuda_versions.rb \
 	extract_cudart.rb
 

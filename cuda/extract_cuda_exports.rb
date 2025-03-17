@@ -1,30 +1,55 @@
-require_relative 'extract_base.rb'
+require_relative 'extract_base'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
-
-begin
-  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <stdlib.h>
-#include <stdint.h>
-#include <cuda.h>
-EOF
-rescue
-  C::Preprocessor.command = "gcc -E"
-  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <stdlib.h>
-#include <stdint.h>
-#include <cuda.h>
-EOF
+export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
+src = ''
+export_tables.each do |table|
+  if table['structures']
+    table['structures'].each do |struct|
+      src << <<~EOF
+          typedef
+        #{struct['declaration']}
+          #{struct['name']};
+      EOF
+    end
+  end
+  table['functions'].each do |function|
+    src << <<~EOF
+      #{function['declaration']};
+    EOF
+  end
 end
 
-$parser.parse(preprocessed_sources_libc)
+if enable_clang_parser?
+  [shared_header, cuda_export_tables_header].join("\n")
+  require 'open3'
 
-src = File::read(File.join(SRC_DIR, "cuda_export_tables.h"))
+  yaml, = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: src)
 
-preprocessed_sources_cuda_api = $cpp.preprocess(src).gsub(/^#.*?$/, '')
+else
 
-ast = $parser.parse(preprocessed_sources_cuda_api)
+  begin
+    preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+      #include <stdlib.h>
+      #include <stdint.h>
+      #include <cuda.h>
+    EOF
+  rescue StandardError
+    C::Preprocessor.command = 'gcc -E'
+    preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+      #include <stdlib.h>
+      #include <stdint.h>
+      #include <cuda.h>
+    EOF
+  end
 
-File::open("cuda_exports_api.yaml", "w") { |f|
-  f.puts ast.extract_declarations.to_yaml
-}
+  $parser.parse(preprocessed_sources_libc)
+  preprocessed_sources_cuda_api = $cpp.preprocess(src).gsub(/^#.*?$/, '')
+  ast = $parser.parse(preprocessed_sources_cuda_api)
+  yaml = ast.extract_declarations.to_yaml
+
+end
+
+File.open('cuda_exports_api.yaml', 'w') do |f|
+  f.puts yaml
+end

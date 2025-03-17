@@ -1,22 +1,22 @@
 require 'yaml'
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-export_tables = YAML::load(File::read(File.join(SRC_DIR, "cuda_export_tables.yaml")))
-src = ""
-export_tables.each { |table|
-  if table["structures"]
-    table["structures"].each { |struct|
-      src << <<EOF
-  typedef
-#{struct["declaration"]}
-  #{struct["name"]};
-EOF
-    }
+export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
+src = ''
+export_tables.each do |table|
+  if table['structures']
+    table['structures'].each do |struct|
+      src << <<~EOF
+          typedef
+        #{struct['declaration']}
+          #{struct['name']};
+      EOF
+    end
   end
-  table["functions"].each { |function|
-    src << <<EOF
-#{function["declaration"]};
-EOF
-  }
-}
+  table['functions'].each do |function|
+    src << <<~EOF
+      #{function['declaration']};
+    EOF
+  end
+end
 puts src
