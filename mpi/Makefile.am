@@ -210,7 +210,7 @@ nodist_libMPIInterval_la_SOURCES = \
 libMPIInterval_la_SOURCES = \
 	btx_mpiinterval_callbacks.cpp
 
-libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_filter_mpi
+libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_filter_mpi
 libMPIInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
