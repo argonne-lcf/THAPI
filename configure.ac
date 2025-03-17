@@ -70,11 +70,15 @@ AS_IF([test "x$enable_mpi" != xno], [
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_mpi" != "xno"])
 
 AC_ARG_ENABLE([clang-parser], AS_HELP_STRING([--enable-clang-parser], [Enable clang parser]))
-AM_CONDITIONAL([ENABLE_CLANG_PARSER], [test "x$enable_clang_parser" = xyes])
-if test "x$enable_clang_parser" = xyes && test -z "$H2YAML"; then
+AM_CONDITIONAL([ENABLE_CLANG_PARSER_], [test "x$enable_clang_parser" = xyes])
+
+ENABLE_CLANG_PARSER=0
+if test "x$enable_clang_parser" = xyes; then
   AC_CHECK_PROG(H2YAML, [h2yaml],[ h2yaml], [no])
-  test "$H2YAML" == "no" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
+  test "$H2YAML" = "no" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
+  ENABLE_CLANG_PARSER=1
 fi
+AC_SUBST([ENABLE_CLANG_PARSER])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
