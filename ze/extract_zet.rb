@@ -7,7 +7,7 @@ zet_header = <<~EOF
 EOF
 
 if enable_clang_parser?
-  header = [shared_header, zet_header].join('\n')
+  header = [shared_header, zet_header].join("\n")
   require 'open3'
   yaml, = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header zet -', stdin_data: header)
 
