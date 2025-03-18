@@ -319,8 +319,6 @@ module ZE
     alias to_int to_i
   end
 
-  typedef :uint, :"unsigned int"
-
 EOF
 
 def print_union(name, union)

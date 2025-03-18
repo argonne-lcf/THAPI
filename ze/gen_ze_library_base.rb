@@ -43,7 +43,11 @@ def to_scoped_class_name(name)
 end
 
 def to_ffi_name(name)
-  name.to_sym.inspect
+  case name
+  when "unsigned int"
+    return ":uint"
+  end
+  return name.to_sym.inspect
 end
 
 def to_name_space(name)
