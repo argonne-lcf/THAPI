@@ -31,7 +31,7 @@ def print_bitfield(name, enum)
   counter = 0
   enum.members.each { |m|
     if m.val
-      counter = eval(m.val)
+      counter = m.val.kind_of?(String) ? eval(m.val) : m.val
     else
       counter += 1
     end
@@ -430,7 +430,7 @@ EOF
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    if enum.members.find { |m| m.val && m.val.kind_of?(String) && m.val.match("ZE_BIT") }
+    if enum.members.find { |m| m.val && m.val.kind_of?(String) && m.val.match("ZE_BIT") } || enum.members.all? { |m| m.name.include?("_FLAG_") }
       print_bitfield(t.name, enum)
     else
       print_enum(t.name, enum)
