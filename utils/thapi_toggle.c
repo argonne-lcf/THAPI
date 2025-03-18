@@ -1,10 +1,14 @@
 #include "thapi_tracepoints.h"
 #include "thapi.h"
 
+#ifndef LTTNG_UST_CONSTRUCTOR_PRIO
+#error "LTTNG_UST_CONSTRUCTOR_PRIO not defined."
+#endif
+
 void thapi_start(void) {
   tracepoint(lttng_ust_toggle, start);
 }
 
-void thapi_stop(void) {
+void __attribute__((constructor(LTTNG_UST_CONSTRUCTOR_PRIO + 1))) thapi_stop(void) {
   tracepoint(lttng_ust_toggle, stop);
 }
