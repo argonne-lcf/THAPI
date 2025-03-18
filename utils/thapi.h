@@ -2,6 +2,6 @@
 #define THAPI
 
 void thapi_start(void);
-void thapi_stop(void) __attribute__((constructor));
+void thapi_stop(void);
 
 #endif // THAPI
