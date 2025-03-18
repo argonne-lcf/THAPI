@@ -53,7 +53,7 @@ nodist_libThapi_la_SOURCES = \
 	thapi_tracepoints.h \
 	thapi_tracepoints.c
 
-libThapi_la_SOURCES = thapi.c
+libThapi_la_SOURCES = thapi_toggle.c
 libThapi_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libThapi_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
