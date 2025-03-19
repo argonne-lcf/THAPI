@@ -1,9 +1,11 @@
 import pathlib
+
 # We suggest to install `pytest-icdiff` to get better diff
 import pytest
 import yaml
 
-steams = [
+# Please put the corrects paths
+stems = [
     "/home/applenco/tmp/THAPI_old_parser/build/",
     "/home/applenco/tmp/THAPI_new_parser/build/",
 ]
@@ -39,8 +41,9 @@ def load_file(path):
             return yaml.safe_load(f)
         return f.readlines()
 
+
 @pytest.mark.parametrize(
-    "path_ref,path_new", [(steams[0] + n, steams[1] + n) for n in filenames]
+    "path_ref,path_new", [(stems[0] + n, stems[1] + n) for n in filenames]
 )
 def test_filter_include(path_ref, path_new):
     ref_ = load_file(path_ref)
