@@ -30,7 +30,7 @@ MPI_NAMESPACES = mpi
 MPI_EXTRACTED = $(MPI_NAMESPACES:=_api.yaml)
 
 $(MPI_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_MPI_HDR) $(srcdir)/extract_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES = $(MPI_EXTRACTED)
 
@@ -210,7 +210,7 @@ nodist_libMPIInterval_la_SOURCES = \
 libMPIInterval_la_SOURCES = \
 	btx_mpiinterval_callbacks.cpp
 
-libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_mpi
+libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_filter_mpi
 libMPIInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module

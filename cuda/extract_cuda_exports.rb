@@ -1,47 +1,54 @@
-require_relative 'extract_base.rb'
+require_relative 'extract_base'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
-
-begin
-  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <stdlib.h>
-#include <stdint.h>
-#include <cuda.h>
-EOF
-rescue
-  C::Preprocessor.command = "gcc -E"
-  preprocessed_sources_libc = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <stdlib.h>
-#include <stdint.h>
-#include <cuda.h>
-EOF
+export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
+src = ''
+export_tables.each do |table|
+  if table['structures']
+    table['structures'].each do |struct|
+      src << <<~EOF
+          typedef
+        #{struct['declaration']}
+          #{struct['name']};
+      EOF
+    end
+  end
+  table['functions'].each do |function|
+    src << <<~EOF
+      #{function['declaration']};
+    EOF
+  end
 end
 
-$parser.parse(preprocessed_sources_libc)
+if enable_clang_parser?
+  header = [shared_header, '#include <cuda.h>', src].join("\n")
+  require 'open3'
+  yaml, status = Open3.capture2('h2yaml -xc -I modified_include/ --filter-header tmp.h -', stdin_data: header)
+  exit(1) unless status.success?
+else
 
-export_tables = YAML::load(File::read(File.join(SRC_DIR, "cuda_export_tables.yaml")))
-src = ""
-export_tables.each { |table|
-  if table["structures"]
-    table["structures"].each { |struct|
-      src << <<EOF
-  typedef
-#{struct["declaration"]}
-  #{struct["name"]};
-EOF
-    }
+  begin
+    preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+      #include <stdlib.h>
+      #include <stdint.h>
+      #include <cuda.h>
+    EOF
+  rescue StandardError
+    C::Preprocessor.command = 'gcc -E'
+    preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
+      #include <stdlib.h>
+      #include <stdint.h>
+      #include <cuda.h>
+    EOF
   end
-  table["functions"].each { |function|
-    src << <<EOF
-#{function["declaration"]};
-EOF
-  }
-}
 
-preprocessed_sources_cuda_api = $cpp.preprocess(src).gsub(/^#.*?$/, '')
+  $parser.parse(preprocessed_sources_libc)
+  preprocessed_sources_cuda_api = $cpp.preprocess(src).gsub(/^#.*?$/, '')
+  ast = $parser.parse(preprocessed_sources_cuda_api)
+  yaml = ast.extract_declarations.to_yaml
 
-ast = $parser.parse(preprocessed_sources_cuda_api)
+end
 
-File::open("cuda_exports_api.yaml", "w") { |f|
-  f.puts ast.extract_declarations.to_yaml
-}
+File.open('cuda_exports_api.yaml', 'w') do |f|
+  f.puts yaml
+end

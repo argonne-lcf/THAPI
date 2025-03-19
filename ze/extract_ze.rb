@@ -1,13 +1,24 @@
-require_relative 'extract_base.rb'
+require_relative 'extract_base'
 
-preprocessed_sources_ze_api = $cpp.preprocess(<<EOF).gsub(/^#.*?$/, '')
-#include <ze_api.h>
-#include <ze_ddi.h>
-#include <ze_ddi_ver.h>
-#include <loader/ze_loader_api.h>
+ze_header = <<~EOF
+  #include <ze_api.h>
+  #include <ze_ddi.h>
+  #include <ze_ddi_ver.h>
+  #include <loader/ze_loader_api.h>
 EOF
 
-ast = $parser.parse(preprocessed_sources_ze_api)
-File::open("ze_api.yaml", "w") { |f|
-  f.puts ast.extract_declarations.to_yaml
-}
+if enable_clang_parser?
+  header = [shared_header, ze_header].join("\n")
+  require 'open3'
+  yaml, status = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
+  exit(1) unless status.success?
+
+else
+  preprocessed_sources_ze_api = $cpp.preprocess(ze_header).gsub(/^#.*?$/, '')
+  ast = $parser.parse(preprocessed_sources_ze_api)
+  yaml = ast.extract_declarations.to_yaml
+end
+
+File.open('ze_api.yaml', 'w') do |f|
+  f.puts yaml
+end

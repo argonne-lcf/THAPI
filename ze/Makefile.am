@@ -74,7 +74,7 @@ EXTRA_DIST += \
 ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
 $(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
-	SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES += $(ZE_EXTRACTED)
 

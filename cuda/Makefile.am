@@ -85,16 +85,16 @@ CUDA_EXTRACT = \
 	$(srcdir)/extract_base.rb
 
 cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cudaTypedefs.h modified_include/cudaVDPAUTypedefs.h modified_include/cudaProfilerTypedefs.h
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
+	$(RUBY) $^ > $@
 
 cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
-	SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb $(CUDA_EXTRACT) modified_include/cuda.h cuda_export_tables.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
 
 cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cuda_runtime_api.h
-	SRC_DIR=$(srcdir) $(RUBY) $<
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CUDA_EXTRACTED = \
 	cuda_api.yaml \

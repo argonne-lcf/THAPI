@@ -65,7 +65,7 @@ def to_ffi_name(name)
     return ":ushort"
   when "unsigned char"
     return ":uchar"
-  when "unsigned long long int"
+  when "unsigned long long", "unsigned long long int"
     return ":uint64"
   when "size_t"
     return ":size_t"
@@ -127,7 +127,8 @@ module YAMLCAst
       else
        to_ffi_name(type.name)
       end
-      [ t, length.gsub("sizeof(CUlaunchAttributeID)", "4") ]
+      length_ = length.kind_of?(String) ? length.gsub("sizeof(CUlaunchAttributeID)", "4") : length
+      [ t, length_ ]
     end
   end
 

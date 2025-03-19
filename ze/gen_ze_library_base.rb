@@ -43,7 +43,11 @@ def to_scoped_class_name(name)
 end
 
 def to_ffi_name(name)
-  name.to_sym.inspect
+  case name
+  when "unsigned int"
+    return ":uint"
+  end
+  return name.to_sym.inspect
 end
 
 def to_name_space(name)
@@ -53,7 +57,7 @@ end
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    if enum.members.find { |m| m.val && m.val.match("ZE_BIT") }
+    if enum.members.find { |m| m.val && m.val.kind_of?(String) && m.val.match("ZE_BIT") }
       $all_bitfield_names.push t.name
     else
       $all_enum_names.push t.name
