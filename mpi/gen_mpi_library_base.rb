@@ -44,26 +44,6 @@ def to_scoped_class_name(name)
   "MPI::#{to_class_name(name)}"
 end
 
-def to_ffi_name(name)
-  case name
-  when nil
-    return ':anonymous'
-  when 'unsigned int'
-    return ':uint'
-  when 'unsigned short', 'unsigned short int'
-    return ':ushort'
-  when 'unsigned char'
-    return ':uchar'
-  when 'unsigned long long int'
-    return ':uint64'
-  when 'size_t'
-    return ':size_t'
-  when '_Bool'
-    return ':bool'
-  end
-  name.to_sym.inspect
-end
-
 def to_name_space(name)
   case name
   when /\Ampi/

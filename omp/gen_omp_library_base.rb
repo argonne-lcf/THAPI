@@ -45,10 +45,6 @@ def to_scoped_class_name(name)
   "OMP::#{to_class_name(name)}"
 end
 
-def to_ffi_name(name)
-  return name.to_sym.inspect
-end
-
 def to_name_space(name)
   name.match(/\A(omp[dt]?)_/)[1].upcase
 end

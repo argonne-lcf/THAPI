@@ -1,11 +1,30 @@
 require_relative './yaml_ast'
 
+def to_ffi_name(name)
+  case name
+  when nil
+    return ':anonymous'
+  when 'unsigned int'
+    return ':uint'
+  when 'unsigned short', 'unsigned short int'
+    return ':ushort'
+  when 'unsigned char'
+    return ':uchar'
+  when 'unsigned long long', 'unsigned long long int'
+    return ':uint64'
+  when 'size_t'
+    return ':size_t'
+  when '_Bool'
+    return ':bool'
+  end
+  name.to_sym.inspect
+end
+
 module YAMLCAst
   class Struct
     def to_ffi
       unamed_count = 0
-      res = []
-      members.each { |m|
+      members.map { |m|
         mt = case m.type
         when Array
           m.type.to_ffi
@@ -36,17 +55,15 @@ module YAMLCAst
             to_ffi_name(m.type.name)
           end
         end
-        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
+        [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
       }
-      res
     end
   end
 
   class Union
     def to_ffi
       unamed_count = 0
-      res = []
-      members.each { |m|
+      members.map { |m|
         mt = case m.type
         when Array
           m.type.to_ffi
@@ -77,9 +94,8 @@ module YAMLCAst
             to_ffi_name(m.type.name)
           end
         end
-        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
+        [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
       }
-      res
     end
   end
 
