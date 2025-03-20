@@ -21,7 +21,7 @@ def to_ffi_name(name)
 end
 
 module YAMLCAst
-  module SUFFIConvertible
+  module Composite
     def to_ffi
       unamed_count = 0
       members.map do |m|
@@ -53,11 +53,11 @@ module YAMLCAst
   end
 
   class Struct
-    include SUFFIConvertible
+    include Composite
   end
 
   class Union
-    include SUFFIConvertible
+    include Composite
   end
 
   class Array
