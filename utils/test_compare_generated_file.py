@@ -20,7 +20,7 @@ filenames += ["hip/tracer_hip.c","hip/hip_library.rb"]
 filenames += ["cuda/tracer_cuda.c","cuda/cuda_library.rb"]
 #filenames += ["cuda/cuda_api.yaml"]
 
-filenames += ["cuda/tracer_cudart.c","cuda/cudart_library.rb"]
+filenames += ["cuda/tracer_cudart.c"]
 #filenames += ["cuda/cudart_api.yaml"]
 
 filenames += ["ze/tracer_ze.c","ze/ze_library.rb"]

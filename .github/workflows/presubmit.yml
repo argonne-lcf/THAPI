@@ -374,7 +374,7 @@ jobs:
           make -C omp tracer_ompt.c omp_library.rb
           make -C hip tracer_hip.c hip_library.rb
           make -C cuda tracer_cuda.c cuda_library.rb
-          make -C cuda tracer_cudart.c cudart_library.rb
+          make -C cuda tracer_cudart.c
           make -C ze tracer_ze.c ze_library.rb
       # Checkout PR branch into a different directory
       - name: Checkout PR branch
@@ -397,7 +397,7 @@ jobs:
           make -C omp tracer_ompt.c omp_library.rb
           make -C hip tracer_hip.c hip_library.rb
           make -C cuda tracer_cuda.c cuda_library.rb
-          make -C cuda tracer_cudart.c cudart_library.rb
+          make -C cuda tracer_cudart.c
           make -C ze tracer_ze.c ze_library.rb
       # Run comparison script
       - name: Compare files
