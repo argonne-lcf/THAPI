@@ -1,127 +1,99 @@
-require_relative './yaml_ast'
+require_relative 'yaml_ast'
+
+def to_ffi_name(name, default = true)
+  case name
+  when nil
+    return ':anonymous'
+  when 'unsigned int'
+    return ':uint'
+  when 'unsigned short', 'unsigned short int'
+    return ':ushort'
+  when 'unsigned char'
+    return ':uchar'
+  when 'unsigned long long', 'unsigned long long int'
+    return ':uint64'
+  when 'size_t'
+    return ':size_t'
+  when '_Bool'
+    return ':bool'
+  end
+  name.to_sym.inspect if default
+end
 
 module YAMLCAst
-  class Struct
+  module Composite
     def to_ffi
       unamed_count = 0
-      res = []
-      members.each { |m|
-        mt = case m.type
-        when Array
-          m.type.to_ffi
-        when Pointer
-          ":pointer"
-        else
-          if !m.type.name
-            print_lambda = lambda { |m|
-              s = "#{m[0]}, "
-              if m[1].kind_of?(::Array)
-                s << "[ #{m[1][0]}, #{m[1][1]} ]"
-              else
-                s << "#{m[1]}"
-              end
-              s
-            }
-            case m.type
-            when Struct
-              membs = m.type.to_ffi
-              "(Class::new(#{FFI_STRUCT}) { layout #{membs.collect(&print_lambda).join(", ")} }.by_value)"
-            when Union
-              membs = m.type.to_ffi
-              "(Class::new(#{FFI_UNION}) { layout #{membs.collect(&print_lambda).join(", ")} }.by_value)"
-            else
-              raise "Error type unknown!"
-            end
-          else
-            to_ffi_name(m.type.name)
-          end
-        end
-        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
-      }
-      res
+      members.map do |m|
+        mt = if m.type.is_a?(Array)
+               m.type.to_ffi
+             elsif m.type.is_a?(Pointer)
+               ':pointer'
+             elsif m.type.name
+               to_ffi_name(m.type.name)
+             elsif m.type.is_a?(Struct)
+               "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(m.type.to_ffi)} }.by_value)"
+             elsif m.type.is_a?(Union)
+               "(Class::new(#{FFI_UNION}) { layout #{gen_layout(m.type.to_ffi)} }.by_value)"
+             else
+               raise "unknown type: #{m.type}"
+             end
+        [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
+      end
+    end
+
+    private
+
+    def gen_layout(membs)
+      membs.map do |a, b|
+        s = "#{a}, "
+        s << (b.is_a?(::Array) ? "[ #{b[0]}, #{b[1]} ]" : b)
+      end.join(', ')
     end
   end
 
+  class Struct
+    include Composite
+  end
+
   class Union
-    def to_ffi
-      unamed_count = 0
-      res = []
-      members.each { |m|
-        mt = case m.type
-        when Array
-          m.type.to_ffi
-        when Pointer
-          ":pointer"
-        else
-          if !m.type.name
-            print_lambda = lambda { |m|
-              s = "#{m[0]}, "
-              if m[1].kind_of?(::Array)
-                s << "[ #{m[1][0]}, #{m[1][1]} ]"
-              else
-                s << "#{m[1]}"
-              end
-              s
-            }
-            case m.type
-            when Struct
-              membs = m.type.to_ffi
-              "(Class::new(#{FFI_STRUCT}) { layout #{membs.collect(&print_lambda).join(", ")} }.by_value)"
-            when Union
-              membs = m.type.to_ffi
-              "(Class::new(#{FFI_UNION}) { layout #{membs.collect(&print_lambda).join(", ")} }.by_value)"
-            else
-              raise "Error type unknown!"
-            end
-          else
-            to_ffi_name(m.type.name)
-          end
-        end
-        res.push [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
-      }
-      res
-    end
+    include Composite
   end
 
   class Array
     def to_ffi
       t = case type
-      when Pointer
-        ":pointer"
-      else
-       to_ffi_name(type.name)
-      end
-      [ t, length ]
+          when Pointer
+            ':pointer'
+          else
+            to_ffi_name(type.name)
+          end
+      [t, length]
     end
   end
 
   class Function
     def to_ffi
-      if type.respond_to?(:name)
-        t = to_ffi_name(type.name)
-      elsif type.kind_of?(Pointer)
-        t = ":pointer"
-      else
-        raise "unknown return type: #{type}"
-      end
-      p = if params
-        params.collect { |par|
-          if par.type.kind_of?(Pointer)
-            if par.type.type.respond_to?(:name) &&
-              $all_struct_names.include?(par.type.type.name)
-              "#{to_class_name(par.type.type.name)}.ptr"
-            else
-              ":pointer"
-            end
+      t = if type.respond_to?(:name)
+            to_ffi_name(type.name)
+          elsif type.is_a?(Pointer)
+            ':pointer'
           else
-            to_ffi_name(par.type.name)
+            raise "unknown return type: #{type}"
           end
-        }
-      else
-        []
+      p = (params || []).collect do |par|
+        if par.type.is_a?(Pointer)
+          if par.type.type.respond_to?(:name) &&
+             $all_struct_names.include?(par.type.type.name)
+            "#{to_class_name(par.type.type.name)}.ptr"
+          else
+            ':pointer'
+          end
+        else
+          to_ffi_name(par.type.name)
+        end
       end
       [t, p]
     end
   end
-
 end

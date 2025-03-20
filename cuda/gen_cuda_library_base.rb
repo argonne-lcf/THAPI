@@ -55,25 +55,19 @@ def to_scoped_class_name(name)
   "CUDA::#{to_class_name(name)}"
 end
 
+alias :original_to_ffi_name :to_ffi_name
+
 def to_ffi_name(name)
   case name
-  when nil
-    return ":anonymous"
-  when "unsigned int"
-    return ":uint"
-  when "unsigned short", "unsigned short int"
-    return ":ushort"
-  when "unsigned char"
-    return ":uchar"
-  when "unsigned long long", "unsigned long long int"
-    return ":uint64"
-  when "size_t"
-    return ":size_t"
   when "cuuint64_t"
     return ":cuuint64_t"
   when "cuuint32_t"
     return ":cuuint32_t"
   end
+
+  result = original_to_ffi_name(name, false)
+  return result if result
+
   n = to_class_name(name)
   mod = to_name_space(name)
   if mod
