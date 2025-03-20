@@ -1,4 +1,3 @@
-import pathlib
 import os
 # We suggest to install `pytest-icdiff` to get better diff
 import pytest
@@ -38,10 +37,8 @@ def load_file(path):
             return yaml.safe_load(f)
         return f.readlines()
 
-
-@pytest.mark.parametrize(
-    "path_ref,path_new", [(stems[0] + n, stems[1] + n) for n in filenames]
-)
+all_tuples = [ tuple( os.path.join(stem,n) for stem in stems ) for n in filenames ]
+@pytest.mark.parametrize("path_ref,path_new", all_tuples)
 def test_filter_include(path_ref, path_new):
     ref_ = load_file(path_ref)
     new_ = load_file(path_new)
