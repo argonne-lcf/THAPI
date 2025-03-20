@@ -363,10 +363,10 @@ jobs:
       - name: Configure target branch
         working-directory: base_branch
         run: |
-	 ./autogen.sh
-         mkdir -p build
-         cd build
-	 ../configure
+          ./autogen.sh
+          mkdir -p build
+          cd build
+          ../configure
 
       - name: Build target branch files
         working-directory: base_branch/build
@@ -384,10 +384,10 @@ jobs:
       - name: Configure PR branch
         working-directory: pr_branch
         run: |
-         ./autogen.sh
-         mkdir -p build
-         cd build
-         ../configure
+          ./autogen.sh
+          mkdir -p build
+          cd build
+          ../configure
 
       - name: Build PR branch files
         working-directory: pr_branch/build
@@ -397,4 +397,4 @@ jobs:
       # Run comparison script
       - name: Compare files
         run: |
-	  THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/build/test_compare_generated_file.py
+          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/build/test_compare_generated_file.py
