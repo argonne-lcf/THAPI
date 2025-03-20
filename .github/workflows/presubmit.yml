@@ -258,7 +258,6 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - run: pip install pyyaml pytest pytest-icdiff
       - name: Load Efficios Dependencies
         run: |
           echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
@@ -345,6 +344,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}
       - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
+      - run: pip install pyyaml pytest pytest-icdiff
       - name: Load Efficios Dependencie
         run: |
           echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
@@ -367,19 +367,21 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-
       - name: Build target branch files
         working-directory: base_branch/build
         run: |
-          make
-
+          make -C mpi tracer_mpi.c mpi_library.rb
+          make -C omp tracer_ompt.c omp_library.rb
+          make -C hip tracer_hip.c hip_library.rb
+          make -C cuda tracer_cuda.c cuda_library.rb
+          make -C cuda tracer_cudart.c cudart_library.rb
+          make -C ze tracer_ze.c ze_library.rb
       # Checkout PR branch into a different directory
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr_branch
-
       # Configure and build PR branch files
       - name: Configure PR branch
         working-directory: pr_branch
@@ -388,12 +390,15 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-
       - name: Build PR branch files
         working-directory: pr_branch/build
         run: |
-          make
-
+          make -C mpi tracer_mpi.c mpi_library.rb
+          make -C omp tracer_ompt.c omp_library.rb
+          make -C hip tracer_hip.c hip_library.rb
+          make -C cuda tracer_cuda.c cuda_library.rb
+          make -C cuda tracer_cudart.c cudart_library.rb
+          make -C ze tracer_ze.c ze_library.rb
       # Run comparison script
       - name: Compare files
         run: |
