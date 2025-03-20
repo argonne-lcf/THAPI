@@ -1,6 +1,6 @@
 require_relative 'yaml_ast'
 
-def to_ffi_name(name)
+def to_ffi_name(name, default = true)
   case name
   when nil
     return ':anonymous'
@@ -17,7 +17,7 @@ def to_ffi_name(name)
   when '_Bool'
     return ':bool'
   end
-  name.to_sym.inspect
+  name.to_sym.inspect if default
 end
 
 module YAMLCAst
