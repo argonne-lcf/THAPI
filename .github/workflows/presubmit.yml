@@ -402,4 +402,4 @@ jobs:
       # Run comparison script
       - name: Compare files
         run: |
-          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/build/test_compare_generated_file.py
+          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/utils/test_compare_generated_file.py
