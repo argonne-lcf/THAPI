@@ -61,7 +61,7 @@ jobs:
           mpi: intelmpi
       - uses: ./.github/actions/setup-thapi
       - name: Make Install
-      - run: |
+        run: |
           ./autogen.sh
           mkdir -p build
           cd build
