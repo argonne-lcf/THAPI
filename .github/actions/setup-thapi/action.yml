@@ -2,14 +2,24 @@ name: 'Setup Thapi Environment'
 runs:
   using: "composite"
   steps:
+    - uses: actions/checkout@v4
+
+    - name: Install APT Dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
+
+    - name: Install Ruby Dependencies
+      run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
+
     - uses: actions/cache@v4
       id: efficios_dep
       with:
         path: ~/efficios_dep/
         key: ${{ runner.os }}-build-cache-efficios_dep
-    - name: Build dependencies
+
+    - name: Build Efficios dependencies
       if: steps.efficios_dep.outputs.cache-hit != 'true'
-      shell: bash
       run: |
         # Dependency for the install
         sudo apt update
@@ -50,6 +60,7 @@ runs:
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep
         make -j$(nproc)
         make install
+
     - name: Set Efficios environment variables
       shell: bash
       run: |
