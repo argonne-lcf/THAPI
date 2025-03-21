@@ -50,7 +50,7 @@ jobs:
             build/**/tests/*.log
 
   install-with-mpi:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
@@ -74,7 +74,7 @@ jobs:
           path: thapi.tar
 
   integration-tests:
-    needs: [efficios_dep, pre_job, install-with-mpi]
+    needs: [pre_job, install-with-mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
@@ -97,7 +97,7 @@ jobs:
           bats integration_tests/
 
   build-in-tree-and-check:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -120,7 +120,7 @@ jobs:
             ./**/tests/*.log
 
   distcheck:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -137,7 +137,7 @@ jobs:
           THAPI_VALGRIND: 1
 
   dist-check:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
