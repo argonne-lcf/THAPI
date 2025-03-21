@@ -87,14 +87,14 @@ jobs:
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
+      - uses: ./.github/actions/setup-thapi
+      - run: |
+          sudo apt install -y bats coreutils libpocl2 clinfo
       - uses: actions/download-artifact@v4
         with:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
-      - uses: ./.github/actions/setup-thapi
-      - run: |
-          sudo apt install -y bats coreutils libpocl2 clinfo
       - name: Integration test
         run: |
           bats integration_tests/
@@ -179,9 +179,11 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
-  check-same-generated-file:
+  check-same-generated-files:
     needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Check same generated files
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
