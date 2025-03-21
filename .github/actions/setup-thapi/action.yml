@@ -6,8 +6,8 @@ runs:
 
     - name: Install APT Dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
+      with:
+        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
 
     - name: Install Ruby Dependencies
       run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
