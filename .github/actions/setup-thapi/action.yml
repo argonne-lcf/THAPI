@@ -2,6 +2,54 @@ name: 'Setup Thapi Environment'
 runs:
   using: "composite"
   steps:
+    - uses: actions/cache@v4
+      id: efficios_dep
+      with:
+        path: ~/efficios_dep/
+        key: ${{ runner.os }}-build-cache-efficios_dep
+    - name: Build dependencies
+      if: steps.efficios_dep.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        # Dependency for the install
+        sudo apt update
+        sudo apt install -y gcc g++ elfutils libelf-dev libpopt-dev libdw-dev libglib2.0-dev libnuma-dev liburcu-dev
+        # So dependency can find themself
+        export "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH"
+
+        # lttng-ust
+        git clone https://github.com/lttng/lttng-ust
+        cd lttng-ust
+        git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69
+        ./bootstrap
+        ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
+        make -j$(nproc)
+        make install
+        cd ..
+ 
+        # lttng-tools
+        git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
+        cd lttng-tools
+        ./bootstrap
+        ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
+        make -j$(nproc)
+        make install
+        #Todo, this will need to be added in the spack repo as a patch
+        echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/efficios_dep/bin/dirwatch.py
+        chmod 755 $HOME/efficios_dep/bin/dirwatch.py
+        cd ..
+
+        # babeltrace
+        git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git
+        cd babeltrace
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
+        patch -p1 < str_nullptr.patch
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
+        patch -p1 < bt_makefile.patch
+        ./bootstrap
+        ./configure --disable-man-pages --prefix=$HOME/efficios_dep
+        make -j$(nproc)
+        make install
     - name: Set Efficios environment variables
       shell: bash
       run: |

@@ -83,7 +83,7 @@ jobs:
         if: steps.efficios_dep.outputs.cache-hit != 'true'
 
   build-and-check:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -92,22 +92,9 @@ jobs:
         config-option: ["", "--enable-clang-parser"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - uses: ./.github/actions/setup-thapi
       - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Babeltrace2
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
       - name: Install dependencies for --enable-clang-parser
         if: matrix.config-option == '--enable-clang-parser'
         run: pip install git+https://github.com/TApplencourt/h2yaml
@@ -331,17 +318,11 @@ jobs:
             build/**/tests/*.log
 
   same_generated_file:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - uses: actions/checkout@v4
       - run: sudo apt update; sudo apt install -y $APT_PACKAGE
       - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
       - run: pip install pyyaml pytest pytest-icdiff
