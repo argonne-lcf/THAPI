@@ -30,14 +30,14 @@ jobs:
       - name: Install dependencies for --enable-clang-parser
         if: matrix.config-option == '--enable-clang-parser'
         run: pip install git+https://github.com/TApplencourt/h2yaml
-      - run: mkdir -p build
-      - run: ./autogen.sh
-      - run: ../configure ${{ matrix.config-option }}
-        working-directory: build
-      - run: CC=gcc make -j
-        working-directory: build
-      - run: make check
-        working-directory: build
+      - name: Make check
+        run: |
+          ./autogen.sh
+          mkdir -p build
+          cd build
+          ../configure
+          CC=gcc make -j
+          make check
         env:
           THAPI_VALGRIND: 1
       - uses: actions/upload-artifact@v4
@@ -60,12 +60,13 @@ jobs:
         with:
           mpi: intelmpi
       - uses: ./.github/actions/setup-thapi
-      - run: mkdir -p build
-      - run: ./autogen.sh
-      - run: ../configure --prefix=`pwd`/ici
-        working-directory: build
-      - run: make -j install
-        working-directory: build
+      - name: Make Install
+      - run: |
+          ./autogen.sh
+          mkdir -p build
+          cd build
+          ../configure --prefix=`pwd`/ici
+          make -j install
       - name: Tar THAPI # https://github.com/actions/download-artifact?tab=readme-ov-file#permission-loss
         run: tar -cvf thapi.tar ./build/ici/
       - uses: actions/upload-artifact@v4
@@ -92,6 +93,8 @@ jobs:
       - name: Untar THAPI
         run: tar -xvf thapi.tar
       - uses: ./.github/actions/setup-thapi
+      - run: |
+          sudo apt install -y bats coreutils libpocl2 clinfo
       - name: Integration test
         run: |
           bats integration_tests/
@@ -104,10 +107,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
-      - run: ./autogen.sh
-      - run: ./configure
-      - run: make -j
-      - run: make check
+      - name: Make check
+        run: |
+          ./autogen.sh
+          ./configure
+          make -j
+          make check
         env:
           THAPI_VALGRIND: 1
       - uses: actions/upload-artifact@v4
@@ -127,12 +132,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
-      - run: mkdir -p build
-      - run: ./autogen.sh
-      - run: ../configure
-        working-directory: build
-      - run: make distcheck -j
-        working-directory: build
+      - name: Make distcheck
+        run: |
+          ./autogen.sh
+          mkdir -p build
+          cd build
+          ../configure
+          make -j distcheck
         env:
           THAPI_VALGRIND: 1
 
@@ -144,26 +150,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
-      - run: mkdir -p build
-      - run: ./autogen.sh
-      - run: ../configure
-        working-directory: build
-      - run: make dist
-        working-directory: build
-      - name: Extract
-        run: tar -xzvf thapi-*
-        working-directory: build
-      - name: Configure
+      - name: Make dist
         run: |
-          cd `find . -type d -name "thapi-*"`
+          ./autogen.sh
           mkdir -p build
           cd build
           ../configure
+          make dist
+      - name: Extract
+        run: tar -xzvf thapi-*
         working-directory: build
-      - name: Check
+      - name: Make Check
         run: |
-          cd `find . -type d -name "thapi-*"`
+          cd $(find . -type d -name "thapi-*")
+          mkdir -p build
           cd build
+          ../configure
           make -j check
         working-directory: build
         env:
@@ -177,7 +179,7 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
-  same_generated_file:
+  check-same-generated-file:
     needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
