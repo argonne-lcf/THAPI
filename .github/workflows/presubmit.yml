@@ -26,7 +26,7 @@ jobs:
 
   build-and-check:
     needs: efficios_dep
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     strategy:
@@ -59,7 +59,7 @@ jobs:
 
   install-with-mpi:
     needs: efficios_dep
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
     steps:
@@ -83,7 +83,7 @@ jobs:
 
   integration-tests:
     needs: install-with-mpi
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
     env:
@@ -108,7 +108,7 @@ jobs:
 
   build-in-tree-and-check:
     needs: efficios_dep
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -131,7 +131,7 @@ jobs:
 
   distcheck:
     needs: efficios_dep
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -148,7 +148,7 @@ jobs:
 
   dist-check:
     needs: efficios_dep
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -189,7 +189,7 @@ jobs:
 
   check-same-generated-files:
     needs: efficios_dep
-    if: ${{ contains(needs.*.result, 'success') }}
+    if: ${{ success() }}
     name: Check same generated files
     runs-on: ubuntu-latest
     steps:
