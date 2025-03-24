@@ -1,9 +1,6 @@
 name: Presubmit
 on: [push, pull_request]
 
-env:
-  APT_PACKAGE: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
-
 jobs:
   pre_job:
     runs-on: ubuntu-24.04
@@ -17,73 +14,11 @@ jobs:
           skip_after_successful_duplicate: 'true'
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
-
-  efficios_dep:
-    needs: pre_job
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
-    name: Build and Cache Efficios Dependencies
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - name: Set PKG_CONFIG
-        run: |
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-     # lttng-ust
-      - run: git clone https://github.com/lttng/lttng-ust
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-      - name: Install lttng-ust
-        run: |
-          # Avoid https://github.com/lttng/lttng-ust/commit/b187bcd5d99cde54dececee0e5028524d55aa314 who change the signature of
-          # lttng_ust_ctl_recv_register_event used by lttng-tool anl-ms3
-          git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69
-          ./bootstrap
-          ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
-          make -j$(nproc)
-          make install
-        working-directory: lttng-ust
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-      # lttng-tools need lttng-ust 2.14+
-      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-      - name: Install lttng-tools
-        run: |
-          ./bootstrap
-          ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
-          make -j$(nproc)
-          make install
-          #Todo, this will need to be added in the spack repo as a patch
-          echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/efficios_dep/bin/dirwatch.py
-          chmod 755 $HOME/efficios_dep/bin/dirwatch.py
-        working-directory: lttng-tools
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-      # babeltrace
-      - run: git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
-      - name: Install Babeltrace
-        run: |
-          #Todo, grab file from Spack
-          wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
-          patch -p1 < str_nullptr.patch
-          wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
-          patch -p1 < bt_makefile.patch
-          ./bootstrap
-          ./configure --disable-man-pages --prefix=$HOME/efficios_dep
-          make -j$(nproc)
-          make install
-        working-directory: babeltrace
-        if: steps.efficios_dep.outputs.cache-hit != 'true'
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-thapi
 
   build-and-check:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -92,22 +27,7 @@ jobs:
         config-option: ["", "--enable-clang-parser"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Babeltrace2
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - uses: ./.github/actions/setup-thapi
       - name: Install dependencies for --enable-clang-parser
         if: matrix.config-option == '--enable-clang-parser'
         run: pip install git+https://github.com/TApplencourt/h2yaml
@@ -131,7 +51,7 @@ jobs:
             build/**/tests/*.log
 
   install-with-mpi:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
@@ -140,22 +60,7 @@ jobs:
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Babeltrace2
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - uses: ./.github/actions/setup-thapi
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure --prefix=`pwd`/ici
@@ -170,7 +75,7 @@ jobs:
           path: thapi.tar
 
   integration-tests:
-    needs: [efficios_dep, pre_job, install-with-mpi]
+    needs: [pre_job, install-with-mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
@@ -182,51 +87,26 @@ jobs:
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
+      - uses: ./.github/actions/setup-thapi
+      - run: |
+          sudo apt install -y bats coreutils libpocl2 clinfo
       - uses: actions/download-artifact@v4
         with:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE bats coreutils libpocl2 clinfo
-      - run: sudo gem install babeltrace2 opencl_ruby_ffi
-      - name: Load Efficios Dependencies
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: Integration test
         run: |
           bats integration_tests/
 
   build-in-tree-and-check:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Efficios Dependencies
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - uses: ./.github/actions/setup-thapi
       - run: ./autogen.sh
       - run: ./configure
       - run: make -j
@@ -243,28 +123,13 @@ jobs:
             ./**/tests/*.log
 
   distcheck:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Efficios Dependencies
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - uses: ./.github/actions/setup-thapi
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
@@ -275,28 +140,13 @@ jobs:
           THAPI_VALGRIND: 1
 
   dist-check:
-    needs: [efficios_dep, pre_job]
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
-      - name: Load Efficios Dependencie
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+      - uses: ./.github/actions/setup-thapi
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure
@@ -330,36 +180,21 @@ jobs:
             build/config.log
             build/**/tests/*.log
 
-  same_generated_file:
-    needs: [efficios_dep, pre_job]
+  check-same-generated-files:
+    needs: [pre_job]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Check same generated files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
-        id: efficios_dep
-        env:
-          cache-name: cache-efficios_dep
-        with:
-          path: ~/efficios_dep/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}
-      - run: sudo apt update; sudo apt install -y $APT_PACKAGE
-      - run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-thapi
       - run: pip install pyyaml pytest pytest-icdiff
-      - name: Load Efficios Dependencie
-        run: |
-          echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-          echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-          echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
-
+      # Chekout, Configure and build target branch files
       - name: Checkout target branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.base_ref }}
           path: base_branch
-
-      # Configure and build target branch files
       - name: Configure target branch
         working-directory: base_branch
         run: |
@@ -376,13 +211,12 @@ jobs:
           make -C cuda tracer_cuda.c cuda_library.rb
           make -C cuda tracer_cudart.c
           make -C ze tracer_ze.c ze_library.rb
-      # Checkout PR branch into a different directory
+      # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr_branch
-      # Configure and build PR branch files
       - name: Configure PR branch
         working-directory: pr_branch
         run: |
