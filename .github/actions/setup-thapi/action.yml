@@ -18,15 +18,6 @@ runs:
         path: ~/efficios_dep/
         key: ${{ runner.os }}-build-cache-efficios_dep
 
-    - name: Install Efficios PT Dependencies
-      shell: bash
-      if: steps.efficios_dep.outputs.cache-hit != 'true'
-      run: |
-        sudo apt update
-        sudo apt install -y gcc g++ elfutils libelf-dev libpopt-dev libdw-dev libglib2.0-dev libnuma-dev liburcu-dev
-        # So dependency can find themself
-        export "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH"
-
     - name: Build lttng-ust
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
