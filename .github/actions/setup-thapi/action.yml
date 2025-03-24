@@ -18,16 +18,19 @@ runs:
         path: ~/efficios_dep/
         key: ${{ runner.os }}-build-cache-efficios_dep
 
-    - name: Build Efficios dependencies
+    - name: Install Efficios PT Dependencies
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        # Dependency for the install
         sudo apt update
         sudo apt install -y gcc g++ elfutils libelf-dev libpopt-dev libdw-dev libglib2.0-dev libnuma-dev liburcu-dev
         # So dependency can find themself
         export "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH"
 
+    - name: Build lttng-ust
+      shell: bash
+      if: steps.efficios_dep.outputs.cache-hit != 'true'
+      run: |
         # lttng-ust
         git clone https://github.com/lttng/lttng-ust
         cd lttng-ust
@@ -36,9 +39,11 @@ runs:
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
         make -j$(nproc)
         make install
-        cd ..
- 
-        # lttng-tools
+
+    - name: Build lttng-tools
+      shell: bash
+      if: steps.efficios_dep.outputs.cache-hit != 'true'
+      run: | 
         git clone -b anl-ms3 git://git.efficios.com/deliverable/lttng-tools.git
         cd lttng-tools
         ./bootstrap
@@ -48,9 +53,11 @@ runs:
         #Todo, this will need to be added in the spack repo as a patch
         echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/efficios_dep/bin/dirwatch.py
         chmod 755 $HOME/efficios_dep/bin/dirwatch.py
-        cd ..
 
-        # babeltrace
+    - name: Build babeltrace
+      shell: bash
+      if: steps.efficios_dep.outputs.cache-hit != 'true'
+      run: |
         git clone -b anl-ms3 git://git.efficios.com/deliverable/babeltrace.git
         cd babeltrace
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
