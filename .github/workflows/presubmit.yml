@@ -25,8 +25,8 @@ jobs:
       - uses: ./.github/actions/setup-thapi
 
   build-and-check:
-    needs: [pre_job, efficios_dep]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: efficios_dep
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     strategy:
@@ -58,8 +58,8 @@ jobs:
             build/**/tests/*.log
 
   install-with-mpi:
-    needs: [pre_job, efficios_dep]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: efficios_dep
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
     steps:
@@ -82,8 +82,8 @@ jobs:
           path: thapi.tar
 
   integration-tests:
-    needs: [pre_job, efficios_dep, install-with-mpi]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: [efficios_dep, install-with-mpi]
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
     env:
@@ -107,8 +107,8 @@ jobs:
           bats integration_tests/
 
   build-in-tree-and-check:
-    needs: [pre_job, efficios_dep]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: efficios_dep
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -130,8 +130,8 @@ jobs:
             ./**/tests/*.log
 
   distcheck:
-    needs: [pre_job, efficios_dep]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: efficios_dep
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -147,8 +147,8 @@ jobs:
           THAPI_VALGRIND: 1
 
   dist-check:
-    needs: [pre_job, efficios_dep]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: efficios_dep
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -188,8 +188,8 @@ jobs:
             build/**/tests/*.log
 
   check-same-generated-files:
-    needs: [pre_job, efficios_dep]
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    needs: efficios_dep
+    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
     name: Check same generated files
     runs-on: ubuntu-latest
     steps:
