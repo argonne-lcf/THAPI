@@ -60,7 +60,7 @@ jobs:
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
-      - uses: .github/actions/setup-thapi
+      - uses: ./.github/actions/setup-thapi
       - name: Make Install
         run: |
           ./autogen.sh
