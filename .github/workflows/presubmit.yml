@@ -14,7 +14,8 @@ jobs:
           skip_after_successful_duplicate: 'true'
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
-
+      - uses: actions/checkout@v4
+      - uses: .github/actions/setup-thapi
 
   build-and-check:
     needs: [pre_job]
@@ -26,7 +27,7 @@ jobs:
         config-option: ["", "--enable-clang-parser"]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-thapi
+      - uses: .github/actions/setup-thapi
       - name: Install dependencies for --enable-clang-parser
         if: matrix.config-option == '--enable-clang-parser'
         run: pip install git+https://github.com/TApplencourt/h2yaml
@@ -59,7 +60,7 @@ jobs:
       - uses: mpi4py/setup-mpi@v1
         with:
           mpi: intelmpi
-      - uses: ./.github/actions/setup-thapi
+      - uses: .github/actions/setup-thapi
       - name: Make Install
         run: |
           ./autogen.sh
@@ -106,7 +107,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-thapi
+      - uses: .github/actions/setup-thapi
       - name: Make check
         run: |
           ./autogen.sh
@@ -131,7 +132,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-thapi
+      - uses: .github/actions/setup-thapi
       - name: Make distcheck
         run: |
           ./autogen.sh
@@ -149,7 +150,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-thapi
+      - uses: .github/actions/setup-thapi
       - name: Make dist
         run: |
           ./autogen.sh

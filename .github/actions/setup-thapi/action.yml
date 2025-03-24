@@ -12,6 +12,11 @@ runs:
       shell: bash
       run: sudo gem install cast-to-yaml nokogiri babeltrace2 opencl_ruby_ffi metababel
 
+    - name: Set PKG_CONFIG
+      shell: bash
+      run: |
+        echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+
     - uses: actions/cache@v4
       id: efficios_dep
       with:
@@ -64,7 +69,6 @@ runs:
       shell: bash
       run: |
         echo "$HOME/efficios_dep/bin" >> $GITHUB_PATH
-        echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
         echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
