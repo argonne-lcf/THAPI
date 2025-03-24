@@ -4,8 +4,6 @@ on: [push, pull_request]
 jobs:
   pre_job:
     runs-on: ubuntu-24.04
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@master
@@ -17,7 +15,7 @@ jobs:
 
   efficios_dep:
     needs: pre_job
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}
     name: Build and Cache Efficios Dependencies
     runs-on: ubuntu-24.04
     steps:
@@ -26,7 +24,7 @@ jobs:
 
   build-and-check:
     needs: efficios_dep
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}    
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     strategy:
@@ -59,7 +57,7 @@ jobs:
 
   install-with-mpi:
     needs: efficios_dep
-    if: ${{ needs.efficios_dep.needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ contains(needs.*.result, 'success') }}    
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
     steps:
@@ -83,7 +81,7 @@ jobs:
 
   integration-tests:
     needs: install-with-mpi
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
     env:
@@ -108,7 +106,7 @@ jobs:
 
   build-in-tree-and-check:
     needs: efficios_dep
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}    
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -131,7 +129,7 @@ jobs:
 
   distcheck:
     needs: efficios_dep
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}    
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -148,7 +146,7 @@ jobs:
 
   dist-check:
     needs: efficios_dep
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -189,7 +187,7 @@ jobs:
 
   check-same-generated-files:
     needs: efficios_dep
-    if: "success()"
+    if: ${{ contains(needs.*.result, 'success') }}    
     name: Check same generated files
     runs-on: ubuntu-latest
     steps:
