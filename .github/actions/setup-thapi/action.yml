@@ -2,7 +2,6 @@ name: 'Setup Thapi Environment'
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@v4
 
     - name: Install APT Dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
