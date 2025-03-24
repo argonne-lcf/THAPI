@@ -14,11 +14,18 @@ jobs:
           skip_after_successful_duplicate: 'true'
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
+
+  efficios_dep:
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Build and Cache Efficios Dependencies
+    runs-on: ubuntu-24.04
+    steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
 
   build-and-check:
-    needs: [pre_job]
+    needs: [pre_job, efficios_dep]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -51,7 +58,7 @@ jobs:
             build/**/tests/*.log
 
   install-with-mpi:
-    needs: [pre_job]
+    needs: [pre_job, efficios_dep]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
@@ -75,7 +82,7 @@ jobs:
           path: thapi.tar
 
   integration-tests:
-    needs: [pre_job, install-with-mpi]
+    needs: [pre_job, efficios_dep, install-with-mpi]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
@@ -100,7 +107,7 @@ jobs:
           bats integration_tests/
 
   build-in-tree-and-check:
-    needs: [pre_job]
+    needs: [pre_job, efficios_dep]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -123,7 +130,7 @@ jobs:
             ./**/tests/*.log
 
   distcheck:
-    needs: [pre_job]
+    needs: [pre_job, efficios_dep]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -140,7 +147,7 @@ jobs:
           THAPI_VALGRIND: 1
 
   dist-check:
-    needs: [pre_job]
+    needs: [pre_job, efficios_dep]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
@@ -181,7 +188,7 @@ jobs:
             build/**/tests/*.log
 
   check-same-generated-files:
-    needs: [pre_job]
+    needs: [pre_job, efficios_dep]
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     name: Check same generated files
     runs-on: ubuntu-latest
