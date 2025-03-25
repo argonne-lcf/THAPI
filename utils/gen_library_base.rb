@@ -14,6 +14,8 @@ def to_ffi_name(name, default = true)
     return ':uint64'
   when 'size_t'
     return ':size_t'
+  when /^(u{0-1}int\d+)_t$/
+    return ":#{$1}"
   when '_Bool'
     return ':bool'
   end
