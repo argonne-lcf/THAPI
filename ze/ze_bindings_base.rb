@@ -124,7 +124,7 @@ EOF
 EOF
       end
       src << <<EOF
-      pCount = MemoryPointer::new(:uint32_t)
+      pCount = MemoryPointer::new(:uint32)
       result = ZE.#{fname}(@handle, pCount, nil)
       ZE.error_check(result)
       count = pCount.read(:uint32)
@@ -157,7 +157,7 @@ EOF
 EOF
       end
       src << <<EOF
-      pCount = MemoryPointer::new(:uint32_t)
+      pCount = MemoryPointer::new(:uint32)
       result = ZE.#{fname}(@handle, pCount, nil)
       ZE.error_check(result)
       count = pCount.read(:uint32)
@@ -193,7 +193,7 @@ EOF
 EOF
       end
       src << <<EOF
-      p_count = MemoryPointer::new(:uint32_t)
+      p_count = MemoryPointer::new(:uint32)
       result = ZE.#{fname}(@handle, p_count, nil)
       ZE.error_check(result)
       count = p_count.read(:uint32)
@@ -343,7 +343,7 @@ EOF
 
     def extension_properties
       @extension_properties ||= begin
-        pCount = MemoryPointer::new(:uint32_t)
+        pCount = MemoryPointer::new(:uint32)
         result = ZE.zeDriverGetExtensionProperties(@handle, pCount, nil);
         ZE.error_check(result)
         count = pCount.read(:uint32)
@@ -361,7 +361,7 @@ EOF
 
     def devices
       @devices ||= begin
-        pCount = MemoryPointer::new(:uint32_t)
+        pCount = MemoryPointer::new(:uint32)
         result = ZE.zeDeviceGet(@handle, pCount, nil)
         ZE.error_check(result)
         count = pCount.read(:uint32)
@@ -396,7 +396,7 @@ EOF
       count = devices.length
       ph_devices = MemoryPointer::new(:zes_device_handle_t, count)
       ph_devices.write_array_of_zes_device_handle_t(devices.collect(&:handle).collect(&:address))
-      p_num_device_events = MemoryPointer::new(:uint32_t)
+      p_num_device_events = MemoryPointer::new(:uint32)
       p_events = MemoryPointer::new(:zes_event_type_flags_t, count)
       result = ZE.zesDriverEventListen(@handle, timeout, count, ph_devices, p_num_device_events, p_events)
       ZE.error_check(result)
@@ -836,7 +836,7 @@ EOF
 
     def sub_devices
       return @sub_devices if @sub_devices
-      pCount = MemoryPointer::new(:uint32_t)
+      pCount = MemoryPointer::new(:uint32)
       result = ZE.zeDeviceGetSubDevices(@handle, pCount, nil)
       ZE.error_check(result)
       count = pCount.read(:uint32)
@@ -1617,7 +1617,7 @@ EOF
         p_raw_data = MemoryPointer::new(raw_data_size)
         p_raw_data.write_bytes(raw_data)
       end
-      p_metric_value_count = MemoryPointer::new(:uint32_t)
+      p_metric_value_count = MemoryPointer::new(:uint32)
       result = ZE.zetMetricGroupCalculateMetricValues(@handle, raw_data_size, p_raw_data, p_metric_value_count, nil)
       ZE.error_check(result)
       count = p_metric_value_count.read_uint32
@@ -1902,7 +1902,7 @@ EOF
     end
 
     def state(units: :ZET_FAN_SPEED_UNITS_PERCENT)
-      p_speed = MemoryPointer::new(:uint32_t)
+      p_speed = MemoryPointer::new(:uint32)
       result = ZE.zesFanGetState(@handle, units, p_speed)
       ZE.error_check(result)
       return p_speed.read_uint32
@@ -1930,7 +1930,7 @@ EOF
     add_property :oc_capabilities, sname: :ZESOcCapabilities, fname: :zesFrequencyOcGetCapabilities
 
     def available_clocks
-      pCount = MemoryPointer::new(:uint32_t)
+      pCount = MemoryPointer::new(:uint32)
       result = ZE.zesFrequencyGetAvailableClocks(@handle, pCount, nil)
       ZE.error_check(result)
       count = pCount.read(:uint32)
@@ -2329,7 +2329,7 @@ EOF
 
   def self.drivers
     return @drivers if @drivers
-    p_count = MemoryPointer::new(:uint32_t)
+    p_count = MemoryPointer::new(:uint32)
     result = zeDriverGet(p_count, nil);
     error_check(result)
     count = p_count.read_uint32

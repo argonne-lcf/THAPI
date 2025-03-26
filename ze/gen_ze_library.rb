@@ -79,8 +79,8 @@ def print_version_enum_struct(name)
   puts <<EOF
   class #{to_class_name(name)} < FFI::ZEStruct
     prepend Version
-    layout :minor, :uint16_t,
-           :major, :uint16_t
+    layout :minor, :uint16,
+           :major, :uint16
 
     def self.from_native(i, ctx = nil)
       v = self::new
