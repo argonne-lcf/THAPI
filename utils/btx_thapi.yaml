@@ -1,0 +1,27 @@
+:stream_classes:
+- :name: thapi_toggle
+  :default_clock_class: {}
+  :packet_context_field_class:
+    :type: structure
+    :members:
+    - :name: cpu_id
+      :field_class:
+        :type: integer_unsigned
+        :cast_type: uint64_t
+        :field_value_range: 32
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: vpid
+      :field_class:
+        :type: integer_signed
+        :field_value_range: 32
+        :cast_type: int
+    - :name: vtid
+      :field_class:
+        :type: integer_signed
+        :field_value_range: 32
+        :cast_type: int
+  :event_classes:
+  - :name: lttng_ust_toggle:start
+  - :name: lttng_ust_toggle:stop
