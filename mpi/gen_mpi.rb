@@ -4,8 +4,10 @@ def common_block(c, provider)
   tp_params = c.parameters.collect do |p|
     if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
       '(void *)(intptr_t)' + p.name
+    elsif p.type.to_s.match(/\[.*\]/)
+        "(#{p.type.to_s.gsub(/\[.*\]/,"*")}) #{p.name}"
     else
-      p.name
+        p.name
     end
   end
   c.tracepoint_parameters.each do |p|

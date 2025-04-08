@@ -12,12 +12,12 @@ $tracepoint_lambda = lambda { |provider, c, dir|
     params = []
     unless c.parameters.nil? || c.parameters.empty?
       params.concat(c.parameters.collect do |p|
-        "#{p.type}, #{p.name}"
+        "#{p.type.to_s.gsub(/\[.*\]/,"*")}, #{p.name}"
       end)
     end
     params.push("#{c.type}, #{RESULT_NAME}") if c.has_return_type? && dir == :stop
     params += c.tracepoint_parameters.collect do |p|
-      "#{p.type}, #{p.name}"
+      "#{p.type.to_s.gsub(/\[.*\]/,"*")}, #{p.name}"
     end
     puts params.join(",\n    ")
   end

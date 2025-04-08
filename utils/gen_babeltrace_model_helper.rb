@@ -16,7 +16,7 @@ end
 $types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
 
 def gen_bt_field_model(lttng_name, type, name, lttng)
-  field = { name: name, cast_type: type}
+  field = { name: name, cast_type: type.gsub(/\[.*\]/,"*")}
   case lttng_name
   when 'ctf_float'
     field[:class] = type == 'float' ? 'single' : type

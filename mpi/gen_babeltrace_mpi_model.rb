@@ -14,6 +14,7 @@ end
 
 def integer_size(t)
   return 64 if t.match(/\*/)
+  return 64 if t.match(/\[.*\]/)
 
   r = $integer_sizes[t]
   raise "unknown integer type #{t}" if r.nil?
@@ -23,6 +24,7 @@ end
 
 def integer_signed?(t)
   return false if t.match(/\*/)
+  return false if t.match(/\[.*\]/)
 
   r = $integer_signed[t]
   raise "unknown integer type #{t}" if r.nil?
