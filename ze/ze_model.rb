@@ -421,6 +421,21 @@ def get_ffi_type(a)
   end
 end
 
+str = $ze_commands.select { |c| c.name.end_with?('Exp') }.map { |c|
+  <<EOF
+  if (strcmp(name, "#{c.name}") == 0) {
+    *ppFunctionAddress = (void *)(intptr_t)#{ZE_POINTER_NAMES[c]};
+    tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, ZE_RESULT_SUCCESS);
+    *ppFunctionAddress = (void *)(intptr_t)#{c.name}_hid;
+    return ZE_RESULT_SUCCESS;
+  }
+EOF
+}.join(<<EOF)
+  else
+EOF
+
+register_prologue "zeDriverGetExtensionFunctionAddress", str
+
 str = <<EOF
   if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
 EOF
