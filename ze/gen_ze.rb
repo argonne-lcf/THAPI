@@ -240,32 +240,41 @@ EOF
 }
 
 $ze_commands.each { |c|
-  normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
   puts <<EOF unless c.name.match(/zeGet.*ProcAddrTable/) || c.name.match(/zeLoaderInit|zelLoaderDriverCheck|zelLoaderTracingLayerInit|zeLoaderGetTracingHandle/)
 #{c.decl_hidden_alias};
 
 EOF
 }
 $zet_commands.each { |c|
-  normal_wrapper.call(c, :lttng_ust_zet, zet_struct_types)
   puts <<EOF unless c.name.match(/zetGet.*ProcAddrTable/)
 #{c.decl_hidden_alias};
 
 EOF
 }
 $zes_commands.each { |c|
-  normal_wrapper.call(c, :lttng_ust_zes, zes_struct_types)
   puts <<EOF unless c.name.match(/zesGet.*ProcAddrTable/)
 #{c.decl_hidden_alias};
 
 EOF
 }
 $zel_commands.each { |c|
-  normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
   puts <<EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$/)
 #{c.decl_hidden_alias};
 
 EOF
+}
+
+$ze_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
+}
+$zet_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_zet, zet_struct_types)
+}
+$zes_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_zes, zes_struct_types)
+}
+$zel_commands.each { |c|
+  normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
 }
 
 $zex_commands.each { |c|
