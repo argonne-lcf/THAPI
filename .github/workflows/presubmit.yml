@@ -212,6 +212,7 @@ jobs:
       - name: Build target branch files
         working-directory: base_branch/build
         run: |
+          make -j `nproc` -C utils lttng/tracepoint_gen.h
           make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb libmpi.la
           make -j `nproc` -C omp tracer_ompt.c omp_library.rb
           make -j `nproc` -C hip tracer_hip.c hip_library.rb  libamdhip64.la
@@ -234,6 +235,7 @@ jobs:
       - name: Build PR branch files
         working-directory: pr_branch/build
         run: |
+          make -j `nproc` -C utils lttng/tracepoint_gen.h
           make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb libmpi.la
           make -j `nproc` -C omp tracer_ompt.c omp_library.rb
           make -j `nproc` -C hip tracer_hip.c hip_library.rb  libamdhip64.la
