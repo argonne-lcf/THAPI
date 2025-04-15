@@ -219,6 +219,7 @@ jobs:
           make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb libcuda.la
           make -j `nproc` -C cuda tracer_cudart.c libcudart.la
           make -j `nproc` -C ze tracer_ze.c ze_library.rb libze_loader.la
+          make -j `nproc` -C opencl libOpenCL.la
       # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -242,6 +243,7 @@ jobs:
           make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb libcuda.la
           make -j `nproc` -C cuda tracer_cudart.c libcudart.la
           make -j `nproc` -C ze tracer_ze.c ze_library.rb libze_loader.la
+          make -j `nproc` -C opencl libOpenCL.la
       # Run comparison script
       - name: Compare files
         run: |
