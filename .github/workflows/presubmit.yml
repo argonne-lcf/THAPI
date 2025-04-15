@@ -212,7 +212,14 @@ jobs:
       - name: Build target branch files
         working-directory: base_branch/build
         run: |
-          make -j `nproc`
+          make -j `nproc` -C utils lttng/tracepoint_gen.h
+          make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb libmpi.la
+          make -j `nproc` -C omp tracer_ompt.c omp_library.rb
+          make -j `nproc` -C hip tracer_hip.c hip_library.rb  libamdhip64.la
+          make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb libcuda.la
+          make -j `nproc` -C cuda tracer_cudart.c libcudart.la
+          make -j `nproc` -C ze tracer_ze.c ze_library.rb libze_loader.la
+          make -j `nproc` -C opencl libOpenCL.la
       # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -229,10 +236,15 @@ jobs:
       - name: Build PR branch files
         working-directory: pr_branch/build
         run: |
-          make -j `nproc`
+          make -j `nproc` -C utils lttng/tracepoint_gen.h
+          make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb libmpi.la
+          make -j `nproc` -C omp tracer_ompt.c omp_library.rb
+          make -j `nproc` -C hip tracer_hip.c hip_library.rb  libamdhip64.la
+          make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb libcuda.la
+          make -j `nproc` -C cuda tracer_cudart.c libcudart.la
+          make -j `nproc` -C ze tracer_ze.c ze_library.rb libze_loader.la
+          make -j `nproc` -C opencl libOpenCL.la
       # Run comparison script
       - name: Compare files
         run: |
-          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/utils/test_compare_generated_file.py
-          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/utils/test_compare_generated_so.py
-          
+          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/utils/
