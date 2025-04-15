@@ -1,11 +1,11 @@
 import os
 import subprocess
+
 # We suggest to install `pytest-icdiff` to get better diff
 import pytest
-import yaml
 
 # Please put the corrects paths
-stems = [ os.environ['THAPI_REF'], os.environ['THAPI_NEW'] ]
+stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
 filenames = []
 filenames += ["ze/.libs/libze_loader.so"]
@@ -17,13 +17,20 @@ filenames += ["mpi/.libs/libmpi.so"]
 
 
 def load_so(path):
-    symbols_ = subprocess.run(['nm', '-D', path], capture_output=True, text=True, check=True).stdout
-    symbols = map(str.split, symbols_.splitlines())
-    return sorted(line[2] for line in symbols if line[1] == 'T')
+    "U __cxa_atexit"
+    "000000000003d690 T zeDeviceGet"
+    output = subprocess.run(
+        ["nm", "-D", path], capture_output=True, text=True, check=True
+    ).stdout
+    symbols = (line.rsplit(" ", 2) for line in output.splitlines())
+    return sorted(name for _address, t, name in symbols if t == "T")
 
-all_tuples = [ tuple( os.path.join(stem,n) for stem in stems ) for n in filenames ]
+
+all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
+
+
 @pytest.mark.parametrize("path_ref,path_new", all_tuples)
-def test_filter_include(path_ref, path_new):
+def test_symbol(path_ref, path_new):
     ref_ = load_so(path_ref)
     new_ = load_so(path_new)
     assert ref_ == new_
