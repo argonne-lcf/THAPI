@@ -42,7 +42,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure ${{ matrix.config-option }}
         working-directory: build
-      - run: CC=gcc make -j
+      - run: CC=gcc make -j `nproc`
         working-directory: build
       - run: make check
         working-directory: build
@@ -72,7 +72,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure --prefix=`pwd`/ici
         working-directory: build
-      - run: make -j install
+      - run: make -j `nproc` install
         working-directory: build
       - name: Tar THAPI # https://github.com/actions/download-artifact?tab=readme-ov-file#permission-loss
         run: tar -cvf thapi.tar ./build/ici/
@@ -116,7 +116,7 @@ jobs:
       - uses: ./.github/actions/setup-thapi
       - run: ./autogen.sh
       - run: ./configure
-      - run: make -j
+      - run: make -j `nproc`
       - run: make check
         env:
           THAPI_VALGRIND: 1
@@ -212,12 +212,7 @@ jobs:
       - name: Build target branch files
         working-directory: base_branch/build
         run: |
-          make -C mpi tracer_mpi.c mpi_library.rb
-          make -C omp tracer_ompt.c omp_library.rb
-          make -C hip tracer_hip.c hip_library.rb
-          make -C cuda tracer_cuda.c cuda_library.rb
-          make -C cuda tracer_cudart.c
-          make -C ze tracer_ze.c ze_library.rb
+          make -j `nproc`
       # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -234,13 +229,10 @@ jobs:
       - name: Build PR branch files
         working-directory: pr_branch/build
         run: |
-          make -C mpi tracer_mpi.c mpi_library.rb
-          make -C omp tracer_ompt.c omp_library.rb
-          make -C hip tracer_hip.c hip_library.rb
-          make -C cuda tracer_cuda.c cuda_library.rb
-          make -C cuda tracer_cudart.c
-          make -C ze tracer_ze.c ze_library.rb
+          make -j `nproc`
       # Run comparison script
       - name: Compare files
         run: |
           THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/utils/test_compare_generated_file.py
+          THAPI_REF="base_branch/build" THAPI_NEW="pr_branch/build" pytest -vv pr_branch/utils/test_compare_generated_so.py
+          
