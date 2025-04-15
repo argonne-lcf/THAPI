@@ -1,3 +1,4 @@
+import os
 import subprocess
 # We suggest to install `pytest-icdiff` to get better diff
 import pytest
@@ -7,21 +8,22 @@ import yaml
 stems = [ os.environ['THAPI_REF'], os.environ['THAPI_NEW'] ]
 
 filenames = []
-filenames += ["lib/thapi/ze/lib_zeloader.so"]
-filenames += ["lib/thapi/opencl/libOpenCL.so"]
-filenames += ["lib/thapi/hip/libamdhip64.so"]
-filenames += ["lib/thapi/cudart/libcudart.so"]
-filenames += ["lib/thapi/cuda/libcuda.so"]
-filenames += ["lib/thapi/mpi/libmpi.so"]
+filenames += ["ze/.libs/libze_loader.so"]
+filenames += ["opencl/.libs/libOpenCL.so"]
+filenames += ["hip/.libs/libamdhip64.so"]
+filenames += ["cuda/.libs/libcudart.so"]
+filenames += ["cuda/.libs/libcuda.so"]
+filenames += ["mpi/.libs/libmpi.so"]
 
 
-def load_file(path):
-    symbols = subprocess.run(['nm', '-g', path], capture_output=True, text=True).stdout
-    return [line[3] for line in symbols if line[2] == 'T'].join('\n')
+def load_so(path):
+    symbols_ = subprocess.run(['nm', '-D', path], capture_output=True, text=True, check=True).stdout
+    symbols = map(str.split, symbols_.splitlines())
+    return sorted(line[2] for line in symbols if line[1] == 'T')
 
 all_tuples = [ tuple( os.path.join(stem,n) for stem in stems ) for n in filenames ]
 @pytest.mark.parametrize("path_ref,path_new", all_tuples)
 def test_filter_include(path_ref, path_new):
-    ref_ = load_file(path_ref)
-    new_ = load_file(path_new)
+    ref_ = load_so(path_ref)
+    new_ = load_so(path_new)
     assert ref_ == new_
