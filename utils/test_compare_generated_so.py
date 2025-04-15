@@ -17,7 +17,7 @@ filenames += ["mpi/.libs/libmpi.so"]
 
 
 def load_so(path):
-    "U __cxa_atexit"
+    "                 U __cxa_atexit"
     "000000000003d690 T zeDeviceGet"
     output = subprocess.run(
         ["nm", "-D", path], capture_output=True, text=True, check=True
