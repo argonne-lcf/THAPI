@@ -227,7 +227,8 @@ EXTRA_DIST += \
 	gen_cuda_tracepoints.rb \
 	gen_cuda_exports_tracepoints.rb \
 	gen_cudart_tracepoints.rb \
-	gen_cuda_custom_probes.rb
+	gen_cuda_custom_probes.rb \
+	tracer_cudart.map
 
 BUILT_SOURCES = \
 	$(CUDA_PROBES_INCL) \
@@ -302,6 +303,8 @@ libcuda_la_LIBADD = libcudatracepoints.la
 nodist_libcudart_la_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	tracer_cudart.c
+
+libcudart_la_DEPENDENCIES = tracer_cudart.map libcudarttracepoints.la
 
 libcudart_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libcudart_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
