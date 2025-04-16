@@ -27,6 +27,7 @@
       - :name: ^mpiResult$
         :field_class:
           :type: integer_signed
+          :cast_type: ^int$
   - :set_id: exits_mpiError_absent
     :domain: exits - exits_mpiError_present
   - :set_id: traffic_MPI_Count_entry
