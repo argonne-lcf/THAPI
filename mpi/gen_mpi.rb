@@ -7,7 +7,7 @@ def common_block(c, provider)
     elsif p.type.to_s.match(/\[.*\]/)
         "(#{p.type.to_s.gsub(/\[.*\]/,"*")}) #{p.name}"
     else
-        p.name
+      p.name
     end
   end
   c.tracepoint_parameters.each do |p|
