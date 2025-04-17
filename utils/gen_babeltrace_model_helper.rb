@@ -17,6 +17,8 @@ $types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
 
 def gen_bt_field_model(lttng_name, type, name, lttng)
   field = { name: name, cast_type: type.gsub(/\[.*\]/,"*")}
+  field[:cast_type] = "#{type} *" if $types_by_name[type].kind_of?(YAMLCAst::Declaration) && $types_by_name[type].type.kind_of?(YAMLCAst::Function)
+
   case lttng_name
   when 'ctf_float'
     field[:class] = type == 'float' ? 'single' : type

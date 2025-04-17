@@ -483,7 +483,7 @@ def find_all_types(types)
   find_types(types, YAMLCAst::Struct, STRUCT_TYPES)
   find_types(types, YAMLCAst::Union, UNION_TYPES)
   ptrs = types.filter_map { |t|
-    t.name if t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct)
+    t.name if (t.type.kind_of?(YAMLCAst::Pointer) && !t.type.type.kind_of?(YAMLCAst::Struct)) || t.type.kind_of?(YAMLCAst::Function)
   }
   POINTER_TYPES.concat ptrs
 end
