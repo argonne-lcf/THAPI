@@ -64,7 +64,8 @@ OMP_LIB_GEN = \
 
 EXTRA_DIST += \
 	$(OMP_LIB_GEN) \
-	$(srcdir)/ompt_meta_parameters.yaml
+	$(srcdir)/ompt_meta_parameters.yaml \
+	btx_ompmatching_model.yaml
 
 omp_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_omp_model.rb $(OMP_LIB_GEN) $(OMP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -72,8 +73,8 @@ omp_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_omp_model.rb $(OMP_LIB_GEN) 
 btx_omp_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb omp_babeltrace_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
 
-$(BTX_OMP_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_omp_model.yaml
-	$(METABABEL) -u btx_omp_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_omp -p ompinterval -c interval -i ompt.h.include
+$(BTX_OMP_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_omp_model.yaml btx_ompmatching_model.yaml
+	$(METABABEL) -u btx_omp_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_omp -p ompinterval -c interval --matching $(srcdir)/btx_ompmatching_model.yaml -i ompt.h.include
 
 CLEANFILES += \
 	omp_babeltrace_model.yaml \

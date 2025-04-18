@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 using hpt_function_name_omp_t = std::tuple<hostname_t, process_id_t, thread_id_t, std::string>;
 
@@ -43,7 +44,7 @@ static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts, const
                                 op_name.c_str(), (ts - start_ts.value()), err);
   }
 }
-
+/*
 static void host_and_traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts,
                                          const char *hostname, int64_t vpid, uint64_t vtid,
                                          ompt_scope_endpoint_t endpoint, size_t bytes,
@@ -112,18 +113,67 @@ static void ompt_callback_target_submit_emi_callback(void *btx_handle, void *usr
                    "ompt_target_submit_emi");
 }
 
+static void ompt_callback_sync_region_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                                     const char *hostname, int64_t vpid,
+                                                     uint64_t vtid, ompt_sync_region_t kind,
+                                            ompt_scope_endpoint_t endpoint,
+                                            ompt_data_t *parallel_data,
+                                            ompt_data_t *task_data,
+                                            void *codeptr_ra) {
+
+  std::string op_name(magic_enum::enum_name(kind));
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, op_name);
+}
+*/
+static void btx_host_sync_callback(void *btx_handle, void *usr_data, int64_t ts,
+						      const char* name,
+                                                     const char *hostname, int64_t vpid,
+                                                     uint64_t vtid, ompt_sync_region_t kind,
+                                            ompt_scope_endpoint_t endpoint) {
+
+  std::string op_name(magic_enum::enum_name(kind));
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, op_name);
+}
+
+
+static void btx_host_target_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                                      const char* name,
+                                                     const char *hostname, int64_t vpid,
+                                                     uint64_t vtid, ompt_target_t kind,
+                                            ompt_scope_endpoint_t endpoint) {
+
+  std::string op_name(magic_enum::enum_name(kind));
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, op_name);
+}
+
+static void btx_host_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                                      const char* event_class_name,
+                                                     const char *hostname, int64_t vpid,
+                                                     uint64_t vtid,
+                                            ompt_scope_endpoint_t endpoint) {
+  
+  std::string event_class_name_striped = strip_event_class_name(event_class_name);
+  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, event_class_name_striped);
+}
+
 #define REGISTER_ASSOCIATED_CALLBACK(base_name)                                                    \
   btx_register_callbacks_lttng_ust_ompt_##base_name(btx_handle, &base_name##_callback);
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
   btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component);
+/*
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_emi);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op_emi);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_submit);
   REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_submit_emi);
+  REGISTER_ASSOCIATED_CALLBACK(ompt_callback_sync_region);
+*/
+  btx_register_callbacks_btx_host_sync(btx_handle, &btx_host_sync_callback);
+  btx_register_callbacks_btx_host_target(btx_handle, &btx_host_target_callback);
+  btx_register_callbacks_btx_host(btx_handle, &btx_host_callback);
 }
 
 #undef REGISTER_ASSOCIATED_CALLBACK
