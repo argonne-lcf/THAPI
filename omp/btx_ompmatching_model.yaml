@@ -14,7 +14,7 @@
       :field_class:
         :type: integer_unsigned
   :event_classes:
-  - :set_id: btx_host_sync
+  - :set_id: btx_host_sync_region
     :payload_field_class:
       :type: structure
       :members:
@@ -34,11 +34,32 @@
       - :name: ^endpoint$
         :field_class:
           :cast_type: ^ompt_scope_endpoint_t$
-  - :set_id: btx_host
-    :domain: all - ( btx_host_sync + btx_host_target)
+  - :set_id: btx_host_target_data
     :payload_field_class:
       :type: structure
       :members:
       - :name: ^endpoint$
         :field_class:
           :cast_type: ^ompt_scope_endpoint_t$
+      - :name: ^optype$
+        :field_class:
+          :cast_type: ^ompt_target_data_op_t$
+  - :set_id: btx_host
+    :domain: all - ( btx_host_sync_region + btx_host_target + btx_host_target_data)
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^endpoint$
+        :field_class:
+          :cast_type: ^ompt_scope_endpoint_t$
+  - :set_id: btx_traffic_target_data
+    :payload_field_class:
+      :type: structure
+      :members:
+        - :name: ^endpoint$
+          :field_class:
+            :cast_type: ^ompt_scope_endpoint_t$
+        - :name: ^optype$
+          :field_class:
+            :cast_type: ^ompt_target_data_op_t$
+        - :name: ^bytes$

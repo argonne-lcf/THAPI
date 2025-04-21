@@ -197,9 +197,7 @@ data_DATA = \
 # Tests
 
 TRACE_COMMON = \
-	tests/data_op.thapi_text_pretty \
 	tests/target.thapi_text_pretty \
-	tests/submit.thapi_text_pretty \
 	tests/data_op_emi.thapi_text_pretty \
 	tests/target_emi.thapi_text_pretty \
 	tests/submit_emi.thapi_text_pretty

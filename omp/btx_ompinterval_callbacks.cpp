@@ -5,7 +5,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <iostream>
 
 using hpt_function_name_omp_t = std::tuple<hostname_t, process_id_t, thread_id_t, std::string>;
 
@@ -20,7 +19,7 @@ static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *
 
 // Get the start of the "ompt_scope" or return empty optional
 static std::optional<int64_t> set_or_get_start(void *usr_data, hpt_function_name_omp_t key,
-                                              ompt_scope_endpoint_t endpoint, int64_t ts) {
+                                               ompt_scope_endpoint_t endpoint, int64_t ts) {
   auto state = static_cast<data_t *>(usr_data);
   switch (endpoint) {
   case ompt_scope_begin:
@@ -35,9 +34,22 @@ static std::optional<int64_t> set_or_get_start(void *usr_data, hpt_function_name
   }
 }
 
-static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-                             int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
-                             std::string const &op_name) {
+template <typename EnumType = void *>
+static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
+                             const char *event_class_name, const char *hostname, int64_t vpid,
+                             uint64_t vtid, ompt_scope_endpoint_t endpoint,
+                             EnumType kind = EnumType()) {
+
+  std::string op_name;
+
+  if constexpr (std::is_same_v<EnumType, void *>) {
+    // Default case: use the stripped event class name
+    op_name = strip_event_class_name(event_class_name);
+  } else {
+    // Enum case: convert enum to string
+    op_name = std::string(magic_enum::enum_name(kind));
+  }
+
   if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     const bool err = false;
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
@@ -45,79 +57,91 @@ static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts, const
   }
 }
 
-static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                         const char *hostname, int64_t vpid, uint64_t vtid,
-                                         ompt_scope_endpoint_t endpoint, size_t bytes,
-                                         std::string const &op_name) {
+static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
+                                int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
+                                size_t bytes, std::string const &op_name) {
   if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
                                    op_name.c_str(), bytes, "");
   }
 }
 
-static void ompt_callback_target_data_op_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
-    ompt_id_t target_id, ompt_id_t host_op_id, ompt_target_data_op_t optype, void *src_addr,
-    int src_device_num, void *dest_addr, int dest_device_num, size_t bytes, void *codeptr_ra) {
-  std::string op_name(magic_enum::enum_name(optype));
-  traffic_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, ompt_scope_beginend,
-                               bytes, op_name);
+//    _
+//   /   _. | | |_   _.  _ |   _
+//   \_ (_| | | |_) (_| (_ |< _>
+//
+
+// Host: We support function with 'ompt_sync_region_t'.
+// We speicalize with:
+// - ompt_sync_region_t
+// - ompt_target_t
+// - ompt_target_data_op_t
+static void btx_host_sync_region_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                          const char *event_class_name, const char *hostname,
+                                          int64_t vpid, uint64_t vtid, ompt_sync_region_t kind,
+                                          ompt_scope_endpoint_t endpoint) {
+
+  host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
+                   kind);
 }
-
-static void ompt_callback_target_data_op_emi_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
-    ompt_scope_endpoint_t endpoint, ompt_data_t *target_task_data, ompt_data_t *target_data,
-    ompt_id_t *host_op_id, ompt_target_data_op_t optype, void *src_addr, int src_device_num,
-    void *dest_addr, int dest_device_num, size_t bytes, void *codeptr_ra) {
-  std::string op_name(magic_enum::enum_name(optype));
-  traffic_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, bytes,
-                               op_name);
-}
-
-static void btx_host_sync_callback(void *btx_handle, void *usr_data, int64_t ts,
-						      const char* name,
-                                                     const char *hostname, int64_t vpid,
-                                                     uint64_t vtid, ompt_sync_region_t kind,
-                                            ompt_scope_endpoint_t endpoint) {
-
-  std::string op_name(magic_enum::enum_name(kind));
-  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, op_name);
-}
-
 
 static void btx_host_target_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                      const char* name,
-                                                     const char *hostname, int64_t vpid,
-                                                     uint64_t vtid, ompt_target_t kind,
-                                            ompt_scope_endpoint_t endpoint) {
+                                     const char *event_class_name, const char *hostname,
+                                     int64_t vpid, uint64_t vtid, ompt_target_t kind,
+                                     ompt_scope_endpoint_t endpoint) {
 
-  std::string op_name(magic_enum::enum_name(kind));
-  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, op_name);
+  host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
+                   kind);
+}
+
+static void btx_host_target_data_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                          const char *event_class_name, const char *hostname,
+                                          int64_t vpid, uint64_t vtid,
+                                          ompt_scope_endpoint_t endpoint,
+                                          ompt_target_data_op_t optype) {
+
+  host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
+                   optype);
 }
 
 static void btx_host_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                      const char* event_class_name,
-                                                     const char *hostname, int64_t vpid,
-                                                     uint64_t vtid,
-                                            ompt_scope_endpoint_t endpoint) {
-  
-  std::string event_class_name_striped = strip_event_class_name(event_class_name);
-  host_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, event_class_name_striped);
+                              const char *event_class_name, const char *hostname, int64_t vpid,
+                              uint64_t vtid, ompt_scope_endpoint_t endpoint) {
+
+  host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint);
 }
 
+// Traffic
+
+static void btx_traffic_target_data_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                             const char *event_class_name, const char *hostname,
+                                             int64_t vpid, uint64_t vtid,
+                                             ompt_scope_endpoint_t endpoint,
+                                             ompt_target_data_op_t optype, size_t bytes) {
+
+  std::string op_name(magic_enum::enum_name(optype));
+  traffic_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, bytes, op_name);
+}
+
+//    _                             _
+//   |_)  _   _  o  _ _|_  _  ._   /   _. | | |_   _.  _ |   _
+//   | \ (/_ (_| | _>  |_ (/_ |    \_ (_| | | |_) (_| (_ |< _>
+//            _|
+
 #define REGISTER_ASSOCIATED_CALLBACK(base_name)                                                    \
-  btx_register_callbacks_lttng_ust_ompt_##base_name(btx_handle, &base_name##_callback);
+  btx_register_callbacks_##base_name(btx_handle, &base_name##_callback);
 
 void btx_register_usr_callbacks(void *btx_handle) {
+
   btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
   btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component);
 
-  REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op);
-  REGISTER_ASSOCIATED_CALLBACK(ompt_callback_target_data_op_emi);
-  
-  btx_register_callbacks_btx_host_sync(btx_handle, &btx_host_sync_callback);
-  btx_register_callbacks_btx_host_target(btx_handle, &btx_host_target_callback);
-  btx_register_callbacks_btx_host(btx_handle, &btx_host_callback);
+  REGISTER_ASSOCIATED_CALLBACK(btx_host_sync_region);
+  REGISTER_ASSOCIATED_CALLBACK(btx_host_target);
+  REGISTER_ASSOCIATED_CALLBACK(btx_host_target_data);
+  REGISTER_ASSOCIATED_CALLBACK(btx_host);
+
+  REGISTER_ASSOCIATED_CALLBACK(btx_traffic_target_data);
 }
 
 #undef REGISTER_ASSOCIATED_CALLBACK
