@@ -3,10 +3,7 @@
 #include "xprof_utils.hpp"
 #include <algorithm>
 #include <iostream>
-#include <iterator>
 #include <metababel/metababel.h>
-#include <optional>
-#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
