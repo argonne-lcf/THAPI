@@ -1,8 +1,13 @@
 #include "magic_enum.hpp"
 #include "ompt.h.include"
 #include "xprof_utils.hpp"
+#include <algorithm>
+#include <iostream>
+#include <iterator>
 #include <metababel/metababel.h>
 #include <optional>
+#include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
@@ -34,21 +39,66 @@ static std::optional<int64_t> set_or_get_start(void *usr_data, hpt_function_name
   }
 }
 
+// Split on `delimiter`, return unique tokens in sorted order.
+static auto split(const std::string &str, char delimiter) {
+  std::vector<std::string> tokens;
+  std::stringstream ss(str);
+  std::string token;
+  while (std::getline(ss, token, delimiter)) {
+    if (!token.empty())
+      tokens.push_back(token);
+  }
+  return tokens;
+}
+
+// Join a vector of strings with `delimiter` in between.
+static std::string join(const std::vector<std::string> &mySet, const std::string &delimiter) {
+  std::stringstream ss;
+  bool first = true;
+  for (const auto &s : mySet) {
+    if (!first)
+      ss << delimiter;
+    first = false;
+    ss << s;
+  }
+  return ss.str();
+}
+
+inline std::string build_name(const char *event_class_name, void *_) {
+  // Just strip and return
+  return strip_event_class_name(event_class_name);
+}
+
+// Remove element in `kind` who are in the `event_class_name` 
+template <typename E, typename = std::enable_if_t<std::is_enum_v<E>>>
+static std::string build_name(const char *event_class_name, E kind) {
+
+  // 1) Base name
+  std::string base = strip_event_class_name(event_class_name);
+
+  // 2) Tokenize
+  auto baseTokens = split(base, '_');
+  auto kindName = std::string{magic_enum::enum_name(kind)};
+  auto kindTokens = split(kindName, '_');
+
+  // 3) set_difference
+  std::vector<std::string> diffTokens;
+  std::set_difference(kindTokens.begin(), kindTokens.end(), baseTokens.begin(), baseTokens.end(),
+                      std::back_inserter(diffTokens));
+
+  // 5) glue it back together
+  if (diffTokens.empty())
+    return base;
+  return base + ":" + join(diffTokens, "_");
+}
+
 template <typename EnumType = void *>
 static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
                              const char *event_class_name, const char *hostname, int64_t vpid,
                              uint64_t vtid, ompt_scope_endpoint_t endpoint,
                              EnumType kind = EnumType()) {
 
-  std::string op_name;
-
-  if constexpr (std::is_same_v<EnumType, void *>) {
-    // Default case: use the stripped event class name
-    op_name = strip_event_class_name(event_class_name);
-  } else {
-    // Enum case: convert enum to string
-    op_name = std::string(magic_enum::enum_name(kind));
-  }
+  std::string op_name = build_name(event_class_name, kind);
 
   if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     const bool err = false;
