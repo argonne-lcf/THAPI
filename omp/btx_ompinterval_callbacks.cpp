@@ -15,6 +15,7 @@ using hpt_function_name_omp_t = std::tuple<hostname_t, process_id_t, thread_id_t
 
 struct data_s {
   std::unordered_map<hpt_function_name_omp_t, uint64_t> host_start;
+  std::unordered_map<std::tuple<std::string, std::string>, std::string> cached_build_name;
 };
 typedef struct data_s data_t;
 
@@ -40,9 +41,10 @@ static std::optional<int64_t> set_or_get_start(void *usr_data, hpt_function_name
 }
 
 // Split on `delimiter`, return unique tokens in sorted order.
-static auto split(const std::string &str, char delimiter) {
+static auto split(const std::string &str, char delimiter, size_t offset = 0) {
   std::vector<std::string> tokens;
   std::stringstream ss(str);
+  ss.seekg(offset);
   std::string token;
   while (std::getline(ss, token, delimiter)) {
     if (!token.empty())
@@ -52,10 +54,10 @@ static auto split(const std::string &str, char delimiter) {
 }
 
 // Join a vector of strings with `delimiter` in between.
-static std::string join(const std::vector<std::string> &mySet, const std::string &delimiter) {
+static std::string join(const std::vector<std::string> &v, const std::string &delimiter) {
   std::stringstream ss;
   bool first = true;
-  for (const auto &s : mySet) {
+  for (const auto &s : v) {
     if (!first)
       ss << delimiter;
     first = false;
@@ -64,32 +66,49 @@ static std::string join(const std::vector<std::string> &mySet, const std::string
   return ss.str();
 }
 
-inline std::string build_name(const char *event_class_name, void *_) {
+inline std::string build_name(void *usr_data, const char *event_class_name, void *) {
   // Just strip and return
   return strip_event_class_name(event_class_name);
 }
 
-// Remove element in `kind` who are in the `event_class_name` 
+// Remove element in `kind` who are in the `event_class_name`
 template <typename E, typename = std::enable_if_t<std::is_enum_v<E>>>
-static std::string build_name(const char *event_class_name, E kind) {
+static std::string build_name(void *usr_data, const char *event_class_name, E kind) {
+  // ompt_callback_target_emi, ompt_target_enter_data -> ompt_callback_target_emi:enter_data
+  // ompt_callback_target_emi, ompt_target -> ompt_callback_target_emi:target
+  auto state = static_cast<data_t *>(usr_data);
 
   // 1) Base name
   std::string base = strip_event_class_name(event_class_name);
-
-  // 2) Tokenize
-  auto baseTokens = split(base, '_');
   auto kindName = std::string{magic_enum::enum_name(kind)};
-  auto kindTokens = split(kindName, '_');
 
-  // 3) set_difference
+  // 2) Cache
+  const auto key = std::make_tuple(base, kindName);
+  auto it = state->cached_build_name.find(key);
+  if (it != state->cached_build_name.end()) {
+    return it->second;
+  }
+
+  // 3) Tokenize
+  auto kindTokens = split(kindName, '_', strlen("ompt_"));
+  auto baseTokens = split(base, '_', strlen("ompt_"));
+
+  // 4) set_difference
   std::vector<std::string> diffTokens;
   std::set_difference(kindTokens.begin(), kindTokens.end(), baseTokens.begin(), baseTokens.end(),
                       std::back_inserter(diffTokens));
 
   // 5) glue it back together
-  if (diffTokens.empty())
-    return base;
-  return base + ":" + join(diffTokens, "_");
+  std::string kindNameProcessed;
+  if (diffTokens.empty()) {
+    kindNameProcessed = join(kindTokens, "_");
+  } else {
+    kindNameProcessed = join(diffTokens, "_");
+  }
+
+  // 6) Update Cache and Return
+  it = state->cached_build_name.insert(it, {key, base + ":" + kindNameProcessed});
+  return it->second;
 }
 
 template <typename EnumType = void *>
@@ -98,7 +117,7 @@ static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
                              uint64_t vtid, ompt_scope_endpoint_t endpoint,
                              EnumType kind = EnumType()) {
 
-  std::string op_name = build_name(event_class_name, kind);
+  std::string op_name = build_name(usr_data, event_class_name, kind);
 
   if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     const bool err = false;
@@ -107,9 +126,13 @@ static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-                                int64_t vpid, uint64_t vtid, ompt_scope_endpoint_t endpoint,
-                                size_t bytes, std::string const &op_name) {
+static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts,
+                                const char *event_class_name, const char *hostname, int64_t vpid,
+                                uint64_t vtid, ompt_scope_endpoint_t endpoint, size_t bytes,
+                                ompt_target_data_op_t kind) {
+
+  std::string op_name = build_name(usr_data, event_class_name, kind);
+
   if (auto start_ts = set_or_get_start(usr_data, {hostname, vpid, vtid, op_name}, endpoint, ts)) {
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, start_ts.value(), BACKEND_OMP,
                                    op_name.c_str(), bytes, "");
@@ -122,7 +145,7 @@ static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts, co
 //
 
 // Host: We support function with 'ompt_sync_region_t'.
-// We speicalize with:
+// We specialize with:
 // - ompt_sync_region_t
 // - ompt_target_t
 // - ompt_target_data_op_t
@@ -169,8 +192,8 @@ static void btx_traffic_target_data_callback(void *btx_handle, void *usr_data, i
                                              ompt_scope_endpoint_t endpoint,
                                              ompt_target_data_op_t optype, size_t bytes) {
 
-  std::string op_name(magic_enum::enum_name(optype));
-  traffic_op_callback(btx_handle, usr_data, ts, hostname, vpid, vtid, endpoint, bytes, op_name);
+  traffic_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
+                      bytes, optype);
 }
 
 //    _                             _
