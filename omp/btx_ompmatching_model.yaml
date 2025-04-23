@@ -1,0 +1,65 @@
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: ^vpid$
+      :field_class:
+        :type: integer_signed
+    - :name: ^vtid$
+      :field_class:
+        :type: integer_unsigned
+  :event_classes:
+  - :set_id: btx_host_sync_region
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^kind$
+        :field_class:
+          :cast_type: ^ompt_sync_region_t$
+      - :name: ^endpoint$
+        :field_class:
+          :cast_type: ^ompt_scope_endpoint_t$
+  - :set_id: btx_host_target
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^kind$
+        :field_class:
+          :cast_type: ^ompt_target_t$
+      - :name: ^endpoint$
+        :field_class:
+          :cast_type: ^ompt_scope_endpoint_t$
+  - :set_id: btx_host_target_data
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^endpoint$
+        :field_class:
+          :cast_type: ^ompt_scope_endpoint_t$
+      - :name: ^optype$
+        :field_class:
+          :cast_type: ^ompt_target_data_op_t$
+  - :set_id: btx_host
+    :domain: all - ( btx_host_sync_region + btx_host_target + btx_host_target_data)
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^endpoint$
+        :field_class:
+          :cast_type: ^ompt_scope_endpoint_t$
+  - :set_id: btx_traffic_target_data
+    :payload_field_class:
+      :type: structure
+      :members:
+        - :name: ^endpoint$
+          :field_class:
+            :cast_type: ^ompt_scope_endpoint_t$
+        - :name: ^optype$
+          :field_class:
+            :cast_type: ^ompt_target_data_op_t$
+        - :name: ^bytes$
