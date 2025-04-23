@@ -375,7 +375,7 @@ static struct _ze_event_h * _get_profiling_event(
   }
 
   e_w->command_list = command_list;
-  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
+  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE | ZE_EVENT_POOL_FLAG_KERNEL_MAPPED_TIMESTAMP, 1};
   ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
   if (res != ZE_RESULT_SUCCESS) {
     THAPI_DBGLOG("zeEventPoolCreate failed with %d, for command list: %p, context: %p", res, command_list, context);
@@ -399,6 +399,7 @@ cleanup:
 }
 
 static void _profile_event_results(ze_event_handle_t event);
+static void _profile_event_results_v2(ze_event_handle_t event, ze_command_list_handle_t);
 
 static inline void _on_created_event(ze_event_handle_t event) {
 #ifdef THAPI_DEBUG
@@ -441,8 +442,10 @@ static inline void _on_destroy_event(ze_event_handle_t event) {
     return;
   }
 
-  if (!(ze_event->flags & _ZE_PROFILED))
+  if (!(ze_event->flags & _ZE_PROFILED)) {
     _profile_event_results(event);
+    _profile_event_results_v2(event, ze_event->command_list);
+  }
   PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
@@ -472,8 +475,10 @@ static inline void _on_reset_event(ze_event_handle_t event) {
     return;
   }
 
-  if (!(ze_event->flags & _ZE_PROFILED))
+  if (!(ze_event->flags & _ZE_PROFILED)) {
     _profile_event_results(event);
+    _profile_event_results_v2(event, ze_event->command_list);
+  }
 
   if (!(ze_event->flags & _ZE_IMMEDIATE_CMD))
     ADD_ZE_EVENT(ze_event);
@@ -505,6 +510,9 @@ static void _profile_event_results(ze_event_handle_t event) {
   if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
     status = ZE_EVENT_QUERY_STATUS_PTR(event);
     timestamp_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(event, &res);
+    printf("zeEventQueryKernelTimestamp | Start %ld | End %ld \n",
+           res.global.kernelStart,
+           res.global.kernelEnd);
     do_tracepoint(lttng_ust_ze_profiling, event_profiling_results,
                   event, status, timestamp_status,
                   res.global.kernelStart,
@@ -512,6 +520,42 @@ static void _profile_event_results(ze_event_handle_t event) {
                   res.context.kernelStart,
                   res.context.kernelEnd);
   }
+}
+static void _profile_event_results_v2(ze_event_handle_t event, ze_command_list_handle_t command_list) {
+
+      ze_result_t status = ZE_EVENT_QUERY_STATUS_PTR(event);
+
+      /* Find Device */
+      ze_device_handle_t device;
+      ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &device);
+
+      // Qurery Timestamp. We should avoid malloc
+      uint32_t pCount = 0;
+      ZE_EVENT_QUERY_KERNEL_TIMESTAMPS_EXT_PTR(event, device,  &pCount, NULL);
+
+      ze_kernel_timestamp_result_t *kernelTimestamps =
+      malloc(pCount * sizeof(ze_kernel_timestamp_result_t));
+      ze_synchronized_timestamp_result_ext_t *synchronizedTimestamps =
+      malloc(pCount * sizeof(ze_synchronized_timestamp_result_ext_t));
+      ze_event_query_kernel_timestamps_results_ext_properties_t resultsProps;
+
+      resultsProps.stype = ZE_STRUCTURE_TYPE_EVENT_QUERY_KERNEL_TIMESTAMPS_RESULTS_EXT_PROPERTIES;
+      resultsProps.pNext = NULL;
+      resultsProps.pKernelTimestampsBuffer = kernelTimestamps;
+      resultsProps.pSynchronizedTimestampsBuffer = synchronizedTimestamps;
+      // Query the event timestamps
+      ze_result_t timestamps_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMPS_EXT_PTR(event, device, &pCount, &resultsProps);
+      // Will do lttng static array. of size pCount and type synchronizedTimestamps
+      for (uint32_t i = 0; i < pCount; i++) {
+        printf("zeEventQueryKernelTimestampsExtSynchronizedTimestamps | Start %ld | End %ld \n",
+             synchronizedTimestamps[i].global.kernelStart,
+             synchronizedTimestamps[i].global.kernelEnd);
+        printf("zeEventQueryKernelTimestampsExtGlobalKernelKernelTimestamps | Start %ld | End %ld \n",
+             kernelTimestamps[i].global.kernelStart,
+             kernelTimestamps[i].global.kernelEnd);
+      }
+      do_tracepoint(lttng_ust_ze_profiling, event_profiling_results_v2,
+		    event, status, timestamps_status, pCount, synchronizedTimestamps);
 }
 
 static void _event_cleanup() {

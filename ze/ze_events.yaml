@@ -132,6 +132,19 @@ lttng_ust_ze_profiling:
     - [ ctf_integer, uint64_t, globalEnd, "globalEnd" ]
     - [ ctf_integer, uint64_t, contextStart, "contextStart" ]
     - [ ctf_integer, uint64_t, contextEnd, "contextEnd" ]
+  - name: event_profiling_results_v2
+    args:
+    - [ ze_event_handle_t, hEvent ]
+    - [ ze_result_t, status ]
+    - [ ze_result_t, timestampsStatus ]
+    - [ uint32_t, count ]
+    - [ ze_synchronized_timestamp_result_ext_t *, pSynchronizedTimestamps ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, hEvent, "(uintptr_t)hEvent" ]
+    - [ ctf_integer, ze_result_t, status, "status" ]
+    - [ ctf_integer, ze_result_t, timestampsStatus, "timestampsStatus" ]
+    - [ ctf_integer, uint32_t, count, "count" ]
+    - [ ctf_sequence_text, uint8_t, pSynchronizedTimestamps_vals, pSynchronizedTimestamps, size_t, "sizeof(ze_synchronized_timestamp_result_ext_t)*count" ]
 lttng_ust_ze_properties:
   events:
   - name: driver
