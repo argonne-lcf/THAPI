@@ -54,7 +54,7 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone -b anl-ms3 https://github.com/efficios/babeltrace.git
+        git clone -b anl-ms3 https://github.com/argonne-lcf/babeltrace.git
         cd babeltrace
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
         patch -p1 < str_nullptr.patch
