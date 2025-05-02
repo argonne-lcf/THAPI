@@ -237,12 +237,12 @@ jobs:
         working-directory: pr_branch/build
         run: |
           make -j `nproc` -C utils lttng/tracepoint_gen.h
-          make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb libmpi.la
-          make -j `nproc` -C omp tracer_ompt.c omp_library.rb
-          make -j `nproc` -C hip tracer_hip.c hip_library.rb  libamdhip64.la
-          make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb libcuda.la
+          make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
+          make -j `nproc` -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
+          make -j `nproc` -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
+          make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
           make -j `nproc` -C cuda tracer_cudart.c libcudart.la
-          make -j `nproc` -C ze tracer_ze.c ze_library.rb libze_loader.la
+          make -j `nproc` -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
           make -j `nproc` -C opencl libOpenCL.la
       # Run comparison script
       - name: Compare files
