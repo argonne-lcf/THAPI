@@ -99,6 +99,8 @@ struct data_s {
   std::unordered_map<hpt_t, std::pair<ze_device_handle_t, ze_command_queue_desc_t>> imm_tmp;
 
   std::unordered_map<hp_device_t, clock_lttng_device_t> device_timestamps_pair_ref;
+  std::unordered_map<hp_t, int64_t> sync_lttng_monotonic_ref;
+
   /* Sampling */
   std::unordered_map<hpd_t, deviceProperty_id_t> sampling_device_property;
   std::unordered_map<hpdf_t, zes_fabric_port_properties_t> fabricPort_property;
