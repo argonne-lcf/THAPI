@@ -779,6 +779,9 @@ static void event_profiling_results_v2_callback(
     auto &[ts, size] = std::get<btx_additional_info_traffic_t>(ptr);
     btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
                                    commandName.c_str(), size, metadata.c_str());
+
+    // Early exist to warkound the bug where timer are broken for memcopy
+    return;
   }
   const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampsStatus != ZE_RESULT_SUCCESS));
 
