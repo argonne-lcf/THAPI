@@ -45,6 +45,8 @@ int MPIX_Init_Session(MPI_Session *lib_shandle, MPI_Comm *lib_comm) {
     CHECK_MPI(MPI_Info_get(tinfo, mt_key, valuelen, out_value, &flag));
     if (flag == 0)
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Could not find key %s\n", mt_key);
+    else if (strcmp(out_value, "MPI_THREAD_MULTIPLE") == 0)
+    {} // Hui: Currently MPI sessions have to use thread multiple because of potential concurrency between sessions.
     else if (strcmp(out_value, mt_value))
       fprintf(stderr, "THAPI_SYNC_DAEMON_MPI Warning: Did not get %s, got %s\n", mt_value,
               out_value);
