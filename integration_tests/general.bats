@@ -81,5 +81,5 @@ teardown_file() {
 }
 
 @test "read_stdin" {
-   echo "FOO" | iprof cat
+   echo "FOO" | $IPROF cat
 }
