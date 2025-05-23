@@ -316,18 +316,17 @@ class SyncDaemon < SpawnDaemon
     daemon = case daemon_type
              when nil
                # Default is MPI
-               if File.exist?("#{__dir__}/sync_daemon_mpi")
-                 "#{__dir__}/sync_daemon_mpi"
+               if File.exist?("#{BINDIR}/sync_daemon_mpi")
+                 "#{BINDIR}/sync_daemon_mpi"
                else
-                 LOGGER.warn("No #{__dir__}/sync_daemon_mpi binary. Fall back to #{__dir__}/syc_daemon_f'")
-                 "#{__dir__}/sync_daemon_fs"
+                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fall back to #{BINDIR}/syc_daemon_f'")
+                 "#{BINDIR}/sync_daemon_fs"
                end
              when 'mpi'
-               raise("No #{__dir__}/sync_daemon_mpi binary") unless File.exist?("#{__dir__}/sync_daemon_mpi")
-
-               "#{__dir__}/sync_daemon_mpi"
+               raise("No #{BINDIR}/sync_daemon_mpi binary") unless File.exist?("#{BINDIR}/sync_daemon_mpi")
+               "#{BINDIR}/sync_daemon_mpi"
              when 'fs'
-               "#{__dir__}/sync_daemon_fs"
+               "#{BINDIR}/sync_daemon_fs"
              else
                raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) if not supported. Allowed: [mpi,fs] ")
              end
@@ -386,7 +385,7 @@ class SamplingDaemon < SpawnDaemon
   end
 
   def initialize
-    daemon_path = "#{__dir__}/sampling_daemon"
+    daemon_path = "#{BINDIR}/sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
     LOGGER.debug { "spawn(sampling_daemon) #{Process.pid})" }
