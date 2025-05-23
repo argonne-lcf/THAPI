@@ -500,15 +500,11 @@ def launch_usr_bin(env, cmd)
     [k, vs.join(':')]
   end.to_h
 
-  begin
-    PTY.spawn(bash_env, *cmd) do |stdout, _stdin, pid|
-      # Reading stdout will trigger Errno::EIO
-      stdout.each { |line| print line }
-    rescue Errno::EIO
-      # Get the PTY status
-      _, status = Process.wait2(pid)
-      return status
-    end
+  # Merge standard output and standard error
+  IO.popen(bash_env, cmd, err: [:child, :out]) do |io|
+    # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
+    io.sync = true
+    io.each { |line| print line }
   rescue Interrupt
     LOGGER.warn { 'Application Received Interrupt Signal' }
     # SigINT is 2
@@ -517,6 +513,7 @@ def launch_usr_bin(env, cmd)
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
   end
+  $?
 end
 
 def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
