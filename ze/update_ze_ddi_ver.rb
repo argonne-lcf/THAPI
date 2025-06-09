@@ -98,7 +98,7 @@ ze_ddi_yaml['structs'].each do |struct|
   struct['members'] = new_members
   dditables[name]['strucs'].append(struct)
   # Version format: major.minor as float (e.g., 1.3)
-  dditables[name]['versions'].append(current_ze_version.join(',').to_f)
+  dditables[name]['versions'].append(current_ze_version.join('.').to_f)
 end
 
 # Generate header file
