@@ -136,8 +136,9 @@ static void create_sub_devices_exit_callback(void *btx_handle, void *usr_data, i
                                              cl_uint num_devices_ret_val,
                                              cl_device_id *out_devices_vals) {
   auto state = static_cast<data_t *>(usr_data);
+  // No matter of the error code, we need to pop the stack
+  auto in_device = state->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
   if ((out_devices_vals != nullptr) && (errcode_ret_val == CL_SUCCESS)) {
-    auto in_device = state->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
     const thapi_device_id root_device = state->device_to_root_device[{hostname, vpid, in_device}];
     for (unsigned int i = 0; i < num_devices_ret_val; i++) {
       const thapi_device_id d = reinterpret_cast<thapi_device_id>(out_devices_vals[i]);
