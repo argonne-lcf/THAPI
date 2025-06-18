@@ -533,8 +533,8 @@ static void exits_alloc_callback(void *btx_handle, void *usr_data, int64_t ts,
                                  const char *event_class_name, const char *hostname, int64_t vpid,
                                  uint64_t vtid, ze_result_t zeResult, void *pptr_val) {
   auto *data = static_cast<data_t *>(usr_data);
+  auto size = data->entry_state.get_data<size_t>({hostname, vpid, vtid});
   if (zeResult == ZE_RESULT_SUCCESS) {
-    auto size = data->entry_state.get_data<size_t>({hostname, vpid, vtid});
     add_memory(data, {hostname, vpid}, (uintptr_t)pptr_val, size, event_class_name);
   }
 }
@@ -588,8 +588,8 @@ static void memFree_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
                                   uint64_t vtid, ze_result_t ze_result) {
 
   auto *data = static_cast<data_t *>(usr_data);
+  auto ptr = data->entry_state.get_data<uintptr_t>({hostname, vpid, vtid});
   if (ze_result == ZE_RESULT_SUCCESS) {
-    auto ptr = data->entry_state.get_data<uintptr_t>({hostname, vpid, vtid});
     remove_memory(data, {hostname, vpid}, ptr);
   }
 }
@@ -668,9 +668,9 @@ static void zeCommandListReset_exit_callback(void *btx_handle, void *usr_data, i
                                              ze_result_t zeResult) {
 
   auto *data = static_cast<data_t *>(usr_data);
-  if (zeResult == ZE_RESULT_SUCCESS) {
-    auto hCommandList =
+  auto hCommandList =
         data->entry_state.get_data<ze_command_list_handle_t>({hostname, vpid, vtid});
+  if (zeResult == ZE_RESULT_SUCCESS) {
     data->commandListToEvents[{hostname, vpid, hCommandList}].clear();
   }
 }
