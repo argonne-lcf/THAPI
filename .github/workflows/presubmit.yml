@@ -1,5 +1,7 @@
 name: Presubmit
 on: [push, pull_request]
+env:
+  MAKEFLAGS: "-j$(nproc) -O --shuffle"
 
 jobs:
   pre_job:
@@ -14,7 +16,6 @@ jobs:
           skip_after_successful_duplicate: 'true'
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request"]'
-      - run: echo "MAKEFLAGS=-j$(nproc) -O --shuffle" >> $GITHUB_ENV
 
   efficios_dep:
     needs: pre_job
