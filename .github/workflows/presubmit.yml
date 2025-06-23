@@ -74,7 +74,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure --prefix=`pwd`/ici
         working-directory: build
-      - run: make -j `nproc` install
+      - run: make install
         working-directory: build
       - name: Tar THAPI # https://github.com/actions/download-artifact?tab=readme-ov-file#permission-loss
         run: tar -cvf thapi.tar ./build/ici/
