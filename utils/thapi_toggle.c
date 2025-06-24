@@ -1,5 +1,5 @@
 #include "thapi.h"
-#include "thapi_tracepoints.h"
+#include "thapi_toggle_tracepoints.h"
 
 #ifndef LTTNG_UST_CONSTRUCTOR_PRIO
 #error "LTTNG_UST_CONSTRUCTOR_PRIO is not defined."
