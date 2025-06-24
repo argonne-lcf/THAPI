@@ -4,18 +4,15 @@ static void init(void **data) { *data = calloc(1, sizeof(int)); }
 
 static void finalize(void *data) { free(data); }
 
-static void thapi_start_callback(void *btx_handle, void *push, long int cpuid,
-                                 int vpid, int vtid) {
+static void thapi_start_callback(void *btx_handle, void *push, long int cpuid, int vpid, int vtid) {
   *((int *)push) = 1;
 }
 
-static void thapi_stop_callback(void *btx_handle, void *push, long int cpuid,
-                                int vpid, int vtid) {
+static void thapi_stop_callback(void *btx_handle, void *push, long int cpuid, int vpid, int vtid) {
   *((int *)push) = 0;
 }
 
-static void push_downstream(void *btx_handle, void *push,
-                            const bt_message *msg) {
+static void push_downstream(void *btx_handle, void *push, const bt_message *msg) {
   if (*((int *)push) == 1)
     btx_push_message(btx_handle, msg);
   else
