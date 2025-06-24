@@ -18,7 +18,8 @@ lttng/tracepoint_gen.h: $(srcdir)/tracepoint_gen.rb
 	mkdir -p lttng
 	$(RUBY) $< 25 > $@
 
-LTTNG_FLAGS=-fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./
+LTTNG_FLAGS= -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) \
+             -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./
 
 %.h %.c: %.tp lttng/tracepoint_gen.h
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -43,36 +44,37 @@ include_HEADERS = thapi.h
 
 lib_LTLIBRARIES = libThapi.la
 nodist_libThapi_la_SOURCES = \
-	thapi_tracepoints.h \
-	thapi_tracepoints.c
+	thapi_toggle_tracepoints.h \
+	thapi_toggle_tracepoints.c
 libThapi_la_SOURCES = thapi_toggle.c
 libThapi_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 libThapi_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-BTX_THAPI_GENERATED = \
-	btx_thapi/metababel/metababel.h \
-	btx_thapi/metababel/btx_component.h \
-	btx_thapi/metababel/btx_component.c \
-	btx_thapi/metababel/btx_upstream.h \
-	btx_thapi/metababel/btx_upstream.c \
-	btx_thapi/metababel/btx_downstream.h \
-	btx_thapi/metababel/btx_downstream.c \
-	btx_thapi/btx_main.c
+BTX_THAPI_TOGGLE_GENERATED = \
+	btx_thapi_toggle/metababel/metababel.h \
+	btx_thapi_toggle/metababel/btx_component.h \
+	btx_thapi_toggle/metababel/btx_component.c \
+	btx_thapi_toggle/metababel/btx_upstream.h \
+	btx_thapi_toggle/metababel/btx_upstream.c \
+	btx_thapi_toggle/metababel/btx_downstream.h \
+	btx_thapi_toggle/metababel/btx_downstream.c \
+	btx_thapi_toggle/btx_main.c
 
-$(BTX_THAPI_GENERATED): btx_thapi.yaml thapi_callbacks.c
+$(BTX_THAPI_TOGGLE_GENERATED): btx_thapi_toggle.yaml thapi_toggle_callbacks.c
 	$(METABABEL) --enable-callbacks on_downstream --component-type FILTER \
-		--upstream $(top_srcdir)/utils/btx_thapi.yaml --downstream $(top_srcdir)/utils/btx_thapi.yaml \
-		-o btx_thapi
+		--upstream $(top_srcdir)/utils/btx_thapi_toggle.yaml --downstream $(top_srcdir)/utils/btx_thapi_toggle.yaml \
+		-o btx_thapi_toggle
 
 noinst_LTLIBRARIES = libThapiPlugin.la
-nodist_libThapiPlugin_la_SOURCES = $(BTX_THAPI_GENERATED)
-libThapiPlugin_la_SOURCES = thapi_callbacks.c
-libThapiPlugin_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) -I./btx_thapi -I$(top_srcdir)/utils/include
+nodist_libThapiPlugin_la_SOURCES = $(BTX_THAPI_TOGGLE_GENERATED)
+libThapiPlugin_la_SOURCES = thapi_toggle_callbacks.c
+libThapiPlugin_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
+                           -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
 
 BUILT_SOURCES += \
-	thapi_tracepoints.h \
-	thapi_tracepoints.c \
-	$(BTX_THAPI_GENERATED)
+	thapi_toggle_tracepoints.h \
+	thapi_toggle_tracepoints.c \
+	$(BTX_THAPI_TOGGLE_GENERATED)
 
 bin_SCRIPTS = \
 	babeltrace_thapi
@@ -93,7 +95,7 @@ CLEANFILES = \
 	version \
 	optparse_thapi.rb \
 	lttng/tracepoint_gen.h \
-	$(BTX_THAPI_GENERATED) \
+	$(BTX_THAPI_TOGGLE_GENERATED) \
 	$(BUILT_SOURCES)
 
 EXTRA_DIST = \
@@ -106,8 +108,8 @@ EXTRA_DIST = \
 	gen_library_base.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \
-	thapi_tracepoints.tp \
-	btx_thapi.yaml \
+	thapi_toggle_tracepoints.tp \
+	btx_thapi_toggle.yaml \
 	command.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \

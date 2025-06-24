@@ -97,10 +97,10 @@ teardown_file() {
    [[ "$output" =~ "FOO" ]]
 }
 
-@test "thapi_start_stop" {
-  cc -I${THAPI_INC_DIR} ./integration_tests/thapi_start_stop.c -o thapi_start_stop \
+@test "thapi_toggle" {
+  cc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle.c -o thapi_toggle \
     -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
-  $IPROF --trace-output trace_toggle --no-analysis -- ./thapi_start_stop
+  $IPROF --trace-output trace_toggle --no-analysis -- ./thapi_toggle
 
   start_count=`babeltrace2 trace_toggle | grep lttng_ust_toggle:start | wc -l`
   [ "$start_count" -eq 1 ]
