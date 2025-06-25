@@ -384,13 +384,13 @@ class SamplingDaemon < SpawnDaemon
     lazy_exec(message, sampling?, &block)
   end
 
-  def initialize
+  def initialize(h = {})
     daemon_path = "#{BINDIR}/sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
     LOGGER.debug { "spawn(sampling_daemon) #{Process.pid})" }
     lazy_exec_sampling('Initialize SamplingDaemon') do
-      @pid = spawn("#{daemon_path} #{Process.pid}")
+      @pid = spawn(h, "#{daemon_path} #{Process.pid}")
     end
   end
 
@@ -407,6 +407,31 @@ end
 #                  _|
 def lttng_session_uuid
   Digest::MD5.hexdigest(lttng_trace_dir_tmp)
+end
+
+def sanitize_env(env)
+  # Transform list to bash env
+  #   prepending to current env if already existing
+  #   we don't modify `ENV` direclly to avoid by-construction any side-effect
+  env.filter_map do |k0, v|
+    # Add default mode to k0
+    k, mode = ([k0] + ['ignore']).flatten[0..1]
+    vs = [v].flatten
+    case mode
+    when 'ignore'
+      if env_fetch_first(k)
+        LOGGER.warn { "#{k} already existed in ENV. We will not overwrite it" }
+        next
+      end
+    when 'prepend'
+      if (cv = env_fetch_first(k))
+        LOGGER.warn { "#{k} already existed in ENV. The value #{v} will be prepended to it" }
+        vs.append(cv)
+      end
+    end
+
+    [k, vs.join(':')]
+  end.to_h
 end
 
 def env_tracers
@@ -460,7 +485,7 @@ def env_tracers
   # Sample
   if sampling?
     LOGGER.debug('Sampling Enabled')
-    h['LTTNG_UST_SAMPLING'] = 1
+    #h['LTTNG_UST_SAMPLING'] = 1
     h['LTTNG_UST_SAMPLING_ENERGY'] = 1
     # The current only reliable way to use zes api
     #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
@@ -472,36 +497,14 @@ def env_tracers
   LOGGER.info("Backends found: #{backends}")
   LOGGER.debug("User app env: #{h}")
 
-  [backends, h.freeze]
+  [backends, sanitize_env(h).freeze]
 end
 
 def launch_usr_bin(env, cmd)
   LOGGER.info { "Launch_usr_bin #{cmd}" }
-  # Transform list to bash env
-  #   prepending to current env if already existing
-  #   we don't modify `ENV` direclly to avoid by-construction any side-effect
-  bash_env = env.filter_map do |k0, v|
-    # Add default mode to k0
-    k, mode = ([k0] + ['ignore']).flatten[0..1]
-    vs = [v].flatten
-    case mode
-    when 'ignore'
-      if env_fetch_first(k)
-        LOGGER.warn { "#{k} already existed in ENV. We will not overwrite it" }
-        next
-      end
-    when 'prepend'
-      if (cv = env_fetch_first(k))
-        LOGGER.warn { "#{k} already existed in ENV. The value #{v} will be prepended to it" }
-        vs.append(cv)
-      end
-    end
-
-    [k, vs.join(':')]
-  end.to_h
 
   # Merge standard output and standard error
-  IO.popen(bash_env, cmd, err: [:child, :out]) do |io|
+  IO.popen(env, cmd, err: [:child, :out]) do |io|
     # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
     io.sync = true
     io.each { |line| print line }
@@ -807,7 +810,7 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
     # Spawn sampling daemon before starting user apps
-    sampling_daemon = SamplingDaemon.new
+    sampling_daemon = SamplingDaemon.new(h)
 
     syncd.local_barrier('waiting_for_lttng_setup')
 
