@@ -728,16 +728,8 @@ void process_sampling() {
   _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
 }
 
-void cleanup_sampling() {
-  if (_sampling_handle) {
-    thapi_unregister_sampling(_sampling_handle);
-    _sampling_handle = NULL;
-  }
-}
-
 void signal_handler_finish(int signum) {
   if (signum == RT_SIGNAL_FINISH) {
-    cleanup_sampling();
     running = false;
   }
 }
