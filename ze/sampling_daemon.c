@@ -755,7 +755,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  thapi_sampling_init(); // Initialize sampling
+  thapi_sampling_init(); // Initialize sampling (also starts sampling thread)
 
   // Load necessary libraries
   char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
@@ -770,11 +770,19 @@ int main(int argc, char **argv) {
     _DL_ERROR_MSG();
     return 1;
   }
+
   // Find zes symbols
   int verbose = 0;
   find_ze_symbols(handle, verbose);
+
   // Initialize device and telemetry handles
   initializeHandles();
+
+  // register L0 sampler exactly once
+  {
+    struct timespec interval = { .tv_sec = 0, .tv_nsec = 50000000 }; /* 50 ms */
+    thapi_register_sampling(&thapi_sampling_energy, &interval);
+  }
 
   // Run the signal loop
   signal(RT_SIGNAL_FINISH, signal_handler_finish);
