@@ -720,14 +720,6 @@ static void thapi_sampling_energy() {
   }
 }
 
-void process_sampling() {
-  struct timespec interval;
-  interval.tv_sec = 0;
-  interval.tv_nsec = 50000000; // 50ms interval
-  thapi_sampling_energy();
-  _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
-}
-
 void signal_handler_finish(int signum) {
   if (signum == RT_SIGNAL_FINISH) {
     running = false;
