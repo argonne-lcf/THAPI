@@ -1,5 +1,7 @@
 name: Presubmit
 on: [push, pull_request]
+env:
+  MAKEFLAGS: "-j$(nproc) -O --shuffle"
 
 jobs:
   pre_job:
@@ -42,7 +44,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure ${{ matrix.config-option }}
         working-directory: build
-      - run: CC=gcc make -j `nproc`
+      - run: CC=gcc make
         working-directory: build
       - run: make check
         working-directory: build
@@ -72,7 +74,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure --prefix=`pwd`/ici
         working-directory: build
-      - run: make -j `nproc` install
+      - run: make install
         working-directory: build
       - name: Tar THAPI # https://github.com/actions/download-artifact?tab=readme-ov-file#permission-loss
         run: tar -cvf thapi.tar ./build/ici/
@@ -116,7 +118,7 @@ jobs:
       - uses: ./.github/actions/setup-thapi
       - run: ./autogen.sh
       - run: ./configure
-      - run: make -j `nproc`
+      - run: make
       - run: make check
         env:
           THAPI_VALGRIND: 1
@@ -141,7 +143,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure
         working-directory: build
-      - run: make distcheck -j
+      - run: make distcheck
         working-directory: build
         env:
           THAPI_VALGRIND: 1
@@ -174,7 +176,7 @@ jobs:
         run: |
           cd `find . -type d -name "thapi-*"`
           cd build
-          make -j check
+          make check
         working-directory: build
         env:
           THAPI_VALGRIND: 1
@@ -212,14 +214,14 @@ jobs:
       - name: Build target branch files
         working-directory: base_branch/build
         run: |
-          make -j `nproc` -C utils lttng/tracepoint_gen.h
-          make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
-          make -j `nproc` -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
-          make -j `nproc` -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
-          make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
-          make -j `nproc` -C cuda tracer_cudart.c libcudart.la
-          make -j `nproc` -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
-          make -j `nproc` -C opencl libOpenCL.la
+          make -C utils lttng/tracepoint_gen.h
+          make -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
+          make -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
+          make -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
+          make -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
+          make -C cuda tracer_cudart.c libcudart.la
+          make -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
+          make -C opencl libOpenCL.la
       # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -236,14 +238,14 @@ jobs:
       - name: Build PR branch files
         working-directory: pr_branch/build
         run: |
-          make -j `nproc` -C utils lttng/tracepoint_gen.h
-          make -j `nproc` -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
-          make -j `nproc` -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
-          make -j `nproc` -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
-          make -j `nproc` -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
-          make -j `nproc` -C cuda tracer_cudart.c libcudart.la
-          make -j `nproc` -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
-          make -j `nproc` -C opencl libOpenCL.la
+          make -C utils lttng/tracepoint_gen.h
+          make -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
+          make -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
+          make -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
+          make -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
+          make -C cuda tracer_cudart.c libcudart.la
+          make -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
+          make -C opencl libOpenCL.la
       # Run comparison script
       - name: Compare files
         run: |
