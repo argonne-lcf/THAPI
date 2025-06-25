@@ -790,10 +790,12 @@ int main(int argc, char **argv) {
   if (kill(parent_pid, RT_SIGNAL_READY) != 0) {
     _ERROR_MSG("Failed to send READY signal to parent");
   }
-  // Process_sampling loop until SIG_SAMPLING_FINISH signal
+
+  // Wait for RT_SIGNAL_FINISH to flip `running = false`
   while (running) {
-    process_sampling();
+    pause();
   }
+
   dlclose(handle);
   if (parent_pid != 0)
     kill(parent_pid, RT_SIGNAL_READY);
