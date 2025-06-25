@@ -223,7 +223,6 @@ static void find_ze_symbols(void *handle, int verbose) {
     fprintf(stderr, "Missing symbol zesMemoryGetBandwidth!\n");
 }
 volatile bool running = true;
-thapi_sampling_handle_t _sampling_handle = NULL;
 static int _sampling_freq_initialized = 0;
 static int _sampling_fabricPorts_initialized = 0;
 static int _sampling_memModules_initialized = 0;
