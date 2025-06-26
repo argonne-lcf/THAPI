@@ -56,4 +56,6 @@ libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(t
 libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0 $(LTTNG_UST_LIBS)
 libThapiSampling_la_LIBADD = libsamplingtracepoints.la
 
-lib_LTLIBRARIES = libThapiSampling.la
+samplingdir = $(pkglibdir)/sampling
+sampling_LTLIBRARIES = libThapiSampling.la
+
