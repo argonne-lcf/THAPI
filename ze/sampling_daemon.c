@@ -223,7 +223,6 @@ static void find_ze_symbols(void *handle, int verbose) {
     fprintf(stderr, "Missing symbol zesMemoryGetBandwidth!\n");
 }
 volatile bool running = true;
-thapi_sampling_handle_t _sampling_handle = NULL;
 static int _sampling_freq_initialized = 0;
 static int _sampling_fabricPorts_initialized = 0;
 static int _sampling_memModules_initialized = 0;
@@ -720,24 +719,8 @@ static void thapi_sampling_energy() {
   }
 }
 
-void process_sampling() {
-  struct timespec interval;
-  interval.tv_sec = 0;
-  interval.tv_nsec = 50000000; // 50ms interval
-  thapi_sampling_energy();
-  _sampling_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
-}
-
-void cleanup_sampling() {
-  if (_sampling_handle) {
-    thapi_unregister_sampling(_sampling_handle);
-    _sampling_handle = NULL;
-  }
-}
-
 void signal_handler_finish(int signum) {
   if (signum == RT_SIGNAL_FINISH) {
-    cleanup_sampling();
     running = false;
   }
 }
@@ -755,7 +738,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  thapi_sampling_init(); // Initialize sampling
+  thapi_sampling_init(); // Initialize sampling (also starts sampling thread)
 
   // Load necessary libraries
   char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
@@ -770,11 +753,19 @@ int main(int argc, char **argv) {
     _DL_ERROR_MSG();
     return 1;
   }
+
   // Find zes symbols
   int verbose = 0;
   find_ze_symbols(handle, verbose);
+
   // Initialize device and telemetry handles
   initializeHandles();
+
+  // register L0 sampler exactly once
+  {
+    struct timespec interval = { .tv_sec = 0, .tv_nsec = 50000000 }; /* 50 ms */
+    thapi_register_sampling(&thapi_sampling_energy, &interval);
+  }
 
   // Run the signal loop
   signal(RT_SIGNAL_FINISH, signal_handler_finish);
@@ -782,10 +773,12 @@ int main(int argc, char **argv) {
   if (kill(parent_pid, RT_SIGNAL_READY) != 0) {
     _ERROR_MSG("Failed to send READY signal to parent");
   }
-  // Process_sampling loop until SIG_SAMPLING_FINISH signal
+
+  // Wait for RT_SIGNAL_FINISH to flip `running = false`
   while (running) {
-    process_sampling();
+    pause();
   }
+
   dlclose(handle);
   if (parent_pid != 0)
     kill(parent_pid, RT_SIGNAL_READY);
