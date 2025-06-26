@@ -490,6 +490,7 @@ def env_tracers
     # The current only reliable way to use zes api
     #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
     h['ZES_ENABLE_SYSMAN'] = 0 if OPTIONS[:'backend-names'].include?('ze')
+    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
   end
 
   backends = [] unless need_backend
