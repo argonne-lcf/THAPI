@@ -739,7 +739,7 @@ int main(int argc, char **argv) {
   }
 
   thapi_sampling_init(); // Initialize sampling (also starts sampling thread)
-
+  void *handle = NULL;
   {
     char *s = getenv("LTTNG_UST_SAMPLING_ENERGY");
     if (!s || strcmp(s, "0") == 0)
@@ -748,7 +748,6 @@ int main(int argc, char **argv) {
 
   // Load necessary libraries
   char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
-  void *handle = NULL;
   if (s) {
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   } else {
