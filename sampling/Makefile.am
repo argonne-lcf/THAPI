@@ -32,7 +32,6 @@ libsamplingtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils
 libsamplingtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libsamplingtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-
 EXTRA_DIST = \
 	sampling_events.yaml \
 	gen_sampling_custom_probes.rb
@@ -45,17 +44,31 @@ CLEANFILES = \
 BUILT_SOURCES = \
 	$(SAMPLING_STATIC_PROBES_INCL)
 
-nodist_libThapiSampling_la_SOURCES = \
+#nodist_libThapiSampling_la_SOURCES = \
+#	$(SAMPLING_STATIC_PROBES_INCL)
+
+#libThapiSampling_la_SOURCES = \
+#	thapi_sampling.h \
+#	thapi_sampling.c
+
+#libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include $(LTTNG_UST_CFLAGS)
+#libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0 $(LTTNG_UST_LIBS)
+#libThapiSampling_la_LIBADD = libsamplingtracepoints.la
+
+#samplingdir = $(pkglibdir)/sampling
+#sampling_LTLIBRARIES = libThapiSampling.la
+
+bin_PROGRAMS = thapi_sampling_daemon
+
+nodist_thapi_sampling_daemon_SOURCES = \
 	$(SAMPLING_STATIC_PROBES_INCL)
 
-libThapiSampling_la_SOURCES = \
+thapi_sampling_daemon_SOURCES = \
 	thapi_sampling.h \
 	thapi_sampling.c
 
-libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include $(LTTNG_UST_CFLAGS)
-libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0 $(LTTNG_UST_LIBS)
-libThapiSampling_la_LIBADD = libsamplingtracepoints.la
+thapi_sampling_daemon_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include $(LTTNG_UST_CFLAGS)
+thapi_sampling_daemon_LDFLAGS = -lpthread
+thapi_sampling_daemon_LDADD = libsamplingtracepoints.la
 
-samplingdir = $(pkglibdir)/sampling
-sampling_LTLIBRARIES = libThapiSampling.la
-
+CLEANFILES += $(bin_PROGRAMS)
