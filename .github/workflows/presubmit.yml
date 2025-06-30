@@ -1,5 +1,15 @@
 name: Presubmit
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+
 env:
   MAKEFLAGS: "-j$(nproc) -O --shuffle"
 
@@ -97,13 +107,17 @@ jobs:
         with:
           mpi: intelmpi
       - uses: ./.github/actions/setup-thapi
-      - run: |
-          sudo apt install -y bats coreutils libpocl2 clinfo
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: bats coreutils libpocl2 clinfo
       - uses: actions/download-artifact@v4
         with:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
       - name: Integration test
         run: |
           bats integration_tests/

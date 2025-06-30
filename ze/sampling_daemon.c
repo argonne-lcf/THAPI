@@ -739,10 +739,15 @@ int main(int argc, char **argv) {
   }
 
   thapi_sampling_init(); // Initialize sampling (also starts sampling thread)
+  void *handle = NULL;
+  {
+    char *s = getenv("LTTNG_UST_SAMPLING_ENERGY");
+    if (!s || strcmp(s, "0") == 0)
+      goto bypass;
+  }
 
   // Load necessary libraries
   char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
-  void *handle = NULL;
   if (s) {
     handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   } else {
@@ -767,6 +772,7 @@ int main(int argc, char **argv) {
     thapi_register_sampling(&thapi_sampling_energy, &interval);
   }
 
+bypass:
   // Run the signal loop
   signal(RT_SIGNAL_FINISH, signal_handler_finish);
 
@@ -779,7 +785,8 @@ int main(int argc, char **argv) {
     pause();
   }
 
-  dlclose(handle);
+  if (handle)
+    dlclose(handle);
   if (parent_pid != 0)
     kill(parent_pid, RT_SIGNAL_READY);
   return 0;
