@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-// Lttng tracepoint for hearbeat
+// Lttng tracepoint for heartbeat
 #include "sampling.h"
 
 #define RT_SIGNAL_READY (SIGRTMIN)
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   sigaddset(&signal_set, RT_SIGNAL_FINISH);
   signal(RT_SIGNAL_FINISH, signal_handler_finish);
 
-  // Initlixaztion
+  // Initialization
   thapi_sampling_init();
 
   // Register test sample.
@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     interval.tv_nsec = 30000000;
     thapi_register_sampling(&thapi_sampling_heartbeat2, &interval, NULL);
   }
-  // Regiser user sample
+  // Register user sampling plugin
   for (int i = 2; i < argc; i++) {
     void *handle = dlopen(argv[i], RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
     plugin_init_func f =
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   }
   // Signal Ready to manager
   kill(parent_pid, RT_SIGNAL_READY);
-  // Run until signal is comming
+  // Run until signal is coming
   thapi_sampling_loop(NULL);
   // Call destructor
   kill(parent_pid, RT_SIGNAL_READY);
