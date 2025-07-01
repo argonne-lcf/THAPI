@@ -1,6 +1,6 @@
 #include <metababel/metababel.h>
 
-#include <assert.h>
+#include <cassert>
 #include <iostream>
 #include <regex>
 #include <tuple>
