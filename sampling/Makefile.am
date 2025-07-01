@@ -32,6 +32,7 @@ libsamplingtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils
 libsamplingtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libsamplingtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
+
 EXTRA_DIST = \
 	sampling_events.yaml \
 	gen_sampling_custom_probes.rb
