@@ -4,7 +4,7 @@
 #include <iostream>
 #include <metababel/metababel.h>
 #include <regex>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <unordered_map>
 
