@@ -1,5 +1,6 @@
-extern void
-thapi_register_sampling(
-	void (*pfn_run)(void) /*Running*/,
-	struct timespec *interval,
-	void (*pfn_final)(void) /*Finalization*/);
+#pragma once
+
+extern volatile int thapi_sampling_finished;
+
+int thapi_sampling_init();
+void *thapi_sampling_loop(void *args);

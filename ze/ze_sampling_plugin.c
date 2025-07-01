@@ -1,15 +1,15 @@
-#include "thapi_sampling.h"
+#include "thapi_sampling_register.h"
 #include "ze_build.h"
 #include "ze_sampling.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <ffi.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <unistd.h>
 
 #define RT_SIGNAL_READY (SIGRTMIN)
@@ -222,7 +222,6 @@ static void find_ze_symbols(void *handle, int verbose) {
   if (!ZES_MEMORY_GET_BANDWIDTH_PTR && verbose)
     fprintf(stderr, "Missing symbol zesMemoryGetBandwidth!\n");
 }
-volatile bool running = true;
 static int _sampling_freq_initialized = 0;
 static int _sampling_fabricPorts_initialized = 0;
 static int _sampling_memModules_initialized = 0;
@@ -719,46 +718,33 @@ static void thapi_sampling_energy() {
   }
 }
 
-void signal_handler_finish(int signum) {
-  if (signum == RT_SIGNAL_FINISH) {
-    running = false;
-  }
+static void *handle = NULL;
+
+static void finalize(void) {
+  if (handle)
+    dlclose(handle);
 }
 
-int main(int argc, char **argv) {
-
-  int parent_pid = 0;
-  if (argc < 2) {
-    _USAGE_MSG("<parent_pid>", argv[0]);
-    return 1;
-  }
-  parent_pid = atoi(argv[1]);
-  if (parent_pid <= 0) {
-    _ERROR_MSG("Invalid or missing parent PID.");
-    return 1;
-  }
-
-  thapi_sampling_init(); // Initialize sampling (also starts sampling thread)
-  void *handle = NULL;
+void thapi_register_sampling_plugin(void) {
   {
-    char *s = getenv("LTTNG_UST_SAMPLING_ENERGY");
+    char *s = getenv("LTTNG_UST_ZE_SAMPLING_ENERGY");
     if (!s || strcmp(s, "0") == 0)
-      goto bypass;
+      return;
   }
+  {
+    // Load necessary libraries
+    char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
+    if (s) {
+      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    } else {
+      handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    }
 
-  // Load necessary libraries
-  char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
-  if (s) {
-    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  } else {
-    handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    if (!handle) {
+      _DL_ERROR_MSG();
+      return;
+    }
   }
-
-  if (!handle) {
-    _DL_ERROR_MSG();
-    return 1;
-  }
-
   // Find zes symbols
   int verbose = 0;
   find_ze_symbols(handle, verbose);
@@ -768,26 +754,8 @@ int main(int argc, char **argv) {
 
   // register L0 sampler exactly once
   {
-    struct timespec interval = { .tv_sec = 0, .tv_nsec = 50000000 }; /* 50 ms */
-    thapi_register_sampling(&thapi_sampling_energy, &interval);
+    struct timespec interval = {.tv_sec = 0, .tv_nsec = 50000000}; /* 50 ms */
+    thapi_register_sampling(&thapi_sampling_energy, &interval, &finalize);
   }
-
-bypass:
-  // Run the signal loop
-  signal(RT_SIGNAL_FINISH, signal_handler_finish);
-
-  if (kill(parent_pid, RT_SIGNAL_READY) != 0) {
-    _ERROR_MSG("Failed to send READY signal to parent");
-  }
-
-  // Wait for RT_SIGNAL_FINISH to flip `running = false`
-  while (running) {
-    pause();
-  }
-
-  if (handle)
-    dlclose(handle);
-  if (parent_pid != 0)
-    kill(parent_pid, RT_SIGNAL_READY);
-  return 0;
+  return;
 }

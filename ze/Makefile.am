@@ -149,17 +149,15 @@ BUILT_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
-bin_PROGRAMS = sampling_daemon
+libzesampling_la_SOURCES = ze_sampling_plugin.c
 
-sampling_daemon_SOURCES = sampling_daemon.c
-
-nodist_sampling_daemon_SOURCES = \
+nodist_libzesampling_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
-sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/ze/include -I./
-sampling_daemon_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
-sampling_daemon_LDADD = libzetracepoints.la -ldl -lpthread $(LTTNG_UST_LIBS) ../sampling/libThapiSampling.la
+libzesampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/ze/include -I./
+libzesampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+libzesampling_la_LIBADD =  ../sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
 
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -168,7 +166,7 @@ EXTRA_DIST += \
 	gen_ze.rb \
 	tracer_ze_helpers.include.c
 
-CLEANFILES += tracer_ze.c sampling_daemon
+CLEANFILES += tracer_ze.c
 
 bin_SCRIPTS = \
 	tracer_ze.sh
@@ -186,7 +184,7 @@ libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 zedir = $(pkglibdir)/ze
-ze_LTLIBRARIES = libze_loader.la
+ze_LTLIBRARIES = libze_loader.la libzesampling.la
 
 bt2dir = $(pkglibdir)/bt2
 bt2_LTLIBRARIES = libZEInterval.la
