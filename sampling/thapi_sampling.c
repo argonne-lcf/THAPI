@@ -16,11 +16,11 @@ static pthread_mutex_t thapi_sampling_mutex = PTHREAD_MUTEX_INITIALIZER;
 static UT_array *thapi_sampling_events = NULL;
 
 static pthread_once_t thapi_init_once = PTHREAD_ONCE_INIT;
-
-static volatile int thapi_sampling_initialized = 0;
 volatile int thapi_sampling_finished = 0;
+static volatile int thapi_sampling_initialized = 0;
 
-static void __attribute__((destructor)) thapi_sampling_cleanup() {
+static void __attribute__((destructor))
+thapi_sampling_cleanup() {
   if (!thapi_sampling_initialized)
     return;
   thapi_sampling_finished = 1;
@@ -47,8 +47,7 @@ static inline int time_cmp(const struct timespec *t1, const struct timespec *t2)
   return 0;
 }
 
-static inline int sampling_entry_cmp(const struct sampling_entry **e1,
-                                     const struct sampling_entry **e2) {
+static inline int sampling_entry_cmp(const struct sampling_entry **e1, const struct sampling_entry **e2) {
   return time_cmp(&(*e1)->next, &(*e2)->next);
 }
 
@@ -56,8 +55,7 @@ static inline int sampling_entry_cmpw(const void *t1, const void *t2) {
   return sampling_entry_cmp((const struct sampling_entry **)t1, (const struct sampling_entry **)t2);
 }
 
-static inline void time_add(struct timespec *dest, const struct timespec *t,
-                            const struct timespec *d) {
+static inline void time_add(struct timespec *dest, const struct timespec *t, const struct timespec *d) {
   dest->tv_nsec = t->tv_nsec + d->tv_nsec;
   dest->tv_sec = t->tv_sec + d->tv_sec;
   while (dest->tv_nsec > 999999999) {
