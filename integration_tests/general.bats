@@ -108,3 +108,33 @@ teardown_file() {
   stop_count=`babeltrace2 trace_toggle | grep lttng_ust_toggle:stop | wc -l`
   [ "$stop_count" -eq 2 ]
 }
+
+toggle_count_traces() {
+  trace_metadata_file=`find toggle_traces -iname metadata`
+  trace_metadata_dir=$(dirname "${trace_metadata_file}")
+
+  traces=$(babeltrace2 --plugin-path=${THAPI_LIB_DIR} \
+    --component source:source.ctf.fs --params "inputs=[\"${trace_metadata_dir}\"]" \
+    --component=filter:filter.metababel_filter.btx \
+    --component=sink:sink.text.pretty)
+  rm -rf toggle_traces
+
+  echo $traces | sed -e "s/ \[/@[/g" | sed "s/@/\n/g" | grep . | wc -l
+}
+
+@test "toggle_plugin_mpi_np_1" {
+  mpicc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle_mpi.c -o thapi_toggle_mpi \
+    -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
+
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 1 $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle_mpi 0
+  count_0=$(toggle_count_traces)
+
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 1 $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle_mpi 1
+  count_1=$(toggle_count_traces)
+
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 1 $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle_mpi 2
+  count_2=$(toggle_count_traces)
+
+  [ "$count_2" -eq 0 ]
+  [ "$count_0" -gt "$count_1" ]
+}
