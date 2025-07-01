@@ -64,17 +64,17 @@ BTX_THAPI_TOGGLE_GENERATED = \
 	btx_thapi_toggle/metababel/btx_downstream.c \
 	btx_thapi_toggle/btx_main.c
 
-$(BTX_THAPI_TOGGLE_GENERATED): $(srcdir)/btx_thapi_toggle.yaml $(srcdir)/thapi_toggle_callbacks.cpp
+$(BTX_THAPI_TOGGLE_GENERATED): $(srcdir)/btx_thapi_toggle.yaml
 	$(METABABEL) --enable-callbacks on_downstream --component-type FILTER \
 		--upstream $(srcdir)/btx_thapi_toggle.yaml --downstream $(srcdir)/btx_thapi_toggle.yaml \
 		-o btx_thapi_toggle
 
-noinst_LTLIBRARIES = libThapiPlugin.la
-nodist_libThapiPlugin_la_SOURCES = $(BTX_THAPI_TOGGLE_GENERATED)
-libThapiPlugin_la_SOURCES = thapi_toggle_callbacks.cpp
-libThapiPlugin_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
+lib_LTLIBRARIES += libThapiToggle.la
+nodist_libThapiToggle_la_SOURCES = $(BTX_THAPI_TOGGLE_GENERATED)
+libThapiToggle_la_SOURCES = thapi_toggle_callbacks.cpp
+libThapiToggle_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
                            -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
-libThapiPlugin_la_CXXFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
+libThapiToggle_la_CXXFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
                              -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
 
 BUILT_SOURCES += \
