@@ -145,3 +145,23 @@ toggle_count_traces() {
   [ "$count_2" -eq 0 ]
   [ "$count_0" -gt "$count_1" ]
 }
+
+toggle_count_vpids() {
+  vpids=$(babeltrace2 toggle_traces | sed -e "s/, { vpid = /\nvpid,/g" | grep vpid | awk '{ split($0,a,","); print a[2] }' | sort | uniq | wc -l)
+  rm -rf toggle_traces
+  echo $vpids
+}
+
+@test "toggle_plugin_mpi_np_2" {
+  mpicc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle_mpi.c -o thapi_toggle_mpi \
+    -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
+
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 2 $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle_mpi 0
+  count_0=$(toggle_count_vpids)
+
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 2 $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle_mpi 1
+  count_1=$(toggle_count_vpids)
+
+  [ "$count_0" -eq 2 ]
+  [ "$count_1" -eq 1 ]
+}
