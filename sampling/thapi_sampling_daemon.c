@@ -38,11 +38,10 @@ int main(int argc, char **argv) {
   int parent_pid = 0;
   parent_pid = atoi(argv[1]);
 
-  // Setup signaling, to exist the sampling loop
-  sigset_t signal_set;
-  sigemptyset(&signal_set);
-  sigaddset(&signal_set, RT_SIGNAL_FINISH);
-  signal(RT_SIGNAL_FINISH, signal_handler_finish);
+  // Setup signaling, to exit the sampling loop
+  struct sigaction sa = { .sa_handler = signal_handler_finish };
+  sigemptyset(&sa.sa_mask); // Do not block other signal
+  sigaction(RT_SIGNAL_FINISH, &sa, NULL);
 
   // Initialization
   thapi_sampling_init();
