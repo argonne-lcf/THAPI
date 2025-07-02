@@ -16,25 +16,27 @@ struct sampling_entry {
 
 
 static pthread_mutex_t thapi_sampling_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t thapi_sampling_cond = PTHREAD_COND_INITIALIZER;
 static UT_array *thapi_sampling_events = NULL;
 
 static pthread_once_t thapi_init_once = PTHREAD_ONCE_INIT;
-static volatile int thapi_sampling_finished = 0;
-static volatile int thapi_sampling_initialized = 0;
+static int thapi_sampling_finished = 0;
+static int thapi_sampling_initialized = 0;
 static pthread_t thapi_sampling_thread;
 
 static void __attribute__((destructor))
 thapi_sampling_cleanup() {
   if (!thapi_sampling_initialized)
     return;
-  thapi_sampling_finished = 1;
-  pthread_join(thapi_sampling_thread, NULL);
   pthread_mutex_lock(&thapi_sampling_mutex);
+  thapi_sampling_finished = 1;
   struct sampling_entry **entry = NULL;
   while ((entry = (struct sampling_entry **)utarray_next(thapi_sampling_events, entry)))
     free(*entry);
   utarray_free(thapi_sampling_events);
+  pthread_cond_signal(&thapi_sampling_cond);
   pthread_mutex_unlock(&thapi_sampling_mutex);
+  pthread_join(thapi_sampling_thread, NULL);
 }
 
 static inline int time_cmp(const struct timespec * t1, const struct timespec * t2) {
@@ -70,9 +72,14 @@ void * thapi_sampling_loop(void *args) {
   (void)args;
   while(!thapi_sampling_finished) {
     struct timespec now;
+    struct timespec target;
     struct sampling_entry **entry = NULL;
 
     pthread_mutex_lock(&thapi_sampling_mutex);
+    while(!thapi_sampling_finished && utarray_len(thapi_sampling_events)==0)
+      pthread_cond_wait(&thapi_sampling_cond, &thapi_sampling_mutex);
+    if (thapi_sampling_finished)
+      break;
     clock_gettime(CLOCK_REALTIME, &now);
     while ((entry = (struct sampling_entry **)utarray_next(thapi_sampling_events, entry)) &&
            time_cmp(&(*entry)->next, &now) < 0) {
@@ -83,10 +90,10 @@ void * thapi_sampling_loop(void *args) {
     }
     utarray_sort(thapi_sampling_events, sampling_entry_cmpw);
     entry = (struct sampling_entry **)utarray_front(thapi_sampling_events);
+    target = (*entry)->next;
     pthread_mutex_unlock(&thapi_sampling_mutex);
-    if (entry)
-      while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &(*entry)->next, NULL) && !thapi_sampling_finished) 
-        ;
+    while (clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &target, NULL) && !thapi_sampling_finished)
+      ;
   }
   return NULL;
 }
@@ -118,7 +125,7 @@ void thapi_sampling_init_once() {
     thapi_sampling_initialized = 1;
 }
 
-int thapi_sampling_init() {
+static inline int thapi_sampling_init() {
   if (getenv("LTTNG_UST_SAMPLING"))
     pthread_once(&thapi_init_once, &thapi_sampling_init_once);
   return 1;
@@ -127,6 +134,7 @@ int thapi_sampling_init() {
 thapi_sampling_handle_t thapi_register_sampling(void (*pfn)(void), struct timespec *interval) {
   struct sampling_entry *entry = NULL;
   struct timespec now, next;
+  thapi_sampling_init();
   if(clock_gettime(CLOCK_REALTIME, &now))
     return NULL;
   time_add(&next, &now, interval);
@@ -142,6 +150,7 @@ thapi_sampling_handle_t thapi_register_sampling(void (*pfn)(void), struct timesp
   entry->next = next;
   utarray_push_back(thapi_sampling_events, &entry);
   utarray_sort(thapi_sampling_events, sampling_entry_cmpw);
+  pthread_cond_signal(&thapi_sampling_cond);
 end:
   pthread_mutex_unlock(&thapi_sampling_mutex);
   return entry;
@@ -159,6 +168,7 @@ void thapi_unregister_sampling(thapi_sampling_handle_t handle)
       (struct sampling_entry **)utarray_eltptr(thapi_sampling_events, i);
     if (*p == entry) {
       utarray_erase(thapi_sampling_events, i, 1);
+      free(entry);
       break;
     }
   }

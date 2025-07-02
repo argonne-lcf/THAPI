@@ -738,7 +738,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  thapi_sampling_init(); // Initialize sampling (also starts sampling thread)
   void *handle = NULL;
   {
     char *s = getenv("LTTNG_UST_SAMPLING_ENERGY");
