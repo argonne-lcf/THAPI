@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <signal.h>
 // Define both header
 #include "thapi_sampling.h"
 #include "thapi_sampling_register.h"
@@ -16,7 +17,8 @@ static pthread_mutex_t thapi_sampling_mutex = PTHREAD_MUTEX_INITIALIZER;
 static UT_array *thapi_sampling_events = NULL;
 
 static pthread_once_t thapi_init_once = PTHREAD_ONCE_INIT;
-volatile int thapi_sampling_finished = 0;
+// Will be used in a signal context
+static volatile sig_atomic_t thapi_sampling_finished = 0;
 static volatile int thapi_sampling_initialized = 0;
 
 static void __attribute__((destructor))
@@ -90,8 +92,7 @@ end:
   return;
 }
 
-void *thapi_sampling_loop(void *args) {
-  (void)args;
+int thapi_sampling_start_loop() {
   while (!thapi_sampling_finished) {
     struct timespec now;
     struct sampling_entry **entry = NULL;
@@ -113,7 +114,7 @@ void *thapi_sampling_loop(void *args) {
              !thapi_sampling_finished)
         ;
   }
-  return NULL;
+  return 0;
 }
 
 static void thapi_sampling_init_once() {
@@ -125,5 +126,10 @@ static void thapi_sampling_init_once() {
 
 int thapi_sampling_init() {
   pthread_once(&thapi_init_once, &thapi_sampling_init_once);
+  return 0;
+}
+
+int thapi_sampling_stop() {
+  thapi_sampling_finished = 1;
   return 0;
 }

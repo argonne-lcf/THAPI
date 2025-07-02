@@ -29,7 +29,7 @@ typedef void (*plugin_init_func)();
 
 static void signal_handler_finish(int signum) {
   if (signum == RT_SIGNAL_FINISH) {
-    thapi_sampling_finished = 1;
+    thapi_sampling_stop();
   }
 }
 
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   // Signal Ready to manager
   kill(parent_pid, RT_SIGNAL_READY);
   // Run until signal is coming
-  thapi_sampling_loop(NULL);
+  thapi_sampling_start_loop();
   // Call destructor
   kill(parent_pid, RT_SIGNAL_READY);
 
