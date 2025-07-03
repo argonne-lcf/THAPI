@@ -32,22 +32,28 @@ RUN_MPI_DAEMON() {
 }
 
 calc_iprof_vpids() {
-  rm -rf $1_traces
-
-  THAPI_SYNC_DAEMON=$1 THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 $IPROF --no-analysis --trace-output $1_traces -- ./mpi_helloworld > /dev/null
-
   dir=$(ls -d -1 ./$1_traces/*/)
-  vpids=$($BBT -c $dir | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l)
-  echo $vpids
+  $BBT -c $dir | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l
+}
+
+exec_iprof_vpids() {
+  rm -rf $1_traces
+  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+
+  if [ "$1" == "mpi" ]; then
+    RUN_MPI_DAEMON -n 2 $IPROF --no-analysis --trace-output $1_traces -- ./mpi_helloworld > /dev/null
+  elif [ "$1" == "fs" ]; then
+    RUN_FS_DAEMON -n 2 $IPROF --no-analysis --trace-output $1_traces -- ./mpi_helloworld > /dev/null
+  fi
 }
 
 @test "iprof_vpids_mpi" {
-  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+  exec_iprof_vpids mpi
   [ "$(calc_iprof_vpids mpi)" -eq 2 ]
 }
 
 @test "iprof_vpids_fs" {
-  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+  exec_iprof_vpids fs
   [ "$(calc_iprof_vpids fs)" -eq 2 ]
 }
 
