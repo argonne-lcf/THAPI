@@ -820,7 +820,8 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
     # Spawn sampling daemon before starting user apps
-    sampling_daemon = SamplingDaemon.new(h, h['THAPI_SAMPLING_LIBRARIES'].gsub!(':', ' '))
+    l_so = h.fetch('THAPI_SAMPLING_LIBRARIES','').gsub(':', ' ')
+    sampling_daemon = SamplingDaemon.new(h, l_so)
 
     syncd.local_barrier('waiting_for_lttng_setup')
 
