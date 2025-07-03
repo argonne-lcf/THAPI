@@ -35,16 +35,12 @@ calc_iprof_vpids() {
 
 @test "iprof_vpids_mpi" {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-
-  vpids=$(calc_iprof_vpids mpi)
-  [ "$vpids" -eq 2 ]
+  [ "$(calc_iprof_vpids mpi)" -eq 2 ]
 }
 
 @test "iprof_vpids_fs" {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-
-  vpids=$(calc_iprof_vpids fs)
-  [ "$vpids" -eq 2 ]
+  [ "$(calc_iprof_vpids fs)" -eq 2 ]
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
