@@ -53,7 +53,7 @@ toggle_count_base() {
 
 toggle_count_traces() {
   traces=$(toggle_count_base $1 $2)
-  echo $traces | sed -e "s/ \[/@[/g" | sed "s/@/\n/g" | grep . | wc -l
+  echo $traces | sed -e "s/ \[/\n[/g" | grep . | wc -l
 }
 
 @test "toggle_plugin_mpi_np_1" {
