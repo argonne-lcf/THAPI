@@ -12,6 +12,5 @@ teardown_file() {
        bash -c 'sleep 2'
    $THAPI_BIN_DIR/babeltrace_thapi --no-restrict heartbeat_trace | grep  "{foo: 16}"
    [ $("$THAPI_BIN_DIR"/babeltrace_thapi --no-restrict heartbeat_trace | grep -c "{foo: 32}")  == 1 ]
-
 }
 
