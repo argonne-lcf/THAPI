@@ -49,23 +49,30 @@ libThapiSampling_la_SOURCES = \
 	thapi_sampling.h \
 	thapi_sampling.c
 
-libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include
+libThapiSampling_la_CPPFLAGS = -I$(top_srcdir)/utils/include
+libThapiSampling_la_CFLAGS = -Wall -Wextra $(WERROR)
 libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0 $(LTTNG_UST_LIBS)
 
-samplingdir = $(pkglibdir)/sampling
-sampling_LTLIBRARIES = libThapiSampling.la
-
 bin_PROGRAMS = thapi_sampling_daemon
-
-nodist_thapi_sampling_daemon_SOURCES = \
-	$(SAMPLING_STATIC_PROBES_INCL)
 
 thapi_sampling_daemon_SOURCES = \
 	thapi_sampling.h \
 	thapi_sampling_daemon.cpp
 
 thapi_sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils/include
-thapi_sampling_daemon_CXXFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
-thapi_sampling_daemon_LDADD = libThapiSampling.la libsamplingtracepoints.la
+thapi_sampling_daemon_CXXFLAGS = -Wall -Wextra $(WERROR)
+
+libheartbeatsampling_la_SOURCES = heartbeat_sampling_plugin.c
+
+nodist_libheartbeatsampling_la_SOURCES = \
+	$(SAMPLING_STATIC_PROBES_INCL)
+
+libheartbeatsampling_la_CPPFLAGS = -I$(top_srcdir)/utils/include
+libheartbeatsampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
+libheartbeatsampling_la_LDFLAGS = -avoid-version -module
+libheartbeatsampling_la_LIBADD = libThapiSampling.la libsamplingtracepoints.la -ldl $(LTTNG_UST_LIBS)
+
+samplingdir = $(pkglibdir)/sampling
+sampling_LTLIBRARIES = libThapiSampling.la libheartbeatsampling.la
 
 CLEANFILES += $(bin_PROGRAMS)

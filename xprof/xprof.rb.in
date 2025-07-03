@@ -497,6 +497,7 @@ def env_tracers
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
+    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libheartbeatsampling.so')
   end
 
   backends = [] unless need_backend
@@ -819,7 +820,7 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
     # Spawn sampling daemon before starting user apps
-    sampling_daemon = SamplingDaemon.new(h, h['THAPI_SAMPLING_LIBRARIES'])
+    sampling_daemon = SamplingDaemon.new(h, h['THAPI_SAMPLING_LIBRARIES'].gsub!(':', ' '))
 
     syncd.local_barrier('waiting_for_lttng_setup')
 

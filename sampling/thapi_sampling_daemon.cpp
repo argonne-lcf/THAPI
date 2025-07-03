@@ -1,25 +1,18 @@
-#include "thapi_sampling.h"
 #include <csignal>
+#include <cstdlib>
 #include <dlfcn.h>
+#include <iostream>
 #include <vector>
-// LTTng tracepoints heartbeat
-#include "sampling.h"
-#include <ctime>
 #define RT_SIGNAL_READY (SIGRTMIN)
 #define RT_SIGNAL_FINISH (SIGRTMIN + 3)
-
-static void thapi_sampling_heartbeat() { do_tracepoint(lttng_ust_sampling, heartbeat, 16); }
-static void thapi_sampling_heartbeat2() { do_tracepoint(lttng_ust_sampling, heartbeat2); }
 
 typedef void (*plugin_initialize_func)(void);
 typedef void (*plugin_finalize_func)(void);
 
 int main(int argc, char **argv) {
 
-   // Setup signaling, to exit the sampling loop
-  int parent_pid = 0;
-  parent_pid = atoi(argv[1]);
-
+  // Setup signaling, to exit the sampling loop
+  int parent_pid = std::atoi(argv[1]);
   sigset_t signal_set;
   sigemptyset(&signal_set);
   sigaddset(&signal_set, RT_SIGNAL_FINISH);
@@ -37,7 +30,7 @@ int main(int argc, char **argv) {
   for (int i = 2; i < argc; ++i) {
     void *handle = dlopen(argv[i], RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
     if (!handle) {
-      fprintf(stderr, "Failed to load %s: %s\n", argv[i], dlerror());
+      std::cerr << "Failed to load " << argv[i] << ": " << dlerror() << std::endl;
       continue;
     }
     plugin_initialize_func init_func =
@@ -47,21 +40,6 @@ int main(int argc, char **argv) {
         reinterpret_cast<plugin_finalize_func>(dlsym(handle, "thapi_finalize_sampling_plugin"));
 
     plugins.push_back({handle, init_func, fini_func});
-  }
-
-  // Register test sample.
-  // TODO: Should be moved in their "sampling_test.so"
-  if (getenv("LTTNG_UST_SAMPLING_HEARTBEAT")) {
-    struct timespec interval;
-    interval.tv_sec = 1;
-    interval.tv_nsec = 100000000;
-    thapi_register_sampling(&thapi_sampling_heartbeat, &interval);
-  }
-  if (getenv("LTTNG_UST_SAMPLING_HEARTBEAT2")) {
-    struct timespec interval;
-    interval.tv_sec = 2;
-    interval.tv_nsec = 30000000;
-    thapi_register_sampling(&thapi_sampling_heartbeat2, &interval);
   }
 
   // User pluging

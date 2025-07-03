@@ -157,6 +157,7 @@ nodist_libzesampling_la_SOURCES = \
 
 libzesampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/ze/include -I./
 libzesampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+libzesampling_la_LDFLAGS = -avoid-version -module
 libzesampling_la_LIBADD =  ../sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
 
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
