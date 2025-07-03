@@ -28,8 +28,8 @@ calc_iprof_vpids() {
 
   THAPI_SYNC_DAEMON=$1 THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 $IPROF --no-analysis --trace-output $1_traces -- ./mpi_helloworld > /dev/null
 
-  dir=$(ls -d -1 ./$1_traces/**)
-  vpids=$($BBT -c $dir | sed -e "s/ - /, /g" | sed -e "s/,/\n/g" | grep vpid | sort | uniq | wc -l)
+  dir=$(ls -d -1 ./$1_traces/*/)
+  vpids=$($BBT -c $dir | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l)
   echo $vpids
 }
 
