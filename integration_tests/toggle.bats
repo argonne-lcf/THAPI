@@ -9,6 +9,7 @@ setup_file() {
 
    export IPROF=$THAPI_BIN_DIR/iprof
    export MPIRUN=${MPIRUN:-mpirun}
+   export BBT=${THAPI_BIN_DIR}/babeltrace_thapi
 }
 
 teardown_file() {
@@ -24,12 +25,14 @@ get_unique_jobid() {
 
   cc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle.c -o thapi_toggle \
     -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
-  $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle
 
-  start_count=`babeltrace2 toggle_traces | grep lttng_ust_toggle:start | wc -l`
+  $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle
+  dir=$(ls -d -1 ./toggle_traces/*/)
+
+  start_count=`$BBT -c $dir | grep lttng_ust_toggle:start | wc -l`
   [ "$start_count" -eq 1 ]
 
-  stop_count=`babeltrace2 toggle_traces | grep lttng_ust_toggle:stop | wc -l`
+  stop_count=`$BBT -c $dir | grep lttng_ust_toggle:stop | wc -l`
   [ "$stop_count" -eq 2 ]
 }
 
