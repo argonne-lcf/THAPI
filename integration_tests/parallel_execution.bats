@@ -15,12 +15,20 @@ get_unique_jobid() {
   echo ${BATS_TEST_NAME}.${RANDOM}
 }
 
+RUN_FS_DAEMON() {
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN $@
+}
+
+RUN_MPI_DAEMON() {
+  THAPI_SYNC_DAEMON=mpi THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN $@
+}
+
 @test "sync_daemon_fs" {
-   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   RUN_FS_DAEMON -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
 }
 
 @test "iprof_fs" {
-   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   RUN_FS_DAEMON -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
 }
 
 calc_iprof_vpids() {
@@ -44,19 +52,19 @@ calc_iprof_vpids() {
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
-   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh ./mpi_helloworld
+  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+  RUN_FS_DAEMON -n 2 ./integration_tests/light_iprof_only_sync.sh ./mpi_helloworld
 }
 
 @test "sync_daemon_mpi" {
-   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+  RUN_MPI_DAEMON -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
 }
 
 @test "iprof_mpi" {
-   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
+  RUN_MPI_DAEMON -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
 }
 
 @test "sync_daemon_mpi_launching_mpi_app" {
-   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   THAPI_SYNC_DAEMON=mpi THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh ./mpi_helloworld
+  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+  RUN_MPI_DAEMON -n 2 ./integration_tests/light_iprof_only_sync.sh ./mpi_helloworld
 }
