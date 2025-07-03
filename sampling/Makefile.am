@@ -47,7 +47,6 @@ BUILT_SOURCES = \
 
 libThapiSampling_la_SOURCES = \
 	thapi_sampling.h \
-	thapi_sampling_register.h \
 	thapi_sampling.c
 
 libThapiSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include
@@ -63,11 +62,10 @@ nodist_thapi_sampling_daemon_SOURCES = \
 
 thapi_sampling_daemon_SOURCES = \
 	thapi_sampling.h \
-	thapi_sampling_register.h \
-	thapi_sampling_daemon.c
+	thapi_sampling_daemon.cpp
 
-thapi_sampling_daemon_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -I$(top_srcdir)/utils/include $(LTTNG_UST_CFLAGS)
-thapi_sampling_daemon_LDFLAGS = -lpthread
+thapi_sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils/include
+thapi_sampling_daemon_CXXFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
 thapi_sampling_daemon_LDADD = libThapiSampling.la libsamplingtracepoints.la
 
 CLEANFILES += $(bin_PROGRAMS)

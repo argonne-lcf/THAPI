@@ -1,4 +1,4 @@
-#include "thapi_sampling_register.h"
+#include "thapi_sampling.h"
 #include "ze_build.h"
 #include "ze_sampling.h"
 #include <dlfcn.h>
@@ -718,14 +718,10 @@ static void thapi_sampling_energy() {
   }
 }
 
-static void *handle = NULL;
+static void *dl_handle = NULL;
+static void *plugin_handle = NULL;
 
-static void finalize(void) {
-  if (handle)
-    dlclose(handle);
-}
-
-void thapi_register_sampling_plugin(void) {
+void thapi_initialize_sampling_plugin(void) {
   {
     char *s = getenv("LTTNG_UST_ZE_SAMPLING_ENERGY");
     if (!s || strcmp(s, "0") == 0)
@@ -735,19 +731,19 @@ void thapi_register_sampling_plugin(void) {
     // Load necessary libraries
     char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
     if (s) {
-      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+      dl_handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
     } else {
-      handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+      dl_handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
     }
 
-    if (!handle) {
+    if (!dl_handle) {
       _DL_ERROR_MSG();
       return;
     }
   }
   // Find zes symbols
   int verbose = 0;
-  find_ze_symbols(handle, verbose);
+  find_ze_symbols(dl_handle, verbose);
 
   // Initialize device and telemetry handles
   initializeHandles();
@@ -755,7 +751,13 @@ void thapi_register_sampling_plugin(void) {
   // register L0 sampler exactly once
   {
     struct timespec interval = {.tv_sec = 0, .tv_nsec = 50000000}; /* 50 ms */
-    thapi_register_sampling(&thapi_sampling_energy, &interval, &finalize);
+    plugin_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
   }
   return;
+}
+
+void thapi_finalize_sampling_plugin(void) {
+  thapi_unregister_sampling(plugin_handle);
+  if (dl_handle)
+    dlclose(dl_handle);
 }
