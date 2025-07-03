@@ -11,6 +11,10 @@ teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
 }
 
+get_unique_jobid() {
+  echo ${BATS_TEST_NAME}.${RANDOM}
+}
+
 @test "sync_daemon_fs" {
    THAPI_SYNC_DAEMON=fs THAPI_JOBID=0 timeout 40s $MPIRUN -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
 }
@@ -22,21 +26,25 @@ teardown_file() {
 calc_iprof_vpids() {
   rm -rf $1_traces
 
-  THAPI_SYNC_DAEMON=$1 THAPI_JOBID=0 timeout 40s $MPIRUN -n 2 $IPROF --no-analysis --trace-output $1_traces -- ./mpi_helloworld > /dev/null
+  THAPI_SYNC_DAEMON=$1 THAPI_JOBID=$BATS_TEST_NAME.$RANDOM timeout 40s $MPIRUN -n 2 $IPROF --no-analysis --trace-output $1_traces -- ./mpi_helloworld > /dev/null
 
   dir=$(ls -d -1 ./$1_traces/**)
   vpids=$($BBT -c $dir | sed -e "s/ - /, /g" | sed -e "s/,/\n/g" | grep vpid | sort | uniq | wc -l)
   echo $vpids
 }
 
-@test "iprof_vpids" {
+@test "iprof_vpids_mpi" {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
 
-  mpi_vpids=$(calc_iprof_vpids mpi)
-  [ "$mpi_vpids" -eq 2 ]
+  vpids=$(calc_iprof_vpids mpi)
+  [ "$vpids" -eq 2 ]
+}
 
-  fs_vpids=$(calc_iprof_vpids fs)
-  [ "$fs_vpids" -eq 2 ]
+@test "iprof_vpids_fs" {
+  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+
+  vpids=$(calc_iprof_vpids fs)
+  [ "$vpids" -eq 2 ]
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
