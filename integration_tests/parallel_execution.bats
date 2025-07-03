@@ -32,8 +32,7 @@ RUN_MPI_DAEMON() {
 }
 
 calc_iprof_vpids() {
-  dir=$(ls -d -1 ./$1_traces/*/)
-  $BBT -c $dir | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l
+  $BBT -c $1_traces | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l
 }
 
 exec_iprof_vpids() {
