@@ -11,10 +11,8 @@ teardown_file() {
 }
 
 launch_mpi() {
-  # - THAPI_JOBID required as no launcher are available on the CI who define MPIJOBID,
-  #   each JOBID need to be uniqu per invocation
   # - timeout just to avoid burning too much hours when bug are introduced 
-  THAPI_JOBID=${BATS_TEST_NAME}.${RANDOM} timeout 40s $MPIRUN "$@"
+  timeout 40s $MPIRUN "$@"
 }
 
 # THAPI_SYNC_DAEMON=fs Tests

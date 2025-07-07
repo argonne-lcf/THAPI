@@ -142,10 +142,25 @@ end
 #   |\/| |_) |    |_ ._
 #   |  | |  _|_   |_ | | \/
 #
-def in_mpi_env?
-  !env_fetch_first('THAPI_JOBID', 'PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK').nil?
+
+# We need to determine if we are in a MPI environement
+# The easiest is to check for a "JOBID" set by the launcher
+def _mpi_env
+  env_fetch_first('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid',
+                  'I_MPI_HYDRA_UUID')
 end
 
+def in_mpi_env?
+  @in_mpi_env ||= !_mpi_env.nil?
+end
+
+# Multiple iprof may run in parallel (for example using ctest),
+#   so use a random hex if not runned on a mpi context
+def mpi_job_id
+  @mpi_job_id ||= in_mpi_env? ? _mpi_env : SecureRandom.hex
+end
+
+# We need all the env set for `iprof` to run
 def env_fetch_first_mpi(*args, default: nil)
   v = env_fetch_first(*args)
   if in_mpi_env?
@@ -160,25 +175,18 @@ def env_fetch_first_mpi(*args, default: nil)
   end
 end
 
-# Multiple iprof may run in parallel (for example using ctest),
-# so use a random hex by default
-def mpi_job_id
-  @mpi_job_id ||= env_fetch_first_mpi('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid',
-                                      default: SecureRandom.hex)
-end
-
 def mpi_rank_id
-  env_fetch_first_mpi('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+  @mpi_rank_id ||= env_fetch_first_mpi('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
 end
 
 def mpi_local_size
-  env_fetch_first_mpi('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS',
-                      default: 1).to_i
+  @mpi_local_size ||= env_fetch_first_mpi('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS',
+                                          default: 1).to_i
 end
 
 def mpi_local_rank_id
-  env_fetch_first_mpi('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID',
-                      default: 0).to_i
+  @mpi_local_rank_id ||= env_fetch_first_mpi('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID',
+                                             default: 0).to_i
 end
 
 def mpi_local_master?
@@ -324,6 +332,7 @@ class SyncDaemon < SpawnDaemon
                end
              when 'mpi'
                raise("No #{BINDIR}/sync_daemon_mpi binary") unless File.exist?("#{BINDIR}/sync_daemon_mpi")
+
                "#{BINDIR}/sync_daemon_mpi"
              when 'fs'
                "#{BINDIR}/sync_daemon_fs"
@@ -505,7 +514,7 @@ def launch_usr_bin(env, cmd)
   LOGGER.info { "Launch_usr_bin #{cmd}" }
 
   # Merge standard output and standard error
-  IO.popen(env, cmd, err: [:child, :out]) do |io|
+  IO.popen(env, cmd, err: %i[child out]) do |io|
     # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
     io.sync = true
     io.each { |line| print line }
@@ -896,19 +905,18 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('--trace-output PATH', 'Define where the CTF trace will be saved.',
             'Default: `$THAPI_HOME/thapi-traces/thapi--[trace-type][date]`',
             '(`$THAPI_HOME` defaults to `$HOME`,',
-            ' and `date` is formatted using ISO 8601 convention).',
-            ) do |p|
+            ' and `date` is formatted using ISO 8601 convention).') do |p|
     raise(OptionParser::ParseError, "#{p} already exists") if mpi_master? && File.exist?(p)
 
     p
   end
 
   parser.on('--analysis-output PATH',
-           'Define where the analysis output (summary, pretty printing, etc.) will be saved.',
-           'Default: printed to `stdout`.')
+            'Define where the analysis output (summary, pretty printing, etc.) will be saved.',
+            'Default: printed to `stdout`.')
   # Tracing
   parser.on('-m', '--tracing-mode MODE', 'Define the category of events to trace.', default: 'default',
-                                                                                 allowed: %w[minimal default full])
+                                                                                    allowed: %w[minimal default full])
   parser.on('--traced-ranks RANK', Array, 'Select which MPI ranks will be traced.',
             'Use -1 to trace all ranks.',
             default: Set[-1]) do |ranks|
@@ -925,7 +933,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.on('--[no-]analysis', 'Enable or disable analysis of the LTTng trace.', default: true)
 
   # General Options
-  parser.on('-b', '--backends BACKENDS', Array, "Select which backends to use and their grouping level.",
+  parser.on('-b', '--backends BACKENDS', Array, 'Select which backends to use and their grouping level.',
             'Format: backend_name[:backend_level],...',
             default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
@@ -993,7 +1001,7 @@ if __FILE__ == $PROGRAM_NAME
   options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
   OPTIONS = options.freeze
 
-  if (launcher = ["mpirun","mpiexec"].find{ |b| ARGV.include?(b) } )
+  if (launcher = %w[mpirun mpiexec].find { |b| ARGV.include?(b) })
     warn(<<~EOF
       WARNING: It looks like you are trying to trace an MPI application.
       The recommended way is to use:
@@ -1004,7 +1012,7 @@ if __FILE__ == $PROGRAM_NAME
       and may also profile the MPI launcher (e.g., PALS).
 
     EOF
-    )
+        )
   end
 
   # Setup Logger
