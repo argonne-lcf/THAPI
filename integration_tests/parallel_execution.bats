@@ -3,6 +3,7 @@
 setup_file() {
    export THAPI_HOME=$PWD
    export IPROF=$THAPI_BIN_DIR/iprof
+   export BBT=$THAPI_BIN_DIR/babeltrace_thapi
    export MPIRUN=${MPIRUN:-mpirun}
 }
 
@@ -24,7 +25,9 @@ launch_mpi() {
 }
 
 @test "iprof_fs" {
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $THAPI_TEST_BIN
+   # Count VPID
+   [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
@@ -39,7 +42,9 @@ launch_mpi() {
 }
 
 @test "iprof_mpi" {
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF --debug 0 -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $THAPI_TEST_BIN
+   # Count VPID
+   [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_mpi_launching_mpi_app" {
