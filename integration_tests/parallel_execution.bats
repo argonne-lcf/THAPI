@@ -30,7 +30,7 @@ launch_mpi() {
 
 @test "sync_daemon_fs_launching_mpi_app" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh ./mpi_helloworld
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF ./mpi_helloworld
 }
 
 # THAPI_SYNC_DAEMON=MPI Tests
@@ -47,5 +47,5 @@ launch_mpi() {
 
 @test "sync_daemon_mpi_launching_mpi_app" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh ./mpi_helloworld
+   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF ./mpi_helloworld
 }
