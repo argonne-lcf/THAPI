@@ -64,9 +64,8 @@ AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 
 # By default `--enable-mpi`, will set the "enable_mpi" variable
 AC_ARG_ENABLE([mpi], AS_HELP_STRING([--disable-mpi], [Disable mpi sync daemon]))
-AS_IF([test "x$enable_mpi" != xno], [
-  AX_MPI([enable_mpi=yes], [enable_mpi=no])
-  ])
+AS_IF([test "x$enable_mpi" != xno], [AX_MPI([enable_mpi=yes], [enable_mpi=no])])
+AS_IF([test "x$enable_mpi" != xno], [AX_MPI_SESSION([enable_mpi=yes], [enable_mpi=no])])
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_mpi" != "xno"])
 
 AC_ARG_ENABLE([clang-parser], AS_HELP_STRING([--enable-clang-parser], [Enable clang parser]))
