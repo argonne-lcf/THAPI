@@ -47,5 +47,6 @@ launch_mpi() {
 
 @test "sync_daemon_mpi_launching_mpi_app" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF ./mpi_helloworld
+   # Current bug in the CI where `mpi_finalize_session` hang
+   THAPI_SYNC_DAEMON_MPI_NO_FINALIZE=1 THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF ./mpi_helloworld
 }
