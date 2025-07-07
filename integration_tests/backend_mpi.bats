@@ -6,7 +6,7 @@ setup_file() {
    export MPIRUN=${MPIRUN:-mpirun}
 }
 
-@test "sync_daemon_mpi_launching_mpi_app" {
+@test "backend_mpi_sanity_check" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
    $IPROF --backends mpi --analysis-output out.txt -- ./mpi_helloworld
    grep MPI_Init out.txt
