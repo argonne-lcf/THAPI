@@ -31,7 +31,7 @@ runs:
         git clone https://github.com/lttng/lttng-ust
         cd lttng-ust
         git checkout 3ca9bd6a5eb76479b7703d493eb40b0b9973904f
-        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/refs/heads/main/packages/lttng-ust/55cca69.diff
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/a57eb4fa1b2b8621bb0e83a6ec25e48e3a761d15/packages/lttng-ust/55cca69.diff
         patch -p1 < 55cca69.diff
         ./bootstrap
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
