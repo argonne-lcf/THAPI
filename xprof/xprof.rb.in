@@ -29,25 +29,20 @@ class XprofExitCode
   @@exit_code = 0
   def self.update(status, name)
     # Keep only the first error
-    exit_code = if status.exitstatus.nil?
+    exit_code = if status.signaled?
                   LOGGER.error("#{name} : #{status}")
-                  139
-                else
+                  status.termsig
+                elsif status.exited?
                   status.exitstatus
+                else
+                  LOGGER.fatal { "#{name} exited with an unknow error" }
+                  exit(1)
                 end
     @@exit_code = exit_code if @@exit_code == 0
   end
 
   def self.get
     @@exit_code
-  end
-end
-
-class XprofExitStatus
-  attr_reader :exitstatus
-
-  def initialize(exitstatus)
-    @exitstatus = exitstatus
   end
 end
 
@@ -519,9 +514,7 @@ def launch_usr_bin(env, cmd)
     io.sync = true
     io.each { |line| print line }
   rescue Interrupt
-    LOGGER.warn { 'Application Received Interrupt Signal' }
-    # SigINT is 2
-    XprofExitStatus.new(2)
+    # Just continue as usual, do not crash xprof
   rescue Errno::ENOENT
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
