@@ -30,7 +30,9 @@ runs:
         # lttng-ust
         git clone https://github.com/lttng/lttng-ust
         cd lttng-ust
-        git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69
+        git checkout 3ca9bd6a5eb76479b7703d493eb40b0b9973904f
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/refs/heads/main/packages/lttng-ust/55cca69.diff
+        patch -p1 < 55cca69.diff
         ./bootstrap
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
         make -j$(nproc)
