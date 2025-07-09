@@ -484,7 +484,7 @@ def env_tracers
       #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
       h['ZES_ENABLE_SYSMAN'] = 0
       h['LTTNG_UST_ZE_SAMPLING_ENERGY'] = 1
-      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libzesampling.so')
+      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
     end
   end
   if OPTIONS[:'backend-names'].include?('omp')
@@ -497,7 +497,7 @@ def env_tracers
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
-    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libheartbeatsampling.so')
+    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libHeartbeatSampling.so')
   end
 
   backends = [] unless need_backend
