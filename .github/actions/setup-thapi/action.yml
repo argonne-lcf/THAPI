@@ -28,9 +28,8 @@ runs:
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
         # lttng-ust
-        git clone https://github.com/lttng/lttng-ust
+        git clone https://github.com/lttng/lttng-ust -b v2.14.0
         cd lttng-ust
-        git checkout b108feda90e21619a57e932491426404a27b0f4e
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/a57eb4fa1b2b8621bb0e83a6ec25e48e3a761d15/packages/lttng-ust/55cca69.diff
         patch -p1 < 55cca69.diff
         ./bootstrap
@@ -42,7 +41,7 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: | 
-        git clone -b anl-ms3 https://github.com/argonne-lcf/lttng-tools.git
+        git clone -b anl-ms3-v2.14.0 https://github.com/argonne-lcf/lttng-tools.git
         cd lttng-tools
         ./bootstrap
         ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
