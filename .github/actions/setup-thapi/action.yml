@@ -50,8 +50,8 @@ runs:
     - name: Build lttng-tools
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
-      run: | 
-        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-ms3-v2.14.0 
+      run: |
+        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-ms3-v2.14.0
         cd lttng-tools
         ./bootstrap
         ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
@@ -65,12 +65,10 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone -b anl-ms3 https://github.com/argonne-lcf/babeltrace.git
+        git clone https://github.com/efficios/babeltrace.git -b v2.1.1
         cd babeltrace
-        wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
-        patch -p1 < str_nullptr.patch
-        wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
-        patch -p1 < bt_makefile.patch
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/ddc9a12a498331a7c312941df0d4e7078d03ae93/packages/babeltrace2/0001-Prevent-null-character-from-stopping-string-decoding.patch
+        patch -p1 < 0001-Prevent-null-character-from-stopping-string-decoding.patch
         ./bootstrap
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep
         make -j$(nproc)
