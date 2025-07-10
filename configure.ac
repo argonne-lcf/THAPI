@@ -74,7 +74,7 @@ AS_IF([test "x$enable_sync_daemon_mpi" != xno],
       [AX_MPI_SESSION([enable_sync_daemon_mpi=yes], [enable_sync_daemon_mpi=no])])
 AS_IF([test "x$user_set_sync_daemon_mpi" = "xyes_yes" && test "x$enable_sync_daemon_mpi" = "xno"],
       [AC_MSG_ERROR([sync-daemon with MPI requested but MPI Sessions are not supported!])])
-AS_IF([test "x$enable_sync_daemon_mpi" = "xno"],
+AS_IF([test "x$user_set_sync_daemon_mpi" != "xyes_no" && test "x$enable_sync_daemon_mpi" = "xno"],
       [AC_MSG_WARN([MPI Sessions are not supported. Falling back to sync-daemon with filesystem])])
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_sync_daemon_mpi" != "xno"])
 
