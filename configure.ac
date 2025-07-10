@@ -62,11 +62,21 @@ AS_IF([test "x$using_demangle" != xyes],
 AC_ARG_ENABLE([strict], AS_HELP_STRING([--enable-strict], [Enable -Werror]), [], [enable_strict=yes])
 AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])
 
-# By default `--enable-mpi`, will set the "enable_mpi" variable
-AC_ARG_ENABLE([mpi], AS_HELP_STRING([--disable-mpi], [Disable mpi sync daemon]))
-AS_IF([test "x$enable_mpi" != xno], [AX_MPI([enable_mpi=yes], [enable_mpi=no])])
-AS_IF([test "x$enable_mpi" != xno], [AX_MPI_SESSION([enable_mpi=yes], [enable_mpi=no])])
-AM_CONDITIONAL([FOUND_MPI], [test "x$enable_mpi" != "xno"])
+# By default `--enable-sync-daemon-mpi`, will set the "enable_sync_daemon_mpi" variable
+AC_ARG_ENABLE([sync-daemon-mpi],
+              AS_HELP_STRING([--disable-sync-daemon-mpi], [Disable mpi sync daemon]),
+              [enable_sync_daemon_mpi="$enableval" user_set_sync_daemon_mpi="yes_$enableval"],
+              [enable_sync_daemon_mpi="yes" user_set_sync_daemon_mpi="no"])
+AC_SUBST([user_set_sync_daemon_mpi])
+AS_IF([test "x$enable_sync_daemon_mpi" != xno],
+      [AX_MPI([enable_sync_daemon_mpi=yes], [enable_sync_daemon_mpi=no])])
+AS_IF([test "x$enable_sync_daemon_mpi" != xno],
+      [AX_MPI_SESSION([enable_sync_daemon_mpi=yes], [enable_sync_daemon_mpi=no])])
+AS_IF([test "x$user_set_sync_daemon_mpi" = "xyes_yes" && test "x$enable_sync_daemon_mpi" = "xno"],
+      [AC_MSG_ERROR([sync-daemon with MPI requested but MPI Sessions are not supported!])])
+AS_IF([test "x$user_set_sync_daemon_mpi" != "xyes_no" && test "x$enable_sync_daemon_mpi" = "xno"],
+      [AC_MSG_WARN([MPI Sessions are not supported. Falling back to sync-daemon with filesystem])])
+AM_CONDITIONAL([FOUND_MPI], [test "x$enable_sync_daemon_mpi" != "xno"])
 
 AC_ARG_ENABLE([clang-parser], AS_HELP_STRING([--enable-clang-parser], [Enable clang parser]))
 ENABLE_CLANG_PARSER=0
