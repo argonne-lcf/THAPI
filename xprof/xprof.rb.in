@@ -886,6 +886,7 @@ def gm_processing(folder)
     fo.puts(pipe.readlines)
     fo.close
     _, status = Process.wait2(pid)
+    raise "#{cmdname} #{args} failed" unless status.success?
     status
   end
 end
