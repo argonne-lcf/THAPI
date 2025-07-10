@@ -131,6 +131,7 @@ AC_CONFIG_FILES([
 	omp/Makefile
 	hip/Makefile
 	mpi/Makefile
+	cxi/Makefile
 	xprof/Makefile
 	utils/Makefile
 ])
