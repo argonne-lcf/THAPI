@@ -6,7 +6,7 @@ runs:
     - name: Install APT Dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev liburcu-dev
+        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev
 
     - name: Install Ruby Dependencies
       shell: bash
@@ -23,14 +23,25 @@ runs:
         path: ~/efficios_dep/
         key: ${{ runner.os }}-build-cache-efficios_dep
 
+    - name: Build userspace-rcu
+      shell: bash
+      if: steps.efficios_dep.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/urcu/userspace-rcu -b v0.15.3
+        cd userspace-rcu
+        ./bootstrap
+        ./configure --prefix=$HOME/efficios_dep/
+        make -j$(nproc)
+        make install
+
     - name: Build lttng-ust
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        # lttng-ust
-        git clone https://github.com/lttng/lttng-ust
+        git clone https://github.com/lttng/lttng-ust -b v2.14.0
         cd lttng-ust
-        git checkout 4f8afc535e77070f1ef00434674f0417c6f9ef69
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/a57eb4fa1b2b8621bb0e83a6ec25e48e3a761d15/packages/lttng-ust/55cca69.diff
+        patch -p1 < 55cca69.diff
         ./bootstrap
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
         make -j$(nproc)
@@ -39,8 +50,8 @@ runs:
     - name: Build lttng-tools
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
-      run: | 
-        git clone -b anl-ms3 https://github.com/argonne-lcf/lttng-tools.git
+      run: |
+        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-ms3-v2.14.0
         cd lttng-tools
         ./bootstrap
         ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
@@ -54,12 +65,14 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone -b anl-ms3 https://github.com/argonne-lcf/babeltrace.git
+        git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
         cd babeltrace
-        wget https://raw.githubusercontent.com/argonne-lcf/THAPI/53262fcaaaf45d7d475884d7e63b69abe47e41d6/.github/workflows/str_nullptr.patch
-        patch -p1 < str_nullptr.patch
+        # Fix include path
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
         patch -p1 < bt_makefile.patch
+        # Null char
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/ddc9a12a498331a7c312941df0d4e7078d03ae93/packages/babeltrace2/0001-Prevent-null-character-from-stopping-string-decoding.patch
+        patch -p1 < 0001-Prevent-null-character-from-stopping-string-decoding.patch
         ./bootstrap
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep
         make -j$(nproc)
