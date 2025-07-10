@@ -67,6 +67,10 @@ runs:
       run: |
         git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
         cd babeltrace
+        # Fix include path
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
+        patch -p1 < bt_makefile.patch
+        # Null char
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/ddc9a12a498331a7c312941df0d4e7078d03ae93/packages/babeltrace2/0001-Prevent-null-character-from-stopping-string-decoding.patch
         patch -p1 < 0001-Prevent-null-character-from-stopping-string-decoding.patch
         ./bootstrap
