@@ -1,8 +1,13 @@
+#pragma once
+
 #include <time.h>
 
-typedef void * thapi_sampling_handle_t;
 
-extern int thapi_sampling_init();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef void * thapi_sampling_handle_t;
 
 extern thapi_sampling_handle_t
 thapi_register_sampling(
@@ -12,3 +17,8 @@ thapi_register_sampling(
 extern void
 thapi_unregister_sampling(
 	thapi_sampling_handle_t handle);
+
+#ifdef __cplusplus
+}
+#endif
+

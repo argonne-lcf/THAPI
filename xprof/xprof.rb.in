@@ -388,13 +388,13 @@ class SamplingDaemon < SpawnDaemon
     lazy_exec(message, sampling?, &block)
   end
 
-  def initialize(h = {})
-    daemon_path = "#{BINDIR}/sampling_daemon"
+  def initialize(h = {}, path_so = "")
+    daemon_path = "#{BINDIR}/thapi_sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
-    LOGGER.debug { "spawn(sampling_daemon) #{Process.pid})" }
+    LOGGER.debug { "spawn(sampling_daemon) #{Process.pid} #{path_so}" }
     lazy_exec_sampling('Initialize SamplingDaemon') do
-      @pid = spawn(h, "#{daemon_path} #{Process.pid}")
+      @pid = spawn(h, "#{daemon_path} #{Process.pid} #{path_so}")
     end
   end
 
@@ -479,8 +479,18 @@ def env_tracers
   end
   # Usr Apps need to be launched with this to support blocking.
   h['LTTNG_UST_ALLOW_BLOCKING'] = 1
+
   # Customization
-  h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:'backend-names'].include?('ze') && OPTIONS[:profile]
+  if OPTIONS[:'backend-names'].include?('ze')
+    h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:profile]
+    if sampling?
+      # The current only reliable way to use zes api
+      #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
+      h['ZES_ENABLE_SYSMAN'] = 0
+      h['LTTNG_UST_ZE_SAMPLING_ENERGY'] = 1
+      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
+    end
+  end
   if OPTIONS[:'backend-names'].include?('omp')
     backends << 'omp'
     h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
@@ -490,11 +500,8 @@ def env_tracers
   if sampling?
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
-    h['LTTNG_UST_SAMPLING_ENERGY'] = 1
-    # The current only reliable way to use zes api
-    #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
-    h['ZES_ENABLE_SYSMAN'] = 0 if OPTIONS[:'backend-names'].include?('ze')
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
+    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libHeartbeatSampling.so')
   end
 
   backends = [] unless need_backend
@@ -786,6 +793,9 @@ def trace_and_on_node_processing(usr_argv)
     # for the early exiting ranks
     return unless mpi_local_master?
 
+    # Finalize sampling daemon
+    sampling_daemon.finalize
+
     # Stop Lttng session and babeltrace daemons
     lm_lttng_teardown_session
     if OPTIONS[:archive]
@@ -797,7 +807,6 @@ def trace_and_on_node_processing(usr_argv)
     end
     # we can kill the session daemon
     lm_lttng_kill_sessiond
-    sampling_daemon.finalize
   end
 
   SyncDaemon.open do |syncd|
@@ -813,7 +822,8 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
     # Spawn sampling daemon before starting user apps
-    sampling_daemon = SamplingDaemon.new(h)
+    l_so = h.fetch('THAPI_SAMPLING_LIBRARIES','').gsub(':', ' ')
+    sampling_daemon = SamplingDaemon.new(h, l_so)
 
     syncd.local_barrier('waiting_for_lttng_setup')
 
