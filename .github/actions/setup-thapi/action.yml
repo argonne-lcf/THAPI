@@ -65,10 +65,10 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/efficios/babeltrace.git -b v2.0.6
+        git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
         cd babeltrace
-        #wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/ddc9a12a498331a7c312941df0d4e7078d03ae93/packages/babeltrace2/0001-Prevent-null-character-from-stopping-string-decoding.patch
-        #patch -p1 < 0001-Prevent-null-character-from-stopping-string-decoding.patch
+        wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/ddc9a12a498331a7c312941df0d4e7078d03ae93/packages/babeltrace2/0001-Prevent-null-character-from-stopping-string-decoding.patch
+        patch -p1 < 0001-Prevent-null-character-from-stopping-string-decoding.patch
         ./bootstrap
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep
         make -j$(nproc)
