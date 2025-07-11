@@ -1,7 +1,5 @@
 #!/usr/bin/env bats
 
-load test_env_vars.bash
-
 @test "backend_mpi_sanity_check" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
    $IPROF --backends mpi --analysis-output out.txt -- ./mpi_helloworld

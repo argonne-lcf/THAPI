@@ -1,7 +1,5 @@
 #!/usr/bin/env bats
 
-load test_env_vars.bash
-
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
 }
