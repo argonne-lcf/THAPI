@@ -99,9 +99,6 @@ jobs:
     if: ${{ success() }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
-    env:
-      THAPI_TEST_BIN: clinfo
-      THAPI_BIN_DIR: ./build/ici/bin
     steps:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1

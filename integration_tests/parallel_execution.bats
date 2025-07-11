@@ -1,11 +1,6 @@
 #!/usr/bin/env bats
 
-setup_file() {
-   export THAPI_HOME=$PWD
-   export IPROF=$THAPI_BIN_DIR/iprof
-   export BBT=$THAPI_BIN_DIR/babeltrace_thapi
-   export MPIRUN=${MPIRUN:-mpirun}
-}
+load test_env_vars.bash
 
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
