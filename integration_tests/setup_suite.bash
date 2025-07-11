@@ -32,6 +32,13 @@ setup_suite() {
     missing_tools+=("babeltrace_thapi")
   fi
 
+  # Check for mpirun
+  if ! command -v "${MPIRUN}" >/dev/null 2>&1 && ! command -v mpirun >/dev/null 2>&1; then
+    echo "Error: 'mpirun' not found in PATH or at \$MPIRUN."
+    echo "-> Please set MPIRUN or add it to your PATH."
+    missing_tools+=("mpirun")
+  fi
+
   # Final summary
   if [ ${#missing_tools[@]} -eq 0 ]; then
     echo "All required tools are available."
