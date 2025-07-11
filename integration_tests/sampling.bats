@@ -1,6 +1,4 @@
-setup_file() {
-   export THAPI_HOME=$PWD
-}
+#!/usr/bin/env bats
 
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces

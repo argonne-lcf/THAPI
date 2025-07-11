@@ -1,10 +1,5 @@
 #!/usr/bin/env bats
 
-setup_file() {
-   export THAPI_HOME=$PWD
-   export IPROF=$THAPI_BIN_DIR/iprof
-}
-
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
 }

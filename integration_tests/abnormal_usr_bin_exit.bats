@@ -1,11 +1,5 @@
 bats_require_minimum_version 1.5.0
 
-setup_file() {
-   export THAPI_HOME=$PWD
-   export IPROF=$THAPI_BIN_DIR/iprof
-   export MPIRUN=${MPIRUN:-mpirun}
-}
-
 @test "exit_code_propagated" {
    run -55 $IPROF -- bash -c "exit 55"
    run -55 $IPROF --no-analysis -- bash -c "exit 55"
