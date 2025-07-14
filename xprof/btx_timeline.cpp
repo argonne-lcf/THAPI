@@ -34,8 +34,11 @@ struct timeline_dispatch_s {
   std::unordered_map<h_ddomain_t, perfetto_uuid_t> hp_ddomain2telmtracks;
   std::unordered_map<h_ddomain_t, perfetto_uuid_t> hp_ddomain2cpyalloctracks;
   std::unordered_map<h_dfsdev_t, perfetto_uuid_t> hp_dfsdev2fptracks;
+  std::map<std::pair<std::string, std::string>, perfetto_uuid_t> nicParent2uuid;         // NIC sampling: one parent track per (hostname, interface)
+  std::map<std::tuple<std::string, std::string, std::string>, perfetto_uuid_t> nic2uuid; // NIC sampling: one track per (hostname, interface, counter)
   perfetto_pruned::Trace trace;
 };
+
 // Keeps extra parameters that does not fit the default getter
 using Extras = std::tuple<bool, uint32_t, uint32_t>;
 
@@ -557,6 +560,81 @@ static void memModule_usr_callback(void *btx_handle, void *usr_data, const char 
                       rdBandwidth, wtBandwidth, allocation);
 }
 
+// create (or lookup) the parent NIC track
+static perfetto_uuid_t get_nic_parent_track_uuid(
+    timeline_dispatch_t* dispatch,
+    const std::string& hostname,
+    const std::string& ifname) {
+  auto key = std::make_pair(hostname, ifname);
+  auto it  = dispatch->nicParent2uuid.find(key);
+  if (it != dispatch->nicParent2uuid.end())
+    return it->second;
+
+  perfetto_uuid_t parent_uuid = gen_perfetto_uuid();
+  dispatch->nicParent2uuid[key] = parent_uuid;
+
+  auto* packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+  packet->set_timestamp(0);  // descriptor at time‐zero
+  packet->set_previous_packet_dropped(true);
+  auto* td = packet->mutable_track_descriptor();
+  td->set_uuid(parent_uuid);
+  td->set_name("NIC Event | Hostname " + hostname + " | " + ifname);
+  td->mutable_counter();     // mark as counter group (so it appears alongside counters)
+  return parent_uuid;
+}
+
+///**
+// * For a given NIC and metric name, generate (or look up) a Perfetto track-UUID
+// * and emit its descriptor.
+// */
+static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
+                                          const std::string &hostname,
+                                          const std::string &ifname,
+                                          const std::string &counter) {
+  // Ensure parent exists
+  perfetto_uuid_t parent_uuid = get_nic_parent_track_uuid(dispatch, hostname, ifname);
+
+  auto key = std::make_tuple(hostname, ifname, counter);
+  auto it  = dispatch->nic2uuid.find(key);
+  if (it != dispatch->nic2uuid.end())
+    return it->second;
+
+  // Create child‐track for this counter
+  perfetto_uuid_t uuid = gen_perfetto_uuid();
+  dispatch->nic2uuid[key] = uuid;
+
+  auto *packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+  packet->set_timestamp(0);  // descriptor at time‐zero
+  packet->set_previous_packet_dropped(true);
+  auto *td = packet->mutable_track_descriptor();
+  td->set_uuid(uuid);
+  td->set_parent_uuid(parent_uuid);
+  td->set_name(counter);
+  td->mutable_counter();
+  return uuid;
+}
+
+static void nic_usr_callback(void*       btx_handle,
+                             void*       usr_data,
+                             const char* hostname,
+                             int64_t     ts,
+                             const char* ifname,
+                             const char* counter,
+                             uint64_t    value) {
+  auto* dispatch = static_cast<timeline_dispatch_t*>(usr_data);
+  perfetto_uuid_t uuid = get_nic_track_uuid(dispatch, hostname, ifname, counter);
+
+  auto* packet = dispatch->trace.add_packet();
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+  packet->set_timestamp(ts);
+  auto* ev = packet->mutable_track_event();
+  ev->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
+  ev->set_track_uuid(uuid);
+  ev->set_double_counter_value(static_cast<double>(value));
+}
+
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
@@ -566,6 +644,7 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_sampling_copyEU(btx_handle, &copyEU_usr_callback);
   btx_register_callbacks_sampling_fabricPort(btx_handle, &fabricPort_usr_callback);
   btx_register_callbacks_sampling_memModule(btx_handle, &memModule_usr_callback);
+  btx_register_callbacks_sampling_nic(btx_handle, &nic_usr_callback);
   btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component_callback);
   btx_register_callbacks_read_params(btx_handle, &read_params_callback);
   btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component_callback);

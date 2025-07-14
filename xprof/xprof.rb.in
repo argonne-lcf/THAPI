@@ -498,6 +498,7 @@ def env_tracers
 
   if OPTIONS[:'backend-names'].include?('cxi')
     if sampling?
+      h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
       h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
     end
   end
@@ -669,6 +670,10 @@ def lm_setup_lttng(backends)
 
     if OPTIONS[:'backend-names'].include?('ze')
       exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_ze_sampling:*")
+    end
+
+    if OPTIONS[:'backend-names'].include?('cxi')
+      exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_cxi_sampling:*")
     end
 
   end
