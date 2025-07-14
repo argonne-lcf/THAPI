@@ -33,7 +33,7 @@ toggle_count_base() {
   trace_metadata_dir=$(dirname "${trace_metadata_file}")
   traces=$(babeltrace2 --plugin-path=${THAPI_LIB_DIR} \
     --component source:source.ctf.fs --params "inputs=[\"${trace_metadata_dir}\"]" \
-    --component=filter:filter.metababel_filter.btx \
+    --component=filter:filter.toggle.btx \
     --component=sink:sink.text.pretty)
 
   echo $traces
