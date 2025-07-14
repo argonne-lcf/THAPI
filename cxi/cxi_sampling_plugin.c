@@ -176,7 +176,7 @@ static int add_fd(const char *path,
       .fd      = fd,
       .kind    = kind,
   };
-  strncpy(fds[n_fds-1].ifname, ifname, sizeof(fds[n_fds-1].ifname));
+  snprintf(fds[n_fds-1].ifname, sizeof fds[n_fds-1].ifname, "%s", ifname);
 
   return 0;
 }
