@@ -2,7 +2,10 @@
 
 setup_suite() {
   export THAPI_HOME=${THAPI_HOME:-${PWD}}
-  export THAPI_BIN_DIR=${THAPI_BIN_DIR:-${THAPI_HOME}/install/bin}
+  export THAPI_INSTALL_DIR=${THAPI_INSTALL_DIR:-${THAPI_HOME}/install}
+  export THAPI_BIN_DIR=${THAPI_BIN_DIR:-${THAPI_INSTALL_DIR}/bin}
+  export THAPI_INC_DIR=${THAPI_INC_DIR:-${THAPI_INSTALL_DIR}/include}
+  export THAPI_LIB_DIR=${THAPI_LIB_DIR:-${THAPI_INSTALL_DIR}/lib}
   export THAPI_TEST_BIN=${THAPI_TEST_BIN:-clinfo}
 
   export IPROF=${IPROF:-${THAPI_BIN_DIR}/iprof}

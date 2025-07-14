@@ -1,17 +1,5 @@
 #!/usr/bin/env bats
 
-setup_file() {
-   export THAPI_HOME=${THAPI_HOME:-${PWD}}
-   export THAPI_INSTALL_DIR=${THAPI_INSTALL_DIR:-${PWD}/build/ici/}
-   export THAPI_BIN_DIR=${THAPI_BIN_DIR:-${THAPI_INSTALL_DIR}/bin}
-   export THAPI_INC_DIR=${THAPI_INC_DIR:-${THAPI_INSTALL_DIR}/include}
-   export THAPI_LIB_DIR=${THAPI_LIB_DIR:-${THAPI_INSTALL_DIR}/lib}
-
-   export IPROF=$THAPI_BIN_DIR/iprof
-   export MPIRUN=${MPIRUN:-mpirun}
-   export BBT=${THAPI_BIN_DIR}/babeltrace_thapi
-}
-
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
 }
