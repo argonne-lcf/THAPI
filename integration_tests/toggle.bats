@@ -11,10 +11,10 @@ get_unique_jobid() {
 @test "toggle_api" {
   rm -rf toggle_traces 2> /dev/null
 
-  cc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle.c -o thapi_toggle \
+  cc -I${THAPI_INC_DIR} ./integration_tests/toggle.c -o toggle \
     -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
 
-  $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle
+  $IPROF --trace-output toggle_traces --no-analysis -- ./toggle
   dir=$(ls -d -1 ./toggle_traces/*/)
 
   start_count=`$BBT -c $dir | grep lttng_ust_toggle:start | wc -l`
@@ -27,7 +27,8 @@ get_unique_jobid() {
 toggle_count_base() {
   rm -rf toggle_traces 2> /dev/null
 
-  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n $1 $IPROF --trace-output toggle_traces --no-analysis -- ./thapi_toggle_mpi $2
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n $1 \
+    $IPROF --trace-output toggle_traces --no-analysis -- ./toggle_mpi $2
 
   trace_metadata_file=`find toggle_traces -iname metadata`
   trace_metadata_dir=$(dirname "${trace_metadata_file}")
@@ -45,7 +46,7 @@ toggle_count_traces() {
 }
 
 @test "toggle_plugin_mpi_np_1" {
-  mpicc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle_mpi.c -o thapi_toggle_mpi \
+  mpicc -I${THAPI_INC_DIR} ./integration_tests/toggle_mpi.c -o toggle_mpi \
     -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
 
   count_0=$(toggle_count_traces 1 0)
@@ -62,7 +63,7 @@ toggle_count_vpids() {
 }
 
 @test "toggle_plugin_mpi_np_2" {
-  mpicc -I${THAPI_INC_DIR} ./integration_tests/thapi_toggle_mpi.c -o thapi_toggle_mpi \
+  mpicc -I${THAPI_INC_DIR} ./integration_tests/toggle_mpi.c -o toggle_mpi \
     -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
 
   count_0=$(toggle_count_vpids 2 0)
