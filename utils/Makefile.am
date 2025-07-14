@@ -65,7 +65,7 @@ BTX_THAPI_TOGGLE_GENERATED = \
 	btx_thapi_toggle/btx_main.c
 
 $(BTX_THAPI_TOGGLE_GENERATED): $(srcdir)/btx_thapi_toggle.yaml
-	$(METABABEL) --enable-callbacks on_downstream --component-type FILTER \
+	$(METABABEL) --enable-callbacks on_downstream --component-type FILTER -p toggle \
 		--upstream $(srcdir)/btx_thapi_toggle.yaml --downstream $(srcdir)/btx_thapi_toggle.yaml \
 		-o btx_thapi_toggle
 
