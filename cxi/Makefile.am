@@ -71,9 +71,10 @@ BTX_CXI_GENERATED = \
         btx_filter_cxi/btx_main.c
 
 EXTRA_DIST += \
-        $(top_srcdir)/xprof/btx_interval_model.yaml
+        $(top_srcdir)/xprof/btx_interval_model.yaml \
+        $(srcdir)/btx_cxi_model.yaml
 
-$(BTX_CXI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_cxi_model.yaml
+$(BTX_CXI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml $(srcdir)/btx_cxi_model.yaml
 	$(METABABEL) -u $(srcdir)/btx_cxi_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_cxi -p cxiinterval -c interval
 
 CLEANFILES += \
