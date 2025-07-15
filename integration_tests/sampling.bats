@@ -18,6 +18,7 @@ teardown_file() {
     mkdir -p test_device/cxi0/device/telemetry/
     echo "9999@12345.0" > test_device/cxi0/device/telemetry/test_counter
     echo "test_counter" > test_counter_list
+    mkdir test_cxi
     ln -s "$(pwd)/test_device/cxi0" test_cxi/cxi0
 
     # run profiler with CXI backend
