@@ -49,7 +49,7 @@ libCXISampling_la_SOURCES = cxi_sampling_plugin.c
 nodist_libCXISampling_la_SOURCES = \
 	$(CXI_STATIC_PROBES_INCL)
 
-libCXISampling_la_CPPFLAGS = -I$(top_srcdir)/utils/include  -I$(top_srcdir)/sampling
+libCXISampling_la_CPPFLAGS = -I$(srcdir) -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling
 libCXISampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
 libCXISampling_la_LDFLAGS = -avoid-version -module
 libCXISampling_la_LIBADD = ../sampling/libThapiSampling.la libcxitracepoints.la -ldl $(LTTNG_UST_LIBS)
