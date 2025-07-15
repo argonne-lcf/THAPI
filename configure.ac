@@ -102,6 +102,9 @@ AC_SUBST([ENABLE_CLANG_PARSER])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
+# Use of __attribute__((constructor)) requires `lttng-ust >= 2.12.8` to work properly.
+# Specifically, the following fix:
+# https://github.com/lttng/lttng-ust/commit/a8fafb675a9f580f6a889223e26664ea11cb0c99.
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.12.8])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 
