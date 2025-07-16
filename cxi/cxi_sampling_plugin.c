@@ -299,16 +299,6 @@ void thapi_sampling_cxi(void) {
 /*            4.  Init  /  cleanup helpers                            */
 /* ------------------------------------------------------------------ */
 
-void thapi_cxi_sampler_prepare(void) {
-    load_counter_list();
-    load_base_paths();       /* <-- initialize rh_base & cxi_base */
-    open_all_fds();
-}
-
-void thapi_cxi_sampler_cleanup(void) {
-    close_all_fds();
-}
-
 static void *plugin_handle = NULL;
 
 void thapi_initialize_sampling_plugin(void) {
@@ -319,7 +309,9 @@ void thapi_initialize_sampling_plugin(void) {
 
     /* one‑time set‑up of /sys/class/cxi/… file descriptors */
     /* set up counters + paths + fds */
-    thapi_cxi_sampler_prepare();
+    load_counter_list();
+    load_base_paths();       /* <-- initialize rh_base & cxi_base */
+    open_all_fds();
 
     /* default 100 ms period unless the user overrides */
     struct timespec period = {.tv_sec = 0, .tv_nsec = 100 * 1000000L};
@@ -339,6 +331,6 @@ void thapi_finalize_sampling_plugin(void) {
     if (plugin_handle) {
         thapi_unregister_sampling(plugin_handle);
     }
-    thapi_cxi_sampler_cleanup();
+    close_all_fds();
 }
 
