@@ -60,7 +60,6 @@ cxi_LTLIBRARIES = libCXISampling.la
 
 CLEANFILES += $(bin_PROGRAMS)
 
-
 BTX_CXI_GENERATED = \
        	btx_filter_cxi/metababel/metababel.h \
         btx_filter_cxi/metababel/btx_component.h \
