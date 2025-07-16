@@ -8,7 +8,7 @@
  *
  *   1. Load a list of CXI counters (built-in defaults or from a file
  *      pointed to by LTTNG_UST_CXI_SAMPLING_CXI_COUNTERS_FILE).
- *   2. Initialize base paths for CXI telemetry and "RH" counters,
+ *   2. Initialize base paths for CXI telemetry and "RH" (resource handler) counters,
  *      overridable via LTTNG_UST_CXI_SAMPLING_RH_BASE and
  *      LTTNG_UST_CXI_SAMPLING_CXI_BASE.
  *   3. Enumerate all CXI devices under /sys/class/cxi and open one
