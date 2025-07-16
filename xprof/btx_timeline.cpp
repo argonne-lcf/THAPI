@@ -34,8 +34,8 @@ struct timeline_dispatch_s {
   std::unordered_map<h_ddomain_t, perfetto_uuid_t> hp_ddomain2telmtracks;
   std::unordered_map<h_ddomain_t, perfetto_uuid_t> hp_ddomain2cpyalloctracks;
   std::unordered_map<h_dfsdev_t, perfetto_uuid_t> hp_dfsdev2fptracks;
-  std::map<std::pair<std::string, std::string>, perfetto_uuid_t> nicParent2uuid;         // NIC sampling: one parent track per (hostname, interface)
-  std::map<std::tuple<std::string, std::string, std::string>, perfetto_uuid_t> nic2uuid; // NIC sampling: one track per (hostname, interface, counter)
+  std::unordered_map<hi_t,  perfetto_uuid_t> hp_hi2nicparenttracks; // NIC sampling: one parent track per (hostname, interface)
+  std::unordered_map<hic_t, perfetto_uuid_t> hp_hic2nictracks;      // NIC sampling: one track per (hostname, interface, counter)
   perfetto_pruned::Trace trace;
 };
 
@@ -566,12 +566,12 @@ static perfetto_uuid_t get_nic_parent_track_uuid(
     const std::string& hostname,
     const std::string& ifname) {
   auto key = std::make_pair(hostname, ifname);
-  auto it  = dispatch->nicParent2uuid.find(key);
-  if (it != dispatch->nicParent2uuid.end())
+  auto it  = dispatch->hp_hi2nicparenttracks.find(key);
+  if (it != dispatch->hp_hi2nicparenttracks.end())
     return it->second;
 
   perfetto_uuid_t parent_uuid = gen_perfetto_uuid();
-  dispatch->nicParent2uuid[key] = parent_uuid;
+  dispatch->hp_hi2nicparenttracks[key] = parent_uuid;
 
   auto* packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
@@ -596,13 +596,13 @@ static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
   perfetto_uuid_t parent_uuid = get_nic_parent_track_uuid(dispatch, hostname, ifname);
 
   auto key = std::make_tuple(hostname, ifname, counter);
-  auto it  = dispatch->nic2uuid.find(key);
-  if (it != dispatch->nic2uuid.end())
+  auto it  = dispatch->hp_hic2nictracks.find(key);
+  if (it != dispatch->hp_hic2nictracks.end())
     return it->second;
 
   // Create child‐track for this counter
   perfetto_uuid_t uuid = gen_perfetto_uuid();
-  dispatch->nic2uuid[key] = uuid;
+  dispatch->hp_hic2nictracks[key] = uuid;
 
   auto *packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);

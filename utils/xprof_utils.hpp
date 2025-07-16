@@ -78,6 +78,8 @@ typedef std::tuple<hostname_t,  thapi_device_id> h_device_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
 typedef std::tuple<hostname_t, thapi_device_id, thapi_telemetry_handle, thapi_domain_idx> h_ddomain_t;
 typedef std::tuple<hostname_t, thapi_device_id, thapi_telemetry_handle, thapi_sdevice_idx, bool> h_dfsdev_t;
+typedef std::tuple<hostname_t, std::string> hi_t;                // host + NIC interface
+typedef std::tuple<hostname_t, std::string, std::string> hic_t;  // host + NIC interface + counter
 typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;
