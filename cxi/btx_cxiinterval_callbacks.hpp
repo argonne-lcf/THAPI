@@ -4,32 +4,7 @@
 #include "xprof_utils.hpp"
 #include <metababel/metababel.h>
 
-// NIC key struct
-struct NicKey {
-  std::string hostname;
-  std::string interface;
-  std::string counter;
-
-  bool operator==(NicKey const &o) const noexcept {
-    return hostname==o.hostname
-        && interface==o.interface
-        && counter==o.counter;
-  }
-};
-
-// NIC key hasher
-namespace std {
-  template<> struct hash<NicKey> {
-    size_t operator()(NicKey const &k) const noexcept {
-      size_t h = hash<string>()(k.hostname);
-      // combine with interface
-      h ^= hash<string>()(k.interface) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
-      // combine with counter
-      h ^= hash<string>()(k.counter)   + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
-      return h;
-    }
-  };
-}
+typedef std::tuple<std::string, std::string, std::string> NicKey;
 
 struct data_s {
   /* CXI Sampling */
