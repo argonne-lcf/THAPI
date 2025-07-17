@@ -564,8 +564,8 @@ static void memModule_usr_callback(void *btx_handle, void *usr_data, const char 
 static perfetto_uuid_t get_nic_parent_track_uuid(
     timeline_dispatch_t* dispatch,
     const std::string& hostname,
-    const std::string& ifname) {
-  auto key = std::make_pair(hostname, ifname);
+    const std::string& interface_name) {
+  auto key = std::make_pair(hostname, interface_name);
   auto it  = dispatch->hp_hi2nicparenttracks.find(key);
   if (it != dispatch->hp_hi2nicparenttracks.end())
     return it->second;
@@ -579,7 +579,7 @@ static perfetto_uuid_t get_nic_parent_track_uuid(
   packet->set_previous_packet_dropped(true);
   auto* td = packet->mutable_track_descriptor();
   td->set_uuid(parent_uuid);
-  td->set_name("NIC Event | Hostname " + hostname + " | " + ifname);
+  td->set_name("NIC Event | Hostname " + hostname + " | " + interface_name);
   td->mutable_counter();     // mark as counter group (so it appears alongside counters)
   return parent_uuid;
 }
@@ -590,12 +590,12 @@ static perfetto_uuid_t get_nic_parent_track_uuid(
 // */
 static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
                                           const std::string &hostname,
-                                          const std::string &ifname,
+                                          const std::string &interface_name,
                                           const std::string &counter) {
   // Ensure parent exists
-  perfetto_uuid_t parent_uuid = get_nic_parent_track_uuid(dispatch, hostname, ifname);
+  perfetto_uuid_t parent_uuid = get_nic_parent_track_uuid(dispatch, hostname, interface_name);
 
-  auto key = std::make_tuple(hostname, ifname, counter);
+  auto key = std::make_tuple(hostname, interface_name, counter);
   auto it  = dispatch->hp_hic2nictracks.find(key);
   if (it != dispatch->hp_hic2nictracks.end())
     return it->second;
@@ -620,11 +620,11 @@ static void nic_usr_callback(void*       btx_handle,
                              void*       usr_data,
                              const char* hostname,
                              int64_t     ts,
-                             const char* ifname,
+                             const char* interface_name,
                              const char* counter,
                              uint64_t    value) {
   auto* dispatch = static_cast<timeline_dispatch_t*>(usr_data);
-  perfetto_uuid_t uuid = get_nic_track_uuid(dispatch, hostname, ifname, counter);
+  perfetto_uuid_t uuid = get_nic_track_uuid(dispatch, hostname, interface_name, counter);
 
   auto* packet = dispatch->trace.add_packet();
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);

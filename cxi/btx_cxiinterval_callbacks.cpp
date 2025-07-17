@@ -12,14 +12,14 @@ static void lttng_ust_cxi_sampling_cxi_callback(
     const char *hostname,
     int64_t /* vpid */,
     uint64_t /* vtid */,
-    char *ifname,
+    char *interface_name,
     char *counter,
     uint64_t value)
 {
   auto *d = static_cast<data_t*>(usr_data);
 
   // build composite key
-  NicKey key{ hostname, ifname, counter };
+  NicKey key{ hostname, interface_name, counter };
 
   // try to insert (key -> value).  If inserted == true, this was the first sighting.
   auto [it, inserted] = d->nic_initial.emplace(key, value);
@@ -36,7 +36,7 @@ static void lttng_ust_cxi_sampling_cxi_callback(
       btx_handle,
       hostname,
       ts,
-      ifname,
+      interface_name,
       counter,
       diff);
   }

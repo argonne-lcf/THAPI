@@ -31,7 +31,7 @@
     :payload_field_class:
       :type: structure
       :members:
-      - :name: ifname
+      - :name: interface_name
         :field_class:
           :cast_type: char *
           :type: string

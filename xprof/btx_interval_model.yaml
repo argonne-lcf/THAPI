@@ -315,7 +315,7 @@
         :payload_field_class:
           :type: structure
           :members:
-            - :name: ifname
+            - :name: interface_name
               :field_class:
                 :type: string
                 :cast_type: const char*

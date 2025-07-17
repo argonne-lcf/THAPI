@@ -147,7 +147,7 @@ static void load_counter_list(void) {
 
 struct fd_entry {
   const char *counter;          /* name string (points into list) */
-  char        ifname[16];       /* cxi0 / proc                    */
+  char        interface_name[16];       /* cxi0 / proc                    */
   int         fd;               /* open() result                  */
   enum { C_CXI, C_RH, C_PROC } kind;
 };
@@ -156,7 +156,7 @@ static struct fd_entry *fds      = NULL;
 static size_t            n_fds   = 0;
 
 static int add_fd(const char *path,
-                  const char *ifname,
+                  const char *interface_name,
                   const char *counter,
                   int kind) {
   int fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -176,7 +176,7 @@ static int add_fd(const char *path,
       .fd      = fd,
       .kind    = kind,
   };
-  snprintf(fds[n_fds-1].ifname, sizeof fds[n_fds-1].ifname, "%s", ifname);
+  snprintf(fds[n_fds-1].interface_name, sizeof fds[n_fds-1].interface_name, "%s", interface_name);
 
   return 0;
 }
@@ -196,7 +196,7 @@ static void open_all_fds(void) {
       continue;
     }
 
-    const char *ifname = de->d_name;
+    const char *interface_name = de->d_name;
 
     for (size_t i = 0; i < n_counters; ++i) {
       const char *cn = counter_names[i];
@@ -208,13 +208,13 @@ static void open_all_fds(void) {
       if (!strncmp(cn, "rh:", 3)) {             /* RH counter  */
         snprintf(path, sizeof(path),
                  "%s/%s/%s",
-                 rh_base, ifname, cn + 3);
-        add_fd(path, ifname, cn, C_RH);
+                 rh_base, interface_name, cn + 3);
+        add_fd(path, interface_name, cn, C_RH);
       } else {                                  /* CXI counter */
         snprintf(path, sizeof(path),
                  "%s/%s/device/telemetry/%s",
-                 cxi_base, ifname, cn);
-        add_fd(path, ifname, cn, C_CXI);
+                 cxi_base, interface_name, cn);
+        add_fd(path, interface_name, cn, C_CXI);
       }
     }
   }
@@ -291,7 +291,7 @@ void thapi_sampling_cxi(void) {
     }
 
     do_tracepoint(lttng_ust_cxi_sampling,
-                  cxi, e->ifname, e->counter, v);
+                  cxi, e->interface_name, e->counter, v);
   }
 }
 
