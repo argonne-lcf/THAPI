@@ -291,8 +291,8 @@ void thapi_sampling_cxi(void) {
             continue;                 /* I/O error or parse error */
         }
         else {
-            /* unreachable: either C_PROC handled above or read_u64_pread failed */
-            continue;
+            /* unreachable: either C_PROC handled above or read succeeded */
+            /* fall‐through to tracepoint */
         }
 
         do_tracepoint(lttng_ust_cxi_sampling,
