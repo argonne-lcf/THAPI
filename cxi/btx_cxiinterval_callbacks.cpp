@@ -19,7 +19,7 @@ static void lttng_ust_cxi_sampling_cxi_callback(
   auto *d = static_cast<data_t*>(usr_data);
 
   // build composite key
-  NicKey key{ hostname, interface_name, counter };
+  hic_t key{ hostname, interface_name, counter };
 
   // try to insert (key -> value).  If inserted == true, this was the first sighting.
   auto [it, inserted] = d->nic_initial.emplace(key, value);
