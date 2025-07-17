@@ -271,28 +271,33 @@ static int read_u64_pread(int fd, uint64_t *val) {
 }
 
 void thapi_sampling_cxi(void) {
-  struct rusage ru;
-  getrusage(RUSAGE_SELF, &ru);      /* PROC values once per loop */
+    struct rusage ru;
+    getrusage(RUSAGE_SELF, &ru);      /* PROC values once per loop */
 
-  for (size_t i = 0; i < n_fds; ++i) {
-    struct fd_entry *e = &fds[i];
-    uint64_t v = 0;
+    for (size_t i = 0; i < n_fds; ++i) {
+        struct fd_entry *e = &fds[i];
+        uint64_t v = 0;
 
-    if (e->kind == C_PROC) {      /* chearper open (no sysfs) */
-      if (!strcmp(e->counter, "proc:ivcsw")) {
-          v = ru.ru_nivcsw;
-      } else if (!strcmp(e->counter, "proc:vcsw")) {
-          v = ru.ru_nvcsw;
-      } else {
-        continue;
-      }
-    } else if (read_u64_pread(e->fd, &v) < 0) {
-      continue;                 /* silent drop on error */
+        if (e->kind == C_PROC) {      /* cheaper open (no sysfs) */
+            if (!strcmp(e->counter, "proc:ivcsw")) {
+                v = ru.ru_nivcsw;
+            } else if (!strcmp(e->counter, "proc:vcsw")) {
+                v = ru.ru_nvcsw;
+            } else {
+                continue;             /* unhandled proc counter */
+            }
+        }
+        else if (read_u64_pread(e->fd, &v) < 0) {
+            continue;                 /* I/O error or parse error */
+        }
+        else {
+            /* unreachable: either C_PROC handled above or read_u64_pread failed */
+            continue;
+        }
+
+        do_tracepoint(lttng_ust_cxi_sampling,
+                      cxi, e->interface_name, e->counter, v);
     }
-
-    do_tracepoint(lttng_ust_cxi_sampling,
-                  cxi, e->interface_name, e->counter, v);
-  }
 }
 
 /* ------------------------------------------------------------------ */
