@@ -16,22 +16,24 @@ static void lttng_ust_cxi_sampling_cxi_callback(
     char *counter,
     uint64_t value)
 {
-  auto *d = static_cast<data_t*>(usr_data);
+  auto *d   = static_cast<data_t*>(usr_data);
 
   // build composite key
-  hic_t key{ hostname, interface_name, counter };
+  hic_t key { hostname, interface_name, counter };
 
-  // try to insert (key -> value).  If inserted == true, this was the first sighting.
-  auto [it, inserted] = d->nic_initial.emplace(key, value);
+  // try to insert a new entry (key -> {initial=value, last_seen=value})
+  // if inserted == true, this was the first sighting
+  auto [it, inserted] = d->nic_metric_ref.emplace(key, nic_state_t{value, value});
   if (inserted) {
     // first sample, just record it -- no push
     return;
   }
 
-  // otherwise, compare to the stored first_value
-  uint64_t first_value = it->second;
-  if (value != first_value) {
-    uint64_t diff = value - first_value;
+  auto &state = it->second;
+  // only push if there was a change since the last callback
+  if (value != state.last_seen) {
+    // offset based on the initial read
+    uint64_t diff = value - state.initial;
     btx_push_message_sampling_nic(
       btx_handle,
       hostname,
@@ -39,8 +41,10 @@ static void lttng_ust_cxi_sampling_cxi_callback(
       interface_name,
       counter,
       diff);
+    // update last_seen so the same reading is not pushed again
+    state.last_seen = value;
   }
-  // N.B.: leave it->second unchanged, so every push is diff vs. the original
+  // N.B.: leave initial unchanged, so every push is offset by the initial reading
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
