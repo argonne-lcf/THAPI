@@ -1,0 +1,12 @@
+---
+lttng_ust_cxi_sampling:
+  events:
+    - name: cxi                            # Add generic event for any CXI counters
+      args:
+        - ["const char *", interface_name] # NIC interface e.g. "cxi0"
+        - ["const char *", counter]        # counter/metric e.g. "pct_req_unordered"
+        - [uint64_t, value]                # 64-bit counter value from sysfs
+      fields:
+        - [ctf_string, interface_name, interface_name]
+        - [ctf_string, counter, counter]
+        - [ctf_integer, uint64_t, value, value]

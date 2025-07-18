@@ -365,7 +365,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
        'Format: backend_name[:backend_level],...',
-        default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1'])
+        default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4'])
     on('--debug', default: false)
     on('--archive SESSION-NAME')
     on('--archive-session-found-file-path PATH')

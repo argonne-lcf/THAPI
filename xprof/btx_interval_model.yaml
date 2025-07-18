@@ -311,3 +311,20 @@
               :field_class:
                 :type: double
                 :cast_type: float
+      - :name: sampling:nic
+        :payload_field_class:
+          :type: structure
+          :members:
+            - :name: interface_name
+              :field_class:
+                :type: string
+                :cast_type: const char*
+            - :name: counter
+              :field_class:
+                :type: string
+                :cast_type: const char*
+            - :name: value
+              :field_class:
+                :type: integer_unsigned
+                :field_value_range: 64
+                :cast_type: uint64_t
