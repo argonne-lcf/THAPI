@@ -388,7 +388,7 @@ class SamplingDaemon < SpawnDaemon
     lazy_exec(message, sampling?, &block)
   end
 
-  def initialize(h = {}, path_so = "")
+  def initialize(h = {}, path_so = '')
     daemon_path = "#{BINDIR}/thapi_sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
@@ -496,11 +496,9 @@ def env_tracers
     h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
   end
 
-  if OPTIONS[:'backend-names'].include?('cxi')
-    if sampling?
-      h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
-      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
-    end
+  if OPTIONS[:'backend-names'].include?('cxi') && sampling?
+    h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
+    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
   end
 
   # Sample
@@ -833,7 +831,7 @@ def trace_and_on_node_processing(usr_argv)
              lm_babeltrace(backends) if OPTIONS[:archive]
            end
     # Spawn sampling daemon before starting user apps
-    l_so = h.fetch('THAPI_SAMPLING_LIBRARIES','').gsub(':', ' ')
+    l_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
     sampling_daemon = SamplingDaemon.new(h, l_so)
 
     syncd.local_barrier('waiting_for_lttng_setup')
@@ -898,6 +896,7 @@ def gm_processing(folder)
     fo.close
     _, status = Process.wait2(pid)
     raise "#{cmdname} #{args} failed" unless status.success?
+
     status
   end
 end
