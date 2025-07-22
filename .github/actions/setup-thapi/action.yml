@@ -65,7 +65,7 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
+        git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3-v2.1.2
         cd babeltrace
         # Fix include path
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
