@@ -227,7 +227,9 @@ def get_and_add_components(graph, names, l_inputs)
       params = { 'path' => $options[:output],
                  'assume-single-trace' => false,
                  'quiet' => $options[:debug] ? false : true }
-      params['ctf-version'] = '1.8' if BT2.bt_version_get_major >= 2 && BT2.bt_version_get_minor >= 1
+      if (BT2.bt_version_get_major >= 2 && BT2.bt_version_get_minor > 1) || (BT2.bt_version_get_major == 2 && BT2.bt_version_get_minor == 1 && BT2.bt_version_get_development_stage.nil?)
+        params['ctf-version'] = '1.8'
+      end
       graph.add(comp, 'ctf_sink', params: params)
     when 'sink.btx_tally.tally'
       graph.add(comp, 'tally',
