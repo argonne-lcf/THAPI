@@ -2,7 +2,7 @@ def get_extra_fields_types_name(event)
   event["fields"].collect { |field|
     lttng = LTTng::TracepointField.new(*field)
     name = lttng.name.to_s
-    type = event["args"].find { |t, n| n == name || n == name.gsub(/_val\z/, "") }[0]
+    type = event["args"].find { |t, n| n == name || n == name.gsub(/_vals?\z/, "") }[0]
     case lttng.macro.to_s
     when /ctf_sequence/
       [["ctf_integer", "size_t", "_#{name}_length", nil],

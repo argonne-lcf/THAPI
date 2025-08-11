@@ -605,6 +605,8 @@ static void property_device_timer_callback(void *btx_handle, void *usr_data, int
   auto *data = static_cast<data_t *>(usr_data);
   data->device_timestamps_pair_ref[{hostname, vpid, (thapi_device_id)hDevice}] = {ts,
                                                                                   deviceTimestamp};
+
+  data->sync_lttng_monotonic_ref[{hostname, vpid}] = ts - hostTimestamp;
 }
 
 /*
@@ -716,6 +718,7 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampStatus != ZE_RESULT_SUCCESS));
   // No device information. No conversion to ns, no looping
   uint64_t delta = globalEnd - globalStart;
+
   uint64_t start = lltngMin;
   uintptr_t device_hash = 0;
   const auto it0 = data->device_property.find({hostname, vpid, (thapi_device_id)device});
@@ -738,6 +741,75 @@ static void event_profiling_result_callback(void *btx_handle, void *usr_data, in
   btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission, start, BACKEND_ZE,
                                 commandName.c_str(), delta, device_hash, subdevice_hash, err,
                                 metadata.c_str());
+}
+
+static void event_profiling_results_v2_callback(
+    void *btx_handle, void *usr_data, int64_t ts, const char *hostname, int64_t vpid, uint64_t vtid,
+    ze_event_handle_t hEvent, ze_result_t status, ze_result_t timestampsStatus, uint32_t count,
+    size_t _pSynchronizedTimestamps_vals_length,
+    ze_synchronized_timestamp_result_ext_t *pSynchronizedTimestamps_vals) {
+
+  if (status == ZE_RESULT_NOT_READY)
+    return;
+
+  auto *data = static_cast<data_t *>(usr_data);
+
+  // TODO: Should  we always find the eventToBtxDesct?
+  // We didn't find the partial payload, that mean we should ignore it
+  const auto it_p = data->eventToBtxDesct.find({hostname, vpid, hEvent});
+  if (it_p == data->eventToBtxDesct.cend())
+    return;
+  // We don't erase, may have one entry for multiple result
+  const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
+               commandName, _1, _2, type, ptr] = it_p->second;
+  std::string metadata = "";
+  {
+    std::stringstream ss_metadata;
+    if ((type == btx_event_t::KERNEL) && (status == ZE_RESULT_SUCCESS))
+      ss_metadata << std::get<btx_additional_info_kernel_t>(ptr) << ", ";
+    // Create additional Medatata of the Command Queue
+    ss_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
+                << "index: " << commandQueueDesc.index << "}";
+    metadata = ss_metadata.str();
+  }
+  if (!hCommandListIsImmediate)
+    data->commandListToEvents[{hostname, vpid, hCommandList}].erase(hEvent);
+
+  if ((type == btx_event_t::TRAFFIC) && (status == ZE_RESULT_SUCCESS)) {
+    auto &[ts, size] = std::get<btx_additional_info_traffic_t>(ptr);
+    btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, ts, BACKEND_ZE,
+                                   commandName.c_str(), size, metadata.c_str());
+
+    // Early exist to warkound the bug where timer are broken for memcopy
+    return;
+  }
+  const bool err = ((status != ZE_RESULT_SUCCESS) || (timestampsStatus != ZE_RESULT_SUCCESS));
+
+  uint64_t min_start = std::numeric_limits<uint64_t>::max();
+  uint64_t max_end = std::numeric_limits<uint64_t>::min();
+
+  auto shift = data->sync_lttng_monotonic_ref[{hostname, vpid}];
+  for (uint32_t i = 0; i < count; i++) {
+    min_start = std::min(min_start, pSynchronizedTimestamps_vals[i].global.kernelStart);
+    max_end = std::max(max_end, pSynchronizedTimestamps_vals[i].global.kernelEnd);
+  }
+
+  uintptr_t device_hash = 0;
+  const auto it0 = data->device_property.find({hostname, vpid, (thapi_device_id)device});
+  if (it0 != data->device_property.cend()) {
+    device_hash = hash_device(it0->second);
+  }
+  uintptr_t subdevice_hash = 0;
+  const auto it1 = data->subdevice_parent.find({hostname, vpid, (thapi_device_id)device});
+  if (it1 != data->subdevice_parent.cend()) {
+    subdevice_hash = device_hash;
+    const auto it2 = data->device_property.find({hostname, vpid, it1->second});
+    if (it2 != data->device_property.cend())
+      subdevice_hash = hash_device(it2->second);
+  }
+  btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid_submission, min_start + shift,
+                                BACKEND_ZE, (commandName + "_new").c_str(), max_end - min_start,
+                                device_hash, subdevice_hash, err, metadata.c_str());
 }
 
 static void zeEventDestroy_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -1081,21 +1153,21 @@ void btx_register_usr_callbacks(void *btx_handle) {
   /* Device and Subdevice property */
   btx_register_callbacks_lttng_ust_ze_properties_device(btx_handle, &property_device_callback);
   btx_register_callbacks_lttng_ust_ze_properties_subdevice(btx_handle,
-		                                           &property_subdevice_callback);
+                                                           &property_subdevice_callback);
 
   /* Map command list to device and to command queue dist*/
   btx_register_callbacks_lttng_ust_ze_zeCommandListCreateImmediate_entry(
       btx_handle, zeCommandListCreateImmediate_entry_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandListCreateImmediate_exit(
       btx_handle, zeCommandListCreateImmediate_exit_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_entry(
-      btx_handle, zeCommandListCreate_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_exit(
-      btx_handle, zeCommandListCreate_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_entry(btx_handle,
+                                                                zeCommandListCreate_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListCreate_exit(btx_handle,
+                                                               zeCommandListCreate_exit_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_entry(
       btx_handle, zeCommandQueueCreate_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_exit(
-      btx_handle, zeCommandQueueCreate_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandQueueCreate_exit(btx_handle,
+                                                                zeCommandQueueCreate_exit_callback);
   btx_register_callbacks_lttng_ust_ze_zeCommandQueueExecuteCommandLists_entry(
       btx_handle, zeCommandQueueExecuteCommandLists_entry_callback);
 
@@ -1111,7 +1183,7 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   /* Drift */
   btx_register_callbacks_lttng_ust_ze_properties_device_timer(btx_handle,
-		                                              &property_device_timer_callback);
+                                                              &property_device_timer_callback);
 
   /* Profiling Command (everything who signal an event on completion)
    */
@@ -1131,22 +1203,25 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   btx_register_callbacks_lttng_ust_ze_zeModuleGetGlobalPointer_exit(
       btx_handle, &zeModuleGetGlobalPointer_exit_callback);
-  btx_register_callbacks_lttng_ust_ze_zeModuleDestroy_exit(
-      btx_handle, &zeModuleDestroy_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeModuleDestroy_exit(btx_handle,
+                                                           &zeModuleDestroy_exit_callback);
 
   /* Handling of event */
-  btx_register_callbacks_lttng_ust_ze_profiling_event_profiling(
-      btx_handle, &event_profiling_callback);
+  btx_register_callbacks_lttng_ust_ze_profiling_event_profiling(btx_handle,
+                                                                &event_profiling_callback);
   btx_register_callbacks_lttng_ust_ze_profiling_event_profiling_results(
       btx_handle, &event_profiling_result_callback);
-  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_entry(
-      btx_handle, &zeEventDestroy_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(
-      btx_handle, &zeEventDestroy_exit_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_entry(
-      btx_handle, &zeCommandListReset_entry_callback);
-  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_exit(
-      btx_handle, &zeCommandListReset_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_profiling_event_profiling_results_v2(
+      btx_handle, &event_profiling_results_v2_callback);
+
+  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_entry(btx_handle,
+                                                           &zeEventDestroy_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeEventDestroy_exit(btx_handle,
+                                                          &zeEventDestroy_exit_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_entry(btx_handle,
+                                                               &zeCommandListReset_entry_callback);
+  btx_register_callbacks_lttng_ust_ze_zeCommandListReset_exit(btx_handle,
+                                                              &zeCommandListReset_exit_callback);
 
   /* Sampling */
 
@@ -1165,8 +1240,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
       btx_handle, &lttng_ust_ze_sampling_memoryProperties_callback);
 
   // Telemetries
-  btx_register_callbacks_lttng_ust_ze_sampling_memStats(
-      btx_handle, &lttng_ust_ze_sampling_memStats_callback);
+  btx_register_callbacks_lttng_ust_ze_sampling_memStats(btx_handle,
+                                                        &lttng_ust_ze_sampling_memStats_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_fabricPort(
       btx_handle, &lttng_ust_ze_sampling_fabricPort_callback);
   btx_register_callbacks_lttng_ust_ze_sampling_gpu_energy(

@@ -375,7 +375,7 @@ static struct _ze_event_h * _get_profiling_event(
   }
 
   e_w->command_list = command_list;
-  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
+  ze_event_pool_desc_t desc = {ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE | ZE_EVENT_POOL_FLAG_KERNEL_MAPPED_TIMESTAMP, 1};
   ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
   if (res != ZE_RESULT_SUCCESS) {
     THAPI_DBGLOG("zeEventPoolCreate failed with %d, for command list: %p, context: %p", res, command_list, context);
@@ -399,6 +399,7 @@ cleanup:
 }
 
 static void _profile_event_results(ze_event_handle_t event);
+static void _profile_event_results_v2(ze_event_handle_t event, ze_command_list_handle_t);
 
 static inline void _on_created_event(ze_event_handle_t event) {
 #ifdef THAPI_DEBUG
@@ -441,8 +442,10 @@ static inline void _on_destroy_event(ze_event_handle_t event) {
     return;
   }
 
-  if (!(ze_event->flags & _ZE_PROFILED))
+  if (!(ze_event->flags & _ZE_PROFILED)) {
     _profile_event_results(event);
+    _profile_event_results_v2(event, ze_event->command_list);
+  }
   PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
@@ -455,8 +458,10 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int get_results
     return;
   }
 
-  if (get_results && !(ze_event->flags & _ZE_PROFILED))
+  if (get_results && !(ze_event->flags & _ZE_PROFILED)) {
     _profile_event_results(event);
+    _profile_event_results_v2(event, ze_event->command_list);
+  }
   if (ze_event->event_pool)
     PUT_ZE_EVENT(ze_event);
   else
@@ -472,8 +477,10 @@ static inline void _on_reset_event(ze_event_handle_t event) {
     return;
   }
 
-  if (!(ze_event->flags & _ZE_PROFILED))
+  if (!(ze_event->flags & _ZE_PROFILED)) {
     _profile_event_results(event);
+    _profile_event_results_v2(event, ze_event->command_list);
+  }
 
   if (!(ze_event->flags & _ZE_IMMEDIATE_CMD))
     ADD_ZE_EVENT(ze_event);
@@ -491,6 +498,8 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
   }
 
   _profile_event_results(event);
+  _profile_event_results_v2(event, ze_event->command_list);
+
   ZE_EVENT_HOST_RESET_PTR(event);
 
   ze_event->flags &= ~_ZE_PROFILED;
@@ -513,6 +522,33 @@ static void _profile_event_results(ze_event_handle_t event) {
                   res.context.kernelEnd);
   }
 }
+static void _profile_event_results_v2(ze_event_handle_t event, ze_command_list_handle_t command_list) {
+
+  if (!tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
+    return;
+  }
+  ze_result_t status = ZE_EVENT_QUERY_STATUS_PTR(event);
+  /* Find Device */
+  ze_device_handle_t device;
+  ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &device);
+  // Query Timestamp
+  uint32_t pCount = 0;
+  ZE_EVENT_QUERY_KERNEL_TIMESTAMPS_EXT_PTR(event, device,  &pCount, NULL);
+  assert(pCount <= 2);
+
+  ze_kernel_timestamp_result_t kernelTimestamps[2];
+  ze_synchronized_timestamp_result_ext_t synchronizedTimestamps[2];
+
+  ze_event_query_kernel_timestamps_results_ext_properties_t resultsProps = {
+    .stype = ZE_STRUCTURE_TYPE_EVENT_QUERY_KERNEL_TIMESTAMPS_RESULTS_EXT_PROPERTIES,
+    .pNext = NULL,
+    .pKernelTimestampsBuffer = kernelTimestamps,
+    .pSynchronizedTimestampsBuffer = synchronizedTimestamps } ;
+   ze_result_t timestamps_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMPS_EXT_PTR(event, device, &pCount, &resultsProps);
+   // Send
+   do_tracepoint(lttng_ust_ze_profiling, event_profiling_results_v2,
+		 event, status, timestamps_status, pCount, synchronizedTimestamps);
+}
 
 static void _event_cleanup() {
   struct _ze_event_h *ze_event = NULL;
@@ -520,8 +556,11 @@ static void _event_cleanup() {
 
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     HASH_DEL(_ze_events, ze_event);
-    if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
+    if (ze_event->event && !(ze_event->flags & _ZE_PROFILED)) {
       _profile_event_results(ze_event->event);
+      _profile_event_results_v2(ze_event->event, ze_event->command_list);
+    }
+
     if (ze_event->event_pool) {
       if (ze_event->event)
         ZE_EVENT_DESTROY_PTR(ze_event->event);
@@ -538,8 +577,10 @@ static void _on_destroy_context(ze_context_handle_t context){
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     if (ze_event->context == context) {
       HASH_DEL(_ze_events, ze_event);
-      if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
+      if (ze_event->event && !(ze_event->flags & _ZE_PROFILED)) {
         _profile_event_results(ze_event->event);
+        _profile_event_results_v2(ze_event->event, ze_event->command_list);
+      }
       if (ze_event->event_pool) {
         if (ze_event->event)
           ZE_EVENT_DESTROY_PTR(ze_event->event);
