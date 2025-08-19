@@ -65,8 +65,6 @@ int main(int argc, char **argv) {
     dlclose(plugin.handle);
   }
 
-  kill(parent_pid, RT_SIGNAL_READY);
-
   // Will call the destructor, who will finalize all the not unregistered plugin
   return 0;
 }

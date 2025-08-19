@@ -281,12 +281,18 @@ class SpawnDaemon
   RT_SIGNAL_READY = SIGRTMIN
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
+  @@ready = false
+  Signal.trap(RT_SIGNAL_READY) { @@ready = true }
+
+  # Any blocking implementation
+  # (`IO.pipe`, `throw/catch`+sleep` deadlock for an unknow reason)
+  # This is why we spin-lock
+  #
+  # This function/Object is NOT thread-safe, please do not spawn user thread
   def _lazy_exec(_cond, &block)
-    Signal.trap(RT_SIGNAL_READY) do
-      return
-    end
     block.call
-    sleep
+    sleep 1 until @@ready
+    @@ready = false
   end
 
   def lazy_exec(message = nil, cond, &block)
@@ -342,20 +348,21 @@ class SyncDaemon < SpawnDaemon
   end
 
   def finalize
-    lazy_exec_mpi('Finalize SyncDaemon') do
-      `kill -#{RT_SIGNAL_FINISH} #{@pid}`
-    end
+    LOGGER.debug { "Finalize SyncDaemon" }
+    return unless in_mpi_env?
+    Process.kill(RT_SIGNAL_FINISH, @pid)
+    Process.wait(@pid)
   end
 
   def local_barrier(name)
     lazy_exec_mpi("Local_barrier #{name}") do
-      `kill -#{RT_SIGNAL_LOCAL_BARRIER} #{@pid}`
+      Process.kill(RT_SIGNAL_LOCAL_BARRIER, @pid)
     end
   end
 
   def global_barrier
     lazy_exec_mpi('Global_barrier') do
-      `kill -#{RT_SIGNAL_GLOBAL_BARRIER} #{@pid}`
+      Process.kill(RT_SIGNAL_GLOBAL_BARRIER, @pid)
     end
   end
 
@@ -399,9 +406,10 @@ class SamplingDaemon < SpawnDaemon
   end
 
   def finalize
-    lazy_exec_sampling('Finalize SamplingDaemon') do
-      `kill -#{RT_SIGNAL_FINISH} #{@pid}`
-    end
+    LOGGER.debug { 'Finalize SamplingDaemon' }
+    return unless sampling?
+    Process.kill(RT_SIGNAL_FINISH, @pid)
+    Process.wait(@pid)
   end
 end
 

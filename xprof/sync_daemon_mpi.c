@@ -95,7 +95,8 @@ int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM
     int signum;
     sigwait(&signal_set, &signum);
     if (signum == RT_SIGNAL_FINISH) {
-      // Ready signal will be sent after cleaning
+      // We don't signal ready when cleaning up
+      // The master will just `wait` for us to finish
       return 0;
     } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
       MPI_Barrier(MPI_COMM_NODE);
@@ -136,10 +137,7 @@ fn_exit:
   if (MPI_COMM_WORLD_THAPI != MPI_COMM_NULL)
     MPI_Comm_free(&MPI_COMM_WORLD_THAPI);
 
-  if (lib_shandle != MPI_SESSION_NULL &&
-      getenv("THAPI_SYNC_DAEMON_MPI_NO_FINALIZE") == NULL)
+  if (lib_shandle != MPI_SESSION_NULL && getenv("THAPI_SYNC_DAEMON_MPI_NO_FINALIZE") == NULL)
     MPI_Session_finalize(&lib_shandle);
-  if (parent_pid != 0)
-    kill(parent_pid, RT_SIGNAL_READY);
   return ret;
 }

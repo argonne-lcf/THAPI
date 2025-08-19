@@ -83,7 +83,6 @@ Signal.trap(SyncDaemon::RT_SIGNAL_FINISH) do
   #   is to make all ranks busy_wait in the `global_barrier`.
   # This will ensure that every-one exited the `local_barrier`.
   #   but given the poor performance of our FS, we will avoid that for now...
-  Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
   exit
 end
 
