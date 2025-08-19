@@ -59,6 +59,6 @@ send_signal_blocking $RT_SIGNAL_LOCAL_BARRIER
 echo "$PARENT_PID $(date) | Send Global Barrier signal"
 send_signal_blocking $RT_SIGNAL_GLOBAL_BARRIER
 echo "$PARENT_PID $(date) | Send Termination signal"
-send_signal_blocking $RT_SIGNAL_FINISH
+kill -"$RT_SIGNAL_FINISH" $DAEMON_PID
 echo "$PARENT_PID $(date) | Wait for daemon to quit"
 wait $DAEMON_PID
