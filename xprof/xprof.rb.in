@@ -35,7 +35,7 @@ class XprofExitCode
                 elsif status.exited?
                   status.exitstatus
                 else
-                  LOGGER.fatal { "#{name} exited with an unknow error" }
+                  LOGGER.fatal { "#{name} exited with an unknown error" }
                   exit(1)
                 end
     @@exit_code = exit_code if @@exit_code == 0
@@ -285,7 +285,7 @@ class SpawnDaemon
   Signal.trap(RT_SIGNAL_READY) { @@ready = true }
 
   # Any blocking implementation
-  # (`IO.pipe`, `throw/catch`+sleep` deadlock for an unknow reason)
+  # (`IO.pipe`, `throw/catch`+sleep` deadlock for an unknown reason)
   # This is why we spin-lock
   #
   # This function/Object is NOT thread-safe, please do not spawn user thread
