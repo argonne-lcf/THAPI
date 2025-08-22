@@ -6,6 +6,7 @@ require 'find'
 require 'optparse_thapi'
 require 'yaml'
 require 'logger'
+require 'fileutils'
 
 module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
@@ -290,6 +291,8 @@ def modify_metadata(command, trace)
   else
     return
   end
+  # This folder may not have been created in case of `no source`.
+  FileUtils.mkdir_p($options[:output])
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
 end
 
@@ -321,6 +324,16 @@ def bt_graphs(inputs)
 end
 
 def create_and_run_graph(command, graph_str, inputs)
+  # In case of move, no need to call babeltrace, just move
+  if command == 'to_move'
+    raise 'Only one input with to_move' unless inputs.size == 1
+    raise "Output #{$options[:output]} is already existing" if File.exist?($options[:output])
+
+    FileUtils.mkdir_p(File.dirname($options[:output]))
+    FileUtils.mv(inputs.first, $options[:output], force: true)
+    return 0
+  end
+
   def no_gc(command, graph_str, inputs)
     graph = BT2::BTGraph.new
     comp = get_and_add_components(graph, graph_str, inputs)
@@ -340,9 +353,12 @@ def create_and_run_graph(command, graph_str, inputs)
   begin
     no_gc(command, graph_str, inputs)
   rescue ArgumentError
-    # No source, no output folder, no metadata
+    # We still create the folder, it simplify thapi logic (nothing can fail)
+    modify_metadata(command, inputs.first)
+    3
   else
     modify_metadata(command, inputs.first)
+    0
   ensure
     GC.start
   end
@@ -427,6 +443,11 @@ subcommands = {
       parser.on('--[no-]discard-metadata', default: true)
       parser.on('--output OUTPUT')
     end,
+  'to_move' =>
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi to_move [OPTIONS] trace_directory...'
+      parser.on('--output OUTPUT')
+    end,
   'tally' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi tally [OPTIONS] trace_directory...'
@@ -470,4 +491,5 @@ $options[:'backend-names'] = $options[:backends].map { |name_level| name_level.s
 #
 # Setup Logger
 LOGGER = Logger.new($stdout)
-create_and_run_graph(command, bt_graphs(ARGV)[command], ARGV)
+ec = create_and_run_graph(command, bt_graphs(ARGV)[command], ARGV)
+exit(ec)

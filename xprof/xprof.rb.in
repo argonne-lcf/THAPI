@@ -79,10 +79,13 @@ def exec(cmd, opts: {}, debug: true)
   LOGGER.debug { opts } unless opts.empty?
 
   stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
-  raise "#{cmd} failed" unless status.success?
-
   LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
+
+  # This is the "no-source" error from babeltrace THAPI
+  return stdout_str if status.exitstatus == 3
+  raise "#{cmd} failed" unless status.success?
+
   stdout_str
 end
 
@@ -205,6 +208,16 @@ def prefix_processed_trace
     '_interval'
   else
     '_aggreg'
+  end
+end
+
+def babeltrace_thapi_intermediate_command
+  if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
+    'to_move'
+  elsif OPTIONS.include?(:timeline)
+    'to_interval'
+  else
+    'to_aggreg'
   end
 end
 
@@ -348,8 +361,9 @@ class SyncDaemon < SpawnDaemon
   end
 
   def finalize
-    LOGGER.debug { "Finalize SyncDaemon" }
+    LOGGER.debug { 'Finalize SyncDaemon' }
     return unless in_mpi_env?
+
     Process.kill(RT_SIGNAL_FINISH, @pid)
     Process.wait(@pid)
   end
@@ -408,6 +422,7 @@ class SamplingDaemon < SpawnDaemon
   def finalize
     LOGGER.debug { 'Finalize SamplingDaemon' }
     return unless sampling?
+
     Process.kill(RT_SIGNAL_FINISH, @pid)
     Process.wait(@pid)
   end
@@ -499,14 +514,18 @@ def env_tracers
       h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
     end
   end
+
   if OPTIONS[:'backend-names'].include?('omp')
     backends << 'omp'
     h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
   end
 
-  if OPTIONS[:'backend-names'].include?('cxi') && sampling?
-    h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
-    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
+  if OPTIONS[:'backend-names'].include?('cxi')
+    backends << 'cxi'
+    if sampling?
+      h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
+      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
+    end
   end
 
   # Sample
@@ -640,6 +659,8 @@ def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
   exec("#{lttng_enable} lttng_ust_mpi_type:*")
 end
 
+def enable_events_cxi(channel_name, tracing_mode: 'default', profiling: true); end
+
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_thapi:*")
@@ -719,14 +740,13 @@ end
 #
 def lm_babeltrace(backends)
   raise unless mpi_local_master?
-  # No need to run babeltrace_thapi
-  return if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
 
-  type = OPTIONS.include?(:timeline) ? 'interval' : 'aggreg'
-  opts = ["to_#{type}"]
+  opts = [babeltrace_thapi_intermediate_command]
   opts << "--output #{thapi_trace_dir_tmp}"
   opts << "--backends #{backends.join(',')}"
-  opts << '--no-discard-metadata' if type == 'aggreg' && OPTIONS.include?(:'kernel-verbose')
+  if babeltrace_thapi_intermediate_command == 'to_aggreg' && OPTIONS.include?(:'kernel-verbose')
+    opts << '--no-discard-metadata'
+  end
 
   if OPTIONS[:archive]
     read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
@@ -758,24 +778,6 @@ end
 # Some naming convention
 # lm == function executed only local_master
 # gm ==  function executed only global_master
-
-def lm_move_to_shared
-  raise unless mpi_local_master?
-
-  if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
-    # The Apps finished, lttng finished, need to move to the shared tmp folder
-    FileUtils.mkdir_p(File.dirname(thapi_trace_dir_tmp))
-    # NOTE: I don't understand `mv`
-    #       File.mv(a, b) will put a into b (aka a/b)
-    #       FileUtils.rename(a,b) will move a as b, but may
-    #         raise Invalid cross-device error.
-    #       So we use `exec(mv -T a b)`, this have the added benefice of logging
-    exec("mv #{lttng_trace_dir_tmp} #{thapi_trace_dir_tmp}")
-  else
-    # `lm_babeltrace` finished, can remove `tmp` folder
-    FileUtils.rm_f(lttng_trace_dir_tmp)
-  end
-end
 
 def gm_rename_folder
   raise unless mpi_master?
@@ -830,6 +832,8 @@ def trace_and_on_node_processing(usr_argv)
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
+    raise 'THAPI: Error: No backend found' if backends.empty?
+
     # All ranks need to set the LLTTNG_HOME env
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
@@ -856,8 +860,12 @@ def trace_and_on_node_processing(usr_argv)
     return unless mpi_local_master?
 
     # Preprocess trace
-    lm_babeltrace(backends) unless OPTIONS[:archive]
-    lm_move_to_shared
+    unless OPTIONS[:archive]
+      lm_babeltrace(backends)
+      # Babeltrace have moved / tranformer lttng_trace_dir_tmp into thapi_trace_dir_tmp
+      LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
+      FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
+    end
   end
   # Global master rename the unique trace folder to a more
   # human friendly name
@@ -903,6 +911,8 @@ def gm_processing(folder)
     fo.puts(pipe.readlines)
     fo.close
     _, status = Process.wait2(pid)
+    # No "source error" (for example trying to trace `sleep`)
+    return status if status.exitstatus == 3
     raise "#{cmdname} #{args} failed" unless status.success?
 
     status
@@ -1048,7 +1058,7 @@ if __FILE__ == $PROGRAM_NAME
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    XprofExitCode.update(gm_processing(folder), 'babeltrace_thapi') if OPTIONS[:analysis]
+    XprofExitCode.update(gm_processing(folder), 'babeltrace_thapi')
   end
 
   exit(XprofExitCode.get)
