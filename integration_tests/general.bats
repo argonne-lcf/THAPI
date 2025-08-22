@@ -28,10 +28,10 @@ teardown_file() {
 
 @test "no-analysis_all" {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
-   $IPROF -r 
+   $IPROF -r
    $IPROF -t -r | wc -l
    $IPROF -l -r
-   rm out.pftrace 
+   rm out.pftrace
 }
 
 @test "trace-output_all" {
@@ -67,6 +67,13 @@ teardown_file() {
    rm out.pftrace
 }
 
+@test "error_code_when_no_trace" {
+   run $IPROF sleep 1
+   [ "$status" == 3 ]
+}
+
 @test "read_stdin" {
-   echo "FOO" | $IPROF cat
+   run echo "FOO" | $IPROF cat
+   grep "FOO" "$output"
+   [ "$status" == 3 ]
 }
