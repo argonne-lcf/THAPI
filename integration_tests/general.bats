@@ -68,12 +68,11 @@ teardown_file() {
 }
 
 @test "error_code_when_no_trace" {
-   run $IPROF sleep 1
+   run -3 $IPROF sleep 1
    [ "$status" == 3 ]
 }
 
 @test "read_stdin" {
-   run echo "FOO" | $IPROF cat
+   run -3 echo "FOO" | $IPROF cat
    grep "FOO" "$output"
-   [ "$status" == 3 ]
 }
