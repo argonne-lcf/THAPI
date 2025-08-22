@@ -73,5 +73,5 @@ teardown_file() {
 
 @test "read_stdin" {
    run -3 bats_pipe echo "FOO" \| $IPROF cat
-   grep "FOO" "$output"
+   [[ "$output" =~ "FOO" ]]
 }
