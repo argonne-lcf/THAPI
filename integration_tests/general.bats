@@ -1,4 +1,4 @@
-#!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
