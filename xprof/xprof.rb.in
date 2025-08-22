@@ -832,8 +832,6 @@ def trace_and_on_node_processing(usr_argv)
     # Load Tracers and APILoaders Lib
     backends, h = env_tracers
 
-    raise 'THAPI: Error: No backend found' if backends.empty?
-
     # All ranks need to set the LLTTNG_HOME env
     # so they can have access to the daemon
     ENV['LTTNG_HOME'] = lttng_home_dir
