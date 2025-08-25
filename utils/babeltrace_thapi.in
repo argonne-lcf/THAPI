@@ -325,8 +325,8 @@ end
 
 def create_and_run_graph(command, graph_str, inputs)
   # In case of move, no need to call babeltrace, just move
-  if command == 'to_move'
-    raise 'Only one input with to_move' unless inputs.size == 1
+  if command == 'move'
+    raise 'Only one input with move' unless inputs.size == 1
     raise "Output #{$options[:output]} is already existing" if File.exist?($options[:output])
 
     FileUtils.mkdir_p(File.dirname($options[:output]))
@@ -443,9 +443,9 @@ subcommands = {
       parser.on('--[no-]discard-metadata', default: true)
       parser.on('--output OUTPUT')
     end,
-  'to_move' =>
+  'move' =>
     BabeltraceParserThapi.new do |parser|
-      parser.banner = 'Usage: babeltrace_thapi to_move [OPTIONS] trace_directory...'
+      parser.banner = 'Usage: babeltrace_thapi move [OPTIONS] trace_directory...'
       parser.on('--output OUTPUT')
     end,
   'tally' =>

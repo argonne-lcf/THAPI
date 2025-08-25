@@ -200,24 +200,13 @@ end
 #   | (_) | (_| (/_ |    |  (_|  |_ | |
 #
 
-# Prefix of the thapi_trace_dir
-def prefix_processed_trace
+def trace_bt_prefix
   if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
-    ''
+    { trace: '', bt: 'move' }
   elsif OPTIONS.include?(:timeline)
-    '_interval'
+    { trace: '_interval', bt: 'to_interval' }
   else
-    '_aggreg'
-  end
-end
-
-def babeltrace_thapi_intermediate_command
-  if OPTIONS.include?(:trace) || !OPTIONS[:analysis]
-    'to_move'
-  elsif OPTIONS.include?(:timeline)
-    'to_interval'
-  else
-    'to_aggreg'
+    { trace: '_aggreg', bt: 'to_aggreg' }
   end
 end
 
@@ -247,7 +236,7 @@ end
 def thapi_trace_dir_tmp
   return File.join(OPTIONS[:'trace-output'], Socket.gethostname) if OPTIONS[:'trace-output']
 
-  File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{mpi_job_id}",
+  File.join(thapi_trace_home, "thapi#{trace_bt_prefix[:trace]}--#{mpi_job_id}",
             Socket.gethostname)
 end
 
@@ -273,7 +262,7 @@ def thapi_trace_dir_root
     (0..Float::INFINITY).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
       thapi_uuid = date + prefix
-      path = File.join(thapi_trace_home, "thapi#{prefix_processed_trace}--#{thapi_uuid}")
+      path = File.join(thapi_trace_home, "thapi#{trace_bt_prefix[:trace]}--#{thapi_uuid}")
       begin
         Dir.mkdir(path)
       rescue SystemCallError
@@ -741,12 +730,10 @@ end
 def lm_babeltrace(backends)
   raise unless mpi_local_master?
 
-  opts = [babeltrace_thapi_intermediate_command]
+  opts = [trace_bt_prefix[:bt]]
   opts << "--output #{thapi_trace_dir_tmp}"
   opts << "--backends #{backends.join(',')}"
-  if babeltrace_thapi_intermediate_command == 'to_aggreg' && OPTIONS.include?(:'kernel-verbose')
-    opts << '--no-discard-metadata'
-  end
+  opts << '--no-discard-metadata' if trace_bt_prefix[:bt] == 'to_aggreg' && OPTIONS.include?(:'kernel-verbose')
 
   if OPTIONS[:archive]
     read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
