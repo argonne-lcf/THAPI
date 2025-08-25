@@ -83,10 +83,8 @@ def exec(cmd, opts: {}, debug: true)
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
   # This is the "no-source" error from babeltrace THAPI
-  return stdout_str if status.exitstatus == 3
-  raise "#{cmd} failed" unless status.success?
-
-  stdout_str
+  return stdout_str if status.success? || status.exitstatus == 3
+  raise "#{cmd} failed"
 end
 
 #    _
