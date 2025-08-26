@@ -6,6 +6,7 @@ require 'find'
 require 'optparse_thapi'
 require 'yaml'
 require 'logger'
+require 'fileutils'
 
 module BTComponentClassRefinement
   refine(BT2::BTComponentClass) do
@@ -290,6 +291,8 @@ def modify_metadata(command, trace)
   else
     return
   end
+  # This folder may not have been created in case of `no source`.
+  FileUtils.mkdir_p($options[:output])
   File.write(File.join($options[:output], THAPI_METADATA_FILE), y.to_yaml)
 end
 
@@ -321,6 +324,18 @@ def bt_graphs(inputs)
 end
 
 def create_and_run_graph(command, graph_str, inputs)
+  # In case of move, no need to call babeltrace, just move
+  if command == 'move'
+    raise "The 'move' command can move only one file, but #{inputs.size} were provided" unless inputs.size == 1
+    if File.exist?($options[:output])
+      raise "Cannot move file(#{inputs}): the output path '#{$options[:output]}' already exists. Please remove it or choose a different output path"
+    end
+
+    FileUtils.mkdir_p(File.dirname($options[:output]))
+    FileUtils.mv(inputs.first, $options[:output], force: true)
+    return 0
+  end
+
   def no_gc(command, graph_str, inputs)
     graph = BT2::BTGraph.new
     comp = get_and_add_components(graph, graph_str, inputs)
@@ -340,12 +355,14 @@ def create_and_run_graph(command, graph_str, inputs)
   begin
     no_gc(command, graph_str, inputs)
   rescue ArgumentError
-    # No source, no output folder, no metadata
-  else
-    modify_metadata(command, inputs.first)
   ensure
     GC.start
   end
+
+  # Always generate a "trace". User responsiblity to grep for
+  # "WARN -- : No source found" is required
+  modify_metadata(command, inputs.first)
+  0
 end
 
 #    _                       _    ___
@@ -427,6 +444,11 @@ subcommands = {
       parser.on('--[no-]discard-metadata', default: true)
       parser.on('--output OUTPUT')
     end,
+  'move' =>
+    BabeltraceParserThapi.new do |parser|
+      parser.banner = 'Usage: babeltrace_thapi move [OPTIONS] trace_directory...'
+      parser.on('--output OUTPUT')
+    end,
   'tally' =>
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi tally [OPTIONS] trace_directory...'
@@ -470,4 +492,5 @@ $options[:'backend-names'] = $options[:backends].map { |name_level| name_level.s
 #
 # Setup Logger
 LOGGER = Logger.new($stdout)
-create_and_run_graph(command, bt_graphs(ARGV)[command], ARGV)
+ec = create_and_run_graph(command, bt_graphs(ARGV)[command], ARGV)
+exit(ec)

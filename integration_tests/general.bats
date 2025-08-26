@@ -1,4 +1,4 @@
-#!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 
 teardown_file() {
    rm -rf $THAPI_HOME/thapi-traces
@@ -28,10 +28,10 @@ teardown_file() {
 
 @test "no-analysis_all" {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
-   $IPROF -r 
+   $IPROF -r
    $IPROF -t -r | wc -l
    $IPROF -l -r
-   rm out.pftrace 
+   rm out.pftrace
 }
 
 @test "trace-output_all" {
@@ -67,6 +67,12 @@ teardown_file() {
    rm out.pftrace
 }
 
+@test "error_code_when_no_trace" {
+   run $IPROF sleep 1
+   [[ "$output" =~ "WARN -- : No source found" ]]
+}
+
 @test "read_stdin" {
-   echo "FOO" | $IPROF cat
+   run bats_pipe echo "FOO" \| $IPROF cat
+   [[ "$output" =~ "FOO" ]]
 }
