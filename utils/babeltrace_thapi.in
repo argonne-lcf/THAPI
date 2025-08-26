@@ -326,8 +326,10 @@ end
 def create_and_run_graph(command, graph_str, inputs)
   # In case of move, no need to call babeltrace, just move
   if command == 'move'
-    raise 'Only one input with move' unless inputs.size == 1
-    raise "Output #{$options[:output]} is already existing" if File.exist?($options[:output])
+    raise "The 'move' command can move only one file, but #{inputs.size} were provided" unless inputs.size == 1
+    if File.exist?($options[:output])
+      raise "Cannot move file(#{inputs}): the output path '#{$options[:output]}' already exists. Please remove it or choose a different output path"
+    end
 
     FileUtils.mkdir_p(File.dirname($options[:output]))
     FileUtils.mv(inputs.first, $options[:output], force: true)
@@ -361,7 +363,6 @@ def create_and_run_graph(command, graph_str, inputs)
   # "WARN -- : No source found" is required
   modify_metadata(command, inputs.first)
   0
-
 end
 
 #    _                       _    ___
