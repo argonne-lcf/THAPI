@@ -82,10 +82,8 @@ def exec(cmd, opts: {}, debug: true)
   LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
-  # This is the "no-source" error from babeltrace THAPI
-  return stdout_str if status.success? || status.exitstatus == 3
-
-  raise "#{cmd} failed"
+  raise "#{cmd} failed" unless status.success?
+  stdout_str
 end
 
 #    _
@@ -895,9 +893,8 @@ def gm_processing(folder)
     fo.puts(pipe.readlines)
     fo.close
     _, status = Process.wait2(pid)
-    # No "source error" (for example trying to trace `sleep`)
-    return status if status.success? || status.exitstatus == 3
     raise "#{cmdname} #{args} failed" unless status.success?
+    status
   end
 end
 

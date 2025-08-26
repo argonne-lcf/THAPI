@@ -68,10 +68,11 @@ teardown_file() {
 }
 
 @test "error_code_when_no_trace" {
-   run -3 $IPROF sleep 1
+   run $IPROF sleep 1
+   [[ "$output" =~ "WARN -- : No source found" ]]
 }
 
 @test "read_stdin" {
-   run -3 bats_pipe echo "FOO" \| $IPROF cat
+   run bats_pipe echo "FOO" \| $IPROF cat
    [[ "$output" =~ "FOO" ]]
 }

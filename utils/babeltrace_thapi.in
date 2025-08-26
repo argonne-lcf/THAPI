@@ -353,15 +353,15 @@ def create_and_run_graph(command, graph_str, inputs)
   begin
     no_gc(command, graph_str, inputs)
   rescue ArgumentError
-    # We still create the folder, it simplify thapi logic (nothing can fail)
-    modify_metadata(command, inputs.first)
-    3
-  else
-    modify_metadata(command, inputs.first)
-    0
   ensure
     GC.start
   end
+
+  # Always generate a "trace". User responsiblity to grep for
+  # "WARN -- : No source found" is required
+  modify_metadata(command, inputs.first)
+  0
+
 end
 
 #    _                       _    ___
