@@ -914,6 +914,7 @@ if __FILE__ == $PROGRAM_NAME
   parser.banner = "Usage: #{File.basename($PROGRAM_NAME)} [options] [--] [command]"
 
   parser.on('--trace-output PATH', 'Define where the CTF trace will be saved.',
+            'If multiple hostnames are traced, ensure that this PATH is accessible by all.',
             'Default: `$THAPI_HOME/thapi-traces/thapi--[trace-type][date]`',
             '(`$THAPI_HOME` defaults to `$HOME`,',
             ' and `date` is formatted using ISO 8601 convention).') do |p|
@@ -936,7 +937,7 @@ if __FILE__ == $PROGRAM_NAME
         r.to_i
       else
         raise(OptionParser::ParseError,
-              "Invalid value (#{r}). Only positive integers and -1 accepted")
+              "Invalid value (#{r}). Only positive integers and -1 accepted.")
       end
     end
   end
