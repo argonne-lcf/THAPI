@@ -5,4 +5,4 @@ puts <<EOF
 require_relative 'hip_library.rb'
 EOF
 
-add_babeltrace_event_callbacks("hip_babeltrace_model.yaml")
+add_babeltrace_event_callbacks("btx_hip_model.yaml")

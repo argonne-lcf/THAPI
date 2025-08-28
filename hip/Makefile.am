@@ -314,7 +314,7 @@ EXTRA_DIST += \
 hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(HIP_MODEL) hip_babeltrace_model.yaml
+babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(HIP_MODEL) btx_hip_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 HIP_BINDINGS = \

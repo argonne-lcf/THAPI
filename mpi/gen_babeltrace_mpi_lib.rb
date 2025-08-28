@@ -5,4 +5,4 @@ puts <<~EOF
   require_relative 'mpi_library.rb'
 EOF
 
-add_babeltrace_event_callbacks('mpi_babeltrace_model.yaml')
+add_babeltrace_event_callbacks('btx_mpi_model.yaml')
