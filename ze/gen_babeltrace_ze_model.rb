@@ -59,7 +59,9 @@ def get_fields_types_name(c, dir)
       meta_parameter_types_name(m, :start)
     }.flatten(1)
   else
-    fields = [["ctf_integer", "ze_result_t", "#{RESULT_NAME}"]]
+    r = c.type.lttng_type
+    fields = []
+    fields = [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]] if r
     fields += c.meta_parameters.select { |m| m.kind_of?(Out) }.collect { |m|
       meta_parameter_types_name(m, :stop)
     }.flatten(1)

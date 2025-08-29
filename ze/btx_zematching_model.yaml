@@ -19,6 +19,8 @@
       :type: structure
       :members:
       - :name: ^zeResult$
+        :field_class:
+          :cast_type: ze_result_t
   - # Map command list to device
     :set_id: command_list
     :name: "zeCommandListCreate|zeCommandListCreateImmediate"
