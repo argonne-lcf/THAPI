@@ -154,7 +154,7 @@ EXTRA_DIST += mpi.h.include
 mpi_library.rb: $(srcdir)/gen_mpi_library.rb $(MPI_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_mpi_lib.rb: $(srcdir)/gen_babeltrace_mpi_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(MPI_MODEL) mpi_babeltrace_model.yaml
+babeltrace_mpi_lib.rb: $(srcdir)/gen_babeltrace_mpi_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(MPI_MODEL) btx_mpi_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 MPI_BINDINGS = \

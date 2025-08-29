@@ -5,4 +5,4 @@ puts <<EOF
 require_relative 'cuda_library.rb'
 EOF
 
-add_babeltrace_event_callbacks("cuda_babeltrace_model.yaml")
+add_babeltrace_event_callbacks("btx_cuda_model.yaml")

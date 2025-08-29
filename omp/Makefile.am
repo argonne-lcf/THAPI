@@ -131,7 +131,7 @@ nodist_libompttracepoints_la_SOURCES = \
 	$(OMP_PROBES_INCL) \
 	$(OMP_PROBES_SRC)
 
-libompttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ 
+libompttracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./
 libompttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libompttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -178,7 +178,7 @@ libOMPInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 omp_library.rb: $(srcdir)/gen_omp_library.rb $(OMP_LIB_GEN) $(OMP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_omp_lib.rb: $(srcdir)/gen_babeltrace_omp_lib.rb $(OMP_LIB_GEN) $(OMP_MODEL) omp_babeltrace_model.yaml
+babeltrace_omp_lib.rb: $(srcdir)/gen_babeltrace_omp_lib.rb $(OMP_LIB_GEN) $(OMP_MODEL) btx_omp_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 OMP_BINDINGS = \

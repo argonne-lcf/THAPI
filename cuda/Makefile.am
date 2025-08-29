@@ -321,7 +321,7 @@ EXTRA_DIST += cuda.h.include cudart.h.include
 cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(CUDA_MODEL) cuda_babeltrace_model.yaml
+babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(CUDA_MODEL) btx_cuda_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CUDA_BINDINGS = \

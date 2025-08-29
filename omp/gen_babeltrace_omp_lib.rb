@@ -5,4 +5,4 @@ puts <<EOF
 require_relative 'omp_library.rb'
 EOF
 
-add_babeltrace_event_callbacks("omp_babeltrace_model.yaml")
+add_babeltrace_event_callbacks("btx_omp_model.yaml")
