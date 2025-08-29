@@ -49,7 +49,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:length_field_path] = "EVENT_PAYLOAD[\"_#{name}_length\"]"
   when 'ctf_array', 'ctf_array_hex'
     array_type = lttng.type.to_s
-    field[:class] = 'array_static'
+    field[:type] = 'array_static'
     field[:element_field_class] =
       { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
         field_value_range: integer_size(array_type) }
