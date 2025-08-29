@@ -50,10 +50,10 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   when 'ctf_array', 'ctf_array_hex'
     array_type = lttng.type.to_s
     field[:class] = 'array_static'
-    field[:field] =
-      { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
-        class_properties: { field_value_range: integer_size(array_type) } }
-    field[:field][:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
+    field[:element_field_class] =
+      { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
+        field_value_range: integer_size(array_type) }
+    field[:element_field_class][:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
     field[:length] = lttng.length
   when 'ctf_string'
     field[:type] = 'string'
