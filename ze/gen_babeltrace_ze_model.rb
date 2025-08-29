@@ -100,30 +100,40 @@ end
 def gen_struct_event_bt_model(provider, struct)
   {
     name: "#{provider}:#{struct}",
-    payload: [
+    payload_field_class: 
+          {
+        type: "structure",
+        members:
+    [
       {
         name: "p",
-        cast_type: "#{struct} *",
-        class: "unsigned",
-        class_properties: {
+        field_class: {
+          cast_type: "#{struct} *",
+          type: "integer_unsigned",
           field_value_range: 64,
-          preferred_display_base: 16 }
+          preferred_display_base: 16 
+        }
       },
       {
         name: "_p_val_length",
-        cast_type: "size_t",
-        class: "unsigned",
-        class_properties: {
+        field_class: {
+          cast_type: "size_t",
+          type: "integer_unsigned",
           field_value_range: 64 }
       },
       {
         name: "p_val",
-        cast_type: "#{struct} *",
-        class: "string",
-        be_class: "ZE::#{to_class_name(struct)}"
+        field_class: {
+          cast_type: "#{struct} *",
+          type: "string"
+        },
+        metadata: {
+          be_class: "ZE::#{to_class_name(struct)}"
+        }
       }
     ]
   }
+}
 end
 
 event_classes +=
@@ -139,19 +149,20 @@ event_classes +=
 }.flatten
 
 
-environment = [
+environment =
+[
   {
     name: 'hostname',
-    class: 'string',
+    type: 'string',
   }
 ]
 
 packet_context = [
   {
     name: 'cpu_id',
-    class: 'unsigned',
-    cast_type: 'uint64_t',
-    class_properties: {
+    field_class: {
+      type: 'integer_unsigned',
+      cast_type: 'uint64_t',
       field_value_range: 32
     }
   }
@@ -160,26 +171,26 @@ packet_context = [
 common_context = [
   {
     name: 'vpid',
-    class: 'signed',
-    cast_type: 'int64_t',
-    class_properties: {
+    field_class: {
+      type: 'integer_signed',
+      cast_type: 'int64_t',
       field_value_range: 64,
     }
   },
   {
     name: 'vtid',
-    class: 'unsigned',
-    cast_type: 'uint64_t',
-    class_properties: {
+    field_class: {
+      type: 'integer_unsigned',
+      cast_type: 'uint64_t',
       field_value_range: 64,
     }
   }
 ]
 
 puts YAML.dump({
-  name: "thapi_ze",
-  environment: environment,
-  clock_snapshot_value: true,
-  packet_context: packet_context,
-  common_context: common_context,
-  event_classes: event_classes })
+  environment: { entries: environment },
+  stream_classes: [ { name: "thapi_ze",
+                    default_clock_class: {},
+                    packet_context_field_class: { type: "structure", members: packet_context},
+                    event_common_context_field_class: { type: "structure", members: common_context},
+                    event_classes: event_classes }]})

@@ -16,26 +16,36 @@ end
 $types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
 
 def gen_bt_field_model(lttng_name, type, name, lttng)
-  field = { name: name, cast_type: type.gsub(/\[.*\]/,"*")}
+
+  menber = {name: name }
+
+  field = { cast_type: type.gsub(/\[.*\]/,"*")}
   field[:cast_type] = "#{type} *" if $types_by_name[type].kind_of?(YAMLCAst::Declaration) && $types_by_name[type].type.kind_of?(YAMLCAst::Function)
 
   case lttng_name
   when 'ctf_float'
-    field[:class] = type == 'float' ? 'single' : type
+    field[:type] = type == 'float' ? 'single' : type
   when 'ctf_integer', 'ctf_integer_hex'
-    field[:class] = integer_signed?(type) ? 'signed' : 'unsigned'
-    field[:class_properties] = { field_value_range: integer_size(type) }
-    field[:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
+    field[:type] = integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
+    field[:field_value_range] = integer_size(type)
+    field[:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
     if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
-      field[:be_class] = to_scoped_class_name(type)
+      menber[:metadata] = {be_class: to_scoped_class_name(type) }
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s
-    field[:class] = 'array_dynamic'
-    field[:field] =
-      { class: integer_signed?(array_type) ? 'signed' : 'unsigned',
-        class_properties: { field_value_range: integer_size(array_type) } }
-    field[:field][:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
+    field[:type] = 'array_dynamic'
+    field[:element_field_class] =
+      { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
+        field_value_range: integer_size(array_type)
+      }
+
+    field[:element_field_class][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
+    
+    match = type.match(/(.*) \*/)
+
+    field[:element_field_class][:cast_type] = match[1]
+    field[:length_field_path] = "EVENT_PAYLOAD[\"_#{name}_length\"]"
   when 'ctf_array', 'ctf_array_hex'
     array_type = lttng.type.to_s
     field[:class] = 'array_static'
@@ -45,21 +55,22 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:field][:class_properties][:preferred_display_base] = 16 if lttng_name.end_with?("_hex")
     field[:length] = lttng.length
   when 'ctf_string'
-    field[:class] = 'string'
+    field[:type] = 'string'
   when 'ctf_sequence_text', 'ctf_array_text'
-    field[:class] = 'string'
-    field[:length] = lttng.length if lttng_name == 'ctf_array_text'
+    field[:type] = 'string'
     t = type.sub(" *", "")
     while $types_by_name.include?(t) && $types_by_name[t].type.kind_of?(YAMLCAst::CustomType)
       t = $types_by_name[t].type.name
     end
     if $all_struct_names.include?(t)
-      field[:be_class] = to_scoped_class_name(t)
+      menber[:metadata] = {be_class: to_scoped_class_name(t) }
+      field[:cast_type_is_struct] = true unless type.include?("*")
     end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
   end
-  field
+  menber[:field_class] = field
+  menber
 end
 
 def gen_event_fields_bt_model(c, dir)
@@ -77,11 +88,27 @@ def gen_extra_event_fields_bt_model(event)
 end
 
 def gen_event_bt_model(provider, c, dir)
-  { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}",
-    payload: gen_event_fields_bt_model(c, dir) }
+  d = { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}" }
+  m =  gen_event_fields_bt_model(c,dir)
+
+
+  d[:payload_field_class] = 
+      {
+        type: "structure",
+        members: m
+      }  unless m.empty?
+  d
 end
 
 def gen_extra_event_bt_model(provider, event)
-  { name: "#{provider}:#{event["name"]}",
-    payload: gen_extra_event_fields_bt_model(event) }
+  
+  d = { name: "#{provider}:#{event["name"]}"}
+  m = gen_extra_event_fields_bt_model(event)
+
+  d[:payload_field_class] =
+      {
+        type: "structure",
+        members: m
+      } unless m.empty?
+  d
 end
