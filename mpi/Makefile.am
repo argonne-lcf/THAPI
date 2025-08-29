@@ -49,11 +49,8 @@ MPI_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(MPI_EXTRACTED)
 
-mpi_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
+btx_mpi_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-CLEANFILES += \
-	mpi_babeltrace_model.yaml
 
 EXTRA_DIST += \
 	mpi_model.rb \
@@ -188,9 +185,6 @@ EXTRA_DIST += \
 	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_mpimatching_model.yaml
-
-btx_mpi_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb mpi_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
 
 $(BTX_MPI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_mpimatching_model.yaml btx_mpi_model.yaml
 	$(METABABEL) -u btx_mpi_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_mpi -p mpiinterval -c interval --matching $(srcdir)/btx_mpimatching_model.yaml -i mpi.h.include

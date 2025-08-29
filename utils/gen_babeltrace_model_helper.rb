@@ -115,3 +115,52 @@ def gen_extra_event_bt_model(provider, event)
   end
   d
 end
+
+def gen_yaml(event_classes, backend)
+  environment =
+    [
+      {
+        name: 'hostname',
+        type: 'string',
+      },
+    ]
+
+  packet_context = [
+    {
+      name: 'cpu_id',
+      field_class: {
+        type: 'integer_unsigned',
+        cast_type: 'uint64_t',
+        field_value_range: 32,
+      },
+    },
+  ]
+
+  common_context = [
+    {
+      name: 'vpid',
+      field_class: {
+        type: 'integer_signed',
+        cast_type: 'int64_t',
+        field_value_range: 64,
+      },
+    },
+    {
+      name: 'vtid',
+      field_class: {
+        type: 'integer_unsigned',
+        cast_type: 'uint64_t',
+        field_value_range: 64,
+      },
+    },
+  ]
+
+  {
+    environment: { entries: environment },
+    stream_classes: [{ name: "thapi_#{backend}",
+                       default_clock_class: {},
+                       packet_context_field_class: { type: 'structure', members: packet_context },
+                       event_common_context_field_class: { type: 'structure', members: common_context },
+                       event_classes: event_classes }],
+  }
+end

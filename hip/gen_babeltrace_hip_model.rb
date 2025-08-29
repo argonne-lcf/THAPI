@@ -99,48 +99,4 @@ event_classes += hip_events.collect { |provider, es|
   }
 }.flatten
 
-environment = [
-  {
-    name: 'hostname',
-    class: 'string',
-  }
-]
-
-packet_context = [
-  {
-    name: 'cpu_id',
-    class: 'unsigned',
-    cast_type: 'uint64_t',
-    class_properties: {
-      field_value_range: 32
-    }
-  }
-]
-
-common_context = [
-  {
-    name: 'vpid',
-    class: 'signed',
-    cast_type: 'int64_t',
-    class_properties: {
-      field_value_range: 64,
-    }
-  },
-  {
-    name: 'vtid',
-    class: 'unsigned',
-    cast_type: 'uint64_t',
-    class_properties: {
-      field_value_range: 64,
-    }
-  }
-]
-
-puts YAML.dump({
-  name: "thapi_hip",
-  environment: environment,
-  clock_snapshot_value: true,
-  packet_context: packet_context,
-  common_context: common_context,
-  event_classes: event_classes })
-
+puts YAML.dump(gen_yaml(event_classes, 'hip'))

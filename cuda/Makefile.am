@@ -64,9 +64,6 @@ EXTRA_DIST = \
 CLEANFILES = \
 	btx_cuda_model.yaml
 
-btx_cuda_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb cuda_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
-
 $(BTX_CUDA_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_cudamatching_model.yaml btx_cuda_model.yaml
 	$(METABABEL) -u btx_cuda_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_cuda -p cudainterval -c interval --matching $(srcdir)/btx_cudamatching_model.yaml -i cuda.h.include
 
@@ -156,11 +153,8 @@ CUDART_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(srcdir)/cudart.h.include
 
-cuda_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
+btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-CLEANFILES += \
-	cuda_babeltrace_model.yaml
 
 EXTRA_DIST += \
 	cuda_model.rb \
