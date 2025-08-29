@@ -8,7 +8,7 @@ import yaml
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
 filenames = []
-filenames += ["mpi/tracer_mpi.c", "mpi/mpi_library.rb", "mpi/bt_mpi_model.yaml"]
+filenames += ["mpi/tracer_mpi.c", "mpi/mpi_library.rb", "mpi/btx_mpi_model.yaml"]
 # filenames += ["mpi/mpi_api.yaml"]
 
 filenames += ["omp/tracer_ompt.c", "omp/omp_library.rb", "omp/btx_omp_model.yaml"]
