@@ -22,7 +22,7 @@ filenames += ["cuda/tracer_cuda.c", "cuda/cuda_library.rb", "cuda/cuda_babeltrac
 
 filenames += ["cuda/tracer_cudart.c", "cuda/cudart_api.yaml"]
 
-filenames += ["ze/tracer_ze.c", "ze/ze_library.rb", "ze/ze_babeltrace_model.yaml"]
+filenames += ["ze/tracer_ze.c", "ze/ze_library.rb", "ze/btx_ze_model.yaml"]
 # filenames += [
 #    "ze/ze_api.yaml",
 #    "ze/zes_api.yaml",
