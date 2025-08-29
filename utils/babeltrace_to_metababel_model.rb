@@ -28,7 +28,7 @@ DATA_TYPES_DICT = {
 }
 
 # Not supported in the metababel model
-INGONRE_PROPERTIES = [
+IGNORE_PROPERTIES = [
   :be_class,
 ]
 
@@ -51,7 +51,7 @@ end
 def get_element_field_class(element_field, parent_field)
   class_properties = element_field.delete(:class_properties)
   field_properties = (element_field.to_a + class_properties.to_a).filter_map do |k, v|
-    translate_key_value(k, v) unless INGONRE_PROPERTIES.include?(k)
+    translate_key_value(k, v) unless IGNORE_PROPERTIES.include?(k)
   end.to_h
 
   if parent_field[:class] == 'array_dynamic'
@@ -69,7 +69,7 @@ def get_field_class_properties(field, member_name)
   class_properties = field.delete(:class_properties)
   field_element_field_class = field.key?(:field) ? get_element_field_class(field.delete(:field), field) : {}
   field_properties = (field.to_a + class_properties.to_a + field_element_field_class.to_a).filter_map do |k, v|
-    translate_key_value(k, v) unless INGONRE_PROPERTIES.include?(k)
+    translate_key_value(k, v) unless IGNORE_PROPERTIES.include?(k)
   end.to_h
   if field_properties[:type] == 'array_dynamic'
     field_properties[:length_field_path] =
