@@ -32,7 +32,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:field_value_range] = integer_size(type)
     field[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
     if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
-      menber[:metadata] = { be_class: to_scoped_class_name(type) }
+      #menber[:metadata] = { be_class: to_scoped_class_name(type) }
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s
@@ -63,9 +63,18 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     while $types_by_name.include?(t) && $types_by_name[t].type.is_a?(YAMLCAst::CustomType)
       t = $types_by_name[t].type.name
     end
-    if $all_struct_names.include?(t)
-      menber[:metadata] = { be_class: to_scoped_class_name(t) }
-      field[:cast_type_is_struct] = true unless type.include?('*')
+    #menber[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
+
+    # Too complicated, not sure why `all_struct_names` is not enough
+    unless field[:cast_type].end_with?('*')
+      if $all_struct_names.include?(t)
+        field[:cast_type_is_struct] = true
+      elsif $types_by_name[t]&.type.is_a?(YAMLCAst::Union)
+        field[:cast_type_is_struct] = true
+      else
+        type.start_with?('struct')
+        field[:cast_type_is_struct] = true
+      end
     end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
