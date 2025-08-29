@@ -2,6 +2,7 @@ require_relative 'gen_ze_library_base'
 require_relative '../utils/gen_babeltrace_model_helper'
 require 'set'
 
+<<<<<<< HEAD
 $integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
 $integer_signed = INT_SIGN_MAP
 

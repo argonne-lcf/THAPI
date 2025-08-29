@@ -1,3 +1,75 @@
+# Global variable need to be defined
+
+$integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
+$integer_signed = INT_SIGN_MAP
+
+$all_enums.each do |t|
+  $integer_sizes["enum #{t.name}"] = 32
+end
+
+$all_enums.each do |t|
+  $integer_signed["enum #{t.name}"] = true
+end
+
+def integer_size(t)
+  return 64 if t.match(/\*/)
+  return 64 if t.match(/\[.*\]/)
+
+  r = $integer_sizes[t]
+  raise "unknown integer type #{t}" if r.nil?
+
+  r
+end
+
+def integer_signed?(t)
+  return false if t.match(/\*/)
+  return false if t.match(/\[.*\]/)
+
+  r = $integer_signed[t]
+  raise "unknown integer type #{t}" if r.nil?
+
+  r
+end
+
+# End of global variable use
+def meta_parameter_types_name(m, dir = nil)
+  lttng = if dir == :start
+            m.lttng_in_type
+          elsif dir == :stop
+            m.lttng_out_type
+          else
+            m.lttng_type
+          end
+  name = lttng.name
+  t = m.command[m.name].type.type
+
+  case m
+  when ScalarMetaParameter
+    if lttng.length
+      [['ctf_integer', 'size_t', "_#{name}_length", nil],
+       [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+    else
+      [[lttng.macro.to_s, "#{t}", "#{name}", lttng]]
+    end
+  when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng, ReturnString
+    if lttng.macro.to_s == 'ctf_string'
+      [['ctf_string', "#{t} *", "#{name}", lttng]]
+    else
+      [['ctf_integer', 'size_t', "_#{name}_length", nil],
+       [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+    end
+  when ArrayByRefMetaParameter
+    [['ctf_integer', 'size_t', "_#{name}_length", nil],
+     [lttng.macro.to_s, "#{t.type} *", "#{name}", lttng]]
+  when FixedArrayMetaParameter
+    [[lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+  when OutPtrString
+    [['ctf_string', "#{t}", "#{name}", lttng]]
+  else
+    raise "unsupported meta parameter class #{m.class} #{lttng.call_string} #{t}"
+  end
+end
+
 def get_extra_fields_types_name(event)
   event['fields'].collect do |field|
     lttng = LTTng::TracepointField.new(*field)
@@ -83,6 +155,33 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   menber
 end
 
+def get_fields_types_name(c, dir)
+  if dir == :start
+    fields = c.parameters.to_a.collect do |p|
+      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
+    end
+    fields += c.meta_parameters.select { |m| m.is_a?(In) }.collect do |m|
+      meta_parameter_types_name(m, :start)
+    end.flatten(1)
+  elsif dir == :stop
+    r = c.type.lttng_type
+    fields = []
+    fields = [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]] if r
+
+    fields += c.meta_parameters.select { |m| m.is_a?(Out) }.collect do |m|
+      meta_parameter_types_name(m, :stop)
+    end.flatten(1)
+  else
+    fields = c.parameters.to_a.collect do |p|
+      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
+    end
+    fields += c.meta_parameters.collect do |m|
+      meta_parameter_types_name(m)
+    end.flatten(1)
+  end
+  fields
+end
+
 def gen_event_fields_bt_model(c, dir)
   types_name = get_fields_types_name(c, dir)
   types_name.collect do |lttng_name, type, name, lttng|
@@ -97,8 +196,14 @@ def gen_extra_event_fields_bt_model(event)
   end
 end
 
-def gen_event_bt_model(provider, c, dir)
-  d = { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}" }
+def gen_event_bt_model(provider, c, dir = nil)
+  d = if dir
+        { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}" }
+      # OMP backend
+      else
+        { name: "#{provider}:#{c.name.gsub(/_func\z/, '')}" }
+      end
+
   m = gen_event_fields_bt_model(c, dir)
 
   unless m.empty?
