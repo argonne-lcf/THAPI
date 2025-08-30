@@ -1,28 +1,6 @@
 require_relative 'gen_mpi_library_base'
 require_relative '../utils/gen_babeltrace_model_helper'
 
-def get_fields_types_name(c, dir)
-  if dir == :start
-    fields = (c.parameters || []).collect do |p|
-      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
-    end
-    fields += c.meta_parameters.select { |m| m.is_a?(In) }.collect do |m|
-      meta_parameter_types_name(m, :start)
-    end.flatten(1)
-  else
-    r = c.type.lttng_type
-    fields = if r
-               [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]]
-             else
-               []
-             end
-    fields += c.meta_parameters.select { |m| m.is_a?(Out) }.collect do |m|
-      meta_parameter_types_name(m, :stop)
-    end.flatten(1)
-  end
-  fields
-end
-
 event_classes =
   [[:lttng_ust_mpi, $mpi_commands]].collect do |provider, commands|
     commands.collect do |c|
