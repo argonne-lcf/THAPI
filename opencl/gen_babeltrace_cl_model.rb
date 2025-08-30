@@ -2,7 +2,7 @@ require 'yaml'
 OPENCL_MODEL = YAML.load_file('opencl_model.yaml')
 
 def get_bottom(type)
-  type = type.gsub("cl_errcode","cl_int")
+  type = type.gsub('cl_errcode', 'cl_int')
   OPENCL_MODEL['type_map'].fetch(type, type)
 end
 
@@ -10,6 +10,7 @@ def unsigned?(type, pointer = false)
   # object are size_t
   return true if pointer || type.match(/\*/)
   return true if OPENCL_MODEL['objects'].include?(type)
+
   bottom = get_bottom(type)
   ['unsigned int', 'uintptr_t', 'size_t', 'cl_uint', 'cl_ulong', 'cl_ushort', 'uint64_t'].include?(bottom)
 end
@@ -17,6 +18,7 @@ end
 def integer_size(type, pointer = false)
   return 64 if pointer || type.match(/\*/)
   return 64 if OPENCL_MODEL['objects'].include?(type)
+
   bottom = get_bottom(type)
   case bottom
   when 'cl_char', 'cl_uchar'
@@ -33,7 +35,7 @@ def integer_size(type, pointer = false)
 end
 
 def cl_to_class(type)
-  "CL::" + type.sub(/\Acl_/,"").split("_").collect(&:capitalize).join
+  'CL::' + type.sub(/\Acl_/, '').split('_').collect(&:capitalize).join
 end
 
 def parse_field(field)
@@ -51,7 +53,7 @@ def parse_field(field)
     d[:be_class] = cl_to_class(field['type']) if field['structure']
   when 'ctf_array'
     d[:class] = 'array_static'
-    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer'=> field['pointer'] })
+    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
     d[:length] = field['length']
   when 'ctf_sequence'
     d[:class] = 'array_dynamic'
@@ -62,15 +64,15 @@ def parse_field(field)
   when 'ctf_enum'
     d[:class] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
     enum_type = field['enum_type']
-    d[:mappings] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map { |f|
-      { label: f[:name], integer_range_set: [[f[:value],f[:value]]] }
-    }
+    d[:mappings] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map do |f|
+      { label: f[:name], integer_range_set: [[f[:value], f[:value]]] }
+    end
   end
   d
 end
 
-schema_event = OPENCL_MODEL['events'].map { |name, fields|
-  payload_fields = fields.map { |sub_name, field|
+schema_event = OPENCL_MODEL['events'].map do |name, fields|
+  payload_fields = fields.map do |sub_name, field|
     field['name'] = sub_name
     parsed_field = parse_field(field)
     cast_type = "#{field['type'].gsub('cl_errcode', 'cl_int')}"
@@ -87,16 +89,16 @@ schema_event = OPENCL_MODEL['events'].map { |name, fields|
     else
       parsed_field
     end
-  }.flatten
+  end.flatten
 
   { name: name, payload: payload_fields }
-}
+end
 
 environment = [
   {
     name: 'hostname',
     class: 'string',
-  }
+  },
 ]
 
 packet_context = [
@@ -105,9 +107,9 @@ packet_context = [
     class: 'unsigned',
     cast_type: 'uint64_t',
     class_properties: {
-      field_value_range: 32
-    }
-  }
+      field_value_range: 32,
+    },
+  },
 ]
 
 common_context = [
@@ -117,7 +119,7 @@ common_context = [
     cast_type: 'int64_t',
     class_properties: {
       field_value_range: 64,
-    }
+    },
   },
   {
     name: 'vtid',
@@ -125,14 +127,15 @@ common_context = [
     cast_type: 'uint64_t',
     class_properties: {
       field_value_range: 64,
-    }
-  }
+    },
+  },
 ]
 
 puts YAML.dump({
-  name: 'thapi_opencl',
-  environment: environment,
-  clock_snapshot_value: true,
-  packet_context: packet_context,
-  common_context: common_context,
-  event_classes: schema_event })
+                 name: 'thapi_opencl',
+                 environment: environment,
+                 clock_snapshot_value: true,
+                 packet_context: packet_context,
+                 common_context: common_context,
+                 event_classes: schema_event,
+               })

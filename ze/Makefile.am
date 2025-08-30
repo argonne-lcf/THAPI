@@ -52,9 +52,6 @@ EXTRA_DIST = \
 
 CLEANFILES = btx_ze_model.yaml
 
-btx_ze_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb ze_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
-
 $(BTX_ZE_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_zematching_model.yaml btx_ze_model.yaml
 	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_ze -p zeinterval -c interval --matching $(srcdir)/btx_zematching_model.yaml -i ze.h.include
 
@@ -97,10 +94,8 @@ ZE_MODEL = \
 	$(top_srcdir)/utils/meta_parameters.rb \
 	$(top_srcdir)/utils/LTTng.rb
 
-ze_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
+btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-CLEANFILES += ze_babeltrace_model.yaml
 
 EXTRA_DIST += \
 	ze_model.rb \

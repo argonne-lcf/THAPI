@@ -227,12 +227,12 @@ jobs:
         working-directory: base_branch/build
         run: |
           make -C utils lttng/tracepoint_gen.h
-          make -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
-          make -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
-          make -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
-          make -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
+          make -C mpi tracer_mpi.c mpi_library.rb btx_mpi_model.yaml libmpi.la
+          make -C omp tracer_ompt.c omp_library.rb btx_omp_model.yaml
+          make -C hip tracer_hip.c hip_library.rb btx_hip_model.yaml libamdhip64.la
+          make -C cuda tracer_cuda.c cuda_library.rb btx_cuda_model.yaml libcuda.la
           make -C cuda tracer_cudart.c libcudart.la
-          make -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
+          make -C ze tracer_ze.c ze_library.rb btx_ze_model.yaml libze_loader.la
           make -C opencl libOpenCL.la
       # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
@@ -251,12 +251,12 @@ jobs:
         working-directory: pr_branch/build
         run: |
           make -C utils lttng/tracepoint_gen.h
-          make -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
-          make -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
-          make -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
-          make -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
+          make -C mpi tracer_mpi.c mpi_library.rb btx_mpi_model.yaml libmpi.la
+          make -C omp tracer_ompt.c omp_library.rb btx_omp_model.yaml
+          make -C hip tracer_hip.c hip_library.rb btx_hip_model.yaml libamdhip64.la
+          make -C cuda tracer_cuda.c cuda_library.rb btx_cuda_model.yaml libcuda.la
           make -C cuda tracer_cudart.c libcudart.la
-          make -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
+          make -C ze tracer_ze.c ze_library.rb btx_ze_model.yaml libze_loader.la
           make -C opencl libOpenCL.la
       # Run comparison script
       - name: Compare files
