@@ -88,7 +88,7 @@ end
 $types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
 
 def gen_bt_field_model(lttng_name, type, name, lttng)
-  menber = { name: name }
+  member = { name: name }
 
   field = { cast_type: type.gsub(/\[.*\]/, '*') }
   if $types_by_name[type].is_a?(YAMLCAst::Declaration) && $types_by_name[type].type.is_a?(YAMLCAst::Function)
@@ -104,7 +104,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     field[:field_value_range] = integer_size(type)
     field[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
     if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
-      menber[:metadata] = { be_class: to_scoped_class_name(type) }
+      member[:metadata] = { be_class: to_scoped_class_name(type) }
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s
@@ -135,7 +135,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     while $types_by_name.include?(t) && $types_by_name[t].type.is_a?(YAMLCAst::CustomType)
       t = $types_by_name[t].type.name
     end
-    menber[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
+    member[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
 
     # Too complicated, not sure why `all_struct_names` is not enough
     unless field[:cast_type].end_with?('*')
@@ -151,8 +151,8 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   else
     raise "unsupported lttng type: #{lttng.inspect}"
   end
-  menber[:field_class] = field
-  menber
+  member[:field_class] = field
+  member
 end
 
 def get_fields_types_name(c, dir)
