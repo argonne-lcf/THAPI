@@ -19,21 +19,21 @@
 using timestamp_t = uint64_t;
 using perfetto_uuid_t = uint64_t;
 
-std::string perfetto_trace_path;
-
-void flush_trace(::perfetto_pruned::Trace &trace) {
+void flush_trace(::perfetto_pruned::Trace &trace, std::string &perfetto_trace_path) {
   // Assume File exist and have been created
   std::fstream output(perfetto_trace_path, std::ios::out | std::ios::app | std::ios::binary);
   if (!trace.SerializeToOstream(&output))
     std::cerr << "THAPI: Failed to write the trace at location: " << perfetto_trace_path
               << std::endl;
-  trace = perfetto_pruned::Trace{};
+  // Remove packets
+  trace.clear_packet();
 }
 
 // Based on https://perfetto.dev/docs/reference/synthetic-track-event
 class ScopedTracePacket {
 public:
   static inline unsigned event_count = 0;
+  static inline std::string perfetto_trace_path;
 
   explicit ScopedTracePacket(::perfetto_pruned::TracePacket *pkt, ::perfetto_pruned::Trace &trace)
       : packet_(pkt), trace_(trace) {}
@@ -45,7 +45,7 @@ public:
       return;
 
     // Reset trace
-    flush_trace(trace_);
+    flush_trace(trace_, perfetto_trace_path);
     event_count = 0;
   }
 
@@ -67,9 +67,6 @@ ScopedTracePacket add_packet(::perfetto_pruned::Trace &trace) {
 }
 
 struct timeline_dispatch_s {
-  // User params provided to the user component.
-  btx_params_t *params;
-
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
   std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> thread2uuid;
   std::unordered_map<perfetto_uuid_t, std::stack<timestamp_t>> uuid2stack;
@@ -85,6 +82,8 @@ struct timeline_dispatch_s {
       hp_hi2nicparenttracks; // NIC sampling: one parent track per (hostname, interface)
   std::unordered_map<hic_t, perfetto_uuid_t>
       hp_hic2nictracks; // NIC sampling: one track per (hostname, interface, counter)
+
+  std::string output_path;
   perfetto_pruned::Trace trace;
 };
 
@@ -518,30 +517,11 @@ static void add_event_async(timeline_dispatch_t *dispatch, std::string hostname,
 void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeline_dispatch_t; }
 
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
-  auto *data = static_cast<timeline_dispatch_t *>(usr_data);
-  data->params = usr_params;
+  auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  perfetto_trace_path = std::string{data->params->output_path};
-
-  if (perfetto_trace_path.empty())
-    perfetto_trace_path = "out.pftrace";
-
-  if (std::filesystem::exists(perfetto_trace_path)) {
-    std::cerr << "THAPI ERROR: The Perfetto trace file already exists: " << perfetto_trace_path
-              << std::endl
-              << "Please delete the file or specify a different output name with the `--timeline "
-                 "PATH argument."
-              << std::endl;
-    std::terminate();
-  }
-
-  std::ofstream ofs(perfetto_trace_path);
-  if (!ofs) {
-    std::cerr << "THAPI ERROR: Failed to create file: " << perfetto_trace_path << std::endl;
-    std::terminate();
-  }
-
-  std::cout << "THAPI: Perfetto trace location: " << perfetto_trace_path << std::endl;
+  dispatch->output_path = std::string{usr_params->output_path};
+  // Set default class for packet
+  ScopedTracePacket::perfetto_trace_path = dispatch->output_path;
 }
 
 void btx_finalize_component_callback(void *usr_data) {
@@ -553,7 +533,7 @@ void btx_finalize_component_callback(void *usr_data) {
     }
   }
 
-  flush_trace(dispatch->trace);
+  flush_trace(dispatch->trace, dispatch->output_path);
   google::protobuf::ShutdownProtobufLibrary();
 
   delete dispatch;
