@@ -1,6 +1,7 @@
 #include <metababel/metababel.h>
 
 #include "xprof_utils.hpp" // typedef
+#include <filesystem>
 #include <fstream>
 #include <iomanip>  // set precision
 #include <iostream> // stdcout
@@ -13,11 +14,58 @@
 #include "perfetto_prunned.pb.h"
 
 #define TRUSTED_PACKED_SEQUENCE_ID 10
+#define MAX_EVENT_PER_TRACE_CHUNK 100000 // Should be less than 2 GB
 
 using timestamp_t = uint64_t;
 using perfetto_uuid_t = uint64_t;
 
+std::string perfetto_trace_path;
+
+void flush_trace(::perfetto_pruned::Trace &trace) {
+  std::cout << "Flush Trace " << std::endl;
+  // Assume File exist and have been created
+  std::fstream output(perfetto_trace_path, std::ios::out | std::ios::app | std::ios::binary);
+  if (!trace.SerializeToOstream(&output))
+    std::cerr << "THAPI: Failed to write the trace at location: " << perfetto_trace_path
+              << std::endl;
+  trace = perfetto_pruned::Trace{};
+}
+
 // Based on https://perfetto.dev/docs/reference/synthetic-track-event
+class ScopedTracePacket {
+public:
+  static inline unsigned event_count = 0;
+
+  explicit ScopedTracePacket(::perfetto_pruned::TracePacket *pkt, ::perfetto_pruned::Trace &trace)
+      : packet_(pkt), trace_(trace) {}
+
+  ~ScopedTracePacket() {
+    event_count++;
+    std::cout << "event_count " << event_count << " | " << MAX_EVENT_PER_TRACE_CHUNK << std::endl;
+    if (event_count < MAX_EVENT_PER_TRACE_CHUNK)
+      return;
+
+    // Reset trace
+    flush_trace(trace_);
+    event_count = 0;
+  }
+
+  // Access to the underlying TracePacket
+  ::perfetto_pruned::TracePacket *operator->() { return packet_; }
+  const ::perfetto_pruned::TracePacket *operator->() const { return packet_; }
+
+  ::perfetto_pruned::TracePacket &get() { return *packet_; }
+  const ::perfetto_pruned::TracePacket &get() const { return *packet_; }
+
+private:
+  ::perfetto_pruned::TracePacket *packet_;
+  ::perfetto_pruned::Trace &trace_;
+};
+
+ScopedTracePacket add_packet(::perfetto_pruned::Trace &trace) {
+  auto *_packet = trace.add_packet();
+  return ScopedTracePacket{_packet, trace};
+}
 
 struct timeline_dispatch_s {
   // User params provided to the user component.
@@ -34,8 +82,10 @@ struct timeline_dispatch_s {
   std::unordered_map<h_ddomain_t, perfetto_uuid_t> hp_ddomain2telmtracks;
   std::unordered_map<h_ddomain_t, perfetto_uuid_t> hp_ddomain2cpyalloctracks;
   std::unordered_map<h_dfsdev_t, perfetto_uuid_t> hp_dfsdev2fptracks;
-  std::unordered_map<hi_t,  perfetto_uuid_t> hp_hi2nicparenttracks; // NIC sampling: one parent track per (hostname, interface)
-  std::unordered_map<hic_t, perfetto_uuid_t> hp_hic2nictracks;      // NIC sampling: one track per (hostname, interface, counter)
+  std::unordered_map<hi_t, perfetto_uuid_t>
+      hp_hi2nicparenttracks; // NIC sampling: one parent track per (hostname, interface)
+  std::unordered_map<hic_t, perfetto_uuid_t>
+      hp_hic2nictracks; // NIC sampling: one track per (hostname, interface, counter)
   perfetto_pruned::Trace trace;
 };
 
@@ -66,7 +116,8 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
   potential_uuid = hp_uuid;
 
   // Create packet with track descriptor
-  auto *packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
+
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   packet->set_timestamp(0);
   // TODO: check if this is required
@@ -103,8 +154,7 @@ insert_or_get_uuid(MapType &counter_map, KeyType key, timeline_dispatch_t *dispa
 }
 
 static perfetto_uuid_t get_counter_track_uuuid(
-    timeline_dispatch_t *dispatch,
-    std::unordered_map<h_ddomain_t, perfetto_uuid_t> &counter_tracks,
+    timeline_dispatch_t *dispatch, std::unordered_map<h_ddomain_t, perfetto_uuid_t> &counter_tracks,
     const std::string &track_name, const std::string &hostname, thapi_device_id did,
     uint32_t deviceIdx, uint64_t tHandle, thapi_domain_idx domain,
     std::optional<Extras> fabricExtras = std::nullopt,
@@ -126,7 +176,7 @@ static perfetto_uuid_t get_counter_track_uuuid(
   perfetto_uuid_t hp_uuid = uuids.second;
 
   // Packet creation (independent of the map used for UUID storage)
-  auto *packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_timestamp(0);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   auto *track_descriptor = packet->mutable_track_descriptor();
@@ -238,7 +288,7 @@ static void add_event_DTelemetry(timeline_dispatch_t *dispatch, const std::strin
   perfetto_uuid_t track_uuid;
   track_uuid = uuid_getter(dispatch, hostname, did, deviceIdx, tHandle, subDevice, options);
 
-  auto *packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   packet->set_timestamp(timestamp);
   auto *track_event = packet->mutable_track_event();
@@ -306,7 +356,7 @@ static void add_event_copyEU(timeline_dispatch_t *dispatch, std::string hostname
 
 static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, timestamp_t begin,
                             std::string name) {
-  auto *packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_timestamp(begin);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   auto *track_event = packet->mutable_track_event();
@@ -316,7 +366,7 @@ static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
 }
 
 static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, uint64_t end) {
-  auto *packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   packet->set_timestamp(end);
   auto *track_event = packet->mutable_track_event();
@@ -345,7 +395,7 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
 
   // Add the process packet to the trace
   {
-    auto *packet = dispatch->trace.add_packet();
+    auto packet = add_packet(dispatch->trace);
 
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(hp_uuid);
@@ -390,7 +440,7 @@ static perfetto_uuid_t get_track_uuid_perfecly_nested(timeline_dispatch_t *dispa
   potential_uuid = track_uuid;
   // Add the thread packet to the trace
   {
-    auto *packet = dispatch->trace.add_packet();
+    auto packet = add_packet(dispatch->trace);
     auto *track_descriptor = packet->mutable_track_descriptor();
     track_descriptor->set_uuid(track_uuid);
     track_descriptor->set_parent_uuid(hp_uuid);
@@ -438,7 +488,7 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
   if (it == lasts.begin()) {
     uuid = gen_perfetto_uuid();
     {
-      auto *packet = dispatch->trace.add_packet();
+      auto packet = add_packet(dispatch->trace);
       auto *track_descriptor = packet->mutable_track_descriptor();
       track_descriptor->set_uuid(uuid);
       track_descriptor->set_parent_uuid(process_uuid);
@@ -471,6 +521,28 @@ void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeli
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *data = static_cast<timeline_dispatch_t *>(usr_data);
   data->params = usr_params;
+
+  perfetto_trace_path = std::string{data->params->output_path};
+
+  if (perfetto_trace_path.empty())
+    perfetto_trace_path = "out.pftrace";
+
+  if (std::filesystem::exists(perfetto_trace_path)) {
+    std::cerr << "THAPI ERROR: The Perfetto trace file already exists: " << perfetto_trace_path
+              << std::endl
+              << "Please delete the file or specify a different output name with the `--timeline "
+                 "PATH argument."
+              << std::endl;
+    std::terminate();
+  }
+
+  std::ofstream ofs(perfetto_trace_path);
+  if (!ofs) {
+    std::cerr << "THAPI ERROR: Failed to create file: " << perfetto_trace_path << std::endl;
+    std::terminate();
+  }
+
+  std::cout << "THAPI: Perfetto trace location: " << perfetto_trace_path << std::endl;
 }
 
 void btx_finalize_component_callback(void *usr_data) {
@@ -482,17 +554,7 @@ void btx_finalize_component_callback(void *usr_data) {
     }
   }
 
-  std::string path{dispatch->params->output_path};
-  if (path.empty()) {
-    path = "out.pftrace";
-  }
-
-  // Write the new address book back to disk.
-  std::fstream output(path, std::ios::out | std::ios::trunc | std::ios::binary);
-  if (!dispatch->trace.SerializeToOstream(&output))
-    std::cerr << "THAPI: Failed to write the trace at location: " << path << std::endl;
-  else
-    std::cout << "THAPI: Perfetto trace location: " << path << std::endl;
+  flush_trace(dispatch->trace);
   google::protobuf::ShutdownProtobufLibrary();
 
   delete dispatch;
@@ -561,26 +623,25 @@ static void memModule_usr_callback(void *btx_handle, void *usr_data, const char 
 }
 
 // create (or lookup) the parent NIC track
-static perfetto_uuid_t get_nic_parent_track_uuid(
-    timeline_dispatch_t* dispatch,
-    const std::string& hostname,
-    const std::string& interface_name) {
+static perfetto_uuid_t get_nic_parent_track_uuid(timeline_dispatch_t *dispatch,
+                                                 const std::string &hostname,
+                                                 const std::string &interface_name) {
   auto key = std::make_pair(hostname, interface_name);
-  auto it  = dispatch->hp_hi2nicparenttracks.find(key);
+  auto it = dispatch->hp_hi2nicparenttracks.find(key);
   if (it != dispatch->hp_hi2nicparenttracks.end())
     return it->second;
 
   perfetto_uuid_t parent_uuid = gen_perfetto_uuid();
   dispatch->hp_hi2nicparenttracks[key] = parent_uuid;
 
-  auto* packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
-  packet->set_timestamp(0);  // descriptor at time‐zero
+  packet->set_timestamp(0); // descriptor at time‐zero
   packet->set_previous_packet_dropped(true);
-  auto* td = packet->mutable_track_descriptor();
+  auto *td = packet->mutable_track_descriptor();
   td->set_uuid(parent_uuid);
   td->set_name("NIC Event | Hostname " + hostname + " | " + interface_name);
-  td->mutable_counter();     // mark as counter group (so it appears alongside counters)
+  td->mutable_counter(); // mark as counter group (so it appears alongside counters)
   return parent_uuid;
 }
 
@@ -596,7 +657,7 @@ static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
   perfetto_uuid_t parent_uuid = get_nic_parent_track_uuid(dispatch, hostname, interface_name);
 
   auto key = std::make_tuple(hostname, interface_name, counter);
-  auto it  = dispatch->hp_hic2nictracks.find(key);
+  auto it = dispatch->hp_hic2nictracks.find(key);
   if (it != dispatch->hp_hic2nictracks.end())
     return it->second;
 
@@ -604,9 +665,9 @@ static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
   perfetto_uuid_t uuid = gen_perfetto_uuid();
   dispatch->hp_hic2nictracks[key] = uuid;
 
-  auto *packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
-  packet->set_timestamp(0);  // descriptor at time‐zero
+  packet->set_timestamp(0); // descriptor at time‐zero
   packet->set_previous_packet_dropped(true);
   auto *td = packet->mutable_track_descriptor();
   td->set_uuid(uuid);
@@ -616,20 +677,15 @@ static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
   return uuid;
 }
 
-static void nic_usr_callback(void*       btx_handle,
-                             void*       usr_data,
-                             const char* hostname,
-                             int64_t     ts,
-                             const char* interface_name,
-                             const char* counter,
-                             uint64_t    value) {
-  auto* dispatch = static_cast<timeline_dispatch_t*>(usr_data);
+static void nic_usr_callback(void *btx_handle, void *usr_data, const char *hostname, int64_t ts,
+                             const char *interface_name, const char *counter, uint64_t value) {
+  auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   perfetto_uuid_t uuid = get_nic_track_uuid(dispatch, hostname, interface_name, counter);
 
-  auto* packet = dispatch->trace.add_packet();
+  auto packet = add_packet(dispatch->trace);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
   packet->set_timestamp(ts);
-  auto* ev = packet->mutable_track_event();
+  auto *ev = packet->mutable_track_event();
   ev->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
   ev->set_track_uuid(uuid);
   ev->set_double_counter_value(static_cast<double>(value));
