@@ -22,7 +22,6 @@ using perfetto_uuid_t = uint64_t;
 std::string perfetto_trace_path;
 
 void flush_trace(::perfetto_pruned::Trace &trace) {
-  std::cout << "Flush Trace " << std::endl;
   // Assume File exist and have been created
   std::fstream output(perfetto_trace_path, std::ios::out | std::ios::app | std::ios::binary);
   if (!trace.SerializeToOstream(&output))
@@ -41,7 +40,7 @@ public:
 
   ~ScopedTracePacket() {
     event_count++;
-    std::cout << "event_count " << event_count << " | " << MAX_EVENT_PER_TRACE_CHUNK << std::endl;
+
     if (event_count < MAX_EVENT_PER_TRACE_CHUNK)
       return;
 
