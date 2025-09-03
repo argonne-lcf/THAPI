@@ -53,9 +53,6 @@ public:
   ::perfetto_pruned::TracePacket *operator->() { return packet_; }
   const ::perfetto_pruned::TracePacket *operator->() const { return packet_; }
 
-  ::perfetto_pruned::TracePacket &get() { return *packet_; }
-  const ::perfetto_pruned::TracePacket &get() const { return *packet_; }
-
 private:
   ::perfetto_pruned::TracePacket *packet_;
   ::perfetto_pruned::Trace &trace_;
@@ -522,8 +519,8 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   dispatch->output_path = std::string{usr_params->output_path};
   // Set default class for packet
   ScopedTracePacket::perfetto_trace_path = dispatch->output_path;
+  std::fstream output(dispatch->output_path, std::ios::out | std::ios::trunc | std::ios::binary);
   std::cout << "THAPI: Perfetto trace location: " << dispatch->output_path << std::endl;
-
 }
 
 void btx_finalize_component_callback(void *usr_data) {
