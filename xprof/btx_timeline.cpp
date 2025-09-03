@@ -522,6 +522,8 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   dispatch->output_path = std::string{usr_params->output_path};
   // Set default class for packet
   ScopedTracePacket::perfetto_trace_path = dispatch->output_path;
+  std::cout << "THAPI: Perfetto trace location: " << dispatch->output_path << std::endl;
+
 }
 
 void btx_finalize_component_callback(void *usr_data) {
