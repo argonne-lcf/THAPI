@@ -24,6 +24,7 @@ class UnboundTrace {
 public:
   UnboundTrace(std::string &_output_path) : output_path(_output_path) {
 
+    // Overwriting `output_path`
     std::fstream output(output_path, std::ios::out | std::ios::trunc | std::ios::binary);
     std::cout << "THAPI: Perfetto trace location: " << output_path << std::endl;
   }
@@ -37,9 +38,8 @@ public:
   }
 
   ~UnboundTrace() {
-    if (event_count > 0) {
+    if (event_count > 0)
       serialize();
-    }
   }
 
 private:
@@ -409,9 +409,9 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
 
 // Perfectly Nested
 
-static perfetto_uuid_t get_track_uuid_perfecly_nested(timeline_dispatch_t *dispatch,
-                                                      std::string hostname, uint64_t process_id,
-                                                      uint64_t thread_id) {
+static perfetto_uuid_t get_track_uuid_perfectly_nested(timeline_dispatch_t *dispatch,
+                                                       std::string hostname, uint64_t process_id,
+                                                       uint64_t thread_id) {
 
   // Get process UUID
   auto hp_uuid = get_process_uuid(dispatch, hostname, process_id);
@@ -451,7 +451,7 @@ static void add_event_perfectly_nested(timeline_dispatch_t *dispatch, std::strin
                                        uint64_t process_id, uint64_t thread_id, std::string name,
                                        uint64_t begin, uint64_t dur) {
 
-  auto track_uuid = get_track_uuid_perfecly_nested(dispatch, hostname, process_id, thread_id);
+  auto track_uuid = get_track_uuid_perfectly_nested(dispatch, hostname, process_id, thread_id);
 
   const uint64_t end = begin + dur;
   // Handling perfectly nested event
