@@ -49,7 +49,7 @@ private:
   unsigned event_count = 0;
 
   void serialize() {
-    //  /!\ The output_path will be appended
+    // /!\ Data will be appended to the output_path file
     std::fstream output(output_path, std::ios::out | std::ios::app | std::ios::binary);
     if (!trace.SerializeToOstream(&output))
       std::cerr << "THAPI: Failed to write the trace at location: " << output_path << std::endl;
