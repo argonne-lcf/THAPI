@@ -23,7 +23,6 @@ class UnboundTrace {
 
 public:
   UnboundTrace(std::string &_output_path) : output_path(_output_path) {
-
     // Overwriting `output_path`
     std::fstream output(output_path, std::ios::out | std::ios::trunc | std::ios::binary);
     std::cout << "THAPI: Perfetto trace location: " << output_path << std::endl;
