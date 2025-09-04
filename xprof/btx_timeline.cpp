@@ -75,8 +75,8 @@ struct timeline_dispatch_s {
       hp_hi2nicparenttracks; // NIC sampling: one parent track per (hostname, interface)
   std::unordered_map<hic_t, perfetto_uuid_t>
       hp_hic2nictracks; // NIC sampling: one track per (hostname, interface, counter)
-
-  // std::string output_path;
+  // Use a pointer since `output_path` is unknown at `timeline_dispatch_s` creation,
+  // preventing `UnboundTrace` initialization
   std::unique_ptr<UnboundTrace> trace;
 };
 
