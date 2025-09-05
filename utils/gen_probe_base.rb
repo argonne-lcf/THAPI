@@ -16,7 +16,7 @@ $tracepoint_lambda = lambda { |provider, c, dir|
       end)
     end
     params.push("#{c.type}, #{RESULT_NAME}") if c.has_return_type? && dir == :stop
-    params += c.tracepoint_parameters.collect do |p|
+    params += c.tracepoint_parameters.reject { |p| p.after? && dir == :start }.collect do |p|
       "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
     end
     puts params.join(",\n    ")
