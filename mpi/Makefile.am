@@ -41,7 +41,7 @@ EXTRA_DIST += \
 MPI_MODEL = \
 	$(srcdir)/mpi_model.rb \
 	$(srcdir)/mpi_meta_parameters.yaml \
-	$(srcdir)/gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(srcdir)/mpi_events.yaml \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
@@ -55,7 +55,7 @@ btx_mpi_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_MODEL) $(top_src
 EXTRA_DIST += \
 	mpi_model.rb \
 	gen_mpi_library_base.rb \
-	gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	mpi_events.yaml \
 	gen_babeltrace_mpi_model.rb \
 	$(srcdir)/mpi_meta_parameters.yaml
