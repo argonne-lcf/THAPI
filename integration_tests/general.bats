@@ -43,14 +43,14 @@ teardown_file() {
    $IPROF -t -r trace_2 | wc -l
    rm -rf trace_2
 
-   $IPROF --trace-output trace_3 -l -- $THAPI_TEST_BIN
-   $IPROF -l -r trace_3
-   rm -rf trace_3 out.pftrace
+   $IPROF --trace-output trace_3 -l out1.pftrace -- $THAPI_TEST_BIN
+   $IPROF -l out2.pftrace -r trace_3
+   rm -rf trace_3 out1.pftrace out2.pftrace
 }
 
 @test "timeline_output" {
-   $IPROF -l roger -- $THAPI_TEST_BIN
-   rm roger
+   $IPROF -l roger.pftrace -- $THAPI_TEST_BIN
+   rm roger.pftrace
 }
 
 # Assert Failure
