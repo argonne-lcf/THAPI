@@ -94,7 +94,8 @@ schema_event = OPENCL_MODEL['events'].map do |name, fields|
     cast_type << ' *' if field['structure']
     parsed_field[:field_class][:cast_type] = cast_type
 
-    if cast_type.include?('*') && parsed_field[:field_class].include?(:element_field_class) && field['lttng'] != 'ctf_array'
+    # Static Array of size_t * are a special case that we don't cast. :shrug:
+    if cast_type.include?('*') && parsed_field[:field_class].include?(:element_field_class) && !(field['lttng'] == 'ctf_array' && cast_type == 'size_t *')
       match = cast_type.match(/(.*) \*/)
       parsed_field[:field_class][:element_field_class][:cast_type] = match[1]
     end
