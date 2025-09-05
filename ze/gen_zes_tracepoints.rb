@@ -1,5 +1,5 @@
 require_relative 'ze_model'
-require_relative '../utils/gen_probe_base.rb'
+require_relative '../utils/gen_probe_base'
 
 provider = :lttng_ust_zes
 

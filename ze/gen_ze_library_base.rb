@@ -1,5 +1,5 @@
 require_relative 'ze_model'
-require_relative '../utils/gen_probe_base.rb'
+require_relative '../utils/gen_probe_base'
 require_relative '../utils/gen_library_base.rb'
 
 $all_types = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"] + $zel_api["typedefs"]
