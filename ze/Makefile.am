@@ -45,7 +45,6 @@ BTX_ZE_GENERATED = \
 	btx_filter_ze/btx_main.c
 
 EXTRA_DIST = \
-	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_zematching_model.yaml \
 	babeltrace_zeprofiling_apis.txt

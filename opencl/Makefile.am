@@ -75,7 +75,6 @@ EXTRA_DIST += \
 	gen_opencl_model.rb \
 	babeltrace_opencl_lib.rb \
 	gen_babeltrace_cl_model.rb \
-	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_clmatching_model.yaml
 
