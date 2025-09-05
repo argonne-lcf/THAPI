@@ -39,7 +39,6 @@ EOF
     r = c.type.lttng_type
     if r
       r.name = RESULT_NAME
-      r.expression = RESULT_NAME
       r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
                        "&#{RESULT_NAME}"
                      else

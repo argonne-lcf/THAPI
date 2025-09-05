@@ -1,5 +1,5 @@
 require_relative 'hip_model'
-require_relative 'gen_probe_base.rb'
+require_relative '../utils/gen_probe_base.rb'
 
 provider = :lttng_ust_hip
 
