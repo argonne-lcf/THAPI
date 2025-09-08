@@ -1,5 +1,5 @@
 require_relative 'mpi_model'
-require_relative 'gen_probe_base'
+require_relative '../utils/gen_probe_base'
 require_relative '../utils/gen_library_base'
 
 $all_types = $mpi_api['typedefs'] || []

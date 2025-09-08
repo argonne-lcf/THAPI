@@ -118,7 +118,7 @@ ZE_STATIC_PROBES_INCL = $(ZE_STATIC_PROBES:=.h)
 ZE_STATIC_PROBES_SRC = $(ZE_STATIC_PROBES:=.c)
 ZE_GEN_TRACEPOINTS = $(ZE_PROBES:%=gen_%.rb)
 
-$(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(srcdir)/gen_probe_base.rb $(srcdir)/ze.h.include
+$(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(top_srcdir)/utils/gen_probe_base.rb $(srcdir)/ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 $(ZE_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL) $(srcdir)/ze.h.include
@@ -136,7 +136,7 @@ CLEANFILES += \
 	$(ZE_STATIC_PROBES_SRC)
 
 EXTRA_DIST += \
-	gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(ZE_GEN_TRACEPOINTS) \
 	gen_ze_custom_probes.rb
 
@@ -205,7 +205,7 @@ ZE_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_ze_library_base.rb \
-	$(srcdir)/gen_probe_base.rb
+	$(top_srcdir)/utils/gen_probe_base.rb
 
 EXTRA_DIST += $(ZE_LIB_GEN)
 

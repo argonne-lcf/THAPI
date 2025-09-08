@@ -1,8 +1,15 @@
-$tracepoint_lambda = lambda { |provider, c, dir|
+$tracepoint_lambda = lambda { |provider, c, dir = nil|
+  name = if dir
+           "#{c.name}_#{SUFFIXES[dir]}"
+         # OMP backend
+         else
+           c.name.gsub(/_func\z/, '')
+         end
+
   puts <<~EOF
     TRACEPOINT_EVENT(
       #{provider},
-      #{c.name}_#{SUFFIXES[dir]},
+      #{name},
       TP_ARGS(
   EOF
   print '    '
@@ -12,12 +19,12 @@ $tracepoint_lambda = lambda { |provider, c, dir|
     params = []
     unless c.parameters.nil? || c.parameters.empty?
       params.concat(c.parameters.collect do |p|
-        "#{p.type.to_s.gsub(/\[.*\]/,"*")}, #{p.name}"
+        "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
       end)
     end
-    params.push("#{c.type}, #{RESULT_NAME}") if c.has_return_type? && dir == :stop
-    params += c.tracepoint_parameters.collect do |p|
-      "#{p.type.to_s.gsub(/\[.*\]/,"*")}, #{p.name}"
+    params.push("#{c.type}, #{RESULT_NAME}") if c.has_return_type? && dir != :start
+    params += c.tracepoint_parameters.reject { |p| p.after? && dir == :start }.collect do |p|
+      "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
     end
     puts params.join(",\n    ")
   end
@@ -39,10 +46,22 @@ EOF
     r = c.type.lttng_type
     if r
       r.name = RESULT_NAME
-      r.expression = RESULT_NAME
+      r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
+                       "&#{RESULT_NAME}"
+                     else
+                       RESULT_NAME
+                     end
       fields.push(r.call_string)
     end
     c.meta_parameters.collect(&:lttng_out_type).flatten.compact.each do |r|
+      fields.push(r.call_string)
+    end
+  else
+    fields = []
+    c.parameters.collect(&:lttng_type).compact.each do |r|
+      fields.push(r.call_string)
+    end
+    c.meta_parameters.collect(&:lttng_type).flatten.compact.each do |r|
       fields.push(r.call_string)
     end
   end

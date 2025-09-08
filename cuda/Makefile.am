@@ -131,7 +131,7 @@ EXTRA_DIST += $(ML_CUDA_FILES) $(ML_CUDART_FILES)
 CUDA_MODEL = \
 	$(srcdir)/cuda_model.rb \
 	$(srcdir)/gen_cuda_library_base.rb \
-	$(srcdir)/gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
@@ -159,7 +159,7 @@ btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL) $(top_
 EXTRA_DIST += \
 	cuda_model.rb \
 	gen_cuda_library_base.rb \
-	gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	cuda_events.yaml \
 	cudart_model.rb \
 	gen_babeltrace_cuda_model.rb

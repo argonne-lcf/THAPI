@@ -209,7 +209,7 @@ EXTRA_DIST += \
 HIP_MODEL = \
 	$(srcdir)/hip_model.rb \
 	$(srcdir)/gen_hip_library_base.rb \
-	$(srcdir)/gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(ML_HIP_FILES) \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
@@ -225,7 +225,7 @@ btx_hip_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL) $(top_src
 EXTRA_DIST += \
 	hip_model.rb \
 	gen_hip_library_base.rb \
-	gen_probe_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
 	hip_events.yaml \
 	gen_babeltrace_hip_model.rb
 
