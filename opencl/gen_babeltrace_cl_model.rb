@@ -1,4 +1,11 @@
 require 'yaml'
+
+INT_SIZE_MAP = {}
+INT_SIGN_MAP = {}
+$all_enums = {}
+$all_types = {}
+
+require_relative '../utils/gen_babeltrace_model_helper'
 OPENCL_MODEL = YAML.load_file('opencl_model.yaml')
 
 def get_bottom(type)
@@ -40,31 +47,36 @@ end
 
 def parse_field(field)
   d = {}
+  d[:field_class] = {}
   d[:name] = field['name'] if field['name']
   case field['lttng']
   when 'ctf_integer', 'ctf_integer_hex'
-    d[:class] = unsigned?(field['type']) ? 'unsigned' : 'signed'
-    props = {}
-    props[:field_value_range] = integer_size(field['type'], field['pointer'])
-    props[:preferred_display_base] = 16 if field['lttng'] == 'ctf_integer_hex'
-    d[:class_properties] = props
+    d[:field_class][:type] = unsigned?(field['type']) ? 'integer_unsigned' : 'integer_signed'
+    d[:field_class][:field_value_range] = integer_size(field['type'], field['pointer'])
+    d[:field_class][:preferred_display_base] = 16 if field['lttng'] == 'ctf_integer_hex'
   when 'ctf_string', 'ctf_sequence_text'
-    d[:class] = 'string'
-    d[:be_class] = cl_to_class(field['type']) if field['structure']
+    d[:field_class][:type] = 'string'
+    d[:metadata] = { be_class: cl_to_class(field['type']) } if field['structure']
   when 'ctf_array'
-    d[:class] = 'array_static'
-    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
-    d[:length] = field['length']
+    d[:field_class][:type] = 'array_static'
+    d_field = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
+    d[:field_class][:element_field_class] = d_field[:field_class]
+    d[:field_class][:length] = field['length']
   when 'ctf_sequence'
-    d[:class] = 'array_dynamic'
-    d[:field] = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
+    d[:field_class][:type] = 'array_dynamic'
+    d_field = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
+    d[:field_class][:element_field_class] = d_field[:field_class]
+    d[:field_class][:length_field_path] = "EVENT_PAYLOAD[\"_#{field['name']}_length\"]"
+
   when 'ctf_sequence_hex'
-    d[:class] = 'array_dynamic'
-    d[:field] = parse_field({ 'lttng' => 'ctf_integer_hex', 'type' => field['type'], 'pointer' => field['pointer'] })
+    d[:field_class][:type] = 'array_dynamic'
+    d_field = parse_field({ 'lttng' => 'ctf_integer_hex', 'type' => field['type'], 'pointer' => field['pointer'] })
+    d[:field_class][:element_field_class] = d_field[:field_class]
+    d[:field_class][:length_field_path] = "EVENT_PAYLOAD[\"_#{field['name']}_length\"]"
   when 'ctf_enum'
-    d[:class] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
+    d[:field_class][:type] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
     enum_type = field['enum_type']
-    d[:mappings] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map do |f|
+    d[:field_class][:mappings] = OPENCL_MODEL['lttng_enums'][enum_type][:values].map do |f|
       { label: f[:name], integer_range_set: [[f[:value], f[:value]]] }
     end
   end
@@ -80,62 +92,32 @@ schema_event = OPENCL_MODEL['events'].map do |name, fields|
     cast_type << ' *' if field['array']
     cast_type << ' *' if field['string']
     cast_type << ' *' if field['structure']
-    parsed_field[:cast_type] = cast_type
+    parsed_field[:field_class][:cast_type] = cast_type
+
+    # Static Array of size_t * are a special case that we don't cast. :shrug:
+    if cast_type.include?('*') && parsed_field[:field_class].include?(:element_field_class) && !(field['lttng'] == 'ctf_array' && cast_type == 'size_t *')
+      match = cast_type.match(/(.*) \*/)
+      parsed_field[:field_class][:element_field_class][:cast_type] = match[1]
+    end
+
     if (field['array'] || field['structure']) && field['lttng'].match('ctf_sequence')
+
       additional_parsed_field = parse_field({ 'name' => "_#{sub_name}_length",
                                               'lttng' => 'ctf_integer', 'type' => 'size_t' })
-      additional_parsed_field[:cast_type] = 'size_t'
+      additional_parsed_field[:field_class][:cast_type] = 'size_t'
       [additional_parsed_field, parsed_field]
     else
       parsed_field
     end
   end.flatten
 
-  { name: name, payload: payload_fields }
+  d = { name: name }
+  unless payload_fields.empty?
+    d[:payload_field_class ] =
+      { type: 'structure',
+        members: payload_fields }
+  end
+  d
 end
 
-environment = [
-  {
-    name: 'hostname',
-    class: 'string',
-  },
-]
-
-packet_context = [
-  {
-    name: 'cpu_id',
-    class: 'unsigned',
-    cast_type: 'uint64_t',
-    class_properties: {
-      field_value_range: 32,
-    },
-  },
-]
-
-common_context = [
-  {
-    name: 'vpid',
-    class: 'signed',
-    cast_type: 'int64_t',
-    class_properties: {
-      field_value_range: 64,
-    },
-  },
-  {
-    name: 'vtid',
-    class: 'unsigned',
-    cast_type: 'uint64_t',
-    class_properties: {
-      field_value_range: 64,
-    },
-  },
-]
-
-puts YAML.dump({
-                 name: 'thapi_opencl',
-                 environment: environment,
-                 clock_snapshot_value: true,
-                 packet_context: packet_context,
-                 common_context: common_context,
-                 event_classes: schema_event,
-               })
+puts YAML.dump(gen_yaml(schema_event, 'opencl'))

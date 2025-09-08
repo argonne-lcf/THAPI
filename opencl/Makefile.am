@@ -54,11 +54,8 @@ BTX_OPENCL_GENERATED = \
 opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-opencl_babeltrace_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
+btx_cl_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
-
-btx_cl_model.yaml: $(top_srcdir)/utils/babeltrace_to_metababel_model.rb opencl_babeltrace_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $^ > $@
 
 $(BTX_OPENCL_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_clmatching_model.yaml btx_cl_model.yaml
 	$(METABABEL) -u btx_cl_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_opencl -p clinterval -c interval --matching $(srcdir)/btx_clmatching_model.yaml -i cl.h.include
@@ -69,7 +66,6 @@ data_DATA = \
 
 CLEANFILES += \
 	opencl_model.yaml \
-	opencl_babeltrace_model.yaml \
 	btx_cl_model.yaml \
 	$(BTX_OPENCL_GENERATED)
 
@@ -79,7 +75,6 @@ EXTRA_DIST += \
 	gen_opencl_model.rb \
 	babeltrace_opencl_lib.rb \
 	gen_babeltrace_cl_model.rb \
-	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_clmatching_model.yaml
 

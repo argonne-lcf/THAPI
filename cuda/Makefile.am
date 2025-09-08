@@ -57,7 +57,6 @@ BTX_CUDA_GENERATED = \
 	btx_filter_cuda/btx_main.c
 
 EXTRA_DIST = \
-	$(top_srcdir)/utils/babeltrace_to_metababel_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_cudamatching_model.yaml
 
