@@ -223,10 +223,9 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-      - &build-steps
         name: Build target branch files
         working-directory: base_branch/build
-        run: |
+        run: &build-commands |
           make -C utils lttng/tracepoint_gen.h
           make -C backend_mpi tracer_mpi.c mpi_library.rb btx_mpi_model.yaml libmpi.la
           make -C backend_omp tracer_ompt.c omp_library.rb btx_omp_model.yaml
@@ -251,9 +250,9 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-      - <<: *build-steps
-        name: Build PR branch files
+      - name: Build PR branch files
         working-directory: pr_branch/build
+        run: *build-commands
       # Run comparison script
       - name: Compare files
         run: |
