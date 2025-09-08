@@ -223,7 +223,7 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-        name: Build target branch files
+      - name: Build target branch files
         working-directory: base_branch/build
         run: &build-commands |
           make -C utils lttng/tracepoint_gen.h
