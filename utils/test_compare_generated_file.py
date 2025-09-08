@@ -69,6 +69,9 @@ filenames += [
     "sampling/sampling.tp",
 ]
 
+filenames += [
+    "opencl/opencl_profiling.tp",
+]
 
 def load_file(path):
     with open(path, "r") as f:
