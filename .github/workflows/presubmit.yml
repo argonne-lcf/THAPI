@@ -258,7 +258,7 @@ jobs:
           make -C cuda tracer_cudart.c libcudart.la
           make -C ze tracer_ze.c ze_library.rb btx_ze_model.yaml libze_loader.la
           make -C opencl libOpenCL.la
-          make -C cxi sampling.tp
+          make -C cxi cxi_sampling.tp
           make -C sampling sampling.tp
           make -C opencl opencl_profiling.tp
       # Run comparison script

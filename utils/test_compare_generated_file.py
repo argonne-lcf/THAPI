@@ -66,7 +66,7 @@ filenames += [
 ]
 
 filenames += [
-    "cxi/sampling.tp",
+    "cxi/cxi_sampling.tp",
 ]
 
 filenames += [
