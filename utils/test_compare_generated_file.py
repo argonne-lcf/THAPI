@@ -54,7 +54,7 @@ filenames += [
     "ze/ze_properties.tp",
 ]
 
-#filenames += [
+# filenames += [
 #    "ze/ze_api.yaml",
 #    "ze/zes_api.yaml",
 #    "ze/zel_api.yaml",
@@ -62,16 +62,17 @@ filenames += [
 # ]
 
 filenames += [
-    "cxi/cxi_sampling.tp",
+    "opencl/opencl_profiling.tp",
+]
+
+filenames += [
+    "cxi/sampling.tp",
 ]
 
 filenames += [
     "sampling/sampling.tp",
 ]
 
-filenames += [
-    "opencl/opencl_profiling.tp",
-]
 
 def load_file(path):
     with open(path, "r") as f:
