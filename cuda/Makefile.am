@@ -200,8 +200,8 @@ $(CUDA_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDA_MODEL)
 $(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(CUDA_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_cuda_custom_probes.rb $(CUDA_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
+$(CUDA_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cuda_events.yaml
+	$(RUBY) $< $(srcdir)/cuda_events.yaml lttng_ust_$* cuda.h > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -221,7 +221,7 @@ EXTRA_DIST += \
 	gen_cuda_tracepoints.rb \
 	gen_cuda_exports_tracepoints.rb \
 	gen_cudart_tracepoints.rb \
-	gen_cuda_custom_probes.rb \
+	$(top_srcdir)/utils/gen_custom_probes.rb \
 	tracer_cudart.map
 
 BUILT_SOURCES = \
