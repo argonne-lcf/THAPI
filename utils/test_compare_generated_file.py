@@ -9,49 +9,49 @@ stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
 filenames = []
 filenames += [
-    "mpi/tracer_mpi.c",
-    "mpi/mpi_library.rb",
-    "mpi/btx_mpi_model.yaml",
-    "mpi/mpi_tracepoints.tp",
-    "mpi/mpi_type.tp",
+    "backend_mpi/tracer_mpi.c",
+    "backend_mpi/mpi_library.rb",
+    "backend_mpi/btx_mpi_model.yaml",
+    "backend_mpi/mpi_tracepoints.tp",
+    "backend_mpi/mpi_type.tp",
 ]
 
 # filenames += ["mpi/mpi_api.yaml"]
 
 filenames += [
-    "omp/tracer_ompt.c",
-    "omp/omp_library.rb",
-    "omp/btx_omp_model.yaml",
-    "omp/ompt_tracepoints.tp",
+    "backend_omp/tracer_ompt.c",
+    "backend_omp/omp_library.rb",
+    "backend_omp/btx_omp_model.yaml",
+    "backend_omp/ompt_tracepoints.tp",
 ]
 # filenames += ["omp/ompt_api.yaml"]
 
 filenames += [
-    "hip/tracer_hip.c",
-    "hip/hip_library.rb",
-    "hip/btx_hip_model.yaml",
-    "hip/hip_tracepoints.tp",
+    "backend_hip/tracer_hip.c",
+    "backend_hip/hip_library.rb",
+    "backend_hip/btx_hip_model.yaml",
+    "backend_hip/hip_tracepoints.tp",
 ]
 # filenames += ["hip/hip_api.yaml"]
 
 filenames += [
-    "cuda/tracer_cuda.c",
-    "cuda/cuda_library.rb",
-    "cuda/btx_cuda_model.yaml",
-    "cuda/cuda_tracepoints.tp",
-    "cuda/cuda_properties.tp",
+    "backend_cuda/tracer_cuda.c",
+    "backend_cuda/cuda_library.rb",
+    "backend_cuda/btx_cuda_model.yaml",
+    "backend_cuda/cuda_tracepoints.tp",
+    "backend_cuda/cuda_properties.tp",
 ]
 # filenames += ["cuda/cuda_api.yaml"]
 
 # filenames += ["cuda/tracer_cudart.c", "cuda/cudart_api.yaml"]
 
 filenames += [
-    "ze/tracer_ze.c",
-    "ze/ze_library.rb",
-    "ze/btx_ze_model.yaml",
-    "ze/ze_tracepoints.tp",
-    "ze/ze_structs_tracepoints.tp",
-    "ze/ze_properties.tp",
+    "backend_ze/tracer_ze.c",
+    "backend_ze/ze_library.rb",
+    "backend_ze/btx_ze_model.yaml",
+    "backend_ze/ze_tracepoints.tp",
+    "backend_ze/ze_structs_tracepoints.tp",
+    "backend_ze/ze_properties.tp",
 ]
 
 # filenames += [
@@ -62,11 +62,11 @@ filenames += [
 # ]
 
 filenames += [
-    "opencl/opencl_profiling.tp",
+    "backend_opencl/opencl_profiling.tp",
 ]
 
 filenames += [
-    "cxi/cxi_sampling.tp",
+    "backend_cxi/cxi_sampling.tp",
 ]
 
 filenames += [

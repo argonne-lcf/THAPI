@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([thapi],[0.0.12],[bvideau@anl.gov])
-AC_CONFIG_SRCDIR([opencl/tracer_opencl_helpers.include.c])
+AC_CONFIG_SRCDIR([backend_opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
 # build artifacts in separate dir
@@ -126,25 +126,25 @@ AC_CHECK_FUNCS([clock_gettime ftruncate memmove memset strdup strstr strtoull st
 
 AC_CONFIG_FILES([
 	Makefile
-	sampling/Makefile
-	opencl/Makefile
-	ze/Makefile
-	cuda/Makefile
-	omp/Makefile
-	hip/Makefile
-	mpi/Makefile
-	cxi/Makefile
 	xprof/Makefile
 	utils/Makefile
+	sampling/Makefile
+	backend_opencl/Makefile
+	backend_ze/Makefile
+	backend_cuda/Makefile
+	backend_omp/Makefile
+	backend_hip/Makefile
+	backend_mpi/Makefile
+	backend_cxi/Makefile
 ])
 AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])
-AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
-AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
-AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
-AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
-AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
-AC_CONFIG_FILES([hip/tracer_hip.sh], [chmod +x hip/tracer_hip.sh])
-AC_CONFIG_FILES([mpi/tracer_mpi.sh], [chmod +x mpi/tracer_mpi.sh])
+AC_CONFIG_FILES([backend_opencl/tracer_opencl.sh], [chmod +x backend_opencl/tracer_opencl.sh])
+AC_CONFIG_FILES([backend_opencl/extract_enqueues], [chmod +x backend_opencl/extract_enqueues])
+AC_CONFIG_FILES([backend_ze/tracer_ze.sh], [chmod +x backend_ze/tracer_ze.sh])
+AC_CONFIG_FILES([backend_cuda/tracer_cuda.sh], [chmod +x backend_cuda/tracer_cuda.sh])
+AC_CONFIG_FILES([backend_omp/tracer_omp.sh], [chmod +x backend_omp/tracer_omp.sh])
+AC_CONFIG_FILES([backend_hip/tracer_hip.sh], [chmod +x backend_hip/tracer_hip.sh])
+AC_CONFIG_FILES([backend_mpi/tracer_mpi.sh], [chmod +x backend_mpi/tracer_mpi.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
 AC_OUTPUT

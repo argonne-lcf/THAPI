@@ -149,7 +149,7 @@ nodist_libZESampling_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
-libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/ze/include -I./
+libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/backend_ze/include -I./
 libZESampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libZESampling_la_LDFLAGS = -avoid-version -module
 libZESampling_la_LIBADD =  ../sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
@@ -295,7 +295,7 @@ TESTS = $(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = backend_ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
 	$(TRACE_COMMON) \
