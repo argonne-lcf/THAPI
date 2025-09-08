@@ -137,7 +137,8 @@ CLEANFILES += \
 
 EXTRA_DIST += \
 	$(top_srcdir)/utils/gen_probe_base.rb \
-	$(ZE_GEN_TRACEPOINTS)
+	$(ZE_GEN_TRACEPOINTS) \
+	$(top_srcdir)/utils/gen_mpi_custom_probes.rb
 
 BUILT_SOURCES = \
 	$(ZE_PROBES_INCL) \

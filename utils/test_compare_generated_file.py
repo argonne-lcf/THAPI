@@ -13,7 +13,9 @@ filenames += [
     "mpi/mpi_library.rb",
     "mpi/btx_mpi_model.yaml",
     "mpi/mpi_tracepoints.tp",
+    "mpi/mpi_type.tp"
 ]
+
 # filenames += ["mpi/mpi_api.yaml"]
 
 filenames += [
