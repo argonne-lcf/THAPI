@@ -149,7 +149,7 @@ nodist_libZESampling_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
-libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/ze/include -I./
+libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/backend_ze/include -I./
 libZESampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libZESampling_la_LDFLAGS = -avoid-version -module
 libZESampling_la_LIBADD =  ../sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
