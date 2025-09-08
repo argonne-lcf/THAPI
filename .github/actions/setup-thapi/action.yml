@@ -46,7 +46,7 @@ runs:
       id: efficios_dep
       with:
         path: ~/efficios_dep/
-        key: ${{ runner.os }}-build-cache-efficios_dep
+        key: ${{ runner.os }}-${{ hashFiles('.github/actions/setup-thapi/action.yml') }}-build-cache-efficios_dep
 
     - name: Build userspace-rcu
       shell: bash
