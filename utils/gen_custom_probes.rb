@@ -13,7 +13,7 @@ h = YAML.load_file(events_path)[namespace]
 raise "Invalid namespace: #{namespace}!" unless h
 
 ['lttng/tracepoint_gen.h', header].compact.each do |h|
-  puts %(#include "#{h}")
+  puts h.start_with?('<') ? %(#include #{h}) : %(#include "#{h}")
 end
 
 puts

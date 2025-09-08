@@ -201,7 +201,7 @@ $(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 $(CUDA_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cuda_events.yaml
-	$(RUBY) $< $(srcdir)/cuda_events.yaml lttng_ust_$* cuda.h > $@
+	$(RUBY) $< $(srcdir)/cuda_events.yaml lttng_ust_$* "<cuda.h>" > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
