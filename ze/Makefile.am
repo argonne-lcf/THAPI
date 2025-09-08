@@ -121,8 +121,8 @@ ZE_GEN_TRACEPOINTS = $(ZE_PROBES:%=gen_%.rb)
 $(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(top_srcdir)/utils/gen_probe_base.rb $(srcdir)/ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(ZE_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_ze_custom_probes.rb $(ZE_MODEL) $(srcdir)/ze.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
+$(ZE_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/ze_events.yaml $(srcdir)/ze.h.include
+	$(RUBY) $< $(srcdir)/ze_events.yaml lttng_ust_$* ze.h.include > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -137,8 +137,7 @@ CLEANFILES += \
 
 EXTRA_DIST += \
 	$(top_srcdir)/utils/gen_probe_base.rb \
-	$(ZE_GEN_TRACEPOINTS) \
-	gen_ze_custom_probes.rb
+	$(ZE_GEN_TRACEPOINTS)
 
 BUILT_SOURCES = \
 	$(ZE_PROBES_INCL) \

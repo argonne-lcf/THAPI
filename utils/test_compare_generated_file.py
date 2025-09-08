@@ -48,7 +48,9 @@ filenames += [
     "ze/btx_ze_model.yaml",
     "ze/ze_tracepoints.tp",
     "ze/ze_structs_tracepoints.tp",
+    "ze/ze_properties.tp"
 ]
+
 # filenames += [
 #    "ze/ze_api.yaml",
 #    "ze/zes_api.yaml",
