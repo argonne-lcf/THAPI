@@ -16,8 +16,8 @@ SAMPLING_STATIC_PROBES_INCL = $(SAMPLING_STATIC_PROBES:=.h)
 
 SAMPLING_STATIC_PROBES_SRC = $(SAMPLING_STATIC_PROBES:=.c)
 
-$(SAMPLING_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_sampling_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
+$(SAMPLING_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/sampling_events.yaml
+	$(RUBY) $< $(srcdir)/sampling_events.yaml lttng_ust_$* > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -35,7 +35,7 @@ libsamplingtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 EXTRA_DIST = \
 	sampling_events.yaml \
-	gen_sampling_custom_probes.rb
+	$(top_srcdir)/utils/gen_custom_probes.rb
 
 CLEANFILES = \
 	$(SAMPLING_STATIC_PROBES_INCL) \

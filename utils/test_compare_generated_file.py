@@ -54,16 +54,19 @@ filenames += [
     "ze/ze_properties.tp",
 ]
 
-# filenames += [
+#filenames += [
 #    "ze/ze_api.yaml",
 #    "ze/zes_api.yaml",
 #    "ze/zel_api.yaml",
 #    "ze/zex_api.yaml",
 # ]
 
-
 filenames += [
     "cxi/cxi_sampling.tp",
+]
+
+filenames += [
+    "sampling/sampling.tp",
 ]
 
 
