@@ -104,7 +104,7 @@ tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_
 EXTRA_DIST += \
 	gen_mpi.rb \
 	tracer_mpi_helpers.include.c \
-	$(top_srcdir)/utils/gen_mpi_custom_probes.rb
+	$(top_srcdir)/utils/gen_custom_probes.rb
 
 CLEANFILES += \
 	tracer_mpi.c
