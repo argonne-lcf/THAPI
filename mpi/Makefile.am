@@ -76,8 +76,8 @@ MPI_GEN_TRACEPOINTS = $(MPI_PROBES:%=gen_%.rb)
 $(MPI_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(MPI_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(MPI_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_mpi_custom_probes.rb $(MPI_MODEL) $(srcdir)/mpi.h.include
-	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
+$(MPI_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/mpi_events.yaml $(srcdir)/mpi.h.include
+	$(RUBY) $< $(srcdir)/mpi_events.yaml lttng_ust_$* mpi.h.include > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -104,7 +104,7 @@ tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_
 EXTRA_DIST += \
 	gen_mpi.rb \
 	tracer_mpi_helpers.include.c \
-	gen_mpi_custom_probes.rb
+	$(top_srcdir)/utils/gen_custom_probes.rb
 
 CLEANFILES += \
 	tracer_mpi.c

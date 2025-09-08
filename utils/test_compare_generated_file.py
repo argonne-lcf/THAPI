@@ -13,7 +13,9 @@ filenames += [
     "mpi/mpi_library.rb",
     "mpi/btx_mpi_model.yaml",
     "mpi/mpi_tracepoints.tp",
+    "mpi/mpi_type.tp",
 ]
+
 # filenames += ["mpi/mpi_api.yaml"]
 
 filenames += [
@@ -37,6 +39,7 @@ filenames += [
     "cuda/cuda_library.rb",
     "cuda/btx_cuda_model.yaml",
     "cuda/cuda_tracepoints.tp",
+    "cuda/cuda_properties.tp",
 ]
 # filenames += ["cuda/cuda_api.yaml"]
 
@@ -48,13 +51,27 @@ filenames += [
     "ze/btx_ze_model.yaml",
     "ze/ze_tracepoints.tp",
     "ze/ze_structs_tracepoints.tp",
+    "ze/ze_properties.tp",
 ]
+
 # filenames += [
 #    "ze/ze_api.yaml",
 #    "ze/zes_api.yaml",
 #    "ze/zel_api.yaml",
 #    "ze/zex_api.yaml",
 # ]
+
+filenames += [
+    "opencl/opencl_profiling.tp",
+]
+
+filenames += [
+    "cxi/cxi_sampling.tp",
+]
+
+filenames += [
+    "sampling/sampling.tp",
+]
 
 
 def load_file(path):

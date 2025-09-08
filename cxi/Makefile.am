@@ -16,8 +16,8 @@ CXI_STATIC_PROBES_INCL = $(CXI_STATIC_PROBES:=.h)
 
 CXI_STATIC_PROBES_SRC = $(CXI_STATIC_PROBES:=.c)
 
-$(CXI_STATIC_PROBES_TP): %.tp: $(srcdir)/gen_cxi_custom_probes.rb $(TRACEPOINT_GEN)
-	SRC_DIR=$(srcdir) $(RUBY) $< lttng_ust_$* > $@
+$(CXI_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cxi_events.yaml
+	$(RUBY) $< $(srcdir)/cxi_events.yaml lttng_ust_$* > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -34,7 +34,7 @@ libcxitracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 EXTRA_DIST = \
 	cxi_events.yaml \
-	gen_cxi_custom_probes.rb \
+	$(top_srcdir)/utils/gen_custom_probes.rb \
 	cxi_default_counters.h
 
 CLEANFILES = \
