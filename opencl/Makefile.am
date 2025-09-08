@@ -127,7 +127,7 @@ EXTRA_DIST += \
 	include \
 	tracer_opencl.map \
 	gen_opencl_probes.rb \
-	$(top_srcdir)/utils/gen_opencl_custom_probes.rb
+	$(top_srcdir)/utils/gen_custom_probes.rb
 
 BUILT_SOURCES += \
 	$(OPENCL_PROBES_INCL) \
