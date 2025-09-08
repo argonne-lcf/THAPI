@@ -46,7 +46,7 @@ runs:
       id: efficios_dep
       with:
         path: ~/efficios_dep/
-        key: ${{ runner.os }}-build-cache-efficios_dep
+        key: ${{ runner.os }}-${{ hashFiles('.github/actions/setup-thapi/action.yml') }}-build-cache-efficios_dep
 
     - name: Build userspace-rcu
       shell: bash
@@ -76,15 +76,12 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-ms3-v2.14.0
+        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-v2.14.0
         cd lttng-tools
         ./bootstrap
         ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
         make -j$(nproc)
         make install
-        #Todo, this will need to be added in the spack repo as a patch
-        echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/efficios_dep/bin/dirwatch.py
-        chmod 755 $HOME/efficios_dep/bin/dirwatch.py
 
     - name: Build babeltrace
       shell: bash
