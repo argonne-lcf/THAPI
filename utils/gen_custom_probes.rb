@@ -12,7 +12,7 @@ h = YAML::load_file(events_path)[namespace]
 
 raise "Invalid namespace: #{namespace}!" unless h
 
-["lttng/tracepoint_gen.h", header].filter { |h|
+["lttng/tracepoint_gen.h", header].filter.each { |h|
   puts %Q[#include "#{h}"]
 }
 
