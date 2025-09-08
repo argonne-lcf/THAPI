@@ -128,7 +128,7 @@ AC_CONFIG_FILES([
 	Makefile
 	xprof/Makefile
 	utils/Makefile
-	backend_sampling/Makefile
+	sampling/Makefile
 	backend_opencl/Makefile
 	backend_ze/Makefile
 	backend_cuda/Makefile
