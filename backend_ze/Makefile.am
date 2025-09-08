@@ -295,7 +295,7 @@ TESTS = $(TRACE_COMMON)
 
 TEST_EXTENSIONS = .thapi_text_pretty
 THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
-AM_THAPI_TEXT_PRETTY_LOG_FLAGS = ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = backend_ze ze ./btx_source_ze_test/ .libs/libtestzesource.a
 
 check_DATA = \
 	$(TRACE_COMMON) \

@@ -223,7 +223,8 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-      - name: Build target branch files
+      - &build-steps
+        name: Build target branch files
         working-directory: base_branch/build
         run: |
           make -C utils lttng/tracepoint_gen.h
@@ -250,20 +251,9 @@ jobs:
           mkdir -p build
           cd build
           ../configure
-      - name: Build PR branch files
+      - <<: *build-steps
+        name: Build PR branch files
         working-directory: pr_branch/build
-        run: |
-          make -C utils lttng/tracepoint_gen.h
-          make -C backend_mpi tracer_mpi.c mpi_library.rb btx_mpi_model.yaml libmpi.la
-          make -C backend_omp tracer_ompt.c omp_library.rb btx_omp_model.yaml
-          make -C backend_hip tracer_hip.c hip_library.rb btx_hip_model.yaml libamdhip64.la
-          make -C backend_cuda tracer_cuda.c cuda_library.rb btx_cuda_model.yaml libcuda.la
-          make -C backend_cuda tracer_cudart.c libcudart.la
-          make -C backend_ze tracer_ze.c ze_library.rb btx_ze_model.yaml libze_loader.la
-          make -C backend_opencl libOpenCL.la
-          make -C backend_cxi cxi_sampling.tp
-          make -C backend_opencl opencl_profiling.tp
-          make -C sampling sampling.tp
       # Run comparison script
       - name: Compare files
         run: |
