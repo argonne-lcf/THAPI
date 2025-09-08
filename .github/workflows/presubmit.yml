@@ -218,7 +218,7 @@ jobs:
           path: base_branch
       - name: Configure target branch
         working-directory: base_branch
-        run: |
+        run: &configure |
           ./autogen.sh
           mkdir -p build
           cd build
@@ -245,11 +245,7 @@ jobs:
           path: pr_branch
       - name: Configure PR branch
         working-directory: pr_branch
-        run: |
-          ./autogen.sh
-          mkdir -p build
-          cd build
-          ../configure
+        run: *configure
       - name: Build PR branch files
         working-directory: pr_branch/build
         run: *build-commands
