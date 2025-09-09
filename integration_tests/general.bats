@@ -15,6 +15,11 @@ teardown_file() {
    [ "$total_count" -ge 1 ]
 }
 
+@test "archive_summary" {
+   total_count=$( $IPROF --archive $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   [ "$total_count" -ge 1 ]
+}
+
 @test "default_trace" {
    $IPROF -t $THAPI_TEST_BIN | wc -l
 }
@@ -22,11 +27,6 @@ teardown_file() {
 @test "default_timeline" {
    $IPROF -l -- $THAPI_TEST_BIN
    rm out.pftrace
-}
-
-@test "archive_summary" {
-   total_count=$( $IPROF --archive $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
-   [ "$total_count" -ge 1 ]
 }
 
 @test "replay_summary" {
