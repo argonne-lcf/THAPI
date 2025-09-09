@@ -11,7 +11,7 @@ teardown_file() {
 
 @test "json_summary" {
    $IPROF --json --analysis-output out.json --json $THAPI_TEST_BIN
-   total_count=$( jq '.host["1"].data.Total.call' out.json )
+   total_count=$( $JQ '.host["1"].data.Total.call' out.json )
    [ "$total_count" -ge 1 ]
 }
 
