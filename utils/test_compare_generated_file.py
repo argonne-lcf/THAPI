@@ -9,49 +9,49 @@ stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
 filenames = []
 filenames += [
-    "backend_mpi/tracer_mpi.c",
-    "backend_mpi/mpi_library.rb",
-    "backend_mpi/btx_mpi_model.yaml",
-    "backend_mpi/mpi_tracepoints.tp",
-    "backend_mpi/mpi_type.tp",
+    "backends/mpi/tracer_mpi.c",
+    "backends/mpi/mpi_library.rb",
+    "backends/mpi/btx_mpi_model.yaml",
+    "backends/mpi/mpi_tracepoints.tp",
+    "backends/mpi/mpi_type.tp",
 ]
 
 # filenames += ["mpi/mpi_api.yaml"]
 
 filenames += [
-    "backend_omp/tracer_ompt.c",
-    "backend_omp/omp_library.rb",
-    "backend_omp/btx_omp_model.yaml",
-    "backend_omp/ompt_tracepoints.tp",
+    "backends/omp/tracer_ompt.c",
+    "backends/omp/omp_library.rb",
+    "backends/omp/btx_omp_model.yaml",
+    "backends/omp/ompt_tracepoints.tp",
 ]
 # filenames += ["omp/ompt_api.yaml"]
 
 filenames += [
-    "backend_hip/tracer_hip.c",
-    "backend_hip/hip_library.rb",
-    "backend_hip/btx_hip_model.yaml",
-    "backend_hip/hip_tracepoints.tp",
+    "backends/hip/tracer_hip.c",
+    "backends/hip/hip_library.rb",
+    "backends/hip/btx_hip_model.yaml",
+    "backends/hip/hip_tracepoints.tp",
 ]
 # filenames += ["hip/hip_api.yaml"]
 
 filenames += [
-    "backend_cuda/tracer_cuda.c",
-    "backend_cuda/cuda_library.rb",
-    "backend_cuda/btx_cuda_model.yaml",
-    "backend_cuda/cuda_tracepoints.tp",
-    "backend_cuda/cuda_properties.tp",
+    "backends/cuda/tracer_cuda.c",
+    "backends/cuda/cuda_library.rb",
+    "backends/cuda/btx_cuda_model.yaml",
+    "backends/cuda/cuda_tracepoints.tp",
+    "backends/cuda/cuda_properties.tp",
 ]
 # filenames += ["cuda/cuda_api.yaml"]
 
 # filenames += ["cuda/tracer_cudart.c", "cuda/cudart_api.yaml"]
 
 filenames += [
-    "backend_ze/tracer_ze.c",
-    "backend_ze/ze_library.rb",
-    "backend_ze/btx_ze_model.yaml",
-    "backend_ze/ze_tracepoints.tp",
-    "backend_ze/ze_structs_tracepoints.tp",
-    "backend_ze/ze_properties.tp",
+    "backends/ze/tracer_ze.c",
+    "backends/ze/ze_library.rb",
+    "backends/ze/btx_ze_model.yaml",
+    "backends/ze/ze_tracepoints.tp",
+    "backends/ze/ze_structs_tracepoints.tp",
+    "backends/ze/ze_properties.tp",
 ]
 
 # filenames += [
@@ -62,11 +62,11 @@ filenames += [
 # ]
 
 filenames += [
-    "backend_opencl/opencl_profiling.tp",
+    "backends/opencl/opencl_profiling.tp",
 ]
 
 filenames += [
-    "backend_cxi/cxi_sampling.tp",
+    "backends/cxi/cxi_sampling.tp",
 ]
 
 filenames += [

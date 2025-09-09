@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([thapi],[0.0.12],[bvideau@anl.gov])
-AC_CONFIG_SRCDIR([backend_opencl/tracer_opencl_helpers.include.c])
+AC_CONFIG_SRCDIR([backends/opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
 # build artifacts in separate dir
@@ -129,22 +129,22 @@ AC_CONFIG_FILES([
 	xprof/Makefile
 	utils/Makefile
 	sampling/Makefile
-	backend_opencl/Makefile
-	backend_ze/Makefile
-	backend_cuda/Makefile
-	backend_omp/Makefile
-	backend_hip/Makefile
-	backend_mpi/Makefile
-	backend_cxi/Makefile
+	backends/opencl/Makefile
+	backends/ze/Makefile
+	backends/cuda/Makefile
+	backends/omp/Makefile
+	backends/hip/Makefile
+	backends/mpi/Makefile
+	backends/cxi/Makefile
 ])
 AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])
-AC_CONFIG_FILES([backend_opencl/tracer_opencl.sh], [chmod +x backend_opencl/tracer_opencl.sh])
-AC_CONFIG_FILES([backend_opencl/extract_enqueues], [chmod +x backend_opencl/extract_enqueues])
-AC_CONFIG_FILES([backend_ze/tracer_ze.sh], [chmod +x backend_ze/tracer_ze.sh])
-AC_CONFIG_FILES([backend_cuda/tracer_cuda.sh], [chmod +x backend_cuda/tracer_cuda.sh])
-AC_CONFIG_FILES([backend_omp/tracer_omp.sh], [chmod +x backend_omp/tracer_omp.sh])
-AC_CONFIG_FILES([backend_hip/tracer_hip.sh], [chmod +x backend_hip/tracer_hip.sh])
-AC_CONFIG_FILES([backend_mpi/tracer_mpi.sh], [chmod +x backend_mpi/tracer_mpi.sh])
+AC_CONFIG_FILES([backends/opencl/tracer_opencl.sh], [chmod +x backends/opencl/tracer_opencl.sh])
+AC_CONFIG_FILES([backends/opencl/extract_enqueues], [chmod +x backends/opencl/extract_enqueues])
+AC_CONFIG_FILES([backends/ze/tracer_ze.sh], [chmod +x backends/ze/tracer_ze.sh])
+AC_CONFIG_FILES([backends/cuda/tracer_cuda.sh], [chmod +x backends/cuda/tracer_cuda.sh])
+AC_CONFIG_FILES([backends/omp/tracer_omp.sh], [chmod +x backends/omp/tracer_omp.sh])
+AC_CONFIG_FILES([backends/hip/tracer_hip.sh], [chmod +x backends/hip/tracer_hip.sh])
+AC_CONFIG_FILES([backends/mpi/tracer_mpi.sh], [chmod +x backends/mpi/tracer_mpi.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
 AC_OUTPUT

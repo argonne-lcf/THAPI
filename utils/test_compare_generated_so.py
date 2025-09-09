@@ -8,12 +8,12 @@ import pytest
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
 filenames = []
-filenames += ["backend_ze/.libs/libze_loader.so"]
-filenames += ["backend_opencl/.libs/libOpenCL.so"]
-filenames += ["backend_hip/.libs/libamdhip64.so"]
-filenames += ["backend_cuda/.libs/libcudart.so"]
-filenames += ["backend_cuda/.libs/libcuda.so"]
-filenames += ["backend_mpi/.libs/libmpi.so"]
+filenames += ["backends/ze/.libs/libze_loader.so"]
+filenames += ["backends/opencl/.libs/libOpenCL.so"]
+filenames += ["backends/hip/.libs/libamdhip64.so"]
+filenames += ["backends/cuda/.libs/libcudart.so"]
+filenames += ["backends/cuda/.libs/libcuda.so"]
+filenames += ["backends/mpi/.libs/libmpi.so"]
 
 
 def load_so(path):
