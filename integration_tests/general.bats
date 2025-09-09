@@ -5,7 +5,8 @@ teardown_file() {
 }
 
 @test "default_summary" {
-   $IPROF $THAPI_TEST_BIN
+   total_count=$( $IPROF $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   [ "$total_count" -ge 1 ]
 }
 
 @test "default_trace" {
@@ -18,7 +19,8 @@ teardown_file() {
 }
 
 @test "archive_summary" {
-   $IPROF --archive $THAPI_TEST_BIN
+   total_count=$( $IPROF --archive $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   [ "$total_count" -ge 1 ]
 }
 
 @test "replay_summary" {
