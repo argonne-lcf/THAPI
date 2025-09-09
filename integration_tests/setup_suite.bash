@@ -8,6 +8,7 @@ setup_suite() {
   export IPROF=${IPROF:-${THAPI_BIN_DIR}/iprof}
   export BBT=${BBT:-${THAPI_BIN_DIR}/babeltrace_thapi}
   export MPIRUN=${MPIRUN:-mpirun}
+  export JQ=${JQ:-jq}
 
   missing_tools=()
 
@@ -37,6 +38,13 @@ setup_suite() {
     echo "Error: 'mpirun' not found in PATH or at \$MPIRUN."
     echo "-> Please set MPIRUN or add it to your PATH."
     missing_tools+=("mpirun")
+  fi
+
+  # Check for jq
+  if ! command -v "${JQ}" >/dev/null 2>&1 && ! command -v jq >/dev/null 2>&1; then
+    echo "Error: 'jq' not found in PATH or at \$JQ."
+    echo "-> Please set JQ or add it to your PATH."
+    missing_tools+=("jq")
   fi
 
   # Final summary

@@ -5,7 +5,19 @@ teardown_file() {
 }
 
 @test "default_summary" {
-   $IPROF $THAPI_TEST_BIN
+   total_count=$( $IPROF $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   [ "$total_count" -ge 1 ]
+}
+
+@test "json_summary" {
+   $IPROF --json --analysis-output out.json --json $THAPI_TEST_BIN
+   total_count=$( $JQ '.host["1"].data.Total.call' out.json )
+   [ "$total_count" -ge 1 ]
+}
+
+@test "archive_summary" {
+   total_count=$( $IPROF --archive $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   [ "$total_count" -ge 1 ]
 }
 
 @test "default_trace" {
@@ -15,10 +27,6 @@ teardown_file() {
 @test "default_timeline" {
    $IPROF -l -- $THAPI_TEST_BIN
    rm out.pftrace
-}
-
-@test "archive_summary" {
-   $IPROF --archive $THAPI_TEST_BIN
 }
 
 @test "replay_summary" {
