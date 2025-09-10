@@ -272,13 +272,18 @@ THAPI_METADATA_FILE = 'thapi_metadata.yaml'
 
 def thapi_metadata(trace)
   @thapi_metadata ||= {}
-  full_path = File.join(trace, THAPI_METADATA_FILE)
-  unless File.file?(full_path)
-    warn("Error: #{trace} isn't a valid trace (missing #{THAPI_METADATA_FILE})")
-    exit(1)
-  end
+  return @thapi_metadata[trace] if @thapi_metadata.include?(trace)
 
-  @thapi_metadata[trace] ||= YAML.load_file(full_path)
+  full_path = File.join(trace, THAPI_METADATA_FILE)
+
+  data = if File.file?(full_path)
+           YAML.load_file(full_path)
+         else
+           warn("Warning: #{trace} isn't a valid trace (missing #{THAPI_METADATA_FILE}), we will assume a lttng trace")
+           { type: 'lttng' }
+         end
+
+  @thapi_metadata[trace] = data
 end
 
 def modify_metadata(command, trace)
