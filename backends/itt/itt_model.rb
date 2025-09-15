@@ -11,7 +11,7 @@ else
   SRC_DIR = "."
 end
 
-RESULT_NAME = "ittResultVoid"
+RESULT_NAME = "ittResult"
 
 $itt_api_yaml = YAML::load_file("itt_api.yaml")
 $itt_api = YAMLCAst.from_yaml_ast($itt_api_yaml)
@@ -32,7 +32,6 @@ $itt_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
-# 
 $itt_commands = $itt_api["functions"].collect { |func|
   Command::new(func)
 }
