@@ -31,7 +31,8 @@ runs:
     - name: Install APT Dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev
+        # libc6-dev for `stddef.h`
+        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev libc6-dev
 
     - name: Install Ruby Dependencies
       shell: bash
@@ -100,6 +101,9 @@ runs:
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep
         make -j$(nproc)
         make install
+    - name: Set Up H2yaml
+      shell: bash
+      run: pip install git+https://github.com/TApplencourt/h2yaml@v0.2.0 
 
     - name: Install H2yaml
       shell: bash
