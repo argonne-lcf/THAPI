@@ -7,7 +7,7 @@ else
 endif
 
 ITT_HDR = \
-        $(srcdir)/include/ittnotify.h
+	$(srcdir)/include/ittnotify.h
 
 ITT_NAMESPACES = itt
 
@@ -19,16 +19,21 @@ $(ITT_EXTRACTED): %_api.yaml: $(ITT_HDR)
 
 CLEANFILES = $(ITT_EXTRACTED)
 
+EXTRA_DIST = \
+	$(srcdir)/include \
+	itt_model.rb \
+	itt_meta_parameters.yaml
+
 # ITT Model is all the utils to generatr the tracer and the probes
 ITT_MODEL = \
-        $(srcdir)/itt_model.rb \
-        $(srcdir)/itt_meta_parameters.yaml \
-        $(top_srcdir)/utils/gen_probe_base.rb \
-        $(top_srcdir)/utils/yaml_ast.rb \
-        $(top_srcdir)/utils/yaml_ast_lttng.rb \
-        $(top_srcdir)/utils/meta_parameters.rb \
-        $(top_srcdir)/utils/LTTng.rb \
-        $(ITT_EXTRACTED)
+	$(srcdir)/itt_model.rb \
+	$(srcdir)/itt_meta_parameters.yaml \
+	$(top_srcdir)/utils/gen_probe_base.rb \
+	$(top_srcdir)/utils/yaml_ast.rb \
+	$(top_srcdir)/utils/yaml_ast_lttng.rb \
+	$(top_srcdir)/utils/meta_parameters.rb \
+	$(top_srcdir)/utils/LTTng.rb \
+	$(ITT_EXTRACTED)
 
 # Generate the Probe (tracepoint)
 
@@ -58,13 +63,21 @@ libitttracepoints_la_CPPFLAGS = -I$(srcdir)/include
 libitttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libitttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
-# Generate the tracer and assciated libs
+EXTRA_DIST += \
+	gen_itt_tracepoints.rb
+
+BUILT_SOURCES = \
+	$(ITT_PROBES_INCL)
+# Generate the tracer and associated libs
 
 tracer_itt.c: $(srcdir)/gen_itt.rb $(ITT_MODEL) $(ITT_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \
-	tracer_iit.c
+	tracer_itt.c
+
+EXTRA_DIST += \
+	gen_itt.rb
 
 lib_LTLIBRARIES = libTracerITT.la
 
