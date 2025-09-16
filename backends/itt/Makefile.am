@@ -92,3 +92,60 @@ libTracerITT_la_LIBADD = libitttracepoints.la
 
 bin_SCRIPTS = \
 	tracer_itt.sh
+
+# Babeltrace 2 Plugins
+
+ITT_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
+	$(srcdir)/gen_itt_library_base.rb
+
+EXTRA_DIST += \
+	$(ITT_LIB_GEN)
+
+btx_itt_model.yaml: $(srcdir)/gen_babeltrace_itt_model.rb $(ITT_LIB_GEN) $(ITT_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+EXTRA_DIST += \
+	gen_babeltrace_itt_model.rb
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libITTInterval.la
+
+BTX_ITT_GENERATED = \
+	btx_filter_itt/metababel/metababel.h \
+	btx_filter_itt/metababel/btx_component.h \
+	btx_filter_itt/metababel/btx_component.c \
+	btx_filter_itt/metababel/btx_upstream.h \
+	btx_filter_itt/metababel/btx_upstream.c \
+	btx_filter_itt/metababel/btx_downstream.h \
+	btx_filter_itt/metababel/btx_downstream.c \
+	btx_filter_itt/btx_main.c
+
+$(BTX_ITT_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_itt_model.yaml
+	$(METABABEL) -u btx_itt_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_itt -p ittinterval -c interval -i ittnotify.h
+
+xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
+	cp $< $@
+
+CLEANFILES += \
+	$(BTX_ITT_GENERATED) \
+	xprof_utils.hpp \
+	btx_itt_model.yaml
+
+BUILT_SOURCES += \
+	$(BTX_ITT_GENERATED) \
+	xprof_utils.hpp
+
+nodist_libITTInterval_la_SOURCES = \
+	$(BTX_ITT_GENERATED) \
+	xprof_utils.hpp
+
+libITTInterval_la_SOURCES = \
+	btx_ittinterval_callbacks.cpp \
+	$(top_srcdir)/utils/include/magic_enum.hpp
+
+libITTInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_filter_itt
+libITTInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libITTInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libITTInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
