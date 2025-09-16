@@ -1,2 +1,20 @@
 ---
-meta_parameters: {}
+meta_parameters:
+  __itt_domain_create:
+    - [ InString, name ]
+  __itt_domain_createA:
+    - [ InString, name ]
+  __itt_string_handle_create:
+    - [ InString, str ]
+  __itt_string_handle_createA:
+    - [ InString, str ]
+  __itt_task_beginA:
+    - [ InString, name ]
+  __itt_markerA:
+    - [ InString, name ]
+  __itt_thread_set_name:
+    - [ InString, name ]
+  __itt_thread_set_nameA:
+    - [ InString, name ]
+  __itt_event_create:
+    - [ InString, name ]
