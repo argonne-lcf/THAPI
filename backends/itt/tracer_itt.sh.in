@@ -53,6 +53,6 @@ ctrl_c() {
 
 trap ctrl_c INT
 
-LD_LIBRARY_PATH=$INTEL_LIBITTNOTIFY64:$LD_LIBRARY_PATH "$@"
+LD_PRELOAD=$INTEL_LIBITTNOTIFY64:$LD_PRELOAD "$@"
 lttng stop
 lttng destroy
