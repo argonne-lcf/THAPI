@@ -98,6 +98,8 @@ module YAMLCAst
 
   class Declaration
     def lttng_type
+      p type.lttng_type
+      p type.name
       r = type.lttng_type
       r.name = name
       case type
