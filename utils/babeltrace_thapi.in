@@ -148,13 +148,11 @@ def get_components(names)
   names.flat_map do |name|
     case name
     when 'filter.intervals.interval'
-      $options[:'backend-names'].filter_map { |b|
+      $options[:'backend-names'].filter_map do |b|
         c = components_classes["filter.#{b}interval.interval"]
-        unless c
-          LOGGER.info("#{b} interval component is missing. Maybe not installed?")
-          next
-        end
-        NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
+        next unless c
+        NameComp.new(b,c)
+      end
     when 'sink.text.rubypretty'
       # Yaml and event_lambdas are required by babeltrace*_lib
       $event_lambdas = {}
