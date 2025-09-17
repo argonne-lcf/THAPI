@@ -139,12 +139,12 @@ dnl We have to use AC_TRY_COMPILE and not AC_CHECK_HEADER because the
 dnl latter uses $CPP, not $CC (which may be mpicc).
 AC_LANG_CASE([C], [if test x != x"$MPILIBS"; then
 	AC_MSG_CHECKING([for mpi.h])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([include <mpi.h>],[])],[AC_MSG_RESULT(yes)], [MPILIBS=""
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <mpi.h>],[])],[AC_MSG_RESULT(yes)], [MPILIBS=""
 		AC_MSG_RESULT(no)])
 fi],
 [C++], [if test x != x"$MPILIBS"; then
 	AC_MSG_CHECKING([for mpi.h])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([include <mpi.h>],[])],[AC_MSG_RESULT(yes)], [MPILIBS=""
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <mpi.h>],[])],[AC_MSG_RESULT(yes)], [MPILIBS=""
 		AC_MSG_RESULT(no)])
 fi],
 [Fortran 77], [if test x != x"$MPILIBS"; then
