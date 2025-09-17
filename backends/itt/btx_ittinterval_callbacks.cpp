@@ -44,8 +44,8 @@ static void lttng_ust_itt___itt_string_handle_create_callback(void *btx_handle, 
 static void lttng_ust_itt___itt_task_begin_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain, struct __itt_id, struct __itt_id, struct __itt_string_handle * name)  {
-
+                                                struct __itt_domain *domain,
+                                                struct __itt_id, struct __itt_id, struct __itt_string_handle * name)  {
     auto* state = static_cast<data_t *>(usr_data);
     const auto str_name = state->itt_string_handle2name[{hostname, vpid, name}];
     state->domain_handle_task_stack[ {hostname, vpid, vtid, domain} ].push( {ts, str_name} );
@@ -55,7 +55,6 @@ static void lttng_ust_itt___itt_task_end_callback(void *btx_handle, void *usr_da
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
                                                 struct __itt_domain *domain) {
-
     auto* state = static_cast<data_t *>(usr_data);
     const auto &[start_ts, op_name] = state->domain_handle_task_stack[ {hostname, vpid, vtid, domain} ].top();
 
