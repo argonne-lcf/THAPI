@@ -79,16 +79,17 @@ CLEANFILES += \
 EXTRA_DIST += \
 	gen_itt.rb
 
-lib_LTLIBRARIES = libTracerITT.la
+ittdir = $(pkglibdir)/itt
+itt_LTLIBRARIES = libittnotify.la
 
-nodist_libTracerITT_la_SOURCES = \
+nodist_libittnotify_la_SOURCES = \
 	$(ITT_PROBES_INCL) \
 	tracer_itt.c
 
-libTracerITT_la_CPPFLAGS = -I$(srcdir)/include
-libTracerITT_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
-libTracerITT_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module
-libTracerITT_la_LIBADD = libitttracepoints.la
+libittnotify_la_CPPFLAGS = -I$(srcdir)/include
+libittnotify_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+libittnotify_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module
+libittnotify_la_LIBADD = libitttracepoints.la
 
 bin_SCRIPTS = \
 	tracer_itt.sh

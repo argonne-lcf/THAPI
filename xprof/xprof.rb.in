@@ -549,7 +549,7 @@ def env_tracers
   end
 
   if OPTIONS[:'backend-names'].include?('itt')
-    h['INTEL_LIBITTNOTIFY64'] = File.join(LIBDIR, 'libTracerITT.so')
+    h['INTEL_LIBITTNOTIFY64'] = File.join(PKGLIBDIR, 'itt', 'libittnotify.so')
   end
 
   # Sample
