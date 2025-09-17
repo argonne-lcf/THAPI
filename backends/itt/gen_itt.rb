@@ -56,6 +56,7 @@ register_epilogue("__itt_api_init", <<EOF
 EOF
 )
 
+register_prologue("__itt_event_create", " _retval.id = atomic_fetch_add(&event_counter, 1);")
 # Printing
 
 common_block = lambda { |c, provider|
@@ -80,6 +81,9 @@ puts <<EOF
 #include "ittnotify.h"
 #include "itt_tracepoints.h"
 #include <stdlib.h>
+#include <stdatomic.h>
+
+static _Atomic uint32_t event_counter = 0;
 EOF
 
 provider = :lttng_ust_itt
