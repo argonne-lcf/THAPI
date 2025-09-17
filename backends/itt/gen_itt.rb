@@ -56,8 +56,8 @@ register_epilogue("__itt_api_init", <<EOF
 EOF
 )
 
-register_prologue("__itt_event_create", " _retval.id = atomic_fetch_add(&event_counter, 1);")
-register_prologue("__itt_domain_create", " _retval->flags = 1;")
+register_prologue("__itt_event_create", "_retval.id = atomic_fetch_add(&event_counter, 1);")
+register_prologue("__itt_domain_create", "_retval->flags = 1;")
 register_prologue("__itt_task_begin", "if (domain->flags == 0) return;")
 register_prologue("__itt_task_end", "if (domain->flags == 0) return;")
 
