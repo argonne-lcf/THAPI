@@ -1,4 +1,5 @@
 require_relative './yaml_ast'
+require_relative './LTTng'
 
 FLOAT_SCALARS_MAP = {"float" => "uint32_t", "double" => "uint64_t"}
 
