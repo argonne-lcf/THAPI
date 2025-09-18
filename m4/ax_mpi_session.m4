@@ -33,33 +33,31 @@ dnl We have to use AC_TRY_COMPILE and not AC_CHECK_HEADER because the
 dnl latter uses $CPP, not $CC (which may be mpicc).
 AC_LANG_CASE([C], [
   AC_MSG_CHECKING([for MPI_Session_init])
-  AC_TRY_COMPILE([
-    #include <mpi.h>
-  ],[
-    MPI_Session s;
-    MPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &s);
-  ],[
-    MPI_SESSION="yes"
-    AC_MSG_RESULT(yes)
-  ],[
-    MPI_SESSION=""
-    AC_MSG_RESULT(no)
-  ])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM(
+      [[#include <mpi.h>]],
+      [[
+        MPI_Session s;
+        MPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &s);
+      ]])],
+    [MPI_SESSION="yes"
+     AC_MSG_RESULT(yes)],
+    [MPI_SESSION=""
+     AC_MSG_RESULT(no)])
 ],
 [C++], [
   AC_MSG_CHECKING([for MPI_Session_init])
-  AC_TRY_COMPILE([
-    #include <mpi.h>
-  ],[
-    MPI_Session s;
-    MPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &s);
-  ],[
-    MPI_SESSION="yes"
-    AC_MSG_RESULT(yes)
-  ],[
-    MPI_SESSION=""
-    AC_MSG_RESULT(no)
-  ])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM(
+      [[#include <mpi.h>]],
+      [[
+        MPI_Session s;
+        MPI_Session_init(MPI_INFO_NULL, MPI_ERRORS_RETURN, &s);
+      ]])],
+    [MPI_SESSION="yes"
+     AC_MSG_RESULT(yes)],
+    [MPI_SESSION=""
+     AC_MSG_RESULT(no)])
 ])
 
 AC_LANG_CASE([C], [CC="$ax_mpi_session_save_CC"],
