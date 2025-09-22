@@ -77,6 +77,7 @@ struct timeline_dispatch_s {
   // Use a pointer since `output_path` is unknown at `timeline_dispatch_s` creation,
   // preventing `UnboundTrace` initialization
   std::unique_ptr<UnboundTrace> trace;
+  perfetto_uuid_t start_uuid_index = 1;
 };
 
 // Keeps extra parameters that does not fit the default getter
@@ -86,9 +87,9 @@ using timeline_dispatch_t = struct timeline_dispatch_s;
 using uuid_getter_t = perfetto_uuid_t (*)(timeline_dispatch_t *, const std::string &, uint64_t,
                                           uint32_t, uint64_t, uint32_t, std::optional<Extras>);
 
-static perfetto_uuid_t gen_perfetto_uuid() {
+static perfetto_uuid_t gen_perfetto_uuid(timeline_dispatch_t *dispatch) {
   // Start at one, Look like UUID 0 is special
-  static std::atomic<perfetto_uuid_t> uuid{1};
+  static std::atomic<perfetto_uuid_t> uuid{dispatch->start_uuid_index};
   return uuid++;
 }
 
@@ -102,7 +103,7 @@ static perfetto_uuid_t get_parent_counter_track_uuid(timeline_dispatch_t *dispat
   if (!inserted)
     return potential_uuid;
 
-  hp_uuid = gen_perfetto_uuid();
+  hp_uuid = gen_perfetto_uuid(dispatch);
   potential_uuid = hp_uuid;
 
   // Create packet with track descriptor
@@ -137,7 +138,7 @@ insert_or_get_uuid(MapType &counter_map, KeyType key, timeline_dispatch_t *dispa
 
   // Generate both parent and device uuid if a new insertion
   perfetto_uuid_t hp_uuid = get_parent_counter_track_uuid(dispatch, hostname, did, deviceIdx);
-  hp_dev_uuid = gen_perfetto_uuid();
+  hp_dev_uuid = gen_perfetto_uuid(dispatch);
   potential_uuid = hp_dev_uuid;
 
   return {hp_dev_uuid, hp_uuid};
@@ -379,7 +380,7 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch, std::stri
     return potential_uuid;
 
   // Generating a new one
-  hp_uuid = gen_perfetto_uuid();
+  hp_uuid = gen_perfetto_uuid(dispatch);
   // Adding it to the map
   potential_uuid = hp_uuid;
 
@@ -425,7 +426,7 @@ static perfetto_uuid_t get_track_uuid_perfectly_nested(timeline_dispatch_t *disp
     return potential_uuid;
 
   // Generating a new one
-  track_uuid = gen_perfetto_uuid();
+  track_uuid = gen_perfetto_uuid(dispatch);
   // Adding it to the map
   potential_uuid = track_uuid;
   // Add the thread packet to the trace
@@ -476,7 +477,7 @@ static perfetto_uuid_t get_track_uuid_async(timeline_dispatch_t *dispatch, std::
   auto it = lasts.upper_bound(begin);
   // Pre-historical event
   if (it == lasts.begin()) {
-    uuid = gen_perfetto_uuid();
+    uuid = gen_perfetto_uuid(dispatch);
     {
       auto *packet = dispatch->trace->add_packet();
       auto *track_descriptor = packet->mutable_track_descriptor();
@@ -511,6 +512,8 @@ void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeli
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   std::string output_path{usr_params->output_path};
+  dispatch->start_uuid_index=std::stoi(usr_params->offset) + 1;
+  printf( "ttt %d %s\n", dispatch->start_uuid_index, usr_params->offset);
   dispatch->trace = std::make_unique<UnboundTrace>(output_path);
 }
 
@@ -598,7 +601,7 @@ static perfetto_uuid_t get_nic_parent_track_uuid(timeline_dispatch_t *dispatch,
   if (it != dispatch->hp_hi2nicparenttracks.end())
     return it->second;
 
-  perfetto_uuid_t parent_uuid = gen_perfetto_uuid();
+  perfetto_uuid_t parent_uuid = gen_perfetto_uuid(dispatch);
   dispatch->hp_hi2nicparenttracks[key] = parent_uuid;
 
   auto *packet = dispatch->trace->add_packet();
@@ -629,7 +632,7 @@ static perfetto_uuid_t get_nic_track_uuid(timeline_dispatch_t *dispatch,
     return it->second;
 
   // Create child‐track for this counter
-  perfetto_uuid_t uuid = gen_perfetto_uuid();
+  perfetto_uuid_t uuid = gen_perfetto_uuid(dispatch);
   dispatch->hp_hic2nictracks[key] = uuid;
 
   auto *packet = dispatch->trace->add_packet();
