@@ -34,6 +34,12 @@ teardown_file() {
    $IPROF -r
 }
 
+@test "no-analysis_output" {
+   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+   THAPI_SYNC_DAEMON=fs timeout 40s $MPIRUN -n 2 $IPROF --no-analysis -- ./mpi_helloworld 0
+   [[ "$output" == "" ]]
+}
+
 @test "no-analysis_all" {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
    $IPROF -r
