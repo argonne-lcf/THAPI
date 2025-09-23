@@ -961,7 +961,7 @@ if __FILE__ == $PROGRAM_NAME
               p || 'out.pftrace'
             end
   parser.on('--output_offset [OFFSET]', 'For timeline, add offset to uuids.',
-            'If `OFFSET` is omitted, defaults to `0`.',default: 0)
+            'If `OFFSET` is omitted, defaults to `0`.',default: '0')
   ## Tally Specific Options
   parser.on('-j', '--json', 'Output the tally in JSON format.')
   parser.on('-e', '--extended', 'Print the tally for for each Hostname / Process / Thread / Device.')
