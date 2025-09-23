@@ -470,7 +470,7 @@ subcommands = {
     BabeltraceParserThapi.new do |parser|
       parser.banner = 'Usage: babeltrace_thapi timeline [OPTIONS] trace_directory...'
       parser.on('--output-path PATH', String, default: 'out.pftrace')
-      parser.on('--output-offset OFFSET', String, default: '0')
+      parser.on('--output-offset OFFSET', Integer, default: 0)
     end,
 }
 print_help_and_exit if ARGV.empty? || ARGV[0] == '--help'
