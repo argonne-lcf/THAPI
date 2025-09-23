@@ -77,7 +77,7 @@ struct timeline_dispatch_s {
   // Use a pointer since `output_path` is unknown at `timeline_dispatch_s` creation,
   // preventing `UnboundTrace` initialization
   std::unique_ptr<UnboundTrace> trace;
-  perfetto_uuid_t start_uuid_index = 1;
+  std::atomic<perfetto_uuid_t> uuid = 1;
 };
 
 // Keeps extra parameters that does not fit the default getter
@@ -88,8 +88,6 @@ using uuid_getter_t = perfetto_uuid_t (*)(timeline_dispatch_t *, const std::stri
                                           uint32_t, uint64_t, uint32_t, std::optional<Extras>);
 
 static perfetto_uuid_t gen_perfetto_uuid(timeline_dispatch_t *dispatch) {
-  // Start at one, Look like UUID 0 is special
-  static std::atomic<perfetto_uuid_t> uuid{dispatch->start_uuid_index};
   return uuid++;
 }
 
@@ -512,7 +510,7 @@ void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeli
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   std::string output_path{usr_params->output_path};
-  dispatch->start_uuid_index=usr_params->offset + 1;
+  dispatch->uuid=usr_params->offset + 1;
   dispatch->trace = std::make_unique<UnboundTrace>(output_path);
 }
 
