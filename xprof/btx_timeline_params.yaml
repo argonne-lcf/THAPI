@@ -2,3 +2,5 @@
 :entries:
     - :name: output_path
       :type: string
+    - :name: offset
+      :type: integer_unsigned
