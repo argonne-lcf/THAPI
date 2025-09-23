@@ -246,7 +246,8 @@ def get_and_add_components(graph, names, l_inputs)
                           'backend_levels' => $options[:backends].join(',') })
     when 'sink.btx_timeline.timeline'
       graph.add(comp, 'timeline',
-                params: { 'output_path' => $options[:'output-path'] })
+                params: { 'output_path' => $options[:'output-path'],
+                        'offset' => $options[:'output-offset'] })
     when 'filter.utils.muxer'
       graph.add(comp, name)
     when 'filter.btx_aggreg.aggreg'
