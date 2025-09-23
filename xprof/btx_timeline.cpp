@@ -513,7 +513,6 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   std::string output_path{usr_params->output_path};
   dispatch->start_uuid_index=usr_params->offset + 1;
-  printf( "ttt %d %d %s\n", dispatch->start_uuid_index, usr_params->offset,usr_params->output_path);
   dispatch->trace = std::make_unique<UnboundTrace>(output_path);
 }
 
