@@ -866,7 +866,7 @@ def gm_processing(folder)
   if OPTIONS.include?(:trace)
     args += ['trace', '--restrict', '--context', '--backends', backends]
   elsif OPTIONS.include?(:timeline)
-    args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--output-offset', OPTIONS[:output_offset]]
+    args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
   else
     args += ['tally']
     args << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
@@ -960,8 +960,6 @@ if __FILE__ == $PROGRAM_NAME
             'Open with Perfetto: `https://ui.perfetto.dev/#!/viewer`.') do |p|
               p || 'out.pftrace'
             end
-  parser.on('--output_offset [OFFSET]', 'For timeline, add offset to uuids.',
-            'If `OFFSET` is omitted, defaults to `0`.',default: '0')
   ## Tally Specific Options
   parser.on('-j', '--json', 'Output the tally in JSON format.')
   parser.on('-e', '--extended', 'Print the tally for for each Hostname / Process / Thread / Device.')
