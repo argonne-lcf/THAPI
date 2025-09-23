@@ -1,13 +1,9 @@
 #include <mpi.h>
-#include <stdlib.h>
 #include <stdio.h>
 
 int main(int argc, char** argv) {
     // Initialize the MPI environment
     MPI_Init(&argc, &argv);
-
-    int verbose = 1;
-    if (argc >= 2) verbose = atoi(argv[1]);
 
     // Get the number of processes
     int world_size;
@@ -22,10 +18,7 @@ int main(int argc, char** argv) {
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
 
-    if (verbose) {
-        printf("Hello world from processor %s, rank %d out of %d rank.\n",
-            processor_name, world_rank, world_size);
-    }
+    printf("Hello world from processor %s, rank %d out of %d rank.\n", processor_name, world_rank, world_size);
     // Finalize the MPI environment.
     MPI_Finalize();
     return 0;
