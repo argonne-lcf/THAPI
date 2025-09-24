@@ -1,10 +1,23 @@
 # THAPI (Tracing Heterogeneous APIs)
 
-A tracing infrastructure for heterogeneous computing applications. We curently have backend for OpenCL, CUDA and L0.
+<p align="center">
+  <a href="https://github.com/argonne-lcf/THAPI/issues">
+    <img src="https://img.shields.io/badge/Found%20a%20bug%3F-Report%20it!-red?style=for-the-badge&logo=github&logoColor=white&labelColor=blue"/>
+  </a>
+</p>
+
+A tracing infrastructure for heterogeneous computing applications. We curently have backend for OpenCL, CUDA, L0, MPI and supoort performance counter sampling of L0, and CXI. 
 
 # Building and Installation
 
-The build system is a classical autotool based system.
+The build system is a classical autotool based system. For example:
+
+```
+./autogen.sh
+mkdir build
+cd build
+../configure --prefix `pwd`/ici
+```
 
 As a alternative, one can use [spack](https://github.com/spack/spack) to install THAPI.  
 THAPI package is not yet in upstream spack, in the mean time please follow https://github.com/argonne-lcf/THAPI-spack.
@@ -18,8 +31,7 @@ Packages:
  - `ruby`, `ruby-dev`
  - `libffi`, `libffi-dev`
 
-babletrace2 should be patched before install, see:
-https://github.com/Kerilk/spack/tree/develop/var/spack/repos/builtin/packages/babeltrace2
+Note: Some package should be patched before install see Spack package.
 
 Optional packages:
  - `binutils-dev` or `libiberty-dev` for demangling depending on platforms (`demangle.h`)
@@ -28,9 +40,13 @@ Ruby Gems:
  - `cast-to-yaml`
  - `nokogiri`
  - `babeltrace2`
+ - `metababel`
 
 Optional Gem:
  - `opencl_ruby_ffi`
+
+Optional pip:
+ - `h2yaml`
 
 # Usage
 
