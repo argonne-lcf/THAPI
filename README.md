@@ -17,6 +17,7 @@ The build system is a classical autotool based system. For example:
 mkdir build
 cd build
 ../configure --prefix `pwd`/ici
+make -j install
 ```
 
 As a alternative, one can use [spack](https://github.com/spack/spack) to install THAPI.  
