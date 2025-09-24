@@ -1038,9 +1038,7 @@ if __FILE__ == $PROGRAM_NAME
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    if OPTIONS[:analysis]
-      XprofExitCode.update(gm_processing(folder), 'babeltrace_thapi')
-    end
+    XprofExitCode.update(gm_processing(folder), 'babeltrace_thapi') unless !OPTIONS[:analysis]
   end
 
   exit(XprofExitCode.get)
