@@ -34,6 +34,18 @@ teardown_file() {
    $IPROF -r
 }
 
+@test "no-analysis_output" {
+   run $THAPI_TEST_BIN
+   out1=$(echo "$output" | grep -v 'Max clock frequency')
+
+   run --separate-stderr $IPROF --no-analysis -- $THAPI_TEST_BIN
+   out2=$(echo "$output" | grep -v 'Max clock frequency')
+   err2=$stderr
+
+   [[ "$out1" == "$out2" ]]
+   [[ "$err2" =~ "THAPI: Trace location" ]]
+}
+
 @test "no-analysis_all" {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
    $IPROF -r
