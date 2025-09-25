@@ -764,7 +764,7 @@ def lm_babeltrace(backends)
       max_uint16_value = (2**16) - 1
       offset = (max_uint16_value / list_hostnames.length ) * hostname_id
       backends = OPTIONS[:backends].join(',')
-      output_per_host=OPTIONS[:timeline]+"_"+hostname_string
+      output_per_host=thapi_trace_dir_tmp+"/"+OPTIONS[:timeline]+"_"+hostname_string
       args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
     end
@@ -888,7 +888,7 @@ def gm_processing(folder)
 
     cmd="cat "
     list_hostnames.each do |host|
-      cmd+=(OPTIONS[:timeline]+"_"+host+" ")
+      cmd+=(thapi_trace_dir_root+"/"+host+"/"+OPTIONS[:timeline]+"_"+host+" ")
     end
     cmd+= ("> "+OPTIONS[:timeline])
     exec("#{cmd}")
