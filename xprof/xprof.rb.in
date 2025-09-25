@@ -884,7 +884,6 @@ def gm_processing(folder)
   if OPTIONS.include?(:timeline)
     # cat the timelines
     list_hostnames = File.readlines( ENV['COBALT_NODEFILE'] ).map(&:chomp)
-    num_hosts=list_hostnames.length
 
     cmd="cat "
     list_hostnames.each do |host|
