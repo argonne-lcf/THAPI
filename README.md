@@ -6,7 +6,7 @@
   </a>
 </p>
 
-A tracing infrastructure for heterogeneous computing applications. We currently have backend for OpenCL, CUDA,
+A tracing infrastructure for heterogeneous computing applications. We currently have backends for OpenCL, CUDA,
 [L0](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html),
 MPI and support performance counter sampling of L0, and [CXI](https://github.com/HewlettPackard/shs-libcxi).
 
@@ -72,7 +72,7 @@ tracer_opencl.sh [options] [--] <application> <application-arguments>
   -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE
   -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE
   -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE
-  -v, --visualize               Visualize trace on thefly
+  -v, --visualize               Visualize trace on the fly
   --devices                     Dump devices information
 ```
 
