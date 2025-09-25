@@ -14,9 +14,10 @@ static void _load_tracer(void) {
       handle = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
   if (handle) {
     void* ptr = dlsym(handle, "cudaSetDevice");
-    if (ptr == (void*)&cudaSetDevice) { //opening oneself
-      dlclose(handle);
-      handle = NULL;
+    void* self = dlsym(RTLD_DEFAULT, "cudaSetDevice");
+    if (ptr == self) {  /* opening oneself */
+        dlclose(handle);
+        handle = NULL;
     }
   }
 
