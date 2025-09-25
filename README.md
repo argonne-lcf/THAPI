@@ -6,11 +6,13 @@
   </a>
 </p>
 
-A tracing infrastructure for heterogeneous computing applications. We curently have backend for OpenCL, CUDA, L0, MPI and supoort performance counter sampling of L0, and CXI. 
+A tracing infrastructure for heterogeneous computing applications. We currently have backend for OpenCL, CUDA,
+[L0](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html),
+MPI and support performance counter sampling of L0, and [CXI](https://github.com/HewlettPackard/shs-libcxi).
 
 # Building and Installation
 
-The build system is a classical autotool based system. For example:
+The build system is a classical Autotools based system. For example:
 
 ```
 ./autogen.sh
@@ -20,8 +22,9 @@ cd build
 make -j install
 ```
 
-As a alternative, one can use [spack](https://github.com/spack/spack) to install THAPI.  
-THAPI package is not yet in upstream spack, in the mean time please follow https://github.com/argonne-lcf/THAPI-spack.
+As an alternative, one can use [spack](https://github.com/spack/spack) to install THAPI. THAPI package is
+not yet in upstream spack. In the mean time, please follow the instructions in
+[THAPI-spack](https://github.com/argonne-lcf/THAPI-spack).
 
 ## Dependencies
 
@@ -53,7 +56,8 @@ Optional pip:
 
 ## OpenCL Tracer
 
-The tracer can be heavily tuned and each event can be monitored independently from others, but for convenience a series of default presets are defined in the `tracer_opencl.sh` script:
+The tracer can be heavily tuned and each event can be monitored independently from others, but for convenience
+a series of default presets are defined in the `tracer_opencl.sh` script:
 ```
 tracer_opencl.sh [options] [--] <application> <application-arguments>
   --help                        Show this screen
@@ -72,7 +76,8 @@ tracer_opencl.sh [options] [--] <application> <application-arguments>
   --devices                     Dump devices information
 ```
 
-Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_opencl`. The later should give more structured information at the cost of speed.
+Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_opencl`. The later should give more structured
+information at the cost of speed.
 
 ## Level Zero (L0) Tracer
 
@@ -86,7 +91,8 @@ tracer_ze.sh [options] [--] <application> <application-arguments>
   -v, --visualize               Visualize trace on thefly
   --properties                  Dump drivers and devices properties
 ```
-Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_ze`. The later should give more structured information at the cost of speed.
+Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_ze`. The later should give more structured
+information at the cost of speed.
 
 ## CUDA Tracer
 
@@ -102,7 +108,8 @@ Similarly to OpenCL, a wrapper script with presets is provided, `tracer_cuda.sh`
   -v, --visualize               Visualize trace on thefly
   --properties                  Dump devices infos
 ```
- Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_cuda`. The later should give more structured information at the cost of speed
+ Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_cuda`. The later should give more structured
+ information at the cost of speed.
 
 ## iprof
 
@@ -137,7 +144,7 @@ For complaints, praises, or bug reports please use: <(o )___
    or send email to {apl,bvideau}@anl.gov             `---'
 ```
 
-Programming model specific variants exist: clprof.sh, zeprof.sh, and cuprof.sh.
+Programming model specific variants exist: `clprof.sh`, `zeprof.sh`, and `cuprof.sh`.
 
 ### Example of iprof output when tracing cuda code
 
