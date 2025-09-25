@@ -10,7 +10,7 @@ A tracing infrastructure for heterogeneous computing applications. We currently 
 [L0](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html),
 MPI and support performance counter sampling of L0, and [CXI](https://github.com/HewlettPackard/shs-libcxi).
 
-# Building and Installation
+## Building and Installation
 
 The build system is a classical Autotools based system. For example:
 
@@ -26,7 +26,7 @@ As an alternative, one can use [spack](https://github.com/spack/spack) to instal
 not yet in upstream spack. In the mean time, please follow the instructions in
 [THAPI-spack](https://github.com/argonne-lcf/THAPI-spack).
 
-## Dependencies
+### Dependencies
 
 Packages:
  - `babeltrace2`, `libbabeltrace2-dev`
@@ -52,9 +52,9 @@ Optional Gem:
 Optional pip:
  - `h2yaml`
 
-# Usage
+## Usage
 
-## OpenCL Tracer
+### OpenCL Tracer
 
 The tracer can be heavily tuned and each event can be monitored independently from others, but for convenience
 a series of default presets are defined in the `tracer_opencl.sh` script:
@@ -79,7 +79,7 @@ tracer_opencl.sh [options] [--] <application> <application-arguments>
 Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_opencl`. The later should give more structured
 information at the cost of speed.
 
-## Level Zero (L0) Tracer
+### Level Zero (L0) Tracer
 
 Similarly to OpenCL, a wrapper script with presets is provided, `tracer_ze.sh`:
 ```
@@ -94,7 +94,7 @@ tracer_ze.sh [options] [--] <application> <application-arguments>
 Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_ze`. The later should give more structured
 information at the cost of speed.
 
-## CUDA Tracer
+### CUDA Tracer
 
 Similarly to OpenCL, a wrapper script with presets is provided, `tracer_cuda.sh`:
 ```
@@ -111,7 +111,7 @@ Similarly to OpenCL, a wrapper script with presets is provided, `tracer_cuda.sh`
  Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_cuda`. The later should give more structured
  information at the cost of speed.
 
-## iprof
+### iprof
 
 `iprof` is another wrapper around the OpenCL, Level Zero, and CUDA tracers. It gives aggregated profiling information.
 
@@ -146,7 +146,7 @@ For complaints, praises, or bug reports please use: <(o )___
 
 Programming model specific variants exist: `clprof.sh`, `zeprof.sh`, and `cuprof.sh`.
 
-### Example of iprof output when tracing cuda code
+#### Example of iprof output when tracing cuda code
 
 ```
 tapplencourt> iprof ./a.out
