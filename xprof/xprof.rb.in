@@ -192,27 +192,33 @@ def mpi_master?
   mpi_rank_id.zero?
 end
 
-def get_hostnames
-  list_hostnames=[]
-  # first try via env
-  hostfile=env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
-  if hostfile.nil?
-    # if nil, try via directory structure
-    Dir.entries(File.dirname(thapi_trace_dir_tmp)).sort.each do |entry|
-      if File.directory?(File.join(File.dirname(thapi_trace_dir_tmp), entry)) and entry != '.' and entry != '..'
-        list_hostnames.push(entry)
-      end
-    end
+# returns an offset for each timeline file
+# this is based on chunking max_int32_value
+# into the number of nodes
+def get_offset
+  if not in_mpi_env?
+    # if not mpi, just return 0 offset
+    offset = 0
   else
-    list_hostnames = File.readlines( hostfile ).map(&:chomp)
+    # if we launch with a scheduler, we can read from a hostfile.
+    hostfile=env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+    if hostfile.nil?
+      max_int32_value = (2**31) - 1
+      # want to chunk by reasonable amount. for now, assume a max of 100000 nodes and
+      # chunk max_int32_value by that. So each node gets ~20000 spots 
+      offset = (max_int32_value / 100000) * (mpi_rank_id / mpi_local_size).floor
+    else
+      list_hostnames = File.readlines( hostfile ).map(&:chomp)
+      hostname_string=Socket.gethostname
+      # find index of hostname_string in list_hostnames
+      hostname_id = list_hostnames.find_index(hostname_string)
+      # compute the offset, based on splitting max_int32_value by the number of hosts
+      max_int32_value = (2**31) - 1
+      offset = (max_int32_value / list_hostnames.length ) * hostname_id
+    end
   end
-  # if list_names is still empty
-  if list_hostnames.empty?
-    puts "It looks like the hostfile is empty for some reason. Need to debug."
-    exit 1
-  end
-    
-  return list_hostnames
+
+  return offset
 end
 
 #    _                    _
@@ -774,6 +780,13 @@ def lm_babeltrace(backends)
     [pid_bt, pid_dirwatch]
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+    if OPTIONS.include?(:timeline)
+      offset=get_offset()        
+      backends = OPTIONS[:backends].join(',')
+      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+offset.to_s)
+      args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
+      exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
+      end
   end
 end
 
@@ -867,25 +880,6 @@ def trace_and_on_node_processing(usr_argv)
     # Preprocess trace
     unless OPTIONS[:archive]
       lm_babeltrace(backends)
-      # global barrier to ensure that all thapi_trace_dir_tmp are written per hostname.
-      # unless these directories are made previously
-      syncd.global_barrier
-      if OPTIONS.include?(:timeline)
-        # get the timeline per node
-        hostname_string=Socket.gethostname
-        # get list of hostnames
-        list_hostnames=get_hostnames()        
-        # find index of hostname_string in list_hostnames
-        hostname_id = list_hostnames.find_index(hostname_string)
-        # compute the offset, based on splitting max_uint16_value by the number of hosts
-        max_uint16_value = (2**16) - 1
-        offset = (max_uint16_value / list_hostnames.length ) * hostname_id
-        backends = OPTIONS[:backends].join(',')
-        output_per_host=File.join(thapi_trace_dir_tmp, OPTIONS[:timeline]+"_"+hostname_string)
-        args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
-        exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
-      end
-
       # Babeltrace have moved / tranformer lttng_trace_dir_tmp into thapi_trace_dir_tmp
       LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
       FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
@@ -907,10 +901,10 @@ def gm_processing(folder)
   args = []
   if OPTIONS.include?(:timeline)
     # cat the timelines
-    list_hostnames = get_hostnames()
+    # if -l -r, run to check, 
     cmd="cat "
-    list_hostnames.each do |host|
-      cmd+=(thapi_trace_dir_root+"/"+host+"/"+OPTIONS[:timeline]+"_"+host+" ")
+    Dir[thapi_trace_dir_root+"/*/timeline_*"].each do|f|
+      cmd+=(f+" ")
     end
     cmd+= ("> "+OPTIONS[:timeline])
     exec("#{cmd}")
