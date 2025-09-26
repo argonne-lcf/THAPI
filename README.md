@@ -9,6 +9,7 @@
 * OpenCL
 * [Intel Level Zero (L0)](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html)
 * MPI
+* OpenMP
 * [CXI](https://github.com/HewlettPackard/shs-libcxi)
 
 
