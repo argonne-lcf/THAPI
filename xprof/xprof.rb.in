@@ -774,25 +774,6 @@ def lm_babeltrace(backends)
     [pid_bt, pid_dirwatch]
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
-
-    # if OPTIONS.include?(:timeline)
-    #   # if I could sync here it would be nice. then could pull from the FS
-    #   # get the timeline per node
-    #   # get hostname_id
-    #   hostname_string=Socket.gethostname
-    #   # get list of hostnames      
-    #   list_hostnames = File.readlines( get_hostfile() ).map(&:chomp)
-    #   # find index of hostname_string in list_hostnames
-    #   hostname_id = list_hostnames.find_index(hostname_string)
-    #   # compute the offset, based on splitting max_uint16_value by the number of hosts
-    #   max_uint16_value = (2**16) - 1
-    #   offset = (max_uint16_value / list_hostnames.length ) * hostname_id
-    #   backends = OPTIONS[:backends].join(',')
-    #   output_per_host=thapi_trace_dir_tmp+"/"+OPTIONS[:timeline]+"_"+hostname_string
-    #   args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
-    #   exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
-    # end
-
   end
 end
 
@@ -886,6 +867,8 @@ def trace_and_on_node_processing(usr_argv)
     # Preprocess trace
     unless OPTIONS[:archive]
       lm_babeltrace(backends)
+      # global barrier to ensure that all thapi_trace_dir_tmp are written per hostname.
+      # unless these directories are made previously
       syncd.global_barrier
       if OPTIONS.include?(:timeline)
         # get the timeline per node
