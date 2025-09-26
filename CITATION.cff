@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+authors:
+- family-names: Bekele
+  given-names: Solomon
+- family-names: Vivas
+  given-names: Aurelio
+- family-names: Applencourt
+  given-names: Thomas
+- family-names: Muralidharan
+  given-names: Servesh
+- family-names: Allen
+  given-names: Bryce
+- family-names: Yoshii
+  given-names: Kazutomo
+- family-names: Perarnau
+  given-names: Swann
+- family-names: Videau
+  given-names: Brice
+title: "THAPI: Tracing Heterogeneous APIs"
+doi: "10.1007/978-3-031-99854-6_4"
+url: "https://doi.org/10.1007/978-3-031-99854-6_4"
