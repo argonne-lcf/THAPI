@@ -192,6 +192,17 @@ def mpi_master?
   mpi_rank_id.zero?
 end
 
+def get_hostfile
+  hostfile=env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+  # one alternative could be to list hostnames under parent(thapi_trace_dir_tmp)
+  if hostfile.nil?
+    puts "Exiting from timeline, need a hostfile"
+    exit
+  end
+  return hostfile
+end
+
+
 #    _                    _
 #   |_ _  |  _|  _  ._   |_) _. _|_ |_
 #   | (_) | (_| (/_ |    |  (_|  |_ | |
@@ -756,8 +767,8 @@ def lm_babeltrace(backends)
       # get the timeline per node
       # get hostname_id
       hostname_string=Socket.gethostname
-      # get list of hostnames
-      list_hostnames = File.readlines( ENV['COBALT_NODEFILE'] ).map(&:chomp)
+      # get list of hostnames      
+      list_hostnames = File.readlines( get_hostfile() ).map(&:chomp)
       # find index of hostname_string in list_hostnames
       hostname_id = list_hostnames.find_index(hostname_string)
       # compute the offset, based on splitting max_uint16_value by the number of hosts
@@ -883,7 +894,7 @@ def gm_processing(folder)
   args = []
   if OPTIONS.include?(:timeline)
     # cat the timelines
-    list_hostnames = File.readlines( ENV['COBALT_NODEFILE'] ).map(&:chomp)
+    list_hostnames = File.readlines( get_hostfile() ).map(&:chomp)
 
     cmd="cat "
     list_hostnames.each do |host|
