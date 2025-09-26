@@ -20,7 +20,7 @@ EOF
 if enable_clang_parser?
   header = [shared_header, cudart_header].join("\n")
   require 'open3'
-  yaml, status = Open3.capture2('h2yaml -xc -I modified_include/ -', stdin_data: header)
+  yaml, status = Open3.capture2('h2yaml -Wc,-xc -Wc,-Imodified_include/ -', stdin_data: header)
   exit(1) unless status.success?
 else
 
