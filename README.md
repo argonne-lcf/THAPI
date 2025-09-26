@@ -3,7 +3,6 @@
 ![Static Badge](https://img.shields.io/badge/Aurora-ready-blue)
 ![Static Badge](https://img.shields.io/badge/Found%20a%20bug%3F-Report%20it!-red?logo=github&logoColor=white&labelColor=blue)
 
-
 **THAPI** (Tracing Heterogeneous APIs) is a tracing infrastructure for heterogeneous computing applications. It currently includes backends for:
 
 * CUDA (runtime and driver)
@@ -55,7 +54,11 @@ cd build
 make -j install
 ```
 
-Adjust `--prefix` to your preferred installation directory (please don't copy my ugly bash with backticks and naming convension...).
+Adjust `--prefix` to your preferred installation directory (and please don't copy my ugly bash with backticks and naming convension...).
+
+<details>
+
+<summary>Dependencies details</summary>
 
 ### Dependencies
 
@@ -82,6 +85,8 @@ Optional Gem:
 
 Optional pip:
  - `h2yaml`
+
+</details>
 
 # Usage
 
