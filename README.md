@@ -1,14 +1,12 @@
 # THAPI (Tracing Heterogeneous APIs)
 
-<p align="center">
-  <a href="https://github.com/argonne-lcf/THAPI/issues">
-    <img src="https://img.shields.io/badge/Found%20a%20bug%3F-Report%20it!-red?style=for-the-badge&logo=github&logoColor=white&labelColor=blue"/>
-  </a>
-</p>
+![Static Badge](https://img.shields.io/badge/Aurora-ready-blue)
+![Static Badge](https://img.shields.io/badge/Found%20a%20bug%3F-Report%20it!-red?logo=github&logoColor=white&labelColor=blue)
+
 
 **THAPI** (Tracing Heterogeneous APIs) is a tracing infrastructure for heterogeneous computing applications. It currently includes backends for:
 
-* CUDA
+* CUDA (runtime and driver)
 * OpenCL
 * [Intel Level Zero (L0)](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html)
 * MPI
@@ -57,7 +55,7 @@ cd build
 make -j install
 ```
 
-Adjust `--prefix` to your preferred installation directory (please don't copy my ugly bash with backtips and naming convension...).
+Adjust `--prefix` to your preferred installation directory (please don't copy my ugly bash with backticks and naming convension...).
 
 ### Dependencies
 
