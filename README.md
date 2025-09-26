@@ -18,7 +18,16 @@
 Quick usage example:
 
 ```bash
-mpirun -n $N -- iprof -- ./a.out
+$ mpirun -n $N -- iprof -- ./a.out
+API calls | 1 Hostnames | 1 Processes | 1 Threads
+
+                         Name |     Time | Time(%) | Calls |  Average |      Min |      Max | Failed |
+     cuDevicePrimaryCtxRetain |  54.64ms |  51.77% |     1 |  54.64ms |  54.64ms |  54.64ms |      0 |
+         cuMemcpyDtoHAsync_v2 |  24.11ms |  22.85% |     1 |  24.11ms |  24.11ms |  24.11ms |      0 |
+[...]
+                  cuDeviceGet | 640.00ns |   0.00% |     1 | 640.00ns | 640.00ns | 640.00ns |      0 |
+             cuDeviceGetCount | 460.00ns |   0.00% |     1 | 460.00ns | 460.00ns | 460.00ns |      0 |
+                        Total | 105.54ms | 100.00% |    98 |                                       1 |
 ```
 
 More info in the [usage](#usage) section and in our [selections of amazing (⸮) talks](https://github.com/Kerilk/THAPI-Tutorial)
