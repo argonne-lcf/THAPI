@@ -6,15 +6,41 @@
   </a>
 </p>
 
-A tracing infrastructure for heterogeneous computing applications. We currently have backends for OpenCL, CUDA,
-[L0](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html),
-MPI and support performance counter sampling of L0, and [CXI](https://github.com/HewlettPackard/shs-libcxi).
+**THAPI** (Tracing Heterogeneous APIs) is a tracing infrastructure for heterogeneous computing applications. It currently includes backends for:
 
-## Building and Installation
+* CUDA
+* OpenCL
+* [Intel Level Zero (L0)](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-0/intel-oneapi-level-zero.html)
+* MPI
+* [CXI](https://github.com/HewlettPackard/shs-libcxi)
 
-The build system is a classical Autotools based system. For example:
 
+Quick usage example:
+
+```bash
+mpirun -n $N -- iprof -- ./a.out
 ```
+
+More info in the [usage](#usage) section and in our [selections of amazing (⸮) talks](https://github.com/Kerilk/THAPI-Tutorial)
+
+# Building and Installation
+
+We recommend installing THAPI via [Spack](https://github.com/spack/spack).
+
+THAPI package is not (yet) in upstream spack. In the mean time, please follow the instructions in
+[THAPI-spack](https://github.com/argonne-lcf/THAPI-spack). 
+
+Once you have the `THAPI-spack` repo added to your Spack configuration, you should be able to:
+
+```bash
+spack install thapi
+```
+
+## Build from source (Autotools)
+
+If you prefer to build from source, THAPI uses a classic Autotools flow:
+
+```bash
 ./autogen.sh
 mkdir build
 cd build
@@ -22,9 +48,7 @@ cd build
 make -j install
 ```
 
-As an alternative, one can use [spack](https://github.com/spack/spack) to install THAPI. THAPI package is
-not yet in upstream spack. In the mean time, please follow the instructions in
-[THAPI-spack](https://github.com/argonne-lcf/THAPI-spack).
+Adjust `--prefix` to your preferred installation directory (please don't copy my ugly bash with backtips and naming convension...).
 
 ### Dependencies
 
@@ -35,7 +59,7 @@ Packages:
  - `ruby`, `ruby-dev`
  - `libffi`, `libffi-dev`
 
-Note: Some package should be patched before install see Spack package.
+Note: Some package should be patched before install see [associated Spack package](https://github.com/argonne-lcf/THAPI-spack).
 
 Optional packages:
  - `binutils-dev` or `libiberty-dev` for demangling depending on platforms (`demangle.h`)
@@ -52,101 +76,28 @@ Optional Gem:
 Optional pip:
  - `h2yaml`
 
-## Usage
+# Usage
 
-### OpenCL Tracer
+## iprof
 
-The tracer can be heavily tuned and each event can be monitored independently from others, but for convenience
-a series of default presets are defined in the `tracer_opencl.sh` script:
-```
-tracer_opencl.sh [options] [--] <application> <application-arguments>
-  --help                        Show this screen
-  --version                     Print the version string
-  -l, --lightweight             Filter out som high traffic functions
-  -p, --profiling               Enable profiling
-  -s, --source                  Dump program sources to disk
-  -a, --arguments               Dump argument and kernel infos
-  -b, --build                   Dump program build infos
-  -h, --host-profile            Gather precise host profiling information
-  -d, --dump                    Dump kernels input and output to disk
-  -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE
-  -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE
-  -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE
-  -v, --visualize               Visualize trace on the fly
-  --devices                     Dump devices information
+
+`iprof` is the main user-facing tool. The typical way to profile an MPI application is:
+
+```bash
+mpirun -n $N -- iprof -- ./a.out <app-args>
 ```
 
-Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_opencl`. The later should give more structured
-information at the cost of speed.
+`iprof` supports three primary output analysis:
 
-### Level Zero (L0) Tracer
+### Analysis
 
-Similarly to OpenCL, a wrapper script with presets is provided, `tracer_ze.sh`:
-```
-tracer_ze.sh [options] [--] <application> <application-arguments>
-  --help                        Show this screen
-  --version                     Print the version string
-  -b, --build                   Dump module build infos
-  -p, --profiling               Enable profiling
-  -v, --visualize               Visualize trace on thefly
-  --properties                  Dump drivers and devices properties
-```
-Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_ze`. The later should give more structured
-information at the cost of speed.
+1. **Tally (default)** — aggregated per-API statistics (time, calls, averages). This is the default when you run `iprof` without additional flags.
+2. **Timeline** — `iprof -l -- ...` it produces a timeline trace suitable for visualization in tools like [Perfetto](https://ui.perfetto.dev/)
+3. **Detailed traces** — with `irpof -t --` you get detailed LTTng traces.
 
-### CUDA Tracer
+> Use `iprof --help` to get a full list of options.
 
-Similarly to OpenCL, a wrapper script with presets is provided, `tracer_cuda.sh`:
-```
- tracer_cuda.sh [options] [--] <application> <application-arguments>
-  --help                        Show this screen
-  --version                     Print the version string
-  --cudart                      Trace CUDA runtime on top of CUDA driver
-  -a, --arguments               Extract argument infos and values
-  -p, --profiling               Enable profiling
-  -e, --exports                 Trace export functions
-  -v, --visualize               Visualize trace on thefly
-  --properties                  Dump devices infos
-```
- Traces can be viewed using `babeltrace`, `babeltrace2` or `babeltrace_cuda`. The later should give more structured
- information at the cost of speed.
-
-### iprof
-
-`iprof` is another wrapper around the OpenCL, Level Zero, and CUDA tracers. It gives aggregated profiling information.
-
-```
-Usage: iprof [options]
-    -m, --tracing-mode=MODE          Define the category of events traced
-        --traced-ranks=RANK          Select with MPI rank will be traced.
-                                     Use -1 to mean all ranks.
-                                     Default: -1
-        --[no-]profile               Device activities will not profiled
-    -b, --backend BACKEND            Select which and how backends' need to handled.
-                                     Format: backend_name[:backend_level],...
-                                     Default: omp:2,cl:1,ze:1,cuda:1,hip:1
-    -r, --replay [PATH]              Replay traces for post-morten analysis
-    -t, --trace                      Pretty print the trace
-    -l, --timeline                   Dump a timeline of the trace.
-                                     This will create a 'out.pftrace' file that can be opened in perfetto: https://ui.perfetto.dev/#!/viewer
-    -j, --json                       The tally will be dumped as json
-    -e, --extended                   The tally will be printed for each Hostname / Process / Thread / Device
-    -k, --kernel-verbose             The tally will report kernels execution time with SIMD width and global/local sizes
-        --max-name-size SIZE         Maximum size allowed for kernels names.
-                                     Use -1 to mean no limit.
-                                     Default: 80
-        --metadata                   Display trace Metadata
-    -v, --version                    Display THAPI version
-        --debug [LEVEL]              Level of debug [default 0]
-                                                      __
-For complaints, praises, or bug reports please use: <(o )___
-   https://github.com/argonne-lcf/THAPI              ( ._> /
-   or send email to {apl,bvideau}@anl.gov             `---'
-```
-
-Programming model specific variants exist: `clprof.sh`, `zeprof.sh`, and `cuprof.sh`.
-
-#### Example of iprof output when tracing cuda code
+#### Tally
 
 ```
 tapplencourt> iprof ./a.out
@@ -196,3 +147,46 @@ cuMemcpyDtoHAsync_v2 | 4.00B |  44.44% |     1 |   4.00B | 4.00B | 4.00B |
      cuMemcpyDtoH_v2 | 1.00B |  11.11% |     1 |   1.00B | 1.00B | 1.00B |
                Total | 9.00B | 100.00% |     3 |
 ```
+
+#### Timeline
+
+```bash
+iprof -l -- ./a.out
+# produces a .pb or trace file that can be opened with Perfetto UI:
+# https://ui.perfetto.dev/
+```
+
+
+#### LTTng trace:
+
+```bash
+iprof -t -- ./a.out
+```
+
+## Stand-alone tracers (low-level / hacking)
+
+For development and quick experiments, (and for bash lover), THAPI provides back-end-specific wrapper scripts 
+named `tracer_$backend.sh` (for example `tracer_opencl.sh`, `tracer_cuda.sh`, ...). 
+These are small helper scripts around LTTng that let you manually tune which events are traced and how.
+
+Example usage help for `tracer_opencl.sh`
+```
+tracer_opencl.sh [options] [--] <application> <application-arguments>
+  --help                        Show this screen
+  --version                     Print the version string
+  -l, --lightweight             Filter out som high traffic functions
+  -p, --profiling               Enable profiling
+  -s, --source                  Dump program sources to disk
+  -a, --arguments               Dump argument and kernel infos
+  -b, --build                   Dump program build infos
+  -h, --host-profile            Gather precise host profiling information
+  -d, --dump                    Dump kernels input and output to disk
+  -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE
+  -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE
+  -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE
+  -v, --visualize               Visualize trace on the fly
+  --devices                     Dump devices information
+```
+
+Traces can be viewed using Efficios `babeltrace2`, or our own `babeltrace_thapi`. The later should give more structured
+information at the cost of speed.
