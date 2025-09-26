@@ -106,7 +106,7 @@ mpirun -n $N -- iprof -- ./a.out <app-args>
 
 1. **Tally (default)** — aggregated per-API statistics (time, calls, averages). This is the default when you run `iprof` without additional flags.
 2. **Timeline** — `iprof -l -- ...` it produces a timeline trace suitable for visualization in tools like [Perfetto](https://ui.perfetto.dev/)
-3. **Detailed traces** — with `irpof -t --` you get detailed LTTng traces.
+3. **Detailed traces** — with `iprof -t --` you get detailed LTTng traces.
 
 > Use `iprof --help` to get a full list of options.
 
