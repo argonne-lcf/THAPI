@@ -5,8 +5,8 @@
 #include <string>
 #include <stack>
 
-using hp_string_handle_t = std::tuple<hostname_t, process_id_t, struct __itt_string_handle *>;
-using hpt_domain_handle_t = std::tuple<hostname_t, process_id_t, thread_id_t, struct __itt_domain *>;
+using hp_string_handle_t = std::tuple<hostname_t, process_id_t, __itt_string_handle *>;
+using hpt_domain_handle_t = std::tuple<hostname_t, process_id_t, thread_id_t, __itt_domain *>;
 
 using hp_event_id_t = std::tuple<hostname_t, process_id_t, uint32_t>;
 using hpt_event_id_t = std::tuple<hostname_t, process_id_t, thread_id_t, uint32_t>;
@@ -33,7 +33,7 @@ static void btx_finalize_component(void *usr_data) {
 static void lttng_ust_itt___itt_string_handle_create_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
-                                                struct __itt_string_handle* ittResult,
+                                                __itt_string_handle* ittResult,
                                                 char *str,
                                                 char *str_val) {
 
@@ -44,8 +44,8 @@ static void lttng_ust_itt___itt_string_handle_create_callback(void *btx_handle, 
 static void lttng_ust_itt___itt_task_begin_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
-                                                struct __itt_id, struct __itt_id, struct __itt_string_handle * name)  {
+                                                __itt_domain *domain,
+                                                __itt_id, __itt_id, __itt_string_handle * name)  {
     auto* state = static_cast<data_t *>(usr_data);
     const auto str_name = state->itt_string_handle2name[{hostname, vpid, name}];
     state->domain_handle_task_stack[ {hostname, vpid, vtid, domain} ].push( {ts, str_name} );
@@ -54,7 +54,7 @@ static void lttng_ust_itt___itt_task_begin_callback(void *btx_handle, void *usr_
 static void lttng_ust_itt___itt_task_end_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain) {
+                                                __itt_domain *domain) {
     auto* state = static_cast<data_t *>(usr_data);
     const auto &[start_ts, op_name] = state->domain_handle_task_stack[ {hostname, vpid, vtid, domain} ].top();
 
@@ -79,16 +79,17 @@ static void lttng_ust_itt___itt_event_create_callback(void *btx_handle, void *us
     if (event_name.empty()) {
         event_name = "<unnamed event>";
     }
-    state->event_id2name[{hostname, vpid, event.id}] = std::move(event_name);
+    state->event_id2name[{hostname, vpid, event}] = std::move(event_name);
 }
 
 static void lttng_ust_itt___itt_event_start_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
+						int __itt_err,
                                                 __itt_event event)
 {
     auto* state = static_cast<data_t *>(usr_data);
-    state->event_id_stack[{hostname, vpid, vtid, event.id}].push(ts);
+    state->event_id_stack[{hostname, vpid, vtid, event}].push(ts);
 }
 
 //An __itt_event_end() is always matched with the nearest preceding __itt_event_start(). Otherwise, the __itt_event_end() call is matched with the nearest unmatched __itt_event_start() preceding it. Any intervening events are nested.
@@ -99,10 +100,11 @@ static void lttng_ust_itt___itt_event_start_callback(void *btx_handle, void *usr
 static void lttng_ust_itt___itt_event_end_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
+						int __itt_err,
                                                 __itt_event event)
 {
     auto* state = static_cast<data_t *>(usr_data);
-    auto &stack = state->event_id_stack[{hostname, vpid, vtid, event.id}];
+    auto &stack = state->event_id_stack[{hostname, vpid, vtid, event}];
 
     if (stack.empty()) {
         // Unmatched end is ignored per ITT semantics.
@@ -112,7 +114,7 @@ static void lttng_ust_itt___itt_event_end_callback(void *btx_handle, void *usr_d
     const auto start_ts = stack.top();
     stack.pop();
 
-    const auto event_name = state->event_id2name[{hostname, vpid, event.id}];
+    const auto event_name = state->event_id2name[{hostname, vpid, event}];
 
     const bool err = false;
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts, BACKEND_ITT,

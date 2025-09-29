@@ -15,7 +15,7 @@ ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 
 # Generate the YAML representation of the API Header Files
 $(ITT_EXTRACTED): %_api.yaml: $(ITT_HDR)
-	h2yaml -xc $(ITT_HDR) > $(ITT_EXTRACTED)
+	h2yaml -c -Wc,-xc $(ITT_HDR) > $(ITT_EXTRACTED)
 
 CLEANFILES = $(ITT_EXTRACTED)
 
