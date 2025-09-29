@@ -30,12 +30,7 @@ toggle_count_base() {
   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n $1 \
     $IPROF --trace-output toggle_traces --no-analysis -- ./toggle_mpi $2
 
-  trace_metadata_file=`find toggle_traces -iname metadata`
-  trace_metadata_dir=$(dirname "${trace_metadata_file}")
-  traces=$(babeltrace2 --plugin-path=${THAPI_LIB_DIR} \
-    --component source:source.ctf.fs --params "inputs=[\"${trace_metadata_dir}\"]" \
-    --component=filter:filter.toggle.btx \
-    --component=sink:sink.text.pretty)
+  traces=$($BBT ./toggle_traces)
 
   echo $traces
 }
