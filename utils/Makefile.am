@@ -64,7 +64,9 @@ $(BTX_THAPI_TOGGLE_GENERATED): $(srcdir)/btx_thapi_toggle.yaml
 		--upstream $(srcdir)/btx_thapi_toggle.yaml --downstream $(srcdir)/btx_thapi_toggle.yaml \
 		-o btx_thapi_toggle
 
-lib_LTLIBRARIES += libThapiToggle.la
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libThapiToggle.la
+
 nodist_libThapiToggle_la_SOURCES = $(BTX_THAPI_TOGGLE_GENERATED)
 libThapiToggle_la_SOURCES = thapi_toggle_callbacks.cpp
 libThapiToggle_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
