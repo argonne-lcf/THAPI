@@ -138,7 +138,10 @@ static inline void attach_to_current_task_meta(data_t* state,
     // No active task -> fall back to thread-scoped instantaneous metadata
     return;
   }
-  it->second.top().push_back(key + "=" + value);
+
+  // Access the vector<string> in the top tuple and append "key=value"
+  auto& top_tuple = it->second.top();
+  std::get<2>(top_tuple).emplace_back(key + "=" + value);
 }
 
 //    _
