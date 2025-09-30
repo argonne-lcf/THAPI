@@ -99,7 +99,10 @@ static inline void attach_to_current_task_meta(data_t *state, const char *hostna
   auto k = hpt_domain_handle_t{hostname, vpid, vtid, domain};
   auto it = state->domain_handle_task_meta_stack.find(k);
   if (it == state->domain_handle_task_meta_stack.end() || it->second.empty()) {
-    // No active task -> fall back to thread-scoped instantaneous metadata
+    // Arcuable one can do
+    //   push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, v);
+    // Or
+    // 	No active task -> fall back to thread-scoped instantaneous metadata
     return;
   }
 
@@ -143,7 +146,7 @@ static void lttng_ust_itt___itt_task_end_callback(void *btx_handle, void *usr_da
   // FIXME need to add domain name to decorated name
   std::string decorated_name = op_name;
   if (!meta_vec.empty()) {
-    decorated_name += " {" + extract_and_format<std::string>(meta_vec) + "}";
+    decorated_name += " {" + join_csv(meta_vec) + "}";
   }
 
   const bool err = false;
@@ -224,13 +227,7 @@ static void lttng_ust_itt___itt_metadata_add_callback(
 
   // No explicit scope => "belongs to the last task in the thread" (see ITT Metadata API docs).
   // Try to attach to current task; if there is no open task, emit as thread meta.
-  auto key_tuple = hpt_domain_handle_t{hostname, vpid, vtid, domain};
-  auto it = state->domain_handle_task_meta_stack.find(key_tuple);
-  if (it != state->domain_handle_task_meta_stack.end() && !it->second.empty()) {
-    attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, v);
-  } else {
-    push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, v);
-  }
+  attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, v);
 }
 
 // __itt_metadata_add_with_scope(domain, scope, key, type, count, data)
@@ -248,6 +245,7 @@ static void lttng_ust_itt___itt_metadata_add_with_scope_callback(
   switch (scope) {
   case __itt_scope_task:
     attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, v);
+    break;
   case __itt_scope_global:
     push_meta_message(btx_handle, hostname, /*vpid*/ 0, /*vtid*/ 0, ts, "global", k, v);
     break;
