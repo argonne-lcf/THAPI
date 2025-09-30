@@ -478,6 +478,7 @@ def find_all_types(types)
   transitive_closure(types, OBJECT_TYPES)
 
   find_types(types, YAMLCAst::Int, INT_TYPES)
+  find_types(types, YAMLCAst::Char, INT_TYPES)
   find_types(types, YAMLCAst::Float, FLOAT_TYPES)
   find_types(types, YAMLCAst::Enum, ENUM_TYPES)
   find_types(types, YAMLCAst::Struct, STRUCT_TYPES)
@@ -506,6 +507,11 @@ def gen_ffi_type_map(types)
   find_types_map(types, YAMLCAst::Int, INT_SIGN_MAP)
   find_types_map(types, YAMLCAst::Int, INT_SIZE_MAP)
   find_types_map(types, YAMLCAst::Int, FFI_INT_TYPE_MAP)
+
+  find_types_map(types, YAMLCAst::Char, INT_SIGN_MAP)
+  find_types_map(types, YAMLCAst::Char, INT_SIZE_MAP)
+  find_types_map(types, YAMLCAst::Char, FFI_INT_TYPE_MAP)
+
   find_types_map(types, YAMLCAst::Float, FFI_FLOAT_TYPE_MAP)
   FFI_TYPE_MAP.merge!(FFI_INT_TYPE_MAP, FFI_FLOAT_TYPE_MAP)
   OBJECT_TYPES.each { |o|
