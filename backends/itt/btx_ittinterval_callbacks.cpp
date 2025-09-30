@@ -20,9 +20,7 @@ using hpt_event_id_t = std::tuple<hostname_t, process_id_t, thread_id_t, uint32_
 struct data_s {
   std::unordered_map<hp_string_handle_t, std::string> itt_string_handle2name;
   std::unordered_map<hpt_domain_handle_t,
-                     std::stack<std::tuple<std::int64_t, std::string>>> domain_handle_task_stack;
-  std::unordered_map<hpt_domain_handle_t,
-                     std::stack<std::vector<std::string>>> domain_handle_task_meta_stack;
+                     std::stack<std::tuple<std::int64_t, std::string, std::vector<std::string>>>>> domain_handle_task_meta_stack;
   std::unordered_map<hp_event_id_t, std::string> event_id2name;
   std::unordered_map<hpt_event_id_t, std::stack<std::int64_t>> event_id_stack;
 };
@@ -51,16 +49,6 @@ static inline std::string wchars_to_utf8(const wchar_t* w, size_t length) {
   for (wchar_t c : ws) s.push_back(static_cast<char>(c & 0x7F));
   return s;
 #endif
-}
-
-// fetch string handle -> key name (fallback if unseen yet)
-static inline std::string key_name_or_fallback(data_t* state,
-                                               const char* hostname,
-                                               int64_t vpid,
-                                               struct __itt_string_handle* key) {
-  auto it = state->itt_string_handle2name.find({hostname, vpid, key});
-  if (it != state->itt_string_handle2name.end()) return it->second;
-  return std::string("<unknown-key>");
 }
 
 // join helper
@@ -194,9 +182,7 @@ static void lttng_ust_itt___itt_task_begin_callback(void *btx_handle, void *usr_
     auto* state = static_cast<data_t *>(usr_data);
     const auto str_name = state->itt_string_handle2name[{hostname, vpid, name}];
     auto key = hpt_domain_handle_t{hostname, vpid, vtid, domain};
-    state->domain_handle_task_stack[key].push( {ts, str_name} );
-    // Start a fresh metadata vector for this task FIXME should we wait to start this until first metadata emit at the task scope?
-    state->domain_handle_task_meta_stack[key].push(std::vector<std::string>{});
+    state->domain_handle_task_meta_stack[key].push( {ts, str_name, std::vector<std::string>{}} );
 }
 
 static void lttng_ust_itt___itt_task_end_callback(void *btx_handle, void *usr_data, int64_t ts,
@@ -206,23 +192,19 @@ static void lttng_ust_itt___itt_task_end_callback(void *btx_handle, void *usr_da
     auto* state = static_cast<data_t *>(usr_data);
     const auto key = hpt_domain_handle_t{hostname, vpid, vtid, domain};
 
-    const auto &[start_ts, op_name] = state->domain_handle_task_stack[key].top();
+    const auto &[start_ts, op_name, meta_vec] = state->domain_handle_task_meta_stack[key].top();
 
-    // Fetch accumulated k=v for this task
+    // FIXME need to add domain name to decorated name
     std::string decorated_name = op_name;
-    if (!state->domain_handle_task_meta_stack[key].empty()) {
-      auto meta_vec = std::move(state->domain_handle_task_meta_stack[key].top());
-      state->domain_handle_task_meta_stack[key].pop();
-      if (!meta_vec.empty()) {
-        decorated_name += " {" + join_csv(meta_vec) + "}";
-      }
+    if (!meta_vec.empty()) {
+      decorated_name += " {" + join_csv(meta_vec) + "}";
     }
 
     const bool err = false;
     btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, start_ts, BACKEND_ITT,
                                 decorated_name.c_str(), (ts - start_ts), err);
 
-    state->domain_handle_task_stack[key].pop();
+    state->domain_handle_task_meta_stack[key].pop();
 }
 
 static void lttng_ust_itt___itt_event_create_callback(void *btx_handle, void *usr_data, int64_t /*ts*/,
@@ -298,7 +280,7 @@ static void lttng_ust_itt___itt_metadata_add_callback(void *btx_handle, void *us
   auto* state = static_cast<data_t *>(usr_data);
   if (type == __itt_metadata_unknown || count == 0 || data_len == 0 || !data_val) return;
 
-  const std::string k = key_name_or_fallback(state, hostname, vpid, key);
+  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
   const std::string v = format_numeric_meta(type, count, data_val, data_len);
 
   // No explicit scope => "belongs to the last task in the thread" (see ITT Metadata API docs).
@@ -323,7 +305,7 @@ static void lttng_ust_itt___itt_metadata_str_addA_callback(void *btx_handle, voi
                                                 uint32_t length,
                                                 char *data_val) {
   auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = key_name_or_fallback(state, hostname, vpid, key);
+  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
   const std::string v = data_val ? std::string(data_val, data_val + length) : std::string{};
   auto key_tuple = hpt_domain_handle_t{hostname, vpid, vtid, domain};
   auto it = state->domain_handle_task_meta_stack.find(key_tuple);
@@ -345,7 +327,7 @@ static void lttng_ust_itt___itt_metadata_str_addW_callback(void *btx_handle, voi
                                                 uint32_t length,
                                                 wchar_t *data_val) {
   auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = key_name_or_fallback(state, hostname, vpid, key);
+  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
   const std::string v = data_val ? wchars_to_utf8(data_val, length) : std::string{};
   auto key_tuple = hpt_domain_handle_t{hostname, vpid, vtid, domain};
   auto it = state->domain_handle_task_meta_stack.find(key_tuple);
@@ -371,7 +353,7 @@ static void lttng_ust_itt___itt_metadata_add_with_scope_callback(void *btx_handl
   auto* state = static_cast<data_t *>(usr_data);
   if (type == __itt_metadata_unknown || count == 0 || data_len == 0 || !data_val) return;
 
-  const std::string k = key_name_or_fallback(state, hostname, vpid, key);
+  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
   const std::string v = format_numeric_meta(type, count, data_val, data_len);
 
   switch (scope) {
@@ -405,7 +387,7 @@ static void lttng_ust_itt___itt_metadata_str_add_with_scopeA_callback(void *btx_
                                                 uint32_t length,
                                                 char *data_val) {
   auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = key_name_or_fallback(state, hostname, vpid, key);
+  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
   const std::string v = data_val ? std::string(data_val, data_val + length) : std::string{};
 
   switch (scope) {
@@ -438,7 +420,7 @@ static void lttng_ust_itt___itt_metadata_str_add_with_scopeW_callback(void *btx_
                                                 uint32_t length,
                                                 wchar_t *data_val) {
   auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = key_name_or_fallback(state, hostname, vpid, key);
+  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
   const std::string v = data_val ? wchars_to_utf8(data_val, length) : std::string{};
 
   switch (scope) {
