@@ -60,7 +60,7 @@ nodist_libitttracepoints_la_SOURCES = \
 	$(ITT_PROBES_SRC)
 
 libitttracepoints_la_CPPFLAGS = -I$(srcdir)/include
-libitttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
+libitttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS) -DINTEL_NO_MACRO_BODY
 libitttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 EXTRA_DIST += \
@@ -87,7 +87,7 @@ nodist_libittnotify_la_SOURCES = \
 	tracer_itt.c
 
 libittnotify_la_CPPFLAGS = -I$(srcdir)/include
-libittnotify_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+libittnotify_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS) -DINTEL_NO_MACRO_BODY
 libittnotify_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module
 libittnotify_la_LIBADD = libitttracepoints.la
 

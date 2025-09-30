@@ -56,7 +56,7 @@ register_epilogue("__itt_api_init", <<EOF
 EOF
 )
 
-register_prologue("__itt_event_create", "_retval.id = atomic_fetch_add(&event_counter, 1);")
+register_prologue("__itt_event_create", "_retval = atomic_fetch_add(&event_counter, 1);")
 register_prologue("__itt_domain_create", "_retval->flags = 1;")
 register_prologue("__itt_task_begin", "if (domain->flags == 0) return;")
 register_prologue("__itt_task_end", "if (domain->flags == 0) return;")
@@ -91,7 +91,8 @@ static _Atomic uint32_t event_counter = 0;
 EOF
 
 provider = :lttng_ust_itt
-puts $itt_commands.map { |c|
+puts $itt_commands.filter_map { |c|
+  next if c.function.inline
   l  = ["#{c.decl} {"]
   l += [common_block.call(c, provider)]
   l += ["}"]
