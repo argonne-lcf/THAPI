@@ -9,7 +9,6 @@
 #include <iomanip>
 #include <algorithm>
 #include <locale>
-#include <codecvt>   // for wchar_t -> UTF-8
 
 using hp_string_handle_t = std::tuple<hostname_t, process_id_t, __itt_string_handle *>;
 using hpt_domain_handle_t = std::tuple<hostname_t, process_id_t, thread_id_t, __itt_domain *>;
@@ -33,23 +32,6 @@ static void btx_finalize_component(void *usr_data) {
 }
 
 // ---------- helpers ---------------------------------------------------------
-
-// Safe UTF-8 from wchar_t*
-static inline std::string wchars_to_utf8(const wchar_t* w, size_t length) {
-  if (!w) return std::string{};
-  // length may be (size_t)-1 for unknown/null-terminated in some emitters.
-  size_t n = length == static_cast<size_t>(-1) ? wcslen(w) : length;
-  std::wstring ws(w, w + n);
-#if defined(__GLIBCXX__) || defined(_LIBCPP_VERSION)
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
-  return conv.to_bytes(ws);
-#else
-  // Fallback: naive narrow (lossy on non-ASCII)
-  std::string s; s.reserve(ws.size());
-  for (wchar_t c : ws) s.push_back(static_cast<char>(c & 0x7F));
-  return s;
-#endif
-}
 
 // join helper
 static inline std::string join_csv(const std::vector<std::string>& v) {
@@ -316,28 +298,6 @@ static void lttng_ust_itt___itt_metadata_str_addA_callback(void *btx_handle, voi
   }
 }
 
-// __itt_metadata_str_addW(domain, id, key, data, length)
-static void lttng_ust_itt___itt_metadata_str_addW_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                const char *hostname,
-                                                int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
-                                                struct __itt_id /*id*/,
-                                                struct __itt_string_handle *key,
-                                                wchar_t * /*data*/,
-                                                uint32_t length,
-                                                wchar_t *data_val) {
-  auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
-  const std::string v = data_val ? wchars_to_utf8(data_val, length) : std::string{};
-  auto key_tuple = hpt_domain_handle_t{hostname, vpid, vtid, domain};
-  auto it = state->domain_handle_task_meta_stack.find(key_tuple);
-  if (it != state->domain_handle_task_meta_stack.end() && !it->second.empty()) {
-    attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, "\"" + v + "\"");
-  } else {
-    push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, "\"" + v + "\"");
-  }
-}
-
 // __itt_metadata_add_with_scope(domain, scope, key, type, count, data)
 static void lttng_ust_itt___itt_metadata_add_with_scope_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
@@ -409,38 +369,6 @@ static void lttng_ust_itt___itt_metadata_str_add_with_scopeA_callback(void *btx_
   }
 }
 
-// __itt_metadata_str_add_with_scopeW(domain, scope, key, data, length)
-static void lttng_ust_itt___itt_metadata_str_add_with_scopeW_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                const char *hostname,
-                                                int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
-                                                __itt_scope scope,
-                                                struct __itt_string_handle *key,
-                                                wchar_t * /*data*/,
-                                                uint32_t length,
-                                                wchar_t *data_val) {
-  auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
-  const std::string v = data_val ? wchars_to_utf8(data_val, length) : std::string{};
-
-  switch (scope) {
-    case __itt_scope_task:
-      attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, "\"" + v + "\"");
-      break;
-    case __itt_scope_thread:
-      push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, "\"" + v + "\"");
-      break;
-    case __itt_scope_process:
-      push_meta_message(btx_handle, hostname, vpid, /*vtid*/0, ts, "process", k, "\"" + v + "\"");
-      break;
-    case __itt_scope_global:
-      push_meta_message(btx_handle, hostname, /*vpid*/0, /*vtid*/0, ts, "global", k, "\"" + v + "\"");
-      break;
-    default:
-      push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, "\"" + v + "\"");
-      break;
-  }
-}
 void btx_finalize_processing(void *btx_handle, void *usr_data) {
 
   auto* state = static_cast<data_t *>(usr_data);
@@ -482,10 +410,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_add);
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_str_addA);
-  REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_str_addW);
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_add_with_scope);
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_str_add_with_scopeA);
-  REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_str_add_with_scopeW);
 }
 
 #undef REGISTER_ASSOCIATED_CALLBACK
