@@ -13,7 +13,7 @@ $tracepoint_lambda = lambda { |provider, c, dir = nil|
       TP_ARGS(
   EOF
   print '    '
-  if (c.parameters.nil? || c.parameters.empty?) && !(c.has_return_type? && dir == :stop)
+  if (c.parameters.nil? || c.parameters.empty?) && !(c.has_return_type? && dir != :start)
     print 'void'
   else
     params = []
