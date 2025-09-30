@@ -55,8 +55,8 @@ module LTTng
     end
 
     def name=(n)
-      return nil unless @name
-      @name = n.gsub("->", MEMBER_SEPARATOR)
+      #return nil unless @name
+      @name = n&.gsub("->", MEMBER_SEPARATOR)
     end
   end
 

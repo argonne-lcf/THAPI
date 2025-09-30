@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-#include <locale>
+#include <cstring>
 
 using hp_string_handle_t = std::tuple<hostname_t, process_id_t, __itt_string_handle *>;
 using hpt_domain_handle_t = std::tuple<hostname_t, process_id_t, thread_id_t, __itt_domain *>;
@@ -19,7 +19,7 @@ using hpt_event_id_t = std::tuple<hostname_t, process_id_t, thread_id_t, uint32_
 struct data_s {
   std::unordered_map<hp_string_handle_t, std::string> itt_string_handle2name;
   std::unordered_map<hpt_domain_handle_t,
-                     std::stack<std::tuple<std::int64_t, std::string, std::vector<std::string>>>>> domain_handle_task_meta_stack;
+                     std::stack<std::tuple<std::int64_t, std::string, std::vector<std::string>>>> domain_handle_task_meta_stack;
   std::unordered_map<hp_event_id_t, std::string> event_id2name;
   std::unordered_map<hpt_event_id_t, std::stack<std::int64_t>> event_id_stack;
 };
@@ -43,73 +43,37 @@ static inline std::string join_csv(const std::vector<std::string>& v) {
   return oss.str();
 }
 
+template <typename T>
+static std::string extract_and_format(void* data_val_bytes) {
+        T value;
+        std::memcpy(&value, data_val_bytes, sizeof(value));
+        return std::to_string(value);
+}
 // Format numeric metadata payload.
 // convert to stdprintf using static hash map
 static std::string format_numeric_meta(__itt_metadata_type type,
                                        size_t count,
-                                       const char* data_val_bytes,
+                                       void* data_val_bytes,
                                        size_t data_val_len) {
-  std::ostringstream oss;
-  oss.setf(std::ios::fixed);
-  oss << std::setprecision(6);
-
-  auto fmt_array = [&](auto tag, size_t esz, auto as_num) {
-    size_t max_elems = data_val_len / esz;
-    size_t n = std::min(count, max_elems);
-    if (n == 0) return std::string{"[]"};
-    // Copy into a properly aligned buffer before reinterpret_cast (avoid UB).
-    std::vector<unsigned char> buf(data_val_bytes, data_val_bytes + n * esz);
-    std::ostringstream out;
-    if (n == 1) {
-      out << as_num(buf.data(), 0);
-    } else {
-      out << "[";
-      for (size_t i = 0; i < n; ++i) {
-        if (i) out << ", ";
-        out << as_num(buf.data(), i);
-      }
-      out << "]";
-    }
-    return out.str();
-  };
-
-  switch (type) {
-    case __itt_metadata_u16:
-      return fmt_array("u16", 2, [](unsigned char* p, size_t i){
-        uint16_t v; std::memcpy(&v, p + i*2, 2); return static_cast<unsigned long long>(v);
-      });
-    case __itt_metadata_s16:
-      return fmt_array("s16", 2, [](unsigned char* p, size_t i){
-        int16_t v; std::memcpy(&v, p + i*2, 2); return static_cast<long long>(v);
-      });
-    case __itt_metadata_u32:
-      return fmt_array("u32", 4, [](unsigned char* p, size_t i){
-        uint32_t v; std::memcpy(&v, p + i*4, 4); return static_cast<unsigned long long>(v);
-      });
-    case __itt_metadata_s32:
-      return fmt_array("s32", 4, [](unsigned char* p, size_t i){
-        int32_t v; std::memcpy(&v, p + i*4, 4); return static_cast<long long>(v);
-      });
-    case __itt_metadata_u64:
-      return fmt_array("u64", 8, [](unsigned char* p, size_t i){
-        uint64_t v; std::memcpy(&v, p + i*8, 8); return static_cast<unsigned long long>(v);
-      });
-    case __itt_metadata_s64:
-      return fmt_array("s64", 8, [](unsigned char* p, size_t i){
-        int64_t v; std::memcpy(&v, p + i*8, 8); return static_cast<long long>(v);
-      });
-    case __itt_metadata_float:
-      return fmt_array("f32", 4, [&](unsigned char* p, size_t i){
-        float v; std::memcpy(&v, p + i*4, 4);
-        std::ostringstream t; t.setf(std::ios::fixed); t << std::setprecision(6) << v; return t.str();
-      });
-    case __itt_metadata_double:
-      return fmt_array("f64", 8, [&](unsigned char* p, size_t i){
-        double v; std::memcpy(&v, p + i*8, 8);
-        std::ostringstream t; t.setf(std::ios::fixed); t << std::setprecision(6) << v; return t.str();
-      });
-    default:
-      return std::string{"<unknown-type>"};
+    switch (type) {
+        case __itt_metadata_u64:
+            return extract_and_format<uint64_t>(data_val_bytes);
+        case __itt_metadata_s64:
+            return extract_and_format<int64_t>(data_val_bytes);
+        case __itt_metadata_u32:
+            return extract_and_format<uint32_t>(data_val_bytes);
+        case __itt_metadata_s32:
+            return extract_and_format<int32_t>(data_val_bytes);
+        case __itt_metadata_u16:
+            return extract_and_format<uint16_t>(data_val_bytes);
+        case __itt_metadata_s16:
+            return extract_and_format<int16_t>(data_val_bytes);
+        case __itt_metadata_float:
+            return extract_and_format<float>(data_val_bytes);
+        case __itt_metadata_double:
+            return extract_and_format<double>(data_val_bytes);
+        default:
+            return std::string{"<unknown-type>"};
   }
 }
 
@@ -130,7 +94,7 @@ static inline void push_meta_message(void *btx_handle,
 static inline void attach_to_current_task_meta(data_t* state,
                                                const char* hostname,
                                                int64_t vpid, uint64_t vtid,
-                                               struct __itt_domain* domain,
+                                               __itt_domain* domain,
                                                const std::string& key, const std::string& value) {
   auto k = hpt_domain_handle_t{hostname, vpid, vtid, domain};
   auto it = state->domain_handle_task_meta_stack.find(k);
@@ -254,14 +218,14 @@ static void lttng_ust_itt___itt_event_end_callback(void *btx_handle, void *usr_d
 static void lttng_ust_itt___itt_metadata_add_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
-                                                struct __itt_id /*id*/,
-                                                struct __itt_string_handle *key,
+                                                __itt_domain *domain,
+                                                __itt_id /*id*/,
+                                                __itt_string_handle *key,
                                                 __itt_metadata_type type,
                                                 size_t count,
                                                 void * /*data*/,
-                                                uint32_t data_len,
-                                                char *data_val) {
+                                                size_t data_len,
+                                                void *data_val) {
   auto* state = static_cast<data_t *>(usr_data);
   if (type == __itt_metadata_unknown || count == 0 || data_len == 0 || !data_val) return;
 
@@ -279,40 +243,18 @@ static void lttng_ust_itt___itt_metadata_add_callback(void *btx_handle, void *us
   }
 }
 
-// __itt_metadata_str_addA(domain, id, key, data, length)
-static void lttng_ust_itt___itt_metadata_str_addA_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                const char *hostname,
-                                                int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
-                                                struct __itt_id /*id*/,
-                                                struct __itt_string_handle *key,
-                                                char * /*data*/,
-                                                uint32_t length,
-                                                char *data_val) {
-  auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
-  const std::string v = data_val ? std::string(data_val, data_val + length) : std::string{};
-  auto key_tuple = hpt_domain_handle_t{hostname, vpid, vtid, domain};
-  auto it = state->domain_handle_task_meta_stack.find(key_tuple);
-  if (it != state->domain_handle_task_meta_stack.end() && !it->second.empty()) {
-    attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, "\"" + v + "\"");
-  } else {
-    push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, "\"" + v + "\"");
-  }
-}
-
 // __itt_metadata_add_with_scope(domain, scope, key, type, count, data)
 static void lttng_ust_itt___itt_metadata_add_with_scope_callback(void *btx_handle, void *usr_data, int64_t ts,
                                                 const char *hostname,
                                                 int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
+                                                __itt_domain *domain,
                                                 __itt_scope scope,
-                                                struct __itt_string_handle *key,
+                                                __itt_string_handle *key,
                                                 __itt_metadata_type type,
                                                 size_t count,
                                                 void * /*data*/,
-                                                uint32_t data_len,
-                                                char *data_val) {
+                                                size_t data_len,
+                                                void *data_val) {
   auto* state = static_cast<data_t *>(usr_data);
   if (type == __itt_metadata_unknown || count == 0 || data_len == 0 || !data_val) return;
 
@@ -322,52 +264,12 @@ static void lttng_ust_itt___itt_metadata_add_with_scope_callback(void *btx_handl
   switch (scope) {
     case __itt_scope_task:
       attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, v);
-      break;
-    case __itt_scope_thread:
-      push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, v);
-      break;
-    case __itt_scope_process:
-      push_meta_message(btx_handle, hostname, vpid, /*vtid*/0, ts, "process", k, v);
-      break;
     case __itt_scope_global:
       push_meta_message(btx_handle, hostname, /*vpid*/0, /*vtid*/0, ts, "global", k, v);
       break;
     default:
       // Unknown/marker/track scopes -> treating as thread (docs are unclear here).
       push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, v);
-      break;
-  }
-}
-
-// __itt_metadata_str_add_with_scopeA(domain, scope, key, data, length)
-static void lttng_ust_itt___itt_metadata_str_add_with_scopeA_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                const char *hostname,
-                                                int64_t vpid, uint64_t vtid,
-                                                struct __itt_domain *domain,
-                                                __itt_scope scope,
-                                                struct __itt_string_handle *key,
-                                                char * /*data*/,
-                                                uint32_t length,
-                                                char *data_val) {
-  auto* state = static_cast<data_t *>(usr_data);
-  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
-  const std::string v = data_val ? std::string(data_val, data_val + length) : std::string{};
-
-  switch (scope) {
-    case __itt_scope_task:
-      attach_to_current_task_meta(state, hostname, vpid, vtid, domain, k, "\"" + v + "\"");
-      break;
-    case __itt_scope_thread:
-      push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, "\"" + v + "\"");
-      break;
-    case __itt_scope_process:
-      push_meta_message(btx_handle, hostname, vpid, /*vtid*/0, ts, "process", k, "\"" + v + "\"");
-      break;
-    case __itt_scope_global:
-      push_meta_message(btx_handle, hostname, /*vpid*/0, /*vtid*/0, ts, "global", k, "\"" + v + "\"");
-      break;
-    default:
-      push_meta_message(btx_handle, hostname, vpid, vtid, ts, "thread", k, "\"" + v + "\"");
       break;
   }
 }
@@ -412,9 +314,7 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_event_end);
 
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_add);
-  REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_str_addA);
   REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_add_with_scope);
-  REGISTER_ASSOCIATED_CALLBACK(lttng_ust_itt___itt_metadata_str_add_with_scopeA);
 }
 
 #undef REGISTER_ASSOCIATED_CALLBACK
