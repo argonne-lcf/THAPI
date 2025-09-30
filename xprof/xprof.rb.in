@@ -192,33 +192,36 @@ def mpi_master?
   mpi_rank_id.zero?
 end
 
+MAX_INT32_VALUE = (2**31) - 1
 # returns an offset for each timeline file
 # this is based on chunking max_int32_value
 # into the number of nodes
 def get_offset
-  if not in_mpi_env?
-    # if not mpi, just return 0 offset
-    offset = 0
-  else
-    # if we launch with a scheduler, we can read from a hostfile.
-    hostfile=env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
-    if hostfile.nil?
-      max_int32_value = (2**31) - 1
-      # want to chunk by reasonable amount. for now, assume a max of 100000 nodes and
-      # chunk max_int32_value by that. So each node gets ~20000 spots 
-      offset = (max_int32_value / 100000) * (mpi_rank_id / mpi_local_size).floor
-    else
-      list_hostnames = File.readlines( hostfile ).map(&:chomp)
-      hostname_string=Socket.gethostname
-      # find index of hostname_string in list_hostnames
-      hostname_id = list_hostnames.find_index(hostname_string)
-      # compute the offset, based on splitting max_int32_value by the number of hosts
-      max_int32_value = (2**31) - 1
-      offset = (max_int32_value / list_hostnames.length ) * hostname_id
-    end
+  # if not mpi, just return 0 offset
+  return 0 unless in_mpi_env?
+  @get_offset ||= begin
+  # if we launch with a scheduler, we can read from a hostfile.
+  hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+  
+  # if there's a hostfile identified by the envs above,
+  # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
+  # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
+  # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
+  number_hostname, hostname_index = if hostfile.nil?
+                                      [10_000, mpi_rank_id / mpi_local_size]
+                                    else
+                                      # splitting by "." in case the hostfile contains full hostnames with address
+                                      # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
+                                      list_hostnames = File.readlines(hostfile).map do |element|
+                                        element.split('.', 2).first
+                                      end
+                                      # find index of hostname_string in list_hostnames
+                                      hostname_id = list_hostnames.find_index(Socket.gethostname)
+                                      # compute the offset, based on splitting max_int32_value by the number of hosts
+                                      [list_hostnames.length, hostname_id]
+                                    end
+  (MAX_INT32_VALUE / number_hostname) * hostname_index
   end
-
-  return offset
 end
 
 #    _                    _
@@ -783,7 +786,7 @@ def lm_babeltrace(backends)
     if OPTIONS.include?(:timeline)
       offset=get_offset()        
       backends = OPTIONS[:backends].join(',')
-      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+offset.to_s)
+      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+offset.to_s+".pftrace")
       args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
       end
