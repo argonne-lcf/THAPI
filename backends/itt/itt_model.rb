@@ -32,7 +32,33 @@ $itt_meta_parameters["meta_parameters"].each  { |func, list|
   }
 }
 
-$itt_commands = $itt_api["functions"].collect { |func|
+# Function we care
+functions_to_register = [
+"__itt_domain_create",
+"__itt_string_handle_create",
+"__itt_task_begin",
+"__itt_task_end",
+"__itt_marker",
+"__itt_thread_set",
+"__itt_pause",
+"__itt_resume",
+"__itt_detach",
+"__itt_event_create",
+"__itt_event_start",
+"__itt_event_end",
+"__itt_metadata_add",
+"__itt_metadata_add_with_scope",
+]
+
+functions_to_implement = [
+  "__itt_event_create",
+  "__itt_domain_create",
+  "__itt_task_begin",
+  "__itt_task_end",
+]
+
+$itt_commands = $itt_api["functions"].filter_map { |func|
+  next unless (functions_to_register+functions_to_implement).include?(func.name)
   Command::new(func)
 }
 

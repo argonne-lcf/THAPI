@@ -40,7 +40,7 @@ lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_itt:*
 
-export INTEL_LIBITTNOTIFY64=$libdir/libTracerITT.so
+export INTEL_LIBITTNOTIFY64=$libdir/thapi/itt/libittnotify.so
 export LTTNG_UST_ALLOW_BLOCKING=1
 
 lttng start
@@ -53,6 +53,7 @@ ctrl_c() {
 
 trap ctrl_c INT
 
-LD_PRELOAD=$INTEL_LIBITTNOTIFY64:$LD_PRELOAD "$@"
+#LD_PRELOAD=$INTEL_LIBITTNOTIFY64:$LD_PRELOAD "$@"
+"$@"
 lttng stop
 lttng destroy

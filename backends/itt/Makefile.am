@@ -87,8 +87,8 @@ nodist_libittnotify_la_SOURCES = \
 	tracer_itt.c
 
 libittnotify_la_CPPFLAGS = -I$(srcdir)/include
-libittnotify_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS) -DINTEL_NO_MACRO_BODY
-libittnotify_la_LDFLAGS = $(LTTNG_UST_LIBS) -avoid-version -module
+libittnotify_la_CFLAGS = -fPIC -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
+libittnotify_la_LDFLAGS = -shared $(LTTNG_UST_LIBS) -avoid-version
 libittnotify_la_LIBADD = libitttracepoints.la
 
 bin_SCRIPTS = \

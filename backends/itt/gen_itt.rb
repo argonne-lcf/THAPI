@@ -16,46 +16,6 @@ end
   register_epilogue(c.name, "return _retval;")
 }
 
-# Handshake, registering function pointer
-register_epilogue("__itt_api_init", <<EOF
-  (void)group;
-  if(!g || !g->api_list_ptr) return;
-  
-  static const struct { const char* name; void* fn; } map[] = {
-    { "__itt_domain_create",        (void*)__itt_domain_create },
-    { "__itt_domain_createA",       (void*)__itt_domain_createA },
-    { "__itt_string_handle_create", (void*)__itt_string_handle_create },
-    { "__itt_string_handle_createA",(void*)__itt_string_handle_createA },
-    { "__itt_task_begin",           (void*)__itt_task_begin },
-    { "__itt_task_beginA",          (void*)__itt_task_beginA },
-    { "__itt_task_end",             (void*)__itt_task_end },
-    { "__itt_marker",               (void*)__itt_marker },
-    { "__itt_markerA",              (void*)__itt_markerA },
-    { "__itt_thread_set_name",      (void*)__itt_thread_set_name },
-    { "__itt_thread_set_nameA",     (void*)__itt_thread_set_nameA },
-    { "__itt_pause",                (void*)__itt_pause },
-    { "__itt_resume",               (void*)__itt_resume },
-    { "__itt_detach",               (void*)__itt_detach },
-    { "__itt_event_create",         (void*)__itt_event_create },
-    { "__itt_event_start",          (void*)__itt_event_start },
-    { "__itt_event_end",            (void*)__itt_event_end },
-    { "__itt_metadata_add",         (void*)__itt_metadata_add },
-    { NULL,                         NULL }
-  };
-
-   for(__itt_api_info* api = g->api_list_ptr; (api && api->name); ++api){
-     for(int i=0; map[i].name; ++i){
-       if(strcmp(api->name, map[i].name)==0){
-         if(api->func_ptr) {
-           *api->func_ptr = map[i].fn;
-         }
-         break;
-       }
-     }
-   }
-EOF
-)
-
 register_prologue("__itt_event_create", "_retval = atomic_fetch_add(&event_counter, 1);")
 register_prologue("__itt_domain_create", "_retval->flags = 1;")
 register_prologue("__itt_task_begin", "if (domain->flags == 0) return;")
@@ -82,8 +42,13 @@ common_block = lambda { |c, provider|
 }
 
 puts <<EOF
+#define INTEL_NO_MACRO_BODY
+#define INTEL_ITTNOTIFY_API_PRIVATE
 #include "ittnotify.h"
+#include "ittnotify_config.h"
+
 #include "itt_tracepoints.h"
+
 #include <stdlib.h>
 #include <stdatomic.h>
 
@@ -97,3 +62,40 @@ puts $itt_commands.filter_map { |c|
   l += [common_block.call(c, provider)]
   l += ["}"]
 }.join("  \n")
+
+puts <<EOF
+extern void ITTAPI __itt_api_init(__itt_global* g, __itt_group_id init_groups)
+{
+  printf("WTF\\n");
+  (void) init_groups;
+  if(!g || !g->api_list_ptr) return;
+
+  static const struct { const char* name; void* fn; } map[] = {
+    { "__itt_domain_create",        (void*)__itt_domain_create },
+    { "__itt_string_handle_create", (void*)__itt_string_handle_create },
+    { "__itt_task_begin",           (void*)__itt_task_begin },
+    { "__itt_task_end",             (void*)__itt_task_end },
+    { "__itt_marker",               (void*)__itt_marker },
+    { "__itt_thread_set_name",      (void*)__itt_thread_set_name },
+    { "__itt_pause",                (void*)__itt_pause },
+    { "__itt_resume",               (void*)__itt_resume },
+    { "__itt_detach",               (void*)__itt_detach },
+    { "__itt_event_create",         (void*)__itt_event_create },
+    { "__itt_event_start",          (void*)__itt_event_start },
+    { "__itt_event_end",            (void*)__itt_event_end },
+    { "__itt_metadata_add",         (void*)__itt_metadata_add },
+    { NULL,                         NULL }
+  };
+   printf("WTF\\n");
+   for(__itt_api_info* api = g->api_list_ptr; (api && api->name); ++api){
+     for(int i=0; map[i].name; ++i){
+       if(strcmp(api->name, map[i].name)==0){
+         if(api->func_ptr) {
+           *api->func_ptr = map[i].fn;
+         }
+         break;
+       }
+     }
+   }
+}
+EOF
