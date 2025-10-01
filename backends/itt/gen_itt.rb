@@ -44,11 +44,13 @@ common_block = lambda { |c, provider|
 puts <<EOF
 #define INTEL_NO_MACRO_BODY
 #define INTEL_ITTNOTIFY_API_PRIVATE
+#include "itt_tracepoints.h"
+
 #include "ittnotify.h"
 #include "ittnotify_config.h"
 
-#include "itt_tracepoints.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdatomic.h>
 
@@ -64,38 +66,32 @@ puts $itt_commands.filter_map { |c|
 }.join("  \n")
 
 puts <<EOF
-extern void ITTAPI __itt_api_init(__itt_global* g, __itt_group_id init_groups)
-{
-  printf("WTF\\n");
-  (void) init_groups;
-  if(!g || !g->api_list_ptr) return;
 
-  static const struct { const char* name; void* fn; } map[] = {
-    { "__itt_domain_create",        (void*)__itt_domain_create },
-    { "__itt_string_handle_create", (void*)__itt_string_handle_create },
-    { "__itt_task_begin",           (void*)__itt_task_begin },
-    { "__itt_task_end",             (void*)__itt_task_end },
-    { "__itt_marker",               (void*)__itt_marker },
-    { "__itt_thread_set_name",      (void*)__itt_thread_set_name },
-    { "__itt_pause",                (void*)__itt_pause },
-    { "__itt_resume",               (void*)__itt_resume },
-    { "__itt_detach",               (void*)__itt_detach },
-    { "__itt_event_create",         (void*)__itt_event_create },
-    { "__itt_event_start",          (void*)__itt_event_start },
-    { "__itt_event_end",            (void*)__itt_event_end },
-    { "__itt_metadata_add",         (void*)__itt_metadata_add },
-    { NULL,                         NULL }
-  };
-   printf("WTF\\n");
-   for(__itt_api_info* api = g->api_list_ptr; (api && api->name); ++api){
-     for(int i=0; map[i].name; ++i){
-       if(strcmp(api->name, map[i].name)==0){
-         if(api->func_ptr) {
-           *api->func_ptr = map[i].fn;
-         }
-         break;
-       }
-     }
-   }
+
+static void fill_func_ptr_per_lib(__itt_global* p)
+{
+    __itt_api_info* api_list = (__itt_api_info*)p->api_list_ptr;
+
+    for (int i = 0; api_list[i].name != NULL; i++)
+    {
+        *(api_list[i].func_ptr) = (void*)__itt_get_proc(p->lib, api_list[i].name);
+        if (*(api_list[i].func_ptr) == NULL)
+        {
+            *(api_list[i].func_ptr) = api_list[i].null_func;
+        }
+    }
+}
+
+extern void ITTAPI __itt_api_init(__itt_global* p, __itt_group_id init_groups)
+{
+    if (p != NULL)
+    {
+        (void)init_groups;
+        fill_func_ptr_per_lib(p);
+    }
+    else
+    {
+        printf("ERROR: Failed to initialize dynamic library\\n");
+    }
 }
 EOF
