@@ -321,7 +321,7 @@ def bt_graphs(inputs)
                   'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
       'timeline' => ['filter.intervals.interval',
                      'sink.btx_timeline.timeline'],
-      'trace' => ['sink.text.rubypretty'],
+      'trace' => ['filter.toggle.toggle', 'sink.text.rubypretty'],
       'to_interval' => ['filter.intervals.interval',
                         'filter.btx_stripper.stripper', 'sink.ctf.fs'],
       'to_aggreg' => ['filter.intervals.interval', 'filter.btx_aggreg.aggreg',
