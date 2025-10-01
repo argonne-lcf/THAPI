@@ -59,10 +59,10 @@ BTX_THAPI_TOGGLE_GENERATED = \
 	btx_thapi_toggle/metababel/btx_downstream.c \
 	btx_thapi_toggle/btx_main.c
 
-$(BTX_THAPI_TOGGLE_GENERATED): $(srcdir)/btx_thapi_toggle.yaml
-	$(METABABEL) --enable-callbacks on_downstream --component-type FILTER -p toggle \
-		--upstream $(srcdir)/btx_thapi_toggle.yaml --downstream $(srcdir)/btx_thapi_toggle.yaml \
-		-o btx_thapi_toggle
+$(BTX_THAPI_TOGGLE_GENERATED) &: $(srcdir)/btx_thapi_toggle.yaml
+	$(METABABEL) --enable-callbacks on_downstream -t FILTER -p toggle -c toggle \
+	--upstream $(srcdir)/btx_thapi_toggle.yaml --downstream $(srcdir)/btx_thapi_toggle.yaml \
+	-o btx_thapi_toggle
 
 bt2dir = $(pkglibdir)/bt2
 bt2_LTLIBRARIES = libThapiToggle.la
@@ -73,6 +73,7 @@ libThapiToggle_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(B
                            -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
 libThapiToggle_la_CXXFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
                              -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
+libThapiToggle_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 BUILT_SOURCES += \
 	thapi_toggle_tracepoints.h \
