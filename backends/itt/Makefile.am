@@ -79,8 +79,7 @@ CLEANFILES += \
 EXTRA_DIST += \
 	gen_itt.rb
 
-ittdir = $(pkglibdir)/itt
-itt_LTLIBRARIES = libittnotify.la
+lib_LTLIBRARIES = libittnotify.la
 
 nodist_libittnotify_la_SOURCES = \
 	$(ITT_PROBES_INCL) \
@@ -88,8 +87,7 @@ nodist_libittnotify_la_SOURCES = \
 
 libittnotify_la_CPPFLAGS = -I$(srcdir)/include
 libittnotify_la_CFLAGS = -fPIC -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
-libittnotify_la_LDFLAGS = -shared $(LTTNG_UST_LIBS) -avoid-version
-libittnotify_la_LIBADD = libitttracepoints.la
+libittnotify_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 bin_SCRIPTS = \
 	tracer_itt.sh
