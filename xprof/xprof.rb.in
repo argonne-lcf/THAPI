@@ -904,14 +904,28 @@ def gm_processing(folder)
   args = []
   if OPTIONS.include?(:timeline)
     # cat the timelines
-    # if -l -r, run to check, 
-    cmd="cat "
-    Dir[thapi_trace_dir_root+"/*/timeline_*"].each do|f|
-      cmd+=(f+" ")
+    files = ''
+    Dir[folder + '/*/timeline_*'].each do |f|
+      files += (f + ' ')
     end
-    cmd+= ("> "+OPTIONS[:timeline])
-    exec("#{cmd}")
-    $?
+    # this is a check in case there were no timeline files found
+    raise  "no timelines found in #{folder}" if files.empty?
+    cmdname = 'cat '+files+'> ' + OPTIONS[:timeline]
+    LOGGER.debug(cmdname)
+    LOGGER.info_block('IO dump') do
+      fo = if OPTIONS[:'analysis-output']
+             File.open(OPTIONS[:'analysis-output'], 'w')
+           else
+             $stdout.dup
+           end
+      pipe = IO.popen(cmdname)
+      pid = pipe.pid
+      fo.puts(pipe.readlines)
+      fo.close
+      _, status = Process.wait2(pid)
+      raise "#{cmdname} failed" unless status.success?
+      status
+    end
   else
     if OPTIONS.include?(:trace)
       args += ['trace', '--restrict', '--context', '--backends', backends]
