@@ -88,6 +88,7 @@ nodist_libittnotify_la_SOURCES = \
 libittnotify_la_CPPFLAGS = -I$(srcdir)/include
 libittnotify_la_CFLAGS = -fPIC -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libittnotify_la_LDFLAGS = $(LTTNG_UST_LIBS)
+libittnotify_la_LIBADD  = libitttracepoints.la $(LTTNG_UST_LIBS) -ldl
 
 bin_SCRIPTS = \
 	tracer_itt.sh
