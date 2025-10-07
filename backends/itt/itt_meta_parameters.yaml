@@ -1,9 +1,8 @@
 ---
 meta_parameters:
-  __itt_domain_create:
-    - [ InString, name ]
-  __itt_domain_createA:
-    - [ InString, name ]
+  __itt_task_begin:
+    - [ OutString, domain->nameA ]
+    - [ OutString, name->strA ]
   __itt_string_handle_create:
     - [ InString, name ]
   __itt_thread_set_name:
