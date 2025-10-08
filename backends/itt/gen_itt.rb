@@ -24,7 +24,7 @@ register_prologue("__itt_string_handle_create", "_retval->strA=name;")
 register_prologue("__itt_task_begin", "if (domain->flags == 0) return;")
 register_prologue("__itt_task_end", "if (domain->flags == 0) return;")
 
-register_prologue("__itt_metadata_add", "tracepoint(lttng_ust_itt_metadata, metadata, count * __itt_metadata_type_size(type), data);")
+register_prologue("__itt_metadata_add", "tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);")
 
 # Printing
 

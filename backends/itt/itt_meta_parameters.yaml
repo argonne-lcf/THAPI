@@ -7,6 +7,3 @@ meta_parameters:
     - [ InString, name ]
   __itt_metadata_add:
     - [ OutString, key->strA ]
-    - [ InArray, data, count ]
-  __itt_metadata_add_with_scope:
-    - [ InArray, data, count ]
