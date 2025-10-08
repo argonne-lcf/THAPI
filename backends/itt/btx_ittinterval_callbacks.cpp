@@ -59,6 +59,7 @@ template <typename T> static std::string extract_and_format(size_t count, void *
     if (i > 0)
       oss << ", ";
     oss << data_val[i];
+    std::cout << data_val[i] << std::endl;
   }
   return oss.str();
 }
@@ -174,8 +175,8 @@ static void lttng_ust_itt___itt_task_end_callback(void *btx_handle,
   state->domain_handle_task_meta_stack[key].pop();
 }
 
-// Event
-
+// Events, are like tasks but they can be without end
+// In this case, they are just tick mark
 static void lttng_ust_itt___itt_event_create_callback(void *btx_handle,
                                                       void *usr_data,
                                                       int64_t /*ts*/,
@@ -187,12 +188,7 @@ static void lttng_ust_itt___itt_event_create_callback(void *btx_handle,
                                                       int namelen,
                                                       char *name_val) {
   auto *state = static_cast<data_t *>(usr_data);
-
-  std::string event_name{name_val};
-  if (event_name.empty()) {
-    event_name = "<unnamed event>";
-  }
-  state->event_id2name[{hostname, vpid, event}] = std::move(event_name);
+  state->event_id2name[{hostname, vpid, event}] = std::string{name_val};
 }
 
 static void lttng_ust_itt___itt_event_start_callback(void *btx_handle,
@@ -207,17 +203,6 @@ static void lttng_ust_itt___itt_event_start_callback(void *btx_handle,
   state->event_id_stack[{hostname, vpid, vtid, event}].push(ts);
 }
 
-// An __itt_event_end() is always matched with the nearest preceding __itt_event_start(). Otherwise,
-// the __itt_event_end() call is matched with the nearest unmatched __itt_event_start() preceding
-// it. Any intervening events are nested.
-//
-// You can nest user events of the same type or different types within each other. In the case of
-// nested events, the time is considered to have been spent only in the most deeply nested user
-// event region.
-//
-// You can overlap different ITT API events. In the case of overlapping events, the time is
-// considered to have been spent only in the event region with the later __itt_event_start().
-// Unmatched __itt_event_end() calls are ignored.
 static void lttng_ust_itt___itt_event_end_callback(void *btx_handle,
                                                    void *usr_data,
                                                    int64_t ts,
@@ -259,13 +244,14 @@ static void lttng_ust_itt___itt_metadata_add_callback(void *btx_handle,
                                                       __itt_metadata_type type,
                                                       size_t count,
                                                       void * /*data*/,
+						      char * key__strA_val,
                                                       size_t /*data_len*/,
                                                       void *data_val) {
   auto *state = static_cast<data_t *>(usr_data);
   if (type == __itt_metadata_unknown || count == 0 || !data_val)
     return;
 
-  const std::string k = state->itt_string_handle2name[{hostname, vpid, key}];
+  const std::string k{key__strA_val};
   const std::string v = format_numeric_meta(type, count, data_val);
 
   // No explicit scope => "belongs to the last task in the thread" (see ITT Metadata API docs).

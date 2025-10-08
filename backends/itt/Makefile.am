@@ -45,29 +45,45 @@ ITT_PROBES_SRC = $(ITT_PROBES:=.c)
 $(ITT_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ITT_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
+ITT_STATIC_PROBES = itt_metadata
+ITT_STATIC_PROBES_TP = $(ITT_STATIC_PROBES:=.tp)
+ITT_STATIC_PROBES_INCL = $(ITT_STATIC_PROBES:=.h)
+ITT_STATIC_PROBES_SRC = $(ITT_STATIC_PROBES:=.c)
+
+$(ITT_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/itt_events.yaml $(ITT_MODEL)
+	$(RUBY) $< $(srcdir)/itt_events.yaml lttng_ust_$* ittnotify.h > $@
+
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
 
 CLEANFILES += \
 	$(ITT_PROBES_TP) \
 	$(ITT_PROBES_INCL) \
-	$(ITT_PROBES_SRC)
+	$(ITT_PROBES_SRC) \
+	$(ITT_STATIC_PROBES_TP) \
+	$(ITT_STATIC_PROBES_INCL) \
+	$(ITT_STATIC_PROBES_SRC)
 
 noinst_LTLIBRARIES = libitttracepoints.la
 
 nodist_libitttracepoints_la_SOURCES = \
 	$(ITT_PROBES_INCL) \
-	$(ITT_PROBES_SRC)
+	$(ITT_PROBES_SRC) \
+	$(ITT_STATIC_PROBES_INCL) \
+	$(ITT_STATIC_PROBES_SRC)
 
 libitttracepoints_la_CPPFLAGS = -I$(srcdir)/include
 libitttracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS) -DINTEL_NO_MACRO_BODY
 libitttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 EXTRA_DIST += \
-	gen_itt_tracepoints.rb
+	gen_itt_tracepoints.rb \
+	ii_events.yaml
 
 BUILT_SOURCES = \
-	$(ITT_PROBES_INCL)
+	$(ITT_PROBES_INCL) \
+	$(ITT_STATIC_PROPBES_INCL)
+
 # Generate the tracer and associated libs
 
 tracer_itt.c: $(srcdir)/gen_itt.rb $(ITT_MODEL) $(ITT_PROBES_INCL)
@@ -83,6 +99,7 @@ lib_LTLIBRARIES = libittnotify.la
 
 nodist_libittnotify_la_SOURCES = \
 	$(ITT_PROBES_INCL) \
+	$(ITT_STATIC_PROBES_INCL) \
 	tracer_itt.c
 
 libittnotify_la_CPPFLAGS = -I$(srcdir)/include

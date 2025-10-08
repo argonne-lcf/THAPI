@@ -16,10 +16,15 @@ end
   register_epilogue(c.name, "return _retval;")
 }
 
+# Sometime, but not always, those function are called by ittstatic
+# But we never use them in btx
 register_prologue("__itt_event_create", "_retval = atomic_fetch_add(&event_counter, 1);")
-register_prologue("__itt_domain_create", "_retval->flags = 1;")
+register_prologue("__itt_domain_create", "_retval->flags = 1; _retval->nameA=name;")
+register_prologue("__itt_string_handle_create", "_retval->strA=name;")
 register_prologue("__itt_task_begin", "if (domain->flags == 0) return;")
 register_prologue("__itt_task_end", "if (domain->flags == 0) return;")
+
+register_prologue("__itt_metadata_add", "tracepoint(lttng_ust_itt_metadata, metadata, data);")
 
 # Printing
 
@@ -45,10 +50,10 @@ puts <<EOF
 #define INTEL_NO_MACRO_BODY
 #define INTEL_ITTNOTIFY_API_PRIVATE
 #include "itt_tracepoints.h"
+#include "itt_metadata.h"
 
 #include "ittnotify.h"
 #include "ittnotify_config.h"
-
 
 #include <stdio.h>
 #include <stdlib.h>
