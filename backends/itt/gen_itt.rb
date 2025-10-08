@@ -24,7 +24,7 @@ register_prologue("__itt_string_handle_create", "_retval->strA=name;")
 register_prologue("__itt_task_begin", "if (domain->flags == 0) return;")
 register_prologue("__itt_task_end", "if (domain->flags == 0) return;")
 
-register_prologue("__itt_metadata_add", "tracepoint(lttng_ust_itt_metadata, metadata, data);")
+register_prologue("__itt_metadata_add", "tracepoint(lttng_ust_itt_metadata, metadata, count * __itt_metadata_type_size(type), data);")
 
 # Printing
 
@@ -60,6 +60,27 @@ puts <<EOF
 #include <stdatomic.h>
 
 static _Atomic uint32_t event_counter = 0;
+
+
+static inline size_t __itt_metadata_type_size(__itt_metadata_type type)
+{
+    switch (type) {
+        case __itt_metadata_u64:
+        case __itt_metadata_s64:
+        case __itt_metadata_double:
+            return 8;
+        case __itt_metadata_u32:
+        case __itt_metadata_s32:
+        case __itt_metadata_float:
+            return 4;
+        case __itt_metadata_u16:
+        case __itt_metadata_s16:
+            return 2;
+        case __itt_metadata_unknown:
+        default:
+            return 0;
+    }
+}
 EOF
 
 provider = :lttng_ust_itt
