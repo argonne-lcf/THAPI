@@ -78,7 +78,7 @@ libitttracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 EXTRA_DIST += \
 	gen_itt_tracepoints.rb \
-	ii_events.yaml
+	itt_events.yaml
 
 BUILT_SOURCES = \
 	$(ITT_PROBES_INCL) \
