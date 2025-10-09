@@ -1,4 +1,5 @@
-# Global variable need to be defined
+# Include global variable INT_SIGN_MAP, ScalarMetaParameter, etc
+require_relative 'yaml_ast'
 
 $integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
 $integer_signed = INT_SIGN_MAP
@@ -172,7 +173,11 @@ def get_fields_types_name(c, dir)
       meta_parameter_types_name(m, :stop)
     end.flatten(1)
   else
-    fields = c.parameters.to_a.collect do |p|
+    r = c.type.lttng_type
+    fields = []
+    fields = [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]] if r
+
+    fields += c.parameters.to_a.collect do |p|
       [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
     end
     fields += c.meta_parameters.collect do |m|
