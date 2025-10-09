@@ -54,7 +54,6 @@ ctrl_c() {
 
 trap ctrl_c INT
 
-#LD_PRELOAD=$INTEL_LIBITTNOTIFY64:$LD_PRELOAD "$@"
 "$@"
 lttng stop
 lttng destroy
