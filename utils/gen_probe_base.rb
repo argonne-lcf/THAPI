@@ -58,6 +58,15 @@ EOF
     end
   else
     fields = []
+    if r
+      r.name = RESULT_NAME
+      r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
+                       "&#{RESULT_NAME}"
+                     else
+                       RESULT_NAME
+                     end
+      fields.push(r.call_string)
+    end
     c.parameters.collect(&:lttng_type).compact.each do |r|
       fields.push(r.call_string)
     end
