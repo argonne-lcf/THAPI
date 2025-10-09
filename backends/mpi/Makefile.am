@@ -139,7 +139,7 @@ nodist_libmpi_la_SOURCES = \
 libmpi_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
 libmpi_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libmpi_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread
-libmpi_la_LDFLAGS += -version-info 1:0:0
+libmpi_la_LDFLAGS += -version-info 12:0:0 # 12 is the current ABI version of all MPI implementation
 libmpi_la_LIBADD = libmpitracepoints.la
 
 tmplibdir = $(libdir)/tmp
