@@ -1,6 +1,8 @@
 require_relative 'cudart_model'
 
 puts <<EOF
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #define __CUDA_API_VERSION_INTERNAL 1
 #include <cuda_runtime_api.h>
 #include <pthread.h>
