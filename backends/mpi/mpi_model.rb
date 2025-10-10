@@ -21,7 +21,36 @@ gen_ffi_type_map(typedefs)
 
 mpi_funcs_e = $mpi_api['functions']
 
-INIT_FUNCTIONS = /MPI_Init|MPI_Init_thread/
+INIT_FUNCTIONS = /
+  \b(?:
+    MPI_Init |
+    MPI_Init_thread |
+    MPI_Initialized |
+    MPI_Finalized |
+    MPI_Get_version |
+    MPI_Get_library_version |
+    MPI_Info_(
+      create(_env)? |
+      set | delete |
+      get_(string | nkeys | nthkey) |
+      dup | free | f2c | c2f
+    ) |
+    MPI_Session_(
+      create_errhandler |
+      call_errhandler
+    ) |
+    MPI_Errhandler_(
+      free | f2c | c2f
+    ) |
+    MPI_Error_(
+      string | class
+    ) |
+    MPI_(add|remove)_error_(
+      class | code | string
+    ) |
+    MPI_T_\w+
+  )\b
+/ix
 
 $mpi_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'mpi_meta_parameters.yaml'))
 $mpi_meta_parameters.fetch('meta_parameters', []).each do |func, list|
