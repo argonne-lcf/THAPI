@@ -34,28 +34,20 @@ $tracepoint_lambda = lambda { |provider, c, dir = nil|
 EOF
   fields = []
 
-  # Add Results
-  if dir != :start
-    r = c.type.lttng_type
-    if r
-      r.name = RESULT_NAME
-      r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
-                       "&#{RESULT_NAME}"
-                     else
-                       RESULT_NAME
-                     end
-      fields.push(r.call_string)
-    end
+  # Add Result
+  r = c.type.lttng_type
+  if dir != :start && r
+    r.name = RESULT_NAME
+    r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
+                      "&#{RESULT_NAME}"
+                   else
+                      RESULT_NAME
+                   end
+    fields.push(r.call_string)
   end
 
   # Add parameters
-  if dir != :stop
-    if c.parameters
-      c.parameters.collect(&:lttng_type).compact.each do |r|
-        fields.push(r.call_string)
-      end
-    end
-  end
+  fields += c.parameters.collect(&:lttng_type).compact.map(&:call_string) if dir != :stop && c.parameters
 
   # Add meta parameteter
   name = if dir == :start
@@ -66,9 +58,7 @@ EOF
     :lttng_type
   end
 
-  c.meta_parameters.collect(&name).flatten.compact.each do |r|
-    fields.push(r.call_string)
-  end
+  fields += c.meta_parameters.collect(&name).flatten.compact.map(&:call_string)
 
   puts '    ' << fields.join("\n    ")
   puts <<~EOF
