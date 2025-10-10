@@ -893,26 +893,8 @@ def trace_and_on_node_processing(usr_argv)
   gm_rename_folder if mpi_master?
 end
 
-def gm_processing(folder)
-  raise unless mpi_master?
-
-  LOGGER.info { "Postprocess #{folder}" }
-
-  cmdname = "#{BINDIR}/babeltrace_thapi"
-  backends = OPTIONS[:backends].join(',')
-
-  args = []
-  if OPTIONS.include?(:timeline)
-    # cat the timelines
-    files = ''
-    Dir[folder + '/*/timeline_*'].each do |f|
-      files += (f + ' ')
-    end
-    # this is a check in case there were no timeline files found
-    raise  "no timelines found in #{folder}" if files.empty?
-    cmdname = 'cat '+files+'> ' + OPTIONS[:timeline]
-    LOGGER.debug(cmdname)
-    LOGGER.info_block('IO dump') do
+def run_and_log_process(cmdname)
+  LOGGER.info_block('IO dump') do
       fo = if OPTIONS[:'analysis-output']
              File.open(OPTIONS[:'analysis-output'], 'w')
            else
@@ -926,9 +908,35 @@ def gm_processing(folder)
       raise "#{cmdname} failed" unless status.success?
       status
     end
+end
+
+def gm_processing(folder)
+  raise unless mpi_master?
+
+  LOGGER.info { "Postprocess #{folder}" }
+
+  cmdname = "#{BINDIR}/babeltrace_thapi"
+  backends = OPTIONS[:backends].join(',')
+
+  args = []
+
+  # check if there are any timelines. we check in advance
+  # since if we don't have nay saved ones we should fall
+  # back to generating the timeline from the interval
+  files = ''
+  Dir[folder + '/*/timeline_*'].each do |f|
+    files += (f + ' ')
+  end
+
+  if OPTIONS.include?(:timeline) and not files.empty? 
+    cmdname = 'cat '+files+'> ' + OPTIONS[:timeline]
+    LOGGER.debug(cmdname)
+    return run_and_log_process(cmdname)
   else
     if OPTIONS.include?(:trace)
       args += ['trace', '--restrict', '--context', '--backends', backends]
+    elsif OPTIONS.include?(:timeline)
+      args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
     else
       args += ['tally']
       args << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
@@ -942,21 +950,7 @@ def gm_processing(folder)
 
     LOGGER.debug(cmdname)
     LOGGER.debug(args)
-
-    LOGGER.info_block('IO dump') do
-      fo = if OPTIONS[:'analysis-output']
-             File.open(OPTIONS[:'analysis-output'], 'w')
-           else
-             $stdout.dup
-           end
-      pipe = IO.popen([cmdname, *args])
-      pid = pipe.pid
-      fo.puts(pipe.readlines)
-      fo.close
-      _, status = Process.wait2(pid)
-      raise "#{cmdname} #{args} failed" unless status.success?
-      status
-    end
+    return run_and_log_process([cmdname, *args])
   end
 end
 
