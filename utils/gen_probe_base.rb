@@ -43,11 +43,11 @@ EOF
                    else
                      RESULT_NAME
                    end
-    fields.push(r.call_string)
+    fields.push(r)
   end
 
   # Add parameters
-  fields += c.parameters.collect(&:lttng_type).compact.map(&:call_string) if dir != :stop && c.parameters
+  fields += c.parameters.collect(&:lttng_type) if dir != :stop && c.parameters
 
   # Add meta parameteter
   name = if dir == :start
@@ -58,9 +58,9 @@ EOF
            :lttng_type
          end
 
-  fields += c.meta_parameters.collect(&name).flatten.compact.map(&:call_string)
+  fields += c.meta_parameters.collect(&name).flatten
 
-  puts '    ' << fields.join("\n    ")
+  puts '    ' << fields.compact.map(&:call_string).join("\n    ")
   puts <<~EOF
       )
     )
