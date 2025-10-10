@@ -33,16 +33,9 @@ $tracepoint_lambda = lambda { |provider, c, dir = nil|
   TP_FIELDS(
 EOF
   fields = []
-  if dir == :start
-    if c.parameters
-      c.parameters.collect(&:lttng_type).compact.each do |r|
-        fields.push(r.call_string)
-      end
-    end
-    c.meta_parameters.collect(&:lttng_in_type).flatten.compact.each do |r|
-      fields.push(r.call_string)
-    end
-  elsif dir == :stop
+
+  # Add Results
+  if dir != :start
     r = c.type.lttng_type
     if r
       r.name = RESULT_NAME
@@ -53,27 +46,30 @@ EOF
                      end
       fields.push(r.call_string)
     end
-    c.meta_parameters.collect(&:lttng_out_type).flatten.compact.each do |r|
-      fields.push(r.call_string)
-    end
-  else
-    fields = []
-    if r
-      r.name = RESULT_NAME
-      r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
-                       "&#{RESULT_NAME}"
-                     else
-                       RESULT_NAME
-                     end
-      fields.push(r.call_string)
-    end
-    c.parameters.collect(&:lttng_type).compact.each do |r|
-      fields.push(r.call_string)
-    end
-    c.meta_parameters.collect(&:lttng_type).flatten.compact.each do |r|
-      fields.push(r.call_string)
+  end
+
+  # Add parameters
+  if dir != :stop
+    if c.parameters
+      c.parameters.collect(&:lttng_type).compact.each do |r|
+        fields.push(r.call_string)
+      end
     end
   end
+
+  # Add meta parameteter
+  name = if dir == :start
+    :lttng_in_type
+  elsif dir == :stop
+    :lttng_out_type
+  else
+    :lttng_type
+  end
+
+  c.meta_parameters.collect(&name).flatten.compact.each do |r|
+    fields.push(r.call_string)
+  end
+
   puts '    ' << fields.join("\n    ")
   puts <<~EOF
       )
