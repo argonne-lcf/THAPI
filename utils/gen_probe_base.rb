@@ -39,9 +39,9 @@ EOF
   if dir != :start && r
     r.name = RESULT_NAME
     r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
-                      "&#{RESULT_NAME}"
+                     "&#{RESULT_NAME}"
                    else
-                      RESULT_NAME
+                     RESULT_NAME
                    end
     fields.push(r.call_string)
   end
@@ -51,12 +51,12 @@ EOF
 
   # Add meta parameteter
   name = if dir == :start
-    :lttng_in_type
-  elsif dir == :stop
-    :lttng_out_type
-  else
-    :lttng_type
-  end
+           :lttng_in_type
+         elsif dir == :stop
+           :lttng_out_type
+         else
+           :lttng_type
+         end
 
   fields += c.meta_parameters.collect(&name).flatten.compact.map(&:call_string)
 
