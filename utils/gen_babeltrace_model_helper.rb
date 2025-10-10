@@ -1,4 +1,5 @@
-# Global variable need to be defined
+# Include global variable INT_SIGN_MAP, ScalarMetaParameter, etc
+require_relative 'yaml_ast'
 
 $integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
 $integer_signed = INT_SIGN_MAP
@@ -156,30 +157,26 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
 end
 
 def get_fields_types_name(c, dir)
-  if dir == :start
-    fields = c.parameters.to_a.collect do |p|
-      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
-    end
-    fields += c.meta_parameters.select { |m| m.is_a?(In) }.collect do |m|
-      meta_parameter_types_name(m, :start)
-    end.flatten(1)
-  elsif dir == :stop
-    r = c.type.lttng_type
-    fields = []
-    fields = [[r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]] if r
+  fields = []
 
-    fields += c.meta_parameters.select { |m| m.is_a?(Out) }.collect do |m|
-      meta_parameter_types_name(m, :stop)
-    end.flatten(1)
-  else
-    fields = c.parameters.to_a.collect do |p|
+  r = c.type.lttng_type
+  fields.push([r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]) if dir != :start && r
+
+  if dir != :stop
+    fields += c.parameters.to_a.collect do |p|
       [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
     end
-    fields += c.meta_parameters.collect do |m|
-      meta_parameter_types_name(m)
-    end.flatten(1)
   end
-  fields
+
+  name = case dir
+         when :start then In
+         when :stop  then Out
+         end
+
+  fields += c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
+    meta_parameter_types_name(m, dir)
+  end.flatten(1)
+
 end
 
 def gen_event_fields_bt_model(c, dir)
