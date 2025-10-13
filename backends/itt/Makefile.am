@@ -14,17 +14,30 @@ ITT_NAMESPACES = itt
 ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 
 # Generate the YAML representation of the API Header Files
-$(ITT_EXTRACTED): %_api.yaml: $(ITT_HDR)
-	h2yaml -c -Wc,-xc $(ITT_HDR) > $(ITT_EXTRACTED)
+#$(ITT_EXTRACTED): %_api.yaml: $(ITT_HDR)
+#	h2yaml -c -Wc,-xc $(ITT_HDR) > $(ITT_EXTRACTED)
+#
+#CLEANFILES = $(ITT_EXTRACTED)
+
+ITT_NAMESPACES = itt
+
+ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
+
+$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(srcdir)/extract_base.rb
+	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES = $(ITT_EXTRACTED)
 
 EXTRA_DIST = \
+	extract_base.rb \
+	$(ITT_NAMESPACES:%=extract_%.rb)
+
+# ITT Model is all the utils to generate the tracer and the probes
+EXTRA_DIST += \
 	$(srcdir)/include \
 	itt_model.rb \
 	itt_meta_parameters.yaml
 
-# ITT Model is all the utils to generatr the tracer and the probes
 ITT_MODEL = \
 	$(srcdir)/itt_model.rb \
 	$(srcdir)/itt_meta_parameters.yaml \
