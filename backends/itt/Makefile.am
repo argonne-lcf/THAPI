@@ -19,10 +19,6 @@ ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 #
 #CLEANFILES = $(ITT_EXTRACTED)
 
-ITT_NAMESPACES = itt
-
-ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
-
 $(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(srcdir)/extract_base.rb
 	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
