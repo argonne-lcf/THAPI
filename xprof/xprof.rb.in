@@ -928,10 +928,10 @@ def gm_processing(folder)
     Dir[folder + '/*/timeline_*'].each do |f|
       files += (f + ' ')
     end
-    if not files.empty? 
-      cmdnames = 'cat '+files+'> ' + OPTIONS[:timeline]
-    else
+    if files.empty? 
       cmdnames = [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
+    else
+      cmdnames = 'cat '+files+'> ' + OPTIONS[:timeline]
     end
   else
     cmdnames = [babeltrace_exe, 'tally']
