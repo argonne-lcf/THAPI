@@ -192,6 +192,38 @@ def mpi_master?
   mpi_rank_id.zero?
 end
 
+MAX_INT32_VALUE = (2**31) - 1
+# returns an offset for each timeline file
+# this is based on chunking max_int32_value
+# into the number of nodes
+def get_offset
+  # if not mpi, just return 0 offset
+  return 0 unless in_mpi_env?
+  @get_offset ||= begin
+  # if we launch with a scheduler, we can read from a hostfile.
+  hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+  
+  # if there's a hostfile identified by the envs above,
+  # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
+  # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
+  # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
+  number_hostname, hostname_index = if hostfile.nil?
+                                      [10_000, mpi_rank_id / mpi_local_size]
+                                    else
+                                      # splitting by "." in case the hostfile contains full hostnames with address
+                                      # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
+                                      list_hostnames = File.readlines(hostfile).map do |element|
+                                        element.split('.', 2).first
+                                      end
+                                      # find index of hostname_string in list_hostnames
+                                      hostname_id = list_hostnames.find_index(Socket.gethostname)
+                                      # compute the offset, based on splitting max_int32_value by the number of hosts
+                                      [list_hostnames.length, hostname_id]
+                                    end
+  (MAX_INT32_VALUE / number_hostname) * hostname_index
+  end
+end
+
 #    _                    _
 #   |_ _  |  _|  _  ._   |_) _. _|_ |_
 #   | (_) | (_| (/_ |    |  (_|  |_ | |
@@ -751,6 +783,13 @@ def lm_babeltrace(backends)
     [pid_bt, pid_dirwatch]
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+    if OPTIONS.include?(:timeline)
+      offset=get_offset()        
+      backends = OPTIONS[:backends].join(',')
+      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+offset.to_s+".pftrace")
+      args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
+      exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
+      end
   end
 end
 
@@ -854,6 +893,23 @@ def trace_and_on_node_processing(usr_argv)
   gm_rename_folder if mpi_master?
 end
 
+def run_and_log_process(cmdname)
+  LOGGER.info_block('IO dump') do
+      fo = if OPTIONS[:'analysis-output']
+             File.open(OPTIONS[:'analysis-output'], 'w')
+           else
+             $stdout.dup
+           end
+      pipe = IO.popen(cmdname)
+      pid = pipe.pid
+      fo.puts(pipe.readlines)
+      fo.close
+      _, status = Process.wait2(pid)
+      raise "#{cmdname} failed" unless status.success?
+      status
+    end
+end
+
 def gm_processing(folder)
   raise unless mpi_master?
 
@@ -863,38 +919,38 @@ def gm_processing(folder)
   backends = OPTIONS[:backends].join(',')
 
   args = []
-  if OPTIONS.include?(:trace)
-    args += ['trace', '--restrict', '--context', '--backends', backends]
-  elsif OPTIONS.include?(:timeline)
-    args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
-  else
-    args += ['tally']
-    args << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
-    args << '--display_metadata' if OPTIONS.include?(:metadata)
-    args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
-    args << '--display_mode' << 'json' if OPTIONS.include?(:json)
-    args << '--backends' << backends
-    args << '--display' << 'extended' if OPTIONS.include?(:extended)
+
+  # check if there are any timelines. we check in advance
+  # since if we don't have nay saved ones we should fall
+  # back to generating the timeline from the interval
+  files = ''
+  Dir[folder + '/*/timeline_*'].each do |f|
+    files += (f + ' ')
   end
 
-  args += ['--', folder]
+  if OPTIONS.include?(:timeline) and not files.empty? 
+    cmdname = 'cat '+files+'> ' + OPTIONS[:timeline]
+    LOGGER.debug(cmdname)
+    return run_and_log_process(cmdname)
+  else
+    if OPTIONS.include?(:trace)
+      args += ['trace', '--restrict', '--context', '--backends', backends]
+    elsif OPTIONS.include?(:timeline)
+      args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
+    else
+      args += ['tally']
+      args << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
+      args << '--display_metadata' if OPTIONS.include?(:metadata)
+      args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
+      args << '--display_mode' << 'json' if OPTIONS.include?(:json)
+      args << '--backends' << backends
+      args << '--display' << 'extended' if OPTIONS.include?(:extended)
+    end
+    args += ['--', folder]
 
-  LOGGER.debug(cmdname)
-  LOGGER.debug(args)
-
-  LOGGER.info_block('IO dump') do
-    fo = if OPTIONS[:'analysis-output']
-           File.open(OPTIONS[:'analysis-output'], 'w')
-         else
-           $stdout.dup
-         end
-    pipe = IO.popen([cmdname, *args])
-    pid = pipe.pid
-    fo.puts(pipe.readlines)
-    fo.close
-    _, status = Process.wait2(pid)
-    raise "#{cmdname} #{args} failed" unless status.success?
-    status
+    LOGGER.debug(cmdname)
+    LOGGER.debug(args)
+    return run_and_log_process([cmdname, *args])
   end
 end
 
