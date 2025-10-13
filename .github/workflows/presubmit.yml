@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        config-option: ["", "--enable-clang-parser"]
+        config-option: ["", "--disable-clang-parser"]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
