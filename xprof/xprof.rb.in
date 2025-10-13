@@ -784,7 +784,7 @@ def lm_babeltrace(backends)
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     if OPTIONS.include?(:timeline)
-      offset=get_offset()        
+      offset=get_offset        
       backends = OPTIONS[:backends].join(',')
       output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+offset.to_s+".pftrace")
       args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
@@ -893,19 +893,19 @@ def trace_and_on_node_processing(usr_argv)
   gm_rename_folder if mpi_master?
 end
 
-def run_and_log_process(cmdname)
+def run_and_log_process(cmdnames)
   LOGGER.info_block('IO dump') do
       fo = if OPTIONS[:'analysis-output']
              File.open(OPTIONS[:'analysis-output'], 'w')
            else
              $stdout.dup
            end
-      pipe = IO.popen(cmdname)
+      pipe = IO.popen(cmdnames)
       pid = pipe.pid
       fo.puts(pipe.readlines)
       fo.close
       _, status = Process.wait2(pid)
-      raise "#{cmdname} failed" unless status.success?
+      raise "#{cmdnames} failed" unless status.success?
       status
     end
 end
@@ -915,43 +915,37 @@ def gm_processing(folder)
 
   LOGGER.info { "Postprocess #{folder}" }
 
-  cmdname = "#{BINDIR}/babeltrace_thapi"
+  babeltrace_exe = "#{BINDIR}/babeltrace_thapi"
   backends = OPTIONS[:backends].join(',')
 
-  args = []
-
-  # check if there are any timelines. we check in advance
-  # since if we don't have nay saved ones we should fall
-  # back to generating the timeline from the interval
-  files = ''
-  Dir[folder + '/*/timeline_*'].each do |f|
-    files += (f + ' ')
-  end
-
-  if OPTIONS.include?(:timeline) and not files.empty? 
-    cmdname = 'cat '+files+'> ' + OPTIONS[:timeline]
-    LOGGER.debug(cmdname)
-    return run_and_log_process(cmdname)
-  else
-    if OPTIONS.include?(:trace)
-      args += ['trace', '--restrict', '--context', '--backends', backends]
-    elsif OPTIONS.include?(:timeline)
-      args += ['timeline', '--backends', backends, '--output-path', OPTIONS[:timeline]]
-    else
-      args += ['tally']
-      args << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
-      args << '--display_metadata' if OPTIONS.include?(:metadata)
-      args << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
-      args << '--display_mode' << 'json' if OPTIONS.include?(:json)
-      args << '--backends' << backends
-      args << '--display' << 'extended' if OPTIONS.include?(:extended)
+  if OPTIONS.include?(:trace)
+    cmdnames = [babeltrace_exe, 'trace', '--restrict', '--context', '--backends', backends, '--', folder]
+  elsif OPTIONS.include?(:timeline)
+    # check if there are any timelines. we check in advance
+    # since if we don't have nay saved ones we should fall
+    # back to generating the timeline from the interval
+    files = ''
+    Dir[folder + '/*/timeline_*'].each do |f|
+      files += (f + ' ')
     end
-    args += ['--', folder]
-
-    LOGGER.debug(cmdname)
-    LOGGER.debug(args)
-    return run_and_log_process([cmdname, *args])
+    if not files.empty? 
+      cmdnames = 'cat '+files+'> ' + OPTIONS[:timeline]
+    else
+      cmdnames = [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
+    end
+  else
+    cmdnames = [babeltrace_exe, 'tally']
+    cmdnames << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
+    cmdnames << '--display_metadata' if OPTIONS.include?(:metadata)
+    cmdnames << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
+    cmdnames << '--display_mode' << 'json' if OPTIONS.include?(:json)
+    cmdnames << '--backends' << backends
+    cmdnames << '--display' << 'extended' if OPTIONS.include?(:extended)
+    cmdnames += ['--', folder]
   end
+
+  LOGGER.debug(cmdnames)
+  return run_and_log_process(cmdnames)
 end
 
 #
