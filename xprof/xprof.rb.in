@@ -784,10 +784,9 @@ def lm_babeltrace(backends)
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     if OPTIONS.include?(:timeline)
-      offset=get_offset        
       backends = OPTIONS[:backends].join(',')
-      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+offset.to_s+".pftrace")
-      args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', offset]
+      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+get_offset.to_s+".pftrace")
+      args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', get_offset]
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
       end
   end
