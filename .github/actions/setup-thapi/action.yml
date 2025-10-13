@@ -101,6 +101,10 @@ runs:
         make -j$(nproc)
         make install
 
+    - name: Install H2yaml
+      shell: bash
+      run: pip install git+https://github.com/TApplencourt/h2yaml@v0.2.1
+
     - name: Set Efficios environment variables
       shell: bash
       run: |

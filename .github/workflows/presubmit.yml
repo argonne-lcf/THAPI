@@ -12,6 +12,7 @@ on:
 
 env:
   MAKEFLAGS: "-j$(nproc) -O --shuffle"
+  CC: "gcc"
 
 jobs:
   pre_job:
@@ -48,9 +49,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
-      - name: Install dependencies for --enable-clang-parser
-        if: matrix.config-option == '--enable-clang-parser'
-        run: pip install git+https://github.com/TApplencourt/h2yaml@v0.2.0
       - run: mkdir -p build
       - run: ./autogen.sh
       - run: ../configure ${{ matrix.config-option }}
