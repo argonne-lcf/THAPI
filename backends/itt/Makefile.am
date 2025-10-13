@@ -9,9 +9,25 @@ endif
 ITT_HDR = \
 	$(srcdir)/include/ittnotify.h
 
+MODIFIED_ITT_HDR = \
+	modified_include/ittnotify.h
+
+modified_include/ittnotify.h: $(ITT_HDR)
+	$(RM) -r modified_include/
+	cp -r $(srcdir)/include/ modified_include/
+	chmod -R u+w modified_include/
+
+clean-local:
+	$(RM) -r modified_include
+
 ITT_NAMESPACES = itt
 
 ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
+
+EXTRA_DIST = \
+	$(srcdir)/include \
+	extract_base.rb \
+	$(ITT_NAMESPACES:%=extract_%.rb)
 
 # Generate the YAML representation of the API Header Files
 #$(ITT_EXTRACTED): %_api.yaml: $(ITT_HDR)
@@ -19,18 +35,13 @@ ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 #
 #CLEANFILES = $(ITT_EXTRACTED)
 
-$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(srcdir)/extract_base.rb
+$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb  $(MODIFIED_ITT_HDR) $(srcdir)/extract_base.rb
 	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES = $(ITT_EXTRACTED)
 
-EXTRA_DIST = \
-	extract_base.rb \
-	$(ITT_NAMESPACES:%=extract_%.rb)
-
 # ITT Model is all the utils to generate the tracer and the probes
 EXTRA_DIST += \
-	$(srcdir)/include \
 	itt_model.rb \
 	itt_meta_parameters.yaml
 
