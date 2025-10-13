@@ -945,7 +945,7 @@ def gm_processing(folder)
   end
 
   LOGGER.debug(cmdnames)
-  return run_and_log_process(cmdnames)
+  run_and_log_process(cmdnames)
 end
 
 #
