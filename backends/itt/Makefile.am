@@ -27,6 +27,7 @@ ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 
 EXTRA_DIST = \
 	$(srcdir)/include \
+	headers.patch \
 	extract_base.rb \
 	$(ITT_NAMESPACES:%=extract_%.rb)
 
