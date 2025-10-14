@@ -93,7 +93,6 @@ if test "x$enable_clang_parser" = xyes; then
 
   ENABLE_CLANG_PARSER=1
 fi
-# Shell Variable
 AC_SUBST([ENABLE_CLANG_PARSER])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
