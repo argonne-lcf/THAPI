@@ -104,11 +104,11 @@ EXTRA_DIST += \
 
 BUILT_SOURCES = \
 	$(ITT_PROBES_INCL) \
-	$(ITT_STATIC_PROPBES_INCL)
+	$(ITT_STATIC_PROBES_INCL)
 
 # Generate the tracer and associated libs
 
-tracer_itt.c: $(srcdir)/gen_itt.rb $(ITT_MODEL) $(ITT_PROBES_INCL)
+tracer_itt.c: $(srcdir)/gen_itt.rb $(ITT_MODEL) $(ITT_PROBES_INCL) $(ITT_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \
