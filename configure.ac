@@ -95,8 +95,6 @@ if test "x$enable_clang_parser" = xyes; then
 fi
 # Shell Variable
 AC_SUBST([ENABLE_CLANG_PARSER])
-# Can be used in AutoMake conditional
-AM_CONDITIONAL([ENABLE_CLANG_PARSER], [test "x$ENABLE_CLANG_PARSER" = x1])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
