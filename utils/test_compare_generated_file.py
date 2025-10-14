@@ -74,30 +74,11 @@ filenames += [
     "sampling/sampling.tp",
 ]
 
-HEX_PATTERN = re.compile(r"^0x[0-9a-fA-F]+$")
-
-def sanitize(data):
-    """Recursively normalize numeric and hex string values."""
-    if isinstance(data, dict):
-        return {k: sanitize(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [sanitize(v) for v in data]
-    elif isinstance(data, str):
-        s = data.strip()
-        # Try hex
-        if HEX_PATTERN.match(s):
-            return int(s, 16)
-        # Try decimal
-        if s.isdigit():
-            return int(s)
-        return s
-    else:
-        return data
 
 def load_file(path):
     with open(path, "r") as f:
         if path.endswith("yaml"):
-            return sanitize(yaml.safe_load(f))
+            return yaml.safe_load(f)
         return f.readlines()
 
 
