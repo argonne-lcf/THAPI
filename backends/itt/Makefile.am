@@ -16,6 +16,7 @@ modified_include/ittnotify.h: $(ITT_HDR)
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
+	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include

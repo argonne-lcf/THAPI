@@ -15,15 +15,9 @@ unless enable_clang_parser?
   require 'cast-to-yaml'
 
   $parser = C::Parser.new
-  #FIXME don't think we need this
-  #$parser.type_names << '__builtin_va_list'
   $cpp = C::Preprocessor.new
-  #FIXME Need to turn these on as needed
-  #$cpp.macros['__attribute__(a)'] = ''
-  #$cpp.macros['__restrict'] = 'restrict'
-  #$cpp.macros['__extension__'] = ''
-  #$cpp.macros['__asm__(a)'] = ''
-  #$cpp.include_path << './modified_include/'
+  $cpp.macros['__attribute__(a)'] = ''
+  $cpp.include_path << './modified_include/'
   begin
     preprocessed_sources_libc = $cpp.preprocess(shared_header).gsub(/^#.*?$/, '')
   rescue StandardError

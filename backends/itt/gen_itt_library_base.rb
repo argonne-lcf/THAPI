@@ -52,8 +52,8 @@ end
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    # Handle anonymous enum
-    if enum.name&.end_with?("flag_t")
+    # Handle anonymous enum, and typedef enum
+    if enum&.name&.end_with?("flag_t")
       $all_bitfield_names.push t.name
     else
       $all_enum_names.push t.name
