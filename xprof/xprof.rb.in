@@ -83,7 +83,6 @@ def exec(cmd, opts: {}, debug: true)
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
   raise "#{cmd} failed" unless status.success?
-
   stdout_str
 end
 
