@@ -311,8 +311,17 @@ diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_ru
  #define GENERIC_GRID_LAUNCH 1
  #endif
  #include <hip/amd_detail/host_defines.h>
-Binary files include/hip/.hip_runtime_api.h.swo and modified_include/hip/.hip_runtime_api.h.swo differ
-Binary files include/hip/.hip_runtime_api.h.swp and modified_include/hip/.hip_runtime_api.h.swp differ
+@@ -520,9 +522,9 @@
+   hipDevP2PAttrHipArrayAccessSupported
+ } hipDeviceP2PAttr;
+ typedef struct ihipStream_t* hipStream_t;
+ #define hipIpcMemLazyEnablePeerAccess 0
+-#define HIP_IPC_HANDLE_SIZE 64
++static const int HIP_IPC_HANDLE_SIZE = 64;
+ typedef struct hipIpcMemHandle_st {
+     char reserved[HIP_IPC_HANDLE_SIZE];
+ } hipIpcMemHandle_t;
+ typedef struct hipIpcEventHandle_st {
 diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/hip_runtime_load_api.h
 --- include/hip/hip_runtime_load_api.h	1969-12-31 19:00:00.000000000 -0500
 +++ modified_include/hip/hip_runtime_load_api.h	2023-04-18 16:32:48.539622270 -0500

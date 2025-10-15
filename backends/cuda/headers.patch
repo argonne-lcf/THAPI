@@ -54,6 +54,28 @@ diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
          unsigned int flags;
      } memoryBarrier;
      cuuint64_t pad[6];
+@@ -1338,9 +1336,9 @@
+ 
+ /*
+  * Indicates that compute device class supports accelerated features.
+  */
+-#define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
++static const int CU_COMPUTE_ACCELERATED_TARGET_BASE = 0x10000;
+ 
+ /**
+  * Online compilation targets
+  */
+@@ -2851,9 +2849,9 @@
+ 
+ /**
+  * Size of tensor map descriptor
+  */
+-#define CU_TENSOR_MAP_NUM_QWORDS 16
++static const int CU_TENSOR_MAP_NUM_QWORDS = 16;
+ 
+ /**
+  * Tensor map descriptor. Requires compiler support for aligning to 64 bytes.
+  */
 diff -u4 -r --new-file include/cuda_vdpau_interop.h modified_include/cuda_vdpau_interop.h
 --- include/cuda_vdpau_interop.h	2023-08-02 21:49:17.225507196 -0500
 +++ modified_include/cuda_vdpau_interop.h	2023-08-02 21:57:02.428626420 -0500
