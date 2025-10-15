@@ -177,7 +177,9 @@ module FFI
   end
 end
 module CUDA
+  CU_COMPUTE_ACCELERATED_TARGET_BASE = 0x10000
   CU_TARGET_COMPUTE_90 = 90
+  CU_TENSOR_MAP_NUM_QWORDS = 16
   extend FFI::Library
 
   module Handle

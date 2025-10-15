@@ -92,6 +92,17 @@ diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze
 diff -u4 -r --new-file include/loader/ze_loader.h modified_include/loader/ze_loader.h
 --- include/loader/ze_loader.h	2024-04-02 10:41:37.857153755 -0500
 +++ modified_include/loader/ze_loader.h	2024-04-02 13:06:28.056000505 -0500
+@@ -24,9 +24,9 @@
+     int patch; 
+   } zel_version_t; 
+ 
+  //Ex component string "ze_tracing", "ze_validation", etc 
+-#define ZEL_COMPONENT_STRING_SIZE 64 
++static const int ZEL_COMPONENT_STRING_SIZE = 64; 
+ 
+  typedef struct zel_component_version {
+     char component_name[ZEL_COMPONENT_STRING_SIZE];
+     ze_api_version_t spec_version;
 @@ -38,8 +38,16 @@
  zelLoaderGetVersions(
     size_t *num_elems,                     //Pointer to num versions to get.  
@@ -177,6 +188,17 @@ diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  #ifndef ZE_APICALL
  #if defined(_WIN32)
+@@ -160,9 +160,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_IPC_HANDLE_SIZE
+ /// @brief Maximum IPC handle size
+-#define ZE_MAX_IPC_HANDLE_SIZE  64
++static const int ZE_MAX_IPC_HANDLE_SIZE = 64;
+ #endif // ZE_MAX_IPC_HANDLE_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief IPC handle to a memory allocation
 @@ -180,12 +180,12 @@
  
  } ze_ipc_event_pool_handle_t;
@@ -193,6 +215,17 @@ diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Defines Return/Error codes
  typedef enum _ze_result_t
+@@ -390,9 +390,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_UUID_SIZE
+ /// @brief Maximum universal unique id (UUID) size in bytes
+-#define ZE_MAX_UUID_SIZE  16
++static const int ZE_MAX_UUID_SIZE = 16;
+ #endif // ZE_MAX_UUID_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Universal unique id (UUID)
 @@ -447,493 +447,493 @@
  ///        implementation
  
@@ -809,7 +842,69 @@ diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
  
  #if !defined(__GNUC__)
  #pragma endregion
-@@ -7544,14 +7544,14 @@
+@@ -1068,9 +1068,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_DRIVER_UUID_SIZE
+ /// @brief Maximum driver universal unique id (UUID) size in bytes
+-#define ZE_MAX_DRIVER_UUID_SIZE  16
++static const int ZE_MAX_DRIVER_UUID_SIZE = 16;
+ #endif // ZE_MAX_DRIVER_UUID_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Driver universal unique id (UUID)
+@@ -1417,9 +1417,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_DEVICE_NAME
+ /// @brief Maximum device name string size
+-#define ZE_MAX_DEVICE_NAME  256
++static const int ZE_MAX_DEVICE_NAME = 256;
+ #endif // ZE_MAX_DEVICE_NAME
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Supported device property flags
+@@ -1518,9 +1518,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_SUBGROUPSIZE_COUNT
+ /// @brief Maximum number of subgroup sizes supported.
+-#define ZE_SUBGROUPSIZE_COUNT  8
++static const int ZE_SUBGROUPSIZE_COUNT = 8;
+ #endif // ZE_SUBGROUPSIZE_COUNT
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Device compute properties queried using ::zeDeviceGetComputeProperties
+@@ -1573,9 +1573,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_NATIVE_KERNEL_UUID_SIZE
+ /// @brief Maximum native kernel universal unique id (UUID) size in bytes
+-#define ZE_MAX_NATIVE_KERNEL_UUID_SIZE  16
++static const int ZE_MAX_NATIVE_KERNEL_UUID_SIZE = 16;
+ #endif // ZE_MAX_NATIVE_KERNEL_UUID_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Native kernel universal unique id (UUID)
+@@ -6352,15 +6352,15 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_KERNEL_UUID_SIZE
+ /// @brief Maximum kernel universal unique id (UUID) size in bytes
+-#define ZE_MAX_KERNEL_UUID_SIZE  16
++static const int ZE_MAX_KERNEL_UUID_SIZE = 16;
+ #endif // ZE_MAX_KERNEL_UUID_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_MODULE_UUID_SIZE
+ /// @brief Maximum module universal unique id (UUID) size in bytes
+-#define ZE_MAX_MODULE_UUID_SIZE  16
++static const int ZE_MAX_MODULE_UUID_SIZE = 16;
+ #endif // ZE_MAX_MODULE_UUID_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Kernel universal unique id (UUID)
+@@ -7547,14 +7547,14 @@
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Cache Reservation Region
  typedef enum _ze_cache_ext_region_t
@@ -830,6 +925,28 @@ diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
      ZE_CACHE_EXT_REGION_RESERVED = 1,                                       ///< utilize reserved region
      ZE_CACHE_EXT_REGION_NON_RESERVED = 2,                                   ///< utilize non-reserverd region
      ZE_CACHE_EXT_REGION_FORCE_UINT32 = 0x7fffffff
+@@ -8847,9 +8847,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_DEVICE_LUID_SIZE_EXT
+ /// @brief Maximum device local identifier (LUID) size in bytes
+-#define ZE_MAX_DEVICE_LUID_SIZE_EXT  8
++static const int ZE_MAX_DEVICE_LUID_SIZE_EXT = 8;
+ #endif // ZE_MAX_DEVICE_LUID_SIZE_EXT
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Device local identifier (LUID)
+@@ -8901,9 +8901,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZE_MAX_FABRIC_EDGE_MODEL_EXP_SIZE
+ /// @brief Maximum fabric edge model string size
+-#define ZE_MAX_FABRIC_EDGE_MODEL_EXP_SIZE  256
++static const int ZE_MAX_FABRIC_EDGE_MODEL_EXP_SIZE = 256;
+ #endif // ZE_MAX_FABRIC_EDGE_MODEL_EXP_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Fabric Vertex types
 diff -u4 -r --new-file include/zes_api.h modified_include/zes_api.h
 --- include/zes_api.h	2024-04-02 18:12:14.546658929 -0500
 +++ modified_include/zes_api.h	2024-04-02 18:28:43.360746334 -0500
@@ -1259,7 +1376,76 @@ diff -u4 -r --new-file include/zes_api.h modified_include/zes_api.h
  
  #if !defined(__GNUC__)
  #pragma endregion
-Binary files include/.zes_api.h.swp and modified_include/.zes_api.h.swp differ
+@@ -636,9 +636,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_MAX_EXTENSION_NAME
+ /// @brief Maximum extension name string size
+-#define ZES_MAX_EXTENSION_NAME  256
++static const int ZES_MAX_EXTENSION_NAME = 256;
+ #endif // ZES_MAX_EXTENSION_NAME
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Extension properties queried using ::zesDriverGetExtensionProperties
+@@ -752,15 +752,15 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_STRING_PROPERTY_SIZE
+ /// @brief Maximum number of characters in string properties.
+-#define ZES_STRING_PROPERTY_SIZE  64
++static const int ZES_STRING_PROPERTY_SIZE = 64;
+ #endif // ZES_STRING_PROPERTY_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_MAX_UUID_SIZE
+ /// @brief Maximum device universal unique id (UUID) size in bytes.
+-#define ZES_MAX_UUID_SIZE  16
++static const int ZES_MAX_UUID_SIZE = 16;
+ #endif // ZES_MAX_UUID_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Types of accelerator engines
+@@ -2680,16 +2680,16 @@
+ #endif
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_MAX_FABRIC_PORT_MODEL_SIZE
+ /// @brief Maximum Fabric port model string size
+-#define ZES_MAX_FABRIC_PORT_MODEL_SIZE  256
++static const int ZES_MAX_FABRIC_PORT_MODEL_SIZE = 256;
+ #endif // ZES_MAX_FABRIC_PORT_MODEL_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_MAX_FABRIC_LINK_TYPE_SIZE
+ /// @brief Maximum size of the buffer that will return information about link
+ ///        types
+-#define ZES_MAX_FABRIC_LINK_TYPE_SIZE  256
++static const int ZES_MAX_FABRIC_LINK_TYPE_SIZE = 256;
+ #endif // ZES_MAX_FABRIC_LINK_TYPE_SIZE
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Fabric port status
+@@ -3153,9 +3153,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_FAN_TEMP_SPEED_PAIR_COUNT
+ /// @brief Maximum number of fan temperature/speed pairs in the fan speed table.
+-#define ZES_FAN_TEMP_SPEED_PAIR_COUNT  32
++static const int ZES_FAN_TEMP_SPEED_PAIR_COUNT = 32;
+ #endif // ZES_FAN_TEMP_SPEED_PAIR_COUNT
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Fan speed table
+@@ -5439,9 +5439,9 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ #ifndef ZES_MAX_RAS_ERROR_CATEGORY_COUNT
+ /// @brief The maximum number of categories
+-#define ZES_MAX_RAS_ERROR_CATEGORY_COUNT  7
++static const int ZES_MAX_RAS_ERROR_CATEGORY_COUNT = 7;
+ #endif // ZES_MAX_RAS_ERROR_CATEGORY_COUNT
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief RAS properties
 diff -u4 -r --new-file include/zet_api.h modified_include/zet_api.h
 --- include/zet_api.h	2024-04-02 10:39:40.588915290 -0500
 +++ modified_include/zet_api.h	2024-04-02 13:06:28.056000505 -0500

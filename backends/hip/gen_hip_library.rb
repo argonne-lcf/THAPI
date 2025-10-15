@@ -177,6 +177,7 @@ module FFI
   end
 end
 module HIP
+  HIP_IPC_HANDLE_SIZE = 64
   extend FFI::Library
 
   module Handle
