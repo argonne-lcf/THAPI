@@ -7,7 +7,7 @@ EOF
 if enable_clang_parser?
   require 'open3'
   header = [shared_header, omp_header].join("\n")
-  yaml, status = Open3.capture2('h2yaml -Wc,-xc -Wc,-Imodified_include/ -', stdin_data: header)
+  yaml, status = Open3.capture2('h2yaml --compat-cast-to-yaml -Wc,-xc -Wc,-Imodified_include/ -', stdin_data: header)
   exit(1) unless status.success?
 
 else
