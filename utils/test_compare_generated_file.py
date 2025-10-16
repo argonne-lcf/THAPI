@@ -55,6 +55,7 @@ filenames += [
     "backends/ze/ze_api.yaml",
     "backends/ze/zes_api.yaml",
     "backends/ze/zel_api.yaml",
+    "backends/ze/zet_api.yaml",
     "backends/ze/zex_api.yaml",
 ]
 
