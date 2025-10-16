@@ -317,7 +317,7 @@ diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_ru
  typedef struct ihipStream_t* hipStream_t;
  #define hipIpcMemLazyEnablePeerAccess 0
 -#define HIP_IPC_HANDLE_SIZE 64
-+static const int HIP_IPC_HANDLE_SIZE = 64;
++//#define HIP_IPC_HANDLE_SIZE 64
  typedef struct hipIpcMemHandle_st {
      char reserved[HIP_IPC_HANDLE_SIZE];
  } hipIpcMemHandle_t;

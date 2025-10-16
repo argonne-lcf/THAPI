@@ -11,6 +11,8 @@ if enable_clang_parser?
       #include <stdlib.h>
       #include <stdint.h>
       #define __CUDA_API_VERSION_INTERNAL=1
+      #define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
+      #define CU_TENSOR_MAP_NUM_QWORDS 16
     EOF
   end
 

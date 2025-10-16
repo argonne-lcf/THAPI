@@ -60,7 +60,7 @@ diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
   * Indicates that compute device class supports accelerated features.
   */
 -#define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
-+static const int CU_COMPUTE_ACCELERATED_TARGET_BASE = 0x10000;
++//#define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
  
  /**
   * Online compilation targets
@@ -71,7 +71,7 @@ diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
   * Size of tensor map descriptor
   */
 -#define CU_TENSOR_MAP_NUM_QWORDS 16
-+static const int CU_TENSOR_MAP_NUM_QWORDS = 16;
++//#define CU_TENSOR_MAP_NUM_QWORDS 16
  
  /**
   * Tensor map descriptor. Requires compiler support for aligning to 64 bytes.
