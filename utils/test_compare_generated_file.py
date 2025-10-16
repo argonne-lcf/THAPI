@@ -41,9 +41,9 @@ filenames += [
     "backends/cuda/cuda_tracepoints.tp",
     "backends/cuda/cuda_properties.tp",
     "backends/cuda/cuda_api.yaml",
+    "backends/cuda/tracer_cudart.c",
+    "backends/cuda/cudart_api.yaml",
 ]
-
-# filenames += ["cuda/tracer_cudart.c", "cuda/cudart_api.yaml"]
 
 filenames += [
     "backends/ze/tracer_ze.c",
