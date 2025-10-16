@@ -12,6 +12,8 @@ if enable_clang_parser?
       #include <stdint.h>
       #include <stdbool.h>
 
+      #define THAPI_NO_INCLUDE
+
       #include <ze_api.h>
       #include <ze_ddi.h>
 
@@ -70,6 +72,7 @@ else
   $cpp.macros['ZE_DLLEXPORT'] = ''
   $cpp.macros['ZE_APIEXPORT'] = ''
   $cpp.macros['__asm__(a)'] = ''
+  $cpp.macros['THAPI_NO_INCLUDE'] = ''
   $cpp.macros['ZE_MAKE_VERSION( _major, _minor )'] = 'ZE_MAKE_VERSION( _major, _minor )'
   $cpp.macros['ZE_MAJOR_VERSION( _ver )'] = 'ZE_MAJOR_VERSION( _ver )'
   $cpp.macros['ZE_MINOR_VERSION( _ver )'] = 'ZE_MINOR_VERSION( _ver )'

@@ -1,12 +1,14 @@
 diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
---- include/mpi.h      2024-06-18 15:52:35.000000000 +0000
-+++ modified_include/mpi.h     2024-06-14 16:04:06.000000000 +0000
-@@ -1,7 +1,7 @@
+--- include/mpi.h	2025-09-24 16:25:46.291229665 -0500
++++ modified_include/mpi.h	2025-10-16 17:32:20.890509240 -0500
+@@ -1,8 +1,10 @@
  #ifndef MPI_H_ABI
  #define MPI_H_ABI
  
--#include <stdint.h>
-+//#include <stdint.h>
++#ifndef THAPI_NO_INCLUDE
+ #include <stdint.h>
++#endif
  
  #if defined(__cplusplus)
  extern "C" {
+ #endif

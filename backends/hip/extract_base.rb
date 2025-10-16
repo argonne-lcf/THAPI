@@ -14,12 +14,16 @@ if enable_clang_parser?
       #include <stdint.h>
       #include <stddef.h>
       #define __HIP_PLATFORM_AMD__
-      #define HIP_IPC_HANDLE_SIZE 64
+      #define THAPI_NO_INCLUDE
     EOF
   end
 else
 
   require 'cast-to-yaml'
+
+  constants = %w(
+    HIP_IPC_HANDLE_SIZE
+  )
 
   $parser = C::Parser.new
   $parser.type_names << '__builtin_va_list'
@@ -30,6 +34,10 @@ else
   $cpp.macros['__extension__'] = ''
   $cpp.macros['__asm__(a)'] = ''
   $cpp.macros['__HIP_PLATFORM_AMD__'] = ''
+  $cpp.macros['THAPI_NO_INCLUDE'] = ''
+  constants.each { |c|
+    $cpp.macros[c] = c
+  }
   $cpp.include_path << './modified_include/'
   $cpp.include_path << "#{SRC_DIR}/"
 
