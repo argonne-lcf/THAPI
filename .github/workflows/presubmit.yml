@@ -53,7 +53,7 @@ jobs:
       - run: ./autogen.sh
       - run: ../configure ${{ matrix.config-option }}
         working-directory: build
-      - run: CC=gcc make
+      - run: make
         working-directory: build
       - run: make check
         working-directory: build

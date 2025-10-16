@@ -546,6 +546,11 @@ def env_tracers
     end
   end
 
+  if OPTIONS[:'backend-names'].include?('itt')
+    backends << 'itt'
+    h['INTEL_LIBITTNOTIFY64'] = File.join(LIBDIR, 'libittnotify.so')
+  end
+
   # Sample
   if sampling?
     LOGGER.debug('Sampling Enabled')
@@ -678,6 +683,12 @@ def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
 end
 
 def enable_events_cxi(channel_name, tracing_mode: 'default', profiling: true); end
+
+def enable_events_itt(channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_itt:*")
+  exec("#{lttng_enable} lttng_ust_itt_metadata:*")
+end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
@@ -996,7 +1007,7 @@ if __FILE__ == $PROGRAM_NAME
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, 'Select which backends to use and their grouping level.',
             'Format: backend_name[:backend_level],...',
-            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
 
   # Analysis

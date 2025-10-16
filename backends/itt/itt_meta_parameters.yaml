@@ -1,0 +1,9 @@
+---
+meta_parameters:
+  __itt_task_begin:
+    - [ OutString, domain->nameA ]
+    - [ OutString, name->strA ]
+  __itt_event_create:
+    - [ InString, name ]
+  __itt_metadata_add:
+    - [ OutString, key->strA ]

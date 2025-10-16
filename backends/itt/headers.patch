@@ -1,0 +1,19 @@
+diff -u4 -r --new-file include/ittnotify.h modified_include/ittnotify.h
+--- include/ittnotify.h 2025-10-14 19:25:05.000000000 +0000
++++ modified_include/ittnotify.h        2025-10-14 19:10:21.000000000 +0000
+@@ -145,13 +145,13 @@
+ #if defined(_UNICODE) && !defined(UNICODE)
+ #define UNICODE
+ #endif
+
+-#include <stddef.h>
++//#include <stddef.h>
+ #if ITT_PLATFORM==ITT_PLATFORM_WIN
+ #include <tchar.h>
+ #else  /* ITT_PLATFORM==ITT_PLATFORM_WIN */
+-#include <stdint.h>
++//#include <stdint.h>
+ #if defined(UNICODE) || defined(_UNICODE)
+ #include <wchar.h>
+ #endif /* UNICODE || _UNICODE */
+ #endif /* ITT_PLATFORM==ITT_PLATFORM_WIN */

@@ -21,7 +21,8 @@ enum backend_e {
   BACKEND_OMP = 5,
   BACKEND_HIP = 6,
   BACKEND_MPI = 7,
-  BACKEND_CXI = 8
+  BACKEND_CXI = 8,
+  BACKEND_ITT = 9,
 };
 typedef enum backend_e backend_t;
 typedef unsigned backend_level_t;
@@ -37,6 +38,7 @@ const std::unordered_map<std::string, backend_t> pretty_backend_name_g = {
     {"hip", BACKEND_HIP},
     {"mpi", BACKEND_MPI},
     {"cxi", BACKEND_CXI},
+    {"itt", BACKEND_ITT},
 };
 
 const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
@@ -49,6 +51,7 @@ const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
     {BACKEND_HIP, 1},
     {BACKEND_MPI, 3},
     {BACKEND_CXI, 4},
+    {BACKEND_ITT, 5},
 };
 
 typedef std::string thapi_metadata_t;
