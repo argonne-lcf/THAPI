@@ -14,6 +14,7 @@ if enable_clang_parser?
       #include <stdint.h>
       #include <stddef.h>
       #define __HIP_PLATFORM_AMD__
+      #define HIP_IPC_HANDLE_SIZE 64
     EOF
   end
 else
