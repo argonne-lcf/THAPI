@@ -139,7 +139,7 @@ jobs:
           THAPI_BIN_DIR=./build/ici/bin bats integration_tests/
 
       #Iterate over tests in backends/<be>/<be>.bats
-      - name: Integration test (backends: <be>/<be>.bats only)
+      - name: Integration test (backends/<be>/<be>.bats only)
         run: |
           set -Eeuo pipefail
           shopt -s nullglob
