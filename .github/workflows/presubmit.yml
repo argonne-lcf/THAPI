@@ -138,6 +138,35 @@ jobs:
         run: |
           THAPI_BIN_DIR=./build/ici/bin bats integration_tests/
 
+      #Iterate over tests in backends/<be>/<be>.bats
+      - name: Integration test (backends: <be>/<be>.bats only)
+        run: |
+          set -Eeuo pipefail
+          shopt -s nullglob
+      
+          files=()
+          for dir in integration_tests/backends/*/; do
+            be="$(basename "$dir")"
+            file="${dir%/}/${be}.bats"
+            if [[ -f "$file" ]]; then
+              files+=("$file")
+            else
+              echo "Skipping ${be}: ${file} not found"
+            fi
+          done
+      
+          if (( ${#files[@]} == 0 )); then
+            echo "No backend test files found matching backends/<be>/<be>.bats"
+            exit 0
+          fi
+      
+          echo "Running backend test files:"
+          printf '  - %s\n' "${files[@]}"
+      
+          THAPI_BIN_DIR=./build/ici/bin bats \
+            --setup-suite-file integration_tests/setup_suite.bash \
+            "${files[@]}"
+
   build-in-tree-and-check:
     needs: efficios_dep
     if: ${{ success() }}
