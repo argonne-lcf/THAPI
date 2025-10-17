@@ -1,22 +1,39 @@
 diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
---- include/cuda.h	2023-06-06 10:07:58.570419730 -0500
-+++ modified_include/cuda.h	2023-08-02 21:57:02.428626420 -0500
-@@ -52,14 +52,12 @@
+--- include/cuda.h	2025-09-24 16:25:46.271229650 -0500
++++ modified_include/cuda.h	2025-10-16 17:56:23.516223891 -0500
+@@ -51,15 +51,18 @@
+ #define __cuda_cuda_h__
  
  
  
- 
--#include <stdlib.h>
+-
++#ifndef THAPI_NO_INCLUDE
+ #include <stdlib.h>
++#endif
  #ifdef _MSC_VER
  typedef unsigned __int32 cuuint32_t;
  typedef unsigned __int64 cuuint64_t;
  #else
--#include <stdint.h>
++#ifndef THAPI_NO_INCLUDE
+ #include <stdint.h>
++#endif
  typedef uint32_t cuuint32_t;
  typedef uint64_t cuuint64_t;
  #endif
  
-@@ -499,9 +497,9 @@
+@@ -290,9 +293,11 @@
+ 
+ /**
+  * CUDA IPC handle size
+  */
++#ifndef CU_IPC_HANDLE_SIZE
+ #define CU_IPC_HANDLE_SIZE 64
++#endif
+ 
+ /**
+  * CUDA IPC event handle
+  */
+@@ -499,9 +504,9 @@
   * Per-operation parameters for ::cuStreamBatchMemOp
   */
  typedef union CUstreamBatchMemOpParams_union {
@@ -27,7 +44,7 @@ diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
          CUdeviceptr address;
          union {
              cuuint32_t value;
-@@ -509,9 +507,9 @@
+@@ -509,9 +514,9 @@
          };
          unsigned int flags;
          CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
@@ -38,7 +55,7 @@ diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
          CUdeviceptr address;
          union {
              cuuint32_t value;
-@@ -519,13 +517,13 @@
+@@ -519,13 +524,13 @@
          };
          unsigned int flags;
          CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
@@ -54,42 +71,59 @@ diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
          unsigned int flags;
      } memoryBarrier;
      cuuint64_t pad[6];
-@@ -1338,9 +1336,9 @@
+@@ -1338,9 +1343,11 @@
  
  /*
   * Indicates that compute device class supports accelerated features.
   */
--#define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
-+//#define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
++#ifndef CU_COMPUTE_ACCELERATED_TARGET_BASE
+ #define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
++#endif
  
  /**
   * Online compilation targets
   */
-@@ -2851,9 +2849,9 @@
+@@ -2851,9 +2858,11 @@
  
  /**
   * Size of tensor map descriptor
   */
--#define CU_TENSOR_MAP_NUM_QWORDS 16
-+//#define CU_TENSOR_MAP_NUM_QWORDS 16
++#ifndef CU_TENSOR_MAP_NUM_QWORDS
+ #define CU_TENSOR_MAP_NUM_QWORDS 16
++#endif
  
  /**
   * Tensor map descriptor. Requires compiler support for aligning to 64 bytes.
   */
 diff -u4 -r --new-file include/cuda_vdpau_interop.h modified_include/cuda_vdpau_interop.h
---- include/cuda_vdpau_interop.h	2023-08-02 21:49:17.225507196 -0500
-+++ modified_include/cuda_vdpau_interop.h	2023-08-02 21:57:02.428626420 -0500
-@@ -49,11 +49,11 @@
+--- include/cuda_vdpau_interop.h	2025-09-24 16:25:46.274229652 -0500
++++ modified_include/cuda_vdpau_interop.h	2025-10-16 17:32:55.479990889 -0500
+@@ -49,11 +49,13 @@
  
  #if !defined(__CUDA_VDPAU_INTEROP_H__)
  #define __CUDA_VDPAU_INTEROP_H__
  
--#include "cuda_runtime_api.h"
-+//#include "cuda_runtime_api.h"
++#ifndef THAPI_NO_INCLUDE
+ #include "cuda_runtime_api.h"
  
--#include <vdpau/vdpau.h>
-+//#include <vdpau/vdpau.h>
+ #include <vdpau/vdpau.h>
++#endif
  
  #if defined(__cplusplus)
  extern "C" {
  #endif /* __cplusplus */
+diff -u4 -r --new-file include/driver_types.h modified_include/driver_types.h
+--- include/driver_types.h	2025-09-24 16:25:46.274229652 -0500
++++ modified_include/driver_types.h	2025-10-16 17:32:55.480180052 -0500
+@@ -2292,9 +2292,11 @@
+ 
+ /**
+  * CUDA IPC Handle Size
+  */
++#ifndef CUDA_IPC_HANDLE_SIZE
+ #define CUDA_IPC_HANDLE_SIZE 64
++#endif
+ 
+ /**
+  * CUDA IPC event handle
+  */

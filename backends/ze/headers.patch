@@ -40,17 +40,17 @@ diff -u4 -r --new-file include/layers/zel_tracing_register_cb.h modified_include
  #if defined(__cplusplus)
  } // extern "C"
 diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
---- include/loader/ze_loader_api.h	2024-04-02 13:42:16.693493309 -0500
-+++ modified_include/loader/ze_loader_api.h	2024-04-02 13:11:54.060768340 -0500
-@@ -7,10 +7,13 @@
+--- include/loader/ze_loader_api.h	2025-09-24 16:25:46.320158542 -0500
++++ modified_include/loader/ze_loader_api.h	2025-10-16 17:33:33.069602137 -0500
+@@ -7,10 +7,15 @@
   * @file ze_loader_api.cpp
   *
   */
  
--#include "ze_loader_internal.h"
--#include "loader/ze_loader.h"
-+//#include "ze_loader_internal.h"
-+//#include "loader/ze_loader.h"
++#ifndef THAPI_NO_INCLUDE
+ #include "ze_loader_internal.h"
+ #include "loader/ze_loader.h"
++#endif
 +#include "../ze_api.h"
 +#include <stdbool.h>
 +#define HMODULE void *
@@ -58,7 +58,7 @@ diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze
  #define TRACING_COMP_NAME "loader"
  
  #if defined(__cplusplus)
-@@ -54,27 +57,10 @@
+@@ -55,27 +60,10 @@
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Exported function for getting version
@@ -90,20 +90,21 @@ diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze
  #endif
 \ No newline at end of file
 diff -u4 -r --new-file include/loader/ze_loader.h modified_include/loader/ze_loader.h
---- include/loader/ze_loader.h	2024-04-02 10:41:37.857153755 -0500
-+++ modified_include/loader/ze_loader.h	2024-04-02 13:06:28.056000505 -0500
-@@ -24,9 +24,9 @@
+--- include/loader/ze_loader.h	2025-09-24 16:25:46.319212940 -0500
++++ modified_include/loader/ze_loader.h	2025-10-16 17:33:33.069765006 -0500
+@@ -24,9 +24,11 @@
      int patch; 
    } zel_version_t; 
  
   //Ex component string "ze_tracing", "ze_validation", etc 
--#define ZEL_COMPONENT_STRING_SIZE 64 
-+//#define ZEL_COMPONENT_STRING_SIZE 64 
++#ifndef ZEL_COMPONENT_STRING_SIZE
+ #define ZEL_COMPONENT_STRING_SIZE 64 
++#endif
  
   typedef struct zel_component_version {
      char component_name[ZEL_COMPONENT_STRING_SIZE];
      ze_api_version_t spec_version;
-@@ -38,8 +38,16 @@
+@@ -38,8 +40,16 @@
  zelLoaderGetVersions(
     size_t *num_elems,                     //Pointer to num versions to get.  
     zel_component_version_t *versions);    //Pointer to array of versions. If set to NULL, num_elems is returned
@@ -120,7 +121,7 @@ diff -u4 -r --new-file include/loader/ze_loader.h modified_include/loader/ze_loa
     ZEL_HANDLE_DRIVER,
     ZEL_HANDLE_DEVICE,
     ZEL_HANDLE_CONTEXT,
-@@ -64,8 +72,17 @@
+@@ -64,8 +74,17 @@
     void *handleIn,                  //Input: handle to translate from loader handle to driver handle
     void **handleOut);                //Output: Pointer to handleOut is set to driver handle if successful
  
@@ -139,22 +140,22 @@ diff -u4 -r --new-file include/loader/ze_loader.h modified_include/loader/ze_loa
  ZE_DLLEXPORT ze_result_t ZE_APICALL
  zelSetDriverTeardown();
 diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
---- include/ze_api.h	2024-04-02 10:39:40.584915276 -0500
-+++ modified_include/ze_api.h	2024-04-02 14:11:43.479473336 -0500
-@@ -14,10 +14,10 @@
+--- include/ze_api.h	2025-09-24 16:25:46.320229688 -0500
++++ modified_include/ze_api.h	2025-10-16 17:33:33.073893223 -0500
+@@ -14,10 +14,12 @@
  #pragma once
  #endif
  
  // standard headers
--#include <stdint.h>
--#include <stddef.h>
-+//#include <stdint.h>
-+//#include <stddef.h>
++#ifndef THAPI_NO_INCLUDE
+ #include <stdint.h>
+ #include <stddef.h>
++#endif
  
  #if defined(__cplusplus)
  extern "C" {
  #endif
-@@ -447,493 +447,493 @@
+@@ -447,493 +449,493 @@
  ///        implementation
  
  ///////////////////////////////////////////////////////////////////////////////
@@ -770,7 +771,7 @@ diff -u4 -r --new-file include/ze_api.h modified_include/ze_api.h
  
  #if !defined(__GNUC__)
  #pragma endregion
-@@ -7547,14 +7547,14 @@
+@@ -7547,14 +7549,14 @@
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Cache Reservation Region
  typedef enum _ze_cache_ext_region_t

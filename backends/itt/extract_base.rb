@@ -8,6 +8,7 @@ def shared_header
   <<~EOF
     #include <stdint.h>
     #include <stddef.h>
+    #define THAPI_NO_INCLUDE
   EOF
 end
 
@@ -17,6 +18,7 @@ unless enable_clang_parser?
   $parser = C::Parser.new
   $cpp = C::Preprocessor.new
   $cpp.macros['__attribute__(a)'] = ''
+  $cpp.macros['THAPI_NO_INCLUDE'] = ''
   $cpp.include_path << './modified_include/'
   begin
     preprocessed_sources_libc = $cpp.preprocess(shared_header).gsub(/^#.*?$/, '')
