@@ -97,7 +97,7 @@ _ensure_c_example_exe() {
   return 1
 }
 
-@test "ITT (C): trace contains __itt_task_begin / __itt_task_end events" {
+@test "ITT (C): trace contains __itt_task_begin events" {
   local c_exe
   if ! c_exe="$(_ensure_c_example_exe)"; then
     skip "C ITT example binary not found (and not buildable). Expected at: ${ITT_SRC_DIR}/itt_example_c/itt_example"
@@ -117,7 +117,7 @@ _ensure_c_example_exe() {
   echo "$output" | grep -q 'Task 1'
 }
 
-@test "ITT (Python, context manager): trace contains ITT task events" {
+@test "ITT (Python, context manager): trace contains __itt_task_begin events" {
   _require_python_ittapi
 
   local script
@@ -138,7 +138,7 @@ _ensure_c_example_exe() {
   echo "$output" | grep -q 'Task 2'
 }
 
-@test "ITT (Python, C-style): trace contains ITT task events" {
+@test "ITT (Python, C-style): trace contains __itt_task_begin events" {
   _require_python_ittapi
 
   local script
