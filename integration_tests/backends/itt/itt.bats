@@ -13,15 +13,6 @@ teardown_file() {
   rm -rf "${ITT_TMP_DIR}"
 }
 
-# Precise resolvers for the two Python example scripts
-_py_script_path() {
-  case "$1" in
-    context-manager) printf "%s" "${ITT_SRC_DIR}/itt_example_py/itt_example_context-manager.py" ;;
-    c-style)         printf "%s" "${ITT_SRC_DIR}/itt_example_py/itt_example_c-style.py" ;;
-    *) return 1 ;;
-  esac
-}
-
 @test "ITT (C): trace contains __itt_task_begin events" {
   local c_exe="${ITT_SRC_DIR}/itt_example_c/itt_example"
   local ittapi_root="${ITTAPI_ROOT:-}"
@@ -57,10 +48,7 @@ _py_script_path() {
 }
 
 @test "ITT (Python, context manager): trace contains __itt_task_begin events" {
-  local script
-  script="$(_py_script_path 'context-manager')" || skip "Missing context-manager example."
-  [[ -f "${script}" ]] || skip "File not found: ${script}"
-
+  local script="${ITT_SRC_DIR}/itt_example_py/itt_example_context-manager.py"
   local trace_dir="${ITT_TMP_DIR}/itt_example_py_context-manager_CTF"
   rm -rf "${trace_dir}"
 
@@ -76,10 +64,7 @@ _py_script_path() {
 }
 
 @test "ITT (Python, C-style): trace contains __itt_task_begin events" {
-  local script
-  script="$(_py_script_path 'c-style')" || skip "Missing C-style example."
-  [[ -f "${script}" ]] || skip "File not found: ${script}"
-
+  local script="${ITT_SRC_DIR}/itt_example_py/itt_example_c-style.py"
   local trace_dir="${ITT_TMP_DIR}/itt_example_py_c-style_CTF"
   rm -rf "${trace_dir}"
 
