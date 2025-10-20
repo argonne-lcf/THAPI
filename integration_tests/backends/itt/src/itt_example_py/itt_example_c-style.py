@@ -14,14 +14,15 @@ def _handle(name: str):
 task1 = _handle("Task 1")
 task2 = _handle("Task 2")
 
-# __itt_task_begin(domain, __itt_null, __itt_null, taskX) / __itt_task_end(domain)
 itt.task_begin(domain, task1)
-for _ in range(100_000_000):
+for _ in range(10):
+    # Do "Task 1" work here
     pass
 itt.task_end(domain)
 
 itt.task_begin(domain, task2)
-for _ in range(200_000_000):
+for _ in range(20):
+    # Do "Task 2" work here
     pass
 itt.task_end(domain)
 
