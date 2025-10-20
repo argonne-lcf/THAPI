@@ -37,25 +37,6 @@ _py_script_path() {
   esac
 }
 
-_require_python_ittapi() {
-  if ! command -v python3 >/dev/null 2>&1; then
-    skip "python3 not found in PATH; skipping Python ITT tests."
-  fi
-  python3 - <<'PY'
-import sys
-try:
-    import ittapi  # must be installed via pip
-except Exception:
-    sys.exit(2)
-sys.exit(0)
-PY
-  case $? in
-    0) return 0 ;;
-    2) skip "Python package 'ittapi' not installed; skipping Python ITT tests." ;;
-    *) skip "Unable to check Python 'ittapi'; skipping Python ITT tests." ;;
-  esac
-}
-
 # Ensure (or opportunistically build) the C example binary.
 _ensure_c_example_exe() {
   local exe="${ITT_SRC_DIR}/itt_example_c/itt_example"
@@ -118,8 +99,6 @@ _ensure_c_example_exe() {
 }
 
 @test "ITT (Python, context manager): trace contains __itt_task_begin events" {
-  _require_python_ittapi
-
   local script
   script="$(_py_script_path 'context-manager')" || skip "Missing context-manager example."
   [[ -f "${script}" ]] || skip "File not found: ${script}"
@@ -139,8 +118,6 @@ _ensure_c_example_exe() {
 }
 
 @test "ITT (Python, C-style): trace contains __itt_task_begin events" {
-  _require_python_ittapi
-
   local script
   script="$(_py_script_path 'c-style')" || skip "Missing C-style example."
   [[ -f "${script}" ]] || skip "File not found: ${script}"
