@@ -13,21 +13,6 @@ teardown_file() {
   rm -rf "${ITT_TMP_DIR}"
 }
 
-# Prefer babeltrace2; fall back to THAPI's babeltrace wrapper if available
-_bt_pretty() {
-  if command -v babeltrace2 >/dev/null 2>&1; then
-    babeltrace2 -c sink.text.pretty "$@"
-  else
-    local bbt_bin="${BBT:-babeltrace_thapi}"
-    if command -v "${bbt_bin}" >/dev/null 2>&1; then
-      "${bbt_bin}" --no-restrict "$@"
-    else
-      echo "SKIP: Neither 'babeltrace2' nor '${bbt_bin}' available." >&2
-      return 127
-    fi
-  fi
-}
-
 # Precise resolvers for the two Python example scripts
 _py_script_path() {
   case "$1" in
@@ -91,7 +76,7 @@ _ensure_c_example_exe() {
   echo "$output"
   [ "$status" -eq 0 ]
 
-  run _bt_pretty "${trace_dir}"
+  run "${BBT:-babeltrace_thapi}" "${trace_dir}"
   echo "$output"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | grep -c 'lttng_ust_itt:__itt_task_begin')" -ge 2 ]
@@ -110,7 +95,7 @@ _ensure_c_example_exe() {
   echo "$output"
   [ "$status" -eq 0 ]
 
-  run _bt_pretty "${trace_dir}"
+  run "${BBT:-babeltrace_thapi}" "${trace_dir}"
   echo "$output"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | grep -c 'lttng_ust_itt:__itt_task_begin')" -ge 2 ]
@@ -129,7 +114,7 @@ _ensure_c_example_exe() {
   echo "$output"
   [ "$status" -eq 0 ]
 
-  run _bt_pretty "${trace_dir}"
+  run "${BBT:-babeltrace_thapi}" "${trace_dir}"
   echo "$output"
   [ "$status" -eq 0 ]
   [ "$(echo "$output" | grep -c 'lttng_ust_itt:__itt_task_begin')" -ge 2 ]
