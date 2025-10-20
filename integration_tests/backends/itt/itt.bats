@@ -22,20 +22,10 @@ _py_script_path() {
   esac
 }
 
-# Ensure (or opportunistically build) the C example binary.
-_ensure_c_example_exe() {
-  local exe="${ITT_SRC_DIR}/itt_example_c/itt_example"
-  if [[ -x "${exe}" ]]; then
-    printf "%s" "${exe}"
-    return 0
-  fi
-
+@test "ITT (C): trace contains __itt_task_begin events" {
+  local c_exe="${ITT_SRC_DIR}/itt_example_c/itt_example"
   local ittapi_root="${ITTAPI_ROOT:-}"
   local src_c="${ITT_SRC_DIR}/itt_example_c/itt_example.c"
-  if [[ -z "${ittapi_root}" || ! -f "${src_c}" ]]; then
-    return 1
-  fi
-
   local cc=""
   for cc in ${CC:-icx clang gcc cc}; do
     if command -v "$cc" >/dev/null 2>&1; then
@@ -46,28 +36,11 @@ _ensure_c_example_exe() {
   [[ -n "${cc}" ]] || return 1
 
   local inc="${ittapi_root}/include"
-  local libdir=""
-  if [[ -d "${ittapi_root}/lib64" ]]; then
-    libdir="${ittapi_root}/lib64"
-  elif [[ -d "${ittapi_root}/lib" ]]; then
-    libdir="${ittapi_root}/lib"
-  else
-    return 1
-  fi
-
+  local libdir="${ittapi_root}/lib64"
   (
     cd "${ITT_SRC_DIR}/itt_example_c" || exit 1
     "${cc}" itt_example.c -O2 -I"${inc}" -L"${libdir}" -littnotify -o itt_example >/dev/null 2>&1
   )
-  [[ -x "${exe}" ]] && printf "%s" "${exe}" && return 0
-  return 1
-}
-
-@test "ITT (C): trace contains __itt_task_begin events" {
-  local c_exe
-  if ! c_exe="$(_ensure_c_example_exe)"; then
-    skip "C ITT example binary not found (and not buildable). Expected at: ${ITT_SRC_DIR}/itt_example_c/itt_example"
-  fi
 
   local trace_dir="${ITT_TMP_DIR}/itt_example_c_CTF"
   rm -rf "${trace_dir}"
