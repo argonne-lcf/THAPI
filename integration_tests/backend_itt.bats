@@ -14,7 +14,8 @@ teardown_file() {
 }
 
 @test "ITT (C): trace contains __itt_task_begin events" {
-  gcc itt_example.c -O2 -I${ITTAPI_ROOT}/include -L${ITTAPI_ROOT}/lib64 -littnotify -o itt_example >/dev/null 2>&1
+  echo ${ITTAPI_ROOT}
+  gcc itt_example.c -O2 -I${ITTAPI_ROOT}/include -L${ITTAPI_ROOT}/lib64 -littnotify -o itt_example 2>&1
 
   local trace_dir="${ITT_TMP_DIR}/itt_example_c_CTF"
   rm -rf "${trace_dir}"
