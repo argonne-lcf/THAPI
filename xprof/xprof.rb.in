@@ -116,6 +116,29 @@ def launch_usr_bin(env, cmd)
   $?
 end
 
+def exec_store_in_file(cmdnames, output_file: nil)
+  LOGGER.debug(cmdnames)
+
+  IO.popen(cmdnames) do |pipe|
+    fo = if output_file
+           File.open(output_file, 'w')
+         else
+           $stdout.dup
+         end
+
+    begin
+      fo.puts(pipe.readlines)
+    ensure
+      fo.close if output_file
+    end
+
+    _, status = Process.wait2(pipe.pid)
+    raise "#{cmdnames} failed with status #{status.exitstatus}" unless status.success?
+
+    status
+  end
+end
+
 #    _
 #   |_ |\ | \  /
 #   |_ | \|  \/
@@ -760,6 +783,8 @@ def gm_rename_folder
 end
 
 def gm_processing(folder)
+  # The master run last step of babeltraces.
+  # We Generate the tally or aggregated the timelines, or generate the timeline in case of replay
   raise unless mpi_master?
 
   LOGGER.info { "Postprocess #{folder}" }
@@ -792,21 +817,8 @@ def gm_processing(folder)
   end
 
   # Run Cmndnames.
-  # Redirect stdout if necessary
-  LOGGER.debug(cmdnames)
-  LOGGER.info_block('Global Master Processing ') do
-    fo = if OPTIONS[:'analysis-output']
-           File.open(OPTIONS[:'analysis-output'], 'w')
-         else
-           $stdout.dup
-         end
-    pipe = IO.popen(cmdnames)
-    fo.puts(pipe.readlines)
-    fo.close
-    _, status = Process.wait2(pipe.pid)
-    raise "#{cmdnames} failed" unless status.success?
-
-    status
+  LOGGER.info_block('Global Master Processing') do
+    exec_store_in_file(cmdnames, output_file: OPTIONS[:'analysis-output'])
   end
 end
 
