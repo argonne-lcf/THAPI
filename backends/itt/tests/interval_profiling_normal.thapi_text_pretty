@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_itt:__itt_task_begin: {domain: 0x000000, taskid: , parentid: , name: 0x000010, domain__nameA_val: test.domain, name__strA_val: test task}
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_itt:__itt_task_end: {domain: 0x000000}
