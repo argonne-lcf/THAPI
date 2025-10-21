@@ -111,6 +111,25 @@ jobs:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
+
+      # Build ITTAPI from source and expose ITTAPI_ROOT + runtime libs for ITT tests
+      - name: Build ITTAPI
+        run: |
+          set -eux
+          git clone --depth=1 https://github.com/intel/ittapi.git
+          cmake -S ittapi -B ittapi/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/ittapi/install"
+          cmake --build ittapi/build --target install -j"$(nproc)"
+          echo "ITTAPI_ROOT=$GITHUB_WORKSPACE/ittapi/install" >> "$GITHUB_ENV"
+
+      # Install Python ittapi for ITT tests
+      - name: Install Python ittapi
+        run: |
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user -U ittapi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
