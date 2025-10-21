@@ -1,5 +1,9 @@
 #!/usr/bin/env ruby
 
+# Some naming convention
+# lm == function executed only local_master
+# gm == function executed only global_master
+
 # 2.7 for Lazy in Enumerable. 2.7 was released 25 Dec 2019
 THAPI_RUBY_MINIMAL_VERSION = '2.6.0'
 if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
@@ -24,6 +28,7 @@ LTTNG_ARCHIVE_SIZE = '50M'
 LTTNG_ARCHIVE_TIMER = '60s'
 LTTNG_DIRWATCH_SIZE = '500' # In MiB
 LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
+MAX_INT32_VALUE = (2**31) - 1
 
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
@@ -75,6 +80,10 @@ class XprofExitCode
   end
 end
 
+#                            _
+# \  / _. ._ o  _       _   |_     _   _
+#  \/ (_| |  | (_) |_| _>   |_ >< (/_ (_
+#
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
 
@@ -88,6 +97,23 @@ def exec(cmd, opts: {}, debug: true)
   raise "#{cmd} failed" unless status.success?
 
   stdout_str
+end
+
+def launch_usr_bin(env, cmd)
+  LOGGER.info { "Launch_usr_bin #{cmd}" }
+
+  # Merge standard output and standard error
+  IO.popen(env, cmd, err: %i[child out]) do |io|
+    # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
+    io.sync = true
+    io.each { |line| print line }
+  rescue Interrupt
+    # Just continue as usual, do not crash xprof
+  rescue Errno::ENOENT
+    warn("#{__FILE__}: Can't find executable #{cmd.first}")
+    raise Errno::ENOENT
+  end
+  $?
 end
 
 #    _
@@ -197,15 +223,14 @@ def mpi_master?
   mpi_rank_id.zero?
 end
 
-MAX_INT32_VALUE = (2**31) - 1
 # returns an offset for each timeline file
 # this is based on chunking max_int32_value
 # into the number of nodes
-def get_offset
+def mpi_rank_offset
   # if not mpi, just return 0 offset
   return 0 unless in_mpi_env?
 
-  @get_offset ||= begin
+  @mpi_rank_offset ||= begin
     # if we launch with a scheduler, we can read from a hostfile.
     hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
 
@@ -571,23 +596,6 @@ def env_tracers
   [backends, sanitize_env(h).freeze]
 end
 
-def launch_usr_bin(env, cmd)
-  LOGGER.info { "Launch_usr_bin #{cmd}" }
-
-  # Merge standard output and standard error
-  IO.popen(env, cmd, err: %i[child out]) do |io|
-    # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
-    io.sync = true
-    io.each { |line| print line }
-  rescue Interrupt
-    # Just continue as usual, do not crash xprof
-  rescue Errno::ENOENT
-    warn("#{__FILE__}: Can't find executable #{cmd.first}")
-    raise Errno::ENOENT
-  end
-  $?
-end
-
 def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   case tracing_mode
@@ -799,9 +807,9 @@ def lm_babeltrace(backends)
   else
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     if OPTIONS.include?(:timeline)
-      backends = OPTIONS[:backends].join(',')
-      output_per_host = File.join(thapi_trace_dir_tmp, 'timeline_' + get_offset.to_s + '.pftrace')
-      args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', get_offset]
+      args = ['timeline', '--backends', OPTIONS[:backends].join(','),
+              '--output-path', File.join(thapi_trace_dir_tmp, "timeline_#{Socket.gethostname}.pftrace"),
+              '--output-offset', mpi_rank_offset]
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
     end
   end
@@ -811,10 +819,6 @@ end
 #  |_) ._ _   _  _   _  _ o ._   _
 #  |   | (_) (_ (/_ _> _> | | | (_|
 #                                _|
-
-# Some naming convention
-# lm == function executed only local_master
-# gm ==  function executed only global_master
 
 def gm_rename_folder
   raise unless mpi_master?
@@ -921,11 +925,11 @@ def gm_processing(folder)
     # check if there are any timelines. we check in advance
     # since if we don't have nay saved ones we should fall
     # back to generating the timeline from the interval
-    files = Dir[folder + '/*/timeline_*']
+    files = Dir[folder + '/*/timeline_*.pftrace']
     cmdnames = if files.empty?
                  [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
                else
-                 # String because `>` is not a real command, and cannot be passed to peopen
+                 # String because `>` is not a real command, and cannot be passed to popen
                  "cat #{files.join(' ')} > #{OPTIONS[:timeline]}"
                end
   else
@@ -949,15 +953,13 @@ def gm_processing(folder)
            $stdout.dup
          end
     pipe = IO.popen(cmdnames)
-    pid = pipe.pid
     fo.puts(pipe.readlines)
     fo.close
-    _, status = Process.wait2(pid)
+    _, status = Process.wait2(pipe.pid)
     raise "#{cmdnames} failed" unless status.success?
 
     status
   end
-
 end
 
 #
