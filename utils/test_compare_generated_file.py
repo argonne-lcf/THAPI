@@ -3,7 +3,6 @@ import os
 # We suggest to install `pytest-icdiff` to get better diff
 import pytest
 import yaml
-import re
 
 # Please put the corrects paths
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
