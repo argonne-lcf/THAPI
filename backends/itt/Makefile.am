@@ -213,7 +213,7 @@ $(BTX_ITT_GENERATED_SOURCE_TEST) &: btx_itt_model.yaml
 
 noinst_LTLIBRARIES += libtestittsource.la
 nodist_libtestittsource_la_SOURCES = $(BTX_ITT_GENERATED_SOURCE_TEST)
-libtestittsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./include -I./btx_source_itt_test/
+libtestittsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./include -I./modified_include -I./btx_source_itt_test/
 libtestittsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libtestittsource_la_LDFLAGS = -avoid-version
 libtestittsource_la_LIBADD = $(BABELTRACE2_LIBS)
