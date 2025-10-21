@@ -939,10 +939,7 @@ def gm_processing(folder)
     # check if there are any timelines. we check in advance
     # since if we don't have nay saved ones we should fall
     # back to generating the timeline from the interval
-    files = ''
-    Dir[folder + '/*/timeline_*'].each do |f|
-      files += (f + ' ')
-    end
+    files = Dir[folder + '/*/timeline_*'].join(' ')
     cmdnames = if files.empty?
                  [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
                else
