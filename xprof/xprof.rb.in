@@ -116,10 +116,10 @@ def launch_usr_bin(env, cmd)
   $?
 end
 
-def exec_store_in_file(cmdnames, output_file: nil)
-  LOGGER.debug(cmdnames)
+def exec_store_in_file(cmd, output_file: nil)
+  LOGGER.debug(cmd)
 
-  IO.popen(cmdnames) do |pipe|
+  IO.popen(cmd) do |pipe|
     fo = if output_file
            File.open(output_file, 'w')
          else
@@ -133,7 +133,7 @@ def exec_store_in_file(cmdnames, output_file: nil)
     end
 
     _, status = Process.wait2(pipe.pid)
-    raise "#{cmdnames} failed with status #{status.exitstatus}" unless status.success?
+    raise "#{cmd} failed with status #{status.exitstatus}" unless status.success?
 
     status
   end
