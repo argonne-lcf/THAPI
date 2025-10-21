@@ -1,39 +1,21 @@
 bats_require_minimum_version 1.5.0
 
-setup() {
-  # Useful paths
-  ITT_TEST_ROOT="${BATS_TEST_DIRNAME}"
-  ITT_SRC_DIR="${ITT_TEST_ROOT}"
-  ITT_TMP_DIR="${ITT_TEST_ROOT}/tmp"
-  mkdir -p "${ITT_TMP_DIR}"
-}
-
-teardown_file() {
-  # Clean up any traces we created in this file
-  rm -rf "${ITT_TMP_DIR}"
-}
-
 @test "ITT (C): trace contains __itt_task_begin events" {
-  gcc ${ITT_SRC_DIR}/itt_example.c -I${ITTAPI_ROOT}/include ${ITTAPI_ROOT}/lib/libittnotify.a -o ${ITT_TMP_DIR}/itt_example
-  local out_file="${ITT_TMP_DIR}/itt_out_c.txt"
-  $IPROF --backends itt --analysis-output ${out_file} -- ${ITT_TMP_DIR}/itt_example
-  grep "Example.Domain:Task 2" ${out_file}
-  grep "Example.Domain:Task 1" ${out_file}
+  gcc ./integration_tests/itt_example.c -I${ITTAPI_ROOT}/include ${ITTAPI_ROOT}/lib/libittnotify.a -o itt_example
+  $IPROF --backends itt --analysis-output ./itt_out_c.txt -- ./itt_example
+  grep "Example.Domain:Task 2" ./itt_out_c.txt
+  grep "Example.Domain:Task 1" ./itt_out_c.txt
 }
 
 @test "ITT (Python, context manager): trace contains ITT task events" {
-  local script=${ITT_SRC_DIR}/itt_example_context-manager.py
-  local out_file="${ITT_TMP_DIR}/itt_out_py_context-manager.txt"
-  $IPROF --backends itt --analysis-output ${out_file} -- python3 ${script}
-  grep "Example.Domain:Task 2" ${out_file}
-  grep "Example.Domain:Task 1" ${out_file}
+  $IPROF --backends itt --analysis-output ./itt_out_py_context-manager.txt -- python3 ./integration_tests/itt_example_context-manager.py
+  grep "Example.Domain:Task 2" ./itt_out_py_context-manager.txt
+  grep "Example.Domain:Task 1" ./itt_out_py_context-manager.txt
 }
 
 @test "ITT (Python, C-style): trace contains ITT task events" {
-  local script="${ITT_SRC_DIR}/itt_example_c-style.py"
-  local out_file="${ITT_TMP_DIR}/itt_out_py_c-style.txt"
-  $IPROF --backends itt --analysis-output ${out_file} -- python3 ${script}
-  grep "Example.Domain:Task 2" ${out_file}
-  grep "Example.Domain:Task 1" ${out_file}
+  $IPROF --backends itt --analysis-output ./itt_out_py_c-style.txt -- python3 ./integration_tests/itt_example_c-style.py
+  grep "Example.Domain:Task 2" ./itt_out_py_c-style.txt
+  grep "Example.Domain:Task 1" ./itt_out_py_c-style.txt
 }
 
