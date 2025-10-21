@@ -14,7 +14,7 @@ teardown_file() {
 }
 
 @test "ITT (C): trace contains __itt_task_begin events" {
-  gcc ${ITT_SRC_DIR}/itt_example.c -O2 -I${ITTAPI_ROOT}/include -L${ITTAPI_ROOT}/lib -L${ITTAPI_ROOT}/lib64 -littnotify -o ${ITT_TMP_DIR}/itt_example >/dev/null 2>&1
+  gcc ${ITT_SRC_DIR}/itt_example.c -I${ITTAPI_ROOT}/include ${ITTAPI_ROOT}/lib/libittnotify.a -o ${ITT_TMP_DIR}/itt_example
   local out_file="${ITT_TMP_DIR}/itt_out_c.txt"
   $IPROF --backends itt --analysis-output ${out_file} -- ${ITT_TMP_DIR}/itt_example
   grep "Example.Domain:Task 2" ${out_file}
