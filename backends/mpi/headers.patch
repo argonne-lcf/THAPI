@@ -1,6 +1,6 @@
 diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
 --- include/mpi.h	2025-10-21 16:47:19.000000000 +0000
-+++ modified_include/mpi.h	2025-10-21 19:14:58.000000000 +0000
++++ modified_include/mpi.h	2025-10-21 19:48:25.000000000 +0000
 @@ -1,8 +1,10 @@
  #ifndef MPI_H_ABI
  #define MPI_H_ABI
@@ -12,12 +12,11 @@ diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
  #if defined(__cplusplus)
  extern "C" {
  #endif
-@@ -1916,8 +1918,26 @@
+@@ -1916,8 +1918,24 @@
  int PMPI_T_source_get_info(int source_index, char *name, int *name_len, char *desc, int *desc_len, MPI_T_source_order *ordering, MPI_Count *ticks_per_second, MPI_Count *max_ticks, MPI_Info *info);
  int PMPI_T_source_get_num(int *num_sources);
  int PMPI_T_source_get_timestamp(int source_index, MPI_Count *timestamp);
  
-+#ifndef THAPI_NO_INCLUDE 
 +#ifdef MPICH_FORTRAN_SYMBOLS_NONABI
 +// from src/mpi/topo/topoutil.c
 +#undef MPI_UNWEIGHTED
@@ -32,7 +31,6 @@ diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
 +#undef MPI_F_STATUSES_IGNORE
 +int *MPI_F_STATUS_IGNORE  = 0;
 +int *MPI_F_STATUSES_IGNORE  = 0;
-+#endif
 +#endif
 +  
  #if defined(__cplusplus)
