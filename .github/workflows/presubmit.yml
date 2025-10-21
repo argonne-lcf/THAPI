@@ -122,7 +122,6 @@ jobs:
             -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/ittapi/install"
           cmake --build ittapi/build --target install -j"$(nproc)"
           echo "ITTAPI_ROOT=$GITHUB_WORKSPACE/ittapi/install" >> "$GITHUB_ENV"
-          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/ittapi/install/lib64:$GITHUB_WORKSPACE/ittapi/install/lib:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
 
       # Install Python ittapi for ITT tests
       - name: Install Python ittapi
