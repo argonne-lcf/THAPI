@@ -188,3 +188,51 @@ libITTInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include
 libITTInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libITTInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libITTInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+#
+# ----------------------------------------------------------------------
+# Tests (mirrors backends/cuda and backends/omp)
+# ----------------------------------------------------------------------
+#
+
+# List test inputs (each .thapi_text_pretty must have matching .bt_text_pretty golden with same basename in backends/itt/tests/)
+TRACE_COMMON = \
+       tests/interval_profiling_normal.thapi_text_pretty
+
+# Generate "SOURCE test" component from the ITT BT model.
+BTX_ITT_GENERATED_SOURCE_TEST = \
+       btx_source_itt_test/metababel/metababel.h \
+       btx_source_itt_test/metababel/btx_component.h \
+       btx_source_itt_test/metababel/btx_component.c \
+       btx_source_itt_test/metababel/btx_downstream.h \
+       btx_source_itt_test/metababel/btx_downstream.c \
+       btx_source_itt_test/btx_main.c
+
+$(BTX_ITT_GENERATED_SOURCE_TEST) &: btx_itt_model.yaml
+       $(METABABEL) -d btx_itt_model.yaml -t SOURCE -o btx_source_itt_test -p itttest -c test -i ittnotify.h
+
+noinst_LTLIBRARIES += libtestittsource.la
+nodist_libtestittsource_la_SOURCES = $(BTX_ITT_GENERATED_SOURCE_TEST)
+libtestittsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./include -I./btx_source_itt_test/
+libtestittsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libtestittsource_la_LDFLAGS = -avoid-version
+libtestittsource_la_LIBADD = $(BABELTRACE2_LIBS)
+
+# Automake test integration
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
+TESTS = $(TRACE_COMMON)
+TEST_EXTENSIONS = .thapi_text_pretty
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = backends/itt itt ./btx_source_itt_test/ .libs/libtestittsource.a
+
+check_DATA = \
+       $(TRACE_COMMON) \
+       $(TRACE_OUT)
+
+EXTRA_DIST += \
+       $(TRACE_COMMON) \
+       $(TRACE_OUT)
+
+CLEANFILES += \
+       $(TRACE_COMMON) \
+       $(BTX_ITT_GENERATED_SOURCE_TEST)
