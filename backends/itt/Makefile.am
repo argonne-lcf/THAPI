@@ -199,7 +199,7 @@ libITTInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 TRACE_COMMON = \
        tests/interval_profiling_normal.thapi_text_pretty
 
-# Generate "SOURCE test" component from the ITT BT model.
+# Generate "SOURCE test" component from the ITT BT model
 BTX_ITT_GENERATED_SOURCE_TEST = \
        btx_source_itt_test/metababel/metababel.h \
        btx_source_itt_test/metababel/btx_component.h \
@@ -209,7 +209,7 @@ BTX_ITT_GENERATED_SOURCE_TEST = \
        btx_source_itt_test/btx_main.c
 
 $(BTX_ITT_GENERATED_SOURCE_TEST) &: btx_itt_model.yaml
-       $(METABABEL) -d btx_itt_model.yaml -t SOURCE -o btx_source_itt_test -p itttest -c test -i ittnotify.h
+	$(METABABEL) -d btx_itt_model.yaml -t SOURCE -o btx_source_itt_test -p itttest -c test -i ittnotify.h
 
 noinst_LTLIBRARIES += libtestittsource.la
 nodist_libtestittsource_la_SOURCES = $(BTX_ITT_GENERATED_SOURCE_TEST)
