@@ -10,6 +10,8 @@ if enable_clang_parser?
     <<~EOF
       #include <stdlib.h>
       #include <stdint.h>
+      #include <limits.h>
+      #include <stddef.h>
       #define __CUDA_API_VERSION_INTERNAL=1
       #define THAPI_NO_INCLUDE
     EOF

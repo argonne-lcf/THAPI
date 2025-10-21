@@ -114,8 +114,21 @@ diff -u4 -r --new-file include/cuda_vdpau_interop.h modified_include/cuda_vdpau_
  #endif /* __cplusplus */
 diff -u4 -r --new-file include/driver_types.h modified_include/driver_types.h
 --- include/driver_types.h	2025-09-24 16:25:46.274229652 -0500
-+++ modified_include/driver_types.h	2025-10-16 17:32:55.480180052 -0500
-@@ -2292,9 +2292,11 @@
++++ modified_include/driver_types.h	2025-10-21 11:22:20.927543014 -0500
+@@ -77,10 +77,12 @@
+ 
+ #if !defined(__CUDA_INTERNAL_COMPILATION__)
+ 
+ #if !defined(__CUDACC_RTC__)
++#ifndef THAPI_NO_INCLUDE
+ #include <limits.h>
+ #include <stddef.h>
++#endif
+ #endif /* !defined(__CUDACC_RTC__) */
+ 
+ #define cudaHostAllocDefault                0x00  /**< Default page-locked allocation flag */
+ #define cudaHostAllocPortable               0x01  /**< Pinned memory accessible by all CUDA contexts */
+@@ -2292,9 +2294,11 @@
  
  /**
   * CUDA IPC Handle Size

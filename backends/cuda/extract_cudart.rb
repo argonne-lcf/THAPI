@@ -27,11 +27,15 @@ else
   begin
     preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
       #include <stdint.h>
+      #include <limits.h>
+      #include <stddef.h>
     EOF
   rescue StandardError
     C::Preprocessor.command = 'gcc -E'
     preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')
       #include <stdint.h>
+      #include <limits.h>
+      #include <stddef.h>
     EOF
   end
   $parser.parse(preprocessed_sources_libc)
