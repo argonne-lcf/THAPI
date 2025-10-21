@@ -25,27 +25,6 @@ LTTNG_ARCHIVE_TIMER = '60s'
 LTTNG_DIRWATCH_SIZE = '500' # In MiB
 LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
 
-class XprofExitCode
-  @@exit_code = 0
-  def self.update(status, name)
-    # Keep only the first error
-    exit_code = if status.signaled?
-                  LOGGER.error("#{name} : #{status}")
-                  status.termsig
-                elsif status.exited?
-                  status.exitstatus
-                else
-                  LOGGER.fatal { "#{name} exited with an unknown error" }
-                  exit(1)
-                end
-    @@exit_code = exit_code if @@exit_code == 0
-  end
-
-  def self.get
-    @@exit_code
-  end
-end
-
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
 require 'fileutils'
@@ -72,6 +51,30 @@ module LoggerRefinement
 end
 using LoggerRefinement
 
+# Define it as a global varaible, so people including this file can use function safely
+LOGGER = Logger.new($stdout)
+
+class XprofExitCode
+  @@exit_code = 0
+  def self.update(status, name)
+    # Keep only the first error
+    exit_code = if status.signaled?
+                  LOGGER.error("#{name} : #{status}")
+                  status.termsig
+                elsif status.exited?
+                  status.exitstatus
+                else
+                  LOGGER.fatal { "#{name} exited with an unknown error" }
+                  exit(1)
+                end
+    @@exit_code = exit_code if @@exit_code == 0
+  end
+
+  def self.get
+    @@exit_code
+  end
+end
+
 def exec(cmd, opts: {}, debug: true)
   return Open3.capture3(opts, cmd).first unless debug
 
@@ -83,6 +86,7 @@ def exec(cmd, opts: {}, debug: true)
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
   raise "#{cmd} failed" unless status.success?
+
   stdout_str
 end
 
@@ -199,28 +203,29 @@ MAX_INT32_VALUE = (2**31) - 1
 def get_offset
   # if not mpi, just return 0 offset
   return 0 unless in_mpi_env?
+
   @get_offset ||= begin
-  # if we launch with a scheduler, we can read from a hostfile.
-  hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
-  
-  # if there's a hostfile identified by the envs above,
-  # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
-  # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
-  # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
-  number_hostname, hostname_index = if hostfile.nil?
-                                      [10_000, mpi_rank_id / mpi_local_size]
-                                    else
-                                      # splitting by "." in case the hostfile contains full hostnames with address
-                                      # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
-                                      list_hostnames = File.readlines(hostfile).map do |element|
-                                        element.split('.', 2).first
+    # if we launch with a scheduler, we can read from a hostfile.
+    hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+
+    # if there's a hostfile identified by the envs above,
+    # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
+    # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
+    # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
+    number_hostname, hostname_index = if hostfile.nil?
+                                        [10_000, mpi_rank_id / mpi_local_size]
+                                      else
+                                        # splitting by "." in case the hostfile contains full hostnames with address
+                                        # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
+                                        list_hostnames = File.readlines(hostfile).map do |element|
+                                          element.split('.', 2).first
+                                        end
+                                        # find index of hostname_string in list_hostnames
+                                        hostname_id = list_hostnames.find_index(Socket.gethostname)
+                                        # compute the offset, based on splitting max_int32_value by the number of hosts
+                                        [list_hostnames.length, hostname_id]
                                       end
-                                      # find index of hostname_string in list_hostnames
-                                      hostname_id = list_hostnames.find_index(Socket.gethostname)
-                                      # compute the offset, based on splitting max_int32_value by the number of hosts
-                                      [list_hostnames.length, hostname_id]
-                                    end
-  (MAX_INT32_VALUE / number_hostname) * hostname_index
+    (MAX_INT32_VALUE / number_hostname) * hostname_index
   end
 end
 
@@ -796,10 +801,10 @@ def lm_babeltrace(backends)
     exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
     if OPTIONS.include?(:timeline)
       backends = OPTIONS[:backends].join(',')
-      output_per_host=File.join(thapi_trace_dir_tmp, "timeline_"+get_offset.to_s+".pftrace")
+      output_per_host = File.join(thapi_trace_dir_tmp, 'timeline_' + get_offset.to_s + '.pftrace')
       args = ['timeline', '--backends', backends, '--output-path', output_per_host, '--output-offset', get_offset]
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
-      end
+    end
   end
 end
 
@@ -905,19 +910,20 @@ end
 
 def run_and_log_process(cmdnames)
   LOGGER.info_block('IO dump') do
-      fo = if OPTIONS[:'analysis-output']
-             File.open(OPTIONS[:'analysis-output'], 'w')
-           else
-             $stdout.dup
-           end
-      pipe = IO.popen(cmdnames)
-      pid = pipe.pid
-      fo.puts(pipe.readlines)
-      fo.close
-      _, status = Process.wait2(pid)
-      raise "#{cmdnames} failed" unless status.success?
-      status
-    end
+    fo = if OPTIONS[:'analysis-output']
+           File.open(OPTIONS[:'analysis-output'], 'w')
+         else
+           $stdout.dup
+         end
+    pipe = IO.popen(cmdnames)
+    pid = pipe.pid
+    fo.puts(pipe.readlines)
+    fo.close
+    _, status = Process.wait2(pid)
+    raise "#{cmdnames} failed" unless status.success?
+
+    status
+  end
 end
 
 def gm_processing(folder)
@@ -938,11 +944,11 @@ def gm_processing(folder)
     Dir[folder + '/*/timeline_*'].each do |f|
       files += (f + ' ')
     end
-    if files.empty? 
-      cmdnames = [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
-    else
-      cmdnames = 'cat '+files+'> ' + OPTIONS[:timeline]
-    end
+    cmdnames = if files.empty?
+                 [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
+               else
+                 'cat ' + files + '> ' + OPTIONS[:timeline]
+               end
   else
     cmdnames = [babeltrace_exe, 'tally']
     cmdnames << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
@@ -1088,7 +1094,6 @@ if __FILE__ == $PROGRAM_NAME
   end
 
   # Setup Logger
-  LOGGER = Logger.new($stdout)
   LOGGER.level = OPTIONS[:debug]
   LOGGER.debug(OPTIONS)
 
