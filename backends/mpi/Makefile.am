@@ -121,7 +121,7 @@ nodist_libmpitracepoints_la_SOURCES = \
 	$(MPI_STATIC_PROBES_INCL) \
 	$(MPI_STATIC_PROBES_SRC)
 
-libmpitracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libmpitracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./
 libmpitracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libmpitracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -136,7 +136,7 @@ nodist_libmpi_la_SOURCES = \
 	$(MPI_STATIC_PROBES_INCL) \
 	tracer_mpi.c
 
-libmpi_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./utils -I./
+libmpi_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./utils -I./
 libmpi_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libmpi_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread
 libmpi_la_LDFLAGS += -version-info 12:0:0 # 12 is the current ABI version of all MPI implementation
@@ -203,7 +203,7 @@ nodist_libMPIInterval_la_SOURCES = \
 libMPIInterval_la_SOURCES = \
 	btx_mpiinterval_callbacks.cpp
 
-libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_filter_mpi
+libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_filter_mpi
 libMPIInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
