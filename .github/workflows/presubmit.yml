@@ -77,7 +77,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
         with:
-          mpi: intelmpi
+          mpi: mpich
       - uses: ./.github/actions/setup-thapi
       - run: mkdir -p build
       - run: ./autogen.sh
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: mpi4py/setup-mpi@v1
         with:
-          mpi: intelmpi
+          mpi: mpich
       - uses: ./.github/actions/setup-thapi
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
