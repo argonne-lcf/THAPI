@@ -5,3 +5,10 @@
    grep MPI_Finalize out.txt
 }
 
+@test "backend_mpi_sanity_check_fortran" {
+   mpifort ./integration_tests/mpi_helloworld.f90 -o mpi_helloworld_f90
+   $IPROF --backends mpi --analysis-output out_f90.txt -- ./mpi_helloworld_f90
+   grep MPI_Init out_f90.txt
+   grep MPI_Finalize out_f90.txt
+}
+
