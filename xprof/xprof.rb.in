@@ -456,10 +456,11 @@ class SamplingDaemon < SpawnDaemon
     lazy_exec(message, sampling?, &block)
   end
 
-  def initialize(h = {}, path_so = '')
+  def initialize(h = {})
     daemon_path = "#{BINDIR}/thapi_sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
+    path_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
     LOGGER.debug { "spawn(sampling_daemon) #{Process.pid} #{path_so}" }
     lazy_exec_sampling('Initialize SamplingDaemon') do
       @pid = spawn(h, "#{daemon_path} #{Process.pid} #{path_so}")
@@ -506,94 +507,6 @@ def sanitize_env(env)
 
     [k, vs.join(':')]
   end.to_h
-end
-
-def env_tracers
-  # Return the list of backends (used by local master to enable lttng events)
-  # and the ENV used by any traced-ranks to preload THAPI tracers
-  need_backend = mpi_local_master?
-  need_env = Set[-1, mpi_rank_id].intersect?(OPTIONS[:'traced-ranks'])
-
-  # Early exit to be nice with the FileSystem
-  return [[], {}] unless need_backend || need_env
-
-  h = Hash.new { |h, k| h[k] = [] }
-  backends = []
-
-  [%w[opencl cl libOpenCL],
-   %w[ze ze libze_loader],
-   %w[cuda cuda libcuda],
-   %w[hip hip libamdhip64],
-   %w[mpi mpi libmpi]].each do |name, bt_name, lib|
-    # Backend requested, skip omp. It will be handled in a custom case bellow
-    next unless OPTIONS[:'backend-names'].include?(bt_name)
-
-    # Find and Save the original lib path
-    libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
-    if (e = env_fetch_first(libenv))
-      LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
-      # TODO: Verify that this guy exist?
-    elsif (libpath = whichlib64("#{lib}.so"))
-      h[libenv] = libpath
-    else
-      LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
-      next
-    end
-    backends << bt_name
-    # Add our "stud" library to the path
-    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
-    # Preload our own lib
-    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{lib}.so")
-    h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
-    h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
-  end
-  # Usr Apps need to be launched with this to support blocking.
-  h['LTTNG_UST_ALLOW_BLOCKING'] = 1
-
-  # Customization
-  if OPTIONS[:'backend-names'].include?('ze')
-    h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:profile]
-    if sampling?
-      # The current only reliable way to use zes api
-      #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
-      h['ZES_ENABLE_SYSMAN'] = 0
-      h['LTTNG_UST_ZE_SAMPLING_ENERGY'] = 1
-      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
-    end
-  end
-
-  if OPTIONS[:'backend-names'].include?('omp')
-    backends << 'omp'
-    h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
-  end
-
-  if OPTIONS[:'backend-names'].include?('cxi')
-    backends << 'cxi'
-    if sampling?
-      h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
-      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
-    end
-  end
-
-  if OPTIONS[:'backend-names'].include?('itt')
-    backends << 'itt'
-    h['INTEL_LIBITTNOTIFY64'] = File.join(LIBDIR, 'libittnotify.so')
-  end
-
-  # Sample
-  if sampling?
-    LOGGER.debug('Sampling Enabled')
-    h['LTTNG_UST_SAMPLING'] = 1
-    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
-    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libHeartbeatSampling.so')
-  end
-
-  backends = [] unless need_backend
-  h = {} unless need_env
-  LOGGER.info("Backends found: #{backends}")
-  LOGGER.debug("User app env: #{h}")
-
-  [backends, sanitize_env(h).freeze]
 end
 
 def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
@@ -812,14 +725,18 @@ def lm_babeltrace(backends)
               '--output-offset', mpi_rank_offset]
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
     end
+
+    LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
+    FileUtils.remove_dir(lttng_trace_dir_tmp)
+
   end
 end
 
-#   _
-#  |_) ._ _   _  _   _  _ o ._   _
-#  |   | (_) (_ (/_ _> _> | | | (_|
-#                                _|
-
+#  __         _
+# /__ |\/|   |_) ._ _   _  _   _  _ o ._   _
+# \_| |  |   |   | (_) (_ (/_ _> _> | | | (_|
+#                                          _|
+#
 def gm_rename_folder
   raise unless mpi_master?
 
@@ -840,75 +757,6 @@ def gm_rename_folder
   #       So we use `exec(mv -T a b)`, this have the added benefice of logging
   exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
   thapi_trace_dir_root
-end
-
-# Start, Stop lttng, amd do the on-node analsysis
-def trace_and_on_node_processing(usr_argv)
-  def teardown_lttng(syncd, sampling_daemon, pids)
-    # We need to be sure that all the local ranks are finished
-    syncd.local_barrier('waiting_for_application_ending')
-
-    # Everything from now on, is some local-master processing
-    # The `Sync_daemon` context will handle the call to the global barrier
-    # for the early exiting ranks
-    return unless mpi_local_master?
-
-    # Finalize sampling daemon
-    sampling_daemon.finalize
-
-    # Stop Lttng session and babeltrace daemons
-    lm_lttng_teardown_session
-    if OPTIONS[:archive]
-      LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
-      pids.each do |pid|
-        _, status = Process.wait2(pid)
-        XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
-      end
-    end
-    # we can kill the session daemon
-    lm_lttng_kill_sessiond
-  end
-
-  SyncDaemon.open do |syncd|
-    # Load Tracers and APILoaders Lib
-    backends, h = env_tracers
-
-    # All ranks need to set the LLTTNG_HOME env
-    # so they can have access to the daemon
-    ENV['LTTNG_HOME'] = lttng_home_dir
-    # Only local master spawn LTTNG daemon and start session
-    pids = if mpi_local_master?
-             lm_setup_lttng(backends)
-             lm_babeltrace(backends) if OPTIONS[:archive]
-           end
-    # Spawn sampling daemon before starting user apps
-    l_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
-    sampling_daemon = SamplingDaemon.new(h, l_so)
-
-    syncd.local_barrier('waiting_for_lttng_setup')
-
-    # Launch User Command
-    begin
-      XprofExitCode.update(launch_usr_bin(h, usr_argv), usr_argv.join(' '))
-    rescue Errno::ENOENT
-      teardown_lttng(syncd, sampling_daemon, pids)
-      raise
-    end
-
-    teardown_lttng(syncd, sampling_daemon, pids)
-    return unless mpi_local_master?
-
-    # Preprocess trace
-    unless OPTIONS[:archive]
-      lm_babeltrace(backends)
-      # Babeltrace have moved / transformed lttng_trace_dir_tmp into thapi_trace_dir_tmp
-      LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
-      FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
-    end
-  end
-  # Global master rename the unique trace folder to a more
-  # human friendly name
-  gm_rename_folder if mpi_master?
 end
 
 def gm_processing(folder)
@@ -959,6 +807,160 @@ def gm_processing(folder)
     raise "#{cmdnames} failed" unless status.success?
 
     status
+  end
+end
+
+#             _
+#  /\  | |   |_) ._ _   _  _   _  _ o ._   _
+# /--\ | |   |   | (_) (_ (/_ _> _> | | | (_|
+#                                          _|
+#
+
+def all_env_tracers
+  # Return the list of backends (used by local master to enable lttng events)
+  # and the ENV used by any traced-ranks to preload THAPI tracers
+  need_env = Set[-1, mpi_rank_id].intersect?(OPTIONS[:'traced-ranks'])
+
+  # Early exit to be nice with the FileSystem
+  return [[], {}] unless need_env
+
+  h = Hash.new { |h, k| h[k] = [] }
+  backends = []
+
+  [%w[opencl cl libOpenCL],
+   %w[ze ze libze_loader],
+   %w[cuda cuda libcuda],
+   %w[hip hip libamdhip64],
+   %w[mpi mpi libmpi]].each do |name, bt_name, lib|
+    # Backend requested, skip omp. It will be handled in a custom case bellow
+    next unless OPTIONS[:'backend-names'].include?(bt_name)
+
+    # Find and Save the original lib path
+    libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
+    if (e = env_fetch_first(libenv))
+      LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
+      # TODO: Verify that this guy exist?
+    elsif (libpath = whichlib64("#{lib}.so"))
+      h[libenv] = libpath
+    else
+      LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
+      next
+    end
+    backends << bt_name
+    # Add our "stud" library to the path
+    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
+    # Preload our own lib
+    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{lib}.so")
+    h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
+    h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
+  end
+  # Usr Apps need to be launched with this to support blocking.
+  h['LTTNG_UST_ALLOW_BLOCKING'] = 1
+
+  # Customization
+  if OPTIONS[:'backend-names'].include?('ze')
+    h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:profile]
+    if sampling?
+      # The current only reliable way to use zes api
+      #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
+      h['ZES_ENABLE_SYSMAN'] = 0
+      h['LTTNG_UST_ZE_SAMPLING_ENERGY'] = 1
+      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
+    end
+  end
+
+  if OPTIONS[:'backend-names'].include?('omp')
+    backends << 'omp'
+    h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
+  end
+
+  if OPTIONS[:'backend-names'].include?('cxi')
+    backends << 'cxi'
+    if sampling?
+      h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
+      h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
+    end
+  end
+
+  if OPTIONS[:'backend-names'].include?('itt')
+    backends << 'itt'
+    h['INTEL_LIBITTNOTIFY64'] = File.join(LIBDIR, 'libittnotify.so')
+  end
+
+  # Sample
+  if sampling?
+    LOGGER.debug('Sampling Enabled')
+    h['LTTNG_UST_SAMPLING'] = 1
+    h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
+    h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libHeartbeatSampling.so')
+  end
+
+  backends = [] unless mpi_local_master?
+  LOGGER.info("Backends found: #{backends}")
+  LOGGER.debug("User app env: #{h}")
+
+  [backends, sanitize_env(h).freeze]
+end
+
+# Handles tracing setup, execution, teardown, and optional post-processing.
+def all_trace_and_processing(usr_argv)
+  SyncDaemon.open do |syncd|
+    # All local rank need to share the same LTTNG_HOME
+    ENV['LTTNG_HOME'] = lttng_home_dir
+
+    backends, handlers = all_env_tracers
+    sampling_daemon, archive_pids = lm_setup_local_master(backends, handlers) if mpi_local_master?
+    syncd.local_barrier('waiting_for_lttng_setup')
+
+    begin
+      run_user_command(handlers, usr_argv)
+    rescue Errno::ENOENT
+      syncd.local_barrier('waiting_for_application_ending')
+      lm_teardown_daemon(syncd, sampling_daemon, archive_pids) if mpi_local_master?
+      raise
+    else
+      syncd.local_barrier('waiting_for_application_ending')
+      lm_teardown_daemon(syncd, sampling_daemon, archive_pids) if mpi_local_master?
+    end
+
+    lm_babeltrace(backends) if mpi_local_master? && !OPTIONS[:archive]
+  end
+
+  gm_rename_folder if mpi_master?
+end
+
+def lm_setup_local_master(backends, handlers)
+  raise unless mpi_local_master?
+
+  lm_setup_lttng(backends)
+
+  sampling_daemon = SamplingDaemon.new(handlers) if OPTIONS[:sample]
+  pids = lm_babeltrace(backends) if OPTIONS[:archive]
+
+  [sampling_daemon, pids]
+end
+
+def run_user_command(handlers, usr_argv)
+  exit_code = launch_usr_bin(handlers, usr_argv)
+  XprofExitCode.update(exit_code, usr_argv.join(' '))
+end
+
+def lm_teardown_daemon(_syncd, sampling_daemon, archive_pids)
+  sampling_daemon.finalize if OPTIONS[:sample]
+
+  lm_lttng_teardown_session
+  lm_wait_for_archive_processes(archive_pids) if OPTIONS[:archive]
+
+  lm_lttng_kill_sessiond
+end
+
+def lm_wait_for_archive_processes(pids)
+  raise unless mpi_local_master?
+
+  LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
+  pids.to_a.each do |pid|
+    _, status = Process.wait2(pid)
+    XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
   end
 end
 
@@ -1097,7 +1099,7 @@ if __FILE__ == $PROGRAM_NAME
 
   # Right now, `replay` means no tracing.
   # But we don't have a way of disabling post-processing
-  folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : trace_and_on_node_processing(ARGV)
+  folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : all_trace_and_processing(ARGV)
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
