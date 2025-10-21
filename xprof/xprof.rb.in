@@ -218,13 +218,11 @@ def get_offset
                                       else
                                         # splitting by "." in case the hostfile contains full hostnames with address
                                         # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
-                                        list_hostnames = File.readlines(hostfile).map do |element|
-                                          element.split('.', 2).first
-                                        end
+                                        hostnames = File.readlines(hostfile).map { |el| el.split('.', 2).first }
                                         # find index of hostname_string in list_hostnames
-                                        hostname_id = list_hostnames.find_index(Socket.gethostname)
+                                        hostname_id = hostnames.find_index(Socket.gethostname)
                                         # compute the offset, based on splitting max_int32_value by the number of hosts
-                                        [list_hostnames.length, hostname_id]
+                                        [hostnames.length, hostname_id]
                                       end
     (MAX_INT32_VALUE / number_hostname) * hostname_index
   end
