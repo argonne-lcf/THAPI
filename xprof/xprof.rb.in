@@ -162,14 +162,15 @@ end
 # We need all the env set for `iprof` to run
 def env_fetch_first_mpi(*args, default: nil)
   v = env_fetch_first(*args)
+
   if in_mpi_env?
     return v unless v.nil?
 
-    LOGGER.fatal { 'A MPI JOBID is set but some sone MPI env are missing' }
+    LOGGER.fatal { "A MPI JOBID is set but some sone MPI env #{args} are missing" }
     exit(1)
 
   else
-    LOGGER.warn { "A MPI JOBIB haven't be set, but some args have been set, ignoring them" } unless v.nil?
+    LOGGER.warn { "A MPI JOBIB haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
     default
   end
 end
