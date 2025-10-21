@@ -191,7 +191,7 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 
-# We need to determine if we are in a MPI environement
+# We need to determine if we are in a MPI environment
 # The easiest is to check for a "JOBID" set by the launcher
 def _mpi_env
   env_fetch_first('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid',
