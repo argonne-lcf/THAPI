@@ -14,9 +14,9 @@ teardown_file() {
 }
 
 @test "ITT (C): trace contains __itt_task_begin events" {
-  gcc ${ITT_SRC_DIR}/itt_example.c -O2 -I${ITTAPI_ROOT}/include -L${ITTAPI_ROOT}/lib64 -littnotify -o itt_example >/dev/null 2>&1
+  gcc ${ITT_SRC_DIR}/itt_example.c -O2 -I${ITTAPI_ROOT}/include -L${ITTAPI_ROOT}/lib64 -littnotify -o ${ITT_TMP_DIR}/itt_example 2>&1
   local out_file="${ITT_TMP_DIR}/itt_out_c.txt"
-  $IPROF --backends itt --analysis-output ${out_file} -- ./itt_example
+  $IPROF --backends itt --analysis-output ${out_file} -- ${ITT_TMP_DIR}/itt_example
   grep "Example.Domain:Task 2" ${out_file}
   grep "Example.Domain:Task 1" ${out_file}
 }
@@ -24,7 +24,7 @@ teardown_file() {
 @test "ITT (Python, context manager): trace contains ITT task events" {
   local script=${ITT_SRC_DIR}/itt_example_context-manager.py
   local out_file="${ITT_TMP_DIR}/itt_out_py_context-manager.txt"
-  $IPROF --backends itt --analysis-output ${out_file} -- python3 ${in_file}
+  $IPROF --backends itt --analysis-output ${out_file} -- python3 ${script}
   grep "Example.Domain:Task 2" ${out_file}
   grep "Example.Domain:Task 1" ${out_file}
 }
