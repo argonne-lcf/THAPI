@@ -51,7 +51,7 @@ module LoggerRefinement
 end
 using LoggerRefinement
 
-# Define it as a global varaible, so people including this file can use function safely
+# Define it as a global variable, so people including this file can use function safely
 LOGGER = Logger.new($stdout)
 
 class XprofExitCode
@@ -154,7 +154,7 @@ def in_mpi_env?
 end
 
 # Multiple iprof may run in parallel (for example using ctest),
-#   so use a random hex if not runned on a mpi context
+#   so use a random hex if not ran on a mpi context
 def mpi_job_id
   @mpi_job_id ||= in_mpi_env? ? _mpi_env : SecureRandom.hex
 end
@@ -897,7 +897,7 @@ def trace_and_on_node_processing(usr_argv)
     # Preprocess trace
     unless OPTIONS[:archive]
       lm_babeltrace(backends)
-      # Babeltrace have moved / tranformer lttng_trace_dir_tmp into thapi_trace_dir_tmp
+      # Babeltrace have moved / transformed lttng_trace_dir_tmp into thapi_trace_dir_tmp
       LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
       FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
     end
@@ -905,24 +905,6 @@ def trace_and_on_node_processing(usr_argv)
   # Global master rename the unique trace folder to a more
   # human friendly name
   gm_rename_folder if mpi_master?
-end
-
-def run_and_log_process(cmdnames)
-  LOGGER.info_block('IO dump') do
-    fo = if OPTIONS[:'analysis-output']
-           File.open(OPTIONS[:'analysis-output'], 'w')
-         else
-           $stdout.dup
-         end
-    pipe = IO.popen(cmdnames)
-    pid = pipe.pid
-    fo.puts(pipe.readlines)
-    fo.close
-    _, status = Process.wait2(pid)
-    raise "#{cmdnames} failed" unless status.success?
-
-    status
-  end
 end
 
 def gm_processing(folder)
@@ -957,8 +939,25 @@ def gm_processing(folder)
     cmdnames += ['--', folder]
   end
 
+  # Run Cmndnames.
+  # Redirect stdout if necessary
   LOGGER.debug(cmdnames)
-  run_and_log_process(cmdnames)
+  LOGGER.info_block('Global Master Processing ') do
+    fo = if OPTIONS[:'analysis-output']
+           File.open(OPTIONS[:'analysis-output'], 'w')
+         else
+           $stdout.dup
+         end
+    pipe = IO.popen(cmdnames)
+    pid = pipe.pid
+    fo.puts(pipe.readlines)
+    fo.close
+    _, status = Process.wait2(pid)
+    raise "#{cmdnames} failed" unless status.success?
+
+    status
+  end
+
 end
 
 #
