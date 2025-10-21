@@ -1,11 +1,11 @@
 diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
 --- include/mpi.h	2025-10-21 16:47:19.000000000 +0000
-+++ modified_include/mpi.h	2025-10-21 18:57:29.000000000 +0000
++++ modified_include/mpi.h	2025-10-21 19:14:58.000000000 +0000
 @@ -1,8 +1,10 @@
  #ifndef MPI_H_ABI
  #define MPI_H_ABI
  
-+#ifndef THAPI_NO_INCLUDE 
++#ifndef THAPI_NO_INCLUDE
  #include <stdint.h>
 +#endif
  
@@ -33,7 +33,7 @@ diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
 +int *MPI_F_STATUS_IGNORE  = 0;
 +int *MPI_F_STATUSES_IGNORE  = 0;
 +#endif
-+
++#endif
 +  
  #if defined(__cplusplus)
  }
