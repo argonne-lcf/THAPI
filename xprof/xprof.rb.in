@@ -749,8 +749,9 @@ def lm_babeltrace(backends)
       exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
     end
 
+    # /!\ If babeltrace moved the file the `lttng_trace_dir_tmp` no longer exist
     LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
-    FileUtils.remove_dir(lttng_trace_dir_tmp)
+    FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
 
   end
 end
@@ -920,12 +921,12 @@ def all_trace_and_processing(usr_argv)
     # All local rank need to share the same LTTNG_HOME
     ENV['LTTNG_HOME'] = lttng_home_dir
 
-    backends, handlers = all_env_tracers
-    sampling_daemon, archive_pids = lm_setup_local_master(backends, handlers) if mpi_local_master?
+    backends, env = all_env_tracers
+    sampling_daemon, archive_pids = lm_setup_local_master(backends, env) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
 
     begin
-      run_user_command(handlers, usr_argv)
+      run_user_command(env, usr_argv)
     rescue Errno::ENOENT
       raise
     ensure
@@ -939,24 +940,24 @@ def all_trace_and_processing(usr_argv)
   gm_rename_folder if mpi_master?
 end
 
-def lm_setup_local_master(backends, handlers)
+def lm_setup_local_master(backends, env)
   raise unless mpi_local_master?
 
   lm_setup_lttng(backends)
 
-  sampling_daemon = SamplingDaemon.new(handlers) if OPTIONS[:sample]
+  sampling_daemon = SamplingDaemon.new(env) if sampling?
   pids = lm_babeltrace(backends) if OPTIONS[:archive]
 
   [sampling_daemon, pids]
 end
 
-def run_user_command(handlers, usr_argv)
-  exit_code = launch_usr_bin(handlers, usr_argv)
+def run_user_command(env, usr_argv)
+  exit_code = launch_usr_bin(env, usr_argv)
   XprofExitCode.update(exit_code, usr_argv.join(' '))
 end
 
 def lm_teardown_daemon(_syncd, sampling_daemon, archive_pids)
-  sampling_daemon.finalize if OPTIONS[:sample]
+  sampling_daemon.finalize if sampling?
 
   lm_lttng_teardown_session
   lm_wait_for_archive_processes(archive_pids) if OPTIONS[:archive]
