@@ -713,8 +713,6 @@ module LocalMaster
   private
 
   def lttng_setup(backends)
-    raise unless MPITopo.local_master?
-
     # Spawning the sessiond Daemon will crash
     #   if LTTNG_HOME doesn't exist
     FileUtils.mkdir_p(lttng_home_dir)
@@ -759,15 +757,11 @@ module LocalMaster
   end
 
   def lttng_teardown_session
-    raise unless MPITopo.local_master?
-
     exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
     exec("lttng destroy #{lttng_session_uuid}")
   end
 
   def lttng_kill_sessiond
-    raise unless MPITopo.local_master?
-
     # Need to kill the sessiond Daemon. It's safe because each job has their own
     #
     # In theory, opening the lttng-sessiond.pid file is racy.
@@ -781,8 +775,6 @@ module LocalMaster
   end
 
   def bt_wait_for_archive_processes(pids)
-    raise unless MPITopo.local_master?
-
     LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
     pids.to_a.each do |pid|
       _, status = Process.wait2(pid)
