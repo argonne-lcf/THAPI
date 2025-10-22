@@ -359,6 +359,7 @@ class SpawnDaemon
   RT_SIGNAL_READY = SIGRTMIN
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
+  # This bellong to the global ruby process...
   @@ready = false
   Signal.trap(RT_SIGNAL_READY) { @@ready = true }
 
@@ -487,8 +488,6 @@ class SamplingDaemon < SpawnDaemon
 
   def finalize
     LOGGER.debug { 'Finalize SamplingDaemon' }
-    return unless sampling?
-
     Process.kill(RT_SIGNAL_FINISH, @pid)
     Process.wait(@pid)
   end
