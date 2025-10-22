@@ -7,11 +7,11 @@ if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
   exit(1)
 end
 
-# We Cannot use "@ .. @" for libdir, bindir, and dataroodir
+# We Cannot use "@ .. @" for libdir, bindir, and datarootdir
 # as they will appear as bash "${exec_prefix}/lib"
 # So for now we will rely on them having the default value,
 #  (https://www.gnu.org/software/automake/manual/html_node/Standard-Directory-Variables.html)
-# Will do some gsub + eval if required latter
+# Will do some gsub + eval if required later
 EXEC_PREFIX = '@prefix@'
 BINDIR = File.join(EXEC_PREFIX, 'bin')
 LIBDIR = File.join(EXEC_PREFIX, 'lib')
@@ -42,7 +42,7 @@ require 'date'
 
 module LoggerRefinement
   refine(Logger) do
-    def info_block(message, &block)
+    def with_info_block(message, &block)
       info("#{message}: entry") if message
       r = block.call
       info("#{message}: exit") if message
@@ -189,7 +189,7 @@ module MPITopo
     @active ||= !_mpi_env.nil?
   end
 
-  # Multiple iprof may run in parallel (for example using ctest),
+  # Multiple xprof may run in parallel (for example using ctest),
   #   so use a random hex if not ran on a mpi context
   def job_id
     @job_id ||= active? ? _mpi_env : SecureRandom.hex
@@ -256,7 +256,7 @@ module MPITopo
                     'I_MPI_HYDRA_UUID')
   end
 
-  # We need all the env set for `iprof` to run
+  # We need all the env set for `xprof` to run
   def env_fetch_first_mpi(*args, default: nil)
     v = env_fetch_first(*args)
 
@@ -267,7 +267,7 @@ module MPITopo
       exit(1)
 
     else
-      LOGGER.warn { "A MPI JOBIB haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
+      LOGGER.warn { "A MPI JOBIB hasn't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
       default
     end
   end
@@ -292,7 +292,7 @@ end
 # - lttng_trace_dir_tmp
 #     where the 'raw' lttng trace is saved.
 #     For performance we store in a `tmp` folder.
-#     When "on the fly" analys will be possible, this should not potential OOM
+#     When "on-the-fly" analysis is available, this should mitigate potential OOM
 # - thapi_trace_dir_tmp
 #     Where the "pre-processed / analysed / condensed" trace a saved.
 #     Each nodes need to agree on a root folder to write into.
@@ -357,7 +357,7 @@ end
 #
 
 # Wait until the block return true
-# Use a log distribution seem to be a good tradeoff
+# Use a log distribution seems to be a good tradeoff
 # between being nice to the FileSystem (not to many call)
 # but not waiting to much
 def busy_wait(&block)
@@ -369,15 +369,14 @@ class SpawnDaemon
   RT_SIGNAL_READY = SIGRTMIN
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
-  # This bellong to the global ruby process...
+  # This belongs to the global ruby process! 
+  # This Object is NOT thread-safe, please do not spawn user thread
   @@ready = false
   Signal.trap(RT_SIGNAL_READY) { @@ready = true }
 
   # Any blocking implementation
   # (`IO.pipe`, `throw/catch`+sleep` deadlock for an unknown reason)
   # This is why we spin-lock
-  #
-  # This function/Object is NOT thread-safe, please do not spawn user thread
   def _lazy_exec(_cond, &block)
     block.call
     busy_wait { @@ready }
@@ -385,7 +384,7 @@ class SpawnDaemon
   end
 
   def lazy_exec(message = nil, cond, &block)
-    LOGGER.info_block(message) do
+    LOGGER.with_info_block(message) do
       unless cond
         LOGGER.debug("#{message}: No-op")
         return
@@ -417,7 +416,7 @@ class SyncDaemon < SpawnDaemon
                if File.exist?("#{BINDIR}/sync_daemon_mpi")
                  "#{BINDIR}/sync_daemon_mpi"
                else
-                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fall back to #{BINDIR}/syc_daemon_f'")
+                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fallback to #{BINDIR}/sync_daemon_f")
                  "#{BINDIR}/sync_daemon_fs"
                end
              when 'mpi'
@@ -456,7 +455,7 @@ class SyncDaemon < SpawnDaemon
     end
   end
 
-  # Context manager, ensure that when the block yield is exited
+  # The context manager ensure that when the block yield is exited
   # we always call clean-up the daemon
   def self.open
     yield syncd = new
@@ -516,7 +515,7 @@ end
 def sanitize_env(env)
   # Transform list to bash env
   #   prepending to current env if already existing
-  #   we don't modify `ENV` direclly to avoid by-construction any side-effect
+  #   we don't modify `ENV` directly to avoid by-construction any side-effect
   env.filter_map do |k0, v|
     # Add default mode to k0
     k, mode = ([k0] + ['ignore']).flatten[0..1]
@@ -778,10 +777,10 @@ module LocalMaster
     # In theory, opening the lttng-sessiond.pid file is racy.
     # It's possible that the sessiond spawned and didn't yet write the file
     # In practice, there is a lot of work between the spawn and the write, so it should be ok
-    LOGGER.info_block('Killing sessiond') do
+    LOGGER.with_info_block('Killing sessiond') do
       pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
       Process.kill('SIGKILL', pid)
-      FileUtils.rm_f(lttng_home_dir)
+      FileUtils.rm_rf(lttng_home_dir)
     end
   end
 
@@ -828,7 +827,7 @@ module GlobalMaster
 
   def processing(folder)
     # The master run last step of babeltraces.
-    # We Generate the tally or aggregated the timelines, or generate the timeline in case of replay
+    # We generate the tally or aggregated the timelines, or generate the timeline in case of replay
     raise unless MPITopo.master?
 
     LOGGER.info { "Postprocess #{folder}" }
@@ -861,8 +860,8 @@ module GlobalMaster
       cmdnames += ['--', folder]
     end
 
-    # Run Cmndnames.
-    LOGGER.info_block('Global Master Processing') do
+    # Run cmdnames.
+    LOGGER.with_info_block('Global Master Processing') do
       exec_store_in_file(cmdnames, output_file: OPTIONS[:'analysis-output'])
     end
   end
@@ -890,7 +889,7 @@ def all_env_tracers
    %w[cuda cuda libcuda],
    %w[hip hip libamdhip64],
    %w[mpi mpi libmpi]].each do |name, bt_name, lib|
-    # Backend requested, skip omp. It will be handled in a custom case bellow
+    # Backend requested, skip omp. It will be handled in a custom case below
     next unless OPTIONS[:'backend-names'].include?(bt_name)
 
     # Find and Save the original lib path
@@ -912,7 +911,7 @@ def all_env_tracers
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end
-  # Usr Apps need to be launched with this to support blocking.
+  # Only support blocking.
   h['LTTNG_UST_ALLOW_BLOCKING'] = 1
 
   # Customization
@@ -1046,7 +1045,7 @@ if __FILE__ == $PROGRAM_NAME
             end
   ## Tally Specific Options
   parser.on('-j', '--json', 'Output the tally in JSON format.')
-  parser.on('-e', '--extended', 'Print the tally for for each Hostname / Process / Thread / Device.')
+  parser.on('-e', '--extended', 'Print the tally for each Hostname / Process / Thread / Device.')
   parser.on('-k', '--kernel-verbose',
             'The tally will report kernels execution time with SIMD width and global/local sizes.')
   parser.on('--max-name-size SIZE',
