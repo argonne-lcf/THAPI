@@ -215,7 +215,7 @@ def env_fetch_first_mpi(*args, default: nil)
     exit(1)
 
   else
-    LOGGER.warn { "A MPI JOBIB haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
+    LOGGER.warn { "A MPI JOBID haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
     default
   end
 end
@@ -407,7 +407,7 @@ class SyncDaemon < SpawnDaemon
                if File.exist?("#{BINDIR}/sync_daemon_mpi")
                  "#{BINDIR}/sync_daemon_mpi"
                else
-                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fall back to #{BINDIR}/sync_daemon_f'")
+                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fall back to #{BINDIR}/syc_daemon_f'")
                  "#{BINDIR}/sync_daemon_fs"
                end
              when 'mpi'
