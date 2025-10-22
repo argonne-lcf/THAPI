@@ -319,7 +319,6 @@ def thapi_trace_dir_tmp
 end
 
 def lttng_home_dir
-  p "lttng_home_dir #{MPITopo.job_id}"
   File.join('/', 'tmp', "lttng_home--#{MPITopo.job_id}")
 end
 
