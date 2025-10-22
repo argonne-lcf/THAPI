@@ -5,6 +5,7 @@
    grep MPI_Finalize out.txt
 }
 
+# TODO: Working CI MPICH for Fortran IntelMPI tracer
 # @test "backend_mpi_sanity_check_fortran" {
 #    mpifort ./integration_tests/mpi_helloworld.f90 -o mpi_helloworld_f90
 #    $IPROF --backends mpi --analysis-output out_f90.txt -- ./mpi_helloworld_f90
