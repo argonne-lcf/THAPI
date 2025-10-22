@@ -130,16 +130,20 @@ def exec_store_in_file(cmd, output_file: nil)
   end
 end
 
-#    _
-#   |_ |\ | \  /
-#   |_ | \|  \/
 #
-
-# Cannot use refinement on `ENV`
-#   as I don't know the `type` of ENV
-# /!\ bad caching was changing the value of `mpi_env?, so no more caching
+# |\/| o  _  _
+# |  | | _> (_
+#
 def env_fetch_first(*args, default: nil)
   ENV.values_at(*args).compact.first || default
+end
+
+# Wait until the block return true
+# Use a log distribution seems to be a good tradeoff
+# between being nice to the FileSystem (not to many call)
+# but not waiting to much
+def busy_wait(&block)
+  (2..).take_while { |i| !block.call && sleep(Math.log(i)) }
 end
 
 #
@@ -355,14 +359,6 @@ end
 #   | \  _.  _  ._ _   _  ._
 #   |_/ (_| (/_ | | | (_) | |
 #
-
-# Wait until the block return true
-# Use a log distribution seems to be a good tradeoff
-# between being nice to the FileSystem (not to many call)
-# but not waiting to much
-def busy_wait(&block)
-  (2..).take_while { |i| !block.call && sleep(Math.log(i)) }
-end
 
 class SpawnDaemon
   SIGRTMIN = 34
