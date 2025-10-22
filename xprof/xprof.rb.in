@@ -267,7 +267,7 @@ module MPITopo
     if active?
       return v unless v.nil?
 
-      LOGGER.fatal { "A MPI JOBID is set but some sone MPI env #{args} are missing" }
+      LOGGER.fatal { "A MPI JOBID is set but some MPI env #{args} are missing" }
       exit(1)
 
     else
