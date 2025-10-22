@@ -9,7 +9,7 @@ yaml = nil
 if enable_clang_parser?
   header = [shared_header, itt_header].join("\n")
   require 'open3'
-  yaml, status = Open3.capture2('h2yaml -c -Wc,-xc -Wc,-Imodified_include/ -', stdin_data: header)
+  yaml, status = Open3.capture2('h2yaml --compat-cast-to-yaml -c -Wc,-xc -Wc,-Imodified_include/ -', stdin_data: header)
   exit(1) unless status.success?
 else
   preprocessed_sources_itt_api = $cpp.preprocess(itt_header).gsub(/^#.*?$/, '')

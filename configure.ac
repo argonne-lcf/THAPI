@@ -78,13 +78,17 @@ AS_IF([test "x$user_set_sync_daemon_mpi" != "xyes_no" && test "x$enable_sync_dae
       [AC_MSG_WARN([MPI Sessions are not supported. Falling back to sync-daemon with filesystem])])
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_sync_daemon_mpi" != "xno"])
 
-AC_ARG_ENABLE([clang-parser], AS_HELP_STRING([--enable-clang-parser], [Enable clang parser]))
+AC_ARG_ENABLE([clang-parser],
+  [AS_HELP_STRING([--disable-clang-parser], [Disable clang parser])],
+  [enable_clang_parser="$enableval"],
+  [enable_clang_parser=yes])  
+
 ENABLE_CLANG_PARSER=0
 if test "x$enable_clang_parser" = xyes; then
   AC_CHECK_PROG(H2YAML, [h2yaml], [h2yaml], [no])
   test "x$H2YAML" = "xno" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
 
-  AC_MSG_CHECKING([for h2yaml >= 0.2.0])
+  AC_MSG_CHECKING([for h2yaml >= 0.3.0])
   H2YAML_VERSION=`$H2YAML --version | cut -d' ' -f2`
   AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [0.2.0],
     [AC_MSG_RESULT([yes])],

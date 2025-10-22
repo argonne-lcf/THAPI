@@ -23,7 +23,7 @@ end
 if enable_clang_parser?
   header = [shared_header, '#include <cuda.h>', src].join("\n")
   require 'open3'
-  yaml, status = Open3.capture2('h2yaml -Wc,-xc -Wc,-Imodified_include/ --filter-header "<stdin>" -', stdin_data: header)
+  yaml, status = Open3.capture2('h2yaml --compat-cast-to-yaml -Wc,-xc -Wc,-Imodified_include/ --filter-header "<stdin>" -', stdin_data: header)
   exit(1) unless status.success?
 else
 

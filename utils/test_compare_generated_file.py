@@ -14,25 +14,24 @@ filenames += [
     "backends/mpi/btx_mpi_model.yaml",
     "backends/mpi/mpi_tracepoints.tp",
     "backends/mpi/mpi_type.tp",
+    "backends/mpi/mpi_api.yaml",
 ]
-
-# filenames += ["mpi/mpi_api.yaml"]
 
 filenames += [
     "backends/omp/tracer_ompt.c",
     "backends/omp/omp_library.rb",
     "backends/omp/btx_omp_model.yaml",
     "backends/omp/ompt_tracepoints.tp",
+    "backends/omp/ompt_api.yaml",
 ]
-# filenames += ["omp/ompt_api.yaml"]
 
 filenames += [
     "backends/hip/tracer_hip.c",
     "backends/hip/hip_library.rb",
     "backends/hip/btx_hip_model.yaml",
     "backends/hip/hip_tracepoints.tp",
+    "backends/hip/hip_api.yaml",
 ]
-# filenames += ["hip/hip_api.yaml"]
 
 filenames += [
     "backends/cuda/tracer_cuda.c",
@@ -40,10 +39,10 @@ filenames += [
     "backends/cuda/btx_cuda_model.yaml",
     "backends/cuda/cuda_tracepoints.tp",
     "backends/cuda/cuda_properties.tp",
+    "backends/cuda/cuda_api.yaml",
+    "backends/cuda/tracer_cudart.c",
+    "backends/cuda/cudart_api.yaml",
 ]
-# filenames += ["cuda/cuda_api.yaml"]
-
-# filenames += ["cuda/tracer_cudart.c", "cuda/cudart_api.yaml"]
 
 filenames += [
     "backends/ze/tracer_ze.c",
@@ -52,14 +51,12 @@ filenames += [
     "backends/ze/ze_tracepoints.tp",
     "backends/ze/ze_structs_tracepoints.tp",
     "backends/ze/ze_properties.tp",
+    "backends/ze/ze_api.yaml",
+    "backends/ze/zes_api.yaml",
+    "backends/ze/zel_api.yaml",
+    "backends/ze/zet_api.yaml",
+    "backends/ze/zex_api.yaml",
 ]
-
-# filenames += [
-#    "ze/ze_api.yaml",
-#    "ze/zes_api.yaml",
-#    "ze/zel_api.yaml",
-#    "ze/zex_api.yaml",
-# ]
 
 filenames += [
     "backends/opencl/opencl_profiling.tp",
