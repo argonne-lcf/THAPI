@@ -182,88 +182,94 @@ end
 #   |  | |  _|_   |_ | | \/
 #
 
-# We need to determine if we are in a MPI environment
-# The easiest is to check for a "JOBID" set by the launcher
-def _mpi_env
-  env_fetch_first('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid',
-                  'I_MPI_HYDRA_UUID')
-end
+module MPITopo
+  extend self
 
-def in_mpi_env?
-  @in_mpi_env ||= !_mpi_env.nil?
-end
-
-# Multiple iprof may run in parallel (for example using ctest),
-#   so use a random hex if not ran on a mpi context
-def mpi_job_id
-  @mpi_job_id ||= in_mpi_env? ? _mpi_env : SecureRandom.hex
-end
-
-# We need all the env set for `iprof` to run
-def env_fetch_first_mpi(*args, default: nil)
-  v = env_fetch_first(*args)
-
-  if in_mpi_env?
-    return v unless v.nil?
-
-    LOGGER.fatal { "A MPI JOBID is set but some sone MPI env #{args} are missing" }
-    exit(1)
-
-  else
-    LOGGER.warn { "A MPI JOBIB haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
-    default
+  def active?
+    @active ||= !_mpi_env.nil?
   end
-end
 
-def mpi_rank_id
-  @mpi_rank_id ||= env_fetch_first_mpi('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
-end
+  # Multiple iprof may run in parallel (for example using ctest),
+  #   so use a random hex if not ran on a mpi context
+  def job_id
+    @job_id ||= active? ? _mpi_env : SecureRandom.hex
+  end
 
-def mpi_local_size
-  @mpi_local_size ||= env_fetch_first_mpi('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS',
-                                          default: 1).to_i
-end
+  def rank_id
+    @rank_id ||= env_fetch_first_mpi('PALS_RANKID', 'PMI_RANK', 'OMPI_COMM_WORLD_RANK', default: 0).to_i
+  end
 
-def mpi_local_rank_id
-  @mpi_local_rank_id ||= env_fetch_first_mpi('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID',
-                                             default: 0).to_i
-end
+  def local_size
+    @local_size ||= env_fetch_first_mpi('PALS_LOCAL_SIZE', 'PMI_LOCAL_SIZE', 'OMPI_COMM_WORLD_LOCAL_SIZE', 'MPI_LOCALNRANKS',
+                                        default: 1).to_i
+  end
 
-def mpi_local_master?
-  mpi_local_rank_id.zero?
-end
+  def local_rank_id
+    @local_rank_id ||= env_fetch_first_mpi('PALS_LOCAL_RANKID', 'PMI_LOCAL_RANK', 'OMPI_COMM_WORLD_LOCAL_RANK', 'MPI_LOCALRANKID',
+                                           default: 0).to_i
+  end
 
-def mpi_master?
-  mpi_rank_id.zero?
-end
+  def local_master?
+    local_rank_id.zero?
+  end
 
-# returns an offset for each timeline file
-# this is based on chunking max_int32_value
-# into the number of nodes
-def mpi_rank_offset
-  # if not mpi, just return 0 offset
-  return 0 unless in_mpi_env?
+  def master?
+    rank_id.zero?
+  end
 
-  @mpi_rank_offset ||= begin
-    # if we launch with a scheduler, we can read from a hostfile.
-    hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+  # returns an offset for each timeline file
+  # this is based on chunking max_int32_value
+  # into the number of nodes
+  def rank_offset
+    # if not mpi, just return 0 offset
+    return 0 unless active?
 
-    # if there's a hostfile identified by the envs above,
-    # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
-    # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
-    # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
-    number_hostname, hostname_index = if hostfile.nil?
-                                        [10_000, mpi_rank_id / mpi_local_size]
-                                      else
-                                        # splitting by "." in case the hostfile contains full hostnames with address
-                                        # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
-                                        hostnames = File.readlines(hostfile).map { |el| el.split('.', 2).first }
-                                        # find index of hostname_string in list_hostnames
-                                        hostname_id = hostnames.find_index(Socket.gethostname)
-                                        # compute the offset, based on splitting max_int32_value by the number of hosts
-                                        [hostnames.length, hostname_id]
-                                      end
-    (MAX_INT32_VALUE / number_hostname) * hostname_index
+    @rank_offset ||= begin
+      # if we launch with a scheduler, we can read from a hostfile.
+      hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
+
+      # if there's a hostfile identified by the envs above,
+      # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
+      # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
+      # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
+      number_hostname, hostname_index = if hostfile.nil?
+                                          [10_000, rank_id / local_size]
+                                        else
+                                          # splitting by "." in case the hostfile contains full hostnames with address
+                                          # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
+                                          hostnames = File.readlines(hostfile).map { |el| el.split('.', 2).first }
+                                          # find index of hostname_string in list_hostnames
+                                          hostname_id = hostnames.find_index(Socket.gethostname)
+                                          # compute the offset, based on splitting max_int32_value by the number of hosts
+                                          [hostnames.length, hostname_id]
+                                        end
+      (MAX_INT32_VALUE / number_hostname) * hostname_index
+    end
+  end
+
+  private
+
+  # We need to determine if we are in a MPI environment
+  # The easiest is to check for a "JOBID" set by the launcher
+  def _mpi_env
+    env_fetch_first('THAPI_JOBID', 'PALS_APID', 'PMI_JOBID', 'OMPI_MCA_ess_base_jobid',
+                    'I_MPI_HYDRA_UUID')
+  end
+
+  # We need all the env set for `iprof` to run
+  def env_fetch_first_mpi(*args, default: nil)
+    v = env_fetch_first(*args)
+
+    if active?
+      return v unless v.nil?
+
+      LOGGER.fatal { "A MPI JOBID is set but some sone MPI env #{args} are missing" }
+      exit(1)
+
+    else
+      LOGGER.warn { "A MPI JOBIB haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
+      default
+    end
   end
 end
 
@@ -298,7 +304,7 @@ end
 #     Home of the lttng daemon
 
 def lttng_trace_dir_tmp
-  File.join('/', 'tmp', "thapi--#{mpi_job_id}", Socket.gethostname)
+  File.join('/', 'tmp', "thapi--#{MPITopo.job_id}", Socket.gethostname)
 end
 
 def thapi_trace_home
@@ -308,16 +314,17 @@ end
 def thapi_trace_dir_tmp
   return File.join(OPTIONS[:'trace-output'], Socket.gethostname) if OPTIONS[:'trace-output']
 
-  File.join(thapi_trace_home, "thapi#{trace_bt_prefix[:trace]}--#{mpi_job_id}",
+  File.join(thapi_trace_home, "thapi#{trace_bt_prefix[:trace]}--#{MPITopo.job_id}",
             Socket.gethostname)
 end
 
 def lttng_home_dir
-  File.join('/', 'tmp', "lttng_home--#{mpi_job_id}")
+  p "lttng_home_dir #{MPITopo.job_id}"
+  File.join('/', 'tmp', "lttng_home--#{MPITopo.job_id}")
 end
 
 def thapi_trace_dir_root
-  raise unless mpi_master?
+  raise unless MPITopo.master?
 
   return OPTIONS[:'trace-output'] if OPTIONS[:'trace-output']
 
@@ -400,7 +407,7 @@ class SyncDaemon < SpawnDaemon
   RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
 
   def lazy_exec_mpi(message = nil, &block)
-    lazy_exec(message, in_mpi_env?, &block)
+    lazy_exec(message, MPITopo.active?, &block)
   end
 
   def initialize
@@ -432,7 +439,7 @@ class SyncDaemon < SpawnDaemon
 
   def finalize
     LOGGER.debug { 'Finalize SyncDaemon' }
-    return unless in_mpi_env?
+    return unless MPITopo.active?
 
     Process.kill(RT_SIGNAL_FINISH, @pid)
     Process.wait(@pid)
@@ -471,7 +478,7 @@ end
 #                 |            _|
 
 def sampling?
-  OPTIONS[:sample] && mpi_local_master?
+  OPTIONS[:sample] && MPITopo.local_master?
 end
 
 class SamplingDaemon < SpawnDaemon
@@ -647,7 +654,7 @@ module LocalMaster
   extend self
 
   def setup(backends, env)
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     lttng_setup(backends)
 
@@ -658,7 +665,7 @@ module LocalMaster
   end
 
   def teardown_daemon(sampling_daemon, archive_pids)
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     sampling_daemon.finalize if sampling?
 
@@ -669,7 +676,7 @@ module LocalMaster
   end
 
   def bt_analysis(backends)
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     opts = [trace_bt_prefix[:bt]]
     opts << "--output #{thapi_trace_dir_tmp}"
@@ -687,18 +694,18 @@ module LocalMaster
       LOGGER.debug(cmd)
       pid_dirwatch = spawn(cmd)
 
-      busy_wait {
+      busy_wait do
         # Ensure that dirwatch.py didn't crash, and deadlock
         Process.wait(pid_dirwatch, Process::WNOHANG)
         File.exist?(read_file)
-      }
+      end
       [pid_bt, pid_dirwatch]
     else
       exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
       if OPTIONS.include?(:timeline)
         args = ['timeline', '--backends', OPTIONS[:backends].join(','),
                 '--output-path', File.join(thapi_trace_dir_tmp, "timeline_#{Socket.gethostname}.pftrace"),
-                '--output-offset', mpi_rank_offset]
+                '--output-offset', MPITopo.rank_offset]
         exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
       end
 
@@ -712,7 +719,7 @@ module LocalMaster
   private
 
   def lttng_setup(backends)
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     # Spawning the sessiond Daemon will crash
     #   if LTTNG_HOME doesn't exist
@@ -758,14 +765,14 @@ module LocalMaster
   end
 
   def lttng_teardown_session
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
     exec("lttng destroy #{lttng_session_uuid}")
   end
 
   def lttng_kill_sessiond
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     # Need to kill the sessiond Daemon. It's safe because each job has their own
     #
@@ -780,7 +787,7 @@ module LocalMaster
   end
 
   def bt_wait_for_archive_processes(pids)
-    raise unless mpi_local_master?
+    raise unless MPITopo.local_master?
 
     LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
     pids.to_a.each do |pid|
@@ -799,7 +806,7 @@ module GlobalMaster
   extend self
 
   def rename_folder
-    raise unless mpi_master?
+    raise unless MPITopo.master?
 
     # All process have put their file into `thapi_trace_dir_tmp/hostname`.
     # `thapi_trace_dir_tmp` is using the MPI_JOB_ID
@@ -823,7 +830,7 @@ module GlobalMaster
   def processing(folder)
     # The master run last step of babeltraces.
     # We Generate the tally or aggregated the timelines, or generate the timeline in case of replay
-    raise unless mpi_master?
+    raise unless MPITopo.master?
 
     LOGGER.info { "Postprocess #{folder}" }
 
@@ -871,7 +878,7 @@ end
 def all_env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
-  need_env = Set[-1, mpi_rank_id].intersect?(OPTIONS[:'traced-ranks'])
+  need_env = Set[-1, MPITopo.rank_id].intersect?(OPTIONS[:'traced-ranks'])
 
   # Early exit to be nice with the FileSystem
   return [[], {}] unless need_env
@@ -947,7 +954,7 @@ def all_env_tracers
     h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libHeartbeatSampling.so')
   end
 
-  backends = [] unless mpi_local_master?
+  backends = [] unless MPITopo.local_master?
   LOGGER.info("Backends found: #{backends}")
   LOGGER.debug("User app env: #{h}")
 
@@ -959,22 +966,21 @@ def all_trace_and_processing(usr_argv)
   SyncDaemon.open do |syncd|
     # All local rank need to share the same LTTNG_HOME
     ENV['LTTNG_HOME'] = lttng_home_dir
-
     backends, env = all_env_tracers
-    sampling_daemon, archive_pids = LocalMaster.setup(backends, env) if mpi_local_master?
+    sampling_daemon, archive_pids = LocalMaster.setup(backends, env) if MPITopo.local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
 
     begin
       launch_usr_bin(env, usr_argv)
     ensure
       syncd.local_barrier('waiting_for_application_ending')
-      LocalMaster.teardown_daemon(sampling_daemon, archive_pids) if mpi_local_master?
+      LocalMaster.teardown_daemon(sampling_daemon, archive_pids) if MPITopo.local_master?
     end
 
-    LocalMaster.bt_analysis(backends) if mpi_local_master? && !OPTIONS[:archive]
+    LocalMaster.bt_analysis(backends) if MPITopo.local_master? && !OPTIONS[:archive]
   end
 
-  GlobalMaster.rename_folder if mpi_master?
+  GlobalMaster.rename_folder if MPITopo.master?
 end
 
 #
@@ -997,7 +1003,7 @@ if __FILE__ == $PROGRAM_NAME
             'Default: `$THAPI_HOME/thapi-traces/thapi--[trace-type][date]`',
             '(`$THAPI_HOME` defaults to `$HOME`,',
             ' and `date` is formatted using ISO 8601 convention).') do |p|
-    raise(OptionParser::ParseError, "#{p} already exists") if mpi_master? && File.exist?(p)
+    raise(OptionParser::ParseError, "#{p} already exists") if MPITopo.master? && File.exist?(p)
 
     p
   end
@@ -1114,7 +1120,7 @@ if __FILE__ == $PROGRAM_NAME
   # But we don't have a way of disabling post-processing
   folder = OPTIONS.include?(:replay) ? OPTIONS[:replay] || last_trace_saved : all_trace_and_processing(ARGV)
 
-  if mpi_master?
+  if MPITopo.master?
     warn("THAPI: Trace location: #{folder}")
     XprofExitCode.update(GlobalMaster.processing(folder), 'babeltrace_thapi') if OPTIONS[:analysis]
   end
