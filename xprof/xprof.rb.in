@@ -407,7 +407,7 @@ class SyncDaemon < SpawnDaemon
                if File.exist?("#{BINDIR}/sync_daemon_mpi")
                  "#{BINDIR}/sync_daemon_mpi"
                else
-                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fall back to #{BINDIR}/syc_daemon_f'")
+                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fall back to #{BINDIR}/sync_daemon_f'")
                  "#{BINDIR}/sync_daemon_fs"
                end
              when 'mpi'
@@ -488,6 +488,8 @@ class SamplingDaemon < SpawnDaemon
 
   def finalize
     LOGGER.debug { 'Finalize SamplingDaemon' }
+    return unless sampling?
+
     Process.kill(RT_SIGNAL_FINISH, @pid)
     Process.wait(@pid)
   end
