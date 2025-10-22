@@ -59,8 +59,8 @@ using LoggerRefinement
 # Define it as a global variable, so people including this file can use function safely
 LOGGER = Logger.new($stdout)
 
-class XprofExitCode
-  @@exit_code = 0
+module XprofExitCode
+  @exit_code = 0
   def self.update(status, name)
     # Keep only the first error
     exit_code = if status.signaled?
@@ -72,11 +72,11 @@ class XprofExitCode
                   LOGGER.fatal { "#{name} exited with an unknown error" }
                   exit(1)
                 end
-    @@exit_code = exit_code if @@exit_code == 0
+    @exit_code = exit_code if @exit_code == 0
   end
 
   def self.get
-    @@exit_code
+    @exit_code
   end
 end
 
