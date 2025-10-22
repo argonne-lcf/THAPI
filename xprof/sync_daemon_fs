@@ -2,14 +2,14 @@
 
 # Cannot use require_relative as iprof is not a rb file
 # Load mpi_* and RT_SIGNAL_*
-load(File.join(__dir__,'iprof'))
+load(File.join(__dir__, 'iprof'))
 
 require 'open3'
 require 'fileutils'
 require 'securerandom'
 require 'etc'
 
-FOLDER_JOBID = File.join('.thapi_lock', mpi_job_id)
+FOLDER_JOBID = File.join('.thapi_lock', MPITopo.job_id)
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
 SHARED_GLOBAL_FILESYSTEM = File.join(env_fetch_first('THAPI_SHARED_PATH', 'HOME'), FOLDER_JOBID)
 
@@ -21,15 +21,15 @@ def count_file(folder)
 end
 
 def init_global_barrier
-  return unless mpi_local_master?
+  return unless MPITopo.local_master?
 
-  f = File.join(SHARED_GLOBAL_FILESYSTEM, mpi_rank_id.to_s)
+  f = File.join(SHARED_GLOBAL_FILESYSTEM, MPITopo.rank_id.to_s)
   FileUtils.mkdir_p(f)
   f
 end
 
 def global_barrier(f)
-  return unless mpi_local_master?
+  return unless MPITopo.local_master?
 
   # Block until all the process have removed their sentinel,
   #    then master will clean the folder to be nice to the user
@@ -41,13 +41,13 @@ def global_barrier(f)
   #   hence we test for > 0 and not `!= 0`
   FileUtils.rm_rf(f)
   busy_wait { count_file(SHARED_GLOBAL_FILESYSTEM) <= 0 }
-  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if mpi_master?
+  FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if MPITopo.master?
 end
 
 def local_barier(name)
   folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
-  FileUtils.mkdir_p(File.join(folder, mpi_local_rank_id.to_s))
-  busy_wait { count_file(folder) == mpi_local_size }
+  FileUtils.mkdir_p(File.join(folder, MPITopo.local_rank_id.to_s))
+  busy_wait { count_file(folder) == MPITopo.local_size }
 end
 
 global_handle = nil
