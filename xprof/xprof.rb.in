@@ -116,14 +116,9 @@ def exec_store_in_file(cmd, output_file: nil)
   LOGGER.debug(cmd)
 
   IO.popen(cmd) do |pipe|
-    fo = if output_file
-           File.open(output_file, 'w')
-         else
-           $stdout.dup
-         end
-
+    fo = output_file ? File.open(output_file, 'w') : $stdout.dup
     begin
-      fo.puts(pipe.readlines)
+      pipe.each_line { |line| fo.write(line) } # streaming
     ensure
       fo.close if output_file
     end
@@ -215,7 +210,7 @@ def env_fetch_first_mpi(*args, default: nil)
     exit(1)
 
   else
-    LOGGER.warn { "A MPI JOBID haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
+    LOGGER.warn { "A MPI JOBIB haven't be set, but some args #{args} have been set, ignoring them" } unless v.nil?
     default
   end
 end
