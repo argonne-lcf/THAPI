@@ -892,7 +892,7 @@ def all_env_tracers
       next
     end
     backends << bt_name
-    # Add our "stud" library to the path
+    # Add our "stub" library to the path
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
     # Preload our own lib
     h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{lib}.so")
