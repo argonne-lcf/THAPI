@@ -75,6 +75,7 @@ end
 
 puts <<~EOF
   #include <stdint.h>
+  #define MPICH_FORTRAN_SYMBOLS_NONABI
   #include <mpi.h>
   #include "mpi_tracepoints.h"
   #include "mpi_type.h"
