@@ -687,11 +687,11 @@ module LocalMaster
       LOGGER.debug(cmd)
       pid_dirwatch = spawn(cmd)
 
-      until File.exist?(read_file)
+      busy_wait {
         # Ensure that dirwatch.py didn't crash, and deadlock
         Process.wait(pid_dirwatch, Process::WNOHANG)
-        sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY)
-      end
+        File.exist?(read_file)
+      }
       [pid_bt, pid_dirwatch]
     else
       exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
