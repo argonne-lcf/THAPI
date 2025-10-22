@@ -1,11 +1,7 @@
 #!/usr/bin/env ruby
 
-# Some naming convention
-# lm == function executed only local_master
-# gm == function executed only global_master
-
 # 2.7 for Lazy in Enumerable. 2.7 was released 25 Dec 2019
-THAPI_RUBY_MINIMAL_VERSION = '2.6.0'
+THAPI_RUBY_MINIMAL_VERSION = '2.7.0'
 if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
   warn("Your ruby version #{RUBY_VERSION} is too old. #{THAPI_RUBY_MINIMAL_VERSION} or newer required")
   exit(1)
@@ -113,7 +109,7 @@ def launch_usr_bin(env, cmd)
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
   end
-  $?
+  XprofExitCode.update($?, cmd.join(' '))
 end
 
 def exec_store_in_file(cmd, output_file: nil)
@@ -339,8 +335,7 @@ def thapi_trace_dir_root
     # Use ISO8601 extended format
     date = DateTime.now.iso8601
 
-    # Don't use endless range, as it trigger "syntax error" for ruby 2.5...
-    (0..Float::INFINITY).each do |i|
+    (0..).each do |i|
       prefix = i == 0 ? '' : "_#{i}"
       thapi_uuid = date + prefix
       path = File.join(thapi_trace_home, "thapi#{trace_bt_prefix[:trace]}--#{thapi_uuid}")
@@ -643,116 +638,150 @@ def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: tru
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
 
-def lm_setup_lttng(backends)
-  raise unless mpi_local_master?
+module LocalMaster
+  extend self
 
-  # Spawning the sessiond Daemon will crash
-  #   if LTTNG_HOME doesn't exist
-  FileUtils.mkdir_p(lttng_home_dir)
-  FileUtils.mkdir_p(lttng_trace_dir_tmp)
-  exec('lttng-sessiond --daemonize')
-  exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
+  def setup(backends, env)
+    raise unless mpi_local_master?
 
-  File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
+    lttng_setup(backends)
 
-  channel_name = 'blocking-channel'
-  exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
-  exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
+    sampling_daemon = SamplingDaemon.new(env) if sampling?
+    pids = babeltrace(backends) if OPTIONS[:archive]
 
-  # Enable backend events
-  (backends + ['metadata']).each do |name|
-    send("enable_events_#{name}", channel_name,
-         tracing_mode: OPTIONS[:'tracing-mode'],
-         profiling: OPTIONS[:profile])
+    [sampling_daemon, pids]
   end
 
-  if sampling?
-    channel_name = 'non-blocking-channel'
-    exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} #{channel_name}")
+  def teardown_daemon(sampling_daemon, archive_pids)
+    raise unless mpi_local_master?
+
+    sampling_daemon.finalize if sampling?
+
+    lttng_teardown_session
+    bt_wait_for_archive_processes(archive_pids) if OPTIONS[:archive]
+
+    lttng_kill_sessiond
+  end
+
+  def bt_analysis(backends)
+    raise unless mpi_local_master?
+
+    opts = [trace_bt_prefix[:bt]]
+    opts << "--output #{thapi_trace_dir_tmp}"
+    opts << "--backends #{backends.join(',')}"
+    opts << '--no-discard-metadata' if trace_bt_prefix[:bt] == 'to_aggreg' && OPTIONS.include?(:'kernel-verbose')
+
+    if OPTIONS[:archive]
+      read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
+      opts << "--archive #{lttng_session_uuid} --archive-session-found-file-path=#{read_file}"
+      cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}"
+      LOGGER.debug(cmd)
+      pid_bt = spawn(cmd)
+
+      cmd = "dirwatch.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
+      LOGGER.debug(cmd)
+      pid_dirwatch = spawn(cmd)
+
+      until File.exist?(read_file)
+        # Ensure that dirwatch.py didn't crash, and deadlock
+        Process.wait(pid_dirwatch, Process::WNOHANG)
+        sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY)
+      end
+      [pid_bt, pid_dirwatch]
+    else
+      exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
+      if OPTIONS.include?(:timeline)
+        args = ['timeline', '--backends', OPTIONS[:backends].join(','),
+                '--output-path', File.join(thapi_trace_dir_tmp, "timeline_#{Socket.gethostname}.pftrace"),
+                '--output-offset', mpi_rank_offset]
+        exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
+      end
+
+      # /!\ If babeltrace moved the file the `lttng_trace_dir_tmp` no longer exist
+      LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
+      FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
+
+    end
+  end
+
+  private
+
+  def lttng_setup(backends)
+    raise unless mpi_local_master?
+
+    # Spawning the sessiond Daemon will crash
+    #   if LTTNG_HOME doesn't exist
+    FileUtils.mkdir_p(lttng_home_dir)
+    FileUtils.mkdir_p(lttng_trace_dir_tmp)
+    exec('lttng-sessiond --daemonize')
+    exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
+
+    File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
+
+    channel_name = 'blocking-channel'
+    exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} --blocking-timeout=inf #{channel_name}")
     exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
-    exec("lttng enable-event   --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_sampling:*")
 
-    if OPTIONS[:'backend-names'].include?('ze')
-      exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_ze_sampling:*")
+    # Enable backend events
+    (backends + ['metadata']).each do |name|
+      send("enable_events_#{name}", channel_name,
+           tracing_mode: OPTIONS[:'tracing-mode'],
+           profiling: OPTIONS[:profile])
     end
 
-    if OPTIONS[:'backend-names'].include?('cxi')
-      exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_cxi_sampling:*")
-    end
+    if sampling?
+      channel_name = 'non-blocking-channel'
+      exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} #{channel_name}")
+      exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
+      exec("lttng enable-event   --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_sampling:*")
 
+      if OPTIONS[:'backend-names'].include?('ze')
+        exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_ze_sampling:*")
+      end
+
+      if OPTIONS[:'backend-names'].include?('cxi')
+        exec("lttng enable-event  --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} lttng_ust_cxi_sampling:*")
+      end
+
+    end
+    # This is required to force the creation of an trace,
+    # so that dirwatch doesn't complain about empty trace
+    if OPTIONS[:archive]
+      exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=#{LTTNG_ARCHIVE_SIZE} --timer=#{LTTNG_ARCHIVE_TIMER}")
+    end
+    exec("lttng start #{lttng_session_uuid}")
   end
-  # This is required to force the creation of an trace,
-  # so that dirwatch doesn't complain about empty trace
-  if OPTIONS[:archive]
-    exec("lttng enable-rotation --session=#{lttng_session_uuid} --size=#{LTTNG_ARCHIVE_SIZE} --timer=#{LTTNG_ARCHIVE_TIMER}")
+
+  def lttng_teardown_session
+    raise unless mpi_local_master?
+
+    exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
+    exec("lttng destroy #{lttng_session_uuid}")
   end
-  exec("lttng start #{lttng_session_uuid}")
-end
 
-def lm_lttng_teardown_session
-  raise unless mpi_local_master?
+  def lttng_kill_sessiond
+    raise unless mpi_local_master?
 
-  exec("lttng rotate #{lttng_session_uuid}") if OPTIONS[:archive]
-  exec("lttng destroy #{lttng_session_uuid}")
-end
-
-def lm_lttng_kill_sessiond
-  raise unless mpi_local_master?
-
-  # Need to kill the sessiond Daemon. It's safe because each job has their own
-  #
-  # In theory, opening the lttng-sessiond.pid file is racy.
-  # It's possible that the sessiond spawned and didn't yet write the file
-  # In practice, there is a lot of work between the spawn and the write, so it should be ok
-  LOGGER.info_block('Killing sessiond') do
-    pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
-    Process.kill('SIGKILL', pid)
-    FileUtils.rm_f(lttng_home_dir)
+    # Need to kill the sessiond Daemon. It's safe because each job has their own
+    #
+    # In theory, opening the lttng-sessiond.pid file is racy.
+    # It's possible that the sessiond spawned and didn't yet write the file
+    # In practice, there is a lot of work between the spawn and the write, so it should be ok
+    LOGGER.info_block('Killing sessiond') do
+      pid = File.read(File.join(lttng_home_dir, '.lttng', 'lttng-sessiond.pid')).to_i
+      Process.kill('SIGKILL', pid)
+      FileUtils.rm_f(lttng_home_dir)
+    end
   end
-end
 
-#    _                                   _
-#   |_)  _. |_   _  | _|_ ._ _.  _  _     )
-#   |_) (_| |_) (/_ |  |_ | (_| (_ (/_   /_
-#
-def lm_babeltrace(backends)
-  raise unless mpi_local_master?
+  def bt_wait_for_archive_processes(pids)
+    raise unless mpi_local_master?
 
-  opts = [trace_bt_prefix[:bt]]
-  opts << "--output #{thapi_trace_dir_tmp}"
-  opts << "--backends #{backends.join(',')}"
-  opts << '--no-discard-metadata' if trace_bt_prefix[:bt] == 'to_aggreg' && OPTIONS.include?(:'kernel-verbose')
-
-  if OPTIONS[:archive]
-    read_file = File.join(lttng_trace_dir_tmp, 'bt_archive_ready')
-    opts << "--archive #{lttng_session_uuid} --archive-session-found-file-path=#{read_file}"
-    cmd = "#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}"
-    LOGGER.debug(cmd)
-    pid_bt = spawn(cmd)
-
-    cmd = "dirwatch.py --log-level=CRITICAL #{lttng_session_uuid} #{LTTNG_DIRWATCH_SIZE}"
-    LOGGER.debug(cmd)
-    pid_dirwatch = spawn(cmd)
-
-    until File.exist?(read_file)
-      # Ensure that dirwatch.py didn't crash, and deadlock
-      Process.wait(pid_dirwatch, Process::WNOHANG)
-      sleep(LTTNG_DIRWATCH_LOCK_RETRY_DELAY)
+    LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
+    pids.to_a.each do |pid|
+      _, status = Process.wait2(pid)
+      XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
     end
-    [pid_bt, pid_dirwatch]
-  else
-    exec("#{BINDIR}/babeltrace_thapi #{opts.join(' ')} -- #{lttng_trace_dir_tmp}")
-    if OPTIONS.include?(:timeline)
-      args = ['timeline', '--backends', OPTIONS[:backends].join(','),
-              '--output-path', File.join(thapi_trace_dir_tmp, "timeline_#{Socket.gethostname}.pftrace"),
-              '--output-offset', mpi_rank_offset]
-      exec("#{BINDIR}/babeltrace_thapi #{args.join(' ')}  #{thapi_trace_dir_tmp}")
-    end
-
-    # /!\ If babeltrace moved the file the `lttng_trace_dir_tmp` no longer exist
-    LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
-    FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
-
   end
 end
 
@@ -761,65 +790,70 @@ end
 # \_| |  |   |   | (_) (_ (/_ _> _> | | | (_|
 #                                          _|
 #
-def gm_rename_folder
-  raise unless mpi_master?
+module GlobalMaster
+  extend self
 
-  # All process have put their file into `thapi_trace_dir_tmp/hostname`.
-  # `thapi_trace_dir_tmp` is using the MPI_JOB_ID
-  # Replace it with a better name, and update the root metadata.
+  def rename_folder
+    raise unless mpi_master?
 
-  thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-  # Because of `traced-rank`, `mpi_master` may not have any trace available,
-  # so find the first hostname who have a metadata
-  FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
-               File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
+    # All process have put their file into `thapi_trace_dir_tmp/hostname`.
+    # `thapi_trace_dir_tmp` is using the MPI_JOB_ID
+    # Replace it with a better name, and update the root metadata.
 
-  # NOTE: I don't understand `mv`
-  #       File.mv(a, b) will put a into b (aka a/b)
-  #       FileUtils.rename(a,b) will move a as b, but may
-  #         raise Invalid cross-device error.
-  #       So we use `exec(mv -T a b)`, this have the added benefice of logging
-  exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
-  thapi_trace_dir_root
-end
+    thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
+    # Because of `traced-rank`, `mpi_master` may not have any trace available,
+    # so find the first hostname who have a metadata
+    FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
+                 File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
-def gm_processing(folder)
-  # The master run last step of babeltraces.
-  # We Generate the tally or aggregated the timelines, or generate the timeline in case of replay
-  raise unless mpi_master?
-
-  LOGGER.info { "Postprocess #{folder}" }
-
-  babeltrace_exe = "#{BINDIR}/babeltrace_thapi"
-  backends = OPTIONS[:backends].join(',')
-
-  if OPTIONS.include?(:trace)
-    cmdnames = [babeltrace_exe, 'trace', '--restrict', '--context', '--backends', backends, '--', folder]
-  elsif OPTIONS.include?(:timeline)
-    # check if there are any timelines. we check in advance
-    # since if we don't have nay saved ones we should fall
-    # back to generating the timeline from the interval
-    files = Dir[folder + '/*/timeline_*.pftrace']
-    cmdnames = if files.empty?
-                 [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--', folder]
-               else
-                 # String because `>` is not a real command, and cannot be passed to popen
-                 "cat #{files.join(' ')} > #{OPTIONS[:timeline]}"
-               end
-  else
-    cmdnames = [babeltrace_exe, 'tally']
-    cmdnames << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
-    cmdnames << '--display_metadata' if OPTIONS.include?(:metadata)
-    cmdnames << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
-    cmdnames << '--display_mode' << 'json' if OPTIONS.include?(:json)
-    cmdnames << '--backends' << backends
-    cmdnames << '--display' << 'extended' if OPTIONS.include?(:extended)
-    cmdnames += ['--', folder]
+    # NOTE: I don't understand `mv`
+    #       File.mv(a, b) will put a into b (aka a/b)
+    #       FileUtils.rename(a,b) will move a as b, but may
+    #         raise Invalid cross-device error.
+    #       So we use `exec(mv -T a b)`, this have the added benefice of logging
+    exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
+    thapi_trace_dir_root
   end
 
-  # Run Cmndnames.
-  LOGGER.info_block('Global Master Processing') do
-    exec_store_in_file(cmdnames, output_file: OPTIONS[:'analysis-output'])
+  def processing(folder)
+    # The master run last step of babeltraces.
+    # We Generate the tally or aggregated the timelines, or generate the timeline in case of replay
+    raise unless mpi_master?
+
+    LOGGER.info { "Postprocess #{folder}" }
+
+    babeltrace_exe = "#{BINDIR}/babeltrace_thapi"
+    backends = OPTIONS[:backends].join(',')
+
+    if OPTIONS.include?(:trace)
+      cmdnames = [babeltrace_exe, 'trace', '--restrict', '--context', '--backends', backends, '--', folder]
+    elsif OPTIONS.include?(:timeline)
+      # check if there are any timelines. we check in advance
+      # since if we don't have nay saved ones we should fall
+      # back to generating the timeline from the interval
+      files = Dir[folder + '/*/timeline_*.pftrace']
+      cmdnames = if files.empty?
+                   [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--',
+                    folder]
+                 else
+                   # String because `>` is not a real command, and cannot be passed to popen
+                   "cat #{files.join(' ')} > #{OPTIONS[:timeline]}"
+                 end
+    else
+      cmdnames = [babeltrace_exe, 'tally']
+      cmdnames << '--display_kernel_verbose' if OPTIONS.include?(:'kernel-verbose')
+      cmdnames << '--display_metadata' if OPTIONS.include?(:metadata)
+      cmdnames << '--display_name_max_size' << OPTIONS[:'max-name-size'].to_s
+      cmdnames << '--display_mode' << 'json' if OPTIONS.include?(:json)
+      cmdnames << '--backends' << backends
+      cmdnames << '--display' << 'extended' if OPTIONS.include?(:extended)
+      cmdnames += ['--', folder]
+    end
+
+    # Run Cmndnames.
+    LOGGER.info_block('Global Master Processing') do
+      exec_store_in_file(cmdnames, output_file: OPTIONS[:'analysis-output'])
+    end
   end
 end
 
@@ -922,55 +956,20 @@ def all_trace_and_processing(usr_argv)
     ENV['LTTNG_HOME'] = lttng_home_dir
 
     backends, env = all_env_tracers
-    sampling_daemon, archive_pids = lm_setup_local_master(backends, env) if mpi_local_master?
+    sampling_daemon, archive_pids = LocalMaster.setup(backends, env) if mpi_local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
 
     begin
-      run_user_command(env, usr_argv)
+      launch_usr_bin(env, usr_argv)
     ensure
       syncd.local_barrier('waiting_for_application_ending')
-      lm_teardown_daemon(syncd, sampling_daemon, archive_pids) if mpi_local_master?
+      LocalMaster.teardown_daemon(sampling_daemon, archive_pids) if mpi_local_master?
     end
 
-    lm_babeltrace(backends) if mpi_local_master? && !OPTIONS[:archive]
+    LocalMaster.bt_analysis(backends) if mpi_local_master? && !OPTIONS[:archive]
   end
 
-  gm_rename_folder if mpi_master?
-end
-
-def lm_setup_local_master(backends, env)
-  raise unless mpi_local_master?
-
-  lm_setup_lttng(backends)
-
-  sampling_daemon = SamplingDaemon.new(env) if sampling?
-  pids = lm_babeltrace(backends) if OPTIONS[:archive]
-
-  [sampling_daemon, pids]
-end
-
-def run_user_command(env, usr_argv)
-  exit_code = launch_usr_bin(env, usr_argv)
-  XprofExitCode.update(exit_code, usr_argv.join(' '))
-end
-
-def lm_teardown_daemon(_syncd, sampling_daemon, archive_pids)
-  sampling_daemon.finalize if sampling?
-
-  lm_lttng_teardown_session
-  lm_wait_for_archive_processes(archive_pids) if OPTIONS[:archive]
-
-  lm_lttng_kill_sessiond
-end
-
-def lm_wait_for_archive_processes(pids)
-  raise unless mpi_local_master?
-
-  LOGGER.debug("Waiting for babeltrace_thapi and dirwatch (#{pids}) to finish")
-  pids.to_a.each do |pid|
-    _, status = Process.wait2(pid)
-    XprofExitCode.update(status, "babeltrace_thapi or dirwatch #{pid}")
-  end
+  GlobalMaster.rename_folder if mpi_master?
 end
 
 #
@@ -1112,7 +1111,7 @@ if __FILE__ == $PROGRAM_NAME
 
   if mpi_master?
     warn("THAPI: Trace location: #{folder}")
-    XprofExitCode.update(gm_processing(folder), 'babeltrace_thapi') if OPTIONS[:analysis]
+    XprofExitCode.update(GlobalMaster.processing(folder), 'babeltrace_thapi') if OPTIONS[:analysis]
   end
 
   exit(XprofExitCode.get)
