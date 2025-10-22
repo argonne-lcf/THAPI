@@ -927,8 +927,6 @@ def all_trace_and_processing(usr_argv)
 
     begin
       run_user_command(env, usr_argv)
-    rescue Errno::ENOENT
-      raise
     ensure
       syncd.local_barrier('waiting_for_application_ending')
       lm_teardown_daemon(syncd, sampling_daemon, archive_pids) if mpi_local_master?
