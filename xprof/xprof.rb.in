@@ -416,7 +416,7 @@ class SyncDaemon < SpawnDaemon
              when 'fs'
                "#{BINDIR}/sync_daemon_fs"
              else
-               raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) if not supported. Allowed: [mpi,fs] ")
+               raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) is not supported. Allowed: [mpi,fs] ")
              end
 
     LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
