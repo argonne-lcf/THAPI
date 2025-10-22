@@ -658,7 +658,7 @@ module LocalMaster
     lttng_setup(backends)
 
     sampling_daemon = SamplingDaemon.new(env) if sampling?
-    pids = babeltrace(backends) if OPTIONS[:archive]
+    pids = bt_analysis(backends) if OPTIONS[:archive]
 
     [sampling_daemon, pids]
   end
