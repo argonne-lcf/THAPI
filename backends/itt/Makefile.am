@@ -197,7 +197,11 @@ libITTInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # List test inputs (each .thapi_text_pretty must have matching .bt_text_pretty golden with same basename in backends/itt/tests/)
 TRACE_COMMON = \
-       tests/interval_profiling_normal.thapi_text_pretty
+       tests/interval_profiling_normal.thapi_text_pretty \
+       tests/interval_profiling_task-AAB.thapi_text_pretty \
+       tests/interval_profiling_task-AABB.thapi_text_pretty \
+       tests/interval_profiling_task-ABBA.thapi_text_pretty \
+       tests/interval_profiling_task-BAA.thapi_text_pretty \
 
 # Generate "SOURCE test" component from the ITT BT model
 BTX_ITT_GENERATED_SOURCE_TEST = \
