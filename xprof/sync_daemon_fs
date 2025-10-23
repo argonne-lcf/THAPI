@@ -40,14 +40,14 @@ def global_barrier(f)
   # Fortunately `count_file` will return -2 for a non exciting folder
   #   hence we test for > 0 and not `!= 0`
   FileUtils.rm_rf(f)
-  busy_wait { count_file(SHARED_GLOBAL_FILESYSTEM) <= 0 }
+  busy_wait_until { count_file(SHARED_GLOBAL_FILESYSTEM) <= 0 }
   FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if MPITopo.master?
 end
 
 def local_barrier(name)
   folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
   FileUtils.mkdir_p(File.join(folder, MPITopo.local_rank_id.to_s))
-  busy_wait { count_file(folder) == MPITopo.local_size }
+  busy_wait_until { count_file(folder) == MPITopo.local_size }
 end
 
 global_handle = nil
@@ -73,7 +73,7 @@ Signal.trap(SyncDaemon::RT_SIGNAL_FINISH) do
   # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
   #
   # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
-  #   is to make all ranks busy_wait in the `global_barrier`.
+  #   is to make all ranks busy_wait_until in the `global_barrier`.
   # This will ensure that every-one exited the `local_barrier`.
   #   but given the poor performance of our FS, we will avoid that for now...
   exit

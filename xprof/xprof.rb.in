@@ -142,7 +142,7 @@ end
 # Use a log distribution seems to be a good tradeoff
 # between being nice to the FileSystem (not to many call)
 # but not waiting to much
-def busy_wait(&block)
+def busy_wait_until(&block)
   (2..).take_while { |i| !block.call && sleep(Math.log(i)) }
 end
 
@@ -375,7 +375,7 @@ class SpawnDaemon
   # This is why we spin-lock
   def _lazy_exec(_cond, &block)
     block.call
-    busy_wait { @@ready }
+    busy_wait_until { @@ready }
     @@ready = false
   end
 
@@ -688,7 +688,7 @@ module LocalMaster
       LOGGER.debug(cmd)
       pid_dirwatch = spawn(cmd)
 
-      busy_wait do
+      busy_wait_until do
         # Ensure that dirwatch.py didn't crash, and deadlock
         Process.wait(pid_dirwatch, Process::WNOHANG)
         File.exist?(read_file)
