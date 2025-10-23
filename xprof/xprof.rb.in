@@ -805,10 +805,10 @@ module GlobalMaster
                  File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))
 
     # NOTE: I don't understand `mv`
-    #       File.mv(a, b) will put a into b (aka a/b)
+    #       FileUtils.mv(a, b) will put a into b (aka b/a)
     #       FileUtils.rename(a,b) will move a as b, but may
     #         raise Invalid cross-device error.
-    #       So we use `exec(mv -T a b)`, this have the added benefice of logging
+    #       So we use `exec(mv -T a b)`, this have the added benefits of logging
     exec("mv -T #{thapi_trace_dir_tmp_root} #{thapi_trace_dir_root}") unless OPTIONS[:'trace-output']
     thapi_trace_dir_root
   end
