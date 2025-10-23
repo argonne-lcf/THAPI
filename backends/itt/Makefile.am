@@ -201,7 +201,7 @@ TRACE_COMMON = \
        tests/interval_profiling_task-AAB.thapi_text_pretty \
        tests/interval_profiling_task-AABB.thapi_text_pretty \
        tests/interval_profiling_task-ABBA.thapi_text_pretty \
-       tests/interval_profiling_task-BAA.thapi_text_pretty \
+       tests/interval_profiling_task-BAA.thapi_text_pretty
 
 # Generate "SOURCE test" component from the ITT BT model
 BTX_ITT_GENERATED_SOURCE_TEST = \
