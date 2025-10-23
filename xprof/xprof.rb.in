@@ -799,7 +799,7 @@ module GlobalMaster
     # Replace it with a better name, and update the root metadata.
 
     thapi_trace_dir_tmp_root = File.dirname(thapi_trace_dir_tmp)
-    # Because of `traced-rank`, `mpi_master` may not have any trace available,
+    # Because of `traced-rank`, `MPITopo.master` may not have any trace available,
     # so find the first hostname who have a metadata
     FileUtils.cp(Dir.glob("#{thapi_trace_dir_tmp_root}/*/thapi_metadata.yaml").first,
                  File.join(thapi_trace_dir_tmp_root, 'thapi_metadata.yaml'))

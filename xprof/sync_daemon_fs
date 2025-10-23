@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # Cannot use require_relative as iprof is not a rb file
-# Load mpi_* and RT_SIGNAL_*
+# Load MPITopo and RT_SIGNAL_*
 load(File.join(__dir__, 'iprof'))
 
 require 'open3'
@@ -34,7 +34,7 @@ def global_barrier(f)
   # Block until all the process have removed their sentinel,
   #    then master will clean the folder to be nice to the user
   #
-  # Note that `mpi_master` can see the folder empty, and hence remove it
+  # Note that `MPITopo.master` can see the folder empty, and hence remove it
   #   at the same time as others threads sleep. They will wake up
   #   and see a deleted folder.
   # Fortunately `count_file` will return -2 for a non exciting folder
