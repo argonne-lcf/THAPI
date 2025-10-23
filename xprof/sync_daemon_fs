@@ -44,7 +44,7 @@ def global_barrier(f)
   FileUtils.rm_rf(SHARED_GLOBAL_FILESYSTEM) if MPITopo.master?
 end
 
-def local_barier(name)
+def local_barrier(name)
   folder = File.join(SHARED_LOCAL_FILESYSTEM, name)
   FileUtils.mkdir_p(File.join(folder, MPITopo.local_rank_id.to_s))
   busy_wait { count_file(folder) == MPITopo.local_size }
@@ -59,16 +59,16 @@ Signal.trap(SyncDaemon::RT_SIGNAL_GLOBAL_BARRIER) do
   Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
 end
 
-local_barier_count = 0
+local_barrier_count = 0
 Signal.trap(SyncDaemon::RT_SIGNAL_LOCAL_BARRIER) do
-  local_barier(local_barier_count.to_s)
-  local_barier_count += 1
+  local_barrier(local_barrier_count.to_s)
+  local_barrier_count += 1
   Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
 end
 
 Signal.trap(SyncDaemon::RT_SIGNAL_FINISH) do
   # We cannot delete SHARED_LOCAL_FILESYSTEM
-  # Some rank can exit the `global_barier` (hence calling this function)
+  # Some rank can exit the `global_barrier` (hence calling this function)
   #   when others ranks are still in the `local_barrier`
   # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
   #
