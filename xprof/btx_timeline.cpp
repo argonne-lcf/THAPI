@@ -382,11 +382,15 @@ static void add_event_begin(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid,
   packet->set_timestamp(begin);
   packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
 
-  const perfetto_uuid_t iid = get_or_create_internedid(dispatch, packet, name);
   auto *track_event = packet->mutable_track_event();
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
-  track_event->set_name_iid(iid);
   track_event->set_track_uuid(uuid);
+  if (name.size() > 8) {
+    const perfetto_uuid_t iid = get_or_create_internedid(dispatch, packet, name);
+    track_event->set_name_iid(iid);
+  } else {
+    track_event->set_name(name);
+  }
 }
 
 static void add_event_end(timeline_dispatch_t *dispatch, perfetto_uuid_t uuid, uint64_t end) {
