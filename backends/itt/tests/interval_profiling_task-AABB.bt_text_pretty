@@ -1,0 +1,2 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000000, backend = 9 }, { name = "test.domain.AABB:test task A", dur = 10, err = false }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000020, backend = 9 }, { name = "test.domain.AABB:test task B", dur = 10, err = false }
