@@ -58,6 +58,90 @@ private:
   }
 };
 
+class InternedStringTable {
+public:
+  uint64_t get_or_create_internedid(perfetto_pruned::TracePacket *packet, const std::string &name) {
+
+    // Sequence Flags:
+    // The packet calling `get_or_create_internedid` will used interned string
+    int flags = perfetto_pruned::TracePacket::SEQ_NEEDS_INCREMENTAL_STATE;
+    // If it the first packet to use interned string we need to clean the state
+    if (name_to_iid_.empty()) {
+      flags = flags | perfetto_pruned::TracePacket::SEQ_INCREMENTAL_STATE_CLEARED;
+    }
+    packet->set_sequence_flags(flags);
+
+    // Cration of the interned string, Start at 1
+    auto [it, inserted] =
+        name_to_iid_.try_emplace(name, static_cast<uint64_t>(name_to_iid_.size()) + 1);
+    uint64_t iid = it->second;
+
+    if (inserted) {
+      auto *interned_data = packet->mutable_interned_data();
+      auto *entry = interned_data->add_event_names();
+      entry->set_iid(iid);
+      entry->set_name(name);
+    }
+    return iid;
+  }
+
+private:
+  std::unordered_map<std::string, uint64_t> name_to_iid_;
+};
+
+struct timeline_dispatch_s;
+
+// Root TrackDescriptor  (passed to TrackHierarchy)
+// └── Hostname TrackDescriptor(s)
+//    └── Process TrackDescriptor(s)
+//        └── Thread TrackDescriptor(s)
+
+class TrackHierarchy {
+public:
+  explicit TrackHierarchy(struct timeline_dispatch_s *dispatch) : dispatch_(dispatch) {}
+
+  uint64_t
+  getUuid(const std::string &hostname, const std::string &process, const std::string &thread) {
+
+    auto [hostIt, hostInserted] = hierarchy_.try_emplace(hostname);
+    auto &hostLevel = hostIt->second;
+    if (hostInserted)
+      hostLevel.host = makeTrackDescriptor("Hostname: " + hostname);
+
+    auto [procIt, procInserted] = hostLevel.processes.try_emplace(process);
+    auto &procLevel = procIt->second;
+    if (procInserted)
+      procLevel.process = makeTrackDescriptor("Process: " + process, hostLevel.host);
+
+    // Insert with dummy value. If Inserted overwrite the dummy value
+    auto [threadIt, threadInserted] = procLevel.threads.try_emplace(thread, 0);
+    if (threadInserted)
+      threadIt->second = makeTrackDescriptor("Thread: " + thread, procLevel.process);
+
+    return threadIt->second;
+  }
+
+private:
+  struct timeline_dispatch_s *dispatch_;
+
+  struct ProcessLevel {
+    uint64_t process;
+    std::unordered_map<std::string, uint64_t> threads;
+  };
+
+  struct HostLevel {
+    uint64_t host;
+    std::unordered_map<std::string, ProcessLevel> processes;
+  };
+
+  std::unordered_map<std::string, HostLevel> hierarchy_;
+
+  uint64_t nextUuid();
+
+  uint64_t makeTrackDescriptor(const std::string &name,
+                               std::optional<uint64_t> parent_uuid = std::nullopt);
+};
+
 struct timeline_dispatch_s {
   std::unordered_map<hp_dsd_t, perfetto_uuid_t> hp2uuid;
   std::unordered_map<std::pair<perfetto_uuid_t, thread_id_t>, perfetto_uuid_t> thread2uuid;
@@ -79,8 +163,25 @@ struct timeline_dispatch_s {
   std::unique_ptr<UnboundTrace> trace;
   // Start at one, Look like UUID 0 is special
   std::atomic<perfetto_uuid_t> uuid = 1;
-  std::unordered_map<std::string, perfetto_uuid_t> name_to_iid;
+
+  // New Stuff
+  InternedStringTable iid_table;
+  std::unique_ptr<TrackHierarchy> trace_hierarchy;
 };
+
+inline uint64_t TrackHierarchy::nextUuid() { return dispatch_->uuid++; }
+
+inline uint64_t TrackHierarchy::makeTrackDescriptor(const std::string &name,
+                                                    std::optional<uint64_t> parent_uuid) {
+  auto *packet = dispatch_->trace->add_packet();
+  packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+  auto *td = packet->mutable_track_descriptor();
+  td->set_name(name);
+  td->set_uuid(nextUuid());
+  if (parent_uuid)
+    td->set_parent_uuid(parent_uuid.value());
+  return td->uuid();
+}
 
 // Keeps extra parameters that does not fit the default getter
 using Extras = std::tuple<bool, uint32_t, uint32_t>;
@@ -217,38 +318,6 @@ static perfetto_uuid_t get_counter_track_uuuid(
   track_descriptor->mutable_counter();
 
   return hp_dev_uuid;
-}
-
-static perfetto_uuid_t get_or_create_internedid(timeline_dispatch_t *dispatch,
-                                                perfetto_pruned::TracePacket *packet,
-                                                std::string &name) {
-
-  // Info on String interning
-  // https://perfetto.dev/docs/reference/synthetic-track-event#interning-data-for-trace-size-optimization
-  auto &name_to_iid_ = dispatch->name_to_iid;
-
-  // Sequence Flags:
-  // The packet calling `get_or_create_internedid` will used interned string
-  int flags = perfetto_pruned::TracePacket::SEQ_NEEDS_INCREMENTAL_STATE;
-  // If it the first packet to use interned string we need to clean the state
-  if (name_to_iid_.empty()) {
-    flags = flags | perfetto_pruned::TracePacket::SEQ_INCREMENTAL_STATE_CLEARED;
-  }
-  packet->set_sequence_flags(flags);
-
-  // Cration of the interned string, Start at 1
-  auto [it, inserted] =
-      name_to_iid_.try_emplace(name, static_cast<uint64_t>(name_to_iid_.size()) + 1);
-  perfetto_uuid_t iid = it->second;
-
-  if (inserted) {
-    auto *interned_data = packet->mutable_interned_data();
-    auto *entry = interned_data->add_event_names();
-    entry->set_iid(iid);
-    entry->set_name(name);
-  }
-
-  return iid;
 }
 
 static perfetto_uuid_t get_copyEU_track_uuuid(timeline_dispatch_t *dispatch,
@@ -458,7 +527,7 @@ static void add_event_begin(timeline_dispatch_t *dispatch,
   track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
   track_event->set_track_uuid(uuid);
   if (name.size() > 8) {
-    const perfetto_uuid_t iid = get_or_create_internedid(dispatch, packet, name);
+    const perfetto_uuid_t iid = dispatch->iid_table.get_or_create_internedid(packet, name);
     track_event->set_name_iid(iid);
   } else {
     track_event->set_name(name);
@@ -518,7 +587,7 @@ static perfetto_uuid_t get_process_uuid(timeline_dispatch_t *dispatch,
 }
 
 // Perfectly Nested
-
+/*
 static perfetto_uuid_t get_track_uuid_perfectly_nested(timeline_dispatch_t *dispatch,
                                                        std::string hostname,
                                                        uint64_t process_id,
@@ -557,7 +626,7 @@ static perfetto_uuid_t get_track_uuid_perfectly_nested(timeline_dispatch_t *disp
   }
   return track_uuid;
 }
-
+*/
 static void add_event_perfectly_nested(timeline_dispatch_t *dispatch,
                                        std::string hostname,
                                        uint64_t process_id,
@@ -566,7 +635,10 @@ static void add_event_perfectly_nested(timeline_dispatch_t *dispatch,
                                        uint64_t begin,
                                        uint64_t dur) {
 
-  auto track_uuid = get_track_uuid_perfectly_nested(dispatch, hostname, process_id, thread_id);
+  auto track_uuid = dispatch->trace_hierarchy->getUuid(hostname, std::to_string(process_id),
+                                                       std::to_string(thread_id));
+
+  // get_track_uuid_perfectly_nested(dispatch, hostname, process_id, thread_id);
 
   const uint64_t end = begin + dur;
   // Handling perfectly nested event
@@ -639,6 +711,7 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   std::string output_path{usr_params->output_path};
   dispatch->uuid += usr_params->offset;
   dispatch->trace = std::make_unique<UnboundTrace>(output_path);
+  dispatch->trace_hierarchy = std::make_unique<TrackHierarchy>(dispatch);
 }
 
 void btx_finalize_component_callback(void *usr_data) {
