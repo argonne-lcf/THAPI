@@ -16,22 +16,20 @@
 class UnboundTrace {
 
 public:
-  UnboundTrace(std::string &_output_path) : output_path(_output_path) {
-    // Overwriting `output_path`
-    std::fstream output(output_path, std::ios::out | std::ios::trunc | std::ios::binary);
-    std::cout << "THAPI: Perfetto trace location: " << output_path << std::endl;
+  UnboundTrace(std::string &output_path) : output_path_(output_path) {
+    std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
   }
 
   ::perfetto_pruned::TracePacket *add_packet() {
     // /!\ Assume all previous packets are ready to be serialized
-    if (event_count >= MAX_EVENT_PER_TRACE_CHUNK)
+    if (current_packet_count_ >= MAX_EVENT_PER_TRACE_CHUNK)
       serialize();
-    event_count++;
-    return trace.add_packet();
+    current_packet_count_++;
+    return trace_.add_packet();
   }
 
   ~UnboundTrace() {
-    if (event_count > 0)
+    if (current_packet_count_ > 0)
       serialize();
   }
 
@@ -64,22 +62,23 @@ public:
     return iid;
   }
 
+  uint64_t track_count = 0;
+
 private:
   static constexpr unsigned MAX_EVENT_PER_TRACE_CHUNK = 100'000;
-  std::string output_path;
-  ::perfetto_pruned::Trace trace{};
-
+  std::string output_path_;
+  ::perfetto_pruned::Trace trace_{};
   std::unordered_map<std::string, uint64_t> name_to_iid_;
+  unsigned current_packet_count_ = 0;
 
-  unsigned event_count = 0;
   void serialize() {
     // /!\ Data will be appended to the output_path file
-    std::fstream output(output_path, std::ios::out | std::ios::app | std::ios::binary);
-    if (!trace.SerializeToOstream(&output))
-      std::cerr << "THAPI: Failed to write the trace at location: " << output_path << std::endl;
+    std::fstream output(output_path_, std::ios::out | std::ios::app | std::ios::binary);
+    if (!trace_.SerializeToOstream(&output))
+      std::cerr << "THAPI: Failed to write the trace at location: " << output_path_ << std::endl;
     // Clean state
-    trace.clear_packet();
-    event_count = 0;
+    trace_.clear_packet();
+    current_packet_count_ = 0;
   }
 };
 
@@ -97,111 +96,106 @@ public:
 
   // Should not be used externaly
   // But required for `try_emplace`
-  Track(std::string name_,
-        std::optional<uint64_t> parent_uuid_,
-        std::shared_ptr<uint64_t> g_uuid_ptr_,
-        std::shared_ptr<UnboundTrace> trace_ptr_,
-        bool is_leaf_counter_ = false)
-      : name(name_), g_uuid_ptr(g_uuid_ptr_), trace_ptr(trace_ptr_), parent_uuid(parent_uuid_),
-        is_leaf_counter(is_leaf_counter_), uuid((*g_uuid_ptr)++) {
+  Track(std::string name,
+        std::optional<uint64_t> parent_uuid,
+        std::shared_ptr<UnboundTrace> trace_ptr,
+        bool is_leaf_counter = false)
+      : name_(name), trace_ptr_(trace_ptr), parent_uuid_(parent_uuid),
+        is_leaf_counter_(is_leaf_counter), uuid_(trace_ptr_->track_count++) {
 
-    auto *packet = trace_ptr->add_packet();
+    auto *packet = trace_ptr_->add_packet();
     packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
     auto *td = packet->mutable_track_descriptor();
-    td->set_name(name);
-    td->set_uuid(uuid.value());
-    if (parent_uuid)
-      td->set_parent_uuid(parent_uuid.value());
+    td->set_name(name_);
+    td->set_uuid(uuid_.value());
+    if (parent_uuid_)
+      td->set_parent_uuid(parent_uuid_.value());
 
-    if (is_leaf_counter)
+    if (is_leaf_counter_)
       td->mutable_counter();
   }
 
-  void add_event_slice(std::string _name,
+  void add_event_slice(std::string name,
                        uint64_t begin,
                        uint64_t end,
                        std::vector<std::string> track_names = {}) {
 
-    const auto track_uuid = get_leaf(track_names).get_slice_uuid(begin, end);
+    const auto uuid = get_leaf(track_names).get_slice_uuid(begin, end);
     {
-      auto *packet = trace_ptr->add_packet();
+      auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(begin);
       packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
 
       auto *track_event = packet->mutable_track_event();
       track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
-      track_event->set_track_uuid(track_uuid);
+      track_event->set_track_uuid(uuid);
 
-      const auto iid = trace_ptr->get_interned_id(packet, _name);
+      const auto iid = trace_ptr_->get_interned_id(packet, name);
       if (iid)
         track_event->set_name_iid(iid.value());
       else
-        track_event->set_name(_name);
+        track_event->set_name(name);
     }
 
     {
-      auto *packet = trace_ptr->add_packet();
+      auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(end);
       packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
 
       auto *track_event = packet->mutable_track_event();
       track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_END);
-      track_event->set_track_uuid(track_uuid);
+      track_event->set_track_uuid(uuid);
     }
   }
 
   void
   add_event_counter(uint64_t timestamp, double value, std::vector<std::string> track_names = {}) {
 
-    const auto track_uuid = get_leaf(track_names, true).uuid.value();
+    const auto uuid = get_leaf(track_names, true).uuid_.value();
     {
-      auto *packet = trace_ptr->add_packet();
+      auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(timestamp);
       packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
 
       auto *track_event = packet->mutable_track_event();
       track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
-      track_event->set_track_uuid(track_uuid);
+      track_event->set_track_uuid(uuid);
       track_event->set_double_counter_value(value);
     }
   }
 
 private:
   struct RootTag {}; // private tag to restrict root creation
-  explicit Track(RootTag, std::shared_ptr<UnboundTrace> trace, uint64_t uuid_offset)
-      : name("root"), g_uuid_ptr(std::make_shared<uint64_t>(uuid_offset)), trace_ptr(trace),
-        is_leaf_counter(false) {}
+  explicit Track(RootTag, std::shared_ptr<UnboundTrace> trace_ptr, uint64_t uuid_offset)
+      : name_("root"), trace_ptr_(trace_ptr), is_leaf_counter_(false) {}
 
-  std::string name;
-  // People said to never store reference to std::atomic, so we will beleave them
-  std::shared_ptr<uint64_t> g_uuid_ptr;
-
-  std::shared_ptr<UnboundTrace> trace_ptr;
+  std::string name_;
+  std::shared_ptr<UnboundTrace> trace_ptr_;
 
   // First Level have No parent_uuid (as root have no uuid)
-  std::optional<uint64_t> parent_uuid;
+  std::optional<uint64_t> parent_uuid_;
   // Leaf Counter Track need to set some special paremeter to protobuf
-  bool is_leaf_counter;
+  bool is_leaf_counter_;
 
   // Root Have no UUID
-  std::optional<uint64_t> uuid;
+  std::optional<uint64_t> uuid_;
 
   // Children are empty Track or counter Track
-  std::unordered_map<std::string, Track> childrens;
+  std::unordered_map<std::string, Track> childrens_;
   // Begins Are For Slice (who assume, for simplicity are assumed to non perfectly nested)
-  std::map<uint64_t, Track> begins;
+  std::map<uint64_t, Track> begins_;
 
   uint64_t get_slice_uuid(uint64_t begin, uint64_t end) {
-    if (is_leaf_counter)
+    if (is_leaf_counter_)
       throw std::invalid_argument("Cannot get slice uuid for counter track");
 
-    auto it = begins.upper_bound(begin);
-    if (it == begins.begin()) {
+    auto it = begins_.upper_bound(begin);
+    if (it == begins_.begin()) {
       // Pre-historical event: create new track descriptor.
       // They share our parent. Our trace will be an empty track, but ready for other children to
       // use.
-      auto [new_it, _] = begins.emplace(end, Track(name, parent_uuid, g_uuid_ptr, trace_ptr));
-      return (new_it->second.uuid).value();
+      auto [new_it, _] = begins_.emplace(end, Track(name_, parent_uuid_, trace_ptr_));
+      return (new_it->second.uuid_).value();
     } else {
       // Move the `uuid` who started before this events to the end
       auto itp = std::prev(it);
@@ -209,17 +203,16 @@ private:
       // The doc said extract is the only way to change a key of a map element
       // without reallocation
       // https://en.cppreference.com/w/cpp/container/map/extract.html
-      auto node = begins.extract(itp);
+      auto node = begins_.extract(itp);
       node.key() = end;
-      auto result = begins.insert(std::move(node));
-      return (result.position->second.uuid).value();
+      auto result = begins_.insert(std::move(node));
+      return (result.position->second.uuid_).value();
     }
   }
 
   inline Track &get_child(std::string _name, bool is_leaf_counter = false) {
-    auto [it, inserted] =
-        childrens.try_emplace(_name, _name, uuid, g_uuid_ptr, trace_ptr, is_leaf_counter);
-    if (!inserted && it->second.is_leaf_counter != is_leaf_counter) {
+    auto [it, inserted] = childrens_.try_emplace(name_, name_, uuid_, trace_ptr_, is_leaf_counter_);
+    if (!inserted && it->second.is_leaf_counter_ != is_leaf_counter) {
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
     return it->second;
