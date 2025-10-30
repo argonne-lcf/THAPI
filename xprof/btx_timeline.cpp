@@ -210,8 +210,8 @@ private:
     }
   }
 
-  inline Track &get_child(std::string _name, bool is_leaf_counter = false) {
-    auto [it, inserted] = childrens_.try_emplace(name_, name_, uuid_, trace_ptr_, is_leaf_counter_);
+  inline Track &get_child(std::string name, bool is_leaf_counter = false) {
+    auto [it, inserted] = childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter_);
     if (!inserted && it->second.is_leaf_counter_ != is_leaf_counter) {
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
