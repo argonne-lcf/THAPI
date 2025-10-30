@@ -59,6 +59,10 @@ message TrackEvent {
     int64 counter_value = 30;
     double double_counter_value = 44;
   }
+
+  oneof correlation_id_field {
+    uint64 correlation_id = 52;
+  }
 }
 
 message TracePacket {

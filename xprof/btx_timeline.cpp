@@ -16,10 +16,11 @@
 class UnboundTrace {
 
 public:
-  UnboundTrace(std::string &output_path) : output_path_(output_path) {
+  UnboundTrace(std::string &output_path, uint64_t track_offset = 0) : output_path_(output_path) {
     // Overwrite previous output_path file if existing
     std::fstream output(output_path, std::ios::out | std::ios::trunc | std::ios::binary);
     std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
+    track_count += track_offset;
   }
 
   ::perfetto_pruned::TracePacket *add_packet() {
@@ -64,7 +65,7 @@ public:
     return iid;
   }
 
-  uint64_t track_count = 0;
+  uint64_t track_count = 1; // The Track 0 is reserved for Perfetto UI
 
 private:
   static constexpr unsigned MAX_EVENT_PER_TRACE_CHUNK = 100'000;
@@ -92,9 +93,7 @@ class Track {
   //   |-> C (Counter Track)
 public:
   // Root constructor
-  static Track make_root(std::shared_ptr<UnboundTrace> trace, uint64_t uuid_offset) {
-    return Track(RootTag{}, trace, uuid_offset);
-  }
+  static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(RootTag{}, trace); }
 
   // Should not be used externally
   // But required for `try_emplace`
@@ -120,7 +119,8 @@ public:
   void add_event_slice(std::string name,
                        uint64_t begin,
                        uint64_t end,
-                       const std::vector<std::string> &track_names = {}) {
+                       const std::vector<std::string> &track_names = {},
+                       std::optional<uint64_t> correlation_id = std::nullopt) {
 
     const auto uuid = get_leaf(track_names).get_slice_uuid(begin, end);
     {
@@ -137,6 +137,9 @@ public:
         track_event->set_name_iid(iid.value());
       else
         track_event->set_name(name);
+
+      if (correlation_id)
+        track_event->set_correlation_id(correlation_id.value());
     }
 
     {
@@ -169,7 +172,7 @@ public:
 
 private:
   struct RootTag {}; // private tag to restrict root creation
-  explicit Track(RootTag, std::shared_ptr<UnboundTrace> trace_ptr, uint64_t uuid_offset)
+  explicit Track(RootTag, std::shared_ptr<UnboundTrace> trace_ptr)
       : name_("root"), trace_ptr_(trace_ptr), is_leaf_counter_(false) {}
 
   std::string name_;
@@ -246,8 +249,8 @@ void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeli
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   std::string output_path{usr_params->output_path};
-  auto trace = std::make_shared<UnboundTrace>(output_path);
-  dispatch->track_tree = std::make_unique<Track>(Track::make_root(trace, usr_params->offset));
+  auto trace = std::make_shared<UnboundTrace>(output_path, usr_params->offset);
+  dispatch->track_tree = std::make_unique<Track>(Track::make_root(trace));
 }
 
 void btx_finalize_component_callback(void *usr_data) {
@@ -271,7 +274,7 @@ static void host_usr_callback(void *btx_handle,
 
   dispatch->track_tree->add_event_slice(
       name, ts, ts + dur,
-      {hostname, "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid)});
+      {hostname, "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid)}, backend_id);
 }
 
 static void device_usr_callback(void *btx_handle,
