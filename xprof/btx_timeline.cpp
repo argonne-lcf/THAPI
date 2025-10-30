@@ -17,6 +17,8 @@ class UnboundTrace {
 
 public:
   UnboundTrace(std::string &output_path) : output_path_(output_path) {
+    // Overwrite previous output_path file if existing
+    std::fstream output(output_path, std::ios::out | std::ios::trunc | std::ios::binary);
     std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
   }
 
@@ -195,7 +197,7 @@ private:
       // Pre-historical event: create new track descriptor.
       // They share our parent. Our trace will be an empty track, but ready for other children to
       // use.
-      auto [new_it, _] = begins_.emplace(end, Track(name_, parent_uuid_, trace_ptr_));
+      auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
       return (new_it->second.uuid_).value();
     } else {
       // Move the `uuid` who started before this events to the end
@@ -212,7 +214,7 @@ private:
   }
 
   inline Track &get_child(const std::string &name, bool is_leaf_counter = false) {
-    auto [it, inserted] = childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter_);
+    auto [it, inserted] = childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter);
     if (!inserted && it->second.is_leaf_counter_ != is_leaf_counter) {
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
