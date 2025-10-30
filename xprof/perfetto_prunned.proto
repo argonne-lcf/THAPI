@@ -1,6 +1,6 @@
 syntax = "proto2";
 // "There Is a Light That Never Goes Out"
-// https://android.googlesource.com/platform/external/perfetto/+/refs/heads/master/protos/perfetto/trace/
+// https://source.chromium.org/chromium/chromium/src/+/main:third_party/perfetto/protos/perfetto/trace/
 package perfetto_pruned;
 
 message EventName {
