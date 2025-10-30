@@ -219,9 +219,7 @@ private:
   }
 
   inline Track &get_leaf(std::vector<std::string> &names, bool is_leaf_counter = false) {
-
     Track *t = this;
-
     if (names.empty())
       return *t;
 
