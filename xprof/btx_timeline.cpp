@@ -324,13 +324,12 @@ static void power_usr_callback(void *btx_handle,
                                uint32_t domain,
                                uint64_t power) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
-
+  // Domain 0 is the full Device, 1 and 2 are the subdevice
   if (domain == 0) {
     dispatch->track_tree->add_event_counter(
         ts, static_cast<double>(power),
         {hostname, "ZE Counter", "Device " + std::to_string(did), "Power"});
   } else {
-
     dispatch->track_tree->add_event_counter(ts, static_cast<double>(power),
                                             {hostname, "ZE Counter",
                                              "Device " + std::to_string(did),
@@ -434,6 +433,7 @@ static void nic_usr_callback(void *btx_handle,
                              uint64_t value) {
 
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+
   dispatch->track_tree->add_event_counter(
       ts, static_cast<double>(value),
       {hostname, "NIC Counter", "Interface " + std::string{interface_name}, counter});
