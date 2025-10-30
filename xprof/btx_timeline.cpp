@@ -11,7 +11,7 @@
 
 #define TRUSTED_PACKED_SEQUENCE_ID 88
 
-// A Trach where evey MAX_EVENT_PER_TRACE_CHUNK packets will be flushed to disk
+// A Trach where every MAX_EVENT_PER_TRACE_CHUNK packets will be flushed to disk
 // And who contain a little utility to Interns String
 class UnboundTrace {
 
@@ -50,7 +50,7 @@ public:
     }
     packet->set_sequence_flags(flags);
 
-    // Cration of the interned string, Start at 1
+    // Creation of the interned string, Start at 1
     auto [it, inserted] =
         name_to_iid_.try_emplace(name, static_cast<uint64_t>(name_to_iid_.size()) + 1);
     uint64_t iid = it->second;
@@ -88,7 +88,7 @@ class Track {
   // A (root no uuid)
   // |-> B1 (begin event slices)
   // |-> B2
-  // |-> B (Empty track constructred by get_child)
+  // |-> B (Empty track constructed by get_child)
   //   |-> C (Counter Track)
 public:
   // Root constructor
@@ -96,7 +96,7 @@ public:
     return Track(RootTag{}, trace, uuid_offset);
   }
 
-  // Should not be used externaly
+  // Should not be used externally
   // But required for `try_emplace`
   Track(std::string name,
         std::optional<uint64_t> parent_uuid,
@@ -177,7 +177,7 @@ private:
 
   // First Level have No parent_uuid (as root have no uuid)
   std::optional<uint64_t> parent_uuid_;
-  // Leaf Counter Track need to set some special paremeter to protobuf
+  // Leaf Counter Track need to set some special parameter to protobuf
   bool is_leaf_counter_;
 
   // Root Have no UUID
