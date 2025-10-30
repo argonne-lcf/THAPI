@@ -118,7 +118,7 @@ public:
   void add_event_slice(std::string name,
                        uint64_t begin,
                        uint64_t end,
-                       std::vector<std::string> track_names = {}) {
+                       const std::vector<std::string> &track_names = {}) {
 
     const auto uuid = get_leaf(track_names).get_slice_uuid(begin, end);
     {
@@ -148,8 +148,9 @@ public:
     }
   }
 
-  void
-  add_event_counter(uint64_t timestamp, double value, std::vector<std::string> track_names = {}) {
+  void add_event_counter(uint64_t timestamp,
+                         double value,
+                         const std::vector<std::string> &track_names = {}) {
 
     const auto uuid = get_leaf(track_names, true).uuid_.value();
     {
@@ -210,7 +211,7 @@ private:
     }
   }
 
-  inline Track &get_child(std::string name, bool is_leaf_counter = false) {
+  inline Track &get_child(const std::string &name, bool is_leaf_counter = false) {
     auto [it, inserted] = childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter_);
     if (!inserted && it->second.is_leaf_counter_ != is_leaf_counter) {
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
@@ -218,7 +219,7 @@ private:
     return it->second;
   }
 
-  inline Track &get_leaf(std::vector<std::string> &names, bool is_leaf_counter = false) {
+  inline Track &get_leaf(const std::vector<std::string> &names, bool is_leaf_counter = false) {
     Track *t = this;
     if (names.empty())
       return *t;
