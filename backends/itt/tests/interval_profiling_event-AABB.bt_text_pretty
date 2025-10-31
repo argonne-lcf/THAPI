@@ -1,0 +1,2 @@
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000003, backend = 9 }, { name = "Event A", dur = 10, err = false }
+lttng:host: { hostname = "testhost", vpid = 10, vtid = 1, ts = 1704110400000000023, backend = 9 }, { name = "Event B", dur = 20, err = false }
