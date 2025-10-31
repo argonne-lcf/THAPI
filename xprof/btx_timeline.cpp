@@ -52,9 +52,9 @@ public:
     packet->set_sequence_flags(flags);
 
     // Creation of the interned string, Start at 1
-    auto [it, inserted] =
+    const auto [it, inserted] =
         name_to_iid_.try_emplace(name, static_cast<uint64_t>(name_to_iid_.size()) + 1);
-    uint64_t iid = it->second;
+    const uint64_t iid = it->second;
 
     if (inserted) {
       auto *interned_data = packet->mutable_interned_data();
@@ -200,7 +200,7 @@ private:
       // Pre-historical event: create new track descriptor.
       // They share our parent. Our trace will be an empty track, but ready for other children to
       // use.
-      auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
+      const auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
       return (new_it->second.uuid_).value();
     } else {
       // Move the `uuid` who started before this events to the end
@@ -211,13 +211,14 @@ private:
       // https://en.cppreference.com/w/cpp/container/map/extract.html
       auto node = begins_.extract(itp);
       node.key() = end;
-      auto result = begins_.insert(std::move(node));
+      const auto result = begins_.insert(std::move(node));
       return (result.position->second.uuid_).value();
     }
   }
 
   inline Track &get_child(const std::string &name, bool is_leaf_counter = false) {
-    auto [it, inserted] = childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter);
+    const auto [it, inserted] =
+        childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter);
     if (!inserted && it->second.is_leaf_counter_ != is_leaf_counter) {
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
@@ -438,7 +439,7 @@ static void nic_usr_callback(void *btx_handle,
 
   dispatch->track_tree->add_event_counter(
       ts, static_cast<double>(value),
-      {hostname, "NIC Counter", "Interface " + std::string{interface_name}, counter});
+      {hostname, "Sampling", "NIC", "Interface " + std::string{interface_name}, counter});
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {

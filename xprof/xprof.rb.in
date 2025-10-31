@@ -24,7 +24,7 @@ LTTNG_ARCHIVE_SIZE = '50M'
 LTTNG_ARCHIVE_TIMER = '60s'
 LTTNG_DIRWATCH_SIZE = '500' # In MiB
 LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
-MAX_INT32_VALUE = (2**31) - 1
+MAX_UINT64_VALUE = (2**64) - 1
 
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
@@ -233,9 +233,9 @@ module MPITopo
       hostfile = env_fetch_first('COBALT_NODEFILE', 'PBS_NODEFILE')
 
       # if there's a hostfile identified by the envs above,
-      # compute the offset, based on splitting MAX_INT32_VALUE by the number of hosts
+      # compute the offset, based on splitting MAX_UINT64_VALUE by the number of hosts
       # else want to chunk by reasonable amount. for now, assume a max of 10000 nodes and
-      # chunk MAX_INT32_VALUE by that. So each node gets ~200000 spots
+      # chunk MAX_UINT64_VALUE by that.
       number_hostname, hostname_index = if hostfile.nil?
                                           [10_000, rank_id / local_size]
                                         else
@@ -247,7 +247,7 @@ module MPITopo
                                           # compute the offset, based on splitting max_int32_value by the number of hosts
                                           [hostnames.length, hostname_id]
                                         end
-      (MAX_INT32_VALUE / number_hostname) * hostname_index
+      (MAX_UINT64_VALUE / number_hostname) * hostname_index
     end
   end
 
@@ -365,7 +365,7 @@ class SpawnDaemon
   RT_SIGNAL_READY = SIGRTMIN
   RT_SIGNAL_FINISH = SIGRTMIN + 3
 
-  # This belongs to the global ruby process! 
+  # This belongs to the global ruby process!
   # This Object is NOT thread-safe, please do not spawn user thread
   @@ready = false
   Signal.trap(RT_SIGNAL_READY) { @@ready = true }
