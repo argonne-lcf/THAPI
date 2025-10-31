@@ -310,7 +310,8 @@ static void frequency_usr_callback(void *btx_handle,
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
   dispatch->track_tree->add_event_counter(ts, static_cast<double>(frequency),
-                                          {hostname, "ZE Counter", "Device " + std::to_string(did),
+                                          {hostname, "Sampling", "ZE",
+                                           "Device " + std::to_string(did),
                                            "SubDevice " + std::to_string(domain), "Frequency"});
 }
 
@@ -328,10 +329,10 @@ static void power_usr_callback(void *btx_handle,
   if (domain == 0) {
     dispatch->track_tree->add_event_counter(
         ts, static_cast<double>(power),
-        {hostname, "ZE Counter", "Device " + std::to_string(did), "Power"});
+        {hostname, "Sampling", "ZE", "Device " + std::to_string(did), "Power"});
   } else {
     dispatch->track_tree->add_event_counter(ts, static_cast<double>(power),
-                                            {hostname, "ZE Counter",
+                                            {hostname, "Sampling", "ZE",
                                              "Device " + std::to_string(did),
                                              "SubDevice " + std::to_string(domain - 1), "Power"});
   }
@@ -348,10 +349,10 @@ static void computeEU_usr_callback(void *btx_handle,
                                    float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(ts, static_cast<double>(activeTime),
-                                          {hostname, "ZE Counter", "Device " + std::to_string(did),
-                                           "SubDevice " + std::to_string(subDevice),
-                                           "ComputeEngine (%)"});
+  dispatch->track_tree->add_event_counter(
+      ts, static_cast<double>(activeTime),
+      {hostname, "Sampling", "ZE", "Device " + std::to_string(did),
+       "SubDevice " + std::to_string(subDevice), "ComputeEngine (%)"});
 }
 
 static void copyEU_usr_callback(void *btx_handle,
@@ -365,10 +366,10 @@ static void copyEU_usr_callback(void *btx_handle,
                                 float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(ts, static_cast<double>(activeTime),
-                                          {hostname, "ZE Counter", "Device " + std::to_string(did),
-                                           "SubDevice " + std::to_string(subDevice),
-                                           "CopyEngine (%)"});
+  dispatch->track_tree->add_event_counter(
+      ts, static_cast<double>(activeTime),
+      {hostname, "Sampling", "ZE", "Device " + std::to_string(did),
+       "SubDevice " + std::to_string(subDevice), "CopyEngine (%)"});
 }
 
 static void fabricPort_usr_callback(void *btx_handle,
@@ -389,13 +390,13 @@ static void fabricPort_usr_callback(void *btx_handle,
 
   dispatch->track_tree->add_event_counter(
       ts, static_cast<double>(rxThroughput),
-      {hostname, "ZE Counter", "Device " + std::to_string(did),
+      {hostname, "Sampling", "ZE", "Device " + std::to_string(did),
        "SubDevice " + std::to_string(subDevice),
        std::to_string(fabricId) + " <->" + std::to_string(remotePortId), "RX"});
 
   dispatch->track_tree->add_event_counter(
       ts, static_cast<double>(txThroughput),
-      {hostname, "ZE Counter", "Device " + std::to_string(did),
+      {hostname, "Sampling", "ZE", "Device " + std::to_string(did),
        "SubDevice " + std::to_string(subDevice),
        std::to_string(fabricId) + " <->" + std::to_string(remotePortId), "TX"});
 }
@@ -415,13 +416,14 @@ static void memModule_usr_callback(void *btx_handle,
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
   dispatch->track_tree->add_event_counter(ts, static_cast<double>(pBandwidth),
-                                          {hostname, "ZE Counter", "Device " + std::to_string(did),
+                                          {hostname, "Sampling", "ZE",
+                                           "Device " + std::to_string(did),
                                            "SubDevice " + std::to_string(subDevice), "Memory BW"});
 
-  dispatch->track_tree->add_event_counter(ts, static_cast<double>(allocation),
-                                          {hostname, "ZE Counter", "Device " + std::to_string(did),
-                                           "SubDevice " + std::to_string(subDevice),
-                                           "Allocated Memory (%)"});
+  dispatch->track_tree->add_event_counter(
+      ts, static_cast<double>(allocation),
+      {hostname, "Sampling", "ZE", "Device " + std::to_string(did),
+       "SubDevice " + std::to_string(subDevice), "Allocated Memory (%)"});
 }
 
 static void nic_usr_callback(void *btx_handle,
