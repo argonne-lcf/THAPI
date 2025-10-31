@@ -18,7 +18,7 @@ class UnboundTrace {
 public:
   UnboundTrace(std::string &output_path, uint64_t track_offset = 0) : output_path_(output_path) {
     // Overwrite previous output_path file if existing
-    std::fstream output(output_path, std::ios::out | std::ios::trunc | std::ios::binary);
+    std::ofstream(output_path_, std::ios::trunc | std::ios::binary);
     std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
     track_count += track_offset;
   }
