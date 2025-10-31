@@ -93,7 +93,7 @@ class Track {
   //   |-> C (Counter Track)
 public:
   // Root constructor
-  static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(RootTag{}, trace); }
+  static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(std::move(trace)); }
 
   // Should not be used externally
   // But required for `try_emplace`
@@ -101,7 +101,7 @@ public:
         std::optional<uint64_t> parent_uuid,
         std::shared_ptr<UnboundTrace> trace_ptr,
         bool is_leaf_counter = false)
-      : name_(name), trace_ptr_(trace_ptr), parent_uuid_(parent_uuid),
+      : name_(std::move(name)), trace_ptr_(std::move(trace_ptr)), parent_uuid_(parent_uuid),
         is_leaf_counter_(is_leaf_counter), uuid_(trace_ptr_->track_count++) {
 
     auto *packet = trace_ptr_->add_packet();
@@ -116,7 +116,7 @@ public:
       td->mutable_counter();
   }
 
-  void add_event_slice(std::string name,
+  void add_event_slice(const std::string &name,
                        uint64_t begin,
                        uint64_t end,
                        const std::vector<std::string> &track_names = {},
@@ -171,9 +171,8 @@ public:
   }
 
 private:
-  struct RootTag {}; // private tag to restrict root creation
-  explicit Track(RootTag, std::shared_ptr<UnboundTrace> trace_ptr)
-      : name_("root"), trace_ptr_(trace_ptr), is_leaf_counter_(false) {}
+  explicit Track(std::shared_ptr<UnboundTrace> trace_ptr)
+      : name_("root"), trace_ptr_(std::move(trace_ptr)), is_leaf_counter_(false) {}
 
   std::string name_;
   std::shared_ptr<UnboundTrace> trace_ptr_;
@@ -187,7 +186,9 @@ private:
   std::optional<uint64_t> uuid_;
 
   // Children are empty Track or counter Track
-  std::unordered_map<std::string, Track> childrens_;
+  // Need to use a pointer because unordered_map cannot use an imcompolete type
+  // (https://stackoverflow.com/a/13089641)
+  std::unordered_map<std::string, std::unique_ptr<Track>> childrens_;
   // Begins Are For Slice (who assume, for simplicity are assumed to non perfectly nested)
   std::map<uint64_t, Track> begins_;
 
@@ -202,27 +203,37 @@ private:
       // use.
       const auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
       return (new_it->second.uuid_).value();
-    } else {
-      // Move the `uuid` who started before this events to the end
-      auto itp = std::prev(it);
-
-      // The doc said extract is the only way to change a key of a map element
-      // without reallocation
-      // https://en.cppreference.com/w/cpp/container/map/extract.html
-      auto node = begins_.extract(itp);
-      node.key() = end;
-      const auto result = begins_.insert(std::move(node));
-      return (result.position->second.uuid_).value();
     }
+
+    // Move the `uuid` who started before this events to the end
+    auto itp = std::prev(it);
+
+    // The doc said extract is the only way to change a key of a map element
+    // without reallocation
+    // https://en.cppreference.com/w/cpp/container/map/extract.html
+    auto node = begins_.extract(itp);
+    node.key() = end;
+    const auto result = begins_.insert(std::move(node));
+    return (result.position->second.uuid_).value();
   }
 
   inline Track &get_child(const std::string &name, bool is_leaf_counter = false) {
-    const auto [it, inserted] =
-        childrens_.try_emplace(name, name, uuid_, trace_ptr_, is_leaf_counter);
-    if (!inserted && it->second.is_leaf_counter_ != is_leaf_counter) {
+    // We need to avoid creating tmp Track when doing loocky to avoid increase the `uuid`
+    // each time
+    auto [it, inserted] = childrens_.try_emplace(
+        name,
+        nullptr // placeholder for unique_ptr; we will construct only if inserted
+    );
+
+    if (inserted) {
+      // Construct the Track in-place and assign to the unique_ptr
+      it->second = std::make_unique<Track>(name, uuid_, trace_ptr_, is_leaf_counter);
+    } else if (it->second->is_leaf_counter_ != is_leaf_counter) {
+      // Existing child but type mismatch
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
-    return it->second;
+
+    return *(it->second);
   }
 
   inline Track &get_leaf(const std::vector<std::string> &names, bool is_leaf_counter = false) {
@@ -231,7 +242,7 @@ private:
       return *t;
 
     // Iterate over all except the last
-    for (size_t i = 0; i < names.size() - 1; ++i)
+    for (size_t i = 0; i < names.size() - 1; i++)
       t = &t->get_child(names[i]);
 
     // Pass is_leaf_counter
