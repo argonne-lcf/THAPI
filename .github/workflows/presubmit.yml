@@ -41,17 +41,18 @@ jobs:
   build-and-check:
     needs: efficios_dep
     if: ${{ success() }}
-    name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
+    name: Build and Check on ubuntu-24.04 with ${{ matrix.compilers }}
     strategy:
       matrix:
         config-option: ["", "--disable-clang-parser"]
+        compilers: ["CC=gcc CXX=g++", "CC=clang CXX=clang++ CFLAGS=\"-Wno-gnu-folding-constant\""]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
       - run: mkdir -p build
       - run: ./autogen.sh
-      - run: ../configure ${{ matrix.config-option }}
+      - run: ../configure ${{ matrix.config-option }} ${{ matrix.compilers }}
         working-directory: build
       - run: make
         working-directory: build
@@ -62,7 +63,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-and-check-${{ matrix.config-option }}
           path: |
             build/**/*.log
             build/config.log
