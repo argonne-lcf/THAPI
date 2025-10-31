@@ -201,15 +201,15 @@ private:
 };
 
 // ClassName Striping
-template <size_t SuffixLen = 0> static inline std::string strip_event_class_name(const char *str) {
+static inline std::string strip_event_class_name(const char *str, const size_t suffixlen = 0) {
   const char *p = strchr(str + strlen("lttng_"), ':') + 1;
-  return std::string{p, strlen(p) - SuffixLen};
+  return std::string{p, strlen(p) - suffixlen};
 }
 
 static inline std::string strip_event_class_name_entry(const char *str) {
-  return strip_event_class_name<strlen("_entry")>(str);
+  return strip_event_class_name(str, strlen("_entry"));
 }
 
 static inline std::string strip_event_class_name_exit(const char *str) {
-  return strip_event_class_name<strlen("_exit")>(str);
+  return strip_event_class_name(str, strlen("_exit"));
 }
