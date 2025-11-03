@@ -96,7 +96,6 @@ public:
   static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(std::move(trace)); }
 
   // Should not be used externally
-  // But required for `try_emplace`
   Track(std::string name,
         std::optional<uint64_t> parent_uuid,
         std::shared_ptr<UnboundTrace> trace_ptr,
@@ -286,7 +285,7 @@ static void host_usr_callback(void *btx_handle,
 
   dispatch->track_tree->add_event_slice(
       name, ts, ts + dur,
-      {hostname, "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid)}, backend_id);
+      {hostname, "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid)});
 }
 
 static void device_usr_callback(void *btx_handle,
