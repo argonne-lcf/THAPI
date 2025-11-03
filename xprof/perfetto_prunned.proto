@@ -12,25 +12,7 @@ message InternedData {
   repeated EventName event_names = 2;
 }
 
-enum BuiltinClock {
-  BUILTIN_CLOCK_UNKNOWN = 0;
-  BUILTIN_CLOCK_REALTIME = 1;
-  BUILTIN_CLOCK_REALTIME_COARSE = 2;
-  BUILTIN_CLOCK_MONOTONIC = 3;
-  BUILTIN_CLOCK_MONOTONIC_COARSE = 4;
-  BUILTIN_CLOCK_MONOTONIC_RAW = 5;
-  BUILTIN_CLOCK_BOOTTIME = 6;
-  BUILTIN_CLOCK_MAX_ID = 63;
-  reserved 7, 8, 9;
-}
-
-message TracePacketDefaults {
-  optional uint32 timestamp_clock_id = 58;
-}
-
-message CounterDescriptor {
-  optional int64 unit_multiplier = 4;
-}
+message CounterDescriptor {}
 
 message TrackDescriptor {
   optional uint64 uuid = 1;
@@ -56,7 +38,6 @@ message TrackEvent {
   }
 
   oneof counter_value_field {
-    int64 counter_value = 30;
     double double_counter_value = 44;
   }
 
@@ -69,28 +50,7 @@ message TracePacket {
   optional uint64 timestamp = 8;
 
   enum SequenceFlags {
-    SEQ_UNSPECIFIED = 0;
-    // Set by the writer to indicate that it will re-emit any incremental data
-    // for the packet's sequence before referring to it again. This includes
-    // interned data as well as periodically emitted data like
-    // Process/ThreadDescriptors. This flag only affects the current packet
-    // sequence (see |trusted_packet_sequence_id|).
-    //
-    // When set, this TracePacket and subsequent TracePackets on the same
-    // sequence will not refer to any incremental data emitted before this
-    // TracePacket. For example, previously emitted interned data will be
-    // re-emitted if it is referred to again.
-    //
-    // When the reader detects packet loss (|previous_packet_dropped|), it needs
-    // to skip packets in the sequence until the next one with this flag set, to
-    // ensure intact incremental data.
     SEQ_INCREMENTAL_STATE_CLEARED = 1;
-
-    // This packet requires incremental state, such as TracePacketDefaults or
-    // InternedData, to be parsed correctly. The trace reader should skip this
-    // packet if incremental state is not valid on this sequence, i.e. if no
-    // packet with the SEQ_INCREMENTAL_STATE_CLEARED flag has been seen on the
-    // current |trusted_packet_sequence_id|.
     SEQ_NEEDS_INCREMENTAL_STATE = 2;
   };
 
@@ -105,12 +65,9 @@ message TracePacket {
     uint32 trusted_packet_sequence_id = 10;
   }
 
-  optional TracePacketDefaults trace_packet_defaults = 59;
-  optional bool previous_packet_dropped = 42;
   optional InternedData interned_data = 12;
 }
 
 message Trace {
   repeated TracePacket packet = 1;
 }
-
