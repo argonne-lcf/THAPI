@@ -19,6 +19,7 @@ message TrackDescriptor {
   optional uint64 parent_uuid = 5;
   optional string name = 2;
   optional CounterDescriptor counter = 8;
+  optional string description = 14;
 }
 
 message TrackEvent {
