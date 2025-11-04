@@ -834,6 +834,7 @@ module GlobalMaster
                    [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--',
                     folder]
                  else
+                   warn("THAPI: Perfetto trace location: #{OPTIONS[:timeline]}")
                    # String because `>` is not a real command, and cannot be passed to popen
                    "cat #{files.join(' ')} > #{OPTIONS[:timeline]}"
                  end
