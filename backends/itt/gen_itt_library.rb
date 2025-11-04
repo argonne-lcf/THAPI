@@ -300,15 +300,38 @@ end
 
 def print_struct(name, struct)
   members = struct.to_ffi
+
+  # Replace function pointer field types with :pointer.
+  # This avoids unresolved type errors when callbacks are defined later.
+  if defined?($fnptr_syms) && $fnptr_syms
+    members = members.map do |m|
+      t = m[1]
+      if t.is_a?(Array)
+        elem_t = t[0]
+        [m[0], [($fnptr_syms.include?(elem_t.to_s) ? :pointer : elem_t), t[1]]]
+      else
+        [m[0], ($fnptr_syms.include?(t.to_s) ? :pointer : t)]
+      end
+    end
+  end
+
   print_lambda = lambda { |m|
+    # Render symbols with a leading colon
+    fmt = ->(x) {
+      case x
+      when Symbol then ":#{x}"
+      else x
+      end
+    }
     s = "#{m[0]}, "
     if m[1].kind_of?(Array)
-      s << "[ #{m[1][0]}, #{m[1][1]} ]"
+      s << "[ #{fmt.call(m[1][0])}, #{m[1][1]} ]"
     else
-      s << "#{m[1]}"
+      s << "#{fmt.call(m[1])}"
     end
     s
   }
+
   puts <<EOF
   class #{to_class_name(name)} < FFI::ITTStruct
 EOF
@@ -349,6 +372,15 @@ def print_int_type(name, t_name)
   typedef #{to_ffi_name(t_name)}, #{to_ffi_name(name)}
 EOF
 end
+
+# Build a set of all function pointer typedef symbols to detect struct fields
+# that should be converted to :pointer when generating layouts
+require 'set'
+$fnptr_syms = Set.new(
+  $all_types.select { |t|
+    t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
+  }.map { |t| to_ffi_name(t.name).to_s }
+)
 
 # Collect callbacks to print after all other types
 callbacks = []
