@@ -158,6 +158,7 @@ def get_components(names)
       require 'babeltrace_ze_lib' if $options[:'backend-names'].include?('ze')
       require 'babeltrace_cuda_lib' if $options[:'backend-names'].include?('cuda')
       require 'babeltrace_hip_lib' if $options[:'backend-names'].include?('hip')
+      require 'babeltrace_itt_lib' if $options[:'backend-names'].include?('itt')
       f = lambda { |iterator, _|
         iterator.next_messages.each do |m|
           next unless m.type == :BT_MESSAGE_TYPE_EVENT
