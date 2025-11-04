@@ -350,6 +350,9 @@ def print_int_type(name, t_name)
 EOF
 end
 
+# Collect callbacks to print after all other types
+callbacks = []
+
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
@@ -369,7 +372,8 @@ $all_types.each { |t|
     next unless union
     print_union(t.name, union)
   elsif t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
-    print_function_pointer_type(t.name, t.type.type)
+    # Defer callbacks until the end so all referenced types are defined
+    callbacks << [t.name, t.type.type]
   elsif t.type.kind_of?(YAMLCAst::Pointer)
     print_pointer_type(t.name)
   elsif t.type.kind_of?(YAMLCAst::Int)
@@ -378,6 +382,11 @@ $all_types.each { |t|
     #$stderr.puts t.inspect
   end
 }
+ 
+# Emit collected callbacks
+callbacks.each do |name, func|
+  print_function_pointer_type(name, func)
+end
 
 puts <<EOF
 end
