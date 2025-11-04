@@ -88,12 +88,13 @@ if test "x$enable_clang_parser" = xyes; then
   AC_CHECK_PROG(H2YAML, [h2yaml], [h2yaml], [no])
   test "x$H2YAML" = "xno" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
 
-  AC_MSG_CHECKING([for h2yaml >= 0.3.0])
+  H2YAML_MIN_VERSION=0.3.0
+  AC_MSG_CHECKING([for h2yaml >= $H2YAML_MIN_VERSION])
   H2YAML_VERSION=`$H2YAML --version | cut -d' ' -f2`
-  AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [0.2.0],
+  AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],
     [AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])
-     AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= 0.2.0])])
+     AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= $H2YAML_MIN_VERSION])])
 
   ENABLE_CLANG_PARSER=1
 fi
