@@ -95,37 +95,13 @@ public:
   // Root constructor
   static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(std::move(trace)); }
 
-  // Should not be used externally
-  Track(std::string name,
-        std::optional<uint64_t> parent_uuid,
-        std::shared_ptr<UnboundTrace> trace_ptr,
-        bool is_leaf_counter = false)
-      : name_(std::move(name)), trace_ptr_(std::move(trace_ptr)), parent_uuid_(parent_uuid),
-        is_leaf_counter_(is_leaf_counter), uuid_(trace_ptr_->track_count++) {
-
-    auto *packet = trace_ptr_->add_packet();
-    packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
-    auto *td = packet->mutable_track_descriptor();
-
-    td->set_name(name_);
-    if (name_.rfind("Thread", 0) == 0)
-      td->set_description("Host API activity. Expand (⌄) to view nested device tracks");
-
-    td->set_uuid(uuid_.value());
-    if (parent_uuid_)
-      td->set_parent_uuid(parent_uuid_.value());
-
-    if (is_leaf_counter_)
-      td->mutable_counter();
-  }
-
   void add_event_slice(const std::string &name,
                        uint64_t begin,
                        uint64_t end,
                        const std::vector<std::string> &track_names = {},
                        std::optional<uint64_t> correlation_id = std::nullopt) {
 
-    const auto uuid = get_leaf(track_names).get_slice_uuid(begin, end);
+    const auto uuid = get_leaf(this, track_names).get_slice_uuid(begin, end);
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(begin);
@@ -160,7 +136,7 @@ public:
                          double value,
                          const std::vector<std::string> &track_names = {}) {
 
-    const auto uuid = get_leaf(track_names, true).uuid_.value();
+    const auto uuid = get_leaf(this, track_names, true).uuid_.value();
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(timestamp);
@@ -174,27 +150,48 @@ public:
   }
 
 private:
-  explicit Track(std::shared_ptr<UnboundTrace> trace_ptr)
+  Track(std::shared_ptr<UnboundTrace> trace_ptr)
       : name_("root"), trace_ptr_(std::move(trace_ptr)), is_leaf_counter_(false) {}
+
+  Track(std::string name,
+        std::optional<uint64_t> parent_uuid,
+        std::shared_ptr<UnboundTrace> trace_ptr,
+        bool is_leaf_counter = false)
+      : name_(std::move(name)), trace_ptr_(std::move(trace_ptr)), uuid_(trace_ptr_->track_count++),
+        parent_uuid_(parent_uuid), is_leaf_counter_(is_leaf_counter) {
+
+    auto *packet = trace_ptr_->add_packet();
+    packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+    auto *td = packet->mutable_track_descriptor();
+
+    td->set_name(name_);
+    if (name_.rfind("Thread", 0) == 0)
+      td->set_description("Host API activity. Expand (⌄) to view nested device tracks");
+
+    td->set_uuid(uuid_.value());
+    if (parent_uuid_)
+      td->set_parent_uuid(parent_uuid_.value());
+
+    if (is_leaf_counter_)
+      td->mutable_counter();
+  }
 
   std::string name_;
   std::shared_ptr<UnboundTrace> trace_ptr_;
-
-  // First Level have No parent_uuid (as root have no uuid)
+  // Root Have no UUID
+  std::optional<uint64_t> uuid_;
+  // First children have no parent_uuid (as root have no uuid)
   std::optional<uint64_t> parent_uuid_;
   // Leaf Counter Track need to set some special parameter to protobuf
   bool is_leaf_counter_;
-
-  // Root Have no UUID
-  std::optional<uint64_t> uuid_;
-
   // Children are empty Track or counter Track
   // Need to use a pointer because unordered_map cannot use an imcompolete type
   // (https://stackoverflow.com/a/13089641)
   std::unordered_map<std::string, std::unique_ptr<Track>> childrens_;
-  // Begins Are For Slice (who assume, for simplicity are assumed to non perfectly nested)
+  // Slice begins, they can be non perfectly nested, so generate a new track if required
   std::map<uint64_t, Track> begins_;
 
+  // Lookup begins_ and return a correct `uuid` track
   uint64_t get_slice_uuid(uint64_t begin, uint64_t end) {
     if (is_leaf_counter_)
       throw std::invalid_argument("Cannot get slice uuid for counter track");
@@ -204,33 +201,32 @@ private:
       // Pre-historical event: create new track descriptor.
       // They share our parent. Our trace will be an empty track, but ready for other children to
       // use.
-      const auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
+      auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
       return (new_it->second.uuid_).value();
     }
 
     // Move the `uuid` who started before this events to the end
     auto itp = std::prev(it);
-
     // The doc said extract is the only way to change a key of a map element
-    // without reallocation
-    // https://en.cppreference.com/w/cpp/container/map/extract.html
+    // without reallocation: https://en.cppreference.com/w/cpp/container/map/extract.html
     auto node = begins_.extract(itp);
     node.key() = end;
-    const auto result = begins_.insert(std::move(node));
+    auto result = begins_.insert(std::move(node));
     return (result.position->second.uuid_).value();
   }
 
+  // Look up in `childrens_` to and return you a track
   inline Track &get_child(const std::string &name, bool is_leaf_counter = false) {
-    // We need to avoid creating tmp Track when doing loocky to avoid increase the `uuid`
-    // each time
+    // We need to avoid creating tmp Track when doing lookup.
+    // inorder to avoid increase the `uuid` each time
     auto [it, inserted] = childrens_.try_emplace(
         name,
-        nullptr // placeholder for unique_ptr; we will construct only if inserted
+        nullptr // placeholder for unique_ptr; we will construct Track only if inserted
     );
 
     if (inserted) {
       // Construct the Track in-place and assign to the unique_ptr
-      it->second = std::make_unique<Track>(name, uuid_, trace_ptr_, is_leaf_counter);
+      it->second = std::unique_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
     } else if (it->second->is_leaf_counter_ != is_leaf_counter) {
       // Existing child but type mismatch
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
@@ -239,8 +235,9 @@ private:
     return *(it->second);
   }
 
-  inline Track &get_leaf(const std::vector<std::string> &names, bool is_leaf_counter = false) {
-    Track *t = this;
+  // Helper function to recurse on a genealogy of childrens.
+  static inline Track &
+  get_leaf(Track *t, const std::vector<std::string> &names, bool is_leaf_counter = false) {
     if (names.empty())
       return *t;
 
@@ -248,7 +245,7 @@ private:
     for (size_t i = 0; i < names.size() - 1; i++)
       t = &t->get_child(names[i]);
 
-    // Pass is_leaf_counter
+    // The leaf will need to respected `is_leaf_counter`
     return t->get_child(names.back(), is_leaf_counter);
   }
 };
