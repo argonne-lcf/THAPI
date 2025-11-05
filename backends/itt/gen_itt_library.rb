@@ -120,35 +120,110 @@ def find_enum_by_name(name, api)
 end
 
 def print_enum(name, enum)
-  members = enum.members.collect { |m|
-    # change strings to Symbols so we can print them as :other_member
-    val = m.val
-    if val.is_a?(String)
-      s = val.strip
-      # if it already has a leading ':', keep it, otherwise make it a symbol if it looks like an identifier
-      if s.start_with?(':')
-        val = s[1..-1].to_sym
-      elsif s.match?(/\A[_A-Za-z]\w*\z/)
-        val = s.to_sym
+  by_name = {}
+  current = -1
+
+  resolve_alias = ->(ref) do
+    by_name.fetch(ref.to_sym) { raise "enum #{name}: alias #{ref} not defined yet" }
+  end
+
+  parse_string = ->(s) do
+    s = s.strip
+    return resolve_alias.call(s[1..]) if s.start_with?(':')               # Ruby-style symbol alias
+    return resolve_alias.call(s)      if /\A[_A-Za-z]\w*\z/.match?(s)     # C-style ident alias
+    # Last resort: numeric/expr - prefer Integer/Float before eval
+    Integer(s)
+  rescue ArgumentError
+    Float(s)
+  rescue ArgumentError
+    eval(s)
+  end
+
+  resolved = enum.members.map do |m|
+    n = m.name.to_sym
+    v = m.val
+
+    current =
+      case v
+      when nil       then current + 1
+      when Integer   then v
+      when Symbol    then resolve_alias.call(v)
+      when String    then parse_string.call(v)
+      else
+        raise "enum #{name}: unsupported val #{v.inspect} for #{n}"
+      end
+
+    by_name[n] = current
+    [n, current]
+  end
+
+  pair = ->(sym_val) { sym, val = sym_val; "#{sym.inspect}, #{val}" }
+
+  puts <<~RUBY
+    #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
+      [ #{resolved.map(&pair).join(",\n        ")} ]
+  RUBY
+end
+
+def print_enum(name, enum)
+  # Walk members once, resolve every value to an Integer
+  resolved = []
+  current = -1
+  by_name = {}  # name(Symbol) -> Integer value
+
+  enum.members.each do |m|
+    n = m.name.to_sym
+    v = m.val
+
+    if v.nil?
+      current += 1
+      by_name[n] = current
+    else
+      case v
+      when Integer
+        current = v
+        by_name[n] = current
+      when String
+        s = v.strip
+        if s.start_with?(':')
+          # Ruby-style symbol alias like ":__itt_e_double"
+          ref = s[1..-1].to_sym
+          raise "enum #{name}: alias #{ref} not defined yet" unless by_name.key?(ref)
+          current = by_name[ref]
+          by_name[n] = current
+        elsif s =~ /\A[_A-Za-z]\w*\z/
+          # C-style identifier alias like "__itt_e_double"
+          ref = s.to_sym
+          raise "enum #{name}: alias #{ref} not defined yet" unless by_name.key?(ref)
+          current = by_name[ref]
+          by_name[n] = current
+        else
+          # numeric string / expression
+          current = eval(s)
+          by_name[n] = current
+        end
+      when Symbol
+        # Symbol alias value
+        ref = v
+        raise "enum #{name}: alias #{ref} not defined yet" unless by_name.key?(ref)
+        current = by_name[ref]
+        by_name[n] = current
+      else
+        raise "enum #{name}: unsupported val #{v.inspect} for #{n}"
       end
     end
 
-    r = [ m.name.to_sym ]
-    r.push val if val
-    r
-  }
+    resolved << [n, by_name[n]]
+  end
 
-  fmt = ->(x) { x.is_a?(Symbol) ? ":#{x}" : x }
-
-  print_lambda = lambda { |m|
-    s = "#{m[0].inspect}"
-    s << ", #{fmt.call(m[1])}" if m.size == 2
-    s
+  # Emit with explicit integers only
+  print_lambda = lambda { |(sym, val)|
+    "#{sym.inspect}, #{val}"
   }
 
   puts <<EOF
   #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
-    [ #{members.collect(&print_lambda).join(",\n      ")} ]
+    [ #{resolved.map(&print_lambda).join(",\n      ")} ]
 
 EOF
 end
