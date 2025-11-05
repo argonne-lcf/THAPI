@@ -499,7 +499,7 @@ $all_types.each { |t|
     callbacks << [t.name, t.type.type]
   elsif t.type.kind_of?(YAMLCAst::Pointer)
     print_pointer_type(t.name)
-  elsif t.type.kind_of?(YAMLCAst::Int)
+  elsif t.type.kind_of?(YAMLCAst::Int) || t.type.kind_of?(YAMLCAst::Char)
     print_int_type(t.name, t.type.name)
   else
     #$stderr.puts t.inspect
