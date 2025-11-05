@@ -95,13 +95,15 @@ public:
   // Root constructor
   static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(std::move(trace)); }
 
+  template <typename... KeyArgs>
   void add_event_slice(const std::string &name,
                        uint64_t begin,
                        uint64_t end,
-                       const std::vector<std::string> &track_names = {},
+                       std::function<std::vector<std::string>(void)> get_track_names,
+                       const std::tuple<KeyArgs...> &caching_key,
                        std::optional<uint64_t> correlation_id = std::nullopt) {
 
-    const auto uuid = get_leaf(this, track_names).get_slice_uuid(begin, end);
+    const auto uuid = get_leaf(this, caching_key, get_track_names).get_slice_uuid(begin, end);
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(begin);
@@ -249,6 +251,36 @@ private:
     // The leaf will need to respected `is_leaf_counter`
     return *t->get_child(names.back(), is_leaf_counter);
   }
+
+  template <typename... KeyArgs>
+  static inline Track &get_leaf(Track *t,
+                                const std::tuple<KeyArgs...> &caching_key,
+                                std::function<std::vector<std::string>(void)> get_names,
+                                bool is_leaf_counter = false) {
+
+    static std::unordered_map<std::tuple<KeyArgs...>, Track *> cache;
+
+    // Try the cache
+    auto [it, inserted] = cache.try_emplace(caching_key, nullptr);
+    if (!inserted)
+      return *it->second;
+
+    // Ok then, generate the string, add do the lookup
+    const auto names = get_names();
+    if (names.empty())
+      return *t;
+
+    // Iterate over all except the last
+    for (size_t i = 0; i < names.size() - 1; i++)
+      t = t->get_child(names[i]).get();
+
+    // The leaf will need to respected `is_leaf_counter`
+    Track *result = t->get_child(names.back(), is_leaf_counter).get();
+
+    // Save a lookup
+    it->second = result;
+    return *result;
+  }
 };
 
 struct timeline_dispatch_s {
@@ -285,10 +317,13 @@ static void host_usr_callback(void *btx_handle,
                               bt_bool err) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_slice(name, ts, ts + dur,
-                                        {"Hostname " + std::string{hostname},
-                                         "Process " + std::to_string(vpid),
-                                         "Thread " + std::to_string(vtid)});
+  dispatch->track_tree->add_event_slice(
+      name, ts, ts + dur,
+      [=] {
+        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
+                           "Thread " + std::to_string(vtid)};
+      },
+      std::make_tuple(hostname, vpid, vtid));
 }
 
 static void device_usr_callback(void *btx_handle,
@@ -308,9 +343,12 @@ static void device_usr_callback(void *btx_handle,
 
   dispatch->track_tree->add_event_slice(
       name, ts, ts + dur,
-      {"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
-       "Thread " + std::to_string(vtid), "Device " + std::to_string(did),
-       "SubDevice " + std::to_string(sdid)});
+      [=] {
+        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
+                           "Thread " + std::to_string(vtid), "Device " + std::to_string(did),
+                           "SubDevice " + std::to_string(sdid)};
+      },
+      std::make_tuple(hostname, vpid, vtid, sdid));
 }
 
 static void frequency_usr_callback(void *btx_handle,
