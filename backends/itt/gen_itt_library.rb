@@ -121,15 +121,31 @@ end
 
 def print_enum(name, enum)
   members = enum.members.collect { |m|
+    # change strings to Symbols so we can print them as :other_member
+    val = m.val
+    if val.is_a?(String)
+      s = val.strip
+      # if it already has a leading ':', keep it, otherwise make it a symbol if it looks like an identifier
+      if s.start_with?(':')
+        val = s[1..-1].to_sym
+      elsif s.match?(/\A[_A-Za-z]\w*\z/)
+        val = s.to_sym
+      end
+    end
+
     r = [ m.name.to_sym ]
-    r.push m.val if m.val
+    r.push val if val
     r
   }
+
+  fmt = ->(x) { x.is_a?(Symbol) ? ":#{x}" : x }
+
   print_lambda = lambda { |m|
     s = "#{m[0].inspect}"
-    s << ", #{m[1]}" if m.size == 2
+    s << ", #{fmt.call(m[1])}" if m.size == 2
     s
   }
+
   puts <<EOF
   #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
     [ #{members.collect(&print_lambda).join(",\n      ")} ]
