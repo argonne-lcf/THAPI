@@ -1,25 +1,5 @@
 require_relative 'gen_itt_library_base.rb'
 
-def popcount(x)
-  raise "Unsigned integer needed!" if x < 0
-  c = 0
-  while x != 0
-    c += 1 if x & 1 != 0
-    x >>= 1
-  end
-  c
-end
-
-def firstbitpos(x)
-  raise "Signed positive integer needed!" if x <= 0
-  r = 0
-  while x & 1 == 0
-    r += 1
-    x >>= 1
-  end
-  r
-end
-
 def unwrap_typedef_to_concrete(t)
   # unwrap chains like Typedef -> Typedef -> Enum
   seen = {}
