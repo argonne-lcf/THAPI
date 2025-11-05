@@ -131,10 +131,8 @@ def print_enum(name, enum)
     s = s.strip
     return resolve_alias.call(s[1..]) if s.start_with?(':')               # Ruby-style symbol alias
     return resolve_alias.call(s)      if /\A[_A-Za-z]\w*\z/.match?(s)     # C-style ident alias
-    # Last resort: numeric/expr - prefer Integer/Float before eval
+    # Last resort: numeric/expr
     Integer(s)
-  rescue ArgumentError
-    Float(s)
   rescue ArgumentError
     eval(s)
   end
@@ -163,69 +161,6 @@ def print_enum(name, enum)
     #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
       [ #{resolved.map(&pair).join(",\n        ")} ]
   RUBY
-end
-
-def print_enum(name, enum)
-  # Walk members once, resolve every value to an Integer
-  resolved = []
-  current = -1
-  by_name = {}  # name(Symbol) -> Integer value
-
-  enum.members.each do |m|
-    n = m.name.to_sym
-    v = m.val
-
-    if v.nil?
-      current += 1
-      by_name[n] = current
-    else
-      case v
-      when Integer
-        current = v
-        by_name[n] = current
-      when String
-        s = v.strip
-        if s.start_with?(':')
-          # Ruby-style symbol alias like ":__itt_e_double"
-          ref = s[1..-1].to_sym
-          raise "enum #{name}: alias #{ref} not defined yet" unless by_name.key?(ref)
-          current = by_name[ref]
-          by_name[n] = current
-        elsif s =~ /\A[_A-Za-z]\w*\z/
-          # C-style identifier alias like "__itt_e_double"
-          ref = s.to_sym
-          raise "enum #{name}: alias #{ref} not defined yet" unless by_name.key?(ref)
-          current = by_name[ref]
-          by_name[n] = current
-        else
-          # numeric string / expression
-          current = eval(s)
-          by_name[n] = current
-        end
-      when Symbol
-        # Symbol alias value
-        ref = v
-        raise "enum #{name}: alias #{ref} not defined yet" unless by_name.key?(ref)
-        current = by_name[ref]
-        by_name[n] = current
-      else
-        raise "enum #{name}: unsupported val #{v.inspect} for #{n}"
-      end
-    end
-
-    resolved << [n, by_name[n]]
-  end
-
-  # Emit with explicit integers only
-  print_lambda = lambda { |(sym, val)|
-    "#{sym.inspect}, #{val}"
-  }
-
-  puts <<EOF
-  #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
-    [ #{resolved.map(&print_lambda).join(",\n      ")} ]
-
-EOF
 end
 
 def print_itt_object(object)
