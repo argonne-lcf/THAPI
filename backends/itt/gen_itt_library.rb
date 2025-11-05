@@ -255,41 +255,6 @@ module ITT
   ITT_MAX_IPC_HANDLE_SIZE = 64
   extend FFI::Library
 
-  module Handle
-    def to_s
-      s = '{ data: "'
-      s << self[:data].to_a.collect { |v| "\\\\x%02x" % ((v + 256)%256) }.join
-      s << '" }'
-    end
-  end
-
-  module UUID
-    def to_s
-      a = self[:id].to_a
-      s = "{ id: "
-      s << "%02x" % a[15]
-      s << "%02x" % a[14]
-      s << "%02x" % a[13]
-      s << "%02x" % a[12]
-      s << "-"
-      s << "%02x" % a[11]
-      s << "%02x" % a[10]
-      s << "-"
-      s << "%02x" % a[9]
-      s << "%02x" % a[8]
-      s << "-"
-      s << "%02x" % a[7]
-      s << "%02x" % a[6]
-      s << "-"
-      s << "%02x" % a[5]
-      s << "%02x" % a[4]
-      s << "%02x" % a[3]
-      s << "%02x" % a[2]
-      s << "%02x" % a[1]
-      s << "%02x" % a[0]
-      s << " }"
-    end
-  end
 EOF
 
 def close_type(name)
@@ -360,12 +325,6 @@ def print_struct(name, struct)
 
   puts <<EOF
   class #{to_class_name(name)} < FFI::ITTStruct
-EOF
-  puts <<EOF if to_class_name(name).match("UUID")
-    prepend UUID
-EOF
-  puts <<EOF if to_class_name(name).match(/Handle\z/)
-    prepend Handle
 EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
