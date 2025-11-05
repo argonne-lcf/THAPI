@@ -187,7 +187,7 @@ private:
   // Children are empty Track or counter Track
   // Need to use a pointer because unordered_map cannot use an imcompolete type
   // (https://stackoverflow.com/a/13089641)
-  std::unordered_map<std::string, std::unique_ptr<Track>> childrens_;
+  std::unordered_map<std::string, std::shared_ptr<Track>> childrens_;
   // Slice begins, they can be non perfectly nested, so generate a new track if required
   std::map<uint64_t, Track> begins_;
 
@@ -216,7 +216,7 @@ private:
   }
 
   // Look up in `childrens_` to and return you a track
-  inline Track &get_child(const std::string &name, bool is_leaf_counter = false) {
+  inline std::shared_ptr<Track> get_child(const std::string &name, bool is_leaf_counter = false) {
     // We need to avoid creating tmp Track when doing lookup.
     // inorder to avoid increase the `uuid` each time
     auto [it, inserted] = childrens_.try_emplace(
@@ -226,16 +226,17 @@ private:
 
     if (inserted) {
       // Construct the Track in-place and assign to the unique_ptr
-      it->second = std::unique_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
+      it->second = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
     } else if (it->second->is_leaf_counter_ != is_leaf_counter) {
       // Existing child but type mismatch
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
 
-    return *(it->second);
+    return it->second;
   }
 
   // Helper function to recurse on a genealogy of childrens.
+  // reference `childrens_` map
   static inline Track &
   get_leaf(Track *t, const std::vector<std::string> &names, bool is_leaf_counter = false) {
     if (names.empty())
@@ -243,10 +244,10 @@ private:
 
     // Iterate over all except the last
     for (size_t i = 0; i < names.size() - 1; i++)
-      t = &t->get_child(names[i]);
+      t = t->get_child(names[i]).get();
 
     // The leaf will need to respected `is_leaf_counter`
-    return t->get_child(names.back(), is_leaf_counter);
+    return *t->get_child(names.back(), is_leaf_counter);
   }
 };
 
