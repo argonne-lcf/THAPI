@@ -20,53 +20,6 @@ def firstbitpos(x)
   r
 end
 
-def print_bitfield(name, enum)
-  special_values = []
-  members = []
-  default = nil
-  counter = 0
-  enum.members.each { |m|
-    if m.val
-      counter = m.val.kind_of?(String) ? eval(m.val) : m.val
-    else
-      counter += 1
-    end
-    if counter > 0 && popcount(counter) == 1
-      members.push [ m.name.to_sym, firstbitpos(counter) ]
-    else
-      if counter == 0
-        default = m.name.to_sym
-      else
-        r = [ m.name.to_sym ]
-        if m.val
-          r.push m.val
-        else
-          r.push counter
-        end
-        special_values.push r
-      end
-    end
-  }
-  print_lambda = lambda { |m|
-    "#{m[0].inspect}, #{m[1]}"
-  }
-  puts <<EOF
-  #{to_class_name(name)} = ittbitmask #{to_ffi_name(name)},
-    [ #{members.collect(&print_lambda).join(",\n      ")} ]
-EOF
-  if default
-    puts <<EOF
-  #{to_class_name(name)}.default = #{default.inspect}
-EOF
-  end
-  if !special_values.empty?
-    puts <<EOF
-  # #{special_values.collect(&print_lambda).join(",\n  # ")}
-EOF
-  end
-  puts "\n"
-end
-
 def unwrap_typedef_to_concrete(t)
   # unwrap chains like Typedef -> Typedef -> Enum
   seen = {}
@@ -373,11 +326,7 @@ callbacks = []
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    if false
-      print_bitfield(t.name, enum)
-    else
-      print_enum(t.name, find_enum_by_name(t.name, $itt_api))
-    end
+    print_enum(t.name, find_enum_by_name(t.name, $itt_api))
   elsif $objects.include?(t.name)
     print_itt_object(t.name)
   elsif t.type.kind_of? YAMLCAst::Struct
