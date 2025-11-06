@@ -61,11 +61,6 @@ public:
   }
 
   template <typename... KeyArgs>
-  Track &get_track(std::function<std::vector<std::string>(void)> get_names,
-                   const std::tuple<KeyArgs...> &caching_key,
-                   bool is_leaf_counter = false);
-
-  template <typename... KeyArgs>
   void add_event_slice(const std::string &name,
                        uint64_t begin,
                        uint64_t end,
@@ -97,6 +92,11 @@ private:
     trace_.clear_packet();
     current_packet_count_ = 0;
   }
+
+  template <typename... KeyArgs>
+  Track &get_track(std::function<std::vector<std::string>(void)> get_names,
+                   const std::tuple<KeyArgs...> &caching_key,
+                   bool is_leaf_counter = false);
 };
 
 class Track {
