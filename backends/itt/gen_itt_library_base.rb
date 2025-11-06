@@ -35,12 +35,6 @@ def to_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
 end
 
-def to_class_name(name)
-  mod = to_name_space(name)
-  n = name.gsub(/_t\z/, "").gsub(/\A__itt[dt]?_/, "").split("_").collect(&:capitalize).join
-  mod << n
-end
-
 # Convert C / ITT names (e.g. "__itt_domain_t") to Ruby CamelCase class names
 def to_class_name(name)
   # Derive namespace (e.g. "ITT::" or "")
