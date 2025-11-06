@@ -304,7 +304,6 @@ callbacks = []
 
 $all_types.each { |t|
   if t.type.kind_of? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, find_enum_by_name(t.name, $itt_api))
   elsif $objects.include?(t.name)
     print_itt_object(t.name)
