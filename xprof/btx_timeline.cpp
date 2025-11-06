@@ -65,6 +65,19 @@ public:
                    const std::tuple<KeyArgs...> &caching_key,
                    bool is_leaf_counter = false);
 
+  template <typename... KeyArgs>
+  void add_event_slice(const std::string &name,
+                       uint64_t begin,
+                       uint64_t end,
+                       std::function<std::vector<std::string>(void)> get_names,
+                       const std::tuple<KeyArgs...> &caching_key);
+
+  template <typename... KeyArgs>
+  void add_event_counter(uint64_t timestamp,
+                         double value,
+                         std::function<std::vector<std::string>(void)> get_names,
+                         const std::tuple<KeyArgs...> &caching_key);
+
   uint64_t track_count = 1; // The Track 0 is reserved for Perfetto UI
 
 private:
@@ -248,7 +261,7 @@ inline Track &UnboundTrace::get_track(std::function<std::vector<std::string>(voi
                                       const std::tuple<KeyArgs...> &caching_key,
                                       bool is_leaf_counter) {
 
-  static std::unordered_map<std::tuple<KeyArgs...>, Track *> cache;
+  static std::unordered_map<std::tuple<KeyArgs...>, std::shared_ptr<Track>> cache;
 
   // Try the cache
   auto [it, inserted] = cache.try_emplace(caching_key, nullptr);
@@ -266,12 +279,30 @@ inline Track &UnboundTrace::get_track(std::function<std::vector<std::string>(voi
   for (size_t i = 0; i < names.size() - 1; i++)
     t = t->get_child(names[i]).get();
 
-  // The leaf will need to respected `is_leaf_counter`
-  Track *result = t->get_child(names.back(), is_leaf_counter).get();
+  // The leaf will need to respected `is_leaf_counter`, and save the output
+  it->second = t->get_child(names.back(), is_leaf_counter);
 
-  // Save a lookup
-  it->second = result;
-  return *result;
+  // Return the now the pointer
+  return *it->second;
+}
+
+template <typename... KeyArgs>
+void UnboundTrace::add_event_slice(const std::string &name,
+                                   uint64_t begin,
+                                   uint64_t end,
+                                   std::function<std::vector<std::string>(void)> get_names,
+                                   const std::tuple<KeyArgs...> &caching_key) {
+
+  get_track(get_names, caching_key).add_event_slice(name, begin, end);
+}
+
+template <typename... KeyArgs>
+void UnboundTrace::add_event_counter(uint64_t timestamp,
+                                     double value,
+                                     std::function<std::vector<std::string>(void)> get_names,
+                                     const std::tuple<KeyArgs...> &caching_key) {
+
+  get_track(get_names, caching_key, true).add_event_counter(timestamp, value);
 }
 
 struct timeline_dispatch_s {
@@ -294,7 +325,6 @@ void btx_finalize_component_callback(void *usr_data) {
   delete dispatch;
   google::protobuf::ShutdownProtobufLibrary();
 }
-
 static void host_usr_callback(void *btx_handle,
                               void *usr_data,
                               const char *hostname,
@@ -307,14 +337,13 @@ static void host_usr_callback(void *btx_handle,
                               bt_bool err) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector{"Hostname " + std::string{hostname},
-                               "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid)};
-          },
-          std::make_tuple(hostname, vpid, vtid))
-      .add_event_slice(name, ts, ts + dur);
+  dispatch->trace->add_event_slice(
+      name, ts, ts + dur,
+      [=] {
+        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
+                           "Thread " + std::to_string(vtid)};
+      },
+      std::make_tuple(hostname, vpid, vtid));
 }
 
 static void device_usr_callback(void *btx_handle,
@@ -332,18 +361,15 @@ static void device_usr_callback(void *btx_handle,
                                 const char *metadata) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector{"Hostname " + std::string{hostname},
-                               "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid),
-                               "Device " + std::to_string(did),
-                               "SubDevice " + std::to_string(sdid)};
-          },
-          std::make_tuple(hostname, vpid, vtid, sdid))
-      .add_event_slice(name, ts, ts + dur);
+  dispatch->trace->add_event_slice(
+      name, ts, ts + dur,
+      [=] {
+        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
+                           "Thread " + std::to_string(vtid), "Device " + std::to_string(did),
+                           "SubDevice " + std::to_string(sdid)};
+      },
+      std::make_tuple(hostname, vpid, vtid, sdid));
 }
-
 static void frequency_usr_callback(void *btx_handle,
                                    void *usr_data,
                                    const char *hostname,
@@ -355,18 +381,17 @@ static void frequency_usr_callback(void *btx_handle,
                                    uint64_t frequency) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(domain),
-                                            "Frequency"};
-          },
-          std::make_tuple(hostname, did, domain, "Frequency"), true)
-      .add_event_counter(ts, static_cast<double>(frequency));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(frequency),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(domain),
+                                        "Frequency"};
+      },
+      std::make_tuple(hostname, did, domain, "Frequency"));
 }
 
 static void power_usr_callback(void *btx_handle,
@@ -380,27 +405,25 @@ static void power_usr_callback(void *btx_handle,
                                uint64_t power) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   if (domain == 0) {
-    dispatch->trace
-        ->get_track(
-            [=] {
-              return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "ZE",
-                                              "Device " + std::to_string(did), "Power"};
-            },
-            std::make_tuple(hostname, did, "Power"), true)
-        .add_event_counter(ts, static_cast<double>(power));
+    dispatch->trace->add_event_counter(
+        ts, static_cast<double>(power),
+        [=] {
+          return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "ZE",
+                                          "Device " + std::to_string(did), "Power"};
+        },
+        std::make_tuple(hostname, did, "Power"));
   } else {
-    dispatch->trace
-        ->get_track(
-            [=] {
-              return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                              "Sampling",
-                                              "ZE",
-                                              "Device " + std::to_string(did),
-                                              "SubDevice " + std::to_string(domain - 1),
-                                              "Power"};
-            },
-            std::make_tuple(hostname, did, domain - 1, "Power"), true)
-        .add_event_counter(ts, static_cast<double>(power));
+    dispatch->trace->add_event_counter(
+        ts, static_cast<double>(power),
+        [=] {
+          return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                          "Sampling",
+                                          "ZE",
+                                          "Device " + std::to_string(did),
+                                          "SubDevice " + std::to_string(domain - 1),
+                                          "Power"};
+        },
+        std::make_tuple(hostname, did, domain - 1, "Power"));
   }
 }
 
@@ -415,18 +438,17 @@ static void computeEU_usr_callback(void *btx_handle,
                                    float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(subDevice),
-                                            "ComputeEngine (%)"};
-          },
-          std::make_tuple(hostname, did, subDevice, "ComputeEngine (%)"), true)
-      .add_event_counter(ts, static_cast<double>(activeTime));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(activeTime),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(subDevice),
+                                        "ComputeEngine (%)"};
+      },
+      std::make_tuple(hostname, did, subDevice, "ComputeEngine (%)"));
 }
 
 static void copyEU_usr_callback(void *btx_handle,
@@ -440,18 +462,17 @@ static void copyEU_usr_callback(void *btx_handle,
                                 float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(subDevice),
-                                            "CopyEngine (%)"};
-          },
-          std::make_tuple(hostname, did, subDevice, "CopyEngine (%)"), true)
-      .add_event_counter(ts, static_cast<double>(activeTime));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(activeTime),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(subDevice),
+                                        "CopyEngine (%)"};
+      },
+      std::make_tuple(hostname, did, subDevice, "CopyEngine (%)"));
 }
 
 static void fabricPort_usr_callback(void *btx_handle,
@@ -470,35 +491,33 @@ static void fabricPort_usr_callback(void *btx_handle,
                                     float /*txSpeed*/) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(subDevice),
-                                            std::to_string(fabricId) + " <->" +
-                                                std::to_string(remotePortId),
-                                            "RX"};
-          },
-          std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "RX"), true)
-      .add_event_counter(ts, static_cast<double>(rxThroughput));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(rxThroughput),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(subDevice),
+                                        std::to_string(fabricId) + " <->" +
+                                            std::to_string(remotePortId),
+                                        "RX"};
+      },
+      std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "RX"));
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(subDevice),
-                                            std::to_string(fabricId) + " <->" +
-                                                std::to_string(remotePortId),
-                                            "TX"};
-          },
-          std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "TX"), true)
-      .add_event_counter(ts, static_cast<double>(txThroughput));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(txThroughput),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(subDevice),
+                                        std::to_string(fabricId) + " <->" +
+                                            std::to_string(remotePortId),
+                                        "TX"};
+      },
+      std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "TX"));
 }
 
 static void memModule_usr_callback(void *btx_handle,
@@ -515,31 +534,29 @@ static void memModule_usr_callback(void *btx_handle,
                                    float allocation) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(subDevice),
-                                            "Memory BW"};
-          },
-          std::make_tuple(hostname, did, subDevice, "Memory BW"), true)
-      .add_event_counter(ts, static_cast<double>(pBandwidth));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(pBandwidth),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(subDevice),
+                                        "Memory BW"};
+      },
+      std::make_tuple(hostname, did, subDevice, "Memory BW"));
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname},
-                                            "Sampling",
-                                            "ZE",
-                                            "Device " + std::to_string(did),
-                                            "SubDevice " + std::to_string(subDevice),
-                                            "Allocated Memory (%)"};
-          },
-          std::make_tuple(hostname, did, subDevice, "Allocated Memory (%)"), true)
-      .add_event_counter(ts, static_cast<double>(allocation));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(allocation),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                        "Sampling",
+                                        "ZE",
+                                        "Device " + std::to_string(did),
+                                        "SubDevice " + std::to_string(subDevice),
+                                        "Allocated Memory (%)"};
+      },
+      std::make_tuple(hostname, did, subDevice, "Allocated Memory (%)"));
 }
 
 static void nic_usr_callback(void *btx_handle,
@@ -552,14 +569,13 @@ static void nic_usr_callback(void *btx_handle,
 
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->trace
-      ->get_track(
-          [=] {
-            return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "NIC",
-                                            "Interface " + std::string{interface_name}, counter};
-          },
-          std::make_tuple(hostname, interface_name, counter, "NIC"), true)
-      .add_event_counter(ts, static_cast<double>(value));
+  dispatch->trace->add_event_counter(
+      ts, static_cast<double>(value),
+      [=] {
+        return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "NIC",
+                                        "Interface " + std::string{interface_name}, counter};
+      },
+      std::make_tuple(hostname, interface_name, counter, "NIC"));
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
