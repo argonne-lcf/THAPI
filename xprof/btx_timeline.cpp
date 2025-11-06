@@ -11,18 +11,13 @@
 
 #define TRUSTED_PACKED_SEQUENCE_ID 88
 
+class Track;
 // A Trach where every MAX_EVENT_PER_TRACE_CHUNK packets will be flushed to disk
 // And who contain a little utility to Interns String
 class UnboundTrace {
 
 public:
-  UnboundTrace(std::string &output_path, uint64_t track_offset = 0) : output_path_(output_path) {
-    // Overwrite previous output_path file if existing
-    std::ofstream(output_path_, std::ios::trunc | std::ios::binary);
-    std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
-    track_count += track_offset;
-  }
-
+  UnboundTrace(const std::string &output_path, uint64_t track_offset = 0);
   ::perfetto_pruned::TracePacket *add_packet() {
     // /!\ Assume all previous packets are ready to be serialized
     if (current_packet_count_ >= MAX_EVENT_PER_TRACE_CHUNK)
@@ -65,6 +60,11 @@ public:
     return iid;
   }
 
+  template <typename... KeyArgs>
+  Track &get_track(std::function<std::vector<std::string>(void)> get_names,
+                   const std::tuple<KeyArgs...> &caching_key,
+                   bool is_leaf_counter = false);
+
   uint64_t track_count = 1; // The Track 0 is reserved for Perfetto UI
 
 private:
@@ -73,6 +73,7 @@ private:
   ::perfetto_pruned::Trace trace_{};
   std::unordered_map<std::string, uint64_t> name_to_iid_;
   unsigned current_packet_count_ = 0;
+  std::unique_ptr<Track> track_ptr;
 
   void serialize() {
     // /!\ Data will be appended to the output_path file
@@ -93,17 +94,14 @@ class Track {
   //   |-> C (Counter Track)
 public:
   // Root constructor
-  static Track make_root(std::shared_ptr<UnboundTrace> trace) { return Track(std::move(trace)); }
+  static Track make_root(UnboundTrace *trace) { return Track(trace); }
 
-  template <typename... KeyArgs>
   void add_event_slice(const std::string &name,
                        uint64_t begin,
                        uint64_t end,
-                       std::function<std::vector<std::string>(void)> get_track_names,
-                       const std::tuple<KeyArgs...> &caching_key,
                        std::optional<uint64_t> correlation_id = std::nullopt) {
 
-    const auto uuid = get_leaf(this, caching_key, get_track_names).get_slice_uuid(begin, end);
+    const auto uuid = get_slice_uuid(begin, end);
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(begin);
@@ -134,11 +132,9 @@ public:
     }
   }
 
-  void add_event_counter(uint64_t timestamp,
-                         double value,
-                         const std::vector<std::string> &track_names = {}) {
+  void add_event_counter(uint64_t timestamp, double value) {
 
-    const auto uuid = get_leaf(this, track_names, true).uuid_.value();
+    const auto uuid = uuid_.value();
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(timestamp);
@@ -151,15 +147,34 @@ public:
     }
   }
 
+  // Look up in `childrens_` to and return you a track
+  inline std::shared_ptr<Track> get_child(const std::string &name, bool is_leaf_counter = false) {
+    // We need to avoid creating tmp Track when doing lookup.
+    // inorder to avoid increase the `uuid` each time
+    auto [it, inserted] = childrens_.try_emplace(
+        name,
+        nullptr // placeholder for unique_ptr; we will construct Track only if inserted
+    );
+
+    if (inserted) {
+      // Construct the Track in-place and assign to the unique_ptr
+      it->second = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
+    } else if (it->second->is_leaf_counter_ != is_leaf_counter) {
+      // Existing child but type mismatch
+      throw std::invalid_argument("Asked for a type (counter or slice) got something else");
+    }
+
+    return it->second;
+  }
+
 private:
-  Track(std::shared_ptr<UnboundTrace> trace_ptr)
-      : name_("root"), trace_ptr_(std::move(trace_ptr)), is_leaf_counter_(false) {}
+  Track(UnboundTrace *trace_ptr) : name_("root"), trace_ptr_(trace_ptr), is_leaf_counter_(false) {}
 
   Track(std::string name,
         std::optional<uint64_t> parent_uuid,
-        std::shared_ptr<UnboundTrace> trace_ptr,
+        UnboundTrace *trace_ptr,
         bool is_leaf_counter = false)
-      : name_(std::move(name)), trace_ptr_(std::move(trace_ptr)), uuid_(trace_ptr_->track_count++),
+      : name_(std::move(name)), trace_ptr_(trace_ptr), uuid_(trace_ptr_->track_count++),
         parent_uuid_(parent_uuid), is_leaf_counter_(is_leaf_counter) {
 
     auto *packet = trace_ptr_->add_packet();
@@ -179,7 +194,7 @@ private:
   }
 
   std::string name_;
-  std::shared_ptr<UnboundTrace> trace_ptr_;
+  UnboundTrace *trace_ptr_;
   // Root Have no UUID
   std::optional<uint64_t> uuid_;
   // First children have no parent_uuid (as root have no uuid)
@@ -216,75 +231,51 @@ private:
     auto result = begins_.insert(std::move(node));
     return (result.position->second.uuid_).value();
   }
-
-  // Look up in `childrens_` to and return you a track
-  inline std::shared_ptr<Track> get_child(const std::string &name, bool is_leaf_counter = false) {
-    // We need to avoid creating tmp Track when doing lookup.
-    // inorder to avoid increase the `uuid` each time
-    auto [it, inserted] = childrens_.try_emplace(
-        name,
-        nullptr // placeholder for unique_ptr; we will construct Track only if inserted
-    );
-
-    if (inserted) {
-      // Construct the Track in-place and assign to the unique_ptr
-      it->second = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
-    } else if (it->second->is_leaf_counter_ != is_leaf_counter) {
-      // Existing child but type mismatch
-      throw std::invalid_argument("Asked for a type (counter or slice) got something else");
-    }
-
-    return it->second;
-  }
-
-  // Helper function to recurse on a genealogy of childrens.
-  // reference `childrens_` map
-  static inline Track &
-  get_leaf(Track *t, const std::vector<std::string> &names, bool is_leaf_counter = false) {
-    if (names.empty())
-      return *t;
-
-    // Iterate over all except the last
-    for (size_t i = 0; i < names.size() - 1; i++)
-      t = t->get_child(names[i]).get();
-
-    // The leaf will need to respected `is_leaf_counter`
-    return *t->get_child(names.back(), is_leaf_counter);
-  }
-
-  template <typename... KeyArgs>
-  static inline Track &get_leaf(Track *t,
-                                const std::tuple<KeyArgs...> &caching_key,
-                                std::function<std::vector<std::string>(void)> get_names,
-                                bool is_leaf_counter = false) {
-
-    static std::unordered_map<std::tuple<KeyArgs...>, Track *> cache;
-
-    // Try the cache
-    auto [it, inserted] = cache.try_emplace(caching_key, nullptr);
-    if (!inserted)
-      return *it->second;
-
-    // Ok then, generate the string, add do the lookup
-    const auto names = get_names();
-    if (names.empty())
-      return *t;
-
-    // Iterate over all except the last
-    for (size_t i = 0; i < names.size() - 1; i++)
-      t = t->get_child(names[i]).get();
-
-    // The leaf will need to respected `is_leaf_counter`
-    Track *result = t->get_child(names.back(), is_leaf_counter).get();
-
-    // Save a lookup
-    it->second = result;
-    return *result;
-  }
 };
 
+UnboundTrace::UnboundTrace(const std::string &output_path, uint64_t track_offset)
+    : output_path_(output_path), track_ptr(std::make_unique<Track>(Track::make_root(this))) {
+  // Overwrite previous output_path file if existing
+  std::ofstream(output_path_, std::ios::trunc | std::ios::binary);
+  std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
+  track_count += track_offset;
+}
+
+// If you create a new instance of Trace, be carefull for the cache.
+//  the key should take some `Trace Instance uuid`.
+template <typename... KeyArgs>
+inline Track &UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
+                                      const std::tuple<KeyArgs...> &caching_key,
+                                      bool is_leaf_counter) {
+
+  static std::unordered_map<std::tuple<KeyArgs...>, Track *> cache;
+
+  // Try the cache
+  auto [it, inserted] = cache.try_emplace(caching_key, nullptr);
+  if (!inserted)
+    return *it->second;
+
+  Track *t = track_ptr.get();
+
+  // Ok then, generate the string, add do the lookup
+  const auto names = get_names();
+  if (names.empty())
+    return *t;
+
+  // Iterate over all except the last
+  for (size_t i = 0; i < names.size() - 1; i++)
+    t = t->get_child(names[i]).get();
+
+  // The leaf will need to respected `is_leaf_counter`
+  Track *result = t->get_child(names.back(), is_leaf_counter).get();
+
+  // Save a lookup
+  it->second = result;
+  return *result;
+}
+
 struct timeline_dispatch_s {
-  std::unique_ptr<Track> track_tree;
+  std::unique_ptr<UnboundTrace> trace;
 };
 
 using timeline_dispatch_t = struct timeline_dispatch_s;
@@ -294,8 +285,7 @@ void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeli
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
   std::string output_path{usr_params->output_path};
-  auto trace = std::make_shared<UnboundTrace>(output_path, usr_params->offset);
-  dispatch->track_tree = std::make_unique<Track>(Track::make_root(trace));
+  dispatch->trace = std::make_unique<UnboundTrace>(output_path, usr_params->offset);
 }
 
 void btx_finalize_component_callback(void *usr_data) {
@@ -317,13 +307,14 @@ static void host_usr_callback(void *btx_handle,
                               bt_bool err) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_slice(
-      name, ts, ts + dur,
-      [=] {
-        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
-                           "Thread " + std::to_string(vtid)};
-      },
-      std::make_tuple(hostname, vpid, vtid));
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector{"Hostname " + std::string{hostname},
+                               "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid)};
+          },
+          std::make_tuple(hostname, vpid, vtid))
+      .add_event_slice(name, ts, ts + dur);
 }
 
 static void device_usr_callback(void *btx_handle,
@@ -341,14 +332,16 @@ static void device_usr_callback(void *btx_handle,
                                 const char *metadata) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_slice(
-      name, ts, ts + dur,
-      [=] {
-        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
-                           "Thread " + std::to_string(vtid), "Device " + std::to_string(did),
-                           "SubDevice " + std::to_string(sdid)};
-      },
-      std::make_tuple(hostname, vpid, vtid, sdid));
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector{"Hostname " + std::string{hostname},
+                               "Process " + std::to_string(vpid), "Thread " + std::to_string(vtid),
+                               "Device " + std::to_string(did),
+                               "SubDevice " + std::to_string(sdid)};
+          },
+          std::make_tuple(hostname, vpid, vtid, sdid))
+      .add_event_slice(name, ts, ts + dur);
 }
 
 static void frequency_usr_callback(void *btx_handle,
@@ -362,10 +355,18 @@ static void frequency_usr_callback(void *btx_handle,
                                    uint64_t frequency) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(ts, static_cast<double>(frequency),
-                                          {"Hostname " + std::string{hostname}, "Sampling", "ZE",
-                                           "Device " + std::to_string(did),
-                                           "SubDevice " + std::to_string(domain), "Frequency"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(domain),
+                                            "Frequency"};
+          },
+          std::make_tuple(hostname, did, domain, "Frequency"), true)
+      .add_event_counter(ts, static_cast<double>(frequency));
 }
 
 static void power_usr_callback(void *btx_handle,
@@ -378,16 +379,28 @@ static void power_usr_callback(void *btx_handle,
                                uint32_t domain,
                                uint64_t power) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
-  // Domain 0 is the full Device, 1 and 2 are the subdevice
   if (domain == 0) {
-    dispatch->track_tree->add_event_counter(ts, static_cast<double>(power),
-                                            {"Hostname " + std::string{hostname}, "Sampling", "ZE",
-                                             "Device " + std::to_string(did), "Power"});
+    dispatch->trace
+        ->get_track(
+            [=] {
+              return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "ZE",
+                                              "Device " + std::to_string(did), "Power"};
+            },
+            std::make_tuple(hostname, did, "Power"), true)
+        .add_event_counter(ts, static_cast<double>(power));
   } else {
-    dispatch->track_tree->add_event_counter(ts, static_cast<double>(power),
-                                            {"Hostname " + std::string{hostname}, "Sampling", "ZE",
-                                             "Device " + std::to_string(did),
-                                             "SubDevice " + std::to_string(domain - 1), "Power"});
+    dispatch->trace
+        ->get_track(
+            [=] {
+              return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                              "Sampling",
+                                              "ZE",
+                                              "Device " + std::to_string(did),
+                                              "SubDevice " + std::to_string(domain - 1),
+                                              "Power"};
+            },
+            std::make_tuple(hostname, did, domain - 1, "Power"), true)
+        .add_event_counter(ts, static_cast<double>(power));
   }
 }
 
@@ -402,10 +415,18 @@ static void computeEU_usr_callback(void *btx_handle,
                                    float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(
-      ts, static_cast<double>(activeTime),
-      {"Hostname " + std::string{hostname}, "Sampling", "ZE", "Device " + std::to_string(did),
-       "SubDevice " + std::to_string(subDevice), "ComputeEngine (%)"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(subDevice),
+                                            "ComputeEngine (%)"};
+          },
+          std::make_tuple(hostname, did, subDevice, "ComputeEngine (%)"), true)
+      .add_event_counter(ts, static_cast<double>(activeTime));
 }
 
 static void copyEU_usr_callback(void *btx_handle,
@@ -419,10 +440,18 @@ static void copyEU_usr_callback(void *btx_handle,
                                 float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(
-      ts, static_cast<double>(activeTime),
-      {"Hostname " + std::string{hostname}, "Sampling", "ZE", "Device " + std::to_string(did),
-       "SubDevice " + std::to_string(subDevice), "CopyEngine (%)"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(subDevice),
+                                            "CopyEngine (%)"};
+          },
+          std::make_tuple(hostname, did, subDevice, "CopyEngine (%)"), true)
+      .add_event_counter(ts, static_cast<double>(activeTime));
 }
 
 static void fabricPort_usr_callback(void *btx_handle,
@@ -441,17 +470,35 @@ static void fabricPort_usr_callback(void *btx_handle,
                                     float /*txSpeed*/) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(
-      ts, static_cast<double>(rxThroughput),
-      {"Hostname " + std::string{hostname}, "Sampling", "ZE", "Device " + std::to_string(did),
-       "SubDevice " + std::to_string(subDevice),
-       std::to_string(fabricId) + " <->" + std::to_string(remotePortId), "RX"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(subDevice),
+                                            std::to_string(fabricId) + " <->" +
+                                                std::to_string(remotePortId),
+                                            "RX"};
+          },
+          std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "RX"), true)
+      .add_event_counter(ts, static_cast<double>(rxThroughput));
 
-  dispatch->track_tree->add_event_counter(
-      ts, static_cast<double>(txThroughput),
-      {"Hostname " + std::string{hostname}, "Sampling", "ZE", "Device " + std::to_string(did),
-       "SubDevice " + std::to_string(subDevice),
-       std::to_string(fabricId) + " <->" + std::to_string(remotePortId), "TX"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(subDevice),
+                                            std::to_string(fabricId) + " <->" +
+                                                std::to_string(remotePortId),
+                                            "TX"};
+          },
+          std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "TX"), true)
+      .add_event_counter(ts, static_cast<double>(txThroughput));
 }
 
 static void memModule_usr_callback(void *btx_handle,
@@ -468,15 +515,31 @@ static void memModule_usr_callback(void *btx_handle,
                                    float allocation) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(ts, static_cast<double>(pBandwidth),
-                                          {"Hostname " + std::string{hostname}, "Sampling", "ZE",
-                                           "Device " + std::to_string(did),
-                                           "SubDevice " + std::to_string(subDevice), "Memory BW"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(subDevice),
+                                            "Memory BW"};
+          },
+          std::make_tuple(hostname, did, subDevice, "Memory BW"), true)
+      .add_event_counter(ts, static_cast<double>(pBandwidth));
 
-  dispatch->track_tree->add_event_counter(
-      ts, static_cast<double>(allocation),
-      {"Hostname " + std::string{hostname}, "Sampling", "ZE", "Device " + std::to_string(did),
-       "SubDevice " + std::to_string(subDevice), "Allocated Memory (%)"});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname},
+                                            "Sampling",
+                                            "ZE",
+                                            "Device " + std::to_string(did),
+                                            "SubDevice " + std::to_string(subDevice),
+                                            "Allocated Memory (%)"};
+          },
+          std::make_tuple(hostname, did, subDevice, "Allocated Memory (%)"), true)
+      .add_event_counter(ts, static_cast<double>(allocation));
 }
 
 static void nic_usr_callback(void *btx_handle,
@@ -489,9 +552,14 @@ static void nic_usr_callback(void *btx_handle,
 
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
-  dispatch->track_tree->add_event_counter(ts, static_cast<double>(value),
-                                          {"Hostname " + std::string{hostname}, "Sampling", "NIC",
-                                           "Interface " + std::string{interface_name}, counter});
+  dispatch->trace
+      ->get_track(
+          [=] {
+            return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "NIC",
+                                            "Interface " + std::string{interface_name}, counter};
+          },
+          std::make_tuple(hostname, interface_name, counter, "NIC"), true)
+      .add_event_counter(ts, static_cast<double>(value));
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
