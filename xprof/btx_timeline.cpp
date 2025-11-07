@@ -14,7 +14,8 @@
 
 #include "perfetto_pruned.pb.h"
 
-enum { TRUSTED_PACKED_SEQUENCE_ID = 88 };
+enum { TRUSTED_PACKED_SEQUENCE_ID = 88,
+       MAX_EVENT_PER_TRACE_CHUNK = 100'000 };
 
 // Forward Declare.
 // Trace, have a pointer to the root track
@@ -85,8 +86,7 @@ public:
   uint64_t track_count = 1; // The Track 0 is reserved for Perfetto UI
 
 private:
-  static constexpr unsigned MAX_EVENT_PER_TRACE_CHUNK = 100'000;
-  std::string output_path_;
+  const std::string output_path_;
   ::perfetto_pruned::Trace trace_{};
   std::unordered_map<std::string, uint64_t> name_to_iid_;
   unsigned current_packet_count_ = 0;
@@ -96,7 +96,8 @@ private:
     // /!\ Data will be appended to the output_path file
     std::fstream output(output_path_, std::ios::out | std::ios::app | std::ios::binary);
     if (!trace_.SerializeToOstream(&output))
-      std::cerr << "THAPI: Failed to write the trace at location: " << output_path_ << std::endl;
+      throw("THAPI: Failed to write the trace at location " + output_path_);
+
     // Clean state
     trace_.clear_packet();
     current_packet_count_ = 0;
@@ -169,10 +170,10 @@ public:
     }
   }
 
-  // Look up in `childrens_` to and return you a track
+  // Look up in `children_` to and return you a track
   inline std::shared_ptr<Track> get_child(const std::string &name, bool is_leaf_counter = false) {
     // Childrens are shared_ptr of track, so it's ok to default construct in case of name is missing
-    auto &child = childrens_[name];
+    auto &child = children_[name];
     if (!child) {
       child = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
     } else if (child->is_leaf_counter_ != is_leaf_counter) {
@@ -219,7 +220,7 @@ private:
   // Children are empty Track or counter Track
   // Need to use a pointer because unordered_map cannot use an imcompolete type
   // (https://stackoverflow.com/a/13089641)
-  std::unordered_map<std::string, std::shared_ptr<Track>> childrens_;
+  std::unordered_map<std::string, std::shared_ptr<Track>> children_;
   // Slice begins, they can be non perfectly nested, so generate a new track if required
   std::map<uint64_t, std::unique_ptr<Track>> begins_;
 
@@ -277,7 +278,7 @@ UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
   if (names.empty())
     throw std::invalid_argument("A track name is required");
 
-  // Iterate over all childrens except the last, use raw pointer to avoid modifying track_ptr_
+  // Iterate over all children except the last, use raw pointer to avoid modifying track_ptr_
   Track *t = track_ptr_.get();
   for (size_t i = 0; i < names.size() - 1; i++)
     t = t->get_child(names[i]).get();
