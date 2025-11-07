@@ -90,8 +90,7 @@ private:
   ::perfetto_pruned::Trace trace_{};
   std::unordered_map<std::string, uint64_t> name_to_iid_;
   unsigned current_packet_count_ = 0;
-  // The Track can be saved by the cache of get_track, so need to be shared
-  std::shared_ptr<Track> track_ptr;
+  std::unique_ptr<Track> track_ptr;
 
   void serialize() {
     // /!\ Data will be appended to the output_path file
@@ -252,7 +251,7 @@ private:
 };
 
 UnboundTrace::UnboundTrace(const std::string &output_path, uint64_t track_offset)
-    : output_path_(output_path), track_ptr(std::make_shared<Track>(Track::make_root(this))) {
+    : output_path_(output_path), track_ptr(std::make_unique<Track>(Track::make_root(this))) {
   // Overwrite previous output_path file if existing
   std::ofstream(output_path_, std::ios::trunc | std::ios::binary);
   std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
@@ -275,9 +274,9 @@ UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
   // Not cached.
   // Ok then, generate the string
   // And to the hiearchy lookup if required
-  const auto names = get_names();
+  const auto &names = get_names();
   if (names.empty())
-    return track_ptr;
+    throw std::invalid_argument("A track name is required");
 
   Track *t = track_ptr.get();
   // Iterate over all except the last
