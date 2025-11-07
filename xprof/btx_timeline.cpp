@@ -96,7 +96,7 @@ private:
     // /!\ Data will be appended to the output_path file
     std::fstream output(output_path_, std::ios::out | std::ios::app | std::ios::binary);
     if (!trace_.SerializeToOstream(&output))
-      throw("THAPI: Failed to write the trace at location " + output_path_);
+      throw std::runtime_error("THAPI: Failed to write the trace at location " + output_path_);
 
     // Clean state
     trace_.clear_packet();
