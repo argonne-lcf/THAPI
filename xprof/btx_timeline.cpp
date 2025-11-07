@@ -329,6 +329,7 @@ static void btx_finalize_component_callback(void *usr_data) {
   delete dispatch;
   google::protobuf::ShutdownProtobufLibrary();
 }
+
 static void host_usr_callback(void *btx_handle,
                               void *usr_data,
                               const char *hostname,
@@ -340,14 +341,15 @@ static void host_usr_callback(void *btx_handle,
                               uint64_t dur,
                               bt_bool err) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_slice(
       name, ts, ts + dur,
       [=] {
-        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
+        return std::vector{"Hostname " + hostname_s, "Process " + std::to_string(vpid),
                            "Thread " + std::to_string(vtid)};
       },
-      std::make_tuple(hostname, vpid, vtid));
+      std::make_tuple(hostname_s, vpid, vtid));
 }
 
 static void device_usr_callback(void *btx_handle,
@@ -364,15 +366,16 @@ static void device_usr_callback(void *btx_handle,
                                 bt_bool err,
                                 const char *metadata) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_slice(
       name, ts, ts + dur,
       [=] {
-        return std::vector{"Hostname " + std::string{hostname}, "Process " + std::to_string(vpid),
+        return std::vector{"Hostname " + hostname_s, "Process " + std::to_string(vpid),
                            "Thread " + std::to_string(vtid), "Device " + std::to_string(did),
                            "SubDevice " + std::to_string(sdid)};
       },
-      std::make_tuple(hostname, vpid, vtid, sdid));
+      std::make_tuple(hostname_s, vpid, vtid, sdid));
 }
 static void frequency_usr_callback(void *btx_handle,
                                    void *usr_data,
@@ -384,18 +387,19 @@ static void frequency_usr_callback(void *btx_handle,
                                    uint32_t domain,
                                    uint64_t frequency) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(frequency),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
                                         "SubDevice " + std::to_string(domain),
                                         "Frequency"};
       },
-      std::make_tuple(hostname, did, domain, "Frequency"));
+      std::make_tuple(hostname_s, did, domain, "Frequency"));
 }
 
 static void power_usr_callback(void *btx_handle,
@@ -408,26 +412,28 @@ static void power_usr_callback(void *btx_handle,
                                uint32_t domain,
                                uint64_t power) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
+
   if (domain == 0) {
     dispatch->trace->add_event_counter(
         ts, static_cast<double>(power),
         [=] {
-          return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "ZE",
+          return std::vector<std::string>{"Hostname " + hostname_s, "Sampling", "ZE",
                                           "Device " + std::to_string(did), "Power"};
         },
-        std::make_tuple(hostname, did, "Power"));
+        std::make_tuple(hostname_s, did, "Power"));
   } else {
     dispatch->trace->add_event_counter(
         ts, static_cast<double>(power),
         [=] {
-          return std::vector<std::string>{"Hostname " + std::string{hostname},
+          return std::vector<std::string>{"Hostname " + hostname_s,
                                           "Sampling",
                                           "ZE",
                                           "Device " + std::to_string(did),
                                           "SubDevice " + std::to_string(domain - 1),
                                           "Power"};
         },
-        std::make_tuple(hostname, did, domain - 1, "Power"));
+        std::make_tuple(hostname_s, did, domain - 1, "Power"));
   }
 }
 
@@ -441,18 +447,19 @@ static void computeEU_usr_callback(void *btx_handle,
                                    uint32_t subDevice,
                                    float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(activeTime),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
                                         "SubDevice " + std::to_string(subDevice),
                                         "ComputeEngine (%)"};
       },
-      std::make_tuple(hostname, did, subDevice, "ComputeEngine (%)"));
+      std::make_tuple(hostname_s, did, subDevice, "ComputeEngine (%)"));
 }
 
 static void copyEU_usr_callback(void *btx_handle,
@@ -465,18 +472,19 @@ static void copyEU_usr_callback(void *btx_handle,
                                 uint32_t subDevice,
                                 float activeTime) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(activeTime),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
                                         "SubDevice " + std::to_string(subDevice),
                                         "CopyEngine (%)"};
       },
-      std::make_tuple(hostname, did, subDevice, "CopyEngine (%)"));
+      std::make_tuple(hostname_s, did, subDevice, "CopyEngine (%)"));
 }
 
 static void fabricPort_usr_callback(void *btx_handle,
@@ -494,11 +502,12 @@ static void fabricPort_usr_callback(void *btx_handle,
                                     float /*rxSpeed*/,
                                     float /*txSpeed*/) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(rxThroughput),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
@@ -507,12 +516,12 @@ static void fabricPort_usr_callback(void *btx_handle,
                                             std::to_string(remotePortId),
                                         "RX"};
       },
-      std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "RX"));
+      std::make_tuple(hostname_s, did, subDevice, fabricId, remotePortId, "RX"));
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(txThroughput),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
@@ -521,7 +530,7 @@ static void fabricPort_usr_callback(void *btx_handle,
                                             std::to_string(remotePortId),
                                         "TX"};
       },
-      std::make_tuple(hostname, did, subDevice, fabricId, remotePortId, "TX"));
+      std::make_tuple(hostname_s, did, subDevice, fabricId, remotePortId, "TX"));
 }
 
 static void memModule_usr_callback(void *btx_handle,
@@ -537,30 +546,31 @@ static void memModule_usr_callback(void *btx_handle,
                                    float /*wtBandwidth*/,
                                    float allocation) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
+  const std::string hostname_s{hostname};
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(pBandwidth),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
                                         "SubDevice " + std::to_string(subDevice),
                                         "Memory BW"};
       },
-      std::make_tuple(hostname, did, subDevice, "Memory BW"));
+      std::make_tuple(hostname_s, did, subDevice, "Memory BW"));
 
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(allocation),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname},
+        return std::vector<std::string>{"Hostname " + hostname_s,
                                         "Sampling",
                                         "ZE",
                                         "Device " + std::to_string(did),
                                         "SubDevice " + std::to_string(subDevice),
                                         "Allocated Memory (%)"};
       },
-      std::make_tuple(hostname, did, subDevice, "Allocated Memory (%)"));
+      std::make_tuple(hostname_s, did, subDevice, "Allocated Memory (%)"));
 }
 
 static void nic_usr_callback(void *btx_handle,
@@ -573,16 +583,21 @@ static void nic_usr_callback(void *btx_handle,
 
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
+  const std::string hostname_s{hostname};
+  const std::string interface_name_s{interface_name};
+  const std::string counter_s{counter};
+
   dispatch->trace->add_event_counter(
       ts, static_cast<double>(value),
       [=] {
-        return std::vector<std::string>{"Hostname " + std::string{hostname}, "Sampling", "NIC",
-                                        "Interface " + std::string{interface_name}, counter};
+        return std::vector<std::string>{"Hostname " + hostname_s, "Sampling", "NIC",
+                                        "Interface " + interface_name_s, counter_s};
       },
-      std::make_tuple(hostname, interface_name, counter, "NIC"));
+      std::make_tuple(hostname_s, interface_name_s, counter_s, "NIC"));
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
+
   btx_register_callbacks_lttng_host(btx_handle, &host_usr_callback);
   btx_register_callbacks_lttng_device(btx_handle, &device_usr_callback);
   btx_register_callbacks_sampling_frequency(btx_handle, &frequency_usr_callback);
