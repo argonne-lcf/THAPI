@@ -6,10 +6,15 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <optional>
+#include <functional>
+#include <memory>
+#include <tuple>
+#include <stdexcept>
 
-#include "perfetto_prunned.pb.h"
+#include "perfetto_pruned.pb.h"
 
-#define TRUSTED_PACKED_SEQUENCE_ID 88
+enum { TRUSTED_PACKED_SEQUENCE_ID = 88 };
 
 class Track;
 // A Trach where every MAX_EVENT_PER_TRACE_CHUNK packets will be flushed to disk
@@ -311,7 +316,7 @@ struct timeline_dispatch_s {
 
 using timeline_dispatch_t = struct timeline_dispatch_s;
 
-void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeline_dispatch_t; }
+static void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeline_dispatch_t; }
 
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
@@ -319,7 +324,7 @@ static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   dispatch->trace = std::make_unique<UnboundTrace>(output_path, usr_params->offset);
 }
 
-void btx_finalize_component_callback(void *usr_data) {
+static void btx_finalize_component_callback(void *usr_data) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
 
   delete dispatch;
