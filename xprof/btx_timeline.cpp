@@ -2,23 +2,27 @@
 
 #include "xprof_utils.hpp" // typedef
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <map>
-#include <string>
-#include <unordered_map>
-#include <optional>
-#include <functional>
 #include <memory>
-#include <tuple>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <tuple>
+#include <unordered_map>
 
 #include "perfetto_pruned.pb.h"
 
 enum { TRUSTED_PACKED_SEQUENCE_ID = 88 };
 
+// Forward Declare.
+// Trace, have a pointer to the root track
+// And Track have a pointer to the trace
 class Track;
-// A Trach where every MAX_EVENT_PER_TRACE_CHUNK packets will be flushed to disk
-// And who contain a little utility to Interns String
+
+// A Trace where every MAX_EVENT_PER_TRACE_CHUNK packets will be flushed to disk
+// And who contain a little utility to Intern String
 class UnboundTrace {
 
 public:
@@ -86,7 +90,8 @@ private:
   ::perfetto_pruned::Trace trace_{};
   std::unordered_map<std::string, uint64_t> name_to_iid_;
   unsigned current_packet_count_ = 0;
-  std::unique_ptr<Track> track_ptr;
+  // The Track can be saved by the cache of get_track, so need to be shared
+  std::shared_ptr<Track> track_ptr;
 
   void serialize() {
     // /!\ Data will be appended to the output_path file
@@ -99,20 +104,20 @@ private:
   }
 
   template <typename... KeyArgs>
-  Track &get_track(std::function<std::vector<std::string>(void)> get_names,
-                   const std::tuple<KeyArgs...> &caching_key,
-                   bool is_leaf_counter = false);
+  std::shared_ptr<Track> get_track(std::function<std::vector<std::string>(void)> get_names,
+                                   const std::tuple<KeyArgs...> &caching_key,
+                                   bool is_leaf_counter = false);
 };
 
 class Track {
-  // A (root no uuid)
+  // A (root no uuid, owned by Trace)
   // |-> B1 (begin event slices)
   // |-> B2
   // |-> B (Empty track constructed by get_child)
   //   |-> C (Counter Track)
 public:
   // Root constructor
-  static Track make_root(UnboundTrace *trace) { return Track(trace); }
+  static Track make_root(UnboundTrace *trace_ptr) { return Track(trace_ptr); }
 
   void add_event_slice(const std::string &name,
                        uint64_t begin,
@@ -167,22 +172,15 @@ public:
 
   // Look up in `childrens_` to and return you a track
   inline std::shared_ptr<Track> get_child(const std::string &name, bool is_leaf_counter = false) {
-    // We need to avoid creating tmp Track when doing lookup.
-    // inorder to avoid increase the `uuid` each time
-    auto [it, inserted] = childrens_.try_emplace(
-        name,
-        nullptr // placeholder for unique_ptr; we will construct Track only if inserted
-    );
-
-    if (inserted) {
-      // Construct the Track in-place and assign to the unique_ptr
-      it->second = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
-    } else if (it->second->is_leaf_counter_ != is_leaf_counter) {
+    // Childrens are shared_ptr of track, so it's ok to default construct in case of name is missing
+    auto &child = childrens_[name];
+    if (!child) {
+      child = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
+    } else if (child->is_leaf_counter_ != is_leaf_counter) {
       // Existing child but type mismatch
       throw std::invalid_argument("Asked for a type (counter or slice) got something else");
     }
-
-    return it->second;
+    return child;
   }
 
 private:
@@ -224,7 +222,7 @@ private:
   // (https://stackoverflow.com/a/13089641)
   std::unordered_map<std::string, std::shared_ptr<Track>> childrens_;
   // Slice begins, they can be non perfectly nested, so generate a new track if required
-  std::map<uint64_t, Track> begins_;
+  std::map<uint64_t, std::unique_ptr<Track>> begins_;
 
   // Lookup begins_ and return a correct `uuid` track
   uint64_t get_slice_uuid(uint64_t begin, uint64_t end) {
@@ -236,8 +234,9 @@ private:
       // Pre-historical event: create new track descriptor.
       // They share our parent. Our trace will be an empty track, but ready for other children to
       // use.
-      auto new_it = begins_.emplace_hint(it, end, Track(name_, parent_uuid_, trace_ptr_));
-      return (new_it->second.uuid_).value();
+      auto new_it = begins_.emplace_hint(
+          it, end, std::unique_ptr<Track>(new Track(name_, parent_uuid_, trace_ptr_)));
+      return (new_it->second->uuid_).value();
     }
 
     // Move the `uuid` who started before this events to the end
@@ -245,14 +244,15 @@ private:
     // The doc said extract is the only way to change a key of a map element
     // without reallocation: https://en.cppreference.com/w/cpp/container/map/extract.html
     auto node = begins_.extract(itp);
+    // If end already exist, YOLO
     node.key() = end;
     auto result = begins_.insert(std::move(node));
-    return (result.position->second.uuid_).value();
+    return (result.position->second->uuid_).value();
   }
 };
 
 UnboundTrace::UnboundTrace(const std::string &output_path, uint64_t track_offset)
-    : output_path_(output_path), track_ptr(std::make_unique<Track>(Track::make_root(this))) {
+    : output_path_(output_path), track_ptr(std::make_shared<Track>(Track::make_root(this))) {
   // Overwrite previous output_path file if existing
   std::ofstream(output_path_, std::ios::trunc | std::ios::binary);
   std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
@@ -262,33 +262,30 @@ UnboundTrace::UnboundTrace(const std::string &output_path, uint64_t track_offset
 // If you create a new instance of Trace, be carefull for the cache.
 //  the key should take some `Trace Instance uuid`.
 template <typename... KeyArgs>
-inline Track &UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
-                                      const std::tuple<KeyArgs...> &caching_key,
-                                      bool is_leaf_counter) {
+inline std::shared_ptr<Track>
+UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
+                        const std::tuple<KeyArgs...> &caching_key,
+                        bool is_leaf_counter) {
 
   static std::unordered_map<std::tuple<KeyArgs...>, std::shared_ptr<Track>> cache;
-
   // Try the cache
-  auto [it, inserted] = cache.try_emplace(caching_key, nullptr);
-  if (!inserted)
-    return *it->second;
-
-  Track *t = track_ptr.get();
-
-  // Ok then, generate the string, add do the lookup
+  auto &track_cached = cache[caching_key];
+  if (track_cached)
+    return track_cached;
+  // Not cached.
+  // Ok then, generate the string
+  // And to the hiearchy lookup if required
   const auto names = get_names();
   if (names.empty())
-    return *t;
+    return track_ptr;
 
+  Track *t = track_ptr.get();
   // Iterate over all except the last
   for (size_t i = 0; i < names.size() - 1; i++)
     t = t->get_child(names[i]).get();
-
   // The leaf will need to respected `is_leaf_counter`, and save the output
-  it->second = t->get_child(names.back(), is_leaf_counter);
-
-  // Return the now the pointer
-  return *it->second;
+  track_cached = t->get_child(names.back(), is_leaf_counter);
+  return track_cached;
 }
 
 template <typename... KeyArgs>
@@ -298,7 +295,7 @@ void UnboundTrace::add_event_slice(const std::string &name,
                                    std::function<std::vector<std::string>(void)> get_names,
                                    const std::tuple<KeyArgs...> &caching_key) {
 
-  get_track(get_names, caching_key).add_event_slice(name, begin, end);
+  get_track(get_names, caching_key)->add_event_slice(name, begin, end);
 }
 
 template <typename... KeyArgs>
@@ -307,7 +304,7 @@ void UnboundTrace::add_event_counter(uint64_t timestamp,
                                      std::function<std::vector<std::string>(void)> get_names,
                                      const std::tuple<KeyArgs...> &caching_key) {
 
-  get_track(get_names, caching_key, true).add_event_counter(timestamp, value);
+  get_track(get_names, caching_key, true)->add_event_counter(timestamp, value);
 }
 
 struct timeline_dispatch_s {
@@ -316,7 +313,9 @@ struct timeline_dispatch_s {
 
 using timeline_dispatch_t = struct timeline_dispatch_s;
 
-static void btx_initialize_component_callback(void **usr_data) { *usr_data = new timeline_dispatch_t; }
+static void btx_initialize_component_callback(void **usr_data) {
+  *usr_data = new timeline_dispatch_t;
+}
 
 static void read_params_callback(void *usr_data, btx_params_t *usr_params) {
   auto *dispatch = static_cast<timeline_dispatch_t *>(usr_data);
