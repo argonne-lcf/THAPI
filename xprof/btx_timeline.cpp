@@ -243,7 +243,7 @@ private:
     // The doc said extract is the only way to change a key of a map element
     // without reallocation: https://en.cppreference.com/w/cpp/container/map/extract.html
     auto node = begins_.extract(itp);
-    // If end already exist, YOLO
+    // If end already exist, YOLO. We overwrite it and call it a day.
     node.key() = end;
     auto result = begins_.insert(std::move(node));
     return (result.position->second->uuid_).value();
@@ -258,8 +258,8 @@ UnboundTrace::UnboundTrace(const std::string &output_path, uint64_t track_offset
   track_count += track_offset;
 }
 
-// If you create a new instance of Trace, be carefull for the cache.
-//  the key should take some `Trace Instance uuid`.
+// If you create a new instance of Trace, be careful of caching.
+// User responsibility to use a appropriate caching key
 template <typename... KeyArgs>
 inline std::shared_ptr<Track>
 UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
