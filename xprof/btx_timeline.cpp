@@ -90,7 +90,7 @@ private:
   ::perfetto_pruned::Trace trace_{};
   std::unordered_map<std::string, uint64_t> name_to_iid_;
   unsigned current_packet_count_ = 0;
-  std::unique_ptr<Track> track_ptr;
+  std::unique_ptr<Track> track_ptr_;
 
   void serialize() {
     // /!\ Data will be appended to the output_path file
@@ -251,7 +251,7 @@ private:
 };
 
 UnboundTrace::UnboundTrace(const std::string &output_path, uint64_t track_offset)
-    : output_path_(output_path), track_ptr(std::make_unique<Track>(Track::make_root(this))) {
+    : output_path_(output_path), track_ptr_(std::make_unique<Track>(Track::make_root(this))) {
   // Overwrite previous output_path file if existing
   std::ofstream(output_path_, std::ios::trunc | std::ios::binary);
   std::cout << "THAPI: Perfetto trace location: " << output_path_ << std::endl;
@@ -271,18 +271,17 @@ UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
   auto &track_cached = cache[caching_key];
   if (track_cached)
     return track_cached;
-  // Not cached.
-  // Ok then, generate the string
-  // And to the hiearchy lookup if required
+
+  // Not cached. Generate the string, and do the family tree walk
   const auto &names = get_names();
   if (names.empty())
     throw std::invalid_argument("A track name is required");
 
-  Track *t = track_ptr.get();
-  // Iterate over all except the last
+  // Iterate over all childrens except the last, use raw pointer to avoid modifying track_ptr_
+  Track *t = track_ptr_.get();
   for (size_t i = 0; i < names.size() - 1; i++)
     t = t->get_child(names[i]).get();
-  // The leaf will need to respected `is_leaf_counter`, and save the output
+  // The leaf will need to respected `is_leaf_counter`, and save is output to the cache
   track_cached = t->get_child(names.back(), is_leaf_counter);
   return track_cached;
 }
