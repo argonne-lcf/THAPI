@@ -375,7 +375,7 @@ static void device_usr_callback(void *btx_handle,
                            "Thread " + std::to_string(vtid), "Device " + std::to_string(did),
                            "SubDevice " + std::to_string(sdid)};
       },
-      std::make_tuple(hostname_s, vpid, vtid, sdid));
+      std::make_tuple(hostname_s, vpid, vtid, did, sdid));
 }
 static void frequency_usr_callback(void *btx_handle,
                                    void *usr_data,
