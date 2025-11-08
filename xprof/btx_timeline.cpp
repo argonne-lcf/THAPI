@@ -14,7 +14,7 @@
 
 #include "perfetto_pruned.pb.h"
 
-enum { TRUSTED_PACKED_SEQUENCE_ID = 88,
+enum { TRUSTED_PACKET_SEQUENCE_ID = 88,
        MAX_EVENT_PER_TRACE_CHUNK = 100'000 };
 
 // Forward Declare.
@@ -48,9 +48,9 @@ public:
       return std::nullopt;
 
     // Sequence Flags:
-    // The packet calling `get_interned_id` will used interned string
+    // The packet calling `get_interned_id` will use an interned string
     int flags = perfetto_pruned::TracePacket::SEQ_NEEDS_INCREMENTAL_STATE;
-    // If it the first packet to use interned string we need to clean the state
+    // If it is the first packet to use interned string, we need to clean the state
     if (name_to_iid_.empty()) {
       flags = flags | perfetto_pruned::TracePacket::SEQ_INCREMENTAL_STATE_CLEARED;
     }
@@ -128,7 +128,7 @@ public:
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(begin);
-      packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+      packet->set_trusted_packet_sequence_id(TRUSTED_PACKET_SEQUENCE_ID);
 
       auto *track_event = packet->mutable_track_event();
       track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_BEGIN);
@@ -147,7 +147,7 @@ public:
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(end);
-      packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+      packet->set_trusted_packet_sequence_id(TRUSTED_PACKET_SEQUENCE_ID);
 
       auto *track_event = packet->mutable_track_event();
       track_event->set_type(perfetto_pruned::TrackEvent::TYPE_SLICE_END);
@@ -161,7 +161,7 @@ public:
     {
       auto *packet = trace_ptr_->add_packet();
       packet->set_timestamp(timestamp);
-      packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+      packet->set_trusted_packet_sequence_id(TRUSTED_PACKET_SEQUENCE_ID);
 
       auto *track_event = packet->mutable_track_event();
       track_event->set_type(perfetto_pruned::TrackEvent::TYPE_COUNTER);
@@ -172,7 +172,7 @@ public:
 
   // Look up in `children_` to and return you a track
   inline std::shared_ptr<Track> get_child(const std::string &name, bool is_leaf_counter = false) {
-    // Childrens are shared_ptr of track, so it's ok to default construct in case of name is missing
+    // Children are `shared_ptr`s of track, so it's ok to default construct in case where name is missing
     auto &child = children_[name];
     if (!child) {
       child = std::shared_ptr<Track>(new Track(name, uuid_, trace_ptr_, is_leaf_counter));
@@ -194,7 +194,7 @@ private:
         parent_uuid_(parent_uuid), is_leaf_counter_(is_leaf_counter) {
 
     auto *packet = trace_ptr_->add_packet();
-    packet->set_trusted_packet_sequence_id(TRUSTED_PACKED_SEQUENCE_ID);
+    packet->set_trusted_packet_sequence_id(TRUSTED_PACKET_SEQUENCE_ID);
     auto *td = packet->mutable_track_descriptor();
 
     td->set_name(name_);
@@ -215,13 +215,13 @@ private:
   std::optional<uint64_t> uuid_;
   // First children have no parent_uuid (as root have no uuid)
   std::optional<uint64_t> parent_uuid_;
-  // Leaf Counter Track need to set some special parameter to protobuf
+  // Leaf Counter Track needs to set some special parameters for protobuf
   bool is_leaf_counter_;
   // Children are empty Track or counter Track
-  // Need to use a pointer because unordered_map cannot use an imcompolete type
+  // Need to use a pointer because unordered_map cannot use an incomplete type
   // (https://stackoverflow.com/a/13089641)
   std::unordered_map<std::string, std::shared_ptr<Track>> children_;
-  // Slice begins, they can be non perfectly nested, so generate a new track if required
+  // Slice begins, which may not be perfectly nested, so generate a new track if required
   std::map<uint64_t, std::unique_ptr<Track>> begins_;
 
   // Lookup begins_ and return a correct `uuid` track
@@ -282,7 +282,7 @@ UnboundTrace::get_track(std::function<std::vector<std::string>(void)> get_names,
   Track *t = track_ptr_.get();
   for (size_t i = 0; i < names.size() - 1; i++)
     t = t->get_child(names[i]).get();
-  // The leaf will need to respected `is_leaf_counter`, and save is output to the cache
+  // The leaf will need to respect `is_leaf_counter`, and save its output to the cache
   track_cached = t->get_child(names.back(), is_leaf_counter);
   return track_cached;
 }
