@@ -35,10 +35,32 @@ def to_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
 end
 
+# Convert C / ITT names (e.g. "__itt_domain_t") to Ruby CamelCase class names
 def to_class_name(name)
+  # Derive namespace (e.g. "ITT::" or "")
   mod = to_name_space(name)
-  n = name.gsub(/_t\z/, "").gsub(/\A__itt[dt]?_/, "").split("_").collect(&:capitalize).join
-  mod << n
+  mod = mod.to_s
+  mod = mod.gsub(/\A_+/, '')                 # drop leading underscores
+  mod << '::' unless mod.empty? || mod.end_with?('::')
+
+  base = name.to_s
+
+  # Drop common suffixes and prefixes
+  base = base.sub(/_t\z/i, '')               # remove _t or _T
+  base = base.sub(/\A_+/, '')                # remove leading underscores
+  base = base.sub(/\A__?itt[dt]?_/i, '')     # remove _itt_ /__itt_ / __ittd_ / __ittt_ (case-insensitive)
+
+  # Convert snake_case or camelCase into CamelCase
+  if base.include?('_')
+    base = base.split('_').map { |s| s.capitalize }.join
+  else
+    base = base[0].upcase + base[1..] if base[0] =~ /[a-z]/
+  end
+
+  # Ensure the result starts with a capital letter
+  base = "ITT#{base}" unless base =~ /\A[A-Z]/
+
+  mod + base
 end
 
 def to_scoped_class_name(name)
