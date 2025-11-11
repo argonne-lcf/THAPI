@@ -84,8 +84,8 @@ BUILT_SOURCES = \
 	$(BTX_STRIPPER_GENERATED) \
 	btx_stripper_callbacks.cpp \
 	xprof_utils.hpp \
-	perfetto_prunned.pb.h \
-	perfetto_prunned.pb.cc
+	perfetto_pruned.pb.h \
+	perfetto_pruned.pb.cc
 
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
@@ -95,8 +95,8 @@ nodist_libXTally_la_SOURCES = \
 nodist_libXTimeline_la_SOURCES = \
 	$(BTX_TIMELINE_GENERATED) \
 	xprof_utils.hpp \
-	perfetto_prunned.pb.h \
-	perfetto_prunned.pb.cc
+	perfetto_pruned.pb.h \
+	perfetto_pruned.pb.cc
 
 nodist_libXAggreg_la_SOURCES = \
 	$(BTX_AGGREG_GENERATED) \
@@ -219,15 +219,15 @@ EXTRA_DIST = \
 	btx_aggreg_params.yaml \
 	$(TRACE_COMMON)\
 	$(TRACE_OUT) \
-	perfetto_prunned.proto \
+	perfetto_pruned.proto \
 	sync_daemon_mpi.c \
 	sync_daemon_fs
 
 CLEANFILES = \
 	iprof \
 	xprof_utils.hpp \
-	perfetto_prunned.pb.h \
-	perfetto_prunned.pb.cc \
+	perfetto_pruned.pb.h \
+	perfetto_pruned.pb.cc \
 	btx_stripper_callbacks.cpp \
 	$(BTX_TIMELINE_GENERATED) \
 	$(BTX_TALLY_GENERATED) \

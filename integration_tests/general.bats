@@ -25,7 +25,8 @@ teardown_file() {
 }
 
 @test "default_timeline" {
-   $IPROF -l -- $THAPI_TEST_BIN
+   run -0 $IPROF -l -- $THAPI_TEST_BIN
+   [[ "$output" =~ "THAPI: Perfetto trace location" ]]
    rm out.pftrace
 }
 
@@ -35,10 +36,10 @@ teardown_file() {
 }
 
 @test "no-analysis_output" {
-   run $THAPI_TEST_BIN
+   run -0 $THAPI_TEST_BIN
    out1=$(echo "$output" | grep -v 'Max clock frequency')
 
-   run --separate-stderr $IPROF --no-analysis -- $THAPI_TEST_BIN
+   run -0 --separate-stderr $IPROF --no-analysis -- $THAPI_TEST_BIN
    out2=$(echo "$output" | grep -v 'Max clock frequency')
    err2=$stderr
 
@@ -50,7 +51,8 @@ teardown_file() {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
    $IPROF -r
    $IPROF -t -r | wc -l
-   $IPROF -l -r
+   run -0 $IPROF -l -r
+   [[ "$output" =~ "THAPI: Perfetto trace location" ]]
    rm out.pftrace
 }
 
@@ -88,7 +90,7 @@ teardown_file() {
 }
 
 @test "error_code_when_no_trace" {
-   run $IPROF sleep 1
+   run -0 $IPROF sleep 1
    [[ "$output" =~ "WARN -- : No source found" ]]
 }
 
