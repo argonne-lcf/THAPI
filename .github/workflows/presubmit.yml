@@ -252,6 +252,7 @@ jobs:
           make -C backends/ze tracer_ze.c ze_library.rb btx_ze_model.yaml libze_loader.la
           make -C backends/opencl libOpenCL.la
           make -C backends/cxi cxi_sampling.tp
+          make -C backends/itt tracer_itt.c itt_library.rb btx_itt_model.yaml libittnotify.la
           make -C backends/opencl opencl_profiling.tp
           make -C sampling sampling.tp
       # Chekout, Configure and build PR branch files

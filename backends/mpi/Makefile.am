@@ -41,7 +41,6 @@ EXTRA_DIST += \
 MPI_MODEL = \
 	$(srcdir)/mpi_model.rb \
 	$(srcdir)/mpi_meta_parameters.yaml \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(srcdir)/mpi_events.yaml \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
@@ -49,13 +48,11 @@ MPI_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(MPI_EXTRACTED)
 
-btx_mpi_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
+btx_mpi_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_LIB_GEN) $(MPI_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
 	mpi_model.rb \
-	gen_mpi_library_base.rb \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	mpi_events.yaml \
 	gen_babeltrace_mpi_model.rb \
 	$(srcdir)/mpi_meta_parameters.yaml
@@ -146,12 +143,20 @@ tmplibdir = $(libdir)/tmp
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
+MPI_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
+	$(srcdir)/gen_mpi_library_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb
+
+EXTRA_DIST += $(MPI_LIB_GEN)
+
 EXTRA_DIST += mpi.h.include
 
-mpi_library.rb: $(srcdir)/gen_mpi_library.rb $(MPI_MODEL)
+mpi_library.rb: $(srcdir)/gen_mpi_library.rb $(MPI_LIB_GEN) $(MPI_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_mpi_lib.rb: $(srcdir)/gen_babeltrace_mpi_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(MPI_MODEL) btx_mpi_model.yaml
+babeltrace_mpi_lib.rb: $(srcdir)/gen_babeltrace_mpi_lib.rb $(MPI_LIB_GEN) $(MPI_MODEL) btx_mpi_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 MPI_BINDINGS = \

@@ -137,7 +137,8 @@ bin_SCRIPTS = \
 ITT_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
-	$(srcdir)/gen_itt_library_base.rb
+	$(srcdir)/gen_itt_library_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb
 
 EXTRA_DIST += \
 	$(ITT_LIB_GEN)
@@ -195,10 +196,10 @@ libITTInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 # ----------------------------------------------------------------------
 #
 
-itt_library.rb: $(srcdir)/gen_itt_library.rb $(ITT_MODEL)
+itt_library.rb: $(srcdir)/gen_itt_library.rb $(ITT_LIB_GEN) $(ITT_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_itt_lib.rb: $(srcdir)/gen_babeltrace_itt_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(ITT_MODEL) btx_itt_model.yaml
+babeltrace_itt_lib.rb: $(srcdir)/gen_babeltrace_itt_lib.rb $(ITT_LIB_GEN) $(ITT_MODEL) btx_itt_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 ITT_BINDINGS = \
