@@ -916,14 +916,14 @@ def all_env_tracers
     elsif (libpath = find_lib_path(libso, MPITopo.rank_id == 0))
       h[libenv] = libpath
     else
-      LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
+      LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")
       next
     end
     backends << bt_name
     # Add our "stub" library to the path
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
     # Preload our own lib
-    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{lib}.so")
+    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{libso}")
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end
