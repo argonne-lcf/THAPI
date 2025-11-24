@@ -188,8 +188,7 @@ require 'ffi'
 module LibDLInfoWrapper
   extend FFI::Library
 
-  ffi_lib FFI::Platform::LIBC
-  ffi_lib [File.join(LIBDIR, 'libDlinfoWrapper.so')]
+  ffi_lib FFI::Platform::LIBC, File.join(LIBDIR, 'libDlinfoWrapper.so')
 
   # Attach free()
   attach_function :free, [:pointer], :void
