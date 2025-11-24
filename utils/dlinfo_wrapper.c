@@ -1,30 +1,31 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <link.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-const char *find_lib_path(const char* lib_name, bool verbose) {
+int find_lib_path(const char* lib_name, bool verbose) {
   void* handle = dlopen(lib_name, RTLD_LAZY);
   if (!handle) goto err0;
 
   struct link_map* lm = NULL;
   if (dlinfo(handle, RTLD_DI_LINKMAP, &lm) != 0) goto err1;
-
-  size_t len = strlen(lm->l_name);
-  char *lib_path = calloc(len + 1, sizeof(char));
-  strncpy(lib_path, lm->l_name, len);
+  fprintf(stdout, "%s", lm->l_name);
 
   dlclose(handle);
 
-  return lib_path;
-
+  return 0;
 err1:
   dlclose(handle);
 err0:
   if (verbose)
-    fprintf(stderr, "libDlinfoWrapper.so: dlopen/dlinfo error: %s\n", dlerror());
-  return NULL;
+    fprintf(stderr, "[dlinfo_wrapper] dlopen/dlinfo error: %s\n", dlerror());
+  return 1;
+}
+
+int main(int argc, char *argv[]) {
+  // No error checking is done for input arguments. We expect the caller to
+  // know what they are doing.
+  return find_lib_path(argv[1], atoi(argv[2]) != 0);
 }

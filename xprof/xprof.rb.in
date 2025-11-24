@@ -182,26 +182,16 @@ def whichlib64(pattern)
 end
 
 #
-# Get lib path using dlinfo()
+# Get shared lib path using dlinfo_wrapper binary.
 #
-require 'ffi'
-module LibDLInfoWrapper
-  extend FFI::Library
-
-  ffi_lib FFI::Platform::LIBC, File.join(LIBDIR, 'libDlinfoWrapper.so')
-
-  # Attach free()
-  attach_function :free, [:pointer], :void
-  # Attach find_lib_path
-  attach_function :find_lib_path, [:string, :bool], :pointer
-end
-
-def find_lib_path(lib, verbose)
-  path_ptr = LibDLInfoWrapper::find_lib_path(lib, verbose)
-  return nil if path_ptr.null?
-  path = path_ptr.read_string
-  LibDLInfoWrapper::free(path_ptr)
-  path
+def dlinfo_wrapper(lib, verbose)
+  dlinfo_wrapper = File.join(BINDIR, "dlinfo_wrapper")
+  stdout = exec("#{dlinfo_wrapper} #{lib} #{verbose}",
+                opts: {
+                  'LD_LIBRARY_PATH' => "#{env_fetch_first('LD_LIBRARY_PATH')}:#{env_fetch_first('CRAY_LD_LIBRARY_PATH')}"
+                },
+                debug: false)
+  stdout
 end
 
 #         _ ___    _
@@ -912,7 +902,7 @@ def all_env_tracers
       # TODO: Verify that this guy exist?
     elsif (libpath = whichlib64(libso))
       h[libenv] = libpath
-    elsif (libpath = find_lib_path(libso, MPITopo.master?))
+    elsif (libpath = dlinfo_wrapper(libso, MPITopo.master?))
       h[libenv] = libpath
     else
       LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")

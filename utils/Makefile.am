@@ -37,11 +37,11 @@ nodist_thapi_metadata_SOURCES = \
 thapi_metadata_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
 thapi_metadata_LDFLAGS = $(LTTNG_UST_LIBS)
 
-lib_LTLIBRARIES = libDlinfoWrapper.la
-libDlinfoWrapper_la_SOURCES = dlinfo_wrapper.c
-libDlinfoWrapper_la_CFLAGS = -Wall -Wextra
+bin_PROGRAMS = dlinfo_wrapper
+dlinfo_wrapper_SOURCES = dlinfo_wrapper.c
+dlinfo_wrapper_CFLAGS = -Wall -Wextra
 
-bin_PROGRAMS = thapi_metadata
+bin_PROGRAMS += thapi_metadata
 
 bin_SCRIPTS = \
 	babeltrace_thapi
