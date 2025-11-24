@@ -3,7 +3,6 @@
 #include <link.h>
 #include <stdlib.h>
 #include <string.h>
-#include <linux/limits.h>
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -14,8 +13,9 @@ const char *find_lib_path(const char* lib_name, bool verbose) {
   struct link_map* lm = NULL;
   if (dlinfo(handle, RTLD_DI_LINKMAP, &lm) != 0) goto err1;
 
-  char *lib_path = calloc(PATH_MAX + 1, sizeof(char));
-  strncpy(lib_path, lm->l_name, PATH_MAX);
+  size_t len = strlen(lm->l_name);
+  char *lib_path = calloc(len + 1, sizeof(char));
+  strncpy(lib_path, lm->l_name, len);
 
   dlclose(handle);
 
