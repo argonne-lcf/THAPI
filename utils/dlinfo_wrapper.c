@@ -5,8 +5,9 @@
 #include <string.h>
 #include <linux/limits.h>
 #include <stdio.h>
+#include <stdbool.h>
 
-const char *find_lib_path(const char* lib_name) {
+const char *find_lib_path(const char* lib_name, bool verbose) {
   void* handle = dlopen(lib_name, RTLD_LAZY);
   if (!handle) goto err0;
 
@@ -23,6 +24,7 @@ const char *find_lib_path(const char* lib_name) {
 err1:
   dlclose(handle);
 err0:
-  fprintf(stderr, "libDlinfoWrapper.so: dlopen/dlinfo error: %s\n", dlerror());
+  if (verbose)
+    fprintf(stderr, "libDlinfoWrapper.so: dlopen/dlinfo error: %s\n", dlerror());
   return NULL;
 }

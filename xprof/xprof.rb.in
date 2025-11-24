@@ -194,11 +194,11 @@ module LibDLInfoWrapper
   # Attach free()
   attach_function :free, [:pointer], :void
   # Attach find_lib_path
-  attach_function :find_lib_path, [:string], :pointer
+  attach_function :find_lib_path, [:string, :bool], :pointer
 end
 
-def find_lib_path(lib)
-  path_ptr = LibDLInfoWrapper::find_lib_path(lib)
+def find_lib_path(lib, verbose)
+  path_ptr = LibDLInfoWrapper::find_lib_path(lib, verbose)
   return nil if path_ptr.null?
   path = path_ptr.read_string
   LibDLInfoWrapper::free(path_ptr)
@@ -913,7 +913,7 @@ def all_env_tracers
       # TODO: Verify that this guy exist?
     elsif (libpath = whichlib64(libso))
       h[libenv] = libpath
-    elsif (libpath = find_lib_path(libso))
+    elsif (libpath = find_lib_path(libso, MPITopo.rank_id == 0))
       h[libenv] = libpath
     else
       LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
