@@ -181,6 +181,30 @@ def whichlib64(pattern)
   end.first
 end
 
+#
+# Get lib path using dlinfo()
+#
+require 'ffi'
+module LibDLInfoWrapper
+  extend FFI::Library
+
+  ffi_lib FFI::Platform::LIBC
+  ffi_lib [File.join(LIBDIR, 'libDlinfoWrapper.so')]
+
+  # Attach free()
+  attach_function :free, [:pointer], :void
+  # Attach find_lib_path
+  attach_function :find_lib_path, [:string], :pointer
+end
+
+def find_lib_path(lib)
+  path_ptr = LibDLInfoWrapper::find_lib_path(lib)
+  return nil if path_ptr.null?
+  path = path_ptr.read_string
+  LibDLInfoWrapper::free(path_ptr)
+  path
+end
+
 #         _ ___    _
 #   |\/| |_) |    |_ ._
 #   |  | |  _|_   |_ | | \/
@@ -883,10 +907,13 @@ def all_env_tracers
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
+    libso = "#{lib}.so"
     if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
-    elsif (libpath = whichlib64("#{lib}.so"))
+    elsif (libpath = whichlib64(libso))
+      h[libenv] = libpath
+    elsif (libpath = find_lib_path(libso))
       h[libenv] = libpath
     else
       LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
