@@ -902,7 +902,7 @@ def all_env_tracers
       # TODO: Verify that this guy exist?
     elsif (libpath = whichlib64(libso))
       h[libenv] = libpath
-    elsif (libpath = dlinfo_wrapper(libso, MPITopo.master?))
+    elsif (libpath = dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG))
       h[libenv] = libpath
     else
       LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")
