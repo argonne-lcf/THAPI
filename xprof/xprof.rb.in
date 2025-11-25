@@ -900,9 +900,7 @@ def all_env_tracers
     if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
-    elsif (libpath = whichlib64(libso))
-      h[libenv] = libpath
-    elsif (libpath = dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG))
+    elsif (libpath = (whichlib64(libso) || dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG)))
       h[libenv] = libpath
     else
       LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")
