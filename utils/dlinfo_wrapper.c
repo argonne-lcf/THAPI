@@ -6,9 +6,11 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]) {
-  (void)argc;
-  // No error checking is done for input arguments. We expect the caller to
-  // know what they are doing.
+  if (argc < 3) {
+    fprintf(stderr, "[dlinfo_wrapper] Usage: %s <lib_name> <verbosity>", argv[0]);
+    return -1;
+  }
+
   void* handle = dlopen(argv[1], RTLD_LAZY);
   int exit_code = !handle;
   if (exit_code) goto print_error_and_exit;
@@ -18,8 +20,9 @@ int main(int argc, char *argv[]) {
     fprintf(stdout, "%s", lm->l_name);
 
   exit_code |= dlclose(handle);
+
 print_error_and_exit:
-  if (exit_code && atoi(argv[2]) != 0)
+  if (exit_code && atoi(argv[2]))
     fprintf(stderr, "[dlinfo_wrapper] dlopen/dlinfo error: %s\n", dlerror());
   return exit_code;
 }
