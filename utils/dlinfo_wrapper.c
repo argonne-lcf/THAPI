@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 int main(int argc, char *argv[]) {
+  (void)argc;
   // No error checking is done for input arguments. We expect the caller to
   // know what they are doing.
   void* handle = dlopen(argv[1], RTLD_LAZY);
