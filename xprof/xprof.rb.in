@@ -181,6 +181,19 @@ def whichlib64(pattern)
   end.first
 end
 
+#
+# Get shared lib path using dlinfo_wrapper binary.
+#
+def dlinfo_wrapper(lib, verbose)
+  dlinfo_wrapper = File.join(BINDIR, "dlinfo_wrapper")
+  stdout = exec("#{dlinfo_wrapper} #{lib} #{verbose}",
+                opts: {
+                  'LD_LIBRARY_PATH' => "#{env_fetch_first('LD_LIBRARY_PATH')}:#{env_fetch_first('CRAY_LD_LIBRARY_PATH')}"
+                },
+                debug: false)
+  stdout
+end
+
 #         _ ___    _
 #   |\/| |_) |    |_ ._
 #   |  | |  _|_   |_ | | \/
@@ -883,20 +896,21 @@ def all_env_tracers
 
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
+    libso = "#{lib}.so"
     if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
-    elsif (libpath = whichlib64("#{lib}.so"))
+    elsif (libpath = (whichlib64(libso) || dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG)))
       h[libenv] = libpath
     else
-      LOGGER.warn("No #{lib}.so found in LD_LIBRARY_PATH")
+      LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")
       next
     end
     backends << bt_name
     # Add our "stub" library to the path
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
     # Preload our own lib
-    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, "#{lib}.so")
+    h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, libso)
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
   end
