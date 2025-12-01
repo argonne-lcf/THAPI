@@ -5,7 +5,7 @@ teardown_file() {
 }
 
 @test "default_summary" {
-   total_count=$( $IPROF $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   total_count=$( $IPROF --backend cl -- $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
    [ "$total_count" -ge 1 ]
 }
 
