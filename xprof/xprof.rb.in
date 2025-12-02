@@ -98,8 +98,7 @@ end
 def launch_usr_bin(env, cmd)
   LOGGER.info { "Launch_usr_bin #{cmd}" }
 
-  # Merge standard output and standard error
-  IO.popen(env, cmd, err: %i[child out]) do |io|
+  IO.popen(env, cmd) do |io|
     # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
     io.sync = true
     io.each { |line| print line }
