@@ -40,18 +40,18 @@ jobs:
 
   build-and-check:
     needs: efficios_dep
-    if: ${{ success() }}
-    name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
+    name: Build and Check on ubuntu-24.04 with ${{ matrix.compilers }}
     strategy:
       matrix:
         config-option: ["", "--disable-clang-parser"]
+        compilers: ["CC=gcc CXX=g++", "CC=clang CXX=clang++ CFLAGS=\"-Wno-gnu-folding-constant\""]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
       - run: mkdir -p build
       - run: ./autogen.sh
-      - run: ../configure ${{ matrix.config-option }}
+      - run: ../configure ${{ matrix.config-option }} ${{ matrix.compilers }}
         working-directory: build
       - run: make
         working-directory: build
@@ -62,7 +62,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-and-check-${{ matrix.config-option }}
           path: |
             build/**/*.log
             build/config.log
@@ -70,7 +69,6 @@ jobs:
 
   install-with-mpi:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
     steps:
@@ -94,7 +92,6 @@ jobs:
 
   integration-tests:
     needs: install-with-mpi
-    if: ${{ success() }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
     steps:
@@ -139,7 +136,6 @@ jobs:
 
   build-in-tree-and-check:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -162,7 +158,6 @@ jobs:
 
   distcheck:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -179,7 +174,6 @@ jobs:
 
   dist-check:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -220,8 +214,7 @@ jobs:
 
   check-same-generated-files:
     needs: efficios_dep
-    if: ${{ success() }}
-    name: Check same generated files
+    name: Assert generated files are equivalent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
