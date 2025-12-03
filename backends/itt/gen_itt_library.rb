@@ -97,128 +97,19 @@ def print_enum(name, enum)
 end
 
 def print_itt_object(object)
-  puts <<EOF
-  typedef :pointer, #{to_ffi_name(object)}
-
-EOF
+  print_object(object)
 end
+
+print_ffi_module(:ITT)
 
 puts <<EOF
-require 'ffi'
-module FFI
-
-  class ITTStruct < Struct
-    def self.enclosing_module
-      ITT
-    end
-
-    def to_h
-      members.zip(values).to_h
-    end
-
-    def to_s
-      s = "{ "
-      s << to_h.each.collect { |k, v|
-        if v.kind_of? Array
-          "\#{k}: [ \#{v.join(", ")} ]"
-        else
-          "\#{k}: \#{v}"
-        end
-      }.join(", ")
-      s << " }"
-      s
-    end
-  end
-  class ITTEnum < Enum
-  end
-  class ITTUnion < Union
-  end
-  class ITTBitmask < Bitmask
-    def default=(default)
-      @default = default
-    end
-
-    def []
-      if @default && query.size == 1
-        if query[0] == 0
-          return @default
-        elsif query[0] == @default
-          return 0
-        end
-      end
-      super
-    end
-
-    def to_native(query, ctx)
-      return 0 if query.nil?
-      flat_query = [query].flatten
-      return 0 if flat_query.size == 1 && query[0] == @default
-      super
-    end
-
-    def from_native(val, ctx)
-      return [@default] if val == 0 && @default
-      super
-    end
-  end
-  module Library
-    def ittbitmask(*args)
-      generic_enum(FFI::ITTBitmask, *args)
-    end
-    def ittenum(*args)
-      generic_enum(FFI::ITTEnum, *args)
-    end
-  end
-
-  class Struct::InlineArray
-    def to_s
-      s = "[ "
-      s << to_a.join(", ")
-      s << " ]"
-    end
-  end
-
-  class Pointer
-    def to_s
-      "0x%016x" % address
-    end
-  end
-end
 module ITT
   extend FFI::Library
 
 EOF
 
-def close_type(name)
-  $all_types.select { |t|
-    t.type.kind_of?(YAMLCAst::CustomType) && t.type.name == name
-  }.each { |t|
-    puts <<EOF
-  typedef #{to_ffi_name(name)}, #{to_ffi_name(t.name)}
-
-EOF
-    close_type(t.name)
-  }
-end
-
 def print_union(name, union)
-  members = union.to_ffi
-  print_lambda = lambda { |m|
-    s = "#{m[0]}, "
-    if m[1].kind_of?(Array)
-      s << "[ #{m[1][0]}, #{m[1][1]} ]"
-    else
-      s << "#{m[1]}"
-    end
-    s
-  }
-  puts <<EOF
-  class #{to_class_name(name)} < FFI::ITTUnion
-    layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
-  end
-  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
-
-EOF
+  print_union_with_namespace(:ITT, name, union)
 end
 
 def print_struct(name, struct)
@@ -265,29 +156,6 @@ EOF
 
 EOF
   close_type(name)
-end
-
-def print_function_pointer_type(name, func)
-  type, params = func.to_ffi
-  puts <<EOF
-  callback #{to_ffi_name(name)},
-           [ #{params.join(",\n"+" "*13)} ],
-           #{type}
-
-EOF
-end
-
-def print_pointer_type(name)
-  puts <<EOF
-  typedef :pointer, #{to_ffi_name(name)}
-
-EOF
-end
-
-def print_int_type(name, t_name)
-  puts <<EOF
-  typedef #{to_ffi_name(t_name)}, #{to_ffi_name(name)}
-EOF
 end
 
 # Build a set of all function pointer typedef symbols to detect struct fields

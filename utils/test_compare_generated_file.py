@@ -59,6 +59,15 @@ filenames += [
 ]
 
 filenames += [
+    "backends/itt/tracer_itt.c",
+    "backends/itt/itt_library.rb",
+    "backends/itt/btx_itt_model.yaml",
+    "backends/itt/itt_metadata.tp",
+    "backends/itt/itt_tracepoints.tp",
+    "backends/itt/itt_api.yaml",
+]
+
+filenames += [
     "backends/opencl/opencl_profiling.tp",
 ]
 

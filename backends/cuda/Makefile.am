@@ -129,8 +129,6 @@ EXTRA_DIST += $(ML_CUDA_FILES) $(ML_CUDART_FILES)
 
 CUDA_MODEL = \
 	$(srcdir)/cuda_model.rb \
-	$(srcdir)/gen_cuda_library_base.rb \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
@@ -152,13 +150,11 @@ CUDART_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(srcdir)/cudart.h.include
 
-btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
+btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
 	cuda_model.rb \
-	gen_cuda_library_base.rb \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	cuda_events.yaml \
 	cudart_model.rb \
 	gen_babeltrace_cuda_model.rb
@@ -309,12 +305,22 @@ tmplibdir = $(libdir)/tmp
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
-EXTRA_DIST += cuda.h.include cudart.h.include
+CUDA_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
+	$(srcdir)/gen_cuda_library_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb
 
-cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_MODEL)
+EXTRA_DIST += $(CUDA_LIB_GEN)
+
+EXTRA_DIST += \
+	cuda.h.include \
+	cudart.h.include
+
+cuda_library.rb: $(srcdir)/gen_cuda_library.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(CUDA_MODEL) btx_cuda_model.yaml
+babeltrace_cuda_lib.rb: $(srcdir)/gen_babeltrace_cuda_lib.rb $(CUDA_LIB_GEN) $(CUDA_MODEL) btx_cuda_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CUDA_BINDINGS = \

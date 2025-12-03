@@ -207,8 +207,6 @@ EXTRA_DIST += \
 
 HIP_MODEL = \
 	$(srcdir)/hip_model.rb \
-	$(srcdir)/gen_hip_library_base.rb \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(ML_HIP_FILES) \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
@@ -218,13 +216,11 @@ HIP_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	hip.h.include
 
-btx_hip_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_MODEL) $(top_srcdir)/utils/gen_babeltrace_model_helper.rb
+btx_hip_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_LIB_GEN) $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
 	hip_model.rb \
-	gen_hip_library_base.rb \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	hip_events.yaml \
 	gen_babeltrace_hip_model.rb
 
@@ -300,14 +296,22 @@ tmplibdir = $(libdir)/tmp
 install-data-hook:
 	$(RM) -r $(DESTDIR)$(tmplibdir)
 
+HIP_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
+	$(srcdir)/gen_hip_library_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb
+
+EXTRA_DIST += $(HIP_LIB_GEN)
+
 EXTRA_DIST += \
 	hip.h.include \
 	hip.map
 
-hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_MODEL)
+hip_library.rb: $(srcdir)/gen_hip_library.rb $(HIP_LIB_GEN) $(HIP_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(top_srcdir)/utils/gen_library_base.rb $(HIP_MODEL) btx_hip_model.yaml
+babeltrace_hip_lib.rb: $(srcdir)/gen_babeltrace_hip_lib.rb $(HIP_LIB_GEN) $(HIP_MODEL) btx_hip_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 HIP_BINDINGS = \
