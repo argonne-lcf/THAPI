@@ -214,7 +214,7 @@ jobs:
 
   check-same-generated-files:
     needs: efficios_dep
-    name: Check same generated files
+    name: Assert generated files are equivalent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
