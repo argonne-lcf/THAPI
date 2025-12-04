@@ -1,0 +1,23 @@
+diff -u4 -r --new-file include/ittnotify.h modified_include/ittnotify.h
+--- include/ittnotify.h	2025-10-16 15:53:16.166951800 -0500
++++ modified_include/ittnotify.h	2025-10-16 17:33:14.265151456 -0500
+@@ -145,8 +145,9 @@
+ #if defined(_UNICODE) && !defined(UNICODE)
+ #define UNICODE
+ #endif
+ 
++#ifndef THAPI_NO_INCLUDE
+ #include <stddef.h>
+ #if ITT_PLATFORM==ITT_PLATFORM_WIN
+ #include <tchar.h>
+ #else  /* ITT_PLATFORM==ITT_PLATFORM_WIN */
+@@ -154,8 +155,9 @@
+ #if defined(UNICODE) || defined(_UNICODE)
+ #include <wchar.h>
+ #endif /* UNICODE || _UNICODE */
+ #endif /* ITT_PLATFORM==ITT_PLATFORM_WIN */
++#endif
+ 
+ #ifndef ITTAPI_CDECL
+ #  if ITT_PLATFORM==ITT_PLATFORM_WIN
+ #    define ITTAPI_CDECL __cdecl

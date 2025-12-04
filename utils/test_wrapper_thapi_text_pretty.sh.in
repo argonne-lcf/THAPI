@@ -8,7 +8,9 @@
 # pretty format.
 #
 set -euxo pipefail
-
+# We use `abs_top` on this file, because if not the relative path will be related to `utils`
+# but called in `backend/`
+# 
 # Note: separate arguments for subdir and be to handle opencl, which uses
 # subdir=opencl and be=cl. Other backends pass the same string for both.
 subdir="$1"
@@ -25,23 +27,23 @@ mkdir -p "${folder_name}"
 source_callback_c="${folder_name}/callback.c"
 
 if [ "${subdir}" = "xprof" ]; then
-  model="@top_srcdir@/${subdir}/btx_${be}_model.yaml"
+  model="@abs_top_srcdir@/${subdir}/btx_${be}_model.yaml"
 else
-  model="@top_builddir@/${subdir}/btx_${be}_model.yaml"
+  model="@abs_top_builddir@/${subdir}/btx_${be}_model.yaml"
 fi
 
-@top_srcdir@/utils/thapi_log_to_bt_source_component.rb \
+@abs_top_srcdir@/utils/thapi_log_to_bt_source_component.rb \
   -y "${model}" \
   -i "${input_thapi_text_pretty}" -o "${source_callback_c}"
 
 modified_include_arg=""
 if [ "${be}" = "omp" ]; then
-  modified_include_arg="-I @top_builddir@/${subdir}/modified_include"
+  modified_include_arg="-I @abs_top_builddir@/${subdir}/modified_include"
 fi
 
 ${CC:-gcc} -o "${folder_name}/libTestSource.so" \
   ${modified_include_arg} \
-  -I @top_srcdir@/utils/include -I @top_srcdir@/"${subdir}" -I @top_srcdir@/"${subdir}"/include \
+  -I @abs_top_srcdir@/utils/include -I @abs_top_srcdir@/"${subdir}" -I @abs_top_srcdir@/"${subdir}"/include \
   -I . -I "${source_path}" \
   $(pkg-config --cflags babeltrace2) -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Werror \
   $(pkg-config --libs babeltrace2) --shared \
@@ -51,7 +53,7 @@ ${CC:-gcc} -o "${folder_name}/libTestSource.so" \
 # Run Plugin and Verify output
 bt2_cmd="babeltrace2"
 if [[ -v THAPI_VALGRIND ]]; then
-  bt2_cmd="valgrind --suppressions=@top_srcdir@/.valgrind/dlopen.supp --error-exitcode=1 --leak-check=full --quiet -- ${bt2_cmd}"
+  bt2_cmd="valgrind --suppressions=@abs_top_srcdir@/.valgrind/dlopen.supp --error-exitcode=1 --leak-check=full --quiet -- ${bt2_cmd}"
 fi
 
 current_output_bt_text_pretty="${folder_name}/current.bt_text_pretty"
@@ -67,7 +69,7 @@ else
   lib_name=lib"${be^^}"Interval.so
 fi
 
-ln -f @top_builddir@/${subdir}/.libs/"${lib_name}" "${folder_name}/"
+ln -f @abs_top_builddir@/${subdir}/.libs/"${lib_name}" "${folder_name}/"
 
 ${bt2_cmd} --plugin-path="${folder_name}" \
   --component=source."${be}"test.test \

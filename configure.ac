@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([thapi],[0.0.12],[bvideau@anl.gov])
-AC_CONFIG_SRCDIR([opencl/tracer_opencl_helpers.include.c])
+AC_CONFIG_SRCDIR([backends/opencl/tracer_opencl_helpers.include.c])
 AC_CONFIG_HEADERS([utils/config.h])
 
 # build artifacts in separate dir
@@ -78,11 +78,24 @@ AS_IF([test "x$user_set_sync_daemon_mpi" != "xyes_no" && test "x$enable_sync_dae
       [AC_MSG_WARN([MPI Sessions are not supported. Falling back to sync-daemon with filesystem])])
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_sync_daemon_mpi" != "xno"])
 
-AC_ARG_ENABLE([clang-parser], AS_HELP_STRING([--enable-clang-parser], [Enable clang parser]))
+AC_ARG_ENABLE([clang-parser],
+  [AS_HELP_STRING([--disable-clang-parser], [Disable clang parser])],
+  [enable_clang_parser="$enableval"],
+  [enable_clang_parser=yes])  
+
 ENABLE_CLANG_PARSER=0
 if test "x$enable_clang_parser" = xyes; then
   AC_CHECK_PROG(H2YAML, [h2yaml], [h2yaml], [no])
   test "x$H2YAML" = "xno" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
+
+  H2YAML_MIN_VERSION=0.3.0
+  AC_MSG_CHECKING([for h2yaml >= $H2YAML_MIN_VERSION])
+  H2YAML_VERSION=`$H2YAML --version | cut -d' ' -f2`
+  AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],
+    [AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])
+     AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= $H2YAML_MIN_VERSION])])
+
   ENABLE_CLANG_PARSER=1
 fi
 AC_SUBST([ENABLE_CLANG_PARSER])
@@ -95,7 +108,7 @@ PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
-AX_RUBY_EXTENSION([metababel >= 1.1.2], [yes])
+AX_RUBY_EXTENSION([metababel >= 1.1.3], [yes])
 
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 
@@ -126,26 +139,29 @@ AC_CHECK_FUNCS([clock_gettime ftruncate memmove memset strdup strstr strtoull st
 
 AC_CONFIG_FILES([
 	Makefile
-	sampling/Makefile
-	opencl/Makefile
-	ze/Makefile
-	cuda/Makefile
-	omp/Makefile
-	hip/Makefile
-	mpi/Makefile
-	cxi/Makefile
 	xprof/Makefile
 	utils/Makefile
+	sampling/Makefile
+	backends/opencl/Makefile
+	backends/ze/Makefile
+	backends/cuda/Makefile
+	backends/omp/Makefile
+	backends/hip/Makefile
+	backends/mpi/Makefile
+    backends/itt/Makefile
+	backends/cxi/Makefile
 ])
 AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])
-AC_CONFIG_FILES([opencl/tracer_opencl.sh], [chmod +x opencl/tracer_opencl.sh])
-AC_CONFIG_FILES([opencl/extract_enqueues], [chmod +x opencl/extract_enqueues])
-AC_CONFIG_FILES([ze/tracer_ze.sh], [chmod +x ze/tracer_ze.sh])
-AC_CONFIG_FILES([ze/ze_validator], [chmod +x ze/ze_validator])
-AC_CONFIG_FILES([cuda/tracer_cuda.sh], [chmod +x cuda/tracer_cuda.sh])
-AC_CONFIG_FILES([omp/tracer_omp.sh], [chmod +x omp/tracer_omp.sh])
-AC_CONFIG_FILES([hip/tracer_hip.sh], [chmod +x hip/tracer_hip.sh])
-AC_CONFIG_FILES([mpi/tracer_mpi.sh], [chmod +x mpi/tracer_mpi.sh])
+AC_CONFIG_FILES([backends/opencl/tracer_opencl.sh], [chmod +x backends/opencl/tracer_opencl.sh])
+AC_CONFIG_FILES([backends/opencl/extract_enqueues], [chmod +x backends/opencl/extract_enqueues])
+AC_CONFIG_FILES([backends/ze/tracer_ze.sh], [chmod +x backends/ze/tracer_ze.sh])
+AC_CONFIG_FILES([backends/ze/ze_validator], [chmod +x backends/ze/ze_validator])
+AC_CONFIG_FILES([backends/cuda/tracer_cuda.sh], [chmod +x backends/cuda/tracer_cuda.sh])
+AC_CONFIG_FILES([backends/omp/tracer_omp.sh], [chmod +x backends/omp/tracer_omp.sh])
+AC_CONFIG_FILES([backends/hip/tracer_hip.sh], [chmod +x backends/hip/tracer_hip.sh])
+AC_CONFIG_FILES([backends/mpi/tracer_mpi.sh], [chmod +x backends/mpi/tracer_mpi.sh])
+AC_CONFIG_FILES([backends/itt/tracer_itt.sh], [chmod +x backends/itt/tracer_itt.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
+
 AC_OUTPUT

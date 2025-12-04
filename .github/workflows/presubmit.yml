@@ -12,6 +12,7 @@ on:
 
 env:
   MAKEFLAGS: "-j$(nproc) -O --shuffle"
+  CC: "gcc"
 
 jobs:
   pre_job:
@@ -39,23 +40,20 @@ jobs:
 
   build-and-check:
     needs: efficios_dep
-    if: ${{ success() }}
-    name: Build and Check ubuntu-24.04
     runs-on: ubuntu-24.04
+    name: Build and Check on ubuntu-24.04 with ${{ matrix.compilers }}
     strategy:
       matrix:
-        config-option: ["", "--enable-clang-parser"]
+        config-option: ["", "--disable-clang-parser"]
+        compilers: ["CC=gcc CXX=g++", "CC=clang CXX=clang++ CFLAGS=\"-Wno-gnu-folding-constant\""]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-thapi
-      - name: Install dependencies for --enable-clang-parser
-        if: matrix.config-option == '--enable-clang-parser'
-        run: pip install git+https://github.com/TApplencourt/h2yaml
       - run: mkdir -p build
       - run: ./autogen.sh
-      - run: ../configure ${{ matrix.config-option }}
+      - run: ../configure ${{ matrix.config-option }} ${{ matrix.compilers }}
         working-directory: build
-      - run: CC=gcc make
+      - run: make
         working-directory: build
       - run: make check
         working-directory: build
@@ -64,7 +62,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-and-check-${{ matrix.config-option }}
           path: |
             build/**/*.log
             build/config.log
@@ -72,7 +69,6 @@ jobs:
 
   install-with-mpi:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
     steps:
@@ -96,7 +92,6 @@ jobs:
 
   integration-tests:
     needs: install-with-mpi
-    if: ${{ success() }}
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
     steps:
@@ -113,6 +108,25 @@ jobs:
           name: thapi-bin
       - name: Untar THAPI
         run: tar -xvf thapi.tar
+
+      # Build ITTAPI from source and expose ITTAPI_ROOT + runtime libs for ITT tests
+      - name: Build ITTAPI
+        run: |
+          set -eux
+          git clone --depth=1 https://github.com/intel/ittapi.git
+          cmake -S ittapi -B ittapi/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/ittapi/install"
+          cmake --build ittapi/build --target install -j"$(nproc)"
+          echo "ITTAPI_ROOT=$GITHUB_WORKSPACE/ittapi/install" >> "$GITHUB_ENV"
+
+      # Install Python ittapi for ITT tests
+      - name: Install Python ittapi
+        run: |
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user -U ittapi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
@@ -122,7 +136,6 @@ jobs:
 
   build-in-tree-and-check:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -145,7 +158,6 @@ jobs:
 
   distcheck:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -162,7 +174,6 @@ jobs:
 
   dist-check:
     needs: efficios_dep
-    if: ${{ success() }}
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
@@ -203,8 +214,7 @@ jobs:
 
   check-same-generated-files:
     needs: efficios_dep
-    if: ${{ success() }}
-    name: Check same generated files
+    name: Assert generated files are equivalent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -218,22 +228,26 @@ jobs:
           path: base_branch
       - name: Configure target branch
         working-directory: base_branch
-        run: |
+        run: &configure |
           ./autogen.sh
           mkdir -p build
           cd build
           ../configure
       - name: Build target branch files
         working-directory: base_branch/build
-        run: |
+        run: &build-commands |
           make -C utils lttng/tracepoint_gen.h
-          make -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
-          make -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
-          make -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
-          make -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
-          make -C cuda tracer_cudart.c libcudart.la
-          make -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
-          make -C opencl libOpenCL.la
+          make -C backends/mpi tracer_mpi.c mpi_library.rb btx_mpi_model.yaml libmpi.la
+          make -C backends/omp tracer_ompt.c omp_library.rb btx_omp_model.yaml
+          make -C backends/hip tracer_hip.c hip_library.rb btx_hip_model.yaml libamdhip64.la
+          make -C backends/cuda tracer_cuda.c cuda_library.rb btx_cuda_model.yaml libcuda.la
+          make -C backends/cuda tracer_cudart.c libcudart.la
+          make -C backends/ze tracer_ze.c ze_library.rb btx_ze_model.yaml libze_loader.la
+          make -C backends/opencl libOpenCL.la
+          make -C backends/cxi cxi_sampling.tp
+          make -C backends/itt tracer_itt.c itt_library.rb btx_itt_model.yaml libittnotify.la
+          make -C backends/opencl opencl_profiling.tp
+          make -C sampling sampling.tp
       # Chekout, Configure and build PR branch files
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -242,22 +256,10 @@ jobs:
           path: pr_branch
       - name: Configure PR branch
         working-directory: pr_branch
-        run: |
-          ./autogen.sh
-          mkdir -p build
-          cd build
-          ../configure
+        run: *configure
       - name: Build PR branch files
         working-directory: pr_branch/build
-        run: |
-          make -C utils lttng/tracepoint_gen.h
-          make -C mpi tracer_mpi.c mpi_library.rb mpi_babeltrace_model.yaml libmpi.la
-          make -C omp tracer_ompt.c omp_babeltrace_model.yaml omp_library.rb
-          make -C hip tracer_hip.c hip_library.rb hip_babeltrace_model.yaml libamdhip64.la
-          make -C cuda tracer_cuda.c cuda_library.rb cuda_babeltrace_model.yaml libcuda.la
-          make -C cuda tracer_cudart.c libcudart.la
-          make -C ze tracer_ze.c ze_library.rb ze_babeltrace_model.yaml libze_loader.la
-          make -C opencl libOpenCL.la
+        run: *build-commands
       # Run comparison script
       - name: Compare files
         run: |

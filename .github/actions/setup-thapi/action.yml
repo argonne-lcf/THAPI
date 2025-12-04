@@ -2,11 +2,36 @@ name: 'Setup Thapi Environment'
 runs:
   using: "composite"
   steps:
-
+# valgrind:  Fatal error at startup: a function redirection
+# valgrind:  which is mandatory for this platform-tool combination
+# valgrind:  cannot be set up.  Details of the redirection are:
+# valgrind:
+# valgrind:  A must-be-redirected function
+# valgrind:  whose name matches the pattern:      strlen
+# valgrind:  in an object with soname matching:   ld-linux-x86-64.so.2
+# valgrind:  was not found whilst processing
+# valgrind:  symbols from the object with soname: ld-linux-x86-64.so.2
+# valgrind:
+# valgrind:  Possible fixes: (1, short term): install glibc's debuginfo
+# valgrind:  package on this machine.  (2, longer term): ask the packagers
+# valgrind:  for your Linux distribution to please in future ship a non-
+# valgrind:  stripped ld.so (or whatever the dynamic linker .so is called)
+# valgrind:  that exports the above-named function using the standard
+# valgrind:  calling conventions for this platform.  The package you need
+# valgrind:  to install for fix (1) is called
+# valgrind:
+# valgrind:    On Debian, Ubuntu:                 libc6-dbg
+# valgrind:    On SuSE, openSuSE, Fedora, RHEL:   glibc-debuginfo
+# valgrind:
+# valgrind:  Note that if you are debugging a 32 bit process on a
+# valgrind:  64 bit system, you will need a corresponding 32 bit debuginfo
+# valgrind:  package (e.g. libc6-dbg:i386).
+# valgrind:
+# valgrind:  Cannot continue -- exiting now.  Sorry.
     - name: Install APT Dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libglib2.0-dev libnuma-dev
+        packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev
 
     - name: Install Ruby Dependencies
       shell: bash
@@ -21,7 +46,7 @@ runs:
       id: efficios_dep
       with:
         path: ~/efficios_dep/
-        key: ${{ runner.os }}-build-cache-efficios_dep
+        key: ${{ runner.os }}-${{ hashFiles('.github/actions/setup-thapi/action.yml') }}-build-cache-efficios_dep
 
     - name: Build userspace-rcu
       shell: bash
@@ -51,21 +76,19 @@ runs:
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-ms3-v2.14.0
+        git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-v2.14.0
         cd lttng-tools
         ./bootstrap
         ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
         make -j$(nproc)
         make install
-        #Todo, this will need to be added in the spack repo as a patch
-        echo "#!/usr/bin/env python"| cat - dirwatch.py > $HOME/efficios_dep/bin/dirwatch.py
-        chmod 755 $HOME/efficios_dep/bin/dirwatch.py
 
     - name: Build babeltrace
       shell: bash
       if: steps.efficios_dep.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
+        # TODO use anl-ms3-v2.1.2 when ctf.archive.reader doesn't segfault anymore
         cd babeltrace
         # Fix include path
         wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
@@ -77,6 +100,10 @@ runs:
         ./configure --disable-man-pages --prefix=$HOME/efficios_dep
         make -j$(nproc)
         make install
+
+    - name: Install H2yaml
+      shell: bash
+      run: pip install git+https://github.com/TApplencourt/h2yaml@v0.3.0
 
     - name: Set Efficios environment variables
       shell: bash

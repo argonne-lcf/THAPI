@@ -1,0 +1,11 @@
+require_relative 'gen_omp_library_base'
+require_relative '../../utils/gen_babeltrace_model_helper'
+
+event_classes =
+  [[:lttng_ust_ompt, $ompt_commands]].collect do |provider, commands|
+    commands.collect do |c|
+      [gen_event_bt_model(provider, c)]
+    end
+  end.flatten(2)
+
+puts YAML.dump(gen_yaml(event_classes, 'omp'))

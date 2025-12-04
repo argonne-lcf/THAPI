@@ -1,0 +1,142 @@
+diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
+--- include/cuda.h	2025-09-24 16:25:46.271229650 -0500
++++ modified_include/cuda.h	2025-10-16 17:56:23.516223891 -0500
+@@ -51,15 +51,18 @@
+ #define __cuda_cuda_h__
+ 
+ 
+ 
+-
++#ifndef THAPI_NO_INCLUDE
+ #include <stdlib.h>
++#endif
+ #ifdef _MSC_VER
+ typedef unsigned __int32 cuuint32_t;
+ typedef unsigned __int64 cuuint64_t;
+ #else
++#ifndef THAPI_NO_INCLUDE
+ #include <stdint.h>
++#endif
+ typedef uint32_t cuuint32_t;
+ typedef uint64_t cuuint64_t;
+ #endif
+ 
+@@ -290,9 +293,11 @@
+ 
+ /**
+  * CUDA IPC handle size
+  */
++#ifndef CU_IPC_HANDLE_SIZE
+ #define CU_IPC_HANDLE_SIZE 64
++#endif
+ 
+ /**
+  * CUDA IPC event handle
+  */
+@@ -499,9 +504,9 @@
+  * Per-operation parameters for ::cuStreamBatchMemOp
+  */
+ typedef union CUstreamBatchMemOpParams_union {
+     CUstreamBatchMemOpType operation;
+-    struct CUstreamMemOpWaitValueParams_st {
++    struct {
+         CUstreamBatchMemOpType operation;
+         CUdeviceptr address;
+         union {
+             cuuint32_t value;
+@@ -509,9 +514,9 @@
+         };
+         unsigned int flags;
+         CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
+     } waitValue;
+-    struct CUstreamMemOpWriteValueParams_st {
++    struct {
+         CUstreamBatchMemOpType operation;
+         CUdeviceptr address;
+         union {
+             cuuint32_t value;
+@@ -519,13 +524,13 @@
+         };
+         unsigned int flags;
+         CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
+     } writeValue;
+-    struct CUstreamMemOpFlushRemoteWritesParams_st {
++    struct {
+         CUstreamBatchMemOpType operation;
+         unsigned int flags;
+     } flushRemoteWrites;
+-    struct CUstreamMemOpMemoryBarrierParams_st { /**< Only supported in the _v2 API */
++    struct { /**< Only supported in the _v2 API */
+         CUstreamBatchMemOpType operation;
+         unsigned int flags;
+     } memoryBarrier;
+     cuuint64_t pad[6];
+@@ -1338,9 +1343,11 @@
+ 
+ /*
+  * Indicates that compute device class supports accelerated features.
+  */
++#ifndef CU_COMPUTE_ACCELERATED_TARGET_BASE
+ #define CU_COMPUTE_ACCELERATED_TARGET_BASE   0x10000
++#endif
+ 
+ /**
+  * Online compilation targets
+  */
+@@ -2851,9 +2858,11 @@
+ 
+ /**
+  * Size of tensor map descriptor
+  */
++#ifndef CU_TENSOR_MAP_NUM_QWORDS
+ #define CU_TENSOR_MAP_NUM_QWORDS 16
++#endif
+ 
+ /**
+  * Tensor map descriptor. Requires compiler support for aligning to 64 bytes.
+  */
+diff -u4 -r --new-file include/cuda_vdpau_interop.h modified_include/cuda_vdpau_interop.h
+--- include/cuda_vdpau_interop.h	2025-09-24 16:25:46.274229652 -0500
++++ modified_include/cuda_vdpau_interop.h	2025-10-16 17:32:55.479990889 -0500
+@@ -49,11 +49,13 @@
+ 
+ #if !defined(__CUDA_VDPAU_INTEROP_H__)
+ #define __CUDA_VDPAU_INTEROP_H__
+ 
++#ifndef THAPI_NO_INCLUDE
+ #include "cuda_runtime_api.h"
+ 
+ #include <vdpau/vdpau.h>
++#endif
+ 
+ #if defined(__cplusplus)
+ extern "C" {
+ #endif /* __cplusplus */
+diff -u4 -r --new-file include/driver_types.h modified_include/driver_types.h
+--- include/driver_types.h	2025-09-24 16:25:46.274229652 -0500
++++ modified_include/driver_types.h	2025-10-21 11:22:20.927543014 -0500
+@@ -77,10 +77,12 @@
+ 
+ #if !defined(__CUDA_INTERNAL_COMPILATION__)
+ 
+ #if !defined(__CUDACC_RTC__)
++#ifndef THAPI_NO_INCLUDE
+ #include <limits.h>
+ #include <stddef.h>
++#endif
+ #endif /* !defined(__CUDACC_RTC__) */
+ 
+ #define cudaHostAllocDefault                0x00  /**< Default page-locked allocation flag */
+ #define cudaHostAllocPortable               0x01  /**< Pinned memory accessible by all CUDA contexts */
+@@ -2292,9 +2294,11 @@
+ 
+ /**
+  * CUDA IPC Handle Size
+  */
++#ifndef CUDA_IPC_HANDLE_SIZE
+ #define CUDA_IPC_HANDLE_SIZE 64
++#endif
+ 
+ /**
+  * CUDA IPC event handle
+  */

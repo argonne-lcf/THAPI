@@ -21,7 +21,8 @@ enum backend_e {
   BACKEND_OMP = 5,
   BACKEND_HIP = 6,
   BACKEND_MPI = 7,
-  BACKEND_CXI = 8
+  BACKEND_CXI = 8,
+  BACKEND_ITT = 9,
 };
 typedef enum backend_e backend_t;
 typedef unsigned backend_level_t;
@@ -37,6 +38,7 @@ const std::unordered_map<std::string, backend_t> pretty_backend_name_g = {
     {"hip", BACKEND_HIP},
     {"mpi", BACKEND_MPI},
     {"cxi", BACKEND_CXI},
+    {"itt", BACKEND_ITT},
 };
 
 const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
@@ -49,6 +51,7 @@ const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
     {BACKEND_HIP, 1},
     {BACKEND_MPI, 3},
     {BACKEND_CXI, 4},
+    {BACKEND_ITT, 5},
 };
 
 typedef std::string thapi_metadata_t;
@@ -68,16 +71,15 @@ typedef uint32_t thapi_sdevice_idx;
 typedef std::tuple<thapi_device_id, thapi_device_id> dsd_t;
 typedef std::tuple<hostname_t, process_id_t> hp_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
+
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;
 typedef std::tuple<thread_id_t, thapi_function_name> t_function_name_t;
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id,
                    thapi_function_name>
     hpt_device_function_name_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
-typedef std::tuple<hostname_t,  thapi_device_id> h_device_t;
+
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-typedef std::tuple<hostname_t, thapi_device_id, thapi_telemetry_handle, thapi_domain_idx> h_ddomain_t;
-typedef std::tuple<hostname_t, thapi_device_id, thapi_telemetry_handle, thapi_sdevice_idx, bool> h_dfsdev_t;
 typedef std::tuple<hostname_t, std::string> hi_t;                // host + NIC interface
 typedef std::tuple<hostname_t, std::string, std::string> hic_t;  // host + NIC interface + counter
 typedef std::tuple<long, long> sd_t;
@@ -198,15 +200,15 @@ private:
 };
 
 // ClassName Striping
-template <size_t SuffixLen = 0> static inline std::string strip_event_class_name(const char *str) {
+static inline std::string strip_event_class_name(const char *str, const size_t suffixlen = 0) {
   const char *p = strchr(str + strlen("lttng_"), ':') + 1;
-  return std::string{p, strlen(p) - SuffixLen};
+  return std::string{p, strlen(p) - suffixlen};
 }
 
 static inline std::string strip_event_class_name_entry(const char *str) {
-  return strip_event_class_name<strlen("_entry")>(str);
+  return strip_event_class_name(str, strlen("_entry"));
 }
 
 static inline std::string strip_event_class_name_exit(const char *str) {
-  return strip_event_class_name<strlen("_exit")>(str);
+  return strip_event_class_name(str, strlen("_exit"));
 }
