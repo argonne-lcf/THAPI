@@ -47,6 +47,11 @@ teardown_file() {
    [[ "$err2" =~ "THAPI: Trace location" ]]
 }
 
+@test "stderr_output" {
+   run --separate-stderr $IPROF -- bash -c "echo \"error\" >&2"
+   [[ "$stderr" =~ "error" ]]
+}
+
 @test "no-analysis_all" {
    $IPROF --no-analysis -- $THAPI_TEST_BIN
    $IPROF -r
