@@ -5,7 +5,7 @@ teardown_file() {
 }
 
 @test "default_summary" {
-   total_count=$( $IPROF $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   total_count=$( $IPROF --backend cl -- $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
    [ "$total_count" -ge 1 ]
 }
 
@@ -45,6 +45,11 @@ teardown_file() {
 
    [[ "$out1" == "$out2" ]]
    [[ "$err2" =~ "THAPI: Trace location" ]]
+}
+
+@test "stderr_output" {
+   run --separate-stderr $IPROF -- bash -c "echo \"error\" >&2"
+   [[ "$stderr" =~ "error" ]]
 }
 
 @test "no-analysis_all" {
