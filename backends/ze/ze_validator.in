@@ -105,10 +105,12 @@ class Device < Object
   @typename = 'device'
   attr_reader :properties
   attr_reader :sub_devices
-
+  attr_accessor :memory_allocations
+  
   def initialize(handle)
     super
     @sub_devices = []
+    @memory_allocations = {}
   end
 end
 
@@ -118,6 +120,20 @@ class SubDevice < Device
   def initialize(handle, parent)
     @parent = parent
     super(handle)
+  end
+end
+
+class DeviceMemory < Object
+  @typename = 'memory_allocation'
+  attr_reader :context
+  attr_reader :size
+  attr_reader :device
+
+  def initialize(handle, context, size, device)
+    super(handle)
+    @context = context
+    @size = size
+    @device = device
   end
 end
 
@@ -315,6 +331,7 @@ class Process
     @modules = {}
     @module_build_logs = {}
     @kernels = {}
+    @memory_allocations = {}
   end
 
   def objects(type)
@@ -714,6 +731,59 @@ $success_exit_lambdas['zeKernelDestroy'] = lambda { |ctx, defi|
   }
 }
 
+$success_exit_lambdas['zeMemAllocDevice'] = lambda { |ctx, defi|
+  # memory is associated with devices
+  memory_allocations =  find_objects(ctx, 'memory_allocation')
+  context = find_object(ctx, 'context', 'hContext')
+  device = find_object(ctx, 'device','hDevice')
+  size = find_param(ctx,"size")
+  handle = defi['pptr_val']
+  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, device)
+  memory_allocations[handle] = memory_allocation
+  device.memory_allocations[handle] = memory_allocation
+}
+
+$success_exit_lambdas['zeMemAllocShared'] = lambda { |ctx, defi|
+  memory_allocations =  find_objects(ctx, 'memory_allocation')
+  # finds the device and context objects associated with the params
+  context = find_object(ctx, 'context', 'hContext')
+  device = find_object(ctx, 'device','hDevice')
+  # Passing nullptr as the device handle does not associate the shared allocation with any device.
+  # For allocations with no associated device, ownership of the allocation is shared between the
+  # host and all devices supporting cross-device shared access capabilities.
+  # TODO: should add in code to add this mme allocation to all devices with that property
+  size = find_param(ctx,"size")
+  handle = defi['pptr_val']
+  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, device)
+  memory_allocations[handle] = memory_allocation
+  device.memory_allocations[handle] = memory_allocation if device
+}
+
+$success_exit_lambdas['zeMemAllocHost'] = lambda { |ctx, defi|
+  # Host allocations are accessible by the host and all devices within the driver’s context.
+  # TODO: add this memory allocation to all devices in the context
+  memory_allocations =  find_objects(ctx, 'memory_allocation')
+  context = find_object(ctx, 'context', 'hContext')
+  size = find_param(ctx,"size")
+  handle = defi['pptr_val']
+  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, nil)
+  memory_allocations[handle] = memory_allocation
+}
+
+$success_exit_lambdas['zeMemFree'] = lambda { |ctx, defi|
+  memory_allocations =  find_objects(ctx, 'memory_allocation')
+  handle = find_param(ctx, "ptr")
+  memory_allocation = memory_allocations.delete(handle) {
+    object_not_found(ctx, 'memory_allocation', handle)
+  }
+  dev = memory_allocation.device
+  if dev
+    dev.memory_allocations.delete(handle) {
+      object_not_found(ctx, 'memory_allocation', handle, 'device')
+    }
+  end
+}
+
 ze_thread_safety = YAML::load_file(File.join(DATADIR, 'ze_thread_safety.yaml'))
 
 ze_thread_safety.each { |api, objects|
@@ -817,6 +887,7 @@ unless crash && false
         'module',
         'module_build_log',
         'kernel',
+        'memory_allocation',        
       ].each { |t|
         process.objects(t).each { |h, c|
           pring_leak_error(ctx, t, h)
