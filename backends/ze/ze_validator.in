@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# coding: utf-8
 DATADIR = File.join("@prefix@", "share")
 $:.unshift(DATADIR) if File.directory?(DATADIR)
 require 'optparse'
@@ -27,15 +28,848 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
-ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
-utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
+module ZEModel
 
-ARGV.uniq!
+  class Object
+    attr_reader :handle
 
-if !$options[:live]
-  trace_locations =
-    Find.find(*ARGV).reject do |path|
+    def self.typename
+      @typename
+    end
+
+    def initialize(handle)
+      @handle = handle
+      @lock = nil
+    end
+
+    def lock(ctx)
+      if @lock
+        print_race_condition(ctx, @lock, self.class.typename, @handle)
+      else
+        @lock = ctx
+      end
+    end
+
+    def unlock(ctx)
+      if @lock == ctx
+        @lock = nil
+      end
+    end
+  end
+
+  class Driver < Object
+    @typename = 'driver'
+    attr_reader :devices
+
+    def initialize(handle)
+      super
+      @devices = []
+    end
+  end
+
+  class Device < Object
+    @typename = 'device'
+    attr_reader :properties
+    attr_reader :sub_devices
+    attr_accessor :memory_allocations
+    
+    def initialize(handle)
+      super
+      @sub_devices = []
+      @memory_allocations = {}
+    end
+  end
+
+  class SubDevice < Device
+    attr_reader :parent
+
+    def initialize(handle, parent)
+      @parent = parent
+      super(handle)
+    end
+  end
+
+  class DeviceMemory < Object
+    @typename = 'memory_allocation'
+    attr_reader :context
+    attr_reader :size
+    attr_reader :device
+
+    def initialize(handle, context, size, device)
+      super(handle)
+      @context = context
+      @size = size
+      @device = device
+    end
+  end
+
+  class Context < Object
+    @typename = 'context'
+    attr_reader :driver
+    attr_reader :desc
+    attr_reader :devices
+
+    attr_reader :event_pools
+    attr_reader :command_queues
+    attr_reader :command_lists
+    attr_reader :modules
+    attr_reader :module_build_logs
+
+    def initialize(handle, driver, desc, devices = nil)
+      super(handle)
+      @driver = driver
+      @desc = desc
+      @devices = devices
+
+      @event_pools = {}
+      @command_queues = {}
+      @command_lists = {}
+      @modules = {}
+      @module_build_logs = {}
+    end
+  end
+
+  class EventPool < Object
+    @typename = 'event_pool'
+    attr_reader :context
+    attr_reader :desc
+    attr_reader :devices
+    attr_reader :events
+    attr_reader :indices
+
+    def initialize(handle, context, desc, devices = nil)
+      super(handle)
+      @context = context
+      @desc = desc
+      @devices = devices
+      @events = {}
+      @indices = Set.new(desc[:count].times.to_a)
+    end
+  end
+
+  class Event < Object
+    @typename = 'event'
+    attr_reader :event_pool
+    attr_reader :desc
+
+    def initialize(handle, event_pool, desc)
+      super(handle)
+      @event_pool = event_pool
+      @desc = desc
+    end
+  end
+
+  class CommandQueue < Object
+    @typename = 'command_queue'
+    attr_reader :context
+    attr_reader :device
+    attr_reader :desc
+    attr_reader :fences
+
+    def initialize(handle, context, device, desc)
+      super(handle)
+      @context = context
+      @device = device
+      @desc = desc
+      @fences = {}
+    end
+  end
+
+  class Fence < Object
+    @typename = 'fence'
+    attr_reader :command_queue
+    attr_reader :desc
+
+    def initialize(handle, command_queue, desc)
+      super(handle)
+      @command_queue = command_queue
+      @desc = desc
+    end
+  end
+
+  class CommandList < Object
+    @typename = 'command_list'
+    attr_reader :context
+    attr_reader :device
+    attr_reader :desc
+    attr_reader :altdesc
+
+    def initialize(handle, context, device, desc, altdesc)
+      super(handle)
+      @context = context
+      @device = device
+      @desc = desc
+      @altdesc = altdesc
+    end
+
+    def immediate?
+      return !desc
+    end
+  end
+
+  class Module < Object
+    @typename = 'module'
+
+    class BuildLog < Object
+      @typename = 'module_build_log'
+      attr_reader :module
+
+      def initialize(handle, mod = nil)
+        super(handle)
+        @module = mod
+      end
+    end
+
+    attr_reader :context
+    attr_reader :device
+    attr_reader :desc
+    attr_accessor :build_log
+    attr_reader :kernels
+
+    def initialize(handle, context, device, desc)
+      super(handle)
+      @context = context
+      @device = device
+      @desc = desc
+      @kernels = {}
+    end
+  end
+
+  class Kernel < Object
+    @typename = 'kernel'
+    attr_reader :module
+    attr_reader :desc
+
+    def initialize(handle, mod, desc)
+      super(handle)
+      @module = mod
+      @desc = desc
+    end
+  end
+
+  class ApiCall
+    attr_reader :name
+    attr_reader :params
+
+    def initialize(name, params)
+      @name = name
+      @params = params
+    end
+  end
+
+  class Thread
+    attr_reader :vtid
+    attr_accessor :last_entry
+
+    def initialize(vtid)
+      @vtid = vtid
+      @last_entry = nil
+    end
+  end
+
+  class Process
+    attr_reader :vpid
+    attr_reader :threads
+
+    attr_reader :drivers
+    attr_reader :devices
+    attr_reader :contexts
+    attr_reader :event_pools
+    attr_reader :events
+    attr_reader :command_queues
+    attr_reader :fences
+    attr_reader :command_lists
+    attr_reader :modules
+    attr_reader :module_build_logs
+
+    def initialize(vpid)
+      @vpid = vpid
+      @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
+
+      @drivers = {}
+      @devices = {}
+      @contexts = {}
+      @event_pools = {}
+      @events = {}
+      @command_queues = {}
+      @fences = {}
+      @command_lists = {}
+      @modules = {}
+      @module_build_logs = {}
+      @kernels = {}
+      @memory_allocations = {}
+    end
+
+    def objects(type)
+      instance_variable_get(:"@#{type}s")
+    end
+  end
+
+  class Node
+    attr_reader :name
+    attr_reader :processes
+
+    def initialize(name)
+      @name = name
+      @processes = Hash.new { |h, k| h[k] = Process.new(k) }
+    end
+  end
+
+end
+
+class StateObject
+  attr_reader :state
+  attr_reader :ze_thread_safety
+  attr_reader :entry_lambdas
+  attr_reader :exit_lambdas
+  
+  def initialize()
+    @state = Hash.new { |h, k| h[k] = ZEModel::Node.new(k) }
+    @ze_thread_safety = YAML::load_file(File.join(DATADIR, 'ze_thread_safety.yaml'))
+    @entry_lambdas = Hash.new { |h, k| h[k] = [] }
+    @exit_lambdas = Hash.new { |h, k| h[k] = [] }
+
+    # this is setting up entry_lambda and exit_lambda which are used by consume
+    @ze_thread_safety.each { |api, objects|
+      objects.each { |o|
+        @entry_lambdas[api].push( lambda { |state, ctx, defi|
+                                    handle = defi[o.first]
+                                    if handle.kind_of? Array
+                                      handle.each { |h|
+                                        state.find_object(ctx, o.last, h).lock(ctx)
+                                      }
+                                    else
+                                      state.find_object(ctx, o.last, handle).lock(ctx)
+                                    end
+                                  })
+        @exit_lambdas[api].push( lambda { |state, ctx, defi|
+                                   handle = state.find_param(ctx, o.first)
+                                   if handle.kind_of? Array
+                                     handle.each { |h|
+                                       state.find_object(ctx, o.last, h).unlock(ctx)
+                                     }
+                                   else
+                                     state.find_object(ctx, o.last, handle).unlock(ctx)
+                                   end
+                                 })
+      }
+    }
+
+  end
+  # instance methods
+  def get_last_entry(context)
+    @state[context['hostname']].processes[context['vpid']].threads[context['vtid']].last_entry
+  end
+
+  def get_thread(context)
+    @state[context['hostname']].processes[context['vpid']].threads[context['vtid']]
+  end
+
+  def get_process(context)
+    @state[context['hostname']].processes[context['vpid']]
+  end
+
+  def check_last_entry(context)
+    last_entry = get_last_entry(context)
+    unless last_entry && last_entry.name == context['api']
+      raise "Invalid State in #{context['api']}"
+    end
+  end
+
+  def set_last_entry(context, defi)
+    get_thread(context).last_entry = ZEModel::ApiCall.new(context['api'], defi)
+  end
+  
+  def reset_last_entry(context)
+    get_thread(context).last_entry = nil
+  end
+
+  def validate_result(defi)
+    ZE::ZEResult.from_native(defi["zeResult"], nil) == :ZE_RESULT_SUCCESS
+  end
+
+  def get_handle_str(handle)
+    '0x%016x' % handle
+  end
+
+  def get_proc_context_str(context)
+    "#{context['hostname']} - #{context['vpid']}"
+  end
+
+  def get_api_context(context)
+    "#{context['vtid']} in #{context['api']}"
+  end
+
+  def get_context_str(context)
+    "#{get_proc_context_str(context)} - #{get_api_context(context)}"
+  end
+
+  def print_usage_error(context, str)
+    $stderr.puts "Level Zero Usage Error: on #{get_context_str(context)}: #{str}"
+  end
+
+  def pring_crash_error(context, str)
+    $stderr.puts "Level Zero Crash Error: on #{get_context_str(context)}: #{str}"
+  end
+
+  def pring_leak_error(context, type, handle)
+    $stderr.puts "Level Zero Leak: on #{get_proc_context_str(context)}: #{type} #{get_handle_str(handle)}"
+  end
+
+  def raise_internal_error(context, str)
+    raise "Invalid state #{get_context_str(context)}: #{str}"
+  end
+
+  def print_race_condition(context, other_context, type, handle)
+    print_usage_error(context, "concurent acces to #{type} #{get_handle_str(handle)}, already held by #{get_api_context(other_context)}")
+  end
+
+  def object_not_found(context, type, handle, sub_context = nil)
+    raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} not found#{sub_context ? " in #{sub_context}" : ""}")
+  end
+
+  def find_param(context, name)
+    get_last_entry(context).params[name]
+  end
+
+  def find_objects(context, type)
+    get_process(context).instance_variable_get("@#{type}s")
+  end
+
+  def find_object(context, type, handle)
+    handle = find_param(context, handle) if handle.kind_of? String
+    find_objects(context, type)[handle]
+  end
+
+  def to_struct(memory, klass)
+    memory.size > 0 ? klass.new(FFI::MemoryPointer.from_string(memory)) : nil
+  end
+
+  def check_issues()
+    crash = false
+    @state.each { |hostname, node|
+      node.processes.each { |pid, process|
+        process.threads.each { |tid, thread|
+          if thread.last_entry
+            ctx = {'hostname' => hostname, 'vpid'=> pid, 'vtid' => tid, 'api' => thread.last_entry.name}
+            pring_crash_error(ctx, 'command did not finish execution')
+            crash = true
+          end
+        }
+      }
+    }
+
+    unless crash && false
+      @state.each { |hostname, node|
+        node.processes.each { |pid, process|
+          ctx = {'hostname' => hostname, 'vpid'=> pid}
+          [ 'context',
+            'event_pool',
+            'command_queue',
+            'fence',
+            'command_list',
+            'module',
+            'module_build_log',
+            'kernel',
+            'memory_allocation',        
+          ].each { |t|
+            process.objects(t).each { |h, c|
+              pring_leak_error(ctx, t, h)
+            }
+          }
+        }
+      }
+    end
+  end
+
+  def consume = lambda { |iterator, _|
+        iterator.next_messages.each do |m|
+          next unless m.type == :BT_MESSAGE_TYPE_EVENT
+          e = m.event
+          m = e.name.match(/:(z.*)_(entry|exit)/)
+          if m
+            hostname = e.stream.trace.get_environment_entry_value_by_name('hostname').value
+            context = e.get_common_context_field.value
+            defi = e.payload_field.value
+            context['hostname'] = hostname
+            context['api'] = m[1]
+
+            if  m[2] == 'entry'
+              set_last_entry(context, defi)
+              @entry_lambdas[m[1]].each { |l|
+                l.call(self, context, defi)
+              }
+            else
+              @exit_lambdas[m[1]].reverse_each { |l|
+                l.call(self, context, defi)
+              }
+              if validate_result(defi)
+                l = $success_exit_lambdas[m[1]]
+                l.call(self, context, defi) if l
+              else
+                l = $error_exit_lambdas[m[1]]
+                l.call(self, context, defi) if l
+              end
+              check_last_entry(context)
+              reset_last_entry(context)
+            end
+          end
+        end
+      }
+    
+  end
+
+$success_exit_lambdas = {}
+$error_exit_lambdas = {}
+
+$success_exit_lambdas['zeDriverGet'] = lambda { |state, ctx, defi|
+  drivers = state.get_process(ctx).drivers
+  defi['phDrivers_vals'].each { |h|
+    drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
+  }
+}
+
+$success_exit_lambdas['zeDeviceGet'] = lambda { |state, ctx, defi|
+  devices = state.find_objects(ctx, 'device')
+  driver = state.find_object(ctx, 'driver', 'hDriver')
+  defi['phDevices_vals'].each { |h|
+    unless devices[h]
+      devices[h] = ZEModel::Device.new(h)
+      driver.devices.push devices[h]
+    end
+  }
+}
+
+$success_exit_lambdas['zeDeviceGetSubDevices'] = lambda { |state, ctx, defi|
+  devices = state.find_objects(ctx, 'device')
+  device = state.find_object(ctx, 'device', 'hDevice')
+  defi['phSubdevices_vals'].each { |h|
+    unless devices[h]
+      devices[h] = ZEModel::SubDevice.new(h, device)
+      device.sub_devices.push devices[h]
+    end
+  }
+}
+
+$success_exit_lambdas['zeContextCreate'] = lambda { |state, ctx, defi|
+  contexts = state.find_objects(ctx, 'context')
+  driver = state.find_object(ctx, 'driver', 'hDriver')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEContextDesc)
+  handle = defi['phContext_val']
+  contexts[handle] = ZEModel::Context.new(handle, driver, desc)
+}
+
+$success_exit_lambdas['zeContextCreateEx'] = lambda { |state, ctx, defi|
+  contexts = state.find_objects(ctx, 'context')
+  devices = state.find_objects(ctx, 'device')
+  driver = state.find_object(ctx, 'driver', 'hDriver')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEContextDesc)
+  devs = state.find_param(ctx, 'phDevices_vals').collect { |h| devices[h] }
+  devs = nil unless state.find_param(ctx, 'phDevices') != 0
+  handle = defi['phContext_val']
+  contexts[handle] = ZEModel::Context.new(handle, driver, desc, devs)
+}
+
+$success_exit_lambdas['zeContextDestroy'] = lambda { |state, ctx, defi|
+  contexts = state.find_objects(ctx, 'context')
+  contexts.delete(state.find_param(ctx, 'hContext')) { |h|
+    raise_internal_error(ctx, "context #{get_handle_str(h)} does not exist")
+  }
+}
+
+$success_exit_lambdas['zeEventPoolCreate'] = lambda { |state, ctx, defi|
+  context = state.find_object(ctx, 'context', 'hContext')
+  devices = state.find_objects(ctx, 'device')
+  event_pools = state.find_objects(ctx, 'event_pool')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEEventPoolDesc)
+  devs = state.find_param(ctx, 'phDevices_vals').collect { |h| devices[h] }
+  devs = nil unless state.find_param(ctx, 'phDevices') != 0
+  handle = defi['phEventPool_val']
+  event_pools[handle] = ZEModel::EventPool.new(handle, context, desc, devs)
+  context.event_pools[handle] = event_pools[handle]
+}
+
+$success_exit_lambdas['zeEventPoolDestroy'] = lambda { |state, ctx, defi|
+  event_pools = state.find_objects(ctx, 'event_pool')
+  handle = state.find_param(ctx, 'hEventPool')
+  event_pool = event_pools.delete(handle) {
+    state.object_not_found(ctx, 'event_pool', handle)
+  }
+  event_pool.context.event_pools.delete(handle) {
+    state.object_not_found(ctx, 'event_pool', handle, 'context')
+  }
+  event_pool.events.each { |h, _|
+    state.print_usage_error(ctx, "event #{get_handle_str(h)} was not destroyed prior to event_pool #{get_handle_str(handle)} destruction")
+  }
+}
+
+$success_exit_lambdas['zeEventCreate'] = lambda { |state, ctx, defi|
+  events = state.find_objects(ctx, 'event')
+  event_pool = state.find_object(ctx, 'event_pool', 'hEventPool')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEEventDesc)
+  handle = defi['phEvent_val']
+  events[handle] = ZEModel::Event.new(handle, event_pool, desc)
+  if !event_pool.indices.delete?(desc[:index])
+    print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{desc['index']} is already used")
+  end
+  event_pool.events[handle] = events[handle]
+}
+
+$success_exit_lambdas['zeEventDestroy'] = lambda { |state, ctx, defi|
+  events = state.find_objects(ctx, 'event')
+  handle = state.find_param(ctx, 'hEvent')
+  event = events.delete(handle) {
+    state.object_not_found(ctx, 'event', handle)
+  }
+  event_pool = event.event_pool
+  event_pool.events.delete(handle) {
+    state.object_not_found(ctx, 'event', handle, 'event_pool')
+  }
+  if !event_pool.indices.add?(event.desc[:index])
+     state.print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{event.desc[:index]} is already freed")
+  end
+}
+
+$success_exit_lambdas['zeCommandQueueCreate'] = lambda { |state, ctx, defi|
+  command_queues = state.find_objects(ctx, 'command_queue')
+  context = state.find_object(ctx, 'context', 'hContext')
+  device = state.find_object(ctx, 'device', 'hDevice')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZECommandQueueDesc)
+  handle = defi['phCommandQueue_val']
+  command_queues[handle] = ZEModel::CommandQueue.new(handle, context, device, desc)
+  context.command_queues[handle] = command_queues[handle]
+}
+
+$success_exit_lambdas['zeCommandQueueDestroy'] = lambda { |state, ctx, defi|
+  command_queues = state.find_objects(ctx, 'command_queue')
+  handle = state.find_param(ctx, 'hCommandQueue')
+  command_queue = command_queues.delete(handle) {
+    state.object_not_found(ctx, 'command_queue', handle)
+  }
+  command_queue.context.command_queues.delete(handle) {
+    state.object_not_found(ctx, 'command_queue', handle, 'context')
+  }
+  command_queue.fences.each { |h, _|
+    state.print_usage_error(ctx, "fence #{get_handle_str(h)} was not destroyed prior to command_queue #{get_handle_str(handle)} destruction")
+  }
+}
+
+$success_exit_lambdas['zeFenceCreate'] = lambda { |state, ctx, defi|
+  fences = state.find_objects(ctx, 'fence')
+  command_queue = state.find_object(ctx, 'command_queue', 'hCommandQueue')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEFenceDesc)
+  handle = defi['phFence_val']
+  fence = ZEModel::Fence.new(handle, command_queue, desc)
+  fences[handle] = fence
+  command_queue.fences[handle] = fence
+}
+
+$success_exit_lambdas['zeFenceDestroy'] = lambda { |state, ctx, defi|
+  fences = state.find_objects(ctx, 'fence')
+  handle = state.find_param(ctx, 'hFence')
+  fence = fences.delete(handle) {
+    state.object_not_found(ctx, 'fence', handle)
+  }
+  command_queue = fence.command_queue
+  command_queue.fences.delete(handle) {
+    state.object_not_found(ctx, 'fence', handle, 'command_queue')
+  }
+}
+
+$success_exit_lambdas['zeCommandListCreate'] = lambda { |state, ctx, defi|
+  command_lists = state.find_objects(ctx, 'command_list')
+  context = state.find_object(ctx, 'context', 'hContext')
+  device = state.find_object(ctx, 'device', 'hDevice')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZECommandListDesc)
+  handle = defi['phCommandList_val']
+  command_lists[handle] = ZEModel::CommandList.new(handle, context, device, desc, nil)
+  context.command_lists[handle] = command_lists[handle]
+}
+
+$success_exit_lambdas['zeCommandListCreateImmediate'] = lambda { |state, ctx, defi|
+  command_lists = state.find_objects(ctx, 'command_list')
+  context = state.find_object(ctx, 'context', 'hContext')
+  device = state.find_object(ctx, 'device', 'hDevice')
+  altdesc_val = state.find_param(ctx, 'altdesc_val')
+  altdesc = state.to_struct(altdesc_val, ZE::ZECommandQueueDesc)
+  handle = defi['phCommandList_val']
+  command_lists[handle] = ZEModel::CommandList.new(handle, context, device, nil, altdesc)
+  context.command_lists[handle] = command_lists[handle]
+}
+
+$success_exit_lambdas['zeCommandListDestroy'] = lambda { |state, ctx, defi|
+  command_lists = state.find_objects(ctx, 'command_list')
+  handle = state.find_param(ctx, 'hCommandList')
+  command_list = command_lists.delete(handle) {
+    state.object_not_found(ctx, 'command_list', handle)
+  }
+  command_list.context.command_lists.delete(handle) {
+    state.object_not_found(ctx, 'command_list', handle, 'context')
+  }
+}
+
+$success_exit_lambdas['zeModuleCreate'] = lambda { |state, ctx, defi|
+  modules = state.find_objects(ctx, 'module')
+  context = state.find_object(ctx, 'context', 'hContext')
+  device = state.find_object(ctx, 'device', 'hDevice')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEModuleDesc)
+  handle = defi['phModule_val']
+  mod = ZEModel::Module.new(handle, context, device, desc)
+  modules[handle] = mod
+  context.modules[handle] = mod
+  build_log_handle = defi['phBuildLog_val']
+  if build_log_handle != 0
+    module_build_logs = state.find_objects(ctx, 'module_build_log')
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle, mod)
+    module_build_logs[build_log_handle] = build_log
+    context.module_build_logs[build_log_handle] = build_log
+    modules[handle].build_log = build_log
+  end
+}
+
+$error_exit_lambdas['zeModuleCreate'] = lambda { |state, ctx, defi|
+  build_log_handle = defi['phBuildLog_val']
+  if build_log_handle != 0
+    module_build_logs = state.find_objects(ctx, 'module_build_log')
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
+    module_build_logs[build_log_handle] = build_log
+    context.module_build_logs[build_log_handle] = build_log
+  end
+}
+
+$success_exit_lambdas['zeModuleDestroy'] = lambda { |state, ctx, defi|
+  modules = state.find_objects(ctx, 'module')
+  handle = state.find_param(ctx, 'hModule')
+  mod = modules.delete(handle) {
+    state.object_not_found(ctx, 'module', handle)
+  }
+  mod.context.modules.delete(handle) {
+    state.object_not_found(ctx, 'module', handle, 'context')
+  }
+  mod.kernels.each { |h, _|
+    state.print_usage_error(ctx, "kernel #{get_handle_str(h)} was not destroyed prior to module #{get_handle_str(handle)} destruction")
+  }
+}
+
+$error_exit_lambdas['zeModuleDynamicLink'] = $success_exit_lambdas['zeModuleDynamicLink'] = lambda { |state, ctx, defi|
+  build_log_handle = defi['phLinkLog_val']
+  if build_log_handle != 0
+    module_build_logs = state.find_objects(ctx, 'module_build_log')
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
+    module_build_logs[build_log_handle] = build_log
+    context.module_build_logs[build_log_handle] = build_log
+  end
+}
+
+$success_exit_lambdas['zeModuleBuildLogDestroy'] = lambda { |state, ctx, defi|
+  module_build_logs = state.find_objects(ctx, 'module_build_log')
+  handle = state.find_param(ctx, 'hModuleBuildLog')
+  module_build_log = module_build_logs.delete(handle) {
+    state.object_not_found(ctx, 'module_build_log', handle)
+  }
+  if module_build_log.module
+    module_build_log.module.context.module_build_logs.delete(handle) {
+      state.object_not_found(ctx, 'module_build_log', handle, 'context')
+    }
+    module_build_log.module.build_log = nil
+  end
+}
+
+$success_exit_lambdas['zeKernelCreate'] = lambda { |state, ctx, defi|
+  kernels = state.find_objects(ctx, 'kernel')
+  mod = state.find_object(ctx, 'module', 'hModule')
+  desc_val = state.find_param(ctx, 'desc_val')
+  desc = state.to_struct(desc_val, ZE::ZEKernelDesc)
+  handle = defi['phKernel_val']
+  kernel = ZEModel::Kernel.new(handle, mod, desc)
+  kernels[handle] = kernel
+  mod.kernels[handle] = kernel
+}
+
+$success_exit_lambdas['zeKernelDestroy'] = lambda { |state, ctx, defi|
+  kernels = state.find_objects(ctx, 'kernel')
+  handle = state.find_param(ctx, 'hKernel')
+  kernel = kernels.delete(handle) {
+    state.object_not_found(ctx, 'kernel', handle)
+  }
+  mod = kernel.module
+  mod.kernels.delete(handle) {
+    state.object_not_found(ctx, 'kernel', handle, 'module')
+  }
+}
+
+$success_exit_lambdas['zeMemAllocDevice'] = lambda { |state, ctx, defi|
+  # memory is associated with devices
+  memory_allocations =  state.find_objects(ctx, 'memory_allocation')
+  context = state.find_object(ctx, 'context', 'hContext')
+  device = state.find_object(ctx, 'device','hDevice')
+  size = state.find_param(ctx,"size")
+  handle = defi['pptr_val']
+  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, device)
+  memory_allocations[handle] = memory_allocation
+  device.memory_allocations[handle] = memory_allocation
+}
+
+$success_exit_lambdas['zeMemAllocShared'] = lambda { |state, ctx, defi|
+  memory_allocations =  state.find_objects(ctx, 'memory_allocation')
+  # finds the device and context objects associated with the params
+  context = state.find_object(ctx, 'context', 'hContext')
+  device = state.find_object(ctx, 'device','hDevice')
+  # Passing nullptr as the device handle does not associate the shared allocation with any device.
+  # For allocations with no associated device, ownership of the allocation is shared between the
+  # host and all devices supporting cross-device shared access capabilities.
+  # TODO: should add in code to add this mme allocation to all devices with that property
+  size = state.find_param(ctx,"size")
+  handle = defi['pptr_val']
+  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, device)
+  memory_allocations[handle] = memory_allocation
+  device.memory_allocations[handle] = memory_allocation if device
+}
+
+$success_exit_lambdas['zeMemAllocHost'] = lambda { |state, ctx, defi|
+  # Host allocations are accessible by the host and all devices within the driver’s context.
+  # TODO: add this memory allocation to all devices in the context
+  memory_allocations =  state.find_objects(ctx, 'memory_allocation')
+  context = state.find_object(ctx, 'context', 'hContext')
+  size = state.find_param(ctx,"size")
+  handle = defi['pptr_val']
+  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, nil)
+  memory_allocations[handle] = memory_allocation
+}
+
+$success_exit_lambdas['zeMemFree'] = lambda { |state, ctx, defi|
+  memory_allocations =  state.find_objects(ctx, 'memory_allocation')
+  handle = state.find_param(ctx, "ptr")
+  memory_allocation = memory_allocations.delete(handle) {
+    state.object_not_found(ctx, 'memory_allocation', handle)
+  }
+  dev = memory_allocation.device
+  if dev
+    dev.memory_allocations.delete(handle) {
+      state.object_not_found(ctx, 'memory_allocation', handle, 'device')
+    }
+  end
+}
+
+def build_and_run_graph( source_location, sink_object )
+  # build graph and set up source
+  graph = BT2::BTGraph.new
+
+  ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
+  ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
+  utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
+
+  if !$options[:live]
+    trace_locations =
+      Find.find(*source_location).reject do |path|
       FileTest.directory?(path)
     end.select do |path|
       File.basename(path) == 'metadata'
@@ -45,854 +879,46 @@ if !$options[:live]
       qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
                                     params: { 'input' => path, 'type' => 'directory' })
       qe.query.value['weight'] > 0.5
-   end
-else
-  trace_locations = ARGV
-end
-raise 'Could not find lttng trace' if trace_locations.size == 0
-
-graph = BT2::BTGraph.new
-
-if !$options[:live]
-  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
-else
-  comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
-end
-
-# Muxer
-comp_muxer = graph.add_component(utils_muxer, 'mux')
-
-module ZEModel
-
-class Object
-  attr_reader :handle
-
-  def self.typename
-    @typename
-  end
-
-  def initialize(handle)
-    @handle = handle
-    @lock = nil
-  end
-
-  def lock(ctx)
-    if @lock
-      print_race_condition(ctx, @lock, self.class.typename, @handle)
-    else
-      @lock = ctx
     end
+  else
+    trace_locations = source_location
+  end
+  raise 'Could not find lttng trace' if trace_locations.size == 0
+
+  if !$options[:live]
+    comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+  else
+    comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
   end
 
-  def unlock(ctx)
-    if @lock == ctx
-      @lock = nil
-    end
-  end
-end
+  # Muxer
+  comp_muxer = graph.add_component(utils_muxer, 'mux')
 
-class Driver < Object
-  @typename = 'driver'
-  attr_reader :devices
+  sink = graph.add_simple_sink('babeltrace_thapi', sink_object.consume)
 
-  def initialize(handle)
-    super
-    @devices = []
-  end
-end
-
-class Device < Object
-  @typename = 'device'
-  attr_reader :properties
-  attr_reader :sub_devices
-  attr_accessor :memory_allocations
-  
-  def initialize(handle)
-    super
-    @sub_devices = []
-    @memory_allocations = {}
-  end
-end
-
-class SubDevice < Device
-  attr_reader :parent
-
-  def initialize(handle, parent)
-    @parent = parent
-    super(handle)
-  end
-end
-
-class DeviceMemory < Object
-  @typename = 'memory_allocation'
-  attr_reader :context
-  attr_reader :size
-  attr_reader :device
-
-  def initialize(handle, context, size, device)
-    super(handle)
-    @context = context
-    @size = size
-    @device = device
-  end
-end
-
-class Context < Object
-  @typename = 'context'
-  attr_reader :driver
-  attr_reader :desc
-  attr_reader :devices
-
-  attr_reader :event_pools
-  attr_reader :command_queues
-  attr_reader :command_lists
-  attr_reader :modules
-  attr_reader :module_build_logs
-
-  def initialize(handle, driver, desc, devices = nil)
-    super(handle)
-    @driver = driver
-    @desc = desc
-    @devices = devices
-
-    @event_pools = {}
-    @command_queues = {}
-    @command_lists = {}
-    @modules = {}
-    @module_build_logs = {}
-  end
-end
-
-class EventPool < Object
-  @typename = 'event_pool'
-  attr_reader :context
-  attr_reader :desc
-  attr_reader :devices
-  attr_reader :events
-  attr_reader :indices
-
-  def initialize(handle, context, desc, devices = nil)
-    super(handle)
-    @context = context
-    @desc = desc
-    @devices = devices
-    @events = {}
-    @indices = Set.new(desc[:count].times.to_a)
-  end
-end
-
-class Event < Object
-  @typename = 'event'
-  attr_reader :event_pool
-  attr_reader :desc
-
-  def initialize(handle, event_pool, desc)
-    super(handle)
-    @event_pool = event_pool
-    @desc = desc
-  end
-end
-
-class CommandQueue < Object
-  @typename = 'command_queue'
-  attr_reader :context
-  attr_reader :device
-  attr_reader :desc
-  attr_reader :fences
-
-  def initialize(handle, context, device, desc)
-    super(handle)
-    @context = context
-    @device = device
-    @desc = desc
-    @fences = {}
-  end
-end
-
-class Fence < Object
-  @typename = 'fence'
-  attr_reader :command_queue
-  attr_reader :desc
-
-  def initialize(handle, command_queue, desc)
-    super(handle)
-    @command_queue = command_queue
-    @desc = desc
-  end
-end
-
-class CommandList < Object
-  @typename = 'command_list'
-  attr_reader :context
-  attr_reader :device
-  attr_reader :desc
-  attr_reader :altdesc
-
-  def initialize(handle, context, device, desc, altdesc)
-    super(handle)
-    @context = context
-    @device = device
-    @desc = desc
-    @altdesc = altdesc
+  # Sources to muxer
+  comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+    ip = comp_muxer.input_port(i)
+    graph.connect_ports(op, ip)
   end
 
-  def immediate?
-    return !desc
-  end
-end
-
-class Module < Object
-  @typename = 'module'
-
-  class BuildLog < Object
-    @typename = 'module_build_log'
-    attr_reader :module
-
-    def initialize(handle, mod = nil)
-      super(handle)
-      @module = mod
-    end
+  # Chain the rest
+  [comp_muxer, sink].flatten.each_cons(2) do |_out, _in|
+    op = _out.output_port(0)
+    ip = _in.input_port(0)
+    graph.connect_ports(op, ip)
   end
 
-  attr_reader :context
-  attr_reader :device
-  attr_reader :desc
-  attr_accessor :build_log
-  attr_reader :kernels
-
-  def initialize(handle, context, device, desc)
-    super(handle)
-    @context = context
-    @device = device
-    @desc = desc
-    @kernels = {}
-  end
-end
-
-class Kernel < Object
-  @typename = 'kernel'
-  attr_reader :module
-  attr_reader :desc
-
-  def initialize(handle, mod, desc)
-    super(handle)
-    @module = mod
-    @desc = desc
-  end
-end
-
-class ApiCall
-  attr_reader :name
-  attr_reader :params
-
-  def initialize(name, params)
-    @name = name
-    @params = params
-  end
-end
-
-class Thread
-  attr_reader :vtid
-  attr_accessor :last_entry
-
-  def initialize(vtid)
-    @vtid = vtid
-    @last_entry = nil
-  end
-end
-
-class Process
-  attr_reader :vpid
-  attr_reader :threads
-
-  attr_reader :drivers
-  attr_reader :devices
-  attr_reader :contexts
-  attr_reader :event_pools
-  attr_reader :events
-  attr_reader :command_queues
-  attr_reader :fences
-  attr_reader :command_lists
-  attr_reader :modules
-  attr_reader :module_build_logs
-
-  def initialize(vpid)
-    @vpid = vpid
-    @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
-
-    @drivers = {}
-    @devices = {}
-    @contexts = {}
-    @event_pools = {}
-    @events = {}
-    @command_queues = {}
-    @fences = {}
-    @command_lists = {}
-    @modules = {}
-    @module_build_logs = {}
-    @kernels = {}
-    @memory_allocations = {}
-  end
-
-  def objects(type)
-    instance_variable_get(:"@#{type}s")
-  end
-end
-
-class Node
-  attr_reader :name
-  attr_reader :processes
-
-  def initialize(name)
-    @name = name
-    @processes = Hash.new { |h, k| h[k] = Process.new(k) }
-  end
-end
+  graph.run
+  sink_object.check_issues()
 
 end
 
-STATE = Hash.new { |h, k| h[k] = ZEModel::Node.new(k) }
-
-def get_last_entry(context)
-  STATE[context['hostname']].processes[context['vpid']].threads[context['vtid']].last_entry
-end
-
-def get_thread(context)
-  STATE[context['hostname']].processes[context['vpid']].threads[context['vtid']]
-end
-
-def get_process(context)
-  STATE[context['hostname']].processes[context['vpid']]
-end
-
-def check_last_entry(context)
-  last_entry = get_last_entry(context)
-  unless last_entry && last_entry.name == context['api']
-    raise "Invalid State in #{context['api']}"
-  end
-end
-
-def set_last_entry(context, defi)
-  get_thread(context).last_entry = ZEModel::ApiCall.new(context['api'], defi)
-end
-
-def reset_last_entry(context)
-  get_thread(context).last_entry = nil
-end
-
-def validate_result(defi)
-  ZE::ZEResult.from_native(defi["zeResult"], nil) == :ZE_RESULT_SUCCESS
-end
-
-def get_handle_str(handle)
-  '0x%016x' % handle
-end
-
-def get_proc_context_str(context)
-  "#{context['hostname']} - #{context['vpid']}"
-end
-
-def get_api_context(context)
- "#{context['vtid']} in #{context['api']}"
-end
-
-def get_context_str(context)
-  "#{get_proc_context_str(context)} - #{get_api_context(context)}"
-end
-
-def print_usage_error(context, str)
-  $stderr.puts "Level Zero Usage Error: on #{get_context_str(context)}: #{str}"
-end
-
-def pring_crash_error(context, str)
-  $stderr.puts "Level Zero Crash Error: on #{get_context_str(context)}: #{str}"
-end
-
-def pring_leak_error(context, type, handle)
-  $stderr.puts "Level Zero Leak: on #{get_proc_context_str(context)}: #{type} #{get_handle_str(handle)}"
-end
-
-def raise_internal_error(context, str)
-  raise "Invalid state #{get_context_str(context)}: #{str}"
-end
-
-def print_race_condition(context, other_context, type, handle)
-  print_usage_error(context, "concurent acces to #{type} #{get_handle_str(handle)}, already held by #{get_api_context(other_context)}")
-end
-
-def object_not_found(context, type, handle, sub_context = nil)
-  raise_internal_error(ctx, "event_pool #{get_handle_str(handle)} not found#{sub_context ? " in #{sub_context}" : ""}")
-end
-
-def find_param(context, name)
-  get_last_entry(context).params[name]
-end
-
-def find_objects(context, type)
-  get_process(context).instance_variable_get("@#{type}s")
-end
-
-def find_object(context, type, handle)
-  handle = find_param(context, handle) if handle.kind_of? String
-  find_objects(context, type)[handle]
-end
-
-def to_struct(memory, klass)
-  memory.size > 0 ? klass.new(FFI::MemoryPointer.from_string(memory)) : nil
-end
-
-$entry_lambdas = Hash.new { |h, k| h[k] = [] }
-$exit_lambdas = Hash.new { |h, k| h[k] = [] }
-
-$success_exit_lambdas = {}
-$error_exit_lambdas = {}
-
-$success_exit_lambdas['zeDriverGet'] = lambda { |ctx, defi|
-  drivers = get_process(ctx).drivers
-  defi['phDrivers_vals'].each { |h|
-    drivers[h] = ZEModel::Driver.new(h) unless drivers[h]
-  }
-}
-
-$success_exit_lambdas['zeDeviceGet'] = lambda { |ctx, defi|
-  devices = find_objects(ctx, 'device')
-  driver = find_object(ctx, 'driver', 'hDriver')
-  defi['phDevices_vals'].each { |h|
-    unless devices[h]
-      devices[h] = ZEModel::Device.new(h)
-      driver.devices.push devices[h]
-    end
-  }
-}
-
-$success_exit_lambdas['zeDeviceGetSubDevices'] = lambda { |ctx, defi|
-  devices = find_objects(ctx, 'device')
-  device = find_object(ctx, 'device', 'hDevice')
-  defi['phSubdevices_vals'].each { |h|
-    unless devices[h]
-      devices[h] = ZEModel::SubDevice.new(h, device)
-      device.sub_devices.push devices[h]
-    end
-  }
-}
-
-$success_exit_lambdas['zeContextCreate'] = lambda { |ctx, defi|
-  contexts = find_objects(ctx, 'context')
-  driver = find_object(ctx, 'driver', 'hDriver')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEContextDesc)
-  handle = defi['phContext_val']
-  contexts[handle] = ZEModel::Context.new(handle, driver, desc)
-}
-
-$success_exit_lambdas['zeContextCreateEx'] = lambda { |ctx, defi|
-  contexts = find_objects(ctx, 'context')
-  devices = find_objects(ctx, 'device')
-  driver = find_object(ctx, 'driver', 'hDriver')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEContextDesc)
-  devs = find_param(ctx, 'phDevices_vals').collect { |h| devices[h] }
-  devs = nil unless find_param(ctx, 'phDevices') != 0
-  handle = defi['phContext_val']
-  contexts[handle] = ZEModel::Context.new(handle, driver, desc, devs)
-}
-
-$success_exit_lambdas['zeContextDestroy'] = lambda { |ctx, defi|
-  contexts = find_objects(ctx, 'context')
-  contexts.delete(find_param(ctx, 'hContext')) { |h|
-    raise_internal_error(ctx, "context #{get_handle_str(h)} does not exist")
-  }
-}
-
-$success_exit_lambdas['zeEventPoolCreate'] = lambda { |ctx, defi|
-  context = find_object(ctx, 'context', 'hContext')
-  devices = find_objects(ctx, 'device')
-  event_pools = find_objects(ctx, 'event_pool')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEEventPoolDesc)
-  devs = find_param(ctx, 'phDevices_vals').collect { |h| devices[h] }
-  devs = nil unless find_param(ctx, 'phDevices') != 0
-  handle = defi['phEventPool_val']
-  event_pools[handle] = ZEModel::EventPool.new(handle, context, desc, devs)
-  context.event_pools[handle] = event_pools[handle]
-}
-
-$success_exit_lambdas['zeEventPoolDestroy'] = lambda { |ctx, defi|
-  event_pools = find_objects(ctx, 'event_pool')
-  handle = find_param(ctx, 'hEventPool')
-  event_pool = event_pools.delete(handle) {
-    object_not_found(ctx, 'event_pool', handle)
-  }
-  event_pool.context.event_pools.delete(handle) {
-    object_not_found(ctx, 'event_pool', handle, 'context')
-  }
-  event_pool.events.each { |h, _|
-    print_usage_error(ctx, "event #{get_handle_str(h)} was not destroyed prior to event_pool #{get_handle_str(handle)} destruction")
-  }
-}
-
-$success_exit_lambdas['zeEventCreate'] = lambda { |ctx, defi|
-  events = find_objects(ctx, 'event')
-  event_pool = find_object(ctx, 'event_pool', 'hEventPool')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEEventDesc)
-  handle = defi['phEvent_val']
-  events[handle] = ZEModel::Event.new(handle, event_pool, desc)
-  if !event_pool.indices.delete?(desc[:index])
-    print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{desc['index']} is already used")
-  end
-  event_pool.events[handle] = events[handle]
-}
-
-$success_exit_lambdas['zeEventDestroy'] = lambda { |ctx, defi|
-  events = find_objects(ctx, 'event')
-  handle = find_param(ctx, 'hEvent')
-  event = events.delete(handle) {
-    object_not_found(ctx, 'event', handle)
-  }
-  event_pool = event.event_pool
-  event_pool.events.delete(handle) {
-    object_not_found(ctx, 'event', handle, 'event_pool')
-  }
-  if !event_pool.indices.add?(event.desc[:index])
-     print_usage_error(ctx, "event_pool #{get_handle_str(event_pool.handle)} index #{event.desc[:index]} is already freed")
-  end
-}
-
-$success_exit_lambdas['zeCommandQueueCreate'] = lambda { |ctx, defi|
-  command_queues = find_objects(ctx, 'command_queue')
-  context = find_object(ctx, 'context', 'hContext')
-  device = find_object(ctx, 'device', 'hDevice')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZECommandQueueDesc)
-  handle = defi['phCommandQueue_val']
-  command_queues[handle] = ZEModel::CommandQueue.new(handle, context, device, desc)
-  context.command_queues[handle] = command_queues[handle]
-}
-
-$success_exit_lambdas['zeCommandQueueDestroy'] = lambda { |ctx, defi|
-  command_queues = find_objects(ctx, 'command_queue')
-  handle = find_param(ctx, 'hCommandQueue')
-  command_queue = command_queues.delete(handle) {
-    object_not_found(ctx, 'command_queue', handle)
-  }
-  command_queue.context.command_queues.delete(handle) {
-    object_not_found(ctx, 'command_queue', handle, 'context')
-  }
-  command_queue.fences.each { |h, _|
-    print_usage_error(ctx, "fence #{get_handle_str(h)} was not destroyed prior to command_queue #{get_handle_str(handle)} destruction")
-  }
-}
-
-$success_exit_lambdas['zeFenceCreate'] = lambda { |ctx, defi|
-  fences = find_objects(ctx, 'fence')
-  command_queue = find_object(ctx, 'command_queue', 'hCommandQueue')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEFenceDesc)
-  handle = defi['phFence_val']
-  fence = ZEModel::Fence.new(handle, command_queue, desc)
-  fences[handle] = fence
-  command_queue.fences[handle] = fence
-}
-
-$success_exit_lambdas['zeFenceDestroy'] = lambda { |ctx, defi|
-  fences = find_objects(ctx, 'fence')
-  handle = find_param(ctx, 'hFence')
-  fence = fences.delete(handle) {
-    object_not_found(ctx, 'fence', handle)
-  }
-  command_queue = fence.command_queue
-  command_queue.fences.delete(handle) {
-    object_not_found(ctx, 'fence', handle, 'command_queue')
-  }
-}
-
-$success_exit_lambdas['zeCommandListCreate'] = lambda { |ctx, defi|
-  command_lists = find_objects(ctx, 'command_list')
-  context = find_object(ctx, 'context', 'hContext')
-  device = find_object(ctx, 'device', 'hDevice')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZECommandListDesc)
-  handle = defi['phCommandList_val']
-  command_lists[handle] = ZEModel::CommandList.new(handle, context, device, desc, nil)
-  context.command_lists[handle] = command_lists[handle]
-}
-
-$success_exit_lambdas['zeCommandListCreateImmediate'] = lambda { |ctx, defi|
-  command_lists = find_objects(ctx, 'command_list')
-  context = find_object(ctx, 'context', 'hContext')
-  device = find_object(ctx, 'device', 'hDevice')
-  altdesc_val = find_param(ctx, 'altdesc_val')
-  altdesc = to_struct(altdesc_val, ZE::ZECommandQueueDesc)
-  handle = defi['phCommandList_val']
-  command_lists[handle] = ZEModel::CommandList.new(handle, context, device, nil, altdesc)
-  context.command_lists[handle] = command_lists[handle]
-}
-
-$success_exit_lambdas['zeCommandListDestroy'] = lambda { |ctx, defi|
-  command_lists = find_objects(ctx, 'command_list')
-  handle = find_param(ctx, 'hCommandList')
-  command_list = command_lists.delete(handle) {
-    object_not_found(ctx, 'command_list', handle)
-  }
-  command_list.context.command_lists.delete(handle) {
-    object_not_found(ctx, 'command_list', handle, 'context')
-  }
-}
-
-$success_exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
-  modules = find_objects(ctx, 'module')
-  context = find_object(ctx, 'context', 'hContext')
-  device = find_object(ctx, 'device', 'hDevice')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEModuleDesc)
-  handle = defi['phModule_val']
-  mod = ZEModel::Module.new(handle, context, device, desc)
-  modules[handle] = mod
-  context.modules[handle] = mod
-  build_log_handle = defi['phBuildLog_val']
-  if build_log_handle != 0
-    module_build_logs = find_objects(ctx, 'module_build_log')
-    build_log = ZEModel::Module::BuildLog.new(build_log_handle, mod)
-    module_build_logs[build_log_handle] = build_log
-    context.module_build_logs[build_log_handle] = build_log
-    modules[handle].build_log = build_log
-  end
-}
-
-$error_exit_lambdas['zeModuleCreate'] = lambda { |ctx, defi|
-  build_log_handle = defi['phBuildLog_val']
-  if build_log_handle != 0
-    module_build_logs = find_objects(ctx, 'module_build_log')
-    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
-    module_build_logs[build_log_handle] = build_log
-    context.module_build_logs[build_log_handle] = build_log
-  end
-}
-
-$success_exit_lambdas['zeModuleDestroy'] = lambda { |ctx, defi|
-  modules = find_objects(ctx, 'module')
-  handle = find_param(ctx, 'hModule')
-  mod = modules.delete(handle) {
-    object_not_found(ctx, 'module', handle)
-  }
-  mod.context.modules.delete(handle) {
-    object_not_found(ctx, 'module', handle, 'context')
-  }
-  mod.kernels.each { |h, _|
-    print_usage_error(ctx, "kernel #{get_handle_str(h)} was not destroyed prior to module #{get_handle_str(handle)} destruction")
-  }
-}
-
-$error_exit_lambdas['zeModuleDynamicLink'] = $success_exit_lambdas['zeModuleDynamicLink'] = lambda { |ctx, defi|
-  build_log_handle = defi['phLinkLog_val']
-  if build_log_handle != 0
-    module_build_logs = find_objects(ctx, 'module_build_log')
-    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
-    module_build_logs[build_log_handle] = build_log
-    context.module_build_logs[build_log_handle] = build_log
-  end
-}
-
-$success_exit_lambdas['zeModuleBuildLogDestroy'] = lambda { |ctx, defi|
-  module_build_logs = find_objects(ctx, 'module_build_log')
-  handle = find_param(ctx, 'hModuleBuildLog')
-  module_build_log = module_build_logs.delete(handle) {
-    object_not_found(ctx, 'module_build_log', handle)
-  }
-  if module_build_log.module
-    module_build_log.module.context.module_build_logs.delete(handle) {
-      object_not_found(ctx, 'module_build_log', handle, 'context')
-    }
-    module_build_log.module.build_log = nil
-  end
-}
-
-$success_exit_lambdas['zeKernelCreate'] = lambda { |ctx, defi|
-  kernels = find_objects(ctx, 'kernel')
-  mod = find_object(ctx, 'module', 'hModule')
-  desc_val = find_param(ctx, 'desc_val')
-  desc = to_struct(desc_val, ZE::ZEKernelDesc)
-  handle = defi['phKernel_val']
-  kernel = ZEModel::Kernel.new(handle, mod, desc)
-  kernels[handle] = kernel
-  mod.kernels[handle] = kernel
-}
-
-$success_exit_lambdas['zeKernelDestroy'] = lambda { |ctx, defi|
-  kernels = find_objects(ctx, 'kernel')
-  handle = find_param(ctx, 'hKernel')
-  kernel = kernels.delete(handle) {
-    object_not_found(ctx, 'kernel', handle)
-  }
-  mod = kernel.module
-  mod.kernels.delete(handle) {
-    object_not_found(ctx, 'kernel', handle, 'module')
-  }
-}
-
-$success_exit_lambdas['zeMemAllocDevice'] = lambda { |ctx, defi|
-  # memory is associated with devices
-  memory_allocations =  find_objects(ctx, 'memory_allocation')
-  context = find_object(ctx, 'context', 'hContext')
-  device = find_object(ctx, 'device','hDevice')
-  size = find_param(ctx,"size")
-  handle = defi['pptr_val']
-  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, device)
-  memory_allocations[handle] = memory_allocation
-  device.memory_allocations[handle] = memory_allocation
-}
-
-$success_exit_lambdas['zeMemAllocShared'] = lambda { |ctx, defi|
-  memory_allocations =  find_objects(ctx, 'memory_allocation')
-  # finds the device and context objects associated with the params
-  context = find_object(ctx, 'context', 'hContext')
-  device = find_object(ctx, 'device','hDevice')
-  # Passing nullptr as the device handle does not associate the shared allocation with any device.
-  # For allocations with no associated device, ownership of the allocation is shared between the
-  # host and all devices supporting cross-device shared access capabilities.
-  # TODO: should add in code to add this mme allocation to all devices with that property
-  size = find_param(ctx,"size")
-  handle = defi['pptr_val']
-  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, device)
-  memory_allocations[handle] = memory_allocation
-  device.memory_allocations[handle] = memory_allocation if device
-}
-
-$success_exit_lambdas['zeMemAllocHost'] = lambda { |ctx, defi|
-  # Host allocations are accessible by the host and all devices within the driver’s context.
-  # TODO: add this memory allocation to all devices in the context
-  memory_allocations =  find_objects(ctx, 'memory_allocation')
-  context = find_object(ctx, 'context', 'hContext')
-  size = find_param(ctx,"size")
-  handle = defi['pptr_val']
-  memory_allocation =  ZEModel::DeviceMemory.new(handle, context, size, nil)
-  memory_allocations[handle] = memory_allocation
-}
-
-$success_exit_lambdas['zeMemFree'] = lambda { |ctx, defi|
-  memory_allocations =  find_objects(ctx, 'memory_allocation')
-  handle = find_param(ctx, "ptr")
-  memory_allocation = memory_allocations.delete(handle) {
-    object_not_found(ctx, 'memory_allocation', handle)
-  }
-  dev = memory_allocation.device
-  if dev
-    dev.memory_allocations.delete(handle) {
-      object_not_found(ctx, 'memory_allocation', handle, 'device')
-    }
-  end
-}
-
-ze_thread_safety = YAML::load_file(File.join(DATADIR, 'ze_thread_safety.yaml'))
-
-ze_thread_safety.each { |api, objects|
-  objects.each { |o|
-    $entry_lambdas[api].push( lambda { |ctx, defi|
-      handle = defi[o.first]
-      if handle.kind_of? Array
-        handle.each { |h|
-          find_object(ctx, o.last, h).lock(ctx)
-        }
-      else
-        find_object(ctx, o.last, handle).lock(ctx)
-      end
-    })
-    $exit_lambdas[api].push( lambda { |ctx, defi|
-      handle = find_param(ctx, o.first)
-      if handle.kind_of? Array
-        handle.each { |h|
-          find_object(ctx, o.last, h).unlock(ctx)
-        }
-      else
-        find_object(ctx, o.last, handle).unlock(ctx)
-      end
-    })
-  }
-}
-
-consume = lambda { |iterator, _|
-  iterator.next_messages.each do |m|
-    next unless m.type == :BT_MESSAGE_TYPE_EVENT
-    e = m.event
-    m = e.name.match(/:(.*)_(entry|exit)/)
-    if m
-      hostname = e.stream.trace.get_environment_entry_value_by_name('hostname').value
-      context = e.get_common_context_field.value
-      defi = e.payload_field.value
-      context['hostname'] = hostname
-      context['api'] = m[1]
-
-      if  m[2] == 'entry'
-        set_last_entry(context, defi)
-        $entry_lambdas[m[1]].each { |l|
-          l.call(context, defi)
-        }
-      else
-        $exit_lambdas[m[1]].reverse_each { |l|
-          l.call(context, defi)
-        }
-        if validate_result(defi)
-          l = $success_exit_lambdas[m[1]]
-          l.call(context, defi) if l
-        else
-          l = $error_exit_lambdas[m[1]]
-          l.call(context, defi) if l
-        end
-        check_last_entry(context)
-        reset_last_entry(context)
-      end
-    end
-  end
-}
-sink = graph.add_simple_sink('babeltrace_thapi', consume)
-
-# Sources to muxer
-comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
-  ip = comp_muxer.input_port(i)
-  graph.connect_ports(op, ip)
-end
-
-# Chain the rest
-[comp_muxer, sink].flatten.each_cons(2) do |_out, _in|
-  op = _out.output_port(0)
-  ip = _in.input_port(0)
-  graph.connect_ports(op, ip)
-end
-
-graph.run
-
-crash = false
-STATE.each { |hostname, node|
-  node.processes.each { |pid, process|
-    process.threads.each { |tid, thread|
-      if thread.last_entry
-        ctx = {'hostname' => hostname, 'vpid'=> pid, 'vtid' => tid, 'api' => thread.last_entry.name}
-        pring_crash_error(ctx, 'command did not finish execution')
-        crash = true
-      end
-    }
-  }
-}
-
-unless crash && false
-  STATE.each { |hostname, node|
-    node.processes.each { |pid, process|
-      ctx = {'hostname' => hostname, 'vpid'=> pid}
-      [ 'context',
-        'event_pool',
-        'command_queue',
-        'fence',
-        'command_list',
-        'module',
-        'module_build_log',
-        'kernel',
-        'memory_allocation',        
-      ].each { |t|
-        process.objects(t).each { |h, c|
-          pring_leak_error(ctx, t, h)
-        }
-      }
-    }
-  }
+# only executive this code if we launch this as the main
+# script. if it's just included with "require" we just want access to the functions.
+if __FILE__ == $0
+  sink_obj = StateObject.new()
+  ARGV.uniq!
+  source_location = ARGV
+  build_and_run_graph(source_location, sink_obj)
 end
