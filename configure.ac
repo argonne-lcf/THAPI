@@ -148,7 +148,7 @@ AC_CONFIG_FILES([
 	backends/omp/Makefile
 	backends/hip/Makefile
 	backends/mpi/Makefile
-    backends/itt/Makefile
+	backends/itt/Makefile
 	backends/cxi/Makefile
 ])
 AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])

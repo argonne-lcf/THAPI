@@ -37,7 +37,7 @@ EXTRA_DIST = \
 #
 #CLEANFILES = $(ITT_EXTRACTED)
 
-$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb  $(MODIFIED_ITT_HDR) $(srcdir)/extract_base.rb
+$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ITT_HDR) $(srcdir)/extract_base.rb
 	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
 
 CLEANFILES = $(ITT_EXTRACTED)
