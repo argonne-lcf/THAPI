@@ -10,11 +10,11 @@ launch_mpi() {
 # THAPI_SYNC_DAEMON=fs Tests
 
 @test "sync_daemon_fs" {
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh $CLINFO
 }
 
 @test "iprof_fs" {
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $CLINFO
    # Count VPID
    [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
@@ -27,11 +27,11 @@ launch_mpi() {
 # THAPI_SYNC_DAEMON=MPI Tests
 
 @test "sync_daemon_mpi" {
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh $CLINFO
 }
 
 @test "iprof_mpi" {
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $CLINFO
    # Count VPID
    [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }

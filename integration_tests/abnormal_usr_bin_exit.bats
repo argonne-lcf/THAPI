@@ -6,7 +6,7 @@ bats_require_minimum_version 1.5.0
 }
 
 @test "signaling_propagated_mpi" {
-   run -2 $IPROF --analysis-output out.txt -- bash -c "$THAPI_TEST_BIN &&  echo \$BASHPID > lock.tmp && sleep 100" &
+   run -2 $IPROF --analysis-output out.txt -- bash -c "$CLINFO &&  echo \$BASHPID > lock.tmp && sleep 100" &
    until [ -f lock.tmp ]; do sleep 1; done
    kill -2 $(cat lock.tmp)
    until [ -s out.txt ]; do sleep 1; done

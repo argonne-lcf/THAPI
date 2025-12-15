@@ -2,19 +2,12 @@
 
 setup_suite() {
   export MPIRUN=${MPIRUN:-mpirun}
-  export THAPI_TEST_BIN=${THAPI_TEST_BIN:-clinfo}
-  export IPROF=iprof
   export BBT=babeltrace_thapi
+  export CLINFO=clinfo
+  export IPROF=iprof
   export JQ=jq
 
   missing_tools=()
-
-  # Check for clinfo
-  if ! command -v "${THAPI_TEST_BIN}" >/dev/null 2>&1; then
-    echo "Error: '${THAPI_TEST_BIN}' not found in PATH."
-    echo "-> Please install 'clinfo' or ensure it is in your PATH."
-    missing_tools+=("${THAPI_TEST_BIN}")
-  fi
 
   # Check for mpirun
   if ! command -v "${MPIRUN}" >/dev/null 2>&1; then
@@ -24,7 +17,7 @@ setup_suite() {
   fi
 
   # Check for iprof, babeltrace_thapi, and jq
-  for tool in $IPROF $BBT $JQ; do
+  for tool in $BBT $CLINFO $IPROF $JQ; do
     if ! command -v "${tool}" >/dev/null 2>&1; then
       echo "Error: '${tool}' not found in PATH -> Please add it to your PATH."
       missing_tools+=("${tool}")

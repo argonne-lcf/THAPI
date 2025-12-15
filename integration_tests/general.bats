@@ -5,41 +5,41 @@ teardown_file() {
 }
 
 @test "default_summary" {
-   total_count=$( $IPROF --backend cl -- $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   total_count=$( $IPROF --backend cl -- $CLINFO | awk -F'|' '/Total/ {print int($4)}' )
    [ "$total_count" -ge 1 ]
 }
 
 @test "json_summary" {
-   $IPROF --json --analysis-output out.json --json $THAPI_TEST_BIN
+   $IPROF --json --analysis-output out.json --json $CLINFO
    total_count=$( $JQ '.host["1"].data.Total.call' out.json )
    [ "$total_count" -ge 1 ]
 }
 
 @test "archive_summary" {
-   total_count=$( $IPROF --archive $THAPI_TEST_BIN | awk -F'|' '/Total/ {print int($4)}' )
+   total_count=$( $IPROF --archive $CLINFO | awk -F'|' '/Total/ {print int($4)}' )
    [ "$total_count" -ge 1 ]
 }
 
 @test "default_trace" {
-   $IPROF -t $THAPI_TEST_BIN | wc -l
+   $IPROF -t $CLINFO | wc -l
 }
 
 @test "default_timeline" {
-   run -0 $IPROF -l -- $THAPI_TEST_BIN
+   run -0 $IPROF -l -- $CLINFO
    [[ "$output" =~ "THAPI: Perfetto trace location" ]]
    rm out.pftrace
 }
 
 @test "replay_summary" {
-   $IPROF $THAPI_TEST_BIN
+   $IPROF $CLINFO
    $IPROF -r
 }
 
 @test "no-analysis_output" {
-   run -0 $THAPI_TEST_BIN
+   run -0 $CLINFO
    out1=$(echo "$output" | grep -v 'Max clock frequency')
 
-   run -0 --separate-stderr $IPROF --no-analysis -- $THAPI_TEST_BIN
+   run -0 --separate-stderr $IPROF --no-analysis -- $CLINFO
    out2=$(echo "$output" | grep -v 'Max clock frequency')
    err2=$stderr
 
@@ -53,7 +53,7 @@ teardown_file() {
 }
 
 @test "no-analysis_all" {
-   $IPROF --no-analysis -- $THAPI_TEST_BIN
+   $IPROF --no-analysis -- $CLINFO
    $IPROF -r
    $IPROF -t -r | wc -l
    run -0 $IPROF -l -r
@@ -62,33 +62,33 @@ teardown_file() {
 }
 
 @test "trace-output_all" {
-   $IPROF --trace-output trace_1 -- $THAPI_TEST_BIN
+   $IPROF --trace-output trace_1 -- $CLINFO
    $IPROF -r trace_1
    rm -rf trace_1
 
-   $IPROF --trace-output trace_2 -t -- $THAPI_TEST_BIN | wc -l
+   $IPROF --trace-output trace_2 -t -- $CLINFO | wc -l
    $IPROF -t -r trace_2 | wc -l
    rm -rf trace_2
 
-   $IPROF --trace-output trace_3 -l out1.pftrace -- $THAPI_TEST_BIN
+   $IPROF --trace-output trace_3 -l out1.pftrace -- $CLINFO
    $IPROF -l out2.pftrace -r trace_3
    rm -rf trace_3 out1.pftrace out2.pftrace
 }
 
 @test "timeline_output" {
-   $IPROF -l roger.pftrace -- $THAPI_TEST_BIN
+   $IPROF -l roger.pftrace -- $CLINFO
    rm roger.pftrace
 }
 
 # Assert Failure
 @test "replay_negative" {
-   $IPROF  -- $THAPI_TEST_BIN
+   $IPROF  -- $CLINFO
    run $IPROF -t -r
    [ "$status" != 0 ]
    run $IPROF -l -r
    [ "$status" != 0 ]
 
-   $IPROF -l -- $THAPI_TEST_BIN
+   $IPROF -l -- $CLINFO
    run $IPROF -t -r
    [ "$status" != 0 ]
    rm out.pftrace
