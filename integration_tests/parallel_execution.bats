@@ -16,7 +16,7 @@ launch_mpi() {
 @test "iprof_fs" {
    THAPI_SYNC_DAEMON=fs launch_mpi -n 2 iprof --no-analysis --trace-output "${BATS_TEST_NAME}" -- clinfo
    # Count VPID
-   [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
+   [ $(babeltrace_thapi -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
@@ -33,7 +33,7 @@ launch_mpi() {
 @test "iprof_mpi" {
    THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof --no-analysis --trace-output "${BATS_TEST_NAME}" -- clinfo
    # Count VPID
-   [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
+   [ $(babeltrace_thapi -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_mpi_launching_mpi_app" {

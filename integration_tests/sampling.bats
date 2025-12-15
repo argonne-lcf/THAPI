@@ -6,8 +6,8 @@ teardown_file() {
    LTTNG_UST_ZE_SAMPLING_ENERGY=0 LTTNG_UST_SAMPLING_HEARTBEAT=1 \
        iprof --no-analysis --sample --trace-output heartbeat_trace --\
        bash -c 'sleep 2'
-   $BBT --no-restrict heartbeat_trace | grep  "{foo: 16}"
-   [ $($BBT --no-restrict heartbeat_trace | grep -c "{foo: 32}")  == 1 ]
+   babeltrace_thapi --no-restrict heartbeat_trace | grep  "{foo: 16}"
+   [ $(babeltrace_thapi --no-restrict heartbeat_trace | grep -c "{foo: 32}")  == 1 ]
 }
 
 @test "sampling_cxi" {
@@ -32,7 +32,7 @@ teardown_file() {
         --trace-output cxi_trace_test -- bash -c 'sleep 2'
 
     # assert there is at least one CXI counter sample reporting the difference from the initial
-    $BBT --no-restrict cxi_trace_test | grep -a "value: 9999"
+    babeltrace_thapi --no-restrict cxi_trace_test | grep -a "value: 9999"
 
 }
 
