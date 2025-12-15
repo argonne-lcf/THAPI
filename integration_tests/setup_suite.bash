@@ -11,9 +11,11 @@ setup_suite() {
 
   # Check for mpirun
   if ! command -v "${MPIRUN}" >/dev/null 2>&1; then
-    echo "Error: 'mpirun' not found in PATH or at \$MPIRUN."
-    echo "-> Please set MPIRUN or add it to your PATH."
-    missing_tools+=("mpirun")
+    if ! command -v "mpirun" >/dev/null 2>&1; then
+      echo "Error: 'mpirun' not found in PATH or at \$MPIRUN."
+      echo "-> Please set MPIRUN or add it to your PATH."
+      missing_tools+=("mpirun")
+    fi
   fi
 
   # Check for iprof, babeltrace_thapi, and jq
