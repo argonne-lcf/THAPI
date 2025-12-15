@@ -132,7 +132,9 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
       - name: Integration test
         run: |
-          THAPI_BIN_DIR=./build/ici/bin bats integration_tests/
+          export THAPI_BIN_DIR=./build/ici/bin
+          export PATH=${THAPI_BIN_DIR}:${PATH}
+          bats integration_tests/
 
   build-in-tree-and-check:
     needs: efficios_dep
