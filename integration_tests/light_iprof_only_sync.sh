@@ -35,7 +35,7 @@ wait_for_signal() {
 #   before spawning or signaling the daemon
 spawn_daemon_blocking() {
     SIGNAL_RECEIVED="false"
-    "${THAPI_BIN_DIR}"/sync_daemon_"${THAPI_SYNC_DAEMON}" $PARENT_PID &
+    sync_daemon_"${THAPI_SYNC_DAEMON}" $PARENT_PID &
     DAEMON_PID=$!
     wait_for_signal
 }
