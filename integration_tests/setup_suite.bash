@@ -3,9 +3,6 @@
 setup_suite() {
   export MPIRUN=${MPIRUN:-mpirun}
   export BBT=babeltrace_thapi
-  export CLINFO=clinfo
-  export IPROF=iprof
-  export JQ=jq
 
   missing_tools=()
 
@@ -19,7 +16,7 @@ setup_suite() {
   fi
 
   # Check for iprof, babeltrace_thapi, and jq
-  for tool in $BBT $CLINFO $IPROF $JQ; do
+  for tool in $BBT clinfo iprof jq; do
     if ! command -v "${tool}" >/dev/null 2>&1; then
       echo "Error: '${tool}' not found in PATH -> Please add it to your PATH."
       missing_tools+=("${tool}")
