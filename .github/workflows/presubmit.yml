@@ -132,8 +132,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
       - name: Integration test
         run: |
-          export PATH=./build/ici/bin:${PATH}
-          bats integration_tests/
+          PATH=./build/ici/bin:${PATH} bats integration_tests/
 
   build-in-tree-and-check:
     needs: efficios_dep
