@@ -4,10 +4,10 @@ teardown_file() {
 
 @test "sampling_heartbeat" {
    LTTNG_UST_ZE_SAMPLING_ENERGY=0 LTTNG_UST_SAMPLING_HEARTBEAT=1 \
-       $THAPI_BIN_DIR/iprof --no-analysis --sample --trace-output heartbeat_trace --\
+       iprof --no-analysis --sample --trace-output heartbeat_trace --\
        bash -c 'sleep 2'
-   $THAPI_BIN_DIR/babeltrace_thapi --no-restrict heartbeat_trace | grep  "{foo: 16}"
-   [ $("$THAPI_BIN_DIR"/babeltrace_thapi --no-restrict heartbeat_trace | grep -c "{foo: 32}")  == 1 ]
+   babeltrace_thapi --no-restrict heartbeat_trace | grep  "{foo: 16}"
+   [ $(babeltrace_thapi --no-restrict heartbeat_trace | grep -c "{foo: 32}")  == 1 ]
 }
 
 @test "sampling_cxi" {
@@ -28,12 +28,11 @@ teardown_file() {
     # run profiler with CXI backend for 2s
     LTTNG_UST_CXI_SAMPLING_CXI_COUNTERS_FILE="$(pwd)/test_counter_list" \
     LTTNG_UST_CXI_SAMPLING_CXI_BASE="$(pwd)/test_cxi" \
-    $THAPI_BIN_DIR/iprof --no-analysis --sample --backend cxi \
+    iprof --no-analysis --sample --backend cxi \
         --trace-output cxi_trace_test -- bash -c 'sleep 2'
 
     # assert there is at least one CXI counter sample reporting the difference from the initial
-    $THAPI_BIN_DIR/babeltrace_thapi --no-restrict cxi_trace_test \
-      | grep -a "value: 9999"
+    babeltrace_thapi --no-restrict cxi_trace_test | grep -a "value: 9999"
 
 }
 

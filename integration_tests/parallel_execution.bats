@@ -10,34 +10,34 @@ launch_mpi() {
 # THAPI_SYNC_DAEMON=fs Tests
 
 @test "sync_daemon_fs" {
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh clinfo
 }
 
 @test "iprof_fs" {
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 iprof --no-analysis --trace-output "${BATS_TEST_NAME}" -- clinfo
    # Count VPID
-   [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
+   [ $(babeltrace_thapi -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 $IPROF ./mpi_helloworld
+   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 iprof ./mpi_helloworld
 }
 
 # THAPI_SYNC_DAEMON=MPI Tests
 
 @test "sync_daemon_mpi" {
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh clinfo
 }
 
 @test "iprof_mpi" {
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF --no-analysis --trace-output "${BATS_TEST_NAME}" -- $THAPI_TEST_BIN
+   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof --no-analysis --trace-output "${BATS_TEST_NAME}" -- clinfo
    # Count VPID
-   [ $($BBT -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
+   [ $(babeltrace_thapi -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_mpi_launching_mpi_app" {
    mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
    # Current bug in the CI where `mpi_finalize_session` hang
-   THAPI_SYNC_DAEMON_MPI_NO_FINALIZE=1 THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 $IPROF ./mpi_helloworld
+   THAPI_SYNC_DAEMON_MPI_NO_FINALIZE=1 THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof ./mpi_helloworld
 }
