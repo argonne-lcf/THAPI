@@ -37,10 +37,10 @@ teardown_file() {
 
 @test "no-analysis_output" {
    run -0 clinfo
-   out1=$(echo "$output" | grep -v 'Max clock frequency')
+   out1=$(echo "$output" | grep -v 'Max clock frequency' | grep -v '  Device LUID')
 
    run -0 --separate-stderr iprof --no-analysis -- clinfo
-   out2=$(echo "$output" | grep -v 'Max clock frequency')
+   out2=$(echo "$output" | grep -v 'Max clock frequency' | grep -v '  Device LUID')
    err2=$stderr
 
    [[ "$out1" == "$out2" ]]
