@@ -16,7 +16,7 @@ teardown_file() {
 }
 
 @test "archive_summary" {
-   total_count=$( iprof --archive clinfo | awk -F'|' '/Total/ {print int($4)}' )
+   total_count=$( iprof --backend cl --archive clinfo | awk -F'|' '/Total/ {print int($4)}' )
    [ "$total_count" -ge 1 ]
 }
 
