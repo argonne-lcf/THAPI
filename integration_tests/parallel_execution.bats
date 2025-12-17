@@ -14,9 +14,10 @@ launch_mpi() {
 }
 
 @test "iprof_fs" {
-   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 iprof --no-analysis --trace-output "${BATS_TEST_NAME}" -- clinfo
-   # Count VPID
-   [ $(babeltrace_thapi -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
+  trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
+  THAPI_SYNC_DAEMON=fs launch_mpi -n 2 iprof --backend cl --no-analysis --trace-output ${trace_dir} -- clinfo
+  # Count VPID
+  [ $(babeltrace_thapi -c ${trace_dir} | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_fs_launching_mpi_app" {
@@ -31,9 +32,10 @@ launch_mpi() {
 }
 
 @test "iprof_mpi" {
-   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof --no-analysis --trace-output "${BATS_TEST_NAME}" -- clinfo
-   # Count VPID
-   [ $(babeltrace_thapi -c "${BATS_TEST_NAME}" | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
+  trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
+  THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof --backend cl --no-analysis --trace-output ${trace_dir} -- clinfo
+  # Count VPID
+  [ $(babeltrace_thapi -c ${trace_dir} | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
 @test "sync_daemon_mpi_launching_mpi_app" {
