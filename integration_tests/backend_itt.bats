@@ -18,4 +18,3 @@ bats_require_minimum_version 1.5.0
   grep "Example.Domain:Task 2" ./itt_out_py_c-style.txt
   grep "Example.Domain:Task 1" ./itt_out_py_c-style.txt
 }
-
