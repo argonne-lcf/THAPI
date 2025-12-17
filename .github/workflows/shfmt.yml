@@ -1,0 +1,22 @@
+name: shfmt
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+      - devel
+jobs:
+  shfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run shfmt checker
+        uses: reviewdog/action-shfmt@d8f080930b9be5847b4f97e9f4122b81a82aaeac
+        with:
+          level: 'warning'
+          filter_mode: 'added'
+          fail_on_error: 'true'
+          shfmt_flags: '-ln bats -d . -i 2 -ci'
