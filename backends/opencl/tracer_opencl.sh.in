@@ -16,16 +16,15 @@ whichlib() {
 
   # In OpenSUSE ldconfig, is in '/sbin'.
   PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
-  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+    awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
 whichlib64_head() {
   # This function return only the first lib found
   # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
-  for lib in $(whichlib $1)
-  do
-    if objdump -a $lib | grep 64 > /dev/null; then
+  for lib in $(whichlib $1); do
+    if objdump -a $lib | grep 64 >/dev/null; then
       echo $lib
       break
     fi
@@ -33,60 +32,114 @@ whichlib64_head() {
 }
 
 display_help() {
-    echo "Usage:"
-    echo " $(basename $0) [options] [--] <application> <application-arguments>"
-    echo "  --help                        Show this screen"
-    echo "  --version                     Print the version string"
-    echo "  -l, --lightweight             Filter out som high traffic functions"
-    echo "  -p, --profiling               Enable profiling"
-    echo "  -s, --source                  Dump program sources to disk"
-    echo "  -a, --arguments               Dump argument and kernel infos"
-    echo "  -b, --build                   Dump program build infos"
-    echo "  -h, --host-profile            Gather precise host profiling information"
-    echo "  -d, --dump                    Dump kernels input and output to disk"
-    echo "  -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE"
-    echo "  -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE"
-    echo "  -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE"
-    echo "  -v, --visualize               Visualize trace on thefly"
-    echo "  --devices                     Dump devices information"
-    echo "  --sample                      Sample performance counters"
-    exit 1
+  echo "Usage:"
+  echo " $(basename $0) [options] [--] <application> <application-arguments>"
+  echo "  --help                        Show this screen"
+  echo "  --version                     Print the version string"
+  echo "  -l, --lightweight             Filter out som high traffic functions"
+  echo "  -p, --profiling               Enable profiling"
+  echo "  -s, --source                  Dump program sources to disk"
+  echo "  -a, --arguments               Dump argument and kernel infos"
+  echo "  -b, --build                   Dump program build infos"
+  echo "  -h, --host-profile            Gather precise host profiling information"
+  echo "  -d, --dump                    Dump kernels input and output to disk"
+  echo "  -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE"
+  echo "  -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE"
+  echo "  -e, --iteration-end VALUE     Dump inputs and outputs for kernels until enqueue counter VALUE"
+  echo "  -v, --visualize               Visualize trace on thefly"
+  echo "  --devices                     Dump devices information"
+  echo "  --sample                      Sample performance counters"
+  exit 1
 }
 
 display_version() {
-    cat $datadir/version
-    exit 1
+  cat $datadir/version
+  exit 1
 }
 
 while true; do
   case "$1" in
-    --help ) display_help; exit;;
-    --version ) display_version; exit;;
-    -l | --lightweight ) shift; lightweight=1;;
-    -p | --profiling ) shift; profiling=1;;
-    -s | --source ) shift; src=1;;
-    -a | --arguments ) shift; arguments=1;;
-    -b | --build ) shift; build=1;;
-    -h | --host-profile) shift; export LTTNG_UST_OPENCL_HOST_PROFILE=1;;
-    -d | --dump ) shift; export LTTNG_UST_OPENCL_DUMP=1;;
-    -i | --iteration ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
-    -s | --iteration-start ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_START=$1; shift ;;
-    -e | --iteration-end ) shift; export LTTNG_UST_OPENCL_DUMP=1; export LTTNG_UST_OPENCL_DUMP_END=$1; shift ;;
-    -v | --visualize) shift; lttng_view=1;;
-    --devices ) shift; devices=1;;
-    --sample ) shift; sample=1;;
-    -- ) shift; break ;;
-    * ) break ;;
+    --help)
+      display_help
+      exit
+      ;;
+    --version)
+      display_version
+      exit
+      ;;
+    -l | --lightweight)
+      shift
+      lightweight=1
+      ;;
+    -p | --profiling)
+      shift
+      profiling=1
+      ;;
+    -s | --source)
+      shift
+      src=1
+      ;;
+    -a | --arguments)
+      shift
+      arguments=1
+      ;;
+    -b | --build)
+      shift
+      build=1
+      ;;
+    -h | --host-profile)
+      shift
+      export LTTNG_UST_OPENCL_HOST_PROFILE=1
+      ;;
+    -d | --dump)
+      shift
+      export LTTNG_UST_OPENCL_DUMP=1
+      ;;
+    -i | --iteration)
+      shift
+      export LTTNG_UST_OPENCL_DUMP=1
+      export LTTNG_UST_OPENCL_DUMP_START=$1
+      export LTTNG_UST_OPENCL_DUMP_END=$1
+      shift
+      ;;
+    -s | --iteration-start)
+      shift
+      export LTTNG_UST_OPENCL_DUMP=1
+      export LTTNG_UST_OPENCL_DUMP_START=$1
+      shift
+      ;;
+    -e | --iteration-end)
+      shift
+      export LTTNG_UST_OPENCL_DUMP=1
+      export LTTNG_UST_OPENCL_DUMP_END=$1
+      shift
+      ;;
+    -v | --visualize)
+      shift
+      lttng_view=1
+      ;;
+    --devices)
+      shift
+      devices=1
+      ;;
+    --sample)
+      shift
+      sample=1
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) break ;;
   esac
 done
 
 if [ "$#" -eq 0 ]; then
-    display_help
+  display_help
 fi
 
 lttng-sessiond --daemonize --quiet
-if [ ! -z "$lttng_view" ]
-then
+if [ ! -z "$lttng_view" ]; then
   lttng-relayd --daemonize
   lttng create thapi-opencl-session --live
 else
@@ -95,45 +148,35 @@ fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:* -x lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
-if [ -z "$lightweight" ]
-then
+if [ -z "$lightweight" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl:clSetKernelArg*,lttng_ust_opencl:clGetKernelArg*,lttng_ust_opencl:clSetKernelExecInfo*
 fi
-if [ ! -z "$profiling" ]
-then
+if [ ! -z "$profiling" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_profiling:*
 fi
-if [ ! -z "$src" ]
-then
+if [ ! -z "$src" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_source:*
 fi
-if [ ! -z "$arguments" ]
-then
+if [ ! -z "$arguments" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_arguments:*
 fi
-if [ ! -z "$devices" ]
-then
+if [ ! -z "$devices" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_devices:*
 fi
-if [ ! -z "$build" ]
-then
+if [ ! -z "$build" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_build:*
 fi
-if [ ! -z "$sample" ]
-then
+if [ ! -z "$sample" ]; then
   export LTTNG_UST_SAMPLING=1
   lttng enable-channel --userspace nonblocking-channel
   lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
 fi
-if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]
-then
+if [ ! -z "$LTTNG_UST_OPENCL_DUMP" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_opencl_dump:*
 fi
-if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]
-then
+if [ -z "$LTTNG_UST_OPENCL_LIBOPENCL" ]; then
   LTTNG_UST_OPENCL_LIBOPENCL=$(whichlib64_head libOpenCL.so)
-  if [ -n "$LTTNG_UST_OPENCL_LIBOPENCL" ]
-  then
+  if [ -n "$LTTNG_UST_OPENCL_LIBOPENCL" ]; then
     export LTTNG_UST_OPENCL_LIBOPENCL="$LTTNG_UST_OPENCL_LIBOPENCL"
     export LD_LIBRARY_PATH=$pkglibdir/opencl:$LD_LIBRARY_PATH
   fi
@@ -153,15 +196,13 @@ ctrl_c() {
 
 trap ctrl_c INT
 
-if [ ! -z "$lttng_view" ]
-then
+if [ ! -z "$lttng_view" ]; then
   lttng view --viewer="babeltrace_thapi --backend cl --context --live" &
   PID=$!
 fi
 "$@"
 lttng stop
 lttng destroy
-if [ ! -z "$lttng_view" ]
-then
+if [ ! -z "$lttng_view" ]; then
   wait $PID
 fi

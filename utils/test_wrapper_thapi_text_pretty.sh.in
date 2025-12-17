@@ -10,7 +10,7 @@
 set -euxo pipefail
 # We use `abs_top` on this file, because if not the relative path will be related to `utils`
 # but called in `backend/`
-# 
+#
 # Note: separate arguments for subdir and be to handle opencl, which uses
 # subdir=opencl and be=cl. Other backends pass the same string for both.
 subdir="$1"
@@ -47,7 +47,7 @@ ${CC:-gcc} -o "${folder_name}/libTestSource.so" \
   -I . -I "${source_path}" \
   $(pkg-config --cflags babeltrace2) -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Werror \
   $(pkg-config --libs babeltrace2) --shared \
-  -Wl,--whole-archive  "${source_archive}" -Wl,--no-whole-archive \
+  -Wl,--whole-archive "${source_archive}" -Wl,--no-whole-archive \
   "${source_callback_c}"
 
 # Run Plugin and Verify output
@@ -74,7 +74,7 @@ ln -f @abs_top_builddir@/${subdir}/.libs/"${lib_name}" "${folder_name}/"
 ${bt2_cmd} --plugin-path="${folder_name}" \
   --component=source."${be}"test.test \
   --component="${test_component}" \
-  > "${current_output_bt_text_pretty}"
+  >"${current_output_bt_text_pretty}"
 
 diff "${input_thapi_text_pretty%.*}.bt_text_pretty" "${current_output_bt_text_pretty}"
 
