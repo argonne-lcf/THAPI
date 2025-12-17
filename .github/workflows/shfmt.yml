@@ -19,4 +19,4 @@ jobs:
           level: 'warning'
           filter_mode: 'added'
           fail_on_error: 'true'
-          shfmt_flags: '-ln bats -d . -i 2 -ci'
+          shfmt_flags: '-i 2 -ci -ln bats -d ./integration_tests/'
