@@ -1,0 +1,25 @@
+name: shfmt
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+      - devel
+env:
+  FLAGS: "-i 2 -ci -d"
+jobs:
+  shfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install shfmt
+        run: |
+          curl -sS https://webi.sh/shfmt | sh
+      - name: Run shfmt check
+        run: |
+          # check formatting of standard bash files
+          shfmt ${FLAGS} .
+          # check formatting of `*.sh.in` files
+          sh_in=$(find . -iname *.sh.in)
+          shfmt ${FLAGS} ${sh_in}

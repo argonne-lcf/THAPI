@@ -15,10 +15,10 @@ RT_SIGNAL_FINISH=$((SIGRTMIN + 3))
 
 # Signal handler for capturing signals
 handle_signal() {
-    echo "$PARENT_PID $(date) |   Received signal $1 from sync_daemon"
-    if [ "$1" == "RT_SIGNAL_READY" ]; then
-        SIGNAL_RECEIVED="true"
-    fi
+  echo "$PARENT_PID $(date) |   Received signal $1 from sync_daemon"
+  if [ "$1" == "RT_SIGNAL_READY" ]; then
+    SIGNAL_RECEIVED="true"
+  fi
 }
 
 # Setup trap for ready signal sent from signal daemon
@@ -26,24 +26,24 @@ trap 'handle_signal RT_SIGNAL_READY' $RT_SIGNAL_READY
 
 # Function to wait for RT_SIGNAL_READY
 wait_for_signal() {
-    while [[ "$SIGNAL_RECEIVED" == "false" ]]; do
-        sleep 0.1  # Small sleep to prevent busy looping
-    done
+  while [[ "$SIGNAL_RECEIVED" == "false" ]]; do
+    sleep 0.1 # Small sleep to prevent busy looping
+  done
 }
 
 # To avoid race condition, `SIGNAL_RECEIVED` need to be set
 #   before spawning or signaling the daemon
 spawn_daemon_blocking() {
-    SIGNAL_RECEIVED="false"
-    sync_daemon_"${THAPI_SYNC_DAEMON}" $PARENT_PID &
-    DAEMON_PID=$!
-    wait_for_signal
+  SIGNAL_RECEIVED="false"
+  sync_daemon_"${THAPI_SYNC_DAEMON}" $PARENT_PID &
+  DAEMON_PID=$!
+  wait_for_signal
 }
 
 send_signal_blocking() {
-    SIGNAL_RECEIVED="false"
-    kill -"$1" $DAEMON_PID
-    wait_for_signal
+  SIGNAL_RECEIVED="false"
+  kill -"$1" $DAEMON_PID
+  wait_for_signal
 }
 
 echo "$PARENT_PID $(date) | Spawn Daemon"

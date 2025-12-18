@@ -16,16 +16,15 @@ whichlib() {
 
   # In OpenSUSE ldconfig, is in '/sbin'.
   PATH=$PATH:/sbin ldconfig -vNX $(echo $LD_LIBRARY_PATH | sed 's/:/ /g') 2>/dev/null |
-  awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
+    awk -v p=$1 'match($1, ":")                    { header=substr($1, 1, length($1)-1)} \
                match($1, "^lib") && match($1, p) { print header "/" $1}'
 }
 
 whichlib64_head() {
   # This function return only the first lib found
   # This avoid a broken pipe error when the old pattern `whichlib64 $foo | head - n1` was used
-  for lib in $(whichlib $1)
-  do
-    if objdump -a $lib | grep 64 > /dev/null; then
+  for lib in $(whichlib $1); do
+    if objdump -a $lib | grep 64 >/dev/null; then
       echo $lib
       break
     fi
@@ -33,48 +32,78 @@ whichlib64_head() {
 }
 
 display_help() {
-    echo "Usage:"
-    echo " $(basename $0) [options] [--] <application> <application-arguments>"
-    echo "  --help                        Show this screen"
-    echo "  --version                     Print the version string"
-    echo "  --cudart                      Trace CUDA runtime on top of CUDA driver"
-    echo "  -a, --arguments               Extract argument infos and values"
-    echo "  -p, --profiling               Enable profiling"
-    echo "  -e, --exports                 Trace export functions"
-    echo "  -v, --visualize               Visualize trace on thefly"
-    echo "  --properties                  Dump devices infos"
-    echo "  --sample                      Sample performance counters"
-    exit 1
+  echo "Usage:"
+  echo " $(basename $0) [options] [--] <application> <application-arguments>"
+  echo "  --help                        Show this screen"
+  echo "  --version                     Print the version string"
+  echo "  --cudart                      Trace CUDA runtime on top of CUDA driver"
+  echo "  -a, --arguments               Extract argument infos and values"
+  echo "  -p, --profiling               Enable profiling"
+  echo "  -e, --exports                 Trace export functions"
+  echo "  -v, --visualize               Visualize trace on thefly"
+  echo "  --properties                  Dump devices infos"
+  echo "  --sample                      Sample performance counters"
+  exit 1
 }
 
 display_version() {
-    cat $datadir/version
-    exit 1
+  cat $datadir/version
+  exit 1
 }
 
 while true; do
   case "$1" in
-    --help           ) display_help; exit;;
-    --version        ) display_version; exit;;
-    --cudart         ) shift; cudart=1;;
-    -a | --arguments ) shift; arguments=1;;
-    -p | --profiling ) shift; profiling=1; export LTTNG_UST_CUDA_PROFILE=1;;
-    -e | --exports   ) shift; exports=1;;
-    -v | --visualize ) shift; lttng_view=1;;
-    --properties ) shift; properties=1;;
-    --sample ) shift; sample=1;;
-    -- ) shift; break ;;
-    * ) break ;;
+    --help)
+      display_help
+      exit
+      ;;
+    --version)
+      display_version
+      exit
+      ;;
+    --cudart)
+      shift
+      cudart=1
+      ;;
+    -a | --arguments)
+      shift
+      arguments=1
+      ;;
+    -p | --profiling)
+      shift
+      profiling=1
+      export LTTNG_UST_CUDA_PROFILE=1
+      ;;
+    -e | --exports)
+      shift
+      exports=1
+      ;;
+    -v | --visualize)
+      shift
+      lttng_view=1
+      ;;
+    --properties)
+      shift
+      properties=1
+      ;;
+    --sample)
+      shift
+      sample=1
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) break ;;
   esac
 done
 
 if [ "$#" -eq 0 ]; then
-    display_help
+  display_help
 fi
 
 lttng-sessiond --daemonize --quiet
-if [ ! -z "$lttng_view" ]
-then
+if [ ! -z "$lttng_view" ]; then
   lttng-relayd --daemonize
   lttng create thapi-cuda-session --live
 else
@@ -83,37 +112,29 @@ fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda:*
-if [ ! -z "$cudart" ]
-then
+if [ ! -z "$cudart" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cudart:*
 fi
-if [ ! -z "$arguments" ]
-then
+if [ ! -z "$arguments" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_args:*
 fi
-if [ ! -z "$profiling" ]
-then
+if [ ! -z "$profiling" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_profiling:*
 fi
-if [ ! -z "$exports" ]
-then
+if [ ! -z "$exports" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_exports:*
 fi
-if [ ! -z "$properties" ]
-then
+if [ ! -z "$properties" ]; then
   lttng enable-event --channel=blocking-channel --userspace lttng_ust_cuda_properties:*
 fi
-if [ ! -z "$sample" ]
-then
+if [ ! -z "$sample" ]; then
   export LTTNG_UST_SAMPLING=1
   lttng enable-channel --userspace nonblocking-channel
   lttng enable-event --channel=nonblocking-channel --userspace lttng_ust_sampling:*
 fi
-if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]
-then
+if [ -z "$LTTNG_UST_CUDA_LIBCUDA" ]; then
   LTTNG_UST_CUDA_LIBCUDA=$(whichlib64_head libcuda.so)
-  if [ -n "$LTTNG_UST_CUDA_LIBCUDA" ]
-  then
+  if [ -n "$LTTNG_UST_CUDA_LIBCUDA" ]; then
     export LTTNG_UST_CUDA_LIBCUDA="$LTTNG_UST_CUDA_LIBCUDA"
     export LD_LIBRARY_PATH=$pkglibdir/cuda:$LD_LIBRARY_PATH
   fi
@@ -123,13 +144,10 @@ fi
 export LD_PRELOAD=$pkglibdir/cuda/libcuda.so:$LD_PRELOAD
 export LTTNG_UST_ALLOW_BLOCKING=1
 export LTTNG_UST_CUDA_VERBOSE=1
-if [ ! -z "$cudart" ]
-then
-  if [ -z "$LTTNG_UST_CUDART_LIBCUDART" ]
-  then
+if [ ! -z "$cudart" ]; then
+  if [ -z "$LTTNG_UST_CUDART_LIBCUDART" ]; then
     LTTNG_UST_CUDART_LIBCUDART=$(whichlib64_head libcudart.so)
-    if [ -n "$LTTNG_UST_CUDART_LIBCUDART" ]
-    then
+    if [ -n "$LTTNG_UST_CUDART_LIBCUDART" ]; then
       export LTTNG_UST_CUDART_LIBCUDART="$LTTNG_UST_CUDART_LIBCUDART"
       export LD_LIBRARY_PATH=$pkglibdir/cudart:$LD_LIBRARY_PATH
     fi
@@ -149,15 +167,13 @@ ctrl_c() {
 
 trap ctrl_c INT
 
-if [ ! -z "$lttng_view" ]
-then
+if [ ! -z "$lttng_view" ]; then
   lttng view --viewer="babeltrace_thapi --backend cuda --context --live" &
   PID=$!
 fi
 "$@"
 lttng stop
 lttng destroy
-if [ ! -z "$lttng_view" ]
-then
+if [ ! -z "$lttng_view" ]; then
   wait $PID
 fi
