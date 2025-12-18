@@ -402,6 +402,7 @@ def find_types(types, cast_type, arr = nil)
 end
 
 def find_types_map(types, cast_type, map)
+  return if types.nil?
   types.select { |t| t.type.kind_of? cast_type }.each { |t|
     map[t.name] = map[t.type.name]
   }
@@ -471,6 +472,7 @@ UNION_TYPES = []
 POINTER_TYPES = []
 
 def find_all_types(types)
+  return if types.nil?
   objs = types.filter_map { |t|
     t.name if t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Struct)
   }
@@ -492,6 +494,7 @@ end
 STRUCT_MAP = {}
 
 def gen_struct_map(types, structs)
+  return if types.nil?
   types.select { |t| t.type.kind_of? YAMLCAst::Struct }.each { |t|
     if t.type.members
       STRUCT_MAP[t.name] = t.type.members

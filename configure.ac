@@ -150,6 +150,7 @@ AC_CONFIG_FILES([
 	backends/mpi/Makefile
 	backends/itt/Makefile
 	backends/cxi/Makefile
+	backends/sycl/Makefile
 ])
 AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_wrapper_thapi_text_pretty.sh])
 AC_CONFIG_FILES([backends/opencl/tracer_opencl.sh], [chmod +x backends/opencl/tracer_opencl.sh])
@@ -160,6 +161,7 @@ AC_CONFIG_FILES([backends/omp/tracer_omp.sh], [chmod +x backends/omp/tracer_omp.
 AC_CONFIG_FILES([backends/hip/tracer_hip.sh], [chmod +x backends/hip/tracer_hip.sh])
 AC_CONFIG_FILES([backends/mpi/tracer_mpi.sh], [chmod +x backends/mpi/tracer_mpi.sh])
 AC_CONFIG_FILES([backends/itt/tracer_itt.sh], [chmod +x backends/itt/tracer_itt.sh])
+AC_CONFIG_FILES([backends/sycl/tracer_sycl.sh], [chmod +x backends/sycl/tracer_sycl.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
 
