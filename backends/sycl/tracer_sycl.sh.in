@@ -47,15 +47,15 @@ fi
 lttng-sessiond --daemonize --quiet
 if [ ! -z "$lttng_view" ]; then
   lttng-relayd --daemonize
-  lttng create thapi-ompt-session --live
+  lttng create thapi-sycl-session --live
 else
-  lttng create thapi-ompt-session
+  lttng create thapi-sycl-session
 fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_ompt:*
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_sycl:*
 
-export OMP_TOOL_LIBRARIES=$libdir/libsycl.so
+export SYCL_TOOL_LIBRARIES=$libdir/libsycl.so
 export LTTNG_UST_ALLOW_BLOCKING=1
 
 lttng start
