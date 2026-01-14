@@ -159,6 +159,8 @@ def get_components(names)
       require 'babeltrace_cuda_lib' if $options[:'backend-names'].include?('cuda')
       require 'babeltrace_hip_lib' if $options[:'backend-names'].include?('hip')
       require 'babeltrace_itt_lib' if $options[:'backend-names'].include?('itt')
+      require 'babeltrace_sycl_lib' if $options[:'backend-names'].include?('sycl')
+      
       f = lambda { |iterator, _|
         iterator.next_messages.each do |m|
           next unless m.type == :BT_MESSAGE_TYPE_EVENT
@@ -395,7 +397,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     on('-h', '--help', 'Prints this help') { print_help_and_exit(self, exit_code: 0) }
     on('-b', '--backends BACKENDS', Array, "Select which and how backends' need to handled.",
        'Format: backend_name[:backend_level],...',
-       default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5'])
+       default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5', 'sycl:4'])
     on('--debug', default: false)
     on('--archive SESSION-NAME')
     on('--archive-session-found-file-path PATH')

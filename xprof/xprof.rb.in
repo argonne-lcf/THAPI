@@ -651,6 +651,11 @@ def enable_events_itt(channel_name, tracing_mode: 'default', profiling: true)
   exec("#{lttng_enable} lttng_ust_itt_metadata:*")
 end
 
+def enable_events_sycl(channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_sycl:*")
+end
+
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_thapi:*")
@@ -933,6 +938,11 @@ def all_env_tracers
     h['OMP_TOOL_LIBRARIES'] = File.join(LIBDIR, 'libTracerOMPT.so')
   end
 
+  if OPTIONS[:'backend-names'].include?('sycl')
+    backends << 'sycl'
+    h['SYCL_TOOL_LIBRARY'] = File.join(LIBDIR, 'libsycl.so')
+  end
+
   if OPTIONS[:'backend-names'].include?('cxi')
     backends << 'cxi'
     if sampling?
@@ -1032,7 +1042,7 @@ if __FILE__ == $PROGRAM_NAME
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, 'Select which backends to use and their grouping level.',
             'Format: backend_name[:backend_level],...',
-            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5', 'sycl:4'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
 
   # Analysis
