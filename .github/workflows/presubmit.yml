@@ -132,7 +132,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
       - name: Integration test
         run: |
-          PATH=./build/ici/bin:${PATH} PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH} bats integration_tests/
+          PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH} PATH=$(pkg-config --variable=bindir thapi):${PATH} bats integration_tests/
 
   build-in-tree-and-check:
     needs: efficios_dep
