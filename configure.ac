@@ -52,6 +52,10 @@ if test -z "$PROTOC"; then
   test "$PROTOC" == "no" && AC_MSG_ERROR([Required program 'protoc' not found.])
 fi
 
+# Configure thapi.pc
+PKG_PROG_PKG_CONFIG
+AC_CONFIG_FILES([thapi.pc])
+
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([iberty], [cplus_demangle])
