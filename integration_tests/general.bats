@@ -4,6 +4,11 @@ teardown_file() {
   rm -rf $THAPI_HOME/thapi-traces
 }
 
+@test "pkg-config_file" {
+  version=$(pkg-config --modversion thapi)
+  [[ "$version" == "devel" ]]
+}
+
 @test "default_summary" {
   total_count=$(iprof --backend cl -- clinfo | awk -F'|' '/Total/ {print int($4)}')
   [ "$total_count" -ge 1 ]
