@@ -137,6 +137,9 @@ AC_FUNC_MMAP
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([clock_gettime ftruncate memmove memset strdup strstr strtoull strlen strchr])
 
+# Required for configuring thapi.pc.in
+PKG_PROG_PKG_CONFIG
+
 AC_CONFIG_FILES([
 	Makefile
 	xprof/Makefile
@@ -162,5 +165,6 @@ AC_CONFIG_FILES([backends/mpi/tracer_mpi.sh], [chmod +x backends/mpi/tracer_mpi.
 AC_CONFIG_FILES([backends/itt/tracer_itt.sh], [chmod +x backends/itt/tracer_itt.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
+AC_CONFIG_FILES([thapi.pc])
 
 AC_OUTPUT
