@@ -1,5 +1,10 @@
 #!/usr/bin/env bats
 
+setup_file() {
+  export THAPI_INCFLAGS="-I$(pkg-config --variable=includedir thapi)"
+  export THAPI_LDFLAGS="-Wl,-rpath,$(pkg-config --variable=libdir thapi) $(pkg-config --libs thapi)"
+}
+
 teardown_file() {
   rm -rf $THAPI_HOME/thapi-traces
 }
@@ -11,8 +16,7 @@ get_unique_jobid() {
 @test "toggle_api" {
   rm -rf toggle_traces 2>/dev/null
 
-  cc -I${THAPI_INC_DIR} ./integration_tests/toggle.c -o toggle \
-    -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
+  cc ${THAPI_INCFLAGS} ./integration_tests/toggle.c -o toggle ${THAPI_LDFLAGS}
 
   $IPROF --trace-output toggle_traces --no-analysis -- ./toggle
   dir=$(ls -d -1 ./toggle_traces/*/)
@@ -41,8 +45,7 @@ toggle_count_traces() {
 }
 
 @test "toggle_plugin_mpi_np_1" {
-  mpicc -I${THAPI_INC_DIR} ./integration_tests/toggle_mpi.c -o toggle_mpi \
-    -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi ${THAPI_LDFLAGS}
 
   count_0=$(toggle_count_traces 1 0)
   count_1=$(toggle_count_traces 1 1)
@@ -58,8 +61,7 @@ toggle_count_vpids() {
 }
 
 @test "toggle_plugin_mpi_np_2" {
-  mpicc -I${THAPI_INC_DIR} ./integration_tests/toggle_mpi.c -o toggle_mpi \
-    -Wl,-rpath,${THAPI_LIB_DIR} -L${THAPI_LIB_DIR} -lThapi
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi ${THAPI_LDFLAGS}
 
   count_0=$(toggle_count_vpids 2 0)
   count_1=$(toggle_count_vpids 2 1)
