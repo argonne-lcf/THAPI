@@ -5,8 +5,7 @@ teardown_file() {
 }
 
 @test "pkg-config_file" {
-  version=$(pkg-config --modversion thapi)
-  [[ "$version" == "devel" ]]
+  pkg-config --modversion thapi
 }
 
 @test "default_summary" {

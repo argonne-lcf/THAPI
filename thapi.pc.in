@@ -6,6 +6,6 @@ bindir=@bindir@
 
 Name: Thapi
 Description: A tracing infrastructure for heterogeneous computing applications.
-Version: devel
+Version: @PACKAGE_VERSION@
 Cflags: -I${includedir}
 Libs: -L${libdir} -lThapi
