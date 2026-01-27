@@ -18,13 +18,13 @@ get_unique_jobid() {
 
   cc ${THAPI_INCFLAGS} ./integration_tests/toggle.c -o toggle ${THAPI_LDFLAGS}
 
-  $IPROF --trace-output toggle_traces --no-analysis -- ./toggle
+  iprof --trace-output toggle_traces --no-analysis -- ./toggle
   dir=$(ls -d -1 ./toggle_traces/*/)
 
-  start_count=$($BBT -c $dir | grep lttng_ust_toggle:start | wc -l)
+  start_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:start | wc -l)
   [ "$start_count" -eq 1 ]
 
-  stop_count=$($BBT -c $dir | grep lttng_ust_toggle:stop | wc -l)
+  stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:stop | wc -l)
   [ "$stop_count" -eq 2 ]
 }
 
@@ -32,9 +32,9 @@ toggle_count_base() {
   rm -rf toggle_traces 2>/dev/null
 
   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n $1 \
-    $IPROF --trace-output toggle_traces --no-analysis -- ./toggle_mpi $2
+    iprof --trace-output toggle_traces --no-analysis -- ./toggle_mpi $2
 
-  traces=$($BBT ./toggle_traces)
+  traces=$(babeltrace_thapi ./toggle_traces)
 
   echo $traces
 }
