@@ -656,6 +656,11 @@ def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: tru
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
 
+def enable_events_toggle(channel_name, tracing_mode: 'default', profiling: true)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_toggle:*")
+end
+
 module LocalMaster
   extend self
 
@@ -739,7 +744,7 @@ module LocalMaster
     exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
 
     # Enable backend events
-    (backends + ['metadata']).each do |name|
+    (backends + ['metadata', 'toggle']).each do |name|
       send("enable_events_#{name}", channel_name,
            tracing_mode: OPTIONS[:'tracing-mode'],
            profiling: OPTIONS[:profile])
