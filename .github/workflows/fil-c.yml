@@ -1,0 +1,64 @@
+name: Build with Fil-C
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+
+env:
+  MAKEFLAGS: "-j$(nproc) -O --shuffle"
+  FILC_VER: 0.677
+
+jobs:
+  efficios_dep:
+    name: Build and Cache Efficios Dependencies
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-thapi
+
+  build-and-check:
+    needs: efficios_dep
+    runs-on: ubuntu-24.04
+    name: Build and Check on ubuntu-24.04 with Fil-C
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-thapi
+      - name: Install patchelf
+        run: |
+          sudo apt-get update
+          sudo apt-get install patchelf
+      - name: Download Fil-C
+        run: |
+          wget https://github.com/pizlonator/fil-c/releases/download/v${FILC_VER}/filc-${FILC_VER}-linux-x86_64.tar.xz
+          tar -xf filc-${FILC_VER}-linux-x86_64.tar.xz
+
+          echo "CC=${PWD}/filc-${FILC_VER}-linux-x86_64/build/bin/clang"    >> ${GITHUB_ENV}
+          echo "CXX=${PWD}/filc-${FILC_VER}-linux-x86_64/build/bin/clang++" >> ${GITHUB_ENV}
+      - name: Setup Fil-C
+        run: |
+          cd filc-${FILC_VER}-linux-x86_64 && ./setup.sh
+      - name: Build THAPI with Fil-C
+        run: |
+          mkdir -p build
+          ./autogen.sh
+      - run: ../configure
+        working-directory: build
+      - run: make
+        working-directory: build
+      - run: make check
+        working-directory: build
+        env:
+          THAPI_VALGRIND: 1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          path: |
+            build/**/*.log
+            build/config.log
+            build/**/tests/*.log
