@@ -31,7 +31,7 @@ get_unique_jobid() {
 toggle_count_base() {
   rm -rf toggle_traces 2>/dev/null
 
-  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s $MPIRUN -n $1 \
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s mpirun -n $1 \
     iprof --trace-output toggle_traces --no-analysis -- ./toggle_mpi $2
 
   traces=$(babeltrace_thapi ./toggle_traces)
