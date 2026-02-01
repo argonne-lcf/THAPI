@@ -7,7 +7,7 @@
 
 void thapi_start(void) { tracepoint(lttng_ust_toggle, start); }
 
+void thapi_stop(void) { tracepoint(lttng_ust_toggle, stop); }
+
 void __attribute__((constructor(LTTNG_UST_CONSTRUCTOR_PRIO + 1)))
-thapi_stop(void) {
-  tracepoint(lttng_ust_toggle, stop);
-}
+thapi_auto_stop(void) { tracepoint(lttng_ust_toggle, auto_stop); }
