@@ -21,11 +21,22 @@ get_unique_jobid() {
   iprof --trace-output toggle_traces --no-analysis -- ./toggle
   dir=$(ls -d -1 ./toggle_traces/*/)
 
+  # Make sure auto_stop comes before stop.
+  babeltrace_thapi ./toggle_traces | awk 'BEGIN { seen_auto = 0 }
+  $0 ~ /lttng_ust_toggle:auto_stop/ { seen_auto = 1 }
+  $0 ~ /lttng_ust_toggle:stop/ { if (seen_auto == 1) { exit 0 } else { exit 1 } }
+  '
+
+  # Check expected trace counts.
   start_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:start | wc -l)
   [ "$start_count" -eq 1 ]
 
   stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:stop | wc -l)
-  [ "$stop_count" -eq 2 ]
+  [ "$stop_count" -eq 1 ]
+
+  auto_stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:auto_stop | wc -l)
+  [ "$auto_stop_count" -eq 1 ]
+
 }
 
 toggle_count_base() {
