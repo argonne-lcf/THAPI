@@ -10,10 +10,9 @@ get_unique_jobid() {
 }
 
 @test "toggle_api" {
-  rm -rf toggle_traces 2>/dev/null
-
   cc ${THAPI_INCFLAGS} ./integration_tests/toggle.c -o toggle ${THAPI_LDFLAGS}
 
+  rm -rf toggle_traces 2>/dev/null
   iprof --trace-output toggle_traces --no-analysis -- ./toggle
   dir=$(ls -d -1 ./toggle_traces/*/)
 
@@ -33,6 +32,21 @@ get_unique_jobid() {
   auto_stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:auto_stop | wc -l)
   [ "$auto_stop_count" -eq 1 ]
 
+  cc ./integration_tests/toggle_dlopen.c -o toggle_dlopen -ldl
+
+  rm -rf toggle_traces 2>/dev/null
+  iprof --trace-output toggle_traces --no-analysis -- ./toggle_dlopen
+  dir=$(ls -d -1 ./toggle_traces/*/)
+
+  # Check expected trace counts.
+  start_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:start | wc -l)
+  [ "$start_count" -eq 2 ]
+
+  stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:stop | wc -l)
+  [ "$stop_count" -eq 2 ]
+
+  auto_stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:auto_stop | wc -l)
+  [ "$auto_stop_count" -eq 2 ]
 }
 
 toggle_count_base() {

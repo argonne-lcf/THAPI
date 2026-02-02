@@ -1,6 +1,7 @@
 #include <thapi.h>
 
-int main(int argc, char *argv[]) {
+int main(void) {
   thapi_start();
   thapi_stop();
+	return 0;
 }
