@@ -3,6 +3,8 @@
 setup_suite() {
   export MPIRUN=${MPIRUN:-mpirun}
 
+  export PATH=$(pkg-config --variable=bindir thapi):${PATH}
+
   missing_tools=()
 
   # Check for mpirun
