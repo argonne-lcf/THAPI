@@ -5,10 +5,6 @@ setup_file() {
   export THAPI_LDFLAGS="-Wl,-rpath,$(pkg-config --variable=libdir thapi) $(pkg-config --libs thapi)"
 }
 
-teardown_file() {
-  rm -rf $THAPI_HOME/thapi-traces
-}
-
 get_unique_jobid() {
   echo ${BATS_TEST_NAME}.${RANDOM}
 }
