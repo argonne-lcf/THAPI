@@ -1,7 +1,3 @@
-teardown_file() {
-  rm -rf $THAPI_HOME/thapi-traces
-}
-
 launch_mpi() {
   # timeout just to avoid burning too much hours when bug are introduced
   timeout 40s $MPIRUN "$@"

@@ -1,7 +1,3 @@
-teardown_file() {
-  rm -rf $THAPI_HOME/thapi-traces
-}
-
 @test "sampling_heartbeat" {
   LTTNG_UST_ZE_SAMPLING_ENERGY=0 LTTNG_UST_SAMPLING_HEARTBEAT=1 \
     iprof --no-analysis --sample --trace-output heartbeat_trace -- bash -c 'sleep 2'
