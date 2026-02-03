@@ -1,6 +1,9 @@
 @test "sampling_heartbeat" {
+  rm -rf heartbeat_trace
+
   LTTNG_UST_ZE_SAMPLING_ENERGY=0 LTTNG_UST_SAMPLING_HEARTBEAT=1 \
     iprof --no-analysis --sample --trace-output heartbeat_trace -- bash -c 'sleep 2'
+
   babeltrace_thapi --no-restrict heartbeat_trace | grep "{foo: 16}"
   [ $(babeltrace_thapi --no-restrict heartbeat_trace | grep -c "{foo: 32}") == 1 ]
 }
@@ -28,5 +31,4 @@
 
   # assert there is at least one CXI counter sample reporting the difference from the initial
   babeltrace_thapi --no-restrict cxi_trace_test | grep -a "value: 9999"
-
 }
