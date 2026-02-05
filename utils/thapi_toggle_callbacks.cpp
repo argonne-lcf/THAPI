@@ -23,11 +23,11 @@ static void thapi_auto_stop_callback(void *btx_handle, void *maps,
   auto auto_map = static_cast<ToggleMap *>(maps)[0];
   auto key = ToggleKey{std::string(hostname), vpid};
   /* If we have seen the auto_map trace before, we will just ignore it. */
-  if ((*auto_map)[key])
+  if (auto_map[key])
     return;
   /* Otherwise, we will stop tracing. */
   auto map = static_cast<ToggleMap *>(maps)[1];
-  (*map)[key] = false;
+  map[key] = false;
 }
 
 static void thapi_start_callback(void *btx_handle, void *maps, int64_t cpuid,
@@ -35,7 +35,7 @@ static void thapi_start_callback(void *btx_handle, void *maps, int64_t cpuid,
                                  int64_t vtid) {
   auto map = static_cast<ToggleMap *>(maps)[1];
   auto key = ToggleKey{std::string(hostname), vpid};
-  (*map)[key] = true;
+  map[key] = true;
   strncpy(hostname_s, hostname, HOST_NAME_MAX);
 }
 
@@ -44,7 +44,7 @@ static void thapi_stop_callback(void *btx_handle, void *maps, int64_t cpuid,
                                 int64_t vtid) {
   auto map = static_cast<ToggleMap *>(maps)[1];
   auto key = ToggleKey{std::string(hostname), vpid};
-  (*map)[key] = false;
+  map[key] = false;
 }
 
 static void push_downstream(void *btx_handle, void *maps,
@@ -60,7 +60,7 @@ static void push_downstream(void *btx_handle, void *maps,
 
     auto map = static_cast<ToggleMap *>(maps)[1];
     auto key = ToggleKey{std::string(hostname_s), vpid_v};
-    push_msg = (*map)[key];
+    push_msg = map[key];
   }
 
   if (push_msg) {
