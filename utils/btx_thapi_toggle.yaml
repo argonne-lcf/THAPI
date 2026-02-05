@@ -24,5 +24,6 @@
         :type: integer_signed
         :cast_type: int64_t
   :event_classes:
+  - :name: lttng_ust_toggle:auto_stop
   - :name: lttng_ust_toggle:start
   - :name: lttng_ust_toggle:stop
