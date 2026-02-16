@@ -253,7 +253,7 @@ module MPITopo
                                         else
                                           # splitting by "." in case the hostfile contains full hostnames with address
                                           # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
-                                          hostnames = File.readlines(hostfile).map { |el| el.split('.', 2).first }
+                                          hostnames = File.readlines(hostfile)
                                           # find index of hostname_string in list_hostnames
                                           hostname_id = hostnames.find_index{ |host| host.start_with?(Socket.gethostname) }
                                           # without "start_with" this could fail if something happens like on sunspot
