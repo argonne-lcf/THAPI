@@ -255,7 +255,13 @@ module MPITopo
                                           # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
                                           hostnames = File.readlines(hostfile).map { |el| el.split('.', 2).first }
                                           # find index of hostname_string in list_hostnames
-                                          hostname_id = hostnames.find_index(Socket.gethostname)
+                                          hostname_id = hostnames.find_index{ |host| host.start_with?(Socket.gethostname) }
+                                          # without "start_with" this could fail if something happens like on sunspot
+                                          # where Socket.gethostname returns x1921c1s2b0n0 but the hostfile contains
+                                          # x1921c1s2b0n0-hsn0.hsn.cm.sunspot.alcf.anl.gov.
+                                          if hostname_id.nil?
+                                            raise "Trying to find the index of each hostname in the hostfile list did not work."
+                                          end
                                           # compute the offset, based on splitting MAX_UINT64_VALUE by the number of hosts
                                           [hostnames.length, hostname_id]
                                         end
