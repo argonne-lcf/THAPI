@@ -251,8 +251,6 @@ module MPITopo
       number_hostname, hostname_index = if hostfile.nil?
                                           [10_000, rank_id / local_size]
                                         else
-                                          # splitting by "." in case the hostfile contains full hostnames with address
-                                          # (e.g. x4117c4s4b0n0.hsn.cm.aurora.alcf.anl.gov) and the Socket.gethostname is just x4117c4s4b0n0
                                           hostnames = File.readlines(hostfile)
                                           # find index of hostname_string in list_hostnames
                                           hostname_id = hostnames.find_index{ |host| host.start_with?(Socket.gethostname) }
