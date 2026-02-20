@@ -47,5 +47,5 @@ launch_mpi() {
 @test "iprof_mpi+traced_ranks" {
   trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
   run -0 launch_mpi -n 2 iprof --backend cl --traced-ranks 1 -- clinfo
-  [[ "$outout" =~ "1 Hostnames | 1 Processes | 1 Threads |" ]]
+  [[ "$output" =~ "1 Hostnames | 1 Processes | 1 Threads |" ]]
 }
