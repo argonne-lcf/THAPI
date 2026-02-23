@@ -184,13 +184,12 @@ end
 # Get shared lib path using dlinfo_wrapper binary.
 #
 def dlinfo_wrapper(lib, verbose)
-  dlinfo_wrapper = File.join(BINDIR, "dlinfo_wrapper")
-  stdout = exec("#{dlinfo_wrapper} #{lib} #{verbose}",
-                opts: {
-                  'LD_LIBRARY_PATH' => "#{env_fetch_first('LD_LIBRARY_PATH')}:#{env_fetch_first('CRAY_LD_LIBRARY_PATH')}"
-                },
-                debug: false)
-  stdout
+  dlinfo_wrapper = File.join(BINDIR, 'dlinfo_wrapper')
+  exec("#{dlinfo_wrapper} #{lib} #{verbose}",
+       opts: {
+         'LD_LIBRARY_PATH' => "#{env_fetch_first('LD_LIBRARY_PATH')}:#{env_fetch_first('CRAY_LD_LIBRARY_PATH')}",
+       },
+       debug: false)
 end
 
 #         _ ___    _
@@ -234,7 +233,7 @@ module MPITopo
   end
 
   # returns an offset for each timeline file
-  # this is based on chunking MAX_UINT64_VALUE 
+  # this is based on chunking MAX_UINT64_VALUE
   # into the number of nodes
   def rank_offset
     # if not mpi, just return 0 offset
@@ -253,13 +252,16 @@ module MPITopo
                                         else
                                           hostnames = File.readlines(hostfile)
                                           # find index of hostname_string in list_hostnames
-                                          hostname_id = hostnames.find_index{ |host| host.start_with?(Socket.gethostname) }
+                                          hostname_id = hostnames.find_index do |host|
+                                            host.start_with?(Socket.gethostname)
+                                          end
                                           # without "start_with" this could fail if something happens like on sunspot
                                           # where Socket.gethostname returns x1921c1s2b0n0 but the hostfile contains
                                           # x1921c1s2b0n0-hsn0.hsn.cm.sunspot.alcf.anl.gov.
                                           if hostname_id.nil?
-                                            raise "Trying to find the index of each hostname in the hostfile list did not work."
+                                            raise 'Trying to find the index of each hostname in the hostfile list did not work.'
                                           end
+
                                           # compute the offset, based on splitting MAX_UINT64_VALUE by the number of hosts
                                           [hostnames.length, hostname_id]
                                         end
@@ -593,7 +595,7 @@ def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_opencl_devices:*")
     exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
     exec("#{lttng_enable} lttng_ust_opencl_build:infos*")
-  when 'default'
+  when 'default', 'minimal'
     exec("#{lttng_enable} lttng_ust_opencl_profiling:*") if profiling
     exec("#{lttng_enable} lttng_ust_opencl_devices:*")
     exec("#{lttng_enable} lttng_ust_opencl_arguments:*")
@@ -607,8 +609,7 @@ def enable_events_cl(channel_name, tracing_mode: 'default', profiling: true)
                       'lttng_ust_opencl:clGetMemAllocInfoINTEL*']
 
     exec("#{lttng_enable} lttng_ust_opencl:* -x #{opencl_disable.join(',')}")
-  when 'minimal'
-    LOGGER.debug("Tracing mode #{tracing_mode} not supported for OpenCL")
+    LOGGER.debug("Tracing mode #{tracing_mode} similar to default for OpenCL ") unless tracing_mode == 'default'
   else
     raise("Tracing mode #{tracing_mode} not supported")
   end
@@ -619,11 +620,13 @@ def enable_events_cuda(channel_name, tracing_mode: 'default', profiling: true)
   exec("#{lttng_enable} lttng_ust_cuda:*")
   exec("#{lttng_enable} lttng_ust_cuda_properties")
   exec("#{lttng_enable} lttng_ust_cuda_profiling:*") if profiling
+  LOGGER.debug("Tracing mode #{tracing_mode} similar to default for cuda") unless tracing_mode == 'default'
 end
 
 def enable_events_hip(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_hip:*")
+  LOGGER.debug("Tracing mode #{tracing_mode} similar to default for hip") unless tracing_mode == 'default'
 end
 
 def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true)
@@ -631,8 +634,11 @@ def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true)
   case tracing_mode
   when 'full'
     exec("#{lttng_enable} lttng_ust_ompt:*")
-  when 'default'
+  when 'default', 'minimal'
     exec("#{lttng_enable} lttng_ust_ompt:*target*")
+    LOGGER.debug("Tracing mode #{tracing_mode} similar to default for omp") unless tracing_mode == 'default'
+  else
+    raise("Tracing mode #{tracing_mode} not supported")
   end
 end
 
@@ -641,8 +647,11 @@ def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
   case tracing_mode
   when 'full'
     exec("#{lttng_enable} lttng_ust_mpi:*")
-  when 'default'
+  when 'default', 'minimal'
     exec("#{lttng_enable} lttng_ust_mpi:* -x lttng_ust_mpi:MPI_WTime*")
+    LOGGER.debug("Tracing mode #{tracing_mode} similar to default for MPI") unless tracing_mode == 'default'
+  else
+    raise("Tracing mode #{tracing_mode} not supported")
   end
   exec("#{lttng_enable} lttng_ust_mpi_type:*")
 end
@@ -653,6 +662,7 @@ def enable_events_itt(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_itt:*")
   exec("#{lttng_enable} lttng_ust_itt_metadata:*")
+  LOGGER.debug("Tracing mode #{tracing_mode} similar to default for itt") unless tracing_mode == 'default'
 end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
@@ -903,7 +913,7 @@ def all_env_tracers
     if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
       # TODO: Verify that this guy exist?
-    elsif (libpath = (whichlib64(libso) || dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG)))
+    elsif (libpath = whichlib64(libso) || dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG))
       h[libenv] = libpath
     else
       LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")
