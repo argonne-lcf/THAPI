@@ -90,6 +90,8 @@ jobs:
         files: |
           **.cpp
           **.hpp
+          **.c
+          **.h
     - name: Run clang-format
       if: steps.changed-cpp-files.outputs.any_changed == 'true'
       run: |
