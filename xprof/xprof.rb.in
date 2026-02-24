@@ -891,10 +891,6 @@ end
 def all_env_tracers
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
-  need_env = Set[-1, MPITopo.rank_id].intersect?(OPTIONS[:'traced-ranks'])
-
-  # Early exit to be nice with the FileSystem
-  return [[], {}] unless need_env
 
   h = Hash.new { |h, k| h[k] = [] }
   backends = []
@@ -968,7 +964,13 @@ def all_env_tracers
     h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'sampling', 'libHeartbeatSampling.so')
   end
 
+  # Only the local master need to backend (to enable the event)
+  # TODO: Only enable local rank who have traced rank in them
+  # All the traced ranks, and only them, need the ENV
+  # TODO: Refactor the code to avoid calling `whichlib64` for non traced-rank
   backends = [] unless MPITopo.local_master?
+  h = {} unless Set[-1, MPITopo.rank_id].intersect?(OPTIONS[:'traced-ranks'])
+
   LOGGER.info("Backends found: #{backends}")
   LOGGER.debug("User app env: #{h}")
 

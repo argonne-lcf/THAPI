@@ -1,3 +1,5 @@
+bats_require_minimum_version 1.5.0
+
 launch_mpi() {
   # timeout just to avoid burning too much hours when bug are introduced
   timeout 40s $MPIRUN "$@"
@@ -38,4 +40,12 @@ launch_mpi() {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
   # Current bug in the CI where `mpi_finalize_session` hang
   THAPI_SYNC_DAEMON_MPI_NO_FINALIZE=1 THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof ./mpi_helloworld
+}
+
+# Test Traced Rank
+
+@test "iprof_mpi+traced_ranks" {
+  trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
+  run -0 launch_mpi -n 2 iprof --backend cl --traced-ranks 1 -- clinfo
+  [[ "$output" =~ "1 Hostnames | 1 Processes | 1 Threads |" ]]
 }
