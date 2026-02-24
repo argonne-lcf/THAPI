@@ -18,7 +18,6 @@ jobs:
         id: changed-bash-files
         uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
         with:
-          # Avoid using single or double quotes for multiline patterns
           files: |
             **.sh
             **.sh.in
@@ -44,7 +43,6 @@ jobs:
         id: changed-ruby-files
         uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
         with:
-          # Avoid using single or double quotes for multiline patterns
           files: |
             **.rb
             **.rb.in
@@ -55,3 +53,21 @@ jobs:
         run: |
           rubocop --display-only-fail-level-offenses --fail-level W ${ALL_CHANGED_FILES}
           rubocop --display-only-safe-correctable ${ALL_CHANGED_FILES}
+
+  yamlfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install yamlfmt
+        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      - name: Get all changed yaml file
+        id: changed-yaml-files
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        with:
+          files: |
+            **.yml
+            **.yaml
+      - name: Run yamlfmt lint
+        if: steps.changed-yaml-files.outputs.any_changed == 'true'
+        run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
