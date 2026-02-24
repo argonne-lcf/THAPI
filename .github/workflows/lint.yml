@@ -69,6 +69,8 @@ jobs:
         files: |
           **.yml
           **.yaml
+        files_ignore: |
+          backends/**/*_meta_parameters.yaml
     - name: Run yamlfmt lint
       if: steps.changed-yaml-files.outputs.any_changed == 'true'
       run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
