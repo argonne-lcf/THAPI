@@ -60,7 +60,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install yamlfmt
-        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+        run: |
+          go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
       - name: Get all changed yaml file
         id: changed-yaml-files
         uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
