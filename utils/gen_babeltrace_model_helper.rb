@@ -139,12 +139,8 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     member[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
 
     # Too complicated, not sure why `all_struct_names` is not enough
-    unless field[:cast_type].end_with?('*')
-      if $all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union)
-        field[:cast_type_is_struct] = true
-      elsif type.start_with?('struct')
-        field[:cast_type_is_struct] = true
-      end
+    if !field[:cast_type].end_with?('*') && ($all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
+      field[:cast_type_is_struct] = true
     end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
