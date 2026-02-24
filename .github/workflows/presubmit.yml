@@ -32,7 +32,7 @@ jobs:
     name: Build and Cache Efficios Dependencies
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
   build-and-check:
     needs: efficios_dep
@@ -43,7 +43,7 @@ jobs:
         config-option: ["", "--disable-clang-parser"]
         compilers: ["CC=gcc CXX=g++", "CC=clang CXX=clang++ CFLAGS=\"-Wno-gnu-folding-constant\""]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
     - run: mkdir -p build
     - run: ./autogen.sh
@@ -67,7 +67,7 @@ jobs:
     name: Install with MPI daemon support
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: mpi4py/setup-mpi@v1
       with:
         mpi: intelmpi
@@ -89,7 +89,7 @@ jobs:
     name: Integration ${{ matrix.bats_file }} ${{matrix.thapi_sync_daemon }}
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: mpi4py/setup-mpi@v1
       with:
         mpi: intelmpi
@@ -132,7 +132,7 @@ jobs:
     name: Build in Tree ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
     - run: ./autogen.sh
     - run: ./configure
@@ -153,7 +153,7 @@ jobs:
     name: Distcheck ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
     - run: mkdir -p build
     - run: ./autogen.sh
@@ -168,7 +168,7 @@ jobs:
     name: Dist and Check ubuntu-24.04
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
     - run: mkdir -p build
     - run: ./autogen.sh
@@ -207,12 +207,12 @@ jobs:
     name: Assert generated files are equivalent
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
     - run: pip install pyyaml pytest pytest-icdiff
     # Chekout, Configure and build target branch files
     - name: Checkout target branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.base_ref }}
         path: base_branch
@@ -240,7 +240,7 @@ jobs:
         make -C sampling sampling.tp
     # Chekout, Configure and build PR branch files
     - name: Checkout PR branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         path: pr_branch
