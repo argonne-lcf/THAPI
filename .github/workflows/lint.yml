@@ -75,7 +75,7 @@ jobs:
       if: steps.changed-yaml-files.outputs.any_changed == 'true'
       run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
 
- clang-format:
+  clang-format:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
