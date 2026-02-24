@@ -22,10 +22,11 @@ jobs:
           files: |
             **.sh
             **.sh.in
+            **.bats
       - name: Run shfmt check
         if: steps.changed-bash-files.outputs.any_changed == 'true'
         run: |
-          shfmt -i 2 -ci -d ${{ steps.changed-bash-files.outputs.all_changed_files }}
+          shfmt --indent 2 --case-indent --diff ${{ steps.changed-bash-files.outputs.all_changed_files }}
 
   rubocop:
     runs-on: ubuntu-latest
