@@ -1462,7 +1462,6 @@ EOF
 
     def indirect_access=(flags)
       set_indirect_access(flags)
-      flags
     end
 
     def indirect_acess
@@ -1968,7 +1967,6 @@ EOF
 
     def oc_frequency_target=(frequency)
       set_oc_frequency_target(frequency)
-      frequency
     end
 
     def oc_voltage_target
@@ -1993,7 +1991,6 @@ EOF
 
     def oc_mode=(mode)
       set_oc_mode(mode)
-      mode
     end
 
     def oc_mode
@@ -2018,7 +2015,6 @@ EOF
 
     def oc_icc_max=(oc_icc_max)
       set_oc_icc_max(oc_icc_max)
-      self
     end
 
     def oc_tj_max
@@ -2036,7 +2032,6 @@ EOF
 
     def oc_tj_max=(tj_max)
       oc_set_tj_max(tj_max)
-      tj_max
     end
   end
 
@@ -2094,7 +2089,6 @@ EOF
 
     def config=(factor)
       set_config(factor)
-      factor
     end
   end
 
@@ -2187,7 +2181,6 @@ EOF
 
     def energy_threshold=(threshold)
       set_energy_threshold(threshold)
-      threshold
     end
   end
 
@@ -2298,7 +2291,6 @@ EOF
 
     def mode=(mode)
       set_mode(mode)
-      mode
     end
   end
 
