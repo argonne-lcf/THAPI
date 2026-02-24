@@ -15,7 +15,7 @@ def to_ffi_name(name, default = true)
   when 'size_t'
     return ':size_t'
   when /^(u?int\d+)_t$/
-    return ":#{$1}"
+    return ":#{Regexp.last_match(1)}"
   when '_Bool'
     return ':bool'
   end
@@ -23,7 +23,8 @@ def to_ffi_name(name, default = true)
 end
 
 def popcount(x)
-  raise "Unsigned integer needed!" if x < 0
+  raise 'Unsigned integer needed!' if x < 0
+
   c = 0
   while x != 0
     c += 1 if x & 1 != 0
@@ -33,7 +34,8 @@ def popcount(x)
 end
 
 def firstbitpos(x)
-  raise "Signed positive integer needed!" if x <= 0
+  raise 'Signed positive integer needed!' if x <= 0
+
   r = 0
   while x & 1 == 0
     r += 1
@@ -47,28 +49,22 @@ def print_bitfield_with_namespace(namespace, name, enum, check_flags: false)
   members = []
   default = nil
   counter = 0
-  enum.members.each { |m|
+  enum.members.each do |m|
     if m.val
-      counter = m.val.kind_of?(String) ? eval(m.val) : m.val
+      counter = m.val.is_a?(String) ? eval(m.val) : m.val
     else
       counter += 1
     end
     if counter > 0 && popcount(counter) == 1
-      members.push [ m.name.to_sym, firstbitpos(counter) ]
+      members.push [m.name.to_sym, firstbitpos(counter)]
+    elsif counter == 0
+      default = m.name.to_sym
     else
-      if counter == 0
-        default = m.name.to_sym
-      else
-        r = [ m.name.to_sym ]
-        if m.val
-          r.push m.val
-        else
-          r.push counter
-        end
-        special_values.push r
-      end
+      r = [m.name.to_sym]
+      r.push m.val || counter
+      special_values.push r
     end
-  }
+  end
   print_lambda = lambda { |m|
     "#{m[0].inspect}, #{m[1]}"
   }
@@ -81,24 +77,24 @@ EOF
   #{to_class_name(name)}.default = #{default.inspect}
 EOF
   end
-  if !special_values.empty?
+  unless special_values.empty?
     puts <<EOF
   # #{special_values.collect(&print_lambda).join(",\n  # ")}
 EOF
   end
-  if check_flags && to_ffi_name(name).match("_flag_t")
+  if check_flags && to_ffi_name(name).match('_flag_t')
     puts "  #{to_class_name(name)}s = #{to_class_name(name)}"
-    puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub("_flag_t", "_flags_t")}"
+    puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub('_flag_t', '_flags_t')}"
   end
   puts "\n"
 end
 
-def print_enum_with_namespace(namespace, name, enum, filter_members: lambda { |m| true })
-  members = enum.members.filter(&filter_members).collect { |m|
-    r = [ m.name.to_sym ]
+def print_enum_with_namespace(namespace, name, enum, filter_members: ->(_m) { true })
+  members = enum.members.filter(&filter_members).collect do |m|
+    r = [m.name.to_sym]
     r.push m.val if m.val
     r
-  }
+  end
   print_lambda = lambda { |m|
     s = "#{m[0].inspect}"
     s << ", #{m[1]}" if m.size == 2
@@ -118,12 +114,13 @@ def print_object(object)
 EOF
 end
 
-def print_ffi_module(namespace, struct: true, union: true, enum: true, bitmask: true, inline_array: true, enclosing_module: true)
-  puts <<EOF
-require 'ffi'
-module FFI
+def print_ffi_module(namespace, struct: true, union: true, enum: true, bitmask: true, inline_array: true,
+                     enclosing_module: true)
+  puts <<~EOF
+    require 'ffi'
+    module FFI
 
-EOF
+  EOF
 
   if struct
     puts <<EOF
@@ -238,43 +235,43 @@ EOF
     end
   end
 EOF
-  puts <<EOF
+  puts <<~EOF
 
-  class Pointer
-    def to_s
-      "0x%016x" % address
+      class Pointer
+        def to_s
+          "0x%016x" % address
+        end
+      end
     end
-  end
-end
-EOF
+  EOF
 end
 
 def close_type(name)
-  $all_types.select { |t|
-    t.type.kind_of?(YAMLCAst::CustomType) && t.type.name == name
-  }.each { |t|
+  $all_types.select do |t|
+    t.type.is_a?(YAMLCAst::CustomType) && t.type.name == name
+  end.each do |t|
     puts <<EOF
   typedef #{to_ffi_name(name)}, #{to_ffi_name(t.name)}
 
 EOF
     close_type(t.name)
-  }
+  end
 end
 
 def print_union_with_namespace(namespace, name, union)
   members = union.to_ffi
   print_lambda = lambda { |m|
     s = "#{m[0]}, "
-    if m[1].kind_of?(Array)
-      s << "[ #{m[1][0]}, #{m[1][1]} ]"
-    else
-      s << "#{m[1]}"
-    end
+    s << if m[1].is_a?(Array)
+           "[ #{m[1][0]}, #{m[1][1]} ]"
+         else
+           "#{m[1]}"
+         end
     s
   }
   puts <<EOF
   class #{to_class_name(name)} < FFI::#{namespace}Union
-    layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
+    layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
   end
   typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
 
@@ -298,7 +295,7 @@ def print_function_pointer_type(name, func)
   type, params = func.to_ffi
   puts <<EOF
   callback #{to_ffi_name(name)},
-           [ #{params.join(",\n"+" "*13)} ],
+           [ #{params.join(",\n" + (' ' * 13))} ],
            #{type}
 
 EOF
@@ -308,23 +305,23 @@ def print_struct_with_namespace(namespace, name, struct, prepends: [], initializ
   members = struct.to_ffi
   print_lambda = lambda { |m|
     s = "#{m[0]}, "
-    if m[1].kind_of?(Array)
-      s << "[ #{m[1][0]}, #{m[1][1]} ]"
-    else
-      s << "#{m[1]}"
-    end
+    s << if m[1].is_a?(Array)
+           "[ #{m[1][0]}, #{m[1][1]} ]"
+         else
+           "#{m[1]}"
+         end
     s
   }
   puts <<EOF
   class #{to_class_name(name)} < FFI::#{namespace}Struct
 EOF
-  prepends.each { |prep|
+  prepends.each do |prep|
     puts <<EOF
     prepend #{prep}
 EOF
-  }
+  end
   puts <<EOF
-    layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
+    layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
 EOF
   puts initializer if initializer
   puts <<EOF

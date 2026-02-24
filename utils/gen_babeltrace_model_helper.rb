@@ -140,9 +140,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
 
     # Too complicated, not sure why `all_struct_names` is not enough
     unless field[:cast_type].end_with?('*')
-      if $all_struct_names.include?(t)
-        field[:cast_type_is_struct] = true
-      elsif $types_by_name[t]&.type.is_a?(YAMLCAst::Union)
+      if $all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union)
         field[:cast_type_is_struct] = true
       else
         type.start_with?('struct')
@@ -173,10 +171,9 @@ def get_fields_types_name(c, dir)
          when :stop  then Out
          end
 
-  fields += c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
+  fields + c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
     meta_parameter_types_name(m, dir)
   end.flatten(1)
-
 end
 
 def gen_event_fields_bt_model(c, dir)

@@ -1,17 +1,13 @@
 class Command
-  attr_reader :tracepoint_parameters
-  attr_reader :meta_parameters
-  attr_reader :prologues
-  attr_reader :epilogues
-  attr_reader :function
+  attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
   def initialize(function)
     @function = function
     @tracepoint_parameters = []
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@function.name].collect { |type, args|
-      type::new(self, *args)
-    }
+    @meta_parameters += META_PARAMETERS[@function.name].collect do |type, args|
+      type.new(self, *args)
+    end
     @prologues = PROLOGUES[@function.name]
     @epilogues = EPILOGUES[@function.name]
   end
@@ -21,11 +17,11 @@ class Command
   end
 
   def decl_pointer(name = pointer_name)
-    YAMLCAst::Declaration::new(name: name, type: YAMLCAst::Pointer::new(type: @function.type), storage: "typedef").to_s
+    YAMLCAst::Declaration.new(name: name, type: YAMLCAst::Pointer.new(type: @function.type), storage: 'typedef').to_s
   end
 
   def ffi_name
-    name + "_ffi"
+    name + '_ffi'
   end
 
   def decl_ffi_wrapper
@@ -33,11 +29,12 @@ class Command
   end
 
   def hidden_alias_name
-    name + "_hid"
+    name + '_hid'
   end
 
   def decl_hidden_alias(name = hidden_alias_name)
-    YAMLCAst::Declaration::new(name: name, type: @function.type, storage: "static").to_s + "__attribute__ ((alias (\"#{self.name}\")))"
+    YAMLCAst::Declaration.new(name: name, type: @function.type,
+                              storage: 'static').to_s + "__attribute__ ((alias (\"#{self.name}\")))"
   end
 
   def decl
@@ -45,11 +42,11 @@ class Command
   end
 
   def pointer_name
-    name + "_ptr"
+    name + '_ptr'
   end
 
   def pointer_type_name
-    name + "_t"
+    name + '_t'
   end
 
   def type
@@ -65,35 +62,35 @@ class Command
   end
 
   def has_return_type?
-    type && !type.kind_of?(YAMLCAst::Void)
+    type && !type.is_a?(YAMLCAst::Void)
   end
 
   def [](name)
     # special case when querying the return value
-    if name == :result
-      return YAMLCAst::Declaration.new(name: "#{RESULT_NAME}", type: type)
-    end
-    path = name.split(/->/)
+    return YAMLCAst::Declaration.new(name: "#{RESULT_NAME}", type: type) if name == :result
+
+    path = name.split('->')
     if path.length == 1
       res = parameters.find { |p| p.name == name }
       return res if res
+
       @tracepoint_parameters.find { |p| p.name == name }
     else
       param_name = path.shift
       res = parameters.find { |p| p.name == param_name }
       return nil unless res
-      path.each { |n|
+
+      path.each do |n|
         res = STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
         return nil unless res
-      }
-      return res
+      end
+      res
     end
   end
-
 end
 
 class Member
-  def initialize(command, member, prefix, dir = :start)
+  def initialize(_command, member, prefix, dir = :start)
     @member = member
     @dir = dir
     @prefix = prefix
@@ -104,13 +101,13 @@ class Member
     @lttng_type.expr = expr
   end
 
-   def lttng_in_type
-     @dir == :start ? @lttng_type : nil
-   end
+  def lttng_in_type
+    @dir == :start ? @lttng_type : nil
+  end
 
-   def lttng_out_type
-     @dir == :start ? nil : @lttng_type
-   end
+  def lttng_out_type
+    @dir == :start ? nil : @lttng_type
+  end
 end
 
 def register_meta_parameter(method, type, *args)
@@ -119,9 +116,10 @@ end
 
 def register_meta_struct(method, name, type)
   raise "Unknown struct: #{type}!" unless STRUCT_TYPES.include?(type)
-  STRUCT_MAP[type].each { |m|
+
+  STRUCT_MAP[type].each do |m|
     META_PARAMETERS[method].push [Member, [m, name]]
-  }
+  end
 end
 
 def register_prologue(method, code)
@@ -133,8 +131,6 @@ def register_epilogue(method, code)
 end
 
 AUTO_META_PARAMETERS = []
-META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
-PROLOGUES = Hash::new { |h, k| h[k] = [] }
-EPILOGUES = Hash::new { |h, k| h[k] = [] }
-
-
+META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
+PROLOGUES = Hash.new { |h, k| h[k] = [] }
+EPILOGUES = Hash.new { |h, k| h[k] = [] }
