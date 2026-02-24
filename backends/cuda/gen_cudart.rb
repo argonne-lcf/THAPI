@@ -1,111 +1,109 @@
 require_relative 'cudart_model'
 
-puts <<EOF
-#define _GNU_SOURCE
-#include <dlfcn.h>
-#define __CUDA_API_VERSION_INTERNAL 1
-#include <cuda_runtime_api.h>
-#include <pthread.h>
-#include "cudart_tracepoints.h"
+puts <<~EOF
+  #define _GNU_SOURCE
+  #include <dlfcn.h>
+  #define __CUDA_API_VERSION_INTERNAL 1
+  #include <cuda_runtime_api.h>
+  #include <pthread.h>
+  #include "cudart_tracepoints.h"
 EOF
 
-$cudart_commands.each { |c|
+$cudart_commands.each do |c|
   puts "#define #{CUDART_POINTER_NAMES[c]} #{c.pointer_name}"
-}
+end
 
-$cudart_commands.each { |c|
-  puts <<EOF
+$cudart_commands.each do |c|
+  puts <<~EOF
 
-#{c.decl_pointer(c.pointer_type_name)};
-static #{c.pointer_type_name} #{CUDART_POINTER_NAMES[c]} = (void *) 0x0;
+    #{c.decl_pointer(c.pointer_type_name)};
+    static #{c.pointer_type_name} #{CUDART_POINTER_NAMES[c]} = (void *) 0x0;
+  EOF
+end
+
+puts <<~EOF
+
+  static void find_cudart_symbols(void * handle, int verbose) {
 EOF
-}
 
-puts <<EOF
-
-static void find_cudart_symbols(void * handle, int verbose) {
-EOF
-
-$cudart_commands.each { |c|
+$cudart_commands.each do |c|
   puts <<EOF
 
   #{CUDART_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
   if (!#{CUDART_POINTER_NAMES[c]} && verbose)
     fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
-}
+end
 
-puts <<EOF
-}
+puts <<~EOF
+  }
 
 EOF
 
-puts File::read(File.join(SRC_DIR,"tracer_cudart_helpers.include.c"))
+puts File.read(File.join(SRC_DIR, 'tracer_cudart_helpers.include.c'))
 
 common_block = lambda { |c, provider|
   params = c.parameters.collect(&:name)
-  tp_params = c.parameters.collect { |p|
-    if p.type.kind_of?(YAMLCAst::Pointer) && p.type.type.kind_of?(YAMLCAst::Function)
-      "(void *)(intptr_t)" + p.name
+  tp_params = c.parameters.collect do |p|
+    if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
+      '(void *)(intptr_t)' + p.name
     else
       p.name
     end
-  }
+  end
   tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  c.tracepoint_parameters.each { |p|
+  c.tracepoint_parameters.each do |p|
     puts "  #{p.type} #{p.name};"
-  }
-  c.tracepoint_parameters.each { |p|
+  end
+  c.tracepoint_parameters.each do |p|
     puts p.init
-  }
+  end
   puts <<EOF
-  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
 
-  c.prologues.each { |p|
+  c.prologues.each do |p|
     puts p
-  }
+  end
 
   if c.has_return_type?
     puts <<EOF
   #{c.type} _retval;
-  _retval = #{CUDART_POINTER_NAMES[c]}(#{params.join(", ")});
+  _retval = #{CUDART_POINTER_NAMES[c]}(#{params.join(', ')});
 EOF
   else
-    puts "  #{CUDART_POINTER_NAMES[c]}(#{params.join(", ")});"
+    puts "  #{CUDART_POINTER_NAMES[c]}(#{params.join(', ')});"
   end
-  c.epilogues.each { |e|
+  c.epilogues.each do |e|
     puts e
-  }
-  if c.has_return_type?
-    tp_params.push "_retval"
   end
+  tp_params.push '_retval' if c.has_return_type?
   puts <<EOF
-  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
 }
 
 normal_wrapper = lambda { |c, provider|
-  puts <<EOF
-#{c.decl} {
-  _init_tracer();
-EOF
+  puts <<~EOF
+    #{c.decl} {
+      _init_tracer();
+  EOF
   common_block.call(c, provider)
   if c.has_return_type?
     puts <<EOF
   return _retval;
 EOF
   end
-  puts <<EOF
+  puts <<~EOF
+    }
+
+  EOF
 }
 
-EOF
-} 
-
-$cudart_commands.each { |c|
+$cudart_commands.each do |c|
   normal_wrapper.call(c, :lttng_ust_cudart)
-}
+end
 
-$cudart_commands.each { |c|
+$cudart_commands.each do |c|
   puts "__asm__(\".symver #{c.name},#{c.name}@@libcudart.so.12, remove\");"
-}
+end

@@ -1,17 +1,13 @@
 require 'nokogiri'
 require 'yaml'
 
-if ENV["SRC_DIR"]
-  SRC_DIR = ENV["SRC_DIR"]
-else
-  SRC_DIR = "."
-end
+SRC_DIR = ENV['SRC_DIR'] || '.'
 
-START = "entry"
-STOP = "exit"
-SUFFIXES = { "start" => START, "stop" => STOP }
+START = 'entry'
+STOP = 'exit'
+SUFFIXES = { 'start' => START, 'stop' => STOP }
 
-MEMBER_SEPARATOR = "__"
+MEMBER_SEPARATOR = '__'
 
 GENERATE_ENUMS_TRACEPOINTS = false
 
@@ -25,7 +21,7 @@ ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTermi
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /#{YAML::load_file(File.join(SRC_DIR,"supported_extensions.yaml")).join("|")}/
+SUPPORTED_EXTENSION_FUNCTIONS = /#{YAML.load_file(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
@@ -36,53 +32,55 @@ ENUMS = {}
 ENUM_PARAM_NAME_MAP = {}
 ENUM_TYPES = []
 
-#map = Hash::new { |h, k| h[k] = [] }
+# map = Hash::new { |h, k| h[k] = [] }
 
-doc = Nokogiri::XML(open("cl.xml.patched"))
-funcs_e = doc.xpath("//commands/command").reject do |l|
-  name = l.search("proto/name").text
+doc = Nokogiri::XML(open('cl.xml.patched'))
+funcs_e = doc.xpath('//commands/command').reject do |l|
+  name = l.search('proto/name').text
   name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS)
 end.collect
 
-ext_funcs_e = doc.xpath("//commands/command").select do |l|
-  name = l.search("proto/name").text
+ext_funcs_e = doc.xpath('//commands/command').select do |l|
+  name = l.search('proto/name').text
   name.match(SUPPORTED_EXTENSION_FUNCTIONS)
 end.collect
 
-typedef_e = doc.xpath("//types/type").select do |l|
-  l["category"] == "define" && l.search("type").size > 0
+typedef_e = doc.xpath('//types/type').select do |l|
+  l['category'] == 'define' && l.search('type').size > 0
 end.collect
 
-struct_e = doc.xpath("//types/type").select do |l|
-  l["category"] == "struct"
+struct_e = doc.xpath('//types/type').select do |l|
+  l['category'] == 'struct'
 end.collect
 
-$constants = doc.xpath("//enums/enum").collect { |n|
-  if n["value"]
-    [n["name"], n["value"]]
-  elsif n["bitpos"]
-    [n["name"], "(1 << #{n["bitpos"]})"]
+$constants = doc.xpath('//enums/enum').collect do |n|
+  if n['value']
+    [n['name'], n['value']]
+  elsif n['bitpos']
+    [n['name'], "(1 << #{n['bitpos']})"]
   end
-}.to_h
+end.to_h
 
-CL_OBJECTS = ["cl_platform_id", "cl_device_id", "cl_context", "cl_command_queue", "cl_mem", "cl_program", "cl_kernel", "cl_event", "cl_sampler"]
+CL_OBJECTS = %w[cl_platform_id cl_device_id cl_context cl_command_queue cl_mem cl_program cl_kernel
+                cl_event cl_sampler]
 
-CL_EXT_OBJECTS = ["cl_GLsync", "CLeglImageKHR", "CLeglDisplayKHR", "CLeglSyncKHR", "cl_accelerator_intel"]
+CL_EXT_OBJECTS = %w[cl_GLsync CLeglImageKHR CLeglDisplayKHR CLeglSyncKHR cl_accelerator_intel]
 
-CL_INT_SCALARS = ["unsigned int", "int","uintptr_t", "intptr_t", "size_t", "cl_int", "cl_uint", "cl_long", "cl_ulong", "cl_short", "cl_ushort", "cl_char", "cl_uchar"]
-CL_FLOAT_SCALARS = ["cl_half", "cl_float", "cl_double"]
-CL_FLOAT_SCALARS_MAP = {"cl_half" => "cl_ushort", "cl_float" => "cl_uint", "cl_double" => "cl_ulong"}
+CL_INT_SCALARS = ['unsigned int', 'int', 'uintptr_t', 'intptr_t', 'size_t', 'cl_int', 'cl_uint', 'cl_long', 'cl_ulong',
+                  'cl_short', 'cl_ushort', 'cl_char', 'cl_uchar']
+CL_FLOAT_SCALARS = %w[cl_half cl_float cl_double]
+CL_FLOAT_SCALARS_MAP = { 'cl_half' => 'cl_ushort', 'cl_float' => 'cl_uint', 'cl_double' => 'cl_ulong' }
 CL_BASE_TYPES = CL_INT_SCALARS + CL_FLOAT_SCALARS
 
-CL_TYPE_MAP = typedef_e.collect { |l|
-  [l.search("name").text, l.search("type").text]
-}.to_h
-(CL_BASE_TYPES + CL_EXT_OBJECTS + CL_OBJECTS).each { |t|
+CL_TYPE_MAP = typedef_e.collect do |l|
+  [l.search('name').text, l.search('type').text]
+end.to_h
+(CL_BASE_TYPES + CL_EXT_OBJECTS + CL_OBJECTS).each do |t|
   CL_TYPE_MAP.delete(t)
-}
+end
 
 err = false
-CL_TYPE_MAP.transform_values! { |v|
+CL_TYPE_MAP.transform_values! do |v|
   counter = 0
   until CL_BASE_TYPES.include?(v) || counter > 10
     counter += 1
@@ -90,59 +88,59 @@ CL_TYPE_MAP.transform_values! { |v|
   end
   err = true if counter > 10
   v
-}
+end
 if err
-  CL_TYPE_MAP.each { |k, v|
-    $stderr.puts "#{k}" unless v
-  }
-  raise "Failed to achieve transitive closure!"
+  CL_TYPE_MAP.each do |k, v|
+    warn "#{k}" unless v
+  end
+  raise 'Failed to achieve transitive closure!'
 end
 
-FFI_BASE_TYPES = ["ffi_type_int", "ffi_type_uint", "ffi_type_uint8", "ffi_type_sint8", "ffi_type_uint16", "ffi_type_sint16", "ffi_type_uint32", "ffi_type_sint32", "ffi_type_uint64", "ffi_type_sint64", "ffi_type_float", "ffi_type_double", "ffi_type_void", "ffi_type_pointer"]
-FFI_TYPE_MAP =  {
- "int" => "ffi_type_int",
- "unsigned int" => "ffi_type_uint",
- "uint8_t" => "ffi_type_uint8",
- "int8_t" => "ffi_type_sint8",
- "uint16_t" => "ffi_type_uint16",
- "int16_t" => "ffi_type_sint16",
- "uint32_t" => "ffi_type_uint32",
- "int32_t" => "ffi_type_sint32",
- "uint64_t" => "ffi_type_uint64",
- "int64_t" => "ffi_type_sint64",
- "float" => "ffi_type_float",
- "double" => "ffi_type_double",
- "intptr_t" => "ffi_type_pointer",
- "uintptr_t" => "ffi_type_pointer",
- "size_t" => "ffi_type_pointer",
- "cl_double" => "double",
- "cl_float" => "float",
- "cl_char" => "int8_t",
- "cl_uchar" => "uint8_t",
- "cl_short" => "int16_t",
- "cl_ushort" => "uint16_t",
- "cl_int" => "int32_t",
- "cl_uint" => "uint32_t",
- "cl_long" => "int64_t",
- "cl_ulong" => "uint64_t",
- "cl_half" => "uint8_t"
+FFI_BASE_TYPES = %w[ffi_type_int ffi_type_uint ffi_type_uint8 ffi_type_sint8 ffi_type_uint16
+                    ffi_type_sint16 ffi_type_uint32 ffi_type_sint32 ffi_type_uint64 ffi_type_sint64 ffi_type_float ffi_type_double ffi_type_void ffi_type_pointer]
+FFI_TYPE_MAP = {
+  'int' => 'ffi_type_int',
+  'unsigned int' => 'ffi_type_uint',
+  'uint8_t' => 'ffi_type_uint8',
+  'int8_t' => 'ffi_type_sint8',
+  'uint16_t' => 'ffi_type_uint16',
+  'int16_t' => 'ffi_type_sint16',
+  'uint32_t' => 'ffi_type_uint32',
+  'int32_t' => 'ffi_type_sint32',
+  'uint64_t' => 'ffi_type_uint64',
+  'int64_t' => 'ffi_type_sint64',
+  'float' => 'ffi_type_float',
+  'double' => 'ffi_type_double',
+  'intptr_t' => 'ffi_type_pointer',
+  'uintptr_t' => 'ffi_type_pointer',
+  'size_t' => 'ffi_type_pointer',
+  'cl_double' => 'double',
+  'cl_float' => 'float',
+  'cl_char' => 'int8_t',
+  'cl_uchar' => 'uint8_t',
+  'cl_short' => 'int16_t',
+  'cl_ushort' => 'uint16_t',
+  'cl_int' => 'int32_t',
+  'cl_uint' => 'uint32_t',
+  'cl_long' => 'int64_t',
+  'cl_ulong' => 'uint64_t',
+  'cl_half' => 'uint8_t',
 }
 
 FFI_TYPE_MAP.merge! CL_TYPE_MAP
 
-FFI_TYPE_MAP.transform_values! { |v|
+FFI_TYPE_MAP.transform_values! do |v|
   until FFI_BASE_TYPES.include? v
     ov = v
     v = FFI_TYPE_MAP[v]
-    $stderr.puts ov unless v
-    $stderr.puts FFI_BASE_TYPES unless v
+    warn ov unless v
+    warn FFI_BASE_TYPES unless v
     exit unless v
   end
   v
-}
+end
 
 class CLXML
-
   attr_reader :__node
 
   def initialize(node)
@@ -151,11 +149,12 @@ class CLXML
 
   def inspect
     str = "#<#{self.class}:#{(object_id << 1).to_s(16)} "
-    str << instance_variables.reject { |v| v == :@__node }.collect { |v| "#{v.to_s}=#{instance_variable_get(v).inspect}" }.join(", ")
-    str << ">"
+    str << instance_variables.reject { |v|
+      v == :@__node
+    }.collect { |v| "#{v}=#{instance_variable_get(v).inspect}" }.join(', ')
+    str << '>'
     str
   end
-
 end
 
 class Require < CLXML
@@ -163,154 +162,150 @@ class Require < CLXML
 
   def initialize(node)
     super
-    @comment = node["comment"]
+    @comment = node['comment']
   end
 
   def bitfield?
-    @comment.match("bitfield")
+    @comment.match('bitfield')
   end
 
   def enums
-    @__node.search("enum").collect { |e| e["name"] }
+    @__node.search('enum').collect { |e| e['name'] }
   end
-
 end
 
-$requires = (doc.xpath("//feature/require").to_a + doc.xpath("//extensions/extension/require").to_a).collect { |r| Require::new(r) }
+$requires = (doc.xpath('//feature/require').to_a + doc.xpath('//extensions/extension/require').to_a).collect do |r|
+  Require.new(r)
+end
 
 if GENERATE_ENUMS_TRACEPOINTS
-  enums = YAML::load_file(File.join(SRC_DIR,"supported_enums.yaml"))
+  enums = YAML.load_file(File.join(SRC_DIR, 'supported_enums.yaml'))
 
-
-  enums.each { |e|
-    vals = $requires.select { |r|
-      r.comment && r.comment.match(/#{e["name"]}(\z| )/)
-    }.collect { |r|
+  enums.each do |e|
+    vals = $requires.select do |r|
+      r.comment && r.comment.match(/#{e['name']}(\z| )/)
+    end.collect do |r|
       r.enums
-    }.reduce(:+).collect { |v|
-     [v, $constants[v]]
-    }.to_h
-    ENUMS[e["name"]] = { "values" => vals, "trace_name" => e["trace_name"], "type_name" => e["type_name"] }
-    ENUM_PARAM_NAME_MAP[e["trace_name"]] = e["type_name"]
-    ENUM_TYPES.push(e["type_name"] ? e["type_name"] : e["name"])
-  }
-  ENUM_TYPES.push "cl_bool"
+    end.reduce(:+).collect do |v|
+      [v, $constants[v]]
+    end.to_h
+    ENUMS[e['name']] = { 'values' => vals, 'trace_name' => e['trace_name'], 'type_name' => e['type_name'] }
+    ENUM_PARAM_NAME_MAP[e['trace_name']] = e['type_name']
+    ENUM_TYPES.push(e['type_name'] || e['name'])
+  end
+  ENUM_TYPES.push 'cl_bool'
 end
 
 class Declaration < CLXML
-  attr_reader :type
-  attr_reader :name
+  attr_reader :type, :name
 
   def initialize(param)
     super
-    @name = param.search("name").text
-    @type = param.search("type").text
-    @type += "*" if decl.match?(/\*\*/)
-    @type += "*" if decl.match?(/\[\]/)
+    @name = param.search('name').text
+    @type = param.search('type').text
+    @type += '*' if decl.match?(/\*\*/)
+    @type += '*' if decl.match?(/\[\]/)
     @__callback = nil
   end
 
   def decl
-    @__node.children.collect(&:text).join(" ").squeeze(" ")
+    @__node.children.collect(&:text).join(' ').squeeze(' ')
   end
 
   def decl_pointer
-    @__node.children.collect { |n| "#{n.name == "name" ? "" : n.text}" }.join(" ").squeeze(" ").strip
+    @__node.children.collect { |n| "#{n.text unless n.name == 'name'}" }.join(' ').squeeze(' ').strip
   end
 
   def pointer?
-    @__pointer if !@__pointer.nil?
+    @__pointer unless @__pointer.nil?
     @__pointer = false
-    @__node.children.collect { |n|
-      break if n.name == "name"
-      if n.text.match("\\*")
+    @__node.children.collect do |n|
+      break if n.name == 'name'
+
+      if n.text.match('\\*')
         @__pointer = true
         break
       end
-    }
+    end
     @__pointer
   end
-
 end
 
 class Member < Declaration
-  def initialize(command, member, prefix, dir = "start")
+  def initialize(_command, member, prefix, dir = 'start')
     super(member)
     name = "#{prefix}#{MEMBER_SEPARATOR}#{@name}"
     expr = "#{prefix} != NULL ? #{prefix}->#{@name} : 0"
     @dir = dir
-    @lttng_type = ["ctf_integer_hex", "uintptr_t", name, "(uintptr_t)(#{expr})"] if pointer?
+    @lttng_type = ['ctf_integer_hex', 'uintptr_t', name, "(uintptr_t)(#{expr})"] if pointer?
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
     case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      @lttng_type = ["ctf_integer_hex", "uintptr_t", name, "(uintptr_t)(#{expr})"]
+      @lttng_type = ['ctf_integer_hex', 'uintptr_t', name, "(uintptr_t)(#{expr})"]
     when *CL_INT_SCALARS
-      @lttng_type = ["ctf_integer", t, name, expr]
+      @lttng_type = ['ctf_integer', t, name, expr]
     when *CL_FLOAT_SCALARS
-      @lttng_type = ["ctf_float", t, name, expr]
+      @lttng_type = ['ctf_float', t, name, expr]
     end
-   end
+  end
 
-   def lttng_in_type
-     @dir == "start" ? @lttng_type : nil
-   end
+  def lttng_in_type
+    @dir == 'start' ? @lttng_type : nil
+  end
 
-   def lttng_out_type
-     @dir == "start" ? nil : @lttng_type
-   end
-
+  def lttng_out_type
+    @dir == 'start' ? nil : @lttng_type
+  end
 end
 
-CL_STRUCT_MAP = struct_e.collect { |s|
-  members = s.search("member")
-  [s["name"], members]
-}.to_h
+CL_STRUCT_MAP = struct_e.collect do |s|
+  members = s.search('member')
+  [s['name'], members]
+end.to_h
 
 CL_STRUCTS = CL_STRUCT_MAP.keys
 
 class Parameter < Declaration
-
   def initialize(param)
     super
     @__callback = nil
   end
 
   def callback?
-    @__callback if !@__callback.nil?
+    @__callback unless @__callback.nil?
     @__callback = false
-    @__node.children.collect { |n| @__callback = true if n.text.match("CL_CALLBACK") }
+    @__node.children.collect { |n| @__callback = true if n.text.match('CL_CALLBACK') }
     @__callback
   end
 
   def pointer?
     return true if callback?
+
     super
   end
 
   def lttng_in_type
-    if pointer?
-      return ["ctf_integer_hex", "uintptr_t", @name, "(uintptr_t)#{@name}"]
-    end
+    return ['ctf_integer_hex', 'uintptr_t', @name, "(uintptr_t)#{@name}"] if pointer?
+
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
-    if ENUM_TYPES.include? @type
-      return ["ctf_enum", "lttng_ust_opencl", @type, t, @name, @name]
-    else
-      case t
-      when *CL_OBJECTS, *CL_EXT_OBJECTS
-        return ["ctf_integer_hex", "uintptr_t", @name, "(uintptr_t)#{@name}"]
-      when *CL_INT_SCALARS
-        return ["ctf_integer", t, @name, @name]
-      when *CL_FLOAT_SCALARS
-        return ["ctf_float", t, @name, @name]
-      end
+    return ['ctf_enum', 'lttng_ust_opencl', @type, t, @name, @name] if ENUM_TYPES.include? @type
+
+    case t
+    when *CL_OBJECTS, *CL_EXT_OBJECTS
+      return ['ctf_integer_hex', 'uintptr_t', @name, "(uintptr_t)#{@name}"]
+    when *CL_INT_SCALARS
+      return ['ctf_integer', t, @name, @name]
+    when *CL_FLOAT_SCALARS
+      return ['ctf_float', t, @name, @name]
     end
+
     nil
   end
 
   def void?
-    decl.strip == "void"
+    decl.strip == 'void'
   end
 
   def lttng_out_type
@@ -318,75 +313,79 @@ class Parameter < Declaration
   end
 
   def ffi_type
-    return "ffi_type_pointer" if pointer? || CL_OBJECTS.include?(type) || CL_EXT_OBJECTS.include?(type)
-    return "ffi_type_void" if void?
-    return FFI_TYPE_MAP[type]
-  end
+    return 'ffi_type_pointer' if pointer? || CL_OBJECTS.include?(type) || CL_EXT_OBJECTS.include?(type)
+    return 'ffi_type_void' if void?
 
+    FFI_TYPE_MAP[type]
+  end
 end
 
 class Prototype < CLXML
-
-  attr_reader :return_type
-  attr_reader :name
+  attr_reader :return_type, :name
 
   def has_return_type?
-    return_type != "void"
+    return_type != 'void'
   end
 
   def ffi_return_type
-    return "ffi_type_void" unless has_return_type?
-    return "ffi_type_pointer" if return_type.match(/\*/) || CL_OBJECTS.include?(return_type) || CL_EXT_OBJECTS.include?(return_type)
+    return 'ffi_type_void' unless has_return_type?
+    if return_type.match(/\*/) || CL_OBJECTS.include?(return_type) || CL_EXT_OBJECTS.include?(return_type)
+      return 'ffi_type_pointer'
+    end
+
     FFI_TYPE_MAP[return_type]
   end
 
   def initialize(proto)
     super
-    @name = proto.search("name").text
-    @return_type = @__node.children.reject { |c| c.name == "name" }.collect(&:text).join(" ").squeeze(" ").strip
+    @name = proto.search('name').text
+    @return_type = @__node.children.reject { |c| c.name == 'name' }.collect(&:text).join(' ').squeeze(' ').strip
   end
 
   def decl
-    @__node.children.collect { |n| "#{n.name == "name" ? "CL_API_CALL " : ""}#{n.text}" }.join(" ").squeeze(" ")
+    @__node.children.collect { |n| "#{'CL_API_CALL ' if n.name == 'name'}#{n.text}" }.join(' ').squeeze(' ')
   end
 
   def decl_pointer(type: false)
-    @__node.children.collect { |n| "#{n.name == "name" ? "(CL_API_CALL *#{type ? pointer_type_name : pointer_name})" : n.text}" }.join(" ").squeeze(" ")
+    @__node.children.collect do |n|
+      "#{if n.name == 'name'
+           "(CL_API_CALL *#{type ? pointer_type_name : pointer_name})"
+         else
+           n.text
+         end}"
+    end.join(' ').squeeze(' ')
   end
 
   def pointer_name
-    @name + "_ptr"
+    @name + '_ptr'
   end
 
   def ffi_function_name
-    @name + "_ffi"
+    @name + '_ffi'
   end
 
   def pointer_type_name
-    @name + "_t"
+    @name + '_t'
   end
 
   def lttng_return_type
-    if @return_type.match("\\*")
-      return ["ctf_integer_hex", "uintptr_t", "_retval", "(uintptr_t)_retval"]
-    end
+    return ['ctf_integer_hex', 'uintptr_t', '_retval', '(uintptr_t)_retval'] if @return_type.match('\\*')
+
     case @return_type
-    when "cl_int"
-      if GENERATE_ENUMS_TRACEPOINTS
-        return ["ctf_enum", "lttng_ust_opencl", "cl_errcode", "cl_int", "errcode_ret_val", "_retval"]
-      else
-        return ["ctf_integer", "cl_int", "errcode_ret_val", "_retval"]
-      end
+    when 'cl_int'
+      return %w[ctf_enum lttng_ust_opencl cl_errcode cl_int errcode_ret_val _retval] if GENERATE_ENUMS_TRACEPOINTS
+
+      return %w[ctf_integer cl_int errcode_ret_val _retval]
+
     when *CL_OBJECTS
-      return ["ctf_integer_hex", "uintptr_t", @return_type.gsub(/^cl_/,""), "(uintptr_t)_retval"]
+      return ['ctf_integer_hex', 'uintptr_t', @return_type.gsub(/^cl_/, ''), '(uintptr_t)_retval']
     when *CL_EXT_OBJECTS
-      return ["ctf_integer_hex", "uintptr_t", @return_type.gsub(/^CL/,"").gsub(/KHR$/,""), "(uintptr_t)_retval"]
-    when "void*"
-      return ["ctf_integer_hex", "uintptr_t", "ret_ptr", "(uintptr_t)_retval"]
+      return ['ctf_integer_hex', 'uintptr_t', @return_type.gsub(/^CL/, '').gsub(/KHR$/, ''), '(uintptr_t)_retval']
+    when 'void*'
+      return ['ctf_integer_hex', 'uintptr_t', 'ret_ptr', '(uintptr_t)_retval']
     end
     nil
   end
-
 end
 
 class MetaParameter
@@ -399,31 +398,31 @@ class MetaParameter
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     if stype
       stype = CL_TYPE_MAP[stype] if CL_TYPE_MAP[stype]
-      lttng_arr_type = "sequence"
-      lttng_args = [ stype, "#{name} == NULL ? 0 : #{size}" ]
+      lttng_arr_type = 'sequence'
+      lttng_args = [stype, "#{name} == NULL ? 0 : #{size}"]
     else
-      lttng_arr_type = "array"
-      lttng_args = [ size ]
+      lttng_arr_type = 'array'
+      lttng_args = [size]
     end
     expr = name
     case type
     when *CL_OBJECTS, *CL_EXT_OBJECTS
-      lttng_type = ["ctf_#{lttng_arr_type}_hex", "uintptr_t"]
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", 'uintptr_t']
     when *CL_INT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}", type]
     when *CL_FLOAT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}_hex", CL_FLOAT_SCALARS_MAP[type]]
     when *CL_STRUCTS
-      lttng_type = ["ctf_#{lttng_arr_type}_text", "uint8_t"]
-    when "void"
-      lttng_type = ["ctf_#{lttng_arr_type}_text", "uint8_t"]
+      lttng_type = ["ctf_#{lttng_arr_type}_text", 'uint8_t']
+    when 'void'
+      lttng_type = ["ctf_#{lttng_arr_type}_text", 'uint8_t']
     when /\*/
-      lttng_type = ["ctf_#{lttng_arr_type}_hex", "uintptr_t"]
+      lttng_type = ["ctf_#{lttng_arr_type}_hex", 'uintptr_t']
     else
       raise "Unknown Type: #{type.inspect} for #{name} in #{@command.prototype.name}!"
     end
-    lttng_type += [ name+"_vals", expr ]
-    lttng_type += lttng_args
+    lttng_type += [name + '_vals', expr]
+    lttng_type + lttng_args
   end
 
   def lttng_in_type
@@ -436,37 +435,38 @@ class MetaParameter
 end
 
 class OutMetaParameter < MetaParameter
-  def lttng_out_type
-    @lttng_out_type
-  end
+  attr_reader :lttng_out_type
 end
 
 class InMetaParameter < MetaParameter
-  def lttng_in_type
-    @lttng_in_type
-  end
+  attr_reader :lttng_in_type
 end
 
 class InScalar < InMetaParameter
   def initialize(command, name, nocheck: false)
     super
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
-    type = command[name].type.gsub("*", "")
+
+    type = command[name].type.gsub('*', '')
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     if ENUM_PARAM_NAME_MAP[name]
-      @lttng_in_type = ["ctf_enum", "lttng_ust_opencl", ENUM_PARAM_NAME_MAP[name], type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+      @lttng_in_type = ['ctf_enum', 'lttng_ust_opencl', ENUM_PARAM_NAME_MAP[name], type, name + '_val',
+                        nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
       case type
       when *CL_OBJECTS, *CL_EXT_OBJECTS
-        @lttng_in_type = ["ctf_integer_hex", "uintptr_t", name+"_val", nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                          nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       when *CL_INT_SCALARS
-        @lttng_in_type = ["ctf_integer", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+        @lttng_in_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
       when *CL_FLOAT_SCALARS
-        @lttng_in_type = ["ctf_float", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+        @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
       when *CL_STRUCTS
-        @lttng_in_type = ["ctf_sequence_text", "uint8_t", name+"_val", "(uint8_t *)#{name}", "size_t", "#{name} == NULL ? 0 : sizeof(#{type})"]
-      when "void"
-        @lttng_in_type = ["ctf_integer_hex", "uintptr_t", name+"_val",  nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
+                          "#{name} == NULL ? 0 : sizeof(#{type})"]
+      when 'void'
+        @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                          nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
       end
@@ -478,20 +478,24 @@ class OutScalar < OutMetaParameter
   def initialize(command, name, nocheck: false)
     super
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
-    type = command[name].type.gsub("*", "")
+
+    type = command[name].type.gsub('*', '')
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     if ENUM_PARAM_NAME_MAP[name]
-      @lttng_out_type = ["ctf_enum", "lttng_ust_opencl", ENUM_PARAM_NAME_MAP[name], type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+      @lttng_out_type = ['ctf_enum', 'lttng_ust_opencl', ENUM_PARAM_NAME_MAP[name], type, name + '_val',
+                         nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
       case type
       when *CL_OBJECTS, *CL_EXT_OBJECTS
-        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val", nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                           nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       when *CL_INT_SCALARS
-        @lttng_out_type = ["ctf_integer", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+        @lttng_out_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
       when *CL_FLOAT_SCALARS
-        @lttng_out_type = ["ctf_float", type, name+"_val", nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when "void"
-        @lttng_out_type = ["ctf_integer_hex", "uintptr_t", name+"_val",  nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+        @lttng_out_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+      when 'void'
+        @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                           nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
       end
@@ -499,34 +503,39 @@ class OutScalar < OutMetaParameter
   end
 end
 
-class InFixedArray  < InMetaParameter
+class InFixedArray < InMetaParameter
   def initialize(command, name, count)
     super(command, name)
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
+
     type = command[name].type
     @lttng_in_type = lttng_array_type_broker(type, name, count)
   end
 end
 
 class OutArray < OutMetaParameter
-  def initialize(command, name, sname = "num_entries")
+  def initialize(command, name, sname = 'num_entries')
     super(command, name)
     @sname = sname
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
+
     type = command[name].type
     raise "Couldn't find variable #{sname} for #{command.prototype.name}!" unless command[sname]
+
     stype = command[sname].type
     @lttng_out_type = lttng_array_type_broker(type, name, sname, stype)
   end
 end
 
 class InArray < InMetaParameter
-  def initialize(command, name, sname = "num_entries")
+  def initialize(command, name, sname = 'num_entries')
     super(command, name)
     @sname = sname
     raise "Couldn't find variable #{name} for #{command.prototype.name}!" unless command[name]
+
     type = command[name].type
     raise "Couldn't find variable #{sname} for #{command.prototype.name}!" unless command[sname]
+
     stype = command[sname].type
     @lttng_in_type = lttng_array_type_broker(type, name, sname, stype)
   end
@@ -536,7 +545,7 @@ class DeviceFissionPropertyList < InArray
   def initialize(command, name)
     sname = "_#{name}_size"
     type = command[name].type
-    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
+    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF)
   #{sname} = 0;
   if(#{name} != NULL) {
     while(#{name}[#{sname}++] != CL_PROPERTIES_LIST_END_EXT) {
@@ -563,7 +572,7 @@ end
 class InNullArray < InArray
   def initialize(command, name)
     sname = "_#{name}_size"
-    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
+    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF)
   #{sname} = 0;
   if(#{name} != NULL) {
     while(#{name}[#{sname}] != 0) {
@@ -579,22 +588,21 @@ end
 class InString < InMetaParameter
   def initialize(command, name)
     super
-    @lttng_in_type = ["ctf_string", name+"_val", name]
+    @lttng_in_type = ['ctf_string', name + '_val', name]
   end
 end
 
 class AutoMetaParameter
-  def self.create_if_match(command)
+  def self.create_if_match(_command)
     nil
   end
 end
 
 class EventWaitList < AutoMetaParameter
   def self.create_if_match(command)
-    el = command.parameters.find { |p| p.name == "event_wait_list" }
-    if el
-      return InArray::new(command, "event_wait_list", "num_events_in_wait_list")
-    end
+    el = command.parameters.find { |p| p.name == 'event_wait_list' }
+    return InArray.new(command, 'event_wait_list', 'num_events_in_wait_list') if el
+
     nil
   end
 end
@@ -618,19 +626,17 @@ end
 
 class ParamValue < AutoMetaParameter
   def self.create_if_match(command)
-    return nil if command.prototype.name == "clSetKernelExecInfo"
-    pv = command.parameters.find { |p| p.name == "param_value" }
-    if pv
-      return OutArray::new(command, "param_value", "param_value_size")
-    end
+    return nil if command.prototype.name == 'clSetKernelExecInfo'
+
+    pv = command.parameters.find { |p| p.name == 'param_value' }
+    return OutArray.new(command, 'param_value', 'param_value_size') if pv
+
     nil
   end
 end
 
 class TracepointParameter
-  attr_reader :name
-  attr_reader :type
-  attr_reader :init
+  attr_reader :name, :type, :init
 
   def initialize(name, type, init)
     @name = name
@@ -639,50 +645,53 @@ class TracepointParameter
   end
 end
 
-ErrCodeRet = AutoOutScalar::create("errcode_ret", nocheck: true)
+ErrCodeRet = AutoOutScalar.create('errcode_ret', nocheck: true)
 
-ParamValueSizeRet = AutoOutScalar::create("param_value_size_ret", nocheck: true)
+ParamValueSizeRet = AutoOutScalar.create('param_value_size_ret', nocheck: true)
 
-Event = AutoOutScalar::create("event")
+Event = AutoOutScalar.create('event')
 
 def register_meta_parameter(method, type, *args)
-  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
+  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
+    raise "Unknown method: #{method}!"
+  end
+
   META_PARAMETERS[method].push [type, args]
 end
 
 def register_prologue(method, code)
-  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
+  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
+    raise "Unknown method: #{method}!"
+  end
+
   PROLOGUES[method].push(code)
 end
 
 def register_epilogue(method, code)
-  raise "Unknown method: #{method}!" unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
+  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
+    raise "Unknown method: #{method}!"
+  end
+
   EPILOGUES[method].push(code)
 end
 
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
-META_PARAMETERS = Hash::new { |h, k| h[k] = [] }
-PROLOGUES = Hash::new { |h, k| h[k] = [] }
-EPILOGUES = Hash::new { |h, k| h[k] = [] }
+META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
+PROLOGUES = Hash.new { |h, k| h[k] = [] }
+EPILOGUES = Hash.new { |h, k| h[k] = [] }
 
 class Command < CLXML
+  attr_reader :prototype, :parameters, :tracepoint_parameters, :meta_parameters, :prologues, :epilogues
 
-  attr_reader :prototype
-  attr_reader :parameters
-  attr_reader :tracepoint_parameters
-  attr_reader :meta_parameters
-  attr_reader :prologues
-  attr_reader :epilogues
-
-  def initialize( command )
+  def initialize(command)
     super
-    @prototype = Prototype::new( command.search("proto" ) )
-    @parameters = command.search("param").collect { |p| Parameter::new(p) }
+    @prototype = Prototype.new(command.search('proto'))
+    @parameters = command.search('param').collect { |p| Parameter.new(p) }
     @tracepoint_parameters = []
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@prototype.name].collect { |type, args|
-      type::new(self, *args)
-    }
+    @meta_parameters += META_PARAMETERS[@prototype.name].collect do |type, args|
+      type.new(self, *args)
+    end
     @extension = @prototype.name.match(EXTENSION_FUNCTIONS)
     @init      = @prototype.name.match(INIT_FUNCTIONS)
     @prologues = PROLOGUES[@prototype.name]
@@ -692,15 +701,16 @@ class Command < CLXML
   def [](name)
     res = @parameters.find { |p| p.name == name }
     return res if res
+
     @tracepoint_parameters.find { |p| p.name == name }
   end
 
   def decl
-    "CL_API_ENTRY " + @prototype.decl + "(" + @parameters.collect(&:decl).join(", ") + ")"
+    'CL_API_ENTRY ' + @prototype.decl + '(' + @parameters.collect(&:decl).join(', ') + ')'
   end
 
   def decl_pointer(type: false)
-    "CL_API_ENTRY " + @prototype.decl_pointer(type: type) + "(" + @parameters.collect(&:decl_pointer).join(", ") + ")"
+    'CL_API_ENTRY ' + @prototype.decl_pointer(type: type) + '(' + @parameters.collect(&:decl_pointer).join(', ') + ')'
   end
 
   def decl_ffi_wrapper
@@ -708,77 +718,76 @@ class Command < CLXML
   end
 
   def event?
-    returns_event? || @parameters.find { |p| p.name == "event" && p.pointer? }
+    returns_event? || @parameters.find { |p| p.name == 'event' && p.pointer? }
   end
 
   def returns_event?
-    prototype.return_type == "cl_event"
+    prototype.return_type == 'cl_event'
   end
 
   def extension?
-    return !!@extension
+    !!@extension
   end
 
   def init?
-    return !!@init
+    !!@init
   end
 
   def void_parameters?
     @parameters.size == 1 && @parameters.first.void?
   end
-
 end
 
-OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
-OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype::new( c.search("proto" ) ) }.collect { |p| p.name }
+OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
+OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
 
-$meta_parameters = YAML::load_file(File.join(SRC_DIR,"opencl_meta_parameters.yaml"))
-$meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+$meta_parameters = YAML.load_file(File.join(SRC_DIR, 'opencl_meta_parameters.yaml'))
+$meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
+  end
+end
 
-$opencl_commands = funcs_e.collect { |func|
-  Command::new(func)
-}
+$opencl_commands = funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$opencl_extension_commands = ext_funcs_e.collect { |func|
-  Command::new(func)
-}
+$opencl_extension_commands = ext_funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$opencl_commands.each { |c|
+$opencl_commands.each do |c|
   eval "$#{c.prototype.name} = c"
-}
+end
 
-$opencl_extension_commands.each { |c|
+$opencl_extension_commands.each do |c|
   eval "$#{c.prototype.name} = c"
-}
+end
 
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-OPENCL_POINTER_NAMES = ($opencl_commands.collect { |c|
+OPENCL_POINTER_NAMES = ($opencl_commands.collect do |c|
   [c, upper_snake_case(c.prototype.pointer_name)]
-} + $opencl_extension_commands.collect { |c|
+end + $opencl_extension_commands.collect do |c|
   [c, c.prototype.pointer_name]
-}).to_h
+end).to_h
 
-($opencl_commands+$opencl_extension_commands).select { |c|
-  c.parameters.find { |p| p.name == "errcode_ret" && p.pointer? }
-}.each { |c|
+($opencl_commands + $opencl_extension_commands).select do |c|
+  c.parameters.find { |p| p.name == 'errcode_ret' && p.pointer? }
+end.each do |c|
   c.prologues.push <<EOF
   cl_int _errcode_ret_force;
   if (!errcode_ret)
     errcode_ret = &_errcode_ret_force;
 EOF
-}
+end
 
-($opencl_commands+$opencl_extension_commands).select { |c|
-   c.parameters.find { |p| p.name == "param_value_size_ret" && p.pointer? }
-}.each { |c|
-   c.prologues.push <<EOF
+($opencl_commands + $opencl_extension_commands).select do |c|
+  c.parameters.find { |p| p.name == 'param_value_size_ret' && p.pointer? }
+end.each do |c|
+  c.prologues.push <<EOF
   size_t _new_param_value_size;
   if (!param_value_size_ret)
     param_value_size_ret = &_new_param_value_size;
@@ -786,17 +795,19 @@ EOF
   c.epilogues.push <<EOF
   param_value_size = (param_value_size <= *param_value_size_ret ? param_value_size : *param_value_size_ret );
 EOF
-}
+end
 
-buffer_create_info = InMetaParameter::new($clCreateSubBuffer, "buffer_create_info")
-buffer_create_info.instance_variable_set(:@lttng_in_type, ["ctf_sequence_text", "uint8_t", "buffer_create_info_vals", "buffer_create_info", "size_t", "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)"])
+buffer_create_info = InMetaParameter.new($clCreateSubBuffer, 'buffer_create_info')
+buffer_create_info.instance_variable_set(:@lttng_in_type,
+                                         ['ctf_sequence_text', 'uint8_t', 'buffer_create_info_vals', 'buffer_create_info', 'size_t',
+                                          'buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)'])
 
 $clCreateSubBuffer.meta_parameters.push buffer_create_info
 
+($opencl_commands + $opencl_extension_commands).each do |c|
+  next unless c.prototype.name.match 'clEnqueue'
 
-($opencl_commands+$opencl_extension_commands).each { |c|
-  if c.prototype.name.match "clEnqueue"
-    c.prologues.push <<EOF
+  c.prologues.push <<EOF
   int64_t _enqueue_counter = 0;
   if (do_dump) {
     pthread_mutex_lock(&enqueue_counter_mutex);
@@ -806,52 +817,50 @@ $clCreateSubBuffer.meta_parameters.push buffer_create_info
     tracepoint(lttng_ust_opencl_dump, enqueue_counter, _enqueue_counter);
   }
 EOF
-  end
-}
+end
 
 class ParamName < MetaParameter
   def initialize(c)
-    super(c, "param_name")
-    raise "Couldn't find variable param_name for #{c.prototype.name}!" unless c["param_name"]
-    @type = c["param_name"].type.gsub("*", "")
+    super(c, 'param_name')
+    raise "Couldn't find variable param_name for #{c.prototype.name}!" unless c['param_name']
+
+    @type = c['param_name'].type.gsub('*', '')
   end
 
   def lttng_out_type
-    ["ctf_integer_hex", @type, "_param_name", "param_name"]
+    ['ctf_integer_hex', @type, '_param_name', 'param_name']
   end
 end
 
-($opencl_commands+$opencl_extension_commands).each { |c|
-  if c.prototype.name.match(/clGet(\w*?)Info/) && c["param_name"]
-    c.meta_parameters.push(ParamName::new(c))
-  end
-}
+($opencl_commands + $opencl_extension_commands).each do |c|
+  c.meta_parameters.push(ParamName.new(c)) if c.prototype.name.match(/clGet(\w*?)Info/) && c['param_name']
+end
 
-register_epilogue "clCreateKernel", <<EOF
+register_epilogue 'clCreateKernel', <<EOF
   if (do_dump && _retval != NULL) {
     add_kernel(_retval);
   }
 EOF
 
-register_epilogue "clSetKernelArg", <<EOF
+register_epilogue 'clSetKernelArg', <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
     add_kernel_arg(kernel, arg_index, arg_size, arg_value, 0);
   }
 EOF
 
-register_epilogue "clSetKernelArgSVMPointer", <<EOF
+register_epilogue 'clSetKernelArgSVMPointer', <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
     add_kernel_arg(kernel, arg_index, sizeof(arg_value), arg_value, 1);
   }
 EOF
 
-register_epilogue "clSVMAlloc", <<EOF
+register_epilogue 'clSVMAlloc', <<EOF
   if (do_dump && _retval != NULL) {
     add_svmptr(_retval, size);
   }
 EOF
 
-register_prologue "clSVMFree", <<EOF
+register_prologue 'clSVMFree', <<EOF
   if (do_dump && svm_pointer != NULL) {
     remove_svmptr(svm_pointer);
   }
@@ -871,8 +880,8 @@ str = <<EOF
     }
   }
 EOF
-register_prologue "clEnqueueNDRangeKernel", str
-register_prologue "clEnqueueNDRangeKernelINTEL", str
+register_prologue 'clEnqueueNDRangeKernel', str
+register_prologue 'clEnqueueNDRangeKernelINTEL', str
 
 str = <<EOF
   if (do_dump && _dump_release_events) {
@@ -882,29 +891,29 @@ str = <<EOF
     free((void *)event_wait_list);
   }
 EOF
-register_epilogue "clEnqueueNDRangeKernel", str
-register_epilogue "clEnqueueNDRangeKernelINTEL", str
+register_epilogue 'clEnqueueNDRangeKernel', str
+register_epilogue 'clEnqueueNDRangeKernelINTEL', str
 
-register_prologue "clCreateBuffer", <<EOF
+register_prologue 'clCreateBuffer', <<EOF
   if (do_dump) {
     flags &= ~CL_MEM_HOST_WRITE_ONLY;
     flags &= ~CL_MEM_HOST_NO_ACCESS;
   }
 EOF
 
-register_epilogue "clCreateBuffer", <<EOF
+register_epilogue 'clCreateBuffer', <<EOF
   if (do_dump && _retval != NULL) {
     add_buffer(_retval, size);
   }
 EOF
 
-register_prologue "clCreateCommandQueue", <<EOF
+register_prologue 'clCreateCommandQueue', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
 
-register_prologue "clCreateCommandQueueWithProperties", <<EOF
+register_prologue 'clCreateCommandQueueWithProperties', <<EOF
   cl_queue_properties *_profiling_properties = NULL;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     int _found_queue_properties = 0;
@@ -950,11 +959,11 @@ register_prologue "clCreateCommandQueueWithProperties", <<EOF
   }
 EOF
 
-register_epilogue "clCreateCommandQueueWithProperties", <<EOF
+register_epilogue 'clCreateCommandQueueWithProperties', <<EOF
   if (_profiling_properties) free(_profiling_properties);
 EOF
 
-register_prologue "clCreateProgramWithSource", <<EOF
+register_prologue 'clCreateProgramWithSource', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_string) && strings != NULL) {
     cl_uint index;
     for (index = 0; index < count; index++) {
@@ -973,7 +982,7 @@ register_prologue "clCreateProgramWithSource", <<EOF
   }
 EOF
 
-register_prologue "clCreateProgramWithBinary", <<EOF
+register_prologue 'clCreateProgramWithBinary', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_binary) && binaries != NULL && lengths != NULL) {
     cl_uint index;
     for (index = 0; index < num_devices; index++) {
@@ -985,7 +994,7 @@ register_prologue "clCreateProgramWithBinary", <<EOF
   }
 EOF
 
-register_prologue "clCreateProgramWithIL", <<EOF
+register_prologue 'clCreateProgramWithIL', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
@@ -994,7 +1003,7 @@ register_prologue "clCreateProgramWithIL", <<EOF
   }
 EOF
 
-register_prologue "clCreateProgramWithILKHR", <<EOF
+register_prologue 'clCreateProgramWithILKHR', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
@@ -1025,9 +1034,9 @@ str = <<EOF
     }
   }
 EOF
-register_prologue "clBuildProgram", str
-register_prologue "clCompileProgram", str
-register_prologue "clLinkProgram", <<EOF
+register_prologue 'clBuildProgram', str
+register_prologue 'clCompileProgram', str
+register_prologue 'clLinkProgram', <<EOF
   int _free_options = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && input_programs && num_input_programs > 0) {
     struct opencl_version version = {1, 0};
@@ -1054,14 +1063,16 @@ str = <<EOF
   if (_free_options)
     free((char *)options);
 EOF
-register_epilogue "clBuildProgram", str
-register_epilogue "clCompileProgram", str
-register_epilogue "clLinkProgram", str
+register_epilogue 'clBuildProgram', str
+register_epilogue 'clCompileProgram', str
+register_epilogue 'clLinkProgram', str
 
-l = lambda { |func, name: "pfn_notify", extra_conditions: nil|
+l = lambda { |func, name: 'pfn_notify', extra_conditions: nil|
   register_prologue func, <<EOF
   struct #{func}_callback_payload *_payload = NULL;
-  if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_#{START})#{extra_conditions ? " || #{extra_conditions.join(" || ")}" : ""}) && #{name}) {
+  if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_#{START})#{if extra_conditions
+                                                                          " || #{extra_conditions.join(' || ')}"
+                                                                        end}) && #{name}) {
     _payload = (struct #{func}_callback_payload *)malloc(sizeof(struct #{func}_callback_payload));
     _payload->#{name} = #{name};
     _payload->user_data = user_data;
@@ -1070,46 +1081,49 @@ l = lambda { |func, name: "pfn_notify", extra_conditions: nil|
   }
 EOF
 }
-program_conditions = ["tracepoint_enabled(lttng_ust_opencl_build, binaries)", "tracepoint_enabled(lttng_ust_opencl_build, infos)"]
-l.call("clBuildProgram", extra_conditions: program_conditions)
-l.call("clCompileProgram", extra_conditions: ["tracepoint_enabled(lttng_ust_opencl_build, objects)", "tracepoint_enabled(lttng_ust_opencl_build, infos)"])
-l.call("clLinkProgram", extra_conditions: program_conditions)
-l.call("clCreateContext")
-l.call("clCreateContextFromType")
-l.call("clSetMemObjectDestructorCallback")
-l.call("clSetProgramReleaseCallback")
-l.call("clSetEventCallback")
-l.call("clEnqueueSVMFree", name: "pfn_free_func")
+program_conditions = ['tracepoint_enabled(lttng_ust_opencl_build, binaries)',
+                      'tracepoint_enabled(lttng_ust_opencl_build, infos)']
+l.call('clBuildProgram', extra_conditions: program_conditions)
+l.call('clCompileProgram',
+       extra_conditions: ['tracepoint_enabled(lttng_ust_opencl_build, objects)',
+                          'tracepoint_enabled(lttng_ust_opencl_build, infos)'])
+l.call('clLinkProgram', extra_conditions: program_conditions)
+l.call('clCreateContext')
+l.call('clCreateContextFromType')
+l.call('clSetMemObjectDestructorCallback')
+l.call('clSetProgramReleaseCallback')
+l.call('clSetEventCallback')
+l.call('clEnqueueSVMFree', name: 'pfn_free_func')
 
 str = <<EOF
   if (_payload && _retval != CL_SUCCESS)
     free(_payload);
 EOF
-register_epilogue "clBuildProgram", str
-register_epilogue "clCompileProgram", str
-register_epilogue "clSetMemObjectDestructorCallback", str
-register_epilogue "clSetProgramReleaseCallback", str
-register_epilogue "clSetEventCallback", str
-register_epilogue "clEnqueueSVMFree", str
+register_epilogue 'clBuildProgram', str
+register_epilogue 'clCompileProgram', str
+register_epilogue 'clSetMemObjectDestructorCallback', str
+register_epilogue 'clSetProgramReleaseCallback', str
+register_epilogue 'clSetEventCallback', str
+register_epilogue 'clEnqueueSVMFree', str
 str = <<EOF
   if (_payload && !_retval)
     free(_payload);
 EOF
-register_epilogue "clLinkProgram", str
-register_epilogue "clCreateContext", str
-register_epilogue "clCreateContextFromType", str
+register_epilogue 'clLinkProgram', str
+register_epilogue 'clCreateContext', str
+register_epilogue 'clCreateContextFromType', str
 
-register_epilogue "clBuildProgram", <<EOF
+register_epilogue 'clBuildProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
-register_epilogue "clCompileProgram", <<EOF
+register_epilogue 'clCompileProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, objects) && !pfn_notify) {
     dump_program_objects(program);
   }
 EOF
-register_epilogue "clLinkProgram", <<EOF
+register_epilogue 'clLinkProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);
   }
@@ -1120,34 +1134,34 @@ str = <<EOF
     dump_program_build_infos(program);
   }
 EOF
-register_epilogue "clBuildProgram", str
-register_epilogue "clCompileProgram", str
-register_epilogue "clLinkProgram", <<EOF
+register_epilogue 'clBuildProgram', str
+register_epilogue 'clCompileProgram', str
+register_epilogue 'clLinkProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, infos) && _retval && !pfn_notify) {
     dump_program_build_infos(_retval);
   }
 EOF
 
-register_epilogue "clCreateKernel", <<EOF
+register_epilogue 'clCreateKernel', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info)) {
     dump_kernel_info(_retval);
   }
 EOF
 
-register_epilogue "clCreateKernel", <<EOF
+register_epilogue 'clCreateKernel', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval != NULL) {
     dump_kernel_arguments(program, _retval);
   }
 EOF
 
-register_prologue "clCreateKernelsInProgram", <<EOF
+register_prologue 'clCreateKernelsInProgram', <<EOF
   cl_uint n_k = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
-register_epilogue "clCreateKernelsInProgram", <<EOF
+register_epilogue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_info(kernels[i]);
@@ -1155,13 +1169,13 @@ register_epilogue "clCreateKernelsInProgram", <<EOF
   }
 EOF
 
-register_prologue "clCreateKernelsInProgram", <<EOF
+register_prologue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
-register_epilogue "clCreateKernelsInProgram", <<EOF
+register_epilogue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_arguments(program, kernels[i]);
@@ -1169,20 +1183,20 @@ register_epilogue "clCreateKernelsInProgram", <<EOF
   }
 EOF
 
-register_prologue "clGetDeviceIDs", <<EOF
+register_prologue 'clGetDeviceIDs', <<EOF
   cl_uint n_e;
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && !num_devices && devices) {
     num_devices = &n_e;
   }
 EOF
 
-register_prologue "clGetDeviceIDs", <<EOF
+register_prologue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && !num_devices && devices) {
     num_devices = &n_e;
   }
 EOF
 
-register_epilogue "clGetDeviceIDs", <<EOF
+register_epilogue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_name(devices[i]);
@@ -1190,7 +1204,7 @@ register_epilogue "clGetDeviceIDs", <<EOF
   }
 EOF
 
-register_epilogue "clGetDeviceIDs", <<EOF
+register_epilogue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_timer(devices[i]);
@@ -1198,35 +1212,37 @@ register_epilogue "clGetDeviceIDs", <<EOF
   }
 EOF
 
-str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
+str = $opencl_commands.select { |c| c.extension? }.collect do |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_#{STOP}, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_#{STOP}, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{if HOST_PROFILE
+                                                                                                                                                        ', 0'
+                                                                                                                                                      end});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
-}.join(<<EOF)
+end.join(<<EOF)
   else
 EOF
 
-register_prologue "clGetExtensionFunctionAddressForPlatform", str
+register_prologue 'clGetExtensionFunctionAddressForPlatform', str
 
-str = $opencl_commands.select{ |c| c.extension? }.collect { |c|
+str = $opencl_commands.select { |c| c.extension? }.collect do |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
-    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_#{STOP}, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{HOST_PROFILE ? ", 0" : ""});
+    tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_#{STOP}, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{if HOST_PROFILE
+                                                                                                                                   ', 0'
+                                                                                                                                 end});
     return (void *)(intptr_t)(&#{c.prototype.name});
   }
 EOF
-}.join(<<EOF)
+end.join(<<EOF)
   else
 EOF
 
-register_prologue "clGetExtensionFunctionAddress", str
-
+register_prologue 'clGetExtensionFunctionAddress', str
 
 register_extension_callbacks = lambda { |ext_method|
-
   str = <<EOF
   if (_retval != NULL) {
 EOF
@@ -1238,7 +1254,9 @@ EOF
       HASH_FIND_PTR(opencl_closures, &_retval, closure);
       pthread_mutex_unlock(&opencl_closures_mutex);
       if (closure != NULL) {
-        tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP},#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
+        tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP},#{unless ext_method == 'clGetExtensionFunctionAddress'
+                                                               ' platform,'
+                                                             end} func_name, _retval#{', _duration' if HOST_PROFILE});
         return closure->c_ptr;
       }
       closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
@@ -1259,7 +1277,11 @@ EOF
               pthread_mutex_lock(&opencl_closures_mutex);
               HASH_ADD_PTR(opencl_closures, ptr, closure);
               pthread_mutex_unlock(&opencl_closures_mutex);
-              tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP},#{ ext_method == "clGetExtensionFunctionAddress" ? "" : " platform,"} func_name, _retval#{HOST_PROFILE ? ", _duration" : ""});
+              tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP},#{unless ext_method == 'clGetExtensionFunctionAddress'
+                                                                     ' platform,'
+                                                                   end} func_name, _retval#{if HOST_PROFILE
+                                                                                              ', _duration'
+                                                                                            end});
               return closure->c_ptr;
             }
           }
@@ -1279,12 +1301,11 @@ EOF
   register_epilogue ext_method, str
 }
 
-register_extension_callbacks.call("clGetExtensionFunctionAddress")
-register_extension_callbacks.call("clGetExtensionFunctionAddressForPlatform")
+register_extension_callbacks.call('clGetExtensionFunctionAddress')
+register_extension_callbacks.call('clGetExtensionFunctionAddressForPlatform')
 
-
-#Create event profiling code
-($opencl_commands+$opencl_extension_commands).each { |c|
+# Create event profiling code
+($opencl_commands + $opencl_extension_commands).each do |c|
   if c.event?
     if !c.returns_event?
       c.prologues.push <<EOF
@@ -1311,7 +1332,7 @@ EOF
     }
   }
 EOF
-    elsif c.prototype.name != "clCreateUserEvent"
+    elsif c.prototype.name != 'clCreateUserEvent'
       c.epilogues.push <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling) ) {
     int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(_retval, CL_COMPLETE, event_notify, NULL);
@@ -1320,7 +1341,7 @@ EOF
 EOF
     end
   end
-}
+end
 
 str = <<EOF
   if (do_dump && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
@@ -1347,5 +1368,5 @@ str = <<EOF
     }
   }
 EOF
-register_epilogue "clEnqueueNDRangeKernel", str
-register_epilogue "clEnqueueNDRangeKernelINTEL", str
+register_epilogue 'clEnqueueNDRangeKernel', str
+register_epilogue 'clEnqueueNDRangeKernelINTEL', str

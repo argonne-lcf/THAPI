@@ -24,7 +24,7 @@ else
 
   require 'cast-to-yaml'
 
-  constants = %w(
+  constants = %w[
     ZE_MAX_IPC_HANDLE_SIZE
     ZE_MAX_UUID_SIZE
     ZE_MAX_DRIVER_UUID_SIZE
@@ -60,7 +60,7 @@ else
     ZET_MAX_METRIC_PROGRAMMABLE_PARAMETER_NAME_EXP
     ZET_MAX_VALUE_INFO_CSTRING_EXP
     ZEL_COMPONENT_STRING_SIZE
-  )
+  ]
 
   $parser = C::Parser.new
   $parser.type_names << '__builtin_va_list'
@@ -77,9 +77,9 @@ else
   $cpp.macros['ZE_MAJOR_VERSION( _ver )'] = 'ZE_MAJOR_VERSION( _ver )'
   $cpp.macros['ZE_MINOR_VERSION( _ver )'] = 'ZE_MINOR_VERSION( _ver )'
   $cpp.macros['ZE_BIT( _i )'] = 'ZE_BIT( _i )'
-  constants.each { |c|
+  constants.each do |c|
     $cpp.macros[c] = c
-  }
+  end
   $cpp.include_path << './modified_include/'
   begin
     preprocessed_sources_libc = $cpp.preprocess(<<~EOF).gsub(/^#.*?$/, '')

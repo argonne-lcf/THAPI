@@ -2,23 +2,19 @@ require 'yaml'
 require 'pp'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
-require_relative '../../utils/command.rb'
+require_relative '../../utils/command'
 require_relative '../../utils/meta_parameters'
 require 'set'
 
-if ENV["SRC_DIR"]
-  SRC_DIR = ENV["SRC_DIR"]
-else
-  SRC_DIR = "."
-end
+SRC_DIR = ENV['SRC_DIR'] || '.'
 
-RESULT_NAME = "zeResult"
+RESULT_NAME = 'zeResult'
 
-$ze_api_yaml = YAML::load_file("ze_api.yaml")
-$zet_api_yaml = YAML::load_file("zet_api.yaml")
-$zes_api_yaml = YAML::load_file("zes_api.yaml")
-$zel_api_yaml = YAML::load_file("zel_api.yaml")
-$zex_api_yaml = YAML::load_file("zex_api.yaml")
+$ze_api_yaml = YAML.load_file('ze_api.yaml')
+$zet_api_yaml = YAML.load_file('zet_api.yaml')
+$zes_api_yaml = YAML.load_file('zes_api.yaml')
+$zel_api_yaml = YAML.load_file('zel_api.yaml')
+$zex_api_yaml = YAML.load_file('zex_api.yaml')
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
 $zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
@@ -26,14 +22,14 @@ $zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
 $zel_api = YAMLCAst.from_yaml_ast($zel_api_yaml)
 $zex_api = YAMLCAst.from_yaml_ast($zex_api_yaml)
 
-ze_funcs_e = $ze_api["functions"]
-zet_funcs_e = $zet_api["functions"]
-zes_funcs_e = $zes_api["functions"]
-zel_funcs_e = $zel_api["functions"]
-zex_funcs_e = $zex_api["functions"]
+ze_funcs_e = $ze_api['functions']
+zet_funcs_e = $zet_api['functions']
+zes_funcs_e = $zes_api['functions']
+zel_funcs_e = $zel_api['functions']
+zex_funcs_e = $zex_api['functions']
 
-typedefs = $ze_api["typedefs"] + $zet_api["typedefs"] + $zes_api["typedefs"] + $zel_api["typedefs"] + $zex_api["typedefs"]
-structs = $ze_api["structs"] + $zet_api["structs"] + $zes_api["structs"] + $zel_api["structs"] + $zex_api["structs"]
+typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] + $zex_api['typedefs']
+structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zex_api['structs']
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
@@ -42,88 +38,87 @@ gen_ffi_type_map(typedefs)
 INIT_FUNCTIONS = /zeInit|zeLoaderInit/
 
 $struct_type_conversion_table = {
-  "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP" => "ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES",
-  "ZE_STRUCTURE_TYPE_IMAGE_PITCHED_EXP_DESC" => "ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC",
-  "ZE_STRUCTURE_TYPE_IMAGE_BINDLESS_EXP_DESC" => "ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC",
-  "ZE_STRUCTURE_TYPE_DEVICE_PITCHED_ALLOC_EXP_PROPERTIES" => "ZE_STRUCTURE_TYPE_PITCHED_ALLOC_DEVICE_EXP_PROPERTIES",
-  "ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC" => "ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC",
-  "ZE_STRUCTURE_TYPE_EVENT_POOL_COUNTER_BASED_EXP_DESC" => "ZE_STRUCTURE_TYPE_COUNTER_BASED_EVENT_POOL_EXP_DESC",
-  "ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_PROPERTIES_EXT" => "ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_EXT_PROPERTIES",
-  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32",
-  "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE" => "ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32",
-  "ZES_STRUCTURE_TYPE_MEM_PAGE_OFFLINE_STATE_EXP" => "ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP",
+  'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
+  'ZE_STRUCTURE_TYPE_IMAGE_PITCHED_EXP_DESC' => 'ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC',
+  'ZE_STRUCTURE_TYPE_IMAGE_BINDLESS_EXP_DESC' => 'ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC',
+  'ZE_STRUCTURE_TYPE_DEVICE_PITCHED_ALLOC_EXP_PROPERTIES' => 'ZE_STRUCTURE_TYPE_PITCHED_ALLOC_DEVICE_EXP_PROPERTIES',
+  'ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC' => 'ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC',
+  'ZE_STRUCTURE_TYPE_EVENT_POOL_COUNTER_BASED_EXP_DESC' => 'ZE_STRUCTURE_TYPE_COUNTER_BASED_EVENT_POOL_EXP_DESC',
+  'ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_PROPERTIES_EXT' => 'ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_EXT_PROPERTIES',
+  'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE' => 'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32',
+  'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE' => 'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32',
+  'ZES_STRUCTURE_TYPE_MEM_PAGE_OFFLINE_STATE_EXP' => 'ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP',
 }
 
-$struct_type_reject = Set.new([
-])
+$struct_type_reject = Set.new([])
 
-$ze_meta_parameters = YAML::load_file(File.join(SRC_DIR, "ze_meta_parameters.yaml"))
-$ze_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+$ze_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'ze_meta_parameters.yaml'))
+$ze_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
-$zet_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zet_meta_parameters.yaml"))
-$zet_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+  end
+end
+$zet_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zet_meta_parameters.yaml'))
+$zet_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
+  end
+end
 
-$zes_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zes_meta_parameters.yaml"))
-$zes_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+$zes_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zes_meta_parameters.yaml'))
+$zes_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
+  end
+end
 
-$zel_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zel_meta_parameters.yaml"))
-$zel_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+$zel_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zel_meta_parameters.yaml'))
+$zel_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
+  end
+end
 
-$zex_meta_parameters = YAML::load_file(File.join(SRC_DIR, "zex_meta_parameters.yaml"))
-$zex_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+$zex_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zex_meta_parameters.yaml'))
+$zex_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
+  end
+end
 
-$ze_commands = ze_funcs_e.collect { |func|
-  Command::new(func)
-}
+$ze_commands = ze_funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$zet_commands = zet_funcs_e.collect { |func|
-  Command::new(func)
-}
+$zet_commands = zet_funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$zes_commands = zes_funcs_e.collect { |func|
-  Command::new(func)
-}
+$zes_commands = zes_funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$zel_commands = zel_funcs_e.collect { |func|
-  Command::new(func)
-}
+$zel_commands = zel_funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$zex_commands = zex_funcs_e.collect { |func|
-  Command::new(func)
-}
+$zex_commands = zex_funcs_e.collect do |func|
+  Command.new(func)
+end
 
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands).collect { |c|
+ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands).collect do |c|
   [c, upper_snake_case(c.pointer_name)]
-}
-ze_pointer_names += $zex_commands.collect { |c|
+end
+ze_pointer_names += $zex_commands.collect do |c|
   [c, c.pointer_name]
-}
+end
 ZE_POINTER_NAMES = ze_pointer_names.to_h
 
-register_epilogue "zeDeviceGet", <<EOF
+register_epilogue 'zeDeviceGet', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
       for (uint32_t i = 0; i < *pCount; i++)
@@ -132,7 +127,7 @@ register_epilogue "zeDeviceGet", <<EOF
   }
 EOF
 
-register_epilogue "zeDeviceGetSubDevices", <<EOF
+register_epilogue 'zeDeviceGetSubDevices', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phSubdevices && pCount) {
       for (uint32_t i = 0; i < *pCount; i++)
@@ -141,7 +136,7 @@ register_epilogue "zeDeviceGetSubDevices", <<EOF
   }
 EOF
 
-register_epilogue "zeCommandListCreate", <<EOF
+register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _on_create_command_list(*phCommandList, hContext, hDevice, 0);
@@ -149,7 +144,7 @@ register_epilogue "zeCommandListCreate", <<EOF
   }
 EOF
 
-register_epilogue "zeCommandListCreateImmediate", <<EOF
+register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
       _on_create_command_list(*phCommandList, hContext, hDevice, 1);
@@ -157,12 +152,12 @@ register_epilogue "zeCommandListCreateImmediate", <<EOF
   }
 EOF
 
-register_epilogue "zeCommandListReset", <<EOF
+register_epilogue 'zeCommandListReset', <<EOF
   if (_do_profile && hCommandList)
     _on_reset_command_list(hCommandList);
 EOF
 
-register_epilogue "zeCommandListDestroy", <<EOF
+register_epilogue 'zeCommandListDestroy', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
       _on_destroy_command_list(hCommandList);
@@ -170,7 +165,7 @@ register_epilogue "zeCommandListDestroy", <<EOF
   }
 EOF
 
-register_epilogue "zeCommandQueueExecuteCommandLists", <<EOF
+register_epilogue 'zeCommandQueueExecuteCommandLists', <<EOF
   if (_do_profile) {
     if (_retval == ZE_RESULT_SUCCESS && numCommandLists > 0) {
       _on_execute_command_lists(numCommandLists, phCommandLists);
@@ -178,7 +173,7 @@ register_epilogue "zeCommandQueueExecuteCommandLists", <<EOF
   }
 EOF
 
-register_prologue "zeEventPoolCreate", <<EOF
+register_prologue 'zeEventPoolCreate', <<EOF
   ze_event_pool_desc_t _new_desc;
   if (_do_profile && desc && !(desc->flags & ZE_EVENT_POOL_FLAG_IPC)) {
     _new_desc = *desc;
@@ -188,7 +183,7 @@ register_prologue "zeEventPoolCreate", <<EOF
   }
 EOF
 
-register_prologue "zeEventCreate", <<EOF
+register_prologue 'zeEventCreate', <<EOF
   ze_event_desc_t _new_desc;
   if (_do_profile && desc) {
     _new_desc = *desc;
@@ -198,25 +193,25 @@ register_prologue "zeEventCreate", <<EOF
   }
 EOF
 
-register_epilogue "zeEventCreate", <<EOF
+register_epilogue 'zeEventCreate', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS) {
     _on_created_event(*phEvent);
   }
 EOF
 
-register_prologue "zeEventDestroy", <<EOF
+register_prologue 'zeEventDestroy', <<EOF
   if (_do_profile && hEvent) {
     _on_destroy_event(hEvent);
   }
 EOF
 
-register_prologue "zeEventHostReset", <<EOF
+register_prologue 'zeEventHostReset', <<EOF
   if (_do_profile && hEvent) {
     _on_reset_event(hEvent);
   }
 EOF
 
-register_epilogue "zeContextDestroy", <<EOF
+register_epilogue 'zeContextDestroy', <<EOF
   if (_do_profile && hContext) {
     _on_destroy_context(hContext);
   }
@@ -228,7 +223,7 @@ memory_info_dump = lambda { |ptr_name|
 }
 
 memory_info_prologue = lambda { |ptr_names|
-  s = <<EOF
+  <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) || tracepoint_enabled(lttng_ust_ze_properties, memory_info_range))) {
     #{ptr_names.collect { |ptr_name| memory_info_dump.call(ptr_name) }.join(";\n    ")};
@@ -236,7 +231,7 @@ memory_info_prologue = lambda { |ptr_names|
 EOF
 }
 
-register_prologue "zeCommandListAppendMemoryRangesBarrier", <<EOF
+register_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) &&
@@ -245,10 +240,10 @@ register_prologue "zeCommandListAppendMemoryRangesBarrier", <<EOF
       _dump_memory_info(hCommandList, "pRanges[_i]");
 EOF
 
-register_prologue "zeCommandListAppendMemoryCopy", memory_info_prologue.call(["dstptr", "srcptr"])
-register_prologue "zeCommandListAppendMemoryFill", memory_info_prologue.call(["ptr"])
-register_prologue "zeCommandListAppendMemoryCopyRegion", memory_info_prologue.call(["dstptr", "srcptr"])
-  register_prologue "zeCommandListAppendMemoryCopyFromContext", <<EOF
+register_prologue 'zeCommandListAppendMemoryCopy', memory_info_prologue.call(%w[dstptr srcptr])
+register_prologue 'zeCommandListAppendMemoryFill', memory_info_prologue.call(['ptr'])
+register_prologue 'zeCommandListAppendMemoryCopyRegion', memory_info_prologue.call(%w[dstptr srcptr])
+register_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range))) {
@@ -258,14 +253,14 @@ register_prologue "zeCommandListAppendMemoryCopyRegion", memory_info_prologue.ca
       _dump_memory_info_ctx(hContextSrc, srcptr);
   }
 EOF
-register_prologue "zeCommandListAppendImageCopyToMemory", memory_info_prologue.call(["dstptr"])
-register_prologue "zeCommandListAppendImageCopyFromMemory", memory_info_prologue.call(["srcptr"])
-register_prologue "zeCommandListAppendMemoryPrefetch", memory_info_prologue.call(["ptr"])
-register_prologue "zeCommandListAppendMemAdvise", memory_info_prologue.call(["ptr"])
-register_prologue "zeCommandListAppendQueryKernelTimestamps", memory_info_prologue.call(["dstptr"])
-register_prologue "zeCommandListAppendWriteGlobalTimestamp", memory_info_prologue.call(["dstptr"])
-register_prologue "zeCommandListAppendImageCopyToMemoryExt", memory_info_prologue.call(["dstptr"])
-register_prologue "zeCommandListAppendImageCopyFromMemoryExt", memory_info_prologue.call(["srcptr"])
+register_prologue 'zeCommandListAppendImageCopyToMemory', memory_info_prologue.call(['dstptr'])
+register_prologue 'zeCommandListAppendImageCopyFromMemory', memory_info_prologue.call(['srcptr'])
+register_prologue 'zeCommandListAppendMemoryPrefetch', memory_info_prologue.call(['ptr'])
+register_prologue 'zeCommandListAppendMemAdvise', memory_info_prologue.call(['ptr'])
+register_prologue 'zeCommandListAppendQueryKernelTimestamps', memory_info_prologue.call(['dstptr'])
+register_prologue 'zeCommandListAppendWriteGlobalTimestamp', memory_info_prologue.call(['dstptr'])
+register_prologue 'zeCommandListAppendImageCopyToMemoryExt', memory_info_prologue.call(['dstptr'])
+register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prologue.call(['srcptr'])
 
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
@@ -300,39 +295,39 @@ paranoid_drift_prologue = <<EOF
     _dump_command_list_device_timer(hCommandList);
 EOF
 
-[ "zeCommandListAppendLaunchKernel",
-  "zeCommandListAppendBarrier",
-  "zeCommandListAppendLaunchCooperativeKernel",
-  "zeCommandListAppendLaunchKernelIndirect",
-  "zeCommandListAppendLaunchMultipleKernelsIndirect",
-  "zeCommandListAppendMemoryRangesBarrier",
-  "zeCommandListAppendMemoryCopy",
-  "zeCommandListAppendMemoryFill",
-  "zeCommandListAppendMemoryCopyRegion",
-  "zeCommandListAppendMemoryCopyFromContext",
-  "zeCommandListAppendImageCopy",
-  "zeCommandListAppendImageCopyRegion",
-  "zeCommandListAppendImageCopyToMemory",
-  "zeCommandListAppendImageCopyFromMemory",
-  "zeCommandListAppendQueryKernelTimestamps",
-  "zeCommandListAppendWriteGlobalTimestamp",
-  "zeCommandListAppendImageCopyToMemoryExt",
-  "zeCommandListAppendImageCopyFromMemoryExt" ].each { |c|
-    register_prologue c, profiling_prologue.call("hSignalEvent")
-    register_prologue c, paranoid_drift_prologue
-    register_epilogue c, profiling_epilogue.call("hSignalEvent")
-}
+%w[zeCommandListAppendLaunchKernel
+   zeCommandListAppendBarrier
+   zeCommandListAppendLaunchCooperativeKernel
+   zeCommandListAppendLaunchKernelIndirect
+   zeCommandListAppendLaunchMultipleKernelsIndirect
+   zeCommandListAppendMemoryRangesBarrier
+   zeCommandListAppendMemoryCopy
+   zeCommandListAppendMemoryFill
+   zeCommandListAppendMemoryCopyRegion
+   zeCommandListAppendMemoryCopyFromContext
+   zeCommandListAppendImageCopy
+   zeCommandListAppendImageCopyRegion
+   zeCommandListAppendImageCopyToMemory
+   zeCommandListAppendImageCopyFromMemory
+   zeCommandListAppendQueryKernelTimestamps
+   zeCommandListAppendWriteGlobalTimestamp
+   zeCommandListAppendImageCopyToMemoryExt
+   zeCommandListAppendImageCopyFromMemoryExt].each do |c|
+  register_prologue c, profiling_prologue.call('hSignalEvent')
+  register_prologue c, paranoid_drift_prologue
+  register_epilogue c, profiling_epilogue.call('hSignalEvent')
+end
 
-[ "zeCommandListAppendSignalEvent" ].each { |c|
-    register_prologue c, profiling_prologue.call("hEvent")
-    register_epilogue c, profiling_epilogue.call("hEvent")
-}
+['zeCommandListAppendSignalEvent'].each do |c|
+  register_prologue c, profiling_prologue.call('hEvent')
+  register_epilogue c, profiling_epilogue.call('hEvent')
+end
 
-#WARNING
+# WARNING
 # zeModuleGetKernelNames, returns an array of strings.
 # This is problematic for lttng.
 
-register_prologue "zeModuleCreate", <<EOF
+register_prologue 'zeModuleCreate', <<EOF
   int _build_log_release = 0;
   ze_module_build_log_handle_t _hBuildLog = NULL;
   if (tracepoint_enabled(lttng_ust_ze_build, log)) {
@@ -343,7 +338,7 @@ register_prologue "zeModuleCreate", <<EOF
   }
 EOF
 
-register_epilogue "zeModuleCreate", <<EOF
+register_epilogue 'zeModuleCreate', <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_BUILD_FAILURE) && *phBuildLog) {
     _dump_build_log(*phBuildLog);
     if (_build_log_release) {
@@ -353,7 +348,7 @@ register_epilogue "zeModuleCreate", <<EOF
   }
 EOF
 
-register_prologue "zeModuleDynamicLink", <<EOF
+register_prologue 'zeModuleDynamicLink', <<EOF
   int _link_log_release = 0;
   ze_module_build_log_handle_t _hLinkLog = NULL;
   if (tracepoint_enabled(lttng_ust_ze_build, log)) {
@@ -364,7 +359,7 @@ register_prologue "zeModuleDynamicLink", <<EOF
   }
 EOF
 
-register_epilogue "zeModuleDynamicLink", <<EOF
+register_epilogue 'zeModuleDynamicLink', <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_LINK_FAILURE) && *phLinkLog) {
     _dump_build_log(*phLinkLog);
     if (_link_log_release) {
@@ -374,30 +369,30 @@ register_epilogue "zeModuleDynamicLink", <<EOF
   }
 EOF
 
-register_epilogue "zeKernelCreate", <<EOF
+register_epilogue 'zeKernelCreate', <<EOF
  if (tracepoint_enabled(lttng_ust_ze_properties, kernel) && (_retval == ZE_RESULT_SUCCESS)) {
     _dump_kernel_properties(*phKernel);
  }
 EOF
 
-($ze_commands + $zet_commands + $zes_commands + $zel_commands).select { |c|
+($ze_commands + $zet_commands + $zes_commands + $zel_commands).select do |c|
   c.name.match(/(ze|zet|zes|zel)Get.*ProcAddrTable/)
-}.each { |c|
-  parent_type = c['pDdiTable'].type.type.to_s + "_"
+end.each do |c|
+  parent_type = c['pDdiTable'].type.type.to_s + '_'
   child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }
   str = <<EOF
   #{c.type} _retval;
   if (!_do_ddi_table_forward && !_in_loader_init && pDdiTable && version <= ZE_API_VERSION_CURRENT) {
 EOF
-  str << "   "
+  str << '   '
   str << child_types.reverse_each.collect { |k, v|
     version = k.match(/_t_(\d+)_(\d+)/)[1..2]
     sstr = " if (version >= ZE_MAKE_VERSION(#{version[0]},#{version[1]})) {\n"
     v.each { |m|
-      sstr << "      pDdiTable->#{m.name} = #{m.type.to_s.sub(/_t$/,"").sub("_pfn","")}_hid;\n"
+      sstr << "      pDdiTable->#{m.name} = #{m.type.to_s.sub(/_t$/, '').sub('_pfn', '')}_hid;\n"
     }
     sstr << "      _retval = ZE_RESULT_SUCCESS;\n"
-    sstr << "    } else"
+    sstr << '    } else'
   }.join
   str << "\n"
   str << "      goto ukn;\n"
@@ -407,13 +402,13 @@ EOF
   register_epilogue c.name, <<EOF
   }
 EOF
-}
+end
 
 def get_ffi_type(a)
-  if a.type.kind_of?(YAMLCAst::Void)
-    "ffi_type_void"
-  elsif a.type.kind_of?(YAMLCAst::Pointer)
-    "ffi_type_pointer"
+  if a.type.is_a?(YAMLCAst::Void)
+    'ffi_type_void'
+  elsif a.type.is_a?(YAMLCAst::Pointer)
+    'ffi_type_pointer'
   elsif FFI_TYPE_MAP["#{a.type}"]
     FFI_TYPE_MAP["#{a.type}"]
   else
@@ -421,7 +416,7 @@ def get_ffi_type(a)
   end
 end
 
-str = $ze_commands.select { |c| c.name.end_with?('Exp') }.map { |c|
+str = $ze_commands.select { |c| c.name.end_with?('Exp') }.map do |c|
   <<EOF
   if (strcmp(name, "#{c.name}") == 0) {
     *ppFunctionAddress = (void *)(intptr_t)#{ZE_POINTER_NAMES[c]};
@@ -430,11 +425,11 @@ str = $ze_commands.select { |c| c.name.end_with?('Exp') }.map { |c|
     return ZE_RESULT_SUCCESS;
   }
 EOF
-}.join(<<EOF)
+end.join(<<EOF)
   else
 EOF
 
-register_prologue "zeDriverGetExtensionFunctionAddress", str
+register_prologue 'zeDriverGetExtensionFunctionAddress', str
 
 str = <<EOF
   if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
@@ -487,24 +482,24 @@ str << <<EOF
   }
 EOF
 
-register_epilogue "zeDriverGetExtensionFunctionAddress", str
+register_epilogue 'zeDriverGetExtensionFunctionAddress', str
 
-register_epilogue "zeMemOpenIpcHandle", <<EOF
+register_epilogue 'zeMemOpenIpcHandle', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
 EOF
 
-register_epilogue "zexMemOpenIpcHandles", <<EOF
+register_epilogue 'zexMemOpenIpcHandles', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
 EOF
 
-register_prologue "zeLoaderInit", <<EOF
+register_prologue 'zeLoaderInit', <<EOF
   _in_loader_init = 1;
 EOF
 
-register_epilogue "zeInit", <<EOF
+register_epilogue 'zeInit', <<EOF
   _in_loader_init = 0;
 EOF

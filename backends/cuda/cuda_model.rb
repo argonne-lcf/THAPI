@@ -3,44 +3,37 @@ require 'pp'
 require 'set'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
-require_relative '../../utils/command.rb'
+require_relative '../../utils/command'
 require_relative '../../utils/meta_parameters'
 
-if ENV["SRC_DIR"]
-  SRC_DIR = ENV["SRC_DIR"]
-else
-  SRC_DIR = "."
-end
+SRC_DIR = ENV['SRC_DIR'] || '.'
 
-RESULT_NAME = "cuResult"
+RESULT_NAME = 'cuResult'
 
-$cuda_api_versions_yaml = YAML::load_file("cuda_api_versions.yaml")
-$cuda_api_yaml = YAML::load_file("cuda_api.yaml")
-$cuda_exports_api_yaml = YAML::load_file("cuda_exports_api.yaml")
+$cuda_api_versions_yaml = YAML.load_file('cuda_api_versions.yaml')
+$cuda_api_yaml = YAML.load_file('cuda_api.yaml')
+$cuda_exports_api_yaml = YAML.load_file('cuda_exports_api.yaml')
 
 $cuda_api = YAMLCAst.from_yaml_ast($cuda_api_yaml)
 $cuda_exports_api = YAMLCAst.from_yaml_ast($cuda_exports_api_yaml)
 
-cuda_funcs_e = $cuda_api["functions"]
-cuda_exports_funcs_e = $cuda_exports_api["functions"]
+cuda_funcs_e = $cuda_api['functions']
+cuda_exports_funcs_e = $cuda_exports_api['functions']
 
-cuda_types_e = $cuda_api["typedefs"]
-cuda_exports_type_e = $cuda_exports_api["typedefs"]
+cuda_types_e = $cuda_api['typedefs']
+cuda_exports_type_e = $cuda_exports_api['typedefs']
 
 typedefs = cuda_types_e + cuda_exports_type_e
-structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
+structs = $cuda_api['structs'] + $cuda_exports_api['structs']
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
-HEX_INT_TYPES.push("CUdeviceptr")
+HEX_INT_TYPES.push('CUdeviceptr')
 
 class TracepointParameter
-  attr_reader :name
-  attr_reader :type
-  attr_reader :init
-  attr_reader :after
+  attr_reader :name, :type, :init, :after
 
   def initialize(name, type, init, after: false)
     @name = name
@@ -56,11 +49,11 @@ end
 
 class OutNullArray < OutArray
   def initialize(command, name)
-    sname = "_#{name.split("->").join(MEMBER_SEPARATOR)}_size"
+    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
     checks = check_for_null("#{name}")
-    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF, after: true)
+    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF, after: true)
   #{sname} = 0;
-  if(#{checks.join(" && ")}) {
+  if(#{checks.join(' && ')}) {
     while(#{name}[#{sname}] != 0) {
       #{sname} += 2;
     }
@@ -73,11 +66,11 @@ end
 
 class InNullArray < InArray
   def initialize(command, name)
-    sname = "_#{name.split("->").join(MEMBER_SEPARATOR)}_size"
+    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
     checks = check_for_null("#{name}")
-    command.tracepoint_parameters.push TracepointParameter::new(sname, "size_t", <<EOF)
+    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF)
   #{sname} = 0;
-  if(#{checks.join(" && ")}) {
+  if(#{checks.join(' && ')}) {
     while(#{name}[#{sname}] != 0) {
       #{sname} += 2;
     }
@@ -88,55 +81,55 @@ EOF
   end
 end
 
-$cuda_meta_parameters = YAML::load_file(File.join(SRC_DIR,"cuda_meta_parameters.yaml"))
-$cuda_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+$cuda_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'cuda_meta_parameters.yaml'))
+$cuda_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
-$cuda_exports_meta_parameters = YAML::load_file(File.join(SRC_DIR,"cuda_exports_meta_parameters.yaml"))
-$cuda_exports_meta_parameters["meta_parameters"].each  { |func, list|
-  list.each { |type, *args|
+  end
+end
+$cuda_exports_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'cuda_exports_meta_parameters.yaml'))
+$cuda_exports_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
-  }
-}
+  end
+end
 
-$cuda_commands = cuda_funcs_e.collect { |func|
-  Command::new(func)
-}
+$cuda_commands = cuda_funcs_e.collect do |func|
+  Command.new(func)
+end
 
-$cuda_exports_commands = cuda_exports_funcs_e.collect { |func|
-  Command::new(func)
-}
+$cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
+  Command.new(func)
+end
 
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
 CUDA_POINTER_NAMES = ($cuda_commands +
-                      $cuda_exports_commands).collect { |c|
+                      $cuda_exports_commands).collect do |c|
   [c, upper_snake_case(c.pointer_name)]
-}.to_h
+end.to_h
 
 dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, extra);
 EOF
 
-[ "cuLaunchKernel",
-  "cuLaunchKernel_ptsz",
-  "cuLaunchKernelEx",
-  "cuLaunchKernelEx_ptsz" ].each { |m|
+%w[cuLaunchKernel
+   cuLaunchKernel_ptsz
+   cuLaunchKernelEx
+   cuLaunchKernelEx_ptsz].each do |m|
   register_prologue m, dump_args
-}
+end
 
 dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, NULL);
 EOF
 
-[ "cuLaunchCooperativeKernel",
-  "cuLaunchCooperativeKernel_ptsz" ].each { |m|
+%w[cuLaunchCooperativeKernel
+   cuLaunchCooperativeKernel_ptsz].each do |m|
   register_prologue m, dump_args
-}
+end
 
 dump_args = <<EOF
   if (nodeParams) {
@@ -144,12 +137,12 @@ dump_args = <<EOF
   }
 EOF
 
-[ "cuGraphAddKernelNode",
-  "cuGraphExecKernelNodeSetParams" ].each { |m|
+%w[cuGraphAddKernelNode
+   cuGraphExecKernelNodeSetParams].each do |m|
   register_prologue m, dump_args
-}
+end
 
-register_prologue "cuLaunchCooperativeKernelMultiDevice", <<EOF
+register_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   if (launchParamsList) {
     for( unsigned int _i = 0; _i < numDevices; _i++) {
       _dump_kernel_args(launchParamsList[_i].function, launchParamsList[_i].kernelParams, NULL);
@@ -157,7 +150,7 @@ register_prologue "cuLaunchCooperativeKernelMultiDevice", <<EOF
   }
 EOF
 
-register_epilogue "cuGraphKernelNodeGetParams", <<EOF
+register_epilogue 'cuGraphKernelNodeGetParams', <<EOF
   if (_retval == CUDA_SUCCESS && nodeParams) {
     _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
   }
@@ -173,8 +166,8 @@ profiling_start = lambda { |stream|
 EOF
 }
 
-profiling_start_no_stream = profiling_start.call("NULL")
-profiling_start_stream = profiling_start.call("hStream")
+profiling_start_no_stream = profiling_start.call('NULL')
+profiling_start_stream = profiling_start.call('hStream')
 
 profiling_start_config = <<EOF
   CUevent _hStart = NULL;
@@ -189,8 +182,8 @@ profiling_stop = lambda { |stream|
 EOF
 }
 
-profiling_stop_no_stream = profiling_stop.call("NULL")
-profiling_stop_stream = profiling_stop.call("hStream")
+profiling_stop_no_stream = profiling_stop.call('NULL')
+profiling_stop_stream = profiling_stop.call('hStream')
 
 profiling_stop_config = <<EOF
   if (_do_profile && config)
@@ -205,7 +198,7 @@ mem_no_stream_commands = mem_commands - mem_stream_commands
 stream_commands += mem_stream_commands.collect(&:name)
 no_stream_commands += mem_no_stream_commands.collect(&:name)
 
-stream_commands += %w(
+stream_commands += %w[
   cuMemPrefetchAsync
   cuMemPrefetchAsync_ptsz
   cuLaunchGridAsync
@@ -215,76 +208,76 @@ stream_commands += %w(
   cuLaunchKernel_ptsz
   cuLaunchCooperativeKernel_ptsz
   cuLaunchHostFunc_ptsz
-)
+]
 
-no_stream_commands += %w(
+no_stream_commands += %w[
   cuLaunch
   cuLaunchGrid
-)
+]
 
-config_commands = %w(
+config_commands = %w[
   cuLaunchKernelEx
   cuLaunchKernelEx_ptsz
-)
+]
 
-stream_commands.each { |m|
+stream_commands.each do |m|
   register_prologue m, profiling_start_stream
   register_epilogue m, profiling_stop_stream
-}
+end
 
-no_stream_commands.each { |m|
+no_stream_commands.each do |m|
   register_prologue m, profiling_start_no_stream
   register_epilogue m, profiling_stop_no_stream
-}
+end
 
-config_commands.each { |m|
+config_commands.each do |m|
   register_prologue m, profiling_start_config
   register_epilogue m, profiling_stop_config
-}
+end
 
 # if a context is to be destroyed we must attempt to get profiling event results
-[ "cuCtxDestroy",
-  "cuCtxDestroy_v2" ].each { |m|
+%w[cuCtxDestroy
+   cuCtxDestroy_v2].each do |m|
   register_prologue m, <<EOF
   if (ctx) {
     _context_event_cleanup(ctx);
   }
 EOF
-}
+end
 
-register_epilogue "cuDevicePrimaryCtxRetain", <<EOF
+register_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
   if (_do_profile && _retval == CUDA_SUCCESS && *pctx) {
     _primary_context_retain(dev, *pctx);
   }
 EOF
 
-[ "cuDevicePrimaryCtxRelease_v2",
-  "cuDevicePrimaryCtxRelease" ].each { |m|
+%w[cuDevicePrimaryCtxRelease_v2
+   cuDevicePrimaryCtxRelease].each do |m|
   register_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_release(dev);
   }
 EOF
-}
+end
 
-[ "cuDevicePrimaryCtxReset_v2",
-  "cuDevicePrimaryCtxReset" ].each { |m|
+%w[cuDevicePrimaryCtxReset_v2
+   cuDevicePrimaryCtxReset].each do |m|
   register_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_reset(dev);
   }
 EOF
-}
+end
 
 # Export tracing
-register_epilogue "cuGetExportTable", <<EOF
+register_epilogue 'cuGetExportTable', <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
     *ppExportTable = tmp;
   }
 EOF
 
-register_epilogue "cuInit", <<EOF
+register_epilogue 'cuInit', <<EOF
   if (_retval == CUDA_SUCCESS) {
     _init_cuda();
   }
@@ -292,8 +285,8 @@ EOF
 
 # cuGetProcAddress*
 command_names = $cuda_commands.collect(&:name).to_set
-pt_condition = "((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))"
-normal_condition = "((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))"
+pt_condition = '((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))'
+normal_condition = '((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))'
 
 register_proc_callbacks = lambda { |method|
   str = <<EOF
@@ -306,10 +299,12 @@ EOF
   str << $cuda_api_versions_yaml.map { |name, suffixes|
     suffixes.map { |suffix, versions|
       versions.map.with_index { |version, i|
-        fullname = "#{name}#{versions.size - i > 1 ? "_v#{versions.size - i}" : ""}#{suffix}"
+        fullname = "#{name}#{"_v#{versions.size - i}" if versions.size - i > 1}#{suffix}"
         fullname = "#{name}_v2#{suffix}" unless command_names.include?(fullname)
-        sstr = <<EOF
-    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{suffixes.size > 1 ? "&& #{suffix ? "pt_condition" : "normal_condition" } " : ""}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
+        <<EOF
+    if (tracepoint_enabled(lttng_ust_cuda, #{fullname}_#{START}) #{if suffixes.size > 1
+                                                                     "&& #{suffix ? 'pt_condition' : 'normal_condition'} "
+                                                                   end}&& cudaVersion >= #{version} && strcmp(symbol, "#{name}") == 0) {
       wrap_#{fullname}(pfn);
     }
 EOF
@@ -318,15 +313,15 @@ EOF
   }.flatten.join(<<EOF)
     else
 EOF
-#  str << $cuda_commands.collect { |c|
-#    <<EOF
-#    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
-#      wrap_#{c.name}(pfn);
-#    }
-#EOF
-#  }.join(<<EOF)
-#    else
-#EOF
+  #  str << $cuda_commands.collect { |c|
+  #    <<EOF
+  #    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
+  #      wrap_#{c.name}(pfn);
+  #    }
+  # EOF
+  #  }.join(<<EOF)
+  #    else
+  # EOF
   str << <<EOF
   }
 EOF
@@ -334,5 +329,5 @@ EOF
   register_epilogue method, str
 }
 
-register_proc_callbacks.call("cuGetProcAddress")
-register_proc_callbacks.call("cuGetProcAddress_v2")
+register_proc_callbacks.call('cuGetProcAddress')
+register_proc_callbacks.call('cuGetProcAddress_v2')
