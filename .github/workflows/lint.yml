@@ -3,73 +3,71 @@ on:
   push:
   pull_request:
     branches:
-      - main
-      - devel
+    - main
+    - devel
 jobs:
   shfmt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install shfmt
-        run: |
-          curl -sS https://webi.sh/shfmt | sh
-      - name: Get all changed bash file
-        id: changed-bash-files
-        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
-        with:
-          files: |
-            **.sh
-            **.sh.in
-            **.bats
-      - name: Run shfmt check
-        if: steps.changed-bash-files.outputs.any_changed == 'true'
-        run: |
-          shfmt --indent 2 --case-indent --diff ${{ steps.changed-bash-files.outputs.all_changed_files }}
-
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install shfmt
+      run: |
+        curl -sS https://webi.sh/shfmt | sh
+    - name: Get all changed bash file
+      id: changed-bash-files
+      uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      with:
+        files: |
+          **.sh
+          **.sh.in
+          **.bats
+    - name: Run shfmt check
+      if: steps.changed-bash-files.outputs.any_changed == 'true'
+      run: |
+        shfmt --indent 2 --case-indent --diff ${{ steps.changed-bash-files.outputs.all_changed_files }}
   rubocop:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0.1"
-          bundler-cache: true
-      - name: Install RuboCop
-        run: gem install rubocop
-      - name: Get all changed ruby file
-        id: changed-ruby-files
-        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
-        with:
-          files: |
-            **.rb
-            **.rb.in
-      - name: Run RuboCop
-        if: steps.changed-ruby-files.outputs.any_changed == 'true'
-        env:
-          ALL_CHANGED_FILES: ${{ steps.changed-ruby-files.outputs.all_changed_files }}
-        run: |
-          rubocop --display-only-fail-level-offenses --fail-level W ${ALL_CHANGED_FILES}
-          rubocop --display-only-safe-correctable ${ALL_CHANGED_FILES}
-
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: "4.0.1"
+        bundler-cache: true
+    - name: Install RuboCop
+      run: gem install rubocop
+    - name: Get all changed ruby file
+      id: changed-ruby-files
+      uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      with:
+        files: |
+          **.rb
+          **.rb.in
+    - name: Run RuboCop
+      if: steps.changed-ruby-files.outputs.any_changed == 'true'
+      env:
+        ALL_CHANGED_FILES: ${{ steps.changed-ruby-files.outputs.all_changed_files }}
+      run: |
+        rubocop --display-only-fail-level-offenses --fail-level W ${ALL_CHANGED_FILES}
+        rubocop --display-only-safe-correctable ${ALL_CHANGED_FILES}
   yamlfmt:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install yamlfmt
-        run: |
-          go install github.com/google/yamlfmt/cmd/yamlfmt@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
-      - name: Get all changed yaml file
-        id: changed-yaml-files
-        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
-        with:
-          files: |
-            **.yml
-            **.yaml
-      - name: Run yamlfmt lint
-        if: steps.changed-yaml-files.outputs.any_changed == 'true'
-        run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install yamlfmt
+      run: |
+        go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+        echo "$HOME/go/bin" >> $GITHUB_PATH
+    - name: Get all changed yaml file
+      id: changed-yaml-files
+      uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      with:
+        files: |
+          **.yml
+          **.yaml
+    - name: Run yamlfmt lint
+      if: steps.changed-yaml-files.outputs.any_changed == 'true'
+      run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
