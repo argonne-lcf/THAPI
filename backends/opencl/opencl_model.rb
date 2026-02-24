@@ -218,6 +218,7 @@ class Declaration < CLXML
 
   def pointer?
     return @__pointer unless @__pointer.nil?
+
     @__pointer = false
     @__node.children.collect do |n|
       break if n.name == 'name'
@@ -274,6 +275,7 @@ class Parameter < Declaration
 
   def callback?
     return @__callback unless @__callback.nil?
+
     @__callback = false
     @__node.children.collect { |n| @__callback = true if n.text.match('CL_CALLBACK') }
     @__callback
