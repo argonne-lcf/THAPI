@@ -74,25 +74,23 @@ jobs:
     - name: Run yamlfmt lint
       if: steps.changed-yaml-files.outputs.any_changed == 'true'
       run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
-
   clang-format:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install clang-format
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages : clang-format-18
-      - name: Get changed C/C++ files
-        id: changed-cpp-files
-        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
-        with:
-          files: |
-            **.cpp
-            **.hpp
-      - name: Run clang-format
-        if: steps.changed-cpp-files.outputs.any_changed == 'true'
-        run: |
-          clang-format-18 --dry-run --Werror ${{ steps.changed-cpp-files.outputs.all_changed_files }}
-
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install clang-format
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: clang-format-18
+    - name: Get changed C/C++ files
+      id: changed-cpp-files
+      uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      with:
+        files: |
+          **.cpp
+          **.hpp
+    - name: Run clang-format
+      if: steps.changed-cpp-files.outputs.any_changed == 'true'
+      run: |
+        clang-format-18 --dry-run --Werror ${{ steps.changed-cpp-files.outputs.all_changed_files }}
