@@ -142,8 +142,7 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     unless field[:cast_type].end_with?('*')
       if $all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union)
         field[:cast_type_is_struct] = true
-      else
-        type.start_with?('struct')
+      else if type.start_with?('struct')
         field[:cast_type_is_struct] = true
       end
     end
