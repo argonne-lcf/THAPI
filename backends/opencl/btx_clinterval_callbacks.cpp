@@ -38,9 +38,14 @@ static inline bool clRvalIsError(cl_int &cl_rval) {
   return (cl_rval != CL_SUCCESS) && (cl_rval != CL_DEVICE_NOT_AVAILABLE);
 }
 
-static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
-                              const char *event_class_name, const char *hostname, int64_t vpid,
-                              uint64_t vtid, bool err) {
+static void send_host_message(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
+                              const char *event_class_name,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
+                              bool err) {
 
   std::string event_class_name_striped = strip_event_class_name_exit(event_class_name);
   const int64_t entry_ts =
@@ -54,28 +59,46 @@ static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; 
 
 static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
-static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *event_class_name, const char *hostname, int64_t vpid,
+static void entries_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *event_class_name,
+                             const char *hostname,
+                             int64_t vpid,
                              uint64_t vtid) {
   static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
 }
 
-static void exits_error_absent_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                        const char *event_class_name, const char *hostname,
-                                        int64_t vpid, uint64_t vtid) {
+static void exits_error_absent_callback(void *btx_handle,
+                                        void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname,
+                                        int64_t vpid,
+                                        uint64_t vtid) {
   send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, false);
 }
 
-static void exits_error_present_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                         const char *event_class_name, const char *hostname,
-                                         int64_t vpid, uint64_t vtid, cl_int cl_rval) {
+static void exits_error_present_callback(void *btx_handle,
+                                         void *usr_data,
+                                         int64_t ts,
+                                         const char *event_class_name,
+                                         const char *hostname,
+                                         int64_t vpid,
+                                         uint64_t vtid,
+                                         cl_int cl_rval) {
   send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
                     clRvalIsError(cl_rval));
 }
 
-static void traffic_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                   const char *event_class_name, const char *hostname, int64_t vpid,
-                                   uint64_t vtid, size_t size) {
+static void traffic_entry_callback(void *btx_handle,
+                                   void *usr_data,
+                                   int64_t ts,
+                                   const char *event_class_name,
+                                   const char *hostname,
+                                   int64_t vpid,
+                                   uint64_t vtid,
+                                   size_t size) {
   // save traffic size and entry ts for use in exit callback
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
@@ -87,9 +110,14 @@ static void traffic_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
 
 // Note: handles traffic exits, but can't match easily so uses flag to
 // distinguish traffic vs other clEnqueue exits
-static void enqueue_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                  const char *event_class_name, const char *hostname, int64_t vpid,
-                                  uint64_t vtid, cl_int errcode_ret_val) {
+static void enqueue_exit_callback(void *btx_handle,
+                                  void *usr_data,
+                                  int64_t ts,
+                                  const char *event_class_name,
+                                  const char *hostname,
+                                  int64_t vpid,
+                                  uint64_t vtid,
+                                  cl_int errcode_ret_val) {
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
   if (!state->last_enqueue_entry_is_traffic[key]) {
@@ -110,10 +138,16 @@ static void enqueue_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
                                  event_class_name_stripped.c_str(), size, "");
 }
 
-static void get_device_ids_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                         const char *event_class_name, const char *hostname,
-                                         int64_t vpid, uint64_t vtid, cl_int errcode_ret_val,
-                                         cl_uint num_devices_val, cl_device_id *devices_vals) {
+static void get_device_ids_exit_callback(void *btx_handle,
+                                         void *usr_data,
+                                         int64_t ts,
+                                         const char *event_class_name,
+                                         const char *hostname,
+                                         int64_t vpid,
+                                         uint64_t vtid,
+                                         cl_int errcode_ret_val,
+                                         cl_uint num_devices_val,
+                                         cl_device_id *devices_vals) {
   auto state = static_cast<data_t *>(usr_data);
   if ((devices_vals != nullptr) && (errcode_ret_val == CL_SUCCESS)) {
     for (unsigned int i = 0; i < num_devices_val; i++) {
@@ -123,16 +157,26 @@ static void get_device_ids_exit_callback(void *btx_handle, void *usr_data, int64
   }
 }
 
-static void create_sub_devices_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                              const char *event_class_name, const char *hostname,
-                                              int64_t vpid, uint64_t vtid, cl_device_id in_device) {
+static void create_sub_devices_entry_callback(void *btx_handle,
+                                              void *usr_data,
+                                              int64_t ts,
+                                              const char *event_class_name,
+                                              const char *hostname,
+                                              int64_t vpid,
+                                              uint64_t vtid,
+                                              cl_device_id in_device) {
   auto state = static_cast<data_t *>(usr_data);
   state->entry_state.set_data({hostname, vpid, vtid}, reinterpret_cast<thapi_device_id>(in_device));
 }
 
-static void create_sub_devices_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                             const char *event_class_name, const char *hostname,
-                                             int64_t vpid, uint64_t vtid, cl_int errcode_ret_val,
+static void create_sub_devices_exit_callback(void *btx_handle,
+                                             void *usr_data,
+                                             int64_t ts,
+                                             const char *event_class_name,
+                                             const char *hostname,
+                                             int64_t vpid,
+                                             uint64_t vtid,
+                                             cl_int errcode_ret_val,
                                              cl_uint num_devices_ret_val,
                                              cl_device_id *out_devices_vals) {
   auto state = static_cast<data_t *>(usr_data);
@@ -147,16 +191,25 @@ static void create_sub_devices_exit_callback(void *btx_handle, void *usr_data, i
   }
 }
 
-static void create_command_queue_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                                const char *event_class_name, const char *hostname,
-                                                int64_t vpid, uint64_t vtid, cl_device_id device) {
+static void create_command_queue_entry_callback(void *btx_handle,
+                                                void *usr_data,
+                                                int64_t ts,
+                                                const char *event_class_name,
+                                                const char *hostname,
+                                                int64_t vpid,
+                                                uint64_t vtid,
+                                                cl_device_id device) {
   auto state = static_cast<data_t *>(usr_data);
   state->entry_state.set_data({hostname, vpid, vtid}, reinterpret_cast<thapi_device_id>(device));
 }
 
-static void create_command_queue_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                               const char *event_class_name, const char *hostname,
-                                               int64_t vpid, uint64_t vtid,
+static void create_command_queue_exit_callback(void *btx_handle,
+                                               void *usr_data,
+                                               int64_t ts,
+                                               const char *event_class_name,
+                                               const char *hostname,
+                                               int64_t vpid,
+                                               uint64_t vtid,
                                                cl_command_queue command_queue,
                                                cl_int errcode_ret_val) {
   auto state = static_cast<data_t *>(usr_data);
@@ -170,17 +223,28 @@ static void create_command_queue_exit_callback(void *btx_handle, void *usr_data,
   }
 }
 
-static void kernel_info_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                 const char *event_class_name, const char *hostname, int64_t vpid,
-                                 uint64_t vtid, cl_kernel kernel, char *function_name) {
+static void kernel_info_callback(void *btx_handle,
+                                 void *usr_data,
+                                 int64_t ts,
+                                 const char *event_class_name,
+                                 const char *hostname,
+                                 int64_t vpid,
+                                 uint64_t vtid,
+                                 cl_kernel kernel,
+                                 char *function_name) {
   auto state = static_cast<data_t *>(usr_data);
   state->kernel_to_name[{hostname, vpid, kernel}] = function_name;
 }
 
-static void launch_kernel_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                         const char *event_class_name, const char *hostname,
-                                         int64_t vpid, uint64_t vtid,
-                                         cl_command_queue command_queue, cl_kernel kernel) {
+static void launch_kernel_entry_callback(void *btx_handle,
+                                         void *usr_data,
+                                         int64_t ts,
+                                         const char *event_class_name,
+                                         const char *hostname,
+                                         int64_t vpid,
+                                         uint64_t vtid,
+                                         cl_command_queue command_queue,
+                                         cl_kernel kernel) {
   auto state = static_cast<data_t *>(usr_data);
   auto name = state->kernel_to_name[{hostname, vpid, kernel}];
   state->profiled_function_name_and_ts[{hostname, vpid, vtid}] = {vtid, name, ts};
@@ -188,9 +252,13 @@ static void launch_kernel_entry_callback(void *btx_handle, void *usr_data, int64
       state->command_queue_to_device[{hostname, vpid, command_queue}];
 }
 
-static void launch_function_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                           const char *event_class_name, const char *hostname,
-                                           int64_t vpid, uint64_t vtid,
+static void launch_function_entry_callback(void *btx_handle,
+                                           void *usr_data,
+                                           int64_t ts,
+                                           const char *event_class_name,
+                                           const char *hostname,
+                                           int64_t vpid,
+                                           uint64_t vtid,
                                            cl_command_queue command_queue) {
   auto state = static_cast<data_t *>(usr_data);
   auto name_str = strip_event_class_name_entry(event_class_name);
@@ -229,8 +297,14 @@ Exist is not needed to map event to entry.
 Exit is only usefull for host error code:
 */
 
-static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts, const char *hostname,
-                               int64_t vpid, uint64_t vtid, int status, cl_event event) {
+static void profiling_callback(void *btx_handle,
+                               void *usr_data,
+                               int64_t ts,
+                               const char *hostname,
+                               int64_t vpid,
+                               uint64_t vtid,
+                               int status,
+                               cl_event event) {
   auto state = static_cast<data_t *>(usr_data);
 
   const hp_event_t hp_event{hostname, vpid, event};
@@ -260,12 +334,22 @@ static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts, con
 
 // Due to intel bugs where clGetEventProfilingInfo return host time
 // we use the `host_cpu_time` + (start-queue) as the start of the device kernel
-static void profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
-                                       const char *hostname, int64_t vpid, uint64_t vtid,
-                                       cl_event event, cl_int event_command_exec_status,
-                                       cl_int queued_status, cl_ulong queued, cl_int submit_status,
-                                       cl_ulong submit, cl_int start_status, cl_ulong start,
-                                       cl_int end_status, cl_ulong end) {
+static void profiling_callback_results(void *btx_handle,
+                                       void *usr_data,
+                                       int64_t ts,
+                                       const char *hostname,
+                                       int64_t vpid,
+                                       uint64_t vtid,
+                                       cl_event event,
+                                       cl_int event_command_exec_status,
+                                       cl_int queued_status,
+                                       cl_ulong queued,
+                                       cl_int submit_status,
+                                       cl_ulong submit,
+                                       cl_int start_status,
+                                       cl_ulong start,
+                                       cl_int end_status,
+                                       cl_ulong end) {
   auto state = static_cast<data_t *>(usr_data);
 
   bool err = clRvalIsError(event_command_exec_status) || clRvalIsError(queued_status) ||

@@ -9,19 +9,19 @@ static void _load_tracer(void) {
 
   s = getenv("LTTNG_UST_CUDART_LIBCUDART");
   if (s)
-      handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
+    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL);
   else
-      handle = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
+    handle = dlopen("libcudart.so", RTLD_LAZY | RTLD_LOCAL);
   if (handle) {
-    void* ptr = dlsym(handle, "cudaSetDevice");
-    void* self = dlsym(RTLD_DEFAULT, "cudaSetDevice");
-    if (ptr == self) {  /* opening oneself */
-        dlclose(handle);
-        handle = NULL;
+    void *ptr = dlsym(handle, "cudaSetDevice");
+    void *self = dlsym(RTLD_DEFAULT, "cudaSetDevice");
+    if (ptr == self) { /* opening oneself */
+      dlclose(handle);
+      handle = NULL;
     }
   }
 
-  if( !handle ) {
+  if (!handle) {
     fprintf(stderr, "Failure: could not load cudart library!\n");
     exit(1);
   }
@@ -34,16 +34,15 @@ static void _load_tracer(void) {
 }
 
 static inline void _init_tracer(void) {
-  if( __builtin_expect (_initialized, 1) )
+  if (__builtin_expect(_initialized, 1))
     return;
   /* Avoid reentrancy */
   if (!in_init) {
-    in_init=1;
+    in_init = 1;
     __sync_synchronize();
     pthread_once(&_init, _load_tracer);
     __sync_synchronize();
-    in_init=0;
+    in_init = 0;
   }
   _initialized = 1;
 }
-

@@ -11,8 +11,10 @@ struct nic_state_t {
 
 struct data_s {
   /* CXI Sampling */
-  std::unordered_map<hic_t, nic_state_t> nic_metric_ref; //remember the first and last values seen for each (hostname, interface_name, counter)
+  std::unordered_map<hic_t, nic_state_t>
+      nic_metric_ref; // remember the first and last values seen for each (hostname, interface_name,
+                      // counter)
 };
 
 typedef struct data_s data_t;
-#endif //BTX_CXIINTERVAL_CALLBACKS_HPP
+#endif // BTX_CXIINTERVAL_CALLBACKS_HPP

@@ -1,13 +1,13 @@
+#include "btx_cudainterval_callbacks.hpp"
+#include "context_manager.hpp"
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <metababel/metababel.h>
 #include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
-#include "btx_cudainterval_callbacks.hpp"
-#include "context_manager.hpp"
-#include <metababel/metababel.h>
 
 struct data_s {
   // Need to store entry state per thread in order to use in exit callback if
@@ -59,59 +59,67 @@ struct data_s {
 
 using data_t = struct data_s;
 
-static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
+static void send_host_message(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
                               const char *event_class_name,
-                              const char *hostname, int64_t vpid, uint64_t vtid,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
                               bool err) {
-  std::string event_class_name_striped =
-      strip_event_class_name_exit(event_class_name);
-  const int64_t entry_ts = static_cast<data_t *>(usr_data)->entry_state.get_ts(
-      {hostname, vpid, vtid});
+  std::string event_class_name_striped = strip_event_class_name_exit(event_class_name);
+  const int64_t entry_ts =
+      static_cast<data_t *>(usr_data)->entry_state.get_ts({hostname, vpid, vtid});
 
-  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts,
-                              BACKEND_CUDA, event_class_name_striped.c_str(),
-                              (ts - entry_ts), err);
+  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_CUDA,
+                              event_class_name_striped.c_str(), (ts - entry_ts), err);
 }
 
-static void btx_initialize_component(void **usr_data) {
-  *usr_data = new data_t;
+static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
+
+static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
+
+static void entries_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *event_class_name,
+                             const char *hostname,
+                             int64_t vpid,
+                             uint64_t vtid) {
+  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
 }
 
-static void btx_finalize_component(void *usr_data) {
-  delete static_cast<data_t *>(usr_data);
-}
-
-static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *event_class_name, const char *hostname,
-                             int64_t vpid, uint64_t vtid) {
-  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid},
-                                                      ts);
-}
-
-static void exits_cudaError_absent_callback(void *btx_handle, void *usr_data,
+static void exits_cudaError_absent_callback(void *btx_handle,
+                                            void *usr_data,
                                             int64_t ts,
                                             const char *event_class_name,
-                                            const char *hostname, int64_t vpid,
+                                            const char *hostname,
+                                            int64_t vpid,
                                             uint64_t vtid) {
-  send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid,
-                    vtid, false);
+  send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, false);
 }
 
-static void exits_cudaError_present_callback(void *btx_handle, void *usr_data,
+static void exits_cudaError_present_callback(void *btx_handle,
+                                             void *usr_data,
                                              int64_t ts,
                                              const char *event_class_name,
-                                             const char *hostname, int64_t vpid,
-                                             uint64_t vtid, CUresult cuResult) {
-  send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid,
-                    vtid, cuResultIsError(cuResult));
+                                             const char *hostname,
+                                             int64_t vpid,
+                                             uint64_t vtid,
+                                             CUresult cuResult) {
+  send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+                    cuResultIsError(cuResult));
 }
 
 // Note: v2 API takes size_t type for size arg
-static void entries_traffic_v2_callback(void *btx_handle, void *usr_data,
+static void entries_traffic_v2_callback(void *btx_handle,
+                                        void *usr_data,
                                         int64_t ts,
                                         const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, size_t size) {
+                                        const char *hostname,
+                                        int64_t vpid,
+                                        uint64_t vtid,
+                                        size_t size) {
   // save traffic size and entry ts for use in exit callback
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
@@ -120,141 +128,168 @@ static void entries_traffic_v2_callback(void *btx_handle, void *usr_data,
 }
 
 // Note: v1 API takes uint32_t type for size arg
-static void entries_traffic_v1_callback(void *btx_handle, void *usr_data,
+static void entries_traffic_v1_callback(void *btx_handle,
+                                        void *usr_data,
                                         int64_t ts,
                                         const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, uint32_t size) {
-  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
-                              hostname, vpid, vtid, static_cast<size_t>(size));
+                                        const char *hostname,
+                                        int64_t vpid,
+                                        uint64_t vtid,
+                                        uint32_t size) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+                              static_cast<size_t>(size));
 }
 
-static void entries_traffic_2d_callback(void *btx_handle, void *usr_data,
+static void entries_traffic_2d_callback(void *btx_handle,
+                                        void *usr_data,
                                         int64_t ts,
                                         const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, CUDA_MEMCPY2D* pCopy_val) {
-  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
-                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height));
+                                        const char *hostname,
+                                        int64_t vpid,
+                                        uint64_t vtid,
+                                        CUDA_MEMCPY2D *pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+                              static_cast<size_t>(pCopy_val->WidthInBytes * pCopy_val->Height));
 }
 
-static void entries_traffic_2d_v1_callback(void *btx_handle, void *usr_data,
+static void entries_traffic_2d_v1_callback(void *btx_handle,
+                                           void *usr_data,
+                                           int64_t ts,
+                                           const char *event_class_name,
+                                           const char *hostname,
+                                           int64_t vpid,
+                                           uint64_t vtid,
+                                           CUDA_MEMCPY2D_v1 *pCopy_val) {
+  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+                              static_cast<size_t>(pCopy_val->WidthInBytes * pCopy_val->Height));
+}
+
+static void entries_traffic_3d_callback(void *btx_handle,
+                                        void *usr_data,
                                         int64_t ts,
                                         const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, CUDA_MEMCPY2D_v1* pCopy_val) {
-  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
-                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height));
+                                        const char *hostname,
+                                        int64_t vpid,
+                                        uint64_t vtid,
+                                        CUDA_MEMCPY3D *pCopy_val) {
+  entries_traffic_v2_callback(
+      btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+      static_cast<size_t>(pCopy_val->WidthInBytes * pCopy_val->Height * pCopy_val->Depth));
 }
 
-static void entries_traffic_3d_callback(void *btx_handle, void *usr_data,
-                                        int64_t ts,
-                                        const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, CUDA_MEMCPY3D* pCopy_val) {
-  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
-                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height*pCopy_val->Depth));
+static void entries_traffic_3d_v1_callback(void *btx_handle,
+                                           void *usr_data,
+                                           int64_t ts,
+                                           const char *event_class_name,
+                                           const char *hostname,
+                                           int64_t vpid,
+                                           uint64_t vtid,
+                                           CUDA_MEMCPY3D_v1 *pCopy_val) {
+  entries_traffic_v2_callback(
+      btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+      static_cast<size_t>(pCopy_val->WidthInBytes * pCopy_val->Height * pCopy_val->Depth));
 }
 
-static void entries_traffic_3d_v1_callback(void *btx_handle, void *usr_data,
-                                        int64_t ts,
-                                        const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, CUDA_MEMCPY3D_v1* pCopy_val) {
-  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
-                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height*pCopy_val->Depth));
+static void entries_traffic_3d_peer_callback(void *btx_handle,
+                                             void *usr_data,
+                                             int64_t ts,
+                                             const char *event_class_name,
+                                             const char *hostname,
+                                             int64_t vpid,
+                                             uint64_t vtid,
+                                             CUDA_MEMCPY3D_PEER *pCopy_val) {
+  entries_traffic_v2_callback(
+      btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
+      static_cast<size_t>(pCopy_val->WidthInBytes * pCopy_val->Height * pCopy_val->Depth));
 }
 
-static void entries_traffic_3d_peer_callback(void *btx_handle, void *usr_data,
-                                        int64_t ts,
-                                        const char *event_class_name,
-                                        const char *hostname, int64_t vpid,
-                                        uint64_t vtid, CUDA_MEMCPY3D_PEER* pCopy_val) {
-  entries_traffic_v2_callback(btx_handle, usr_data, ts, event_class_name,
-                              hostname, vpid, vtid, static_cast<size_t>(pCopy_val->WidthInBytes*pCopy_val->Height*pCopy_val->Depth));
-}
-
-
-static void exits_traffic_callback(void *btx_handle, void *usr_data, int64_t ts,
+static void exits_traffic_callback(void *btx_handle,
+                                   void *usr_data,
+                                   int64_t ts,
                                    const char *event_class_name,
-                                   const char *hostname, int64_t vpid,
-                                   uint64_t vtid, CUresult cuResult) {
+                                   const char *hostname,
+                                   int64_t vpid,
+                                   uint64_t vtid,
+                                   CUresult cuResult) {
   // Note: don't emit a traffic event if there was an error
   if (cuResultIsError(cuResult)) {
     return;
   }
 
-  std::string event_class_name_stripped =
-      strip_event_class_name_exit(event_class_name);
+  std::string event_class_name_stripped = strip_event_class_name_exit(event_class_name);
   auto state = static_cast<data_t *>(usr_data);
   hpt_t key{hostname, vpid, vtid};
   const int64_t entry_ts = state->entry_state.get_ts(key);
   auto size = state->entry_state.get_data<size_t>(key);
-  btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, entry_ts,
-                                 BACKEND_CUDA,
+  btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_CUDA,
                                  event_class_name_stripped.c_str(), size, "");
 }
 
-static void profiling_callback(void *btx_handle, void *usr_data, int64_t ts,
-                               const char *hostname, int64_t vpid,
-                               uint64_t vtid, CUevent hStart, CUevent hStop) {
+static void profiling_callback(void *btx_handle,
+                               void *usr_data,
+                               int64_t ts,
+                               const char *hostname,
+                               int64_t vpid,
+                               uint64_t vtid,
+                               CUevent hStart,
+                               CUevent hStop) {
   auto state = static_cast<data_t *>(usr_data);
-  auto fn_name_ts = thapi_at(state->hpt_profiled_function_name_and_ts,
-                             hpt_t{hostname, vpid, vtid});
-  state->hp_event_to_function_name_and_ts[{hostname, vpid, hStart, hStop}] =
-      fn_name_ts;
+  auto fn_name_ts = thapi_at(state->hpt_profiled_function_name_and_ts, hpt_t{hostname, vpid, vtid});
+  state->hp_event_to_function_name_and_ts[{hostname, vpid, hStart, hStop}] = fn_name_ts;
 }
 
-static void
-profiling_callback_results(void *btx_handle, void *usr_data, int64_t ts,
-                           const char *hostname, int64_t vpid, uint64_t vtid,
-                           CUevent hStart, CUevent hStop, CUresult startStatus,
-                           CUresult stopStatus, CUresult status, float ms) {
+static void profiling_callback_results(void *btx_handle,
+                                       void *usr_data,
+                                       int64_t ts,
+                                       const char *hostname,
+                                       int64_t vpid,
+                                       uint64_t vtid,
+                                       CUevent hStart,
+                                       CUevent hStop,
+                                       CUresult startStatus,
+                                       CUresult stopStatus,
+                                       CUresult status,
+                                       float ms) {
   auto state = static_cast<data_t *>(usr_data);
 
   // Note: assume profiling_callback is always called before this results
   // callback
   const auto [fn_name, launch_ts] =
-      thapi_at(state->hp_event_to_function_name_and_ts,
-               hp_event_t{hostname, vpid, hStart, hStop});
+      thapi_at(state->hp_event_to_function_name_and_ts, hp_event_t{hostname, vpid, hStart, hStop});
 
   // Note: assume (non_)?kernel_task_stream_(absent|present)_*_callback's
   // (both entry and exit) have been called in the current thread before this
-  auto dev = thapi_at(state->hpt_function_name_to_dev,
-                      hpt_function_name_t{hostname, vpid, vtid, fn_name});
-  bool err = cuResultIsError(startStatus) || cuResultIsError(stopStatus) ||
-             cuResultIsError(status);
+  auto dev =
+      thapi_at(state->hpt_function_name_to_dev, hpt_function_name_t{hostname, vpid, vtid, fn_name});
+  bool err = cuResultIsError(startStatus) || cuResultIsError(stopStatus) || cuResultIsError(status);
 
   // Note: THAPI uses nanoseconds
   uint64_t delta = err ? 0 : static_cast<uint64_t>(ms * 1e6);
   // Note: no subdevices in CUDA, covention is to pass the device for both
   // device and subdevice
   const char *metadata = "";
-  btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid, launch_ts,
-                                BACKEND_CUDA, fn_name.c_str(), delta, dev, dev,
-                                err, metadata);
+  btx_push_message_lttng_device(btx_handle, hostname, vpid, vtid, launch_ts, BACKEND_CUDA,
+                                fn_name.c_str(), delta, dev, dev, err, metadata);
 }
 
 // ===============================
 // Context management
 // ===============================
 
-#define MAKE_ENTRY_CALLBACK1(BASE_NAME, ARG_TYPE)                              \
-  static void BASE_NAME##_callback(void *btx_handle, void *usr_data,           \
-                                   int64_t ts, const char *event_class_name,   \
-                                   const char *hostname, int64_t vpid,         \
-                                   uint64_t vtid, ARG_TYPE arg) {              \
-    auto state = static_cast<data_t *>(usr_data);                              \
-    state->context_manager.BASE_NAME({hostname, vpid, vtid}, arg);             \
+#define MAKE_ENTRY_CALLBACK1(BASE_NAME, ARG_TYPE)                                                  \
+  static void BASE_NAME##_callback(void *btx_handle, void *usr_data, int64_t ts,                   \
+                                   const char *event_class_name, const char *hostname,             \
+                                   int64_t vpid, uint64_t vtid, ARG_TYPE arg) {                    \
+    auto state = static_cast<data_t *>(usr_data);                                                  \
+    state->context_manager.BASE_NAME({hostname, vpid, vtid}, arg);                                 \
   }
 
-#define MAKE_ENTRY_CALLBACK2(BASE_NAME, ARG1_TYPE, ARG2_TYPE)                  \
-  static void BASE_NAME##_callback(                                            \
-      void *btx_handle, void *usr_data, int64_t ts,                            \
-      const char *event_class_name, const char *hostname, int64_t vpid,        \
-      uint64_t vtid, ARG1_TYPE arg1, ARG2_TYPE arg2) {                         \
-    auto state = static_cast<data_t *>(usr_data);                              \
-    state->context_manager.BASE_NAME({hostname, vpid, vtid}, arg1, arg2);      \
+#define MAKE_ENTRY_CALLBACK2(BASE_NAME, ARG1_TYPE, ARG2_TYPE)                                      \
+  static void BASE_NAME##_callback(void *btx_handle, void *usr_data, int64_t ts,                   \
+                                   const char *event_class_name, const char *hostname,             \
+                                   int64_t vpid, uint64_t vtid, ARG1_TYPE arg1, ARG2_TYPE arg2) {  \
+    auto state = static_cast<data_t *>(usr_data);                                                  \
+    state->context_manager.BASE_NAME({hostname, vpid, vtid}, arg1, arg2);                          \
   }
 
 MAKE_ENTRY_CALLBACK1(primary_ctx_retain_entry, CUdevice)
@@ -286,23 +321,32 @@ MAKE_ENTRY_CALLBACK2(stream_create_exit, CUresult, CUstream)
 // ===============================
 // Kernel name and device tracking
 // ===============================
-static void module_get_function_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, char *name) {
+static void module_get_function_entry_callback(void *btx_handle,
+                                               void *usr_data,
+                                               int64_t ts,
+                                               const char *event_class_name,
+                                               const char *hostname,
+                                               int64_t vpid,
+                                               uint64_t vtid,
+                                               char *name) {
   auto state = static_cast<data_t *>(usr_data);
   state->entry_state.set_data({hostname, vpid, vtid}, std::string{name});
 }
 
-static void module_get_function_exit_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, CUresult cuResult,
-    CUfunction cuFunction) {
+static void module_get_function_exit_callback(void *btx_handle,
+                                              void *usr_data,
+                                              int64_t ts,
+                                              const char *event_class_name,
+                                              const char *hostname,
+                                              int64_t vpid,
+                                              uint64_t vtid,
+                                              CUresult cuResult,
+                                              CUfunction cuFunction) {
   if (cuResultIsError(cuResult)) {
     return;
   }
   auto state = static_cast<data_t *>(usr_data);
-  auto kernel_name =
-      state->entry_state.get_data<std::string>({hostname, vpid, vtid});
+  auto kernel_name = state->entry_state.get_data<std::string>({hostname, vpid, vtid});
   state->hp_kernel_to_name[{hostname, vpid, cuFunction}] = kernel_name;
 }
 
@@ -315,9 +359,13 @@ static void module_get_function_exit_callback(
  *
  * These are distinguished by whether f_optional function object is passed
  */
-static void task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
+static void task_entry_helper(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
                               const char *event_class_name,
-                              const char *hostname, int64_t vpid, uint64_t vtid,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
                               CUstream cuStream,
                               const std::optional<CUfunction> f_optional = {}) {
   auto state = static_cast<data_t *>(usr_data);
@@ -340,47 +388,60 @@ static void task_entry_helper(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-static void non_kernel_task_stream_present_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, CUstream cuStream) {
-  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid,
-                    vtid, cuStream);
+static void non_kernel_task_stream_present_entry_callback(void *btx_handle,
+                                                          void *usr_data,
+                                                          int64_t ts,
+                                                          const char *event_class_name,
+                                                          const char *hostname,
+                                                          int64_t vpid,
+                                                          uint64_t vtid,
+                                                          CUstream cuStream) {
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, cuStream);
 }
 
-static void non_kernel_task_stream_absent_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid) {
-  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid,
-                    vtid, nullptr);
+static void non_kernel_task_stream_absent_entry_callback(void *btx_handle,
+                                                         void *usr_data,
+                                                         int64_t ts,
+                                                         const char *event_class_name,
+                                                         const char *hostname,
+                                                         int64_t vpid,
+                                                         uint64_t vtid) {
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, nullptr);
 }
 
-static void kernel_task_stream_present_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, CUstream cuStream,
-    CUfunction f) {
-  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid,
-                    vtid, cuStream, f);
+static void kernel_task_stream_present_entry_callback(void *btx_handle,
+                                                      void *usr_data,
+                                                      int64_t ts,
+                                                      const char *event_class_name,
+                                                      const char *hostname,
+                                                      int64_t vpid,
+                                                      uint64_t vtid,
+                                                      CUstream cuStream,
+                                                      CUfunction f) {
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, cuStream, f);
 }
 
-static void kernel_task_stream_absent_entry_callback(
-    void *btx_handle, void *usr_data, int64_t ts, const char *event_class_name,
-    const char *hostname, int64_t vpid, uint64_t vtid, CUfunction f) {
-  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid,
-                    vtid, nullptr, f);
+static void kernel_task_stream_absent_entry_callback(void *btx_handle,
+                                                     void *usr_data,
+                                                     int64_t ts,
+                                                     const char *event_class_name,
+                                                     const char *hostname,
+                                                     int64_t vpid,
+                                                     uint64_t vtid,
+                                                     CUfunction f) {
+  task_entry_helper(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, nullptr, f);
 }
 
 // ===============================
 // END Kernel name and device tracking
 // ===============================
 
-#define REGISTER_ASSOCIATED_CALLBACK(base_name)                                \
+#define REGISTER_ASSOCIATED_CALLBACK(base_name)                                                    \
   btx_register_callbacks_##base_name(btx_handle, &base_name##_callback);
 
 void btx_register_usr_callbacks(void *btx_handle) {
-  btx_register_callbacks_initialize_component(btx_handle,
-                                              &btx_initialize_component);
-  btx_register_callbacks_finalize_component(btx_handle,
-                                            &btx_finalize_component);
+  btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
+  btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component);
 
   // generic callbacks, for host events
   REGISTER_ASSOCIATED_CALLBACK(entries);
@@ -398,8 +459,7 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(exits_traffic);
 
   // device profiling events
-  btx_register_callbacks_lttng_ust_cuda_profiling_event_profiling(
-      btx_handle, &profiling_callback);
+  btx_register_callbacks_lttng_ust_cuda_profiling_event_profiling(btx_handle, &profiling_callback);
   btx_register_callbacks_lttng_ust_cuda_profiling_event_profiling_results(
       btx_handle, &profiling_callback_results);
 

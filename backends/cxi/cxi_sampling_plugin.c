@@ -42,42 +42,42 @@
 #include "cxi_default_counters.h"
 #include <ctype.h>
 #include <dirent.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <errno.h>
-#include <sys/resource.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 /* ------------------------------------------------------------------ */
 /*                0.  ENV vars & defaults                             */
 /* ------------------------------------------------------------------ */
-#define COUNTER_FILE_ENV         "LTTNG_UST_CXI_SAMPLING_CXI_COUNTERS_FILE"
-#define COUNTER_PERIOD_ENV       "LTTNG_UST_CXI_SAMPLING_CXI_PERIOD_MS"
-#define CXI_ENV_SWITCH           "LTTNG_UST_CXI_SAMPLING_CXI"
+#define COUNTER_FILE_ENV "LTTNG_UST_CXI_SAMPLING_CXI_COUNTERS_FILE"
+#define COUNTER_PERIOD_ENV "LTTNG_UST_CXI_SAMPLING_CXI_PERIOD_MS"
+#define CXI_ENV_SWITCH "LTTNG_UST_CXI_SAMPLING_CXI"
 
-#define CXI_RH_PATH_ENV          "LTTNG_UST_CXI_SAMPLING_RH_BASE"
-#define CXI_TELEMETRY_PATH_ENV   "LTTNG_UST_CXI_SAMPLING_CXI_BASE"
+#define CXI_RH_PATH_ENV "LTTNG_UST_CXI_SAMPLING_RH_BASE"
+#define CXI_TELEMETRY_PATH_ENV "LTTNG_UST_CXI_SAMPLING_CXI_BASE"
 
-static const char *const DEFAULT_RH_BASE        = "/run/cxi";
+static const char *const DEFAULT_RH_BASE = "/run/cxi";
 static const char *const DEFAULT_TELEMETRY_BASE = "/sys/class/cxi";
 
-static const char *rh_base  = NULL;
+static const char *rh_base = NULL;
 static const char *cxi_base = NULL;
 
 /* ------------------------------------------------------------------ */
 /*           helper to load base‐path overrides                       */
 /* ------------------------------------------------------------------ */
 static void load_base_paths(void) {
-    const char *p;
+  const char *p;
 
-    p = getenv(CXI_RH_PATH_ENV);
-    rh_base = (p && *p) ? p : DEFAULT_RH_BASE;
+  p = getenv(CXI_RH_PATH_ENV);
+  rh_base = (p && *p) ? p : DEFAULT_RH_BASE;
 
-    p = getenv(CXI_TELEMETRY_PATH_ENV);
-    cxi_base = (p && *p) ? p : DEFAULT_TELEMETRY_BASE;
+  p = getenv(CXI_TELEMETRY_PATH_ENV);
+  cxi_base = (p && *p) ? p : DEFAULT_TELEMETRY_BASE;
 }
 
 /* ------------------------------------------------------------------ */
@@ -85,16 +85,17 @@ static void load_base_paths(void) {
 /* ------------------------------------------------------------------ */
 
 static const char *const *counter_names = cxi_default_counters;
-static size_t             n_counters    = 0;
+static size_t n_counters = 0;
 
 static void count_default(void) {
-  for (n_counters = 0; cxi_default_counters[n_counters]; ++n_counters);
+  for (n_counters = 0; cxi_default_counters[n_counters]; ++n_counters)
+    ;
 }
 
 static void load_counter_list(void) {
   const char *file = getenv(COUNTER_FILE_ENV);
   if (!file || !*file) {
-    return count_default();                       /* keep defaults */
+    return count_default(); /* keep defaults */
   }
 
   FILE *fp = fopen(file, "r");
@@ -102,35 +103,36 @@ static void load_counter_list(void) {
     return count_default();
   }
 
-  char  **list  = NULL;
-  size_t  used  = 0, cap = 0;
-  char   *line  = NULL;
-  size_t  lcap  = 0;
+  char **list = NULL;
+  size_t used = 0, cap = 0;
+  char *line = NULL;
+  size_t lcap = 0;
 
   while (getline(&line, &lcap, fp) > 0) {
     char *p = line;
-    while (*p && isspace((unsigned char)*p)) ++p; /* ltrim          */
+    while (*p && isspace((unsigned char)*p))
+      ++p; /* ltrim          */
     if (*p == '#' || *p == '\n' || *p == '\0') {
-        continue;
+      continue;
     }
 
     char *e = p + strcspn(p, "\r\n");
     *e = '\0';
 
     if (used == cap) {
-        cap  = cap ? cap * 2 : 32;
-        list = realloc(list, cap * sizeof(*list));
-        if (!list) {
-            used = 0;
-            break;
-        }
+      cap = cap ? cap * 2 : 32;
+      list = realloc(list, cap * sizeof(*list));
+      if (!list) {
+        used = 0;
+        break;
+      }
     }
     list[used++] = strdup(p);
   }
   free(line);
   fclose(fp);
 
-  if (!used) {                                         /* fallback   */
+  if (!used) { /* fallback   */
     return count_default();
   }
 
@@ -138,7 +140,7 @@ static void load_counter_list(void) {
   list[used] = NULL;
 
   counter_names = (const char *const *)list;
-  n_counters    = used;
+  n_counters = used;
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,25 +148,22 @@ static void load_counter_list(void) {
 /* ------------------------------------------------------------------ */
 
 struct fd_entry {
-  const char *counter;          /* name string (points into list) */
-  char        interface_name[16];       /* cxi0 / proc                    */
-  int         fd;               /* open() result                  */
+  const char *counter;     /* name string (points into list) */
+  char interface_name[16]; /* cxi0 / proc                    */
+  int fd;                  /* open() result                  */
   enum { C_CXI, C_RH, C_PROC } kind;
 };
 
-static struct fd_entry *fds      = NULL;
-static size_t            n_fds   = 0;
+static struct fd_entry *fds = NULL;
+static size_t n_fds = 0;
 
-static int add_fd(const char *path,
-                  const char *interface_name,
-                  const char *counter,
-                  int kind) {
+static int add_fd(const char *path, const char *interface_name, const char *counter, int kind) {
   int fd = open(path, O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
-      return -1;
+    return -1;
   }
 
-  struct fd_entry *tmp = realloc(fds, (n_fds + 1)*sizeof(*fds));
+  struct fd_entry *tmp = realloc(fds, (n_fds + 1) * sizeof(*fds));
   if (!tmp) {
     close(fd);
     return -1;
@@ -173,10 +172,11 @@ static int add_fd(const char *path,
 
   fds[n_fds++] = (struct fd_entry){
       .counter = counter,
-      .fd      = fd,
-      .kind    = kind,
+      .fd = fd,
+      .kind = kind,
   };
-  snprintf(fds[n_fds-1].interface_name, sizeof fds[n_fds-1].interface_name, "%s", interface_name);
+  snprintf(fds[n_fds - 1].interface_name, sizeof fds[n_fds - 1].interface_name, "%s",
+           interface_name);
 
   return 0;
 }
@@ -202,18 +202,14 @@ static void open_all_fds(void) {
       const char *cn = counter_names[i];
 
       if (!strncmp(cn, "proc:", 5)) {
-        continue;                               /* later       */
+        continue; /* later       */
       }
 
-      if (!strncmp(cn, "rh:", 3)) {             /* RH counter  */
-        snprintf(path, sizeof(path),
-                 "%s/%s/%s",
-                 rh_base, interface_name, cn + 3);
+      if (!strncmp(cn, "rh:", 3)) { /* RH counter  */
+        snprintf(path, sizeof(path), "%s/%s/%s", rh_base, interface_name, cn + 3);
         add_fd(path, interface_name, cn, C_RH);
-      } else {                                  /* CXI counter */
-        snprintf(path, sizeof(path),
-                 "%s/%s/device/telemetry/%s",
-                 cxi_base, interface_name, cn);
+      } else { /* CXI counter */
+        snprintf(path, sizeof(path), "%s/%s/device/telemetry/%s", cxi_base, interface_name, cn);
         add_fd(path, interface_name, cn, C_CXI);
       }
     }
@@ -235,7 +231,7 @@ static void close_all_fds(void) {
     }
   }
   free(fds);
-  fds   = NULL;
+  fds = NULL;
   n_fds = 0;
 }
 
@@ -245,14 +241,14 @@ static void close_all_fds(void) {
 
 static int read_u64_pread(int fd, uint64_t *val) {
   char buf[64];
-  ssize_t n = pread(fd, buf, sizeof(buf)-1, 0);
+  ssize_t n = pread(fd, buf, sizeof(buf) - 1, 0);
   if (n <= 0) {
     return -1;
   }
   buf[n] = '\0';
 
   if (buf[0] == '@') {
-    return -1;         /* shouldn't happen */
+    return -1; /* shouldn't happen */
   }
 
   /* CXI counters have “value@sec.nsec” - cut at '@' if present */
@@ -271,33 +267,30 @@ static int read_u64_pread(int fd, uint64_t *val) {
 }
 
 void thapi_sampling_cxi(void) {
-    struct rusage ru;
-    getrusage(RUSAGE_SELF, &ru);      /* PROC values once per loop */
+  struct rusage ru;
+  getrusage(RUSAGE_SELF, &ru); /* PROC values once per loop */
 
-    for (size_t i = 0; i < n_fds; ++i) {
-        struct fd_entry *e = &fds[i];
-        uint64_t v = 0;
+  for (size_t i = 0; i < n_fds; ++i) {
+    struct fd_entry *e = &fds[i];
+    uint64_t v = 0;
 
-        if (e->kind == C_PROC) {      /* cheaper open (no sysfs) */
-            if (!strcmp(e->counter, "proc:ivcsw")) {
-                v = ru.ru_nivcsw;
-            } else if (!strcmp(e->counter, "proc:vcsw")) {
-                v = ru.ru_nvcsw;
-            } else {
-                continue;             /* unhandled proc counter */
-            }
-        }
-        else if (read_u64_pread(e->fd, &v) < 0) {
-            continue;                 /* I/O error or parse error */
-        }
-        else {
-            /* unreachable: either C_PROC handled above or read succeeded */
-            /* fall‐through to tracepoint */
-        }
-
-        do_tracepoint(lttng_ust_cxi_sampling,
-                      cxi, e->interface_name, e->counter, v);
+    if (e->kind == C_PROC) { /* cheaper open (no sysfs) */
+      if (!strcmp(e->counter, "proc:ivcsw")) {
+        v = ru.ru_nivcsw;
+      } else if (!strcmp(e->counter, "proc:vcsw")) {
+        v = ru.ru_nvcsw;
+      } else {
+        continue; /* unhandled proc counter */
+      }
+    } else if (read_u64_pread(e->fd, &v) < 0) {
+      continue; /* I/O error or parse error */
+    } else {
+      /* unreachable: either C_PROC handled above or read succeeded */
+      /* fall‐through to tracepoint */
     }
+
+    do_tracepoint(lttng_ust_cxi_sampling, cxi, e->interface_name, e->counter, v);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -307,35 +300,34 @@ void thapi_sampling_cxi(void) {
 static void *plugin_handle = NULL;
 
 void thapi_initialize_sampling_plugin(void) {
-    /* master switch */
-    if (!getenv(CXI_ENV_SWITCH)) {
-        return;
-    }
+  /* master switch */
+  if (!getenv(CXI_ENV_SWITCH)) {
+    return;
+  }
 
-    /* one‑time set‑up of /sys/class/cxi/… file descriptors */
-    /* set up counters + paths + fds */
-    load_counter_list();
-    load_base_paths();       /* <-- initialize rh_base & cxi_base */
-    open_all_fds();
+  /* one‑time set‑up of /sys/class/cxi/… file descriptors */
+  /* set up counters + paths + fds */
+  load_counter_list();
+  load_base_paths(); /* <-- initialize rh_base & cxi_base */
+  open_all_fds();
 
-    /* default 100 ms period unless the user overrides */
-    struct timespec period = {.tv_sec = 0, .tv_nsec = 100 * 1000000L};
-    const char *s = getenv(COUNTER_PERIOD_ENV);
-    if (s) {
-        char *end;
-        long v = strtol(s, &end, 10);
-        if (!*end && v > 0) {
-            period.tv_sec  = v / 1000;
-            period.tv_nsec = (v % 1000) * 1000000L;
-        }
+  /* default 100 ms period unless the user overrides */
+  struct timespec period = {.tv_sec = 0, .tv_nsec = 100 * 1000000L};
+  const char *s = getenv(COUNTER_PERIOD_ENV);
+  if (s) {
+    char *end;
+    long v = strtol(s, &end, 10);
+    if (!*end && v > 0) {
+      period.tv_sec = v / 1000;
+      period.tv_nsec = (v % 1000) * 1000000L;
     }
-    plugin_handle = thapi_register_sampling(&thapi_sampling_cxi, &period);
+  }
+  plugin_handle = thapi_register_sampling(&thapi_sampling_cxi, &period);
 }
 
 void thapi_finalize_sampling_plugin(void) {
-    if (plugin_handle) {
-        thapi_unregister_sampling(plugin_handle);
-    }
-    close_all_fds();
+  if (plugin_handle) {
+    thapi_unregister_sampling(plugin_handle);
+  }
+  close_all_fds();
 }
-

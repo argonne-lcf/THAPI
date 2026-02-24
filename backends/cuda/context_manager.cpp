@@ -1,5 +1,5 @@
-#include <context_manager.hpp>
 #include <cassert>
+#include <context_manager.hpp>
 
 CUdevice CUDAContextManager::get_device(hpt_t hpt) {
   CUcontext ctx = get_top_context(hpt);
@@ -31,8 +31,7 @@ void CUDAContextManager::primary_ctx_retain_entry(hpt_t hpt, CUdevice dev) {
   entry_state_.set_data<CUdevice>(hpt, dev);
 }
 
-void CUDAContextManager::primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult,
-                                                 CUcontext ctx) {
+void CUDAContextManager::primary_ctx_retain_exit(hpt_t hpt, CUresult cuResult, CUcontext ctx) {
   if (cuResultIsError(cuResult)) {
     return;
   }
@@ -45,8 +44,7 @@ void CUDAContextManager::ctx_create_entry(hpt_t hpt, CUdevice dev) {
   entry_state_.set_data<CUdevice>(hpt, dev);
 }
 
-void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult,
-                                         CUcontext ctx) {
+void CUDAContextManager::ctx_create_exit(hpt_t hpt, CUresult cuResult, CUcontext ctx) {
   if (cuResultIsError(cuResult)) {
     return;
   }
@@ -114,8 +112,7 @@ void CUDAContextManager::ctx_push_current_exit(hpt_t hpt, CUresult cuResult) {
 
 // cuCtxPopCurrent_exit
 // Note: entry not needed
-void CUDAContextManager::ctx_pop_current_exit(hpt_t hpt, CUresult cuResult,
-                                              CUcontext cuContext) {
+void CUDAContextManager::ctx_pop_current_exit(hpt_t hpt, CUresult cuResult, CUcontext cuContext) {
   if (cuResultIsError(cuResult)) {
     return;
   }
@@ -124,11 +121,9 @@ void CUDAContextManager::ctx_pop_current_exit(hpt_t hpt, CUresult cuResult,
 
 // cuStreamCreate_exit
 // Note: entry not needed
-void CUDAContextManager::stream_create_exit(hpt_t hpt, CUresult cuResult,
-                                            CUstream cuStream) {
+void CUDAContextManager::stream_create_exit(hpt_t hpt, CUresult cuResult, CUstream cuStream) {
   if (cuResultIsError(cuResult)) {
     return;
   }
-  hp_stream_to_ctx_[{std::get<0>(hpt), std::get<1>(hpt), cuStream}] =
-      get_top_context(hpt);
+  hp_stream_to_ctx_[{std::get<0>(hpt), std::get<1>(hpt), cuStream}] = get_top_context(hpt);
 }
