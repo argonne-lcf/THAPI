@@ -50,4 +50,7 @@ jobs:
             **.rb.in
       - name: Run RuboCop
         if: steps.changed-ruby-files.outputs.any_changed == 'true'
-        run: rubocop --display-only-fail-level-offenses --fail-level W ${{ steps.changed-ruby-files.outputs.all_changed_files }}
+        run: |
+          files=${{ steps.changed-ruby-files.outputs.all_changed_files }}
+          rubocop --display-only-fail-level-offenses --fail-level W ${files}
+          rubocop --display-only-safe-correctable ${files}
