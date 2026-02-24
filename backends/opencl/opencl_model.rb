@@ -217,7 +217,7 @@ class Declaration < CLXML
   end
 
   def pointer?
-    @__pointer unless @__pointer.nil?
+    return @__pointer unless @__pointer.nil?
     @__pointer = false
     @__node.children.collect do |n|
       break if n.name == 'name'
@@ -273,7 +273,7 @@ class Parameter < Declaration
   end
 
   def callback?
-    @__callback unless @__callback.nil?
+    return @__callback unless @__callback.nil?
     @__callback = false
     @__node.children.collect { |n| @__callback = true if n.text.match('CL_CALLBACK') }
     @__callback
@@ -389,7 +389,7 @@ class Prototype < CLXML
 end
 
 class MetaParameter
-  def initialize(command, name, nocheck: false)
+  def initialize(command, name, nocheck: false) # rubocop:disable Lint/UnusedMethodArgument
     @command = command
     @name = name
   end
@@ -406,18 +406,14 @@ class MetaParameter
     end
     expr = name
     case type
-    when *CL_OBJECTS, *CL_EXT_OBJECTS
+    when *CL_OBJECTS, *CL_EXT_OBJECTS, /\*/
       lttng_type = ["ctf_#{lttng_arr_type}_hex", 'uintptr_t']
     when *CL_INT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}", type]
     when *CL_FLOAT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}_hex", CL_FLOAT_SCALARS_MAP[type]]
-    when *CL_STRUCTS
+    when *CL_STRUCTS, 'void'
       lttng_type = ["ctf_#{lttng_arr_type}_text", 'uint8_t']
-    when 'void'
-      lttng_type = ["ctf_#{lttng_arr_type}_text", 'uint8_t']
-    when /\*/
-      lttng_type = ["ctf_#{lttng_arr_type}_hex", 'uintptr_t']
     else
       raise "Unknown Type: #{type.inspect} for #{name} in #{@command.prototype.name}!"
     end
@@ -454,7 +450,7 @@ class InScalar < InMetaParameter
                         nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
       case type
-      when *CL_OBJECTS, *CL_EXT_OBJECTS
+      when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
         @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
                           nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       when *CL_INT_SCALARS
@@ -464,9 +460,6 @@ class InScalar < InMetaParameter
       when *CL_STRUCTS
         @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
                           "#{name} == NULL ? 0 : sizeof(#{type})"]
-      when 'void'
-        @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
-                          nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
       end
@@ -486,16 +479,13 @@ class OutScalar < OutMetaParameter
                          nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
       case type
-      when *CL_OBJECTS, *CL_EXT_OBJECTS
+      when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
         @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
                            nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       when *CL_INT_SCALARS
         @lttng_out_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
       when *CL_FLOAT_SCALARS
         @lttng_out_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when 'void'
-        @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
-                           nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
       else
         raise "Unknown Type: #{type.inspect}!"
       end
