@@ -1,0 +1,52 @@
+name: lint
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+      - devel
+jobs:
+  shfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install shfmt
+        run: |
+          curl -sS https://webi.sh/shfmt | sh
+      - name: Get all changed bash file
+        id: changed-bash-files
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        with:
+          # Avoid using single or double quotes for multiline patterns
+          files: |
+            **.sh
+            **.sh.in
+      - name: Run shfmt check
+        if: steps.changed-bash-files.outputs.any_changed == 'true'
+        run: |
+          shfmt -i 2 -ci -d ${{ steps.changed-bash-files.outputs.all_changed_files }}
+
+  rubocop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.1"
+          bundler-cache: true
+      - name: Install RuboCop
+        run: gem install rubocop
+      - name: Get all changed ruby file
+        id: changed-ruby-files
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        with:
+          # Avoid using single or double quotes for multiline patterns
+          files: |
+            **.rb
+            **.rb.in
+      - name: Run RuboCop
+        if: steps.changed-ruby-files.outputs.any_changed == 'true'
+        run: rubocop --display-only-fail-level-offenses --fail-level W ${{ steps.changed-ruby-files.outputs.all_changed_files }}
