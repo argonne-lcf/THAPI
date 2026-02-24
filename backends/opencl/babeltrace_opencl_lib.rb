@@ -3,7 +3,7 @@ begin
   require 'opencl_ruby_ffi/opencl_arithmetic_gen'
   require 'opencl_ruby_ffi/opencl_ruby_ffi_base_gen'
   require 'opencl_ruby_ffi/opencl_ruby_ffi_base'
-rescue Exception
+rescue LoadError
   module OpenCL
   end
 end
@@ -240,7 +240,7 @@ opencl_model['events'].each do |n, v|
         "\"0x\#{defi[\"#{name}\"].to_s(16)}\""
       elsif structs_by_type[desc['type']]
         "#{structs_by_type[desc['type']]}.new(FFI::MemoryPointer.from_string(defi[\"#{name}\"])).to_s"
-      else
+      else # rubocop:disable Lint/DuplicateBranch
         "defi[\"#{name}\"].inspect"
       end
     "\"#{name}\" => (#{expr})"
