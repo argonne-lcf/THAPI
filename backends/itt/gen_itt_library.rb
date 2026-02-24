@@ -1,12 +1,10 @@
 require_relative 'gen_itt_library_base'
+require 'set'
 
 def unwrap_typedef_to_concrete(t)
   # unwrap chains like Typedef -> Typedef -> Enum
-  seen = {}.compare_by_identity
-  while t.respond_to?(:type) && !seen[t]
-    seen[t] = true
-    t = t.type
-  end
+  seen = Set.new.compare_by_identity
+  t = t.type while t.respond_to?(:type) && seen.add?(t)
   t
 end
 
@@ -164,7 +162,6 @@ end
 
 # Build a set of all function pointer typedef symbols to detect struct fields
 # that should be converted to :pointer when generating layouts
-require 'set'
 $fnptr_syms = Set.new(
   $all_types.select do |t|
     t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
