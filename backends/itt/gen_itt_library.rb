@@ -2,9 +2,9 @@ require_relative 'gen_itt_library_base'
 
 def unwrap_typedef_to_concrete(t)
   # unwrap chains like Typedef -> Typedef -> Enum
-  seen = {}
-  while t.respond_to?(:type) && !seen[t.object_id]
-    seen[t.object_id] = true
+  seen = {}.compare_by_identity
+  while t.respond_to?(:type) && !seen[t]
+    seen[t] = true
     t = t.type
   end
   t
