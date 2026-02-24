@@ -75,6 +75,7 @@ jobs:
       if: steps.changed-yaml-files.outputs.any_changed == 'true'
       run: yamlfmt -lint ${{ steps.changed-yaml-files.outputs.all_changed_files }}
   clangformat:
+    runs-on: ubuntu-latest
     steps:
     - name: Run clang-format style check for C/C++ files and header
       uses: jidicula/clang-format-action@v4.16.0
