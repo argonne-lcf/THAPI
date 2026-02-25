@@ -1,35 +1,31 @@
 require_relative 'cuda_model'
 require_relative '../../utils/gen_probe_base'
-require_relative '../../utils/gen_library_base.rb'
+require_relative '../../utils/gen_library_base'
 
-$all_types = $cuda_api["typedefs"] + $cuda_exports_api["typedefs"]
-$all_structs = $cuda_api["structs"] + $cuda_exports_api["structs"]
-$all_unions = $cuda_api["unions"]
-$all_enums = $cuda_api["enums"]
-$all_funcs = $cuda_api["functions"]
+$all_types = $cuda_api['typedefs'] + $cuda_exports_api['typedefs']
+$all_structs = $cuda_api['structs'] + $cuda_exports_api['structs']
+$all_unions = $cuda_api['unions']
+$all_enums = $cuda_api['enums']
+$all_funcs = $cuda_api['functions']
 
 $all_enum_names = []
 $all_bitfield_names = []
 $all_struct_names = []
 $all_union_names = []
 
-$objects = $all_types.select { |t|
-  t.type.kind_of?(YAMLCAst::Pointer) &&
-  t.type.type.kind_of?(YAMLCAst::Struct)
-}.collect { |t| t.name }
+$objects = $all_types.select do |t|
+  t.type.is_a?(YAMLCAst::Pointer) &&
+    t.type.type.is_a?(YAMLCAst::Struct)
+end.collect { |t| t.name }
 
-$all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-    $objects.push t.name
-  end
-}
+$all_types.each do |t|
+  $objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
+end
 
 $int_scalars = {}
-$all_types.each { |t|
-  if t.type.kind_of?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
-    $int_scalars[t.name] = t.type.name
-  end
-}
+$all_types.each do |t|
+  $int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
+end
 
 def to_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
@@ -37,32 +33,32 @@ end
 
 def to_class_name(name)
   case name
-  when "CUstreamBatchMemOpType"
-    return "CUStreamBatchMemOpType"
-  when "CUstreamBatchMemOpParams"
-    return "CUStreamBatchMemOpParams"
+  when 'CUstreamBatchMemOpType'
+    return 'CUStreamBatchMemOpType'
+  when 'CUstreamBatchMemOpParams'
+    return 'CUStreamBatchMemOpParams'
   end
   mod = to_name_space(name)
-  mod = "" unless mod
-  n = name.gsub(/_t\z/, "").gsub(/\A#{mod}/, "").split("_").collect { |s|
+  mod ||= ''
+  n = name.gsub(/_t\z/, '').gsub(/\A#{mod}/, '').split('_').collect do |s|
     s[0] = s[0].capitalize if s.length > 0
     s
-  }.join
-  mod << n.gsub("Uuid","UUID").gsub("Ipc", "IPC").gsub("P2p", "P2P")
+  end.join
+  mod << n.gsub('Uuid', 'UUID').gsub('Ipc', 'IPC').gsub('P2p', 'P2P')
 end
 
 def to_scoped_class_name(name)
   "CUDA::#{to_class_name(name)}"
 end
 
-alias :original_to_ffi_name :to_ffi_name
+alias original_to_ffi_name to_ffi_name
 
 def to_ffi_name(name)
   case name
-  when "cuuint64_t"
-    return ":cuuint64_t"
-  when "cuuint32_t"
-    return ":cuuint32_t"
+  when 'cuuint64_t'
+    return ':cuuint64_t'
+  when 'cuuint32_t'
+    return ':cuuint32_t'
   end
 
   result = original_to_ffi_name(name, false)
@@ -71,13 +67,13 @@ def to_ffi_name(name)
   n = to_class_name(name)
   mod = to_name_space(name)
   if mod
-    n = n.gsub(/\A#{mod}/, "")
-    mod << "_"
+    n = n.gsub(/\A#{mod}/, '')
+    mod << '_'
     mod.downcase!
   else
-    mod = ""
+    mod = ''
   end
-  n = to_snake_case(n).gsub(/\A_+/, "")
+  n = to_snake_case(n).gsub(/\A_+/, '')
   mod << n
   mod.to_sym.inspect
 end
@@ -85,45 +81,37 @@ end
 def to_name_space(name)
   case name
   when /\ACUDA/
-    "CUDA"
+    'CUDA'
   when /\ACU/
-    "CU"
-  else
-    nil
+    'CU'
   end
 end
 
-$all_types.each { |t|
-  if t.type.kind_of? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
-    if false
-      $all_bitfield_names.push t.name
-    else
-      $all_enum_names.push t.name
-    end
-  elsif t.type.kind_of? YAMLCAst::Struct
+$all_types.each do |t|
+  if t.type.is_a? YAMLCAst::Enum
+    $all_enums.find { |e| t.type.name == e.name }
+    $all_enum_names.push t.name
+  elsif t.type.is_a? YAMLCAst::Struct
     $all_struct_names.push t.name
-  elsif t.type.kind_of? YAMLCAst::Union
+  elsif t.type.is_a? YAMLCAst::Union
     $all_union_names.push t.name
   end
-}
+end
 
 FFI_STRUCT = 'FFI::CUDAStruct'
 FFI_UNION = 'FFI::CUDAUnion'
 
 module YAMLCAst
-
   class Array
     def to_ffi
       t = case type
-      when Pointer
-        ":pointer"
-      else
-       to_ffi_name(type.name)
-      end
-      length_ = length.kind_of?(String) ? length.gsub("sizeof(CUlaunchAttributeID)", "4") : length
-      [ t, length_ ]
+          when Pointer
+            ':pointer'
+          else
+            to_ffi_name(type.name)
+          end
+      length_ = length.is_a?(String) ? length.gsub('sizeof(CUlaunchAttributeID)', '4') : length
+      [t, length_]
     end
   end
-
 end

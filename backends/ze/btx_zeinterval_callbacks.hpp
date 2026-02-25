@@ -41,10 +41,15 @@ typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_pwr_handle
 typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_freq_handle_t> hpdfreq_t;
 typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_engine_handle_t> hpdeng_t;
 
-typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_mem_handle_t, uint32_t> hpdmsd_t;
-typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_fabric_port_handle_t, uint32_t> hpdfsd_t;
-typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_engine_handle_t, uint32_t> hpdesd_t;
-typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_pwr_handle_t, uint32_t> hpdpwrd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_mem_handle_t, uint32_t>
+    hpdmsd_t;
+typedef std::
+    tuple<hostname_t, process_id_t, zes_device_handle_t, zes_fabric_port_handle_t, uint32_t>
+        hpdfsd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_engine_handle_t, uint32_t>
+    hpdesd_t;
+typedef std::tuple<hostname_t, process_id_t, zes_device_handle_t, zes_pwr_handle_t, uint32_t>
+    hpdpwrd_t;
 
 using btx_kernel_group_size_t = std::tuple<uint32_t, uint32_t, uint32_t>;
 using btx_kernel_desct_t =
@@ -56,16 +61,22 @@ using btx_additional_info_kernel_t = std::string /*metadata*/;
 using btx_additional_info =
     std::variant<std::monostate, btx_additional_info_traffic_t, btx_additional_info_kernel_t>;
 
-using btx_launch_desc_t =
-    std::tuple<ze_command_list_handle_t, std::string /*name*/, int64_t /*ts min */,
-               btx_event_t /* type of enum */, btx_additional_info /* additional data */>;
+using btx_launch_desc_t = std::tuple<ze_command_list_handle_t,
+                                     std::string /*name*/,
+                                     int64_t /*ts min */,
+                                     btx_event_t /* type of enum */,
+                                     btx_additional_info /* additional data */>;
 
-using btx_event_desct_t =
-    std::tuple<thread_id_t, ze_command_queue_desc_t, ze_command_list_handle_t,
-               bool /*hCommandListIsImmediate*/, ze_device_handle_t, std::string /*name*/,
-               int64_t /*ts born min*/, clock_lttng_device_t /* clock sync pair */,
-               btx_event_t /* type of enum */,
-               btx_additional_info /* pointer to additional data */>;
+using btx_event_desct_t = std::tuple<thread_id_t,
+                                     ze_command_queue_desc_t,
+                                     ze_command_list_handle_t,
+                                     bool /*hCommandListIsImmediate*/,
+                                     ze_device_handle_t,
+                                     std::string /*name*/,
+                                     int64_t /*ts born min*/,
+                                     clock_lttng_device_t /* clock sync pair */,
+                                     btx_event_t /* type of enum */,
+                                     btx_additional_info /* pointer to additional data */>;
 
 using btx_command_list_desc_t =
     std::tuple<ze_command_queue_desc_t, ze_device_handle_t, bool /*hCommandListIsImmediate*/>;

@@ -21,12 +21,12 @@ else
 
   require 'cast-to-yaml'
 
-  constants = %w(
+  constants = %w[
     CU_COMPUTE_ACCELERATED_TARGET_BASE
     CU_TENSOR_MAP_NUM_QWORDS
     CU_IPC_HANDLE_SIZE
     CUDA_IPC_HANDLE_SIZE
-  )
+  ]
 
   $parser = C::Parser.new
   $parser.type_names << '__builtin_va_list'
@@ -39,8 +39,8 @@ else
   $cpp.macros['_Alignas(v)'] = ''
   $cpp.macros['__CUDA_API_VERSION_INTERNAL'] = '1'
   $cpp.macros['THAPI_NO_INCLUDE'] = ''
-  constants.each { |c|
+  constants.each do |c|
     $cpp.macros[c] = c
-  }
+  end
   $cpp.include_path << './modified_include/'
 end

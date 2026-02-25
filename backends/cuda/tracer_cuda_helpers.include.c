@@ -1,15 +1,15 @@
-//pthread_mutex_t cuda_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t cuda_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
 //
-//struct cuda_closure {
-//  void *ptr;
-//  void *c_ptr;
-//  UT_hash_handle hh;
-//  ffi_cif cif;
-//  ffi_closure *closure;
-//  ffi_type **types;
-//};
+// struct cuda_closure {
+//   void *ptr;
+//   void *c_ptr;
+//   UT_hash_handle hh;
+//   ffi_cif cif;
+//   ffi_closure *closure;
+//   ffi_type **types;
+// };
 //
-//struct cuda_closure * cuda_closures = NULL;
+// struct cuda_closure * cuda_closures = NULL;
 //
 
 #ifdef THAPI_USE_DESTRUCTORS
@@ -28,83 +28,63 @@ union _ptr_u {
   unsigned char s[8];
 };
 
-static void _wrap_export(void *func, CUuuid *pExportTableId, size_t offset,
-                         void **pDestTable, void *pDest) {
-  union _ptr_u f = {.ptr = (intptr_t)func };
-  union _ptr_u u = {.ptr = (intptr_t)pExportTableId };
-  union _ptr_u o = {.ptr = (intptr_t)offset };
+static void
+_wrap_export(void *func, CUuuid *pExportTableId, size_t offset, void **pDestTable, void *pDest) {
+  union _ptr_u f = {.ptr = (intptr_t)func};
+  union _ptr_u u = {.ptr = (intptr_t)pExportTableId};
+  union _ptr_u o = {.ptr = (intptr_t)offset};
   union _ptr_u l = {.ptr = (intptr_t)&_log_export};
-/*
-   0:	57                   	push   %rdi
-   1:	56                   	push   %rsi
-   2:	52                   	push   %rdx
-   3:	51                   	push   %rcx
-   4:	41 50                	push   %r8
-   6:	41 51                	push   %r9
-   8:	41 52                	push   %r10
-   a:	41 53                	push   %r11
-   c:	48 b8 f0 ee db ea 0d 	movabs $0xdeadbeef0,%rax
-  13:	00 00 00
-  16:	48 bf f1 ee db ea 0d 	movabs $0xdeadbeef1,%rdi
-  1d:	00 00 00
-  20:	48 be f2 ee db ea 0d 	movabs $0xdeadbeef2,%rsi
-  27:	00 00 00
-  2a:	ff d0                	callq  *%rax
-  2c:	41 5b                	pop    %r11
-  2e:	41 5a                	pop    %r10
-  30:	41 59                	pop    %r9
-  32:	41 58                	pop    %r8
-  34:	59                   	pop    %rcx
-  35:	5a                   	pop    %rdx
-  36:	5e                   	pop    %rsi
-  37:	5f                   	pop    %rdi
-  38:	48 b8 f4 ee db ea 0d 	movabs $0xdeadbeef4,%rax
-  3f:	00 00 00
-  42:	ff e0                	jmpq   *%rax
-*/
+  /*
+     0:	57                   	push   %rdi
+     1:	56                   	push   %rsi
+     2:	52                   	push   %rdx
+     3:	51                   	push   %rcx
+     4:	41 50                	push   %r8
+     6:	41 51                	push   %r9
+     8:	41 52                	push   %r10
+     a:	41 53                	push   %r11
+     c:	48 b8 f0 ee db ea 0d 	movabs $0xdeadbeef0,%rax
+    13:	00 00 00
+    16:	48 bf f1 ee db ea 0d 	movabs $0xdeadbeef1,%rdi
+    1d:	00 00 00
+    20:	48 be f2 ee db ea 0d 	movabs $0xdeadbeef2,%rsi
+    27:	00 00 00
+    2a:	ff d0                	callq  *%rax
+    2c:	41 5b                	pop    %r11
+    2e:	41 5a                	pop    %r10
+    30:	41 59                	pop    %r9
+    32:	41 58                	pop    %r8
+    34:	59                   	pop    %rcx
+    35:	5a                   	pop    %rdx
+    36:	5e                   	pop    %rsi
+    37:	5f                   	pop    %rdi
+    38:	48 b8 f4 ee db ea 0d 	movabs $0xdeadbeef4,%rax
+    3f:	00 00 00
+    42:	ff e0                	jmpq   *%rax
+  */
 
   unsigned char code[] = {
-    /* Saving registers */
-    0x57,
-    0x56,
-    0x52,
-    0x51,
-    0x41, 0x50,
-    0x41, 0x51,
-    0x41, 0x52,
-    0x41, 0x53,
-    /* Calling _log_export */
-    0x48, 0xb8,
-    l.s[0], l.s[1], l.s[2], l.s[3], l.s[4], l.s[5], l.s[6], l.s[7],
-    0x48, 0xbf,
-    u.s[0], u.s[1], u.s[2], u.s[3], u.s[4], u.s[5], u.s[6], u.s[7],
-    0x48, 0xbe,
-    o.s[0], o.s[1], o.s[2], o.s[3], o.s[4], o.s[5], o.s[6], o.s[7],
-    0xff, 0xd0,
-    /* Restoring registers */
-    0x41, 0x5b,
-    0x41, 0x5a,
-    0x41, 0x59,
-    0x41, 0x58,
-    0x59,
-    0x5a,
-    0x5e,
-    0x5f,
-    /* Call original export */
-    0x48, 0xb8,
-    f.s[0], f.s[1], f.s[2], f.s[3], f.s[4], f.s[5], f.s[6], f.s[7],
-    0xff, 0xe0 };
+      /* Saving registers */
+      0x57, 0x56, 0x52, 0x51, 0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53,
+      /* Calling _log_export */
+      0x48, 0xb8, l.s[0], l.s[1], l.s[2], l.s[3], l.s[4], l.s[5], l.s[6], l.s[7], 0x48, 0xbf,
+      u.s[0], u.s[1], u.s[2], u.s[3], u.s[4], u.s[5], u.s[6], u.s[7], 0x48, 0xbe, o.s[0], o.s[1],
+      o.s[2], o.s[3], o.s[4], o.s[5], o.s[6], o.s[7], 0xff, 0xd0,
+      /* Restoring registers */
+      0x41, 0x5b, 0x41, 0x5a, 0x41, 0x59, 0x41, 0x58, 0x59, 0x5a, 0x5e, 0x5f,
+      /* Call original export */
+      0x48, 0xb8, f.s[0], f.s[1], f.s[2], f.s[3], f.s[4], f.s[5], f.s[6], f.s[7], 0xff, 0xe0};
 
   memcpy(pDest, code, sizeof(code));
   *pDestTable = pDest;
 }
 
-static const void * _wrap_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
-  size_t export_table_sz = *(size_t*)pExportTable;
-  size_t num_entries = (export_table_sz - sizeof(size_t))/sizeof(void*);
+static const void *_wrap_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
+  size_t export_table_sz = *(size_t *)pExportTable;
+  size_t num_entries = (export_table_sz - sizeof(size_t)) / sizeof(void *);
   size_t sz = WRAPPER_SIZE * num_entries + export_table_sz + sizeof(CUuuid);
 
-  void *mem = mmap(0, sz, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+  void *mem = mmap(0, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   if (mem == MAP_FAILED)
     return pExportTable;
 
@@ -116,36 +96,35 @@ static const void * _wrap_export_table(const void *pExportTable, const CUuuid *p
   *newExportTable = export_table_sz;
   memcpy(puuid, pExportTableId, sizeof(CUuuid));
 
-  for(size_t i = 0; i < num_entries; i++) {
+  for (size_t i = 0; i < num_entries; i++) {
     if (entries[i]) {
-      void * wrap;
-      if ((wrap = cuda_extension_dispatcher(pExportTableId, sizeof(size_t) + i * sizeof(void*))))
+      void *wrap;
+      if ((wrap = cuda_extension_dispatcher(pExportTableId, sizeof(size_t) + i * sizeof(void *))))
         new_entries[i] = wrap;
       else
-        _wrap_export(entries[i], (void *)puuid,
-                     sizeof(size_t) + i * sizeof(void*),
-                     new_entries + i,
-                     (void**)((intptr_t)mem + i * WRAPPER_SIZE));
+        _wrap_export(entries[i], (void *)puuid, sizeof(size_t) + i * sizeof(void *),
+                     new_entries + i, (void **)((intptr_t)mem + i * WRAPPER_SIZE));
     } else
       new_entries[i] = entries[i];
   }
 
-  if (mprotect(mem, sz, PROT_READ|PROT_EXEC)) {
+  if (mprotect(mem, sz, PROT_READ | PROT_EXEC)) {
     munmap(mem, sz);
     return pExportTable;
   }
-  return (void*)((intptr_t)mem + WRAPPER_SIZE * num_entries);
+  return (void *)((intptr_t)mem + WRAPPER_SIZE * num_entries);
 }
 
-static const void * _wrap_buggy_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
+static const void *_wrap_buggy_export_table(const void *pExportTable,
+                                            const CUuuid *pExportTableId) {
   size_t export_table_sz = 0;
-  while(*(void **)((intptr_t)pExportTable + export_table_sz))
+  while (*(void **)((intptr_t)pExportTable + export_table_sz))
     export_table_sz += 8;
 
-  size_t num_entries = (export_table_sz)/sizeof(void*);
+  size_t num_entries = (export_table_sz) / sizeof(void *);
   size_t sz = WRAPPER_SIZE * num_entries + export_table_sz + sizeof(CUuuid);
 
-  void *mem = mmap(0, sz, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+  void *mem = mmap(0, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   if (mem == MAP_FAILED)
     return pExportTable;
 
@@ -156,22 +135,20 @@ static const void * _wrap_buggy_export_table(const void *pExportTable, const CUu
 
   memcpy(puuid, pExportTableId, sizeof(CUuuid));
 
-  for(size_t i = 0; i < num_entries; i++) {
-    void * wrap;
-    if ((wrap = cuda_extension_dispatcher(pExportTableId, i * sizeof(void*))))
+  for (size_t i = 0; i < num_entries; i++) {
+    void *wrap;
+    if ((wrap = cuda_extension_dispatcher(pExportTableId, i * sizeof(void *))))
       new_entries[i] = wrap;
     else
-      _wrap_export(entries[i], (void *)puuid,
-                   i * sizeof(void*),
-                   new_entries + i,
-                   (void**)((intptr_t)mem + i * WRAPPER_SIZE));
+      _wrap_export(entries[i], (void *)puuid, i * sizeof(void *), new_entries + i,
+                   (void **)((intptr_t)mem + i * WRAPPER_SIZE));
   }
 
-  if (mprotect(mem, sz, PROT_READ|PROT_EXEC)) {
+  if (mprotect(mem, sz, PROT_READ | PROT_EXEC)) {
     munmap(mem, sz);
     return pExportTable;
   }
-  return (void*)((intptr_t)mem + WRAPPER_SIZE * num_entries);
+  return (void *)((intptr_t)mem + WRAPPER_SIZE * num_entries);
 }
 
 static int _do_trace_export_tables = 0;
@@ -179,13 +156,14 @@ static pthread_mutex_t _cuda_export_tables_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct _export_table_h {
   CUuuid uuid;
-  const void * export_table;
+  const void *export_table;
   UT_hash_handle hh;
 };
 
 static struct _export_table_h *_export_tables = NULL;
 
-static const void * _wrap_and_cache_export_table(const void *pExportTable, const CUuuid *pExportTableId) {
+static const void *_wrap_and_cache_export_table(const void *pExportTable,
+                                                const CUuuid *pExportTableId) {
   if (!pExportTable)
     return NULL;
   struct _export_table_h *export_table_h = NULL;
@@ -201,7 +179,7 @@ static const void * _wrap_and_cache_export_table(const void *pExportTable, const
     return pExportTable;
   }
   export_table_h->uuid = *pExportTableId;
-  if (*(size_t*)pExportTable < 0x1000)
+  if (*(size_t *)pExportTable < 0x1000)
     export_table_h->export_table = _wrap_export_table(pExportTable, pExportTableId);
   else
     export_table_h->export_table = _wrap_buggy_export_table(pExportTable, pExportTableId);
@@ -218,7 +196,7 @@ static inline void _dump_device_properties() {
     return;
   for (int ordinal = 0; ordinal < count; ordinal++) {
     CUdevice device;
-    CUuuid   uuid;
+    CUuuid uuid;
     char name[256];
     res = CU_DEVICE_GET_PTR(&device, ordinal);
     if (res != CUDA_SUCCESS)
@@ -239,11 +217,11 @@ static void _dump_properties() {
   }
 }
 
-static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** extra) {
+static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void **extra) {
   (void)extra;
   size_t argCount;
   CUresult res;
-  int    count = 0;
+  int count = 0;
   cuexp_function_arg_desc_query q;
 
   if (tracepoint_enabled(lttng_ust_cuda_args, arg_count)) {
@@ -274,9 +252,9 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
       int indx = 0;
       while (extra[indx] != CU_LAUNCH_PARAM_END) {
         if ((void *)CU_LAUNCH_PARAM_BUFFER_POINTER == extra[indx]) {
-          argBuffer = extra[indx+1];
+          argBuffer = extra[indx + 1];
         } else if ((void *)CU_LAUNCH_PARAM_BUFFER_SIZE == extra[indx]) {
-          argBufferSize = *(size_t*)(extra + indx + 1);
+          argBufferSize = *(size_t *)(extra + indx + 1);
         }
         indx += 2;
       }
@@ -285,7 +263,8 @@ static inline void _dump_kernel_args(CUfunction f, void **kernelParams, void** e
           q.sz = 0x28;
           res = CUEXP_FUNCTION_GET_ARG_DESCRIPTOR_PTR(f, i, &q);
           if (res == CUDA_SUCCESS && argBufferSize >= q.argOffset + q.argSize) {
-            do_tracepoint(lttng_ust_cuda_args, arg_value, f, i, (void *)((intptr_t)argBuffer + q.argOffset), q.argSize);
+            do_tracepoint(lttng_ust_cuda_args, arg_value, f, i,
+                          (void *)((intptr_t)argBuffer + q.argOffset), q.argSize);
           }
         }
       }
@@ -301,12 +280,12 @@ struct _cuda_event_s;
 struct _cuda_event_s {
   struct _cuda_event_s *prev;
   struct _cuda_event_s *next;
-  CUevent   start;
-  CUevent   stop;
+  CUevent start;
+  CUevent stop;
   CUcontext context;
 };
 
-struct _cuda_event_s * _events = NULL;
+struct _cuda_event_s *_events = NULL;
 
 static inline void _register_cuda_event(CUevent hStart, CUevent hStop, CUcontext hContext) {
   struct _cuda_event_s *ev;
@@ -342,10 +321,10 @@ static inline CUevent _create_record_event(CUstream hStream) {
         return NULL;
     }
   }
-  if(CU_EVENT_CREATE_PTR(&hEvent, CU_EVENT_DEFAULT) != CUDA_SUCCESS) {
+  if (CU_EVENT_CREATE_PTR(&hEvent, CU_EVENT_DEFAULT) != CUDA_SUCCESS) {
     hEvent = NULL;
   } else {
-    if(CU_EVENT_RECORD_PTR(hEvent, hStream) != CUDA_SUCCESS) {
+    if (CU_EVENT_RECORD_PTR(hEvent, hStream) != CUDA_SUCCESS) {
       CU_EVENT_DESTROY_V2_PTR(hEvent);
       hEvent = NULL;
     }
@@ -385,9 +364,8 @@ static void _profile_event_results(struct _cuda_event_s *ev) {
     startStatus = CU_EVENT_QUERY_PTR(ev->start);
     stopStatus = CU_EVENT_QUERY_PTR(ev->stop);
     status = CU_EVENT_ELAPSED_TIME_PTR(&milliseconds, ev->start, ev->stop);
-    do_tracepoint(lttng_ust_cuda_profiling, event_profiling_results,
-                  ev->start, ev->stop, startStatus, stopStatus,
-                  status, milliseconds);
+    do_tracepoint(lttng_ust_cuda_profiling, event_profiling_results, ev->start, ev->stop,
+                  startStatus, stopStatus, status, milliseconds);
   }
 }
 
@@ -433,10 +411,10 @@ struct _primary_contexts_s {
   unsigned int refcount;
 };
 
-struct _primary_contexts_s * _primary_contexts = NULL;
+struct _primary_contexts_s *_primary_contexts = NULL;
 
 static inline void _primary_context_retain(CUdevice dev, CUcontext ctx) {
-  struct _primary_contexts_s * p_c = NULL;
+  struct _primary_contexts_s *p_c = NULL;
 
   pthread_mutex_lock(&_primary_contexts_mutex);
   HASH_FIND_INT(_primary_contexts, &dev, p_c);
@@ -453,7 +431,7 @@ static inline void _primary_context_retain(CUdevice dev, CUcontext ctx) {
 }
 
 static inline void _primary_context_release(CUdevice dev) {
-  struct _primary_contexts_s * p_c = NULL;
+  struct _primary_contexts_s *p_c = NULL;
 
   pthread_mutex_lock(&_primary_contexts_mutex);
   HASH_FIND_INT(_primary_contexts, &dev, p_c);
@@ -471,7 +449,7 @@ static inline void _primary_context_release(CUdevice dev) {
 }
 
 static inline void _primary_context_reset(CUdevice dev) {
-  struct _primary_contexts_s * p_c = NULL;
+  struct _primary_contexts_s *p_c = NULL;
 
   pthread_mutex_lock(&_primary_contexts_mutex);
   HASH_FIND_INT(_primary_contexts, &dev, p_c);
@@ -481,8 +459,7 @@ static inline void _primary_context_reset(CUdevice dev) {
   pthread_mutex_unlock(&_primary_contexts_mutex);
 }
 
-static void THAPI_ATTRIBUTE_DESTRUCTOR
-_lib_cleanup() {
+static void THAPI_ATTRIBUTE_DESTRUCTOR _lib_cleanup() {
   if (_do_cleanup) {
     if (_do_profile) {
       _event_cleanup();
@@ -501,14 +478,14 @@ static void _load_tracer(void) {
   else
     handle = dlopen("libcuda.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   if (handle) {
-    void* ptr = dlsym(handle, "cuInit");
-    if (ptr == (void*)&cuInit) { //opening oneself
+    void *ptr = dlsym(handle, "cuInit");
+    if (ptr == (void *)&cuInit) { // opening oneself
       dlclose(handle);
       handle = NULL;
     }
   }
 
-  if( !handle ) {
+  if (!handle) {
     fprintf(stderr, "THAPI: Failure: could not load cuda library!\n");
     exit(1);
   }
@@ -523,7 +500,7 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_CUDA_PROFILE");
   if (s)
     _do_profile = 1;
-  if(tracepoint_enabled(lttng_ust_cuda_exports, export_called))
+  if (tracepoint_enabled(lttng_ust_cuda_exports, export_called))
     _do_trace_export_tables = 1;
 
   _do_cleanup = 1;
@@ -538,7 +515,7 @@ static __thread volatile int _in_init = 0;
 static volatile int _initialized = 0;
 
 static void _init_tracer(void) {
-  if( __builtin_expect (_initialized, 1) )
+  if (__builtin_expect(_initialized, 1))
     return;
   /* Avoid reentrancy */
   if (!_in_init) {
@@ -551,16 +528,14 @@ static void _init_tracer(void) {
   _initialized = 1;
 }
 
-static void _load_cuda(void) {
-  _dump_properties();
-}
+static void _load_cuda(void) { _dump_properties(); }
 
 static pthread_once_t _init_cuda_once = PTHREAD_ONCE_INIT;
 static __thread volatile int _in_init_cuda = 0;
 static volatile int _initialized_cuda = 0;
 
 static void _init_cuda(void) {
-  if( __builtin_expect (_initialized_cuda, 1) )
+  if (__builtin_expect(_initialized_cuda, 1))
     return;
   if (!_in_init_cuda) {
     _in_init_cuda = 1;

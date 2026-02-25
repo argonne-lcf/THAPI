@@ -27,7 +27,6 @@
       - :name: ^errcode_ret_val$
   - :set_id: exits_error_absent
     :domain: exits - exits_error_present
-
   # Memory traffic
   - :set_id: traffic_entry
     :domain: entries
@@ -43,7 +42,6 @@
       :type: structure
       :members:
       - :name: ^errcode_ret_val$
-
   # Device mapping
   - :set_id: get_device_ids_exit
     :domain: exits
@@ -70,7 +68,6 @@
       - :name: ^errcode_ret_val$
       - :name: ^num_devices_ret_val$
       - :name: ^out_devices_vals$
-
   - :set_id: create_command_queue_entry
     :domain: entries
     :name: "clCreateCommandQueue"
@@ -86,7 +83,6 @@
       :members:
       - :name: ^command_queue$
       - :name: ^errcode_ret_val$
-
   # function name
   - :set_id: kernel_info
     :payload_field_class:
@@ -94,7 +90,6 @@
       :members:
       - :name: ^kernel$
       - :name: ^function_name$
-
   - :set_id: launch_kernel_entry
     :domain: entries
     :payload_field_class:
@@ -102,7 +97,6 @@
       :members:
       - :name: ^command_queue$
       - :name: ^kernel$
-
   - :set_id: launch_function_entry
     :domain: entries - launch_kernel_entry
     :payload_field_class:

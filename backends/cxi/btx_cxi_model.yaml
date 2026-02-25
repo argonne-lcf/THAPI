@@ -40,7 +40,7 @@
           :cast_type: char *
           :type: string
       - :name: value
-        :field_class: 
+        :field_class:
           :cast_type: uint64_t
           :type: integer_unsigned
           :field_value_range: 64

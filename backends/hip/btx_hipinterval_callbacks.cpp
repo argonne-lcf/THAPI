@@ -3,13 +3,12 @@
 #include <cassert>
 #include <iostream>
 #include <regex>
-#include <tuple>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
-#include <hip.h.include>
 #include "xprof_utils.hpp"
-
+#include <hip.h.include>
 
 struct data_s {
   EntryState entry_state;
@@ -17,13 +16,18 @@ struct data_s {
 
 typedef struct data_s data_t;
 
-static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
-                              const char *event_class_name, const char *hostname, int64_t vpid,
-                              uint64_t vtid, bool err) {
+static void send_host_message(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
+                              const char *event_class_name,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
+                              bool err) {
 
   std::string event_class_name_striped = strip_event_class_name_exit(event_class_name);
-  const int64_t entry_ts = static_cast<data_t *>(usr_data)->entry_state.get_ts(
-      {hostname, vpid, vtid});
+  const int64_t entry_ts =
+      static_cast<data_t *>(usr_data)->entry_state.get_ts({hostname, vpid, vtid});
 
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_HIP,
                               event_class_name_striped.c_str(), (ts - entry_ts), err);
@@ -31,27 +35,37 @@ static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
 
 void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
 
-void btx_finalize_component(void *usr_data) {
-  delete static_cast<data_t *>(usr_data);
-}
+void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
-static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *event_class_name, const char *hostname, int64_t vpid,
+static void entries_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *event_class_name,
+                             const char *hostname,
+                             int64_t vpid,
                              uint64_t vtid) {
-  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid},
-                                                      ts);
+  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
 }
 
-static void exits_callback_hipError_absent(void *btx_handle, void *usr_data, int64_t ts,
-                                           const char *event_class_name, const char *hostname,
-                                           int64_t vpid, uint64_t vtid) {
+static void exits_callback_hipError_absent(void *btx_handle,
+                                           void *usr_data,
+                                           int64_t ts,
+                                           const char *event_class_name,
+                                           const char *hostname,
+                                           int64_t vpid,
+                                           uint64_t vtid) {
 
   send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, false);
 }
 
-static void exits_callback_hipError_present(void *btx_handle, void *usr_data, int64_t ts,
-                                            const char *event_class_name, const char *hostname,
-                                            int64_t vpid, uint64_t vtid, hipError_t hipResult) {
+static void exits_callback_hipError_present(void *btx_handle,
+                                            void *usr_data,
+                                            int64_t ts,
+                                            const char *event_class_name,
+                                            const char *hostname,
+                                            int64_t vpid,
+                                            uint64_t vtid,
+                                            hipError_t hipResult) {
 
   // Not an Error (hipResult == hipErrorNotReady)
   bool err = (hipResult != hipSuccess) && (hipResult != hipErrorNotReady);

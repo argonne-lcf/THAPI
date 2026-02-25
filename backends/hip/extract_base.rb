@@ -21,9 +21,9 @@ else
 
   require 'cast-to-yaml'
 
-  constants = %w(
+  constants = %w[
     HIP_IPC_HANDLE_SIZE
-  )
+  ]
 
   $parser = C::Parser.new
   $parser.type_names << '__builtin_va_list'
@@ -35,9 +35,9 @@ else
   $cpp.macros['__asm__(a)'] = ''
   $cpp.macros['__HIP_PLATFORM_AMD__'] = ''
   $cpp.macros['THAPI_NO_INCLUDE'] = ''
-  constants.each { |c|
+  constants.each do |c|
     $cpp.macros[c] = c
-  }
+  end
   $cpp.include_path << './modified_include/'
   $cpp.include_path << "#{SRC_DIR}/"
 

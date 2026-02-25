@@ -56,10 +56,10 @@
     :payload_field_class:
       :type: structure
       :members:
-        - :name: ^endpoint$
-          :field_class:
-            :cast_type: ^ompt_scope_endpoint_t$
-        - :name: ^optype$
-          :field_class:
-            :cast_type: ^ompt_target_data_op_t$
-        - :name: ^bytes$
+      - :name: ^endpoint$
+        :field_class:
+          :cast_type: ^ompt_scope_endpoint_t$
+      - :name: ^optype$
+        :field_class:
+          :cast_type: ^ompt_target_data_op_t$
+      - :name: ^bytes$

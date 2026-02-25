@@ -1,8 +1,6 @@
 require 'cast-to-yaml'
 require 'yaml'
 
-require 'yaml'
-
 def enable_clang_parser?
   ENV.fetch('ENABLE_CLANG_PARSER', '0') == '1'
 end

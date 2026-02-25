@@ -43,7 +43,8 @@ static zesInit_t ZES_INIT_PTR = (void *)0x0;
 typedef ze_result_t (*zesDriverGet_t)(uint32_t *pCount, zes_driver_handle_t *phDrivers);
 static zesDriverGet_t ZES_DRIVER_GET_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceGet_t)(zes_driver_handle_t hDriver, uint32_t *pCount,
+typedef ze_result_t (*zesDeviceGet_t)(zes_driver_handle_t hDriver,
+                                      uint32_t *pCount,
                                       zes_device_handle_t *phDevices);
 static zesDeviceGet_t ZES_DEVICE_GET_PTR = (void *)0x0;
 
@@ -51,7 +52,8 @@ typedef ze_result_t (*zesDeviceGetProperties_t)(zes_device_handle_t hDevice,
                                                 zes_device_properties_t *pProperties);
 static zesDeviceGetProperties_t ZES_DEVICE_GET_PROPERTIES_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumPowerDomains_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+typedef ze_result_t (*zesDeviceEnumPowerDomains_t)(zes_device_handle_t hDevice,
+                                                   uint32_t *pCount,
                                                    zes_pwr_handle_t *phPower);
 static zesDeviceEnumPowerDomains_t ZES_DEVICE_ENUM_POWER_DOMAINS_PTR = (void *)0x0;
 
@@ -76,7 +78,8 @@ typedef ze_result_t (*zesFrequencyGetState_t)(zes_freq_handle_t hFrequency,
                                               zes_freq_state_t *pState);
 static zesFrequencyGetState_t ZES_FREQUENCY_GET_STATE_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumEngineGroups_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+typedef ze_result_t (*zesDeviceEnumEngineGroups_t)(zes_device_handle_t hDevice,
+                                                   uint32_t *pCount,
                                                    zes_engine_handle_t *phEngine);
 static zesDeviceEnumEngineGroups_t ZES_DEVICE_ENUM_ENGINE_GROUPS_PTR = (void *)0x0;
 
@@ -88,7 +91,8 @@ typedef ze_result_t (*zesEngineGetActivity_t)(zes_engine_handle_t hEngine,
                                               zes_engine_stats_t *pStats);
 static zesEngineGetActivity_t ZES_ENGINE_GET_ACTIVITY_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumFabricPorts_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+typedef ze_result_t (*zesDeviceEnumFabricPorts_t)(zes_device_handle_t hDevice,
+                                                  uint32_t *pCount,
                                                   zes_fabric_port_handle_t *phPort);
 static zesDeviceEnumFabricPorts_t ZES_DEVICE_ENUM_FABRIC_PORTS_PTR = (void *)0x0;
 
@@ -104,7 +108,8 @@ typedef ze_result_t (*zesFabricPortGetThroughput_t)(zes_fabric_port_handle_t hPo
                                                     zes_fabric_port_throughput_t *pThroughput);
 static zesFabricPortGetThroughput_t ZES_FABRIC_PORT_GET_THROUGHPUT_PTR = (void *)0x0;
 
-typedef ze_result_t (*zesDeviceEnumMemoryModules_t)(zes_device_handle_t hDevice, uint32_t *pCount,
+typedef ze_result_t (*zesDeviceEnumMemoryModules_t)(zes_device_handle_t hDevice,
+                                                    uint32_t *pCount,
                                                     zes_mem_handle_t *phMemory);
 static zesDeviceEnumMemoryModules_t ZES_DEVICE_ENUM_MEMORY_MODULES_PTR = (void *)0x0;
 

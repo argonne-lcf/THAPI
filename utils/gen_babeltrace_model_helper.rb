@@ -139,15 +139,8 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     member[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
 
     # Too complicated, not sure why `all_struct_names` is not enough
-    unless field[:cast_type].end_with?('*')
-      if $all_struct_names.include?(t)
-        field[:cast_type_is_struct] = true
-      elsif $types_by_name[t]&.type.is_a?(YAMLCAst::Union)
-        field[:cast_type_is_struct] = true
-      else
-        type.start_with?('struct')
-        field[:cast_type_is_struct] = true
-      end
+    if !field[:cast_type].end_with?('*') && ($all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
+      field[:cast_type_is_struct] = true
     end
   else
     raise "unsupported lttng type: #{lttng.inspect}"
@@ -173,10 +166,9 @@ def get_fields_types_name(c, dir)
          when :stop  then Out
          end
 
-  fields += c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
+  fields + c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
     meta_parameter_types_name(m, dir)
   end.flatten(1)
-
 end
 
 def gen_event_fields_bt_model(c, dir)

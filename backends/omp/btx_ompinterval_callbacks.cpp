@@ -21,8 +21,10 @@ static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; 
 static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
 // Get the start of the "ompt_scope" or return empty optional
-static std::optional<int64_t> set_or_get_start(void *usr_data, hpt_function_name_omp_t key,
-                                               ompt_scope_endpoint_t endpoint, int64_t ts) {
+static std::optional<int64_t> set_or_get_start(void *usr_data,
+                                               hpt_function_name_omp_t key,
+                                               ompt_scope_endpoint_t endpoint,
+                                               int64_t ts) {
   auto state = static_cast<data_t *>(usr_data);
   switch (endpoint) {
   case ompt_scope_begin:
@@ -109,9 +111,14 @@ static std::string build_name(void *usr_data, const char *event_class_name, E ki
 }
 
 template <typename EnumType = void *>
-static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *event_class_name, const char *hostname, int64_t vpid,
-                             uint64_t vtid, ompt_scope_endpoint_t endpoint,
+static void host_op_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *event_class_name,
+                             const char *hostname,
+                             int64_t vpid,
+                             uint64_t vtid,
+                             ompt_scope_endpoint_t endpoint,
                              EnumType kind = EnumType()) {
 
   std::string op_name = build_name(usr_data, event_class_name, kind);
@@ -123,9 +130,15 @@ static void host_op_callback(void *btx_handle, void *usr_data, int64_t ts,
   }
 }
 
-static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                const char *event_class_name, const char *hostname, int64_t vpid,
-                                uint64_t vtid, ompt_scope_endpoint_t endpoint, size_t bytes,
+static void traffic_op_callback(void *btx_handle,
+                                void *usr_data,
+                                int64_t ts,
+                                const char *event_class_name,
+                                const char *hostname,
+                                int64_t vpid,
+                                uint64_t vtid,
+                                ompt_scope_endpoint_t endpoint,
+                                size_t bytes,
                                 ompt_target_data_op_t kind) {
 
   std::string op_name = build_name(usr_data, event_class_name, kind);
@@ -146,27 +159,41 @@ static void traffic_op_callback(void *btx_handle, void *usr_data, int64_t ts,
 // - ompt_sync_region_t
 // - ompt_target_t
 // - ompt_target_data_op_t
-static void btx_host_sync_region_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                          const char *event_class_name, const char *hostname,
-                                          int64_t vpid, uint64_t vtid, ompt_sync_region_t kind,
+static void btx_host_sync_region_callback(void *btx_handle,
+                                          void *usr_data,
+                                          int64_t ts,
+                                          const char *event_class_name,
+                                          const char *hostname,
+                                          int64_t vpid,
+                                          uint64_t vtid,
+                                          ompt_sync_region_t kind,
                                           ompt_scope_endpoint_t endpoint) {
 
   host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
                    kind);
 }
 
-static void btx_host_target_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                     const char *event_class_name, const char *hostname,
-                                     int64_t vpid, uint64_t vtid, ompt_target_t kind,
+static void btx_host_target_callback(void *btx_handle,
+                                     void *usr_data,
+                                     int64_t ts,
+                                     const char *event_class_name,
+                                     const char *hostname,
+                                     int64_t vpid,
+                                     uint64_t vtid,
+                                     ompt_target_t kind,
                                      ompt_scope_endpoint_t endpoint) {
 
   host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
                    kind);
 }
 
-static void btx_host_target_data_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                          const char *event_class_name, const char *hostname,
-                                          int64_t vpid, uint64_t vtid,
+static void btx_host_target_data_callback(void *btx_handle,
+                                          void *usr_data,
+                                          int64_t ts,
+                                          const char *event_class_name,
+                                          const char *hostname,
+                                          int64_t vpid,
+                                          uint64_t vtid,
                                           ompt_scope_endpoint_t endpoint,
                                           ompt_target_data_op_t optype) {
 
@@ -174,20 +201,30 @@ static void btx_host_target_data_callback(void *btx_handle, void *usr_data, int6
                    optype);
 }
 
-static void btx_host_callback(void *btx_handle, void *usr_data, int64_t ts,
-                              const char *event_class_name, const char *hostname, int64_t vpid,
-                              uint64_t vtid, ompt_scope_endpoint_t endpoint) {
+static void btx_host_callback(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
+                              const char *event_class_name,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
+                              ompt_scope_endpoint_t endpoint) {
 
   host_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint);
 }
 
 // Traffic
 
-static void btx_traffic_target_data_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                             const char *event_class_name, const char *hostname,
-                                             int64_t vpid, uint64_t vtid,
+static void btx_traffic_target_data_callback(void *btx_handle,
+                                             void *usr_data,
+                                             int64_t ts,
+                                             const char *event_class_name,
+                                             const char *hostname,
+                                             int64_t vpid,
+                                             uint64_t vtid,
                                              ompt_scope_endpoint_t endpoint,
-                                             ompt_target_data_op_t optype, size_t bytes) {
+                                             ompt_target_data_op_t optype,
+                                             size_t bytes) {
 
   traffic_op_callback(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, endpoint,
                       bytes, optype);

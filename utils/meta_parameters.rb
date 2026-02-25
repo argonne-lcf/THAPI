@@ -1,6 +1,6 @@
-START = "entry"
-STOP = "exit"
-SUFFIXES = { :start => START, :stop => STOP }
+START = 'entry'
+STOP = 'exit'
+SUFFIXES = { start: START, stop: STOP }
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
@@ -17,9 +17,8 @@ module Out
 end
 
 class MetaParameter
-  attr_reader :name
-  attr_reader :command
-  attr_reader :lttng_type
+  attr_reader :name, :command, :lttng_type
+
   def initialize(command, name)
     @command = command
     @name = name
@@ -34,22 +33,21 @@ class MetaParameter
   end
 
   def check_for_null(expr, incl = true)
-    list = expr.split("->")
+    list = expr.split('->')
     if list.length == 1
-      if incl
-        return [expr]
-      else
-        return []
-      end
+      return [expr] if incl
+
+      []
+
     else
       res = []
-      pre = ""
-      list[0..(incl ? -1 : -2)].each { |n|
+      pre = ''
+      list[0..(incl ? -1 : -2)].each do |n|
         pre += n
         res.push(pre)
-        pre += "->"
-      }
-      return res
+        pre += '->'
+      end
+      res
     end
   end
 
@@ -57,7 +55,7 @@ class MetaParameter
     if checks.empty?
       expr
     else
-      "(#{checks.join(" && ")} ? #{expr} : #{default})"
+      "(#{checks.join(' && ')} ? #{expr} : #{default})"
     end
   end
 end
@@ -67,14 +65,17 @@ class StringMetaParameter < MetaParameter
     super(command, name)
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
+
     t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    ev = LTTng::TracepointField::new
+    raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
+
+    ev = LTTng::TracepointField.new
     if size
       s = command[size]
       raise "Invalid parameter: #{size} for #{command.name}!" unless s
+
       ev.macro = :ctf_sequence_text
-      if s.type.kind_of?(YAMLCAst::Pointer)
+      if s.type.is_a?(YAMLCAst::Pointer)
         checks = check_for_null("#{size}") + check_for_null("#{name}")
         sz = sanitize_expression("*#{size}", checks)
         st = "#{s.type.type}"
@@ -83,7 +84,7 @@ class StringMetaParameter < MetaParameter
         sz = sanitize_expression("#{size}", checks)
         st = "#{s.type}"
       end
-      ev.type = "char"
+      ev.type = 'char'
       ev.length = sz
       ev.length_type = st
     else
@@ -97,6 +98,7 @@ end
 
 class InString < StringMetaParameter
   prepend In
+
   def initialize(command, name, size = nil)
     super
     @lttng_in_type = @lttng_type
@@ -105,6 +107,7 @@ end
 
 class OutString < StringMetaParameter
   prepend Out
+
   def initialize(command, name, size = nil)
     super
     @lttng_out_type = @lttng_type
@@ -113,11 +116,13 @@ end
 
 class ReturnString < MetaParameter
   prepend Out
+
   def initialize(command)
     super(command, :result)
-    raise "Command does not return!" unless command.has_return_type?
-    raise "Return type is not a pointer: #{command.type}!" unless command.type.kind_of?(YAMLCAst::Pointer)
-    ev = LTTng::TracepointField::new
+    raise 'Command does not return!' unless command.has_return_type?
+    raise "Return type is not a pointer: #{command.type}!" unless command.type.is_a?(YAMLCAst::Pointer)
+
+    ev = LTTng::TracepointField.new
     ev.macro = :ctf_string
     ev.name = "#{RESULT_NAME}_val"
     ev.expression = "#{RESULT_NAME}"
@@ -127,13 +132,16 @@ end
 
 class OutPtrString < MetaParameter
   prepend Out
+
   def initialize(command, name)
     super
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
+
     t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    ev = LTTng::TracepointField::new
+    raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
+
+    ev = LTTng::TracepointField.new
     ev.macro = :ctf_string
     ev.name = "#{name}_val_val"
     ev.expression = sanitize_expression("*#{name}")
@@ -149,24 +157,26 @@ class ScalarMetaParameter < MetaParameter
     @type = type
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
+
     t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    if type
-      st = eval(type)
-    else
-      st = t.type
-    end
+    raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
+
+    st = if type
+           eval(type)
+         else
+           t.type
+         end
     lttngt = st.lttng_type
-    lttngt.name = name + "_val"
+    lttngt.name = name + '_val'
     if lttngt.macro == :ctf_array_text
       lttngt.macro = :ctf_sequence_text
       lttngt.expression = sanitize_expression("#{name}")
       checks = check_for_null("#{name}")
       lttngt.length = sanitize_expression("#{lttngt.length}", checks)
-      lttngt.length_type = "size_t"
+      lttngt.length_type = 'size_t'
     elsif type
       checks = check_for_null("#{name}")
-      lttngt.expression = sanitize_expression("*(#{YAMLCAst::Pointer::new(type: st)})#{name}", checks)
+      lttngt.expression = sanitize_expression("*(#{YAMLCAst::Pointer.new(type: st)})#{name}", checks)
     else
       checks = check_for_null("#{name}")
       lttngt.expression = sanitize_expression("*#{name}", checks)
@@ -178,6 +188,7 @@ end
 class InOutScalar < ScalarMetaParameter
   prepend In
   prepend Out
+
   def initialize(command, name, type = nil)
     super
     @lttng_out_type = @lttng_in_type = @lttng_type
@@ -186,6 +197,7 @@ end
 
 class OutScalar < ScalarMetaParameter
   prepend Out
+
   def initialize(command, name, type = nil)
     super
     @lttng_out_type = @lttng_type
@@ -194,6 +206,7 @@ end
 
 class InScalar < ScalarMetaParameter
   prepend In
+
   def initialize(command, name, type = nil)
     super
     @lttng_in_type = @lttng_type
@@ -208,30 +221,33 @@ class ArrayMetaParameter < MetaParameter
     super(command, name)
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
+
     t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
+    raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
+
     s = command[size]
     raise "Invalid parameter: #{size} for #{command.name}!" unless s
-    if s.type.kind_of?(YAMLCAst::Pointer)
+
+    if s.type.is_a?(YAMLCAst::Pointer)
       checks = check_for_null("#{size}") + check_for_null("#{name}")
       size = "*#{size}"
       size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = INT_SIGN_MAP["#{s.type.type}"] ? "size_t"  : "#{s.type.type}"
+      st = INT_SIGN_MAP["#{s.type.type}"] ? 'size_t' : "#{s.type.type}"
     else
       checks = check_for_null("#{name}")
       size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = INT_SIGN_MAP["#{s.type}"] ? "size_t" : "#{s.type}"
+      st = INT_SIGN_MAP["#{s.type}"] ? 'size_t' : "#{s.type}"
     end
-    if t.type.kind_of?(YAMLCAst::Void)
-      tt = YAMLCAst::CustomType::new(name: "uint8_t")
-    else
-      tt = t.type
-    end
-    y = YAMLCAst::Array::new(type: tt)
+    tt = if t.type.is_a?(YAMLCAst::Void)
+           YAMLCAst::CustomType.new(name: 'uint8_t')
+         else
+           t.type
+         end
+    y = YAMLCAst::Array.new(type: tt)
     lttngt = y.lttng_type(length: sz, length_type: st)
-    lttngt.name = name + "_vals"
+    lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
   end
@@ -239,6 +255,7 @@ end
 
 class OutArray < ArrayMetaParameter
   prepend Out
+
   def initialize(command, name, size)
     super
     @lttng_out_type = @lttng_type
@@ -247,6 +264,7 @@ end
 
 class InArray < ArrayMetaParameter
   prepend In
+
   def initialize(command, name, size)
     super
     @lttng_in_type = @lttng_type
@@ -261,17 +279,19 @@ class FixedArrayMetaParameter < MetaParameter
     super(command, name)
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
+
     t = a.type
-    raise "Type is not a pointer: #{t}!" if !t.kind_of?(YAMLCAst::Pointer)
-    checks = check_for_null("#{name}")
-    if t.type.kind_of?(YAMLCAst::Void)
-      tt = YAMLCAst::CustomType::new(name: "uint8_t")
-    else
-      tt = t.type
-    end
-    y = YAMLCAst::Array::new(type: tt)
+    raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
+
+    check_for_null("#{name}")
+    tt = if t.type.is_a?(YAMLCAst::Void)
+           YAMLCAst::CustomType.new(name: 'uint8_t')
+         else
+           t.type
+         end
+    y = YAMLCAst::Array.new(type: tt)
     lttngt = y.lttng_type(length: size, length_type: nil)
-    lttngt.name = name + "_vals"
+    lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
   end
@@ -279,6 +299,7 @@ end
 
 class InFixedArray < FixedArrayMetaParameter
   prepend In
+
   def initialize(command, name, size)
     super
     @lttng_in_type = @lttng_type
@@ -287,6 +308,7 @@ end
 
 class OutFixedArray < FixedArrayMetaParameter
   prepend Out
+
   def initialize(command, name, size)
     super
     @lttng_out_type = @lttng_type
@@ -301,12 +323,15 @@ class ArrayByRefMetaParameter < MetaParameter
     super(command, name)
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
+
     t = a.type
-    raise "Type is not a pointer: #{t}!" unless t.kind_of?(YAMLCAst::Pointer)
-    raise "Type is not a pointer to an array: #{t}!" if !t.type.kind_of?(YAMLCAst::Pointer)
+    raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
+    raise "Type is not a pointer to an array: #{t}!" unless t.type.is_a?(YAMLCAst::Pointer)
+
     s = command[size]
     raise "Invalid parameter: #{size} for #{command.name}!" unless s
-    if s.type.kind_of?(YAMLCAst::Pointer)
+
+    if s.type.is_a?(YAMLCAst::Pointer)
       checks = check_for_null("#{size}") + check_for_null("#{name}") + check_for_null("*#{name}")
       sz = sanitize_expression("*#{size}", checks)
       st = "#{s.type.type}"
@@ -315,14 +340,14 @@ class ArrayByRefMetaParameter < MetaParameter
       sz = sanitize_expression("#{size}", checks)
       st = "#{s.type}"
     end
-    if t.type.type.kind_of?(YAMLCAst::Void)
-      tt = YAMLCAst::CustomType::new(name: "uint8_t")
-    else
-      tt = t.type.type
-    end
-    y = YAMLCAst::Array::new(type: tt)
+    tt = if t.type.type.is_a?(YAMLCAst::Void)
+           YAMLCAst::CustomType.new(name: 'uint8_t')
+         else
+           t.type.type
+         end
+    y = YAMLCAst::Array.new(type: tt)
     lttngt = y.lttng_type(length: sz, length_type: st)
-    lttngt.name = name + "_val_vals"
+    lttngt.name = name + '_val_vals'
     lttngt.expression = sanitize_expression("*#{name}")
     @lttng_type = lttngt
   end
@@ -330,6 +355,7 @@ end
 
 class OutArrayByRef < ArrayByRefMetaParameter
   prepend Out
+
   def initialize(command, name, size)
     super
     @lttng_out_type = @lttng_type
@@ -338,20 +364,22 @@ end
 
 class OutLTTng < MetaParameter
   prepend Out
+
   def initialize(command, name, *args)
     raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+
     super(command, name)
-    @lttng_out_type = LTTng::TracepointField::new(*args)
+    @lttng_out_type = LTTng::TracepointField.new(*args)
   end
 end
 
 class InLTTng < MetaParameter
   prepend In
+
   def initialize(command, name, *args)
     raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+
     super(command, name)
-    @lttng_in_type = LTTng::TracepointField::new(*args)
+    @lttng_in_type = LTTng::TracepointField.new(*args)
   end
 end
-
-

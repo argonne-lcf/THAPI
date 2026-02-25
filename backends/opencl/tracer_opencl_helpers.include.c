@@ -1,16 +1,21 @@
-void CL_CALLBACK  event_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
+void CL_CALLBACK event_notify(cl_event event, cl_int event_command_exec_status, void *user_data) {
   (void)user_data;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling_results)) {
     cl_ulong queued;
     cl_ulong submit;
     cl_ulong start;
     cl_ulong end;
-    cl_int queued_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_QUEUED, sizeof(cl_ulong), &queued, NULL);
-    cl_int submit_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_SUBMIT, sizeof(cl_ulong), &submit, NULL);
-    cl_int start_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
-    cl_int end_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
-    do_tracepoint(lttng_ust_opencl_profiling, event_profiling_results, event, event_command_exec_status,
-                  queued_status, queued, submit_status, submit, start_status, start, end_status, end);
+    cl_int queued_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_QUEUED,
+                                                           sizeof(cl_ulong), &queued, NULL);
+    cl_int submit_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_SUBMIT,
+                                                           sizeof(cl_ulong), &submit, NULL);
+    cl_int start_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_START,
+                                                          sizeof(cl_ulong), &start, NULL);
+    cl_int end_status = CL_GET_EVENT_PROFILING_INFO_PTR(event, CL_PROFILING_COMMAND_END,
+                                                        sizeof(cl_ulong), &end, NULL);
+    do_tracepoint(lttng_ust_opencl_profiling, event_profiling_results, event,
+                  event_command_exec_status, queued_status, queued, submit_status, submit,
+                  start_status, start, end_status, end);
   }
 }
 
@@ -19,14 +24,15 @@ struct opencl_version {
   cl_uint minor;
 };
 
-//static const struct opencl_version opencl_version_1_0 = {1, 0};
-//static const struct opencl_version opencl_version_1_1 = {1, 1};
+// static const struct opencl_version opencl_version_1_0 = {1, 0};
+// static const struct opencl_version opencl_version_1_1 = {1, 1};
 static const struct opencl_version opencl_version_1_2 = {1, 2};
-//static const struct opencl_version opencl_version_2_0 = {2, 0};
+// static const struct opencl_version opencl_version_2_0 = {2, 0};
 static const struct opencl_version opencl_version_2_1 = {2, 1};
-//static const struct opencl_version opencl_version_2_2 = {2, 2};
+// static const struct opencl_version opencl_version_2_2 = {2, 2};
 
-static inline int compare_opencl_version(const struct opencl_version *v1, const struct opencl_version *v2) {
+static inline int compare_opencl_version(const struct opencl_version *v1,
+                                         const struct opencl_version *v2) {
   if (v1->major > v2->major)
     return 1;
   if (v1->major < v2->major)
@@ -64,7 +70,8 @@ static void get_device_platform_version(cl_device_id device, struct opencl_versi
     return;
   cl_platform_id platform;
 
-  if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_PLATFORM, sizeof(platform), &platform, NULL) == CL_SUCCESS)
+  if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_PLATFORM, sizeof(platform), &platform, NULL) ==
+      CL_SUCCESS)
     get_platform_version(platform, v);
   else {
     v->major = 1;
@@ -72,22 +79,24 @@ static void get_device_platform_version(cl_device_id device, struct opencl_versi
   }
 }
 
-static inline cl_device_id* get_program_devices(cl_program program, cl_uint *num_devices_ret) {
+static inline cl_device_id *get_program_devices(cl_program program, cl_uint *num_devices_ret) {
   cl_device_id *devices = NULL;
   cl_uint num_devices = 0;
 
-  if (CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_NUM_DEVICES, sizeof(num_devices), &num_devices,
+                              NULL) != CL_SUCCESS)
     num_devices = 0;
   else if (num_devices != 0) {
     devices = (cl_device_id *)malloc(num_devices * sizeof(cl_device_id));
     if (!devices)
       num_devices = 0;
-    else
-      if (CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_DEVICES, num_devices * sizeof(cl_device_id), devices, NULL) != CL_SUCCESS) {
-        free(devices);
-        devices = NULL;
-        num_devices = 0;
-      }
+    else if (CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_DEVICES,
+                                     num_devices * sizeof(cl_device_id), devices,
+                                     NULL) != CL_SUCCESS) {
+      free(devices);
+      devices = NULL;
+      num_devices = 0;
+    }
   }
   if (num_devices_ret)
     *num_devices_ret = num_devices;
@@ -108,8 +117,8 @@ static void get_program_platform_version(cl_program program, struct opencl_versi
   }
 }
 
-static int     do_host_profile = 0;
-static int     do_dump = 0;
+static int do_host_profile = 0;
+static int do_dump = 0;
 pthread_mutex_t enqueue_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t opencl_obj_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int64_t enqueue_counter = 0;
@@ -134,7 +143,7 @@ struct opencl_closure {
   ffi_type **types;
 };
 
-struct opencl_closure * opencl_closures = NULL;
+struct opencl_closure *opencl_closures = NULL;
 
 struct buffer_obj_data {
   size_t size;
@@ -145,7 +154,7 @@ struct svmptr_obj_data;
 struct svmptr_obj_data {
   struct svmptr_obj_data *prev;
   struct svmptr_obj_data *next;
-  void* ptr;
+  void *ptr;
   size_t size;
 };
 
@@ -267,7 +276,7 @@ static inline void add_buffer(cl_mem b, size_t size) {
   pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, &b, o_h);
   if (o_h != NULL) {
-      delete_opencl_obj(o_h);
+    delete_opencl_obj(o_h);
   }
   pthread_mutex_unlock(&opencl_obj_mutex);
 
@@ -306,7 +315,8 @@ static inline void add_kernel(cl_kernel k) {
     o_h = (struct opencl_obj_h *)calloc(1, sizeof(struct opencl_obj_h));
     if (o_h == NULL)
       return;
-    k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data)+num_args*sizeof(struct kernel_arg));
+    k_data = (struct kernel_obj_data *)calloc(1, sizeof(struct kernel_obj_data) +
+                                                     num_args * sizeof(struct kernel_arg));
     if (k_data == NULL) {
       free(o_h);
       return;
@@ -324,13 +334,14 @@ static inline void add_kernel(cl_kernel k) {
   }
 }
 
-static inline void add_kernel_arg(cl_kernel kernel, cl_uint arg_index, size_t arg_size, const void *arg_value, int type) {
+static inline void add_kernel_arg(
+    cl_kernel kernel, cl_uint arg_index, size_t arg_size, const void *arg_value, int type) {
   struct opencl_obj_h *o_h = NULL;
   pthread_mutex_lock(&opencl_obj_mutex);
   HASH_FIND_PTR(opencl_objs, &kernel, o_h);
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
-    if (k_data !=NULL && arg_index < k_data->num_args) {
+    if (k_data != NULL && arg_index < k_data->num_args) {
       struct kernel_arg *arg = k_data->args + arg_index;
       if (arg_value != NULL) {
         if (arg->arg_value == NULL) {
@@ -356,12 +367,15 @@ struct buffer_dump_notify_data {
   char path[sizeof(BIN_TEMPLATE)];
 };
 
-void CL_CALLBACK  buffer_dump_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
-  struct buffer_dump_notify_data * data = (struct buffer_dump_notify_data *)user_data;
-  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, data->enqueue_counter, data->arg_index, data->direction, event, event_command_exec_status, data->size, data->path);
+void CL_CALLBACK buffer_dump_notify(cl_event event,
+                                    cl_int event_command_exec_status,
+                                    void *user_data) {
+  struct buffer_dump_notify_data *data = (struct buffer_dump_notify_data *)user_data;
+  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, data->enqueue_counter, data->arg_index,
+             data->direction, event, event_command_exec_status, data->size, data->path);
   if (event_command_exec_status == CL_COMPLETE) {
     int err = ftruncate(data->fd, data->size);
-    if(err)
+    if (err)
       unlink(data->path);
   } else {
 #pragma GCC diagnostic push
@@ -383,12 +397,15 @@ struct svmptr_dump_notify_data {
   char path[sizeof(BIN_TEMPLATE)];
 };
 
-void CL_CALLBACK  svmptr_dump_notify (cl_event event, cl_int event_command_exec_status, void *user_data) {
-  struct svmptr_dump_notify_data * data = (struct svmptr_dump_notify_data *)user_data;
-  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, data->enqueue_counter, data->arg_index, data->direction, event, event_command_exec_status, data->size, data->path);
+void CL_CALLBACK svmptr_dump_notify(cl_event event,
+                                    cl_int event_command_exec_status,
+                                    void *user_data) {
+  struct svmptr_dump_notify_data *data = (struct svmptr_dump_notify_data *)user_data;
+  tracepoint(lttng_ust_opencl_dump, buffer_dump_result, data->enqueue_counter, data->arg_index,
+             data->direction, event, event_command_exec_status, data->size, data->path);
   if (event_command_exec_status == CL_COMPLETE) {
     int err = ftruncate(data->fd, data->size);
-    if(err)
+    if (err)
       unlink(data->path);
   } else {
 #pragma GCC diagnostic push
@@ -409,7 +426,7 @@ static inline size_t align(size_t size, unsigned int bit) {
 static inline int create_file_and_map(char template[], size_t size, void **ptr) {
   int fd = mkstemp(template);
   size_t map_size = align(size, 12);
-  int err = ftruncate(fd, map_size); //page size
+  int err = ftruncate(fd, map_size); // page size
   if (err == 0) {
     *ptr = mmap(NULL, map_size, PROT_WRITE, MAP_SHARED, fd, 0);
     if (*ptr == MAP_FAILED) {
@@ -427,7 +444,7 @@ static inline int create_file_and_map(char template[], size_t size, void **ptr) 
   }
 }
 
-static inline void create_file_and_write(char template[], size_t size, const void * ptr) {
+static inline void create_file_and_write(char template[], size_t size, const void *ptr) {
   int fd = mkstemp(template);
   if (fd != -1) {
     if (ptr != NULL) {
@@ -437,7 +454,7 @@ static inline void create_file_and_write(char template[], size_t size, const voi
         ret = write(fd, ptr, size);
         if (ret > 0) {
           written += ret;
-        } else //if (errno != EINTR) avoid errno...
+        } else // if (errno != EINTR) avoid errno...
           break;
       }
     }
@@ -445,7 +462,15 @@ static inline void create_file_and_write(char template[], size_t size, const voi
   }
 }
 
-static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h, uint64_t enqueue_counter, cl_uint arg_index, int direction, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
+static void dump_buffer(cl_command_queue command_queue,
+                        struct opencl_obj_h *o_h,
+                        uint64_t enqueue_counter,
+                        cl_uint arg_index,
+                        int direction,
+                        cl_uint num_events_in_wait_list,
+                        cl_event *event_wait_list,
+                        cl_uint *new_num_events_in_wait_list,
+                        cl_event **new_event_wait_list) {
   cl_event event;
   void *ptr = NULL;
   struct buffer_dump_notify_data *data = NULL;
@@ -465,15 +490,19 @@ static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h
     return;
   }
 
-  cl_int err = CL_ENQUEUE_READ_BUFFER_PTR(command_queue, (cl_mem)(o_h->ptr), CL_FALSE, 0, obj_data->size, ptr, num_events_in_wait_list, event_wait_list, &event);
+  cl_int err =
+      CL_ENQUEUE_READ_BUFFER_PTR(command_queue, (cl_mem)(o_h->ptr), CL_FALSE, 0, obj_data->size,
+                                 ptr, num_events_in_wait_list, event_wait_list, &event);
   if (err == CL_SUCCESS) {
     int _set_retval = CL_SET_EVENT_CALLBACK_PTR(event, CL_COMPLETE, buffer_dump_notify, data);
-    tracepoint(lttng_ust_opencl_dump, buffer_dump_event, enqueue_counter, arg_index, direction, (cl_mem)(o_h->ptr), _set_retval, event);
+    tracepoint(lttng_ust_opencl_dump, buffer_dump_event, enqueue_counter, arg_index, direction,
+               (cl_mem)(o_h->ptr), _set_retval, event);
     if (new_event_wait_list != NULL) {
       *new_num_events_in_wait_list += 1;
-      *new_event_wait_list = (cl_event *)realloc(*new_event_wait_list, *new_num_events_in_wait_list * sizeof(cl_event));
+      *new_event_wait_list = (cl_event *)realloc(*new_event_wait_list,
+                                                 *new_num_events_in_wait_list * sizeof(cl_event));
       if (*new_event_wait_list != NULL) {
-        (*new_event_wait_list)[*new_num_events_in_wait_list -1] = event;
+        (*new_event_wait_list)[*new_num_events_in_wait_list - 1] = event;
       } else {
         CL_RELEASE_EVENT_PTR(event);
       }
@@ -488,7 +517,15 @@ static void dump_buffer(cl_command_queue command_queue, struct opencl_obj_h *o_h
   }
 }
 
-static void dump_svmptr(cl_command_queue command_queue, struct opencl_obj_h *o_h, uint64_t enqueue_counter, cl_uint arg_index, int direction, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
+static void dump_svmptr(cl_command_queue command_queue,
+                        struct opencl_obj_h *o_h,
+                        uint64_t enqueue_counter,
+                        cl_uint arg_index,
+                        int direction,
+                        cl_uint num_events_in_wait_list,
+                        cl_event *event_wait_list,
+                        cl_uint *new_num_events_in_wait_list,
+                        cl_event **new_event_wait_list) {
   cl_event event;
   void *ptr = NULL;
   struct svmptr_dump_notify_data *data = NULL;
@@ -508,15 +545,18 @@ static void dump_svmptr(cl_command_queue command_queue, struct opencl_obj_h *o_h
     return;
   }
 
-  cl_int err = CL_ENQUEUE_SVMMEMCPY_PTR(command_queue, CL_FALSE, ptr, obj_data->ptr, obj_data->size, num_events_in_wait_list, event_wait_list, &event);
+  cl_int err = CL_ENQUEUE_SVMMEMCPY_PTR(command_queue, CL_FALSE, ptr, obj_data->ptr, obj_data->size,
+                                        num_events_in_wait_list, event_wait_list, &event);
   if (err == CL_SUCCESS) {
     int _set_retval = CL_SET_EVENT_CALLBACK_PTR(event, CL_COMPLETE, svmptr_dump_notify, data);
-    tracepoint(lttng_ust_opencl_dump, svmptr_dump_event, enqueue_counter, arg_index, direction, obj_data->ptr, _set_retval, event);
+    tracepoint(lttng_ust_opencl_dump, svmptr_dump_event, enqueue_counter, arg_index, direction,
+               obj_data->ptr, _set_retval, event);
     if (new_event_wait_list != NULL) {
       *new_num_events_in_wait_list += 1;
-      *new_event_wait_list = (cl_event *)realloc(*new_event_wait_list, *new_num_events_in_wait_list * sizeof(cl_event));
+      *new_event_wait_list = (cl_event *)realloc(*new_event_wait_list,
+                                                 *new_num_events_in_wait_list * sizeof(cl_event));
       if (*new_event_wait_list != NULL) {
-        (*new_event_wait_list)[*new_num_events_in_wait_list -1] = event;
+        (*new_event_wait_list)[*new_num_events_in_wait_list - 1] = event;
       } else {
         CL_RELEASE_EVENT_PTR(event);
       }
@@ -531,7 +571,16 @@ static void dump_svmptr(cl_command_queue command_queue, struct opencl_obj_h *o_h
   }
 }
 
-static void dump_opencl_object(cl_command_queue command_queue, uint64_t enqueue_counter, struct kernel_arg *arg, int do_event, cl_uint arg_index, int direction, cl_uint num_events_in_wait_list, cl_event *event_wait_list, cl_uint *new_num_events_in_wait_list, cl_event **new_event_wait_list) {
+static void dump_opencl_object(cl_command_queue command_queue,
+                               uint64_t enqueue_counter,
+                               struct kernel_arg *arg,
+                               int do_event,
+                               cl_uint arg_index,
+                               int direction,
+                               cl_uint num_events_in_wait_list,
+                               cl_event *event_wait_list,
+                               cl_uint *new_num_events_in_wait_list,
+                               cl_event **new_event_wait_list) {
   struct opencl_obj_h *oo_h = NULL;
   struct svmptr_obj_data *svm_data = NULL;
   pthread_mutex_lock(&opencl_obj_mutex);
@@ -541,24 +590,31 @@ static void dump_opencl_object(cl_command_queue command_queue, uint64_t enqueue_
     switch (oo_h->type) {
     case BUFFER:
       if (do_event)
-        dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list, new_event_wait_list);
+        dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, direction,
+                    num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list,
+                    new_event_wait_list);
       else
-        dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, NULL, NULL);
+        dump_buffer(command_queue, oo_h, enqueue_counter, arg_index, direction,
+                    num_events_in_wait_list, event_wait_list, NULL, NULL);
       break;
     case SVMMEM:
       if (do_event)
-        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list, new_event_wait_list);
+        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction,
+                    num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list,
+                    new_event_wait_list);
       else
-        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, NULL, NULL);
+        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction,
+                    num_events_in_wait_list, event_wait_list, NULL, NULL);
       break;
     default:
       break;
     }
   } else {
-    //check if it is a pointer into an SVM region
+    // check if it is a pointer into an SVM region
     pthread_mutex_lock(&opencl_obj_mutex);
     DL_FOREACH(svmptr_objs, svm_data) {
-      if (*(uintptr_t *)(arg->arg_value) > (uintptr_t)(svm_data->ptr) && *(uintptr_t *)(arg->arg_value) < (uintptr_t)(svm_data->ptr) + svm_data->size) {
+      if (*(uintptr_t *)(arg->arg_value) > (uintptr_t)(svm_data->ptr) &&
+          *(uintptr_t *)(arg->arg_value) < (uintptr_t)(svm_data->ptr) + svm_data->size) {
         HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
         break;
       }
@@ -566,16 +622,23 @@ static void dump_opencl_object(cl_command_queue command_queue, uint64_t enqueue_
     pthread_mutex_unlock(&opencl_obj_mutex);
     if (oo_h != NULL && oo_h->type == SVMMEM) {
       if (do_event)
-        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list, new_event_wait_list);
+        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction,
+                    num_events_in_wait_list, event_wait_list, new_num_events_in_wait_list,
+                    new_event_wait_list);
       else
-        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction, num_events_in_wait_list, event_wait_list, NULL, NULL);
+        dump_svmptr(command_queue, oo_h, enqueue_counter, arg_index, direction,
+                    num_events_in_wait_list, event_wait_list, NULL, NULL);
     }
   }
 }
 
-
-static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_command_queue_properties properties, cl_uint *num_events_in_wait_list, cl_event **event_wait_list) {
-  cl_event * new_event_wait_list = NULL;
+static int dump_kernel_args(cl_command_queue command_queue,
+                            cl_kernel kernel,
+                            uint64_t enqueue_counter,
+                            cl_command_queue_properties properties,
+                            cl_uint *num_events_in_wait_list,
+                            cl_event **event_wait_list) {
+  cl_event *new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   struct opencl_obj_h *o_h = NULL;
   pthread_mutex_lock(&opencl_obj_mutex);
@@ -583,12 +646,16 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
   pthread_mutex_unlock(&opencl_obj_mutex);
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
-    if (k_data !=NULL) {
+    if (k_data != NULL) {
       for (cl_uint arg_index = 0; arg_index < k_data->num_args; arg_index++) {
         struct kernel_arg *arg = k_data->args + arg_index;
-        tracepoint(lttng_ust_opencl_dump, kernel_arg_value, enqueue_counter, arg_index, arg->arg_size, arg->arg_value);
+        tracepoint(lttng_ust_opencl_dump, kernel_arg_value, enqueue_counter, arg_index,
+                   arg->arg_size, arg->arg_value);
         if (arg->arg_value != NULL && arg->arg_size == 8) {
-          dump_opencl_object(command_queue, enqueue_counter, arg, properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, arg_index, 0, *num_events_in_wait_list, *event_wait_list, &new_num_events_in_wait_list, &new_event_wait_list);
+          dump_opencl_object(command_queue, enqueue_counter, arg,
+                             properties | CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, arg_index, 0,
+                             *num_events_in_wait_list, *event_wait_list,
+                             &new_num_events_in_wait_list, &new_event_wait_list);
         }
       }
     }
@@ -603,8 +670,11 @@ static int dump_kernel_args(cl_command_queue command_queue, cl_kernel kernel, ui
   return 0;
 }
 
-static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel kernel, uint64_t enqueue_counter, cl_event *event) {
-  cl_event * new_event_wait_list = NULL;
+static cl_event dump_kernel_buffers(cl_command_queue command_queue,
+                                    cl_kernel kernel,
+                                    uint64_t enqueue_counter,
+                                    cl_event *event) {
+  cl_event *new_event_wait_list = NULL;
   cl_uint new_num_events_in_wait_list = 0;
   cl_uint num_event = (event == NULL ? 0 : 1);
   struct opencl_obj_h *o_h = NULL;
@@ -613,18 +683,20 @@ static cl_event dump_kernel_buffers(cl_command_queue command_queue, cl_kernel ke
   pthread_mutex_unlock(&opencl_obj_mutex);
   if (o_h != NULL && o_h->type == KERNEL) {
     struct kernel_obj_data *k_data = (struct kernel_obj_data *)o_h->obj_data;
-    if (k_data !=NULL) {
+    if (k_data != NULL) {
       for (cl_uint arg_index = 0; arg_index < k_data->num_args; arg_index++) {
         struct kernel_arg *arg = k_data->args + arg_index;
         if (arg->arg_value != NULL && arg->arg_size == 8) {
-          dump_opencl_object(command_queue, enqueue_counter, arg, event != NULL, arg_index, 1, num_event, event, &new_num_events_in_wait_list, &new_event_wait_list);
+          dump_opencl_object(command_queue, enqueue_counter, arg, event != NULL, arg_index, 1,
+                             num_event, event, &new_num_events_in_wait_list, &new_event_wait_list);
         }
       }
     }
   }
   if (new_event_wait_list != NULL && new_num_events_in_wait_list > 0) {
     cl_event ev;
-    CL_ENQUEUE_BARRIER_WITH_WAIT_LIST_PTR(command_queue, new_num_events_in_wait_list, new_event_wait_list, &ev);
+    CL_ENQUEUE_BARRIER_WITH_WAIT_LIST_PTR(command_queue, new_num_events_in_wait_list,
+                                          new_event_wait_list, &ev);
     for (cl_uint i = 0; i < new_num_events_in_wait_list; i++) {
       CL_RELEASE_EVENT_PTR(new_event_wait_list[i]);
     }
@@ -655,7 +727,8 @@ static void dump_kernel_info(cl_kernel kernel) {
   if (error == CL_SUCCESS && function_name_sz > 0) {
     char *new_function_name = (char *)calloc(function_name_sz + 1, 1);
     if (new_function_name) {
-      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz, new_function_name, NULL);
+      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_FUNCTION_NAME, function_name_sz,
+                                     new_function_name, NULL);
       if (error == CL_SUCCESS) {
         function_name = new_function_name;
         free_function_name = 1;
@@ -668,14 +741,16 @@ static void dump_kernel_info(cl_kernel kernel) {
   if (error == CL_SUCCESS && attributes_sz > 0) {
     char *new_attributes = (char *)calloc(attributes_sz + 1, 1);
     if (new_attributes) {
-      error = CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, new_attributes, NULL);
+      error =
+          CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_ATTRIBUTES, attributes_sz, new_attributes, NULL);
       if (error == CL_SUCCESS) {
         attributes = new_attributes;
         free_attributes = 1;
       }
     }
   }
-  do_tracepoint(lttng_ust_opencl_arguments, kernel_info, kernel, function_name, num_args, context, program, attributes);
+  do_tracepoint(lttng_ust_opencl_arguments, kernel_info, kernel, function_name, num_args, context,
+                program, attributes);
   if (free_function_name)
     free(function_name);
   if (free_attributes)
@@ -687,47 +762,53 @@ static void dump_argument_info(cl_kernel kernel, cl_uint arg_index) {
   cl_int error = CL_SUCCESS;
   cl_kernel_arg_address_qualifier address_qualifier;
   cl_kernel_arg_access_qualifier access_qualifier;
-  char * type_name;
+  char *type_name;
   size_t type_name_sz;
   cl_kernel_arg_type_qualifier type_qualifier;
-  char * name;
+  char *name;
   size_t name_sz;
 
-  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_ADDRESS_QUALIFIER, sizeof(address_qualifier), &address_qualifier, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_ADDRESS_QUALIFIER,
+                                     sizeof(address_qualifier), &address_qualifier, NULL);
   if (error != CL_SUCCESS)
     return;
-  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_ACCESS_QUALIFIER, sizeof(access_qualifier), &access_qualifier, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_ACCESS_QUALIFIER,
+                                     sizeof(access_qualifier), &access_qualifier, NULL);
   if (error != CL_SUCCESS)
     return;
-  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_TYPE_QUALIFIER, sizeof(type_qualifier), &type_qualifier, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_TYPE_QUALIFIER,
+                                     sizeof(type_qualifier), &type_qualifier, NULL);
   if (error != CL_SUCCESS)
     return;
-  //Strings are forced to be zero terminated
-  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_TYPE_NAME, 0, NULL, &type_name_sz);
+  // Strings are forced to be zero terminated
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_TYPE_NAME, 0, NULL,
+                                     &type_name_sz);
   if (error != CL_SUCCESS)
     return;
   error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_NAME, 0, NULL, &name_sz);
   if (error != CL_SUCCESS)
     return;
-  type_name = (char*)calloc(type_name_sz+1, 1);
+  type_name = (char *)calloc(type_name_sz + 1, 1);
   if (type_name == NULL)
     return;
-  name = (char*)calloc(name_sz+1, 1);
+  name = (char *)calloc(name_sz + 1, 1);
   if (name == NULL)
     goto type_name_lb;
-  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_TYPE_NAME, type_name_sz, type_name, NULL);
+  error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_TYPE_NAME, type_name_sz,
+                                     type_name, NULL);
   if (error != CL_SUCCESS)
     goto name_lb;
   error = CL_GET_KERNEL_ARG_INFO_PTR(kernel, arg_index, CL_KERNEL_ARG_NAME, name_sz, name, NULL);
   if (error != CL_SUCCESS)
     goto name_lb;
-  //Menbers are initialized, call tracepoint
-  do_tracepoint(lttng_ust_opencl_arguments, argument_info, kernel, arg_index, address_qualifier, access_qualifier, type_name, type_qualifier,  name);
+  // Menbers are initialized, call tracepoint
+  do_tracepoint(lttng_ust_opencl_arguments, argument_info, kernel, arg_index, address_qualifier,
+                access_qualifier, type_name, type_qualifier, name);
 
-  name_lb:
-    free(name);
-  type_name_lb:
-    free(type_name);
+name_lb:
+  free(name);
+type_name_lb:
+  free(type_name);
 }
 
 static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
@@ -735,20 +816,21 @@ static void dump_kernel_arguments(cl_program program, cl_kernel kernel) {
   get_program_platform_version(program, &version);
   if (compare_opencl_version(&version, &opencl_version_1_2) >= 0) {
     cl_uint num_args;
-    if ( CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) == CL_SUCCESS ) {
-      for (cl_uint i = 0; i < num_args ; i++)
+    if (CL_GET_KERNEL_INFO_PTR(kernel, CL_KERNEL_NUM_ARGS, sizeof(num_args), &num_args, NULL) ==
+        CL_SUCCESS) {
+      for (cl_uint i = 0; i < num_args; i++)
         dump_argument_info(kernel, i);
     }
   }
 }
 
 static inline void dump_device_name(cl_device_id device) {
-  size_t  name_sz = 0;
-  char   *name = NULL;
+  size_t name_sz = 0;
+  char *name = NULL;
   if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_NAME, 0, NULL, &name_sz) != CL_SUCCESS)
     return;
   if (name_sz > 0) {
-    name = (char *)calloc(name_sz+1, 1);
+    name = (char *)calloc(name_sz + 1, 1);
     if (!name)
       return;
     if (CL_GET_DEVICE_INFO_PTR(device, CL_DEVICE_NAME, name_sz, name, NULL) != CL_SUCCESS)
@@ -782,32 +864,38 @@ static inline void dump_program_device_build_infos(cl_program program, cl_device
   size_t build_log_sz = 0;
   int free_build_log = 0;
 
-  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(build_status), &build_status, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(build_status),
+                                    &build_status, NULL) != CL_SUCCESS)
     return;
-  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_OPTIONS, 0, NULL, &build_options_sz) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_OPTIONS, 0, NULL,
+                                    &build_options_sz) != CL_SUCCESS)
     return;
-  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &build_log_sz) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL,
+                                    &build_log_sz) != CL_SUCCESS)
     return;
 
   if (build_options_sz > 0) {
-    build_options = (char *)calloc(build_options_sz+1, 1);
-    if(!build_options)
+    build_options = (char *)calloc(build_options_sz + 1, 1);
+    if (!build_options)
       return;
     free_build_options = 1;
-    if(CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_OPTIONS, build_options_sz, build_options, NULL) != CL_SUCCESS)
+    if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_OPTIONS, build_options_sz,
+                                      build_options, NULL) != CL_SUCCESS)
       goto cleanup;
   }
 
   if (build_log_sz > 0) {
-    build_log = (char *)calloc(build_log_sz+1, 1);
-    if(!build_log)
+    build_log = (char *)calloc(build_log_sz + 1, 1);
+    if (!build_log)
       goto cleanup;
     free_build_log = 1;
-    if(CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_LOG, build_log_sz, build_log, NULL) != CL_SUCCESS)
+    if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_LOG, build_log_sz,
+                                      build_log, NULL) != CL_SUCCESS)
       goto cleanup;
   }
 
-  do_tracepoint(lttng_ust_opencl_build, infos, program, device, build_status, build_options, build_log);
+  do_tracepoint(lttng_ust_opencl_build, infos, program, device, build_status, build_options,
+                build_log);
 cleanup:
   if (free_build_options)
     free(build_options);
@@ -818,7 +906,8 @@ cleanup:
 static inline void dump_program_device_build_infos_1_2(cl_program program, cl_device_id device) {
   cl_program_binary_type binary_type;
 
-  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BINARY_TYPE, sizeof(binary_type), &binary_type, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BINARY_TYPE, sizeof(binary_type),
+                                    &binary_type, NULL) != CL_SUCCESS)
     return;
 
   do_tracepoint(lttng_ust_opencl_build, infos_1_2, program, device, binary_type);
@@ -827,10 +916,13 @@ static inline void dump_program_device_build_infos_1_2(cl_program program, cl_de
 static inline void dump_program_device_build_infos_2_0(cl_program program, cl_device_id device) {
   size_t build_global_variable_total_size;
 
-  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE, sizeof(size_t), &build_global_variable_total_size, NULL) != CL_SUCCESS)
+  if (CL_GET_PROGRAM_BUILD_INFO_PTR(program, device, CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE,
+                                    sizeof(size_t), &build_global_variable_total_size,
+                                    NULL) != CL_SUCCESS)
     return;
 
-  do_tracepoint(lttng_ust_opencl_build, infos_2_0, program, device, build_global_variable_total_size);
+  do_tracepoint(lttng_ust_opencl_build, infos_2_0, program, device,
+                build_global_variable_total_size);
 }
 
 static void dump_program_build_infos(cl_program program) {
@@ -842,7 +934,7 @@ static void dump_program_build_infos(cl_program program) {
   if (!devices)
     return;
 
-  for(i = 0; i < num_devices; i++) {
+  for (i = 0; i < num_devices; i++) {
     dump_program_device_build_infos(program, devices[i]);
     dump_program_device_build_infos_1_2(program, devices[i]);
     dump_program_device_build_infos_2_0(program, devices[i]);
@@ -863,21 +955,22 @@ static void dump_program_objects(cl_program program) {
   devices = get_program_devices(program, &num_devices);
   if (!devices)
     goto with_noting;
-  binary_sizes = (size_t *)malloc(num_devices*sizeof(size_t));
+  binary_sizes = (size_t *)malloc(num_devices * sizeof(size_t));
   if (!binary_sizes)
     goto with_devices;
 
-  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARY_SIZES, num_devices*sizeof(size_t), binary_sizes, NULL);
+  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARY_SIZES, num_devices * sizeof(size_t),
+                                binary_sizes, NULL);
   if (err != CL_SUCCESS)
     goto with_binary_sizes;
 
-  binaries = (void **)calloc(num_devices*sizeof(void *), 1);
+  binaries = (void **)calloc(num_devices * sizeof(void *), 1);
   if (!binaries)
     goto with_binary_sizes;
-  paths = (char (*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices*sizeof(OBJ_BUILD_TEMPLATE), 1);
+  paths = (char (*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices * sizeof(OBJ_BUILD_TEMPLATE), 1);
   if (!paths)
     goto with_binaries;
-  fds = (int *)calloc(num_devices*sizeof(int), 1);
+  fds = (int *)calloc(num_devices * sizeof(int), 1);
   if (!fds)
     goto with_paths;
 
@@ -887,13 +980,13 @@ static void dump_program_objects(cl_program program) {
       fds[i] = create_file_and_map(paths[i], binary_sizes[i], binaries + i);
       if (fds[i] == -1) {
         for (cl_uint j = i; j > 0; j--) {
-          if (binary_sizes[j-1] > 0) {
+          if (binary_sizes[j - 1] > 0) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-            ftruncate(fds[j-1], 0);
+            ftruncate(fds[j - 1], 0);
 #pragma GCC diagnostic pop
-            close(fds[j-1]);
-            unlink(paths[j-1]);
+            close(fds[j - 1]);
+            unlink(paths[j - 1]);
           }
         }
         goto with_fds;
@@ -922,7 +1015,8 @@ static void dump_program_objects(cl_program program) {
       close(fds[i]);
     } else {
       close(fds[i]);
-      do_tracepoint(lttng_ust_opencl_build, objects, program, devices[i], binary_sizes[i], paths[i]);
+      do_tracepoint(lttng_ust_opencl_build, objects, program, devices[i], binary_sizes[i],
+                    paths[i]);
     }
   }
 with_fds:
@@ -953,21 +1047,22 @@ static void dump_program_binaries(cl_program program) {
   devices = get_program_devices(program, &num_devices);
   if (!devices)
     goto with_noting;
-  binary_sizes = (size_t *)malloc(num_devices*sizeof(size_t));
+  binary_sizes = (size_t *)malloc(num_devices * sizeof(size_t));
   if (!binary_sizes)
     goto with_devices;
 
-  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARY_SIZES, num_devices*sizeof(size_t), binary_sizes, NULL);
+  err = CL_GET_PROGRAM_INFO_PTR(program, CL_PROGRAM_BINARY_SIZES, num_devices * sizeof(size_t),
+                                binary_sizes, NULL);
   if (err != CL_SUCCESS)
     goto with_binary_sizes;
 
-  binaries = (void **)calloc(num_devices*sizeof(void *), 1);
+  binaries = (void **)calloc(num_devices * sizeof(void *), 1);
   if (!binaries)
     goto with_binary_sizes;
-  paths = (char (*)[sizeof(BIN_BUILD_TEMPLATE)])calloc(num_devices*sizeof(BIN_BUILD_TEMPLATE), 1);
+  paths = (char (*)[sizeof(BIN_BUILD_TEMPLATE)])calloc(num_devices * sizeof(BIN_BUILD_TEMPLATE), 1);
   if (!paths)
     goto with_binaries;
-  fds = (int *)calloc(num_devices*sizeof(int), 1);
+  fds = (int *)calloc(num_devices * sizeof(int), 1);
   if (!fds)
     goto with_paths;
 
@@ -977,13 +1072,13 @@ static void dump_program_binaries(cl_program program) {
       fds[i] = create_file_and_map(paths[i], binary_sizes[i], binaries + i);
       if (fds[i] == -1) {
         for (cl_uint j = i; j > 0; j--) {
-          if (binary_sizes[j-1] > 0) {
+          if (binary_sizes[j - 1] > 0) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-            ftruncate(fds[j-1], 0);
+            ftruncate(fds[j - 1], 0);
 #pragma GCC diagnostic pop
-            close(fds[j-1]);
-            unlink(paths[j-1]);
+            close(fds[j - 1]);
+            unlink(paths[j - 1]);
           }
         }
         goto with_fds;
@@ -1012,7 +1107,8 @@ static void dump_program_binaries(cl_program program) {
       close(fds[i]);
     } else {
       close(fds[i]);
-      do_tracepoint(lttng_ust_opencl_build, binaries, program, devices[i], binary_sizes[i], paths[i]);
+      do_tracepoint(lttng_ust_opencl_build, binaries, program, devices[i], binary_sizes[i],
+                    paths[i]);
     }
   }
 with_fds:
@@ -1030,14 +1126,16 @@ with_noting:
 }
 
 struct clLinkProgram_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
+  void(CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
   void *user_data;
 };
 
 void CL_CALLBACK clLinkProgram_callback(cl_program program, void *user_data) {
-  struct clLinkProgram_callback_payload *payload = (struct clLinkProgram_callback_payload *)user_data;
+  struct clLinkProgram_callback_payload *payload =
+      (struct clLinkProgram_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clLinkProgram_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clLinkProgram_callback), program,
+                     payload->user_data);
   payload->pfn_notify(program, payload->user_data);
   do_tracepoint_safe(lttng_ust_opencl, STOPEV(clLinkProgram_callback), program, payload->user_data);
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries))
@@ -1048,16 +1146,19 @@ void CL_CALLBACK clLinkProgram_callback(cl_program program, void *user_data) {
 }
 
 struct clCompileProgram_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
+  void(CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
   void *user_data;
 };
 
 void CL_CALLBACK clCompileProgram_callback(cl_program program, void *user_data) {
-  struct clCompileProgram_callback_payload *payload = (struct clCompileProgram_callback_payload *)user_data;
+  struct clCompileProgram_callback_payload *payload =
+      (struct clCompileProgram_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clCompileProgram_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clCompileProgram_callback), program,
+                     payload->user_data);
   payload->pfn_notify(program, payload->user_data);
-  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clCompileProgram_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clCompileProgram_callback), program,
+                     payload->user_data);
   if (tracepoint_enabled(lttng_ust_opencl_build, objects))
     dump_program_objects(program);
   if (tracepoint_enabled(lttng_ust_opencl_build, infos))
@@ -1066,16 +1167,19 @@ void CL_CALLBACK clCompileProgram_callback(cl_program program, void *user_data) 
 }
 
 struct clBuildProgram_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
+  void(CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
   void *user_data;
 };
 
 void CL_CALLBACK clBuildProgram_callback(cl_program program, void *user_data) {
-  struct clBuildProgram_callback_payload *payload = (struct clBuildProgram_callback_payload *)user_data;
+  struct clBuildProgram_callback_payload *payload =
+      (struct clBuildProgram_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clBuildProgram_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clBuildProgram_callback), program,
+                     payload->user_data);
   payload->pfn_notify(program, payload->user_data);
-  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clBuildProgram_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clBuildProgram_callback), program,
+                     payload->user_data);
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries))
     dump_program_binaries(program);
   if (tracepoint_enabled(lttng_ust_opencl_build, infos))
@@ -1084,91 +1188,127 @@ void CL_CALLBACK clBuildProgram_callback(cl_program program, void *user_data) {
 }
 
 struct clCreateContext_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(const char *errinfo, const void *private_info, size_t cb, void *user_data);
+  void(CL_CALLBACK *pfn_notify)(const char *errinfo,
+                                const void *private_info,
+                                size_t cb,
+                                void *user_data);
   void *user_data;
 };
 
-void CL_CALLBACK clCreateContext_callback(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
-  struct clCreateContext_callback_payload *payload = (struct clCreateContext_callback_payload *)user_data;
+void CL_CALLBACK clCreateContext_callback(const char *errinfo,
+                                          const void *private_info,
+                                          size_t cb,
+                                          void *user_data) {
+  struct clCreateContext_callback_payload *payload =
+      (struct clCreateContext_callback_payload *)user_data;
 
-  tracepoint_safe(lttng_ust_opencl, STARTEV(clCreateContext_callback), errinfo, private_info, cb, payload->user_data);
+  tracepoint_safe(lttng_ust_opencl, STARTEV(clCreateContext_callback), errinfo, private_info, cb,
+                  payload->user_data);
   payload->pfn_notify(errinfo, private_info, cb, payload->user_data);
-  tracepoint_safe(lttng_ust_opencl, STOPEV(clCreateContext_callback), errinfo, private_info, cb, payload->user_data);
+  tracepoint_safe(lttng_ust_opencl, STOPEV(clCreateContext_callback), errinfo, private_info, cb,
+                  payload->user_data);
 }
 
 struct clCreateContextFromType_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(const char *errinfo, const void *private_info, size_t cb, void *user_data);
+  void(CL_CALLBACK *pfn_notify)(const char *errinfo,
+                                const void *private_info,
+                                size_t cb,
+                                void *user_data);
   void *user_data;
 };
 
-void CL_CALLBACK clCreateContextFromType_callback(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
-  struct clCreateContextFromType_callback_payload *payload = (struct clCreateContextFromType_callback_payload *)user_data;
+void CL_CALLBACK clCreateContextFromType_callback(const char *errinfo,
+                                                  const void *private_info,
+                                                  size_t cb,
+                                                  void *user_data) {
+  struct clCreateContextFromType_callback_payload *payload =
+      (struct clCreateContextFromType_callback_payload *)user_data;
 
-  tracepoint_safe(lttng_ust_opencl, STARTEV(clCreateContextFromType_callback), errinfo, private_info, cb, payload->user_data);
+  tracepoint_safe(lttng_ust_opencl, STARTEV(clCreateContextFromType_callback), errinfo,
+                  private_info, cb, payload->user_data);
   payload->pfn_notify(errinfo, private_info, cb, payload->user_data);
-  tracepoint_safe(lttng_ust_opencl, STOPEV(clCreateContextFromType_callback), errinfo, private_info, cb, payload->user_data);
+  tracepoint_safe(lttng_ust_opencl, STOPEV(clCreateContextFromType_callback), errinfo, private_info,
+                  cb, payload->user_data);
 }
 
 struct clSetMemObjectDestructorCallback_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(cl_mem memobj, void * user_data);
+  void(CL_CALLBACK *pfn_notify)(cl_mem memobj, void *user_data);
   void *user_data;
 };
 
-void CL_CALLBACK clSetMemObjectDestructorCallback_callback(cl_mem memobj, void * user_data) {
-  struct clSetMemObjectDestructorCallback_callback_payload *payload = (struct clSetMemObjectDestructorCallback_callback_payload *)user_data;
+void CL_CALLBACK clSetMemObjectDestructorCallback_callback(cl_mem memobj, void *user_data) {
+  struct clSetMemObjectDestructorCallback_callback_payload *payload =
+      (struct clSetMemObjectDestructorCallback_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clSetMemObjectDestructorCallback_callback), memobj, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clSetMemObjectDestructorCallback_callback), memobj,
+                     payload->user_data);
   payload->pfn_notify(memobj, payload->user_data);
-  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clSetMemObjectDestructorCallback_callback), memobj, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clSetMemObjectDestructorCallback_callback), memobj,
+                     payload->user_data);
   free(user_data);
 }
 
 struct clSetProgramReleaseCallback_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(cl_program program, void * user_data);
+  void(CL_CALLBACK *pfn_notify)(cl_program program, void *user_data);
   void *user_data;
 };
 
-void CL_CALLBACK clSetProgramReleaseCallback_callback(cl_program program, void * user_data) {
-  struct clSetProgramReleaseCallback_callback_payload *payload = (struct clSetProgramReleaseCallback_callback_payload *)user_data;
+void CL_CALLBACK clSetProgramReleaseCallback_callback(cl_program program, void *user_data) {
+  struct clSetProgramReleaseCallback_callback_payload *payload =
+      (struct clSetProgramReleaseCallback_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clSetProgramReleaseCallback_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clSetProgramReleaseCallback_callback), program,
+                     payload->user_data);
   payload->pfn_notify(program, payload->user_data);
-  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clSetProgramReleaseCallback_callback), program, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clSetProgramReleaseCallback_callback), program,
+                     payload->user_data);
   free(user_data);
 }
 
 struct clSetEventCallback_callback_payload {
-  void (CL_CALLBACK *pfn_notify)(cl_event event, cl_int type, void * user_data);
+  void(CL_CALLBACK *pfn_notify)(cl_event event, cl_int type, void *user_data);
   void *user_data;
 };
 
-void CL_CALLBACK clSetEventCallback_callback(cl_event event, cl_int type, void * user_data) {
-  struct clSetEventCallback_callback_payload *payload = (struct clSetEventCallback_callback_payload *)user_data;
+void CL_CALLBACK clSetEventCallback_callback(cl_event event, cl_int type, void *user_data) {
+  struct clSetEventCallback_callback_payload *payload =
+      (struct clSetEventCallback_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clSetEventCallback_callback), event, type, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clSetEventCallback_callback), event, type,
+                     payload->user_data);
   payload->pfn_notify(event, type, payload->user_data);
-  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clSetEventCallback_callback), event, type, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clSetEventCallback_callback), event, type,
+                     payload->user_data);
   free(user_data);
 }
 
 struct clEnqueueSVMFree_callback_payload {
-  void (CL_CALLBACK *pfn_free_func)(cl_command_queue command_queue, cl_uint num_svm_pointers, void *svm_pointers[], void* user_data);
+  void(CL_CALLBACK *pfn_free_func)(cl_command_queue command_queue,
+                                   cl_uint num_svm_pointers,
+                                   void *svm_pointers[],
+                                   void *user_data);
   void *user_data;
 };
 
-void CL_CALLBACK clEnqueueSVMFree_callback(cl_command_queue command_queue, cl_uint num_svm_pointers, void *svm_pointers[], void* user_data) {
-  struct clEnqueueSVMFree_callback_payload *payload = (struct clEnqueueSVMFree_callback_payload *)user_data;
+void CL_CALLBACK clEnqueueSVMFree_callback(cl_command_queue command_queue,
+                                           cl_uint num_svm_pointers,
+                                           void *svm_pointers[],
+                                           void *user_data) {
+  struct clEnqueueSVMFree_callback_payload *payload =
+      (struct clEnqueueSVMFree_callback_payload *)user_data;
 
-  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clEnqueueSVMFree_callback), command_queue, num_svm_pointers, svm_pointers, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STARTEV(clEnqueueSVMFree_callback), command_queue,
+                     num_svm_pointers, svm_pointers, payload->user_data);
   payload->pfn_free_func(command_queue, num_svm_pointers, svm_pointers, payload->user_data);
-  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clEnqueueSVMFree_callback), command_queue, num_svm_pointers, svm_pointers, payload->user_data);
+  do_tracepoint_safe(lttng_ust_opencl, STOPEV(clEnqueueSVMFree_callback), command_queue,
+                     num_svm_pointers, svm_pointers, payload->user_data);
   free(user_data);
 }
 
 static inline uint64_t get_timestamp_ns() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  return ((uint64_t)ts.tv_sec)*1000000000+((uint64_t)ts.tv_nsec);
+  return ((uint64_t)ts.tv_sec) * 1000000000 + ((uint64_t)ts.tv_nsec);
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
@@ -1177,7 +1317,7 @@ static volatile cl_uint _initialized = 0;
 
 static void _load_tracer(void) {
   char *s = NULL;
-  void * handle = NULL;
+  void *handle = NULL;
   int verbose = 0;
 
   s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
@@ -1186,14 +1326,14 @@ static void _load_tracer(void) {
   else
     handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   if (handle) {
-    void* ptr = dlsym(handle, "clGetPlatformIDs");
-    if (ptr == (void*)&clGetPlatformIDs) { //opening oneself
+    void *ptr = dlsym(handle, "clGetPlatformIDs");
+    if (ptr == (void *)&clGetPlatformIDs) { // opening oneself
       dlclose(handle);
       handle = NULL;
     }
   }
 
-  if( !handle ) {
+  if (!handle) {
     printf("Failure: could not load OpenCL library!\n");
     exit(1);
   }
@@ -1219,16 +1359,15 @@ static void _load_tracer(void) {
 }
 
 static inline void _init_tracer(void) {
-  if( __builtin_expect (_initialized, 1) )
+  if (__builtin_expect(_initialized, 1))
     return;
   /* Avoid reentrancy */
   if (!in_init) {
-    in_init=1;
+    in_init = 1;
     __sync_synchronize();
     pthread_once(&_init, _load_tracer);
     __sync_synchronize();
-    in_init=0;
+    in_init = 0;
   }
   _initialized = 1;
 }
-

@@ -1,12 +1,10 @@
-require_relative 'gen_itt_library_base.rb'
+require_relative 'gen_itt_library_base'
+require 'set'
 
 def unwrap_typedef_to_concrete(t)
   # unwrap chains like Typedef -> Typedef -> Enum
-  seen = {}
-  while t.respond_to?(:type) && !seen[t.object_id]
-    seen[t.object_id] = true
-    t = t.type
-  end
+  seen = Set.new.compare_by_identity
+  t = t.type while t.respond_to?(:type) && seen.add?(t)
   t
 end
 
@@ -18,20 +16,20 @@ def find_enum_by_name(name, api)
   base = name.to_s
   base_stripped = base.sub(/_t\z/, '')
 
-  enums = Array(api["enums"])
-  typedefs = Array(api["typedefs"])
+  enums = Array(api['enums'])
+  typedefs = Array(api['typedefs'])
 
   # direct match (array or hash)
-  if api["enums"].is_a?(Hash)
-    e = api["enums"][base] || api["enums"][base_stripped]
+  if api['enums'].is_a?(Hash)
+    e = api['enums'][base] || api['enums'][base_stripped]
     return e if enum_with_members_or_nil(e)
   else
-    e = enums.find { |x| x.respond_to?(:name) && (x.name == base || x.name == base_stripped) }
+    e = enums.find { |x| x.respond_to?(:name) && [base, base_stripped].include?(x.name) }
     return e if enum_with_members_or_nil(e)
   end
 
   # typedef: name or stripped name
-  td = typedefs.find { |t| t.respond_to?(:name) && (t.name == base || t.name == base_stripped) }
+  td = typedefs.find { |t| t.respond_to?(:name) && [base, base_stripped].include?(t.name) }
   if td
     e = unwrap_typedef_to_concrete(td)
     return e if enum_with_members_or_nil(e)
@@ -56,14 +54,15 @@ def print_enum(name, enum)
   by_name = {}
   current = -1
 
-  resolve_alias = ->(ref) do
+  resolve_alias = lambda do |ref|
     by_name.fetch(ref.to_sym) { raise "enum #{name}: alias #{ref} not defined yet" }
   end
 
-  parse_string = ->(s) do
+  parse_string = lambda do |s|
     s = s.strip
     return resolve_alias.call(s[1..]) if s.start_with?(':')               # Ruby-style symbol alias
     return resolve_alias.call(s)      if /\A[_A-Za-z]\w*\z/.match?(s)     # C-style ident alias
+
     # Last resort: numeric/expr
     Integer(s)
   rescue ArgumentError
@@ -88,7 +87,10 @@ def print_enum(name, enum)
     [n, current]
   end
 
-  pair = ->(sym_val) { sym, val = sym_val; "#{sym.inspect}, #{val}" }
+  pair = lambda { |sym_val|
+    sym, val = sym_val
+    "#{sym.inspect}, #{val}"
+  }
 
   puts <<~RUBY
     #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
@@ -102,9 +104,9 @@ end
 
 print_ffi_module(:ITT)
 
-puts <<EOF
-module ITT
-  extend FFI::Library
+puts <<~EOF
+  module ITT
+    extend FFI::Library
 
 EOF
 
@@ -131,18 +133,18 @@ def print_struct(name, struct)
 
   print_lambda = lambda { |m|
     # Render symbols with a leading colon
-    fmt = ->(x) {
+    fmt = lambda { |x|
       case x
       when Symbol then ":#{x}"
       else x
       end
     }
     s = "#{m[0]}, "
-    if m[1].kind_of?(Array)
-      s << "[ #{fmt.call(m[1][0])}, #{m[1][1]} ]"
-    else
-      s << "#{fmt.call(m[1])}"
-    end
+    s << if m[1].is_a?(Array)
+           "[ #{fmt.call(m[1][0])}, #{m[1][1]} ]"
+         else
+           "#{fmt.call(m[1])}"
+         end
     s
   }
 
@@ -150,7 +152,7 @@ def print_struct(name, struct)
   class #{to_class_name(name)} < FFI::ITTStruct
 EOF
   puts <<EOF
-    layout #{members.collect(&print_lambda).join(",\n"+" "*11)}
+    layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
   end
   typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
 
@@ -160,46 +162,47 @@ end
 
 # Build a set of all function pointer typedef symbols to detect struct fields
 # that should be converted to :pointer when generating layouts
-require 'set'
 $fnptr_syms = Set.new(
-  $all_types.select { |t|
-    t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
-  }.map { |t| to_ffi_name(t.name).to_s }
+  $all_types.select do |t|
+    t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
+  end.map { |t| to_ffi_name(t.name).to_s }
 )
 
 # Collect callbacks to print after all other types
 callbacks = []
 
-$all_types.each { |t|
-  if t.type.kind_of? YAMLCAst::Enum
+$all_types.each do |t|
+  if t.type.is_a? YAMLCAst::Enum
     print_enum(t.name, find_enum_by_name(t.name, $itt_api))
   elsif $objects.include?(t.name)
     print_itt_object(t.name)
-  elsif t.type.kind_of? YAMLCAst::Struct
+  elsif t.type.is_a? YAMLCAst::Struct
     struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct
+
     print_struct(t.name, struct)
-  elsif t.type.kind_of? YAMLCAst::Union
+  elsif t.type.is_a? YAMLCAst::Union
     union = $all_unions.find { |s| t.type.name == s.name }
     next unless union
+
     print_union(t.name, union)
-  elsif t.type.kind_of?(YAMLCAst::Pointer) && t.type.type.kind_of?(YAMLCAst::Function)
+  elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     # Defer callbacks until the end so all referenced types are defined
     callbacks << [t.name, t.type.type]
-  elsif t.type.kind_of?(YAMLCAst::Pointer)
+  elsif t.type.is_a?(YAMLCAst::Pointer)
     print_pointer_type(t.name)
-  elsif t.type.kind_of?(YAMLCAst::Int) || t.type.kind_of?(YAMLCAst::Char)
+  elsif t.type.is_a?(YAMLCAst::Int) || t.type.is_a?(YAMLCAst::Char)
     print_int_type(t.name, t.type.name)
   else
-    #$stderr.puts t.inspect
+    # $stderr.puts t.inspect
   end
-}
- 
+end
+
 # Emit collected callbacks
 callbacks.each do |name, func|
   print_function_pointer_type(name, func)
 end
 
-puts <<EOF
-end
+puts <<~EOF
+  end
 EOF

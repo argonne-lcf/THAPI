@@ -55,12 +55,8 @@ end
 
 $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
-    if false
-      $all_bitfield_names.push t.name
-    else
-      $all_enum_names.push t.name
-    end
+    $all_enums.find { |e| t.type.name == e.name }
+    $all_enum_names.push t.name
   elsif t.type.is_a? YAMLCAst::Struct
     $all_struct_names.push t.name
   elsif t.type.is_a? YAMLCAst::Union

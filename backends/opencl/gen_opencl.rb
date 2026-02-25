@@ -1,120 +1,120 @@
 require_relative 'opencl_model'
 
-puts <<EOF
-#define CL_TARGET_OPENCL_VERSION 300
-#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
-#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
-#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#define CL_USE_DEPRECATED_OPENCL_2_1_APIS
-#define CL_USE_DEPRECATED_OPENCL_2_2_APIS
-#include <CL/opencl.h>
-#include <CL/cl_gl_ext.h>
-#include <CL/cl_egl.h>
-#include <dlfcn.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/mman.h>
-#include <ffi.h>
-#include "uthash.h"
-#include "utlist.h"
+puts <<~EOF
+  #define CL_TARGET_OPENCL_VERSION 300
+  #define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+  #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+  #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+  #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+  #define CL_USE_DEPRECATED_OPENCL_2_1_APIS
+  #define CL_USE_DEPRECATED_OPENCL_2_2_APIS
+  #include <CL/opencl.h>
+  #include <CL/cl_gl_ext.h>
+  #include <CL/cl_egl.h>
+  #include <dlfcn.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <unistd.h>
+  #include <string.h>
+  #include <pthread.h>
+  #include <sys/mman.h>
+  #include <ffi.h>
+  #include "uthash.h"
+  #include "utlist.h"
 
-#include "opencl_tracepoints.h"
-#include "opencl_profiling.h"
-#include "opencl_source.h"
-#include "opencl_dump.h"
-#include "opencl_arguments.h"
-#include "opencl_build.h"
-#include "opencl_devices.h"
+  #include "opencl_tracepoints.h"
+  #include "opencl_profiling.h"
+  #include "opencl_source.h"
+  #include "opencl_dump.h"
+  #include "opencl_arguments.h"
+  #include "opencl_build.h"
+  #include "opencl_devices.h"
 
-#define CONCAT(c,suf) c ## _ ## suf
-#define STARTEV(command) CONCAT(command, #{START})
-#define STOPEV(command) CONCAT(command, #{STOP})
-#define do_tracepoint_safe(provider, name, ...) \
-        do_tracepoint(provider, name, __VA_ARGS__)
-#define tracepoint_enabled_safe(provider, name) \
-        tracepoint_enabled(provider, name)
-#define tracepoint_safe(provider, name, ...) \
-        tracepoint(provider, name, __VA_ARGS__)
+  #define CONCAT(c,suf) c ## _ ## suf
+  #define STARTEV(command) CONCAT(command, #{START})
+  #define STOPEV(command) CONCAT(command, #{STOP})
+  #define do_tracepoint_safe(provider, name, ...) \
+          do_tracepoint(provider, name, __VA_ARGS__)
+  #define tracepoint_enabled_safe(provider, name) \
+          tracepoint_enabled(provider, name)
+  #define tracepoint_safe(provider, name, ...) \
+          tracepoint(provider, name, __VA_ARGS__)
 EOF
 
-$opencl_commands.each { |c|
+$opencl_commands.each do |c|
   puts "#define #{OPENCL_POINTER_NAMES[c]} #{c.prototype.pointer_name}"
-}
+end
 
-$opencl_commands.each { |c|
+$opencl_commands.each do |c|
+  puts <<~EOF
+
+    typedef #{c.decl_pointer(type: true)};
+    static #{c.prototype.pointer_type_name}  #{OPENCL_POINTER_NAMES[c]} = (void *) 0x0;
+  EOF
+end
+
+$opencl_extension_commands.each do |c|
+  puts <<~EOF
+
+    typedef #{c.decl_pointer(type: true)};
+    static #{c.decl_ffi_wrapper};
+  EOF
+end
+
+puts <<~EOF
+
+  static void find_opencl_symbols(void * handle, int verbose) {
+EOF
+
+$opencl_commands.each do |c|
+  next if c.extension? && c.prototype.name.match(/KHR$|EXT$/)
+
   puts <<EOF
-
-typedef #{c.decl_pointer(type: true)};
-static #{c.prototype.pointer_type_name}  #{OPENCL_POINTER_NAMES[c]} = (void *) 0x0;
-EOF
-}
-
-$opencl_extension_commands.each { |c|
-  puts <<EOF
-
-typedef #{c.decl_pointer(type: true)};
-static #{c.decl_ffi_wrapper};
-EOF
-}
-
-puts <<EOF
-
-static void find_opencl_symbols(void * handle, int verbose) {
-EOF
-
-$opencl_commands.each { |c|
-  unless (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
-    puts <<EOF
 
   #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)dlsym(handle, "#{c.prototype.name}") ;
   if (!#{OPENCL_POINTER_NAMES[c]} && verbose)
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
-  end
-}
+end
 
-$opencl_commands.each { |c|
-  if (c.extension? && c.prototype.name.match(/KHR$|EXT$/))
-    puts <<EOF
+$opencl_commands.each do |c|
+  next unless c.extension? && c.prototype.name.match(/KHR$|EXT$/)
+
+  puts <<EOF
 
   #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[$clGetExtensionFunctionAddress]}("#{c.prototype.name}");
   if (!#{OPENCL_POINTER_NAMES[c]})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
-  end
-}
+end
 
-puts <<EOF
-}
+puts <<~EOF
+  }
 
 EOF
 
-puts File::read(File.join(SRC_DIR,"tracer_opencl_helpers.include.c"))
+puts File.read(File.join(SRC_DIR, 'tracer_opencl_helpers.include.c'))
 
 common_block = lambda { |c|
   params = []
   tp_params = []
   unless c.void_parameters?
     params = c.parameters.collect(&:name)
-    tp_params = c.parameters.collect { |p| (p.callback? ? "(void *)(intptr_t)" : "" ) + p.name }
+    tp_params = c.parameters.collect { |p| (p.callback? ? '(void *)(intptr_t)' : '') + p.name }
   end
   tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  c.tracepoint_parameters.each { |p|
+  c.tracepoint_parameters.each do |p|
     puts "  #{p.type} #{p.name};"
-  }
-  c.tracepoint_parameters.each { |p|
+  end
+  c.tracepoint_parameters.each do |p|
     puts p.init
-  }
+  end
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES["start"]}, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES['start']}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
-  c.prologues.each { |p|
+  c.prologues.each do |p|
     puts p
-  }
+  end
   if HOST_PROFILE
     puts <<EOF
   uint64_t _start_ts = 0;
@@ -127,10 +127,10 @@ EOF
   if c.prototype.has_return_type?
     puts <<EOF
   #{c.prototype.return_type} _retval;
-  _retval = #{OPENCL_POINTER_NAMES[c]}(#{params.join(", ")});
+  _retval = #{OPENCL_POINTER_NAMES[c]}(#{params.join(', ')});
 EOF
   else
-    puts "  #{OPENCL_POINTER_NAMES[c]}(#{params.join(", ")});"
+    puts "  #{OPENCL_POINTER_NAMES[c]}(#{params.join(', ')});"
   end
   if HOST_PROFILE
     puts <<EOF
@@ -140,24 +140,20 @@ EOF
   }
 EOF
   end
-  c.epilogues.each { |e|
+  c.epilogues.each do |e|
     puts e
-  }
-  if c.prototype.has_return_type?
-    tp_params.push "_retval"
   end
-  if HOST_PROFILE
-    tp_params.push "_duration"
-  end
+  tp_params.push '_retval' if c.prototype.has_return_type?
+  tp_params.push '_duration' if HOST_PROFILE
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES["stop"]}, #{(tp_params+tracepoint_params).join(", ")});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES['stop']}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
 }
 
-$opencl_commands.each { |c|
-  puts <<EOF
-#{c.decl} {
-EOF
+$opencl_commands.each do |c|
+  puts <<~EOF
+    #{c.decl} {
+  EOF
   if c.init?
     puts <<EOF
   _init_tracer();
@@ -169,30 +165,30 @@ EOF
   return _retval;
 EOF
   end
-  puts <<EOF
-}
+  puts <<~EOF
+    }
 
-EOF
-}
+  EOF
+end
 
-$opencl_extension_commands.each { |c|
-  puts <<EOF
-static #{c.decl_ffi_wrapper} {
-  (void)cif;
-EOF
-  c.parameters.each_with_index { |p, i|
+$opencl_extension_commands.each do |c|
+  puts <<~EOF
+    static #{c.decl_ffi_wrapper} {
+      (void)cif;
+  EOF
+  c.parameters.each_with_index do |p, i|
     puts <<EOF
   #{p.decl} = *(#{p.decl_pointer} *)args[#{i}];
 EOF
-  }
+  end
   common_block.call(c)
   if c.prototype.has_return_type?
     puts <<EOF
   *ffi_ret = _retval;
 EOF
   end
-  puts <<EOF
-}
+  puts <<~EOF
+    }
 
-EOF
-}
+  EOF
+end

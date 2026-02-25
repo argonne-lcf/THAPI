@@ -1,41 +1,40 @@
-require_relative 'gen_ze_library_base.rb'
+require_relative 'gen_ze_library_base'
 
+puts <<~EOF
+  require_relative 'ze_library.rb'
+  require_relative 'ze_refinements.rb'
+  require_relative 'ze_bindings_base.rb'
 
-puts <<EOF
-require_relative 'ze_library.rb'
-require_relative 'ze_refinements.rb'
-require_relative 'ze_bindings_base.rb'
-
-module ZE
+  module ZE
 
 EOF
 
-$all_funcs.each { |f|
+$all_funcs.each do |f|
   type, params = f.type.to_ffi
   puts <<EOF
   begin
     attach_function #{to_ffi_name(f.name)},
-                    [ #{params.join(",\n"+" "*20)} ],
+                    [ #{params.join(",\n" + (' ' * 20))} ],
                     #{type}
   rescue FFI::NotFoundError
     warn "Missing #{f.name} in libze_loader.so"
   end
 
 EOF
-}
-
-puts <<EOF
-  ZE.init
-
-  at_exit {
-    ZE::ZE_OBJECTS_MUTEX.synchronize {
-      ZE::ZE_OBJECTS.to_a.reverse.each do |h, d|
-        result = method(d).call(h)
-        ZE.error_check(result)
-      end
-      ZE::ZE_OBJECTS.clear
-    }
-  }
-
 end
+
+puts <<~EOF
+    ZE.init
+
+    at_exit {
+      ZE::ZE_OBJECTS_MUTEX.synchronize {
+        ZE::ZE_OBJECTS.to_a.reverse.each do |h, d|
+          result = method(d).call(h)
+          ZE.error_check(result)
+        end
+        ZE::ZE_OBJECTS.clear
+      }
+    }
+
+  end
 EOF

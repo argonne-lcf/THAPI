@@ -2,9 +2,9 @@
 #include <iostream>
 #include <metababel/metababel.h>
 #include <mpi.h.include>
+#include <sstream>
 #include <string>
 #include <tuple>
-#include <sstream>
 
 struct data_s {
   EntryState entry_state;
@@ -12,9 +12,14 @@ struct data_s {
 
 typedef struct data_s data_t;
 
-static void send_host_message(void *btx_handle, void *usr_data, int64_t ts,
-                              const char *event_class_name, const char *hostname, int64_t vpid,
-                              uint64_t vtid, bool err) {
+static void send_host_message(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
+                              const char *event_class_name,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
+                              bool err) {
 
   std::string event_class_name_striped = strip_event_class_name_exit(event_class_name);
   const int64_t entry_ts =
@@ -28,28 +33,42 @@ void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
 
 void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
-static void entries_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *event_class_name, const char *hostname, int64_t vpid,
+static void entries_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *event_class_name,
+                             const char *hostname,
+                             int64_t vpid,
                              uint64_t vtid) {
   static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
 }
 
-static void exits_callback_mpiError_absent(void *btx_handle, void *usr_data, int64_t ts,
-                                           const char *event_class_name, const char *hostname,
-                                           int64_t vpid, uint64_t vtid) {
+static void exits_callback_mpiError_absent(void *btx_handle,
+                                           void *usr_data,
+                                           int64_t ts,
+                                           const char *event_class_name,
+                                           const char *hostname,
+                                           int64_t vpid,
+                                           uint64_t vtid) {
 
   send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid, false);
 }
 
-static void exits_callback_mpiError_present(void *btx_handle, void *usr_data, int64_t ts,
-                                            const char *event_class_name, const char *hostname,
-                                            int64_t vpid, uint64_t vtid, int mpiResult) {
+static void exits_callback_mpiError_present(void *btx_handle,
+                                            void *usr_data,
+                                            int64_t ts,
+                                            const char *event_class_name,
+                                            const char *hostname,
+                                            int64_t vpid,
+                                            uint64_t vtid,
+                                            int mpiResult) {
 
   send_host_message(btx_handle, usr_data, ts, event_class_name, hostname, vpid, vtid,
                     mpiResult != MPI_SUCCESS);
 }
 
-// MPICH ABI (https://github.com/pmodels/mpich/blob/main/src/mpi/datatype/typerep/src/typerep_ext32.c)
+// MPICH ABI
+// (https://github.com/pmodels/mpich/blob/main/src/mpi/datatype/typerep/src/typerep_ext32.c)
 std::unordered_map<uint64_t, std::tuple<std::string, int>> mpi_datatype_info = {
     {0xc000000, {"MPI_DATATYPE_NULL", 0}},
     {0x4c000843, {"MPI_AINT", 8}},
@@ -118,16 +137,26 @@ std::unordered_map<uint64_t, std::tuple<std::string, int>> mpi_datatype_info = {
     {0x4c00102a, {"MPI_COMPLEX16", 16}},
 };
 
-static void type_property_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                             const char *hostname,
-                                             int64_t vpid, uint64_t vtid, MPI_Datatype datatype, int size ) {
+static void type_property_callback(void *btx_handle,
+                                   void *usr_data,
+                                   int64_t ts,
+                                   const char *hostname,
+                                   int64_t vpid,
+                                   uint64_t vtid,
+                                   MPI_Datatype datatype,
+                                   int size) {
 
-	mpi_datatype_info[(uint64_t) datatype] = { std::to_string( (uint64_t) datatype), size} ;
+  mpi_datatype_info[(uint64_t)datatype] = {std::to_string((uint64_t)datatype), size};
 }
 
-static void traffic_MPI_Count_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                             const char *event_class_name, const char *hostname,
-                                             int64_t vpid, uint64_t vtid, MPI_Count count,
+static void traffic_MPI_Count_entry_callback(void *btx_handle,
+                                             void *usr_data,
+                                             int64_t ts,
+                                             const char *event_class_name,
+                                             const char *hostname,
+                                             int64_t vpid,
+                                             uint64_t vtid,
+                                             MPI_Count count,
                                              MPI_Datatype datatype) {
 
   auto it = mpi_datatype_info.find((uint64_t)datatype);
@@ -144,9 +173,14 @@ static void traffic_MPI_Count_entry_callback(void *btx_handle, void *usr_data, i
                                  count * size, oss.str().c_str());
 }
 
-static void traffic_int_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                       const char *event_class_name, const char *hostname,
-                                       int64_t vpid, uint64_t vtid, int count,
+static void traffic_int_entry_callback(void *btx_handle,
+                                       void *usr_data,
+                                       int64_t ts,
+                                       const char *event_class_name,
+                                       const char *hostname,
+                                       int64_t vpid,
+                                       uint64_t vtid,
+                                       int count,
                                        MPI_Datatype datatype) {
 
   auto it = mpi_datatype_info.find((uint64_t)datatype);
@@ -163,8 +197,6 @@ static void traffic_int_entry_callback(void *btx_handle, void *usr_data, int64_t
                                  strip_event_class_name_entry(event_class_name).c_str(),
                                  count * size, oss.str().c_str());
 }
-
-
 
 void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
