@@ -11,12 +11,6 @@ if STRICT
   #    |         ^
   #1 error generated.
   WERROR = -Werror -Wno-error=nonnull 
-
-  ifneq ($(CC), gcc)
-    WERROR += -Wno-error=extern-c-compat
-  endif
-else
-  WERROR =
 endif
 
 ZE_NAMESPACES = ze zet zes zel zer zex
@@ -69,6 +63,7 @@ $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
+	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include
@@ -159,7 +154,7 @@ nodist_libZESampling_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
 
-libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I$(top_srcdir)/backends/ze/include -I./
+libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I./modified_include -I./
 libZESampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libZESampling_la_LDFLAGS = -avoid-version -module
 libZESampling_la_LIBADD =  $(top_builddir)/sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
@@ -184,7 +179,7 @@ nodist_libzetracepoints_la_SOURCES = \
 	$(ZE_PROBES_SRC) \
 	$(ZE_STATIC_PROBES_SRC)
 
-libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
+libzetracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./
 libzetracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
 libzetracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
@@ -199,7 +194,7 @@ nodist_libze_loader_la_SOURCES = \
 	$(ZE_STATIC_PROBES_INCL) \
 	tracer_ze.c
 
-libze_loader_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I$(top_srcdir)/utils -I./
+libze_loader_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I$(top_srcdir)/utils -I./
 libze_loader_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libze_loader_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
 libze_loader_la_LDFLAGS += -version-info 1:0:0
@@ -270,7 +265,7 @@ libZEInterval_la_SOURCES = \
 	btx_zeinterval_callbacks.cpp \
 	btx_zeinterval_callbacks.hpp
 
-libZEInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_ze
+libZEInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ -I./btx_filter_ze
 libZEInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libZEInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libZEInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
@@ -296,7 +291,7 @@ $(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
 
 noinst_LTLIBRARIES += libtestzesource.la
 nodist_libtestzesource_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
-libtestzesource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_ze_test/
+libtestzesource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_source_ze_test/
 libtestzesource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 
 TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
