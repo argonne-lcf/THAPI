@@ -10,7 +10,11 @@ if STRICT
   #2729 | typedef struct _zer_get_default_context_params_t
   #    |         ^
   #1 error generated.
-  WERROR = -Werror -Wno-error=nonnull -Wno-error=extern-c-compat
+  WERROR = -Werror -Wno-error=nonnull 
+
+  ifneq ($(CC), gcc)
+    WERROR += -Wno-error=extern-c-compat
+  endif
 else
   WERROR =
 endif
