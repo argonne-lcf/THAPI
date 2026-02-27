@@ -243,9 +243,7 @@ EOF
 }
 
 $ze_commands.each do |c|
-  if c.name.match(/zeGet.*ProcAddrTable/) || c.name.match(/zeLoaderInit/) || c.name.match(/^zel/)
-    next
-  end
+  next if c.name.match(/zeGet.*ProcAddrTable/) || c.name.match(/zeLoaderInit/) || c.name.match(/^zel/)
 
   puts <<~EOF
     #{c.decl_hidden_alias};
@@ -276,7 +274,6 @@ $zer_commands.each do |c|
 
   EOF
 end
-
 
 $ze_commands.each do |c|
   normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
