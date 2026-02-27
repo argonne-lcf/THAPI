@@ -2,15 +2,20 @@
 
 if STRICT
   # We disable `nonnull`  check due to
-  #  ././ze_tracepoints.h: In function 'lttng_ust__event_get_size__lttng_ust_ze___zeModuleCreate_entry':
+  #  .//ze_tracepoints.h: In function 'lttng_ust__event_get_size__lttng_ust_ze___zeModuleCreate_entry':
   # [...]/lttng/ust-tracepoint-event.h:578:17: error: argument 1 null where non-null expected [-Werror=nonnull]
   # 578 |                 strlen((_src) ? (_src) : LTTNG_UST__NULL_STRING) + 1;
-  WERROR = -Werror -Wno-error=nonnull
+  # We disable `extern-c-compat` check due to
+  # ./layers/zel_tracing_register_cb.h:2729:9: error: empty struct has size 0 in C, size 1 in C++ [-Werror,-Wextern-c-compat]
+  #2729 | typedef struct _zer_get_default_context_params_t
+  #    |         ^
+  #1 error generated.
+  WERROR = -Werror -Wno-error=nonnull -Wno-error=extern-c-compat
 else
   WERROR =
 endif
 
-ZE_NAMESPACES = ze zet zes zel zex
+ZE_NAMESPACES = ze zet zes zel zer zex
 ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
 ZE_HDR_ROOT = \
@@ -23,8 +28,10 @@ ZE_HDR_ROOT = \
 	zet_api.h \
 	zet_ddi.h \
 	zet_ddi_ver.h \
+        zer_api.h \
+        zer_ddi.h \
+        zer_ddi_ver.h \
 	zex_api.h \
-	loader/ze_loader_api.h \
 	layers/zel_tracing_api.h \
 	layers/zel_tracing_ddi.h \
 	layers/zel_tracing_ddi_ver.h \
@@ -58,7 +65,6 @@ $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
-	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include

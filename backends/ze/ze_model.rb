@@ -14,22 +14,25 @@ $ze_api_yaml = YAML.load_file('ze_api.yaml')
 $zet_api_yaml = YAML.load_file('zet_api.yaml')
 $zes_api_yaml = YAML.load_file('zes_api.yaml')
 $zel_api_yaml = YAML.load_file('zel_api.yaml')
+$zer_api_yaml = YAML.load_file('zer_api.yaml')
 $zex_api_yaml = YAML.load_file('zex_api.yaml')
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
 $zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
 $zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
 $zel_api = YAMLCAst.from_yaml_ast($zel_api_yaml)
+$zer_api = YAMLCAst.from_yaml_ast($zer_api_yaml)
 $zex_api = YAMLCAst.from_yaml_ast($zex_api_yaml)
 
 ze_funcs_e = $ze_api['functions']
 zet_funcs_e = $zet_api['functions']
 zes_funcs_e = $zes_api['functions']
 zel_funcs_e = $zel_api['functions']
+zer_funcs_e = $zer_api['functions']
 zex_funcs_e = $zex_api['functions']
 
-typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] + $zex_api['typedefs']
-structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zex_api['structs']
+typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] + $zer_api['typedefs'] + $zex_api['typedefs']
+structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zer_api['structs'] + $zex_api['structs']
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
@@ -47,6 +50,10 @@ $struct_type_conversion_table = {
   'ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_PROPERTIES_EXT' => 'ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_EXT_PROPERTIES',
   'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE' => 'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32',
   'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE' => 'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32',
+  'ZE_STRUCTURE_TYPE_COMMAND_LIST_APPEND_LAUNCH_KERNEL_PARAM_COOPERATIVE_DESC' => 'ZE_STRUCTURE_TYPE_COMMAND_LIST_APPEND_PARAM_COOPERATIVE_DESC',
+  'ZE_STRUCTURE_TYPE_DEVICE_CACHE_LINE_SIZE_EXT' => 'ZE_STRUCTURE_TYPE_DEVICE_CACHELINE_SIZE_EXT',
+  'ZE_STRUCTURE_TYPE_KERNEL_ALLOCATION_EXP_PROPERTIES' => 'ZE_STRUCTURE_TYPE_KERNEL_ALLOCATION_PROPERTIES',
+  'ZET_STRUCTURE_TYPE_EXPORT_DMA_BUF_EXP_PROPERTIES' => 'ZET_STRUCTURE_TYPE_EXPORT_DMA_EXP_PROPERTIES',
   'ZES_STRUCTURE_TYPE_MEM_PAGE_OFFLINE_STATE_EXP' => 'ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP',
 }
 
@@ -79,6 +86,13 @@ $zel_meta_parameters['meta_parameters'].each do |func, list|
   end
 end
 
+$zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
+$zer_meta_parameters['meta_parameters'].each do |func, list|
+  list.each do |type, *args|
+    register_meta_parameter func, Kernel.const_get(type), *args
+  end
+end
+
 $zex_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zex_meta_parameters.yaml'))
 $zex_meta_parameters['meta_parameters'].each do |func, list|
   list.each do |type, *args|
@@ -102,6 +116,10 @@ $zel_commands = zel_funcs_e.collect do |func|
   Command.new(func)
 end
 
+$zer_commands = zer_funcs_e.collect do |func|
+  Command.new(func)
+end
+
 $zex_commands = zex_funcs_e.collect do |func|
   Command.new(func)
 end
@@ -110,7 +128,7 @@ def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
 
-ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands).collect do |c|
+ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end
 ze_pointer_names += $zex_commands.collect do |c|
@@ -375,8 +393,8 @@ register_epilogue 'zeKernelCreate', <<EOF
  }
 EOF
 
-($ze_commands + $zet_commands + $zes_commands + $zel_commands).select do |c|
-  c.name.match(/(ze|zet|zes|zel)Get.*ProcAddrTable/)
+($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).select do |c|
+  c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
 end.each do |c|
   parent_type = c['pDdiTable'].type.type.to_s + '_'
   child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }

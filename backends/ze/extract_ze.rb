@@ -4,7 +4,7 @@ ze_header = <<~EOF
   #include <ze_api.h>
   #include <ze_ddi.h>
   #include <ze_ddi_ver.h>
-  #include <loader/ze_loader_api.h>
+  #include <loader/ze_loader.h>
 EOF
 
 if enable_clang_parser?

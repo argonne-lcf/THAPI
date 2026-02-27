@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zet_ddi.h
- * @version v1.9-r1.9.3
+ * @version v1.15-r1.13.73
  *
  */
 #ifndef _ZET_DDI_VER_H
@@ -31,12 +31,52 @@ typedef struct _zet_metric_programmable_exp_dditable_t_1_9
 } zet_metric_programmable_exp_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// [1.1]
+/// @brief Table of MetricTracerExp functions pointers
+typedef struct _zet_metric_tracer_exp_dditable_t_1_1
+{
+    zet_pfnMetricTracerCreateExp_t                              pfnCreateExp;
+    zet_pfnMetricTracerDestroyExp_t                             pfnDestroyExp;
+    zet_pfnMetricTracerEnableExp_t                              pfnEnableExp;
+    zet_pfnMetricTracerDisableExp_t                             pfnDisableExp;
+    zet_pfnMetricTracerReadDataExp_t                            pfnReadDataExp;
+    zet_pfnMetricTracerDecodeExp_t                              pfnDecodeExp;
+} zet_metric_tracer_exp_dditable_t_1_1;
+
+///////////////////////////////////////////////////////////////////////////////
+/// [1.1]
+/// @brief Table of MetricDecoderExp functions pointers
+typedef struct _zet_metric_decoder_exp_dditable_t_1_1
+{
+    zet_pfnMetricDecoderCreateExp_t                             pfnCreateExp;
+    zet_pfnMetricDecoderDestroyExp_t                            pfnDestroyExp;
+    zet_pfnMetricDecoderGetDecodableMetricsExp_t                pfnGetDecodableMetricsExp;
+} zet_metric_decoder_exp_dditable_t_1_1;
+
+///////////////////////////////////////////////////////////////////////////////
 /// [1.0]
 /// @brief Table of Device functions pointers
 typedef struct _zet_device_dditable_t_1_0
 {
     zet_pfnDeviceGetDebugProperties_t                           pfnGetDebugProperties;
 } zet_device_dditable_t_1_0;
+
+///////////////////////////////////////////////////////////////////////////////
+/// [1.1, 1.13]
+/// @brief Table of DeviceExp functions pointers
+typedef struct _zet_device_exp_dditable_t_1_1
+{
+    zet_pfnDeviceGetConcurrentMetricGroupsExp_t                 pfnGetConcurrentMetricGroupsExp;
+    zet_pfnDeviceCreateMetricGroupsFromMetricsExp_t             pfnCreateMetricGroupsFromMetricsExp;
+} zet_device_exp_dditable_t_1_1;
+
+typedef struct _zet_device_exp_dditable_t_1_13
+{
+    zet_pfnDeviceGetConcurrentMetricGroupsExp_t                 pfnGetConcurrentMetricGroupsExp;
+    zet_pfnDeviceCreateMetricGroupsFromMetricsExp_t             pfnCreateMetricGroupsFromMetricsExp;
+    zet_pfnDeviceEnableMetricsExp_t                             pfnEnableMetricsExp;
+    zet_pfnDeviceDisableMetricsExp_t                            pfnDisableMetricsExp;
+} zet_device_exp_dditable_t_1_13;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// [1.0]
@@ -56,6 +96,14 @@ typedef struct _zet_command_list_dditable_t_1_0
     zet_pfnCommandListAppendMetricQueryEnd_t                    pfnAppendMetricQueryEnd;
     zet_pfnCommandListAppendMetricMemoryBarrier_t               pfnAppendMetricMemoryBarrier;
 } zet_command_list_dditable_t_1_0;
+
+///////////////////////////////////////////////////////////////////////////////
+/// [1.13]
+/// @brief Table of CommandListExp functions pointers
+typedef struct _zet_command_list_exp_dditable_t_1_13
+{
+    zet_pfnCommandListAppendMarkerExp_t                         pfnAppendMarkerExp;
+} zet_command_list_exp_dditable_t_1_13;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// [1.0]
@@ -83,12 +131,18 @@ typedef struct _zet_metric_dditable_t_1_0
 } zet_metric_dditable_t_1_0;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.9]
+/// [1.11, 1.9]
 /// @brief Table of MetricExp functions pointers
+typedef struct _zet_metric_exp_dditable_t_1_11
+{
+    zet_pfnMetricCreateFromProgrammableExp2_t                   pfnCreateFromProgrammableExp2;
+} zet_metric_exp_dditable_t_1_11;
+
 typedef struct _zet_metric_exp_dditable_t_1_9
 {
     zet_pfnMetricCreateFromProgrammableExp_t                    pfnCreateFromProgrammableExp;
     zet_pfnMetricDestroyExp_t                                   pfnDestroyExp;
+    zet_pfnMetricCreateFromProgrammableExp2_t                   pfnCreateFromProgrammableExp2;
 } zet_metric_exp_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
