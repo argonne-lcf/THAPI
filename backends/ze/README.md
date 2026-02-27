@@ -53,3 +53,12 @@ tracer_ze.c:8456:20: error: unused function 'zelTracerResetAllCallbacks_hid' [-W
       |                    ^~~~~~~~~~~~~~~~~
 ```
 Need to modify the `$zel_commands.each` who generate `#{c.decl_hidden_alias};` in `gen_ze.rb`
+
+Run time error: When running babeltrace_thapi (`iprof -t`)
+```
+ogrammableParamValueInfoExp>': uninitialized constant ZE::ZETMetricProgrammableParamValueInfoExp::ZET_MAX_METRIC_PROGRAMMABLE_VALUE_DESCRIPTION_EXP (NameError)
+
+           :description, [ :char, ZET_MAX_METRIC_PROGRAMMABLE_VALUE_DESCRIPTION_EXP ]
+```
+Update in `backends/ze/gen_ze_library.rb` Moduel ZE. 
+TODO: h2yaml should be able to find all the constant defined
