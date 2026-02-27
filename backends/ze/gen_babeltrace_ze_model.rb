@@ -78,8 +78,8 @@ event_classes +=
    [:lttng_ust_zes_structs, get_structs_types(:zes, $zes_api['typedefs'], $zes_api['structs'])],
    [:lttng_ust_zel_structs, get_structs_types(:zel, $zel_api['typedefs'], $zel_api['structs'])],
    [:lttng_ust_zer_structs, get_structs_types(:zer, $zer_api['typedefs'], $zer_api['structs'])],
-   [:lttng_ust_zex_structs, get_structs_types(:zex, $zex_api['typedefs'], $zex_api['structs'])]
-  ].collect do |provider, structs|
+   [:lttng_ust_zex_structs,
+    get_structs_types(:zex, $zex_api['typedefs'], $zex_api['structs'])]].collect do |provider, structs|
     structs.collect do |struct|
       gen_struct_event_bt_model(provider, struct)
     end
