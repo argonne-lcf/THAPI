@@ -16,9 +16,9 @@ SPEC_VERSION="${1:-}"
 REPO_URL="${2:-https://github.com/oneapi-src/level-zero.git}"
 
 if [[ -z "$SPEC_VERSION" ]]; then
-	echo "Usage: $0 <spec_version> [repo_url]" >&2
-	echo "  e.g. $0 1.15" >&2
-	exit 1
+  echo "Usage: $0 <spec_version> [repo_url]" >&2
+  echo "  e.g. $0 1.15" >&2
+  exit 1
 fi
 
 # Escape dots and add the string to search
@@ -40,8 +40,8 @@ echo "Searching commit history for: ${GREP_PATTERN=}" >&2
 MATCHING_COMMITS=$(git log --all --oneline --grep="$GREP_PATTERN" --format="%H %s")
 
 if [[ -z "$MATCHING_COMMITS" ]]; then
-	echo "✘  No commit found referencing spec version: ${SPEC_VERSION}" >&2
-	exit 1
+  echo "✘  No commit found referencing spec version: ${SPEC_VERSION}" >&2
+  exit 1
 fi
 echo "${MATCHING_COMMITS}" >&2
 
@@ -50,8 +50,8 @@ CONTAINS_ARGS=$(awk '{print "--contains " $1}' <<<"$MATCHING_COMMITS")
 MOST_RECENT=$(git tag -l --sort=-version:refname $CONTAINS_ARGS -- 'v*' | head -1)
 
 if [[ -z "$MOST_RECENT" ]]; then
-	echo "Matching commit(s) found but no v* tags contain them yet." >&2
-	exit 1
+  echo "Matching commit(s) found but no v* tags contain them yet." >&2
+  exit 1
 fi
 
 echo "Latest maching tag containing any of those commit" >&2
