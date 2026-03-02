@@ -24,8 +24,8 @@ grep "define ZE_API_VERSION_CURRENT_M" ../include/ze_api.h
 
 - Now header have been generated in `level-zero-spec/include`. Copy that in `$THAPI_ROOT/backend/ze/include` (carefull for removed file)
 - This does contain the layers/loader: 
- - We got those from `https://github.com/oneapi-src/level-zero/tags` (find the tags who correspond the spec version. Something like
-`API Headers, Loader, & Validation Layer based on oneAPI Level Zero Specification v1.15.31` in the release name
+ - We got those from `https://github.com/oneapi-src/level-zero/tags`
+ - Use `find_level_zero_tag.sh $version` to help.
 - This does contain the `zex`:
   - Found in `https://github.com/intel/compute-runtime/blob/master/level_zero/include/level_zero/driver_experimental/zex_api.h`
 - Try to compile
