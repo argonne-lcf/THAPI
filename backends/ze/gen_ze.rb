@@ -1,41 +1,41 @@
 require_relative 'ze_model'
 
 puts <<~EOF
-  #include <stdint.h>
-  #include <stddef.h>
-  #include "ze.h.include"
-  #include <dlfcn.h>
-  #include <dlfcn.h>
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <unistd.h>
-  #include <string.h>
-  #include <pthread.h>
-  #include <sys/mman.h>
-  #include <ffi.h>
-  #include "uthash.h"
-  #include "utlist.h"
+    #include <stdint.h>
+    #include <stddef.h>
+    #include "ze.h.include"
+    #include <dlfcn.h>
+    #include <dlfcn.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    #include <string.h>
+    #include <pthread.h>
+    #include <sys/mman.h>
+    #include <ffi.h>
+    #include "uthash.h"
+    #include "utlist.h"
 
-  #include "ze_tracepoints.h"
-  #include "zet_tracepoints.h"
-  #include "zes_tracepoints.h"
-  #include "zel_tracepoints.h"
-#ifdef NEW_VERSION_WITH_ZER
-  #include "zer_tracepoints.h"
-#endif
-  #include "zex_tracepoints.h"
-  #include "ze_structs_tracepoints.h"
-  #include "zet_structs_tracepoints.h"
-  #include "zes_structs_tracepoints.h"
-  #include "zel_structs_tracepoints.h"
-#ifdef NEW_VERSION_WITH_ZER
-  #include "zer_structs_tracepoints.h"
-#endif
-  #include "zex_structs_tracepoints.h"
-  #include "ze_sampling.h"
-  #include "ze_profiling.h"
-  #include "ze_properties.h"
-  #include "ze_build.h"
+    #include "ze_tracepoints.h"
+    #include "zet_tracepoints.h"
+    #include "zes_tracepoints.h"
+    #include "zel_tracepoints.h"
+  #ifdef NEW_VERSION_WITH_ZER
+    #include "zer_tracepoints.h"
+  #endif
+    #include "zex_tracepoints.h"
+    #include "ze_structs_tracepoints.h"
+    #include "zet_structs_tracepoints.h"
+    #include "zes_structs_tracepoints.h"
+    #include "zel_structs_tracepoints.h"
+  #ifdef NEW_VERSION_WITH_ZER
+    #include "zer_structs_tracepoints.h"
+  #endif
+    #include "zex_structs_tracepoints.h"
+    #include "ze_sampling.h"
+    #include "ze_profiling.h"
+    #include "ze_properties.h"
+    #include "ze_build.h"
 
 EOF
 

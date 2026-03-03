@@ -14,8 +14,8 @@ $ze_api_yaml = YAML.load_file('ze_api.yaml')
 $zet_api_yaml = YAML.load_file('zet_api.yaml')
 $zes_api_yaml = YAML.load_file('zes_api.yaml')
 $zel_api_yaml = YAML.load_file('zel_api.yaml')
-#$zer_api_yaml = YAML.load_file('zer_api.yaml')
-$zer_api_yaml = {"typedefs" => [], "structs" => [], "functions" => [] }
+# $zer_api_yaml = YAML.load_file('zer_api.yaml')
+$zer_api_yaml = { 'typedefs' => [], 'structs' => [], 'functions' => [] }
 $zex_api_yaml = YAML.load_file('zex_api.yaml')
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
@@ -86,7 +86,6 @@ $zel_meta_parameters['meta_parameters'].each do |func, list|
     register_meta_parameter func, Kernel.const_get(type), *args
   end
 end
-
 
 $zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
 $zer_meta_parameters['meta_parameters'].each do |func, list|
