@@ -740,7 +740,7 @@ module LocalMaster
 
       # /!\ If babeltrace moved the file the `lttng_trace_dir_tmp` no longer exist
       LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
-      FileUtils.FileUtils.rm_rf(lttng_trace_dir_tmp)
+      FileUtils.rm_rf(lttng_trace_dir_tmp)
 
     end
   end
