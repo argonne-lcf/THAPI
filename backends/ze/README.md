@@ -16,7 +16,7 @@
 
   - If you have access to a Level Zero lib, compile and run:
 ```bash
-$ icpx -lze_loader query_ze_version.cpp  && ./a.out
+$ icpx -lze_loader utils_spec_update/query_ze_version.cpp  && ./a.out
 Driver version: 259.33578
 API version: 1.13
 Loader component versions:
@@ -29,7 +29,7 @@ Loader component versions:
 ```
    - This will give you the loader version.
 
-- If you have access to a loader, copy/paste the `/usr/include/level_zero/` folder into `$THAPI_ROOT/backend/ze/include/`.
+- If you have access to a loader, don't copy/paste the `/usr/include/level_zero/` folder into `$THAPI_ROOT/backend/ze/include/`.
   If not, use `git clone --depth 1 --branch $(lib_version) https://github.com/oneapi-src/level-zero.git`, where `lib_version` is the version you want.
   To find the latest version, run:
 ```bash
@@ -40,16 +40,17 @@ $ git ls-remote --sort="v:refname"  --tags  https://github.com/oneapi-src/level-
 ## 2/ DDI Ver
 
 ### Sync
-- Sync the fork (`github.com/argonne-lcf/level-zero-spec`) with the original remote
-- Sync the branch `ddi_ver`
+- Sync the fork (` https://github.com/argonne-lcf/level-zero-spec.git`) with the original remote
+- Sync the `ddi_ver` branch
 
 ### Building `ddi_table`
 
-Then we will build the `ddi_table` corresponding to the Level Zero API version (assumed `uv`).
-If you don't know the Header/API version associated with the driver, you can grep for `ZE_API_VERSION_CURRENT`:
+Then we will build the `ddi_table` corresponding to the Level Zero API version.
+
+If you don't know the Header/API version associated with the driver previously used, you can grep for `ZE_API_VERSION_CURRENT`:
 ```bash
-$ grep ZE_API_VERSION_CURRENT ./level_zero/ze_api.h | head -1
-    ZE_API_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 12 ),                      ///< latest known version
+$ grep define ZE_API_VERSION_CURRENT ./level_zero/ze_api.h | head -1
+ZE_API_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 13 ),                      ///< latest known version
 ```
 
 Now it's time to generate `ddi_ver.h`:
@@ -57,13 +58,21 @@ Now it's time to generate `ddi_ver.h`:
 git clone -b ddi_ver https://github.com/argonne-lcf/level-zero-spec.git
 cd level-zero-spec/scripts/
 uv pip install -r third_party/requirements.txt
-cd script
 python run.py  --ver $version --\!debug --\!html
-grep "define ZE_API_VERSION_CURRENT_M" ../include/ze_api.h
 ```
 
-- The headers will be generated in `level-zero-spec/include/`. Copy `ddi_ver.h` into `$THAPI_ROOT/backend/ze/include/`.
-- You can sanity-check that the headers are the same.
+- The headers will be generated in `level-zero-spec/include/`. Copy `../include/*_ddi_ver.h` into `$THAPI_ROOT/backend/ze/include/`.
+- You can sanity-check that the headers are the same And that `ZE_API_VERSION_CURRENT_M` define the same version
+```
+grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
+    ZE_API_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 13 ),                      ///< latest known version
+#ifndef ZE_API_VERSION_CURRENT_M
+#define ZE_API_VERSION_CURRENT_M  ZE_MAKE_VERSION( 1, 15 )
+#endif // ZE_API_VERSION_CURRENT_M
+```
+(We don't talk about `ZE_API_VERSION_CURRENT_M`...)
+
+- Note that `layers/zel_tracing_ddi_ver.h` is not generated manually, and need manual update.
 
 ## 3/ Optional: ZEX
 - We are missing the `zex` header:
@@ -75,7 +84,7 @@ grep "define ZE_API_VERSION_CURRENT_M" ../include/ze_api.h
 
 # Potential Problems
 
-## 1 
+## 1
 
 ```
 tracer_ze.c:197:8: error: use of undeclared identifier 'ZE_STRUCTURE_TYPE_DEVICE_CACHE_LINE_SIZE_EXT'; did you mean 'ZE_STRUCTURE_TYPE_DEVICE_CACHELINE_SIZE_EXT'?
