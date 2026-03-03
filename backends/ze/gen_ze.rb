@@ -20,13 +20,17 @@ puts <<~EOF
   #include "zet_tracepoints.h"
   #include "zes_tracepoints.h"
   #include "zel_tracepoints.h"
+#ifdef NEW_VERSION_WITH_ZER
   #include "zer_tracepoints.h"
+#endif
   #include "zex_tracepoints.h"
   #include "ze_structs_tracepoints.h"
   #include "zet_structs_tracepoints.h"
   #include "zes_structs_tracepoints.h"
   #include "zel_structs_tracepoints.h"
+#ifdef NEW_VERSION_WITH_ZER
   #include "zer_structs_tracepoints.h"
+#endif
   #include "zex_structs_tracepoints.h"
   #include "ze_sampling.h"
   #include "ze_profiling.h"

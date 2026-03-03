@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zes_ddi.h
- * @version v1.15-r1.13.73
+ * @version v1.13-r1.13.73
  *
  */
 #ifndef _ZES_DDI_VER_H
@@ -28,7 +28,7 @@ typedef struct _zes_global_dditable_t_1_5
 } zes_global_dditable_t_1_5;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.15, 1.4, 1.5, 1.7]
+/// [1.0, 1.4, 1.5, 1.7]
 /// @brief Table of Device functions pointers
 typedef struct _zes_device_dditable_t_1_0
 {
@@ -58,36 +58,6 @@ typedef struct _zes_device_dditable_t_1_0
     zes_pfnDeviceEnumStandbyDomains_t                           pfnEnumStandbyDomains;
     zes_pfnDeviceEnumTemperatureSensors_t                       pfnEnumTemperatureSensors;
 } zes_device_dditable_t_1_0;
-
-typedef struct _zes_device_dditable_t_1_15
-{
-    zes_pfnDeviceGetProperties_t                                pfnGetProperties;
-    zes_pfnDeviceGetState_t                                     pfnGetState;
-    zes_pfnDeviceReset_t                                        pfnReset;
-    zes_pfnDeviceProcessesGetState_t                            pfnProcessesGetState;
-    zes_pfnDevicePciGetProperties_t                             pfnPciGetProperties;
-    zes_pfnDevicePciGetState_t                                  pfnPciGetState;
-    zes_pfnDevicePciGetBars_t                                   pfnPciGetBars;
-    zes_pfnDevicePciGetStats_t                                  pfnPciGetStats;
-    zes_pfnDeviceEnumDiagnosticTestSuites_t                     pfnEnumDiagnosticTestSuites;
-    zes_pfnDeviceEnumEngineGroups_t                             pfnEnumEngineGroups;
-    zes_pfnDeviceEventRegister_t                                pfnEventRegister;
-    zes_pfnDeviceEnumFabricPorts_t                              pfnEnumFabricPorts;
-    zes_pfnDeviceEnumFans_t                                     pfnEnumFans;
-    zes_pfnDeviceEnumFirmwares_t                                pfnEnumFirmwares;
-    zes_pfnDeviceEnumFrequencyDomains_t                         pfnEnumFrequencyDomains;
-    zes_pfnDeviceEnumLeds_t                                     pfnEnumLeds;
-    zes_pfnDeviceEnumMemoryModules_t                            pfnEnumMemoryModules;
-    zes_pfnDeviceEnumPerformanceFactorDomains_t                 pfnEnumPerformanceFactorDomains;
-    zes_pfnDeviceEnumPowerDomains_t                             pfnEnumPowerDomains;
-    zes_pfnDeviceGetCardPowerDomain_t                           pfnGetCardPowerDomain;
-    zes_pfnDeviceEnumPsus_t                                     pfnEnumPsus;
-    zes_pfnDeviceEnumRasErrorSets_t                             pfnEnumRasErrorSets;
-    zes_pfnDeviceEnumSchedulers_t                               pfnEnumSchedulers;
-    zes_pfnDeviceEnumStandbyDomains_t                           pfnEnumStandbyDomains;
-    zes_pfnDeviceEnumTemperatureSensors_t                       pfnEnumTemperatureSensors;
-    zes_pfnDevicePciLinkSpeedUpdateExt_t                        pfnPciLinkSpeedUpdateExt;
-} zes_device_dditable_t_1_15;
 
 typedef struct _zes_device_dditable_t_1_4
 {
@@ -120,7 +90,6 @@ typedef struct _zes_device_dditable_t_1_4
     zes_pfnDeviceEccConfigurable_t                              pfnEccConfigurable;
     zes_pfnDeviceGetEccState_t                                  pfnGetEccState;
     zes_pfnDeviceSetEccState_t                                  pfnSetEccState;
-    zes_pfnDevicePciLinkSpeedUpdateExt_t                        pfnPciLinkSpeedUpdateExt;
 } zes_device_dditable_t_1_4;
 
 typedef struct _zes_device_dditable_t_1_5
@@ -161,7 +130,6 @@ typedef struct _zes_device_dditable_t_1_5
     zes_pfnDeviceResetOverclockSettings_t                       pfnResetOverclockSettings;
     zes_pfnDeviceReadOverclockState_t                           pfnReadOverclockState;
     zes_pfnDeviceEnumOverclockDomains_t                         pfnEnumOverclockDomains;
-    zes_pfnDevicePciLinkSpeedUpdateExt_t                        pfnPciLinkSpeedUpdateExt;
 } zes_device_dditable_t_1_5;
 
 typedef struct _zes_device_dditable_t_1_7
@@ -203,7 +171,6 @@ typedef struct _zes_device_dditable_t_1_7
     zes_pfnDeviceReadOverclockState_t                           pfnReadOverclockState;
     zes_pfnDeviceEnumOverclockDomains_t                         pfnEnumOverclockDomains;
     zes_pfnDeviceResetExt_t                                     pfnResetExt;
-    zes_pfnDevicePciLinkSpeedUpdateExt_t                        pfnPciLinkSpeedUpdateExt;
 } zes_device_dditable_t_1_7;
 
 ///////////////////////////////////////////////////////////////////////////////

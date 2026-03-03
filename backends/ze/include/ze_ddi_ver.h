@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file ze_ddi.h
- * @version v1.15-r1.13.73
+ * @version v1.13-r1.13.73
  *
  */
 #ifndef _ZE_DDI_VER_H
@@ -79,7 +79,7 @@ typedef struct _ze_global_dditable_t_1_1
 } ze_global_dditable_t_1_1;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.1, 1.13, 1.14, 1.6]
+/// [1.0, 1.1, 1.13, 1.6]
 /// @brief Table of Driver functions pointers
 typedef struct _ze_driver_dditable_t_1_0
 {
@@ -111,18 +111,6 @@ typedef struct _ze_driver_dditable_t_1_13
     ze_pfnDriverRTASFormatCompatibilityCheckExt_t               pfnRTASFormatCompatibilityCheckExt;
 } ze_driver_dditable_t_1_13;
 
-typedef struct _ze_driver_dditable_t_1_14
-{
-    ze_pfnDriverGet_t                                           pfnGet;
-    ze_pfnDriverGetApiVersion_t                                 pfnGetApiVersion;
-    ze_pfnDriverGetProperties_t                                 pfnGetProperties;
-    ze_pfnDriverGetIpcProperties_t                              pfnGetIpcProperties;
-    ze_pfnDriverGetExtensionProperties_t                        pfnGetExtensionProperties;
-    ze_pfnDriverGetExtensionFunctionAddress_t                   pfnGetExtensionFunctionAddress;
-    ze_pfnDriverRTASFormatCompatibilityCheckExt_t               pfnRTASFormatCompatibilityCheckExt;
-    ze_pfnDriverGetDefaultContext_t                             pfnGetDefaultContext;
-} ze_driver_dditable_t_1_14;
-
 typedef struct _ze_driver_dditable_t_1_6
 {
     ze_pfnDriverGet_t                                           pfnGet;
@@ -133,7 +121,6 @@ typedef struct _ze_driver_dditable_t_1_6
     ze_pfnDriverGetExtensionFunctionAddress_t                   pfnGetExtensionFunctionAddress;
     ze_pfnDriverGetLastErrorDescription_t                       pfnGetLastErrorDescription;
     ze_pfnDriverRTASFormatCompatibilityCheckExt_t               pfnRTASFormatCompatibilityCheckExt;
-    ze_pfnDriverGetDefaultContext_t                             pfnGetDefaultContext;
 } ze_driver_dditable_t_1_6;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -145,7 +132,7 @@ typedef struct _ze_driver_exp_dditable_t_1_7
 } ze_driver_exp_dditable_t_1_7;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.1, 1.12, 1.13, 1.14, 1.15, 1.2, 1.3, 1.7]
+/// [1.0, 1.1, 1.12, 1.13, 1.2, 1.3, 1.7]
 /// @brief Table of Device functions pointers
 typedef struct _ze_device_dditable_t_1_0
 {
@@ -227,53 +214,6 @@ typedef struct _ze_device_dditable_t_1_13
     ze_pfnDeviceGetVectorWidthPropertiesExt_t                   pfnGetVectorWidthPropertiesExt;
 } ze_device_dditable_t_1_13;
 
-typedef struct _ze_device_dditable_t_1_14
-{
-    ze_pfnDeviceGet_t                                           pfnGet;
-    ze_pfnDeviceGetSubDevices_t                                 pfnGetSubDevices;
-    ze_pfnDeviceGetProperties_t                                 pfnGetProperties;
-    ze_pfnDeviceGetComputeProperties_t                          pfnGetComputeProperties;
-    ze_pfnDeviceGetModuleProperties_t                           pfnGetModuleProperties;
-    ze_pfnDeviceGetCommandQueueGroupProperties_t                pfnGetCommandQueueGroupProperties;
-    ze_pfnDeviceGetMemoryProperties_t                           pfnGetMemoryProperties;
-    ze_pfnDeviceGetMemoryAccessProperties_t                     pfnGetMemoryAccessProperties;
-    ze_pfnDeviceGetCacheProperties_t                            pfnGetCacheProperties;
-    ze_pfnDeviceGetImageProperties_t                            pfnGetImageProperties;
-    ze_pfnDeviceGetExternalMemoryProperties_t                   pfnGetExternalMemoryProperties;
-    ze_pfnDeviceGetP2PProperties_t                              pfnGetP2PProperties;
-    ze_pfnDeviceCanAccessPeer_t                                 pfnCanAccessPeer;
-    ze_pfnDeviceGetStatus_t                                     pfnGetStatus;
-    ze_pfnDeviceGetGlobalTimestamps_t                           pfnGetGlobalTimestamps;
-    ze_pfnDeviceImportExternalSemaphoreExt_t                    pfnImportExternalSemaphoreExt;
-    ze_pfnDeviceReleaseExternalSemaphoreExt_t                   pfnReleaseExternalSemaphoreExt;
-    ze_pfnDeviceGetVectorWidthPropertiesExt_t                   pfnGetVectorWidthPropertiesExt;
-    ze_pfnDeviceSynchronize_t                                   pfnSynchronize;
-} ze_device_dditable_t_1_14;
-
-typedef struct _ze_device_dditable_t_1_15
-{
-    ze_pfnDeviceGet_t                                           pfnGet;
-    ze_pfnDeviceGetSubDevices_t                                 pfnGetSubDevices;
-    ze_pfnDeviceGetProperties_t                                 pfnGetProperties;
-    ze_pfnDeviceGetComputeProperties_t                          pfnGetComputeProperties;
-    ze_pfnDeviceGetModuleProperties_t                           pfnGetModuleProperties;
-    ze_pfnDeviceGetCommandQueueGroupProperties_t                pfnGetCommandQueueGroupProperties;
-    ze_pfnDeviceGetMemoryProperties_t                           pfnGetMemoryProperties;
-    ze_pfnDeviceGetMemoryAccessProperties_t                     pfnGetMemoryAccessProperties;
-    ze_pfnDeviceGetCacheProperties_t                            pfnGetCacheProperties;
-    ze_pfnDeviceGetImageProperties_t                            pfnGetImageProperties;
-    ze_pfnDeviceGetExternalMemoryProperties_t                   pfnGetExternalMemoryProperties;
-    ze_pfnDeviceGetP2PProperties_t                              pfnGetP2PProperties;
-    ze_pfnDeviceCanAccessPeer_t                                 pfnCanAccessPeer;
-    ze_pfnDeviceGetStatus_t                                     pfnGetStatus;
-    ze_pfnDeviceGetGlobalTimestamps_t                           pfnGetGlobalTimestamps;
-    ze_pfnDeviceImportExternalSemaphoreExt_t                    pfnImportExternalSemaphoreExt;
-    ze_pfnDeviceReleaseExternalSemaphoreExt_t                   pfnReleaseExternalSemaphoreExt;
-    ze_pfnDeviceGetVectorWidthPropertiesExt_t                   pfnGetVectorWidthPropertiesExt;
-    ze_pfnDeviceSynchronize_t                                   pfnSynchronize;
-    ze_pfnDeviceGetAggregatedCopyOffloadIncrementValue_t        pfnGetAggregatedCopyOffloadIncrementValue;
-} ze_device_dditable_t_1_15;
-
 typedef struct _ze_device_dditable_t_1_2
 {
     ze_pfnDeviceGet_t                                           pfnGet;
@@ -296,8 +236,6 @@ typedef struct _ze_device_dditable_t_1_2
     ze_pfnDeviceImportExternalSemaphoreExt_t                    pfnImportExternalSemaphoreExt;
     ze_pfnDeviceReleaseExternalSemaphoreExt_t                   pfnReleaseExternalSemaphoreExt;
     ze_pfnDeviceGetVectorWidthPropertiesExt_t                   pfnGetVectorWidthPropertiesExt;
-    ze_pfnDeviceSynchronize_t                                   pfnSynchronize;
-    ze_pfnDeviceGetAggregatedCopyOffloadIncrementValue_t        pfnGetAggregatedCopyOffloadIncrementValue;
 } ze_device_dditable_t_1_2;
 
 typedef struct _ze_device_dditable_t_1_3
@@ -323,8 +261,6 @@ typedef struct _ze_device_dditable_t_1_3
     ze_pfnDeviceImportExternalSemaphoreExt_t                    pfnImportExternalSemaphoreExt;
     ze_pfnDeviceReleaseExternalSemaphoreExt_t                   pfnReleaseExternalSemaphoreExt;
     ze_pfnDeviceGetVectorWidthPropertiesExt_t                   pfnGetVectorWidthPropertiesExt;
-    ze_pfnDeviceSynchronize_t                                   pfnSynchronize;
-    ze_pfnDeviceGetAggregatedCopyOffloadIncrementValue_t        pfnGetAggregatedCopyOffloadIncrementValue;
 } ze_device_dditable_t_1_3;
 
 typedef struct _ze_device_dditable_t_1_7
@@ -351,8 +287,6 @@ typedef struct _ze_device_dditable_t_1_7
     ze_pfnDeviceImportExternalSemaphoreExt_t                    pfnImportExternalSemaphoreExt;
     ze_pfnDeviceReleaseExternalSemaphoreExt_t                   pfnReleaseExternalSemaphoreExt;
     ze_pfnDeviceGetVectorWidthPropertiesExt_t                   pfnGetVectorWidthPropertiesExt;
-    ze_pfnDeviceSynchronize_t                                   pfnSynchronize;
-    ze_pfnDeviceGetAggregatedCopyOffloadIncrementValue_t        pfnGetAggregatedCopyOffloadIncrementValue;
 } ze_device_dditable_t_1_7;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -413,7 +347,7 @@ typedef struct _ze_command_queue_dditable_t_1_9
 } ze_command_queue_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.12, 1.14, 1.3, 1.6, 1.9]
+/// [1.0, 1.12, 1.3, 1.6, 1.9]
 /// @brief Table of CommandList functions pointers
 typedef struct _ze_command_list_dditable_t_1_0
 {
@@ -477,40 +411,6 @@ typedef struct _ze_command_list_dditable_t_1_12
     ze_pfnCommandListAppendWaitExternalSemaphoreExt_t           pfnAppendWaitExternalSemaphoreExt;
 } ze_command_list_dditable_t_1_12;
 
-typedef struct _ze_command_list_dditable_t_1_14
-{
-    ze_pfnCommandListCreate_t                                   pfnCreate;
-    ze_pfnCommandListCreateImmediate_t                          pfnCreateImmediate;
-    ze_pfnCommandListDestroy_t                                  pfnDestroy;
-    ze_pfnCommandListClose_t                                    pfnClose;
-    ze_pfnCommandListReset_t                                    pfnReset;
-    ze_pfnCommandListAppendWriteGlobalTimestamp_t               pfnAppendWriteGlobalTimestamp;
-    ze_pfnCommandListAppendBarrier_t                            pfnAppendBarrier;
-    ze_pfnCommandListAppendMemoryRangesBarrier_t                pfnAppendMemoryRangesBarrier;
-    ze_pfnCommandListAppendMemoryCopy_t                         pfnAppendMemoryCopy;
-    ze_pfnCommandListAppendMemoryFill_t                         pfnAppendMemoryFill;
-    ze_pfnCommandListAppendMemoryCopyRegion_t                   pfnAppendMemoryCopyRegion;
-    ze_pfnCommandListAppendMemoryCopyFromContext_t              pfnAppendMemoryCopyFromContext;
-    ze_pfnCommandListAppendImageCopy_t                          pfnAppendImageCopy;
-    ze_pfnCommandListAppendImageCopyRegion_t                    pfnAppendImageCopyRegion;
-    ze_pfnCommandListAppendImageCopyToMemory_t                  pfnAppendImageCopyToMemory;
-    ze_pfnCommandListAppendImageCopyFromMemory_t                pfnAppendImageCopyFromMemory;
-    ze_pfnCommandListAppendMemoryPrefetch_t                     pfnAppendMemoryPrefetch;
-    ze_pfnCommandListAppendMemAdvise_t                          pfnAppendMemAdvise;
-    ze_pfnCommandListAppendSignalEvent_t                        pfnAppendSignalEvent;
-    ze_pfnCommandListAppendWaitOnEvents_t                       pfnAppendWaitOnEvents;
-    ze_pfnCommandListAppendEventReset_t                         pfnAppendEventReset;
-    ze_pfnCommandListAppendQueryKernelTimestamps_t              pfnAppendQueryKernelTimestamps;
-    ze_pfnCommandListAppendLaunchKernel_t                       pfnAppendLaunchKernel;
-    ze_pfnCommandListAppendLaunchCooperativeKernel_t            pfnAppendLaunchCooperativeKernel;
-    ze_pfnCommandListAppendLaunchKernelIndirect_t               pfnAppendLaunchKernelIndirect;
-    ze_pfnCommandListAppendLaunchMultipleKernelsIndirect_t      pfnAppendLaunchMultipleKernelsIndirect;
-    ze_pfnCommandListAppendSignalExternalSemaphoreExt_t         pfnAppendSignalExternalSemaphoreExt;
-    ze_pfnCommandListAppendWaitExternalSemaphoreExt_t           pfnAppendWaitExternalSemaphoreExt;
-    ze_pfnCommandListAppendLaunchKernelWithParameters_t         pfnAppendLaunchKernelWithParameters;
-    ze_pfnCommandListAppendLaunchKernelWithArguments_t          pfnAppendLaunchKernelWithArguments;
-} ze_command_list_dditable_t_1_14;
-
 typedef struct _ze_command_list_dditable_t_1_3
 {
     ze_pfnCommandListCreate_t                                   pfnCreate;
@@ -543,8 +443,6 @@ typedef struct _ze_command_list_dditable_t_1_3
     ze_pfnCommandListAppendImageCopyFromMemoryExt_t             pfnAppendImageCopyFromMemoryExt;
     ze_pfnCommandListAppendSignalExternalSemaphoreExt_t         pfnAppendSignalExternalSemaphoreExt;
     ze_pfnCommandListAppendWaitExternalSemaphoreExt_t           pfnAppendWaitExternalSemaphoreExt;
-    ze_pfnCommandListAppendLaunchKernelWithParameters_t         pfnAppendLaunchKernelWithParameters;
-    ze_pfnCommandListAppendLaunchKernelWithArguments_t          pfnAppendLaunchKernelWithArguments;
 } ze_command_list_dditable_t_1_3;
 
 typedef struct _ze_command_list_dditable_t_1_6
@@ -580,8 +478,6 @@ typedef struct _ze_command_list_dditable_t_1_6
     ze_pfnCommandListHostSynchronize_t                          pfnHostSynchronize;
     ze_pfnCommandListAppendSignalExternalSemaphoreExt_t         pfnAppendSignalExternalSemaphoreExt;
     ze_pfnCommandListAppendWaitExternalSemaphoreExt_t           pfnAppendWaitExternalSemaphoreExt;
-    ze_pfnCommandListAppendLaunchKernelWithParameters_t         pfnAppendLaunchKernelWithParameters;
-    ze_pfnCommandListAppendLaunchKernelWithArguments_t          pfnAppendLaunchKernelWithArguments;
 } ze_command_list_dditable_t_1_6;
 
 typedef struct _ze_command_list_dditable_t_1_9
@@ -622,8 +518,6 @@ typedef struct _ze_command_list_dditable_t_1_9
     ze_pfnCommandListIsImmediate_t                              pfnIsImmediate;
     ze_pfnCommandListAppendSignalExternalSemaphoreExt_t         pfnAppendSignalExternalSemaphoreExt;
     ze_pfnCommandListAppendWaitExternalSemaphoreExt_t           pfnAppendWaitExternalSemaphoreExt;
-    ze_pfnCommandListAppendLaunchKernelWithParameters_t         pfnAppendLaunchKernelWithParameters;
-    ze_pfnCommandListAppendLaunchKernelWithArguments_t          pfnAppendLaunchKernelWithArguments;
 } ze_command_list_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -691,7 +585,7 @@ typedef struct _ze_image_exp_dditable_t_1_9
 } ze_image_exp_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.15, 1.3, 1.6, 1.9]
+/// [1.0, 1.3, 1.6, 1.9]
 /// @brief Table of Mem functions pointers
 typedef struct _ze_mem_dditable_t_1_0
 {
@@ -706,20 +600,6 @@ typedef struct _ze_mem_dditable_t_1_0
     ze_pfnMemCloseIpcHandle_t                                   pfnCloseIpcHandle;
 } ze_mem_dditable_t_1_0;
 
-typedef struct _ze_mem_dditable_t_1_15
-{
-    ze_pfnMemAllocShared_t                                      pfnAllocShared;
-    ze_pfnMemAllocDevice_t                                      pfnAllocDevice;
-    ze_pfnMemAllocHost_t                                        pfnAllocHost;
-    ze_pfnMemFree_t                                             pfnFree;
-    ze_pfnMemGetAllocProperties_t                               pfnGetAllocProperties;
-    ze_pfnMemGetAddressRange_t                                  pfnGetAddressRange;
-    ze_pfnMemGetIpcHandle_t                                     pfnGetIpcHandle;
-    ze_pfnMemOpenIpcHandle_t                                    pfnOpenIpcHandle;
-    ze_pfnMemCloseIpcHandle_t                                   pfnCloseIpcHandle;
-    ze_pfnMemGetIpcHandleWithProperties_t                       pfnGetIpcHandleWithProperties;
-} ze_mem_dditable_t_1_15;
-
 typedef struct _ze_mem_dditable_t_1_3
 {
     ze_pfnMemAllocShared_t                                      pfnAllocShared;
@@ -732,7 +612,6 @@ typedef struct _ze_mem_dditable_t_1_3
     ze_pfnMemOpenIpcHandle_t                                    pfnOpenIpcHandle;
     ze_pfnMemCloseIpcHandle_t                                   pfnCloseIpcHandle;
     ze_pfnMemFreeExt_t                                          pfnFreeExt;
-    ze_pfnMemGetIpcHandleWithProperties_t                       pfnGetIpcHandleWithProperties;
 } ze_mem_dditable_t_1_3;
 
 typedef struct _ze_mem_dditable_t_1_6
@@ -748,7 +627,6 @@ typedef struct _ze_mem_dditable_t_1_6
     ze_pfnMemCloseIpcHandle_t                                   pfnCloseIpcHandle;
     ze_pfnMemFreeExt_t                                          pfnFreeExt;
     ze_pfnMemPutIpcHandle_t                                     pfnPutIpcHandle;
-    ze_pfnMemGetIpcHandleWithProperties_t                       pfnGetIpcHandleWithProperties;
 } ze_mem_dditable_t_1_6;
 
 typedef struct _ze_mem_dditable_t_1_9
@@ -765,7 +643,6 @@ typedef struct _ze_mem_dditable_t_1_9
     ze_pfnMemFreeExt_t                                          pfnFreeExt;
     ze_pfnMemPutIpcHandle_t                                     pfnPutIpcHandle;
     ze_pfnMemGetPitchFor2dImage_t                               pfnGetPitchFor2dImage;
-    ze_pfnMemGetIpcHandleWithProperties_t                       pfnGetIpcHandleWithProperties;
 } ze_mem_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -832,7 +709,7 @@ typedef struct _ze_event_pool_dditable_t_1_9
 } ze_event_pool_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.15, 1.6, 1.9]
+/// [1.0, 1.6, 1.9]
 /// @brief Table of Event functions pointers
 typedef struct _ze_event_dditable_t_1_0
 {
@@ -845,22 +722,6 @@ typedef struct _ze_event_dditable_t_1_0
     ze_pfnEventQueryKernelTimestamp_t                           pfnQueryKernelTimestamp;
 } ze_event_dditable_t_1_0;
 
-typedef struct _ze_event_dditable_t_1_15
-{
-    ze_pfnEventCreate_t                                         pfnCreate;
-    ze_pfnEventDestroy_t                                        pfnDestroy;
-    ze_pfnEventHostSignal_t                                     pfnHostSignal;
-    ze_pfnEventHostSynchronize_t                                pfnHostSynchronize;
-    ze_pfnEventQueryStatus_t                                    pfnQueryStatus;
-    ze_pfnEventHostReset_t                                      pfnHostReset;
-    ze_pfnEventQueryKernelTimestamp_t                           pfnQueryKernelTimestamp;
-    ze_pfnEventCounterBasedCreate_t                             pfnCounterBasedCreate;
-    ze_pfnEventCounterBasedGetIpcHandle_t                       pfnCounterBasedGetIpcHandle;
-    ze_pfnEventCounterBasedOpenIpcHandle_t                      pfnCounterBasedOpenIpcHandle;
-    ze_pfnEventCounterBasedCloseIpcHandle_t                     pfnCounterBasedCloseIpcHandle;
-    ze_pfnEventCounterBasedGetDeviceAddress_t                   pfnCounterBasedGetDeviceAddress;
-} ze_event_dditable_t_1_15;
-
 typedef struct _ze_event_dditable_t_1_6
 {
     ze_pfnEventCreate_t                                         pfnCreate;
@@ -871,11 +732,6 @@ typedef struct _ze_event_dditable_t_1_6
     ze_pfnEventHostReset_t                                      pfnHostReset;
     ze_pfnEventQueryKernelTimestamp_t                           pfnQueryKernelTimestamp;
     ze_pfnEventQueryKernelTimestampsExt_t                       pfnQueryKernelTimestampsExt;
-    ze_pfnEventCounterBasedCreate_t                             pfnCounterBasedCreate;
-    ze_pfnEventCounterBasedGetIpcHandle_t                       pfnCounterBasedGetIpcHandle;
-    ze_pfnEventCounterBasedOpenIpcHandle_t                      pfnCounterBasedOpenIpcHandle;
-    ze_pfnEventCounterBasedCloseIpcHandle_t                     pfnCounterBasedCloseIpcHandle;
-    ze_pfnEventCounterBasedGetDeviceAddress_t                   pfnCounterBasedGetDeviceAddress;
 } ze_event_dditable_t_1_6;
 
 typedef struct _ze_event_dditable_t_1_9
@@ -891,11 +747,6 @@ typedef struct _ze_event_dditable_t_1_9
     ze_pfnEventGetEventPool_t                                   pfnGetEventPool;
     ze_pfnEventGetSignalScope_t                                 pfnGetSignalScope;
     ze_pfnEventGetWaitScope_t                                   pfnGetWaitScope;
-    ze_pfnEventCounterBasedCreate_t                             pfnCounterBasedCreate;
-    ze_pfnEventCounterBasedGetIpcHandle_t                       pfnCounterBasedGetIpcHandle;
-    ze_pfnEventCounterBasedOpenIpcHandle_t                      pfnCounterBasedOpenIpcHandle;
-    ze_pfnEventCounterBasedCloseIpcHandle_t                     pfnCounterBasedCloseIpcHandle;
-    ze_pfnEventCounterBasedGetDeviceAddress_t                   pfnCounterBasedGetDeviceAddress;
 } ze_event_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -963,7 +814,7 @@ typedef struct _ze_kernel_dditable_t_1_0
 } ze_kernel_dditable_t_1_0;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.1, 1.11, 1.14, 1.2]
+/// [1.1, 1.11, 1.2]
 /// @brief Table of KernelExp functions pointers
 typedef struct _ze_kernel_exp_dditable_t_1_1
 {
@@ -976,19 +827,11 @@ typedef struct _ze_kernel_exp_dditable_t_1_11
     ze_pfnKernelGetBinaryExp_t                                  pfnGetBinaryExp;
 } ze_kernel_exp_dditable_t_1_11;
 
-typedef struct _ze_kernel_exp_dditable_t_1_14
-{
-    ze_pfnKernelSetGlobalOffsetExp_t                            pfnSetGlobalOffsetExp;
-    ze_pfnKernelGetBinaryExp_t                                  pfnGetBinaryExp;
-    ze_pfnKernelGetAllocationPropertiesExp_t                    pfnGetAllocationPropertiesExp;
-} ze_kernel_exp_dditable_t_1_14;
-
 typedef struct _ze_kernel_exp_dditable_t_1_2
 {
     ze_pfnKernelSetGlobalOffsetExp_t                            pfnSetGlobalOffsetExp;
     ze_pfnKernelSchedulingHintExp_t                             pfnSchedulingHintExp;
     ze_pfnKernelGetBinaryExp_t                                  pfnGetBinaryExp;
-    ze_pfnKernelGetAllocationPropertiesExp_t                    pfnGetAllocationPropertiesExp;
 } ze_kernel_exp_dditable_t_1_2;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1001,20 +844,13 @@ typedef struct _ze_sampler_dditable_t_1_0
 } ze_sampler_dditable_t_1_0;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.0, 1.15]
+/// [1.0]
 /// @brief Table of PhysicalMem functions pointers
 typedef struct _ze_physical_mem_dditable_t_1_0
 {
     ze_pfnPhysicalMemCreate_t                                   pfnCreate;
     ze_pfnPhysicalMemDestroy_t                                  pfnDestroy;
 } ze_physical_mem_dditable_t_1_0;
-
-typedef struct _ze_physical_mem_dditable_t_1_15
-{
-    ze_pfnPhysicalMemCreate_t                                   pfnCreate;
-    ze_pfnPhysicalMemDestroy_t                                  pfnDestroy;
-    ze_pfnPhysicalMemGetProperties_t                            pfnGetProperties;
-} ze_physical_mem_dditable_t_1_15;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// [1.0]

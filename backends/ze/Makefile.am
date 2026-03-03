@@ -13,7 +13,7 @@ if STRICT
   WERROR = -Werror -Wno-error=nonnull 
 endif
 
-ZE_NAMESPACES = ze zet zes zel zer zex
+ZE_NAMESPACES = ze zet zes zel zex # zer
 ZE_STRUCTS_NAMESPACES = $(ZE_NAMESPACES:=_structs)
 
 ZE_HDR_ROOT = \
@@ -26,9 +26,9 @@ ZE_HDR_ROOT = \
 	zet_api.h \
 	zet_ddi.h \
 	zet_ddi_ver.h \
-        zer_api.h \
-        zer_ddi.h \
-        zer_ddi_ver.h \
+        #zer_api.h \
+        #zer_ddi.h \
+        #zer_ddi_ver.h \
 	zex_api.h \
 	layers/zel_tracing_api.h \
 	layers/zel_tracing_ddi.h \
@@ -63,7 +63,7 @@ $(MODIFIED_ZE_HDR) &: $(ZE_HDR) $(srcdir)/headers.patch
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
-	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
+#cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include

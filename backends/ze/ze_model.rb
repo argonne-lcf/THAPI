@@ -14,7 +14,8 @@ $ze_api_yaml = YAML.load_file('ze_api.yaml')
 $zet_api_yaml = YAML.load_file('zet_api.yaml')
 $zes_api_yaml = YAML.load_file('zes_api.yaml')
 $zel_api_yaml = YAML.load_file('zel_api.yaml')
-$zer_api_yaml = YAML.load_file('zer_api.yaml')
+#$zer_api_yaml = YAML.load_file('zer_api.yaml')
+$zer_api_yaml = {"typedefs" => [], "structs" => [], "functions" => [] }
 $zex_api_yaml = YAML.load_file('zex_api.yaml')
 
 $ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
@@ -57,7 +58,7 @@ $struct_type_conversion_table = {
   'ZES_STRUCTURE_TYPE_MEM_PAGE_OFFLINE_STATE_EXP' => 'ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP',
 }
 
-$struct_type_reject = Set.new([])
+$struct_type_reject = Set.new(['zet_metric_source_id_exp_t'])
 
 $ze_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'ze_meta_parameters.yaml'))
 $ze_meta_parameters['meta_parameters'].each do |func, list|
@@ -85,6 +86,7 @@ $zel_meta_parameters['meta_parameters'].each do |func, list|
     register_meta_parameter func, Kernel.const_get(type), *args
   end
 end
+
 
 $zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
 $zer_meta_parameters['meta_parameters'].each do |func, list|

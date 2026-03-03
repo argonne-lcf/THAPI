@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zer_ddi.h
- * @version v1.15-r1.13.73
+ * @version v1.13-r1.13.73
  *
  */
 #ifndef _ZER_DDI_VER_H
@@ -18,17 +18,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-///////////////////////////////////////////////////////////////////////////////
-/// [1.14]
-/// @brief Table of Global functions pointers
-typedef struct _zer_global_dditable_t_1_14
-{
-    zer_pfnGetLastErrorDescription_t                            pfnGetLastErrorDescription;
-    zer_pfnTranslateDeviceHandleToIdentifier_t                  pfnTranslateDeviceHandleToIdentifier;
-    zer_pfnTranslateIdentifierToDeviceHandle_t                  pfnTranslateIdentifierToDeviceHandle;
-    zer_pfnGetDefaultContext_t                                  pfnGetDefaultContext;
-} zer_global_dditable_t_1_14;
 
 
 #if defined(__cplusplus)

@@ -29,9 +29,9 @@ Loader component versions:
 ```
    - This will give you the loader version.
 
-- If you have access to a loader, don't copy/paste the `/usr/include/level_zero/` folder into `$THAPI_ROOT/backend/ze/include/`.
+- If you have access to a loader, you can copy/paste the `/usr/include/level_zero/` folder into `$THAPI_ROOT/backend/ze/include/`.
   If not, use `git clone --depth 1 --branch $(lib_version) https://github.com/oneapi-src/level-zero.git`, where `lib_version` is the version you want.
-  To find the latest version, run:
+  To find the latest lib version of the loader released, run:
 ```bash
 $ git ls-remote --sort="v:refname"  --tags  https://github.com/oneapi-src/level-zero.git | tail  -1
 6369d8d642e9c7625e67f38664267f171b8e42dc        refs/tags/v1.28.2
@@ -40,6 +40,7 @@ $ git ls-remote --sort="v:refname"  --tags  https://github.com/oneapi-src/level-
 ## 2/ DDI Ver
 
 ### Sync
+
 - Sync the fork (` https://github.com/argonne-lcf/level-zero-spec.git`) with the original remote
 - Sync the `ddi_ver` branch
 
@@ -75,8 +76,9 @@ grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
 - Note that `layers/zel_tracing_ddi_ver.h` is not generated manually, and need manual update.
 
 ## 3/ Optional: ZEX
+
 - We are missing the `zex` header:
-  - Found at `https://github.com/intel/compute-runtime/blob/master/level_zero/include/level_zero/driver_experimental/zex_api.h`
+- Found at `https://github.com/intel/compute-runtime/blob/master/level_zero/include/level_zero/driver_experimental/zex_api.h`
 
 ## Now Try to Compile:
 
