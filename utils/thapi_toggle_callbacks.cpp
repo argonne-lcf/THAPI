@@ -23,9 +23,9 @@ static void thapi_auto_stop_callback(void *btx_handle, void *maps,
   auto auto_map = static_cast<ToggleMap *>(maps)[0];
   auto key = ToggleKey{std::string(hostname), vpid};
   /* If we have seen the auto_map trace before, we will just ignore it. */
-  if (auto_map[key])
-    return;
+  if (auto_map.count(key)) return;
   /* Otherwise, we will stop tracing. */
+  auto_map[key] = true;
   auto map = static_cast<ToggleMap *>(maps)[1];
   map[key] = false;
 }

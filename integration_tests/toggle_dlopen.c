@@ -6,7 +6,7 @@
   {                                                                            \
     void *ptr = (void *)ptr_;                                                  \
     if (!ptr) {                                                                \
-      printf("%s:%d -- %s\n", __FILE__, __LINE__, dlerror());                  \
+      fprintf(stderr, "%s:%d -- %s\n", __FILE__, __LINE__, dlerror());         \
       return 1;                                                                \
     }                                                                          \
   }
