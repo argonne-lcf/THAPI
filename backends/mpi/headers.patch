@@ -1,6 +1,6 @@
 diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
---- include/mpi.h	2025-10-21 16:47:19.000000000 +0000
-+++ modified_include/mpi.h	2025-10-21 19:48:25.000000000 +0000
+--- include/mpi.h	2026-03-03 22:30:54.000000000 +0000
++++ modified_include/mpi.h	2026-03-04 00:35:07.000000000 +0000
 @@ -1,8 +1,10 @@
  #ifndef MPI_H_ABI
  #define MPI_H_ABI
@@ -12,7 +12,7 @@ diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
  #if defined(__cplusplus)
  extern "C" {
  #endif
-@@ -1916,8 +1918,24 @@
+@@ -1916,8 +1918,27 @@
  int PMPI_T_source_get_info(int source_index, char *name, int *name_len, char *desc, int *desc_len, MPI_T_source_order *ordering, MPI_Count *ticks_per_second, MPI_Count *max_ticks, MPI_Info *info);
  int PMPI_T_source_get_num(int *num_sources);
  int PMPI_T_source_get_timestamp(int source_index, MPI_Count *timestamp);
@@ -31,8 +31,11 @@ diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
 +#undef MPI_F_STATUSES_IGNORE
 +int *MPI_F_STATUS_IGNORE  = 0;
 +int *MPI_F_STATUSES_IGNORE  = 0;
++// from src/mpi/datatype/typeutil.c
++int MPIR_fortran_true = 1;
++int MPIR_fortran_false = 0;  
 +#endif
-+  
++
  #if defined(__cplusplus)
  }
  #endif
