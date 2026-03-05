@@ -87,12 +87,12 @@ $zel_meta_parameters['meta_parameters'].each do |func, list|
   end
 end
 
-#$zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
-#$zer_meta_parameters['meta_parameters'].each do |func, list|
+# $zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
+# $zer_meta_parameters['meta_parameters'].each do |func, list|
 #  list.each do |type, *args|
 #    register_meta_parameter func, Kernel.const_get(type), *args
 #  end
-#end
+# end
 
 $zex_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zex_meta_parameters.yaml'))
 $zex_meta_parameters['meta_parameters'].each do |func, list|
