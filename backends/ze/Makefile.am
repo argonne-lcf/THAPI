@@ -34,7 +34,8 @@ ZE_HDR_ROOT = \
 	layers/zel_tracing_ddi.h \
 	layers/zel_tracing_ddi_ver.h \
 	layers/zel_tracing_register_cb.h \
-	loader/ze_loader.h
+	loader/ze_loader.h \
+	loader/ze_loader_api.h
 
 ZE_HDR = $(ZE_HDR_ROOT:%=$(srcdir)/include/%)
 MODIFIED_ZE_HDR = $(ZE_HDR_ROOT:%=modified_include/%)

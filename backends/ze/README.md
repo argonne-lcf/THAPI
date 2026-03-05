@@ -37,6 +37,9 @@ $ git ls-remote --sort="v:refname"  --tags  https://github.com/oneapi-src/level-
 6369d8d642e9c7625e67f38664267f171b8e42dc        refs/tags/v1.28.2
 ```
 
+- We need also to copy / paste  `source/loader/ze_loader_api.h`. The loader export it, so we export it too, just in case.
+    - Those header, are a nighmare of C++ header. We patch them manully.
+
 ## 2/ DDI Ver
 
 ### Sync
@@ -74,6 +77,7 @@ grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
 (We don't talk about `ZE_API_VERSION_CURRENT_M`...)
 
 - Note that `layers/zel_tracing_ddi_ver.h` is not generated manually, and need manual update.
+    - We remove all the C++, and all the weird important who bring symbol for other namespace.
 
 ## 3/ Optional: ZEX
 
@@ -85,6 +89,12 @@ grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
 - Try to compile
 
 # Potential Problems
+
+## 0
+
+Run `utils_spec_update/test_symbol_exported.sh $loader_so $out_so`
+If symbol are not exposed by the loader, but are exposed by us it's a bug!
+Add a patch to comment them in `header.path`.
 
 ## 1
 

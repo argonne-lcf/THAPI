@@ -13,6 +13,7 @@
 #endif
 
 #include "../ze_api.h"
+#include <stdbool.h>
 
 #if defined(__cplusplus)
 extern "C" {
