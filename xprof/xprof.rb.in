@@ -500,7 +500,7 @@ class SamplingDaemon < SpawnDaemon
   end
 
   def initialize(h = {})
-    super
+    super()
     daemon_path = "#{BINDIR}/thapi_sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
