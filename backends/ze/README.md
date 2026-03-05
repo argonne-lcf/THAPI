@@ -37,8 +37,14 @@ $ git ls-remote --sort="v:refname"  --tags  https://github.com/oneapi-src/level-
 6369d8d642e9c7625e67f38664267f171b8e42dc        refs/tags/v1.28.2
 ```
 
+### Note on `ze_loader_api.h`
+
 - We need also to copy / paste  `source/loader/ze_loader_api.h`. The loader export it, so we export it too, just in case.
-    - Those header, are a nighmare of C++ header. We patch them manully.
+- Those header, are a nighmare.
+  - 1/ C++ header: We modify them manually to remove any C++
+  - 2/ We split them by namespace: 
+    - `ze_loader`, contain `zel`,
+    - `ze_loader_api_ze_namespace.h` contain the `ze`.
 
 ## 2/ DDI Ver
 
@@ -88,13 +94,42 @@ grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
 
 - Try to compile
 
-# Potential Problems
+# Potential Problems, Thinks to check
 
 ## 0
 
 Run `utils_spec_update/test_symbol_exported.sh $loader_so $out_so`
 If symbol are not exposed by the loader, but are exposed by us it's a bug!
 Add a patch to comment them in `header.path`.
+
+```
+$ bash ./utils_spec_update/test_symbol_exported.sh /usr/lib64/libze_loader.so ~/project/p26.04/THAPI/build/ici/lib/thapi/ze/libze_loader.so
+--- /usr/lib64/libze_loader.so
++++ /home/applenco/project/p26.04/THAPI/build/ici/lib/thapi/ze/libze_loader.so
+@@ -240,6 +240,7 @@
+ zelLoaderContextTeardown
+ zelLoaderDriverCheck
+ zelLoaderGetContext
++zelLoaderGetVersion
+ zelLoaderGetVersions
+ zelLoaderGetVersionsInternal
+ zelLoaderTracingLayerInit
+@@ -444,6 +445,7 @@
+ zelTracerRTASParallelOperationGetPropertiesExtRegisterCallback
+ zelTracerRTASParallelOperationJoinExpRegisterCallback
+ zelTracerRTASParallelOperationJoinExtRegisterCallback
++zelTracerResetAllCallbacks
+ zelTracerSamplerCreateRegisterCallback
+ zelTracerSamplerDestroyRegisterCallback
+ zelTracerSetEnabled
+```
+
+One possibility is to do:
+```
+cp -r ../../build/backends/ze/modified_include .
+# Modify `modified_include`
+Then
+`diff -u4 -r --new-file include/ modified_include/ > headers.patch`
 
 ## 1
 

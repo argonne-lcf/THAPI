@@ -1,13 +1,36 @@
-diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
---- include/layers/zel_tracing_register_cb.h	2026-02-27 16:26:19.000000000 +0000
-+++ modified_include/layers/zel_tracing_register_cb.h	2026-02-27 16:30:52.000000000 +0000
-@@ -2727,8 +2727,9 @@
- ///     allowing the callback the ability to modify the parameter's value
+diff -u4 -r --new-file include/layers/zel_tracing_register_cb.h modified_include/layers/zel_tracing_register_cb.h
+--- include/layers/zel_tracing_register_cb.h	2026-03-05 21:34:03.000000000 +0000
++++ modified_include/layers/zel_tracing_register_cb.h	2026-03-05 21:45:37.000000000 +0000
+@@ -3919,10 +3919,11 @@
+     ze_pfnCommandListUpdateMutableCommandKernelsExpCb_t pfnUpdateMutableCommandKernelsExpCb
+     );
  
- typedef struct _zer_get_default_context_params_t
- {
-+    uint8_t _dummy; // padding to ensure ABI compatibility between C and C++
- } zer_get_default_context_params_t;
+ 
+-ZE_APIEXPORT ze_result_t ZE_APICALL
+-zelTracerResetAllCallbacks(zel_tracer_handle_t hTracer);
++// Not exposed by the loader
++//ZE_APIEXPORT ze_result_t ZE_APICALL
++//zelTracerResetAllCallbacks(zel_tracer_handle_t hTracer);
+ 
+ 
+ #if defined(__cplusplus)
+ } // extern "C"
+diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze_loader_api.h
+--- include/loader/ze_loader_api.h	2026-03-05 21:17:00.000000000 +0000
++++ modified_include/loader/ze_loader_api.h	2026-03-05 21:46:13.000000000 +0000
+@@ -74,11 +74,11 @@
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Exported function for getting version
+ ///
+-// Aurora loader doesn't export it for some reason
+-ZE_DLLEXPORT ze_result_t ZE_APICALL
+-zelLoaderGetVersion(zel_component_version_t *version);
++// Not exposed by the loader
++//ZE_DLLEXPORT ze_result_t ZE_APICALL
++//zelLoaderGetVersion(zel_component_version_t *version);
  
  
  ///////////////////////////////////////////////////////////////////////////////
+ /// @brief Exported function for getting versions of all components
+Binary files include/loader/.ze_loader_api.h.swp and modified_include/loader/.ze_loader_api.h.swp differ

@@ -22,14 +22,15 @@
 extern "C" {
 #endif
 
+// Moved to `ze_loader_api_ze_namespace.h`
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Exported function for initializing loader
 ///
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
-ZE_DLLEXPORT ze_result_t ZE_APICALL
-zeLoaderInit();
+//ZE_DLLEXPORT ze_result_t ZE_APICALL
+//zeLoaderInit();
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Exported function for verifying usable L0 Drivers for Loader to report
@@ -75,8 +76,8 @@ zelLoaderGetContext();
 /// @brief Exported function for getting version
 ///
 // Aurora loader doesn't export it for some reason
-//ZE_DLLEXPORT ze_result_t ZE_APICALL
-//zelLoaderGetVersion(zel_component_version_t *version);
+ZE_DLLEXPORT ze_result_t ZE_APICALL
+zelLoaderGetVersion(zel_component_version_t *version);
 
 
 ///////////////////////////////////////////////////////////////////////////////
