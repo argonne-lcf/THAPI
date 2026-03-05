@@ -247,7 +247,7 @@ EOF
 }
 
 $ze_commands.each do |c|
-  next if c.name.match(/zeGet.*ProcAddrTable/) || c.name.match(/zeLoaderInit/) || c.name.match(/^zel/) || c.name == "zeLoaderGetTracingHandle"
+  next if c.name.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/)
 
   puts <<~EOF
     #{c.decl_hidden_alias};
