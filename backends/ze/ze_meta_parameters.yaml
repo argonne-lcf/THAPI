@@ -336,3 +336,31 @@ meta_parameters:
     - [ InScalar, desc ]
   zeCommandListUpdateMutableCommandWaitEventsExp:
     - [ InArray, phWaitEvents, numWaitEvents ]
+  zeInitDrivers:
+    - [ InScalar, desc ]
+    - [ InOutScalar, pCount ]
+    - [ OutArray, phDrivers, pCount ]
+  zeKernelGetBinaryExp:
+    - [ InOutScalar, pSize ]
+    - [ OutArray, pKernelBinary, pSize ]
+  zeDeviceImportExternalSemaphoreExt:
+    - [ InScalar, desc ]
+    - [ OutScalar, phSemaphore ]
+  zeCommandListAppendSignalExternalSemaphoreExt:
+    - [ InArray, phSemaphores, numSemaphores ]
+    - [ InArray, signalParams, numSemaphores ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeCommandListAppendWaitExternalSemaphoreExt:
+    - [ InArray, phSemaphores, numSemaphores ]
+    - [ InArray, waitParams, numSemaphores ]
+    - [ InArray, phWaitEvents, numWaitEvents ]
+  zeDeviceGetVectorWidthPropertiesExt:
+    - [ InOutScalar, pCount ]
+    - [ OutArray, pVectorWidthProperties, pCount ]
+  zeCommandListGetNextCommandIdWithKernelsExp:
+    - [ InOutScalar, desc ] # Yep, it's special https://oneapi-src.github.io/level-zero-spec/level-zero/1.11/core/api.html#zecommandlistgetnextcommandidwithkernelsexp
+    - [ InArray, phKernels, numKernels ]
+    - [ OutScalar, pCommandId ]
+  zeCommandListUpdateMutableCommandKernelsExp:
+    - [ InArray, pCommandId, numKernels ]
+    - [ InArray, phKernels, numKernels ]
