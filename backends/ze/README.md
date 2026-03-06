@@ -94,6 +94,10 @@ grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
 
 - Try to compile
 
+## 4/ Add medatadata
+
+You can use the `check_metadata.py` script to help you indentify  function which need update and then figure it out.
+
 # Potential Problems, Thinks to check
 
 ## 0
