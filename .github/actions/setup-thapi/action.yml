@@ -95,7 +95,7 @@ runs:
       make install
   - name: Install H2yaml
     shell: bash
-    run: pip install git+https://github.com/TApplencourt/h2yaml@v0.3.0
+    run: pip install git+https://github.com/TApplencourt/h2yaml@v0.4.2
   - name: Set Efficios environment variables
     shell: bash
     run: |
