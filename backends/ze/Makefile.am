@@ -145,9 +145,15 @@ EXTRA_DIST += \
 	$(ZE_GEN_TRACEPOINTS) \
 	$(top_srcdir)/utils/gen_custom_probes.rb
 
+UTILS_GEN_HEADER = $(top_builddir)/utils/lttng/tracepoint_gen.h
+
 BUILT_SOURCES = \
+	$(UTILS_GEN_HEADER) \
 	$(ZE_PROBES_INCL) \
 	$(ZE_STATIC_PROBES_INCL)
+
+$(UTILS_GEN_HEADER):
+	$(MAKE) $(AM_MAKEFLAGS) -C $(top_builddir)/utils
 
 libZESampling_la_SOURCES = ze_sampling_plugin.c
 

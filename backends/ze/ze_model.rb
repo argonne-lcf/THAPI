@@ -39,7 +39,7 @@ find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
-INIT_FUNCTIONS = /zeInit|zeLoaderInit/
+INIT_FUNCTIONS = /zeInit|zeLoaderInit|zeInitDrivers/
 
 $struct_type_conversion_table = {
   'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
