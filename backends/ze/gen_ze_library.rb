@@ -77,6 +77,7 @@ puts <<~EOF
     ZET_MAX_METRIC_PROGRAMMABLE_COMPONENT_EXP = 128
     ZET_MAX_METRIC_PROGRAMMABLE_PARAMETER_NAME_EXP = 128
     ZET_MAX_VALUE_INFO_CSTRING_EXP = 128
+    ZET_MAX_METRIC_PROGRAMMABLE_VALUE_DESCRIPTION_EXP = 128
     ZEL_COMPONENT_STRING_SIZE = 64
     extend FFI::Library
 
@@ -260,7 +261,9 @@ $int_scalars.each do |k, v|
 EOF
 end
 
-$all_types.each do |t|
+# Sort types so that Enums/Bitmasks are processed first.
+# Structs depend on Enums, so Enums must be defined before the Struct layout is generated.
+$all_types.sort_by { |t| t.type.is_a?(YAMLCAst::Enum) ? 0 : 1 }.each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, enum)

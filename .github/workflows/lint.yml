@@ -92,6 +92,8 @@ jobs:
           **.hpp
           **.c
           **.h
+        files_ignore: |
+          backends/**/include/
     - name: Run clang-format
       if: steps.changed-cpp-files.outputs.any_changed == 'true'
       run: |

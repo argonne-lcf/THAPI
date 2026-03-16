@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zes_ddi.h
- * @version v1.9-r1.9.3
+ * @version v1.13-r1.13.73
  *
  */
 #ifndef _ZES_DDI_VER_H
@@ -174,12 +174,18 @@ typedef struct _zes_device_dditable_t_1_7
 } zes_device_dditable_t_1_7;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.9]
+/// [1.1, 1.9]
 /// @brief Table of DeviceExp functions pointers
+typedef struct _zes_device_exp_dditable_t_1_1
+{
+    zes_pfnDeviceEnumEnabledVFExp_t                             pfnEnumEnabledVFExp;
+} zes_device_exp_dditable_t_1_1;
+
 typedef struct _zes_device_exp_dditable_t_1_9
 {
     zes_pfnDeviceGetSubDevicePropertiesExp_t                    pfnGetSubDevicePropertiesExp;
     zes_pfnDeviceEnumActiveVFExp_t                              pfnEnumActiveVFExp;
+    zes_pfnDeviceEnumEnabledVFExp_t                             pfnEnumEnabledVFExp;
 } zes_device_exp_dditable_t_1_9;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -468,8 +474,23 @@ typedef struct _zes_diagnostics_dditable_t_1_0
 } zes_diagnostics_dditable_t_1_0;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// [1.9]
+/// [1.1, 1.12, 1.9]
 /// @brief Table of VFManagementExp functions pointers
+typedef struct _zes_vf_management_exp_dditable_t_1_1
+{
+    zes_pfnVFManagementGetVFCapabilitiesExp_t                   pfnGetVFCapabilitiesExp;
+    zes_pfnVFManagementGetVFMemoryUtilizationExp2_t             pfnGetVFMemoryUtilizationExp2;
+    zes_pfnVFManagementGetVFEngineUtilizationExp2_t             pfnGetVFEngineUtilizationExp2;
+} zes_vf_management_exp_dditable_t_1_1;
+
+typedef struct _zes_vf_management_exp_dditable_t_1_12
+{
+    zes_pfnVFManagementGetVFCapabilitiesExp_t                   pfnGetVFCapabilitiesExp;
+    zes_pfnVFManagementGetVFMemoryUtilizationExp2_t             pfnGetVFMemoryUtilizationExp2;
+    zes_pfnVFManagementGetVFEngineUtilizationExp2_t             pfnGetVFEngineUtilizationExp2;
+    zes_pfnVFManagementGetVFCapabilitiesExp2_t                  pfnGetVFCapabilitiesExp2;
+} zes_vf_management_exp_dditable_t_1_12;
+
 typedef struct _zes_vf_management_exp_dditable_t_1_9
 {
     zes_pfnVFManagementGetVFPropertiesExp_t                     pfnGetVFPropertiesExp;
@@ -477,6 +498,10 @@ typedef struct _zes_vf_management_exp_dditable_t_1_9
     zes_pfnVFManagementGetVFEngineUtilizationExp_t              pfnGetVFEngineUtilizationExp;
     zes_pfnVFManagementSetVFTelemetryModeExp_t                  pfnSetVFTelemetryModeExp;
     zes_pfnVFManagementSetVFTelemetrySamplingIntervalExp_t      pfnSetVFTelemetrySamplingIntervalExp;
+    zes_pfnVFManagementGetVFCapabilitiesExp_t                   pfnGetVFCapabilitiesExp;
+    zes_pfnVFManagementGetVFMemoryUtilizationExp2_t             pfnGetVFMemoryUtilizationExp2;
+    zes_pfnVFManagementGetVFEngineUtilizationExp2_t             pfnGetVFEngineUtilizationExp2;
+    zes_pfnVFManagementGetVFCapabilitiesExp2_t                  pfnGetVFCapabilitiesExp2;
 } zes_vf_management_exp_dditable_t_1_9;
 
 

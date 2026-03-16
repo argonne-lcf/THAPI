@@ -7,11 +7,13 @@
 #include <zet_ddi.h>
 #include <zes_api.h>
 #include <zes_ddi.h>
+#ifdef NEW_VERSION_WITH_ZER
+#include <zer_api.h>
+#include <zer_ddi.h>
+#endif
 #include <zex_api.h>
 #include <layers/zel_tracing_api.h>
 #include <layers/zel_tracing_ddi.h>
 #include <layers/zel_tracing_register_cb.h>
 #include <loader/ze_loader.h>
-#define HMODULE void *
-#include <loader/ze_loader_api.h>
 #endif

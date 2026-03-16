@@ -8,8 +8,13 @@
  *
  */
 
-#include "ze_loader_internal.h"
+//#include "ze_loader_internal.h"
 #include "loader/ze_loader.h"
+
+//Modification
+#include "../ze_api.h"
+#include <stdbool.h>
+#define HMODULE void *
 
 #define TRACING_COMP_NAME "loader"
 
@@ -17,14 +22,15 @@
 extern "C" {
 #endif
 
+// Moved to `ze_loader_api_ze_namespace.h`
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Exported function for initializing loader
 ///
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
-ZE_DLLEXPORT ze_result_t ZE_APICALL
-zeLoaderInit();
+//ZE_DLLEXPORT ze_result_t ZE_APICALL
+//zeLoaderInit();
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Exported function for verifying usable L0 Drivers for Loader to report
@@ -32,16 +38,19 @@ zeLoaderInit();
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+//ZE_DLLEXPORT ze_result_t ZE_APICALL
+//zelLoaderDriverCheck(ze_init_flags_t flags, ze_init_driver_type_desc_t* desc, ze_global_dditable_t *globalInitStored, zes_global_dditable_t *sysmanGlobalInitStored, bool *requireDdiReinit, bool sysmanOnly);
 ZE_DLLEXPORT ze_result_t ZE_APICALL
-//zelLoaderDriverCheck(ze_init_flags_t flags);
-zelLoaderDriverCheck(ze_init_flags_t flags, void *globalInitStored, void *sysmanGlobalInitStored, bool *requireDdiReinit, bool sysmanOnly);
+zelLoaderDriverCheck(ze_init_flags_t flags, ze_init_driver_type_desc_t* desc, ze_global_dditable_t *globalInitStored, void *sysmanGlobalInitStored, bool *requireDdiReinit, bool sysmanOnly);
+
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Internal function for Setting the ddi tables for the Tracing Layer.
+/// @brief Internal function for Setting the ddi table for the Tracing Layer.
 ///
+//ZE_DLLEXPORT ze_result_t ZE_APICALL
+//zelLoaderTracingLayerInit(std::atomic<ze_dditable_t *> &zeDdiTable);
 ZE_DLLEXPORT ze_result_t ZE_APICALL
-//zelLoaderTracingLayerInit(std::atomic<ze_dditable_t *> &zeDdiTable, std::atomic<zet_dditable_t *> &zetDdiTable, std::atomic<zes_dditable_t *> &zesDdiTable);
-zelLoaderTracingLayerInit(void *zeDdiTable, void *zetDdiTable, void *zesDdiTable);
+zelLoaderTracingLayerInit(void* zeDdiTable);
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,10 +61,21 @@ zelLoaderTracingLayerInit(void *zeDdiTable, void *zetDdiTable, void *zesDdiTable
 ZE_DLLEXPORT HMODULE ZE_APICALL
 zeLoaderGetTracingHandle();
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get pointer to Loader Context
+///
+/// @returns
+///     - ::handle to tracing library
+//ZE_DLLEXPORT loader::context_t *ZE_APICALL
+//zelLoaderGetContext();
+ZE_DLLEXPORT void *ZE_APICALL
+zelLoaderGetContext();
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Exported function for getting version
 ///
+// Aurora loader doesn't export it for some reason
 ZE_DLLEXPORT ze_result_t ZE_APICALL
 zelLoaderGetVersion(zel_component_version_t *version);
 

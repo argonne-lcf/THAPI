@@ -39,7 +39,7 @@ def to_scoped_class_name(name)
 end
 
 def to_name_space(name)
-  name.match(/\A(ze[stl]?)_/)[1].upcase
+  name.match(/\A(ze[xstlr]?)_/)[1].upcase
 end
 
 $all_types.each do |t|

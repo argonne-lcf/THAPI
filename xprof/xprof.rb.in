@@ -423,6 +423,7 @@ class SyncDaemon < SpawnDaemon
   end
 
   def initialize
+    super
     daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
     daemon = case daemon_type
              when nil
@@ -499,6 +500,7 @@ class SamplingDaemon < SpawnDaemon
   end
 
   def initialize(h = {})
+    super()
     daemon_path = "#{BINDIR}/thapi_sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
@@ -563,6 +565,7 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_ze_properties:*")
     exec("#{lttng_enable} lttng_ust_ze:*")
     exec("#{lttng_enable} lttng_ust_zes:*")
+    exec("#{lttng_enable} lttng_ust_zer:*")
     exec("#{lttng_enable} lttng_ust_zet:*")
     exec("#{lttng_enable} lttng_ust_zex:*")
   when 'default'
@@ -626,6 +629,7 @@ end
 def enable_events_hip(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_hip:*")
+  LOGGER.debug('Profiling is ignored for hip') if profiling
   LOGGER.debug("Tracing mode #{tracing_mode} similar to default for hip") unless tracing_mode == 'default'
 end
 
@@ -640,6 +644,7 @@ def enable_events_omp(channel_name, tracing_mode: 'default', profiling: true)
   else
     raise("Tracing mode #{tracing_mode} not supported")
   end
+  LOGGER.debug('Profiling is ignored for omp') if profiling
 end
 
 def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
@@ -653,6 +658,7 @@ def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
   else
     raise("Tracing mode #{tracing_mode} not supported")
   end
+  LOGGER.debug('Profiling is ignored for mpi') if profiling
   exec("#{lttng_enable} lttng_ust_mpi_type:*")
 end
 
@@ -662,11 +668,14 @@ def enable_events_itt(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_itt:*")
   exec("#{lttng_enable} lttng_ust_itt_metadata:*")
+  LOGGER.debug('Profiling is ignored for itt') if profiling
   LOGGER.debug("Tracing mode #{tracing_mode} similar to default for itt") unless tracing_mode == 'default'
 end
 
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  LOGGER.debug('Profiling is ignored for metadata') if profiling
+  LOGGER.debug("#{tracing_mode} is ignored for metadata")
   exec("#{lttng_enable} lttng_ust_thapi:*")
 end
 
@@ -731,7 +740,7 @@ module LocalMaster
 
       # /!\ If babeltrace moved the file the `lttng_trace_dir_tmp` no longer exist
       LOGGER.debug("Deleting #{lttng_trace_dir_tmp}")
-      FileUtils.remove_dir(lttng_trace_dir_tmp) if File.exist?(lttng_trace_dir_tmp)
+      FileUtils.rm_rf(lttng_trace_dir_tmp)
 
     end
   end

@@ -1,35 +1,41 @@
 require_relative 'ze_model'
 
 puts <<~EOF
-  #include <stdint.h>
-  #include <stddef.h>
-  #include "ze.h.include"
-  #include <dlfcn.h>
-  #include <dlfcn.h>
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <unistd.h>
-  #include <string.h>
-  #include <pthread.h>
-  #include <sys/mman.h>
-  #include <ffi.h>
-  #include "uthash.h"
-  #include "utlist.h"
+    #include <stdint.h>
+    #include <stddef.h>
+    #include "ze.h.include"
+    #include <dlfcn.h>
+    #include <dlfcn.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    #include <string.h>
+    #include <pthread.h>
+    #include <sys/mman.h>
+    #include <ffi.h>
+    #include "uthash.h"
+    #include "utlist.h"
 
-  #include "ze_tracepoints.h"
-  #include "zet_tracepoints.h"
-  #include "zes_tracepoints.h"
-  #include "zel_tracepoints.h"
-  #include "zex_tracepoints.h"
-  #include "ze_structs_tracepoints.h"
-  #include "zet_structs_tracepoints.h"
-  #include "zes_structs_tracepoints.h"
-  #include "zel_structs_tracepoints.h"
-  #include "zex_structs_tracepoints.h"
-  #include "ze_sampling.h"
-  #include "ze_profiling.h"
-  #include "ze_properties.h"
-  #include "ze_build.h"
+    #include "ze_tracepoints.h"
+    #include "zet_tracepoints.h"
+    #include "zes_tracepoints.h"
+    #include "zel_tracepoints.h"
+  #ifdef NEW_VERSION_WITH_ZER
+    #include "zer_tracepoints.h"
+  #endif
+    #include "zex_tracepoints.h"
+    #include "ze_structs_tracepoints.h"
+    #include "zet_structs_tracepoints.h"
+    #include "zes_structs_tracepoints.h"
+    #include "zel_structs_tracepoints.h"
+  #ifdef NEW_VERSION_WITH_ZER
+    #include "zer_structs_tracepoints.h"
+  #endif
+    #include "zex_structs_tracepoints.h"
+    #include "ze_sampling.h"
+    #include "ze_profiling.h"
+    #include "ze_properties.h"
+    #include "ze_build.h"
 
 EOF
 
@@ -94,15 +100,17 @@ ze_struct_types = get_structs_types(:ze, $ze_api['typedefs'], $ze_api['structs']
 zet_struct_types = get_structs_types(:zet, $zet_api['typedefs'], $zet_api['structs'])
 zes_struct_types = get_structs_types(:zes, $zes_api['typedefs'], $zes_api['structs'])
 zel_struct_types = get_structs_types(:zel, $zel_api['typedefs'], $zel_api['structs'])
+zer_struct_types = get_structs_types(:zer, $zer_api['typedefs'], $zer_api['structs'])
 zex_struct_types = get_structs_types(:zex, $zex_api['typedefs'], $zex_api['structs'])
 
 gen_struct_printer(:ze, ze_struct_types)
 gen_struct_printer(:zet, zet_struct_types)
 gen_struct_printer(:zes, zes_struct_types)
 gen_struct_printer(:zel, zel_struct_types)
+# gen_struct_printer(:zer, zel_struct_types)
 # gen_struct_printer(:zex, zex_struct_types)
 
-all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands
+all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands
 all_commands.each do |c|
   puts "#define #{ZE_POINTER_NAMES[c]} #{c.pointer_name}"
 end
@@ -183,7 +191,7 @@ EOF
   end
 
   if c.has_return_type?
-    puts <<EOF unless c.name.match(/(ze|zet|zes|zel)Get.*ProcAddrTable/)
+    puts <<EOF unless c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
   #{c.type} _retval;
 EOF
     puts <<EOF
@@ -239,9 +247,7 @@ EOF
 }
 
 $ze_commands.each do |c|
-  if c.name.match(/zeGet.*ProcAddrTable/) || c.name.match(/zeLoaderInit|zelLoaderDriverCheck|zelLoaderTracingLayerInit|zeLoaderGetTracingHandle/)
-    next
-  end
+  next if c.name.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/)
 
   puts <<~EOF
     #{c.decl_hidden_alias};
@@ -261,7 +267,13 @@ $zes_commands.each do |c|
   EOF
 end
 $zel_commands.each do |c|
-  puts <<~EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$/)
+  puts <<~EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$|ResetAllCallbacks$/)
+    #{c.decl_hidden_alias};
+
+  EOF
+end
+$zer_commands.each do |c|
+  puts <<~EOF unless c.name.match(/zerGet.*ProcAddrTable/)
     #{c.decl_hidden_alias};
 
   EOF
@@ -278,6 +290,9 @@ $zes_commands.each do |c|
 end
 $zel_commands.each do |c|
   normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
+end
+$zer_commands.each do |c|
+  normal_wrapper.call(c, :lttng_ust_zer, zer_struct_types)
 end
 
 $zex_commands.each do |c|

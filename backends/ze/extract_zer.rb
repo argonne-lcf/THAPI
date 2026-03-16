@@ -1,19 +1,16 @@
 require_relative 'extract_base'
 
 zel_header = <<EOF
-    #include <layers/zel_tracing_api.h>
-    #include <layers/zel_tracing_ddi.h>
-    #include <layers/zel_tracing_ddi_ver.h>
-    #include <layers/zel_tracing_register_cb.h>
-    #include <loader/ze_loader.h>
-    #include <loader/ze_loader_api.h>
+    #include <zer_api.h>
+    #include <zer_ddi.h>
+    #include <zer_ddi_ver.h>
 EOF
 
 if enable_clang_parser?
   header = [shared_header, zel_header].join("\n")
   require 'open3'
   yaml, status = Open3.capture2(
-    'h2yaml --compat-cast-to-yaml -Wc,-xc -Wc,-Imodified_include/ --filter-header "zel|ze_loader" -', stdin_data: header
+    'h2yaml --compat-cast-to-yaml -Wc,-xc -Wc,-Imodified_include/ --filter-header "zer" -', stdin_data: header
   )
   exit(1) unless status.success?
 
@@ -35,6 +32,6 @@ else
 
 end
 
-File.open('zel_api.yaml', 'w') do |f|
+File.open('zer_api.yaml', 'w') do |f|
   f.puts yaml
 end
