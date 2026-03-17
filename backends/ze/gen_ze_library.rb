@@ -261,96 +261,72 @@ $int_scalars.each do |k, v|
 EOF
 end
 
-# 1. Group types: Base types first, then all complex types (Structs/Unions/Callbacks) together
-base_types    = []
-complex_types = []
-others        = []
-
-$all_types.each do |t|
-  if $objects.include?(t.name) || t.type.is_a?(YAMLCAst::Enum)
-    base_types << t
-  elsif t.type.is_a?(YAMLCAst::Struct) || t.type.is_a?(YAMLCAst::Union)
-    complex_types << t
-  elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    complex_types << t
-  else
-    others << t
+def is_primitive_type?(t_type)
+  [YAMLCAst::Int, YAMLCAst::Void, YAMLCAst::Float, YAMLCAst::Char, YAMLCAst::Bool, YAMLCAst::Complex,
+   YAMLCAst::Imaginary, YAMLCAst::Pointer].any? do |tt|
+    t_type.is_a?(tt)
   end
 end
 
-# 2. Setup DFS lookup maps
-complex_nodes_by_name = complex_types.map { |t| [t.name, t] }.to_h
-visited = {}
-visiting = {}
-sorted_complex_types = []
+# We need to sort the type, so they are defined in order
+# We don't support cycle.
 
-# 3. DFS Topological Sort
-dfs = ->(t_name) do
-  return if visited[t_name]
-  return if visiting[t_name] # Break circular dependencies if any exist
+# We put Enum and $objecs first.
+# If not, they are not added by the BFS, not sure why
+all_type_sorted = $all_types.group_by do |t|
+  if $objects.include?(t.name) || t.type.is_a?(YAMLCAst::Enum)
+    :sorted
+  else
+    :to_be_sorted
+  end
+end
 
-  visiting[t_name] = true
+# Transform into set for fast `include`
+all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
 
-  node = complex_nodes_by_name[t_name]
-  if node
-    deps = []
+# Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
+dfs = lambda do |node|
+  return if is_primitive_type?(node) || node.is_a?(YAMLCAst::CustomType)
 
-    # A. Extract dependencies for Structs and Unions
-    if node.type.is_a?(YAMLCAst::Struct) || node.type.is_a?(YAMLCAst::Union)
-      # Fallback to direct AST members if it's a Union and not in STRUCT_MAP
-      members = STRUCT_MAP[node.name] || (node.type.respond_to?(:members) ? node.type.members : []) || []
+  case node.type
+  when YAMLCAst::Struct
+    members = STRUCT_MAP[node.name]
+    members.each do |m|
+      m_type = m.type
+      m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
+      dfs.call(m_type)
+    end
 
-      members.each do |m|
-        m_type = m.type
-        # Unpack Arrays, but purposely IGNORE Pointers to prevent linked-list circular deadlocks.
-        # Callbacks stored in structs are usually CustomTypes (typedefs), not raw Pointers.
-        m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
-
-        if m_type.is_a?(YAMLCAst::CustomType)
-          deps << m_type.name
-        end
-      end
-
-    # B. Extract dependencies for Callbacks (Function Pointers)
-    elsif node.type.is_a?(YAMLCAst::Pointer) && node.type.type.is_a?(YAMLCAst::Function)
+  when YAMLCAst::Pointer
+    if node.type.type.is_a?(YAMLCAst::Function)
       func = node.type.type
-      types_to_check = []
-
-      types_to_check << func.return_type if func.respond_to?(:return_type) && func.return_type
-      if func.respond_to?(:parameters) && func.parameters
-        func.parameters.each { |p| types_to_check << p.type }
-      end
+      types_to_check = [func.type]
+      types_to_check = func.params.map(&:type) if func.params
 
       types_to_check.each do |ft|
-        # For callbacks, we MUST dig through Pointers because FFI uses `StructClass.ptr`
-        # which requires the ruby Class to be defined first.
         ft = ft.type while ft.is_a?(YAMLCAst::Pointer) || ft.is_a?(YAMLCAst::Array)
-        if ft.is_a?(YAMLCAst::CustomType)
-          deps << ft.name
-        end
+        dfs.call(ft)
       end
     end
-
-    # Process all discovered dependencies first
-    deps.compact.uniq.each do |dep_name|
-      dfs.call(dep_name) if complex_nodes_by_name.key?(dep_name)
-    end
+  when YAMLCAst::Union
+    # TODO
+  when YAMLCAst::CustomType
+    dfs.call(node.type)
+  when YAMLCAst::Enum
+    # Enums have no dependencies
+  else
+    raise
   end
 
-  visiting[t_name] = false
-  visited[t_name] = true
-
-  # Once dependencies are handled, push this node
-  sorted_complex_types << node if node
+  all_type_sorted[:sorted] << node
 end
 
-# 4. Run DFS on all complex types
-complex_types.each { |t| dfs.call(t.name) }
+# Now sort all type who required it
+all_type_sorted[:to_be_sorted].each do |t|
+  dfs.call(t)
+end
 
-# 5. Combine and print in the guaranteed safe order
-final_ordered_types = base_types + sorted_complex_types + others
-
-final_ordered_types.each do |t|
+all_type_sorted[:sorted].each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, enum)
@@ -359,10 +335,12 @@ final_ordered_types.each do |t|
   elsif t.type.is_a? YAMLCAst::Struct
     struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct
+
     print_struct(t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
     union = $all_unions.find { |s| t.type.name == s.name }
     next unless union
+
     print_union(t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
