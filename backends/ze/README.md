@@ -131,9 +131,9 @@ $ bash ./utils_spec_update/test_symbol_exported.sh /usr/lib64/libze_loader.so ~/
 One possibility is to do:
 ```
 cp -r ../../build/backends/ze/modified_include .
-# Modify `modified_include`
-Then
-`diff -u4 -r --new-file include/ modified_include/ > headers.patch`
+// Modify `modified_include`
+diff -u4 -r --new-file include/ modified_include/ > headers.patch
+```
 
 ## 1
 

@@ -261,9 +261,72 @@ $int_scalars.each do |k, v|
 EOF
 end
 
-# Sort types so that Enums/Bitmasks are processed first.
-# Structs depend on Enums, so Enums must be defined before the Struct layout is generated.
-$all_types.sort_by { |t| t.type.is_a?(YAMLCAst::Enum) ? 0 : 1 }.each do |t|
+def is_primitive_type?(t_type)
+  [YAMLCAst::Int, YAMLCAst::Void, YAMLCAst::Float, YAMLCAst::Char, YAMLCAst::Bool, YAMLCAst::Complex,
+   YAMLCAst::Imaginary, YAMLCAst::Pointer].any? do |tt|
+    t_type.is_a?(tt)
+  end
+end
+
+# We need to sort the type, so they are defined in order
+# We don't support cycle.
+
+# We put Enum and $objecs first.
+# If not, they are not added by the BFS, not sure why
+all_type_sorted = $all_types.group_by do |t|
+  if $objects.include?(t.name) || t.type.is_a?(YAMLCAst::Enum)
+    :sorted
+  else
+    :to_be_sorted
+  end
+end
+
+# Transform into set for fast `include`
+all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
+
+# Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
+dfs = lambda do |node|
+  return if is_primitive_type?(node) || node.is_a?(YAMLCAst::CustomType)
+
+  case node.type
+  when YAMLCAst::Struct
+    members = STRUCT_MAP[node.name]
+    members.each do |m|
+      m_type = m.type
+      m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
+      dfs.call(m_type)
+    end
+
+  when YAMLCAst::Pointer
+    if node.type.type.is_a?(YAMLCAst::Function)
+      func = node.type.type
+      types_to_check = [func.type]
+      types_to_check = func.params.map(&:type) if func.params
+
+      types_to_check.each do |ft|
+        ft = ft.type while ft.is_a?(YAMLCAst::Pointer) || ft.is_a?(YAMLCAst::Array)
+        dfs.call(ft)
+      end
+    end
+  when YAMLCAst::Union
+    # TODO
+  when YAMLCAst::CustomType
+    dfs.call(node.type)
+  when YAMLCAst::Enum
+    # Enums have no dependencies
+  else
+    raise
+  end
+
+  all_type_sorted[:sorted] << node
+end
+
+# Now sort all type who required it
+all_type_sorted[:to_be_sorted].each do |t|
+  dfs.call(t)
+end
+
+all_type_sorted[:sorted].each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, enum)
