@@ -211,9 +211,9 @@ def get_and_add_components(graph, names, l_inputs)
               .reject { |path| FileTest.directory?(path) }
               .filter_map { |path| File.dirname(path) if File.basename(path) == 'metadata' }
               .select do |path|
-            qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
-                                          params: { 'input' => path, 'type' => 'directory' })
-            qe.query.value['weight'] > 0.5
+                qe = BT2::BTQueryExecutor.new(component_class: comp, object_name: 'babeltrace.support-info',
+                                              params: { 'input' => path, 'type' => 'directory' })
+                qe.query.value['weight'] > 0.5
           end
               .each_with_index.map do |trace_location, i|
         graph.add(comp, "source_#{i}",
@@ -242,13 +242,13 @@ def get_and_add_components(graph, names, l_inputs)
                           'name' => $options[:name],
                           'display_mode' => $options[:'display-mode'],
                           'display_metadata' => $options[:'display-metadata'],
-                          'display_name_max_size' => $options[:'display-name-max-size'],
+                          'display_name_max_size' => "+#{$options[:'display-name-max-size']}",
                           'display_kernel_verbose' => $options[:'display-kernel-verbose'],
                           'backend_levels' => $options[:backends].join(',') })
     when 'sink.btx_timeline.timeline'
       graph.add(comp, 'timeline',
                 params: { 'output_path' => $options[:'output-path'],
-                          'offset' => $options[:'output-offset'] })
+                          'offset' => "+#{$options[:'output-offset']}" })
     when 'filter.utils.muxer'
       graph.add(comp, name)
     when 'filter.btx_aggreg.aggreg'
