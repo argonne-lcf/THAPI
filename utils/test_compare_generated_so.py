@@ -35,4 +35,4 @@ def test_symbol(path_ref, path_new):
     ref_ = load_so(path_ref)
     new_ = load_so(path_new)
     diff = DeepDiff(ref_, new_, ignore_order=True)
-    assert not diff, f"Differences found: {diff}"
+    assert not diff
