@@ -103,4 +103,4 @@ def test_code(path_ref, path_new):
     ref_ = load_file(path_ref)
     new_ = load_file(path_new)
     diff = DeepDiff(ref_, new_, ignore_order=True)
-    assert bool(diff), f"Differences found:\n{format_diff(diff)}"
+    assert not bool(diff), f"Differences found:\n{format_diff(diff)}"
