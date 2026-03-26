@@ -1,6 +1,5 @@
 import os
 import subprocess
-
 import pytest
 from deepdiff import DeepDiff
 
