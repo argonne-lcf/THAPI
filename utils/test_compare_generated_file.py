@@ -1,6 +1,7 @@
 import os
 import pytest
 import yaml
+import difflib
 from deepdiff import DeepDiff
 
 # Please put the corrects paths
