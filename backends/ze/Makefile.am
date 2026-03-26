@@ -83,7 +83,7 @@ H2YAML_FILTER = --filter-header $*
 zel_api.yaml: H2YAML_FILTER = --filter-header "zel|ze_loader"
 
 $(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract/%_api.h $(MODIFIED_ZE_HDR)
-	h2yaml --compat-cast-to-yaml -Wc,-I$(srcdir)/modified_include/ $(H2YAML_FILTER) $< > $@
+	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ $(H2YAML_FILTER) $< > $@
 
 CLEANFILES += $(ZE_EXTRACTED)
 
@@ -161,7 +161,7 @@ nodist_libZESampling_la_SOURCES = \
 libZESampling_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(top_srcdir)/sampling -I./modified_include -I./
 libZESampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libZESampling_la_LDFLAGS = -avoid-version -module
-libZESampling_la_LIBADD =  $(top_builddir)/sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
+libZESampling_la_LIBADD = $(top_builddir)/sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
 
 tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -291,7 +291,7 @@ BTX_ZE_GENERATED_SOURCE_TEST = \
         btx_source_ze_test/btx_main.c
 
 $(BTX_ZE_GENERATED_SOURCE_TEST) &: btx_ze_model.yaml
-	$(METABABEL) -d btx_ze_model.yaml -t SOURCE  -o btx_source_ze_test -p zetest -c test  -i ze.h.include
+	$(METABABEL) -d btx_ze_model.yaml -t SOURCE -o btx_source_ze_test -p zetest -c test -i ze.h.include
 
 noinst_LTLIBRARIES += libtestzesource.la
 nodist_libtestzesource_la_SOURCES = $(BTX_ZE_GENERATED_SOURCE_TEST)
