@@ -208,7 +208,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
-    - run: pip install pyyaml pytest pytest-icdiff
+    - run: pip install pyyaml pytest deepdiff
     # Chekout, Configure and build target branch files
     - name: Checkout target branch
       uses: actions/checkout@v6

@@ -3,6 +3,7 @@ import os
 # We suggest to install `pytest-icdiff` to get better diff
 import pytest
 import yaml
+from deepdiff import DeepDiff
 
 # Please put the corrects paths
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
@@ -94,4 +95,5 @@ all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
 def test_code(path_ref, path_new):
     ref_ = load_file(path_ref)
     new_ = load_file(path_new)
-    assert ref_ == new_
+    diff = DeepDiff(ref_, new_, ignore_order=True)
+    assert not diff, f"Differences found: {diff}"
