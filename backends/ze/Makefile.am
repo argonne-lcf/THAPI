@@ -73,16 +73,19 @@ EXTRA_DIST += \
 	$(srcdir)/include \
 	headers.patch
 
+ZE_EXTRACT_H = $(ZE_NAMESPACES:%=extract/%_api.h)
+EXTRA_DIST += $(ZE_EXTRACT_H)
+
 ZE_EXTRACTED = $(ZE_NAMESPACES:=_api.yaml)
 
-$(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ZE_HDR) $(srcdir)/extract_base.rb
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
+# Will be evaluated to `ze`, `zes`, etc. We overwrite for `zel`
+H2YAML_FILTER = --filter-header $*
+zel_api.yaml: H2YAML_FILTER = --filter-header "zel|ze_loader"
+
+$(ZE_EXTRACTED): %_api.yaml: $(srcdir)/extract/%_api.h $(MODIFIED_ZE_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-I$(srcdir)/modified_include/ $(H2YAML_FILTER) $< > $@
 
 CLEANFILES += $(ZE_EXTRACTED)
-
-EXTRA_DIST += \
-	extract_base.rb \
-	$(ZE_NAMESPACES:%=extract_%.rb)
 
 ML_FILES = \
 	$(ZE_NAMESPACES:=_meta_parameters.yaml) \
