@@ -79,11 +79,19 @@ filenames += [
 ]
 
 
+def format_diff(diff):
+    output = []
+    for change in diff.get("values_changed", {}).values():
+        old = change["old_value"].splitlines()
+        new = change["new_value"].splitlines()
+        output.append("\n".join(difflib.unified_diff(old, new, lineterm="", n=3)))
+    return "\n".join(output)
+
 def load_file(path):
     with open(path, "r") as f:
         if path.endswith("yaml"):
             return yaml.safe_load(f)
-        return f.readlines()
+        return f.read()
 
 
 all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
@@ -94,4 +102,4 @@ def test_code(path_ref, path_new):
     ref_ = load_file(path_ref)
     new_ = load_file(path_new)
     diff = DeepDiff(ref_, new_, ignore_order=True)
-    assert not diff, f"Differences found: {diff}"
+    assert not diff, f"Differences found:\n{format_diff(diff)}"
