@@ -16,8 +16,6 @@ if enable_clang_parser?
 
       #include <ze_api.h>
       #include <ze_ddi.h>
-
-      #define ZEL_COMPONENT_STRING_SIZE 64
     EOF
   end
 else
