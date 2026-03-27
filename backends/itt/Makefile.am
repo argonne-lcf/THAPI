@@ -16,7 +16,6 @@ modified_include/ittnotify.h: $(ITT_HDR)
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
-	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include
@@ -29,7 +28,6 @@ ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 
 EXTRA_DIST = \
 	$(srcdir)/include \
-	headers.patch \
 	$(ITT_EXTRACT_H)
 
 $(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract/%_api.h $(MODIFIED_ITT_HDR)
