@@ -23,22 +23,17 @@ clean-local:
 
 ITT_NAMESPACES = itt
 
+ITT_EXTRACT_H = $(ITT_NAMESPACES:%=extract/%_api.h)
+
 ITT_EXTRACTED = $(ITT_NAMESPACES:=_api.yaml)
 
 EXTRA_DIST = \
 	$(srcdir)/include \
 	headers.patch \
-	extract_base.rb \
-	$(ITT_NAMESPACES:%=extract_%.rb)
+	$(ITT_EXTRACT_H)
 
-# Generate the YAML representation of the API Header Files
-#$(ITT_EXTRACTED): %_api.yaml: $(ITT_HDR)
-#	h2yaml -c -Wc,-xc $(ITT_HDR) > $(ITT_EXTRACTED)
-#
-#CLEANFILES = $(ITT_EXTRACTED)
-
-$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_ITT_HDR) $(srcdir)/extract_base.rb
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
+$(ITT_EXTRACTED): %_api.yaml: $(srcdir)/extract/%_api.h $(MODIFIED_ITT_HDR)
+	h2yaml --compat-cast-to-yaml -c -Wc,-Imodified_include/ --filter-header $* $< > $@
 
 CLEANFILES = $(ITT_EXTRACTED)
 
