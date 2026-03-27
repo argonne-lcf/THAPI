@@ -1,13 +1,14 @@
 import os
-
-# We suggest to install `pytest-icdiff` to get better diff
 import pytest
 import yaml
+import difflib
+from deepdiff import DeepDiff
 
 # Please put the corrects paths
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
 filenames = []
+
 filenames += [
     "backends/mpi/tracer_mpi.c",
     "backends/mpi/mpi_library.rb",
@@ -80,11 +81,20 @@ filenames += [
 ]
 
 
+def format_diff_from_str(diff):
+    output = []
+    for change in diff.get("values_changed", {}).values():
+        old = change["old_value"].splitlines()
+        new = change["new_value"].splitlines()
+        output.append("\n".join(difflib.unified_diff(old, new, lineterm="", n=3)))
+    return "\n".join(output)
+
+
 def load_file(path):
     with open(path, "r") as f:
         if path.endswith("yaml"):
             return yaml.safe_load(f)
-        return f.readlines()
+        return f.read()
 
 
 all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
@@ -94,4 +104,15 @@ all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
 def test_code(path_ref, path_new):
     ref_ = load_file(path_ref)
     new_ = load_file(path_new)
-    assert ref_ == new_
+    diff = DeepDiff(ref_, new_, ignore_order=True)
+
+    # For strings, use `format_diff_from_str` to format the output.
+    # Without it, the diff would print the raw ref_/new_ values and pollute stdout.
+    if isinstance(ref_, str):
+        diff_b = bool(diff)  # Cast to bool to avoid printing `diff` direcly in the assert
+        assert not diff_b, f"Differences found:\n{format_diff_from_str(diff)}"
+
+    # For dicts (YAML), the diff output is already readable
+    # since DeepDiff doesn't print raw ref_/new_ values for nested structures.
+    if isinstance(ref_, dict):
+        assert not diff

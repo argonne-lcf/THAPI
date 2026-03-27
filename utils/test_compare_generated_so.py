@@ -1,8 +1,7 @@
 import os
 import subprocess
-
-# We suggest to install `pytest-icdiff` to get better diff
 import pytest
+from deepdiff import DeepDiff
 
 # Please put the corrects paths
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
@@ -25,7 +24,7 @@ def load_so(path):
         ["nm", "-D", path], capture_output=True, text=True, check=True
     ).stdout
     symbols = (line.rsplit(" ", 2) for line in output.splitlines())
-    return sorted(name for _address, t, name in symbols if t in ["T", "W"])
+    return [name for _address, t, name in symbols if t in ["T", "W"]]
 
 
 all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
@@ -35,4 +34,5 @@ all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
 def test_symbol(path_ref, path_new):
     ref_ = load_so(path_ref)
     new_ = load_so(path_new)
-    assert ref_ == new_
+    diff = DeepDiff(ref_, new_, ignore_order=True)
+    assert not diff
