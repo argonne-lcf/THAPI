@@ -251,6 +251,8 @@ def get_and_add_components(graph, names, l_inputs)
                           'offset' => "+#{$options[:'output-offset']}" })
     when 'filter.utils.muxer'
       graph.add(comp, name)
+    when 'filter.toggle.toggle'
+      graph.add(comp, name)
     when 'filter.btx_aggreg.aggreg'
       graph.add(comp, 'aggreg',
                 params: { 'discard_metadata' => $options[:'discard-metadata'] })
