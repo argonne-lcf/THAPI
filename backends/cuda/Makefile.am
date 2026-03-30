@@ -77,20 +77,23 @@ clean-local:
 
 EXTRA_DIST += $(srcdir)/include headers.patch
 
-CUDA_EXTRACT = \
-	$(srcdir)/extract_base.rb
+CUDA_EXTRACT_H = $(srcdir)/extract/cuda_api.h $(srcdir)/extract/cudart_api.h
+EXTRA_DIST += $(CUDA_EXTRACT_H)
 
 cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cudaTypedefs.h modified_include/cudaVDPAUTypedefs.h modified_include/cudaProfilerTypedefs.h
 	$(RUBY) $^ > $@
 
-cuda_api.yaml: $(srcdir)/extract_cuda.rb $(CUDA_EXTRACT) modified_include/cuda.h modified_include/cudaVDPAU.h
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
+cuda_api.yaml: $(srcdir)/extract/cuda_api.h $(MODIFIED_CUDA_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ $< > $@
 
-cuda_exports_api.yaml: $(srcdir)/extract_cuda_exports.rb $(CUDA_EXTRACT) modified_include/cuda.h cuda_export_tables.yaml
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
+cuda_exports_extract.h: $(srcdir)/gen_cuda_exports_extract.rb $(srcdir)/cuda_export_tables.yaml $(MODIFIED_CUDA_HDR)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-cudart_api.yaml: $(srcdir)/extract_cudart.rb $(CUDA_EXTRACT) modified_include/cuda_runtime_api.h
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
+cuda_exports_api.yaml: cuda_exports_extract.h $(MODIFIED_CUDA_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ --filter-header cuda_exports_extract $< > $@
+
+cudart_api.yaml: $(srcdir)/extract/cudart_api.h $(MODIFIED_CUDA_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ $< > $@
 
 CUDA_EXTRACTED = \
 	cuda_api.yaml \
@@ -100,14 +103,11 @@ CUDA_EXTRACTED = \
 CUDART_EXTRACTED = \
 	cudart_api.yaml
 
-CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED)
+CLEANFILES += $(CUDA_EXTRACTED) $(CUDART_EXTRACTED) cuda_exports_extract.h
 
 EXTRA_DIST += \
-	extract_base.rb \
-	extract_cuda.rb \
-	extract_cuda_exports.rb \
-	extract_cuda_versions.rb \
-	extract_cudart.rb
+	gen_cuda_exports_extract.rb \
+	extract_cuda_versions.rb
 
 cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
