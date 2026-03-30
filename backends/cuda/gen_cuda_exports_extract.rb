@@ -4,10 +4,6 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 
 puts <<~EOF
-  #include <stdlib.h>
-  #include <stdint.h>
-  #include <limits.h>
-  #include <stddef.h>
   #define __CUDA_API_VERSION_INTERNAL=1
   #define THAPI_NO_INCLUDE
   #include <cuda.h>

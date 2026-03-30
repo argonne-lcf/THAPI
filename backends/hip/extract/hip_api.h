@@ -1,7 +1,3 @@
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
-
 #define __HIP_PLATFORM_AMD__
 #define THAPI_NO_INCLUDE
 

@@ -1,10 +1,7 @@
-#include <limits.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-
 #define __CUDA_API_VERSION_INTERNAL = 1
 #define THAPI_NO_INCLUDE
+
+#include <stdint.h>
 
 #include <cuda.h>
 
