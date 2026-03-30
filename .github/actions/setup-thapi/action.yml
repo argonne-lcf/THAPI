@@ -34,7 +34,7 @@ runs:
       packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev
   - name: Install Ruby Dependencies
     shell: bash
-    run: sudo gem install nokogiri babeltrace2 opencl_ruby_ffi metababel
+    run: sudo gem install nokogiri babeltrace2 opencl_ruby_ffi metababel cast-to-yaml
   - name: Set PKG_CONFIG
     shell: bash
     run: |
