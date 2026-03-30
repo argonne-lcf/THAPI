@@ -1,6 +1,6 @@
 diff -u4 -r --new-file include/hip/amd_detail/amd_hip_vector_types.h modified_include/hip/amd_detail/amd_hip_vector_types.h
---- include/hip/amd_detail/amd_hip_vector_types.h	2023-04-13 17:34:00.008157568 -0500
-+++ modified_include/hip/amd_detail/amd_hip_vector_types.h	2023-04-18 16:32:48.539622270 -0500
+--- include/hip/amd_detail/amd_hip_vector_types.h	2026-03-27 20:57:07.000000000 +0000
++++ modified_include/hip/amd_detail/amd_hip_vector_types.h	2026-03-30 22:25:53.000000000 +0000
 @@ -1384,20 +1384,20 @@
              T w;\
          } CUDA_name##4;
@@ -160,8 +160,8 @@ diff -u4 -r --new-file include/hip/amd_detail/amd_hip_vector_types.h modified_in
  
  #endif
 diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
---- include/hip/hip_ext.h	2025-09-24 16:25:46.285229661 -0500
-+++ modified_include/hip/hip_ext.h	2025-10-16 17:33:44.497401674 -0500
+--- include/hip/hip_ext.h	2026-03-27 20:57:07.000000000 +0000
++++ modified_include/hip/hip_ext.h	2026-03-30 22:25:53.000000000 +0000
 @@ -21,9 +21,11 @@
  */
  
@@ -202,38 +202,20 @@ diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
  
  #if defined(__cplusplus)
  
-diff -u4 -r --new-file include/hip/hiprtc.h modified_include/hip/hiprtc.h
---- include/hip/hiprtc.h	2025-09-24 16:25:46.287229662 -0500
-+++ modified_include/hip/hiprtc.h	2025-10-16 17:33:44.497575078 -0500
-@@ -36,9 +36,11 @@
- #ifdef __cplusplus
- extern "C" {
- #endif /* __cplusplus */
- 
-+#ifndef THAPI_NO_INCLUDE
- #include <stdlib.h>
-+#endif
- 
- #if !defined(_WIN32)
- #pragma GCC visibility push (default)
- #endif
 diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_runtime_api.h
---- include/hip/hip_runtime_api.h	2025-09-24 16:25:46.287229662 -0500
-+++ modified_include/hip/hip_runtime_api.h	2025-10-16 17:33:44.488342639 -0500
-@@ -29,10 +29,11 @@
+--- include/hip/hip_runtime_api.h	2026-03-27 20:57:07.000000000 +0000
++++ modified_include/hip/hip_runtime_api.h	2026-03-30 22:25:53.000000000 +0000
+@@ -29,9 +29,8 @@
  
  #ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
  #define HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
  
 -
-+#ifndef THAPI_NO_INCLUDE
  #include <string.h>  // for getDeviceProp
-+#endif
  #include <hip/hip_version.h>
  #include <hip/hip_common.h>
  
- enum {
-@@ -41,37 +42,39 @@
+@@ -41,37 +40,39 @@
      HIP_ERROR_NOT_INITIALIZED,
      HIP_ERROR_LAUNCH_OUT_OF_RESOURCES
  };
@@ -302,20 +284,7 @@ diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_ru
  
  typedef struct hipUUID_t {
      char bytes[16];
-@@ -471,10 +474,12 @@
-  */
- 
- #if (defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)) && !(defined(__HIP_PLATFORM_NVCC__) || defined(__HIP_PLATFORM_NVIDIA__))
- 
-+#ifndef THAPI_NO_INCLUDE
- #include <stdint.h>
- #include <stddef.h>
-+#endif
- #ifndef GENERIC_GRID_LAUNCH
- #define GENERIC_GRID_LAUNCH 1
- #endif
- #include <hip/amd_detail/host_defines.h>
-@@ -520,9 +525,11 @@
+@@ -520,9 +521,11 @@
    hipDevP2PAttrHipArrayAccessSupported
  } hipDeviceP2PAttr;
  typedef struct ihipStream_t* hipStream_t;
@@ -328,8 +297,8 @@ diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_ru
  } hipIpcMemHandle_t;
  typedef struct hipIpcEventHandle_st {
 diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/hip_runtime_load_api.h
---- include/hip/hip_runtime_load_api.h	1969-12-31 19:00:00.000000000 -0500
-+++ modified_include/hip/hip_runtime_load_api.h	2023-04-18 16:32:48.539622270 -0500
+--- include/hip/hip_runtime_load_api.h	1970-01-01 00:00:00.000000000 +0000
++++ modified_include/hip/hip_runtime_load_api.h	2026-03-30 22:25:53.000000000 +0000
 @@ -0,0 +1,95 @@
 +#ifndef HIP_RUNTIME_LOAD_API_
 +#define HIP_RUNTIME_LOAD_API_
@@ -427,8 +396,8 @@ diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/h
 +
 +#endif
 diff -u4 -r --new-file include/hip/texture_types.h modified_include/hip/texture_types.h
---- include/hip/texture_types.h	2023-04-13 17:34:00.020157579 -0500
-+++ modified_include/hip/texture_types.h	2023-04-18 16:32:48.543622272 -0500
+--- include/hip/texture_types.h	2026-03-27 20:57:07.000000000 +0000
++++ modified_include/hip/texture_types.h	2026-03-30 22:25:53.000000000 +0000
 @@ -64,24 +64,24 @@
  
  /**

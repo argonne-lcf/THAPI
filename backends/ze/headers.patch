@@ -33,4 +33,3 @@ diff -u4 -r --new-file include/loader/ze_loader_api.h modified_include/loader/ze
  
  ///////////////////////////////////////////////////////////////////////////////
  /// @brief Exported function for getting versions of all components
-Binary files include/loader/.ze_loader_api.h.swp and modified_include/loader/.ze_loader_api.h.swp differ

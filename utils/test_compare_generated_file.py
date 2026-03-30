@@ -97,6 +97,10 @@ def load_file(path):
         return f.read()
 
 
+thapi_filter = os.environ.get("THAPI_FILTER", None)
+if thapi_filter:
+    filenames = [f for f in filenames if any(p in f for p in thapi_filter.split(","))]
+
 all_tuples = [tuple(os.path.join(stem, n) for stem in stems) for n in filenames]
 
 

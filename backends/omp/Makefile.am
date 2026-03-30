@@ -25,16 +25,15 @@ EXTRA_DIST = $(srcdir)/include headers.patch
 
 OMP_NAMESPACES = ompt
 
+OMP_EXTRACT_H = $(OMP_NAMESPACES:%=extract/%_api.h)
+EXTRA_DIST += $(OMP_EXTRACT_H)
+
 OMP_EXTRACTED = $(OMP_NAMESPACES:=_api.yaml)
 
-$(OMP_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_OMP_HDR) $(srcdir)/extract_base.rb
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
+$(OMP_EXTRACTED): %_api.yaml: $(srcdir)/extract/%_api.h $(MODIFIED_OMP_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ --filter-header omp $< > $@
 
 CLEANFILES = $(OMP_EXTRACTED)
-
-EXTRA_DIST += \
-	extract_base.rb \
-	$(OMP_NAMESPACES:%=extract_%.rb)
 
 OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \

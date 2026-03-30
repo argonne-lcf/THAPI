@@ -27,16 +27,15 @@ EXTRA_DIST = \
 
 MPI_NAMESPACES = mpi
 
+MPI_EXTRACT_H = $(MPI_NAMESPACES:%=extract/%_api.h)
+EXTRA_DIST += $(MPI_EXTRACT_H)
+
 MPI_EXTRACTED = $(MPI_NAMESPACES:=_api.yaml)
 
-$(MPI_EXTRACTED): %_api.yaml: $(srcdir)/extract_%.rb $(MODIFIED_MPI_HDR) $(srcdir)/extract_base.rb
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) $(RUBY) $<
+$(MPI_EXTRACTED): %_api.yaml: $(srcdir)/extract/%_api.h $(MODIFIED_MPI_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ --filter-header $* $< > $@
 
 CLEANFILES = $(MPI_EXTRACTED)
-
-EXTRA_DIST += \
-	extract_base.rb \
-	$(MPI_NAMESPACES:%=extract_%.rb)
 
 MPI_MODEL = \
 	$(srcdir)/mpi_model.rb \

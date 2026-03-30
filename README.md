@@ -76,7 +76,6 @@ Optional packages:
  - `binutils-dev` or `libiberty-dev` for demangling depending on platforms (`demangle.h`)
 
 Ruby Gems:
- - `cast-to-yaml`
  - `nokogiri`
  - `babeltrace2`
  - `metababel`
@@ -84,7 +83,7 @@ Ruby Gems:
 Optional Gem:
  - `opencl_ruby_ffi`
 
-Optional pip:
+Required pip:
  - `h2yaml`
 
 </details>

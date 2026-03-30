@@ -78,34 +78,22 @@ AS_IF([test "x$user_set_sync_daemon_mpi" != "xyes_no" && test "x$enable_sync_dae
       [AC_MSG_WARN([MPI Sessions are not supported. Falling back to sync-daemon with filesystem])])
 AM_CONDITIONAL([FOUND_MPI], [test "x$enable_sync_daemon_mpi" != "xno"])
 
-AC_ARG_ENABLE([clang-parser],
-  [AS_HELP_STRING([--disable-clang-parser], [Disable clang parser])],
-  [enable_clang_parser="$enableval"],
-  [enable_clang_parser=yes])  
+AC_CHECK_PROG(H2YAML, [h2yaml], [h2yaml], [no])
+test "x$H2YAML" = "xno" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
 
-ENABLE_CLANG_PARSER=0
-if test "x$enable_clang_parser" = xyes; then
-  AC_CHECK_PROG(H2YAML, [h2yaml], [h2yaml], [no])
-  test "x$H2YAML" = "xno" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
-
-  H2YAML_MIN_VERSION=0.4.2
-  AC_MSG_CHECKING([for h2yaml >= $H2YAML_MIN_VERSION])
-  H2YAML_VERSION=`$H2YAML --version | cut -d' ' -f2`
-  AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],
-    [AC_MSG_RESULT([yes])],
-    [AC_MSG_RESULT([no])
-     AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= $H2YAML_MIN_VERSION])])
-
-  ENABLE_CLANG_PARSER=1
-fi
-AC_SUBST([ENABLE_CLANG_PARSER])
+H2YAML_MIN_VERSION=0.4.2
+AC_MSG_CHECKING([for h2yaml >= $H2YAML_MIN_VERSION])
+H2YAML_VERSION=`$H2YAML --version | cut -d' ' -f2`
+AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],
+  [AC_MSG_RESULT([yes])],
+  [AC_MSG_RESULT([no])
+   AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= $H2YAML_MIN_VERSION])])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 
-AX_RUBY_EXTENSION([cast-to-yaml], [yes])
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 AX_RUBY_EXTENSION([metababel >= 1.1.3], [yes])
