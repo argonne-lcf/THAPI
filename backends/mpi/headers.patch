@@ -1,3 +1,4 @@
+diff -u4 -r --new-file include/mpi.h modified_include/mpi.h
 --- include/mpi.h	2026-03-27 20:57:07.000000000 +0000
 +++ modified_include/mpi.h	2026-03-27 22:32:56.000000000 +0000
 @@ -1916,8 +1916,27 @@
