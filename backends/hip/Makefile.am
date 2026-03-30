@@ -181,11 +181,11 @@ EXTRA_DIST += \
 	$(srcdir)/include \
 	headers.patch
 
-HIP_EXTRACT = \
-	$(srcdir)/extract_base.rb
+HIP_EXTRACT_H = $(srcdir)/extract/hip_api.h
+EXTRA_DIST += $(HIP_EXTRACT_H)
 
-hip_api.yaml: $(srcdir)/extract_hip.rb $(HIP_EXTRACT) $(MODIFIED_HIP_HDR) $(srcdir)/hip_cpp_symbols.h $(srcdir)/hip_missing_apis.h
-	ENABLE_CLANG_PARSER=$(ENABLE_CLANG_PARSER) SRC_DIR=$(srcdir) $(RUBY) $<
+hip_api.yaml: $(HIP_EXTRACT_H) $(MODIFIED_HIP_HDR) $(srcdir)/hip_cpp_symbols.h $(srcdir)/hip_missing_apis.h
+	h2yaml --compat-cast-to-yaml -Wc,-I$(srcdir) -Wc,-Imodified_include/ $< > $@
 
 HIP_EXTRACTED = \
 	hip_api.yaml
@@ -194,8 +194,6 @@ CLEANFILES += \
 	$(HIP_EXTRACTED)
 
 EXTRA_DIST += \
-	extract_base.rb \
-	extract_hip.rb \
 	hip_cpp_symbols.h \
 	hip_missing_apis.h
 
