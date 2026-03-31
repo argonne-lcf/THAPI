@@ -1,5 +1,9 @@
 require_relative 'yaml_ast'
 
+def has_typedef?(name)
+  $all_types.any? { |t| t.type.respond_to?(:name) && t.type.name == name }
+end
+
 def to_ffi_name(name, default = true)
   case name
   when nil
@@ -341,7 +345,7 @@ module YAMLCAst
                m.type.to_ffi
              elsif m.type.is_a?(Pointer)
                ':pointer'
-             elsif m.type.name && !m.type.is_a?(Struct) && !m.type.is_a?(Union)
+             elsif m.type.name && has_typedef?(m.type.name)
                to_ffi_name(m.type.name)
              elsif m.type.is_a?(Struct)
                s = m.type.name ? $all_structs.find { |st| st.name == m.type.name } : m.type
@@ -349,6 +353,8 @@ module YAMLCAst
              elsif m.type.is_a?(Union)
                u = m.type.name ? $all_unions&.find { |un| un.name == m.type.name } : m.type
                "(Class::new(#{FFI_UNION}) { layout #{gen_layout(u.to_ffi)} }.by_value)"
+             elsif m.type.name
+               to_ffi_name(m.type.name)
              else
                raise "unknown type: #{m.type}"
              end
