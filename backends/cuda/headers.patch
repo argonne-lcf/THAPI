@@ -1,47 +1,6 @@
-diff -u4 -r --new-file include/cuda.h modified_include/cuda.h
---- include/cuda.h	2026-03-27 20:57:07.000000000 +0000
-+++ modified_include/cuda.h	2026-03-31 16:32:26.000000000 +0000
-@@ -499,9 +499,9 @@
-  * Per-operation parameters for ::cuStreamBatchMemOp
-  */
- typedef union CUstreamBatchMemOpParams_union {
-     CUstreamBatchMemOpType operation;
--    struct CUstreamMemOpWaitValueParams_st {
-+    struct {
-         CUstreamBatchMemOpType operation;
-         CUdeviceptr address;
-         union {
-             cuuint32_t value;
-@@ -509,9 +509,9 @@
-         };
-         unsigned int flags;
-         CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
-     } waitValue;
--    struct CUstreamMemOpWriteValueParams_st {
-+    struct {
-         CUstreamBatchMemOpType operation;
-         CUdeviceptr address;
-         union {
-             cuuint32_t value;
-@@ -519,13 +519,13 @@
-         };
-         unsigned int flags;
-         CUdeviceptr alias; /**< For driver internal use. Initial value is unimportant. */
-     } writeValue;
--    struct CUstreamMemOpFlushRemoteWritesParams_st {
-+    struct {
-         CUstreamBatchMemOpType operation;
-         unsigned int flags;
-     } flushRemoteWrites;
--    struct CUstreamMemOpMemoryBarrierParams_st { /**< Only supported in the _v2 API */
-+    struct { /**< Only supported in the _v2 API */
-         CUstreamBatchMemOpType operation;
-         unsigned int flags;
-     } memoryBarrier;
-     cuuint64_t pad[6];
 diff -u4 -r --new-file include/cuda_vdpau_interop.h modified_include/cuda_vdpau_interop.h
 --- include/cuda_vdpau_interop.h	2026-03-27 20:57:07.000000000 +0000
-+++ modified_include/cuda_vdpau_interop.h	2026-03-31 16:32:26.000000000 +0000
++++ modified_include/cuda_vdpau_interop.h	2026-03-31 16:56:42.000000000 +0000
 @@ -49,11 +49,13 @@
  
  #if !defined(__CUDA_VDPAU_INTEROP_H__)

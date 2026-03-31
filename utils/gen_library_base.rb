@@ -341,12 +341,14 @@ module YAMLCAst
                m.type.to_ffi
              elsif m.type.is_a?(Pointer)
                ':pointer'
-             elsif m.type.name
+             elsif m.type.name && !m.type.is_a?(Struct) && !m.type.is_a?(Union)
                to_ffi_name(m.type.name)
              elsif m.type.is_a?(Struct)
-               "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(m.type.to_ffi)} }.by_value)"
+               s = m.type.name ? $all_structs.find { |st| st.name == m.type.name } : m.type
+               "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(s.to_ffi)} }.by_value)"
              elsif m.type.is_a?(Union)
-               "(Class::new(#{FFI_UNION}) { layout #{gen_layout(m.type.to_ffi)} }.by_value)"
+               u = m.type.name ? $all_unions&.find { |un| un.name == m.type.name } : m.type
+               "(Class::new(#{FFI_UNION}) { layout #{gen_layout(u.to_ffi)} }.by_value)"
              else
                raise "unknown type: #{m.type}"
              end
