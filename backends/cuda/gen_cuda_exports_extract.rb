@@ -5,7 +5,6 @@ export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 
 puts <<~EOF
   #define __CUDA_API_VERSION_INTERNAL=1
-  #define THAPI_NO_INCLUDE
   #include <cuda.h>
 EOF
 

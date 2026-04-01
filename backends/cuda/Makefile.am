@@ -66,16 +66,15 @@ CLEANFILES = \
 $(BTX_CUDA_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_cudamatching_model.yaml btx_cuda_model.yaml
 	$(METABABEL) -u btx_cuda_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_cuda -p cudainterval -c interval --matching $(srcdir)/btx_cudamatching_model.yaml -i cuda.h.include
 
-$(MODIFIED_CUDA_HDR) &: $(CUDA_HDR) $(srcdir)/headers.patch
+$(MODIFIED_CUDA_HDR) &: $(CUDA_HDR)
 	$(RM) -r modified_include/
 	cp -r $(srcdir)/include/ modified_include/
 	chmod -R u+w modified_include/
-	cat $(srcdir)/headers.patch | patch -i - -d modified_include/ -s -p1
 
 clean-local:
 	$(RM) -r modified_include
 
-EXTRA_DIST += $(srcdir)/include headers.patch
+EXTRA_DIST += $(srcdir)/include
 
 CUDA_EXTRACT_H = $(srcdir)/extract/cuda_api.h $(srcdir)/extract/cudart_api.h
 EXTRA_DIST += $(CUDA_EXTRACT_H)
