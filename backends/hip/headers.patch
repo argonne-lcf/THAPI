@@ -1,19 +1,7 @@
 diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
 --- include/hip/hip_ext.h	2026-03-27 20:57:07.000000000 +0000
-+++ modified_include/hip/hip_ext.h	2026-03-31 22:37:08.000000000 +0000
-@@ -21,9 +21,11 @@
- */
- 
- #ifndef HIP_INCLUDE_HIP_HIP_EXT_H
- #define HIP_INCLUDE_HIP_HIP_EXT_H
-+#ifndef THAPI_NO_INCLUDE
- #include "hip/hip_runtime.h"
-+#endif
- #if defined(__cplusplus)
- #include <tuple>
- #include <type_traits>
- #endif
-@@ -69,11 +71,11 @@
++++ modified_include/hip/hip_ext.h	2026-04-01 22:11:28.000000000 +0000
+@@ -69,11 +69,11 @@
                                      uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                      uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                      uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -28,7 +16,7 @@ diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
   * @brief This HIP API is deprecated, please use hipExtModuleLaunchKernel() instead.
   *
   */
-@@ -82,10 +84,10 @@
+@@ -82,10 +82,10 @@
                                      uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                      uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                      uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -41,127 +29,3 @@ diff -u4 -r --new-file include/hip/hip_ext.h modified_include/hip/hip_ext.h
  
  #if defined(__cplusplus)
  
-diff -u4 -r --new-file include/hip/hip_runtime_api.h modified_include/hip/hip_runtime_api.h
---- include/hip/hip_runtime_api.h	2026-03-27 20:57:07.000000000 +0000
-+++ modified_include/hip/hip_runtime_api.h	2026-03-31 22:37:08.000000000 +0000
-@@ -29,9 +29,8 @@
- 
- #ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
- #define HIP_INCLUDE_HIP_HIP_RUNTIME_API_H
- 
--
- #include <string.h>  // for getDeviceProp
- #include <hip/hip_version.h>
- #include <hip/hip_common.h>
- 
-@@ -520,9 +519,11 @@
-   hipDevP2PAttrHipArrayAccessSupported
- } hipDeviceP2PAttr;
- typedef struct ihipStream_t* hipStream_t;
- #define hipIpcMemLazyEnablePeerAccess 0
-+#ifndef HIP_IPC_HANDLE_SIZE
- #define HIP_IPC_HANDLE_SIZE 64
-+#endif
- typedef struct hipIpcMemHandle_st {
-     char reserved[HIP_IPC_HANDLE_SIZE];
- } hipIpcMemHandle_t;
- typedef struct hipIpcEventHandle_st {
-diff -u4 -r --new-file include/hip/hip_runtime_load_api.h modified_include/hip/hip_runtime_load_api.h
---- include/hip/hip_runtime_load_api.h	1970-01-01 00:00:00.000000000 +0000
-+++ modified_include/hip/hip_runtime_load_api.h	2026-03-31 22:37:08.000000000 +0000
-@@ -0,0 +1,95 @@
-+#ifndef HIP_RUNTIME_LOAD_API_
-+#define HIP_RUNTIME_LOAD_API_
-+
-+#ifdef __cplusplus
-+extern "C" {
-+#endif /* __cplusplus */
-+
-+extern void **__hipRegisterFatBinary(
-+    const void *data);
-+
-+
-+extern void __hipRegisterFunction(
-+    void         **modules,
-+    const void    *hostFunction,
-+    char          *deviceFunction,
-+    const char    *deviceName,
-+    unsigned int   threadLimit,
-+    uint3         *tid,
-+    uint3         *bid,
-+    dim3          *blockDim,
-+    dim3          *gridDim,
-+    int           *wSize);
-+
-+extern void __hipRegisterManagedVar(
-+    void      **modules,    // Pointer to hip module returned from __hipRegisterFatbinary
-+    void      **pointer,    // Pointer to a chunk of managed memory with size \p size and alignment \p
-+                            // align HIP runtime allocates such managed memory and assign it to \p pointer
-+    void       *init_value, // Initial value to be copied into \p pointer
-+    const char *name,       // Name of the variable in code object
-+    size_t      size,
-+    unsigned    align);
-+
-+extern void __hipRegisterSurface(
-+    void **modules,   // The device modules containing code object
-+    void  *var,       // The shadow variable in host code
-+    char  *hostVar,   // Variable name in host code
-+    char  *deviceVar, // Variable name in device code
-+    int    type,
-+    int    ext);
-+
-+
-+extern void __hipRegisterTexture(
-+    void **modules,   // The device modules containing code object
-+    void  *var,       // The shadow variable in host code
-+    char  *hostVar,   // Variable name in host code
-+    char  *deviceVar, // Variable name in device code
-+    int    type,
-+    int    norm,
-+    int    ext);
-+
-+extern void __hipRegisterVar(
-+    void   **modules,   // The device modules containing code object
-+    void    *var,       // The shadow variable in host code
-+    char    *hostVar,   // Variable name in host code
-+    char    *deviceVar, // Variable name in device code
-+    int      ext,       // Whether this variable is external
-+    size_t   size,      // Size of the variable
-+    int      constant,  // Whether this variable is constant
-+    int      global);   // Unknown, always 0
-+
-+extern void __hipUnregisterFatBinary(
-+    void** modules);
-+
-+extern const char* hipGetCmdName(
-+    uint32_t id);
-+
-+typedef enum activity_domain_t {
-+  ACTIVITY_DOMAIN_HSA_API = 0, /* HSA API domain */
-+  ACTIVITY_DOMAIN_HSA_OPS = 1, /* HSA async activity domain */
-+  ACTIVITY_DOMAIN_HIP_OPS = 2, /* HIP async activity domain */
-+  ACTIVITY_DOMAIN_HCC_OPS =
-+      ACTIVITY_DOMAIN_HIP_OPS, /* HCC async activity domain */
-+  ACTIVITY_DOMAIN_HIP_VDI =
-+      ACTIVITY_DOMAIN_HIP_OPS, /* HIP VDI async activity domain */
-+  ACTIVITY_DOMAIN_HIP_API = 3, /* HIP API domain */
-+  ACTIVITY_DOMAIN_KFD_API = 4, /* KFD API domain */
-+  ACTIVITY_DOMAIN_EXT_API = 5, /* External ID domain */
-+  ACTIVITY_DOMAIN_ROCTX = 6,   /* ROCTX domain */
-+  ACTIVITY_DOMAIN_HSA_EVT = 7, /* HSA events */
-+  ACTIVITY_DOMAIN_NUMBER
-+} activity_domain_t;
-+
-+typedef int hipRegisterTracerCallback_callback_t(
-+    activity_domain_t domain,
-+    uint32_t operation_id,
-+    void* data);
-+
-+extern void hipRegisterTracerCallback(
-+    hipRegisterTracerCallback_callback_t *function);
-+
-+#ifdef __cplusplus
-+}
-+#endif /* __cplusplus */
-+
-+#endif
