@@ -10,10 +10,18 @@ def to_ffi_name(name, default = true)
     return ':anonymous'
   when 'unsigned int'
     return ':uint'
+  when 'short', 'short int'
+    return ':short'
   when 'unsigned short', 'unsigned short int'
     return ':ushort'
   when 'unsigned char'
     return ':uchar'
+  when 'long', 'long int'
+    return ':long'
+  when 'unsigned long', 'unsigned long int'
+    return ':ulong'
+  when 'long long', 'long long int'
+    return ':int64'
   when 'unsigned long long', 'unsigned long long int'
     return ':uint64'
   when 'size_t'
@@ -340,40 +348,87 @@ module YAMLCAst
   module Composite
     def to_ffi
       unamed_count = 0
-      members.map do |m|
-        mt = case m.type
-             when Array
-               m.type.to_ffi
-             when Pointer
-               ':pointer'
-             when Struct
-               if m.type.name && has_typedef?(m.type.name)
-                 to_ffi_name(m.type.name)
-               else
-                 s = m.type.name ? $all_structs.find { |st| st.name == m.type.name } : m.type
-                 "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(s.to_ffi)} }.by_value)"
-               end
-             when Union
-               if m.type.name && has_typedef?(m.type.name)
-                 to_ffi_name(m.type.name)
-               else
-                 u = m.type.name ? $all_unions&.find { |un| un.name == m.type.name } : m.type
-                 "(Class::new(#{FFI_UNION}) { layout #{gen_layout(u.to_ffi)} }.by_value)"
-               end
-             else
-               m.type.name ? to_ffi_name(m.type.name) : raise("unknown type: #{m.type}")
-             end
-        [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", mt]
+      result = []
+      bitfields = BitfieldAccumulator.new
+      members.each do |m|
+        if m.num_bits
+          bitfields.add(m)
+        else
+          bitfields.flush_to_result(result)
+          result << [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", member_to_ffi(m.type)]
+        end
       end
+      bitfields.flush_to_result(result)
+      result
     end
 
     private
+
+    def member_to_ffi(type)
+      case type
+      when Array
+        type.to_ffi
+      when Pointer
+        ':pointer'
+      when Struct
+        if type.name && has_typedef?(type.name)
+          to_ffi_name(type.name)
+        else
+          s = type.name ? $all_structs.find { |st| st.name == type.name } : type
+          "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(s.to_ffi)} }.by_value)"
+        end
+      when Union
+        if type.name && has_typedef?(type.name)
+          to_ffi_name(type.name)
+        else
+          u = type.name ? $all_unions&.find { |un| un.name == type.name } : type
+          "(Class::new(#{FFI_UNION}) { layout #{gen_layout(u.to_ffi)} }.by_value)"
+        end
+      else
+        type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")
+      end
+    end
 
     def gen_layout(membs)
       membs.map do |a, b|
         s = "#{a}, "
         s << (b.is_a?(::Array) ? "[ #{b[0]}, #{b[1]} ]" : b)
       end.join(', ')
+    end
+
+    # TODO: FFI doesn't support bitfields. Consecutive bitfield members are
+    # collapsed into a single integer field named `_aggregated_bitfields_N`,
+    # using the declared type of the first bitfield as the storage type.
+    # For now Will crash if differnce storage type are used
+    # Individual bit flags are not accessible; to_s prints the raw integer value.
+    #
+    # Example: struct { unsigned a:1; unsigned b:1; int x; unsigned c:3; }
+    # becomes: layout :_aggregated_bitfields_1, :uint,  # a + b
+    #                 :x, :int,
+    #                 :_aggregated_bitfields_2, :uint   # c
+    class BitfieldAccumulator
+      def initialize
+        @count = 0
+        @group = 0
+        @type = nil
+      end
+
+      def add(member)
+        if @type && @type != member.type.name
+          raise "Mixed bitfield types (#{@type} vs #{member.type.name}) not supported"
+        end
+        @type ||= member.type.name
+        @count += member.num_bits
+      end
+
+      def flush_to_result(result)
+        return if @count == 0
+
+        @group += 1
+        result << [":_aggregated_bitfields_#{@group}", to_ffi_name(@type)]
+        @count = 0
+        @type = nil
+      end
     end
   end
 

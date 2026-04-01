@@ -81,7 +81,7 @@ AM_CONDITIONAL([FOUND_MPI], [test "x$enable_sync_daemon_mpi" != "xno"])
 AC_CHECK_PROG(H2YAML, [h2yaml], [h2yaml], [no])
 test "x$H2YAML" = "xno" && AC_MSG_ERROR([Required program 'h2yaml' not found.])
 
-H2YAML_MIN_VERSION=0.4.2
+H2YAML_MIN_VERSION=0.4.3
 AC_MSG_CHECKING([for h2yaml >= $H2YAML_MIN_VERSION])
 H2YAML_VERSION=`$H2YAML --version | cut -d' ' -f2`
 AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],

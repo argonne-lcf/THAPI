@@ -67,6 +67,14 @@ def print_struct(name, struct)
   print_struct_with_namespace(:HIP, name, struct, prepends: prepends)
 end
 
+typedef_enum_names = $all_types.filter_map { |t| t.type.name if t.type.is_a?(YAMLCAst::Enum) }.to_set
+$all_enums.each do |e|
+  next unless e.name
+  next if typedef_enum_names.include?(e.name)
+
+  print_enum(e.name, e)
+end
+
 $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
@@ -74,7 +82,7 @@ $all_types.each do |t|
   elsif $objects.include?(t.name)
     print_hip_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = $all_structs.find { |s| t.type.name == s.name }
+    struct = t.type.name ? $all_structs.find { |s| t.type.name == s.name } : t.type
     next unless struct
 
     print_struct(t.name, struct)
