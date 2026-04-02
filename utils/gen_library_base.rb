@@ -417,6 +417,7 @@ module YAMLCAst
         if @type && @type != member.type.name
           raise "Mixed bitfield types (#{@type} vs #{member.type.name}) not supported"
         end
+
         @type ||= member.type.name
         @count += member.num_bits
       end
