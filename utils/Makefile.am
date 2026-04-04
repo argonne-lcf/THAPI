@@ -43,6 +43,47 @@ dlinfo_wrapper_CFLAGS = -Wall -Wextra
 
 bin_PROGRAMS += thapi_metadata
 
+include_HEADERS = thapi.h
+
+lib_LTLIBRARIES = libThapi.la
+nodist_libThapi_la_SOURCES = \
+	thapi_toggle_tracepoints.h \
+	thapi_toggle_tracepoints.c
+libThapi_la_SOURCES = thapi_toggle.c
+libThapi_la_CFLAGS = $(LTTNG_FLAGS) $(LTTNG_UST_CFLAGS)
+libThapi_la_LDFLAGS = $(LTTNG_UST_LIBS)
+
+BTX_THAPI_TOGGLE_GENERATED = \
+	btx_thapi_toggle/metababel/metababel.h \
+	btx_thapi_toggle/metababel/btx_component.h \
+	btx_thapi_toggle/metababel/btx_component.c \
+	btx_thapi_toggle/metababel/btx_upstream.h \
+	btx_thapi_toggle/metababel/btx_upstream.c \
+	btx_thapi_toggle/metababel/btx_downstream.h \
+	btx_thapi_toggle/metababel/btx_downstream.c \
+	btx_thapi_toggle/btx_main.c
+
+$(BTX_THAPI_TOGGLE_GENERATED) &: $(srcdir)/btx_thapi_toggle.yaml
+	$(METABABEL) --enable-callbacks on_downstream -t FILTER -p toggle -c toggle \
+	--upstream $(srcdir)/btx_thapi_toggle.yaml --downstream $(srcdir)/btx_thapi_toggle.yaml \
+	-o btx_thapi_toggle
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libThapiToggle.la
+
+nodist_libThapiToggle_la_SOURCES = $(BTX_THAPI_TOGGLE_GENERATED)
+libThapiToggle_la_SOURCES = thapi_toggle_callbacks.cpp
+libThapiToggle_la_CFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
+                           -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
+libThapiToggle_la_CXXFLAGS = -fPIC -shared -Wall -Wextra -Wno-unused-parameter $(BABELTRACE2_CFLAGS) \
+                             -I./btx_thapi_toggle -I$(top_srcdir)/utils/include
+libThapiToggle_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+BUILT_SOURCES += \
+	thapi_toggle_tracepoints.h \
+	thapi_toggle_tracepoints.c \
+	$(BTX_THAPI_TOGGLE_GENERATED)
+
 bin_SCRIPTS = \
 	babeltrace_thapi
 
@@ -62,6 +103,7 @@ CLEANFILES = \
 	version \
 	optparse_thapi.rb \
 	lttng/tracepoint_gen.h \
+	$(BTX_THAPI_TOGGLE_GENERATED) \
 	$(BUILT_SOURCES)
 
 EXTRA_DIST = \
@@ -74,6 +116,8 @@ EXTRA_DIST = \
 	gen_library_base.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \
+	thapi_toggle_tracepoints.tp \
+	btx_thapi_toggle.yaml \
 	command.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \

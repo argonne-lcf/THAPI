@@ -3,7 +3,10 @@
 setup_suite() {
   export MPIRUN=${MPIRUN:-mpirun}
 
+  # Set the path to find iprof, babeltrace_thapi, etc.
   export PATH=$(pkg-config --variable=bindir thapi):${PATH}
+  # We need this for the toggle_api/toggle_dlopen test.
+  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(pkg-config --variable=libdir thapi)
 
   missing_tools=()
 
