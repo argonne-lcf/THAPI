@@ -5,6 +5,7 @@ bats_require_minimum_version 1.5.0
   run -55 iprof --no-analysis -- bash -c "exit 55"
 }
 
+# bats test_tags=issue_489
 @test "signaling_propagated_mpi" {
   lock_tmp=${BATS_TEST_TMPDIR}/lock.tmp
   out_txt=${BATS_TEST_TMPDIR}/out.txt
