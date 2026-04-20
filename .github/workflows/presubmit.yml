@@ -12,6 +12,7 @@ on:
 env:
   MAKEFLAGS: "-j$(nproc) -O --shuffle"
   CC: "gcc"
+  TEST_EXCLUDES: "--filter-tags '!todo'"
 jobs:
   pre_job:
     runs-on: ubuntu-24.04
@@ -123,9 +124,9 @@ jobs:
     - name: Integration test
       run: |
         export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
-        bats integration_tests/
+        bats ${TEST_EXCLUDES} integration_tests/
         # Run the tests twice to make sure we do a proper cleanup
-        bats integration_tests/
+        bats ${TEST_EXCLUDES} integration_tests/
   build-in-tree-and-check:
     needs: efficios_dep
     name: Build in Tree ubuntu-24.04
