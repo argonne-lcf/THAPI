@@ -1,3 +1,5 @@
+bats_require_minimum_version 1.5.0
+
 @test "backend_mpi_sanity_check" {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
   iprof --backends mpi --analysis-output out.txt -- ./mpi_helloworld
