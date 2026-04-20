@@ -26,10 +26,12 @@ launch_mpi() {
 
 # THAPI_SYNC_DAEMON=MPI Tests
 
+# bats test_tags=mpi_sync_daemon
 @test "sync_daemon_mpi" {
   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh clinfo
 }
 
+# bats test_tags=mpi_sync_daemon
 @test "iprof_mpi" {
   trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
   THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 iprof --backend cl --no-analysis --trace-output ${trace_dir} -- clinfo
@@ -37,6 +39,7 @@ launch_mpi() {
   [ $(babeltrace_thapi -c ${trace_dir} | awk -F '[ ,]' '{print $6}' | sort | uniq | wc -l) -eq 2 ]
 }
 
+# bats test_tags=mpi_sync_daemon
 @test "sync_daemon_mpi_launching_mpi_app" {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
   # Current bug in the CI where `mpi_finalize_session` hang
