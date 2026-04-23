@@ -153,7 +153,7 @@ def whichlib64(binary, *libs)
   whichlib64_bin = File.join(BINDIR, 'whichlib64')
   ld_path = [env_fetch_first('LD_LIBRARY_PATH'), env_fetch_first('CRAY_LD_LIBRARY_PATH')].compact.join(':')
 
-  stdout_str,  _stderr_str, _status = Open3.capture3({ 'LD_LIBRARY_PATH' => ld_path }, whichlib64_bin, binary, *libs)
+  stdout_str, _stderr_str, _status = Open3.capture3({ 'LD_LIBRARY_PATH' => ld_path }, whichlib64_bin, binary, *libs)
 
   libs.zip(stdout_str.lines.map(&:strip)).filter_map do |lib, path|
     [lib, path] unless path.end_with?('not found')
