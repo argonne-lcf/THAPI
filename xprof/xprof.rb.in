@@ -155,7 +155,7 @@ def whichlib64(binary, *libs)
 
   stdout_str = exec("#{whichlib64_bin} #{binary} #{libs.join(' ')}",
                     opts: { 'LD_LIBRARY_PATH' => ld_path },
-                    ignore_exit_codes: [2])
+                    ignore_exit_codes: [1, 2])
 
   libs.zip(stdout_str.lines.map(&:strip)).filter_map do |lib, path|
     [lib, path] unless path.end_with?('not found')
