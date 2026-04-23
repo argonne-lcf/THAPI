@@ -268,3 +268,28 @@ bats_require_minimum_version 1.5.0
   [ "$line1" = "$BATS_TEST_TMPDIR/libbar.so" ]
   [ "$line2" = "$BATS_TEST_TMPDIR/libbaz.so" ]
 }
+
+# ── ldconfig conf paths ──────────────────────────────────────────────
+
+@test "find_lib locates library via ldconfig conf paths" {
+  mkdir -p "$BATS_TEST_TMPDIR/confdir" "$BATS_TEST_TMPDIR/libdir"
+  gcc -shared -o "$BATS_TEST_TMPDIR/libdir/libbar.so" "$BATS_TEST_DIRNAME/bar.c"
+  echo "$BATS_TEST_TMPDIR/libdir" > "$BATS_TEST_TMPDIR/confdir/test.conf"
+  echo "include $BATS_TEST_TMPDIR/confdir/*.conf" > "$BATS_TEST_TMPDIR/ld.so.conf"
+  echo 'int main(void){return 0;}' | gcc -x c -o "$BATS_TEST_TMPDIR/noop" -
+  WHICHLIB64_CONF="$BATS_TEST_TMPDIR/ld.so.conf" LD_LIBRARY_PATH="" run -0 whichlib64 "$BATS_TEST_TMPDIR/noop" libbar.so
+  [ "$output" = "$BATS_TEST_TMPDIR/libdir/libbar.so" ]
+}
+
+@test "find_lib locates versioned library via ldconfig conf paths with DT_NEEDED" {
+  mkdir -p "$BATS_TEST_TMPDIR/confdir" "$BATS_TEST_TMPDIR/libdir"
+  gcc -shared -Wl,-soname,libbar.so.1 -o "$BATS_TEST_TMPDIR/libdir/libbar.so.1" "$BATS_TEST_DIRNAME/bar.c"
+  ln -s libbar.so.1 "$BATS_TEST_TMPDIR/libdir/libbar.so"
+  gcc -o "$BATS_TEST_TMPDIR/foo" "$BATS_TEST_DIRNAME/foo.c" -L"$BATS_TEST_TMPDIR/libdir" -lbar
+  patchelf --remove-rpath "$BATS_TEST_TMPDIR/foo"
+  rm "$BATS_TEST_TMPDIR/libdir/libbar.so"
+  echo "$BATS_TEST_TMPDIR/libdir" > "$BATS_TEST_TMPDIR/confdir/test.conf"
+  echo "include $BATS_TEST_TMPDIR/confdir/*.conf" > "$BATS_TEST_TMPDIR/ld.so.conf"
+  WHICHLIB64_CONF="$BATS_TEST_TMPDIR/ld.so.conf" LD_LIBRARY_PATH="" run -2 --separate-stderr whichlib64 "$BATS_TEST_TMPDIR/foo" libbar.so
+  [ "$output" = "$BATS_TEST_TMPDIR/libdir/libbar.so.1" ]
+}

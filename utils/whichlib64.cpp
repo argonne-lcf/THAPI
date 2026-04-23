@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -12,6 +13,7 @@
 
 #include <elf.h>
 #include <fcntl.h>
+#include <glob.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -265,6 +267,65 @@ static void search_cache_batch(const std::vector<batch_entry> &entries,
   }
 }
 
+// Parse /etc/ld.so.conf and its includes to collect library search directories.
+//
+// The format is one directive per line:
+//   - A directory path:          /usr/local/lib64
+//   - An include with glob:      include /etc/ld.so.conf.d/*.conf
+//   - Comments (#) and blank lines are ignored.
+//
+// Example /etc/ld.so.conf:
+//   /usr/local/lib64
+//   include /etc/ld.so.conf.d/*.conf
+//
+// Example /etc/ld.so.conf.d/x86_64-linux-gnu.conf:
+//   /usr/local/lib/x86_64-linux-gnu
+//   /lib/x86_64-linux-gnu
+//   /usr/lib/x86_64-linux-gnu
+//
+static std::string_view strip(std::string_view sv) {
+  if (auto p = sv.find_first_not_of(" \t"); p != sv.npos)
+    sv.remove_prefix(p);
+  else
+    return {};
+  if (auto p = sv.find_last_not_of(" \t\r\n"); p != sv.npos)
+    sv = sv.substr(0, p + 1);
+  return sv;
+}
+
+static constexpr std::string_view INCLUDE_PREFIX = "include";
+
+static void parse_ldconfig_conf(const char *path, std::vector<std::string> &dirs) {
+  std::ifstream file(path);
+  if (!file)
+    return;
+
+  std::string line;
+  while (std::getline(file, line)) {
+    auto sv = strip(line);
+    if (sv.empty() || sv.front() == '#')
+      continue;
+
+    if (sv.substr(0, INCLUDE_PREFIX.size()) == INCLUDE_PREFIX &&
+        sv.size() > INCLUDE_PREFIX.size() &&
+        (sv[INCLUDE_PREFIX.size()] == ' ' || sv[INCLUDE_PREFIX.size()] == '\t')) {
+      auto pattern = strip(sv.substr(INCLUDE_PREFIX.size()));
+      glob_t gl;
+      if (glob(std::string(pattern).c_str(), 0, nullptr, &gl) == 0) {
+        for (size_t i = 0; i < gl.gl_pathc; i++)
+          parse_ldconfig_conf(gl.gl_pathv[i], dirs);
+        globfree(&gl);
+      }
+    } else {
+      dirs.emplace_back(sv);
+    }
+  }
+}
+
+// Fallback when ld.so.cache is stale (e.g. CI restoring packages without running ldconfig).
+// Mirrors ld.so search order: /etc/ld.so.conf paths first (e.g. multiarch dirs like
+// /lib/x86_64-linux-gnu), then the trusted defaults that ldconfig adds implicitly.
+// Override conf path with WHICHLIB64_CONF env var for testing.
 static constexpr std::string_view DEFAULT_PATHS[] = {"/lib64", "/usr/lib64", "/lib", "/usr/lib"};
 
 static void search_default_paths_batch(const std::vector<batch_entry> &entries,
@@ -272,20 +333,31 @@ static void search_default_paths_batch(const std::vector<batch_entry> &entries,
                                        int &pending) {
   if (pending == 0)
     return;
+
+  const char *conf = std::getenv("WHICHLIB64_CONF");
+  if (!conf)
+    conf = "/etc/ld.so.conf";
+
+  std::vector<std::string> dirs;
+  parse_ldconfig_conf(conf, dirs);
+  for (auto dp : DEFAULT_PATHS)
+    dirs.emplace_back(dp);
+
   char buf[4096];
-  for (auto dir : DEFAULT_PATHS) {
+  for (const auto &dir : dirs) {
+    std::string_view dir_sv(dir);
     for (size_t i = 0; i < entries.size(); i++) {
       if (results[i].path[0])
         continue;
       bool found = false;
       if (!entries[i].needed_name.empty()) {
-        build_path(buf, sizeof(buf), dir, entries[i].needed_name);
+        build_path(buf, sizeof(buf), dir_sv, entries[i].needed_name);
         found = access(buf, F_OK) == 0;
       }
       if (!found) {
         if (entries[i].libname.empty())
           continue;
-        build_path(buf, sizeof(buf), dir, entries[i].libname);
+        build_path(buf, sizeof(buf), dir_sv, entries[i].libname);
         found = access(buf, F_OK) == 0;
       }
       if (found) {
