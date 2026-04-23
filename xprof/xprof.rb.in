@@ -149,47 +149,15 @@ end
 #   \    / |_  o  _ |_  | o |_
 #    \/\/  | | | (_ | | | | |_)
 #
-def ldconfig
-  @ldconfig ||= begin
-    ld_library_path = env_fetch_first('LD_LIBRARY_PATH', default: '').gsub(':', ' ')
-    stdout_str = exec("ldconfig -vNX #{ld_library_path}",
-                      opts: { 'PATH' => "#{env_fetch_first('PATH')}:/sbin" },
-                      debug: false)
-    stdout_str.split
-  end
-end
+def whichlib64(binary, *libs)
+  whichlib64_bin = File.join(BINDIR, 'whichlib64')
+  ld_path = [env_fetch_first('LD_LIBRARY_PATH'), env_fetch_first('CRAY_LD_LIBRARY_PATH')].compact.join(':')
 
-def whichlibs(pattern)
-  ldconfig.reduce(['', []]) do |(header, path), l|
-    # /opt/cray/libfabric/1.15.2.0/lib64:
-    next [l.chop, path] if l.end_with?(':')
+  stdout_str,  _stderr_str, _status = Open3.capture3({ 'LD_LIBRARY_PATH' => ld_path }, whichlib64_bin, binary, *libs)
 
-    # libfabric.so.1 -> libfabric.so.1.18.2
-    lib = l.split(' -> ').first
-    path << File.join(header, lib) if lib.match?(pattern)
-    next [header, path]
-  end.last
-end
-
-def whichlib64(pattern)
-  # Use lazy to avoid `objdump` all the possible libs
-  whichlibs(pattern).lazy.filter do |lib|
-    stdout_str = exec("objdump -f #{lib}")
-    # architecture: i386:x86-64, flags 0x00000150"
-    stdout_str.match?(/architecture: \S+64/)
-  end.first
-end
-
-#
-# Get shared lib path using dlinfo_wrapper binary.
-#
-def dlinfo_wrapper(lib, verbose)
-  dlinfo_wrapper = File.join(BINDIR, 'dlinfo_wrapper')
-  exec("#{dlinfo_wrapper} #{lib} #{verbose}",
-       opts: {
-         'LD_LIBRARY_PATH' => "#{env_fetch_first('LD_LIBRARY_PATH')}:#{env_fetch_first('CRAY_LD_LIBRARY_PATH')}",
-       },
-       debug: false)
+  libs.zip(stdout_str.lines.map(&:strip)).filter_map do |lib, path|
+    [lib, path] unless path.end_with?('not found')
+  end.to_h
 end
 
 #         _ ___    _
@@ -897,37 +865,41 @@ end
 #                                          _|
 #
 
-def all_env_tracers
+def all_env_tracers(usr_binary)
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
 
   h = Hash.new { |h, k| h[k] = [] }
   backends = []
 
-  [%w[opencl cl libOpenCL],
-   %w[ze ze libze_loader],
-   %w[cuda cuda libcuda],
-   %w[hip hip libamdhip64],
-   %w[mpi mpi libmpi]].each do |name, bt_name, lib|
-    # Backend requested, skip omp. It will be handled in a custom case below
-    next unless OPTIONS[:'backend-names'].include?(bt_name)
+  backend_defs = [%w[opencl cl libOpenCL],
+                  %w[ze ze libze_loader],
+                  %w[cuda cuda libcuda],
+                  %w[hip hip libamdhip64],
+                  %w[mpi mpi libmpi]]
 
+  selected = backend_defs.select { |_, bt_name, _| OPTIONS[:'backend-names'].include?(bt_name) }
+
+  # Collect requested backends that need a library lookup
+  needed = selected.reject { |name, _, lib| env_fetch_first("LTTNG_UST_#{name.upcase}_#{lib.upcase}") }
+
+  # Single batch call for all libraries
+  lib_paths = whichlib64(usr_binary, *needed.map { |_, _, lib| "#{lib}.so" })
+
+  selected.each do |name, bt_name, lib|
     # Find and Save the original lib path
     libenv = "LTTNG_UST_#{name.upcase}_#{lib.upcase}"
     libso = "#{lib}.so"
     if (e = env_fetch_first(libenv))
       LOGGER.warn("#{libenv} was already set, will use this path #{e} for the #{name} loader")
-      # TODO: Verify that this guy exist?
-    elsif (libpath = whichlib64(libso) || dlinfo_wrapper(libso, MPITopo.master? && LOGGER.level <= Logger::DEBUG))
+    elsif (libpath = lib_paths[libso])
       h[libenv] = libpath
     else
       LOGGER.warn("No #{libso} found in LD_LIBRARY_PATH")
       next
     end
     backends << bt_name
-    # Add our "stub" library to the path
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, name)
-    # Preload our own lib
     h[%w[LD_PRELOAD prepend]] << File.join(PKGLIBDIR, name, libso)
     h["LTTNG_UST_#{name.upcase}_PROFILE"] = 1 if OPTIONS[:profile]
     h["LTTNG_UST_#{name.upcase}_VERBOSE"] = 1 if LOGGER.level <= Logger::DEBUG
@@ -976,7 +948,7 @@ def all_env_tracers
   # Only the local master need to backend (to enable the event)
   # TODO: Only enable local rank who have traced rank in them
   # All the traced ranks, and only them, need the ENV
-  # TODO: Refactor the code to avoid calling `whichlib64` for non traced-rank
+  # TODO: Only call whichlib64 for traced-ranks
   backends = [] unless MPITopo.local_master?
   h = {} unless Set[-1, MPITopo.rank_id].intersect?(OPTIONS[:'traced-ranks'])
 
@@ -991,7 +963,7 @@ def all_trace_and_processing(usr_argv)
   SyncDaemon.open do |syncd|
     # All local rank need to share the same LTTNG_HOME
     ENV['LTTNG_HOME'] = lttng_home_dir
-    backends, env = all_env_tracers
+    backends, env = all_env_tracers(usr_argv.first || '')
     sampling_daemon, archive_pids = LocalMaster.setup(backends, env) if MPITopo.local_master?
     syncd.local_barrier('waiting_for_lttng_setup')
 
