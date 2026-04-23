@@ -176,8 +176,8 @@ struct batch_entry {
 // Try to find a library in dir: needed_name first, then libname, then glob libname.*.
 // access(full_path) instead of open(dir)+faccessat: on Lustre, open() costs
 // 10ms-900ms per directory while access() is ~10us.
-static bool try_find_in_dir(char *buf, size_t buf_size, std::string_view dir,
-                            const batch_entry &entry) {
+static bool
+try_find_in_dir(char *buf, size_t buf_size, std::string_view dir, const batch_entry &entry) {
   if (!entry.needed_name.empty()) {
     build_path(buf, buf_size, dir, entry.needed_name);
     if (access(buf, F_OK) == 0)
