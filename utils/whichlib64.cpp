@@ -1,3 +1,19 @@
+// whichlib64 — locate 64-bit shared libraries using the dynamic linker's search order.
+//
+// For each search phase (in order: DT_RPATH/DT_RUNPATH, LD_LIBRARY_PATH,
+// /etc/ld.so.cache, default paths from /etc/ld.so.conf), for each directory
+// in that phase, for each unfound library:
+//
+//   1. access("dir/<needed_name>") — exact versioned name from DT_NEEDED (e.g. libfoo.so.1)
+//   2. access("dir/<libname>")     — base name (e.g. libfoo.so)
+//   3. glob("dir/<libname>.*")     — versioned fallback
+//
+// On any access() hit, is_elf64() verifies it is a 64-bit ELF. If not,
+// the candidate is skipped and the search continues in the next directory/phase.
+//
+// Lustre-aware: uses access() (not opendir/stat) for probing to avoid
+// expensive directory opens (~10ms-900ms on Lustre vs ~10us for access).
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -17,14 +33,22 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-struct find_lib_request {
-  const char *libname;
+enum class FindStatus { Found = 0, NotFound = 1, VersionMismatch = 2 };
+
+struct lib_query {
+  std::string_view libname;
+  std::string_view needed_name;
   int soversion;
 };
 
 struct find_lib_result {
   char path[4096];
-  int status;
+  FindStatus status;
+};
+
+struct binary_info {
+  std::string rpath;
+  std::vector<std::string> needed;
 };
 
 namespace fs = std::filesystem;
@@ -64,10 +88,10 @@ static std::string resolve_versioned_name(std::string_view found_path, std::stri
 
   if (fname == libname) {
     std::error_code ec;
-    auto real = fs::canonical(fpath, ec);
-    if (ec || real.filename().string() == libname)
+    auto target = fs::read_symlink(fpath, ec);
+    if (ec || target.filename().string() == libname)
       return {};
-    return real.filename().string();
+    return target.filename().string();
   }
 
   assert(fname.size() > libname.size() && fname.compare(0, libname.size(), libname) == 0 &&
@@ -168,25 +192,20 @@ static bool build_path(char *buf, size_t buf_size, std::string_view dir, std::st
   return true;
 }
 
-struct batch_entry {
-  std::string_view libname;
-  std::string_view needed_name;
-};
-
 // Try to find a library in dir: needed_name first, then libname, then glob libname.*.
 // access(full_path) instead of open(dir)+faccessat: on Lustre, open() costs
 // 10ms-900ms per directory while access() is ~10us.
 static bool
-try_find_in_dir(char *buf, size_t buf_size, std::string_view dir, const batch_entry &entry) {
+try_find_in_dir(char *buf, size_t buf_size, std::string_view dir, const lib_query &entry) {
   if (!entry.needed_name.empty()) {
     build_path(buf, buf_size, dir, entry.needed_name);
-    if (access(buf, F_OK) == 0)
+    if (access(buf, F_OK) == 0 && is_elf64(buf))
       return true;
   }
   if (entry.libname.empty())
     return false;
   build_path(buf, buf_size, dir, entry.libname);
-  if (access(buf, F_OK) == 0)
+  if (access(buf, F_OK) == 0 && is_elf64(buf))
     return true;
   // Versioned fallback: glob dir/libname.* (e.g. libOpenCL.so.1)
   std::string pattern;
@@ -199,36 +218,57 @@ try_find_in_dir(char *buf, size_t buf_size, std::string_view dir, const batch_en
   if (glob(pattern.c_str(), 0, nullptr, &gl) == 0 && gl.gl_pathc > 0) {
     std::snprintf(buf, buf_size, "%s", gl.gl_pathv[0]);
     globfree(&gl);
-    return true;
+    return is_elf64(buf);
   }
   return false;
 }
 
+template <typename DirRange>
+static void search_dirs_batch(DirRange &&dirs,
+                              const std::vector<lib_query> &entries,
+                              find_lib_result *results,
+                              int &pending) {
+  char buf[4096];
+  for (auto &&dir : dirs) {
+    std::string_view dir_sv(dir);
+    for (size_t i = 0; i < entries.size(); i++) {
+      if (results[i].path[0])
+        continue;
+      if (try_find_in_dir(buf, sizeof(buf), dir_sv, entries[i])) {
+        copy_to_buf(results[i].path, buf);
+        if (--pending == 0)
+          return;
+      }
+    }
+  }
+}
+
+static std::vector<std::string_view> split_pathlist(std::string_view pathlist) {
+  std::vector<std::string_view> dirs;
+  while (!pathlist.empty()) {
+    auto sep = pathlist.find(':');
+    auto dir = pathlist.substr(0, sep);
+    if (!dir.empty())
+      dirs.push_back(dir);
+    if (sep == std::string_view::npos)
+      break;
+    pathlist.remove_prefix(sep + 1);
+  }
+  return dirs;
+}
+
 static void search_pathlist_batch(std::string_view pathlist,
-                                  const std::vector<batch_entry> &entries,
+                                  const std::vector<lib_query> &entries,
                                   find_lib_result *results,
                                   int &pending) {
   if (pathlist.empty() || pending == 0)
     return;
-  char buf[4096];
-  for_each_dir(pathlist, [&](std::string_view dir) {
-    for (size_t i = 0; i < entries.size(); i++) {
-      if (results[i].path[0])
-        continue;
-      if (try_find_in_dir(buf, sizeof(buf), dir, entries[i])) {
-        copy_to_buf(results[i].path, buf);
-        if (--pending == 0)
-          return true;
-      }
-    }
-    return false;
-  });
+  search_dirs_batch(split_pathlist(pathlist), entries, results, pending);
 }
 
 // Single mmap, single scan for all pending libraries
-static void search_cache_batch(const std::vector<batch_entry> &entries,
-                               find_lib_result *results,
-                               int &pending) {
+static void
+search_cache_batch(const std::vector<lib_query> &entries, find_lib_result *results, int &pending) {
   if (pending == 0)
     return;
 
@@ -265,13 +305,13 @@ static void search_cache_batch(const std::vector<batch_entry> &entries,
       if (results[j].path[0])
         continue;
       if (!entries[j].needed_name.empty() && std::strcmp(key, entries[j].needed_name.data()) == 0) {
-        if (access(val, F_OK) == 0) {
+        if (access(val, F_OK) == 0 && is_elf64(val)) {
           copy_to_buf(results[j].path, val);
           --pending;
         }
       } else if (fallbacks[j].empty() && !entries[j].libname.empty() &&
                  std::strcmp(key, entries[j].libname.data()) == 0) {
-        if (access(val, F_OK) == 0)
+        if (access(val, F_OK) == 0 && is_elf64(val))
           fallbacks[j] = val;
       }
     }
@@ -346,7 +386,7 @@ static void parse_ldconfig_conf(const char *path, std::vector<std::string> &dirs
 // Override conf path with WHICHLIB64_CONF env var for testing.
 static constexpr std::string_view DEFAULT_PATHS[] = {"/lib64", "/usr/lib64", "/lib", "/usr/lib"};
 
-static void search_default_paths_batch(const std::vector<batch_entry> &entries,
+static void search_default_paths_batch(const std::vector<lib_query> &entries,
                                        find_lib_result *results,
                                        int &pending) {
   if (pending == 0)
@@ -361,19 +401,7 @@ static void search_default_paths_batch(const std::vector<batch_entry> &entries,
   for (auto dp : DEFAULT_PATHS)
     dirs.emplace_back(dp);
 
-  char buf[4096];
-  for (const auto &dir : dirs) {
-    std::string_view dir_sv(dir);
-    for (size_t i = 0; i < entries.size(); i++) {
-      if (results[i].path[0])
-        continue;
-      if (try_find_in_dir(buf, sizeof(buf), dir_sv, entries[i])) {
-        copy_to_buf(results[i].path, buf);
-        if (--pending == 0)
-          return;
-      }
-    }
-  }
+  search_dirs_batch(dirs, entries, results, pending);
 }
 
 static std::string resolve_binary(const char *binary) {
@@ -401,19 +429,19 @@ static std::string resolve_binary(const char *binary) {
   return result;
 }
 
-static void
-parse_binary(const char *binary, std::string &rpath_raw, std::vector<std::string> &needed_names) {
+static binary_info parse_binary(const char *binary) {
+  binary_info info;
   auto resolved = resolve_binary(binary);
   if (resolved.empty())
-    return;
+    return info;
 
   MappedFile mf(resolved.c_str());
   if (!mf)
-    return;
+    return info;
 
   auto *ehdr = mf.at<Elf64_Ehdr>(0);
   if (!ehdr || std::memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0)
-    return;
+    return info;
 
   auto *phdrs = mf.array_at<Elf64_Phdr>(ehdr->e_phoff, ehdr->e_phnum);
   assert(phdrs);
@@ -473,7 +501,7 @@ parse_binary(const char *binary, std::string &rpath_raw, std::vector<std::string
     if (dyns[i].d_tag == DT_NEEDED) {
       size_t noff = strtab_foff + dyns[i].d_un.d_val;
       assert(noff < mf.size());
-      needed_names.emplace_back(reinterpret_cast<const char *>(mf.data() + noff));
+      info.needed.emplace_back(reinterpret_cast<const char *>(mf.data() + noff));
     }
   }
 
@@ -486,43 +514,38 @@ parse_binary(const char *binary, std::string &rpath_raw, std::vector<std::string
 
     auto origin = fs::path(resolved).parent_path().string();
 
-    rpath_raw = rpath_str;
+    info.rpath = rpath_str;
     size_t pos = 0;
-    while ((pos = rpath_raw.find(ORIGIN_VAR, pos)) != std::string::npos) {
-      rpath_raw.replace(pos, sizeof(ORIGIN_VAR) - 1, origin);
+    while ((pos = info.rpath.find(ORIGIN_VAR, pos)) != std::string::npos) {
+      info.rpath.replace(pos, sizeof(ORIGIN_VAR) - 1, origin);
       pos += origin.size();
     }
   }
+  return info;
 }
 
-static void find_lib_batch(const char *binary,
-                           const find_lib_request *requests,
-                           int count,
-                           find_lib_result *results) {
+static void
+find_lib_batch(const char *binary, std::vector<lib_query> &queries, find_lib_result *results) {
+  int count = queries.size();
   for (int i = 0; i < count; i++) {
     results[i].path[0] = '\0';
-    results[i].status = 1;
+    results[i].status = FindStatus::NotFound;
   }
   if (count == 0)
     return;
 
-  std::string rpath_raw;
   std::string ldpath_raw;
-  std::vector<std::string> needed_names;
-
   if (const char *ldp = std::getenv("LD_LIBRARY_PATH"))
     ldpath_raw = ldp;
 
-  parse_binary(binary, rpath_raw, needed_names);
+  auto info = parse_binary(binary);
 
-  std::vector<batch_entry> entries(count);
   for (int i = 0; i < count; i++) {
-    entries[i].libname = requests[i].libname;
-    for (const auto &name : needed_names) {
-      if (name.size() > entries[i].libname.size() &&
-          name.compare(0, entries[i].libname.size(), entries[i].libname) == 0 &&
-          name[entries[i].libname.size()] == '.') {
-        entries[i].needed_name = name;
+    for (const auto &name : info.needed) {
+      if (name.size() > queries[i].libname.size() &&
+          name.compare(0, queries[i].libname.size(), queries[i].libname) == 0 &&
+          name[queries[i].libname.size()] == '.') {
+        queries[i].needed_name = name;
         break;
       }
     }
@@ -530,19 +553,18 @@ static void find_lib_batch(const char *binary,
 
   int pending = count;
 
-  search_pathlist_batch(rpath_raw, entries, results, pending);
-  search_pathlist_batch(ldpath_raw, entries, results, pending);
-  search_cache_batch(entries, results, pending);
-  search_default_paths_batch(entries, results, pending);
+  search_pathlist_batch(info.rpath, queries, results, pending);
+  search_pathlist_batch(ldpath_raw, queries, results, pending);
+  search_cache_batch(queries, results, pending);
+  search_default_paths_batch(queries, results, pending);
 
   for (int i = 0; i < count; i++) {
-    if (results[i].path[0] && !is_elf64(results[i].path))
-      results[i].path[0] = '\0';
     if (!results[i].path[0])
-      results[i].status = 1;
+      results[i].status = FindStatus::NotFound;
     else
-      results[i].status =
-          version_check(results[i].path, requests[i].libname, requests[i].soversion) ? 2 : 0;
+      results[i].status = version_check(results[i].path, queries[i].libname, queries[i].soversion)
+                              ? FindStatus::VersionMismatch
+                              : FindStatus::Found;
   }
 }
 
@@ -554,30 +576,30 @@ int main(int argc, char *argv[]) {
 
   int nlibs = argc - 2;
   std::vector<std::string> names(nlibs);
-  std::vector<find_lib_request> requests(nlibs);
+  std::vector<lib_query> queries(nlibs);
   for (int i = 0; i < nlibs; i++) {
     std::string arg(argv[i + 2]);
     auto colon = arg.rfind(':');
     if (colon != std::string::npos) {
       names[i] = arg.substr(0, colon);
-      requests[i] = {names[i].c_str(), std::atoi(arg.c_str() + colon + 1)};
+      queries[i] = {names[i], {}, std::atoi(arg.c_str() + colon + 1)};
     } else {
       names[i] = arg;
-      requests[i] = {names[i].c_str(), -1};
+      queries[i] = {names[i], {}, -1};
     }
   }
 
   std::vector<find_lib_result> results(nlibs);
-  find_lib_batch(argv[1], requests.data(), nlibs, results.data());
+  find_lib_batch(argv[1], queries, results.data());
 
   int ret = 0;
   for (int i = 0; i < nlibs; i++) {
     if (results[i].path[0])
       std::cout << results[i].path << "\n";
-    if (results[i].status == 1) {
+    if (results[i].status == FindStatus::NotFound) {
       std::cout << names[i] << " not found\n";
       ret = 1;
-    } else if (results[i].status == 2 && ret == 0)
+    } else if (results[i].status == FindStatus::VersionMismatch && ret == 0)
       ret = 2;
   }
 
