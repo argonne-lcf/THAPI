@@ -173,8 +173,37 @@ struct batch_entry {
   std::string_view needed_name;
 };
 
+// Try to find a library in dir: needed_name first, then libname, then glob libname.*.
 // access(full_path) instead of open(dir)+faccessat: on Lustre, open() costs
 // 10ms-900ms per directory while access() is ~10us.
+static bool try_find_in_dir(char *buf, size_t buf_size, std::string_view dir,
+                            const batch_entry &entry) {
+  if (!entry.needed_name.empty()) {
+    build_path(buf, buf_size, dir, entry.needed_name);
+    if (access(buf, F_OK) == 0)
+      return true;
+  }
+  if (entry.libname.empty())
+    return false;
+  build_path(buf, buf_size, dir, entry.libname);
+  if (access(buf, F_OK) == 0)
+    return true;
+  // Versioned fallback: glob dir/libname.* (e.g. libOpenCL.so.1)
+  std::string pattern;
+  pattern.reserve(dir.size() + 1 + entry.libname.size() + 2);
+  pattern.append(dir);
+  pattern += '/';
+  pattern.append(entry.libname);
+  pattern += ".*";
+  glob_t gl;
+  if (glob(pattern.c_str(), 0, nullptr, &gl) == 0 && gl.gl_pathc > 0) {
+    std::snprintf(buf, buf_size, "%s", gl.gl_pathv[0]);
+    globfree(&gl);
+    return true;
+  }
+  return false;
+}
+
 static void search_pathlist_batch(std::string_view pathlist,
                                   const std::vector<batch_entry> &entries,
                                   find_lib_result *results,
@@ -186,18 +215,7 @@ static void search_pathlist_batch(std::string_view pathlist,
     for (size_t i = 0; i < entries.size(); i++) {
       if (results[i].path[0])
         continue;
-      bool found = false;
-      if (!entries[i].needed_name.empty()) {
-        build_path(buf, sizeof(buf), dir, entries[i].needed_name);
-        found = access(buf, F_OK) == 0;
-      }
-      if (!found) {
-        if (entries[i].libname.empty())
-          continue;
-        build_path(buf, sizeof(buf), dir, entries[i].libname);
-        found = access(buf, F_OK) == 0;
-      }
-      if (found) {
+      if (try_find_in_dir(buf, sizeof(buf), dir, entries[i])) {
         copy_to_buf(results[i].path, buf);
         if (--pending == 0)
           return true;
@@ -349,18 +367,7 @@ static void search_default_paths_batch(const std::vector<batch_entry> &entries,
     for (size_t i = 0; i < entries.size(); i++) {
       if (results[i].path[0])
         continue;
-      bool found = false;
-      if (!entries[i].needed_name.empty()) {
-        build_path(buf, sizeof(buf), dir_sv, entries[i].needed_name);
-        found = access(buf, F_OK) == 0;
-      }
-      if (!found) {
-        if (entries[i].libname.empty())
-          continue;
-        build_path(buf, sizeof(buf), dir_sv, entries[i].libname);
-        found = access(buf, F_OK) == 0;
-      }
-      if (found) {
+      if (try_find_in_dir(buf, sizeof(buf), dir_sv, entries[i])) {
         copy_to_buf(results[i].path, buf);
         if (--pending == 0)
           return;
