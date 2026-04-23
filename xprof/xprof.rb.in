@@ -80,7 +80,7 @@ end
 # \  / _. ._ o  _       _   |_     _   _
 #  \/ (_| |  | (_) |_| _>   |_ >< (/_ (_
 #
-def exec(cmd, opts: {}, debug: true)
+def exec(cmd, opts: {}, debug: true, ignore_exit_codes: [])
   return Open3.capture3(opts, cmd).first unless debug
 
   LOGGER.info { cmd }
@@ -90,7 +90,7 @@ def exec(cmd, opts: {}, debug: true)
   LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
-  raise "#{cmd} failed" unless status.success?
+  raise "#{cmd} failed" unless status.success? || ignore_exit_codes.include?(status.exitstatus)
 
   stdout_str
 end
@@ -153,7 +153,9 @@ def whichlib64(binary, *libs)
   whichlib64_bin = File.join(BINDIR, 'whichlib64')
   ld_path = [env_fetch_first('LD_LIBRARY_PATH'), env_fetch_first('CRAY_LD_LIBRARY_PATH')].compact.join(':')
 
-  stdout_str, _stderr_str, _status = Open3.capture3({ 'LD_LIBRARY_PATH' => ld_path }, whichlib64_bin, binary, *libs)
+  stdout_str = exec("#{whichlib64_bin} #{binary} #{libs.join(' ')}",
+                    opts: { 'LD_LIBRARY_PATH' => ld_path },
+                    ignore_exit_codes: [2])
 
   libs.zip(stdout_str.lines.map(&:strip)).filter_map do |lib, path|
     [lib, path] unless path.end_with?('not found')
