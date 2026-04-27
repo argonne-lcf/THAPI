@@ -11,7 +11,6 @@ launch_mpi() {
   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh clinfo
 }
 
-# bats test_tags=issue_489
 @test "iprof_fs" {
   trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
   THAPI_SYNC_DAEMON=fs launch_mpi -n 2 iprof --backend cl --no-analysis --trace-output ${trace_dir} -- clinfo
@@ -48,7 +47,6 @@ launch_mpi() {
 
 # Test Traced Rank
 
-# bats test_tags=issue_489
 @test "iprof_mpi+traced_ranks" {
   trace_dir="${BATS_TEST_TMPDIR}/${BATS_TEST_NAME}"
   run -0 launch_mpi -n 2 iprof --backend cl --traced-ranks 1 -- clinfo

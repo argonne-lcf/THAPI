@@ -4,44 +4,37 @@ bats_require_minimum_version 1.5.0
   pkg-config --modversion thapi
 }
 
-# bats test_tags=issue_489
 @test "default_summary" {
   total_count=$(iprof --backend cl -- clinfo | awk -F'|' '/Total/ {print int($4)}')
   [ "$total_count" -ge 1 ]
 }
 
-# bats test_tags=issue_489
 @test "json_summary" {
   iprof --json --analysis-output out.json --json clinfo
   total_count=$(jq '.host["1"].data.Total.call' out.json)
   [ "$total_count" -ge 1 ]
 }
 
-# bats test_tags=issue_489
 @test "archive_summary" {
   total_count=$(iprof --backend cl --archive clinfo | awk -F'|' '/Total/ {print int($4)}')
   [ "$total_count" -ge 1 ]
 }
 
-# bats test_tags=issue_489
 @test "default_trace" {
   iprof -t clinfo | wc -l
 }
 
-# bats test_tags=issue_489
 @test "default_timeline" {
   run -0 iprof -l -- clinfo
   [[ "$output" =~ "THAPI: Perfetto trace location" ]]
   rm out.pftrace
 }
 
-# bats test_tags=issue_489
 @test "replay_summary" {
   iprof clinfo
   iprof -r
 }
 
-# bats test_tags=issue_489
 @test "no-analysis_output" {
   run -0 clinfo
   out1=$(echo "$output" | grep -v 'Max clock frequency' | grep -v '  Device LUID')
@@ -59,7 +52,6 @@ bats_require_minimum_version 1.5.0
   [[ "$stderr" =~ "error" ]]
 }
 
-# bats test_tags=issue_489
 @test "no-analysis_all" {
   iprof --no-analysis -- clinfo
   iprof -r
@@ -69,7 +61,6 @@ bats_require_minimum_version 1.5.0
   rm out.pftrace
 }
 
-# bats test_tags=issue_489
 @test "trace-output_all" {
   iprof --trace-output trace_1 -- clinfo
   iprof -r trace_1
@@ -84,14 +75,12 @@ bats_require_minimum_version 1.5.0
   rm -rf trace_3 out1.pftrace out2.pftrace
 }
 
-# bats test_tags=issue_489
 @test "timeline_output" {
   iprof -l roger.pftrace -- clinfo
   rm roger.pftrace
 }
 
 # Assert Failure
-# bats test_tags=issue_489
 @test "replay_negative" {
   iprof -- clinfo
   run iprof -t -r
