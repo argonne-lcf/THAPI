@@ -98,9 +98,9 @@ end
 def launch_usr_bin(env, cmd)
   LOGGER.info { "Launch_usr_bin #{cmd}" }
 
+  # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
+  $stdout.sync = true
   IO.popen(env, cmd) do |io|
-    # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
-    io.sync = true
     io.each { |line| print line }
   rescue Interrupt
     # Just continue as usual, do not crash xprof
