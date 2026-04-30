@@ -168,6 +168,7 @@ setup_ldconf() {
   [ "$output" = "$BATS_TEST_TMPDIR/rpath_dir/libbar.so.1" ]
 }
 
+# bats test_tags=need_patchelf
 @test "find_lib resolves DT_NEEDED soname via dlopen when no rpath" {
   build_libbar_versioned
   build_foo_no_rpath
@@ -200,6 +201,7 @@ setup_ldconf() {
   [[ "$stderr" == *"Warning: expected libbar.so.2 but found libbar.so.1"* ]]
 }
 
+# bats test_tags=need_patchelf
 @test "dlopen preserves SONAME filename when actual file has deeper version" {
   gcc -shared -Wl,-soname,libbar.so.1 -o "$BATS_TEST_TMPDIR/libbar.so.1.2" "$BATS_TEST_DIRNAME/bar.c"
   ln -s libbar.so.1.2 "$BATS_TEST_TMPDIR/libbar.so.1"
@@ -218,6 +220,7 @@ setup_ldconf() {
   [ "$output" = "$BATS_TEST_TMPDIR/lib/libbar.so" ]
 }
 
+# bats test_tags=need_patchelf
 @test "dlopen preserves symlinked directory in path (no rpath)" {
   mkdir -p "$BATS_TEST_TMPDIR/real_dir"
   build_libbar_versioned "$BATS_TEST_TMPDIR/real_dir"
@@ -228,6 +231,7 @@ setup_ldconf() {
   [ "$output" = "$BATS_TEST_TMPDIR/link_dir/libbar.so.1" ]
 }
 
+# bats test_tags=need_patchelf
 @test "cache lookup matches ldconfig for system library" {
   build_noop
   patchelf --remove-rpath "$BATS_TEST_TMPDIR/noop"
@@ -261,6 +265,7 @@ setup_ldconf() {
   [ "$output" = "$BATS_TEST_TMPDIR/libbar.so" ]
 }
 
+# bats test_tags=need_patchelf
 @test "search_default_paths reached with versioned DT_NEEDED, no rpath, no LD_LIBRARY_PATH" {
   build_libbar_versioned
   build_foo_no_rpath
@@ -312,6 +317,7 @@ setup_ldconf() {
   [ "$output" = "$BATS_TEST_TMPDIR/libdir/libbar.so.1" ]
 }
 
+# bats test_tags=need_patchelf
 @test "find_lib locates versioned library via ldconfig conf paths with DT_NEEDED" {
   mkdir -p "$BATS_TEST_TMPDIR/libdir"
   build_libbar_versioned "$BATS_TEST_TMPDIR/libdir"
