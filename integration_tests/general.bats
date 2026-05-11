@@ -48,7 +48,7 @@ bats_require_minimum_version 1.5.0
 }
 
 @test "stderr_output" {
-  run --separate-stderr iprof -- bash -c "echo \"error\" >&2"
+  run -0 --separate-stderr iprof -- bash -c "echo \"error\" >&2"
   [[ "$stderr" =~ "error" ]]
 }
 
@@ -100,6 +100,28 @@ bats_require_minimum_version 1.5.0
 }
 
 @test "read_stdin" {
+  # NOTE: do not use `run -0` here. Combined with `bats_pipe`, it causes
+  # duplicated TAP lines in CI's second bats invocation (cause unknown).
   run bats_pipe echo "FOO" \| iprof cat
   [[ "$output" =~ "FOO" ]]
+}
+
+@test "max-name-size" {
+  # Truncation marker should appear when names are limited.
+  run -0 iprof --backend cl --max-name-size 10 -- clinfo
+  [[ "$output" =~ "[...]" ]]
+
+  # -1 means "no limit" (UINT64_MAX after the unsigned wrap). Regression guard
+  # against the params being decoded as garbage instead of UINT64_MAX.
+  run -0 iprof --backend cl --max-name-size -1 -- clinfo
+  [[ ! "$output" =~ "[...]" ]]
+}
+
+@test "timeline_output-offset_deterministic" {
+  # Two timeline runs against the same trace must produce identical files.
+  run -0 iprof --no-analysis -- clinfo
+  run -0 iprof -l out_a.pftrace -r
+  run -0 iprof -l out_b.pftrace -r
+  cmp out_a.pftrace out_b.pftrace
+  rm -f out_a.pftrace out_b.pftrace
 }
