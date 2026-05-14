@@ -688,12 +688,9 @@ static void _dump_device_timer(ze_device_handle_t hDevice) {
 }
 
 static void _dump_command_list_device_timer(ze_command_list_handle_t hCommandList) {
-  struct _ze_obj_h *o_h = NULL;
-  FIND_ZE_OBJ(&hCommandList, o_h);
-  if (o_h) {
-    ze_device_handle_t hDevice = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->device;
+  ze_device_handle_t hDevice = NULL;
+  if (ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(hCommandList, &hDevice) == ZE_RESULT_SUCCESS && hDevice)
     _dump_device_timer(hDevice);
-  }
 }
 
 static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
@@ -787,12 +784,10 @@ static inline void _dump_memory_info_ctx(ze_context_handle_t hContext, const voi
 }
 
 static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, const void *ptr) {
-  struct _ze_obj_h *o_h = NULL;
-  FIND_ZE_OBJ(&hCommandList, o_h);
-  if (o_h) {
-    ze_context_handle_t hContext = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
+  ze_context_handle_t hContext = NULL;
+  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(hCommandList, &hContext) == ZE_RESULT_SUCCESS &&
+      hContext)
     _dump_memory_info_ctx(hContext, ptr);
-  }
 }
 
 ////////////////////////////////////////////
