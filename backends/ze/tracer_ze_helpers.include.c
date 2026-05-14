@@ -336,12 +336,19 @@ static inline void _register_ze_event(ze_event_handle_t event,
     _ze_event->flags = 0;
   }
 
+  ze_context_handle_t context = NULL;
+  ze_result_t res = ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &context);
+  if (res == ZE_RESULT_SUCCESS && context)
+    _ze_event->context = context;
+  else
+    THAPI_DBGLOG("zeCommandListGetContextHandle failed with %d for command list: %p", res,
+                 command_list);
+
   struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
   if (o_h) {
     cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    _ze_event->context = cl_data->context;
     if (cl_data->flags & _ZE_IMMEDIATE)
       _ze_event->flags |= _ZE_IMMEDIATE_CMD;
   } else
