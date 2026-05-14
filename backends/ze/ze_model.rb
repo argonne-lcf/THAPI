@@ -137,28 +137,10 @@ ze_pointer_names += $zex_commands.collect do |c|
 end
 ZE_POINTER_NAMES = ze_pointer_names.to_h
 
-register_epilogue 'zeDeviceGet', <<EOF
-  if (_do_state()) {
-    if (_retval == ZE_RESULT_SUCCESS && phDevices && pCount) {
-      for (uint32_t i = 0; i < *pCount; i++)
-        _register_ze_device(phDevices[i], hDriver, NULL);
-    }
-  }
-EOF
-
-register_epilogue 'zeDeviceGetSubDevices', <<EOF
-  if (_do_state()) {
-    if (_retval == ZE_RESULT_SUCCESS && phSubdevices && pCount) {
-      for (uint32_t i = 0; i < *pCount; i++)
-        _register_ze_device(phSubdevices[i], NULL, hDevice);
-    }
-  }
-EOF
-
 register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _on_create_command_list(*phCommandList, hContext, hDevice, 0);
+      _on_create_command_list(*phCommandList, 0);
     }
   }
 EOF
@@ -166,7 +148,7 @@ EOF
 register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _on_create_command_list(*phCommandList, hContext, hDevice, 1);
+      _on_create_command_list(*phCommandList, 1);
     }
   }
 EOF

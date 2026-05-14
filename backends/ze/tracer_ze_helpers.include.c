@@ -23,13 +23,7 @@
 #define THAPI_ATTRIBUTE_DESTRUCTOR
 #endif
 
-enum _ze_obj_type { UNKNOWN = 0, DRIVER, DEVICE, COMMAND_LIST, EVENT };
-
-struct _ze_device_obj_data {
-  ze_driver_handle_t driver;
-  ze_device_handle_t parent;
-  ze_device_properties_t properties;
-};
+enum _ze_obj_type { UNKNOWN = 0, COMMAND_LIST, EVENT };
 
 static int _do_profile = 0;
 static int _do_cleanup = 0;
@@ -60,9 +54,6 @@ typedef _ze_command_list_flag_t _ze_command_list_flags_t;
 struct _ze_event_h;
 
 struct _ze_command_list_obj_data {
-  ze_device_handle_t device;
-  ze_context_handle_t context;
-  ze_driver_handle_t driver;
   _ze_command_list_flags_t flags;
   struct _ze_event_h *events;
 };
@@ -112,58 +103,9 @@ static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
     pthread_mutex_unlock(&_ze_objs_mutex);                                                         \
   } while (0)
 
-static inline void _register_ze_device(ze_device_handle_t device,
-                                       ze_driver_handle_t driver,
-                                       ze_device_handle_t parent) {
-  struct _ze_obj_h *o_h = NULL;
-  struct _ze_device_obj_data *d_data = NULL;
-
-  FIND_ZE_OBJ(&device, o_h);
-  if (o_h) {
-    THAPI_DBGLOG("Device already registered: %p", device);
-    return;
-  }
-
-  intptr_t mem = (intptr_t)calloc(1, sizeof(struct _ze_obj_h) + sizeof(struct _ze_device_obj_data));
-  if (mem == 0) {
-    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
-    return;
-  }
-
-  o_h = (struct _ze_obj_h *)mem;
-  d_data = (struct _ze_device_obj_data *)(mem + sizeof(struct _ze_obj_h));
-
-  o_h->ptr = (void *)device;
-  o_h->type = DEVICE;
-  d_data->driver = driver;
-  d_data->parent = parent;
-  o_h->obj_data = (void *)d_data;
-
-  d_data->properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-  ze_result_t res = ZE_DEVICE_GET_PROPERTIES_PTR(device, &(d_data->properties));
-  if (res != ZE_RESULT_SUCCESS) {
-    free((void *)mem);
-    return;
-  }
-
-  ADD_ZE_OBJ(o_h);
-}
-
-static inline void _on_create_command_list(ze_command_list_handle_t command_list,
-                                           ze_context_handle_t context,
-                                           ze_device_handle_t device,
-                                           int immediate) {
+static inline void _on_create_command_list(ze_command_list_handle_t command_list, int immediate) {
   struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
-  ze_driver_handle_t driver;
-
-  FIND_ZE_OBJ(&device, o_h);
-  if (!o_h) {
-    THAPI_DBGLOG("Could not find device: %p associated with command list: %p", device,
-                 command_list);
-    return;
-  }
-  driver = ((struct _ze_device_obj_data *)(o_h->obj_data))->driver;
 
   FIND_ZE_OBJ(&command_list, o_h);
   if (o_h) {
@@ -183,9 +125,6 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
 
   o_h->ptr = (void *)command_list;
   o_h->type = COMMAND_LIST;
-  cl_data->device = device;
-  cl_data->context = context;
-  cl_data->driver = driver;
   if (immediate)
     cl_data->flags = _ZE_IMMEDIATE;
 
