@@ -356,32 +356,32 @@ static inline void _register_ze_event(ze_event_handle_t event,
 }
 
 static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command_list) {
-  struct _ze_obj_h *o_h = NULL;
   struct _ze_event_h *e_w;
 
-  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h) {
-    THAPI_DBGLOG("Could not get command list: %p", command_list);
+  ze_context_handle_t context = NULL;
+  ze_result_t res = ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &context);
+  if (res != ZE_RESULT_SUCCESS || !context) {
+    THAPI_DBGLOG("zeCommandListGetContextHandle failed with %d, for command list: %p", res,
+                 command_list);
     return NULL;
   }
-  ze_context_handle_t context = ((struct _ze_command_list_obj_data *)(o_h->obj_data))->context;
   GET_ZE_EVENT(&context, e_w);
   if (e_w) {
     e_w->command_list = command_list;
-    goto cleanup;
+    return e_w;
   }
 
   GET_ZE_EVENT_WRAPPER(e_w);
   if (!e_w) {
     THAPI_DBGLOG("Could not create a new event wrapper for command list: %p", command_list);
-    goto cleanup;
+    return NULL;
   }
 
   e_w->command_list = command_list;
   ze_event_pool_desc_t desc = {
       ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL,
       ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
-  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
+  res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
   if (res != ZE_RESULT_SUCCESS) {
     THAPI_DBGLOG("zeEventPoolCreate failed with %d, for command list: %p, context: %p", res,
                  command_list, context);
@@ -391,19 +391,16 @@ static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command
                             ZE_EVENT_SCOPE_FLAG_HOST};
   res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
   if (res != ZE_RESULT_SUCCESS) {
-    THAPI_DBGLOG("zeEventCreate failed with %d, for event pool: %p, command list: %p, context: %p",
-                 res, e_w->event_pool, command_list, context);
+    THAPI_DBGLOG("zeEventCreate failed with %d, for event pool: %p, context: %p",
+                 res, e_w->event_pool, context);
     goto cleanup_ep;
   }
-  goto cleanup;
+  return e_w;
 cleanup_ep:
   ZE_EVENT_POOL_DESTROY_PTR(e_w->event_pool);
 cleanup_wrapper:
   PUT_ZE_EVENT_WRAPPER(e_w);
-  e_w = NULL;
-cleanup:
-  ADD_ZE_OBJ(o_h);
-  return e_w;
+  return NULL;
 }
 
 static void _profile_event_results(ze_event_handle_t event);
