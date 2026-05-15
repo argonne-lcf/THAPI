@@ -113,7 +113,6 @@ typedef _ze_event_flag_t _ze_event_flags_t;
 struct _ze_event_h {
   ze_event_handle_t event;
   UT_hash_handle hh;
-  ze_command_list_handle_t command_list;
   ze_event_pool_handle_t event_pool;
   ze_context_handle_t context;
   _ze_event_flags_t flags;
@@ -191,7 +190,6 @@ static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
       pool->context = val->context;                                                                \
       HASH_ADD_PTR(_ze_event_pools, context, pool);                                                \
     }                                                                                              \
-    val->command_list = NULL;                                                                      \
     val->flags = 0;                                                                                \
     ZE_EVENT_HOST_RESET_PTR(val->event);                                                           \
     DL_PREPEND(pool->events, val);                                                                 \
@@ -260,7 +258,6 @@ static inline void _attach_event_to_cl(struct _ze_event_h *_ze_event,
  * _ze_event->event and _ze_event->event_pool via _get_profiling_event. */
 static inline void _register_our_event(struct _ze_event_h *_ze_event,
                                        ze_command_list_handle_t command_list) {
-  _ze_event->command_list = command_list;
   _tag_event_from_cl(_ze_event, command_list);
   _attach_event_to_cl(_ze_event, command_list);
   ADD_ZE_EVENT(_ze_event);
@@ -273,11 +270,8 @@ static inline void _register_user_event(ze_event_handle_t event,
                                         ze_command_list_handle_t command_list) {
   struct _ze_event_h *_ze_event = NULL;
   FIND_ZE_EVENT(&event, _ze_event);
-  if (_ze_event) {
-    /* already tracked — just migrate to the new cmdlist */
-    _ze_event->command_list = command_list;
-    return;
-  }
+  if (_ze_event)
+    return; /* already tracked, nothing more to do */
 
   GET_ZE_EVENT_WRAPPER(_ze_event);
   if (!_ze_event) {
@@ -288,7 +282,6 @@ static inline void _register_user_event(ze_event_handle_t event,
    * memset by PUT_ZE_EVENT_WRAPPER on recycle), so event_pool and flags are
    * already 0 — only set the fields we actually want non-zero. */
   _ze_event->event = event;
-  _ze_event->command_list = command_list;
 
   _tag_event_from_cl(_ze_event, command_list);
   ADD_ZE_EVENT(_ze_event);
@@ -305,10 +298,8 @@ static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command
     return NULL;
   }
   GET_ZE_EVENT(&context, e_w);
-  if (e_w) {
-    e_w->command_list = command_list;
+  if (e_w)
     return e_w;
-  }
 
   GET_ZE_EVENT_WRAPPER(e_w);
   if (!e_w) {
@@ -316,7 +307,6 @@ static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command
     return NULL;
   }
 
-  e_w->command_list = command_list;
   ze_event_pool_desc_t desc = {
       ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL,
       ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
