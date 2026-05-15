@@ -46,8 +46,7 @@ struct ze_closure {
 struct ze_closure *ze_closures = NULL;
 
 typedef enum _ze_command_list_flag {
-  _ZE_IMMEDIATE = ZE_BIT(0),
-  _ZE_EXECUTED = ZE_BIT(1)
+  _ZE_EXECUTED = ZE_BIT(0)
 } _ze_command_list_flag_t;
 typedef _ze_command_list_flag_t _ze_command_list_flags_t;
 
@@ -125,8 +124,11 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
 
   o_h->ptr = (void *)command_list;
   o_h->type = COMMAND_LIST;
+  /* Immediate cls have no Execute step; their appends run on the device the
+   * moment they're submitted. Treat them as already-executed so drainers
+   * (Reset/Destroy hooks) query their events via _ZE_EXECUTED uniformly. */
   if (immediate)
-    cl_data->flags = _ZE_IMMEDIATE;
+    cl_data->flags = _ZE_EXECUTED;
 
   o_h->obj_data = (void *)cl_data;
 
@@ -566,14 +568,10 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   }
   if (_do_profile) {
     struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    /* Note: do NOT call zeCommandListIsImmediate here — _on_destroy_command_list
-     * is the epilogue of zeCommandListDestroy, so command_list is already an
-     * invalid handle. Use the stored _ZE_IMMEDIATE flag instead. */
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
       DL_DELETE(cl_data->events, elt);
-      _unregister_ze_event(elt->event,
-                           (cl_data->flags & _ZE_IMMEDIATE) || (cl_data->flags & _ZE_EXECUTED));
+      _unregister_ze_event(elt->event, cl_data->flags & _ZE_EXECUTED);
     }
   }
   free(o_h);
