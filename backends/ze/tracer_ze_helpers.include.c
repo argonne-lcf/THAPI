@@ -107,10 +107,7 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
   ADD_ZE_CL(cl_data);
 }
 
-typedef enum _ze_event_flag {
-  _ZE_PROFILED = ZE_BIT(0),
-  _ZE_IMMEDIATE_CMD = ZE_BIT(1)
-} _ze_event_flag_t;
+typedef enum _ze_event_flag { _ZE_IMMEDIATE_CMD = ZE_BIT(0) } _ze_event_flag_t;
 typedef _ze_event_flag_t _ze_event_flags_t;
 
 struct _ze_event_h {
@@ -355,8 +352,7 @@ static inline void _on_destroy_event(ze_event_handle_t event) {
     return;
   }
 
-  if (!(ze_event->flags & _ZE_PROFILED))
-    _profile_event_results(event);
+  _profile_event_results(event);
   PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
@@ -369,7 +365,7 @@ static inline void _unregister_ze_event(ze_event_handle_t event, int get_results
     return;
   }
 
-  if (get_results && !(ze_event->flags & _ZE_PROFILED))
+  if (get_results)
     _profile_event_results(event);
   if (ze_event->event_pool)
     PUT_ZE_EVENT(ze_event);
@@ -386,8 +382,7 @@ static inline void _on_reset_event(ze_event_handle_t event) {
     return;
   }
 
-  if (!(ze_event->flags & _ZE_PROFILED))
-    _profile_event_results(event);
+  _profile_event_results(event);
 
   if (!(ze_event->flags & _ZE_IMMEDIATE_CMD))
     ADD_ZE_EVENT(ze_event);
@@ -406,8 +401,6 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
 
   _profile_event_results(event);
   ZE_EVENT_HOST_RESET_PTR(event);
-
-  ze_event->flags &= ~_ZE_PROFILED;
   ADD_ZE_EVENT(ze_event);
 }
 
@@ -431,7 +424,7 @@ static void _event_cleanup() {
 
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     HASH_DEL(_ze_events, ze_event);
-    if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
+    if (ze_event->event)
       _profile_event_results(ze_event->event);
     if (ze_event->event_pool) {
       if (ze_event->event)
@@ -449,7 +442,7 @@ static void _on_destroy_context(ze_context_handle_t context) {
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     if (ze_event->context == context) {
       HASH_DEL(_ze_events, ze_event);
-      if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
+      if (ze_event->event)
         _profile_event_results(ze_event->event);
       if (ze_event->event_pool) {
         if (ze_event->event)
