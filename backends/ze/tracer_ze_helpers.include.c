@@ -356,17 +356,16 @@ static inline void _on_destroy_event(ze_event_handle_t event) {
   PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
-static inline void _unregister_ze_event(ze_event_handle_t event, int get_results) {
-  struct _ze_event_h *ze_event = NULL;
-
-  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event) {
-    THAPI_DBGLOG("Could not find event: %p", event);
-    return;
-  }
+/* Caller already holds the wrapper (e.g. iterating cl_data->events) and
+ * has removed it from any per-cl list. Drops it from the global events
+ * hash, optionally emits its timestamp tracepoint, and recycles. */
+static inline void _unregister_ze_event(struct _ze_event_h *ze_event, int get_results) {
+  struct _ze_event_h *evicted = NULL;
+  FIND_AND_DEL_ZE_EVENT(&ze_event->event, evicted);
+  /* evicted should be == ze_event; if not, our hash bookkeeping is corrupt. */
 
   if (get_results)
-    _profile_event_results(event);
+    _profile_event_results(ze_event->event);
   if (ze_event->event_pool)
     PUT_ZE_EVENT(ze_event);
   else
@@ -482,7 +481,7 @@ static void _on_reset_command_list(ze_command_list_handle_t command_list) {
   struct _ze_event_h *elt = NULL, *tmp = NULL;
   DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
     DL_DELETE(cl_data->events, elt);
-    _unregister_ze_event(elt->event, cl_data->flags & _ZE_EXECUTED);
+    _unregister_ze_event(elt, cl_data->flags & _ZE_EXECUTED);
   }
   cl_data->flags &= ~_ZE_EXECUTED;
   ADD_ZE_CL(cl_data);
@@ -518,7 +517,7 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
       DL_DELETE(cl_data->events, elt);
-      _unregister_ze_event(elt->event, cl_data->flags & _ZE_EXECUTED);
+      _unregister_ze_event(elt, cl_data->flags & _ZE_EXECUTED);
     }
   }
   free(cl_data);
