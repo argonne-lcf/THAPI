@@ -342,7 +342,19 @@ cleanup_wrapper:
   return NULL;
 }
 
-static void _profile_event_results(ze_event_handle_t event);
+static void _profile_event_results(ze_event_handle_t event) {
+  ze_kernel_timestamp_result_t res = {0};
+  ze_result_t status;
+  ze_result_t timestamp_status;
+
+  if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
+    status = ZE_EVENT_QUERY_STATUS_PTR(event);
+    timestamp_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(event, &res);
+    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, event, status, timestamp_status,
+                  res.global.kernelStart, res.global.kernelEnd, res.context.kernelStart,
+                  res.context.kernelEnd);
+  }
+}
 
 static inline void _on_destroy_event(ze_event_handle_t event) {
   struct _ze_event_h *ze_event = NULL;
@@ -401,20 +413,6 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
   _profile_event_results(event);
   ZE_EVENT_HOST_RESET_PTR(event);
   ADD_ZE_EVENT(ze_event);
-}
-
-static void _profile_event_results(ze_event_handle_t event) {
-  ze_kernel_timestamp_result_t res = {0};
-  ze_result_t status;
-  ze_result_t timestamp_status;
-
-  if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
-    status = ZE_EVENT_QUERY_STATUS_PTR(event);
-    timestamp_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(event, &res);
-    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, event, status, timestamp_status,
-                  res.global.kernelStart, res.global.kernelEnd, res.context.kernelStart,
-                  res.context.kernelEnd);
-  }
 }
 
 static void _event_cleanup() {
