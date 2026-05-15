@@ -283,15 +283,18 @@ static inline void _register_ze_event(ze_event_handle_t event,
     THAPI_DBGLOG("zeCommandListGetContextHandle failed with %d for command list: %p", res,
                  command_list);
 
+  ze_bool_t is_immediate = 0;
+  if (ZE_COMMAND_LIST_IS_IMMEDIATE_PTR(command_list, &is_immediate) == ZE_RESULT_SUCCESS &&
+      is_immediate)
+    _ze_event->flags |= _ZE_IMMEDIATE_CMD;
+
   struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (o_h) {
-    cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    if (cl_data->flags & _ZE_IMMEDIATE)
-      _ze_event->flags |= _ZE_IMMEDIATE_CMD;
-  } else
+  if (!o_h)
     THAPI_DBGLOG("Could not get command list associated to event: %p", event);
+  else
+    cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
 
   /* only track our events, users are responsible for reseting/deleting their events */
   if (cl_data && _ze_event->event_pool)
@@ -563,6 +566,9 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   }
   if (_do_profile) {
     struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
+    /* Note: do NOT call zeCommandListIsImmediate here — _on_destroy_command_list
+     * is the epilogue of zeCommandListDestroy, so command_list is already an
+     * invalid handle. Use the stored _ZE_IMMEDIATE flag instead. */
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
       DL_DELETE(cl_data->events, elt);
