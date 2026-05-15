@@ -23,8 +23,6 @@
 #define THAPI_ATTRIBUTE_DESTRUCTOR
 #endif
 
-enum _ze_obj_type { UNKNOWN = 0, COMMAND_LIST, EVENT };
-
 static int _do_profile = 0;
 static int _do_cleanup = 0;
 static int _do_chained_structs = 0;
@@ -60,7 +58,6 @@ struct _ze_command_list_obj_data {
 struct _ze_obj_h {
   void *ptr;
   UT_hash_handle hh;
-  enum _ze_obj_type type;
   void *obj_data;
 };
 
@@ -112,7 +109,6 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
   cl_data = (struct _ze_command_list_obj_data *)(mem + sizeof(struct _ze_obj_h));
 
   o_h->ptr = (void *)command_list;
-  o_h->type = COMMAND_LIST;
   /* Immediate cls have no Execute step; their appends run on the device the
    * moment they're submitted. Treat them as already-executed so drainers
    * (Reset/Destroy hooks) query their events via _ZE_EXECUTED uniformly. */
@@ -362,7 +358,6 @@ static inline void _on_created_event(ze_event_handle_t event) {
 
   o_h = (struct _ze_obj_h *)mem;
   o_h->ptr = (void *)event;
-  o_h->type = EVENT;
 
   ADD_ZE_OBJ(o_h);
 #else
