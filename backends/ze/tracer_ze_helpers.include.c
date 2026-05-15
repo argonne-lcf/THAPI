@@ -436,8 +436,7 @@ static void _on_destroy_context(ze_context_handle_t context) {
           ZE_EVENT_DESTROY_PTR(ze_event->event);
         ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
       }
-      /* should put? */
-      free(ze_event);
+      PUT_ZE_EVENT_WRAPPER(ze_event);
     }
   }
   pthread_mutex_unlock(&_ze_events_mutex);
