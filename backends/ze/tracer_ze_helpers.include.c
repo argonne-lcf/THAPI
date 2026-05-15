@@ -224,8 +224,10 @@ static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&_ze_event_wrappers_mutex);                                               \
   } while (0)
 
-/* Tag an event wrapper with context + immediate flag from its cmdlist.
- * Both reads use introspection — see project-ze-introspect for why. */
+/* Snapshot context + immediate-flag from cmdlist into the event wrapper.
+ * The immediate flag is read at register time (not at _on_reset_event
+ * time) because by reset time the cmdlist may already be destroyed and
+ * zeCommandListIsImmediate would dereference a freed handle. */
 static inline void _tag_event_from_cl(struct _ze_event_h *_ze_event,
                                       ze_command_list_handle_t command_list) {
   ze_context_handle_t context = NULL;
