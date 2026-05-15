@@ -226,31 +226,10 @@ static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&_ze_event_wrappers_mutex);                                               \
   } while (0)
 
-static inline void _register_ze_event(ze_event_handle_t event,
-                                      ze_command_list_handle_t command_list,
-                                      struct _ze_event_h *_ze_event) {
-  // If _ze_event, our event
-  if (!_ze_event) {
-    FIND_ZE_EVENT(&event, _ze_event);
-    if (_ze_event) {
-      if (_ze_event->flags & _ZE_IMMEDIATE_CMD) {
-        THAPI_DBGLOG("Event already registered: %p", event);
-      }
-      _ze_event->command_list = command_list;
-      return;
-    }
-
-    GET_ZE_EVENT_WRAPPER(_ze_event);
-    if (!_ze_event) {
-      THAPI_DBGLOG("Could not get event wrapper for: %p", event);
-      return;
-    }
-    _ze_event->event = event;
-    _ze_event->command_list = command_list;
-    _ze_event->event_pool = NULL;
-    _ze_event->flags = 0;
-  }
-
+/* Tag an event wrapper with context + immediate flag from its cmdlist.
+ * Both reads use introspection — see project-ze-introspect for why. */
+static inline void _tag_event_from_cl(struct _ze_event_h *_ze_event,
+                                      ze_command_list_handle_t command_list) {
   ze_context_handle_t context = NULL;
   ze_result_t res = ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &context);
   if (res == ZE_RESULT_SUCCESS && context)
@@ -263,18 +242,59 @@ static inline void _register_ze_event(ze_event_handle_t event,
   if (ZE_COMMAND_LIST_IS_IMMEDIATE_PTR(command_list, &is_immediate) == ZE_RESULT_SUCCESS &&
       is_immediate)
     _ze_event->flags |= _ZE_IMMEDIATE_CMD;
+}
 
+/* Append an event wrapper we own to its cmdlist's events list, under the
+ * cl-hash lock (the FIND_AND_DEL/ADD pattern guards cl_data against a
+ * concurrent free in _on_destroy_command_list). */
+static inline void _attach_event_to_cl(struct _ze_event_h *_ze_event,
+                                       ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl_data = NULL;
   FIND_AND_DEL_ZE_CL(&command_list, cl_data);
-  if (!cl_data)
-    THAPI_DBGLOG("Could not get command list associated to event: %p", event);
+  if (!cl_data) {
+    THAPI_DBGLOG("Could not get command list associated to event: %p", _ze_event->event);
+    return;
+  }
+  DL_APPEND(cl_data->events, _ze_event);
+  ADD_ZE_CL(cl_data);
+}
 
-  /* only track our events, users are responsible for reseting/deleting their events */
-  if (cl_data && _ze_event->event_pool)
-    DL_APPEND(cl_data->events, _ze_event);
+/* Register an injected (tracer-owned) event. Caller has already populated
+ * _ze_event->event and _ze_event->event_pool via _get_profiling_event. */
+static inline void _register_our_event(struct _ze_event_h *_ze_event,
+                                       ze_command_list_handle_t command_list) {
+  _ze_event->command_list = command_list;
+  _tag_event_from_cl(_ze_event, command_list);
+  _attach_event_to_cl(_ze_event, command_list);
   ADD_ZE_EVENT(_ze_event);
-  if (cl_data)
-    ADD_ZE_CL(cl_data);
+}
+
+/* Register a user event (we don't own its lifetime). Look up or create the
+ * wrapper; users are responsible for reset/destroy, so we don't attach it
+ * to the cl's events list. */
+static inline void _register_user_event(ze_event_handle_t event,
+                                        ze_command_list_handle_t command_list) {
+  struct _ze_event_h *_ze_event = NULL;
+  FIND_ZE_EVENT(&event, _ze_event);
+  if (_ze_event) {
+    /* already tracked — just migrate to the new cmdlist */
+    _ze_event->command_list = command_list;
+    return;
+  }
+
+  GET_ZE_EVENT_WRAPPER(_ze_event);
+  if (!_ze_event) {
+    THAPI_DBGLOG("Could not get event wrapper for: %p", event);
+    return;
+  }
+  /* GET_ZE_EVENT_WRAPPER returns a fully-zeroed wrapper (calloc on first use,
+   * memset by PUT_ZE_EVENT_WRAPPER on recycle), so event_pool and flags are
+   * already 0 — only set the fields we actually want non-zero. */
+  _ze_event->event = event;
+  _ze_event->command_list = command_list;
+
+  _tag_event_from_cl(_ze_event, command_list);
+  ADD_ZE_EVENT(_ze_event);
 }
 
 static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command_list) {

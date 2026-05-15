@@ -275,7 +275,10 @@ profiling_epilogue = lambda { |event_name|
   <<EOF
   if (_do_profile && #{event_name}) {
     if (_retval == ZE_RESULT_SUCCESS) {
-      _register_ze_event(#{event_name}, hCommandList, _ewrapper);
+      if (_ewrapper)
+        _register_our_event(_ewrapper, hCommandList);
+      else
+        _register_user_event(#{event_name}, hCommandList);
       tracepoint(lttng_ust_ze_profiling, event_profiling, #{event_name});
     } else if (_ewrapper)
       PUT_ZE_EVENT(_ewrapper);
