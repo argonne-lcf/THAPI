@@ -194,12 +194,6 @@ register_prologue 'zeEventCreate', <<EOF
   }
 EOF
 
-register_epilogue 'zeEventCreate', <<EOF
-  if (_do_profile && _retval == ZE_RESULT_SUCCESS) {
-    _on_created_event(*phEvent);
-  }
-EOF
-
 register_prologue 'zeEventDestroy', <<EOF
   if (_do_profile && hEvent) {
     _on_destroy_event(hEvent);

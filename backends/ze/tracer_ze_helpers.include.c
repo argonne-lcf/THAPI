@@ -51,73 +51,62 @@ typedef _ze_command_list_flag_t _ze_command_list_flags_t;
 struct _ze_event_h;
 
 struct _ze_command_list_obj_data {
+  void *ptr; /* the ze_command_list_handle_t this entry tracks */
+  UT_hash_handle hh;
   _ze_command_list_flags_t flags;
   struct _ze_event_h *events;
 };
 
-struct _ze_obj_h {
-  void *ptr;
-  UT_hash_handle hh;
-  void *obj_data;
-};
+struct _ze_command_list_obj_data *_ze_cls = NULL;
+pthread_mutex_t _ze_cls_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct _ze_obj_h *_ze_objs = NULL;
-pthread_mutex_t _ze_objs_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-#define FIND_ZE_OBJ(key, val)                                                                      \
+#define FIND_ZE_CL(key, val)                                                                       \
   do {                                                                                             \
-    pthread_mutex_lock(&_ze_objs_mutex);                                                           \
-    HASH_FIND_PTR(_ze_objs, key, val);                                                             \
-    pthread_mutex_unlock(&_ze_objs_mutex);                                                         \
+    pthread_mutex_lock(&_ze_cls_mutex);                                                            \
+    HASH_FIND_PTR(_ze_cls, key, val);                                                              \
+    pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
   } while (0)
 
-#define ADD_ZE_OBJ(val)                                                                            \
+#define ADD_ZE_CL(val)                                                                             \
   do {                                                                                             \
-    pthread_mutex_lock(&_ze_objs_mutex);                                                           \
-    HASH_ADD_PTR(_ze_objs, ptr, val);                                                              \
-    pthread_mutex_unlock(&_ze_objs_mutex);                                                         \
+    pthread_mutex_lock(&_ze_cls_mutex);                                                            \
+    HASH_ADD_PTR(_ze_cls, ptr, val);                                                               \
+    pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
   } while (0)
 
-#define FIND_AND_DEL_ZE_OBJ(key, val)                                                              \
+#define FIND_AND_DEL_ZE_CL(key, val)                                                               \
   do {                                                                                             \
-    pthread_mutex_lock(&_ze_objs_mutex);                                                           \
-    HASH_FIND_PTR(_ze_objs, key, val);                                                             \
+    pthread_mutex_lock(&_ze_cls_mutex);                                                            \
+    HASH_FIND_PTR(_ze_cls, key, val);                                                              \
     if (val) {                                                                                     \
-      HASH_DEL(_ze_objs, val);                                                                     \
+      HASH_DEL(_ze_cls, val);                                                                      \
     }                                                                                              \
-    pthread_mutex_unlock(&_ze_objs_mutex);                                                         \
+    pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
   } while (0)
 
 static inline void _on_create_command_list(ze_command_list_handle_t command_list, int immediate) {
-  struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
 
-  FIND_ZE_OBJ(&command_list, o_h);
-  if (o_h) {
+  FIND_ZE_CL(&command_list, cl_data);
+  if (cl_data) {
     THAPI_DBGLOG("Command list already registered: %p", command_list);
     return;
   }
 
-  intptr_t mem =
-      (intptr_t)calloc(1, sizeof(struct _ze_obj_h) + sizeof(struct _ze_command_list_obj_data));
-  if (mem == 0) {
+  cl_data = (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
+  if (!cl_data) {
     THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
     return;
   }
 
-  o_h = (struct _ze_obj_h *)mem;
-  cl_data = (struct _ze_command_list_obj_data *)(mem + sizeof(struct _ze_obj_h));
-
-  o_h->ptr = (void *)command_list;
+  cl_data->ptr = (void *)command_list;
   /* Immediate cls have no Execute step; their appends run on the device the
    * moment they're submitted. Treat them as already-executed so drainers
    * (Reset/Destroy hooks) query their events via _ZE_EXECUTED uniformly. */
   if (immediate)
     cl_data->flags = _ZE_EXECUTED;
 
-  o_h->obj_data = (void *)cl_data;
-
-  ADD_ZE_OBJ(o_h);
+  ADD_ZE_CL(cl_data);
 }
 
 typedef enum _ze_event_flag {
@@ -275,20 +264,17 @@ static inline void _register_ze_event(ze_event_handle_t event,
       is_immediate)
     _ze_event->flags |= _ZE_IMMEDIATE_CMD;
 
-  struct _ze_obj_h *o_h = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
-  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h)
+  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  if (!cl_data)
     THAPI_DBGLOG("Could not get command list associated to event: %p", event);
-  else
-    cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
 
   /* only track our events, users are responsible for reseting/deleting their events */
   if (cl_data && _ze_event->event_pool)
     DL_APPEND(cl_data->events, _ze_event);
   ADD_ZE_EVENT(_ze_event);
-  if (o_h)
-    ADD_ZE_OBJ(o_h);
+  if (cl_data)
+    ADD_ZE_CL(cl_data);
 }
 
 static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command_list) {
@@ -341,40 +327,8 @@ cleanup_wrapper:
 
 static void _profile_event_results(ze_event_handle_t event);
 
-static inline void _on_created_event(ze_event_handle_t event) {
-#ifdef THAPI_DEBUG
-  struct _ze_obj_h *o_h = NULL;
-  FIND_ZE_OBJ(&event, o_h);
-  if (o_h) {
-    THAPI_DBGLOG("Event already registered: %p", event);
-    return;
-  }
-
-  intptr_t mem = (intptr_t)calloc(1, sizeof(struct _ze_obj_h));
-  if (mem == 0) {
-    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
-    return;
-  }
-
-  o_h = (struct _ze_obj_h *)mem;
-  o_h->ptr = (void *)event;
-
-  ADD_ZE_OBJ(o_h);
-#else
-  (void)event;
-#endif
-}
-
 static inline void _on_destroy_event(ze_event_handle_t event) {
   struct _ze_event_h *ze_event = NULL;
-
-#ifdef THAPI_DEBUG
-  struct _ze_obj_h *o_h = NULL;
-  FIND_AND_DEL_ZE_OBJ(&event, o_h);
-  if (!o_h) {
-    THAPI_DBGLOG("Could not find event: %p", event);
-  }
-#endif
 
   FIND_AND_DEL_ZE_EVENT(&event, ze_event);
   if (!ze_event) {
@@ -505,60 +459,56 @@ static void _on_destroy_context(ze_context_handle_t context) {
 }
 
 static void _on_reset_command_list(ze_command_list_handle_t command_list) {
-  struct _ze_obj_h *o_h = NULL;
+  struct _ze_command_list_obj_data *cl_data = NULL;
 
-  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h) {
+  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  if (!cl_data) {
     THAPI_DBGLOG("Could not get command list: %p", command_list);
     return;
   }
-  struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
   struct _ze_event_h *elt = NULL, *tmp = NULL;
   DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
     DL_DELETE(cl_data->events, elt);
     _unregister_ze_event(elt->event, cl_data->flags & _ZE_EXECUTED);
   }
   cl_data->flags &= ~_ZE_EXECUTED;
-  ADD_ZE_OBJ(o_h);
+  ADD_ZE_CL(cl_data);
 }
 
 static void _on_execute_command_lists(uint32_t numCommandLists,
                                       ze_command_list_handle_t *phCommandLists) {
   for (uint32_t i = 0; i < numCommandLists; i++) {
-    struct _ze_obj_h *o_h = NULL;
-    FIND_AND_DEL_ZE_OBJ(phCommandLists + i, o_h);
-    if (o_h) {
-      struct _ze_command_list_obj_data *cl_data =
-          (struct _ze_command_list_obj_data *)(o_h->obj_data);
+    struct _ze_command_list_obj_data *cl_data = NULL;
+    FIND_AND_DEL_ZE_CL(phCommandLists + i, cl_data);
+    if (cl_data) {
       /* dump events if they were executed */
       if (cl_data->flags & _ZE_EXECUTED) {
         struct _ze_event_h *elt = NULL;
         DL_FOREACH(cl_data->events, elt) { _dump_and_reset_our_event(elt->event); }
       } else
         cl_data->flags |= _ZE_EXECUTED;
-      ADD_ZE_OBJ(o_h);
+      ADD_ZE_CL(cl_data);
     } else
       THAPI_DBGLOG("Could not get command list: %p", phCommandLists[i]);
   }
 }
 
 static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
-  struct _ze_obj_h *o_h = NULL;
+  struct _ze_command_list_obj_data *cl_data = NULL;
 
-  FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
-  if (!o_h) {
+  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  if (!cl_data) {
     THAPI_DBGLOG("Could not get command list: %p", command_list);
     return;
   }
   if (_do_profile) {
-    struct _ze_command_list_obj_data *cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
       DL_DELETE(cl_data->events, elt);
       _unregister_ze_event(elt->event, cl_data->flags & _ZE_EXECUTED);
     }
   }
-  free(o_h);
+  free(cl_data);
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
