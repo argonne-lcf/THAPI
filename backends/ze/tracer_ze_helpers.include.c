@@ -405,20 +405,27 @@ static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
   ADD_ZE_EVENT(ze_event);
 }
 
+/* Tear down a wrapper: optionally emit its timestamp tracepoint, then
+ * destroy the injected event+pool if we own them, then recycle the
+ * wrapper. Caller must have already removed it from any list/hash that
+ * references it. */
+static inline void _dispose_event_wrapper(struct _ze_event_h *ze_event, int do_dump) {
+  if (do_dump && ze_event->event)
+    _profile_event_results(ze_event->event);
+  if (ze_event->event_pool) {
+    if (ze_event->event)
+      ZE_EVENT_DESTROY_PTR(ze_event->event);
+    ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
+  }
+  PUT_ZE_EVENT_WRAPPER(ze_event);
+}
+
 static void _event_cleanup() {
   struct _ze_event_h *ze_event = NULL;
   struct _ze_event_h *tmp = NULL;
-
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     HASH_DEL(_ze_events, ze_event);
-    if (ze_event->event)
-      _profile_event_results(ze_event->event);
-    if (ze_event->event_pool) {
-      if (ze_event->event)
-        ZE_EVENT_DESTROY_PTR(ze_event->event);
-      ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
-    }
-    free(ze_event);
+    _dispose_event_wrapper(ze_event, 1);
   }
 }
 
@@ -429,14 +436,7 @@ static void _on_destroy_context(ze_context_handle_t context) {
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
     if (ze_event->context == context) {
       HASH_DEL(_ze_events, ze_event);
-      if (ze_event->event)
-        _profile_event_results(ze_event->event);
-      if (ze_event->event_pool) {
-        if (ze_event->event)
-          ZE_EVENT_DESTROY_PTR(ze_event->event);
-        ZE_EVENT_POOL_DESTROY_PTR(ze_event->event_pool);
-      }
-      PUT_ZE_EVENT_WRAPPER(ze_event);
+      _dispose_event_wrapper(ze_event, 1);
     }
   }
   pthread_mutex_unlock(&_ze_events_mutex);
@@ -448,9 +448,9 @@ static void _on_destroy_context(ze_context_handle_t context) {
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(pool->events, elt, tmp) {
       DL_DELETE(pool->events, elt);
-      ZE_EVENT_DESTROY_PTR(elt->event);
-      ZE_EVENT_POOL_DESTROY_PTR(elt->event_pool);
-      PUT_ZE_EVENT_WRAPPER(elt);
+      /* Wrapper is in the free list — its event was already dumped+reset
+       * by whoever recycled it. Don't dump again, just tear down. */
+      _dispose_event_wrapper(elt, 0);
     }
     free(pool);
   }
