@@ -43,9 +43,7 @@ struct ze_closure {
 
 struct ze_closure *ze_closures = NULL;
 
-typedef enum _ze_command_list_flag {
-  _ZE_EXECUTED = ZE_BIT(0)
-} _ze_command_list_flag_t;
+typedef enum _ze_command_list_flag { _ZE_EXECUTED = ZE_BIT(0) } _ze_command_list_flag_t;
 typedef _ze_command_list_flag_t _ze_command_list_flags_t;
 
 struct _ze_event_h;
@@ -333,8 +331,8 @@ static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command
                             ZE_EVENT_SCOPE_FLAG_HOST};
   res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
   if (res != ZE_RESULT_SUCCESS) {
-    THAPI_DBGLOG("zeEventCreate failed with %d, for event pool: %p, context: %p",
-                 res, e_w->event_pool, context);
+    THAPI_DBGLOG("zeEventCreate failed with %d, for event pool: %p, context: %p", res,
+                 e_w->event_pool, context);
     goto cleanup_ep;
   }
   return e_w;
