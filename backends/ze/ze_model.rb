@@ -307,10 +307,11 @@ EOF
    zeCommandListAppendImageCopyRegion
    zeCommandListAppendImageCopyToMemory
    zeCommandListAppendImageCopyFromMemory
-   zeCommandListAppendQueryKernelTimestamps
    zeCommandListAppendWriteGlobalTimestamp
    zeCommandListAppendImageCopyToMemoryExt
    zeCommandListAppendImageCopyFromMemoryExt].each do |c|
+  # zeCommandListAppendQueryKernelTimestamps intentionally NOT in this list
+  # — it has no kernel to time
   register_prologue c, profiling_prologue.call('hSignalEvent')
   register_prologue c, paranoid_drift_prologue
   register_epilogue c, profiling_epilogue.call('hSignalEvent')
