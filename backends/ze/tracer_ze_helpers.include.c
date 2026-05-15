@@ -62,21 +62,10 @@ struct _ze_obj_h {
   UT_hash_handle hh;
   enum _ze_obj_type type;
   void *obj_data;
-  void (*obj_data_free)(void *obj_data);
 };
 
 struct _ze_obj_h *_ze_objs = NULL;
 pthread_mutex_t _ze_objs_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/*
-static inline void _delete_ze_obj(struct _ze_obj_h *o_h) {
-  HASH_DEL(_ze_objs, o_h);
-  if (o_h->obj_data && o_h->obj_data_free) {
-    o_h->obj_data_free(o_h->obj_data);
-  }
-  free(o_h);
-}
-*/
 
 #define FIND_ZE_OBJ(key, val)                                                                      \
   do {                                                                                             \
