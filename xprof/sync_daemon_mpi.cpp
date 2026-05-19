@@ -8,11 +8,11 @@
 
 using namespace std::string_view_literals;
 
-constexpr auto MSG_INIT           = "INIT"sv;
-constexpr auto MSG_LOCAL_BARRIER  = "LOCAL_BARRIER"sv;
+constexpr auto MSG_INIT = "INIT"sv;
+constexpr auto MSG_LOCAL_BARRIER = "LOCAL_BARRIER"sv;
 constexpr auto MSG_GLOBAL_BARRIER = "GLOBAL_BARRIER"sv;
-constexpr auto MSG_FINISH         = "FINISH"sv;
-constexpr auto MSG_READY          = "READY"sv;
+constexpr auto MSG_FINISH = "FINISH"sv;
+constexpr auto MSG_READY = "READY"sv;
 
 #define CHECK_MPI(x)                                                                               \
   do {                                                                                             \

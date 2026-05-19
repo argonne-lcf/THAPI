@@ -8,12 +8,12 @@
 
 using namespace std::string_view_literals;
 
-constexpr auto MSG_INIT   = "INIT"sv;
+constexpr auto MSG_INIT = "INIT"sv;
 constexpr auto MSG_FINISH = "FINISH"sv;
-constexpr auto MSG_READY  = "READY"sv;
+constexpr auto MSG_READY = "READY"sv;
 
 using plugin_initialize_func = void (*)();
-using plugin_finalize_func   = void (*)();
+using plugin_finalize_func = void (*)();
 
 static int recv_expect(const int fd, const std::string_view want) {
   char buf[64];
@@ -64,10 +64,10 @@ int main(int argc, char **argv) {
       std::cerr << "Failed to load " << argv[i] << ": " << dlerror() << std::endl;
       continue;
     }
-    auto init_func = reinterpret_cast<plugin_initialize_func>(
-        dlsym(handle, "thapi_initialize_sampling_plugin"));
-    auto fini_func = reinterpret_cast<plugin_finalize_func>(
-        dlsym(handle, "thapi_finalize_sampling_plugin"));
+    auto init_func =
+        reinterpret_cast<plugin_initialize_func>(dlsym(handle, "thapi_initialize_sampling_plugin"));
+    auto fini_func =
+        reinterpret_cast<plugin_finalize_func>(dlsym(handle, "thapi_finalize_sampling_plugin"));
     plugins.push_back({handle, init_func, fini_func});
   }
 
@@ -76,11 +76,14 @@ int main(int argc, char **argv) {
     plugin.initialize();
 
   // Handshake: parent → INIT, daemon → READY
-  if (recv_expect(fd, MSG_INIT) < 0) return 1;
-  if (send_msg(fd, MSG_READY) < 0)   return 1;
+  if (recv_expect(fd, MSG_INIT) < 0)
+    return 1;
+  if (send_msg(fd, MSG_READY) < 0)
+    return 1;
 
   // Wait for shutdown: parent → FINISH
-  if (recv_expect(fd, MSG_FINISH) < 0) return 1;
+  if (recv_expect(fd, MSG_FINISH) < 0)
+    return 1;
 
   // Finalization
   for (const auto &plugin : plugins) {
@@ -89,7 +92,8 @@ int main(int argc, char **argv) {
     dlclose(plugin.handle);
   }
 
-  if (send_msg(fd, MSG_READY) < 0) return 1;
+  if (send_msg(fd, MSG_READY) < 0)
+    return 1;
   close(fd);
   // Will call the destructor, who will finalize all the not unregistered plugin
   return 0;
