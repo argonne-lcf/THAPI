@@ -415,7 +415,6 @@ class SyncDaemon
     end
     daemon = (daemon_type != 'fs' && File.exist?(mpi_path)) ? mpi_path : "#{BINDIR}/sync_daemon_fs"
 
-    LOGGER.debug { "spawn(#{daemon})" }
     lazy_exec("Initialize SyncDaemon #{daemon_type}") do
       spawn_daemon { |fd| Process.spawn(daemon, fd.to_s, fd => fd) }
     end
@@ -467,7 +466,6 @@ class SamplingDaemon
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
     path_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
-    LOGGER.debug { "spawn(sampling_daemon) #{path_so}" }
     lazy_exec('Initialize SamplingDaemon') do
       spawn_daemon { |fd| Process.spawn(h, "#{daemon_path} #{fd} #{path_so}", fd => fd) }
     end
