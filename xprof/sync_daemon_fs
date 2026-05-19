@@ -1,13 +1,14 @@
 #!/usr/bin/env ruby
 
 # Cannot use require_relative as iprof is not a rb file
-# Load MPITopo and RT_SIGNAL_*
+# Load MPITopo and related helpers
 load(File.join(__dir__, 'iprof'))
 
 require 'open3'
 require 'fileutils'
 require 'securerandom'
 require 'etc'
+require 'socket'
 
 FOLDER_JOBID = File.join('.thapi_lock', MPITopo.job_id)
 SHARED_LOCAL_FILESYSTEM = File.join('/', 'dev', 'shm', Etc.getlogin, FOLDER_JOBID)
@@ -50,37 +51,43 @@ def local_barrier(name)
   busy_wait_until { count_file(folder) == MPITopo.local_size }
 end
 
-global_handle = nil
-parent_pid = nil
+fd = ARGV[0].to_i
+sock = UNIXSocket.for_fd(fd)
+send_ready = -> { sock.sendmsg(SyncDaemon::MSG_READY) }
 
-# Set trap
-Signal.trap(SyncDaemon::RT_SIGNAL_GLOBAL_BARRIER) do
-  global_barrier(global_handle)
-  Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
-end
-
-local_barrier_count = 0
-Signal.trap(SyncDaemon::RT_SIGNAL_LOCAL_BARRIER) do
-  local_barrier(local_barrier_count.to_s)
-  local_barrier_count += 1
-  Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
-end
-
-Signal.trap(SyncDaemon::RT_SIGNAL_FINISH) do
-  # We cannot delete SHARED_LOCAL_FILESYSTEM
-  # Some rank can exit the `global_barrier` (hence calling this function)
-  #   when others ranks are still in the `local_barrier`
-  # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
-  #
-  # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
-  #   is to make all ranks busy_wait_until in the `global_barrier`.
-  # This will ensure that every-one exited the `local_barrier`.
-  #   but given the poor performance of our FS, we will avoid that for now...
-  exit
-end
-
-# Init global barrier
 global_handle = init_global_barrier
-parent_pid = ARGV[0].to_i
-Process.kill(SyncDaemon::RT_SIGNAL_READY, parent_pid)
-sleep
+local_barrier_count = 0
+
+loop do
+  msg, = sock.recvmsg(64)
+  raise 'sync_daemon_fs: parent closed socket without sending FINISH' if msg.empty?
+
+  case msg
+  when SyncDaemon::MSG_INIT
+    # Initial handshake; no work to do.
+  when SyncDaemon::MSG_LOCAL_BARRIER
+    local_barrier(local_barrier_count.to_s)
+    local_barrier_count += 1
+  when SyncDaemon::MSG_GLOBAL_BARRIER
+    global_barrier(global_handle)
+  when SyncDaemon::MSG_FINISH
+    # We cannot delete SHARED_LOCAL_FILESYSTEM
+    # Some rank can exit the `global_barrier` (hence calling this function)
+    #   when others ranks are still in the `local_barrier`
+    # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
+    #
+    # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
+    #   is to make all ranks busy_wait_until in the `global_barrier`.
+    # This will ensure that every-one exited the `local_barrier`.
+    #   but given the poor performance of our FS, we will avoid that for now...
+    send_ready.call
+    break
+  else
+    warn("sync_daemon_fs: unknown message '#{msg}'")
+    exit(1)
+  end
+
+  send_ready.call
+end
+
+sock.close

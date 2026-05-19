@@ -344,56 +344,29 @@ def thapi_trace_dir_root
 end
 
 #    _
-#   | \  _.  _  ._ _   _  ._
-#   |_/ (_| (/_ | | | (_) | |
-#
-
-class SpawnDaemon
-  SIGRTMIN = 34
-  RT_SIGNAL_READY = SIGRTMIN
-  RT_SIGNAL_FINISH = SIGRTMIN + 3
-
-  # This belongs to the global ruby process!
-  # This Object is NOT thread-safe, please do not spawn user thread
-  @@ready = false
-  Signal.trap(RT_SIGNAL_READY) { @@ready = true }
-
-  # Any blocking implementation
-  # (`IO.pipe`, `throw/catch`+sleep` deadlock for an unknown reason)
-  # This is why we spin-lock
-  def _lazy_exec(_cond, &block)
-    block.call
-    busy_wait_until { @@ready }
-    @@ready = false
-  end
-
-  def lazy_exec(message = nil, cond, &block)
-    LOGGER.with_info_block(message) do
-      unless cond
-        LOGGER.debug("#{message}: No-op")
-        return
-      end
-      # Don't inline, Trap doesn't work with logger
-      # https://bugs.ruby-lang.org/issues/7917
-      _lazy_exec(cond, &block)
-    end
-  end
-end
-
-#    _
 #   |_)  _. ._ ._ o  _  ._
 #   |_) (_| |  |  | (/_ |
 #
-class SyncDaemon < SpawnDaemon
-  RT_SIGNAL_GLOBAL_BARRIER = SIGRTMIN + 1
-  RT_SIGNAL_LOCAL_BARRIER = SIGRTMIN + 2
+class SyncDaemon
+  MSG_INIT           = 'INIT'
+  MSG_LOCAL_BARRIER  = 'LOCAL_BARRIER'
+  MSG_GLOBAL_BARRIER = 'GLOBAL_BARRIER'
+  MSG_FINISH         = 'FINISH'
+  MSG_READY          = 'READY'
 
+  # block triggers the daemon; lazy_exec blocks on its READY reply.
   def lazy_exec_mpi(message = nil, &block)
-    lazy_exec(message, MPITopo.active?, &block)
+    LOGGER.with_info_block(message) do
+      unless MPITopo.active?
+        LOGGER.debug("#{message}: No-op")
+        return
+      end
+      block.call
+      wait_ready
+    end
   end
 
   def initialize
-    super
     daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
     daemon = case daemon_type
              when nil
@@ -414,9 +387,12 @@ class SyncDaemon < SpawnDaemon
                raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) is not supported. Allowed: [mpi,fs] ")
              end
 
-    LOGGER.debug { "spawn(#{daemon} #{Process.pid})" }
+    LOGGER.debug { "spawn(#{daemon})" }
     lazy_exec_mpi("Initialize SyncDaemon #{daemon_type}") do
-      @pid = spawn("#{daemon} #{Process.pid}")
+      @parent, child = UNIXSocket.pair(:SEQPACKET)
+      @pid = Process.spawn(daemon, child.fileno.to_s, child.fileno => child.fileno)
+      child.close
+      @parent.sendmsg(MSG_INIT)
     end
   end
 
@@ -424,19 +400,21 @@ class SyncDaemon < SpawnDaemon
     LOGGER.debug { 'Finalize SyncDaemon' }
     return unless MPITopo.active?
 
-    Process.kill(RT_SIGNAL_FINISH, @pid)
+    @parent.sendmsg(MSG_FINISH)
+    wait_ready
     Process.wait(@pid)
+    @parent.close
   end
 
   def local_barrier(name)
     lazy_exec_mpi("Local_barrier #{name}") do
-      Process.kill(RT_SIGNAL_LOCAL_BARRIER, @pid)
+      @parent.sendmsg(MSG_LOCAL_BARRIER)
     end
   end
 
   def global_barrier
     lazy_exec_mpi('Global_barrier') do
-      Process.kill(RT_SIGNAL_GLOBAL_BARRIER, @pid)
+      @parent.sendmsg(MSG_GLOBAL_BARRIER)
     end
   end
 
@@ -453,6 +431,13 @@ class SyncDaemon < SpawnDaemon
       syncd.finalize
     end
   end
+
+  private
+
+  def wait_ready
+    reply, = @parent.recvmsg(64)
+    raise "SyncDaemon: expected #{MSG_READY}, got '#{reply}'" unless reply == MSG_READY
+  end
 end
 
 #    __
@@ -464,20 +449,35 @@ def sampling?
   OPTIONS[:sample] && MPITopo.local_master?
 end
 
-class SamplingDaemon < SpawnDaemon
+class SamplingDaemon
+  MSG_INIT   = 'INIT'
+  MSG_FINISH = 'FINISH'
+  MSG_READY  = 'READY'
+
+  # block triggers the daemon; lazy_exec blocks on its READY reply.
   def lazy_exec_sampling(message = nil, &block)
-    lazy_exec(message, sampling?, &block)
+    LOGGER.with_info_block(message) do
+      unless sampling?
+        LOGGER.debug("#{message}: No-op")
+        return
+      end
+      block.call
+      wait_ready
+    end
   end
 
   def initialize(h = {})
-    super()
     daemon_path = "#{BINDIR}/thapi_sampling_daemon"
     raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
 
     path_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
-    LOGGER.debug { "spawn(sampling_daemon) #{Process.pid} #{path_so}" }
+    LOGGER.debug { "spawn(sampling_daemon) #{path_so}" }
     lazy_exec_sampling('Initialize SamplingDaemon') do
-      @pid = spawn(h, "#{daemon_path} #{Process.pid} #{path_so}")
+      @parent, child = UNIXSocket.pair(:SEQPACKET)
+      @pid = Process.spawn(h, "#{daemon_path} #{child.fileno} #{path_so}",
+                           child.fileno => child.fileno)
+      child.close
+      @parent.sendmsg(MSG_INIT)
     end
   end
 
@@ -485,8 +485,17 @@ class SamplingDaemon < SpawnDaemon
     LOGGER.debug { 'Finalize SamplingDaemon' }
     return unless sampling?
 
-    Process.kill(RT_SIGNAL_FINISH, @pid)
+    @parent.sendmsg(MSG_FINISH)
+    wait_ready
     Process.wait(@pid)
+    @parent.close
+  end
+
+  private
+
+  def wait_ready
+    reply, = @parent.recvmsg(64)
+    raise "SamplingDaemon: expected #{MSG_READY}, got '#{reply}'" unless reply == MSG_READY
   end
 end
 

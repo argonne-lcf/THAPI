@@ -14,8 +14,8 @@ if FOUND_MPI
   bin_SCRIPTS += sync_daemon_mpi
 endif
 
-sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.c
-	$(MPICC) $(CFLAGS) $< -o $@
+sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
+	$(MPICXX) $(CXXFLAGS) -std=c++17 $(WERROR) -Wall -Wextra $< -o $@
 
 iprof: xprof.rb
 	cp xprof.rb $@
@@ -220,7 +220,7 @@ EXTRA_DIST = \
 	$(TRACE_COMMON)\
 	$(TRACE_OUT) \
 	perfetto_pruned.proto \
-	sync_daemon_mpi.c \
+	sync_daemon_mpi.cpp \
 	sync_daemon_fs
 
 CLEANFILES = \

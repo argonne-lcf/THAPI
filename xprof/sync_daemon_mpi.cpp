@@ -1,15 +1,18 @@
 #include "mpi.h"
-#include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string_view>
+#include <sys/socket.h>
+#include <unistd.h>
 
-// Define real-time signals
-#define RT_SIGNAL_READY SIGRTMIN
-#define RT_SIGNAL_GLOBAL_BARRIER SIGRTMIN + 1
-#define RT_SIGNAL_LOCAL_BARRIER SIGRTMIN + 2
-#define RT_SIGNAL_FINISH SIGRTMIN + 3
+using namespace std::string_view_literals;
+
+constexpr auto MSG_INIT           = "INIT"sv;
+constexpr auto MSG_LOCAL_BARRIER  = "LOCAL_BARRIER"sv;
+constexpr auto MSG_GLOBAL_BARRIER = "GLOBAL_BARRIER"sv;
+constexpr auto MSG_FINISH         = "FINISH"sv;
+constexpr auto MSG_READY          = "READY"sv;
 
 #define CHECK_MPI(x)                                                                               \
   do {                                                                                             \
@@ -79,57 +82,70 @@ fn_exit:
   return ret;
 }
 
-int signal_loop(int parent_pid, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_NODE) {
-  // Initialize signal set and add signals
-  sigset_t signal_set;
-  sigemptyset(&signal_set);
-  sigaddset(&signal_set, RT_SIGNAL_GLOBAL_BARRIER);
-  sigaddset(&signal_set, RT_SIGNAL_LOCAL_BARRIER);
-  sigaddset(&signal_set, RT_SIGNAL_FINISH);
-  sigprocmask(SIG_BLOCK, &signal_set, NULL);
-  kill(parent_pid, RT_SIGNAL_READY);
+static int send_msg(const int fd, const std::string_view msg) {
+  if (write(fd, msg.data(), msg.size()) < 0) {
+    perror("sync_daemon_mpi: write");
+    return -1;
+  }
+  return 0;
+}
 
-  // Processing loop:
-  //   Should be only exited when receiving RT_SIGNAL_FINISH
+int message_loop(const int fd, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_NODE) {
+  char buf[64];
+
+  // Processing loop: should only be exited when receiving MSG_FINISH
   while (true) {
-    int signum;
-    sigwait(&signal_set, &signum);
-    if (signum == RT_SIGNAL_FINISH) {
-      // We don't signal ready when cleaning up
-      // The master will just `wait` for us to finish
-      return 0;
-    } else if (signum == RT_SIGNAL_LOCAL_BARRIER) {
-      MPI_Barrier(MPI_COMM_NODE);
-    } else if (signum == RT_SIGNAL_GLOBAL_BARRIER) {
-      MPI_Barrier(MPI_COMM_WORLD_THAPI);
-    } else {
-      fprintf(stderr, "Wrong signal received %d. Exiting", signum);
+    const ssize_t n = read(fd, buf, sizeof(buf));
+    if (n < 0) {
+      perror("sync_daemon_mpi: read");
       return 1;
     }
-    kill(parent_pid, RT_SIGNAL_READY);
-  }
+    if (n == 0) {
+      fprintf(stderr, "sync_daemon_mpi: parent closed socket unexpectedly\n");
+      return 1;
+    }
+    const std::string_view msg(buf, n);
 
-  // Unreachable
-  fprintf(stderr, "Wrong signal_loop exit");
-  return 1;
+    if (msg == MSG_FINISH) {
+      return send_msg(fd, MSG_READY);
+    } else if (msg == MSG_LOCAL_BARRIER) {
+      MPI_Barrier(MPI_COMM_NODE);
+    } else if (msg == MSG_GLOBAL_BARRIER) {
+      MPI_Barrier(MPI_COMM_WORLD_THAPI);
+    } else if (msg == MSG_INIT) {
+      // Initial handshake; no work to do.
+    } else {
+      fprintf(stderr, "sync_daemon_mpi: unknown message '%.*s'\n", static_cast<int>(msg.size()),
+              msg.data());
+      return 1;
+    }
+
+    if (send_msg(fd, MSG_READY) < 0)
+      return 1;
+  }
 }
 
 int main(int argc, char **argv) {
 
   // Initialization
   int ret = 0;
-  int parent_pid = 0;
   // World Session and Communicator
   MPI_Session lib_shandle = MPI_SESSION_NULL;
   MPI_Comm MPI_COMM_WORLD_THAPI = MPI_COMM_NULL;
   MPI_Comm MPI_COMM_NODE = MPI_COMM_NULL;
 
+  if (argc < 2) {
+    fprintf(stderr, "usage: %s <fd>\n", argv[0]);
+    return 1;
+  }
+
   CHECK_MPI(MPIX_Init_Session(&lib_shandle, &MPI_COMM_WORLD_THAPI));
   CHECK_MPI(MPI_Comm_split_type(MPI_COMM_WORLD_THAPI, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
                                 &MPI_COMM_NODE));
 
-  parent_pid = atoi(argv[1]);
-  ret = signal_loop(parent_pid, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
+  const int fd = atoi(argv[1]);
+  ret = message_loop(fd, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
+  close(fd);
 
 fn_exit:
   if (MPI_COMM_NODE != MPI_COMM_NULL)

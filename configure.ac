@@ -68,10 +68,12 @@ AC_ARG_ENABLE([sync-daemon-mpi],
               [enable_sync_daemon_mpi="$enableval" user_set_sync_daemon_mpi="yes_$enableval"],
               [enable_sync_daemon_mpi="yes" user_set_sync_daemon_mpi="no"])
 AC_SUBST([user_set_sync_daemon_mpi])
+AC_LANG_PUSH([C++])
 AS_IF([test "x$enable_sync_daemon_mpi" != xno],
       [AX_MPI([enable_sync_daemon_mpi=yes], [enable_sync_daemon_mpi=no])])
 AS_IF([test "x$enable_sync_daemon_mpi" != xno],
       [AX_MPI_SESSION([enable_sync_daemon_mpi=yes], [enable_sync_daemon_mpi=no])])
+AC_LANG_POP([C++])
 AS_IF([test "x$user_set_sync_daemon_mpi" = "xyes_yes" && test "x$enable_sync_daemon_mpi" = "xno"],
       [AC_MSG_ERROR([sync-daemon with MPI requested but MPI Sessions are not supported!])])
 AS_IF([test "x$user_set_sync_daemon_mpi" != "xyes_no" && test "x$enable_sync_daemon_mpi" = "xno"],
