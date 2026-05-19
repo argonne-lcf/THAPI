@@ -390,6 +390,9 @@ class SyncDaemon
     LOGGER.debug { "spawn(#{daemon})" }
     lazy_exec_mpi("Initialize SyncDaemon #{daemon_type}") do
       @parent, child = UNIXSocket.pair(:SEQPACKET)
+      # Ruby sets O_NONBLOCK on sockets by default; the C/Ruby daemon uses
+      # blocking read, so clear it on the inherited fd.
+      child.nonblock = false
       @pid = Process.spawn(daemon, child.fileno.to_s, child.fileno => child.fileno)
       child.close
       @parent.sendmsg(MSG_INIT)
@@ -474,6 +477,9 @@ class SamplingDaemon
     LOGGER.debug { "spawn(sampling_daemon) #{path_so}" }
     lazy_exec_sampling('Initialize SamplingDaemon') do
       @parent, child = UNIXSocket.pair(:SEQPACKET)
+      # Ruby sets O_NONBLOCK on sockets by default; the C daemon uses
+      # blocking read, so clear it on the inherited fd.
+      child.nonblock = false
       @pid = Process.spawn(h, "#{daemon_path} #{child.fileno} #{path_so}",
                            child.fileno => child.fileno)
       child.close

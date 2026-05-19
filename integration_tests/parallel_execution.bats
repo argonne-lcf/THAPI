@@ -8,7 +8,7 @@ launch_mpi() {
 # THAPI_SYNC_DAEMON=fs Tests
 
 @test "sync_daemon_fs" {
-  THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh clinfo
+  THAPI_SYNC_DAEMON=fs launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.rb clinfo
 }
 
 @test "iprof_fs" {
@@ -27,7 +27,7 @@ launch_mpi() {
 
 # bats test_tags=mpi_sync_daemon
 @test "sync_daemon_mpi" {
-  THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.sh clinfo
+  THAPI_SYNC_DAEMON=mpi launch_mpi -n 2 ./integration_tests/light_iprof_only_sync.rb clinfo
 }
 
 # bats test_tags=mpi_sync_daemon
