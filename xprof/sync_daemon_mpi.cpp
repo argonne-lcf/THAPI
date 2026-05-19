@@ -138,12 +138,12 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: %s <fd>\n", argv[0]);
     return 1;
   }
+  const int fd = atoi(argv[1]);
 
   CHECK_MPI(MPIX_Init_Session(&lib_shandle, &MPI_COMM_WORLD_THAPI));
   CHECK_MPI(MPI_Comm_split_type(MPI_COMM_WORLD_THAPI, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
                                 &MPI_COMM_NODE));
 
-  const int fd = atoi(argv[1]);
   ret = message_loop(fd, MPI_COMM_WORLD_THAPI, MPI_COMM_NODE);
   close(fd);
 
