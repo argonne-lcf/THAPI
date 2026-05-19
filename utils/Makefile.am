@@ -10,6 +10,7 @@ noinst_HEADERS = \
 	include/utlist.h \
 	include/json.hpp \
 	include/magic_enum.hpp \
+	include/daemon_proto.hpp \
 	xprof_utils.hpp
 
 nodist_noinst_HEADERS = lttng/tracepoint_gen.h

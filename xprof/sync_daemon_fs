@@ -51,10 +51,7 @@ def local_barrier(name)
   busy_wait_until { count_file(folder) == MPITopo.local_size }
 end
 
-fd = ARGV[0].to_i
-sock = UNIXSocket.for_fd(fd)
-send_ready = -> { sock.sendmsg(SyncDaemon::MSG_READY) }
-
+sock = UNIXSocket.for_fd(ARGV[0].to_i)
 global_handle = init_global_barrier
 local_barrier_count = 0
 
@@ -71,23 +68,19 @@ loop do
   when SyncDaemon::MSG_GLOBAL_BARRIER
     global_barrier(global_handle)
   when SyncDaemon::MSG_FINISH
-    # We cannot delete SHARED_LOCAL_FILESYSTEM
-    # Some rank can exit the `global_barrier` (hence calling this function)
-    #   when others ranks are still in the `local_barrier`
-    # If we delete SHARED_LOCAL_FILESYSTEM, it will deadlock
-    #
-    # One possibility to be abble to remove `SHARED_LOCAL_FILESYSTEM`,
-    #   is to make all ranks busy_wait_until in the `global_barrier`.
-    # This will ensure that every-one exited the `local_barrier`.
-    #   but given the poor performance of our FS, we will avoid that for now...
-    send_ready.call
+    # We cannot delete SHARED_LOCAL_FILESYSTEM here: some rank can exit
+    # global_barrier (hence reach FINISH) while others are still in
+    # local_barrier. Removing SHARED_LOCAL_FILESYSTEM would deadlock them.
+    # One fix: have all ranks busy_wait_until in global_barrier so we
+    # know local_barrier is done — but given FS performance, we skip it.
+    sock.sendmsg(SyncDaemon::MSG_READY)
     break
   else
     warn("sync_daemon_fs: unknown message '#{msg}'")
     exit(1)
   end
 
-  send_ready.call
+  sock.sendmsg(SyncDaemon::MSG_READY)
 end
 
 sock.close

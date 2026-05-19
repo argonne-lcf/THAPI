@@ -15,7 +15,7 @@ if FOUND_MPI
 endif
 
 sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
-	$(MPICXX) $(CXXFLAGS) -std=c++17 $(WERROR) -Wall -Wextra $< -o $@
+	$(MPICXX) $(CXXFLAGS) -std=c++17 $(WERROR) -Wall -Wextra -I$(top_srcdir)/utils/include $< -o $@
 
 iprof: xprof.rb
 	cp xprof.rb $@

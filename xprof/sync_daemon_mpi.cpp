@@ -1,18 +1,11 @@
+#include "daemon_proto.hpp"
 #include "mpi.h"
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <string_view>
-#include <sys/socket.h>
-#include <unistd.h>
 
-using namespace std::string_view_literals;
+using namespace daemon_proto;
 
-constexpr auto MSG_INIT = "INIT"sv;
-constexpr auto MSG_LOCAL_BARRIER = "LOCAL_BARRIER"sv;
-constexpr auto MSG_GLOBAL_BARRIER = "GLOBAL_BARRIER"sv;
-constexpr auto MSG_FINISH = "FINISH"sv;
-constexpr auto MSG_READY = "READY"sv;
+constexpr auto WHO = "sync_daemon_mpi";
 
 #define CHECK_MPI(x)                                                                               \
   do {                                                                                             \
@@ -82,14 +75,6 @@ fn_exit:
   return ret;
 }
 
-static int send_msg(const int fd, const std::string_view msg) {
-  if (write(fd, msg.data(), msg.size()) < 0) {
-    perror("sync_daemon_mpi: write");
-    return -1;
-  }
-  return 0;
-}
-
 int message_loop(const int fd, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_NODE) {
   char buf[64];
 
@@ -97,17 +82,17 @@ int message_loop(const int fd, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_
   while (true) {
     const ssize_t n = read(fd, buf, sizeof(buf));
     if (n < 0) {
-      perror("sync_daemon_mpi: read");
+      perror(WHO);
       return 1;
     }
     if (n == 0) {
-      fprintf(stderr, "sync_daemon_mpi: parent closed socket unexpectedly\n");
+      fprintf(stderr, "%s: parent closed socket unexpectedly\n", WHO);
       return 1;
     }
     const std::string_view msg(buf, n);
 
     if (msg == MSG_FINISH) {
-      return send_msg(fd, MSG_READY);
+      return send_msg(WHO, fd, MSG_READY);
     } else if (msg == MSG_LOCAL_BARRIER) {
       MPI_Barrier(MPI_COMM_NODE);
     } else if (msg == MSG_GLOBAL_BARRIER) {
@@ -115,12 +100,12 @@ int message_loop(const int fd, MPI_Comm MPI_COMM_WORLD_THAPI, MPI_Comm MPI_COMM_
     } else if (msg == MSG_INIT) {
       // Initial handshake; no work to do.
     } else {
-      fprintf(stderr, "sync_daemon_mpi: unknown message '%.*s'\n", static_cast<int>(msg.size()),
+      fprintf(stderr, "%s: unknown message '%.*s'\n", WHO, static_cast<int>(msg.size()),
               msg.data());
       return 1;
     }
 
-    if (send_msg(fd, MSG_READY) < 0)
+    if (send_msg(WHO, fd, MSG_READY) < 0)
       return 1;
   }
 }

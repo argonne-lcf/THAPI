@@ -344,65 +344,29 @@ def thapi_trace_dir_root
   end
 end
 
-#    _
-#   |_)  _. ._ ._ o  _  ._
-#   |_) (_| |  |  | (/_ |
-#
-class SyncDaemon
-  MSG_INIT           = 'INIT'
-  MSG_LOCAL_BARRIER  = 'LOCAL_BARRIER'
-  MSG_GLOBAL_BARRIER = 'GLOBAL_BARRIER'
-  MSG_FINISH         = 'FINISH'
-  MSG_READY          = 'READY'
+# Shared socketpair protocol between iprof and its sync/sampling daemons.
+# Subclasses define `active?` (gating predicate) and call spawn_daemon
+# from their initialize.
+module DaemonClient
+  MSG_INIT   = 'INIT'
+  MSG_FINISH = 'FINISH'
+  MSG_READY  = 'READY'
 
   # block triggers the daemon; lazy_exec blocks on its READY reply.
-  def lazy_exec_mpi(message = nil, &block)
+  def lazy_exec(message = nil)
     LOGGER.with_info_block(message) do
-      unless MPITopo.active?
+      unless active?
         LOGGER.debug("#{message}: No-op")
         return
       end
-      block.call
+      yield
       wait_ready
     end
   end
 
-  def initialize
-    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
-    daemon = case daemon_type
-             when nil
-               # Default is MPI
-               if File.exist?("#{BINDIR}/sync_daemon_mpi")
-                 "#{BINDIR}/sync_daemon_mpi"
-               else
-                 LOGGER.warn("No #{BINDIR}/sync_daemon_mpi binary. Fallback to #{BINDIR}/sync_daemon_f")
-                 "#{BINDIR}/sync_daemon_fs"
-               end
-             when 'mpi'
-               raise("No #{BINDIR}/sync_daemon_mpi binary") unless File.exist?("#{BINDIR}/sync_daemon_mpi")
-
-               "#{BINDIR}/sync_daemon_mpi"
-             when 'fs'
-               "#{BINDIR}/sync_daemon_fs"
-             else
-               raise("Error: THAPI_SYNC_DAEMON value (#{daemon_type}) is not supported. Allowed: [mpi,fs] ")
-             end
-
-    LOGGER.debug { "spawn(#{daemon})" }
-    lazy_exec_mpi("Initialize SyncDaemon #{daemon_type}") do
-      @parent, child = UNIXSocket.pair(:SEQPACKET)
-      # Ruby sets O_NONBLOCK on sockets by default; the daemon uses
-      # blocking read, so clear it on the inherited fd.
-      child.nonblock = false
-      @pid = Process.spawn(daemon, child.fileno.to_s, child.fileno => child.fileno)
-      child.close
-      @parent.sendmsg(MSG_INIT)
-    end
-  end
-
   def finalize
-    LOGGER.debug { 'Finalize SyncDaemon' }
-    return unless MPITopo.active?
+    LOGGER.debug { "Finalize #{self.class}" }
+    return unless active?
 
     @parent.sendmsg(MSG_FINISH)
     wait_ready
@@ -410,16 +374,59 @@ class SyncDaemon
     @parent.close
   end
 
-  def local_barrier(name)
-    lazy_exec_mpi("Local_barrier #{name}") do
-      @parent.sendmsg(MSG_LOCAL_BARRIER)
+  private
+
+  def spawn_daemon
+    @parent, child = UNIXSocket.pair(:SEQPACKET)
+    # Ruby sets O_NONBLOCK on sockets by default; the daemon uses
+    # blocking read, so clear it on the inherited fd.
+    child.nonblock = false
+    @pid = yield child.fileno
+    child.close
+    @parent.sendmsg(MSG_INIT)
+  end
+
+  def wait_ready
+    reply, = @parent.recvmsg(64)
+    raise "#{self.class}: expected #{MSG_READY}, got '#{reply}'" unless reply == MSG_READY
+  end
+end
+
+#    _
+#   |_)  _. ._ ._ o  _  ._
+#   |_) (_| |  |  | (/_ |
+#
+class SyncDaemon
+  include DaemonClient
+
+  MSG_LOCAL_BARRIER  = 'LOCAL_BARRIER'
+  MSG_GLOBAL_BARRIER = 'GLOBAL_BARRIER'
+
+  def initialize
+    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
+    raise("Error: THAPI_SYNC_DAEMON=#{daemon_type} is not supported. Allowed: [mpi,fs]") \
+      unless [nil, 'mpi', 'fs'].include?(daemon_type)
+
+    mpi_path = "#{BINDIR}/sync_daemon_mpi"
+    if daemon_type == 'mpi' && !File.exist?(mpi_path)
+      raise("No #{mpi_path} binary")
+    elsif daemon_type.nil? && !File.exist?(mpi_path)
+      LOGGER.warn("No #{mpi_path} binary. Fallback to #{BINDIR}/sync_daemon_fs")
+    end
+    daemon = (daemon_type != 'fs' && File.exist?(mpi_path)) ? mpi_path : "#{BINDIR}/sync_daemon_fs"
+
+    LOGGER.debug { "spawn(#{daemon})" }
+    lazy_exec("Initialize SyncDaemon #{daemon_type}") do
+      spawn_daemon { |fd| Process.spawn(daemon, fd.to_s, fd => fd) }
     end
   end
 
+  def local_barrier(name)
+    lazy_exec("Local_barrier #{name}") { @parent.sendmsg(MSG_LOCAL_BARRIER) }
+  end
+
   def global_barrier
-    lazy_exec_mpi('Global_barrier') do
-      @parent.sendmsg(MSG_GLOBAL_BARRIER)
-    end
+    lazy_exec('Global_barrier') { @parent.sendmsg(MSG_GLOBAL_BARRIER) }
   end
 
   # The context manager ensure that when the block yield is exited
@@ -438,9 +445,8 @@ class SyncDaemon
 
   private
 
-  def wait_ready
-    reply, = @parent.recvmsg(64)
-    raise "SyncDaemon: expected #{MSG_READY}, got '#{reply}'" unless reply == MSG_READY
+  def active?
+    MPITopo.active?
   end
 end
 
@@ -454,21 +460,7 @@ def sampling?
 end
 
 class SamplingDaemon
-  MSG_INIT   = 'INIT'
-  MSG_FINISH = 'FINISH'
-  MSG_READY  = 'READY'
-
-  # block triggers the daemon; lazy_exec blocks on its READY reply.
-  def lazy_exec_sampling(message = nil, &block)
-    LOGGER.with_info_block(message) do
-      unless sampling?
-        LOGGER.debug("#{message}: No-op")
-        return
-      end
-      block.call
-      wait_ready
-    end
-  end
+  include DaemonClient
 
   def initialize(h = {})
     daemon_path = "#{BINDIR}/thapi_sampling_daemon"
@@ -476,33 +468,15 @@ class SamplingDaemon
 
     path_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
     LOGGER.debug { "spawn(sampling_daemon) #{path_so}" }
-    lazy_exec_sampling('Initialize SamplingDaemon') do
-      @parent, child = UNIXSocket.pair(:SEQPACKET)
-      # Ruby sets O_NONBLOCK on sockets by default; the C daemon uses
-      # blocking read, so clear it on the inherited fd.
-      child.nonblock = false
-      @pid = Process.spawn(h, "#{daemon_path} #{child.fileno} #{path_so}",
-                           child.fileno => child.fileno)
-      child.close
-      @parent.sendmsg(MSG_INIT)
+    lazy_exec('Initialize SamplingDaemon') do
+      spawn_daemon { |fd| Process.spawn(h, "#{daemon_path} #{fd} #{path_so}", fd => fd) }
     end
-  end
-
-  def finalize
-    LOGGER.debug { 'Finalize SamplingDaemon' }
-    return unless sampling?
-
-    @parent.sendmsg(MSG_FINISH)
-    wait_ready
-    Process.wait(@pid)
-    @parent.close
   end
 
   private
 
-  def wait_ready
-    reply, = @parent.recvmsg(64)
-    raise "SamplingDaemon: expected #{MSG_READY}, got '#{reply}'" unless reply == MSG_READY
+  def active?
+    sampling?
   end
 end
 
