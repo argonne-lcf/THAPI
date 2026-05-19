@@ -6,6 +6,7 @@
 # of iprof.
 
 require 'socket'
+require 'io/nonblock'
 
 daemon_kind = ENV.fetch('THAPI_SYNC_DAEMON')
 daemon = "sync_daemon_#{daemon_kind}"
