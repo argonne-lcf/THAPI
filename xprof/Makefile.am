@@ -6,6 +6,9 @@ else
   WERROR =
 endif
 
+AM_CFLAGS   = -Wall -Wextra $(WERROR)
+AM_CXXFLAGS = -std=c++17 -Wall -Wextra $(WERROR)
+
 bin_SCRIPTS = \
 	iprof \
 	sync_daemon_fs
@@ -15,7 +18,7 @@ if FOUND_MPI
 endif
 
 sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
-	$(MPICXX) $(CXXFLAGS) -std=c++17 $(WERROR) -Wall -Wextra -I$(top_srcdir)/utils/include $< -o $@
+	$(MPICXX) $(CXXFLAGS) $(AM_CXXFLAGS) -I$(top_srcdir)/utils/include $< -o $@
 
 iprof: xprof.rb
 	cp xprof.rb $@
@@ -130,23 +133,23 @@ bt2_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la
 
 # Compiler flags
 libXTally_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_sink_tally
-libXTally_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
-libXTally_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTally_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTally_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXTally_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 libXTimeline_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_sink_timeline
-libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
-libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
+libXTimeline_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTimeline_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
 
 libXAggreg_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
-libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
-libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXAggreg_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXAggreg_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 libXStripper_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_stripper
-libXStripper_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
-libXStripper_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXStripper_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXStripper_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXStripper_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
@@ -172,7 +175,7 @@ $(BTX_INTERVAL_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_interval_model.yaml
 noinst_LTLIBRARIES = libtestintervalsource.la
 nodist_libtestintervalsource_la_SOURCES = $(BTX_INTERVAL_GENERATED_SOURCE_TEST)
 libtestintervalsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_interval_test/
-libtestintervalsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libtestintervalsource_la_CFLAGS = $(AM_CFLAGS) -fPIC -Wno-unused-parameter $(BABELTRACE2_CFLAGS)
 
 BTX_AGGREG_GENERATED_SOURCE_TEST = \
 	btx_source_aggreg_test/metababel/metababel.h \
@@ -188,7 +191,7 @@ $(BTX_AGGREG_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_aggreg_model.yaml
 noinst_LTLIBRARIES += libtestaggregsource.la
 nodist_libtestaggregsource_la_SOURCES = $(BTX_AGGREG_GENERATED_SOURCE_TEST)
 libtestaggregsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_source_aggreg_test/
-libtestaggregsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libtestaggregsource_la_CFLAGS = $(AM_CFLAGS) -fPIC -Wno-unused-parameter $(BABELTRACE2_CFLAGS)
 
 
 TRACE_COMMON = \

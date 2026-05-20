@@ -4,6 +4,9 @@ else
   WERROR =
 endif
 
+AM_CFLAGS   = -Wall -Wextra $(WERROR)
+AM_CXXFLAGS = -std=c++17 -Wall -Wextra $(WERROR)
+
 TRACEPOINT_GEN = \
 	$(srcdir)/sampling_events.yaml
 
@@ -29,7 +32,7 @@ nodist_libsamplingtracepoints_la_SOURCES = \
 	$(SAMPLING_STATIC_PROBES_SRC)
 
 libsamplingtracepoints_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libsamplingtracepoints_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(WERROR) $(LTTNG_UST_CFLAGS)
+libsamplingtracepoints_la_CFLAGS = $(AM_CFLAGS) -fPIC -Wno-unused-parameter -Wno-type-limits -Wno-sign-compare $(LTTNG_UST_CFLAGS)
 libsamplingtracepoints_la_LDFLAGS = $(LTTNG_UST_LIBS)
 
 
@@ -50,7 +53,7 @@ libThapiSampling_la_SOURCES = \
 	thapi_sampling.c
 
 libThapiSampling_la_CPPFLAGS = -I$(top_srcdir)/utils/include
-libThapiSampling_la_CFLAGS = -Wall -Wextra $(WERROR)
+libThapiSampling_la_CFLAGS = $(AM_CFLAGS)
 libThapiSampling_la_LDFLAGS = -lpthread -version-info 1:0:0 $(LTTNG_UST_LIBS)
 
 bin_PROGRAMS = thapi_sampling_daemon
@@ -60,7 +63,7 @@ thapi_sampling_daemon_SOURCES = \
 	thapi_sampling_daemon.cpp
 
 thapi_sampling_daemon_CPPFLAGS = -I$(top_srcdir)/utils/include
-thapi_sampling_daemon_CXXFLAGS = -Wall -Wextra $(WERROR)
+thapi_sampling_daemon_CXXFLAGS = $(AM_CXXFLAGS)
 
 libHeartbeatSampling_la_SOURCES = heartbeat_sampling_plugin.c
 
@@ -68,7 +71,7 @@ nodist_libHeartbeatSampling_la_SOURCES = \
 	$(SAMPLING_STATIC_PROBES_INCL)
 
 libHeartbeatSampling_la_CPPFLAGS = -I$(top_srcdir)/utils/include
-libHeartbeatSampling_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
+libHeartbeatSampling_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter $(LTTNG_UST_CFLAGS)
 libHeartbeatSampling_la_LDFLAGS = -avoid-version -module
 libHeartbeatSampling_la_LIBADD = libThapiSampling.la libsamplingtracepoints.la -ldl $(LTTNG_UST_LIBS)
 
