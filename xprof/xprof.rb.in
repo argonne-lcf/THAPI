@@ -344,9 +344,12 @@ def thapi_trace_dir_root
   end
 end
 
-# Shared socketpair protocol between iprof and its sync/sampling daemons.
-# Subclasses define `active?` (gating predicate) and call spawn_daemon
-# from their initialize.
+#    _
+#   | \  _.  _  ._ _   _  ._
+#   |_/ (_| (/_ | | | (_) | |
+#
+# Shared socketpair protocol between iprof and its (sync/sampling) daemons.
+# Subclasses define `active?` (gating predicate) and call `spawn` from their initialize.
 module DaemonClient
   MSG_INIT   = 'INIT'
   MSG_FINISH = 'FINISH'
@@ -374,17 +377,31 @@ module DaemonClient
     @parent.close
   end
 
-  private
-
-  def spawn_daemon
-    @parent, child = UNIXSocket.pair(:SEQPACKET)
-    # Ruby sets O_NONBLOCK on sockets by default; the daemon uses
-    # blocking read, so clear it on the inherited fd.
-    child.nonblock = false
-    @pid = yield child.fileno
-    child.close
-    @parent.sendmsg(MSG_INIT)
+  # Instance delegate so DaemonClient#lazy_exec / #finalize can call `active?`
+  # on the instance. Subclasses define the class-level `self.active?`.
+  def active?
+    self.class.active?
   end
+
+  # Mirrors `Process.spawn(*cmd)` but adds:
+  #   - `log:` for the lazy_exec message
+  #   - implicit socketpair: the daemon's end is inserted as the first program
+  #     argument (after optional env hash) and kept open across exec via `fd => fd`.
+  def spawn(*cmd, log:)
+    lazy_exec(log) do
+      @parent, child = UNIXSocket.pair(:SEQPACKET)
+      # Ruby sets O_NONBLOCK on sockets by default; the daemon uses
+      # blocking read, so clear it on the inherited fd.
+      child.nonblock = false
+      fd = child.fileno
+      insert_at = cmd.first.is_a?(Hash) ? 2 : 1
+      @pid = Process.spawn(*cmd.dup.insert(insert_at, fd.to_s), fd => fd)
+      child.close
+      @parent.sendmsg(MSG_INIT)
+    end
+  end
+
+  private
 
   def wait_ready
     reply, = @parent.recvmsg(64)
@@ -402,22 +419,37 @@ class SyncDaemon
   MSG_LOCAL_BARRIER  = 'LOCAL_BARRIER'
   MSG_GLOBAL_BARRIER = 'GLOBAL_BARRIER'
 
+  SYNC_DAEMON_MPI_PATH = "#{BINDIR}/sync_daemon_mpi"
+  SYNC_DAEMON_FS_PATH = "#{BINDIR}/sync_daemon_fs"
+
+  def self.active?
+    MPITopo.active?
+  end
+
   def initialize
-    daemon_type = env_fetch_first('THAPI_SYNC_DAEMON')
-    raise("Error: THAPI_SYNC_DAEMON=#{daemon_type} is not supported. Allowed: [mpi,fs]") \
-      unless [nil, 'mpi', 'fs'].include?(daemon_type)
+    return unless active?
 
-    mpi_path = "#{BINDIR}/sync_daemon_mpi"
-    if daemon_type == 'mpi' && !File.exist?(mpi_path)
-      raise("No #{mpi_path} binary")
-    elsif daemon_type.nil? && !File.exist?(mpi_path)
-      LOGGER.warn("No #{mpi_path} binary. Fallback to #{BINDIR}/sync_daemon_fs")
-    end
-    daemon = (daemon_type != 'fs' && File.exist?(mpi_path)) ? mpi_path : "#{BINDIR}/sync_daemon_fs"
+    daemon_path = case (daemon_type = env_fetch_first('THAPI_SYNC_DAEMON'))
+                  when 'mpi'
+                    unless File.exist?(SYNC_DAEMON_MPI_PATH)
+                      raise "No #{SYNC_DAEMON_MPI_PATH} binary. Did you compile with `--disable-sync-daemon-mpi`?"
+                    end
 
-    lazy_exec("Initialize SyncDaemon #{daemon_type}") do
-      spawn_daemon { |fd| Process.spawn(daemon, fd.to_s, fd => fd) }
-    end
+                    SYNC_DAEMON_MPI_PATH
+                  when 'fs'
+                    SYNC_DAEMON_FS_PATH
+                  when nil
+                    if File.exist?(SYNC_DAEMON_MPI_PATH)
+                      SYNC_DAEMON_MPI_PATH
+                    else
+                      LOGGER.warn("No #{SYNC_DAEMON_MPI_PATH} binary. Fallback to #{SYNC_DAEMON_FS_PATH}")
+                      SYNC_DAEMON_FS_PATH
+                    end
+                  else
+                    raise "Error: THAPI_SYNC_DAEMON=#{daemon_type} is not supported. Allowed: [mpi,fs]"
+                  end
+
+    spawn(daemon_path, log: "Initialize SyncDaemon #{daemon_type}")
   end
 
   def local_barrier(name)
@@ -442,11 +474,6 @@ class SyncDaemon
     end
   end
 
-  private
-
-  def active?
-    MPITopo.active?
-  end
 end
 
 #    __
@@ -454,27 +481,21 @@ end
 #   __) (_| | | | |_) | | | | (_|
 #                 |            _|
 
-def sampling?
-  OPTIONS[:sample] && MPITopo.local_master?
-end
-
 class SamplingDaemon
   include DaemonClient
 
-  def initialize(h = {})
-    daemon_path = "#{BINDIR}/thapi_sampling_daemon"
-    raise "No sampling_daemon binary found at #{daemon_path}" unless File.exist?(daemon_path)
+  SAMPLING_DAEMON_PATH = "#{BINDIR}/thapi_sampling_daemon"
 
-    path_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').gsub(':', ' ')
-    lazy_exec('Initialize SamplingDaemon') do
-      spawn_daemon { |fd| Process.spawn(h, "#{daemon_path} #{fd} #{path_so}", fd => fd) }
-    end
+  def self.active?
+    OPTIONS[:sample] && MPITopo.local_master?
   end
 
-  private
+  def initialize(h = {})
+    return unless active?
+    raise "No sampling_daemon binary found at #{SAMPLING_DAEMON_PATH}" unless File.exist?(SAMPLING_DAEMON_PATH)
 
-  def active?
-    sampling?
+    path_so = h.fetch('THAPI_SAMPLING_LIBRARIES', '').split(':')
+    spawn(h, SAMPLING_DAEMON_PATH, *path_so, log: 'Initialize SamplingDaemon')
   end
 end
 
@@ -644,18 +665,20 @@ module LocalMaster
     raise unless MPITopo.local_master?
 
     lttng_setup(backends)
-
-    sampling_daemon = SamplingDaemon.new(env) if sampling?
-    pids = bt_analysis(backends) if OPTIONS[:archive]
-
-    [sampling_daemon, pids]
+    sampling_daemon = SamplingDaemon.new(env)
+    begin
+      archive_pids = bt_analysis(backends) if OPTIONS[:archive]
+    rescue StandardError
+      sampling_daemon.finalize
+      raise
+    end
+    [sampling_daemon, archive_pids]
   end
 
-  def teardown_daemon(sampling_daemon, archive_pids)
+  def teardown(sampling_daemon, archive_pids)
     raise unless MPITopo.local_master?
 
-    sampling_daemon.finalize if sampling?
-
+    sampling_daemon.finalize
     lttng_teardown_session
     bt_wait_for_archive_processes(archive_pids) if OPTIONS[:archive]
 
@@ -726,7 +749,7 @@ module LocalMaster
            profiling: OPTIONS[:profile])
     end
 
-    if sampling?
+    if SamplingDaemon.active?
       channel_name = 'non-blocking-channel'
       exec("lttng enable-channel --userspace --session=#{lttng_session_uuid} #{channel_name}")
       exec("lttng add-context    --userspace --session=#{lttng_session_uuid} --channel=#{channel_name} -t vpid -t vtid")
@@ -900,7 +923,7 @@ def all_env_tracers(usr_binary)
   # Customization
   if OPTIONS[:'backend-names'].include?('ze')
     h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:profile]
-    if sampling?
+    if SamplingDaemon.active?
       # The current only reliable way to use zes api
       #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
       h['ZES_ENABLE_SYSMAN'] = 0
@@ -916,7 +939,7 @@ def all_env_tracers(usr_binary)
 
   if OPTIONS[:'backend-names'].include?('cxi')
     backends << 'cxi'
-    if sampling?
+    if SamplingDaemon.active?
       h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
       h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
     end
@@ -928,7 +951,7 @@ def all_env_tracers(usr_binary)
   end
 
   # Sample
-  if sampling?
+  if SamplingDaemon.active?
     LOGGER.debug('Sampling Enabled')
     h['LTTNG_UST_SAMPLING'] = 1
     h[%w[LD_LIBRARY_PATH prepend]] << File.join(PKGLIBDIR, 'sampling')
@@ -961,7 +984,7 @@ def all_trace_and_processing(usr_argv)
       launch_usr_bin(env, usr_argv)
     ensure
       syncd.local_barrier('waiting_for_application_ending')
-      LocalMaster.teardown_daemon(sampling_daemon, archive_pids) if MPITopo.local_master?
+      LocalMaster.teardown(sampling_daemon, archive_pids) if MPITopo.local_master?
     end
 
     LocalMaster.bt_analysis(backends) if MPITopo.local_master? && !OPTIONS[:archive]
