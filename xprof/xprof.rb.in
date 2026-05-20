@@ -373,8 +373,9 @@ module DaemonClient
 
     @parent.sendmsg(MSG_FINISH)
     wait_ready
-    Process.wait(@pid)
+    _, status = Process.wait2(@pid)
     @parent.close
+    LOGGER.warn("#{self.class} exited #{status}") unless status.success?
   end
 
   # Instance delegate so DaemonClient#lazy_exec / #finalize can call `active?`
@@ -473,7 +474,6 @@ class SyncDaemon
       syncd.finalize
     end
   end
-
 end
 
 #    __
