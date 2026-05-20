@@ -284,9 +284,21 @@ end
 # Transform into set for fast `include`
 all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
 
+all_types_by_name = $all_types.collect { |t| [t.name, t] }.to_h
+
 # Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
 dfs = lambda do |node|
-  return if is_primitive_type?(node) || node.is_a?(YAMLCAst::CustomType)
+  return if is_primitive_type?(node)
+
+  # CustomType is a reference to a named typedef. Resolve to its Decl and recurse
+  # there so the typedef itself (and its deps) lands in :sorted before its user.
+  if node.is_a?(YAMLCAst::CustomType)
+    decl = all_types_by_name[node.name]
+    dfs.call(decl) if decl
+    return
+  end
+
+  return if all_type_sorted[:sorted].include?(node)
 
   case node.type
   when YAMLCAst::Struct
@@ -310,12 +322,14 @@ dfs = lambda do |node|
     end
   when YAMLCAst::Union
     # TODO
-  when YAMLCAst::CustomType
-    dfs.call(node.type)
   when YAMLCAst::Enum
     # Enums have no dependencies
+  when YAMLCAst::CustomType
+    # Typedef-to-typedef (e.g. `typedef uint8_t ze_bool_t`). Recurse so the
+    # referenced typedef is emitted first when it lives in $all_types.
+    dfs.call(node.type)
   else
-    raise
+    raise "dfs: unhandled node.type=#{node.type.class} on node=#{node.inspect}"
   end
 
   all_type_sorted[:sorted] << node
