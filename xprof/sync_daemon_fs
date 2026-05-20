@@ -51,30 +51,27 @@ def local_barrier(name)
   busy_wait_until { count_file(folder) == MPITopo.local_size }
 end
 
+msg = nil
 sock = UNIXSocket.for_fd(ARGV[0].to_i)
 global_handle = init_global_barrier
 local_barrier_count = 0
 
-loop do
+# We cannot delete SHARED_LOCAL_FILESYSTEM on FINISH: some rank can exit
+# global_barrier (hence reach FINISH) while others are still in
+# local_barrier. Removing SHARED_LOCAL_FILESYSTEM would deadlock them.
+# One fix: have all ranks busy_wait_until in global_barrier so we
+# know local_barrier is done — but given FS performance, we skip it.
+until msg == SyncDaemon::MSG_FINISH
   msg, = sock.recvmsg(64)
   raise 'sync_daemon_fs: parent closed socket without sending FINISH' if msg.empty?
 
   case msg
-  when SyncDaemon::MSG_INIT
-    # Initial handshake; no work to do.
+  when SyncDaemon::MSG_INIT           then nil
   when SyncDaemon::MSG_LOCAL_BARRIER
     local_barrier(local_barrier_count.to_s)
     local_barrier_count += 1
-  when SyncDaemon::MSG_GLOBAL_BARRIER
-    global_barrier(global_handle)
-  when SyncDaemon::MSG_FINISH
-    # We cannot delete SHARED_LOCAL_FILESYSTEM here: some rank can exit
-    # global_barrier (hence reach FINISH) while others are still in
-    # local_barrier. Removing SHARED_LOCAL_FILESYSTEM would deadlock them.
-    # One fix: have all ranks busy_wait_until in global_barrier so we
-    # know local_barrier is done — but given FS performance, we skip it.
-    sock.sendmsg(SyncDaemon::MSG_READY)
-    break
+  when SyncDaemon::MSG_GLOBAL_BARRIER then global_barrier(global_handle)
+  when SyncDaemon::MSG_FINISH         then nil
   else
     warn("sync_daemon_fs: unknown message '#{msg}'")
     exit(1)
