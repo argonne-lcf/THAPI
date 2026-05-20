@@ -15,11 +15,11 @@ namespace daemon_proto {
 
 using namespace std::string_view_literals;
 
-constexpr auto MSG_INIT           = "INIT"sv;
-constexpr auto MSG_LOCAL_BARRIER  = "LOCAL_BARRIER"sv;
+constexpr auto MSG_INIT = "INIT"sv;
+constexpr auto MSG_LOCAL_BARRIER = "LOCAL_BARRIER"sv;
 constexpr auto MSG_GLOBAL_BARRIER = "GLOBAL_BARRIER"sv;
-constexpr auto MSG_FINISH         = "FINISH"sv;
-constexpr auto MSG_READY          = "READY"sv;
+constexpr auto MSG_FINISH = "FINISH"sv;
+constexpr auto MSG_READY = "READY"sv;
 
 inline int send_msg(const char *who, int fd, std::string_view msg) {
   if (write(fd, msg.data(), msg.size()) < 0) {

@@ -66,7 +66,7 @@ until msg == SyncDaemon::MSG_FINISH
   raise 'sync_daemon_fs: parent closed socket without sending FINISH' if msg.empty?
 
   case msg
-  when SyncDaemon::MSG_INIT           then nil
+  when SyncDaemon::MSG_INIT then nil
   when SyncDaemon::MSG_LOCAL_BARRIER
     local_barrier(local_barrier_count.to_s)
     local_barrier_count += 1
