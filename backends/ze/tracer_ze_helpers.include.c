@@ -29,6 +29,11 @@ static int _do_chained_structs = 0;
 static int _do_paranoid_drift = 0;
 static int _do_paranoid_memory_location = 0;
 static int _do_ddi_table_forward = 0;
+/* When THAPI_REPORT_INJECTED_EVENTS=1, _lib_cleanup prints the running
+ * total to stderr. Useful for the bats infra to assert we don't inject
+ * more events than necessary (lazy fallback regression guard). */
+static int _do_report_injected_events = 0;
+static volatile uint64_t _injected_event_count = 0;
 
 pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -324,6 +329,8 @@ static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command
                  e_w->event_pool, context);
     goto cleanup_ep;
   }
+  if (_do_report_injected_events)
+    __sync_fetch_and_add(&_injected_event_count, 1);
   return e_w;
 cleanup_ep:
   ZE_EVENT_POOL_DESTROY_PTR(e_w->event_pool);
@@ -528,6 +535,9 @@ static void THAPI_ATTRIBUTE_DESTRUCTOR _lib_cleanup() {
   if (_do_cleanup) {
     if (_do_profile)
       _event_cleanup();
+    if (_do_report_injected_events)
+      fprintf(stderr, "THAPI: injected events: %lu\n",
+              (unsigned long)_injected_event_count);
   }
 }
 
@@ -736,6 +746,10 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_ZE_PARANOID_MEMORY_LOCATION");
   if (s)
     _do_paranoid_memory_location = 1;
+
+  s = getenv("THAPI_REPORT_INJECTED_EVENTS");
+  if (s)
+    _do_report_injected_events = 1;
 
   _do_cleanup = 1;
 
