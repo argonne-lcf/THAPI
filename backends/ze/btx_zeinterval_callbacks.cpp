@@ -249,6 +249,24 @@ static void zeKernelCreate_exit_callback(void *btx_handle,
   std::get<std::string>(a) = kernelName;
 }
 
+// Drivers commonly recycle freed kernel handle addresses, so a later
+// zeKernelCreate on the same address will overwrite the entry. The
+// problematic case is races/orderings where a kernel result attributes
+// to the wrong name: clearing the entry on destroy makes the
+// reuse-after-destroy path explicit (the next Create populates a fresh
+// entry rather than mutating one that might still be referenced).
+static void zeKernelDestroy_entry_callback(void *btx_handle,
+                                           void *usr_data,
+                                           int64_t ts,
+                                           const char *hostname,
+                                           int64_t vpid,
+                                           uint64_t vtid,
+                                           ze_kernel_handle_t hKernel) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  data->kernelToDesct.erase({hostname, vpid, hKernel});
+}
+
 // It's possible to bypass zeKernelCreate,
 //      as a workaround for now, hoping that people will call
 //      zeKernelGetName
@@ -886,21 +904,21 @@ static void event_profiling_result_callback(void *btx_handle,
 
   auto *data = static_cast<data_t *>(usr_data);
 
-  // Read the oldest pending metadata for this hEvent — FIFO matches the
-  // submission order, which is the order results arrive in for in-order
-  // cmdlists with shared signal events. Rotate (pop_front + push_back)
-  // instead of popping so the cycle works across resubmits of the same
-  // cmdlist: N Appends produce N deque entries at build time; each
-  // Execute generates N results that rotate through those N entries.
-  // The deque shape persists for the cmdlist's lifetime.
-  // We didn't find the partial payload, that means we should ignore it.
+  // Read the oldest pending metadata for this hEvent and consume it —
+  // FIFO matches the submission order, which is the order results
+  // arrive in for in-order cmdlists with shared signal events. Each
+  // Append pushes once; each result pops once; the deque drains
+  // exactly. We do NOT rotate (push_back + pop_front): that would
+  // be needed only for OOO-resubmit-without-reset of the same cmdlist
+  // (one set of pushes serving M*N pops), a case the universal tracer
+  // explicitly defers.
   const auto it_p = data->eventToBtxDesct.find({hostname, vpid, hEvent});
   if (it_p == data->eventToBtxDesct.cend() || it_p->second.empty())
     return;
-  it_p->second.push_back(it_p->second.front());
+  const auto popped = it_p->second.front();
   it_p->second.pop_front();
   const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
-               commandName, lltngMin, clockLttngDevice, type, ptr] = it_p->second.back();
+               commandName, lltngMin, clockLttngDevice, type, ptr] = popped;
   std::string metadata = "";
   {
     std::stringstream ss_metadata;
@@ -1390,6 +1408,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   /*  Name of the Function Profiled  */
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_entry);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_exit);
+  btx_register_callbacks_lttng_ust_ze_zeKernelDestroy_entry(btx_handle,
+                                                            &zeKernelDestroy_entry_callback);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelGetName_entry);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelGetName_exit);
 
