@@ -584,9 +584,11 @@ zeCommandQueueExecuteCommandLists_entry_callback(void *btx_handle,
   const auto commandQueueDesc = data->commandQueueToDesc[{hostname, vpid, hCommandQueue}];
   for (size_t i = 0; i < _phCommandLists_vals_length; i++) {
     for (auto &hEvent : data->commandListToEvents[{hostname, vpid, phCommandLists_vals[i]}]) {
-      auto &h = data->eventToBtxDesct[{hostname, vpid, hEvent}];
-      std::get<ze_command_queue_desc_t>(h) = commandQueueDesc;
-      std::get<int64_t>(h) = ts;
+      auto &dq = data->eventToBtxDesct[{hostname, vpid, hEvent}];
+      for (auto &h : dq) {
+        std::get<ze_command_queue_desc_t>(h) = commandQueueDesc;
+        std::get<int64_t>(h) = ts;
+      }
     }
   }
 }
@@ -824,12 +826,16 @@ static void event_profiling_callback(void *btx_handle,
       clockLttngDevice = it0->second;
   }
 
-  // If not IMM will be commandQueueDesc overwrited latter
-  data->eventToBtxDesct[{hostname, vpid, hEvent}] = {vtid,         commandQueueDesc,
-                                                     hCommandList, hCommandListIsImmediate,
-                                                     hDevice,      commandName,
-                                                     ts_min,       clockLttngDevice,
-                                                     type,         ptr};
+  // If not IMM will be commandQueueDesc overwrited latter.
+  // Push onto the per-hEvent FIFO: the matching event_profiling_result
+  // pop_fronts to retrieve this Append's metadata. The tracer's lazy
+  // capture can produce N results for the same hEvent in submission
+  // order, one pop per result.
+  data->eventToBtxDesct[{hostname, vpid, hEvent}].push_back({vtid,         commandQueueDesc,
+                                                              hCommandList, hCommandListIsImmediate,
+                                                              hDevice,      commandName,
+                                                              ts_min,       clockLttngDevice,
+                                                              type,         ptr});
   // Prepare job for non IMM
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
@@ -880,14 +886,21 @@ static void event_profiling_result_callback(void *btx_handle,
 
   auto *data = static_cast<data_t *>(usr_data);
 
-  // TODO: Should  we always find the eventToBtxDesct?
-  // We didn't find the partial payload, that mean we should ignore it
+  // Read the oldest pending metadata for this hEvent — FIFO matches the
+  // submission order, which is the order results arrive in for in-order
+  // cmdlists with shared signal events. Rotate (pop_front + push_back)
+  // instead of popping so the cycle works across resubmits of the same
+  // cmdlist: N Appends produce N deque entries at build time; each
+  // Execute generates N results that rotate through those N entries.
+  // The deque shape persists for the cmdlist's lifetime.
+  // We didn't find the partial payload, that means we should ignore it.
   const auto it_p = data->eventToBtxDesct.find({hostname, vpid, hEvent});
-  if (it_p == data->eventToBtxDesct.cend())
+  if (it_p == data->eventToBtxDesct.cend() || it_p->second.empty())
     return;
-  // We don't erase, may have one entry for multiple result
+  it_p->second.push_back(it_p->second.front());
+  it_p->second.pop_front();
   const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
-               commandName, lltngMin, clockLttngDevice, type, ptr] = it_p->second;
+               commandName, lltngMin, clockLttngDevice, type, ptr] = it_p->second.back();
   std::string metadata = "";
   {
     std::stringstream ss_metadata;

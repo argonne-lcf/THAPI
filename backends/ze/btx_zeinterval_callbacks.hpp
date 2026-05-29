@@ -4,6 +4,7 @@
 #include <cstddef> // Bytes
 typedef bool _Bool;
 #include <metababel/metababel.h>
+#include <deque>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -93,7 +94,15 @@ struct data_s {
   std::unordered_map<hp_command_queue_t, ze_command_queue_desc_t> commandQueueToDesc;
 
   std::unordered_map<hpt_t, btx_launch_desc_t> threadToLastLaunchInfo;
-  std::unordered_map<hp_event_t, btx_event_desct_t> eventToBtxDesct;
+  /* FIFO of pending metadata per event handle.
+   *
+   * A single hEvent can be the signal event of multiple Appends on
+   * the same cmdlist; the tracer inserts a per-Append Query for each
+   * occurrence, producing one event_profiling_results tracepoint per
+   * use. Each Append pushes its metadata at event_profiling time;
+   * each result pop_fronts to attribute it to the correct (FIFO-
+   * oldest) Append. */
+  std::unordered_map<hp_event_t, std::deque<btx_event_desct_t>> eventToBtxDesct;
   // Require for non IMM
   std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>> commandListToEvents;
 
