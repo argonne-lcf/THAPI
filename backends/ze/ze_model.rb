@@ -140,7 +140,7 @@ ZE_POINTER_NAMES = ze_pointer_names.to_h
 register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _on_create_command_list(*phCommandList, 0);
+      _on_create_command_list(*phCommandList);
     }
   }
 EOF
@@ -148,7 +148,7 @@ EOF
 register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _on_create_command_list(*phCommandList, 1);
+      _on_create_command_list(*phCommandList);
     }
   }
 EOF
@@ -166,12 +166,26 @@ register_epilogue 'zeCommandListDestroy', <<EOF
   }
 EOF
 
-register_epilogue 'zeCommandQueueExecuteCommandLists', <<EOF
-  if (_do_profile) {
-    if (_retval == ZE_RESULT_SUCCESS && numCommandLists > 0) {
-      _on_execute_command_lists(numCommandLists, phCommandLists);
-    }
-  }
+# Universal scheme drain hooks: any successful synchronize means the
+# slabs of all touched cls have valid timestamps; emit them.
+register_epilogue 'zeCommandQueueSynchronize', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS)
+    _on_sync_drain_all();
+EOF
+
+register_epilogue 'zeEventHostSynchronize', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS)
+    _on_sync_drain_all();
+EOF
+
+register_epilogue 'zeFenceHostSynchronize', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS)
+    _on_sync_drain_all();
+EOF
+
+register_epilogue 'zeCommandListHostSynchronize', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
+    _on_sync_drain_cl(hCommandList);
 EOF
 
 register_prologue 'zeEventPoolCreate', <<EOF
@@ -191,18 +205,6 @@ register_prologue 'zeEventCreate', <<EOF
     _new_desc.signal |= ZE_EVENT_SCOPE_FLAG_HOST;
     _new_desc.wait |= ZE_EVENT_SCOPE_FLAG_HOST;
     desc = &_new_desc;
-  }
-EOF
-
-register_prologue 'zeEventDestroy', <<EOF
-  if (_do_profile && hEvent) {
-    _on_destroy_event(hEvent);
-  }
-EOF
-
-register_prologue 'zeEventHostReset', <<EOF
-  if (_do_profile && hEvent) {
-    _on_reset_event(hEvent);
   }
 EOF
 
@@ -260,28 +262,39 @@ register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prolo
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
 # not very cleanly is used....
+# Universal scheme (see project_ze_universal_scheme):
+#   prologue: always inject _ewrapper. Save user's signal (may be NULL).
+#             Swap user's signal -> our injected event.
+#   epilogue: on success, call _universal_record_append which inserts
+#             a QueryKernelTimestamps(wait=inj, signal=user_sig) into
+#             the cmdlist and records the slot for drain.
+#             The event_profiling tracepoint is attributed to the
+#             user's original signal (or inj when user passed NULL).
+#   on sync (queue/event/fence/cl-host): drain the slabs.
 profiling_prologue = lambda { |event_name|
   <<EOF
+  ze_event_handle_t _user_signal = #{event_name};
   struct _ze_event_h * _ewrapper = NULL;
-  if (_do_profile && !#{event_name}) {
+  if (_do_profile) {
     _ewrapper = _get_profiling_event(hCommandList);
     if (_ewrapper)
       #{event_name} = _ewrapper->event;
+    /* If injection failed, fall through with the user's signal unchanged;
+     * we won't be able to time this Append, but it still runs. */
   }
 EOF
 }
 
 profiling_epilogue = lambda { |event_name|
   <<EOF
-  if (_do_profile && #{event_name}) {
+  if (_do_profile && _ewrapper) {
     if (_retval == ZE_RESULT_SUCCESS) {
-      if (_ewrapper)
-        _register_our_event(_ewrapper, hCommandList);
-      else
-        _register_user_event(#{event_name}, hCommandList);
-      tracepoint(lttng_ust_ze_profiling, event_profiling, #{event_name});
-    } else if (_ewrapper)
+      ze_event_handle_t _attr = _user_signal ? _user_signal : _ewrapper->event;
+      _universal_record_append(hCommandList, _ewrapper, _user_signal);
+      tracepoint(lttng_ust_ze_profiling, event_profiling, _attr);
+    } else {
       PUT_ZE_EVENT(_ewrapper);
+    }
   }
 EOF
 }

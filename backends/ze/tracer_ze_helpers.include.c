@@ -48,16 +48,33 @@ struct ze_closure {
 
 struct ze_closure *ze_closures = NULL;
 
-typedef enum _ze_command_list_flag { _ZE_EXECUTED = ZE_BIT(0) } _ze_command_list_flag_t;
-typedef _ze_command_list_flag_t _ze_command_list_flags_t;
-
 struct _ze_event_h;
+
+/* Universal per-Append scheme bookkeeping (see project_ze_universal_scheme):
+ * one slot per profiled Append in the cl. Each slot holds the injected
+ * event we swapped in (wrapper), the original user signal event we'll
+ * attribute the timestamp to at drain time (NULL if user passed no
+ * event — attribute to inj instead), and the offset within the cl's
+ * slab buffer where the Query writes the timestamp. */
+struct _ze_slot {
+  struct _ze_event_h *inj;             /* tracer-owned event swapped into the Append */
+  ze_event_handle_t   attr;            /* event to attribute the timestamp to at drain (NULL => inj->event) */
+  size_t              off;             /* byte offset within cl_data->slab */
+};
+
+#define _ZE_SLAB_SLOTS_INITIAL 64
 
 struct _ze_command_list_obj_data {
   void *ptr; /* the ze_command_list_handle_t this entry tracks */
   UT_hash_handle hh;
-  _ze_command_list_flags_t flags;
-  struct _ze_event_h *events;
+
+  /* Universal scheme state — populated lazily on first profiled Append. */
+  void              *slab;       /* host-visible buffer for Query writes */
+  size_t             slab_bytes; /* allocated size in bytes */
+  ze_context_handle_t slab_ctx;  /* context the slab is allocated on (for free) */
+  struct _ze_slot   *slots;
+  uint32_t           n_slots;
+  uint32_t           cap_slots;
 };
 
 struct _ze_command_list_obj_data *_ze_cls = NULL;
@@ -87,7 +104,7 @@ pthread_mutex_t _ze_cls_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
   } while (0)
 
-static inline void _on_create_command_list(ze_command_list_handle_t command_list, int immediate) {
+static inline void _on_create_command_list(ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl_data = NULL;
 
   FIND_ZE_CL(&command_list, cl_data);
@@ -101,56 +118,19 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
     THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
     return;
   }
-
   cl_data->ptr = (void *)command_list;
-  /* Immediate cls have no Execute step; their appends run on the device the
-   * moment they're submitted. Treat them as already-executed so drainers
-   * (Reset/Destroy hooks) query their events via _ZE_EXECUTED uniformly. */
-  if (immediate)
-    cl_data->flags = _ZE_EXECUTED;
-
   ADD_ZE_CL(cl_data);
 }
 
-typedef enum _ze_event_flag { _ZE_IMMEDIATE_CMD = ZE_BIT(0) } _ze_event_flag_t;
-typedef _ze_event_flag_t _ze_event_flags_t;
-
+/* Wrapper around an injected event we own. Lives either in the per-context
+ * free pool (between uses) or anchored to one of cl_data->slots[] (in flight). */
 struct _ze_event_h {
   ze_event_handle_t event;
-  UT_hash_handle hh;
   ze_event_pool_handle_t event_pool;
   ze_context_handle_t context;
-  _ze_event_flags_t flags;
-  /* to remember events in command lists */
+  /* doubly-linked list pointers used by the per-context free pool */
   struct _ze_event_h *next, *prev;
 };
-
-static struct _ze_event_h *_ze_events = NULL;
-static pthread_mutex_t _ze_events_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-#define FIND_ZE_EVENT(key, val)                                                                    \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_events_mutex);                                                         \
-    HASH_FIND_PTR(_ze_events, key, val);                                                           \
-    pthread_mutex_unlock(&_ze_events_mutex);                                                       \
-  } while (0)
-
-#define ADD_ZE_EVENT(val)                                                                          \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_events_mutex);                                                         \
-    HASH_ADD_PTR(_ze_events, event, val);                                                          \
-    pthread_mutex_unlock(&_ze_events_mutex);                                                       \
-  } while (0)
-
-#define FIND_AND_DEL_ZE_EVENT(key, val)                                                            \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_events_mutex);                                                         \
-    HASH_FIND_PTR(_ze_events, key, val);                                                           \
-    if (val) {                                                                                     \
-      HASH_DEL(_ze_events, val);                                                                   \
-    }                                                                                              \
-    pthread_mutex_unlock(&_ze_events_mutex);                                                       \
-  } while (0)
 
 struct _ze_event_pool_entry {
   ze_context_handle_t context;
@@ -195,7 +175,6 @@ static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
       pool->context = val->context;                                                                \
       HASH_ADD_PTR(_ze_event_pools, context, pool);                                                \
     }                                                                                              \
-    val->flags = 0;                                                                                \
     ZE_EVENT_HOST_RESET_PTR(val->event);                                                           \
     DL_PREPEND(pool->events, val);                                                                 \
     pthread_mutex_unlock(&_ze_event_pools_mutex);                                                  \
@@ -223,74 +202,6 @@ static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
     DL_PREPEND(_ze_event_wrappers, val);                                                           \
     pthread_mutex_unlock(&_ze_event_wrappers_mutex);                                               \
   } while (0)
-
-/* Snapshot context + immediate-flag from cmdlist into the event wrapper.
- * The immediate flag is read at register time (not at _on_reset_event
- * time) because by reset time the cmdlist may already be destroyed and
- * zeCommandListIsImmediate would dereference a freed handle. */
-static inline void _tag_event_from_cl(struct _ze_event_h *_ze_event,
-                                      ze_command_list_handle_t command_list) {
-  ze_context_handle_t context = NULL;
-  ze_result_t res = ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &context);
-  if (res == ZE_RESULT_SUCCESS && context)
-    _ze_event->context = context;
-  else
-    THAPI_DBGLOG("zeCommandListGetContextHandle failed with %d for command list: %p", res,
-                 command_list);
-
-  ze_bool_t is_immediate = 0;
-  if (ZE_COMMAND_LIST_IS_IMMEDIATE_PTR(command_list, &is_immediate) == ZE_RESULT_SUCCESS &&
-      is_immediate)
-    _ze_event->flags |= _ZE_IMMEDIATE_CMD;
-}
-
-/* Append an event wrapper we own to its cmdlist's events list, under the
- * cl-hash lock (the FIND_AND_DEL/ADD pattern guards cl_data against a
- * concurrent free in _on_destroy_command_list). */
-static inline void _attach_event_to_cl(struct _ze_event_h *_ze_event,
-                                       ze_command_list_handle_t command_list) {
-  struct _ze_command_list_obj_data *cl_data = NULL;
-  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
-  if (!cl_data) {
-    THAPI_DBGLOG("Could not get command list associated to event: %p", _ze_event->event);
-    return;
-  }
-  DL_APPEND(cl_data->events, _ze_event);
-  ADD_ZE_CL(cl_data);
-}
-
-/* Register an injected (tracer-owned) event. Caller has already populated
- * _ze_event->event and _ze_event->event_pool via _get_profiling_event. */
-static inline void _register_our_event(struct _ze_event_h *_ze_event,
-                                       ze_command_list_handle_t command_list) {
-  _tag_event_from_cl(_ze_event, command_list);
-  _attach_event_to_cl(_ze_event, command_list);
-  ADD_ZE_EVENT(_ze_event);
-}
-
-/* Register a user event (we don't own its lifetime). Look up or create the
- * wrapper; users are responsible for reset/destroy, so we don't attach it
- * to the cl's events list. */
-static inline void _register_user_event(ze_event_handle_t event,
-                                        ze_command_list_handle_t command_list) {
-  struct _ze_event_h *_ze_event = NULL;
-  FIND_ZE_EVENT(&event, _ze_event);
-  if (_ze_event)
-    return; /* already tracked, nothing more to do */
-
-  GET_ZE_EVENT_WRAPPER(_ze_event);
-  if (!_ze_event) {
-    THAPI_DBGLOG("Could not get event wrapper for: %p", event);
-    return;
-  }
-  /* GET_ZE_EVENT_WRAPPER returns a fully-zeroed wrapper (calloc on first use,
-   * memset by PUT_ZE_EVENT_WRAPPER on recycle), so event_pool and flags are
-   * already 0 — only set the fields we actually want non-zero. */
-  _ze_event->event = event;
-
-  _tag_event_from_cl(_ze_event, command_list);
-  ADD_ZE_EVENT(_ze_event);
-}
 
 static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command_list) {
   struct _ze_event_h *e_w;
@@ -339,86 +250,174 @@ cleanup_wrapper:
   return NULL;
 }
 
-static void _profile_event_results(ze_event_handle_t event) {
-  ze_kernel_timestamp_result_t res = {0};
-  ze_result_t status;
-  ze_result_t timestamp_status;
-
-  if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
-    status = ZE_EVENT_QUERY_STATUS_PTR(event);
-    timestamp_status = ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(event, &res);
-    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, event, status, timestamp_status,
-                  res.global.kernelStart, res.global.kernelEnd, res.context.kernelStart,
-                  res.context.kernelEnd);
-  }
+/* Emit an event_profiling_results tracepoint directly from a captured
+ * ze_kernel_timestamp_result_t (no driver Query). Used by the universal
+ * scheme's drain path: the Query already wrote the timestamp into the
+ * slab buffer, so we just read the slot and emit. */
+static inline void _emit_kts_tracepoint(ze_event_handle_t attr_event,
+                                        const ze_kernel_timestamp_result_t *r) {
+  if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results))
+    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, attr_event,
+                  ZE_RESULT_SUCCESS, ZE_RESULT_SUCCESS,
+                  r->global.kernelStart, r->global.kernelEnd,
+                  r->context.kernelStart, r->context.kernelEnd);
 }
 
-static inline void _on_destroy_event(ze_event_handle_t event) {
-  struct _ze_event_h *ze_event = NULL;
+/* Universal scheme: ensure the cl's slab buffer is large enough to hold
+ * `n_slots` timestamps. First call allocates a host-visible buffer in
+ * `ctx`; later calls grow if needed. Returns 0 on success. */
+static int _cl_slab_ensure(struct _ze_command_list_obj_data *cl_data,
+                           ze_context_handle_t ctx, uint32_t n_slots) {
+  size_t needed = (size_t)n_slots * sizeof(ze_kernel_timestamp_result_t);
+  if (cl_data->slab && cl_data->slab_bytes >= needed)
+    return 0;
+  if (cl_data->slab) {
+    /* Outgrew the initial slab. For now we only allocate the initial size
+     * (capacity is bumped via realloc of the slot array; the slab itself
+     * is sized once). If we hit this path, it means more profiled Appends
+     * than _ZE_SLAB_SLOTS_INITIAL in a single cl — bail rather than
+     * realloc a host-visible alloc (no safe way to do that mid-record). */
+    THAPI_DBGLOG("slab full for cl %p (have %zu bytes, need %zu)",
+                 cl_data->ptr, cl_data->slab_bytes, needed);
+    return -1;
+  }
+  size_t bytes = (size_t)_ZE_SLAB_SLOTS_INITIAL * sizeof(ze_kernel_timestamp_result_t);
+  ze_host_mem_alloc_desc_t hd = {ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC, NULL, 0};
+  void *buf = NULL;
+  if (ZE_MEM_ALLOC_HOST_PTR(ctx, &hd, bytes, sizeof(uint64_t), &buf) != ZE_RESULT_SUCCESS ||
+      !buf) {
+    THAPI_DBGLOG("zeMemAllocHost(slab) failed for cl %p", cl_data->ptr);
+    return -1;
+  }
+  memset(buf, 0, bytes);
+  cl_data->slab = buf;
+  cl_data->slab_bytes = bytes;
+  cl_data->slab_ctx = ctx;
+  return 0;
+}
 
-  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event) {
+/* Universal scheme: grow the slot array if full. */
+static inline int _cl_slots_grow(struct _ze_command_list_obj_data *cl_data) {
+  if (cl_data->n_slots < cl_data->cap_slots) return 0;
+  uint32_t new_cap = cl_data->cap_slots ? cl_data->cap_slots * 2 : 8;
+  struct _ze_slot *grown = (struct _ze_slot *)realloc(
+      cl_data->slots, new_cap * sizeof(struct _ze_slot));
+  if (!grown) return -1;
+  cl_data->slots = grown;
+  cl_data->cap_slots = new_cap;
+  return 0;
+}
+
+/* Universal scheme: record one new slot on this cl. Caller will issue
+ * the actual zeCommandListAppendQueryKernelTimestamps with the returned
+ * offset. Returns NULL on failure (caller should not insert the Query). */
+static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_data,
+                                        ze_context_handle_t ctx,
+                                        struct _ze_event_h *inj,
+                                        ze_event_handle_t attr) {
+  if (_cl_slots_grow(cl_data) != 0) return NULL;
+  if (_cl_slab_ensure(cl_data, ctx, cl_data->n_slots + 1) != 0) return NULL;
+  struct _ze_slot *s = &cl_data->slots[cl_data->n_slots++];
+  s->inj  = inj;
+  s->attr = attr;
+  s->off  = (size_t)(cl_data->n_slots - 1) * sizeof(ze_kernel_timestamp_result_t);
+  return s;
+}
+
+/* Universal scheme — append-time hook called from profiling_epilogue.
+ *
+ * Postconditions on success:
+ *   - One zeCommandListAppendQueryKernelTimestamps appended to the cl,
+ *     waiting on `inj`'s event and signaling `user_signal` (NULL = no
+ *     signal). Its dst byte-offset within cl_data->slab is recorded in
+ *     a new slot.
+ *   - The slot's `attr` is set to user_signal (or NULL → attribute to
+ *     inj at drain time), so iprof gets one event_profiling_results per
+ *     profiled Append.
+ *
+ * On failure (no cl_data, no context, slab/slot alloc failed, Query
+ * failed): the injected wrapper is released back to the pool and no
+ * Query is added. The user's Append already happened; we just lose the
+ * timestamp for this one.
+ *
+ * Caller has already swapped the user's hSignalEvent for inj->event.
+ * `user_signal` is the ORIGINAL value (possibly NULL). */
+static void _universal_record_append(ze_command_list_handle_t command_list,
+                                     struct _ze_event_h *inj,
+                                     ze_event_handle_t user_signal) {
+  if (!inj) return;
+
+  ze_context_handle_t ctx = NULL;
+  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &ctx) != ZE_RESULT_SUCCESS || !ctx) {
+    PUT_ZE_EVENT(inj);
+    return;
+  }
+  /* Stamp the wrapper's context so PUT_ZE_EVENT can route it back to the
+   * correct per-context pool at drain. */
+  inj->context = ctx;
+
+  struct _ze_command_list_obj_data *cl_data = NULL;
+  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  if (!cl_data) {
+    PUT_ZE_EVENT(inj);
     return;
   }
 
-  _profile_event_results(event);
-  PUT_ZE_EVENT_WRAPPER(ze_event);
-}
-
-/* Caller already holds the wrapper (e.g. iterating cl_data->events) and
- * has removed it from any per-cl list. Drops it from the global events
- * hash, optionally emits its timestamp tracepoint, and recycles. */
-static inline void _unregister_ze_event(struct _ze_event_h *ze_event, int get_results) {
-  struct _ze_event_h *evicted = NULL;
-  FIND_AND_DEL_ZE_EVENT(&ze_event->event, evicted);
-  /* evicted should be == ze_event; if not, our hash bookkeeping is corrupt. */
-
-  if (get_results)
-    _profile_event_results(ze_event->event);
-  if (ze_event->event_pool)
-    PUT_ZE_EVENT(ze_event);
-  else
-    PUT_ZE_EVENT_WRAPPER(ze_event);
-}
-
-static inline void _on_reset_event(ze_event_handle_t event) {
-  struct _ze_event_h *ze_event = NULL;
-
-  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event) {
-    THAPI_DBGLOG("Could not find event: %p", event);
+  struct _ze_slot *slot = _cl_slot_append(cl_data, ctx, inj, user_signal);
+  if (!slot) {
+    ADD_ZE_CL(cl_data);
+    PUT_ZE_EVENT(inj);
     return;
   }
 
-  _profile_event_results(event);
-
-  if (!(ze_event->flags & _ZE_IMMEDIATE_CMD))
-    ADD_ZE_EVENT(ze_event);
-  else
-    PUT_ZE_EVENT_WRAPPER(ze_event);
-}
-
-static inline void _dump_and_reset_our_event(ze_event_handle_t event) {
-  struct _ze_event_h *ze_event = NULL;
-
-  FIND_AND_DEL_ZE_EVENT(&event, ze_event);
-  if (!ze_event) {
-    THAPI_DBGLOG("Could not find event: %p", event);
+  /* Insert the Query into the cmdlist body. wait=inj so the Query runs
+   * after the user's op (which signals inj); signal=user_signal so user
+   * code that waits on user_signal still sees a signal. */
+  ze_event_handle_t wait_ev = inj->event;
+  ze_result_t r = ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(
+      command_list, 1, &wait_ev, cl_data->slab, &slot->off,
+      /*hSignalEvent=*/ user_signal,
+      /*numWaitEvents=*/ 1, &wait_ev);
+  if (r != ZE_RESULT_SUCCESS) {
+    /* Roll the slot back so drain doesn't read garbage. */
+    cl_data->n_slots--;
+    ADD_ZE_CL(cl_data);
+    PUT_ZE_EVENT(inj);
     return;
   }
-
-  _profile_event_results(event);
-  ZE_EVENT_HOST_RESET_PTR(event);
-  ADD_ZE_EVENT(ze_event);
+  ADD_ZE_CL(cl_data);
 }
 
-/* Tear down a wrapper: optionally emit its timestamp tracepoint, then
- * destroy the injected event+pool if we own them, then recycle the
- * wrapper. Caller must have already removed it from any list/hash that
- * references it. */
-static inline void _dispose_event_wrapper(struct _ze_event_h *ze_event, int do_dump) {
-  if (do_dump && ze_event->event)
-    _profile_event_results(ze_event->event);
+/* Universal scheme: drain captured timestamps from cl's slab and emit a
+ * tracepoint per slot. Resets slot count but keeps the slab + capacity
+ * for reuse on the next build. Called from sync hooks (post-Execute /
+ * post-Sync). Safe to call when nothing's pending — returns immediately. */
+static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
+  if (cl_data->n_slots == 0) return;
+  if (!cl_data->slab) {
+    cl_data->n_slots = 0;
+    return;
+  }
+  for (uint32_t i = 0; i < cl_data->n_slots; ++i) {
+    struct _ze_slot *s = &cl_data->slots[i];
+    ze_kernel_timestamp_result_t r =
+        *(ze_kernel_timestamp_result_t *)((char *)cl_data->slab + s->off);
+    ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
+    if (attr)
+      _emit_kts_tracepoint(attr, &r);
+    /* Release the injected wrapper back to the per-context pool. The
+     * wrapper's event/pool stay alive in the pool so the next Append on
+     * any cl in this context can recycle them. */
+    if (s->inj)
+      PUT_ZE_EVENT(s->inj);
+  }
+  cl_data->n_slots = 0;
+}
+
+/* Tear down a wrapper: destroy our injected event+pool if we own them,
+ * then recycle the wrapper. Caller has already removed it from the
+ * per-context free pool. */
+static inline void _dispose_event_wrapper(struct _ze_event_h *ze_event) {
   if (ze_event->event_pool) {
     if (ze_event->event)
       ZE_EVENT_DESTROY_PTR(ze_event->event);
@@ -427,26 +426,9 @@ static inline void _dispose_event_wrapper(struct _ze_event_h *ze_event, int do_d
   PUT_ZE_EVENT_WRAPPER(ze_event);
 }
 
-static void _event_cleanup() {
-  struct _ze_event_h *ze_event = NULL;
-  struct _ze_event_h *tmp = NULL;
-  HASH_ITER(hh, _ze_events, ze_event, tmp) {
-    HASH_DEL(_ze_events, ze_event);
-    _dispose_event_wrapper(ze_event, 1);
-  }
-}
-
 static void _on_destroy_context(ze_context_handle_t context) {
-  struct _ze_event_h *ze_event = NULL;
-  struct _ze_event_h *tmp = NULL;
-  pthread_mutex_lock(&_ze_events_mutex);
-  HASH_ITER(hh, _ze_events, ze_event, tmp) {
-    if (ze_event->context == context) {
-      HASH_DEL(_ze_events, ze_event);
-      _dispose_event_wrapper(ze_event, 1);
-    }
-  }
-  pthread_mutex_unlock(&_ze_events_mutex);
+  /* Free the per-context event-wrapper pool. All wrappers in it are idle
+   * (returned via PUT_ZE_EVENT), so just dispose them. */
   pthread_mutex_lock(&_ze_event_pools_mutex);
   struct _ze_event_pool_entry *pool = NULL;
   HASH_FIND_PTR(_ze_event_pools, &context, pool);
@@ -455,65 +437,72 @@ static void _on_destroy_context(ze_context_handle_t context) {
     struct _ze_event_h *elt = NULL, *tmp = NULL;
     DL_FOREACH_SAFE(pool->events, elt, tmp) {
       DL_DELETE(pool->events, elt);
-      /* Wrapper is in the free list — its event was already dumped+reset
-       * by whoever recycled it. Don't dump again, just tear down. */
-      _dispose_event_wrapper(elt, 0);
+      _dispose_event_wrapper(elt);
     }
     free(pool);
   }
   pthread_mutex_unlock(&_ze_event_pools_mutex);
 }
 
+/* Universal scheme: free the cl's slab buffer (if allocated). Caller has
+ * already drained the slots. Idempotent. */
+static void _cl_slab_free(struct _ze_command_list_obj_data *cl_data) {
+  if (cl_data->slab) {
+    if (ZE_MEM_FREE_PTR && cl_data->slab_ctx)
+      ZE_MEM_FREE_PTR(cl_data->slab_ctx, cl_data->slab);
+    cl_data->slab = NULL;
+    cl_data->slab_bytes = 0;
+    cl_data->slab_ctx = NULL;
+  }
+}
+
+/* Universal scheme: drain a cl by handle, used by sync hooks. Walks the
+ * cl hash to find the cl_data, then drains it. Safe if cl_data is gone
+ * (e.g. raced with destroy) — just no-ops. */
+static void _on_sync_drain_cl(ze_command_list_handle_t command_list) {
+  struct _ze_command_list_obj_data *cl_data = NULL;
+  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  if (!cl_data) return;
+  _cl_drain(cl_data);
+  ADD_ZE_CL(cl_data);
+}
+
+/* Universal scheme: drain ALL cls. Used by sync APIs that don't take a
+ * cmdlist argument (zeCommandQueueSynchronize, zeEventHostSynchronize,
+ * zeFenceHostSynchronize). For now, a brute-force walk — O(N_cls) per
+ * sync. */
+static void _on_sync_drain_all(void) {
+  pthread_mutex_lock(&_ze_cls_mutex);
+  struct _ze_command_list_obj_data *cl_data = NULL, *tmp = NULL;
+  HASH_ITER(hh, _ze_cls, cl_data, tmp) {
+    _cl_drain(cl_data);
+  }
+  pthread_mutex_unlock(&_ze_cls_mutex);
+}
+
 static void _on_reset_command_list(ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl_data = NULL;
-
-  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  FIND_ZE_CL(&command_list, cl_data);
   if (!cl_data) {
     THAPI_DBGLOG("Could not get command list: %p", command_list);
     return;
   }
-  struct _ze_event_h *elt = NULL, *tmp = NULL;
-  DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
-    DL_DELETE(cl_data->events, elt);
-    _unregister_ze_event(elt, cl_data->flags & _ZE_EXECUTED);
-  }
-  cl_data->flags &= ~_ZE_EXECUTED;
-  ADD_ZE_CL(cl_data);
-}
-
-static void _on_execute_command_lists(uint32_t numCommandLists,
-                                      ze_command_list_handle_t *phCommandLists) {
-  for (uint32_t i = 0; i < numCommandLists; i++) {
-    struct _ze_command_list_obj_data *cl_data = NULL;
-    FIND_AND_DEL_ZE_CL(phCommandLists + i, cl_data);
-    if (cl_data) {
-      /* dump events if they were executed */
-      if (cl_data->flags & _ZE_EXECUTED) {
-        struct _ze_event_h *elt = NULL;
-        DL_FOREACH(cl_data->events, elt) { _dump_and_reset_our_event(elt->event); }
-      } else
-        cl_data->flags |= _ZE_EXECUTED;
-      ADD_ZE_CL(cl_data);
-    } else
-      THAPI_DBGLOG("Could not get command list: %p", phCommandLists[i]);
-  }
+  /* Drain any slots that haven't been read yet — Reset implies the user
+   * has already synchronized, so the timings are ready. The cl_data
+   * entry stays in the hash; only the per-build slot list is reset. */
+  _cl_drain(cl_data);
 }
 
 static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl_data = NULL;
-
   FIND_AND_DEL_ZE_CL(&command_list, cl_data);
   if (!cl_data) {
     THAPI_DBGLOG("Could not get command list: %p", command_list);
     return;
   }
-  if (_do_profile) {
-    struct _ze_event_h *elt = NULL, *tmp = NULL;
-    DL_FOREACH_SAFE(cl_data->events, elt, tmp) {
-      DL_DELETE(cl_data->events, elt);
-      _unregister_ze_event(elt, cl_data->flags & _ZE_EXECUTED);
-    }
-  }
+  _cl_drain(cl_data);
+  _cl_slab_free(cl_data);
+  free(cl_data->slots);
   free(cl_data);
 }
 
@@ -533,8 +522,6 @@ static inline int _do_state() {
 
 static void THAPI_ATTRIBUTE_DESTRUCTOR _lib_cleanup() {
   if (_do_cleanup) {
-    if (_do_profile)
-      _event_cleanup();
     if (_do_report_injected_events)
       fprintf(stderr, "THAPI: injected events: %lu\n",
               (unsigned long)_injected_event_count);
