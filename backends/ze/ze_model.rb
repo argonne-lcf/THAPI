@@ -140,7 +140,8 @@ ZE_POINTER_NAMES = ze_pointer_names.to_h
 register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _on_create_command_list(*phCommandList);
+      int _io = desc && (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER);
+      _on_create_command_list(*phCommandList, /*immediate=*/0, _io);
     }
   }
 EOF
@@ -148,45 +149,42 @@ EOF
 register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      _on_create_command_list(*phCommandList);
+      int _io = altdesc && (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER);
+      _on_create_command_list(*phCommandList, /*immediate=*/1, _io);
     }
   }
 EOF
 
-register_epilogue 'zeCommandListReset', <<EOF
-  if (_do_profile && hCommandList)
-    _on_reset_command_list(hCommandList);
+# Reset / Destroy hooks intentionally omitted: the user must have
+# synchronized before they reset or destroy the cmdlist, so all our
+# slots are already drained.
+
+# Force-sync prior Execute on a cl before the next Execute would
+# overwrite its slab.
+register_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
+  if (_do_profile && numCommandLists > 0 && phCommandLists)
+    _on_execute_command_lists_prologue(hCommandQueue, numCommandLists, phCommandLists);
 EOF
 
-register_epilogue 'zeCommandListDestroy', <<EOF
-  if (_do_state()) {
-    if (_retval == ZE_RESULT_SUCCESS && hCommandList) {
-      _on_destroy_command_list(hCommandList);
-    }
-  }
-EOF
-
-# Universal scheme drain hooks: any successful synchronize means the
-# slabs of all touched cls have valid timestamps; emit them.
+# Sync hooks: walk dependency edges from the synced anchor and drain
+# everything reachable. Each sync API has a different anchor.
 register_epilogue 'zeCommandQueueSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS)
-    _on_sync_drain_all();
+    _on_sync_drain_queue(hCommandQueue);
 EOF
 
 register_epilogue 'zeEventHostSynchronize', <<EOF
-  if (_do_profile && _retval == ZE_RESULT_SUCCESS)
-    _on_sync_drain_all();
-EOF
-
-register_epilogue 'zeFenceHostSynchronize', <<EOF
-  if (_do_profile && _retval == ZE_RESULT_SUCCESS)
-    _on_sync_drain_all();
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
+    _on_sync_drain_event(hEvent);
 EOF
 
 register_epilogue 'zeCommandListHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_sync_drain_cl(hCommandList);
 EOF
+
+# Fence sync: deferred (would need a fence->queue map). The tests using
+# fences (m_fence_sync) don't exist in the new matrix yet.
 
 register_prologue 'zeEventPoolCreate', <<EOF
   ze_event_pool_desc_t _new_desc;
@@ -205,12 +203,6 @@ register_prologue 'zeEventCreate', <<EOF
     _new_desc.signal |= ZE_EVENT_SCOPE_FLAG_HOST;
     _new_desc.wait |= ZE_EVENT_SCOPE_FLAG_HOST;
     desc = &_new_desc;
-  }
-EOF
-
-register_epilogue 'zeContextDestroy', <<EOF
-  if (_do_profile && hContext) {
-    _on_destroy_context(hContext);
   }
 EOF
 
@@ -285,12 +277,13 @@ profiling_prologue = lambda { |event_name|
 EOF
 }
 
-profiling_epilogue = lambda { |event_name|
+profiling_epilogue = lambda { |event_name, waits_expr = "phWaitEvents", n_waits_expr = "numWaitEvents"|
   <<EOF
   if (_do_profile && _ewrapper) {
     if (_retval == ZE_RESULT_SUCCESS) {
       ze_event_handle_t _attr = _user_signal ? _user_signal : _ewrapper->event;
-      _universal_record_append(hCommandList, _ewrapper, _user_signal);
+      _universal_record_append(hCommandList, _ewrapper, _user_signal,
+                               #{waits_expr}, #{n_waits_expr});
       tracepoint(lttng_ust_ze_profiling, event_profiling, _attr);
     } else {
       PUT_ZE_EVENT(_ewrapper);
@@ -332,7 +325,7 @@ end
 
 ['zeCommandListAppendSignalEvent'].each do |c|
   register_prologue c, profiling_prologue.call('hEvent')
-  register_epilogue c, profiling_epilogue.call('hEvent')
+  register_epilogue c, profiling_epilogue.call('hEvent', 'NULL', '0')
 end
 
 # WARNING
