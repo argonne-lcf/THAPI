@@ -281,7 +281,10 @@ TRACE_COMMON = \
 	tests/interval_profiling_fast.thapi_text_pretty \
 	tests/interval_profiling_interleave_process.thapi_text_pretty \
 	tests/interval_profiling_ignore.thapi_text_pretty \
-	tests/interval_profiling_shared_event.thapi_text_pretty
+	tests/interval_profiling_shared_event.thapi_text_pretty \
+	tests/interval_profiling_resubmit_event.thapi_text_pretty \
+	tests/interval_profiling_shared_event_resubmit.thapi_text_pretty \
+	tests/interval_profiling_shared_event_xphase.thapi_text_pretty
 
 BTX_ZE_GENERATED_SOURCE_TEST = \
         btx_source_ze_test/metababel/metababel.h \
