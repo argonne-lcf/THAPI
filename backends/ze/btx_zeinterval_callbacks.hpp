@@ -4,7 +4,6 @@
 #include <cstddef> // Bytes
 typedef bool _Bool;
 #include <metababel/metababel.h>
-#include <deque>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -94,15 +93,18 @@ struct data_s {
   std::unordered_map<hp_command_queue_t, ze_command_queue_desc_t> commandQueueToDesc;
 
   std::unordered_map<hpt_t, btx_launch_desc_t> threadToLastLaunchInfo;
-  /* FIFO of pending metadata per event handle.
-   *
-   * A single hEvent can be the signal event of multiple Appends on
-   * the same cmdlist; the tracer inserts a per-Append Query for each
-   * occurrence, producing one event_profiling_results tracepoint per
-   * use. Each Append pushes its metadata at event_profiling time;
-   * each result pop_fronts to attribute it to the correct (FIFO-
-   * oldest) Append. */
-  std::unordered_map<hp_event_t, std::deque<btx_event_desct_t>> eventToBtxDesct;
+
+  /* Per-event metadata ring. An hEvent can be the signal event of N
+   * Appends in one build phase, and the cl can be resubmitted M times,
+   * yielding M*N result events. We store the N Appends as a vector and
+   * advance `cursor` per result, wrapping at the end. A new push that
+   * arrives after the cursor advanced indicates a new build phase —
+   * we clear and start over so the ring tracks only the current phase. */
+  struct event_ring_t {
+    std::vector<btx_event_desct_t> entries;
+    size_t cursor = 0;
+  };
+  std::unordered_map<hp_event_t, event_ring_t> eventToBtxDesct;
   // Require for non IMM
   std::unordered_map<hp_command_list_t, std::unordered_set<ze_event_handle_t>> commandListToEvents;
 

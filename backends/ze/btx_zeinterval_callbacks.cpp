@@ -249,24 +249,6 @@ static void zeKernelCreate_exit_callback(void *btx_handle,
   std::get<std::string>(a) = kernelName;
 }
 
-// Drivers commonly recycle freed kernel handle addresses, so a later
-// zeKernelCreate on the same address will overwrite the entry. The
-// problematic case is races/orderings where a kernel result attributes
-// to the wrong name: clearing the entry on destroy makes the
-// reuse-after-destroy path explicit (the next Create populates a fresh
-// entry rather than mutating one that might still be referenced).
-static void zeKernelDestroy_entry_callback(void *btx_handle,
-                                           void *usr_data,
-                                           int64_t ts,
-                                           const char *hostname,
-                                           int64_t vpid,
-                                           uint64_t vtid,
-                                           ze_kernel_handle_t hKernel) {
-
-  auto *data = static_cast<data_t *>(usr_data);
-  data->kernelToDesct.erase({hostname, vpid, hKernel});
-}
-
 // It's possible to bypass zeKernelCreate,
 //      as a workaround for now, hoping that people will call
 //      zeKernelGetName
@@ -602,8 +584,8 @@ zeCommandQueueExecuteCommandLists_entry_callback(void *btx_handle,
   const auto commandQueueDesc = data->commandQueueToDesc[{hostname, vpid, hCommandQueue}];
   for (size_t i = 0; i < _phCommandLists_vals_length; i++) {
     for (auto &hEvent : data->commandListToEvents[{hostname, vpid, phCommandLists_vals[i]}]) {
-      auto &dq = data->eventToBtxDesct[{hostname, vpid, hEvent}];
-      for (auto &h : dq) {
+      auto &ring = data->eventToBtxDesct[{hostname, vpid, hEvent}];
+      for (auto &h : ring.entries) {
         std::get<ze_command_queue_desc_t>(h) = commandQueueDesc;
         std::get<int64_t>(h) = ts;
       }
@@ -844,16 +826,20 @@ static void event_profiling_callback(void *btx_handle,
       clockLttngDevice = it0->second;
   }
 
-  // If not IMM will be commandQueueDesc overwrited latter.
-  // Push onto the per-hEvent FIFO: the matching event_profiling_result
-  // pop_fronts to retrieve this Append's metadata. The tracer's lazy
-  // capture can produce N results for the same hEvent in submission
-  // order, one pop per result.
-  data->eventToBtxDesct[{hostname, vpid, hEvent}].push_back({vtid,         commandQueueDesc,
-                                                              hCommandList, hCommandListIsImmediate,
-                                                              hDevice,      commandName,
-                                                              ts_min,       clockLttngDevice,
-                                                              type,         ptr});
+  // If not IMM will be commandQueueDesc overwrited latter
+  // Push onto the per-event ring. If the cursor has advanced (we've
+  // already consumed at least one result for this event), the prior
+  // ring belongs to a finished build phase — clear and start fresh.
+  auto &ring = data->eventToBtxDesct[{hostname, vpid, hEvent}];
+  if (ring.cursor > 0) {
+    ring.entries.clear();
+    ring.cursor = 0;
+  }
+  ring.entries.push_back({vtid,         commandQueueDesc,
+                          hCommandList, hCommandListIsImmediate,
+                          hDevice,      commandName,
+                          ts_min,       clockLttngDevice,
+                          type,         ptr});
   // Prepare job for non IMM
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
@@ -904,21 +890,16 @@ static void event_profiling_result_callback(void *btx_handle,
 
   auto *data = static_cast<data_t *>(usr_data);
 
-  // Read the oldest pending metadata for this hEvent and consume it —
-  // FIFO matches the submission order, which is the order results
-  // arrive in for in-order cmdlists with shared signal events. Each
-  // Append pushes once; each result pops once; the deque drains
-  // exactly. We do NOT rotate (push_back + pop_front): that would
-  // be needed only for OOO-resubmit-without-reset of the same cmdlist
-  // (one set of pushes serving M*N pops), a case the universal tracer
-  // explicitly defers.
+  // Read the current ring slot for this event; advance the cursor;
+  // wrap to 0 on overflow. Resubmits re-cycle through the same ring.
   const auto it_p = data->eventToBtxDesct.find({hostname, vpid, hEvent});
-  if (it_p == data->eventToBtxDesct.cend() || it_p->second.empty())
+  if (it_p == data->eventToBtxDesct.cend() || it_p->second.entries.empty())
     return;
-  const auto popped = it_p->second.front();
-  it_p->second.pop_front();
+  auto &ring = it_p->second;
+  if (ring.cursor >= ring.entries.size()) ring.cursor = 0;
   const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
-               commandName, lltngMin, clockLttngDevice, type, ptr] = popped;
+               commandName, lltngMin, clockLttngDevice, type, ptr] = ring.entries[ring.cursor];
+  ring.cursor++;
   std::string metadata = "";
   {
     std::stringstream ss_metadata;
@@ -1408,8 +1389,6 @@ void btx_register_usr_callbacks(void *btx_handle) {
   /*  Name of the Function Profiled  */
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_entry);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelCreate_exit);
-  btx_register_callbacks_lttng_ust_ze_zeKernelDestroy_entry(btx_handle,
-                                                            &zeKernelDestroy_entry_callback);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelGetName_entry);
   REGISTER_ASSOCIATED_CALLBACK(zeKernelGetName_exit);
 
