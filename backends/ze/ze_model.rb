@@ -159,11 +159,18 @@ EOF
 # synchronized before they reset or destroy the cmdlist, so all our
 # slots are already drained.
 
-# Force-sync prior Execute on a cl before the next Execute would
-# overwrite its slab.
-register_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
-  if (_do_profile && numCommandLists > 0 && phCommandLists)
-    _on_execute_command_lists_prologue(hCommandQueue, numCommandLists, phCommandLists);
+# Epilogue runs after L0's actual submission has returned. ALL the
+# tracer's bookkeeping for Execute happens here (no prologue) so that
+# concurrent Executes / Syncs from other threads observe in_flight_q
+# atomically — the force-sync-prior + Append-Query + claim-in_flight_q
+# are one critical section.
+#
+# The Append-Query specifically MUST run after L0 submit, not before:
+# the shadow cl can share the engine with the user cl, and a pending
+# shadow Query op holds the engine, deadlocking the user cl.
+register_epilogue 'zeCommandQueueExecuteCommandLists', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && numCommandLists > 0 && phCommandLists)
+    _on_execute_command_lists_epilogue(hCommandQueue, numCommandLists, phCommandLists);
 EOF
 
 # Sync hooks: walk dependency edges from the synced anchor and drain
