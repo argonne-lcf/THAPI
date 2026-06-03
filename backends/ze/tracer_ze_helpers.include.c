@@ -47,14 +47,7 @@
   } while (0)
 #endif
 
-#ifdef THAPI_USE_DESTRUCTORS
-#define THAPI_ATTRIBUTE_DESTRUCTOR __attribute__((destructor))
-#else
-#define THAPI_ATTRIBUTE_DESTRUCTOR
-#endif
-
 static int _do_profile = 0;
-static int _do_cleanup = 0;
 static int _do_chained_structs = 0;
 static int _do_paranoid_drift = 0;
 static int _do_paranoid_memory_location = 0;
@@ -845,9 +838,6 @@ static inline int _do_state() {
          tracepoint_enabled(lttng_ust_ze_properties, memory_info_range);
 }
 
-static void THAPI_ATTRIBUTE_DESTRUCTOR _lib_cleanup() {
-}
-
 static void _dump_driver_subdevice_properties(ze_driver_handle_t hDriver,
                                               ze_device_handle_t hDevice) {
   if (!tracepoint_enabled(lttng_ust_ze_properties, subdevice))
@@ -1053,12 +1043,6 @@ static void _load_tracer(void) {
   s = getenv("LTTNG_UST_ZE_PARANOID_MEMORY_LOCATION");
   if (s)
     _do_paranoid_memory_location = 1;
-
-  _do_cleanup = 1;
-
-#ifndef THAPI_USE_DESTRUCTORS
-  atexit(_lib_cleanup);
-#endif
 }
 
 static void _load_tracer_dump(void) {
