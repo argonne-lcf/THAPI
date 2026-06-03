@@ -553,15 +553,20 @@ static int _cl_slab_ensure(struct _ze_command_list_obj_data *cl_data,
   return 0;
 }
 
-/* Universal scheme: grow the slot array if full. */
+/* Slot capacity is fixed at _ZE_SLAB_SLOTS_INITIAL to keep slot
+ * addresses stable for the cl's lifetime. We store raw slot pointers
+ * in `latest[ev] -> slot` and in other slots' `preds[]`; realloc would
+ * invalidate every one of them, silently breaking dep-graph walks
+ * (see tests/bugs/missing_drain_dag). The slab itself caps at the
+ * same number, so growing slots beyond it gains nothing anyway. */
 static inline int _cl_slots_grow(struct _ze_command_list_obj_data *cl_data) {
   if (cl_data->n_slots < cl_data->cap_slots) return 0;
-  uint32_t new_cap = cl_data->cap_slots ? cl_data->cap_slots * 2 : 8;
-  struct _ze_slot *grown = (struct _ze_slot *)realloc(
-      cl_data->slots, new_cap * sizeof(struct _ze_slot));
-  if (!grown) return -1;
-  cl_data->slots = grown;
-  cl_data->cap_slots = new_cap;
+  if (cl_data->cap_slots != 0) return -1;  /* already at cap, no growth */
+  struct _ze_slot *fresh = (struct _ze_slot *)calloc(
+      _ZE_SLAB_SLOTS_INITIAL, sizeof(struct _ze_slot));
+  if (!fresh) return -1;
+  cl_data->slots = fresh;
+  cl_data->cap_slots = _ZE_SLAB_SLOTS_INITIAL;
   return 0;
 }
 
