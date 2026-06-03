@@ -189,8 +189,15 @@ EXTRA_DIST += \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_mpimatching_model.yaml
 
-$(BTX_MPI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_mpimatching_model.yaml btx_mpi_model.yaml
-	$(METABABEL) -u btx_mpi_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_mpi -p mpiinterval -c interval --matching $(srcdir)/btx_mpimatching_model.yaml -i mpi.h.include
+# The MPI interval filter unions the ze upstream model so that
+# btx_mpiinterval_callbacks.cpp can subscribe to zeMemAlloc/zeMemFree
+# events and tag GPU-aware MPI calls via address-range lookup. This
+# creates a build-order dependency mpi -> ze; the ze backend must be
+# configured/built first when changing only the MPI backend.
+BTX_ZE_MODEL = $(top_builddir)/backends/ze/btx_ze_model.yaml
+
+$(BTX_MPI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_mpimatching_model.yaml btx_mpi_model.yaml $(BTX_ZE_MODEL)
+	$(METABABEL) -u btx_mpi_model.yaml,$(BTX_ZE_MODEL) -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_mpi -p mpiinterval -c interval --matching $(srcdir)/btx_mpimatching_model.yaml -i mpi.h.include
 
 CLEANFILES += \
 	$(BTX_MPI_GENERATED) \

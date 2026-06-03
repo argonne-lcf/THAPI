@@ -14,11 +14,14 @@
       :field_class:
         :type: integer_unsigned
   :event_classes:
+  # Restrict the bare entry/exit patterns to the MPI provider so that
+  # ze allocation/free events sourced from the ze backend (see below)
+  # do not accidentally match them.
   - :set_id: entries
-    :name: "_entry$"
+    :name: "^lttng_ust_mpi:.*_entry$"
   - :set_id: exits
     :register: false
-    :name: "_exit$"
+    :name: "^lttng_ust_mpi:.*_exit$"
   - :set_id: exits_mpiError_present
     :domain: exits
     :payload_field_class:
@@ -52,3 +55,63 @@
       - :name: ^(datatype|origin_count)$
         :field_class:
           :cast_type: MPI_Datatype
+  # ------------------------------------------------------------------
+  # GPU-aware MPI tagging
+  #
+  # Categories below feed btx_mpiinterval_callbacks.cpp's range-map
+  # lookup. The MPI buffer categories capture the payload pointer(s)
+  # of every buffer-bearing MPI call; the ze alloc/free categories
+  # maintain a {hostname,vpid} -> address-range map. An MPI call whose
+  # buffer falls in the range-map is tagged with a leading '*' in the
+  # tally output. This is only effective when the user enables both
+  # --backend mpi and --backend ze; with only --backend mpi the
+  # range-map stays empty and no '*' ever appears.
+  # ------------------------------------------------------------------
+  # Two-buffer MPI calls (Sendrecv, Allreduce, Reduce, Bcast variants
+  # with sendbuf+recvbuf, Get_accumulate with origin_addr+result_addr,
+  # etc.).
+  - :set_id: mpi_2buf_entry
+    :domain: entries
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^(sendbuf|buf|buffer|inbuf|origin_addr|inoutbuf)$
+        :field_class:
+          :cast_type: const void \*
+      - :name: ^(recvbuf|outbuf|result_addr)$
+        :field_class:
+          :cast_type: const void \*
+  # Single-buffer MPI calls (Send, Recv, Bcast, etc.).
+  - :set_id: mpi_1buf_entry
+    :domain: entries - mpi_2buf_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^(sendbuf|buf|buffer|inbuf|outbuf|inoutbuf|origin_addr|result_addr|compare_addr)$
+        :field_class:
+          :cast_type: const void \*
+  # Level Zero USM allocation / free events sourced from the ze
+  # backend (see backends/ze/btx_zematching_model.yaml for matching
+  # parents). We bind size at entry and the allocated pointer at exit,
+  # mirroring btx_zeinterval_callbacks.cpp:entries_alloc / exits_alloc.
+  - :set_id: ze_alloc_entry
+    :name: "^lttng_ust_ze:zeMemAlloc.*_entry$"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^size$
+  - :set_id: ze_alloc_exit
+    :name: "^lttng_ust_ze:zeMemAlloc.*_exit$"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^zeResult$
+        :field_class:
+          :cast_type: ^int$
+      - :name: ^pptr_val$
+  - :set_id: ze_free_entry
+    :name: "^lttng_ust_ze:zeMemFree_entry$"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ptr$
