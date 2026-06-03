@@ -34,19 +34,15 @@
 
 #ifdef THAPI_DEBUG
 #define TAHPI_LOG stderr
+/* GCC's `, ##__VA_ARGS__` extension swallows the leading comma when the
+ * variadic list is empty, so the same macro covers both no-arg and
+ * with-args calls. Already used in utils/tracepoint_gen.rb. */
 #define THAPI_DBGLOG(fmt, ...)                                                                     \
   do {                                                                                             \
-    fprintf(TAHPI_LOG, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__, __VA_ARGS__);                \
-  } while (0)
-#define THAPI_DBGLOG_NO_ARGS(fmt)                                                                  \
-  do {                                                                                             \
-    fprintf(TAHPI_LOG, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__);                             \
+    fprintf(TAHPI_LOG, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__, ##__VA_ARGS__);              \
   } while (0)
 #else
 #define THAPI_DBGLOG(...)                                                                          \
-  do {                                                                                             \
-  } while (0)
-#define THAPI_DBGLOG_NO_ARGS(fmt)                                                                  \
   do {                                                                                             \
   } while (0)
 #endif
@@ -335,7 +331,7 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
 
   cl_data = (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
   if (!cl_data) {
-    THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");
+    THAPI_DBGLOG("Failed to allocate memory");
     return;
   }
   cl_data->ptr = (void *)command_list;
@@ -436,7 +432,7 @@ static inline void _latest_clear_if(ze_event_handle_t ev, struct _ze_slot *s) {
     if (!pool) {                                                                                   \
       pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(struct _ze_event_pool_entry));        \
       if (!pool) {                                                                                 \
-        THAPI_DBGLOG_NO_ARGS("Failed to allocate memory");                                         \
+        THAPI_DBGLOG("Failed to allocate memory");                                         \
         pthread_mutex_unlock(&_ze_event_pools_mutex);                                              \
         if (val->event_pool) {                                                                     \
           if (val->event)                                                                          \
