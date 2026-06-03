@@ -88,6 +88,13 @@ struct _ze_slot {
   struct _ze_slot   **preds;           /* points at slots whose drain must come first (may be in another cl) */
   uint32_t            n_preds;
   unsigned char       live;            /* in-flight (instantiated, not drained) */
+  /* Incoming pred edges: count of downstream slots whose preds[] points
+   * here AND that have not yet been drained. Incremented at downstream
+   * _slot_instantiate (one per pred edge), decremented at downstream
+   * _slot_drain. Slot is reclaimable iff live==0 AND refs==0. Atomic
+   * because increment/decrement happen across cl boundaries without
+   * holding the slot's owner mtx. */
+  uint32_t            refs;
 };
 
 #define _ZE_SLAB_SLOTS_INITIAL 64
@@ -605,6 +612,9 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data,
       }
     }
   }
+  /* Each new pred edge holds a ref on its target. */
+  for (uint32_t i = 0; i < s->n_preds; ++i)
+    __atomic_fetch_add(&s->preds[i]->refs, 1, __ATOMIC_RELAXED);
   if (s->attr) _latest_set(s->attr, s);
 }
 
@@ -692,6 +702,26 @@ fail:
   PUT_ZE_EVENT(inj);
 }
 
+/* Reclaim a slot: PUT its tracer-owned events back to the per-context
+ * pool and free waits. Caller must hold s->owner->mtx if `s` is in the
+ * caller's cl; cross-cl reclaim runs without the pred's owner mtx,
+ * which is safe because release only fires at refs==0 && live==0 (no
+ * other party can be mutating the slot at that point).
+ *
+ * Regular cls are NOT released here: their inj is baked into the cl
+ * body and recycling inj would corrupt the next Execute round. Their
+ * events are reclaimed only at cl destroy (Phase-3). Immediate cls
+ * fire exactly once per Append, so per-drain reclaim is safe. */
+static void _slot_release(struct _ze_slot *s) {
+  if (!s || !s->owner || !s->owner->is_immediate) return;
+  if (s->inj)         { PUT_ZE_EVENT(s->inj);         s->inj         = NULL; }
+  if (s->shadow_done) { PUT_ZE_EVENT(s->shadow_done); s->shadow_done = NULL; }
+  free(s->waits);
+  s->waits   = NULL;
+  s->n_waits = 0;
+  s->attr    = NULL;
+}
+
 /* Drain one slot. Recurses on its preds first, then emits this slot
  * and pops it. Pop = clear inj/waits/preds; the holed entry is reused
  * by later _cl_slot_append calls. Safe to call on already-drained
@@ -739,9 +769,18 @@ static void _slot_drain(struct _ze_slot *s) {
                   r.context.kernelStart, r.context.kernelEnd);
   }
   _latest_clear_if(s->attr, s);
+  /* Drop our refs on preds; release any that reached refs==0 & live==0. */
+  for (uint32_t i = 0; i < s->n_preds; ++i) {
+    struct _ze_slot *p = s->preds[i];
+    if (__atomic_sub_fetch(&p->refs, 1, __ATOMIC_RELAXED) == 0 && !p->live)
+      _slot_release(p);
+  }
   /* Per-run preds reset; build-time fields (inj, attr, off, waits) stay
    * so the next Execute can re-instantiate without re-Append. */
   free(s->preds); s->preds = NULL; s->n_preds = 0;
+  /* If no downstream slot holds an edge on us, release immediately. */
+  if (__atomic_load_n(&s->refs, __ATOMIC_RELAXED) == 0)
+    _slot_release(s);
 }
 
 /* Drain every live slot in a cl. */
