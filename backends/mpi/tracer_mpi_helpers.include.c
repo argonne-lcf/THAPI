@@ -283,6 +283,18 @@ static int _try_classify_hip(const void *ptr,
   return 1;
 }
 
+/* Lazy initialisation of the GPU introspection loaders.  Deferred until the
+ * first buffer classification so that the application has finished its own
+ * runtime setup (zeInit / cuInit / ZE_AFFINITY_MASK / etc.) by the time we
+ * peek at the GPU stack.  Doing this from _load_tracer() instead would create
+ * an L0 context before the app has set its environment, which is bad
+ * hygiene and can in rare cases trigger reentrancy through the L0 loader. */
+static void _load_gpu_introspection(int verbose);
+static pthread_once_t _gpu_introspection_once = PTHREAD_ONCE_INIT;
+static void _load_gpu_introspection_once(void) {
+  _load_gpu_introspection(getenv("LTTNG_UST_MPI_VERBOSE") ? 1 : 0);
+}
+
 static inline void _dump_buffer_info(const void *ptr, int role) {
   if (!ptr)
     return;
@@ -291,6 +303,8 @@ static inline void _dump_buffer_info(const void *ptr, int role) {
     return;
   if (!tracepoint_enabled(lttng_ust_mpi_properties, buffer_info))
     return;
+
+  pthread_once(&_gpu_introspection_once, _load_gpu_introspection_once);
 
   struct _thapi_mpi_cache_entry e;
   if (!_thapi_mpi_cache_lookup(ptr, &e)) {
@@ -413,7 +427,9 @@ static void _load_tracer(void) {
     verbose = 1;
 
   find_mpi_symbols(handle, verbose);
-  _load_gpu_introspection(verbose);
+  /* GPU pointer introspection is loaded lazily on first use (see
+   * _load_gpu_introspection_once), so the application's runtime setup
+   * completes before we touch L0/CUDA/HIP. */
 }
 
 static inline void _init_tracer(void) {
