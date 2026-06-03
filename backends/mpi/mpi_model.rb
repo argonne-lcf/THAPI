@@ -110,7 +110,9 @@ MPI_PAYLOAD_BUFFER_NAMES = %w[
   origin_addr result_addr compare_addr
 ].freeze
 
-$mpi_meta_parameters.fetch('meta_parameters', []).each do |func, list|
+# Note: the YAML top-level key is the Ruby symbol :meta_parameters (it's
+# serialised as ":meta_parameters:"), not the string "meta_parameters".
+$mpi_meta_parameters.fetch(:meta_parameters, {}).each do |func, list|
   buffers = list.select do |type, name|
     %w[InScalar OutScalar].include?(type) &&
       MPI_PAYLOAD_BUFFER_NAMES.include?(name)
