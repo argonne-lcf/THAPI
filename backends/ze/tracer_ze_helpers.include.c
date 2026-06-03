@@ -323,18 +323,6 @@ static int _shadow_append_query(struct _ze_shadow_cl *sh,
   return (r == ZE_RESULT_SUCCESS) ? 0 : -1;
 }
 
-/* Lazy-cached device handle for a cl. The device is immutable for the
- * cl's lifetime; we just want to avoid repeating the L0 call. */
-static ze_device_handle_t _cl_get_device(struct _ze_command_list_obj_data *cl_data) {
-  if (cl_data->cached_device) return cl_data->cached_device;
-  ze_device_handle_t d = NULL;
-  if (ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR((ze_command_list_handle_t)cl_data->ptr, &d)
-      != ZE_RESULT_SUCCESS)
-    return NULL;
-  cl_data->cached_device = d;
-  return d;
-}
-
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
                                             int immediate, int in_order) {
   struct _ze_command_list_obj_data *cl_data = NULL;
@@ -697,7 +685,10 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
    * shadow cl now would let it fire too early on a stale inj). */
   if (cl_data->is_immediate) {
     cl_data->cached_context = ctx;
-    ze_device_handle_t dev = _cl_get_device(cl_data);
+    ze_device_handle_t dev = cl_data->cached_device;
+    if (!dev &&
+        ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &dev) == ZE_RESULT_SUCCESS)
+      cl_data->cached_device = dev;
     struct _ze_shadow_cl *sh = dev ? _get_shadow_cl(ctx, dev) : NULL;
     if (!sh || _shadow_append_query(sh, inj->event, cl_data->slab, &s->off,
                                      shadow_done->event) != 0) {
@@ -847,7 +838,10 @@ static void _on_execute_command_lists_epilogue(ze_command_queue_handle_t hQueue,
       if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(phCommandLists[i], &ctx) == ZE_RESULT_SUCCESS)
         cl_data->cached_context = ctx;
     }
-    ze_device_handle_t dev = _cl_get_device(cl_data);
+    ze_device_handle_t dev = cl_data->cached_device;
+    if (!dev &&
+        ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(phCommandLists[i], &dev) == ZE_RESULT_SUCCESS)
+      cl_data->cached_device = dev;
     struct _ze_shadow_cl *sh = (ctx && dev) ? _get_shadow_cl(ctx, dev) : NULL;
     for (uint32_t j = 0; j < cl_data->n_slots; ++j) {
       struct _ze_slot *slot = &cl_data->slots[j];
