@@ -622,37 +622,31 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
                                      ze_event_handle_t *user_waits,
                                      uint32_t user_n_waits) {
   if (!inj) return;
+  struct _ze_event_h *shadow_done = NULL;
+  struct _ze_command_list_obj_data *cl_data = NULL;
+  struct _ze_slot *s = NULL;
+
   ze_context_handle_t ctx = NULL;
-  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &ctx) != ZE_RESULT_SUCCESS || !ctx) {
-    PUT_ZE_EVENT(inj);
-    return;
-  }
+  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &ctx) != ZE_RESULT_SUCCESS || !ctx)
+    goto fail;
   inj->context = ctx;
 
   /* Tracer-owned fence event: Query signals it, drain host-waits on it
    * before reading the slab. Decouples drain-time correctness from any
    * user sync on user_signal — required because in step 2 the Query
    * moves to a separate shadow cl whose completion isn't implied by
-   * user-level sync. Allocated here so the failure path can release
-   * inj symmetrically. */
-  struct _ze_event_h *shadow_done = _get_profiling_event(command_list);
-  if (!shadow_done) { PUT_ZE_EVENT(inj); return; }
+   * user-level sync. */
+  shadow_done = _get_profiling_event(command_list);
+  if (!shadow_done) goto fail;
   shadow_done->context = ctx;
 
-  struct _ze_command_list_obj_data *cl_data = NULL;
   FIND_AND_DEL_ZE_CL(&command_list, cl_data);
-  if (!cl_data) { PUT_ZE_EVENT(inj); PUT_ZE_EVENT(shadow_done); return; }
+  if (!cl_data) goto fail;
   pthread_mutex_lock(&cl_data->mtx);
 
-  struct _ze_slot *s = _cl_slot_append(cl_data, ctx, inj, shadow_done,
-                                       user_signal, user_waits, user_n_waits);
-  if (!s) {
-    pthread_mutex_unlock(&cl_data->mtx);
-    ADD_ZE_CL(cl_data);
-    PUT_ZE_EVENT(inj);
-    PUT_ZE_EVENT(shadow_done);
-    return;
-  }
+  s = _cl_slot_append(cl_data, ctx, inj, shadow_done,
+                      user_signal, user_waits, user_n_waits);
+  if (!s) goto fail_locked;
 
   ze_event_handle_t wait_ev = inj->event;
 
@@ -663,17 +657,9 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
    * to both wait on inj and signal user_signal; SignalEvent doesn't
    * take a wait list. Skipped when user passed NULL. */
   if (user_signal) {
-    ze_result_t rs = ZE_COMMAND_LIST_APPEND_BARRIER_PTR(
-        command_list, user_signal, 1, &wait_ev);
-    if (rs != ZE_RESULT_SUCCESS) {
-      free(s->waits);
-      cl_data->n_slots--;
-      pthread_mutex_unlock(&cl_data->mtx);
-      ADD_ZE_CL(cl_data);
-      PUT_ZE_EVENT(inj);
-      PUT_ZE_EVENT(shadow_done);
-      return;
-    }
+    if (ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev)
+        != ZE_RESULT_SUCCESS)
+      goto fail_locked;
   }
 
   /* The Query Append now lives on the per-(context, device) shadow
@@ -691,19 +677,21 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
       cl_data->cached_device = dev;
     struct _ze_shadow_cl *sh = dev ? _get_shadow_cl(ctx, dev) : NULL;
     if (!sh || _shadow_append_query(sh, inj->event, cl_data->slab, &s->off,
-                                     shadow_done->event) != 0) {
-      free(s->waits);
-      cl_data->n_slots--;
-      pthread_mutex_unlock(&cl_data->mtx);
-      ADD_ZE_CL(cl_data);
-      PUT_ZE_EVENT(inj);
-      PUT_ZE_EVENT(shadow_done);
-      return;
-    }
+                                     shadow_done->event) != 0)
+      goto fail_locked;
     _slot_instantiate(cl_data, s);
   }
   pthread_mutex_unlock(&cl_data->mtx);
   ADD_ZE_CL(cl_data);
+  return;
+
+fail_locked:
+  if (s) { free(s->waits); cl_data->n_slots--; }
+  pthread_mutex_unlock(&cl_data->mtx);
+  ADD_ZE_CL(cl_data);
+fail:
+  if (shadow_done) PUT_ZE_EVENT(shadow_done);
+  PUT_ZE_EVENT(inj);
 }
 
 /* Drain one slot. Recurses on its preds first, then emits this slot
