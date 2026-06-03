@@ -306,6 +306,27 @@ static int _shadow_append_query(struct _ze_shadow_cl *sh,
   return (r == ZE_RESULT_SUCCESS) ? 0 : -1;
 }
 
+/* Return cl_data->cached_{device,context}, fetching from L0 on first call.
+ * Both fields are immutable for the cl's lifetime, so caching avoids the
+ * roundtrip on every Append/Execute. Returns NULL on L0 error. */
+static ze_device_handle_t _cl_cache_device(struct _ze_command_list_obj_data *cl_data,
+                                           ze_command_list_handle_t command_list) {
+  if (cl_data->cached_device) return cl_data->cached_device;
+  ze_device_handle_t d = NULL;
+  if (ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &d) == ZE_RESULT_SUCCESS)
+    cl_data->cached_device = d;
+  return d;
+}
+
+static ze_context_handle_t _cl_cache_context(struct _ze_command_list_obj_data *cl_data,
+                                             ze_command_list_handle_t command_list) {
+  if (cl_data->cached_context) return cl_data->cached_context;
+  ze_context_handle_t c = NULL;
+  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &c) == ZE_RESULT_SUCCESS)
+    cl_data->cached_context = c;
+  return c;
+}
+
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
                                             int immediate, int in_order) {
   struct _ze_command_list_obj_data *cl_data = NULL;
@@ -651,10 +672,7 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
    * shadow cl now would let it fire too early on a stale inj). */
   if (cl_data->is_immediate) {
     cl_data->cached_context = ctx;
-    ze_device_handle_t dev = cl_data->cached_device;
-    if (!dev &&
-        ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &dev) == ZE_RESULT_SUCCESS)
-      cl_data->cached_device = dev;
+    ze_device_handle_t dev = _cl_cache_device(cl_data, command_list);
     struct _ze_shadow_cl *sh = dev ? _get_shadow_cl(ctx, dev) : NULL;
     if (!sh || _shadow_append_query(sh, inj->event, cl_data->slab, &s->off,
                                      shadow_done->event) != 0)
@@ -772,11 +790,11 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
   pthread_mutex_unlock(&s->owner->mtx);
 }
 
-/* zeCommandQueueExecuteCommandLists EPILOGUE — runs AFTER L0's actual
- * Execute has returned, with the user cl in flight on its engine.
+/* Execute-epilogue handler for ONE cl. Runs AFTER L0's actual Execute
+ * has returned, with the user cl in flight on its engine.
  *
- * Three things happen here, all under cl_data->mtx so a concurrent
- * Execute (or Sync) on another thread sees them atomically:
+ * Three phases, all under cl_data->mtx so a concurrent Execute or Sync
+ * on another thread sees them atomically:
  *
  *   1) If in_flight_q is set from a prior Execute by *another* thread,
  *      force-sync that queue and drain the slab before we overwrite it
@@ -787,41 +805,40 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
  *      shadow cl before the user cl is in flight deadlocks when the
  *      shadow shares the engine with the user cl (see
  *      tests/bugs/query_on_separate_cl_regular_user_cl).
- *   3) Stamp in_flight_q = hQueue and instantiate the slot, publishing
+ *   3) Stamp in_flight_q = hQueue and instantiate each slot, publishing
  *      it to the dep graph + as the "owner" of this queue. */
+static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
+                               ze_command_list_handle_t command_list) {
+  struct _ze_command_list_obj_data *cl_data = NULL;
+  FIND_ZE_CL(&command_list, cl_data);
+  if (!cl_data) return;
+  pthread_mutex_lock(&cl_data->mtx);
+
+  if (cl_data->in_flight_q) {
+    ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX);
+    _cl_drain(cl_data);
+  }
+  ze_context_handle_t ctx = _cl_cache_context(cl_data, command_list);
+  ze_device_handle_t  dev = _cl_cache_device(cl_data, command_list);
+  struct _ze_shadow_cl *sh = (ctx && dev) ? _get_shadow_cl(ctx, dev) : NULL;
+  for (uint32_t j = 0; j < cl_data->n_slots; ++j) {
+    struct _ze_slot *slot = &cl_data->slots[j];
+    if (!sh || !slot->inj || !slot->shadow_done) continue;
+    if (_shadow_append_query(sh, slot->inj->event, cl_data->slab,
+                             &slot->off, slot->shadow_done->event) != 0)
+      continue;  /* slot stays not-live this round; we miss this timing */
+    _slot_instantiate(cl_data, slot);
+  }
+  cl_data->in_flight_q = hQueue;
+
+  pthread_mutex_unlock(&cl_data->mtx);
+}
+
 static void _on_execute_command_lists_epilogue(ze_command_queue_handle_t hQueue,
                                                 uint32_t numCommandLists,
                                                 ze_command_list_handle_t *phCommandLists) {
-  for (uint32_t i = 0; i < numCommandLists; ++i) {
-    struct _ze_command_list_obj_data *cl_data = NULL;
-    FIND_ZE_CL(phCommandLists + i, cl_data);
-    if (!cl_data) continue;
-    pthread_mutex_lock(&cl_data->mtx);
-    if (cl_data->in_flight_q) {
-      ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX);
-      _cl_drain(cl_data);
-    }
-    ze_context_handle_t ctx = cl_data->cached_context;
-    if (!ctx) {
-      if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(phCommandLists[i], &ctx) == ZE_RESULT_SUCCESS)
-        cl_data->cached_context = ctx;
-    }
-    ze_device_handle_t dev = cl_data->cached_device;
-    if (!dev &&
-        ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(phCommandLists[i], &dev) == ZE_RESULT_SUCCESS)
-      cl_data->cached_device = dev;
-    struct _ze_shadow_cl *sh = (ctx && dev) ? _get_shadow_cl(ctx, dev) : NULL;
-    for (uint32_t j = 0; j < cl_data->n_slots; ++j) {
-      struct _ze_slot *slot = &cl_data->slots[j];
-      if (!sh || !slot->inj || !slot->shadow_done) continue;
-      if (_shadow_append_query(sh, slot->inj->event, cl_data->slab,
-                               &slot->off, slot->shadow_done->event) != 0)
-        continue;  /* slot stays not-live this round; we miss this timing */
-      _slot_instantiate(cl_data, slot);
-    }
-    cl_data->in_flight_q = hQueue;
-    pthread_mutex_unlock(&cl_data->mtx);
-  }
+  for (uint32_t i = 0; i < numCommandLists; ++i)
+    _on_execute_one_cl(hQueue, phCommandLists[i]);
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
