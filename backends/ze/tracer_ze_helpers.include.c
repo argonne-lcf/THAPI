@@ -536,45 +536,20 @@ cleanup_wrapper:
   return NULL;
 }
 
-/* Lazy-allocate the cl's host-visible slab buffer (fixed size, enough
- * for _ZE_SLAB_SLOTS_INITIAL timestamps). Returns 0 on success, -1 if
- * already allocated and the requested slot index is out of range, or
- * if the allocation itself failed. */
-static int _cl_slab_ensure(struct _ze_command_list_obj_data *cl_data,
-                           ze_context_handle_t ctx, uint32_t slot_idx) {
-  if (slot_idx >= _ZE_SLAB_SLOTS_INITIAL) return -1;
-  if (cl_data->slab) return 0;
-  size_t bytes = (size_t)_ZE_SLAB_SLOTS_INITIAL * sizeof(ze_kernel_timestamp_result_t);
-  ze_host_mem_alloc_desc_t hd = {ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC, NULL, 0};
-  void *buf = NULL;
-  if (ZE_MEM_ALLOC_HOST_PTR(ctx, &hd, bytes, sizeof(uint64_t), &buf) != ZE_RESULT_SUCCESS || !buf)
-    return -1;
-  memset(buf, 0, bytes);
-  cl_data->slab = buf;
-  return 0;
-}
-
-/* Slot capacity is fixed at _ZE_SLAB_SLOTS_INITIAL to keep slot
- * addresses stable for the cl's lifetime. We store raw slot pointers
- * in `latest[ev] -> slot` and in other slots' `preds[]`; realloc would
- * invalidate every one of them, silently breaking dep-graph walks
- * (see tests/bugs/missing_drain_dag). The slab itself caps at the
- * same number, so growing slots beyond it gains nothing anyway. */
-static inline int _cl_slots_grow(struct _ze_command_list_obj_data *cl_data) {
-  if (cl_data->n_slots < cl_data->cap_slots) return 0;
-  if (cl_data->cap_slots != 0) return -1;  /* already at cap, no growth */
-  struct _ze_slot *fresh = (struct _ze_slot *)calloc(
-      _ZE_SLAB_SLOTS_INITIAL, sizeof(struct _ze_slot));
-  if (!fresh) return -1;
-  cl_data->slots = fresh;
-  cl_data->cap_slots = _ZE_SLAB_SLOTS_INITIAL;
-  return 0;
-}
-
 /* Allocate one new slot at the end of the cl's slot list. Slots are
  * never reused within a cl's lifetime — the cl body's Query op
  * hard-codes inj and off; the slot is the host-side mirror that gets
- * re-instantiated on every Execute. */
+ * re-instantiated on every Execute.
+ *
+ * Capacity is fixed at _ZE_SLAB_SLOTS_INITIAL to keep slot addresses
+ * stable for the cl's lifetime. We store raw slot pointers in
+ * `latest[ev] -> slot` and in other slots' `preds[]`; realloc would
+ * invalidate every one of them, silently breaking dep-graph walks
+ * (see tests/bugs/missing_drain_dag). The slab is sized to match, so
+ * growing slots beyond it would gain nothing anyway.
+ *
+ * Allocations (slots array and slab) happen BEFORE n_slots is bumped,
+ * so an OOM does not leave a hole in the slot indexing. */
 static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_data,
                                         ze_context_handle_t ctx,
                                         struct _ze_event_h *inj,
@@ -582,10 +557,24 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
                                         ze_event_handle_t attr,
                                         ze_event_handle_t *waits,
                                         uint32_t n_waits) {
-  if (_cl_slots_grow(cl_data) != 0) return NULL;
-  uint32_t idx = cl_data->n_slots++;
+  if (cl_data->n_slots >= _ZE_SLAB_SLOTS_INITIAL) return NULL;
+  if (!cl_data->slots) {
+    cl_data->slots = (struct _ze_slot *)calloc(
+        _ZE_SLAB_SLOTS_INITIAL, sizeof(struct _ze_slot));
+    if (!cl_data->slots) return NULL;
+    cl_data->cap_slots = _ZE_SLAB_SLOTS_INITIAL;
+  }
+  if (!cl_data->slab) {
+    size_t bytes = (size_t)_ZE_SLAB_SLOTS_INITIAL * sizeof(ze_kernel_timestamp_result_t);
+    ze_host_mem_alloc_desc_t hd = {ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC, NULL, 0};
+    void *buf = NULL;
+    if (ZE_MEM_ALLOC_HOST_PTR(ctx, &hd, bytes, sizeof(uint64_t), &buf) != ZE_RESULT_SUCCESS || !buf)
+      return NULL;
+    memset(buf, 0, bytes);
+    cl_data->slab = buf;
+  }
+  uint32_t idx = cl_data->n_slots;
   struct _ze_slot *s = &cl_data->slots[idx];
-  if (_cl_slab_ensure(cl_data, ctx, idx + 1) != 0) return NULL;
   s->owner       = cl_data;
   s->inj         = inj;
   s->shadow_done = shadow_done;
@@ -600,6 +589,7 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
       s->n_waits = n_waits;
     } else { s->n_waits = 0; }
   } else { s->waits = NULL; s->n_waits = 0; }
+  cl_data->n_slots++;
   return s;
 }
 
