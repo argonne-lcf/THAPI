@@ -739,9 +739,8 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
  * races are benign — the worst case is one extra tracepoint emit, not
  * a UAF. Take the pred's mtx only if we ever start freeing slot arrays.
  *
- * No cycle guard: the live-clear-before-recurse below would already
- * stop a cycle (re-entry hits live==0 and returns), but cycles are also
- * impossible by construction. preds come from two sources:
+ * No cycle guard: cycles are impossible by construction. preds come
+ * from two sources:
  *   - in-order prev slot in the same cl: strictly lower slot index, DAG.
  *   - latest[wait_event]: a slot published BEFORE us. Forming a cycle
  *     requires the user to declare two Appends each waiting on the
