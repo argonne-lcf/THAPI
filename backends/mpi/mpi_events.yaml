@@ -9,3 +9,26 @@ lttng_ust_mpi_type:
     - [ ctf_integer_hex, uintptr_t, datatype, "(uintptr_t)datatype" ]
     - [ ctf_integer, int, size, size ]
 
+lttng_ust_mpi_properties:
+  events:
+  # Emitted once per buffer argument of a buffer-bearing MPI call.
+  # `kind`    : 0 unknown, 1 host, 2 device, 3 shared/managed
+  # `backend` : 0 none,    1 level-zero, 2 cuda, 3 hip
+  # `role`    : 0 input (send-like), 1 output (recv-like)
+  - name: buffer_info
+    args:
+    - [ const void *, ptr ]
+    - [ int, role ]
+    - [ int, kind ]
+    - [ int, backend ]
+    - [ uintptr_t, base ]
+    - [ uint64_t, size ]
+    - [ uint32_t, device_ordinal ]
+    fields:
+    - [ ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr" ]
+    - [ ctf_integer, int, role, role ]
+    - [ ctf_integer, int, kind, kind ]
+    - [ ctf_integer, int, backend, backend ]
+    - [ ctf_integer_hex, uintptr_t, base, base ]
+    - [ ctf_integer, uint64_t, size, size ]
+    - [ ctf_integer, uint32_t, device_ordinal, device_ordinal ]
