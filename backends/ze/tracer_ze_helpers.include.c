@@ -627,6 +627,21 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   struct _ze_command_list_obj_data *cl_data = NULL;
   struct _ze_slot *s = NULL;
 
+  /* Chain user_signal off inj BEFORE anything else that can fail. The
+   * prologue already swapped user's hSignalEvent for inj->event, so
+   * nothing else on this cl signals user_signal — if we bail later
+   * (slot full, shadow_done alloc fails, etc.) the user's
+   * Sync(user_signal) would hang forever. AppendBarrier (not
+   * AppendSignalEvent) because we need to both wait on inj and signal
+   * user_signal. NULL user_signal is the "user passed NULL" case where
+   * no chaining is needed. */
+  if (user_signal) {
+    ze_event_handle_t wait_ev = inj->event;
+    if (ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev)
+        != ZE_RESULT_SUCCESS)
+      goto fail;
+  }
+
   ze_context_handle_t ctx = NULL;
   if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &ctx) != ZE_RESULT_SUCCESS || !ctx)
     goto fail;
@@ -634,9 +649,8 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
 
   /* Tracer-owned fence event: Query signals it, drain host-waits on it
    * before reading the slab. Decouples drain-time correctness from any
-   * user sync on user_signal — required because in step 2 the Query
-   * moves to a separate shadow cl whose completion isn't implied by
-   * user-level sync. */
+   * user sync on user_signal — required because the Query lives on a
+   * separate shadow cl whose completion isn't implied by user-level sync. */
   shadow_done = _get_profiling_event(command_list);
   if (!shadow_done) goto fail;
   shadow_done->context = ctx;
@@ -648,20 +662,6 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   s = _cl_slot_append(cl_data, ctx, inj, shadow_done,
                       user_signal, user_waits, user_n_waits);
   if (!s) goto fail_locked;
-
-  ze_event_handle_t wait_ev = inj->event;
-
-  /* Chain user_signal off inj so the user's wait still completes once
-   * the underlying op has fired. We swapped user's hSignalEvent for
-   * inj in the prologue, so nothing else on this cl signals
-   * user_signal. AppendBarrier (not AppendSignalEvent) because we need
-   * to both wait on inj and signal user_signal; SignalEvent doesn't
-   * take a wait list. Skipped when user passed NULL. */
-  if (user_signal) {
-    if (ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev)
-        != ZE_RESULT_SUCCESS)
-      goto fail_locked;
-  }
 
   /* The Query Append now lives on the per-(context, device) shadow
    * compute cl rather than the user cl. This is what lets us profile
