@@ -1,14 +1,12 @@
----
 lttng_ust_mpi_type:
   events:
   - name: property
     args:
-    - [ MPI_Datatype, datatype]
-    - [ int, size]
+    - [MPI_Datatype, datatype]
+    - [int, size]
     fields:
-    - [ ctf_integer_hex, uintptr_t, datatype, "(uintptr_t)datatype" ]
-    - [ ctf_integer, int, size, size ]
-
+    - [ctf_integer_hex, uintptr_t, datatype, "(uintptr_t)datatype"]
+    - [ctf_integer, int, size, size]
 lttng_ust_mpi_properties:
   events:
   # Emitted once per buffer argument of a buffer-bearing MPI call.
@@ -17,18 +15,18 @@ lttng_ust_mpi_properties:
   # `role`    : 0 input (send-like), 1 output (recv-like)
   - name: buffer_info
     args:
-    - [ const void *, ptr ]
-    - [ int, role ]
-    - [ int, kind ]
-    - [ int, backend ]
-    - [ uintptr_t, base ]
-    - [ uint64_t, size ]
-    - [ uint32_t, device_ordinal ]
+    - [const void *, ptr]
+    - [int, role]
+    - [int, kind]
+    - [int, backend]
+    - [uintptr_t, base]
+    - [uint64_t, size]
+    - [uint32_t, device_ordinal]
     fields:
-    - [ ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr" ]
-    - [ ctf_integer, int, role, role ]
-    - [ ctf_integer, int, kind, kind ]
-    - [ ctf_integer, int, backend, backend ]
-    - [ ctf_integer_hex, uintptr_t, base, base ]
-    - [ ctf_integer, uint64_t, size, size ]
-    - [ ctf_integer, uint32_t, device_ordinal, device_ordinal ]
+    - [ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr"]
+    - [ctf_integer, int, role, role]
+    - [ctf_integer, int, kind, kind]
+    - [ctf_integer, int, backend, backend]
+    - [ctf_integer_hex, uintptr_t, base, base]
+    - [ctf_integer, uint64_t, size, size]
+    - [ctf_integer, uint32_t, device_ordinal, device_ordinal]

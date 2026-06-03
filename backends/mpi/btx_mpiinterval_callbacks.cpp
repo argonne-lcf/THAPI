@@ -10,9 +10,9 @@
 // Must match the enum in backends/mpi/tracer_mpi_helpers.include.c.
 enum {
   THAPI_MPI_PTR_UNKNOWN = 0,
-  THAPI_MPI_PTR_HOST    = 1,
-  THAPI_MPI_PTR_DEVICE  = 2,
-  THAPI_MPI_PTR_SHARED  = 3
+  THAPI_MPI_PTR_HOST = 1,
+  THAPI_MPI_PTR_DEVICE = 2,
+  THAPI_MPI_PTR_SHARED = 3
 };
 
 struct data_s {
