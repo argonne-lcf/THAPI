@@ -81,8 +81,6 @@ fi
 lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
 lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
 lttng enable-event --channel=blocking-channel --userspace lttng_ust_mpi:*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_mpi_type:*
-lttng enable-event --channel=blocking-channel --userspace lttng_ust_mpi_properties:*
 if [ -z "$LTTNG_UST_MPI_LIBMPI" ]; then
   LTTNG_UST_MPI_LIBMPI=$(whichlib64_head libmpi.so)
   if [ -n "$LTTNG_UST_MPI_LIBMPI" ]; then

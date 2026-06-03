@@ -19,10 +19,6 @@ def common_block(c, provider)
   tracepoint_params = c.tracepoint_parameters.reject { |p| p.after? }.collect(&:name)
   puts "  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params + tracepoint_params).join(', ')});"
 
-  c.prologues.each do |p|
-    puts p
-  end
-
   params = c.parameters.collect(&:name)
   if c.has_return_type?
     puts "  #{c.type} _retval;"
@@ -79,12 +75,10 @@ end
 
 puts <<~EOF
   #include <stdint.h>
-  #include <string.h>
   #define MPICH_FORTRAN_SYMBOLS_NONABI
   #include <mpi.h>
   #include "mpi_tracepoints.h"
   #include "mpi_type.h"
-  #include "mpi_properties.h"
   #include <dlfcn.h>
   #include <pthread.h>
 EOF

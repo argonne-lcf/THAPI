@@ -639,7 +639,6 @@ def enable_events_mpi(channel_name, tracing_mode: 'default', profiling: true)
   end
   LOGGER.debug('Profiling is ignored for mpi') if profiling
   exec("#{lttng_enable} lttng_ust_mpi_type:*")
-  exec("#{lttng_enable} lttng_ust_mpi_properties:*")
 end
 
 def enable_events_cxi(channel_name, tracing_mode: 'default', profiling: true); end

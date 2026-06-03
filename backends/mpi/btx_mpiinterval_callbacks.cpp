@@ -5,22 +5,9 @@
 #include <sstream>
 #include <string>
 #include <tuple>
-#include <unordered_set>
-
-// Must match the enum in backends/mpi/tracer_mpi_helpers.include.c.
-enum {
-  THAPI_MPI_PTR_UNKNOWN = 0,
-  THAPI_MPI_PTR_HOST = 1,
-  THAPI_MPI_PTR_DEVICE = 2,
-  THAPI_MPI_PTR_SHARED = 3
-};
 
 struct data_s {
   EntryState entry_state;
-  // Set of {hostname, vpid, vtid} for which the in-flight MPI call has been
-  // observed to carry at least one device/shared GPU buffer.  Populated by
-  // buffer_info_callback, consumed (and cleared) by send_host_message.
-  std::unordered_set<hpt_t> gpu_aware_calls;
 };
 
 typedef struct data_s data_t;
@@ -34,16 +21,9 @@ static void send_host_message(void *btx_handle,
                               uint64_t vtid,
                               bool err) {
 
-  auto *data = static_cast<data_t *>(usr_data);
-  const hpt_t hpt{hostname, vpid, vtid};
-
   std::string event_class_name_striped = strip_event_class_name_exit(event_class_name);
-  // GPU-aware MPI calls are prefixed with '*' so they stand out in the
-  // profile.  The flag is set by buffer_info_callback during this call.
-  if (data->gpu_aware_calls.erase(hpt) > 0)
-    event_class_name_striped.insert(0, 1, '*');
-
-  const int64_t entry_ts = data->entry_state.get_ts(hpt);
+  const int64_t entry_ts =
+      static_cast<data_t *>(usr_data)->entry_state.get_ts({hostname, vpid, vtid});
 
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_MPI,
                               event_class_name_striped.c_str(), (ts - entry_ts), err);
@@ -169,29 +149,6 @@ static void type_property_callback(void *btx_handle,
   mpi_datatype_info[(uint64_t)datatype] = {std::to_string((uint64_t)datatype), size};
 }
 
-// Emitted from the prologue of every buffer-bearing MPI call, once per
-// buffer argument.  We only care whether at least one buffer is on the GPU
-// (device or shared/managed); that's enough to tag the call as GPU-aware.
-static void buffer_info_callback(void *btx_handle,
-                                 void *usr_data,
-                                 int64_t ts,
-                                 const char *hostname,
-                                 int64_t vpid,
-                                 uint64_t vtid,
-                                 void *ptr,
-                                 int role,
-                                 int kind,
-                                 int backend,
-                                 uintptr_t base,
-                                 uint64_t size,
-                                 uint32_t device_ordinal) {
-
-  if (kind == THAPI_MPI_PTR_DEVICE || kind == THAPI_MPI_PTR_SHARED) {
-    auto *data = static_cast<data_t *>(usr_data);
-    data->gpu_aware_calls.insert({hostname, vpid, vtid});
-  }
-}
-
 static void traffic_MPI_Count_entry_callback(void *btx_handle,
                                              void *usr_data,
                                              int64_t ts,
@@ -252,6 +209,4 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_traffic_int_entry(btx_handle, &traffic_int_entry_callback);
 
   btx_register_callbacks_lttng_ust_mpi_type_property(btx_handle, &type_property_callback);
-
-  btx_register_callbacks_lttng_ust_mpi_properties_buffer_info(btx_handle, &buffer_info_callback);
 }
