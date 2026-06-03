@@ -106,7 +106,6 @@ struct _ze_command_list_obj_data {
   void              *slab;       /* host-visible KT result buffer; alloc'd once, leaked on destroy */
   struct _ze_slot   *slots;
   uint32_t           n_slots;
-  uint32_t           cap_slots;
 
   /* in_flight_q is the queue this cl was last Executed on AND not yet
    * drained. NULL means "not in flight" — safe to Execute without a
@@ -539,7 +538,6 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
     cl_data->slots = (struct _ze_slot *)calloc(
         _ZE_SLAB_SLOTS_INITIAL, sizeof(struct _ze_slot));
     if (!cl_data->slots) return NULL;
-    cl_data->cap_slots = _ZE_SLAB_SLOTS_INITIAL;
   }
   if (!cl_data->slab) {
     size_t bytes = (size_t)_ZE_SLAB_SLOTS_INITIAL * sizeof(ze_kernel_timestamp_result_t);
