@@ -91,16 +91,17 @@ struct _ze_slot;
  * synced anchor and drain everything reachable. Drain is pop semantics:
  * after emit, the slot is dropped from the cl's list. */
 struct _ze_slot {
+  struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in (==> .slab to read at drain) */
   struct _ze_event_h *inj;             /* tracer-owned event the Query waits on */
   struct _ze_event_h *shadow_done;     /* tracer-owned event the Query signals; drain host-syncs on this */
   ze_event_handle_t   attr;            /* user's original signal event (NULL => inj->event) */
-  size_t              off;             /* byte offset within cl_data->slab */
+  size_t              off;             /* byte offset within owner->slab */
   /* User wait events copied at Append time (stable across rebuilds);
    * preds[] is computed at instantiate from waits[] by looking up
    * latest[w] for each w. */
   ze_event_handle_t  *waits;
   uint32_t            n_waits;
-  struct _ze_slot   **preds;           /* points at slots whose drain must come first */
+  struct _ze_slot   **preds;           /* points at slots whose drain must come first (may be in another cl) */
   uint32_t            n_preds;
   unsigned char       live;            /* in-flight (instantiated, not drained) */
 };
@@ -585,6 +586,7 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
   uint32_t idx = cl_data->n_slots++;
   struct _ze_slot *s = &cl_data->slots[idx];
   if (_cl_slab_ensure(cl_data, ctx, idx + 1) != 0) return NULL;
+  s->owner       = cl_data;
   s->inj         = inj;
   s->shadow_done = shadow_done;
   s->attr        = attr;
@@ -726,12 +728,20 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
 /* Drain one slot. Recurses on its preds first, then emits this slot
  * and pops it. Pop = clear inj/waits/preds; the holed entry is reused
  * by later _cl_slot_append calls. Safe to call on already-drained
- * (live=0) slot. */
-static void _slot_drain(struct _ze_command_list_obj_data *cl_data,
-                        struct _ze_slot *s) {
+ * (live=0) slot.
+ *
+ * Reads use s->owner->slab — preds may live in a different cl than the
+ * caller (cross-cl signal chains), so we cannot use the caller's slab.
+ *
+ * Locking: a pred on another cl is read/mutated WITHOUT taking its
+ * owner's mtx. That's safe in the current model because slot pointers
+ * are stable (cap is fixed, never realloc'd) and live-flag clearing
+ * races are benign — the worst case is one extra tracepoint emit, not
+ * a UAF. Take the pred's mtx only if we ever start freeing slot arrays. */
+static void _slot_drain(struct _ze_slot *s) {
   if (!s || !s->live) return;
   for (uint32_t i = 0; i < s->n_preds; ++i)
-    _slot_drain(cl_data, s->preds[i]);
+    _slot_drain(s->preds[i]);
   s->live = 0;
   /* Block until our Query op has actually fired, then reset the fence
    * so the next Execute round starts with a clean event. We can't
@@ -744,10 +754,10 @@ static void _slot_drain(struct _ze_command_list_obj_data *cl_data,
     ZE_EVENT_HOST_RESET_PTR(s->shadow_done->event);
   }
   ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
-  if (cl_data->slab && attr &&
+  if (s->owner && s->owner->slab && attr &&
       tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
     ze_kernel_timestamp_result_t r =
-        *(ze_kernel_timestamp_result_t *)((char *)cl_data->slab + s->off);
+        *(ze_kernel_timestamp_result_t *)((char *)s->owner->slab + s->off);
     do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, attr,
                   ZE_RESULT_SUCCESS, ZE_RESULT_SUCCESS,
                   r.global.kernelStart, r.global.kernelEnd,
@@ -762,7 +772,7 @@ static void _slot_drain(struct _ze_command_list_obj_data *cl_data,
 /* Drain every live slot in a cl. */
 static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
   for (uint32_t i = 0; i < cl_data->n_slots; ++i)
-    _slot_drain(cl_data, &cl_data->slots[i]);
+    _slot_drain(&cl_data->slots[i]);
   cl_data->in_flight_q = NULL;
 }
 
@@ -793,27 +803,16 @@ static void _on_sync_drain_queue(ze_command_queue_handle_t hQueue) {
 /* Drain the slot that most recently signaled `ev` (recursing on preds). */
 static void _on_sync_drain_event(ze_event_handle_t ev) {
   struct _ze_slot *s = _latest_get(ev);
-  if (!s) return;
-  /* The slot lives inside SOME cl_data->slots[]. To recurse safely
-   * under cl_data->mtx, we'd need to know which cl. For now, walk all
-   * cls and find the owner (rare path, bounded). */
-  pthread_mutex_lock(&_ze_cls_mutex);
-  struct _ze_command_list_obj_data *cl_data = NULL, *tmp = NULL;
-  HASH_ITER(hh, _ze_cls, cl_data, tmp) {
-    if (s >= cl_data->slots && s < cl_data->slots + cl_data->cap_slots) {
-      pthread_mutex_lock(&cl_data->mtx);
-      _slot_drain(cl_data, s);
-      /* Slot's drain may not have cleared in_flight_q if other slots
-       * are still live; check whether anything remains. */
-      int any_live = 0;
-      for (uint32_t i = 0; i < cl_data->n_slots; ++i)
-        if (cl_data->slots[i].live) { any_live = 1; break; }
-      if (!any_live) cl_data->in_flight_q = NULL;
-      pthread_mutex_unlock(&cl_data->mtx);
-      break;
-    }
-  }
-  pthread_mutex_unlock(&_ze_cls_mutex);
+  if (!s || !s->owner) return;
+  pthread_mutex_lock(&s->owner->mtx);
+  _slot_drain(s);
+  /* The drained slot may have left siblings live; only clear
+   * in_flight_q if nothing in this cl remains in flight. */
+  int any_live = 0;
+  for (uint32_t i = 0; i < s->owner->n_slots; ++i)
+    if (s->owner->slots[i].live) { any_live = 1; break; }
+  if (!any_live) s->owner->in_flight_q = NULL;
+  pthread_mutex_unlock(&s->owner->mtx);
 }
 
 /* zeCommandQueueExecuteCommandLists EPILOGUE — runs AFTER L0's actual
