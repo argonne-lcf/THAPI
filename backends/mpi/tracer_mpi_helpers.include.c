@@ -289,10 +289,10 @@ static int _try_classify_hip(const void *ptr,
  * peek at the GPU stack.  Doing this from _load_tracer() instead would create
  * an L0 context before the app has set its environment, which is bad
  * hygiene and can in rare cases trigger reentrancy through the L0 loader. */
-static void _load_gpu_introspection(int verbose);
+static void _load_gpu_introspection(void);
 static pthread_once_t _gpu_introspection_once = PTHREAD_ONCE_INIT;
 static void _load_gpu_introspection_once(void) {
-  _load_gpu_introspection(getenv("LTTNG_UST_MPI_VERBOSE") ? 1 : 0);
+  _load_gpu_introspection();
 }
 
 static inline void _dump_buffer_info(const void *ptr, int role) {
@@ -331,7 +331,7 @@ static inline void _dump_buffer_info(const void *ptr, int role) {
 }
 
 /* --- Loader -------------------------------------------------------------- */
-static void _load_gpu_introspection(int verbose) {
+static void _load_gpu_introspection(void) {
   /* Each loader is optional: if the runtime isn't present on the system, the
    * corresponding classifier stays NULL and is silently skipped. */
   void *h_ze = dlopen("libze_loader.so.1", RTLD_LAZY | RTLD_LOCAL);
@@ -355,14 +355,11 @@ static void _load_gpu_introspection(int verbose) {
     _thapi_ze_driver_handle_t hDrv = NULL;
     struct { uint32_t stype; const void *pNext; uint32_t flags; } desc = {
         0x000d /* ZE_STRUCTURE_TYPE_CONTEXT_DESC */, NULL, 0 };
-    if (ze_init && ze_driver && ze_ctx_new &&
-        ze_init(_THAPI_ZE_INIT_FLAG_GPU_ONLY) == _THAPI_ZE_RESULT_SUCCESS &&
-        ze_driver(&n, &hDrv) == _THAPI_ZE_RESULT_SUCCESS && hDrv &&
-        ze_ctx_new(hDrv, &desc, &_ze_introspection_ctx)
-            == _THAPI_ZE_RESULT_SUCCESS) {
-      if (verbose)
-        fprintf(stderr, "THAPI/MPI: Level Zero pointer introspection enabled\n");
-    } else {
+    if (!(ze_init && ze_driver && ze_ctx_new &&
+          ze_init(_THAPI_ZE_INIT_FLAG_GPU_ONLY) == _THAPI_ZE_RESULT_SUCCESS &&
+          ze_driver(&n, &hDrv) == _THAPI_ZE_RESULT_SUCCESS && hDrv &&
+          ze_ctx_new(hDrv, &desc, &_ze_introspection_ctx)
+              == _THAPI_ZE_RESULT_SUCCESS)) {
       _ze_mem_get_alloc_properties = NULL;
       _ze_mem_get_address_range    = NULL;
       _ze_introspection_ctx        = NULL;
@@ -377,13 +374,9 @@ static void _load_gpu_introspection(int verbose) {
         (_thapi_cu_init_fn_t)dlsym(h_cu, "cuInit");
     _cu_pointer_get_attribute = (_thapi_cu_pointer_get_attribute_fn_t)
         dlsym(h_cu, "cuPointerGetAttribute");
-    if (cu_init && _cu_pointer_get_attribute &&
-        cu_init(0) == _THAPI_CU_SUCCESS) {
-      if (verbose)
-        fprintf(stderr, "THAPI/MPI: CUDA pointer introspection enabled\n");
-    } else {
+    if (!(cu_init && _cu_pointer_get_attribute &&
+          cu_init(0) == _THAPI_CU_SUCCESS))
       _cu_pointer_get_attribute = NULL;
-    }
   }
 
   void *h_hip = dlopen("libamdhip64.so.5", RTLD_LAZY | RTLD_LOCAL);
@@ -394,8 +387,6 @@ static void _load_gpu_introspection(int verbose) {
         dlsym(h_hip, "hipPointerGetAttributes");
     _hip_mem_get_address_range  = (_thapi_hip_mem_get_address_range_fn_t)
         dlsym(h_hip, "hipMemGetAddressRange");
-    if (_hip_pointer_get_attributes && verbose)
-      fprintf(stderr, "THAPI/MPI: HIP pointer introspection enabled\n");
   }
 }
 
