@@ -737,7 +737,16 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
  * owner's mtx. That's safe in the current model because slot pointers
  * are stable (cap is fixed, never realloc'd) and live-flag clearing
  * races are benign — the worst case is one extra tracepoint emit, not
- * a UAF. Take the pred's mtx only if we ever start freeing slot arrays. */
+ * a UAF. Take the pred's mtx only if we ever start freeing slot arrays.
+ *
+ * No cycle guard: the live-clear-before-recurse below would already
+ * stop a cycle (re-entry hits live==0 and returns), but cycles are also
+ * impossible by construction. preds come from two sources:
+ *   - in-order prev slot in the same cl: strictly lower slot index, DAG.
+ *   - latest[wait_event]: a slot published BEFORE us. Forming a cycle
+ *     requires the user to declare two Appends each waiting on the
+ *     other's signal event — L0 itself would deadlock the GPU on that,
+ *     so we would never observe a sync return to reach drain. */
 static void _slot_drain(struct _ze_slot *s) {
   if (!s || !s->live) return;
   for (uint32_t i = 0; i < s->n_preds; ++i)
