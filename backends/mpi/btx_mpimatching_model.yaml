@@ -69,7 +69,9 @@
   # ------------------------------------------------------------------
   # Two-buffer MPI calls (Sendrecv, Allreduce, Reduce, Bcast variants
   # with sendbuf+recvbuf, Get_accumulate with origin_addr+result_addr,
-  # etc.).
+  # etc.). The cast_type intentionally accepts both `const void *`
+  # (input buffers) and plain `void *` (output buffers) since MPI
+  # prototypes use both.
   - :set_id: mpi_2buf_entry
     :domain: entries
     :payload_field_class:
@@ -77,10 +79,10 @@
       :members:
       - :name: ^(sendbuf|buf|buffer|inbuf|origin_addr|inoutbuf)$
         :field_class:
-          :cast_type: const void \*
+          :cast_type: ^(const )?void \*$
       - :name: ^(recvbuf|outbuf|result_addr)$
         :field_class:
-          :cast_type: const void \*
+          :cast_type: ^(const )?void \*$
   # Single-buffer MPI calls (Send, Recv, Bcast, etc.).
   - :set_id: mpi_1buf_entry
     :domain: entries - mpi_2buf_entry
@@ -89,7 +91,7 @@
       :members:
       - :name: ^(sendbuf|buf|buffer|inbuf|outbuf|inoutbuf|origin_addr|result_addr|compare_addr)$
         :field_class:
-          :cast_type: const void \*
+          :cast_type: ^(const )?void \*$
   # Level Zero USM allocation / free events sourced from the ze
   # backend (see backends/ze/btx_zematching_model.yaml for matching
   # parents). We bind size at entry and the allocated pointer at exit,
@@ -100,14 +102,14 @@
       :type: structure
       :members:
       - :name: ^size$
+  # We deliberately omit zeResult here so that the consumer callback
+  # signature does not need to depend on ze_api.h. A failed allocation
+  # has pptr_val == NULL, which the callback already guards against.
   - :set_id: ze_alloc_exit
     :name: "^lttng_ust_ze:zeMemAlloc.*_exit$"
     :payload_field_class:
       :type: structure
       :members:
-      - :name: ^zeResult$
-        :field_class:
-          :cast_type: ^int$
       - :name: ^pptr_val$
   - :set_id: ze_free_entry
     :name: "^lttng_ust_ze:zeMemFree_entry$"

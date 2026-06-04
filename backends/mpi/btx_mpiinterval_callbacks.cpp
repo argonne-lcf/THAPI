@@ -280,11 +280,12 @@ static void ze_alloc_exit_callback(void *btx_handle,
                                    const char *hostname,
                                    int64_t vpid,
                                    uint64_t vtid,
-                                   int zeResult,
                                    void *pptr_val) {
   auto *data = static_cast<data_t *>(usr_data);
   auto size = data->entry_state.get_data<size_t>({hostname, vpid, vtid});
-  if (zeResult != 0 || pptr_val == nullptr)
+  // We don't see zeResult in the matching model to avoid pulling in
+  // ze_api.h; a failed allocation has pptr_val == NULL.
+  if (pptr_val == nullptr)
     return;
 
   const std::string ev{event_class_name};
