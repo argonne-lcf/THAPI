@@ -341,6 +341,9 @@ tag_if_gpu(data_t *data, const char *hostname, int64_t vpid, uint64_t vtid, cons
     data->gpu_aware_calls.insert({hostname, vpid, vtid});
 }
 
+// metababel strips qualifiers when generating callback typedefs, so buffer
+// parameters declared `const void *` in the matching model become `void *`
+// in the generated mpi_*_entry_callback_f typedefs. Match exactly.
 static void mpi_1buf_entry_callback(void *btx_handle,
                                     void *usr_data,
                                     int64_t ts,
@@ -348,7 +351,7 @@ static void mpi_1buf_entry_callback(void *btx_handle,
                                     const char *hostname,
                                     int64_t vpid,
                                     uint64_t vtid,
-                                    const void *buf) {
+                                    void *buf) {
   tag_if_gpu(static_cast<data_t *>(usr_data), hostname, vpid, vtid, buf);
 }
 
@@ -360,8 +363,8 @@ static void mpi_sendrecv_entry_callback(void *btx_handle,
                                         const char *hostname,
                                         int64_t vpid,
                                         uint64_t vtid,
-                                        const void *sendbuf,
-                                        const void *recvbuf) {
+                                        void *sendbuf,
+                                        void *recvbuf) {
   auto *data = static_cast<data_t *>(usr_data);
   tag_if_gpu(data, hostname, vpid, vtid, sendbuf);
   tag_if_gpu(data, hostname, vpid, vtid, recvbuf);
@@ -375,8 +378,8 @@ static void mpi_reduce_local_entry_callback(void *btx_handle,
                                             const char *hostname,
                                             int64_t vpid,
                                             uint64_t vtid,
-                                            const void *inbuf,
-                                            const void *inoutbuf) {
+                                            void *inbuf,
+                                            void *inoutbuf) {
   auto *data = static_cast<data_t *>(usr_data);
   tag_if_gpu(data, hostname, vpid, vtid, inbuf);
   tag_if_gpu(data, hostname, vpid, vtid, inoutbuf);
@@ -390,8 +393,8 @@ static void mpi_rma_fetch_entry_callback(void *btx_handle,
                                          const char *hostname,
                                          int64_t vpid,
                                          uint64_t vtid,
-                                         const void *origin_addr,
-                                         const void *result_addr) {
+                                         void *origin_addr,
+                                         void *result_addr) {
   auto *data = static_cast<data_t *>(usr_data);
   tag_if_gpu(data, hostname, vpid, vtid, origin_addr);
   tag_if_gpu(data, hostname, vpid, vtid, result_addr);
@@ -405,9 +408,9 @@ static void mpi_cas_entry_callback(void *btx_handle,
                                    const char *hostname,
                                    int64_t vpid,
                                    uint64_t vtid,
-                                   const void *origin_addr,
-                                   const void *compare_addr,
-                                   const void *result_addr) {
+                                   void *origin_addr,
+                                   void *compare_addr,
+                                   void *result_addr) {
   auto *data = static_cast<data_t *>(usr_data);
   tag_if_gpu(data, hostname, vpid, vtid, origin_addr);
   tag_if_gpu(data, hostname, vpid, vtid, compare_addr);
