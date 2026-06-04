@@ -170,6 +170,16 @@ register_epilogue 'zeCommandListDestroy', <<EOF
     _on_destroy_command_list(hCommandList);
 EOF
 
+# zeContextDestroy prologue: tear down our own L0 objects that live
+# inside this context (shadow cls, per-ctx event pools/events) BEFORE the
+# user destroys the context. The L0 spec says the user has ensured the
+# device is no longer referencing the context, so all user-side cls/events
+# are already done — we just need to not leak our allocations.
+register_prologue 'zeContextDestroy', <<EOF
+  if (_do_profile && hContext)
+    _on_destroy_context(hContext);
+EOF
+
 # Epilogue runs after L0's actual submission has returned. ALL the
 # tracer's bookkeeping for Execute happens here (no prologue) so that
 # concurrent Executes / Syncs from other threads observe in_flight_q

@@ -868,6 +868,84 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   free(cl_data);
 }
 
+/* zeContextDestroy prologue. The user contract is that the device is no
+ * longer referencing the context, so all cls/events bound to it are
+ * conceptually dead from the user's perspective. Our job here is solely
+ * to avoid leaking our own L0 objects that live inside this context:
+ *
+ *   1) cls registered against this ctx: free their slot/slab/chunk state
+ *      (drop tracer-owned events to L0 without re-pooling — the pool is
+ *      about to die anyway).
+ *   2) per-(ctx, device) shadow cls: zeCommandListDestroy them.
+ *   3) per-ctx event-pool freelist: zeEventDestroy + zeEventPoolDestroy
+ *      each wrapper, recycle the wrapper structs.
+ *
+ * Forwards no calls about the user's own cls/events to the driver — the
+ * user takes care of those (or accepts the contract). */
+static void _on_destroy_context(ze_context_handle_t hContext) {
+  /* 1) Drop cls bound to this ctx. */
+  pthread_mutex_lock(&_ze_cls_mutex);
+  struct _ze_command_list_obj_data *cl_data = NULL, *cl_tmp = NULL;
+  HASH_ITER(hh, _ze_cls, cl_data, cl_tmp) {
+    if (cl_data->cached_context != hContext) continue;
+    HASH_DEL(_ze_cls, cl_data);
+    pthread_mutex_lock(&cl_data->mtx);
+    struct _ze_slab_chunk *c, *ctmp;
+    DL_FOREACH_SAFE(cl_data->chunks, c, ctmp) {
+      for (uint32_t i = 0; i < c->n_used; ++i) {
+        struct _ze_slot *s = &c->slots[i];
+        /* Recycle our event wrappers but DON'T return them to the per-ctx
+         * pool — the pool entry will be wiped in step 3, and we want the
+         * underlying L0 event/pool destroyed there too, not here. The
+         * wrappers themselves are context-agnostic, so reuse them. */
+        if (s->inj)         PUT_ZE_EVENT_WRAPPER(s->inj);
+        if (s->shadow_done) PUT_ZE_EVENT_WRAPPER(s->shadow_done);
+        free(s->waits);
+        free(s->preds);
+        _latest_clear_if(s->attr, s);
+      }
+      DL_DELETE(cl_data->chunks, c);
+      /* Skip zeMemFree on the slab — the ctx is being destroyed; the
+       * driver will reclaim the device allocation. Calling zeMemFree
+       * on a doomed ctx is at best racy. */
+      free(c);
+    }
+    pthread_mutex_unlock(&cl_data->mtx);
+    pthread_mutex_destroy(&cl_data->mtx);
+    free(cl_data);
+  }
+  pthread_mutex_unlock(&_ze_cls_mutex);
+
+  /* 2) Shadow cls keyed by (ctx, device). */
+  pthread_mutex_lock(&_ze_shadow_cls_mutex);
+  struct _ze_shadow_cl *sh = NULL, *sh_tmp = NULL;
+  HASH_ITER(hh, _ze_shadow_cls, sh, sh_tmp) {
+    if (sh->key.context != hContext) continue;
+    HASH_DEL(_ze_shadow_cls, sh);
+    if (sh->cl) ZE_COMMAND_LIST_DESTROY_PTR(sh->cl);
+    pthread_mutex_destroy(&sh->mtx);
+    free(sh);
+  }
+  pthread_mutex_unlock(&_ze_shadow_cls_mutex);
+
+  /* 3) Per-ctx event pool freelist. */
+  pthread_mutex_lock(&_ze_event_pools_mutex);
+  struct _ze_event_pool_entry *pe = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &hContext, pe);
+  if (pe) {
+    HASH_DEL(_ze_event_pools, pe);
+    struct _ze_event_h *w, *w_tmp;
+    DL_FOREACH_SAFE(pe->events, w, w_tmp) {
+      if (w->event)      ZE_EVENT_DESTROY_PTR(w->event);
+      if (w->event_pool) ZE_EVENT_POOL_DESTROY_PTR(w->event_pool);
+      DL_DELETE(pe->events, w);
+      PUT_ZE_EVENT_WRAPPER(w);
+    }
+    free(pe);
+  }
+  pthread_mutex_unlock(&_ze_event_pools_mutex);
+}
+
 /* Drain every cl whose in_flight_q matches. */
 static void _on_sync_drain_queue(ze_command_queue_handle_t hQueue) {
   pthread_mutex_lock(&_ze_cls_mutex);
