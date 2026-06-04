@@ -155,9 +155,20 @@ register_epilogue 'zeCommandListCreateImmediate', <<EOF
   }
 EOF
 
-# Reset / Destroy hooks intentionally omitted: the user must have
-# synchronized before they reset or destroy the cmdlist, so all our
-# slots are already drained.
+# Reset hook intentionally omitted: the L0 spec
+# (https://oneapi-src.github.io/level-zero-spec/level-zero/latest/core/api.html#zecommandlistreset)
+# says the user must have synchronized first, so all our slots are
+# already drained.
+#
+# Destroy hook: the same spec rule applies for the GPU side (no in-flight
+# work on the cl), but we still need to clean up OUR host-side state —
+# slot/slab chunks, per-slot waits, and tracer-owned events that haven't
+# already gone back to the pool. Otherwise every cl create/destroy cycle
+# leaks all of the above.
+register_epilogue 'zeCommandListDestroy', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
+    _on_destroy_command_list(hCommandList);
+EOF
 
 # Epilogue runs after L0's actual submission has returned. ALL the
 # tracer's bookkeeping for Execute happens here (no prologue) so that
