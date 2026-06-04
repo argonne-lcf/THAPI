@@ -352,18 +352,66 @@ static void mpi_1buf_entry_callback(void *btx_handle,
   tag_if_gpu(static_cast<data_t *>(usr_data), hostname, vpid, vtid, buf);
 }
 
-static void mpi_2buf_entry_callback(void *btx_handle,
-                                    void *usr_data,
-                                    int64_t ts,
-                                    const char *event_class_name,
-                                    const char *hostname,
-                                    int64_t vpid,
-                                    uint64_t vtid,
-                                    const void *sendbuf,
-                                    const void *recvbuf) {
+// MPI_Sendrecv, MPI_Allreduce, MPI_Reduce, MPI_Gather, ... — the bulk.
+static void mpi_sendrecv_entry_callback(void *btx_handle,
+                                        void *usr_data,
+                                        int64_t ts,
+                                        const char *event_class_name,
+                                        const char *hostname,
+                                        int64_t vpid,
+                                        uint64_t vtid,
+                                        const void *sendbuf,
+                                        const void *recvbuf) {
   auto *data = static_cast<data_t *>(usr_data);
   tag_if_gpu(data, hostname, vpid, vtid, sendbuf);
   tag_if_gpu(data, hostname, vpid, vtid, recvbuf);
+}
+
+// MPI_Reduce_local(inbuf, inoutbuf, ...)
+static void mpi_reduce_local_entry_callback(void *btx_handle,
+                                            void *usr_data,
+                                            int64_t ts,
+                                            const char *event_class_name,
+                                            const char *hostname,
+                                            int64_t vpid,
+                                            uint64_t vtid,
+                                            const void *inbuf,
+                                            const void *inoutbuf) {
+  auto *data = static_cast<data_t *>(usr_data);
+  tag_if_gpu(data, hostname, vpid, vtid, inbuf);
+  tag_if_gpu(data, hostname, vpid, vtid, inoutbuf);
+}
+
+// MPI_Get_accumulate, MPI_Fetch_and_op (origin_addr + result_addr).
+static void mpi_rma_fetch_entry_callback(void *btx_handle,
+                                         void *usr_data,
+                                         int64_t ts,
+                                         const char *event_class_name,
+                                         const char *hostname,
+                                         int64_t vpid,
+                                         uint64_t vtid,
+                                         const void *origin_addr,
+                                         const void *result_addr) {
+  auto *data = static_cast<data_t *>(usr_data);
+  tag_if_gpu(data, hostname, vpid, vtid, origin_addr);
+  tag_if_gpu(data, hostname, vpid, vtid, result_addr);
+}
+
+// MPI_Compare_and_swap(origin_addr, compare_addr, result_addr, ...)
+static void mpi_cas_entry_callback(void *btx_handle,
+                                   void *usr_data,
+                                   int64_t ts,
+                                   const char *event_class_name,
+                                   const char *hostname,
+                                   int64_t vpid,
+                                   uint64_t vtid,
+                                   const void *origin_addr,
+                                   const void *compare_addr,
+                                   const void *result_addr) {
+  auto *data = static_cast<data_t *>(usr_data);
+  tag_if_gpu(data, hostname, vpid, vtid, origin_addr);
+  tag_if_gpu(data, hostname, vpid, vtid, compare_addr);
+  tag_if_gpu(data, hostname, vpid, vtid, result_addr);
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
@@ -379,10 +427,14 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_ust_mpi_type_property(btx_handle, &type_property_callback);
 
   // GPU-aware MPI: ze alloc/free updates the range-map, MPI buffer entries
-  // look up against it.
+  // look up against it. One callback per MPI buffer-shape (see the matching
+  // model for why we cannot lump them into a single regex).
   btx_register_callbacks_ze_alloc_entry(btx_handle, &ze_alloc_entry_callback);
   btx_register_callbacks_ze_alloc_exit(btx_handle, &ze_alloc_exit_callback);
   btx_register_callbacks_ze_free_entry(btx_handle, &ze_free_entry_callback);
   btx_register_callbacks_mpi_1buf_entry(btx_handle, &mpi_1buf_entry_callback);
-  btx_register_callbacks_mpi_2buf_entry(btx_handle, &mpi_2buf_entry_callback);
+  btx_register_callbacks_mpi_sendrecv_entry(btx_handle, &mpi_sendrecv_entry_callback);
+  btx_register_callbacks_mpi_reduce_local_entry(btx_handle, &mpi_reduce_local_entry_callback);
+  btx_register_callbacks_mpi_rma_fetch_entry(btx_handle, &mpi_rma_fetch_entry_callback);
+  btx_register_callbacks_mpi_cas_entry(btx_handle, &mpi_cas_entry_callback);
 }

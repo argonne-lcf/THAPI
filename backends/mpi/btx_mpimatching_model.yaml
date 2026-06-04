@@ -67,29 +67,73 @@
   # --backend mpi and --backend ze; with only --backend mpi the
   # range-map stays empty and no '*' ever appears.
   # ------------------------------------------------------------------
-  # Two-buffer MPI calls (Sendrecv, Allreduce, Reduce, Bcast variants
-  # with sendbuf+recvbuf, Get_accumulate with origin_addr+result_addr,
-  # etc.). The cast_type intentionally accepts both `const void *`
-  # (input buffers) and plain `void *` (output buffers) since MPI
-  # prototypes use both.
-  - :set_id: mpi_2buf_entry
+  # MPI buffer categories. metababel requires each :name: regex to bind
+  # to EXACTLY ONE field per matched event, so we cannot lump all buffer
+  # names into a single regex slot: an event like MPI_Reduce_local has
+  # both `inbuf` and `inoutbuf`, and MPI_Compare_and_swap has three
+  # buffer fields, which would over-match. Define one category per
+  # distinct MPI buffer-shape, then a catch-all for single-buffer calls.
+  # The cast_type accepts both `const void *` (input buffers) and plain
+  # `void *` (output buffers) since MPI prototypes use both.
+  #
+  # 3-buffer: MPI_Compare_and_swap
+  - :set_id: mpi_cas_entry
     :domain: entries
     :payload_field_class:
       :type: structure
       :members:
-      - :name: ^(sendbuf|buf|buffer|inbuf|origin_addr|inoutbuf)$
+      - :name: ^origin_addr$
         :field_class:
           :cast_type: ^(const )?void \*$
-      - :name: ^(recvbuf|outbuf|result_addr)$
+      - :name: ^compare_addr$
         :field_class:
           :cast_type: ^(const )?void \*$
-  # Single-buffer MPI calls (Send, Recv, Bcast, etc.).
-  - :set_id: mpi_1buf_entry
-    :domain: entries - mpi_2buf_entry
+      - :name: ^result_addr$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+  # 2-buffer Send/Recv pair (Sendrecv, Allreduce, Reduce, Gather, ...).
+  - :set_id: mpi_sendrecv_entry
+    :domain: entries - mpi_cas_entry
     :payload_field_class:
       :type: structure
       :members:
-      - :name: ^(sendbuf|buf|buffer|inbuf|outbuf|inoutbuf|origin_addr|result_addr|compare_addr)$
+      - :name: ^sendbuf$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+      - :name: ^recvbuf$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+  # 2-buffer Reduce_local pair (inbuf + inoutbuf).
+  - :set_id: mpi_reduce_local_entry
+    :domain: entries - mpi_cas_entry - mpi_sendrecv_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^inbuf$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+      - :name: ^inoutbuf$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+  # 2-buffer RMA fetch pair (Get_accumulate, Fetch_and_op).
+  - :set_id: mpi_rma_fetch_entry
+    :domain: entries - mpi_cas_entry - mpi_sendrecv_entry - mpi_reduce_local_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^origin_addr$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+      - :name: ^result_addr$
+        :field_class:
+          :cast_type: ^(const )?void \*$
+  # 1-buffer everything else (Send/Recv/Bcast/Put/Get/Accumulate/...).
+  - :set_id: mpi_1buf_entry
+    :domain: entries - mpi_cas_entry - mpi_sendrecv_entry - mpi_reduce_local_entry - mpi_rma_fetch_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^(sendbuf|buf|buffer|inbuf|outbuf|inoutbuf|origin_addr|result_addr)$
         :field_class:
           :cast_type: ^(const )?void \*$
   # Level Zero USM allocation / free events sourced from the ze
