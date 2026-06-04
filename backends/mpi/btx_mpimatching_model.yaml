@@ -128,12 +128,17 @@
         :field_class:
           :cast_type: ^(const )?void \*$
   # 1-buffer everything else (Send/Recv/Bcast/Put/Get/Accumulate/...).
+  # After excluding the multi-buffer categories above, every remaining
+  # buffer-bearing MPI call carries exactly one of {buf, buffer,
+  # origin_addr}. Pack/Unpack (inbuf + outbuf) is intentionally NOT
+  # included: the buffers never traverse the network, so GPU-aware
+  # tagging is meaningless there.
   - :set_id: mpi_1buf_entry
     :domain: entries - mpi_cas_entry - mpi_sendrecv_entry - mpi_reduce_local_entry - mpi_rma_fetch_entry
     :payload_field_class:
       :type: structure
       :members:
-      - :name: ^(sendbuf|buf|buffer|inbuf|outbuf|inoutbuf|origin_addr|result_addr)$
+      - :name: ^(buf|buffer|origin_addr)$
         :field_class:
           :cast_type: ^(const )?void \*$
   # Level Zero USM allocation / free events sourced from the ze
