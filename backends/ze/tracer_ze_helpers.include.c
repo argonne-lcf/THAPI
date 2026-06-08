@@ -78,7 +78,9 @@ struct _ze_slab_chunk;
 struct _ze_slot {
   struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in */
   struct _ze_slab_chunk *chunk; /* chunk this slot lives in (==> .slab to read at drain) */
-  struct _ze_event_h *inj;      /* tracer-owned event the Query waits on */
+  struct _ze_shadow_cl
+      *sh; /* shadow cl this slot's Query was Appended to (NULL until instantiated) */
+  struct _ze_event_h *inj; /* tracer-owned event the Query waits on */
   struct _ze_event_h
       *shadow_done;       /* tracer-owned event the Query signals; drain host-syncs on this */
   ze_event_handle_t attr; /* user's original signal event (NULL => inj->event) */
@@ -253,6 +255,7 @@ struct _ze_shadow_cl {
   struct _ze_shadow_key key;
   ze_command_list_handle_t cl;
   pthread_mutex_t mtx;
+  uint32_t live_queries; /* QKTs appended but not yet host-synced; protected by mtx */
   UT_hash_handle hh;
 };
 static struct _ze_shadow_cl *_ze_shadow_cls = NULL;
@@ -335,10 +338,13 @@ static int _shadow_append_query(struct _ze_shadow_cl *sh,
                                 size_t *off,
                                 ze_event_handle_t shadow_done_event) {
   pthread_mutex_lock(&sh->mtx);
+  sh->live_queries++;
   ze_result_t r =
       ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(sh->cl, 1, &inj_event, slab, off,
                                                          /*hSignalEvent=*/shadow_done_event,
                                                          /*numWaitEvents=*/1, &inj_event);
+  if (r != ZE_RESULT_SUCCESS)
+    sh->live_queries--;
   pthread_mutex_unlock(&sh->mtx);
   return (r == ZE_RESULT_SUCCESS) ? 0 : -1;
 }
@@ -743,6 +749,7 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
     if (!sh ||
         _shadow_append_query(sh, inj->event, s->chunk->slab, &s->off, shadow_done->event) != 0)
       goto fail_locked;
+    s->sh = sh;
     _slot_instantiate(cl_data, s);
   }
   pthread_mutex_unlock(&cl_data->mtx);
@@ -800,7 +807,8 @@ static void _slot_release(struct _ze_slot *s) {
   struct _ze_command_list_obj_data *cl = s->owner;
   if (!c)
     return;
-  if (--c->n_held == 0 && c != cl->chunks->prev) {
+  c->n_held--;
+  if (c->n_held == 0 && c != cl->chunks->prev) {
     DL_DELETE(cl->chunks, c);
     if (c->slab)
       ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
@@ -832,6 +840,16 @@ static void _slot_drain(struct _ze_slot *s) {
   if (s->shadow_done && s->shadow_done->event) {
     ZE_EVENT_HOST_SYNCHRONIZE_PTR(s->shadow_done->event, UINT64_MAX);
     ZE_EVENT_HOST_RESET_PTR(s->shadow_done->event);
+    /* QKT completed device-side. Drop the live ref; if nothing else on
+     * this shadow cl is in flight, Reset it: the L0 driver leaks ~10 KB
+     * per AppendQueryKernelTimestamps and only reclaims at Reset/Destroy. */
+    if (s->sh) {
+      pthread_mutex_lock(&s->sh->mtx);
+      s->sh->live_queries--;
+      if (s->sh->live_queries == 0)
+        ZE_COMMAND_LIST_RESET_PTR(s->sh->cl);
+      pthread_mutex_unlock(&s->sh->mtx);
+    }
   }
   ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
   if (s->chunk && s->chunk->slab && attr &&
@@ -863,10 +881,11 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
   DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
     /* Bump refcount during traversal so the last _slot_drain doesn't
      * free c out from under the inner loop. Drop after, free here. */
-    ++c->n_held;
+    c->n_held++;
     for (uint32_t i = 0; i < c->n_used; ++i)
       _slot_drain(&c->slots[i]);
-    if (--c->n_held == 0 && c != cl_data->chunks->prev) {
+    c->n_held--;
+    if (c->n_held == 0 && c != cl_data->chunks->prev) {
       DL_DELETE(cl_data->chunks, c);
       if (c->slab)
         ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
@@ -1091,6 +1110,7 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
       if (_shadow_append_query(sh, slot->inj->event, c->slab, &slot->off,
                                slot->shadow_done->event) != 0)
         continue; /* slot stays not-live this round; we miss this timing */
+      slot->sh = sh;
       _slot_instantiate(cl_data, slot);
     }
   }
