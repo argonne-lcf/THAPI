@@ -305,7 +305,7 @@ profiling_prologue = lambda { |event_name|
 EOF
 }
 
-profiling_epilogue = lambda { |event_name, waits_expr = "phWaitEvents", n_waits_expr = "numWaitEvents"|
+profiling_epilogue = lambda { |_event_name, waits_expr = 'phWaitEvents', n_waits_expr = 'numWaitEvents'|
   <<EOF
   if (_do_profile && _ewrapper) {
     if (_retval == ZE_RESULT_SUCCESS) {
