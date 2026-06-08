@@ -860,9 +860,19 @@ static void _slot_drain(struct _ze_slot *s) {
  * low-to-high — natural time order for emission). */
 static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
   struct _ze_slab_chunk *c, *tmp;
-  DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
-  for (uint32_t i = 0; i < c->n_used; ++i)
-    _slot_drain(&c->slots[i]);
+  DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
+    /* Bump refcount during traversal so the last _slot_drain doesn't
+     * free c out from under the inner loop. Drop after, free here. */
+    ++c->n_held;
+    for (uint32_t i = 0; i < c->n_used; ++i)
+      _slot_drain(&c->slots[i]);
+    if (--c->n_held == 0 && c != cl_data->chunks->prev) {
+      DL_DELETE(cl_data->chunks, c);
+      if (c->slab)
+        ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
+      free(c);
+    }
+  }
   cl_data->in_flight_q = NULL;
 }
 
