@@ -3,7 +3,7 @@
  *
  * On profiled Append (cl, sig=user_sig, waits=user_waits):
  *   - allocate inj from per-context pool; swap user_sig -> inj
- *   - insert Query(wait=inj, sig=user_sig, slab[off])
+ *   - place a Query (see "QKT placement" below)
  *   - allocate a slot {inj, attr=user_sig, off, waits=copy(user_waits)}
  *   - immediate cl: instantiate(slot) inline
  *
@@ -15,6 +15,8 @@
  * On Execute(q, cl) prologue:
  *   - lock cl.mtx
  *   - if cl.in_flight_q: Synchronize(in_flight_q); drain_cl(cl)
+ *   - shadow-path slots: re-Append Query on shadow cl
+ *     inline-path slots: nothing (Query is baked into cl body)
  *   - instantiate every slot in cl
  *   - cl.in_flight_q = q; unlock
  *
@@ -25,11 +27,46 @@
  *
  * drain(s):
  *   - for p in s.preds: drain(p)
+ *   - shadow-path: host-sync on shadow_done, reset, decrement live_queries
  *   - read slab[s.off], emit tracepoint(s.attr or inj)
  *   - clear latest[s.attr] (if it still points at s)
  *   - clear s.live and s.preds
  *   (Build-time fields inj, attr, off, waits stay so the next Execute
  *    can re-instantiate without re-Appending.)
+ *
+ * QKT placement
+ * =============
+ *
+ * AppendQueryKernelTimestamps (the device-side timestamp read) lives
+ * in one of two places, picked at cl create from the queue group's
+ * COMPUTE flag and stored in cl_data->is_compute. Both paths share the
+ * slot/drain/dep-graph machinery; they only differ in where the QKT is
+ * Appended and how the drain knows it has fired.
+ *
+ *   INLINE (user cl is on a COMPUTE queue group):
+ *
+ *     Kernel(sig=inj) ──> QKT(wait=inj, sig=user_signal)   [on user cl]
+ *
+ *     One Append. user_signal IS the QKT-done edge — any user-level
+ *     sync (event/queue/cl) that covers user_signal also covers the
+ *     QKT. No tracer fence event, no host-sync at drain. For regular
+ *     cls the QKT is baked into the cl body once and re-fires on every
+ *     Execute.
+ *
+ *   SHADOW (user cl is copy-only, or queue group unknown):
+ *
+ *                       ┌─> Barrier(wait=inj, sig=user_signal) [on user cl]
+ *     Kernel(sig=inj) ──┤
+ *                       └─> QKT(wait=inj, sig=shadow_done)     [on shadow cl]
+ *
+ *     Two Appends. The shadow cl is a per-(context, device) tracer-owned
+ *     immediate compute cl; QKT goes there because copy queue groups
+ *     reject AppendQueryKernelTimestamps. shadow_done is a tracer-owned
+ *     fence event that drain host-syncs on — required because the
+ *     shadow cl's completion isn't implied by any user-level sync. For
+ *     regular cls the shadow QKT is (re-)Appended in the Execute
+ *     epilogue (the user cl is in flight by then, so Appending the
+ *     Query won't deadlock on a shared engine).
  */
 
 #ifdef THAPI_DEBUG
@@ -94,11 +131,14 @@ struct _ze_slab_chunk;
 struct _ze_slot {
   struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in */
   struct _ze_slab_chunk *chunk; /* chunk this slot lives in (==> .slab to read at drain) */
-  struct _ze_shadow_cl
-      *sh; /* shadow cl this slot's Query was Appended to (NULL until instantiated) */
+  /* Shadow path only: shadow cl the Query was Appended to. Inline-path
+   * slots leave this NULL — their Query lives in the user cl body and
+   * the dep-graph walk that triggers drain already implies it has run. */
+  struct _ze_shadow_cl *sh;
   struct _ze_event_h *inj; /* tracer-owned event the Query waits on */
-  struct _ze_event_h
-      *shadow_done;       /* tracer-owned event the Query signals; drain host-syncs on this */
+  /* Shadow path only: tracer-owned fence event the Query signals; drain
+   * host-syncs on it. Inline-path slots leave this NULL. */
+  struct _ze_event_h *shadow_done;
   ze_event_handle_t attr; /* user's original signal event (NULL => inj->event) */
   size_t off;             /* byte offset within chunk->slab */
   /* User wait events copied at Append time (stable across rebuilds);
@@ -122,9 +162,9 @@ struct _ze_slot {
 
 /* Slot + slab storage in fixed-size chunks; cl_data->chunks is a utlist
  * DL of these. Imm cls allocate new chunks as needed (no cap); regular
- * cls stop at one chunk (the inj events are baked into the closed cl
- * body, so adding a chunk after Close would create slots the body
- * doesn't address).
+ * cls stop at one chunk — the inj events (and on the inline path, the
+ * QKT itself) are baked into the closed cl body, so adding a chunk
+ * after Close would create slots the body doesn't address.
  *
  * Within a chunk, slots[i].off is i * sizeof(timestamp) into slab. The
  * chunk frees itself when n_held drops to 0 AND it is not the tail
@@ -291,11 +331,12 @@ static int _ordinal_is_compute(ze_device_handle_t device, uint32_t ordinal) {
          (e->flags[ordinal] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) ? 1 : 0;
 }
 
-/* Per-(context, device) tracer-owned immediate OOO compute cl used to
- * host the AppendQueryKernelTimestamps op. The Query can't live on the
- * user's cl when that cl is on a copy-only queue group (driver aborts),
- * and we use the shadow cl uniformly for all engines so the code path
- * is identical regardless of user-cl kind. */
+/* Per-(context, device) tracer-owned immediate OOO compute cl used by
+ * the SHADOW path to host AppendQueryKernelTimestamps. Copy queue
+ * groups reject QKT, so the shadow cl exists to give those user cls
+ * somewhere compute-capable to put their Query. Compute user cls take
+ * the INLINE path and never touch a shadow cl — see the QKT placement
+ * diagram at the top of this file. */
 struct _ze_shadow_key {
   ze_context_handle_t context;
   ze_device_handle_t device;
@@ -731,23 +772,8 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
  * ORIGINAL value (possibly NULL). user_waits is the user's wait list
  * (NULL,0 if none).
  *
- * Two placements for the QKT — picked from cl_data->is_compute:
- *
- *  INLINE (user cl is compute):
- *      Kernel(sig=inj) → QKT(wait=inj, sig=user_signal)        [on user cl]
- *    One Append. QKT signals user_signal directly, so user-level sync
- *    on user_signal (or queue/cl sync) implies QKT done — no fence
- *    event, no host-sync at drain. For regular cls the QKT is baked
- *    into the cl body at Append; Execute only re-instantiates slots.
- *
- *  SHADOW (user cl is copy-only):
- *                       ┌─> Barrier(wait=inj, sig=user_signal) [on user cl]
- *      Kernel(sig=inj) ─┤
- *                       └─> QKT(wait=inj, sig=shadow_done)     [on shadow cl]
- *    Two Appends. shadow_done is host-synced at drain because the
- *    shadow cl's completion isn't implied by any user-level sync. For
- *    regular cls the shadow QKT is (re-)Appended in the Execute
- *    epilogue rather than here. */
+ * Forks on cl_data->is_compute to pick the QKT placement (INLINE vs
+ * SHADOW) — see the "QKT placement" diagram at the top of this file. */
 static void _universal_record_append(ze_command_list_handle_t command_list,
                                      struct _ze_event_h *inj,
                                      ze_event_handle_t user_signal,
