@@ -8,9 +8,9 @@
  *   - immediate cl: instantiate(slot) inline
  *
  * instantiate(s):
- *   - s.preds = [latest[w] for w in s.waits if live]
+ *   - s.preds = [event_latest_signaled[w] for w in s.waits if live]
  *                + previous live slot in same cl (if cl is in-order)
- *   - s.live = true; latest[s.attr] = &s
+ *   - s.live = true; event_latest_signaled[s.attr] = &s
  *
  * On Execute(q, cl) prologue:
  *   - lock cl.mtx
@@ -21,7 +21,7 @@
  *   - cl.in_flight_q = q; unlock
  *
  * On Sync (the synced anchor tells us what to drain):
- *   - Sync(ev):  drain(latest[ev])
+ *   - Sync(ev):  drain(event_latest_signaled[ev])
  *   - Sync(q):   drain_cl(cl) for every cl whose in_flight_q == q
  *   - Sync(cl):  drain_cl(cl)
  *
@@ -29,7 +29,7 @@
  *   - for p in s.preds: drain(p)
  *   - shadow-path: host-sync on shadow_done, reset, decrement live_queries
  *   - read slab[s.off], emit tracepoint(s.attr or inj)
- *   - clear latest[s.attr] (if it still points at s)
+ *   - clear event_latest_signaled[s.attr] (if it still points at s)
  *   - clear s.live and s.preds
  *   (Build-time fields inj, attr, off, waits stay so the next Execute
  *    can re-instantiate without re-Appending.)
@@ -155,7 +155,7 @@ struct _ze_slot {
   size_t off;             /* byte offset within chunk->slab */
   /* User wait events copied at Append time (stable across rebuilds);
    * preds[] is computed at instantiate from waits[] by looking up
-   * latest[w] for each w. */
+   * event_latest_signaled[w] for each w. */
   ze_event_handle_t *waits;
   uint32_t n_waits;
   struct _ze_slot **preds; /* points at slots whose drain must come first (may be in another cl) */
@@ -504,60 +504,60 @@ struct _ze_event_pool_entry {
 struct _ze_event_pool_entry *_ze_event_pools = NULL;
 static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* latest[ev] -> the most recent slot whose attr==ev. Used to resolve
- * happens-before edges: when a new Append says "wait on ev", we record
- * the latest slot for ev as a pred. Updated at instantiate and cleared
- * at drain. */
-struct _ze_latest_entry {
+/* event_latest_signaled[ev] -> the most recent slot whose attr==ev.
+ * Used to resolve happens-before edges: when a new Append says "wait on
+ * ev", we record the latest slot for ev as a pred. Updated at
+ * instantiate and cleared at drain. */
+struct _ze_event_latest_signaled_entry {
   ze_event_handle_t ev; /* key */
   struct _ze_slot *slot;
   UT_hash_handle hh;
 };
-static struct _ze_latest_entry *_ze_latest = NULL;
-static pthread_mutex_t _ze_latest_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct _ze_event_latest_signaled_entry *_ze_event_latest_signaled = NULL;
+static pthread_mutex_t _ze_event_latest_signaled_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static inline struct _ze_slot *_latest_get(ze_event_handle_t ev) {
-  struct _ze_latest_entry *e = NULL;
-  pthread_mutex_lock(&_ze_latest_mutex);
-  HASH_FIND_PTR(_ze_latest, &ev, e);
+static inline struct _ze_slot *_event_latest_signaled_get(ze_event_handle_t ev) {
+  struct _ze_event_latest_signaled_entry *e = NULL;
+  pthread_mutex_lock(&_ze_event_latest_signaled_mutex);
+  HASH_FIND_PTR(_ze_event_latest_signaled, &ev, e);
   struct _ze_slot *s = e ? e->slot : NULL;
-  pthread_mutex_unlock(&_ze_latest_mutex);
+  pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
   return s;
 }
 
-static inline void _latest_set(ze_event_handle_t ev, struct _ze_slot *s) {
+static inline void _event_latest_signaled_set(ze_event_handle_t ev, struct _ze_slot *s) {
   if (!ev)
     return;
-  pthread_mutex_lock(&_ze_latest_mutex);
-  struct _ze_latest_entry *e = NULL;
-  HASH_FIND_PTR(_ze_latest, &ev, e);
+  pthread_mutex_lock(&_ze_event_latest_signaled_mutex);
+  struct _ze_event_latest_signaled_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_latest_signaled, &ev, e);
   if (!e) {
-    e = (struct _ze_latest_entry *)calloc(1, sizeof(*e));
+    e = (struct _ze_event_latest_signaled_entry *)calloc(1, sizeof(*e));
     if (!e) {
-      pthread_mutex_unlock(&_ze_latest_mutex);
+      pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
       return;
     }
     e->ev = ev;
-    HASH_ADD_PTR(_ze_latest, ev, e);
+    HASH_ADD_PTR(_ze_event_latest_signaled, ev, e);
   }
   e->slot = s;
-  pthread_mutex_unlock(&_ze_latest_mutex);
+  pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
 }
 
-/* Remove latest[ev] only if it still points at slot s (the slot is
- * being drained — but if a newer Append already overwrote latest[ev],
- * don't clobber that). */
-static inline void _latest_clear_if(ze_event_handle_t ev, struct _ze_slot *s) {
+/* Remove event_latest_signaled[ev] only if it still points at slot s
+ * (the slot is being drained — but if a newer Append already overwrote
+ * the entry, don't clobber that). */
+static inline void _event_latest_signaled_clear_if(ze_event_handle_t ev, struct _ze_slot *s) {
   if (!ev)
     return;
-  pthread_mutex_lock(&_ze_latest_mutex);
-  struct _ze_latest_entry *e = NULL;
-  HASH_FIND_PTR(_ze_latest, &ev, e);
+  pthread_mutex_lock(&_ze_event_latest_signaled_mutex);
+  struct _ze_event_latest_signaled_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_latest_signaled, &ev, e);
   if (e && e->slot == s) {
-    HASH_DEL(_ze_latest, e);
+    HASH_DEL(_ze_event_latest_signaled, e);
     free(e);
   }
-  pthread_mutex_unlock(&_ze_latest_mutex);
+  pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
 }
 
 #define GET_ZE_EVENT(key, val)                                                                     \
@@ -726,9 +726,9 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
   return s;
 }
 
-/* Compute s->preds from s->waits via the global latest[] map, plus the
- * previous live slot on this cl if the cl is in-order. Marks s live and
- * publishes s as the new latest[attr]. */
+/* Compute s->preds from s->waits via the global event_latest_signaled
+ * map, plus the previous live slot on this cl if the cl is in-order.
+ * Marks s live and publishes s as the new event_latest_signaled[attr]. */
 static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct _ze_slot *s) {
   /* Slot must be inert: live=0, preds NULL. Re-instantiating a live slot
    * would overwrite preds[] (leaking the prior pred refs) and let the
@@ -740,7 +740,7 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
   s->preds = (struct _ze_slot **)calloc(cap, sizeof(struct _ze_slot *));
   s->n_preds = 0;
   for (uint32_t i = 0; i < s->n_waits; ++i) {
-    struct _ze_slot *p = _latest_get(s->waits[i]);
+    struct _ze_slot *p = _event_latest_signaled_get(s->waits[i]);
     if (p && p->live)
       s->preds[s->n_preds++] = p;
   }
@@ -770,7 +770,7 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
   for (uint32_t i = 0; i < s->n_preds; ++i)
     __atomic_fetch_add(&s->preds[i]->refs, 1, __ATOMIC_RELAXED);
   if (s->attr)
-    _latest_set(s->attr, s);
+    _event_latest_signaled_set(s->attr, s);
 }
 
 /* Publish a fresh slot: shadow path appends a Query on the per-(ctx,device)
@@ -949,7 +949,7 @@ static void _slot_release(struct _ze_slot *s) {
  * can't use the caller's slab.
  *
  * No cycle guard: preds come from in-order prev (strictly earlier slot
- * in the same cl, DAG) and from latest[wait_event] (a slot published
+ * in the same cl, DAG) and from event_latest_signaled[wait_event] (a slot published
  * BEFORE us). Forming a cycle would require user-declared mutual waits,
  * which L0 itself deadlocks on. */
 static void _slot_drain(struct _ze_slot *s) {
@@ -987,7 +987,7 @@ static void _slot_drain(struct _ze_slot *s) {
                   ZE_RESULT_SUCCESS, r.global.kernelStart, r.global.kernelEnd,
                   r.context.kernelStart, r.context.kernelEnd);
   }
-  _latest_clear_if(s->attr, s);
+  _event_latest_signaled_clear_if(s->attr, s);
   /* Drop refs on preds; release any that hit 0 and are already drained. */
   for (uint32_t i = 0; i < s->n_preds; ++i) {
     struct _ze_slot *p = s->preds[i];
@@ -1060,7 +1060,7 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
         PUT_ZE_EVENT(s->shadow_done);
       free(s->waits);
       free(s->preds);
-      _latest_clear_if(s->attr, s);
+      _event_latest_signaled_clear_if(s->attr, s);
     }
     DL_DELETE(cl_data->chunks, c);
     if (c->slab)
@@ -1109,7 +1109,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
           PUT_ZE_EVENT_WRAPPER(s->shadow_done);
         free(s->waits);
         free(s->preds);
-        _latest_clear_if(s->attr, s);
+        _event_latest_signaled_clear_if(s->attr, s);
       }
       DL_DELETE(cl_data->chunks, c);
       /* Skip zeMemFree on the slab — the ctx is being destroyed; the
@@ -1173,7 +1173,7 @@ static void _on_sync_drain_queue(ze_command_queue_handle_t hQueue) {
 
 /* Drain the slot that most recently signaled `ev` (recursing on preds). */
 static void _on_sync_drain_event(ze_event_handle_t ev) {
-  struct _ze_slot *s = _latest_get(ev);
+  struct _ze_slot *s = _event_latest_signaled_get(ev);
   if (!s || !s->owner)
     return;
   pthread_mutex_lock(&s->owner->mtx);
