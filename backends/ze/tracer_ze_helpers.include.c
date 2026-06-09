@@ -69,20 +69,36 @@
  *     Query won't deadlock on a shared engine).
  */
 
-#ifdef THAPI_DEBUG
-#define TAHPI_LOG stderr
-/* GCC's `, ##__VA_ARGS__` extension swallows the leading comma when the
- * variadic list is empty, so the same macro covers both no-arg and
- * with-args calls. Already used in utils/tracepoint_gen.rb. */
-#define THAPI_DBGLOG(fmt, ...)                                                                     \
+/* Always-on tracer log. Prefixes THAPI(func:line) so messages are
+ * grep-able across the bench/test harness which often interleaves
+ * tracer and user output. GCC's `, ##__VA_ARGS__` extension swallows
+ * the leading comma when the variadic list is empty. fflush so the
+ * line lands even if we abort() right after. */
+#define _THAPI_LOG(fmt, ...)                                                                       \
   do {                                                                                             \
-    fprintf(TAHPI_LOG, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__, ##__VA_ARGS__);              \
+    fprintf(stderr, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__, ##__VA_ARGS__);                 \
+    fflush(stderr);                                                                                \
   } while (0)
+
+#ifdef THAPI_DEBUG
+#define THAPI_DBGLOG(fmt, ...) _THAPI_LOG(fmt, ##__VA_ARGS__)
 #else
 #define THAPI_DBGLOG(...)                                                                          \
   do {                                                                                             \
   } while (0)
 #endif
+
+/* Tracer invariant check: print + abort. Unconditional (not gated on
+ * NDEBUG) — silently dropping the check would let the bug ship bad
+ * data instead of crashing. Use for "this can never happen" preconditions
+ * inside the tracer, not for user-input validation. */
+#define _THAPI_ASSERT(cond, fmt, ...)                                                              \
+  do {                                                                                             \
+    if (!(cond)) {                                                                                 \
+      _THAPI_LOG("assertion failed: %s — " fmt, #cond, ##__VA_ARGS__);                             \
+      abort();                                                                                     \
+    }                                                                                              \
+  } while (0)
 
 /* Wrap a tracer-issued L0 call whose failure means we'd either hang the
  * user (sync chain Barrier) or produce a non-self-consistent trace
@@ -93,11 +109,7 @@
 #define _ZE_MUST(call)                                                                             \
   do {                                                                                             \
     ze_result_t _r = (call);                                                                       \
-    if (_r != ZE_RESULT_SUCCESS) {                                                                 \
-      fprintf(stderr, "THAPI: tracer-issued L0 call failed: %s = 0x%x at %s:%d\n", #call, _r,      \
-              __FILE__, __LINE__);                                                                 \
-      abort();                                                                                     \
-    }                                                                                              \
+    _THAPI_ASSERT(_r == ZE_RESULT_SUCCESS, "%s = 0x%x", #call, _r);                                \
   } while (0)
 
 static int _do_profile = 0;
@@ -729,6 +741,11 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
  * previous live slot on this cl if the cl is in-order. Marks s live and
  * publishes s as the new latest[attr]. */
 static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct _ze_slot *s) {
+  /* Slot must be inert: live=0, preds NULL. Re-instantiating a live slot
+   * would overwrite preds[] (leaking the prior pred refs) and let the
+   * in-order pred walk pick up later-appended live siblings as predecessors,
+   * forming cycles that infinite-loop _slot_drain. */
+  _THAPI_ASSERT(!s->live, "slot %p already live (double _slot_instantiate)", (void *)s);
   s->live = 1;
   uint32_t cap = s->n_waits + 1; /* +1 for in-order prev */
   s->preds = (struct _ze_slot **)calloc(cap, sizeof(struct _ze_slot *));
@@ -1221,19 +1238,19 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
       struct _ze_slot *slot = &c->slots[j];
       if (!slot->inj)
         continue;
+      /* Already-live slots have nothing left to do this Execute: their
+       * dep-graph entry from Append-time _slot_instantiate is still valid,
+       * and (inline path) their QKT is baked into the cl body and re-fires
+       * automatically. Only fresh / drained slots need work here. */
+      if (slot->live)
+        continue;
       if (!cl_data->is_compute) {
         if (!sh || !slot->shadow_done)
           continue;
         _shadow_append_query(sh, slot->inj->event, c->slab, &slot->off, slot->shadow_done->event);
         slot->sh = sh;
       }
-      /* Inline-path slots are already instantiated at Append time; re-running
-       * _slot_instantiate would re-walk in-order preds and pick up later-
-       * appended live slots, forming cycles that infinite-loop _slot_drain.
-       * On second+ Execute rounds the slot is live=0 (drained) and we DO need
-       * to re-instantiate so it republishes in the dep graph for this round. */
-      if (!slot->live)
-        _slot_instantiate(cl_data, slot);
+      _slot_instantiate(cl_data, slot);
     }
   }
   cl_data->in_flight_q = hQueue;
