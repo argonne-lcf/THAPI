@@ -8,6 +8,7 @@ puts <<~EOF
     #include <dlfcn.h>
     #include <stdio.h>
     #include <stdlib.h>
+    #include <alloca.h>
     #include <unistd.h>
     #include <string.h>
     #include <pthread.h>

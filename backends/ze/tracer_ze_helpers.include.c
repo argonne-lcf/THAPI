@@ -1184,7 +1184,7 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
  *
  *   1) If in_flight_q is set from a prior Execute by *another* thread,
  *      force-sync that queue and drain the slab before we overwrite it
- *      (regression test: inorder_reg_Event_11 — same cl on two queues
+ *      (regression test: inorder_reg_Event_multithreaded_01 — same cl on two queues
  *      from two threads, expect both rounds' timings).
  *   2) (SHADOW PATH ONLY) Append a fresh Query on the per-(ctx,device)
  *      shadow cl for each slot. Must run AFTER L0 Execute (not before) —
