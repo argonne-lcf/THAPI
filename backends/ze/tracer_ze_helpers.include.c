@@ -215,10 +215,9 @@ struct _ze_command_list_obj_data {
    * whose group flags we couldn't determine. Set at create; immutable. */
   unsigned char is_compute;
 
-  /* Cached on first use: device handle and context handle for this cl.
-   * Both are immutable for the life of the cl, so caching avoids the
-   * per-Append/per-Execute ZE_*_GET_*_HANDLE_PTR roundtrips. */
-  ze_device_handle_t cached_device;
+  /* Cached on first use: context handle for this cl. Immutable for the
+   * cl's lifetime. Load-bearing for _on_destroy_context's sweep: lets it
+   * associate cls back to their ctx without an L0 roundtrip per cl. */
   ze_context_handle_t cached_context;
 };
 
@@ -448,19 +447,10 @@ static void _shadow_append_query(struct _ze_shadow_cl *sh,
   pthread_mutex_unlock(&sh->mtx);
 }
 
-/* Return cl_data->cached_{device,context}, fetching from L0 on first call.
- * Both fields are immutable for the cl's lifetime, so caching avoids the
- * roundtrip on every Append/Execute. Returns NULL on L0 error. */
-static ze_device_handle_t _cl_cache_device(struct _ze_command_list_obj_data *cl_data,
-                                           ze_command_list_handle_t command_list) {
-  if (cl_data->cached_device)
-    return cl_data->cached_device;
-  ze_device_handle_t d = NULL;
-  if (ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &d) == ZE_RESULT_SUCCESS)
-    cl_data->cached_device = d;
-  return d;
-}
-
+/* Returns the cl's context, fetching from L0 on first call and caching
+ * for the cl's lifetime. The cache is load-bearing for
+ * _on_destroy_context, which scans cls by context. Returns NULL on L0
+ * error. */
 static ze_context_handle_t _cl_cache_context(struct _ze_command_list_obj_data *cl_data,
                                              ze_command_list_handle_t command_list) {
   if (cl_data->cached_context)
@@ -491,7 +481,6 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
   cl_data->is_immediate = immediate ? 1 : 0;
   cl_data->is_in_order = in_order ? 1 : 0;
   cl_data->is_compute = _ordinal_is_compute(device, ordinal) ? 1 : 0;
-  cl_data->cached_device = device;
   pthread_mutex_init(&cl_data->mtx, NULL);
   ADD_ZE_CL(cl_data);
 }
@@ -784,6 +773,22 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
     _latest_set(s->attr, s);
 }
 
+/* Publish a fresh slot: shadow path appends a Query on the per-(ctx,device)
+ * shadow cl; inline path is a no-op here (its QKT is baked into the user cl
+ * body at Append). Then instantiate in the dep graph. `s->shadow_done` is
+ * the single source of truth for "shadow vs inline" — no is_compute branch
+ * at the call site. Caller holds cl_data->mtx. */
+static void _slot_publish(struct _ze_command_list_obj_data *cl_data,
+                          struct _ze_slot *s,
+                          struct _ze_shadow_cl *sh) {
+  if (s->shadow_done) {
+    _THAPI_ASSERT(sh, "shadow-path slot needs a shadow cl");
+    _shadow_append_query(sh, s->inj->event, s->chunk->slab, &s->off, s->shadow_done->event);
+    s->sh = sh;
+  }
+  _slot_instantiate(cl_data, s);
+}
+
 /* Append-time hook called from profiling_epilogue. Caller already
  * swapped user's hSignalEvent for inj->event. user_signal is the
  * ORIGINAL value (possibly NULL). user_waits is the user's wait list
@@ -829,12 +834,12 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   s = _cl_slot_append(cl_data, ctx, inj, shadow_done, user_signal, user_waits, user_n_waits);
   if (!s)
     goto fail_locked;
+  cl_data->cached_context = ctx;
 
   if (inline_path) {
     /* Bake the QKT into the user cl. wait=inj, sig=user_signal.
      * Holds for both immediate (fires when Appended) and regular cls
      * (fires on every Execute — the QKT is now part of the cl body). */
-    cl_data->cached_context = ctx;
     ze_event_handle_t wait_ev = inj->event;
     _ZE_MUST(ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(command_list, 1, &wait_ev,
                                                                 s->chunk->slab, &s->off,
@@ -855,14 +860,12 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
     barrier_chained = 1;
   }
   if (cl_data->is_immediate) {
-    cl_data->cached_context = ctx;
-    ze_device_handle_t dev = _cl_cache_device(cl_data, command_list);
-    struct _ze_shadow_cl *sh = dev ? _get_shadow_cl(ctx, dev) : NULL;
+    ze_device_handle_t dev = NULL;
+    _ZE_MUST(ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &dev));
+    struct _ze_shadow_cl *sh = _get_shadow_cl(ctx, dev);
     if (!sh)
       goto fail_locked;
-    _shadow_append_query(sh, inj->event, s->chunk->slab, &s->off, shadow_done->event);
-    s->sh = sh;
-    _slot_instantiate(cl_data, s);
+    _slot_publish(cl_data, s, sh);
   }
   pthread_mutex_unlock(&cl_data->mtx);
   ADD_ZE_CL(cl_data);
@@ -1224,14 +1227,10 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
     _ZE_MUST(ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX));
     _cl_drain(cl_data);
   }
-  /* Shadow-path setup is skipped entirely for compute cls — those slots
-   * have shadow_done==NULL and rely on the inline QKT in the cl body. */
+  /* Shadow cl is resolved lazily on first shadow-path slot. Inline-only cls
+   * never trigger the lookup. */
   struct _ze_shadow_cl *sh = NULL;
-  if (!cl_data->is_compute) {
-    ze_context_handle_t ctx = _cl_cache_context(cl_data, command_list);
-    ze_device_handle_t dev = _cl_cache_device(cl_data, command_list);
-    sh = (ctx && dev) ? _get_shadow_cl(ctx, dev) : NULL;
-  }
+  int sh_resolved = 0;
   struct _ze_slab_chunk *c;
   DL_FOREACH(cl_data->chunks, c) {
     for (uint32_t j = 0; j < c->n_used; ++j) {
@@ -1244,13 +1243,16 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
        * automatically. Only fresh / drained slots need work here. */
       if (slot->live)
         continue;
-      if (!cl_data->is_compute) {
-        if (!sh || !slot->shadow_done)
-          continue;
-        _shadow_append_query(sh, slot->inj->event, c->slab, &slot->off, slot->shadow_done->event);
-        slot->sh = sh;
+      if (slot->shadow_done && !sh_resolved) {
+        ze_context_handle_t ctx = _cl_cache_context(cl_data, command_list);
+        ze_device_handle_t dev = NULL;
+        _ZE_MUST(ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &dev));
+        sh = ctx ? _get_shadow_cl(ctx, dev) : NULL;
+        sh_resolved = 1;
       }
-      _slot_instantiate(cl_data, slot);
+      if (slot->shadow_done && !sh)
+        continue;
+      _slot_publish(cl_data, slot, sh);
     }
   }
   cl_data->in_flight_q = hQueue;
@@ -1413,24 +1415,6 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
       hContext)
     _dump_memory_info_ctx(hContext, ptr);
 }
-
-////////////////////////////////////////////
-#define _ZE_ERROR_MSG(NAME, RES)                                                                   \
-  do {                                                                                             \
-    fprintf(stderr, "%s() failed at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));         \
-  } while (0)
-#define _ZE_ERROR_MSG_NOTERMINATE(NAME, RES)                                                       \
-  do {                                                                                             \
-    fprintf(stderr, "%s() error at %d(%s): res=%x\n", (NAME), __LINE__, __FILE__, (RES));          \
-  } while (0)
-#define _ERROR_MSG(MSG)                                                                            \
-  {                                                                                                \
-    perror((MSG)) do {                                                                             \
-      {                                                                                            \
-        perror((MSG));                                                                             \
-        fprintf(stderr, "errno=%d at %d(%s)", errno, __LINE__, __FILE__);                          \
-      }                                                                                            \
-      while (0)
 
 static void _load_tracer(void) {
   char *s = NULL;
