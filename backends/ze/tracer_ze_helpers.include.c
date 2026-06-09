@@ -1227,7 +1227,13 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
         _shadow_append_query(sh, slot->inj->event, c->slab, &slot->off, slot->shadow_done->event);
         slot->sh = sh;
       }
-      _slot_instantiate(cl_data, slot);
+      /* Inline-path slots are already instantiated at Append time; re-running
+       * _slot_instantiate would re-walk in-order preds and pick up later-
+       * appended live slots, forming cycles that infinite-loop _slot_drain.
+       * On second+ Execute rounds the slot is live=0 (drained) and we DO need
+       * to re-instantiate so it republishes in the dep graph for this round. */
+      if (!slot->live)
+        _slot_instantiate(cl_data, slot);
     }
   }
   cl_data->in_flight_q = hQueue;
