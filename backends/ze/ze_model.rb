@@ -139,18 +139,20 @@ ZE_POINTER_NAMES = ze_pointer_names.to_h
 
 register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
-    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      int _io = desc && (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER);
-      _on_create_command_list(*phCommandList, /*immediate=*/0, _io);
+    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && desc) {
+      int _io = (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER) ? 1 : 0;
+      _on_create_command_list(*phCommandList, hDevice, desc->commandQueueGroupOrdinal,
+                              /*immediate=*/0, _io);
     }
   }
 EOF
 
 register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
-    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList) {
-      int _io = altdesc && (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER);
-      _on_create_command_list(*phCommandList, /*immediate=*/1, _io);
+    if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && altdesc) {
+      int _io = (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER) ? 1 : 0;
+      _on_create_command_list(*phCommandList, hDevice, altdesc->ordinal,
+                              /*immediate=*/1, _io);
     }
   }
 EOF

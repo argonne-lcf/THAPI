@@ -47,6 +47,22 @@
   } while (0)
 #endif
 
+/* Wrap a tracer-issued L0 call whose failure means we'd either hang the
+ * user (sync chain Barrier) or produce a non-self-consistent trace
+ * (QKT, event create, ...). Defensive: print + abort so the bug surfaces
+ * under sanitizers/CI rather than ship bad data. NOT for driver query
+ * calls (Get*Handle, GetCommandQueueGroupProperties) — those can fail
+ * transiently during teardown and have graceful fallbacks. */
+#define _ZE_MUST(call)                                                                             \
+  do {                                                                                             \
+    ze_result_t _r = (call);                                                                       \
+    if (_r != ZE_RESULT_SUCCESS) {                                                                 \
+      fprintf(stderr, "THAPI: tracer-issued L0 call failed: %s = 0x%x at %s:%d\n", #call, _r,      \
+              __FILE__, __LINE__);                                                                 \
+      abort();                                                                                     \
+    }                                                                                              \
+  } while (0)
+
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
 static int _do_paranoid_drift = 0;
@@ -140,6 +156,12 @@ struct _ze_command_list_obj_data {
   pthread_mutex_t mtx;
   unsigned char is_immediate;
   unsigned char is_in_order;
+  /* 1 if this cl's queue group exposes COMPUTE — its body can host
+   * AppendQueryKernelTimestamps directly, so we skip the per-(ctx,device)
+   * shadow cl and bake QKT into the user cl itself. See the placement
+   * diagram at the top of this file. 0 for copy-only cls and for any cl
+   * whose group flags we couldn't determine. Set at create; immutable. */
+  unsigned char is_compute;
 
   /* Cached on first use: device handle and context handle for this cl.
    * Both are immutable for the life of the cl, so caching avoids the
@@ -175,71 +197,98 @@ pthread_mutex_t _ze_cls_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
   } while (0)
 
-/* Per-device cache of the first COMPUTE queue group ordinal. The lookup
- * is read-mostly: scan zeDeviceGetCommandQueueGroupProperties once,
- * remember the answer. valid=0 means "we already checked and there's no
- * compute group on this device" — treated as fatal at use sites. */
-struct _ze_compute_ord_entry {
+/* Per-device cache of the queue-group flag bitmap. The lookup is
+ * read-mostly: scan zeDeviceGetCommandQueueGroupProperties once,
+ * remember the per-ordinal flags. flags==NULL means "we already checked
+ * and the device returned no groups". Used by two readers:
+ *   _get_compute_ordinal(dev)        -> first COMPUTE ord, or -1
+ *   _ordinal_is_compute(dev, ord)    -> 1 if ord is COMPUTE on dev */
+struct _ze_qgroup_cache_entry {
   ze_device_handle_t device;
-  uint32_t ordinal;
-  unsigned char valid;
+  ze_command_queue_group_property_flags_t *flags; /* owned; n_groups entries */
+  uint32_t n_groups;
   UT_hash_handle hh;
 };
-static struct _ze_compute_ord_entry *_ze_compute_ords = NULL;
-static pthread_mutex_t _ze_compute_ords_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct _ze_qgroup_cache_entry *_ze_qgroup_cache = NULL;
+static pthread_mutex_t _ze_qgroup_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Returns the first COMPUTE queue group ordinal for device, or (uint32_t)-1
- * if the device exposes no compute group (fatal — caller should bail). */
-static uint32_t _get_compute_ordinal(ze_device_handle_t device) {
-  pthread_mutex_lock(&_ze_compute_ords_mutex);
-  struct _ze_compute_ord_entry *e = NULL;
-  HASH_FIND_PTR(_ze_compute_ords, &device, e);
-  if (e) {
-    uint32_t r = e->valid ? e->ordinal : (uint32_t)-1;
-    pthread_mutex_unlock(&_ze_compute_ords_mutex);
-    return r;
-  }
-  pthread_mutex_unlock(&_ze_compute_ords_mutex);
+/* Populate (or return cached) flag bitmap for device. The cache lives
+ * for process lifetime — once published, the entry pointer and its flags
+ * array are immutable, so callers can dereference them without the
+ * mutex. Returns NULL on driver error / OOM. */
+static struct _ze_qgroup_cache_entry *_qgroup_cache_get(ze_device_handle_t device) {
+  pthread_mutex_lock(&_ze_qgroup_cache_mutex);
+  struct _ze_qgroup_cache_entry *e = NULL;
+  HASH_FIND_PTR(_ze_qgroup_cache, &device, e);
+  pthread_mutex_unlock(&_ze_qgroup_cache_mutex);
+  if (e)
+    return e;
 
   /* Slow path: scan queue groups outside the lock. */
   uint32_t n_groups = 0;
   if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(device, &n_groups, NULL) !=
           ZE_RESULT_SUCCESS ||
       n_groups == 0)
-    return (uint32_t)-1;
+    return NULL;
   ze_command_queue_group_properties_t *groups =
       (ze_command_queue_group_properties_t *)calloc(n_groups, sizeof(*groups));
   if (!groups)
-    return (uint32_t)-1;
+    return NULL;
   for (uint32_t i = 0; i < n_groups; ++i)
     groups[i].stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_GROUP_PROPERTIES;
-  uint32_t found = (uint32_t)-1;
-  if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(device, &n_groups, groups) ==
+  if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(device, &n_groups, groups) !=
       ZE_RESULT_SUCCESS) {
-    for (uint32_t i = 0; i < n_groups; ++i)
-      if (groups[i].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) {
-        found = i;
-        break;
-      }
+    free(groups);
+    return NULL;
   }
+  ze_command_queue_group_property_flags_t *flags =
+      (ze_command_queue_group_property_flags_t *)calloc(n_groups, sizeof(*flags));
+  if (!flags) {
+    free(groups);
+    return NULL;
+  }
+  for (uint32_t i = 0; i < n_groups; ++i)
+    flags[i] = groups[i].flags;
   free(groups);
 
-  pthread_mutex_lock(&_ze_compute_ords_mutex);
-  /* Re-check under the lock — another thread may have populated. */
-  HASH_FIND_PTR(_ze_compute_ords, &device, e);
+  pthread_mutex_lock(&_ze_qgroup_cache_mutex);
+  HASH_FIND_PTR(_ze_qgroup_cache, &device, e);
   if (!e) {
-    e = (struct _ze_compute_ord_entry *)calloc(1, sizeof(*e));
+    e = (struct _ze_qgroup_cache_entry *)calloc(1, sizeof(*e));
     if (e) {
       e->device = device;
-      e->ordinal = found;
-      e->valid = (found != (uint32_t)-1) ? 1 : 0;
-      HASH_ADD_PTR(_ze_compute_ords, device, e);
+      e->flags = flags;
+      e->n_groups = n_groups;
+      HASH_ADD_PTR(_ze_qgroup_cache, device, e);
     }
-  } else {
-    found = e->valid ? e->ordinal : (uint32_t)-1;
   }
-  pthread_mutex_unlock(&_ze_compute_ords_mutex);
-  return found;
+  pthread_mutex_unlock(&_ze_qgroup_cache_mutex);
+  if (!e || e->flags != flags)
+    free(flags);
+  return e;
+}
+
+/* Returns the first COMPUTE queue group ordinal for device, or (uint32_t)-1
+ * if the device exposes no compute group (fatal — caller should bail). */
+static uint32_t _get_compute_ordinal(ze_device_handle_t device) {
+  struct _ze_qgroup_cache_entry *e = _qgroup_cache_get(device);
+  if (!e)
+    return (uint32_t)-1;
+  for (uint32_t i = 0; i < e->n_groups; ++i)
+    if (e->flags[i] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
+      return i;
+  return (uint32_t)-1;
+}
+
+/* 1 iff `ordinal` on `device` is a COMPUTE queue group. Returns 0 on any
+ * uncertainty (unknown device, OOB ordinal, driver error) — callers
+ * should treat the cl as non-compute and use the shadow-cl QKT path. */
+static int _ordinal_is_compute(ze_device_handle_t device, uint32_t ordinal) {
+  if (!device)
+    return 0;
+  struct _ze_qgroup_cache_entry *e = _qgroup_cache_get(device);
+  return e && ordinal < e->n_groups &&
+         (e->flags[ordinal] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) ? 1 : 0;
 }
 
 /* Per-(context, device) tracer-owned immediate OOO compute cl used to
@@ -331,22 +380,19 @@ static struct _ze_shadow_cl *_get_shadow_cl(ze_context_handle_t context,
 /* Append AppendQueryKernelTimestamps on the shadow cl: wait on inj,
  * signal shadow_done, write timestamps into slab[*off]. Serialized on
  * sh->mtx because L0 doesn't allow concurrent Appends to one cl.
- * Returns 0 on success, -1 on failure. */
-static int _shadow_append_query(struct _ze_shadow_cl *sh,
-                                ze_event_handle_t inj_event,
-                                void *slab,
-                                size_t *off,
-                                ze_event_handle_t shadow_done_event) {
+ * Aborts on L0 failure (defensive — a missing Query would silently
+ * drop this kernel's timing). */
+static void _shadow_append_query(struct _ze_shadow_cl *sh,
+                                 ze_event_handle_t inj_event,
+                                 void *slab,
+                                 size_t *off,
+                                 ze_event_handle_t shadow_done_event) {
   pthread_mutex_lock(&sh->mtx);
   sh->live_queries++;
-  ze_result_t r =
-      ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(sh->cl, 1, &inj_event, slab, off,
-                                                         /*hSignalEvent=*/shadow_done_event,
-                                                         /*numWaitEvents=*/1, &inj_event);
-  if (r != ZE_RESULT_SUCCESS)
-    sh->live_queries--;
+  _ZE_MUST(ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(sh->cl, 1, &inj_event, slab, off,
+                                                              /*hSignalEvent=*/shadow_done_event,
+                                                              /*numWaitEvents=*/1, &inj_event));
   pthread_mutex_unlock(&sh->mtx);
-  return (r == ZE_RESULT_SUCCESS) ? 0 : -1;
 }
 
 /* Return cl_data->cached_{device,context}, fetching from L0 on first call.
@@ -372,8 +418,9 @@ static ze_context_handle_t _cl_cache_context(struct _ze_command_list_obj_data *c
   return c;
 }
 
-static inline void
-_on_create_command_list(ze_command_list_handle_t command_list, int immediate, int in_order) {
+static inline void _on_create_command_list(ze_command_list_handle_t command_list,
+                                           ze_device_handle_t device,
+                                           uint32_t ordinal, int immediate, int in_order) {
   struct _ze_command_list_obj_data *cl_data = NULL;
 
   FIND_ZE_CL(&command_list, cl_data);
@@ -390,6 +437,8 @@ _on_create_command_list(ze_command_list_handle_t command_list, int immediate, in
   cl_data->ptr = (void *)command_list;
   cl_data->is_immediate = immediate ? 1 : 0;
   cl_data->is_in_order = in_order ? 1 : 0;
+  cl_data->is_compute = _ordinal_is_compute(device, ordinal) ? 1 : 0;
+  cl_data->cached_device = device;
   pthread_mutex_init(&cl_data->mtx, NULL);
   ADD_ZE_CL(cl_data);
 }
@@ -503,7 +552,7 @@ static inline void _latest_clear_if(ze_event_handle_t ev, struct _ze_slot *s) {
       pool->context = val->context;                                                                \
       HASH_ADD_PTR(_ze_event_pools, context, pool);                                                \
     }                                                                                              \
-    ZE_EVENT_HOST_RESET_PTR(val->event);                                                           \
+    _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(val->event));                                                 \
     DL_PREPEND(pool->events, val);                                                                 \
     pthread_mutex_unlock(&_ze_event_pools_mutex);                                                  \
   } while (0)
@@ -682,10 +731,23 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
  * ORIGINAL value (possibly NULL). user_waits is the user's wait list
  * (NULL,0 if none).
  *
- * Inserts a Query waiting on inj, signaling user_signal. For immediate
- * cls, instantiates the slot inline (immediate Appends fire as soon as
- * appended). For regular cls, the slot is created but not instantiated
- * until Execute. */
+ * Two placements for the QKT — picked from cl_data->is_compute:
+ *
+ *  INLINE (user cl is compute):
+ *      Kernel(sig=inj) → QKT(wait=inj, sig=user_signal)        [on user cl]
+ *    One Append. QKT signals user_signal directly, so user-level sync
+ *    on user_signal (or queue/cl sync) implies QKT done — no fence
+ *    event, no host-sync at drain. For regular cls the QKT is baked
+ *    into the cl body at Append; Execute only re-instantiates slots.
+ *
+ *  SHADOW (user cl is copy-only):
+ *                       ┌─> Barrier(wait=inj, sig=user_signal) [on user cl]
+ *      Kernel(sig=inj) ─┤
+ *                       └─> QKT(wait=inj, sig=shadow_done)     [on shadow cl]
+ *    Two Appends. shadow_done is host-synced at drain because the
+ *    shadow cl's completion isn't implied by any user-level sync. For
+ *    regular cls the shadow QKT is (re-)Appended in the Execute
+ *    epilogue rather than here. */
 static void _universal_record_append(ze_command_list_handle_t command_list,
                                      struct _ze_event_h *inj,
                                      ze_event_handle_t user_signal,
@@ -696,59 +758,66 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   struct _ze_event_h *shadow_done = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
   struct _ze_slot *s = NULL;
-
-  /* Chain user_signal off inj BEFORE anything else that can fail. The
-   * prologue already swapped user's hSignalEvent for inj->event, so
-   * nothing else on this cl signals user_signal — if we bail later
-   * (slot full, shadow_done alloc fails, etc.) the user's
-   * Sync(user_signal) would hang forever. AppendBarrier (not
-   * AppendSignalEvent) because we need to both wait on inj and signal
-   * user_signal. NULL user_signal is the "user passed NULL" case where
-   * no chaining is needed. */
-  if (user_signal) {
-    ze_event_handle_t wait_ev = inj->event;
-    if (ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev) !=
-        ZE_RESULT_SUCCESS)
-      goto fail;
-  }
+  int inline_path = 0;
+  int barrier_chained = 0;
 
   ze_context_handle_t ctx = NULL;
   if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &ctx) != ZE_RESULT_SUCCESS || !ctx)
     goto fail;
   inj->context = ctx;
 
-  /* Tracer-owned fence event: Query signals it, drain host-waits on it
-   * before reading the slab. Decouples drain-time correctness from any
-   * user sync on user_signal — required because the Query lives on a
-   * separate shadow cl whose completion isn't implied by user-level sync. */
-  shadow_done = _get_profiling_event(command_list);
-  if (!shadow_done)
-    goto fail;
-  shadow_done->context = ctx;
-
   FIND_AND_DEL_ZE_CL(&command_list, cl_data);
   if (!cl_data)
     goto fail;
+  inline_path = cl_data->is_compute;
+
+  /* Shadow path needs a fence event (Query lives on the shadow cl;
+   * drain host-syncs on it). Inline path uses user_signal as the fence
+   * via the dep graph, no extra event needed. */
+  if (!inline_path) {
+    shadow_done = _get_profiling_event(command_list);
+    if (!shadow_done)
+      goto fail_with_cl;
+    shadow_done->context = ctx;
+  }
+
   pthread_mutex_lock(&cl_data->mtx);
 
   s = _cl_slot_append(cl_data, ctx, inj, shadow_done, user_signal, user_waits, user_n_waits);
   if (!s)
     goto fail_locked;
 
-  /* The Query Append now lives on the per-(context, device) shadow
-   * compute cl rather than the user cl. This is what lets us profile
-   * copy-only user cls — copy engines reject AppendQueryKernelTimestamps
-   * but the shadow cl is always compute. For regular user cls we defer
-   * the Append to Execute prologue (the user cl hasn't run yet, so
-   * nothing is signaling inj — Appending the Query on an immediate
-   * shadow cl now would let it fire too early on a stale inj). */
+  if (inline_path) {
+    /* Bake the QKT into the user cl. wait=inj, sig=user_signal.
+     * Holds for both immediate (fires when Appended) and regular cls
+     * (fires on every Execute — the QKT is now part of the cl body). */
+    cl_data->cached_context = ctx;
+    ze_event_handle_t wait_ev = inj->event;
+    _ZE_MUST(ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(command_list, 1, &wait_ev,
+                                                                s->chunk->slab, &s->off,
+                                                                user_signal, 1, &wait_ev));
+    barrier_chained = 1; /* user_signal chained via the QKT itself */
+    _slot_instantiate(cl_data, s);
+    pthread_mutex_unlock(&cl_data->mtx);
+    ADD_ZE_CL(cl_data);
+    return;
+  }
+
+  /* Shadow path: chain user_signal off inj on the user cl, then place
+   * the Query on the shadow cl (immediate cls only — regular cls defer
+   * to the Execute epilogue, see _on_execute_one_cl). */
+  if (user_signal) {
+    ze_event_handle_t wait_ev = inj->event;
+    _ZE_MUST(ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev));
+    barrier_chained = 1;
+  }
   if (cl_data->is_immediate) {
     cl_data->cached_context = ctx;
     ze_device_handle_t dev = _cl_cache_device(cl_data, command_list);
     struct _ze_shadow_cl *sh = dev ? _get_shadow_cl(ctx, dev) : NULL;
-    if (!sh ||
-        _shadow_append_query(sh, inj->event, s->chunk->slab, &s->off, shadow_done->event) != 0)
+    if (!sh)
       goto fail_locked;
+    _shadow_append_query(sh, inj->event, s->chunk->slab, &s->off, shadow_done->event);
     s->sh = sh;
     _slot_instantiate(cl_data, s);
   }
@@ -776,8 +845,17 @@ fail_locked:
     }
   }
   pthread_mutex_unlock(&cl_data->mtx);
+fail_with_cl:
   ADD_ZE_CL(cl_data);
 fail:
+  /* If we never chained user_signal off inj, do it now. The prologue
+   * swapped user's sig for inj->event; without this Append the user's
+   * Sync(user_signal) would hang forever. Aborts on failure — we have
+   * no second-chance recovery and a silent hang is worse than a crash. */
+  if (user_signal && !barrier_chained) {
+    ze_event_handle_t wait_ev = inj->event;
+    _ZE_MUST(ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev));
+  }
   if (shadow_done)
     PUT_ZE_EVENT(shadow_done);
   PUT_ZE_EVENT(inj);
@@ -834,12 +912,15 @@ static void _slot_drain(struct _ze_slot *s) {
   for (uint32_t i = 0; i < s->n_preds; ++i)
     _slot_drain(s->preds[i]);
   s->live = 0;
-  /* Block until the Query op has fired, then reset shadow_done so the
-   * next Execute round (regular cls) starts with a clean event. The
-   * user's own sync doesn't cover the Query — it runs on the shadow cl. */
+  /* Shadow-path only: block until the Query has fired, then reset
+   * shadow_done so the next Execute round starts with a clean event.
+   * The user's own sync doesn't cover the Query because it runs on the
+   * shadow cl. Inline-path slots have shadow_done==NULL — their QKT
+   * lives in the user cl body and the dep-graph walk that brought us
+   * here already implies it has run. */
   if (s->shadow_done && s->shadow_done->event) {
-    ZE_EVENT_HOST_SYNCHRONIZE_PTR(s->shadow_done->event, UINT64_MAX);
-    ZE_EVENT_HOST_RESET_PTR(s->shadow_done->event);
+    _ZE_MUST(ZE_EVENT_HOST_SYNCHRONIZE_PTR(s->shadow_done->event, UINT64_MAX));
+    _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(s->shadow_done->event));
     /* QKT completed device-side. Drop the live ref; if nothing else on
      * this shadow cl is in flight, Reset it: the L0 driver leaks ~10 KB
      * per AppendQueryKernelTimestamps and only reclaims at Reset/Destroy. */
@@ -847,7 +928,7 @@ static void _slot_drain(struct _ze_slot *s) {
       pthread_mutex_lock(&s->sh->mtx);
       s->sh->live_queries--;
       if (s->sh->live_queries == 0)
-        ZE_COMMAND_LIST_RESET_PTR(s->sh->cl);
+        _ZE_MUST(ZE_COMMAND_LIST_RESET_PTR(s->sh->cl));
       pthread_mutex_unlock(&s->sh->mtx);
     }
   }
@@ -1079,11 +1160,13 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
  *      force-sync that queue and drain the slab before we overwrite it
  *      (regression test: inorder_reg_Event_11 — same cl on two queues
  *      from two threads, expect both rounds' timings).
- *   2) Append a fresh Query on the per-(ctx,device) shadow cl for each
- *      slot. Must run AFTER L0 Execute (not before) — Appending on the
- *      shadow cl before the user cl is in flight deadlocks when the
- *      shadow shares the engine with the user cl (see
- *      tests/bugs/query_on_separate_cl_regular_user_cl).
+ *   2) (SHADOW PATH ONLY) Append a fresh Query on the per-(ctx,device)
+ *      shadow cl for each slot. Must run AFTER L0 Execute (not before) —
+ *      Appending on the shadow cl before the user cl is in flight
+ *      deadlocks when the shadow shares the engine with the user cl
+ *      (see tests/bugs/query_on_separate_cl_regular_user_cl). Inline
+ *      (compute) cls have the QKT baked into the cl body at Append; it
+ *      re-fires automatically on every Execute, no work here.
  *   3) Stamp in_flight_q = hQueue and instantiate each slot, publishing
  *      it to the dep graph + as the "owner" of this queue. */
 static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
@@ -1095,22 +1178,29 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
   pthread_mutex_lock(&cl_data->mtx);
 
   if (cl_data->in_flight_q) {
-    ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX);
+    _ZE_MUST(ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX));
     _cl_drain(cl_data);
   }
-  ze_context_handle_t ctx = _cl_cache_context(cl_data, command_list);
-  ze_device_handle_t dev = _cl_cache_device(cl_data, command_list);
-  struct _ze_shadow_cl *sh = (ctx && dev) ? _get_shadow_cl(ctx, dev) : NULL;
+  /* Shadow-path setup is skipped entirely for compute cls — those slots
+   * have shadow_done==NULL and rely on the inline QKT in the cl body. */
+  struct _ze_shadow_cl *sh = NULL;
+  if (!cl_data->is_compute) {
+    ze_context_handle_t ctx = _cl_cache_context(cl_data, command_list);
+    ze_device_handle_t dev = _cl_cache_device(cl_data, command_list);
+    sh = (ctx && dev) ? _get_shadow_cl(ctx, dev) : NULL;
+  }
   struct _ze_slab_chunk *c;
   DL_FOREACH(cl_data->chunks, c) {
     for (uint32_t j = 0; j < c->n_used; ++j) {
       struct _ze_slot *slot = &c->slots[j];
-      if (!sh || !slot->inj || !slot->shadow_done)
+      if (!slot->inj)
         continue;
-      if (_shadow_append_query(sh, slot->inj->event, c->slab, &slot->off,
-                               slot->shadow_done->event) != 0)
-        continue; /* slot stays not-live this round; we miss this timing */
-      slot->sh = sh;
+      if (!cl_data->is_compute) {
+        if (!sh || !slot->shadow_done)
+          continue;
+        _shadow_append_query(sh, slot->inj->event, c->slab, &slot->off, slot->shadow_done->event);
+        slot->sh = sh;
+      }
       _slot_instantiate(cl_data, slot);
     }
   }
