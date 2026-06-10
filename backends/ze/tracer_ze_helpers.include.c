@@ -682,6 +682,21 @@ cleanup_wrapper:
   return NULL;
 }
 
+/* Unlink chunk c from cl_data->chunks and free its slab + struct.
+ * `free_slab` controls whether to issue zeMemFree on the slab — false when
+ * the chunk's context is being destroyed (driver reclaims; zeMemFree on a
+ * doomed ctx is at best racy). Slot-side cleanup (events, waits, preds)
+ * is the caller's responsibility — this helper only owns the chunk
+ * envelope and the slab. */
+static void _cl_chunk_free(struct _ze_command_list_obj_data *cl_data,
+                           struct _ze_slab_chunk *c,
+                           int free_slab) {
+  DL_DELETE(cl_data->chunks, c);
+  if (free_slab && c->slab)
+    ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
+  free(c);
+}
+
 /* Allocate a new chunk and append it to cl_data->chunks. */
 static struct _ze_slab_chunk *_cl_chunk_alloc(struct _ze_command_list_obj_data *cl_data,
                                               ze_context_handle_t ctx) {
@@ -915,12 +930,8 @@ fail_locked:
     c->n_used--;
     c->n_held--;
     memset(s, 0, sizeof(*s));
-    if (c->n_used == 0) {
-      DL_DELETE(cl_data->chunks, c);
-      if (c->slab)
-        ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
-      free(c);
-    }
+    if (c->n_used == 0)
+      _cl_chunk_free(cl_data, c, /*free_slab=*/1);
   }
   pthread_mutex_unlock(&cl_data->mtx);
 fail:
@@ -962,12 +973,8 @@ static void _slot_release(struct _ze_slot *s) {
   if (!c)
     return;
   c->n_held--;
-  if (c->n_held == 0 && c != cl->chunks->prev) {
-    DL_DELETE(cl->chunks, c);
-    if (c->slab)
-      ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
-    free(c);
-  }
+  if (c->n_held == 0 && c != cl->chunks->prev)
+    _cl_chunk_free(cl, c, /*free_slab=*/1);
 }
 
 /* Drain one slot. Recurses on its preds, emits the slot's tracepoint,
@@ -1042,12 +1049,8 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
     for (uint32_t i = 0; i < c->n_used; ++i)
       _slot_drain(&c->slots[i]);
     c->n_held--;
-    if (c->n_held == 0 && c != cl_data->chunks->prev) {
-      DL_DELETE(cl_data->chunks, c);
-      if (c->slab)
-        ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
-      free(c);
-    }
+    if (c->n_held == 0 && c != cl_data->chunks->prev)
+      _cl_chunk_free(cl_data, c, /*free_slab=*/1);
   }
   cl_data->in_flight_q = NULL;
 }
@@ -1090,10 +1093,7 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
       free(s->preds);
       _event_latest_signaled_clear_if(s->attr, s);
     }
-    DL_DELETE(cl_data->chunks, c);
-    if (c->slab)
-      ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
-    free(c);
+    _cl_chunk_free(cl_data, c, /*free_slab=*/1);
   }
   pthread_mutex_unlock(&cl_data->mtx);
   pthread_mutex_destroy(&cl_data->mtx);
@@ -1139,11 +1139,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
         free(s->preds);
         _event_latest_signaled_clear_if(s->attr, s);
       }
-      DL_DELETE(cl_data->chunks, c);
-      /* Skip zeMemFree on the slab — the ctx is being destroyed; the
-       * driver will reclaim the device allocation. Calling zeMemFree
-       * on a doomed ctx is at best racy. */
-      free(c);
+      _cl_chunk_free(cl_data, c, /*free_slab=*/0);
     }
     pthread_mutex_unlock(&cl_data->mtx);
     pthread_mutex_destroy(&cl_data->mtx);
