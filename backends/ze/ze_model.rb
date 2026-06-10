@@ -297,10 +297,17 @@ profiling_prologue = lambda { |event_name|
   <<EOF
   ze_event_handle_t _user_signal = #{event_name};
   struct _ze_event_h * _ewrapper = NULL;
+  /* Fetched once per profiled Append and threaded to both
+   * _get_profiling_event (prologue) and _universal_record_append (epilogue)
+   * so the tracer issues exactly one zeCommandListGetContextHandle per
+   * Append instead of three. */
+  ze_context_handle_t _ctx = NULL;
   if (_do_profile) {
-    _ewrapper = _get_profiling_event(hCommandList);
-    if (_ewrapper)
-      #{event_name} = _ewrapper->event;
+    if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(hCommandList, &_ctx) == ZE_RESULT_SUCCESS && _ctx) {
+      _ewrapper = _get_profiling_event(_ctx);
+      if (_ewrapper)
+        #{event_name} = _ewrapper->event;
+    }
     /* If injection failed, fall through with the user's signal unchanged;
      * we won't be able to time this Append, but it still runs. */
   }
@@ -312,7 +319,7 @@ profiling_epilogue = lambda { |_event_name, waits_expr = 'phWaitEvents', n_waits
   if (_do_profile && _ewrapper) {
     if (_retval == ZE_RESULT_SUCCESS) {
       ze_event_handle_t _attr = _user_signal ? _user_signal : _ewrapper->event;
-      _universal_record_append(hCommandList, _ewrapper, _user_signal,
+      _universal_record_append(hCommandList, _ctx, _ewrapper, _user_signal,
                                #{waits_expr}, #{n_waits_expr});
       tracepoint(lttng_ust_ze_profiling, event_profiling, _attr);
     } else {

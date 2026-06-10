@@ -622,33 +622,27 @@ static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&_ze_event_wrappers_mutex);                                               \
   } while (0)
 
-static struct _ze_event_h *_get_profiling_event(ze_command_list_handle_t command_list) {
+/* Caller-supplied ctx: every call site already has it on the stack, so
+ * we'd otherwise issue an unnecessary zeCommandListGetContextHandle per
+ * profiled Append (caller did the same query moments earlier). */
+static struct _ze_event_h *_get_profiling_event(ze_context_handle_t context) {
   struct _ze_event_h *e_w;
-
-  ze_context_handle_t context = NULL;
-  ze_result_t res = ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &context);
-  if (res != ZE_RESULT_SUCCESS || !context) {
-    THAPI_DBGLOG("zeCommandListGetContextHandle failed with %d, for command list: %p", res,
-                 command_list);
-    return NULL;
-  }
   GET_ZE_EVENT(&context, e_w);
   if (e_w)
     return e_w;
 
   GET_ZE_EVENT_WRAPPER(e_w);
   if (!e_w) {
-    THAPI_DBGLOG("Could not create a new event wrapper for command list: %p", command_list);
+    THAPI_DBGLOG("Could not create a new event wrapper for context: %p", context);
     return NULL;
   }
 
   ze_event_pool_desc_t desc = {
       ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL,
       ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
-  res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
+  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
   if (res != ZE_RESULT_SUCCESS) {
-    THAPI_DBGLOG("zeEventPoolCreate failed with %d, for command list: %p, context: %p", res,
-                 command_list, context);
+    THAPI_DBGLOG("zeEventPoolCreate failed with %d, for context: %p", res, context);
     goto cleanup_wrapper;
   }
   ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST,
@@ -796,12 +790,16 @@ static void _slot_publish(struct _ze_command_list_obj_data *cl_data,
  *
  * Forks on cl_data->is_compute to pick the QKT placement (INLINE vs
  * SHADOW) — see the "QKT placement" diagram at the top of this file. */
+/* ctx is fetched once in the prologue (profiling_prologue in ze_model.rb) and
+ * threaded in here so _universal_record_append doesn't reissue the same
+ * zeCommandListGetContextHandle the prologue already made. */
 static void _universal_record_append(ze_command_list_handle_t command_list,
+                                     ze_context_handle_t ctx,
                                      struct _ze_event_h *inj,
                                      ze_event_handle_t user_signal,
                                      ze_event_handle_t *user_waits,
                                      uint32_t user_n_waits) {
-  if (!inj)
+  if (!inj || !ctx)
     return;
   struct _ze_event_h *shadow_done = NULL;
   struct _ze_command_list_obj_data *cl_data = NULL;
@@ -809,9 +807,6 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   int inline_path = 0;
   int barrier_chained = 0;
 
-  ze_context_handle_t ctx = NULL;
-  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &ctx) != ZE_RESULT_SUCCESS || !ctx)
-    goto fail;
   inj->context = ctx;
 
   /* Plain FIND, no DEL: cl_data stays in the global hash while we work.
@@ -828,12 +823,19 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   if (!cl_data)
     goto fail;
   inline_path = cl_data->is_compute;
+  /* Publish the cl->ctx mapping up front so the first _on_execute_one_cl
+   * on this cl skips its zeCommandListGetContextHandle round-trip via the
+   * _cl_cache_context fast path. Race-safe: every writer stores the same
+   * value (the cl's true context), and _on_destroy_context's reader of
+   * this field is gated on a user contract that forbids concurrent
+   * Append + DestroyContext on the same context. */
+  cl_data->cached_context = ctx;
 
   /* Shadow path needs a fence event (Query lives on the shadow cl;
    * drain host-syncs on it). Inline path uses user_signal as the fence
    * via the dep graph, no extra event needed. */
   if (!inline_path) {
-    shadow_done = _get_profiling_event(command_list);
+    shadow_done = _get_profiling_event(ctx);
     if (!shadow_done)
       goto fail;
     shadow_done->context = ctx;
@@ -844,7 +846,6 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   s = _cl_slot_append(cl_data, ctx, inj, shadow_done, user_signal, user_waits, user_n_waits);
   if (!s)
     goto fail_locked;
-  cl_data->cached_context = ctx;
 
   if (inline_path) {
     /* Bake the QKT into the user cl. wait=inj, sig=user_signal.
