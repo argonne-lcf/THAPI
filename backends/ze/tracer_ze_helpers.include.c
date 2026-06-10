@@ -224,29 +224,29 @@ struct _ze_command_list_obj_data {
 struct _ze_command_list_obj_data *_ze_cls = NULL;
 pthread_mutex_t _ze_cls_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define FIND_ZE_CL(key, val)                                                                       \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_cls_mutex);                                                            \
-    HASH_FIND_PTR(_ze_cls, key, val);                                                              \
-    pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
-  } while (0)
+static struct _ze_command_list_obj_data *_cl_find(ze_command_list_handle_t command_list) {
+  struct _ze_command_list_obj_data *cl = NULL;
+  pthread_mutex_lock(&_ze_cls_mutex);
+  HASH_FIND_PTR(_ze_cls, &command_list, cl);
+  pthread_mutex_unlock(&_ze_cls_mutex);
+  return cl;
+}
 
-#define ADD_ZE_CL(val)                                                                             \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_cls_mutex);                                                            \
-    HASH_ADD_PTR(_ze_cls, ptr, val);                                                               \
-    pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
-  } while (0)
+static void _cl_add(struct _ze_command_list_obj_data *cl) {
+  pthread_mutex_lock(&_ze_cls_mutex);
+  HASH_ADD_PTR(_ze_cls, ptr, cl);
+  pthread_mutex_unlock(&_ze_cls_mutex);
+}
 
-#define FIND_AND_DEL_ZE_CL(key, val)                                                               \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_cls_mutex);                                                            \
-    HASH_FIND_PTR(_ze_cls, key, val);                                                              \
-    if (val) {                                                                                     \
-      HASH_DEL(_ze_cls, val);                                                                      \
-    }                                                                                              \
-    pthread_mutex_unlock(&_ze_cls_mutex);                                                          \
-  } while (0)
+static struct _ze_command_list_obj_data *_cl_find_and_del(ze_command_list_handle_t command_list) {
+  struct _ze_command_list_obj_data *cl = NULL;
+  pthread_mutex_lock(&_ze_cls_mutex);
+  HASH_FIND_PTR(_ze_cls, &command_list, cl);
+  if (cl)
+    HASH_DEL(_ze_cls, cl);
+  pthread_mutex_unlock(&_ze_cls_mutex);
+  return cl;
+}
 
 /* Per-device cache of the queue-group flag bitmap. The lookup is
  * read-mostly: scan zeDeviceGetCommandQueueGroupProperties once,
@@ -450,15 +450,13 @@ static void _shadow_append_query(struct _ze_shadow_cl *sh,
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
                                            ze_device_handle_t device,
                                            uint32_t ordinal, int immediate, int in_order) {
-  struct _ze_command_list_obj_data *cl_data = NULL;
-
-  FIND_ZE_CL(&command_list, cl_data);
-  if (cl_data) {
+  if (_cl_find(command_list)) {
     THAPI_DBGLOG("Command list already registered: %p", command_list);
     return;
   }
 
-  cl_data = (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
+  struct _ze_command_list_obj_data *cl_data =
+      (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
   if (!cl_data) {
     THAPI_DBGLOG("Failed to allocate memory");
     return;
@@ -468,7 +466,7 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
   cl_data->is_in_order = in_order ? 1 : 0;
   cl_data->is_compute = _ordinal_is_compute(device, ordinal) ? 1 : 0;
   pthread_mutex_init(&cl_data->mtx, NULL);
-  ADD_ZE_CL(cl_data);
+  _cl_add(cl_data);
 }
 
 /* Wrapper around an injected event we own. Lives either in the per-context
@@ -555,18 +553,21 @@ static inline void _event_latest_signaled_clear_if(ze_event_handle_t ev, struct 
   pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
 }
 
-#define GET_ZE_EVENT(key, val)                                                                     \
-  do {                                                                                             \
-    struct _ze_event_pool_entry *pool = NULL;                                                      \
-    pthread_mutex_lock(&_ze_event_pools_mutex);                                                    \
-    HASH_FIND_PTR(_ze_event_pools, key, pool);                                                     \
-    if (pool && pool->events) {                                                                    \
-      val = pool->events;                                                                          \
-      DL_DELETE(pool->events, val);                                                                \
-    } else                                                                                         \
-      val = NULL;                                                                                  \
-    pthread_mutex_unlock(&_ze_event_pools_mutex);                                                  \
-  } while (0)
+/* Pop one recycled event wrapper from the per-context freelist; NULL if
+ * none cached. Caller (today only _get_profiling_event) will fall back
+ * to creating a fresh L0 event pool + event. */
+static struct _ze_event_h *_get_ze_event(ze_context_handle_t context) {
+  struct _ze_event_h *e = NULL;
+  pthread_mutex_lock(&_ze_event_pools_mutex);
+  struct _ze_event_pool_entry *pool = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &context, pool);
+  if (pool && pool->events) {
+    e = pool->events;
+    DL_DELETE(pool->events, e);
+  }
+  pthread_mutex_unlock(&_ze_event_pools_mutex);
+  return e;
+}
 
 /* Return an event wrapper to its per-context freelist. Reset is issued
  * BEFORE we take the lock — zeEventHostReset is thread-safe and resetting
@@ -613,36 +614,45 @@ static void _put_ze_event(struct _ze_event_h *val) {
 struct _ze_event_h *_ze_event_wrappers = NULL;
 static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define GET_ZE_EVENT_WRAPPER(val)                                                                  \
-  do {                                                                                             \
-    pthread_mutex_lock(&_ze_event_wrappers_mutex);                                                 \
-    if (_ze_event_wrappers) {                                                                      \
-      val = _ze_event_wrappers;                                                                    \
-      DL_DELETE(_ze_event_wrappers, val);                                                          \
-    } else {                                                                                       \
-      val = calloc(1, sizeof(struct _ze_event_h));                                                 \
-    }                                                                                              \
-    pthread_mutex_unlock(&_ze_event_wrappers_mutex);                                               \
-  } while (0)
+/* Get a zeroed event wrapper struct: pop from the global recycle list if
+ * any, else calloc a fresh one. The wrapper is context-agnostic — only
+ * the backing L0 event + pool inside it bind to a specific ctx. */
+static struct _ze_event_h *_get_ze_event_wrapper(void) {
+  struct _ze_event_h *e = NULL;
+  pthread_mutex_lock(&_ze_event_wrappers_mutex);
+  if (_ze_event_wrappers) {
+    e = _ze_event_wrappers;
+    DL_DELETE(_ze_event_wrappers, e);
+  }
+  pthread_mutex_unlock(&_ze_event_wrappers_mutex);
+  if (!e)
+    e = (struct _ze_event_h *)calloc(1, sizeof(*e));
+  return e;
+}
 
-#define PUT_ZE_EVENT_WRAPPER(val)                                                                  \
-  do {                                                                                             \
-    memset(val, 0, sizeof(struct _ze_event_h));                                                    \
-    pthread_mutex_lock(&_ze_event_wrappers_mutex);                                                 \
-    DL_PREPEND(_ze_event_wrappers, val);                                                           \
-    pthread_mutex_unlock(&_ze_event_wrappers_mutex);                                               \
-  } while (0)
+/* Return a wrapper struct to the recycle list. Used in two situations:
+ *   1) wrapper construction failed, no L0 objects ever attached;
+ *   2) the wrapper's context is being destroyed — caller has already
+ *      arranged for the L0 event/pool inside to be released (or left
+ *      them to die with the context).
+ * We zero before publishing so a future _get_ze_event_wrapper returns
+ * something equivalent to a fresh calloc. */
+static void _put_ze_event_wrapper(struct _ze_event_h *val) {
+  memset(val, 0, sizeof(*val));
+  pthread_mutex_lock(&_ze_event_wrappers_mutex);
+  DL_PREPEND(_ze_event_wrappers, val);
+  pthread_mutex_unlock(&_ze_event_wrappers_mutex);
+}
 
 /* Caller-supplied ctx: every call site already has it on the stack, so
  * we'd otherwise issue an unnecessary zeCommandListGetContextHandle per
  * profiled Append (caller did the same query moments earlier). */
 static struct _ze_event_h *_get_profiling_event(ze_context_handle_t context) {
-  struct _ze_event_h *e_w;
-  GET_ZE_EVENT(&context, e_w);
+  struct _ze_event_h *e_w = _get_ze_event(context);
   if (e_w)
     return e_w;
 
-  GET_ZE_EVENT_WRAPPER(e_w);
+  e_w = _get_ze_event_wrapper();
   if (!e_w) {
     THAPI_DBGLOG("Could not create a new event wrapper for context: %p", context);
     return NULL;
@@ -668,7 +678,7 @@ static struct _ze_event_h *_get_profiling_event(ze_context_handle_t context) {
 cleanup_ep:
   ZE_EVENT_POOL_DESTROY_PTR(e_w->event_pool);
 cleanup_wrapper:
-  PUT_ZE_EVENT_WRAPPER(e_w);
+  _put_ze_event_wrapper(e_w);
   return NULL;
 }
 
@@ -820,7 +830,7 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
 
   inj->context = ctx;
 
-  /* Plain FIND, no DEL: cl_data stays in the global hash while we work.
+  /* Plain find, no delete: cl_data stays in the global hash while we work.
    * The L0 spec forbids the user from racing Append against Destroy on
    * the same cl handle (cl handle is a not-thread-safe restriction for
    * both zeCommandListAppend* and zeCommandListDestroy), so cl_data
@@ -830,7 +840,7 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
    * from three acquires (DEL + ADD + the cleanup ADD on the fail path)
    * to one — which is the single biggest contention point in the
    * many-threads-many-CLs case. */
-  FIND_ZE_CL(&command_list, cl_data);
+  cl_data = _cl_find(command_list);
   if (!cl_data)
     goto fail;
   inline_path = cl_data->is_compute;
@@ -1044,8 +1054,7 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
 
 /* Drain a single cl. */
 static void _on_sync_drain_cl(ze_command_list_handle_t command_list) {
-  struct _ze_command_list_obj_data *cl_data = NULL;
-  FIND_ZE_CL(&command_list, cl_data);
+  struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
   if (!cl_data)
     return;
   pthread_mutex_lock(&cl_data->mtx);
@@ -1065,8 +1074,7 @@ static void _on_sync_drain_cl(ze_command_list_handle_t command_list) {
  * L0; immediate cls' slots have likely already been released at drain
  * time but any stragglers get cleaned up too. */
 static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
-  struct _ze_command_list_obj_data *cl_data = NULL;
-  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  struct _ze_command_list_obj_data *cl_data = _cl_find_and_del(command_list);
   if (!cl_data)
     return;
   pthread_mutex_lock(&cl_data->mtx);
@@ -1124,9 +1132,9 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
          * underlying L0 event/pool destroyed there too, not here. The
          * wrappers themselves are context-agnostic, so reuse them. */
         if (s->inj)
-          PUT_ZE_EVENT_WRAPPER(s->inj);
+          _put_ze_event_wrapper(s->inj);
         if (s->shadow_done)
-          PUT_ZE_EVENT_WRAPPER(s->shadow_done);
+          _put_ze_event_wrapper(s->shadow_done);
         free(s->waits);
         free(s->preds);
         _event_latest_signaled_clear_if(s->attr, s);
@@ -1170,7 +1178,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
       if (w->event_pool)
         ZE_EVENT_POOL_DESTROY_PTR(w->event_pool);
       DL_DELETE(pe->events, w);
-      PUT_ZE_EVENT_WRAPPER(w);
+      _put_ze_event_wrapper(w);
     }
     free(pe);
   }
@@ -1237,8 +1245,7 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
  *      it to the dep graph + as the "owner" of this queue. */
 static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
                                ze_command_list_handle_t command_list) {
-  struct _ze_command_list_obj_data *cl_data = NULL;
-  FIND_ZE_CL(&command_list, cl_data);
+  struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
   if (!cl_data)
     return;
   pthread_mutex_lock(&cl_data->mtx);
