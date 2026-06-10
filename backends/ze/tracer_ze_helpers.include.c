@@ -814,7 +814,17 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
     goto fail;
   inj->context = ctx;
 
-  FIND_AND_DEL_ZE_CL(&command_list, cl_data);
+  /* Plain FIND, no DEL: cl_data stays in the global hash while we work.
+   * The L0 spec forbids the user from racing Append against Destroy on
+   * the same cl handle (cl handle is a not-thread-safe restriction for
+   * both zeCommandListAppend* and zeCommandListDestroy), so cl_data
+   * cannot be torn out from under us by a concurrent _on_destroy_*.
+   * cl_data->mtx still serializes our work against another Append /
+   * Execute on this same cl. Per-Append cost on _ze_cls_mutex drops
+   * from three acquires (DEL + ADD + the cleanup ADD on the fail path)
+   * to one — which is the single biggest contention point in the
+   * many-threads-many-CLs case. */
+  FIND_ZE_CL(&command_list, cl_data);
   if (!cl_data)
     goto fail;
   inline_path = cl_data->is_compute;
@@ -825,7 +835,7 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   if (!inline_path) {
     shadow_done = _get_profiling_event(command_list);
     if (!shadow_done)
-      goto fail_with_cl;
+      goto fail;
     shadow_done->context = ctx;
   }
 
@@ -847,7 +857,6 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
     barrier_chained = 1; /* user_signal chained via the QKT itself */
     _slot_instantiate(cl_data, s);
     pthread_mutex_unlock(&cl_data->mtx);
-    ADD_ZE_CL(cl_data);
     return;
   }
 
@@ -868,7 +877,6 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
     _slot_publish(cl_data, s, sh);
   }
   pthread_mutex_unlock(&cl_data->mtx);
-  ADD_ZE_CL(cl_data);
   return;
 
 fail_locked:
@@ -891,8 +899,6 @@ fail_locked:
     }
   }
   pthread_mutex_unlock(&cl_data->mtx);
-fail_with_cl:
-  ADD_ZE_CL(cl_data);
 fail:
   /* If we never chained user_signal off inj, do it now. The prologue
    * swapped user's sig for inj->event; without this Append the user's
