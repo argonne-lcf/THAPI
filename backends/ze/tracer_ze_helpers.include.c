@@ -1065,12 +1065,46 @@ static void _on_sync_drain_cl(ze_command_list_handle_t command_list) {
   pthread_mutex_unlock(&cl_data->mtx);
 }
 
+/* Release everything cl_data owns and free cl_data itself. Caller must
+ * have already removed cl_data from the global _ze_cls hash (single-cl:
+ * _cl_find_and_del; per-ctx sweep: HASH_DEL inside the iter), since the
+ * two callers find their cls differently.
+ *
+ * ctx_dying changes how we dispose of two ctx-scoped resources:
+ *
+ *   - per-slot event wrappers: when ctx is alive, recycle them to the
+ *     per-context event pool via _put_ze_event so a later cl on the same
+ *     ctx can grab them. When ctx is dying, the pool itself is about to
+ *     be wiped in _on_destroy_context step 3 (which will destroy the L0
+ *     event/pool too), so we only recycle the wrapper struct.
+ *
+ *   - chunk slabs: zeMemFree the slab when ctx is alive; skip when ctx
+ *     is dying — the driver reclaims, and zeMemFree on a doomed ctx is
+ *     at best racy. */
+static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_dying) {
+  pthread_mutex_lock(&cl_data->mtx);
+  struct _ze_slab_chunk *c, *tmp;
+  DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
+    for (uint32_t i = 0; i < c->n_used; ++i) {
+      struct _ze_slot *s = &c->slots[i];
+      if (s->inj)
+        ctx_dying ? _put_ze_event_wrapper(s->inj) : _put_ze_event(s->inj);
+      if (s->shadow_done)
+        ctx_dying ? _put_ze_event_wrapper(s->shadow_done) : _put_ze_event(s->shadow_done);
+      free(s->waits);
+      free(s->preds);
+      _event_latest_signaled_clear_if(s->attr, s);
+    }
+    _cl_chunk_free(cl_data, c, /*free_slab=*/!ctx_dying);
+  }
+  pthread_mutex_unlock(&cl_data->mtx);
+  pthread_mutex_destroy(&cl_data->mtx);
+  free(cl_data);
+}
+
 /* zeCommandListDestroy epilogue. The L0 spec says the user must have
  * ensured the device is no longer referencing the cl, so we don't drain
- * (the GPU is already idle on this cl). We just release our state:
- * PUT every slot's tracer-owned events back to the per-context pool,
- * free per-slot allocations, free every chunk's slab + chunk struct,
- * remove cl_data from the registry, free cl_data itself.
+ * (the GPU is already idle on this cl). We just release our state.
  *
  * Works for both cl kinds: regular cls (inj baked into the cl body)
  * can recycle inj here because the cl body is about to be destroyed by
@@ -1080,24 +1114,7 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl_data = _cl_find_and_del(command_list);
   if (!cl_data)
     return;
-  pthread_mutex_lock(&cl_data->mtx);
-  struct _ze_slab_chunk *c, *tmp;
-  DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
-    for (uint32_t i = 0; i < c->n_used; ++i) {
-      struct _ze_slot *s = &c->slots[i];
-      if (s->inj)
-        _put_ze_event(s->inj);
-      if (s->shadow_done)
-        _put_ze_event(s->shadow_done);
-      free(s->waits);
-      free(s->preds);
-      _event_latest_signaled_clear_if(s->attr, s);
-    }
-    _cl_chunk_free(cl_data, c, /*free_slab=*/1);
-  }
-  pthread_mutex_unlock(&cl_data->mtx);
-  pthread_mutex_destroy(&cl_data->mtx);
-  free(cl_data);
+  _cl_data_destroy(cl_data, /*ctx_dying=*/0);
 }
 
 /* zeContextDestroy prologue. The user contract is that the device is no
@@ -1122,28 +1139,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
     if (cl_data->cached_context != hContext)
       continue;
     HASH_DEL(_ze_cls, cl_data);
-    pthread_mutex_lock(&cl_data->mtx);
-    struct _ze_slab_chunk *c, *ctmp;
-    DL_FOREACH_SAFE(cl_data->chunks, c, ctmp) {
-      for (uint32_t i = 0; i < c->n_used; ++i) {
-        struct _ze_slot *s = &c->slots[i];
-        /* Recycle our event wrappers but DON'T return them to the per-ctx
-         * pool — the pool entry will be wiped in step 3, and we want the
-         * underlying L0 event/pool destroyed there too, not here. The
-         * wrappers themselves are context-agnostic, so reuse them. */
-        if (s->inj)
-          _put_ze_event_wrapper(s->inj);
-        if (s->shadow_done)
-          _put_ze_event_wrapper(s->shadow_done);
-        free(s->waits);
-        free(s->preds);
-        _event_latest_signaled_clear_if(s->attr, s);
-      }
-      _cl_chunk_free(cl_data, c, /*free_slab=*/0);
-    }
-    pthread_mutex_unlock(&cl_data->mtx);
-    pthread_mutex_destroy(&cl_data->mtx);
-    free(cl_data);
+    _cl_data_destroy(cl_data, /*ctx_dying=*/1);
   }
   pthread_mutex_unlock(&_ze_cls_mutex);
 
