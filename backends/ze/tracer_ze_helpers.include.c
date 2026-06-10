@@ -514,20 +514,29 @@ static inline struct _ze_slot *_event_latest_signaled_get(ze_event_handle_t ev) 
 static inline void _event_latest_signaled_set(ze_event_handle_t ev, struct _ze_slot *s) {
   if (!ev)
     return;
+  /* Allocate the new entry outside the lock; same pattern as _qgroup_cache_get.
+   * If we lose the race to publish it, free our unused copy. Saves a heap
+   * call worth of contention on _ze_event_latest_signaled_mutex per Append
+   * that touches an event the tracer hasn't seen before. */
+  struct _ze_event_latest_signaled_entry *pre =
+      (struct _ze_event_latest_signaled_entry *)calloc(1, sizeof(*pre));
+
   pthread_mutex_lock(&_ze_event_latest_signaled_mutex);
   struct _ze_event_latest_signaled_entry *e = NULL;
   HASH_FIND_PTR(_ze_event_latest_signaled, &ev, e);
   if (!e) {
-    e = (struct _ze_event_latest_signaled_entry *)calloc(1, sizeof(*e));
-    if (!e) {
+    if (!pre) {
       pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
       return;
     }
+    e = pre;
+    pre = NULL;
     e->ev = ev;
     HASH_ADD_PTR(_ze_event_latest_signaled, ev, e);
   }
   e->slot = s;
   pthread_mutex_unlock(&_ze_event_latest_signaled_mutex);
+  free(pre); /* harmless if NULL; non-NULL only when we lost the entry race */
 }
 
 /* Remove event_latest_signaled[ev] only if it still points at slot s
@@ -559,31 +568,47 @@ static inline void _event_latest_signaled_clear_if(ze_event_handle_t ev, struct 
     pthread_mutex_unlock(&_ze_event_pools_mutex);                                                  \
   } while (0)
 
-#define PUT_ZE_EVENT(val)                                                                          \
-  do {                                                                                             \
-    struct _ze_event_pool_entry *pool = NULL;                                                      \
-    pthread_mutex_lock(&_ze_event_pools_mutex);                                                    \
-    HASH_FIND_PTR(_ze_event_pools, &(val->context), pool);                                         \
-    if (!pool) {                                                                                   \
-      pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(struct _ze_event_pool_entry));        \
-      if (!pool) {                                                                                 \
-        THAPI_DBGLOG("Failed to allocate memory");                                                 \
-        pthread_mutex_unlock(&_ze_event_pools_mutex);                                              \
-        if (val->event_pool) {                                                                     \
-          if (val->event)                                                                          \
-            ZE_EVENT_DESTROY_PTR(val->event);                                                      \
-          ZE_EVENT_POOL_DESTROY_PTR(val->event_pool);                                              \
-        }                                                                                          \
-        free(val);                                                                                 \
-        break;                                                                                     \
-      }                                                                                            \
-      pool->context = val->context;                                                                \
-      HASH_ADD_PTR(_ze_event_pools, context, pool);                                                \
-    }                                                                                              \
-    _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(val->event));                                                 \
-    DL_PREPEND(pool->events, val);                                                                 \
-    pthread_mutex_unlock(&_ze_event_pools_mutex);                                                  \
-  } while (0)
+/* Return an event wrapper to its per-context freelist. Reset is issued
+ * BEFORE we take the lock — zeEventHostReset is thread-safe and resetting
+ * with the lock held would serialize an L0 driver round-trip behind the
+ * global pools mutex. Pre-allocate the new bucket entry outside the lock
+ * for the same reason; if we lose the race to create the bucket, free our
+ * unused copy.
+ *
+ * On total failure (couldn't allocate bucket AND there isn't one), there's
+ * nowhere to park the wrapper, so destroy its backing L0 objects and free
+ * the wrapper itself — we'd rather leak nothing than poison the freelist. */
+static void _put_ze_event(struct _ze_event_h *val) {
+  _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(val->event));
+
+  struct _ze_event_pool_entry *pre =
+      (struct _ze_event_pool_entry *)calloc(1, sizeof(*pre));
+
+  pthread_mutex_lock(&_ze_event_pools_mutex);
+  struct _ze_event_pool_entry *pool = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &val->context, pool);
+  if (!pool) {
+    if (!pre) {
+      pthread_mutex_unlock(&_ze_event_pools_mutex);
+      THAPI_DBGLOG("Failed to allocate memory");
+      if (val->event_pool) {
+        if (val->event)
+          ZE_EVENT_DESTROY_PTR(val->event);
+        ZE_EVENT_POOL_DESTROY_PTR(val->event_pool);
+      }
+      free(val);
+      return;
+    }
+    pool = pre;
+    pre = NULL;
+    pool->context = val->context;
+    HASH_ADD_PTR(_ze_event_pools, context, pool);
+  }
+  DL_PREPEND(pool->events, val);
+  pthread_mutex_unlock(&_ze_event_pools_mutex);
+  free(pre); /* harmless if NULL; non-NULL only when we lost the bucket race */
+}
+
 
 struct _ze_event_h *_ze_event_wrappers = NULL;
 static pthread_mutex_t _ze_event_wrappers_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -898,8 +923,8 @@ fail:
     _ZE_MUST(ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &wait_ev));
   }
   if (shadow_done)
-    PUT_ZE_EVENT(shadow_done);
-  PUT_ZE_EVENT(inj);
+    _put_ze_event(shadow_done);
+  _put_ze_event(inj);
 }
 
 /* Reclaim a slot: PUT events back to the per-context pool, free waits,
@@ -910,11 +935,11 @@ static void _slot_release(struct _ze_slot *s) {
   if (!s || !s->owner || !s->owner->is_immediate)
     return;
   if (s->inj) {
-    PUT_ZE_EVENT(s->inj);
+    _put_ze_event(s->inj);
     s->inj = NULL;
   }
   if (s->shadow_done) {
-    PUT_ZE_EVENT(s->shadow_done);
+    _put_ze_event(s->shadow_done);
     s->shadow_done = NULL;
   }
   free(s->waits);
@@ -1050,9 +1075,9 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
     for (uint32_t i = 0; i < c->n_used; ++i) {
       struct _ze_slot *s = &c->slots[i];
       if (s->inj)
-        PUT_ZE_EVENT(s->inj);
+        _put_ze_event(s->inj);
       if (s->shadow_done)
-        PUT_ZE_EVENT(s->shadow_done);
+        _put_ze_event(s->shadow_done);
       free(s->waits);
       free(s->preds);
       _event_latest_signaled_clear_if(s->attr, s);

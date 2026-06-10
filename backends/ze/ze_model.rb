@@ -323,7 +323,7 @@ profiling_epilogue = lambda { |_event_name, waits_expr = 'phWaitEvents', n_waits
                                #{waits_expr}, #{n_waits_expr});
       tracepoint(lttng_ust_ze_profiling, event_profiling, _attr);
     } else {
-      PUT_ZE_EVENT(_ewrapper);
+      _put_ze_event(_ewrapper);
     }
   }
 EOF
