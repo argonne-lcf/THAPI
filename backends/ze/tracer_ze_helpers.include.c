@@ -447,20 +447,6 @@ static void _shadow_append_query(struct _ze_shadow_cl *sh,
   pthread_mutex_unlock(&sh->mtx);
 }
 
-/* Returns the cl's context, fetching from L0 on first call and caching
- * for the cl's lifetime. The cache is load-bearing for
- * _on_destroy_context, which scans cls by context. Returns NULL on L0
- * error. */
-static ze_context_handle_t _cl_cache_context(struct _ze_command_list_obj_data *cl_data,
-                                             ze_command_list_handle_t command_list) {
-  if (cl_data->cached_context)
-    return cl_data->cached_context;
-  ze_context_handle_t c = NULL;
-  if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(command_list, &c) == ZE_RESULT_SUCCESS)
-    cl_data->cached_context = c;
-  return c;
-}
-
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
                                            ze_device_handle_t device,
                                            uint32_t ordinal, int immediate, int in_order) {
@@ -823,12 +809,14 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   if (!cl_data)
     goto fail;
   inline_path = cl_data->is_compute;
-  /* Publish the cl->ctx mapping up front so the first _on_execute_one_cl
-   * on this cl skips its zeCommandListGetContextHandle round-trip via the
-   * _cl_cache_context fast path. Race-safe: every writer stores the same
-   * value (the cl's true context), and _on_destroy_context's reader of
-   * this field is gated on a user contract that forbids concurrent
-   * Append + DestroyContext on the same context. */
+  /* Publish the cl->ctx mapping up front. _on_execute_one_cl reads it
+   * directly (no fallback fetch) when resolving the shadow cl, and
+   * _on_destroy_context's per-cl sweep matches against it. Doing this
+   * before any slot is appended guarantees both readers find a populated
+   * value. Race-safe unlocked: every writer stores the same value (the
+   * cl's true context), and _on_destroy_context's reader is gated on a
+   * user contract that forbids concurrent Append + DestroyContext on
+   * the same context. */
   cl_data->cached_context = ctx;
 
   /* Shadow path needs a fence event (Query lives on the shadow cl;
@@ -1251,7 +1239,10 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
       if (slot->live)
         continue;
       if (slot->shadow_done && !sh_resolved) {
-        ze_context_handle_t ctx = _cl_cache_context(cl_data, command_list);
+        /* cached_context was published by _universal_record_append before any
+         * shadow_done slot could exist, so it's always set here — no need
+         * for an L0 round-trip to recover it. */
+        ze_context_handle_t ctx = cl_data->cached_context;
         ze_device_handle_t dev = NULL;
         _ZE_MUST(ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &dev));
         sh = ctx ? _get_shadow_cl(ctx, dev) : NULL;
