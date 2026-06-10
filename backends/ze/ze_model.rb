@@ -304,7 +304,9 @@ profiling_prologue = lambda { |event_name|
   ze_context_handle_t _ctx = NULL;
   if (_do_profile) {
     if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(hCommandList, &_ctx) == ZE_RESULT_SUCCESS && _ctx) {
+      pthread_mutex_lock(&_ze_state_mutex);
       _ewrapper = _get_profiling_event(_ctx);
+      pthread_mutex_unlock(&_ze_state_mutex);
       if (_ewrapper)
         #{event_name} = _ewrapper->event;
     }
