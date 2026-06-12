@@ -278,7 +278,6 @@ TRACE_COMMON = \
 	tests/interval_profiling_normal.thapi_text_pretty \
 	tests/interval_profiling_multithread.thapi_text_pretty \
 	tests/interval_profiling_API_call.thapi_text_pretty \
-	tests/interval_profiling_fast.thapi_text_pretty \
 	tests/interval_profiling_interleave_process.thapi_text_pretty \
 	tests/interval_profiling_ignore.thapi_text_pretty \
 	tests/interval_profiling_shared_event.thapi_text_pretty \

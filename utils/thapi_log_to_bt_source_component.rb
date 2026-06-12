@@ -146,7 +146,10 @@ end
 
 def parse_log(model, input_path, exclude_fields)
   File.open(input_path, 'r') do |file|
-    file.each_line.map do |line|
+    file.each_line.filter_map do |line|
+      stripped = line.strip
+      next if stripped.empty? || stripped.start_with?('#')
+
       parse_event(model, line, exclude_fields)
     end
   end
