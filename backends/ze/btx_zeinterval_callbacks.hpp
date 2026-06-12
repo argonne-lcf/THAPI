@@ -55,7 +55,9 @@ using btx_kernel_group_size_t = std::tuple<uint32_t, uint32_t, uint32_t>;
 using btx_kernel_desct_t =
     std::tuple<std::string /*ze_kernel_desc_t*/, ze_kernel_properties_t, btx_kernel_group_size_t>;
 
-enum class btx_event_t { TRAFFIC, KERNEL, OTHER };
+// SIGNAL = zeCommandListAppendSignalEvent. Ring entry is created so state
+// stays consistent, but filtered out of the device tally (no GPU work).
+enum class btx_event_t { TRAFFIC, KERNEL, SIGNAL, OTHER };
 using btx_additional_info_traffic_t = std::tuple<int64_t /*ts*/, size_t /*size*/>;
 using btx_additional_info_kernel_t = std::string /*metadata*/;
 using btx_additional_info =

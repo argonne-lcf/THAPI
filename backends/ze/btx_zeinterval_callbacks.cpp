@@ -559,6 +559,20 @@ static void hSignalEvent_rest_entry_callback(void *btx_handle,
       hCommandList, name, ts, btx_event_t::OTHER, {}};
 }
 
+static void zeCommandListAppendSignalEvent_entry_callback(void *btx_handle,
+                                                          void *usr_data,
+                                                          int64_t ts,
+                                                          const char *hostname,
+                                                          int64_t vpid,
+                                                          uint64_t vtid,
+                                                          ze_command_list_handle_t hCommandList,
+                                                          ze_event_handle_t hEvent) {
+  (void)hEvent;
+  auto *data = static_cast<data_t *>(usr_data);
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {
+      hCommandList, "zeCommandListAppendSignalEvent", ts, btx_event_t::SIGNAL, {}};
+}
+
 /*
  *             _                              _                   _
  *     _   _  /   _  ._ _  ._ _   _. ._   _| / \      _       _  |_     _   _    _|_  _
@@ -835,11 +849,8 @@ static void event_profiling_callback(void *btx_handle,
     ring.entries.clear();
     ring.cursor = 0;
   }
-  ring.entries.push_back({vtid,         commandQueueDesc,
-                          hCommandList, hCommandListIsImmediate,
-                          hDevice,      commandName,
-                          ts_min,       clockLttngDevice,
-                          type,         ptr});
+  ring.entries.push_back({vtid, commandQueueDesc, hCommandList, hCommandListIsImmediate, hDevice,
+                          commandName, ts_min, clockLttngDevice, type, ptr});
   // Prepare job for non IMM
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].insert(hEvent);
@@ -896,7 +907,8 @@ static void event_profiling_result_callback(void *btx_handle,
   if (it_p == data->eventToBtxDesct.cend() || it_p->second.entries.empty())
     return;
   auto &ring = it_p->second;
-  if (ring.cursor >= ring.entries.size()) ring.cursor = 0;
+  if (ring.cursor >= ring.entries.size())
+    ring.cursor = 0;
   const auto &[vtid_submission, commandQueueDesc, hCommandList, hCommandListIsImmediate, device,
                commandName, lltngMin, clockLttngDevice, type, ptr] = ring.entries[ring.cursor];
   ring.cursor++;
@@ -912,6 +924,13 @@ static void event_profiling_result_callback(void *btx_handle,
   }
   if (!hCommandListIsImmediate)
     data->commandListToEvents[{hostname, vpid, hCommandList}].erase(hEvent);
+
+  /* AppendSignalEvent is a host-side signal with no GPU work to time.
+   * We pushed a ring entry to keep state consistent (so a future
+   * profiling_results lookup doesn't walk a stale prior entry), but
+   * suppress the device-side tally emission here. */
+  if (type == btx_event_t::SIGNAL)
+    return;
 
   if ((type == btx_event_t::TRAFFIC) && (status == ZE_RESULT_SUCCESS)) {
     auto &[ts, size] = std::get<btx_additional_info_traffic_t>(ptr);
@@ -1411,6 +1430,12 @@ void btx_register_usr_callbacks(void *btx_handle) {
   REGISTER_ASSOCIATED_CALLBACK(eventMemory_without_hSignalEvent_entry);
   REGISTER_ASSOCIATED_CALLBACK(eventMemory_without_hSignalEvent_exit);
   REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_rest_entry);
+
+  /* zeCommandListAppendSignalEvent doesn't match the hSignalEvent_* sets
+   * (payload is `hEvent`, not `hSignalEvent`), so it needs its own entry
+   * callback to keep threadToLastLaunchInfo from going stale. */
+  btx_register_callbacks_lttng_ust_ze_zeCommandListAppendSignalEvent_entry(
+      btx_handle, &zeCommandListAppendSignalEvent_entry_callback);
 
   /* Remove Memory */
   REGISTER_ASSOCIATED_CALLBACK(memFree_entry);
