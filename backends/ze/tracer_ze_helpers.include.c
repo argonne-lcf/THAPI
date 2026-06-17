@@ -533,6 +533,45 @@ static inline void _event_latest_signaled_clear_if(ze_event_handle_t ev, struct 
   }
 }
 
+/* event -> last kernel-timestamp result we drained for it. The Append
+ * prologue swaps the user's signal event for our inj, so the user's event
+ * ends up carrying the QKT/barrier op timing, not the kernel's — a user who
+ * calls zeEventQueryKernelTimestamp on their own event would read garbage.
+ * At drain we already read the real kernel result from the slab; stash it
+ * here keyed by the user's event so the query hook can serve it back.
+ * Re-signaling an event just overwrites the entry with the latest result. */
+struct _ze_event_kts_entry {
+  ze_event_handle_t ev; /* key */
+  ze_kernel_timestamp_result_t result;
+  UT_hash_handle hh;
+};
+static struct _ze_event_kts_entry *_ze_event_kts = NULL;
+
+static inline void _event_kts_set(ze_event_handle_t ev, ze_kernel_timestamp_result_t r) {
+  if (!ev)
+    return;
+  struct _ze_event_kts_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_kts, &ev, e);
+  if (!e) {
+    e = (struct _ze_event_kts_entry *)calloc(1, sizeof(*e));
+    if (!e)
+      return;
+    e->ev = ev;
+    HASH_ADD_PTR(_ze_event_kts, ev, e);
+  }
+  e->result = r;
+}
+
+/* Copy the stashed kernel result for ev into *out; 1 if found, 0 otherwise. */
+static inline int _event_kts_get(ze_event_handle_t ev, ze_kernel_timestamp_result_t *out) {
+  struct _ze_event_kts_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_kts, &ev, e);
+  if (!e)
+    return 0;
+  *out = e->result;
+  return 1;
+}
+
 /* Pop one recycled event wrapper from the per-context freelist; NULL
  * if none cached (caller falls back to creating a fresh L0 event). */
 static struct _ze_event_h *_get_ze_event(ze_context_handle_t context) {
@@ -967,13 +1006,19 @@ static void _slot_drain(struct _ze_slot *s) {
     }
   }
   ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
-  if (s->chunk && s->chunk->slab && attr &&
-      tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results)) {
+  if (s->chunk && s->chunk->slab && attr) {
     ze_kernel_timestamp_result_t r =
         *(ze_kernel_timestamp_result_t *)((char *)s->chunk->slab + s->off);
-    do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, attr, ZE_RESULT_SUCCESS,
-                  ZE_RESULT_SUCCESS, r.global.kernelStart, r.global.kernelEnd,
-                  r.context.kernelStart, r.context.kernelEnd);
+    /* Stash the kernel result under the user's own event so the user's
+     * zeEventQueryKernelTimestamp returns kernel timing, not the QKT/barrier
+     * op timing their event actually carries (we swapped it for inj). Only
+     * when the user supplied an event (s->attr); inj is ours, not queryable. */
+    if (s->attr)
+      _event_kts_set(s->attr, r);
+    if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results))
+      do_tracepoint(lttng_ust_ze_profiling, event_profiling_results, attr, ZE_RESULT_SUCCESS,
+                    ZE_RESULT_SUCCESS, r.global.kernelStart, r.global.kernelEnd,
+                    r.context.kernelStart, r.context.kernelEnd);
   }
   _event_latest_signaled_clear_if(s->attr, s);
   /* Drop refs on preds; release any that hit 0 and are already drained. */
@@ -1256,6 +1301,21 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
     _imm_reset_if_drained(s->owner);
   }
   pthread_mutex_unlock(&_ze_state_mutex);
+}
+
+/* zeEventQueryKernelTimestamp epilogue. If we drained a kernel result for
+ * this user event, overwrite *dstptr with it: the user's event carries the
+ * QKT/barrier op timing (we swapped their signal for inj at Append), but the
+ * caller wants the KERNEL timing, which we stashed at drain. Returns 1 if it
+ * served a stashed result. */
+static int _on_query_kernel_timestamp(ze_event_handle_t hEvent,
+                                      ze_kernel_timestamp_result_t *dstptr) {
+  if (!hEvent || !dstptr)
+    return 0;
+  pthread_mutex_lock(&_ze_state_mutex);
+  int found = _event_kts_get(hEvent, dstptr);
+  pthread_mutex_unlock(&_ze_state_mutex);
+  return found;
 }
 
 /* Execute-epilogue handler for ONE cl. Runs AFTER L0 Execute returned,

@@ -221,6 +221,16 @@ register_epilogue 'zeCommandListHostSynchronize', <<EOF
     _on_sync_drain_cl(hCommandList);
 EOF
 
+# The Append prologue swaps the user's signal event for our injected event, so
+# the user's own event ends up carrying the QKT/barrier op timing, not the
+# kernel's. If the user queries their event's kernel timestamp themselves,
+# serve back the kernel result we stashed at drain so they see kernel timing.
+register_epilogue 'zeEventQueryKernelTimestamp', <<EOF
+  if (_do_profile && hEvent && dstptr &&
+      _on_query_kernel_timestamp(hEvent, dstptr))
+    _retval = ZE_RESULT_SUCCESS;
+EOF
+
 # Fence sync: the fence the user passed to Execute is stamped onto each cl
 # (in_flight_fence), so a fence wait drains exactly the cls that Execute
 # submitted. zeFenceQueryStatus is NOT hooked: it's a non-blocking poll, so
