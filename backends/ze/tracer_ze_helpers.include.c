@@ -672,8 +672,20 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
                                         uint32_t n_waits) {
   struct _ze_slab_chunk *tail = cl_data->chunks ? cl_data->chunks->prev : NULL;
   if (!tail || tail->n_used >= _ZE_SLAB_CHUNK_SLOTS) {
-    if (tail && !cl_data->is_immediate)
+    if (tail && !cl_data->is_immediate) {
+      /* Regular cl is capped at one chunk (inj events are baked into the
+       * closed cl body, so storage can't move). Past the cap we drop the
+       * Append's profiling silently — warn once so the data loss is at
+       * least visible. Called under _ze_state_mutex, so the guard is safe. */
+      static int warned = 0;
+      if (!warned) {
+        warned = 1;
+        _THAPI_LOG("warning: regular command list %p exceeded %d profiled "
+                   "Appends in one build; further Appends will not be timed",
+                   (void *)cl_data->ptr, _ZE_SLAB_CHUNK_SLOTS);
+      }
       return NULL;
+    }
     tail = _cl_chunk_alloc(cl_data, ctx);
     if (!tail)
       return NULL;
