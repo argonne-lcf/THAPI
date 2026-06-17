@@ -208,17 +208,17 @@ EOF
 # everything reachable. Each sync API has a different anchor.
 register_epilogue 'zeCommandQueueSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS)
-    _on_sync_drain_queue(hCommandQueue);
+    _on_sync(_ZE_SYNC_QUEUE, hCommandQueue);
 EOF
 
 register_epilogue 'zeEventHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
-    _on_sync_drain_event(hEvent);
+    _on_sync(_ZE_SYNC_EVENT, hEvent);
 EOF
 
 register_epilogue 'zeCommandListHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
-    _on_sync_drain_cl(hCommandList);
+    _on_sync(_ZE_SYNC_CL, hCommandList);
 EOF
 
 # The Append prologue swaps the user's signal event for our injected event, so
@@ -239,7 +239,7 @@ EOF
 # blocking zeFenceHostSynchronize is the safe anchor.
 register_epilogue 'zeFenceHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
-    _on_sync_drain_fence(hFence);
+    _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
 
 register_prologue 'zeEventPoolCreate', <<EOF
