@@ -193,7 +193,7 @@ EOF
 # shadow Query op holds the engine, deadlocking the user cl.
 register_epilogue 'zeCommandQueueExecuteCommandLists', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && numCommandLists > 0 && phCommandLists)
-    _on_execute_command_lists_epilogue(hCommandQueue, numCommandLists, phCommandLists);
+    _on_execute_command_lists_epilogue(hCommandQueue, hFence, numCommandLists, phCommandLists);
 EOF
 
 # Sync hooks: walk dependency edges from the synced anchor and drain
@@ -213,8 +213,16 @@ register_epilogue 'zeCommandListHostSynchronize', <<EOF
     _on_sync_drain_cl(hCommandList);
 EOF
 
-# Fence sync: deferred (would need a fence->queue map). The tests using
-# fences (m_fence_sync) don't exist in the new matrix yet.
+# Fence sync: the fence the user passed to Execute is stamped onto each cl
+# (in_flight_fence), so a fence wait drains exactly the cls that Execute
+# submitted. zeFenceQueryStatus is NOT hooked: it's a non-blocking poll, so
+# a SUCCESS return means the work is done but we can't assume the user is
+# finished issuing — draining there could race a still-building reuse. The
+# blocking zeFenceHostSynchronize is the safe anchor.
+register_epilogue 'zeFenceHostSynchronize', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
+    _on_sync_drain_fence(hFence);
+EOF
 
 register_prologue 'zeEventPoolCreate', <<EOF
   ze_event_pool_desc_t _new_desc;

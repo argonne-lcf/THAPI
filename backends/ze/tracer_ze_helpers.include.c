@@ -220,6 +220,12 @@ struct _ze_command_list_obj_data {
    *
    * Held only for regular cls; immediate cls never Execute. */
   ze_command_queue_handle_t in_flight_q;
+  /* The fence (if any) passed to that same Execute. NULL when the user
+   * Executed without a fence. Lets a fence-only sync find which cls to
+   * drain — the fence signals when all cls in its Execute complete, so
+   * zeFenceHostSynchronize(f) drains every cl whose in_flight_fence == f.
+   * Set on Execute alongside in_flight_q, cleared together on drain. */
+  ze_fence_handle_t in_flight_fence;
   unsigned char is_immediate;
   unsigned char is_in_order;
   /* 1 if this cl's queue group exposes COMPUTE — its body can host
@@ -965,6 +971,7 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
       _cl_chunk_free(cl_data, c, /*free_slab=*/1);
   }
   cl_data->in_flight_q = NULL;
+  cl_data->in_flight_fence = NULL;
 }
 
 /* Drain a single cl. */
@@ -1067,6 +1074,20 @@ static void _on_sync_drain_queue(ze_command_queue_handle_t hQueue) {
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
+/* Drain every cl whose in_flight_fence matches. A fence signals when all
+ * cls submitted in its Execute have completed, so waiting on the fence is
+ * a valid drain anchor for exactly those cls — the same role hQueue plays
+ * for zeCommandQueueSynchronize. */
+static void _on_sync_drain_fence(ze_fence_handle_t hFence) {
+  pthread_mutex_lock(&_ze_state_mutex);
+  struct _ze_command_list_obj_data *cl_data = NULL, *tmp = NULL;
+  HASH_ITER(hh, _ze_cls, cl_data, tmp) {
+    if (cl_data->in_flight_fence == hFence)
+      _cl_drain(cl_data);
+  }
+  pthread_mutex_unlock(&_ze_state_mutex);
+}
+
 /* Drain the slot that most recently signaled `ev` (recursing on preds). */
 static void _on_sync_drain_event(ze_event_handle_t ev) {
   pthread_mutex_lock(&_ze_state_mutex);
@@ -1077,7 +1098,7 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
   }
   _slot_drain(s);
   /* The drained slot may have left siblings live; only clear
-   * in_flight_q if nothing in this cl remains in flight. */
+   * in_flight_q / in_flight_fence if nothing in this cl remains in flight. */
   int any_live = 0;
   struct _ze_slab_chunk *c;
   DL_FOREACH(s->owner->chunks, c) {
@@ -1089,8 +1110,10 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
     if (any_live)
       break;
   }
-  if (!any_live)
+  if (!any_live) {
     s->owner->in_flight_q = NULL;
+    s->owner->in_flight_fence = NULL;
+  }
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
@@ -1100,13 +1123,17 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
  *   1) If in_flight_q is set (prior Execute by another thread),
  *      force-sync that queue and drain before we overwrite it.
  *      Regression test: inorder_reg_Event_multithreaded_01.
- *   2) Shadow-path slots: Append a fresh Query on the per-(ctx,device)
- *      shadow cl. Must run AFTER L0 Execute — appending earlier
- *      deadlocks if the shadow shares an engine with the user cl
- *      (tests/bugs/query_on_separate_cl_regular_user_cl). Inline-path
- *      cls bake the QKT into the cl body at Append, no work here.
- *   3) Stamp in_flight_q = hQueue and instantiate each slot. */
+ *   2) Publish each not-yet-live slot (_slot_publish): shadow-path slots
+ *      Append a fresh Query on the per-(ctx,device) shadow cl, then every
+ *      slot is instantiated into the dep graph. The Append must run AFTER
+ *      L0 Execute — appending earlier deadlocks if the shadow shares an
+ *      engine with the user cl (tests/bugs/query_on_separate_cl_regular_user_cl).
+ *      Inline-path cls bake the QKT into the cl body at Append, so their
+ *      publish is instantiate-only.
+ *   3) Stamp in_flight_q = hQueue and in_flight_fence = hFence (the fence
+ *      the user passed to this Execute, or NULL). */
 static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
+                               ze_fence_handle_t hFence,
                                ze_command_list_handle_t command_list) {
   pthread_mutex_lock(&_ze_state_mutex);
   struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
@@ -1151,15 +1178,17 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
     }
   }
   cl_data->in_flight_q = hQueue;
+  cl_data->in_flight_fence = hFence;
 
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
 static void _on_execute_command_lists_epilogue(ze_command_queue_handle_t hQueue,
+                                               ze_fence_handle_t hFence,
                                                uint32_t numCommandLists,
                                                ze_command_list_handle_t *phCommandLists) {
   for (uint32_t i = 0; i < numCommandLists; ++i)
-    _on_execute_one_cl(hQueue, phCommandLists[i]);
+    _on_execute_one_cl(hQueue, hFence, phCommandLists[i]);
 }
 
 static pthread_once_t _init = PTHREAD_ONCE_INIT;
