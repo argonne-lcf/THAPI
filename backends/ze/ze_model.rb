@@ -157,11 +157,19 @@ register_epilogue 'zeCommandListCreateImmediate', <<EOF
   }
 EOF
 
-# Reset hook intentionally omitted: the L0 spec
+# Reset hook: the L0 spec
 # (https://oneapi-src.github.io/level-zero-spec/level-zero/latest/core/api.html#zecommandlistreset)
-# says the user must have synchronized first, so all our slots are
-# already drained.
-#
+# says the user must have synchronized first, so our slots are drained — but
+# for a REGULAR cl "drained" is not "reclaimed" (_slot_release is a no-op for
+# regular cls; their inj is baked into the cl body for reuse across Executes).
+# Reset wipes that body, so we reclaim the slots/chunks/events now. Without it
+# the stale slots are re-published on the next Execute (over-count) and chunks
+# leak. The cl stays registered, empty for reuse.
+register_epilogue 'zeCommandListReset', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
+    _on_reset_command_list(hCommandList);
+EOF
+
 # Destroy hook: the same spec rule applies for the GPU side (no in-flight
 # work on the cl), but we still need to clean up OUR host-side state —
 # slot/slab chunks, per-slot waits, and tracer-owned events that haven't

@@ -204,6 +204,14 @@ struct _ze_slab_chunk {
   ze_context_handle_t slab_ctx; /* context the slab was allocated against (zeMemFree target) */
   uint32_t n_used;              /* slots ever assigned in this chunk (monotonic until chunk free) */
   uint32_t n_held;              /* unreleased slots (n_used minus _slot_release calls) */
+  /* Nonzero only on a DETACHED chunk: one whose owning cl was torn down
+   * (reset/destroy) while >=1 slot was still referenced as a pred by a live
+   * slot in ANOTHER cl. The chunk is removed from cl_data->chunks, its slots'
+   * resources are already released and owner==NULL — only the struct survives
+   * so the referrers' preds[] pointers stay valid. n_pinned counts those
+   * surviving referenced slots; the downstream drain that drops the last ref
+   * frees the struct. 0 for normal attached chunks. */
+  uint32_t n_pinned;
   struct _ze_slab_chunk *next, *prev;
   struct _ze_slot slots[_ZE_SLAB_CHUNK_SLOTS];
 };
@@ -887,7 +895,20 @@ fail_locked:
  * tail, unlink and free it. Regular cls are skipped (their inj is
  * baked into the cl body — reclaim happens at cl destroy instead). */
 static void _slot_release(struct _ze_slot *s) {
-  if (!s || !s->owner || !s->owner->is_immediate)
+  if (!s)
+    return;
+  /* Detached slot: its owning cl was torn down (reset/destroy) while this
+   * slot was still a pred of a live slot elsewhere. Its resources were freed
+   * at reclaim and owner was nulled; the chunk struct was kept alive only to
+   * keep this slot's refs addressable. We are the downstream drain dropping
+   * the last ref — drop the chunk's pin and free the bare struct at zero. */
+  if (!s->owner && s->chunk && s->chunk->n_pinned) {
+    struct _ze_slab_chunk *c = s->chunk;
+    if (--c->n_pinned == 0)
+      free(c);
+    return;
+  }
+  if (!s->owner || !s->owner->is_immediate)
     return;
   if (s->inj) {
     _put_ze_event(s->inj);
@@ -986,13 +1007,93 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
   cl_data->in_flight_fence = NULL;
 }
 
+static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data); /* fwd */
+
+/* Immediate cls only: once every slot in the cl is drained, raw-Reset the
+ * user's cl so the L0 driver reclaims its per-QKT storage (it accumulates
+ * otherwise on a long-lived reused immediate cl — see bench/mem_persistent_cl),
+ * then reclaim our own slot bookkeeping (the baked state is gone after the
+ * driver reset, exactly like a user zeCommandListReset on a regular cl).
+ * Raw *_PTR = untraced; safe only when no slot is still live (no in-flight
+ * work). Called at the tail of every sync-drain path that can touch an imm cl. */
+static void _imm_reset_if_drained(struct _ze_command_list_obj_data *cl_data) {
+  if (!cl_data || !cl_data->is_immediate)
+    return;
+  struct _ze_slab_chunk *c;
+  DL_FOREACH(cl_data->chunks, c)
+    for (uint32_t i = 0; i < c->n_used; ++i)
+      if (c->slots[i].live)
+        return; /* still in-flight work — unsafe to reset */
+  ZE_COMMAND_LIST_RESET_PTR((ze_command_list_handle_t)cl_data->ptr);
+  _cl_data_reset(cl_data);
+}
+
 /* Drain a single cl. */
 static void _on_sync_drain_cl(ze_command_list_handle_t command_list) {
   pthread_mutex_lock(&_ze_state_mutex);
   struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
-  if (cl_data)
+  if (cl_data) {
     _cl_drain(cl_data);
+    _imm_reset_if_drained(cl_data);
+  }
   pthread_mutex_unlock(&_ze_state_mutex);
+}
+
+/* Reclaim one chunk during cl teardown (reset or single-cl destroy, ctx
+ * alive). Releases every slot's resources (events to pool, waits, preds,
+ * clears latest-signaled), then either frees the chunk or — if any slot is
+ * still referenced as a pred by a live slot in ANOTHER cl (refs>0) — DETACHES
+ * it: unlink from cl_data->chunks, null each slot's owner, and keep the bare
+ * struct alive with n_pinned = #referenced slots. The downstream drains that
+ * drop those refs free the struct (see _slot_release's detached branch).
+ * Without this, freeing the chunk here would dangle the referrers' preds[]. */
+static void _cl_chunk_reclaim(struct _ze_command_list_obj_data *cl_data,
+                              struct _ze_slab_chunk *c) {
+  uint32_t pinned = 0;
+  for (uint32_t i = 0; i < c->n_used; ++i) {
+    struct _ze_slot *s = &c->slots[i];
+    if (s->inj) {
+      _put_ze_event(s->inj);
+      s->inj = NULL;
+    }
+    if (s->shadow_done) {
+      _put_ze_event(s->shadow_done);
+      s->shadow_done = NULL;
+    }
+    free(s->waits);
+    s->waits = NULL;
+    s->n_waits = 0;
+    free(s->preds);
+    s->preds = NULL;
+    s->n_preds = 0;
+    _event_latest_signaled_clear_if(s->attr, s);
+    s->attr = NULL;
+    if (s->refs)
+      pinned++;
+  }
+  if (pinned == 0) {
+    _cl_chunk_free(cl_data, c, /*free_slab=*/1);
+    return;
+  }
+  /* Detach: keep the struct alive for the surviving referenced slots. */
+  DL_DELETE(cl_data->chunks, c);
+  if (c->slab) {
+    ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
+    c->slab = NULL;
+  }
+  for (uint32_t i = 0; i < c->n_used; ++i)
+    c->slots[i].owner = NULL;
+  c->n_pinned = pinned;
+}
+
+/* Reclaim all of a regular cl's slot state, keeping cl_data registered and
+ * empty for reuse. Used by the zeCommandListReset hook. */
+static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data) {
+  struct _ze_slab_chunk *c, *tmp;
+  DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
+    _cl_chunk_reclaim(cl_data, c);
+  cl_data->in_flight_q = NULL;
+  cl_data->in_flight_fence = NULL;
 }
 
 /* Release everything cl_data owns and free cl_data itself. Caller has
@@ -1000,21 +1101,30 @@ static void _on_sync_drain_cl(ze_command_list_handle_t command_list) {
  * per-ctx sweep: HASH_DEL inside the iter). When ctx is dying we just
  * recycle wrapper structs (the L0 event/pool will be destroyed in
  * _on_destroy_context step 3) and skip zeMemFree on the slab (the
- * driver reclaims, and zeMemFree on a doomed ctx is racy). */
+ * driver reclaims, and zeMemFree on a doomed ctx is racy); no slot can
+ * outlive the ctx, so no detach is needed. When the ctx is alive a slot
+ * may still be referenced cross-cl, so we reclaim per-chunk (detaching
+ * referenced chunks) just like reset. */
 static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_dying) {
   struct _ze_slab_chunk *c, *tmp;
+  if (!ctx_dying) {
+    DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
+      _cl_chunk_reclaim(cl_data, c);
+    free(cl_data);
+    return;
+  }
   DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
     for (uint32_t i = 0; i < c->n_used; ++i) {
       struct _ze_slot *s = &c->slots[i];
       if (s->inj)
-        ctx_dying ? _put_ze_event_wrapper(s->inj) : _put_ze_event(s->inj);
+        _put_ze_event_wrapper(s->inj);
       if (s->shadow_done)
-        ctx_dying ? _put_ze_event_wrapper(s->shadow_done) : _put_ze_event(s->shadow_done);
+        _put_ze_event_wrapper(s->shadow_done);
       free(s->waits);
       free(s->preds);
       _event_latest_signaled_clear_if(s->attr, s);
     }
-    _cl_chunk_free(cl_data, c, /*free_slab=*/!ctx_dying);
+    _cl_chunk_free(cl_data, c, /*free_slab=*/0);
   }
   free(cl_data);
 }
@@ -1028,6 +1138,24 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl_data = _cl_find_and_del(command_list);
   if (cl_data)
     _cl_data_destroy(cl_data, /*ctx_dying=*/0);
+  pthread_mutex_unlock(&_ze_state_mutex);
+}
+
+/* zeCommandListReset epilogue. The L0 spec requires the user to have
+ * synchronized before Reset, so our slots are drained — but for a REGULAR cl
+ * "drained" is not "reclaimed": _slot_release is a no-op for regular cls
+ * (their inj is baked into the cl body, kept for reuse across Executes), so
+ * the slots linger. Reset wipes that body, so we must reclaim now; otherwise
+ * the stale slots are re-published on the next Execute (massive over-count)
+ * and their chunks accumulate (leak). We drain defensively first in case the
+ * user under-synced, then reclaim. The cl stays registered, empty for reuse. */
+static void _on_reset_command_list(ze_command_list_handle_t command_list) {
+  pthread_mutex_lock(&_ze_state_mutex);
+  struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
+  if (cl_data) {
+    _cl_drain(cl_data);
+    _cl_data_reset(cl_data);
+  }
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
@@ -1125,6 +1253,7 @@ static void _on_sync_drain_event(ze_event_handle_t ev) {
   if (!any_live) {
     s->owner->in_flight_q = NULL;
     s->owner->in_flight_fence = NULL;
+    _imm_reset_if_drained(s->owner);
   }
   pthread_mutex_unlock(&_ze_state_mutex);
 }
