@@ -437,20 +437,16 @@ class SyncDaemon
                     end
 
                     SYNC_DAEMON_MPI_PATH
-                  when 'fs'
+                  when 'fs', nil
+                    # FS is the default (daemon_type nil): it avoids the current
+                    # MPI sync-daemon bug. The MPI daemon is still available
+                    # explicitly via THAPI_SYNC_DAEMON=mpi.
                     SYNC_DAEMON_FS_PATH
-                  when nil
-                    if File.exist?(SYNC_DAEMON_MPI_PATH)
-                      SYNC_DAEMON_MPI_PATH
-                    else
-                      LOGGER.warn("No #{SYNC_DAEMON_MPI_PATH} binary. Fallback to #{SYNC_DAEMON_FS_PATH}")
-                      SYNC_DAEMON_FS_PATH
-                    end
                   else
                     raise "Error: THAPI_SYNC_DAEMON=#{daemon_type} is not supported. Allowed: [mpi,fs]"
                   end
 
-    spawn(daemon_path, log: "Initialize SyncDaemon #{daemon_type}")
+    spawn(daemon_path, log: "Initialize SyncDaemon #{daemon_type || 'fs (default)'}")
   end
 
   def local_barrier(name)
