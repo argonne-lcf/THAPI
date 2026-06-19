@@ -262,6 +262,16 @@ register_prologue 'zeEventCreate', <<EOF
   }
 EOF
 
+# Evict our per-event state once the destroy SUCCEEDS: the driver recycles
+# handle addresses, so a fresh event can reuse this one's. Without eviction the
+# new event inherits the dead one's stashed kernel timing and a dangling latest-
+# signaled slot pointer. Epilogue gated on _retval — a failed destroy (e.g. a bad
+# handle) leaves the event alive, its address can't be recycled, data must stay.
+register_epilogue 'zeEventDestroy', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
+    _on_destroy_event(hEvent);
+EOF
+
 # Dump memory info if required
 memory_info_dump = lambda { |ptr_name|
   "_dump_memory_info(hCommandList, #{ptr_name})"

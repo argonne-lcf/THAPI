@@ -17,11 +17,12 @@
  *   - shadow-path slots: re-Append Query on shadow cl
  *     inline-path slots: nothing (Query is baked into cl body)
  *   - instantiate every slot in cl
- *   - cl.in_flight_q = q
+ *   - cl.in_flight_q = q; index cl under q (and its fence) for sync lookup
  *
  * On Sync (the synced anchor tells us what to drain):
  *   - Sync(ev):  drain(event_latest_signaled[ev])
- *   - Sync(q):   drain_cl(cl) for every cl whose in_flight_q == q
+ *   - Sync(q):   drain_cl(cl) for every cl in the q-index bucket for q
+ *                (O(matching cls), not a scan of every live cl)
  *   - Sync(cl):  drain_cl(cl)
  *
  * drain(s):
@@ -255,6 +256,15 @@ struct _ze_command_list_obj_data {
    * cl's lifetime. Load-bearing for _on_destroy_context's sweep: lets it
    * associate cls back to their ctx without an L0 roundtrip per cl. */
   ze_context_handle_t cached_context;
+
+  /* Membership in the per-queue / per-fence in-flight indexes (see
+   * _ze_q_index / _ze_fence_index below). A cl in flight is linked into both
+   * its queue's bucket (q_prev/q_next) and, if Executed with a fence, its
+   * fence's bucket (f_prev/f_next), so a queue/fence sync drains exactly the
+   * matching cls without scanning every live cl. Linked at Execute, unlinked
+   * at drain, both via _cl_index_clear. */
+  struct _ze_command_list_obj_data *q_prev, *q_next;
+  struct _ze_command_list_obj_data *f_prev, *f_next;
 };
 
 struct _ze_command_list_obj_data *_ze_cls = NULL;
@@ -280,6 +290,73 @@ static struct _ze_command_list_obj_data *_cl_find_and_del(ze_command_list_handle
   if (cl)
     HASH_DEL(_ze_cls, cl);
   return cl;
+}
+
+/* In-flight indexes: queue handle -> the cls currently in flight on that queue,
+ * and fence handle -> the cls in flight under that fence. A queue/fence sync
+ * completes exactly the cls of the matching Execute, so these let _on_sync
+ * drain just those cls instead of scanning every live cl (which is O(live cls)
+ * per sync — see bench/sync_scaling). Buckets are created lazily at Execute and
+ * freed when they go empty at drain. */
+struct _ze_inflight_bucket {
+  void *key; /* ze_command_queue_handle_t or ze_fence_handle_t */
+  struct _ze_command_list_obj_data *cls; /* DL via q_prev/q_next or f_prev/f_next */
+  UT_hash_handle hh;
+};
+static struct _ze_inflight_bucket *_ze_q_index = NULL;
+static struct _ze_inflight_bucket *_ze_fence_index = NULL;
+
+static void _index_link(struct _ze_inflight_bucket **index, void *key,
+                        struct _ze_command_list_obj_data *cl, int is_fence) {
+  if (!key)
+    return;
+  struct _ze_inflight_bucket *b = NULL;
+  HASH_FIND_PTR(*index, &key, b);
+  if (!b) {
+    b = (struct _ze_inflight_bucket *)calloc(1, sizeof(*b));
+    if (!b)
+      return;
+    b->key = key;
+    HASH_ADD_PTR(*index, key, b);
+  }
+  if (is_fence)
+    DL_APPEND2(b->cls, cl, f_prev, f_next);
+  else
+    DL_APPEND2(b->cls, cl, q_prev, q_next);
+}
+
+static void _index_unlink(struct _ze_inflight_bucket **index, void *key,
+                          struct _ze_command_list_obj_data *cl, int is_fence) {
+  if (!key)
+    return;
+  struct _ze_inflight_bucket *b = NULL;
+  HASH_FIND_PTR(*index, &key, b);
+  if (!b)
+    return;
+  if (is_fence)
+    DL_DELETE2(b->cls, cl, f_prev, f_next);
+  else
+    DL_DELETE2(b->cls, cl, q_prev, q_next);
+  if (!b->cls) {
+    HASH_DEL(*index, b);
+    free(b);
+  }
+}
+
+/* Link cl into the queue (and, if non-NULL, fence) in-flight indexes. Called
+ * once per Execute, after in_flight_q/in_flight_fence are stamped. */
+static void _cl_index_set(struct _ze_command_list_obj_data *cl,
+                          ze_command_queue_handle_t q, ze_fence_handle_t f) {
+  _index_link(&_ze_q_index, q, cl, /*is_fence=*/0);
+  _index_link(&_ze_fence_index, f, cl, /*is_fence=*/1);
+}
+
+/* Remove cl from both in-flight indexes. Uses cl's own in_flight_q/_fence as
+ * the keys, so it MUST run before those are cleared. Idempotent: a cl not in
+ * flight has NULL keys and is a no-op. */
+static void _cl_index_clear(struct _ze_command_list_obj_data *cl) {
+  _index_unlink(&_ze_q_index, cl->in_flight_q, cl, /*is_fence=*/0);
+  _index_unlink(&_ze_fence_index, cl->in_flight_fence, cl, /*is_fence=*/1);
 }
 
 /* Per-device cache of the queue-group flag bitmap. The lookup is
@@ -495,103 +572,112 @@ struct _ze_event_pool_entry {
 
 struct _ze_event_pool_entry *_ze_event_pools = NULL;
 
-/* Two tracer-state maps share the same "ze_event_handle_t key -> value,
- * uthash ptr-keyed, calloc-on-miss" shape. Stamp the boilerplate once per
- * (NAME, VALTYPE) instead of hand-writing each set of accessors.
+/* Per-event tracer state, keyed by the user's event handle. Two facts live
+ * here, both populated around drain and both bound to the event's lifetime, so
+ * they share one uthash entry (one lookup, one alloc, one eviction):
  *
- * _ZE_EVENT_MAP_DEFINE emits, for a POINTER value type:
- *   static <map global>;
- *   VALTYPE _event_##NAME##_get(ev)          -> value or NULL
- *   void    _event_##NAME##_set(ev, val)     -> no-op on ev==NULL
- *   void    _event_##NAME##_clear_if(ev,val) -> delete iff stored value==val
+ *   latest  -> the most recent slot whose attr==ev. Resolves happens-before
+ *              edges: when a new Append waits on ev, that slot becomes a pred.
+ *              Set at instantiate; cleared at drain/dispose only if it still
+ *              points at the draining slot (a newer Append may have overwritten
+ *              it — don't clobber that).
+ *   kts     -> last kernel-timestamp result we drained for ev. The Append
+ *              prologue swaps the user's signal for our inj, so the user's event
+ *              carries QKT/barrier op timing, not the kernel's. At drain we read
+ *              the real kernel result from the slab and stash it here so the
+ *              user's own zeEventQueryKernelTimestamp can be served kernel
+ *              timing; re-signaling overwrites.
  *
- * _ZE_EVENT_MAP_DEFINE_NOCLEAR emits the struct/global/set plus an
- * out-param get (int _event_##NAME##_get(ev, VALTYPE *out) -> found?),
- * for a struct value where a NULL sentinel and a _clear_if make no sense.
- *
- * Macro-stamped (not a void* container) so the value stays inline in the
- * uthash entry — no per-set heap box, and the comparator stays a plain ==. */
-#define _ZE_EVENT_MAP_DEFINE(NAME, VALTYPE)                                                        \
-  struct _ze_event_##NAME##_entry {                                                                \
-    ze_event_handle_t ev; /* key */                                                                \
-    VALTYPE v;                                                                                     \
-    UT_hash_handle hh;                                                                             \
-  };                                                                                               \
-  static struct _ze_event_##NAME##_entry *_ze_event_##NAME = NULL;                                 \
-  static inline VALTYPE _event_##NAME##_get(ze_event_handle_t ev) {                                \
-    struct _ze_event_##NAME##_entry *e = NULL;                                                     \
-    HASH_FIND_PTR(_ze_event_##NAME, &ev, e);                                                       \
-    return e ? e->v : NULL;                                                                        \
-  }                                                                                                \
-  static inline void _event_##NAME##_set(ze_event_handle_t ev, VALTYPE val) {                      \
-    if (!ev)                                                                                       \
-      return;                                                                                      \
-    struct _ze_event_##NAME##_entry *e = NULL;                                                     \
-    HASH_FIND_PTR(_ze_event_##NAME, &ev, e);                                                       \
-    if (!e) {                                                                                      \
-      e = (struct _ze_event_##NAME##_entry *)calloc(1, sizeof(*e));                                \
-      if (!e)                                                                                      \
-        return;                                                                                    \
-      e->ev = ev;                                                                                  \
-      HASH_ADD_PTR(_ze_event_##NAME, ev, e);                                                       \
-    }                                                                                              \
-    e->v = val;                                                                                    \
-  }                                                                                                \
-  static inline void _event_##NAME##_clear_if(ze_event_handle_t ev, VALTYPE val) {                 \
-    if (!ev)                                                                                       \
-      return;                                                                                      \
-    struct _ze_event_##NAME##_entry *e = NULL;                                                     \
-    HASH_FIND_PTR(_ze_event_##NAME, &ev, e);                                                       \
-    if (e && e->v == val) {                                                                        \
-      HASH_DEL(_ze_event_##NAME, e);                                                               \
-      free(e);                                                                                     \
-    }                                                                                              \
+ * The whole entry is evicted by _on_destroy_event so a recycled handle address
+ * (the L0 driver reuses freed event addresses) never serves a dead event's
+ * latest slot (a dangling pred -> UAF) or stale kts. The value stays inline in
+ * the entry — no per-set heap box. */
+struct _ze_event_state_entry {
+  ze_event_handle_t ev; /* key */
+  struct _ze_slot *latest;
+  ze_kernel_timestamp_result_t kts;
+  unsigned char has_kts;
+  UT_hash_handle hh;
+};
+static struct _ze_event_state_entry *_ze_event_state = NULL;
+
+/* Find-or-create the entry for ev. NULL only on ev==NULL or OOM. */
+static struct _ze_event_state_entry *_event_state_get_or_add(ze_event_handle_t ev) {
+  if (!ev)
+    return NULL;
+  struct _ze_event_state_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_state, &ev, e);
+  if (!e) {
+    e = (struct _ze_event_state_entry *)calloc(1, sizeof(*e));
+    if (!e)
+      return NULL;
+    e->ev = ev;
+    HASH_ADD_PTR(_ze_event_state, ev, e);
   }
+  return e;
+}
 
-#define _ZE_EVENT_MAP_DEFINE_NOCLEAR(NAME, VALTYPE)                                                \
-  struct _ze_event_##NAME##_entry {                                                                \
-    ze_event_handle_t ev; /* key */                                                                \
-    VALTYPE v;                                                                                     \
-    UT_hash_handle hh;                                                                             \
-  };                                                                                               \
-  static struct _ze_event_##NAME##_entry *_ze_event_##NAME = NULL;                                 \
-  static inline void _event_##NAME##_set(ze_event_handle_t ev, VALTYPE val) {                      \
-    if (!ev)                                                                                       \
-      return;                                                                                      \
-    struct _ze_event_##NAME##_entry *e = NULL;                                                     \
-    HASH_FIND_PTR(_ze_event_##NAME, &ev, e);                                                       \
-    if (!e) {                                                                                      \
-      e = (struct _ze_event_##NAME##_entry *)calloc(1, sizeof(*e));                                \
-      if (!e)                                                                                      \
-        return;                                                                                    \
-      e->ev = ev;                                                                                  \
-      HASH_ADD_PTR(_ze_event_##NAME, ev, e);                                                       \
-    }                                                                                              \
-    e->v = val;                                                                                    \
-  }                                                                                                \
-  static inline int _event_##NAME##_get(ze_event_handle_t ev, VALTYPE *out) {                      \
-    struct _ze_event_##NAME##_entry *e = NULL;                                                     \
-    HASH_FIND_PTR(_ze_event_##NAME, &ev, e);                                                       \
-    if (!e)                                                                                        \
-      return 0;                                                                                    \
-    *out = e->v;                                                                                   \
-    return 1;                                                                                      \
+/* Drop the entry if it carries nothing worth keeping (no latest slot, no
+ * stashed kts) — keeps the map bounded as facts are cleared. */
+static inline void _event_state_gc(struct _ze_event_state_entry *e) {
+  if (e && !e->latest && !e->has_kts) {
+    HASH_DEL(_ze_event_state, e);
+    free(e);
   }
+}
 
-/* event_latest_signaled[ev] -> the most recent slot whose attr==ev. Used to
- * resolve happens-before edges: when a new Append says "wait on ev", we record
- * the latest slot for ev as a pred. _set at instantiate; _clear_if at drain
- * removes the entry only if it still points at the draining slot (a newer
- * Append may have overwritten it — don't clobber that). */
-_ZE_EVENT_MAP_DEFINE(latest_signaled, struct _ze_slot *)
+static inline struct _ze_slot *_event_latest_get(ze_event_handle_t ev) {
+  struct _ze_event_state_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_state, &ev, e);
+  return e ? e->latest : NULL;
+}
 
-/* event_kts[ev] -> last kernel-timestamp result we drained for it. The Append
- * prologue swaps the user's signal event for our inj, so the user's event ends
- * up carrying the QKT/barrier op timing, not the kernel's — a user who calls
- * zeEventQueryKernelTimestamp on their own event would read garbage. At drain
- * we read the real kernel result from the slab and stash it here keyed by the
- * user's event so the query hook can serve it back; re-signaling overwrites. */
-_ZE_EVENT_MAP_DEFINE_NOCLEAR(kts, ze_kernel_timestamp_result_t)
+static inline void _event_latest_set(ze_event_handle_t ev, struct _ze_slot *slot) {
+  struct _ze_event_state_entry *e = _event_state_get_or_add(ev);
+  if (e)
+    e->latest = slot;
+}
+
+/* Clear latest iff it still points at `slot` (a newer Append may own it now). */
+static inline void _event_latest_clear_if(ze_event_handle_t ev, struct _ze_slot *slot) {
+  if (!ev)
+    return;
+  struct _ze_event_state_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_state, &ev, e);
+  if (e && e->latest == slot) {
+    e->latest = NULL;
+    _event_state_gc(e);
+  }
+}
+
+static inline void _event_kts_set(ze_event_handle_t ev, ze_kernel_timestamp_result_t val) {
+  struct _ze_event_state_entry *e = _event_state_get_or_add(ev);
+  if (e) {
+    e->kts = val;
+    e->has_kts = 1;
+  }
+}
+
+static inline int _event_kts_get(ze_event_handle_t ev, ze_kernel_timestamp_result_t *out) {
+  struct _ze_event_state_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_state, &ev, e);
+  if (!e || !e->has_kts)
+    return 0;
+  *out = e->kts;
+  return 1;
+}
+
+/* Evict the whole entry (both facts) — called when the event is destroyed. */
+static inline void _event_state_del(ze_event_handle_t ev) {
+  if (!ev)
+    return;
+  struct _ze_event_state_entry *e = NULL;
+  HASH_FIND_PTR(_ze_event_state, &ev, e);
+  if (e) {
+    HASH_DEL(_ze_event_state, e);
+    free(e);
+  }
+}
 
 /* Pop one recycled event wrapper from the per-context freelist; NULL
  * if none cached (caller falls back to creating a fresh L0 event). */
@@ -793,7 +879,7 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
   s->preds = (struct _ze_slot **)calloc(cap, sizeof(struct _ze_slot *));
   s->n_preds = 0;
   for (uint32_t i = 0; i < s->n_waits; ++i) {
-    struct _ze_slot *p = _event_latest_signaled_get(s->waits[i]);
+    struct _ze_slot *p = _event_latest_get(s->waits[i]);
     if (p && p->live)
       s->preds[s->n_preds++] = p;
   }
@@ -823,7 +909,7 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
   for (uint32_t i = 0; i < s->n_preds; ++i)
     s->preds[i]->refs++;
   if (s->attr)
-    _event_latest_signaled_set(s->attr, s);
+    _event_latest_set(s->attr, s);
 }
 
 /* Publish a fresh slot: shadow path appends a Query on the per-(ctx,device)
@@ -994,7 +1080,7 @@ static void _slot_dispose_resources(struct _ze_slot *s, enum _ze_slot_dispose_mo
   free(s->preds);
   s->preds = NULL;
   s->n_preds = 0;
-  _event_latest_signaled_clear_if(s->attr, s);
+  _event_latest_clear_if(s->attr, s);
   s->attr = NULL;
 }
 
@@ -1081,7 +1167,7 @@ static void _slot_drain(struct _ze_slot *s) {
                     ZE_RESULT_SUCCESS, r.global.kernelStart, r.global.kernelEnd,
                     r.context.kernelStart, r.context.kernelEnd);
   }
-  _event_latest_signaled_clear_if(s->attr, s);
+  _event_latest_clear_if(s->attr, s);
   /* Drop refs on preds; release any that hit 0 and are already drained. */
   for (uint32_t i = 0; i < s->n_preds; ++i) {
     struct _ze_slot *p = s->preds[i];
@@ -1109,6 +1195,7 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
     if (c->n_held == 0 && c != cl_data->chunks->prev)
       _cl_chunk_free(cl_data, c, /*free_slab=*/1);
   }
+  _cl_index_clear(cl_data);
   cl_data->in_flight_q = NULL;
   cl_data->in_flight_fence = NULL;
 }
@@ -1175,6 +1262,7 @@ static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data) {
   struct _ze_slab_chunk *c, *tmp;
   DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
     _cl_chunk_reclaim(cl_data, c);
+  _cl_index_clear(cl_data);
   cl_data->in_flight_q = NULL;
   cl_data->in_flight_fence = NULL;
 }
@@ -1190,6 +1278,10 @@ static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data) {
  * referenced chunks) just like reset. */
 static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_dying) {
   struct _ze_slab_chunk *c, *tmp;
+  /* Unlink from the in-flight indexes before the struct is freed, or a later
+   * queue/fence sync would walk a dangling cl. (When ctx_dying the whole index
+   * is torn down separately, but unlinking here is still correct and cheap.) */
+  _cl_index_clear(cl_data);
   if (!ctx_dying) {
     DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
       _cl_chunk_reclaim(cl_data, c);
@@ -1298,10 +1390,11 @@ enum _ze_sync_kind { _ZE_SYNC_CL, _ZE_SYNC_QUEUE, _ZE_SYNC_FENCE, _ZE_SYNC_EVENT
 static void _on_sync(enum _ze_sync_kind kind, void *h) {
   pthread_mutex_lock(&_ze_state_mutex);
   if (kind == _ZE_SYNC_EVENT) {
-    struct _ze_slot *s = _event_latest_signaled_get((ze_event_handle_t)h);
+    struct _ze_slot *s = _event_latest_get((ze_event_handle_t)h);
     if (s && s->owner) {
       _slot_drain(s);
       if (!_cl_any_live(s->owner)) {
+        _cl_index_clear(s->owner);
         s->owner->in_flight_q = NULL;
         s->owner->in_flight_fence = NULL;
         _imm_reset_if_drained(s->owner);
@@ -1313,13 +1406,23 @@ static void _on_sync(enum _ze_sync_kind kind, void *h) {
       _cl_drain(cl_data);
       _imm_reset_if_drained(cl_data);
     }
-  } else { /* _ZE_SYNC_QUEUE / _ZE_SYNC_FENCE: match the stamped in-flight handle */
-    struct _ze_command_list_obj_data *cl_data = NULL, *tmp = NULL;
-    HASH_ITER(hh, _ze_cls, cl_data, tmp) {
-      void *anchor = (kind == _ZE_SYNC_QUEUE) ? (void *)cl_data->in_flight_q
-                                              : (void *)cl_data->in_flight_fence;
-      if (anchor == h)
-        _cl_drain(cl_data);
+  } else { /* _ZE_SYNC_QUEUE / _ZE_SYNC_FENCE: drain just the indexed cls */
+    struct _ze_inflight_bucket *b = NULL;
+    if (kind == _ZE_SYNC_QUEUE)
+      HASH_FIND_PTR(_ze_q_index, &h, b);
+    else
+      HASH_FIND_PTR(_ze_fence_index, &h, b);
+    if (b) {
+      struct _ze_command_list_obj_data *cl_data = NULL, *tmp = NULL;
+      /* SAFE2 because _cl_drain -> _cl_index_clear unlinks cl_data from this
+       * very bucket (and may free the bucket on the last unlink). */
+      if (kind == _ZE_SYNC_QUEUE) {
+        DL_FOREACH_SAFE2(b->cls, cl_data, tmp, q_next)
+          _cl_drain(cl_data);
+      } else {
+        DL_FOREACH_SAFE2(b->cls, cl_data, tmp, f_next)
+          _cl_drain(cl_data);
+      }
     }
   }
   pthread_mutex_unlock(&_ze_state_mutex);
@@ -1338,6 +1441,23 @@ static int _on_query_kernel_timestamp(ze_event_handle_t hEvent,
   int found = _event_kts_get(hEvent, dstptr);
   pthread_mutex_unlock(&_ze_state_mutex);
   return found;
+}
+
+/* zeEventDestroy epilogue (success only). The per-event state entry is keyed by
+ * the event's HANDLE ADDRESS, which the L0 driver recycles: a fresh event
+ * created after this one is destroyed can land on the same address. Without
+ * eviction the new event inherits the dead one's entry —
+ *   .kts:    a never-signaled event's zeEventQueryKernelTimestamp would be
+ *            served the prior event's stale timing;
+ *   .latest: a wait on the reused address would resolve to a freed slot, a
+ *            use-after-free in the pred walk.
+ * Evicting the entry at destroy bounds the map to live events and closes the
+ * recycled-address reads. Gated on a successful destroy by the caller: a failed
+ * destroy leaves the event (and its address) alive, so its data stays. */
+static void _on_destroy_event(ze_event_handle_t hEvent) {
+  pthread_mutex_lock(&_ze_state_mutex);
+  _event_state_del(hEvent);
+  pthread_mutex_unlock(&_ze_state_mutex);
 }
 
 /* Execute-epilogue handler for ONE cl. Runs AFTER L0 Execute returned,
@@ -1402,6 +1522,10 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
   }
   cl_data->in_flight_q = hQueue;
   cl_data->in_flight_fence = hFence;
+  /* Index this cl under its queue (and fence) so a later queue/fence sync
+   * drains it without scanning every live cl. The force-sync+drain above
+   * already unlinked any prior in-flight membership, so no double-link. */
+  _cl_index_set(cl_data, hQueue, hFence);
 
   pthread_mutex_unlock(&_ze_state_mutex);
 }
