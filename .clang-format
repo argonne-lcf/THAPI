@@ -1,2 +1,8 @@
 BinPackParameters: false
 ColumnLimit: 100
+ForEachMacros:
+  - _ZE_FOREACH_SLOT
+  - DL_FOREACH
+  - DL_FOREACH_SAFE
+  - DL_FOREACH_SAFE2
+  - HASH_ITER

@@ -221,8 +221,8 @@ struct _ze_slab_chunk {
  * slot order within a chunk) — the natural time order. Binds `s` to each
  * `struct _ze_slot *`. Only for read/dispose passes that do NOT free chunks
  * mid-walk; the drain path bumps n_held by hand and uses DL_FOREACH_SAFE. */
-#define _ZE_FOREACH_SLOT(cl_data, s)                                                                \
-  for (struct _ze_slab_chunk *_c = (cl_data)->chunks; _c; _c = _c->next)                            \
+#define _ZE_FOREACH_SLOT(cl_data, s)                                                               \
+  for (struct _ze_slab_chunk *_c = (cl_data)->chunks; _c; _c = _c->next)                           \
     for (struct _ze_slot *s = _c->slots, *_se = _c->slots + _c->n_used; s < _se; ++s)
 
 struct _ze_command_list_obj_data {
@@ -281,9 +281,7 @@ static struct _ze_command_list_obj_data *_cl_find(ze_command_list_handle_t comma
   return cl;
 }
 
-static void _cl_add(struct _ze_command_list_obj_data *cl) {
-  HASH_ADD_PTR(_ze_cls, ptr, cl);
-}
+static void _cl_add(struct _ze_command_list_obj_data *cl) { HASH_ADD_PTR(_ze_cls, ptr, cl); }
 
 static struct _ze_command_list_obj_data *_cl_find_and_del(ze_command_list_handle_t command_list) {
   struct _ze_command_list_obj_data *cl = _cl_find(command_list);
@@ -299,15 +297,17 @@ static struct _ze_command_list_obj_data *_cl_find_and_del(ze_command_list_handle
  * per sync — see bench/sync_scaling). Buckets are created lazily at Execute and
  * freed when they go empty at drain. */
 struct _ze_inflight_bucket {
-  void *key; /* ze_command_queue_handle_t or ze_fence_handle_t */
+  void *key;                             /* ze_command_queue_handle_t or ze_fence_handle_t */
   struct _ze_command_list_obj_data *cls; /* DL via q_prev/q_next or f_prev/f_next */
   UT_hash_handle hh;
 };
 static struct _ze_inflight_bucket *_ze_q_index = NULL;
 static struct _ze_inflight_bucket *_ze_fence_index = NULL;
 
-static void _index_link(struct _ze_inflight_bucket **index, void *key,
-                        struct _ze_command_list_obj_data *cl, int is_fence) {
+static void _index_link(struct _ze_inflight_bucket **index,
+                        void *key,
+                        struct _ze_command_list_obj_data *cl,
+                        int is_fence) {
   if (!key)
     return;
   struct _ze_inflight_bucket *b = NULL;
@@ -325,8 +325,10 @@ static void _index_link(struct _ze_inflight_bucket **index, void *key,
     DL_APPEND2(b->cls, cl, q_prev, q_next);
 }
 
-static void _index_unlink(struct _ze_inflight_bucket **index, void *key,
-                          struct _ze_command_list_obj_data *cl, int is_fence) {
+static void _index_unlink(struct _ze_inflight_bucket **index,
+                          void *key,
+                          struct _ze_command_list_obj_data *cl,
+                          int is_fence) {
   if (!key)
     return;
   struct _ze_inflight_bucket *b = NULL;
@@ -346,7 +348,8 @@ static void _index_unlink(struct _ze_inflight_bucket **index, void *key,
 /* Link cl into the queue (and, if non-NULL, fence) in-flight indexes. Called
  * once per Execute, after in_flight_q/in_flight_fence are stamped. */
 static void _cl_index_set(struct _ze_command_list_obj_data *cl,
-                          ze_command_queue_handle_t q, ze_fence_handle_t f) {
+                          ze_command_queue_handle_t q,
+                          ze_fence_handle_t f) {
   _index_link(&_ze_q_index, q, cl, /*is_fence=*/0);
   _index_link(&_ze_fence_index, f, cl, /*is_fence=*/1);
 }
@@ -440,7 +443,9 @@ static int _ordinal_is_compute(ze_device_handle_t device, uint32_t ordinal) {
     return 0;
   struct _ze_qgroup_cache_entry *e = _qgroup_cache_get(device);
   return e && ordinal < e->n_groups &&
-         (e->flags[ordinal] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) ? 1 : 0;
+                 (e->flags[ordinal] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
+             ? 1
+             : 0;
 }
 
 /* Per-(context, device) tracer-owned immediate OOO compute cl used by
@@ -530,7 +535,9 @@ static void _shadow_append_query(struct _ze_shadow_cl *sh,
 
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
                                            ze_device_handle_t device,
-                                           uint32_t ordinal, int immediate, int in_order) {
+                                           uint32_t ordinal,
+                                           int immediate,
+                                           int in_order) {
   struct _ze_command_list_obj_data *cl_data =
       (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
   if (!cl_data) {
@@ -785,9 +792,8 @@ cleanup_wrapper:
  * doomed ctx is at best racy). Slot-side cleanup (events, waits, preds)
  * is the caller's responsibility — this helper only owns the chunk
  * envelope and the slab. */
-static void _cl_chunk_free(struct _ze_command_list_obj_data *cl_data,
-                           struct _ze_slab_chunk *c,
-                           int free_slab) {
+static void
+_cl_chunk_free(struct _ze_command_list_obj_data *cl_data, struct _ze_slab_chunk *c, int free_slab) {
   DL_DELETE(cl_data->chunks, c);
   if (free_slab && c->slab)
     ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
@@ -932,8 +938,10 @@ static void _slot_publish(struct _ze_command_list_obj_data *cl_data,
  * Fires when Appended for immediate cls and on every Execute for regular cls
  * (it is now part of the cl body). The QKT signaling user_signal IS the
  * user_signal chain — no separate barrier needed. */
-static void _append_inline_query(ze_command_list_handle_t command_list, struct _ze_slot *s,
-                                 ze_event_handle_t inj_event, ze_event_handle_t user_signal) {
+static void _append_inline_query(ze_command_list_handle_t command_list,
+                                 struct _ze_slot *s,
+                                 ze_event_handle_t inj_event,
+                                 ze_event_handle_t user_signal) {
   _ZE_MUST(ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(
       command_list, 1, &inj_event, s->chunk->slab, &s->off, user_signal, 1, &inj_event));
 }
@@ -945,7 +953,8 @@ static void _append_inline_query(ze_command_list_handle_t command_list, struct _
  * L0 Append on the user cl and touches no tracer state, so it is correct
  * both inside the critical section (shadow path) and outside it (the
  * failure-path compensation). Aborts on L0 failure (a silent hang is worse). */
-static int _chain_user_signal(ze_command_list_handle_t command_list, ze_event_handle_t inj_event,
+static int _chain_user_signal(ze_command_list_handle_t command_list,
+                              ze_event_handle_t inj_event,
                               ze_event_handle_t user_signal) {
   if (!user_signal)
     return 0;
@@ -1185,7 +1194,7 @@ static void _slot_drain(struct _ze_slot *s) {
  * low-to-high — natural time order for emission). */
 static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
   struct _ze_slab_chunk *c, *tmp;
-  DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
+  DL_FOREACH_SAFE (cl_data->chunks, c, tmp) {
     /* Bump refcount during traversal so the last _slot_drain doesn't
      * free c out from under the inner loop. Drop after, free here. */
     c->n_held++;
@@ -1204,7 +1213,7 @@ static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data); /* fwd */
 
 /* 1 if any slot in the cl is still in flight (instantiated, not yet drained). */
 static int _cl_any_live(struct _ze_command_list_obj_data *cl_data) {
-  _ZE_FOREACH_SLOT(cl_data, s)
+  _ZE_FOREACH_SLOT (cl_data, s)
     if (s->live)
       return 1;
   return 0;
@@ -1232,8 +1241,7 @@ static void _imm_reset_if_drained(struct _ze_command_list_obj_data *cl_data) {
  * struct alive with n_pinned = #referenced slots. The downstream drains that
  * drop those refs free the struct (see _slot_release's detached branch).
  * Without this, freeing the chunk here would dangle the referrers' preds[]. */
-static void _cl_chunk_reclaim(struct _ze_command_list_obj_data *cl_data,
-                              struct _ze_slab_chunk *c) {
+static void _cl_chunk_reclaim(struct _ze_command_list_obj_data *cl_data, struct _ze_slab_chunk *c) {
   uint32_t pinned = 0;
   for (uint32_t i = 0; i < c->n_used; ++i) {
     struct _ze_slot *s = &c->slots[i];
@@ -1260,7 +1268,7 @@ static void _cl_chunk_reclaim(struct _ze_command_list_obj_data *cl_data,
  * empty for reuse. Used by the zeCommandListReset hook. */
 static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data) {
   struct _ze_slab_chunk *c, *tmp;
-  DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
+  DL_FOREACH_SAFE (cl_data->chunks, c, tmp)
     _cl_chunk_reclaim(cl_data, c);
   _cl_index_clear(cl_data);
   cl_data->in_flight_q = NULL;
@@ -1283,12 +1291,12 @@ static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_
    * is torn down separately, but unlinking here is still correct and cheap.) */
   _cl_index_clear(cl_data);
   if (!ctx_dying) {
-    DL_FOREACH_SAFE(cl_data->chunks, c, tmp)
+    DL_FOREACH_SAFE (cl_data->chunks, c, tmp)
       _cl_chunk_reclaim(cl_data, c);
     free(cl_data);
     return;
   }
-  DL_FOREACH_SAFE(cl_data->chunks, c, tmp) {
+  DL_FOREACH_SAFE (cl_data->chunks, c, tmp) {
     for (uint32_t i = 0; i < c->n_used; ++i)
       _slot_dispose_resources(&c->slots[i], _ZE_DISPOSE_WRAPPER);
     _cl_chunk_free(cl_data, c, /*free_slab=*/0);
@@ -1333,7 +1341,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
   /* 1) Drop cls bound to this ctx. */
   pthread_mutex_lock(&_ze_state_mutex);
   struct _ze_command_list_obj_data *cl_data = NULL, *cl_tmp = NULL;
-  HASH_ITER(hh, _ze_cls, cl_data, cl_tmp) {
+  HASH_ITER (hh, _ze_cls, cl_data, cl_tmp) {
     if (cl_data->cached_context != hContext)
       continue;
     HASH_DEL(_ze_cls, cl_data);
@@ -1342,7 +1350,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
 
   /* 2) Shadow cls keyed by (ctx, device). */
   struct _ze_shadow_cl *sh = NULL, *sh_tmp = NULL;
-  HASH_ITER(hh, _ze_shadow_cls, sh, sh_tmp) {
+  HASH_ITER (hh, _ze_shadow_cls, sh, sh_tmp) {
     if (sh->key.context != hContext)
       continue;
     HASH_DEL(_ze_shadow_cls, sh);
@@ -1357,7 +1365,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
   if (pe) {
     HASH_DEL(_ze_event_pools, pe);
     struct _ze_event_h *w, *w_tmp;
-    DL_FOREACH_SAFE(pe->events, w, w_tmp) {
+    DL_FOREACH_SAFE (pe->events, w, w_tmp) {
       if (w->event)
         ZE_EVENT_DESTROY_PTR(w->event);
       if (w->event_pool)
@@ -1417,10 +1425,10 @@ static void _on_sync(enum _ze_sync_kind kind, void *h) {
       /* SAFE2 because _cl_drain -> _cl_index_clear unlinks cl_data from this
        * very bucket (and may free the bucket on the last unlink). */
       if (kind == _ZE_SYNC_QUEUE) {
-        DL_FOREACH_SAFE2(b->cls, cl_data, tmp, q_next)
+        DL_FOREACH_SAFE2 (b->cls, cl_data, tmp, q_next)
           _cl_drain(cl_data);
       } else {
-        DL_FOREACH_SAFE2(b->cls, cl_data, tmp, f_next)
+        DL_FOREACH_SAFE2 (b->cls, cl_data, tmp, f_next)
           _cl_drain(cl_data);
       }
     }
@@ -1494,7 +1502,7 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
   struct _ze_shadow_cl *sh = NULL;
   int sh_resolved = 0;
   struct _ze_slab_chunk *c;
-  DL_FOREACH(cl_data->chunks, c) {
+  DL_FOREACH (cl_data->chunks, c) {
     for (uint32_t j = 0; j < c->n_used; ++j) {
       struct _ze_slot *slot = &c->slots[j];
       if (!slot->inj)
