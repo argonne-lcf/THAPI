@@ -1,11 +1,6 @@
 #!/usr/bin/env ruby
 
-# 2.7 for Lazy in Enumerable. 2.7 was released 25 Dec 2019
-THAPI_RUBY_MINIMAL_VERSION = '2.7.0'
-if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
-  warn("Your ruby version #{RUBY_VERSION} is too old. #{THAPI_RUBY_MINIMAL_VERSION} or newer required")
-  exit(1)
-end
+# This file doesn't do any ruby version check. All the check are done in `iprof`.
 
 # We Cannot use "@ .. @" for libdir, bindir, and datarootdir
 # as they will appear as bash "${exec_prefix}/lib"
@@ -1007,8 +1002,9 @@ def last_trace_saved
   Dir[File.join(thapi_trace_home, 'thapi*')].max_by { |f| File.mtime(f) }
 end
 
-# Avoid load problem
-if __FILE__ == $PROGRAM_NAME
+# Run when launched through the `iprof` wrapper (which sets $thapi_launch before
+# requiring this file) or when executed directly.
+if $thapi_launch || __FILE__ == $PROGRAM_NAME
   parser = OptionParserWithDefaultAndValidation.new
 
   parser.banner = "Usage: #{File.basename($PROGRAM_NAME)} [options] [--] [command]"

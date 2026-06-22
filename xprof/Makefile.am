@@ -13,15 +13,19 @@ bin_SCRIPTS = \
 	iprof \
 	sync_daemon_fs
 
+# `iprof` is the old-Ruby-safe wrapper, generated from xprof_wrapper.rb.in by
+# configure (see configure.ac). It requires xprof.rb (the implementation) from
+# DATADIR at runtime, the same place as optparse_thapi.rb and version (see
+# utils/Makefile.am).
+data_DATA = \
+	xprof.rb
+
 if FOUND_MPI
   bin_SCRIPTS += sync_daemon_mpi
 endif
 
 sync_daemon_mpi: $(srcdir)/sync_daemon_mpi.cpp
 	$(MPICXX) $(CXXFLAGS) $(AM_CXXFLAGS) -I$(top_srcdir)/utils/include $< -o $@
-
-iprof: xprof.rb
-	cp xprof.rb $@
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
@@ -227,7 +231,6 @@ EXTRA_DIST = \
 	sync_daemon_fs
 
 CLEANFILES = \
-	iprof \
 	xprof_utils.hpp \
 	perfetto_pruned.pb.h \
 	perfetto_pruned.pb.cc \

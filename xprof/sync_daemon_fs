@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
 
-# Cannot use require_relative as iprof is not a rb file
-# Load MPITopo and related helpers
-load(File.join(__dir__, 'iprof'))
+# Load MPITopo and related helpers from the implementation (installed in
+# ../share), not the iprof wrapper, which would set $thapi_launch and run the
+# whole program instead of just defining helpers.
+require_relative File.join('..', 'share', 'xprof')
 
 require 'open3'
 require 'fileutils'
@@ -66,12 +67,11 @@ until msg == SyncDaemon::MSG_FINISH
   raise 'sync_daemon_fs: parent closed socket without sending FINISH' if msg.empty?
 
   case msg
-  when SyncDaemon::MSG_INIT then nil
+  when SyncDaemon::MSG_INIT, SyncDaemon::MSG_FINISH then nil
   when SyncDaemon::MSG_LOCAL_BARRIER
     local_barrier(local_barrier_count.to_s)
     local_barrier_count += 1
   when SyncDaemon::MSG_GLOBAL_BARRIER then global_barrier(global_handle)
-  when SyncDaemon::MSG_FINISH         then nil
   else
     warn("sync_daemon_fs: unknown message '#{msg}'")
     exit(1)

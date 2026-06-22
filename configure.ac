@@ -27,6 +27,17 @@ if test -z "$RUBY"; then
   AC_CHECK_PROG(RUBY,[ruby],[ruby],[no])
   test "$RUBY" == "no" && AC_MSG_ERROR([Required program 'ruby' not found.])
 fi
+# iprof needs Ruby >= 2.7. It's a runtime dependency, but we assume people use
+# the same ruby version at compile and runtime. Will also be used to potentially
+# update other parts of the project.
+RUBY_MIN_VERSION=2.7.0
+AC_SUBST([RUBY_MIN_VERSION])
+AC_MSG_CHECKING([for ruby >= $RUBY_MIN_VERSION])
+RUBY_VERSION_FOUND=`$RUBY -e 'print RUBY_VERSION'`
+AX_COMPARE_VERSION([$RUBY_VERSION_FOUND], [ge], [$RUBY_MIN_VERSION],
+  [AC_MSG_RESULT([yes])],
+  [AC_MSG_RESULT([no])
+   AC_MSG_ERROR([ruby version $RUBY_VERSION_FOUND is too old, need >= $RUBY_MIN_VERSION])])
 if test -z "$ERB"; then
   AC_CHECK_PROG(ERB,[erb],[erb],[no])
   test "$ERB" == "no" && AC_MSG_ERROR([Required program 'erb' not found.])
@@ -155,6 +166,7 @@ AC_CONFIG_FILES([backends/mpi/tracer_mpi.sh], [chmod +x backends/mpi/tracer_mpi.
 AC_CONFIG_FILES([backends/itt/tracer_itt.sh], [chmod +x backends/itt/tracer_itt.sh])
 AC_CONFIG_FILES([utils/babeltrace_thapi], [chmod +x utils/babeltrace_thapi])
 AC_CONFIG_FILES([xprof/xprof.rb], [chmod +x xprof/xprof.rb])
+AC_CONFIG_FILES([xprof/iprof:xprof/xprof_wrapper.rb.in], [chmod +x xprof/iprof])
 AC_CONFIG_FILES([thapi.pc])
 
 AC_OUTPUT

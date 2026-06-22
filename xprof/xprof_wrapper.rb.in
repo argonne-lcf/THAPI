@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+
+# User-facing `iprof` launcher. It MUST stay parseable by old Ruby: Ruby parses
+# the whole file before running any of it, so modern syntax here (endless ranges,
+# pattern matching, ...) would raise a raw SyntaxError before the version check
+# below could run. All real logic lives in xprof.rb, required only after the check
+# passes, so users on an old Ruby get the friendly message below instead.
+
+# Named constant (not inlined) so bats can grep the minimal version out of iprof.
+THAPI_RUBY_MINIMAL_VERSION = '@RUBY_MIN_VERSION@'
+if Gem::Version.new(RUBY_VERSION) < Gem::Version.new(THAPI_RUBY_MINIMAL_VERSION)
+  warn("Your ruby version #{RUBY_VERSION} is too old. #{THAPI_RUBY_MINIMAL_VERSION} or newer required")
+  exit(1)
+end
+
+$LOAD_PATH.unshift(File.join('@prefix@', 'share'))
+$thapi_launch = true
+require 'xprof'
