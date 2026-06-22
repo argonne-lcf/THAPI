@@ -88,11 +88,15 @@ def exec(cmd, opts: {}, debug: true, ignore_exit_codes: [])
   LOGGER.debug { opts } unless opts.empty?
 
   stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
-  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
-  raise "#{cmd} failed" unless status.success? || ignore_exit_codes.include?(status.exitstatus)
+  unless status.success? || ignore_exit_codes.include?(status.exitstatus)
+    msg = +"#{cmd} failed with status #{status.exitstatus}"
+    msg << "\nstderr:\n#{stderr_str.strip}" unless stderr_str.strip.empty?
+    raise msg
+  end
 
+  LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
   stdout_str
 end
 
