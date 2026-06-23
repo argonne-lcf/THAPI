@@ -39,7 +39,11 @@ find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 
-INIT_FUNCTIONS = /zeInit|zeLoaderInit|zeInitDrivers/
+# zesInit is included here so that a pure-Sysman program (one that only calls
+# zesInit, never zeInit) still triggers the tracer initialization.
+# Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
+# so each namespace initializes its own symbols.
+INIT_FUNCTIONS = /zeInit|zeLoaderInit|zeInitDrivers|zesInit/
 
 $struct_type_conversion_table = {
   'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
