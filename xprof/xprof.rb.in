@@ -26,7 +26,6 @@ require 'open3'
 require 'fileutils'
 require 'etc'
 require 'optparse_thapi'
-require 'pty'
 require 'digest/md5'
 require 'socket'
 require 'io/nonblock'
@@ -98,17 +97,18 @@ end
 def launch_usr_bin(env, cmd)
   LOGGER.info { "Launch_usr_bin #{cmd}" }
 
-  # https://docs.ruby-lang.org/en/master/IO.html#method-i-sync
-  $stdout.sync = true
-  IO.popen(env, cmd) do |io|
-    io.each { |line| print line }
+  # Let the user binary inherit our own stdout/stderr directly. Iprof is a
+  # transparent wrapper.
+  begin
+    pid = spawn(env, *cmd, out: $stdout, err: $stderr)
+    _, status = Process.wait2(pid)
   rescue Interrupt
     # Just continue as usual, do not crash xprof
   rescue Errno::ENOENT
     warn("#{__FILE__}: Can't find executable #{cmd.first}")
     raise Errno::ENOENT
   end
-  XprofExitCode.update($?, cmd.join(' '))
+  XprofExitCode.update(status, cmd.join(' ')) if status
 end
 
 def exec_store_in_file(cmd, output_file: nil)

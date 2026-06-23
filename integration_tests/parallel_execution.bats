@@ -59,24 +59,38 @@ launch_mpi() {
 }
 
 @test "launch_usr_bin_streams_child_stdout" {
-  # Verify iprof streams the user binary's stdout line-by-line rather than
-  # buffering it. The child sleeps 4s between two prints, so under proper
-  # streaming the two lines reach us ~4s apart; under buffering they arrive
-  # together at child exit. We assert the gap is at least 2s.
+  # If iprof's input is not buffered, iprof should not buffer it. We use `script`
+  # to give iprof a tty (an unbuffered pipe); the helper sleeps 4s between two
+  # prints, so under streaming the two lines reach us ~4s apart. `script` runs the
+  # child under a PTY, whose line discipline appends a CR to each '\n', hence the
+  # trailing `*` in the patterns below.
+  helper="${BATS_TEST_TMPDIR}/buffering_helper"
+  gcc "${BATS_TEST_DIRNAME}/buffering_helper.c" -o "${helper}"
+
   ts_first=""
   ts_second=""
   while IFS= read -r line; do
     case "$line" in
-      THAPI_STREAM_FIRST) ts_first=$(date +%s%N) ;;
-      THAPI_STREAM_SECOND)
+      THAPI_STREAM_FIRST*) ts_first=$(date +%s%N) ;;
+      THAPI_STREAM_SECOND*)
         ts_second=$(date +%s%N)
         break
         ;;
     esac
-  done < <(iprof -- bash -c 'echo THAPI_STREAM_FIRST; sleep 4; echo THAPI_STREAM_SECOND' 2>/dev/null)
+  done < <(script -qec "iprof -- '${helper}'" /dev/null)
   [ -n "$ts_first" ]
   [ -n "$ts_second" ]
   delta_ms=$(((ts_second - ts_first) / 1000000))
   echo "delta_ms=$delta_ms"
   [ "$delta_ms" -gt 2000 ]
+}
+
+@test "launch_usr_bin_keeps_stderr_separate" {
+  # The user binary's stdout and stderr must stay on their respective streams.
+  helper="${BATS_TEST_TMPDIR}/buffering_helper"
+  gcc "${BATS_TEST_DIRNAME}/buffering_helper.c" -o "${helper}"
+
+  run --separate-stderr iprof --no-analysis -- "${helper}"
+  [[ "$output" =~ $'THAPI_STREAM_FIRST\nTHAPI_STREAM_SECOND' ]]
+  [[ "$stderr" =~ THAPI_STREAM_STDERR ]]
 }
