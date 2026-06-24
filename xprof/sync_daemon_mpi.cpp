@@ -2,6 +2,7 @@
 #include "mpi.h"
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 using namespace daemon_proto;
 
@@ -124,6 +125,10 @@ int main(int argc, char **argv) {
     return 1;
   }
   const int fd = atoi(argv[1]);
+
+  // WA for MPI_Session bug when running concurrently with MPI apps.
+  if (const char *ns = getenv("PMIX_NAMESPACE"))
+    setenv("PMIX_NAMESPACE", (std::string(ns) + "_thapi_sync_daemon").c_str(), 1);
 
   CHECK_MPI(MPIX_Init_Session(&lib_shandle, &MPI_COMM_WORLD_THAPI));
   CHECK_MPI(MPI_Comm_split_type(MPI_COMM_WORLD_THAPI, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
