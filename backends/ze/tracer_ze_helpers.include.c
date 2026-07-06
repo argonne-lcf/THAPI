@@ -1241,20 +1241,6 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
 
 static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data); /* fwd */
 
-/* Immediate cls only: once every slot in the cl is drained, raw-Reset the
- * user's cl so the L0 driver reclaims its per-QKT storage (it accumulates
- * otherwise on a long-lived reused immediate cl — see bench/mem_persistent_cl),
- * then reclaim our own slot bookkeeping (the baked state is gone after the
- * driver reset, exactly like a user zeCommandListReset on a regular cl).
- * Raw *_PTR = untraced; safe only when no slot is still live (no in-flight
- * work). Called at the tail of every sync-drain path that can touch an imm cl. */
-static void _imm_reset_if_drained(struct _ze_command_list_obj_data *cl_data) {
-  if (!cl_data || !cl_data->is_immediate || cl_data->n_live)
-    return;
-  ZE_COMMAND_LIST_RESET_PTR((ze_command_list_handle_t)cl_data->ptr);
-  _cl_data_reset(cl_data);
-}
-
 /* Reclaim one chunk during cl teardown (reset or single-cl destroy, ctx
  * alive). Releases every slot's resources (events to pool, waits, preds,
  * clears latest-signaled), then either frees the chunk or — if any slot is
@@ -1412,11 +1398,11 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
  *
  * QUEUE/FENCE share one rule: a queue/fence wait completes exactly the cls a
  * given Execute submitted, identified by the handle stamped on the cl at
- * Execute. CL/EVENT name their target directly. After draining, a fully-drained
- * immediate cl is raw-Reset to cap the driver's per-QKT storage leak
- * (_imm_reset_if_drained); for the cl/queue/fence anchors _cl_drain already
- * cleared in_flight_*, while the event anchor may leave live siblings, so it
- * clears in_flight_* only once the cl has no slot left in flight. */
+ * Execute. CL/EVENT name their target directly. Draining reclaims each slot's
+ * bookkeeping via _slot_release (immediate cls need no cl-level reset — they
+ * bake no device QKT). For the cl/queue/fence anchors _cl_drain already cleared
+ * in_flight_*, while the event anchor may leave live siblings, so it clears
+ * in_flight_* only once the cl has no slot left in flight. */
 enum _ze_sync_kind { _ZE_SYNC_CL, _ZE_SYNC_QUEUE, _ZE_SYNC_FENCE, _ZE_SYNC_EVENT };
 static void _on_sync(enum _ze_sync_kind kind, void *h) {
   pthread_mutex_lock(&_ze_state_mutex);
@@ -1428,15 +1414,12 @@ static void _on_sync(enum _ze_sync_kind kind, void *h) {
         _cl_index_clear(s->owner);
         s->owner->in_flight_q = NULL;
         s->owner->in_flight_fence = NULL;
-        _imm_reset_if_drained(s->owner);
       }
     }
   } else if (kind == _ZE_SYNC_CL) {
     struct _ze_command_list_obj_data *cl_data = _cl_find((ze_command_list_handle_t)h);
-    if (cl_data) {
+    if (cl_data)
       _cl_drain(cl_data);
-      _imm_reset_if_drained(cl_data);
-    }
   } else { /* _ZE_SYNC_QUEUE / _ZE_SYNC_FENCE: drain just the indexed cls */
     struct _ze_inflight_bucket *b = NULL;
     if (kind == _ZE_SYNC_QUEUE)
