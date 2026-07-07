@@ -1,100 +1,79 @@
-/* Algorithm
- * =========
+/* Timestamp capture (one uniform scheme for ALL command lists)
+ * ============================================================
  *
+ *     Kernel/Copy(sig=inj) ──> Barrier(wait=inj, sig=user_signal)  [on user cl]
+ *     drain: zeEventQueryKernelTimestamp(inj)   [host-side read of OUR event]
+ *
+ * `inj` is a tracer-owned KERNEL_TIMESTAMP event. The append prologue swaps the
+ * user's signal for inj, so the kernel (or copy) signals inj directly and inj
+ * carries the real kernel timing. A barrier re-exposes the user's original
+ * signal (skipped when the user passed none). At drain we read the timing on
+ * the HOST via zeEventQueryKernelTimestamp(inj) — which works regardless of
+ * the signaling engine (compute or copy), because it is a host-side event read.
+ *
+ * We never append a device zeCommandListAppendQueryKernelTimestamps (QKT): on a
+ * long-lived cl the driver's per-QKT cost is O(N^2) in the number of un-synced
+ * queries in flight. Avoiding QKT also removes the whole reason the old design
+ * needed a per-(ctx,device) "shadow" compute cl (copy queue groups reject QKT)
+ * and a queue-group class cache — all deleted.
+ *
+ * INVARIANT: we only ever sync / query / reset OUR OWN inj event. The user's
+ * event is read-only to us: we stash timing under it (so the user's own
+ * zeEventQueryKernelTimestamp returns kernel timing) but never sync or reset
+ * it. The one place we sync a user object is the Execute epilogue's
+ * zeCommandQueueSynchronize — a QUEUE, never an event — to observe completion
+ * of work the user already submitted.
+ *
+ * Algorithm
+ * ---------
  * On profiled Append (cl, sig=user_sig, waits=user_waits):
  *   - allocate inj from per-context pool; swap user_sig -> inj
- *   - place a Query (see "QKT placement" below)
- *   - allocate a slot {inj, attr=user_sig, off, waits=copy(user_waits)}
- *   - immediate cl: instantiate(slot) inline
+ *   - Barrier(wait=inj, sig=user_sig) on the user cl (skip if user_sig NULL)
+ *   - allocate a slot {inj, attr=user_sig, waits=copy(user_waits)}; instantiate
  *
  * instantiate(s):
  *   - s.preds = [event_latest_signaled[w] for w in s.waits if live]
  *                + previous live slot in same cl (if cl is in-order)
  *   - s.live = true; event_latest_signaled[s.attr] = &s
  *
- * On Execute(q, cl) prologue:
- *   - if cl.in_flight_q: Synchronize(in_flight_q); drain_cl(cl)
- *   - shadow-path slots: re-Append Query on shadow cl
- *     inline-path slots: nothing (Query is baked into cl body)
- *   - instantiate every slot in cl
- *   - cl.in_flight_q = q; index cl under q (and its fence) for sync lookup
+ * On Execute(q, cl) epilogue — one critical section (concurrent Executes/Syncs
+ * observe in_flight_q atomically):
+ *   - if cl.in_flight_q: Synchronize(in_flight_q); drain_cl(cl). This drains a
+ *     prior instance (same or another thread's queue), host-reading its timing
+ *     from the baked inj BEFORE this submission re-signals inj.
+ *   - re-instantiate every not-yet-live slot (barrier + inj-signal are baked in
+ *     the closed body and re-fire automatically on replay).
+ *   - cl.in_flight_q = q; index cl under q (and its fence) for sync lookup.
  *
  * On Sync (the synced anchor tells us what to drain):
  *   - Sync(ev):  drain(event_latest_signaled[ev])
  *   - Sync(q):   drain_cl(cl) for every cl in the q-index bucket for q
- *                (O(matching cls), not a scan of every live cl)
  *   - Sync(cl):  drain_cl(cl)
  *
  * drain(s):
  *   - for p in s.preds: drain(p)
- *   - shadow-path: host-sync on shadow_done, reset, decrement live_queries
- *   - read slab[s.off], emit tracepoint(s.attr or inj)
- *   - clear event_latest_signaled[s.attr] (if it still points at s)
- *   - clear s.live and s.preds
- *   (Build-time fields inj, attr, off, waits stay so the next Execute
- *    can re-instantiate without re-Appending.)
+ *   - HostSynchronize(inj) (cheap guard), zeEventQueryKernelTimestamp(inj) -> r
+ *   - stash r under s.attr, emit tracepoint(s.attr or inj)
+ *   - do NOT reset inj: a slot drains once per Execute but inj signals once per
+ *     Execute; the next replay's kernel overwrites inj (last-value-wins, like
+ *     the old device slab). inj is disposed at cl Reset/Destroy (regular) or at
+ *     _slot_release (immediate).
+ *   - clear event_latest_signaled[s.attr]; clear s.live and s.preds
  *
  * Concurrency
- * ===========
- *
- * One global mutex (_ze_state_mutex) covers all tracer state: the cl
- * registry, every cl's chunks/slots/preds, the event freelist + pool
- * registry, the latest-signaled map, the shadow cl registry, the
- * qgroup cache. Append / Execute / Drain / Destroy all take it.
+ * -----------
+ * One global mutex (_ze_state_mutex) covers all tracer state: the cl registry,
+ * every cl's chunks/slots/preds, the event freelist + pool registry, the
+ * latest-signaled map. Append / Execute / Drain / Destroy all take it.
  *
  * Per-cl mutexes don't work because drain follows cross-cl pred edges
- * (event_latest_signaled[ev] can point at a slot in any cl) and
- * mutates the pred's chunk via _slot_release. Any per-cl scheme has
- * to acquire multiple cl mutexes with cross-cl ordering rules. One
- * global mutex sidesteps that entirely.
+ * (event_latest_signaled[ev] can point at a slot in any cl) and mutates the
+ * pred's chunk via _slot_release. One global mutex sidesteps the cross-cl
+ * ordering problem entirely.
  *
- * Perf: Append on different cls and freelist accesses serialize
- * through one lock. The L0 calls inside the critical section
- * (AppendBarrier, AppendQueryKernelTimestamps) just queue work on
- * the GPU — the GPU executes asynchronously, so the held region is
- * short. Drain is host-blocking (zeEventHostSynchronize on shadow
- * fence events) and was effectively serial anyway.
- *
- * Timestamp capture: three placements
- * ====================================
- *
- * The kernel/copy timing is captured in one of three ways, selected from
- * cl_data->is_immediate and cl_data->is_compute. All share the slot/drain/
- * dep-graph machinery; they differ in whether a device-side
- * AppendQueryKernelTimestamps (QKT) is used and how the drain reads the result.
- *
- *   HOST-READ (any IMMEDIATE cl — compute or copy):
- *
- *     Kernel(sig=inj) ──> Barrier(wait=inj, sig=user_signal)   [on user cl]
- *     drain: zeEventQueryKernelTimestamp(inj)  [host-side, no device QKT]
- *
- *     inj is a tracer-owned KERNEL_TIMESTAMP event the kernel/copy signals
- *     directly, so it carries the real kernel timing; drain reads it on the
- *     host. NO device QKT is Appended: a QKT on a long-lived immediate cl is
- *     O(N^2) in the driver as un-synced queries accumulate. The barrier just
- *     re-exposes user_signal (skipped when the user passed no signal).
- *
- *   INLINE (REGULAR cl on a COMPUTE queue group):
- *
- *     Kernel(sig=inj) ──> QKT(wait=inj, sig=user_signal)   [on user cl]
- *
- *     The QKT is baked into the cl body once and re-fires on every Execute
- *     (a regular cl is replayed, so host-read can't capture each Execute).
- *     Its in-flight count is bounded by un-synced Executes, not total appends.
- *     Drain reads the device-filled slab.
- *
- *   SHADOW (REGULAR cl that is copy-only, or queue group unknown):
- *
- *                       ┌─> Barrier(wait=inj, sig=user_signal) [on user cl]
- *     Kernel(sig=inj) ──┤
- *                       └─> QKT(wait=inj, sig=shadow_done)     [on shadow cl]
- *
- *     The shadow cl is a per-(context, device) tracer-owned immediate compute
- *     cl; QKT goes there because copy queue groups reject QKT. shadow_done is a
- *     tracer-owned fence event drain host-syncs on. The shadow QKT is
- *     (re-)Appended in the Execute epilogue (the user cl is in flight by then,
- *     so Appending the Query won't deadlock on a shared engine). Drain reads
- *     the slab.
+ * Perf: the L0 call inside the critical section (AppendBarrier) just queues
+ * work on the GPU asynchronously, so the held region is short. Drain is
+ * host-blocking (zeEventHostSynchronize on our inj) and was serial anyway.
  */
 
 /* Always-on tracer log. Prefixes THAPI(func:line) so messages are
@@ -170,17 +149,13 @@ struct _ze_slab_chunk;
  * after emit, the slot is dropped from the cl's list. */
 struct _ze_slot {
   struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in */
-  struct _ze_slab_chunk *chunk; /* chunk this slot lives in (==> .slab to read at drain) */
-  /* Shadow path only: shadow cl the Query was Appended to. Inline-path
-   * slots leave this NULL — their Query lives in the user cl body and
-   * the dep-graph walk that triggers drain already implies it has run. */
-  struct _ze_shadow_cl *sh;
-  struct _ze_event_h *inj; /* tracer-owned event the Query waits on */
-  /* Shadow path only: tracer-owned fence event the Query signals; drain
-   * host-syncs on it. Inline-path slots leave this NULL. */
-  struct _ze_event_h *shadow_done;
+  struct _ze_slab_chunk *chunk; /* chunk this slot lives in */
+  /* Tracer-owned KERNEL_TIMESTAMP event the kernel/copy signals (the prologue
+   * swapped it in for the user's signal). Carries the real kernel timing; drain
+   * host-reads it via zeEventQueryKernelTimestamp. Ours — we own its lifecycle
+   * (sync/query/reset/dispose); we never touch the user's event. */
+  struct _ze_event_h *inj;
   ze_event_handle_t attr; /* user's original signal event (NULL => inj->event) */
-  size_t off;             /* byte offset within chunk->slab */
   /* User wait events copied at Append time (stable across rebuilds);
    * preds[] is computed at instantiate from waits[] by looking up
    * event_latest_signaled[w] for each w. */
@@ -198,18 +173,15 @@ struct _ze_slot {
 
 #define _ZE_SLAB_CHUNK_SLOTS 64
 
-/* Slot + slab storage in fixed-size chunks; cl_data->chunks is a utlist
- * DL of these. Imm cls allocate new chunks as needed (no cap); regular
- * cls stop at one chunk — the inj events (and on the inline path, the
- * QKT itself) are baked into the closed cl body, so adding a chunk
- * after Close would create slots the body doesn't address.
+/* Slot storage in fixed-size chunks; cl_data->chunks is a utlist DL of
+ * these. Imm cls allocate new chunks as needed (no cap); regular cls stop
+ * at one chunk — the inj-signal swap and the user-signal barrier are baked
+ * into the closed cl body per Append, so adding a chunk after Close would
+ * create slots the body doesn't address.
  *
- * Within a chunk, slots[i].off is i * sizeof(timestamp) into slab. The
- * chunk frees itself when n_held drops to 0 AND it is not the tail
+ * The chunk frees itself when n_held drops to 0 AND it is not the tail
  * (new Appends still want to land on the tail). */
 struct _ze_slab_chunk {
-  void *slab;                   /* _ZE_SLAB_CHUNK_SLOTS * sizeof(ze_kernel_timestamp_result_t) */
-  ze_context_handle_t slab_ctx; /* context the slab was allocated against (zeMemFree target) */
   uint32_t n_used;              /* slots ever assigned in this chunk (monotonic until chunk free) */
   uint32_t n_held;              /* unreleased slots (n_used minus _slot_release calls) */
   /* Nonzero only on a DETACHED chunk: one whose owning cl was torn down
@@ -250,12 +222,6 @@ struct _ze_command_list_obj_data {
    * in every chunk (that scan is O(all appends ever) on a long-lived cl ->
    * O(N^2) over a run). */
   uint32_t n_live;
-  /* 1 if this cl's queue group exposes COMPUTE — its body can host
-   * AppendQueryKernelTimestamps directly, so we skip the per-(ctx,device)
-   * shadow cl and bake QKT into the user cl itself. See the placement
-   * diagram at the top of this file. 0 for copy-only cls and for any cl
-   * whose group flags we couldn't determine. Set at create; immutable. */
-  unsigned char is_compute;
 
   /* Cached on first use: context handle for this cl. Immutable for the
    * cl's lifetime. Load-bearing for _on_destroy_context's sweep: lets it
@@ -367,177 +333,6 @@ static void _cl_index_clear(struct _ze_command_list_obj_data *cl) {
   _index_unlink(&_ze_fence_index, cl->in_flight_fence, cl, /*is_fence=*/1);
 }
 
-/* Per-device cache of the queue-group flag bitmap. The lookup is
- * read-mostly: scan zeDeviceGetCommandQueueGroupProperties once,
- * remember the per-ordinal flags. flags==NULL means "we already checked
- * and the device returned no groups". Used by two readers:
- *   _get_compute_ordinal(dev)        -> first COMPUTE ord, or -1
- *   _ordinal_is_compute(dev, ord)    -> 1 if ord is COMPUTE on dev */
-struct _ze_qgroup_cache_entry {
-  ze_device_handle_t device;
-  ze_command_queue_group_property_flags_t *flags; /* owned; n_groups entries */
-  uint32_t n_groups;
-  UT_hash_handle hh;
-};
-static struct _ze_qgroup_cache_entry *_ze_qgroup_cache = NULL;
-
-/* Populate (or return cached) flag bitmap for device. The cache lives
- * for process lifetime. First-touch L0 queries happen under the state
- * mutex; cost is bounded since lookups are once per device. */
-static struct _ze_qgroup_cache_entry *_qgroup_cache_get(ze_device_handle_t device) {
-  struct _ze_qgroup_cache_entry *e = NULL;
-  HASH_FIND_PTR(_ze_qgroup_cache, &device, e);
-  if (e)
-    return e;
-
-  uint32_t n_groups = 0;
-  if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(device, &n_groups, NULL) !=
-          ZE_RESULT_SUCCESS ||
-      n_groups == 0)
-    return NULL;
-  ze_command_queue_group_properties_t *groups =
-      (ze_command_queue_group_properties_t *)calloc(n_groups, sizeof(*groups));
-  if (!groups)
-    return NULL;
-  for (uint32_t i = 0; i < n_groups; ++i)
-    groups[i].stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_GROUP_PROPERTIES;
-  if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(device, &n_groups, groups) !=
-      ZE_RESULT_SUCCESS) {
-    free(groups);
-    return NULL;
-  }
-  ze_command_queue_group_property_flags_t *flags =
-      (ze_command_queue_group_property_flags_t *)calloc(n_groups, sizeof(*flags));
-  if (!flags) {
-    free(groups);
-    return NULL;
-  }
-  for (uint32_t i = 0; i < n_groups; ++i)
-    flags[i] = groups[i].flags;
-  free(groups);
-
-  e = (struct _ze_qgroup_cache_entry *)calloc(1, sizeof(*e));
-  if (!e) {
-    free(flags);
-    return NULL;
-  }
-  e->device = device;
-  e->flags = flags;
-  e->n_groups = n_groups;
-  HASH_ADD_PTR(_ze_qgroup_cache, device, e);
-  return e;
-}
-
-/* Returns the first COMPUTE queue group ordinal for device, or (uint32_t)-1
- * if the device exposes no compute group (fatal — caller should bail). */
-static uint32_t _get_compute_ordinal(ze_device_handle_t device) {
-  struct _ze_qgroup_cache_entry *e = _qgroup_cache_get(device);
-  if (!e)
-    return (uint32_t)-1;
-  for (uint32_t i = 0; i < e->n_groups; ++i)
-    if (e->flags[i] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
-      return i;
-  return (uint32_t)-1;
-}
-
-/* 1 iff `ordinal` on `device` is a COMPUTE queue group. Returns 0 on any
- * uncertainty (unknown device, OOB ordinal, driver error) — callers
- * should treat the cl as non-compute and use the shadow-cl QKT path. */
-static int _ordinal_is_compute(ze_device_handle_t device, uint32_t ordinal) {
-  if (!device)
-    return 0;
-  struct _ze_qgroup_cache_entry *e = _qgroup_cache_get(device);
-  return e && ordinal < e->n_groups &&
-                 (e->flags[ordinal] & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
-             ? 1
-             : 0;
-}
-
-/* Per-(context, device) tracer-owned immediate OOO compute cl used by
- * the SHADOW path to host AppendQueryKernelTimestamps. Copy queue
- * groups reject QKT, so the shadow cl exists to give those user cls
- * somewhere compute-capable to put their Query. Compute user cls take
- * the INLINE path and never touch a shadow cl — see the QKT placement
- * diagram at the top of this file. */
-struct _ze_shadow_key {
-  ze_context_handle_t context;
-  ze_device_handle_t device;
-};
-struct _ze_shadow_cl {
-  struct _ze_shadow_key key;
-  ze_command_list_handle_t cl;
-  uint32_t live_queries; /* QKTs appended but not yet host-synced */
-  UT_hash_handle hh;
-};
-static struct _ze_shadow_cl *_ze_shadow_cls = NULL;
-
-/* Returns the shadow cl for (context, device), creating it lazily on
- * first use (first-touch L0 zeCommandListCreateImmediate runs under
- * the state mutex; cost bounded). Returns NULL if the device has no
- * compute group (fatal: log to stderr) or if creation fails. */
-static struct _ze_shadow_cl *_get_shadow_cl(ze_context_handle_t context,
-                                            ze_device_handle_t device) {
-  struct _ze_shadow_key key = {context, device};
-  struct _ze_shadow_cl *sh = NULL;
-  HASH_FIND(hh, _ze_shadow_cls, &key, sizeof(key), sh);
-  if (sh)
-    return sh;
-
-  uint32_t ord = _get_compute_ordinal(device);
-  if (ord == (uint32_t)-1) {
-    fprintf(stderr,
-            "THAPI: device %p has no COMPUTE queue group; "
-            "cannot create shadow cl. Profiling disabled for "
-            "command lists on this device.\n",
-            (void *)device);
-    return NULL;
-  }
-  /* ASYNCHRONOUS mode is critical: with SYNCHRONOUS (the DEFAULT),
-   * each AppendQueryKernelTimestamps on this immediate cl blocks until
-   * the Query completes — which it can't, because Query is waiting on
-   * inj, and inj is signaled by the user cl's kernel that hasn't been
-   * submitted yet (we're called from the user's Execute prologue).
-   * Deadlock. ASYNCHRONOUS lets the Append return immediately and the
-   * Query run device-side at its own pace. */
-  ze_command_queue_desc_t qd = {
-      ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC, NULL, ord, 0, 0, ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS,
-      ZE_COMMAND_QUEUE_PRIORITY_NORMAL};
-  ze_command_list_handle_t new_cl = NULL;
-  if (ZE_COMMAND_LIST_CREATE_IMMEDIATE_PTR(context, device, &qd, &new_cl) != ZE_RESULT_SUCCESS ||
-      !new_cl) {
-    fprintf(stderr,
-            "THAPI: failed to create shadow cl for "
-            "context=%p device=%p\n",
-            (void *)context, (void *)device);
-    return NULL;
-  }
-  sh = (struct _ze_shadow_cl *)calloc(1, sizeof(*sh));
-  if (!sh) {
-    ZE_COMMAND_LIST_DESTROY_PTR(new_cl);
-    return NULL;
-  }
-  sh->key = key;
-  sh->cl = new_cl;
-  HASH_ADD(hh, _ze_shadow_cls, key, sizeof(sh->key), sh);
-  return sh;
-}
-
-/* Append AppendQueryKernelTimestamps on the shadow cl: wait on inj,
- * signal shadow_done, write timestamps into slab[*off]. The state
- * mutex also serializes the not-thread-safe-per-cl-handle L0 Append
- * on the shared shadow cl. Aborts on L0 failure (defensive — a missing
- * Query would silently drop this kernel's timing). */
-static void _shadow_append_query(struct _ze_shadow_cl *sh,
-                                 ze_event_handle_t inj_event,
-                                 void *slab,
-                                 size_t *off,
-                                 ze_event_handle_t shadow_done_event) {
-  sh->live_queries++;
-  _ZE_MUST(ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(sh->cl, 1, &inj_event, slab, off,
-                                                              /*hSignalEvent=*/shadow_done_event,
-                                                              /*numWaitEvents=*/1, &inj_event));
-}
-
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
                                            ze_device_handle_t device,
                                            uint32_t ordinal,
@@ -552,10 +347,14 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
   cl_data->ptr = (void *)command_list;
   cl_data->is_immediate = immediate ? 1 : 0;
   cl_data->is_in_order = in_order ? 1 : 0;
+  /* device/ordinal were only used to classify COMPUTE vs COPY for the old
+   * shadow-cl QKT placement. Timing is now host-read from our injected event
+   * (zeEventQueryKernelTimestamp works regardless of the signaling engine), so
+   * the queue-group class no longer matters. */
+  (void)device;
+  (void)ordinal;
 
   pthread_mutex_lock(&_ze_state_mutex);
-  /* _ordinal_is_compute touches the qgroup cache (state-mutex-protected). */
-  cl_data->is_compute = _ordinal_is_compute(device, ordinal) ? 1 : 0;
   if (_cl_find(command_list)) {
     pthread_mutex_unlock(&_ze_state_mutex);
     THAPI_DBGLOG("Command list already registered: %p", command_list);
@@ -791,57 +590,39 @@ cleanup_wrapper:
   return NULL;
 }
 
-/* Unlink chunk c from cl_data->chunks and free its slab + struct.
- * `free_slab` controls whether to issue zeMemFree on the slab — false when
- * the chunk's context is being destroyed (driver reclaims; zeMemFree on a
- * doomed ctx is at best racy). Slot-side cleanup (events, waits, preds)
- * is the caller's responsibility — this helper only owns the chunk
- * envelope and the slab. */
+/* Unlink chunk c from cl_data->chunks and free the struct. Slot-side cleanup
+ * (events, waits, preds) is the caller's responsibility — this helper only
+ * owns the chunk envelope. */
 static void
-_cl_chunk_free(struct _ze_command_list_obj_data *cl_data, struct _ze_slab_chunk *c, int free_slab) {
+_cl_chunk_free(struct _ze_command_list_obj_data *cl_data, struct _ze_slab_chunk *c) {
   DL_DELETE(cl_data->chunks, c);
-  if (free_slab && c->slab)
-    ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
   free(c);
 }
 
 /* Allocate a new chunk and append it to cl_data->chunks. */
-static struct _ze_slab_chunk *_cl_chunk_alloc(struct _ze_command_list_obj_data *cl_data,
-                                              ze_context_handle_t ctx) {
+static struct _ze_slab_chunk *_cl_chunk_alloc(struct _ze_command_list_obj_data *cl_data) {
   struct _ze_slab_chunk *c = (struct _ze_slab_chunk *)calloc(1, sizeof(*c));
   if (!c)
     return NULL;
-  size_t bytes = (size_t)_ZE_SLAB_CHUNK_SLOTS * sizeof(ze_kernel_timestamp_result_t);
-  ze_host_mem_alloc_desc_t hd = {ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC, NULL, 0};
-  if (ZE_MEM_ALLOC_HOST_PTR(ctx, &hd, bytes, sizeof(uint64_t), &c->slab) != ZE_RESULT_SUCCESS ||
-      !c->slab) {
-    free(c);
-    return NULL;
-  }
-  memset(c->slab, 0, bytes);
-  c->slab_ctx = ctx;
   DL_APPEND(cl_data->chunks, c);
   return c;
 }
 
 /* Allocate one new slot at the tail of cl_data->chunks. Grows by one
  * chunk for imm cls; regular cls stay at one chunk and return NULL when
- * full (their inj events are baked into the closed cl body, so storage
- * must keep addressing them via the same (slab, off) pair). */
+ * full (their inj-signal swap and user-signal barrier are baked into the
+ * closed cl body per Append, so a post-Close chunk can't be addressed). */
 static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_data,
-                                        ze_context_handle_t ctx,
                                         struct _ze_event_h *inj,
-                                        struct _ze_event_h *shadow_done,
                                         ze_event_handle_t attr,
                                         ze_event_handle_t *waits,
                                         uint32_t n_waits) {
   struct _ze_slab_chunk *tail = cl_data->chunks ? cl_data->chunks->prev : NULL;
   if (!tail || tail->n_used >= _ZE_SLAB_CHUNK_SLOTS) {
     if (tail && !cl_data->is_immediate) {
-      /* Regular cl is capped at one chunk (inj events are baked into the
-       * closed cl body, so storage can't move). Past the cap we drop the
-       * Append's profiling silently — warn once so the data loss is at
-       * least visible. Called under _ze_state_mutex, so the guard is safe. */
+      /* Regular cl is capped at one chunk (baked into the closed body). Past
+       * the cap we drop the Append's profiling silently — warn once so the
+       * data loss is at least visible. Called under _ze_state_mutex. */
       static int warned = 0;
       if (!warned) {
         warned = 1;
@@ -851,7 +632,7 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
       }
       return NULL;
     }
-    tail = _cl_chunk_alloc(cl_data, ctx);
+    tail = _cl_chunk_alloc(cl_data);
     if (!tail)
       return NULL;
   }
@@ -861,9 +642,7 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
   s->owner = cl_data;
   s->chunk = tail;
   s->inj = inj;
-  s->shadow_done = shadow_done;
   s->attr = attr;
-  s->off = (size_t)idx * sizeof(ze_kernel_timestamp_result_t);
   if (n_waits) {
     s->waits = (ze_event_handle_t *)malloc(n_waits * sizeof(ze_event_handle_t));
     if (s->waits) {
@@ -924,47 +703,31 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
     _event_latest_set(s->attr, s);
 }
 
-/* Publish a fresh slot: shadow path appends a Query on the per-(ctx,device)
- * shadow cl; inline path is a no-op here (its QKT is baked into the user cl
- * body at Append). Then instantiate in the dep graph. `s->shadow_done` is
- * the single source of truth for "shadow vs inline" — no is_compute branch
- * at the call site. */
-static void _slot_publish(struct _ze_command_list_obj_data *cl_data,
-                          struct _ze_slot *s,
-                          struct _ze_shadow_cl *sh) {
-  if (s->shadow_done) {
-    _THAPI_ASSERT(sh, "shadow-path slot needs a shadow cl");
-    _shadow_append_query(sh, s->inj->event, s->chunk->slab, &s->off, s->shadow_done->event);
-    s->sh = sh;
-  }
-  _slot_instantiate(cl_data, s);
-}
-
-/* INLINE path: bake the QKT into the user cl body (wait=inj, sig=user_signal).
- * Fires when Appended for immediate cls and on every Execute for regular cls
- * (it is now part of the cl body). The QKT signaling user_signal IS the
- * user_signal chain — no separate barrier needed. */
-static void _append_inline_query(ze_command_list_handle_t command_list,
-                                 struct _ze_slot *s,
-                                 ze_event_handle_t inj_event,
-                                 ze_event_handle_t user_signal) {
-  _ZE_MUST(ZE_COMMAND_LIST_APPEND_QUERY_KERNEL_TIMESTAMPS_PTR(
-      command_list, 1, &inj_event, s->chunk->slab, &s->off, user_signal, 1, &inj_event));
-}
-
-/* Chain the user's signal event off our inj on the user cl: the prologue
- * swapped user_signal for inj, so without this the user's Sync(user_signal)
- * would hang forever. No-op (returns 0) when the user passed no signal;
- * returns 1 when the barrier was appended. Mutex-agnostic — it issues an
- * L0 Append on the user cl and touches no tracer state, so it is correct
- * both inside the critical section (shadow path) and outside it (the
- * failure-path compensation). Aborts on L0 failure (a silent hang is worse). */
+/* Re-expose the user's signal event on the user cl: the prologue swapped
+ * user_signal for inj (so the kernel now signals inj), and without re-signaling
+ * user_signal the user's Sync(user_signal) would hang forever. No-op (returns
+ * 0) when the user passed no signal; returns 1 when an op was appended.
+ *
+ * In-order cl: the cl executes strictly sequentially, so a plain
+ * AppendSignalEvent(user_signal) placed right after the kernel already runs
+ * after it — cheaper than a full pipeline barrier. Out-of-order cl: a bare
+ * SignalEvent has no ordering vs the kernel, so we need AppendBarrier with
+ * wait=inj to force user_signal to fire only after the kernel completed.
+ *
+ * Mutex-agnostic — it issues an L0 Append on the user cl and touches no tracer
+ * state, so it is correct both inside the critical section (normal path) and
+ * outside it (the failure-path compensation). Aborts on L0 failure (a silent
+ * hang is worse). */
 static int _chain_user_signal(ze_command_list_handle_t command_list,
                               ze_event_handle_t inj_event,
-                              ze_event_handle_t user_signal) {
+                              ze_event_handle_t user_signal,
+                              int in_order) {
   if (!user_signal)
     return 0;
-  _ZE_MUST(ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &inj_event));
+  if (in_order)
+    _ZE_MUST(ZE_COMMAND_LIST_APPEND_SIGNAL_EVENT_PTR(command_list, user_signal));
+  else
+    _ZE_MUST(ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &inj_event));
   return 1;
 }
 
@@ -980,14 +743,21 @@ static void _slot_append_rollback(struct _ze_command_list_obj_data *cl_data, str
   c->n_held--;
   memset(s, 0, sizeof(*s));
   if (c->n_used == 0)
-    _cl_chunk_free(cl_data, c, /*free_slab=*/1);
+    _cl_chunk_free(cl_data, c);
 }
 
 /* Append-time hook from profiling_epilogue. The prologue swapped user's
  * hSignalEvent for inj->event; user_signal is the original (possibly NULL),
  * user_waits is the user's wait list, ctx is the cl's context (fetched
- * once in the prologue, threaded in). Forks on is_immediate/is_compute to
- * pick the timestamp placement — see "Timestamp capture" in the file header. */
+ * once in the prologue, threaded in).
+ *
+ * One uniform path for all cls: the kernel/copy signals inj (a
+ * KERNEL_TIMESTAMP event we own), so inj carries the real kernel timing; drain
+ * host-reads it via zeEventQueryKernelTimestamp. A barrier re-exposes the
+ * user's original signal (skipped when NULL). No device AppendQueryKernel-
+ * Timestamps anywhere — it is O(N^2) in the driver as un-synced queries pile
+ * up on a long-lived cl, and host-read of a KERNEL_TIMESTAMP event works
+ * regardless of the signaling engine (compute or copy). */
 static void _universal_record_append(ze_command_list_handle_t command_list,
                                      ze_context_handle_t ctx,
                                      struct _ze_event_h *inj,
@@ -996,9 +766,9 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
                                      uint32_t user_n_waits) {
   if (!inj || !ctx)
     return;
-  struct _ze_event_h *shadow_done = NULL;
   struct _ze_slot *s = NULL;
   int barrier_chained = 0;
+  int in_order = 0;
 
   inj->context = ctx;
 
@@ -1006,74 +776,38 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
   if (!cl_data)
     goto fail_locked;
-  /* Three slot kinds (see the "QKT placement" header):
-   *   IMMEDIATE (compute or copy) -> no device QKT; the kernel/copy signals
-   *       inj (a KERNEL_TIMESTAMP event), and drain HOST-reads inj. A device
-   *       AppendQueryKernelTimestamps on a long-lived immediate cl is O(N^2)
-   *       in the driver as un-synced queries pile up, so we avoid it entirely.
-   *   REGULAR compute       -> inline: bake the QKT into the user cl body.
-   *   REGULAR copy/unknown  -> shadow: QKT on a per-(ctx,device) shadow cl,
-   *       placed at the Execute epilogue.
-   * Only regular-noncompute needs the shadow fence event. */
-  int inline_path = cl_data->is_compute && !cl_data->is_immediate;
+  in_order = cl_data->is_in_order;
 
-  if (!cl_data->is_compute && !cl_data->is_immediate) {
-    shadow_done = _get_profiling_event(ctx);
-    if (!shadow_done)
-      goto fail_locked;
-    shadow_done->context = ctx;
-  }
-
-  /* Publish the cl->ctx mapping. _on_execute_one_cl reads it directly
-   * (no fallback fetch) when resolving the shadow cl, and
-   * _on_destroy_context's per-cl sweep matches against it. */
+  /* Publish the cl->ctx mapping. _on_destroy_context's per-cl sweep matches
+   * against it. */
   cl_data->cached_context = ctx;
 
-  s = _cl_slot_append(cl_data, ctx, inj, shadow_done, user_signal, user_waits, user_n_waits);
+  s = _cl_slot_append(cl_data, inj, user_signal, user_waits, user_n_waits);
   if (!s)
     goto fail_locked;
 
-  if (inline_path) {
-    _append_inline_query(command_list, s, inj->event, user_signal);
-    barrier_chained = 1; /* user_signal chained via the QKT itself */
-    _slot_instantiate(cl_data, s);
-    pthread_mutex_unlock(&_ze_state_mutex);
-    return;
-  }
-
-  /* IMMEDIATE and shadow paths both re-expose the user's signal by chaining it
-   * off inj with a barrier (the prologue swapped user_signal for inj). */
-  barrier_chained = _chain_user_signal(command_list, inj->event, user_signal);
-
-  if (cl_data->is_immediate) {
-    /* Host-read path: no shadow cl, no device QKT. inj carries the kernel/copy
-     * timing; drain reads it via zeEventQueryKernelTimestamp. */
-    _slot_instantiate(cl_data, s);
-    pthread_mutex_unlock(&_ze_state_mutex);
-    return;
-  }
-
-  /* Regular copy/unknown cl: the Query is placed on the shadow cl at the
-   * Execute epilogue (see _on_execute_one_cl); instantiate is deferred too. */
+  /* Re-expose the user's signal (the prologue swapped user_signal for inj).
+   * In-order: a plain SignalEvent after the kernel; OOO: a barrier waiting on
+   * inj. No-op when user_signal is NULL. */
+  barrier_chained = _chain_user_signal(command_list, inj->event, user_signal, in_order);
+  _slot_instantiate(cl_data, s);
   pthread_mutex_unlock(&_ze_state_mutex);
   return;
 
 fail_locked:
   if (s)
     _slot_append_rollback(cl_data, s);
-  if (shadow_done)
-    _put_ze_event(shadow_done);
   _put_ze_event(inj);
   pthread_mutex_unlock(&_ze_state_mutex);
   /* Compensate outside the state mutex: if we bailed before chaining
    * user_signal off inj, do it now or the user's Sync(user_signal) hangs. */
   if (!barrier_chained)
-    _chain_user_signal(command_list, inj->event, user_signal);
+    _chain_user_signal(command_list, inj->event, user_signal, in_order);
 }
 
-/* Dispose the per-slot resources shared by every teardown path: the inj and
- * shadow_done events, the waits[] copy, the preds[] array, and the slot's
- * entry in event_latest_signaled. The event-disposal target differs by caller:
+/* Dispose the per-slot resources shared by every teardown path: the inj
+ * event, the waits[] copy, the preds[] array, and the slot's entry in
+ * event_latest_signaled. The event-disposal target differs by caller:
  *   _ZE_DISPOSE_POOL    -> _put_ze_event (ctx alive: events recycle to the pool)
  *   _ZE_DISPOSE_WRAPPER -> _put_ze_event_wrapper (ctx dying: only recycle the
  *                          wrapper struct; the L0 event/pool die with the ctx)
@@ -1089,13 +823,6 @@ static void _slot_dispose_resources(struct _ze_slot *s, enum _ze_slot_dispose_mo
     else
       _put_ze_event(s->inj);
     s->inj = NULL;
-  }
-  if (s->shadow_done) {
-    if (mode == _ZE_DISPOSE_WRAPPER)
-      _put_ze_event_wrapper(s->shadow_done);
-    else
-      _put_ze_event(s->shadow_done);
-    s->shadow_done = NULL;
   }
   free(s->waits);
   s->waits = NULL;
@@ -1138,14 +865,13 @@ static void _slot_release(struct _ze_slot *s) {
     return;
   c->n_held--;
   if (c->n_held == 0 && c != cl->chunks->prev)
-    _cl_chunk_free(cl, c, /*free_slab=*/1);
+    _cl_chunk_free(cl, c);
 }
 
 /* Drain one slot. Recurses on its preds, emits the slot's tracepoint,
  * drops one ref on each pred (releasing fully-drained-and-unreferenced
  * preds), then releases s if its own refs hit 0. Safe to call on an
- * already-drained (live=0) slot. Slab read uses s->chunk->slab — preds
- * may live in another cl, so we can't use the caller's slab.
+ * already-drained (live=0) slot.
  *
  * No cycle guard: preds come from in-order prev (strictly earlier slot
  * in the same cl, DAG) and from event_latest_signaled[wait_event] (a
@@ -1159,46 +885,25 @@ static void _slot_drain(struct _ze_slot *s) {
   s->live = 0;
   if (s->owner)
     s->owner->n_live--;
-  /* Shadow-path only (regular copy/unknown cls): block until the Query has
-   * fired, then reset shadow_done so the next Execute round starts with a clean
-   * event. The user's own sync doesn't cover the Query because it runs on the
-   * shadow cl. Immediate (host-read) and regular-compute (inline) slots have
-   * shadow_done==NULL — the dep-graph walk that brought us here already implies
-   * their timing is ready. */
-  if (s->shadow_done && s->shadow_done->event) {
-    _ZE_MUST(ZE_EVENT_HOST_SYNCHRONIZE_PTR(s->shadow_done->event, UINT64_MAX));
-    _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(s->shadow_done->event));
-    /* QKT completed device-side. Drop the live ref; if nothing else on
-     * this shadow cl is in flight, Reset it: the L0 driver leaks ~10 KB
-     * per AppendQueryKernelTimestamps and only reclaims at Reset/Destroy. */
-    if (s->sh) {
-      s->sh->live_queries--;
-      if (s->sh->live_queries == 0)
-        _ZE_MUST(ZE_COMMAND_LIST_RESET_PTR(s->sh->cl));
-    }
-  }
   ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
-  /* Fetch the kernel-timestamp result. Immediate cls read it HOST-side from our
-   * injected event (no device QKT was baked — that is O(N^2) in the driver);
-   * inline/shadow slots read the device-filled slab at s->off. */
+  /* Host-read the kernel timing from OUR injected KERNEL_TIMESTAMP event. Drain
+   * is always reached after a queue/cl/event sync that already completed the
+   * work (for a resubmitted regular cl, the next Execute's force-sync drains the
+   * prior instance before it re-signals inj), so the query returns immediately;
+   * the HostSynchronize is a cheap guard against under-synced user code. inj is
+   * OURS — we never sync/query the user's event, only stash under it below. */
   int have_result = 0;
   ze_kernel_timestamp_result_t r;
-  if (s->owner && s->owner->is_immediate && s->inj && s->inj->event) {
-    /* inj is signaled by drain time (kernel->inj, barrier orders inj before
-     * user_signal, drain follows a user sync). Sync is a cheap guard against
-     * under-synced user code. */
+  if (s->inj && s->inj->event) {
     _ZE_MUST(ZE_EVENT_HOST_SYNCHRONIZE_PTR(s->inj->event, UINT64_MAX));
     _ZE_MUST(ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(s->inj->event, &r));
-    have_result = 1;
-  } else if (s->chunk && s->chunk->slab) {
-    r = *(ze_kernel_timestamp_result_t *)((char *)s->chunk->slab + s->off);
     have_result = 1;
   }
   if (have_result && attr) {
     /* Stash the kernel result under the user's own event so the user's
-     * zeEventQueryKernelTimestamp returns kernel timing, not the QKT/barrier
-     * op timing their event actually carries (we swapped it for inj). Only
-     * when the user supplied an event (s->attr); inj is ours, not queryable. */
+     * zeEventQueryKernelTimestamp returns kernel timing, not the barrier op
+     * timing their event actually carries (we swapped it for inj). Only when
+     * the user supplied an event (s->attr); inj is ours, not queryable. */
     if (s->attr)
       _event_kts_set(s->attr, r);
     if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results))
@@ -1206,6 +911,13 @@ static void _slot_drain(struct _ze_slot *s) {
                     ZE_RESULT_SUCCESS, r.global.kernelStart, r.global.kernelEnd,
                     r.context.kernelStart, r.context.kernelEnd);
   }
+  /* Do NOT reset inj here. A slot is drained once per Execute, but inj is only
+   * signaled once per Execute; the next replay's kernel re-signals (overwrites)
+   * inj — verified last-value-wins. Resetting would make a second drain of the
+   * same slot (e.g. the final user Sync after the next Execute's force-sync
+   * already drained it) block forever on an event that is never re-signaled.
+   * The value persists in inj like the old device-written slab did; regular cls
+   * dispose inj at cl Reset/Destroy, immediate cls at _slot_release. */
   _event_latest_clear_if(s->attr, s);
   /* Drop refs on preds; release any that hit 0 and are already drained. */
   for (uint32_t i = 0; i < s->n_preds; ++i) {
@@ -1232,7 +944,7 @@ static void _cl_drain(struct _ze_command_list_obj_data *cl_data) {
       _slot_drain(&c->slots[i]);
     c->n_held--;
     if (c->n_held == 0 && c != cl_data->chunks->prev)
-      _cl_chunk_free(cl_data, c, /*free_slab=*/1);
+      _cl_chunk_free(cl_data, c);
   }
   _cl_index_clear(cl_data);
   cl_data->in_flight_q = NULL;
@@ -1258,15 +970,11 @@ static void _cl_chunk_reclaim(struct _ze_command_list_obj_data *cl_data, struct 
       pinned++;
   }
   if (pinned == 0) {
-    _cl_chunk_free(cl_data, c, /*free_slab=*/1);
+    _cl_chunk_free(cl_data, c);
     return;
   }
   /* Detach: keep the struct alive for the surviving referenced slots. */
   DL_DELETE(cl_data->chunks, c);
-  if (c->slab) {
-    ZE_MEM_FREE_PTR(c->slab_ctx, c->slab);
-    c->slab = NULL;
-  }
   for (uint32_t i = 0; i < c->n_used; ++i)
     c->slots[i].owner = NULL;
   c->n_pinned = pinned;
@@ -1288,11 +996,9 @@ static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data) {
  * already removed cl_data from _ze_cls (single-cl: _cl_find_and_del;
  * per-ctx sweep: HASH_DEL inside the iter). When ctx is dying we just
  * recycle wrapper structs (the L0 event/pool will be destroyed in
- * _on_destroy_context step 3) and skip zeMemFree on the slab (the
- * driver reclaims, and zeMemFree on a doomed ctx is racy); no slot can
- * outlive the ctx, so no detach is needed. When the ctx is alive a slot
- * may still be referenced cross-cl, so we reclaim per-chunk (detaching
- * referenced chunks) just like reset. */
+ * _on_destroy_context step 2); no slot can outlive the ctx, so no detach
+ * is needed. When the ctx is alive a slot may still be referenced cross-cl,
+ * so we reclaim per-chunk (detaching referenced chunks) just like reset. */
 static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_dying) {
   struct _ze_slab_chunk *c, *tmp;
   /* Unlink from the in-flight indexes before the struct is freed, or a later
@@ -1308,7 +1014,7 @@ static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_
   DL_FOREACH_SAFE (cl_data->chunks, c, tmp) {
     for (uint32_t i = 0; i < c->n_used; ++i)
       _slot_dispose_resources(&c->slots[i], _ZE_DISPOSE_WRAPPER);
-    _cl_chunk_free(cl_data, c, /*free_slab=*/0);
+    _cl_chunk_free(cl_data, c);
   }
   free(cl_data);
 }
@@ -1343,7 +1049,7 @@ static void _on_reset_command_list(ze_command_list_handle_t command_list) {
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
-/* zeContextDestroy prologue. Three sweeps to drop our own L0 objects
+/* zeContextDestroy prologue. Two sweeps to drop our own L0 objects
  * that live inside this ctx; the user's own cls/events are their
  * responsibility per the L0 contract. */
 static void _on_destroy_context(ze_context_handle_t hContext) {
@@ -1357,18 +1063,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
     _cl_data_destroy(cl_data, /*ctx_dying=*/1);
   }
 
-  /* 2) Shadow cls keyed by (ctx, device). */
-  struct _ze_shadow_cl *sh = NULL, *sh_tmp = NULL;
-  HASH_ITER (hh, _ze_shadow_cls, sh, sh_tmp) {
-    if (sh->key.context != hContext)
-      continue;
-    HASH_DEL(_ze_shadow_cls, sh);
-    if (sh->cl)
-      ZE_COMMAND_LIST_DESTROY_PTR(sh->cl);
-    free(sh);
-  }
-
-  /* 3) Per-ctx event pool freelist. */
+  /* 2) Per-ctx event pool freelist. */
   struct _ze_event_pool_entry *pe = NULL;
   HASH_FIND_PTR(_ze_event_pools, &hContext, pe);
   if (pe) {
@@ -1474,21 +1169,16 @@ static void _on_destroy_event(ze_event_handle_t hEvent) {
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
-/* Execute-epilogue handler for ONE cl. Runs AFTER L0 Execute returned,
- * with the user cl in flight. Three phases:
- *
- *   1) If in_flight_q is set (prior Execute by another thread),
- *      force-sync that queue and drain before we overwrite it.
- *      Regression test: inorder_reg_Event_multithreaded_01.
- *   2) Publish each not-yet-live slot (_slot_publish): shadow-path slots
- *      Append a fresh Query on the per-(ctx,device) shadow cl, then every
- *      slot is instantiated into the dep graph. The Append must run AFTER
- *      L0 Execute — appending earlier deadlocks if the shadow shares an
- *      engine with the user cl (tests/bugs/query_on_separate_cl_regular_user_cl).
- *      Inline-path cls bake the QKT into the cl body at Append, so their
- *      publish is instantiate-only.
- *   3) Stamp in_flight_q = hQueue and in_flight_fence = hFence (the fence
- *      the user passed to this Execute, or NULL). */
+/* Execute-PROLOGUE handler for ONE cl. Runs BEFORE L0 submits this Execute.
+ * If the cl is still in flight from a prior Execute (in_flight_q set), force-
+ * sync that queue and drain — reading each slot's timing from our inj AND
+ * resetting inj — BEFORE this submission re-signals inj. This is the ONE place
+ * we may sync a user object, and only the queue/cl (never a user event): it
+ * observes completion of work the user already submitted. Draining here (not in
+ * the epilogue) is essential: a resubmitted regular cl re-signals the SAME
+ * baked inj, so #N-1's value must be captured and inj reset before #N runs
+ * (regression: reg_Event_09, back-to-back Execute with no user sync between;
+ * multithreaded_01, same cl on two queues). */
 static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
                                ze_fence_handle_t hFence,
                                ze_command_list_handle_t command_list) {
@@ -1499,46 +1189,38 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
     return;
   }
 
+  /* 1) If the cl is still in flight from a prior Execute (this thread's, or
+   *    another thread's on a different queue), force-sync that queue and drain
+   *    it before we overwrite in_flight_q. For a replayed regular cl this is
+   *    also what host-reads the prior instance's timing from the baked inj
+   *    before THIS submission re-signals it. Syncing the QUEUE (never a user
+   *    event) only observes completion of already-submitted work. Steps 1-3 are
+   *    ONE critical section so concurrent Executes/Syncs observe in_flight_q
+   *    atomically (regression: reg_Event_multithreaded_01). */
   if (cl_data->in_flight_q) {
     _ZE_MUST(ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX));
     _cl_drain(cl_data);
   }
-  /* Shadow cl is resolved lazily on first shadow-path slot. Inline-only cls
-   * never trigger the lookup. */
-  struct _ze_shadow_cl *sh = NULL;
-  int sh_resolved = 0;
+  /* 2) Re-instantiate each not-yet-live slot into the dep graph. A regular cl
+   *    is replayed: its inj-signal swap and user-signal barrier are baked in
+   *    the closed body and re-fire automatically, so a drained slot just needs
+   *    its dep-graph entry rebuilt; a live slot from Append-time instantiate is
+   *    left as is. */
   struct _ze_slab_chunk *c;
   DL_FOREACH (cl_data->chunks, c) {
     for (uint32_t j = 0; j < c->n_used; ++j) {
       struct _ze_slot *slot = &c->slots[j];
-      if (!slot->inj)
+      if (!slot->inj || slot->live)
         continue;
-      /* Already-live slots have nothing left to do this Execute: their
-       * dep-graph entry from Append-time _slot_instantiate is still valid,
-       * and (inline path) their QKT is baked into the cl body and re-fires
-       * automatically. Only fresh / drained slots need work here. */
-      if (slot->live)
-        continue;
-      if (slot->shadow_done && !sh_resolved) {
-        /* cached_context was published by _universal_record_append before any
-         * shadow_done slot could exist, so it's always set here — no need
-         * for an L0 round-trip to recover it. */
-        ze_context_handle_t ctx = cl_data->cached_context;
-        ze_device_handle_t dev = NULL;
-        _ZE_MUST(ZE_COMMAND_LIST_GET_DEVICE_HANDLE_PTR(command_list, &dev));
-        sh = ctx ? _get_shadow_cl(ctx, dev) : NULL;
-        sh_resolved = 1;
-      }
-      if (slot->shadow_done && !sh)
-        continue;
-      _slot_publish(cl_data, slot, sh);
+      _slot_instantiate(cl_data, slot);
     }
   }
+  /* 3) Stamp in_flight_q / in_flight_fence and index the cl under its queue
+   *    (and fence) so a later queue/fence sync drains it without scanning every
+   *    live cl. The force-sync+drain above already unlinked any prior in-flight
+   *    membership, so no double-link. */
   cl_data->in_flight_q = hQueue;
   cl_data->in_flight_fence = hFence;
-  /* Index this cl under its queue (and fence) so a later queue/fence sync
-   * drains it without scanning every live cl. The force-sync+drain above
-   * already unlinked any prior in-flight membership, so no double-link. */
   _cl_index_set(cl_data, hQueue, hFence);
 
   pthread_mutex_unlock(&_ze_state_mutex);

@@ -194,15 +194,13 @@ register_prologue 'zeContextDestroy', <<EOF
     _on_destroy_context(hContext);
 EOF
 
-# Epilogue runs after L0's actual submission has returned. ALL the
-# tracer's bookkeeping for Execute happens here (no prologue) so that
-# concurrent Executes / Syncs from other threads observe in_flight_q
-# atomically — the force-sync-prior + Append-Query + claim-in_flight_q
-# are one critical section.
-#
-# The Append-Query specifically MUST run after L0 submit, not before:
-# the shadow cl can share the engine with the user cl, and a pending
-# shadow Query op holds the engine, deadlocking the user cl.
+# All Execute bookkeeping runs in the epilogue as ONE critical section so
+# concurrent Executes / Syncs from other threads observe in_flight_q atomically
+# (force-sync-prior + drain + re-instantiate + claim-in_flight_q). The prior
+# force-sync+drain is what host-reads a replayed regular cl's previous instance
+# from its baked injected event before this submission re-signals it. Timing is
+# host-read from our own event at drain — there is no device Query to place, so
+# nothing needs to run before submit.
 register_epilogue 'zeCommandQueueExecuteCommandLists', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && numCommandLists > 0 && phCommandLists)
     _on_execute_command_lists_epilogue(hCommandQueue, hFence, numCommandLists, phCommandLists);
