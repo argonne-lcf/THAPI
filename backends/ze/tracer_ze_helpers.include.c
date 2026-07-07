@@ -146,7 +146,7 @@ struct _ze_slot_chunk;
  * after emit, the slot is dropped from the cl's list. */
 struct _ze_slot {
   struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in */
-  struct _ze_slot_chunk *chunk; /* chunk this slot lives in */
+  struct _ze_slot_chunk *chunk;            /* chunk this slot lives in */
   /* Tracer-owned KERNEL_TIMESTAMP event the kernel/copy signals (the prologue
    * swapped it in for the user's signal). Carries the real kernel timing; drain
    * host-reads it via zeEventQueryKernelTimestamp. Ours — we own its lifecycle
@@ -179,8 +179,8 @@ struct _ze_slot {
  * The chunk frees itself when n_held drops to 0 AND it is not the tail
  * (new Appends still want to land on the tail). */
 struct _ze_slot_chunk {
-  uint32_t n_used;              /* slots ever assigned in this chunk (monotonic until chunk free) */
-  uint32_t n_held;              /* unreleased slots (n_used minus _slot_release calls) */
+  uint32_t n_used; /* slots ever assigned in this chunk (monotonic until chunk free) */
+  uint32_t n_held; /* unreleased slots (n_used minus _slot_release calls) */
   /* Nonzero only on a DETACHED chunk: one whose owning cl was torn down
    * (reset/destroy) while >=1 slot was still referenced as a pred by a live
    * slot in ANOTHER cl. The chunk is removed from cl_data->chunks, its slots'
@@ -328,9 +328,8 @@ static void _cl_index_clear(struct _ze_command_list_obj_data *cl) {
   _index_unlink(&_ze_fence_index, cl->in_flight_fence, cl, /*is_fence=*/1);
 }
 
-static inline void _on_create_command_list(ze_command_list_handle_t command_list,
-                                           bool immediate,
-                                           bool in_order) {
+static inline void
+_on_create_command_list(ze_command_list_handle_t command_list, bool immediate, bool in_order) {
   struct _ze_command_list_obj_data *cl_data =
       (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
   if (!cl_data) {
@@ -580,8 +579,7 @@ cleanup_wrapper:
 /* Unlink chunk c from cl_data->chunks and free the struct. Slot-side cleanup
  * (events, waits, preds) is the caller's responsibility — this helper only
  * owns the chunk envelope. */
-static void
-_cl_chunk_free(struct _ze_command_list_obj_data *cl_data, struct _ze_slot_chunk *c) {
+static void _cl_chunk_free(struct _ze_command_list_obj_data *cl_data, struct _ze_slot_chunk *c) {
   DL_DELETE(cl_data->chunks, c);
   free(c);
 }
@@ -619,9 +617,17 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
       }
       return NULL;
     }
+    /* The old tail stops being the tail here. If it already drained empty while
+     * it was the tail, _slot_release could not free it then (it guards the tail
+     * so new Appends keep landing there); this is the one transition that
+     * leaves an empty non-tail chunk. Reclaim it now — every other empty
+     * non-tail chunk is freed inline by _slot_release the moment it drains. */
+    struct _ze_slot_chunk *old_tail = tail;
     tail = _cl_chunk_alloc(cl_data);
     if (!tail)
       return NULL;
+    if (old_tail && old_tail->n_held == 0)
+      _cl_chunk_free(cl_data, old_tail);
   }
   uint32_t idx = tail->n_used;
   struct _ze_slot *s = &tail->slots[idx];
@@ -1093,11 +1099,12 @@ static void _on_sync(enum _ze_sync_kind kind, void *h) {
   if (kind == _ZE_SYNC_EVENT) {
     struct _ze_slot *s = _event_latest_get((ze_event_handle_t)h);
     if (s && s->owner) {
+      struct _ze_command_list_obj_data *owner = s->owner;
       _slot_drain(s);
-      if (!s->owner->n_live) {
-        _cl_index_clear(s->owner);
-        s->owner->in_flight_q = NULL;
-        s->owner->in_flight_fence = NULL;
+      if (!owner->n_live) {
+        _cl_index_clear(owner);
+        owner->in_flight_q = NULL;
+        owner->in_flight_fence = NULL;
       }
     }
   } else if (kind == _ZE_SYNC_CL) {
