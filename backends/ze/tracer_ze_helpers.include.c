@@ -147,6 +147,13 @@ struct _ze_slot_chunk;
 struct _ze_slot {
   struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in */
   struct _ze_slot_chunk *chunk;            /* chunk this slot lives in */
+  /* Membership in owner->live_slots: the per-cl list of currently-live slots in
+   * append order (in-order cls only). Lets _slot_instantiate take the in-order
+   * predecessor as the list tail in O(1), instead of scanning chunks backward
+   * over drained-but-unfreed slots (O(N) per Append -> O(N^2) to build a long
+   * immediate cl whose slots stay pinned cross-cl). Linked at instantiate,
+   * unlinked at drain. utlist DL2 links. */
+  struct _ze_slot *live_prev, *live_next;
   /* Tracer-owned KERNEL_TIMESTAMP event the kernel/copy signals (the prologue
    * swapped it in for the user's signal). Carries the real kernel timing; drain
    * host-reads it via zeEventQueryKernelTimestamp. Ours — we own its lifecycle
@@ -217,6 +224,13 @@ struct _ze_command_list_obj_data {
    * in _slot_instantiate, dropped in _slot_drain — an O(1) "is anything still
    * in flight?" for the sync path. */
   uint32_t n_live;
+
+  /* Live slots in append order (in-order cls only), utlist DL head via
+   * _ze_slot.live_prev/live_next. The tail (live_slots->live_prev) is the most
+   * recent still-live slot — the in-order predecessor a new Append depends on,
+   * fetched in O(1). Slots join at _slot_instantiate and leave at _slot_drain;
+   * bulk teardown (reset/destroy) drops the whole list by nulling this head. */
+  struct _ze_slot *live_slots;
 
   /* Cached on first use: context handle for this cl. Immutable for the
    * cl's lifetime. Load-bearing for _on_destroy_context's sweep: lets it
@@ -668,26 +682,13 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
       s->preds[s->n_preds++] = p;
   }
   if (cl_data->is_in_order) {
-    /* Walk chunks newest-to-oldest, slots high-to-low, stop at the first
-     * live slot strictly before s. Chunks are appended in time order
-     * (DL_APPEND) and slots within a chunk in time order, so reverse-walk
-     * yields reverse time order. Skip s itself; s might still have
-     * live=0 here but the !=s guard is safe and clearer. */
-    struct _ze_slot_chunk *c;
-    struct _ze_slot *prev = NULL;
-    for (c = cl_data->chunks ? cl_data->chunks->prev : NULL; c && !prev;
-         c = (c == cl_data->chunks) ? NULL : c->prev) {
-      for (int32_t i = (int32_t)c->n_used - 1; i >= 0; --i) {
-        if (&c->slots[i] == s)
-          continue;
-        if (c->slots[i].live) {
-          prev = &c->slots[i];
-          break;
-        }
-      }
-    }
+    /* The in-order predecessor is the most recent still-live slot on this cl —
+     * the tail of live_slots (list is in append order). O(1); no scan over
+     * drained-but-unfreed slots. NULL when this is the first live slot. */
+    struct _ze_slot *prev = cl_data->live_slots ? cl_data->live_slots->live_prev : NULL;
     if (prev)
       s->preds[s->n_preds++] = prev;
+    DL_APPEND2(cl_data->live_slots, s, live_prev, live_next);
   }
   /* Each new pred edge holds a ref on its target. */
   for (uint32_t i = 0; i < s->n_preds; ++i)
@@ -875,8 +876,14 @@ static void _slot_drain(struct _ze_slot *s) {
   for (uint32_t i = 0; i < s->n_preds; ++i)
     _slot_drain(s->preds[i]);
   s->live = false;
-  if (s->owner)
+  if (s->owner) {
     s->owner->n_live--;
+    /* Leave the in-order live list (in-order cls only; OOO slots never joined).
+     * Detached slots have owner==NULL — their cl's list head was already
+     * dropped at teardown, so there is nothing to unlink from. */
+    if (s->owner->is_in_order)
+      DL_DELETE2(s->owner->live_slots, s, live_prev, live_next);
+  }
   ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
   /* Host-read the kernel timing from OUR injected KERNEL_TIMESTAMP event. Drain
    * is always reached after a queue/cl/event sync that already completed the
@@ -981,6 +988,10 @@ static void _cl_reclaim_chunks(struct _ze_command_list_obj_data *cl_data) {
   DL_FOREACH_SAFE (cl_data->chunks, c, tmp)
     _cl_chunk_reclaim(cl_data, c);
   _cl_index_clear(cl_data);
+  /* The live list pointed into the chunks just freed/detached (detached slots
+   * had their owner nulled, so their later drain won't touch it). Drop the head
+   * so a reset cl starts clean and no dangling slot is referenced. */
+  cl_data->live_slots = NULL;
 }
 
 /* Reclaim all of a regular cl's slot state, keeping cl_data registered and
