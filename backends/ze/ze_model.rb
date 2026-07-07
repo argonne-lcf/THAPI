@@ -144,9 +144,8 @@ ZE_POINTER_NAMES = ze_pointer_names.to_h
 register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && desc) {
-      int _io = (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER) ? 1 : 0;
-      _on_create_command_list(*phCommandList, hDevice, desc->commandQueueGroupOrdinal,
-                              /*immediate=*/0, _io);
+      bool _io = (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER) != 0;
+      _on_create_command_list(*phCommandList, /*immediate=*/false, _io);
     }
   }
 EOF
@@ -154,9 +153,8 @@ EOF
 register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && altdesc) {
-      int _io = (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER) ? 1 : 0;
-      _on_create_command_list(*phCommandList, hDevice, altdesc->ordinal,
-                              /*immediate=*/1, _io);
+      bool _io = (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER) != 0;
+      _on_create_command_list(*phCommandList, /*immediate=*/true, _io);
     }
   }
 EOF
@@ -195,15 +193,15 @@ register_prologue 'zeContextDestroy', <<EOF
 EOF
 
 # All Execute bookkeeping runs in the epilogue as ONE critical section so
-# concurrent Executes / Syncs from other threads observe in_flight_q atomically
-# (force-sync-prior + drain + re-instantiate + claim-in_flight_q). The prior
-# force-sync+drain is what host-reads a replayed regular cl's previous instance
-# from its baked injected event before this submission re-signals it. Timing is
-# host-read from our own event at drain — there is no device Query to place, so
-# nothing needs to run before submit.
-register_epilogue 'zeCommandQueueExecuteCommandLists', <<EOF
-  if (_do_profile && _retval == ZE_RESULT_SUCCESS && numCommandLists > 0 && phCommandLists)
-    _on_execute_command_lists_epilogue(hCommandQueue, hFence, numCommandLists, phCommandLists);
+# All Execute bookkeeping runs in the PROLOGUE (before L0 submit) as one
+# critical section: force-sync-prior + drain (read timing, reset our injected
+# event) + re-instantiate + claim in_flight_q. Draining a replayed regular cl's
+# previous instance BEFORE this submission re-signals the same baked injected
+# event is what keeps #N-1's timing from being clobbered by #N, and serializes
+# the same cl reused concurrently from another thread.
+register_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
+  if (_do_profile && numCommandLists > 0 && phCommandLists)
+    _on_execute_command_lists_prologue(numCommandLists, phCommandLists, hCommandQueue, hFence);
 EOF
 
 # Sync hooks: walk dependency edges from the synced anchor and drain

@@ -3,6 +3,7 @@ require_relative 'ze_model'
 puts <<~EOF
     #include <stdint.h>
     #include <stddef.h>
+    #include <stdbool.h>
     #include "ze.h.include"
     #include <dlfcn.h>
     #include <dlfcn.h>
