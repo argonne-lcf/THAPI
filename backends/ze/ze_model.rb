@@ -216,6 +216,17 @@ register_epilogue 'zeEventHostSynchronize', <<EOF
     _on_sync(_ZE_SYNC_EVENT, hEvent);
 EOF
 
+# zeEventQueryStatus is a non-blocking poll, but a ZE_RESULT_SUCCESS return means
+# the signaling append has completed — the same fact zeEventHostSynchronize blocks
+# for. Apps that observe completion by polling QueryStatus (never HostSynchronize)
+# would otherwise never drain those slots, leaking one injected event per
+# signalled append. Safe: _slot_drain no-ops on already-drained slots, so repeated
+# SUCCESS polls of the same event drain once.
+register_epilogue 'zeEventQueryStatus', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
+    _on_sync(_ZE_SYNC_EVENT, hEvent);
+EOF
+
 register_epilogue 'zeCommandListHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_sync(_ZE_SYNC_CL, hCommandList);
@@ -233,33 +244,21 @@ EOF
 
 # Fence sync: the fence the user passed to Execute is stamped onto each cl
 # (in_flight_fence), so a fence wait drains exactly the cls that Execute
-# submitted. zeFenceQueryStatus is NOT hooked: it's a non-blocking poll, so
-# a SUCCESS return means the work is done but we can't assume the user is
-# finished issuing — draining there could race a still-building reuse. The
-# blocking zeFenceHostSynchronize is the safe anchor.
+# submitted.
 register_epilogue 'zeFenceHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
     _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
 
-register_prologue 'zeEventPoolCreate', <<EOF
-  ze_event_pool_desc_t _new_desc;
-  if (_do_profile && desc && !(desc->flags & ZE_EVENT_POOL_FLAG_IPC)) {
-    _new_desc = *desc;
-    _new_desc.flags |= ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP;
-    _new_desc.flags |= ZE_EVENT_POOL_FLAG_HOST_VISIBLE;
-    desc = &_new_desc;
-  }
-EOF
-
-register_prologue 'zeEventCreate', <<EOF
-  ze_event_desc_t _new_desc;
-  if (_do_profile && desc) {
-    _new_desc = *desc;
-    _new_desc.signal |= ZE_EVENT_SCOPE_FLAG_HOST;
-    _new_desc.wait |= ZE_EVENT_SCOPE_FLAG_HOST;
-    desc = &_new_desc;
-  }
+# zeFenceQueryStatus is a non-blocking poll, but a ZE_RESULT_SUCCESS return means
+# that Execute's cls have completed — the same fact zeFenceHostSynchronize blocks
+# for. An app that observes completion by polling the fence (never the blocking
+# wait) would otherwise never drain the last Execute's slots. Safe like the event
+# QueryStatus hook: _slot_drain no-ops on already-drained slots and runs under the
+# state mutex, so repeated SUCCESS polls drain once.
+register_epilogue 'zeFenceQueryStatus', <<EOF
+  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
+    _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
 
 # Evict our per-event state once the destroy SUCCEEDS: the driver recycles
