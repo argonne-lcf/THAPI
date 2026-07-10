@@ -145,7 +145,7 @@ register_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && desc) {
       bool _io = (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER) != 0;
-      _on_create_command_list(*phCommandList, /*immediate=*/false, _io);
+      _on_create_command_list(*phCommandList, hContext, /*immediate=*/false, _io);
     }
   }
 EOF
@@ -154,7 +154,7 @@ register_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && altdesc) {
       bool _io = (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER) != 0;
-      _on_create_command_list(*phCommandList, /*immediate=*/true, _io);
+      _on_create_command_list(*phCommandList, hContext, /*immediate=*/true, _io);
     }
   }
 EOF
@@ -183,16 +183,13 @@ register_epilogue 'zeCommandListDestroy', <<EOF
 EOF
 
 # zeContextDestroy prologue: tear down our own L0 objects that live
-# inside this context (shadow cls, per-ctx event pools/events) BEFORE the
-# user destroys the context. The L0 spec says the user has ensured the
-# device is no longer referencing the context, so all user-side cls/events
-# are already done — we just need to not leak our allocations.
+# inside this context (per-ctx event pools/events) before the user destroys
+# it, so we don't leak our allocations.
 register_prologue 'zeContextDestroy', <<EOF
   if (_do_profile && hContext)
     _on_destroy_context(hContext);
 EOF
 
-# All Execute bookkeeping runs in the epilogue as ONE critical section so
 # All Execute bookkeeping runs in the PROLOGUE (before L0 submit) as one
 # critical section: force-sync-prior + drain (read timing, reset our injected
 # event) + re-instantiate + claim in_flight_q. Draining a replayed regular cl's
@@ -233,7 +230,7 @@ register_epilogue 'zeCommandListHostSynchronize', <<EOF
 EOF
 
 # The Append prologue swaps the user's signal event for our injected event, so
-# the user's own event ends up carrying the QKT/barrier op timing, not the
+# the user's own event ends up carrying the barrier/signal op timing, not the
 # kernel's. If the user queries their event's kernel timestamp themselves,
 # serve back the kernel result we stashed at drain so they see kernel timing.
 register_epilogue 'zeEventQueryKernelTimestamp', <<EOF
@@ -319,32 +316,24 @@ register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prolo
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
 # not very cleanly is used....
-# Universal scheme (see project_ze_universal_scheme):
 #   prologue: always inject _ewrapper. Save user's signal (may be NULL).
 #             Swap user's signal -> our injected event.
-#   epilogue: on success, call _universal_record_append which inserts
-#             a QueryKernelTimestamps(wait=inj, signal=user_sig) into
-#             the cmdlist and records the slot for drain.
-#             The event_profiling tracepoint is attributed to the
-#             user's original signal (or inj when user passed NULL).
-#   on sync (queue/event/fence/cl-host): drain the slabs.
+#   epilogue: on success, call _record_append, which records the slot for
+#             drain and re-exposes the user's original signal. The
+#             event_profiling tracepoint is attributed to the user's
+#             original signal (or inj when user passed NULL).
+#   on sync (queue/event/fence/cl-host): drain the recorded slots.
 profiling_prologue = lambda { |event_name|
   <<EOF
   ze_event_handle_t _user_signal = #{event_name};
   struct _ze_event_h * _ewrapper = NULL;
-  /* Fetched once per profiled Append and threaded to both
-   * _get_profiling_event (prologue) and _universal_record_append (epilogue)
-   * so the tracer issues exactly one zeCommandListGetContextHandle per
-   * Append instead of three. */
+  /* Resolved from the cl's stored context (no per-Append
+   * zeCommandListGetContextHandle) and threaded to _record_append (epilogue). */
   ze_context_handle_t _ctx = NULL;
   if (_do_profile) {
-    if (ZE_COMMAND_LIST_GET_CONTEXT_HANDLE_PTR(hCommandList, &_ctx) == ZE_RESULT_SUCCESS && _ctx) {
-      pthread_mutex_lock(&_ze_state_mutex);
-      _ewrapper = _get_profiling_event(_ctx);
-      pthread_mutex_unlock(&_ze_state_mutex);
-      if (_ewrapper)
-        #{event_name} = _ewrapper->event;
-    }
+    _ewrapper = _get_profiling_event_for_cl(hCommandList, &_ctx);
+    if (_ewrapper)
+      #{event_name} = _ewrapper->event;
     /* If injection failed, fall through with the user's signal unchanged;
      * we won't be able to time this Append, but it still runs. */
   }
@@ -356,8 +345,8 @@ profiling_epilogue = lambda { |_event_name, waits_expr = 'phWaitEvents', n_waits
   if (_do_profile && _ewrapper) {
     if (_retval == ZE_RESULT_SUCCESS) {
       ze_event_handle_t _attr = _user_signal ? _user_signal : _ewrapper->event;
-      _universal_record_append(hCommandList, _ctx, _ewrapper, _user_signal,
-                               #{waits_expr}, #{n_waits_expr});
+      _record_append(hCommandList, _ctx, _ewrapper, _user_signal,
+                     #{waits_expr}, #{n_waits_expr});
       tracepoint(lttng_ust_ze_profiling, event_profiling, _attr);
     } else {
       _put_ze_event(_ewrapper);

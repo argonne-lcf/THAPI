@@ -23,54 +23,14 @@
  * zeCommandQueueSynchronize — a QUEUE, never an event — to observe completion
  * of work the user already submitted.
  *
- * Algorithm
- * ---------
- * On profiled Append (cl, sig=user_sig, waits=user_waits):
- *   - allocate inj from per-context pool; swap user_sig -> inj
- *   - Barrier(wait=inj, sig=user_sig) on the user cl (skip if user_sig NULL)
- *   - allocate a slot {inj, attr=user_sig, waits=copy(user_waits)}; instantiate
- *
- * instantiate(s):
- *   - s.preds = [event_latest_signaled[w] for w in s.waits if live]
- *                + previous live slot in same cl (if cl is in-order)
- *   - s.live = true; event_latest_signaled[s.attr] = &s
- *
- * On Execute(q, cl) prologue — one critical section, BEFORE L0 submit
- * (concurrent Executes/Syncs observe in_flight_q atomically):
- *   - if cl.in_flight_q: Synchronize(in_flight_q); drain_cl(cl). Drains the
- *     prior instance (same or another thread's queue), host-reading its timing
- *     from inj and resetting inj, BEFORE this submission re-signals inj.
- *   - re-instantiate every not-yet-live slot (the inj-signal + user-signal chain
- *     are baked in the closed body and re-fire automatically on replay).
- *   - cl.in_flight_q = q; index cl under q (and its fence) for sync lookup.
- *
- * On Sync (the synced anchor tells us what to drain):
- *   - Sync(ev):  drain(event_latest_signaled[ev])
- *   - Sync(q):   drain_cl(cl) for every cl in the q-index bucket for q
- *   - Sync(cl):  drain_cl(cl)
- *
- * drain(s):
- *   - for p in s.preds: drain(p)
- *   - HostSynchronize(inj) (cheap guard), zeEventQueryKernelTimestamp(inj) -> r
- *   - stash r under s.attr, emit tracepoint(s.attr or inj)
- *   - reset our inj (regular cls; immediate cls reset it on pool recycle) so it
- *     starts clean for its next Execute. We only ever reset OUR event.
- *   - clear event_latest_signaled[s.attr]; clear s.live and s.preds
- *
  * Concurrency
  * -----------
- * One global mutex (_ze_state_mutex) covers all tracer state: the cl registry,
- * every cl's chunks/slots/preds, the event freelist + pool registry, the
- * latest-signaled map. Append / Execute / Drain / Destroy all take it.
- *
- * Per-cl mutexes don't work because drain follows cross-cl pred edges
- * (event_latest_signaled[ev] can point at a slot in any cl) and mutates the
- * pred's chunk via _slot_release. One global mutex sidesteps the cross-cl
- * ordering problem entirely.
- *
- * Perf: the L0 call inside the critical section (AppendBarrier) just queues
- * work on the GPU asynchronously, so the held region is short. Drain is
- * host-blocking (zeEventHostSynchronize on our inj) and was serial anyway.
+ * One global mutex (_ze_state_mutex) covers all tracer state. Per-cl mutexes
+ * don't work because draining a synced event follows dependency edges that
+ * cross command lists, so a drain started from one cl mutates another. One
+ * global mutex sidesteps the cross-cl ordering problem entirely. The L0 call
+ * held inside it (AppendBarrier) only queues GPU work asynchronously, so the
+ * region is short; the host-blocking wait at drain was serial anyway.
  */
 
 /* Always-on tracer log. Prefixes THAPI(func:line) so messages are
@@ -145,14 +105,9 @@ struct _ze_slot_chunk;
  * synced anchor and drain everything reachable. Drain is pop semantics:
  * after emit, the slot is dropped from the cl's list. */
 struct _ze_slot {
-  struct _ze_command_list_obj_data *owner; /* cl_data this slot lives in */
-  struct _ze_slot_chunk *chunk;            /* chunk this slot lives in */
-  /* Membership in owner->live_slots: the per-cl list of currently-live slots in
-   * append order (in-order cls only). Lets _slot_instantiate take the in-order
-   * predecessor as the list tail in O(1), instead of scanning chunks backward
-   * over drained-but-unfreed slots (O(N) per Append -> O(N^2) to build a long
-   * immediate cl whose slots stay pinned cross-cl). Linked at instantiate,
-   * unlinked at drain. utlist DL2 links. */
+  struct _ze_slot_chunk *chunk; /* chunk this slot lives in; chunk->owner is the cl */
+  /* Membership in the cl's live_slots (in-order cls only); the tail is the
+   * in-order predecessor a new Append depends on. See live_slots. */
   struct _ze_slot *live_prev, *live_next;
   /* Tracer-owned KERNEL_TIMESTAMP event the kernel/copy signals (the prologue
    * swapped it in for the user's signal). Carries the real kernel timing; drain
@@ -160,9 +115,9 @@ struct _ze_slot {
    * (sync/query/reset/dispose); we never touch the user's event. */
   struct _ze_event_h *inj;
   ze_event_handle_t attr; /* user's original signal event (NULL => inj->event) */
-  /* User wait events copied at Append time (stable across rebuilds);
-   * preds[] is computed at instantiate from waits[] by looking up
-   * event_latest_signaled[w] for each w. */
+  /* User wait events copied at Append time (stable across rebuilds); preds[]
+   * is derived from them at instantiate: each wait resolves to the slot that
+   * last signaled that event. */
   ze_event_handle_t *waits;
   uint32_t n_waits;
   struct _ze_slot **preds; /* points at slots whose drain must come first (may be in another cl) */
@@ -186,6 +141,9 @@ struct _ze_slot {
  * The chunk frees itself when n_held drops to 0 AND it is not the tail
  * (new Appends still want to land on the tail). */
 struct _ze_slot_chunk {
+  /* The cl these slots live in, shared by every slot in the chunk. NULL on a
+   * DETACHED chunk (see n_pinned). */
+  struct _ze_command_list_obj_data *owner;
   uint32_t n_used; /* slots ever assigned in this chunk (monotonic until chunk free) */
   uint32_t n_held; /* unreleased slots (n_used minus _slot_release calls) */
   /* Nonzero only on a DETACHED chunk: one whose owning cl was torn down
@@ -232,10 +190,10 @@ struct _ze_command_list_obj_data {
    * bulk teardown (reset/destroy) drops the whole list by nulling this head. */
   struct _ze_slot *live_slots;
 
-  /* Cached on first use: context handle for this cl. Immutable for the
-   * cl's lifetime. Load-bearing for _on_destroy_context's sweep: lets it
-   * associate cls back to their ctx without an L0 roundtrip per cl. */
-  ze_context_handle_t cached_context;
+  /* Context this cl was created on, stored at create (immutable for the cl's
+   * lifetime). Lets the Append prologue and _on_destroy_context's sweep get the
+   * cl's context without an L0 roundtrip per Append / per cl. */
+  ze_context_handle_t context;
 
   /* Membership in the per-queue / per-fence in-flight indexes (see
    * _ze_q_index / _ze_fence_index below). A cl in flight is linked into both
@@ -273,9 +231,8 @@ static struct _ze_command_list_obj_data *_cl_find_and_del(ze_command_list_handle
 /* In-flight indexes: queue handle -> the cls currently in flight on that queue,
  * and fence handle -> the cls in flight under that fence. A queue/fence sync
  * completes exactly the cls of the matching Execute, so these let _on_sync
- * drain just those cls instead of scanning every live cl (which is O(live cls)
- * per sync — see bench/sync_scaling). Buckets are created lazily at Execute and
- * freed when they go empty at drain. */
+ * drain just those cls instead of scanning every live cl (O(live cls) per sync).
+ * Buckets are created lazily at Execute and freed when they go empty at drain. */
 struct _ze_inflight_bucket {
   void *key;                             /* ze_command_queue_handle_t or ze_fence_handle_t */
   struct _ze_command_list_obj_data *cls; /* DL via q_prev/q_next or f_prev/f_next */
@@ -342,8 +299,9 @@ static void _cl_index_clear(struct _ze_command_list_obj_data *cl) {
   _index_unlink(&_ze_fence_index, cl->in_flight_fence, cl, /*is_fence=*/1);
 }
 
-static inline void
-_on_create_command_list(ze_command_list_handle_t command_list, bool immediate, bool in_order) {
+static inline void _on_create_command_list(ze_command_list_handle_t command_list,
+                                           ze_context_handle_t context, bool immediate,
+                                           bool in_order) {
   struct _ze_command_list_obj_data *cl_data =
       (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
   if (!cl_data) {
@@ -351,6 +309,7 @@ _on_create_command_list(ze_command_list_handle_t command_list, bool immediate, b
     return;
   }
   cl_data->ptr = (void *)command_list;
+  cl_data->context = context;
   cl_data->is_immediate = immediate;
   cl_data->is_in_order = in_order;
 
@@ -371,8 +330,7 @@ struct _ze_event_h {
   ze_event_handle_t event;
   ze_event_pool_handle_t event_pool;
   ze_context_handle_t context;
-  /* doubly-linked list pointers used by the per-context free pool */
-  struct _ze_event_h *next, *prev;
+  struct _ze_event_h *next; /* utlist LL link for the free pool (LIFO) */
 };
 
 struct _ze_event_pool_entry {
@@ -498,7 +456,7 @@ static struct _ze_event_h *_get_ze_event(ze_context_handle_t context) {
   if (!pool || !pool->events)
     return NULL;
   struct _ze_event_h *e = pool->events;
-  DL_DELETE(pool->events, e);
+  LL_DELETE(pool->events, e);
   return e;
 }
 
@@ -524,7 +482,7 @@ static void _put_ze_event(struct _ze_event_h *val) {
     pool->context = val->context;
     HASH_ADD_PTR(_ze_event_pools, context, pool);
   }
-  DL_PREPEND(pool->events, val);
+  LL_PREPEND(pool->events, val);
 }
 
 struct _ze_event_h *_ze_event_wrappers = NULL;
@@ -535,7 +493,7 @@ struct _ze_event_h *_ze_event_wrappers = NULL;
 static struct _ze_event_h *_get_ze_event_wrapper(void) {
   struct _ze_event_h *e = _ze_event_wrappers;
   if (e)
-    DL_DELETE(_ze_event_wrappers, e);
+    LL_DELETE(_ze_event_wrappers, e);
   else
     e = (struct _ze_event_h *)calloc(1, sizeof(*e));
   return e;
@@ -550,12 +508,11 @@ static struct _ze_event_h *_get_ze_event_wrapper(void) {
  * something equivalent to a fresh calloc. */
 static void _put_ze_event_wrapper(struct _ze_event_h *val) {
   memset(val, 0, sizeof(*val));
-  DL_PREPEND(_ze_event_wrappers, val);
+  LL_PREPEND(_ze_event_wrappers, val);
 }
 
-/* Caller-supplied ctx avoids a redundant zeCommandListGetContextHandle
- * (the prologue already fetched it). L0 event/pool create runs under
- * the state mutex; cold path, bounded cost. */
+/* Hand out an injected event for a context: reuse one from the per-context
+ * freelist, else create a fresh L0 pool+event. Caller holds the state mutex. */
 static struct _ze_event_h *_get_profiling_event(ze_context_handle_t context) {
   struct _ze_event_h *e_w = _get_ze_event(context);
   if (e_w)
@@ -590,6 +547,24 @@ cleanup_wrapper:
   return NULL;
 }
 
+/* Append-prologue helper: look up the cl's context (stored at create) and hand
+ * out an injected event for it, in one critical section — no per-Append
+ * zeCommandListGetContextHandle. Returns NULL (and leaves *ctx NULL) when the cl
+ * isn't registered or no event is free; the Append then runs untraced with the
+ * user's signal unchanged. */
+static struct _ze_event_h *_get_profiling_event_for_cl(ze_command_list_handle_t command_list,
+                                                       ze_context_handle_t *ctx) {
+  struct _ze_event_h *e_w = NULL;
+  pthread_mutex_lock(&_ze_state_mutex);
+  struct _ze_command_list_obj_data *cl_data = _cl_find(command_list);
+  if (cl_data) {
+    *ctx = cl_data->context;
+    e_w = _get_profiling_event(cl_data->context);
+  }
+  pthread_mutex_unlock(&_ze_state_mutex);
+  return e_w;
+}
+
 /* Unlink chunk c from cl_data->chunks and free the struct. Slot-side cleanup
  * (events, waits, preds) is the caller's responsibility — this helper only
  * owns the chunk envelope. */
@@ -603,6 +578,7 @@ static struct _ze_slot_chunk *_cl_chunk_alloc(struct _ze_command_list_obj_data *
   struct _ze_slot_chunk *c = (struct _ze_slot_chunk *)calloc(1, sizeof(*c));
   if (!c)
     return NULL;
+  c->owner = cl_data;
   DL_APPEND(cl_data->chunks, c);
   return c;
 }
@@ -646,7 +622,6 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
   uint32_t idx = tail->n_used;
   struct _ze_slot *s = &tail->slots[idx];
   /* Chunk memory is calloc'd, so all other slot fields are already zero. */
-  s->owner = cl_data;
   s->chunk = tail;
   s->inj = inj;
   s->attr = attr;
@@ -662,14 +637,13 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
   return s;
 }
 
-/* Compute s->preds from s->waits via the global event_latest_signaled
- * map, plus the previous live slot on this cl if the cl is in-order.
- * Marks s live and publishes s as the new event_latest_signaled[attr]. */
+/* Resolve s->preds: each wait maps to the slot that last signaled it, plus the
+ * previous live slot on this cl if the cl is in-order. Marks s live and records
+ * it as the latest signaler of its event. */
 static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct _ze_slot *s) {
-  /* Slot must be inert: live=0, preds NULL. Re-instantiating a live slot
-   * would overwrite preds[] (leaking the prior pred refs) and let the
-   * in-order pred walk pick up later-appended live siblings as predecessors,
-   * forming cycles that infinite-loop _slot_drain. */
+  /* Slot must be inert: live=0, preds NULL. Re-instantiating a live slot would
+   * leak its prior pred refs and pick up later-appended live siblings as
+   * predecessors, forming cycles that infinite-loop _slot_drain. */
   _THAPI_ASSERT(!s->live, "slot %p already live (double _slot_instantiate)", (void *)s);
   s->live = true;
   cl_data->n_live++;
@@ -712,17 +686,17 @@ static void _slot_instantiate(struct _ze_command_list_obj_data *cl_data, struct 
  * state, so it is correct both inside the critical section (normal path) and
  * outside it (the failure-path compensation). Aborts on L0 failure (a silent
  * hang is worse). */
-static int _chain_user_signal(ze_command_list_handle_t command_list,
-                              ze_event_handle_t inj_event,
-                              ze_event_handle_t user_signal,
-                              int in_order) {
+static bool _chain_user_signal(ze_command_list_handle_t command_list,
+                               ze_event_handle_t inj_event,
+                               ze_event_handle_t user_signal,
+                               bool in_order) {
   if (!user_signal)
-    return 0;
+    return false;
   if (in_order)
     _ZE_MUST(ZE_COMMAND_LIST_APPEND_SIGNAL_EVENT_PTR(command_list, user_signal));
   else
     _ZE_MUST(ZE_COMMAND_LIST_APPEND_BARRIER_PTR(command_list, user_signal, 1, &inj_event));
-  return 1;
+  return true;
 }
 
 /* Roll back the slot just handed out by _cl_slot_append. We were the last to
@@ -751,17 +725,17 @@ static void _slot_append_rollback(struct _ze_command_list_obj_data *cl_data, str
  * the user's original signal (skipped when NULL): a SignalEvent for in-order
  * cls, a Barrier(wait=inj) for out-of-order. Host-read works for any signaling
  * engine (compute or copy). */
-static void _universal_record_append(ze_command_list_handle_t command_list,
-                                     ze_context_handle_t ctx,
-                                     struct _ze_event_h *inj,
-                                     ze_event_handle_t user_signal,
-                                     ze_event_handle_t *user_waits,
-                                     uint32_t user_n_waits) {
+static void _record_append(ze_command_list_handle_t command_list,
+                           ze_context_handle_t ctx,
+                           struct _ze_event_h *inj,
+                           ze_event_handle_t user_signal,
+                           ze_event_handle_t *user_waits,
+                           uint32_t user_n_waits) {
   if (!inj || !ctx)
     return;
   struct _ze_slot *s = NULL;
-  int barrier_chained = 0;
-  int in_order = 0;
+  bool signal_chained = false;
+  bool in_order = false;
 
   inj->context = ctx;
 
@@ -771,10 +745,6 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
     goto fail_locked;
   in_order = cl_data->is_in_order;
 
-  /* Publish the cl->ctx mapping. _on_destroy_context's per-cl sweep matches
-   * against it. */
-  cl_data->cached_context = ctx;
-
   s = _cl_slot_append(cl_data, inj, user_signal, user_waits, user_n_waits);
   if (!s)
     goto fail_locked;
@@ -782,7 +752,7 @@ static void _universal_record_append(ze_command_list_handle_t command_list,
   /* Re-expose the user's signal (the prologue swapped user_signal for inj).
    * In-order: a plain SignalEvent after the kernel; OOO: a barrier waiting on
    * inj. No-op when user_signal is NULL. */
-  barrier_chained = _chain_user_signal(command_list, inj->event, user_signal, in_order);
+  signal_chained = _chain_user_signal(command_list, inj->event, user_signal, in_order);
   _slot_instantiate(cl_data, s);
   pthread_mutex_unlock(&_ze_state_mutex);
   return;
@@ -794,20 +764,18 @@ fail_locked:
   pthread_mutex_unlock(&_ze_state_mutex);
   /* Compensate outside the state mutex: if we bailed before chaining
    * user_signal off inj, do it now or the user's Sync(user_signal) hangs. */
-  if (!barrier_chained)
+  if (!signal_chained)
     _chain_user_signal(command_list, inj->event, user_signal, in_order);
 }
 
-/* Dispose the per-slot resources shared by every teardown path: the inj
- * event, the waits[] copy, the preds[] array, and the slot's entry in
- * event_latest_signaled. The event-disposal target differs by caller:
+/* Dispose the per-slot resources shared by every teardown path: the inj event,
+ * the waits[]/preds[] arrays, and the slot's latest-signaler entry. Disposal
+ * target differs by caller:
  *   _ZE_DISPOSE_POOL    -> _put_ze_event (ctx alive: events recycle to the pool)
  *   _ZE_DISPOSE_WRAPPER -> _put_ze_event_wrapper (ctx dying: only recycle the
  *                          wrapper struct; the L0 event/pool die with the ctx)
- * Deliberately does NOT touch chunk accounting (n_held / n_pinned), refs,
- * owner, or live — those are caller-specific and stay at the call site.
- * Every field is nulled so the call is idempotent (safe to re-run on a slot
- * whose preds/latest-signaled were already cleared during drain). */
+ * Nulls every field so it is idempotent; leaves chunk/refs/owner/live to the
+ * caller. */
 enum _ze_slot_dispose_mode { _ZE_DISPOSE_POOL, _ZE_DISPOSE_WRAPPER };
 static void _slot_dispose_resources(struct _ze_slot *s, enum _ze_slot_dispose_mode mode) {
   if (s->inj) {
@@ -834,28 +802,24 @@ static void _slot_dispose_resources(struct _ze_slot *s, enum _ze_slot_dispose_mo
 static void _slot_release(struct _ze_slot *s) {
   if (!s)
     return;
+  struct _ze_slot_chunk *c = s->chunk;
   /* Detached slot: its owning cl was torn down (reset/destroy) while this
    * slot was still a pred of a live slot elsewhere. Its resources were freed
-   * at reclaim and owner was nulled; the chunk struct was kept alive only to
-   * keep this slot's refs addressable. We are the downstream drain dropping
-   * the last ref — drop the chunk's pin and free the bare struct at zero. */
-  if (!s->owner && s->chunk && s->chunk->n_pinned) {
-    struct _ze_slot_chunk *c = s->chunk;
+   * at reclaim and the chunk's owner was nulled; the chunk struct was kept
+   * alive only to keep this slot's refs addressable. We are the downstream
+   * drain dropping the last ref — drop the chunk's pin and free it at zero. */
+  if (c && !c->owner && c->n_pinned) {
     if (--c->n_pinned == 0)
       free(c);
     return;
   }
-  if (!s->owner || !s->owner->is_immediate)
+  if (!c || !c->owner || !c->owner->is_immediate)
     return;
-  /* Reached only from _slot_drain, which already freed s->preds and cleared
-   * event_latest_signaled[s->attr]; the primitive re-running those is a no-op
-   * (free(NULL); _clear_if on a missing/overwritten key does nothing). */
+  /* Reached only from _slot_drain, which already released these; re-running is
+   * a harmless no-op. */
   _slot_dispose_resources(s, _ZE_DISPOSE_POOL);
 
-  struct _ze_slot_chunk *c = s->chunk;
-  struct _ze_command_list_obj_data *cl = s->owner;
-  if (!c)
-    return;
+  struct _ze_command_list_obj_data *cl = c->owner;
   c->n_held--;
   if (c->n_held == 0 && c != cl->chunks->prev)
     _cl_chunk_free(cl, c);
@@ -866,43 +830,40 @@ static void _slot_release(struct _ze_slot *s) {
  * preds), then releases s if its own refs hit 0. Safe to call on an
  * already-drained (live=0) slot.
  *
- * No cycle guard: preds come from in-order prev (strictly earlier slot
- * in the same cl, DAG) and from event_latest_signaled[wait_event] (a
- * slot published BEFORE us). A cycle would need user-declared mutual
- * waits, which L0 itself deadlocks on. */
+ * No cycle guard: every pred is a slot that became live strictly before us
+ * (an earlier slot in the same cl, or the slot that last signaled a wait
+ * event), so the edges form a DAG. */
 static void _slot_drain(struct _ze_slot *s) {
   if (!s || !s->live)
     return;
   for (uint32_t i = 0; i < s->n_preds; ++i)
     _slot_drain(s->preds[i]);
   s->live = false;
-  if (s->owner) {
-    s->owner->n_live--;
+  struct _ze_command_list_obj_data *owner = s->chunk ? s->chunk->owner : NULL;
+  if (owner) {
+    owner->n_live--;
     /* Leave the in-order live list (in-order cls only; OOO slots never joined).
-     * Detached slots have owner==NULL — their cl's list head was already
+     * Detached chunks have owner==NULL — their cl's list head was already
      * dropped at teardown, so there is nothing to unlink from. */
-    if (s->owner->is_in_order)
-      DL_DELETE2(s->owner->live_slots, s, live_prev, live_next);
+    if (owner->is_in_order)
+      DL_DELETE2(owner->live_slots, s, live_prev, live_next);
   }
   ze_event_handle_t attr = s->attr ? s->attr : (s->inj ? s->inj->event : NULL);
-  /* Host-read the kernel timing from OUR injected KERNEL_TIMESTAMP event. Drain
-   * is always reached after a queue/cl/event sync that already completed the
-   * work (for a resubmitted regular cl, the next Execute's force-sync drains the
-   * prior instance before it re-signals inj), so the query returns immediately;
-   * the HostSynchronize is a cheap guard against under-synced user code. inj is
-   * OURS — we never sync/query the user's event, only stash under it below. */
-  int have_result = 0;
+  /* Host-read the kernel timing from our injected KERNEL_TIMESTAMP event. Drain
+   * runs after a sync that already completed the work, so the query returns
+   * immediately; the HostSynchronize is a cheap guard against under-synced user
+   * code. */
+  bool have_result = false;
   ze_kernel_timestamp_result_t r;
   if (s->inj && s->inj->event) {
     _ZE_MUST(ZE_EVENT_HOST_SYNCHRONIZE_PTR(s->inj->event, UINT64_MAX));
     _ZE_MUST(ZE_EVENT_QUERY_KERNEL_TIMESTAMP_PTR(s->inj->event, &r));
-    have_result = 1;
+    have_result = true;
   }
   if (have_result && attr) {
-    /* Stash the kernel result under the user's own event so the user's
-     * zeEventQueryKernelTimestamp returns kernel timing, not the barrier op
-     * timing their event actually carries (we swapped it for inj). Only when
-     * the user supplied an event (s->attr); inj is ours, not queryable. */
+    /* Stash the kernel result under the user's own event so their
+     * zeEventQueryKernelTimestamp returns kernel timing, not the op timing their
+     * event now carries (we swapped it for inj). Only when they supplied one. */
     if (s->attr)
       _event_kts_set(s->attr, r);
     if (tracepoint_enabled(lttng_ust_ze_profiling, event_profiling_results))
@@ -910,14 +871,10 @@ static void _slot_drain(struct _ze_slot *s) {
                     ZE_RESULT_SUCCESS, r.global.kernelStart, r.global.kernelEnd,
                     r.context.kernelStart, r.context.kernelEnd);
   }
-  /* Reset our inj now that we've read it, so it starts clean for its next use.
-   * We never touch the user's event — only our own inj. Safe against a later
-   * drain of this same slot: a slot is only re-drained after being
-   * re-instantiated at a subsequent Execute, which re-signals inj first (see
-   * _on_execute_one_cl); the final drain of a slot is never followed by another.
-   * (Immediate cls dispose inj to the pool at _slot_release, which also resets
-   * it — so only regular, kept-across-replay slots need the reset here.) */
-  if (s->inj && s->inj->event && s->owner && !s->owner->is_immediate)
+  /* Reset our inj now that we've read it, so it starts clean for its next
+   * Execute. Immediate cls instead reset it when disposed to the pool at
+   * _slot_release, so only regular (kept-across-replay) slots reset here. */
+  if (s->inj && s->inj->event && owner && !owner->is_immediate)
     _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(s->inj->event));
   _event_latest_clear_if(s->attr, s);
   /* Drop refs on preds; release any that hit 0 and are already drained. */
@@ -974,8 +931,7 @@ static void _cl_chunk_reclaim(struct _ze_command_list_obj_data *cl_data, struct 
   }
   /* Detach: keep the struct alive for the surviving referenced slots. */
   DL_DELETE(cl_data->chunks, c);
-  for (uint32_t i = 0; i < c->n_used; ++i)
-    c->slots[i].owner = NULL;
+  c->owner = NULL;
   c->n_pinned = pinned;
 }
 
@@ -1064,7 +1020,7 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
   pthread_mutex_lock(&_ze_state_mutex);
   struct _ze_command_list_obj_data *cl_data = NULL, *cl_tmp = NULL;
   HASH_ITER (hh, _ze_cls, cl_data, cl_tmp) {
-    if (cl_data->cached_context != hContext)
+    if (cl_data->context != hContext)
       continue;
     HASH_DEL(_ze_cls, cl_data);
     _cl_data_destroy(cl_data, /*ctx_dying=*/1);
@@ -1076,12 +1032,11 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
   if (pe) {
     HASH_DEL(_ze_event_pools, pe);
     struct _ze_event_h *w, *w_tmp;
-    DL_FOREACH_SAFE (pe->events, w, w_tmp) {
+    LL_FOREACH_SAFE (pe->events, w, w_tmp) {
       if (w->event)
         ZE_EVENT_DESTROY_PTR(w->event);
       if (w->event_pool)
         ZE_EVENT_POOL_DESTROY_PTR(w->event_pool);
-      DL_DELETE(pe->events, w);
       _put_ze_event_wrapper(w);
     }
     free(pe);
@@ -1109,8 +1064,8 @@ static void _on_sync(enum _ze_sync_kind kind, void *h) {
   pthread_mutex_lock(&_ze_state_mutex);
   if (kind == _ZE_SYNC_EVENT) {
     struct _ze_slot *s = _event_latest_get((ze_event_handle_t)h);
-    if (s && s->owner) {
-      struct _ze_command_list_obj_data *owner = s->owner;
+    if (s && s->chunk && s->chunk->owner) {
+      struct _ze_command_list_obj_data *owner = s->chunk->owner;
       _slot_drain(s);
       if (!owner->n_live) {
         _cl_index_clear(owner);
@@ -1193,9 +1148,9 @@ static void _on_execute_one_cl(ze_command_queue_handle_t hQueue,
    *    and drain it — reading each slot's timing from inj and resetting inj —
    *    BEFORE this submission re-signals the same baked inj. Running this in the
    *    PROLOGUE (not after submit) is what keeps a replayed regular cl's #N-1
-   *    timing from being clobbered by #N (reg_Event_09), and serializes the
-   *    same cl reused from another thread (multithreaded_01). Syncing a QUEUE
-   *    (never a user event) only observes already-submitted work. */
+   *    timing from being clobbered by #N, and serializes the same cl reused
+   *    from another thread. Syncing a QUEUE (never a user event) only observes
+   *    already-submitted work. */
   if (cl_data->in_flight_q) {
     _ZE_MUST(ZE_COMMAND_QUEUE_SYNCHRONIZE_PTR(cl_data->in_flight_q, UINT64_MAX));
     _cl_drain(cl_data);
@@ -1274,13 +1229,10 @@ static void _dump_driver_subdevice_properties(ze_driver_handle_t hDriver,
     return;
 
   for (uint32_t j = 0; j < subDeviceCount; j++) {
-    ze_device_properties_t props = {0};
-    props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-    props.pNext = NULL;
+    ze_device_properties_t props = {.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES};
     if (ZE_DEVICE_GET_PROPERTIES_PTR(phSubDevices[j], &props) == ZE_RESULT_SUCCESS)
       do_tracepoint(lttng_ust_ze_properties, subdevice, hDriver, hDevice, phSubDevices[j], &props);
   }
-  return;
 }
 
 static void _dump_device_timer(ze_device_handle_t hDevice) {
@@ -1308,9 +1260,7 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
 
   for (uint32_t i = 0; i < deviceCount; i++) {
     if (tracepoint_enabled(lttng_ust_ze_properties, device)) {
-      ze_device_properties_t props = {0};
-      props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-      props.pNext = NULL;
+      ze_device_properties_t props = {.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES};
       if (ZE_DEVICE_GET_PROPERTIES_PTR(phDevices[i], &props) == ZE_RESULT_SUCCESS)
         do_tracepoint(lttng_ust_ze_properties, device, hDriver, phDevices[i], &props);
     }
@@ -1322,9 +1272,7 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
 }
 
 static void _dump_kernel_properties(ze_kernel_handle_t hKernel) {
-  ze_kernel_properties_t kernelProperties;
-  kernelProperties.stype = ZE_STRUCTURE_TYPE_KERNEL_PROPERTIES;
-  kernelProperties.pNext = NULL;
+  ze_kernel_properties_t kernelProperties = {.stype = ZE_STRUCTURE_TYPE_KERNEL_PROPERTIES};
   if (ZE_KERNEL_GET_PROPERTIES_PTR(hKernel, &kernelProperties) == ZE_RESULT_SUCCESS)
     tracepoint(lttng_ust_ze_properties, kernel, hKernel, &kernelProperties);
 }
@@ -1339,9 +1287,7 @@ static void _dump_properties() {
     return;
   if (tracepoint_enabled(lttng_ust_ze_properties, driver)) {
     for (uint32_t i = 0; i < driverCount; i++) {
-      ze_driver_properties_t props = {0};
-      props.stype = ZE_STRUCTURE_TYPE_DRIVER_PROPERTIES;
-      props.pNext = NULL;
+      ze_driver_properties_t props = {.stype = ZE_STRUCTURE_TYPE_DRIVER_PROPERTIES};
       if (ZE_DRIVER_GET_PROPERTIES_PTR(phDrivers[i], &props) == ZE_RESULT_SUCCESS)
         do_tracepoint(lttng_ust_ze_properties, driver, phDrivers[i], &props);
     }
@@ -1369,9 +1315,8 @@ static void _dump_build_log(ze_module_build_log_handle_t hBuildLog) {
 
 static inline void _dump_memory_info_ctx(ze_context_handle_t hContext, const void *ptr) {
   if (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties)) {
-    ze_memory_allocation_properties_t memAllocProperties;
-    memAllocProperties.stype = ZE_STRUCTURE_TYPE_MEMORY_ALLOCATION_PROPERTIES;
-    memAllocProperties.pNext = NULL;
+    ze_memory_allocation_properties_t memAllocProperties = {
+        .stype = ZE_STRUCTURE_TYPE_MEMORY_ALLOCATION_PROPERTIES};
     ze_device_handle_t hDevice = NULL;
     if (ZE_MEM_GET_ALLOC_PROPERTIES_PTR(hContext, ptr, &memAllocProperties, &hDevice) ==
         ZE_RESULT_SUCCESS)
@@ -1394,14 +1339,9 @@ static inline void _dump_memory_info(ze_command_list_handle_t hCommandList, cons
 }
 
 static void _load_tracer(void) {
-  char *s = NULL;
-  void *handle = NULL;
   int verbose = 0;
-  s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
-  if (s)
-    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  else
-    handle = dlopen("libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+  char *s = getenv("LTTNG_UST_ZE_LIBZE_LOADER");
+  void *handle = dlopen(s ? s : "libze_loader.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
   if (handle) {
     void *ptr = dlsym(handle, "zeInit");
     if (ptr == (void *)&zeInit) { // opening oneself
