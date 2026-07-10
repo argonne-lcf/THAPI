@@ -324,19 +324,36 @@ static inline void _on_create_command_list(ze_command_list_handle_t command_list
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
-/* Wrapper around an injected event we own. Lives either in the per-context
- * free pool (between uses) or anchored to one of cl_data->slots[] (in flight). */
+/* Wrapper around an injected event we own. Lives either in its context's
+ * freelist (between uses) or anchored to a slot (in flight). The backing L0
+ * pool is shared and owned by the per-context entry, not the wrapper. */
 struct _ze_event_h {
   ze_event_handle_t event;
-  ze_event_pool_handle_t event_pool;
   ze_context_handle_t context;
-  struct _ze_event_h *next; /* utlist LL link for the free pool (LIFO) */
+  struct _ze_event_h *next; /* utlist LL link for the freelist (LIFO) */
 };
 
+/* One L0 event pool. zeEventPoolCreate is expensive, so we allocate pools with
+ * capacity _ZE_EVENT_POOL_CAP and hand out events by index rather than one pool
+ * per event. Kept in the entry's `pools` list so all pools of a context are
+ * destroyed together when the context dies. */
+#define _ZE_EVENT_POOL_CAP 64
+struct _ze_event_pool_node {
+  ze_event_pool_handle_t pool;
+  struct _ze_event_pool_node *next; /* utlist LL link */
+};
+
+/* Per-context injected-event allocator: a freelist of idle event wrappers to
+ * reuse, plus the pools they were created from. New events fill `cur_pool` by
+ * bumping `next_index`; when it reaches _ZE_EVENT_POOL_CAP a fresh pool is
+ * created. All events (and pools) live until the context is destroyed. */
 struct _ze_event_pool_entry {
   ze_context_handle_t context;
   UT_hash_handle hh;
-  struct _ze_event_h *events;
+  struct _ze_event_h *events;     /* freelist of reset, ready-to-reuse wrappers */
+  struct _ze_event_pool_node *pools;
+  ze_event_pool_handle_t cur_pool; /* pool currently being filled (NULL until first event) */
+  uint32_t next_index;             /* next free index in cur_pool */
 };
 
 struct _ze_event_pool_entry *_ze_event_pools = NULL;
@@ -448,41 +465,47 @@ static inline void _event_state_del(ze_event_handle_t ev) {
   }
 }
 
+/* Find-or-create the per-context event allocator entry. NULL only on OOM. */
+static struct _ze_event_pool_entry *_event_entry_get_or_add(ze_context_handle_t context) {
+  struct _ze_event_pool_entry *entry = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &context, entry);
+  if (!entry) {
+    entry = (struct _ze_event_pool_entry *)calloc(1, sizeof(*entry));
+    if (!entry)
+      return NULL;
+    entry->context = context;
+    HASH_ADD_PTR(_ze_event_pools, context, entry);
+  }
+  return entry;
+}
+
 /* Pop one recycled event wrapper from the per-context freelist; NULL
  * if none cached (caller falls back to creating a fresh L0 event). */
 static struct _ze_event_h *_get_ze_event(ze_context_handle_t context) {
-  struct _ze_event_pool_entry *pool = NULL;
-  HASH_FIND_PTR(_ze_event_pools, &context, pool);
-  if (!pool || !pool->events)
+  struct _ze_event_pool_entry *entry = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &context, entry);
+  if (!entry || !entry->events)
     return NULL;
-  struct _ze_event_h *e = pool->events;
-  LL_DELETE(pool->events, e);
+  struct _ze_event_h *e = entry->events;
+  LL_DELETE(entry->events, e);
   return e;
 }
 
-/* Return an event wrapper to its per-context freelist. On total failure
- * (no bucket can be allocated), destroy the backing L0 objects and free
- * the wrapper — we'd rather leak nothing than poison the freelist. */
+/* Return an event wrapper to its per-context freelist. The entry always exists
+ * (the wrapper was handed out from it), so this only resets the event and
+ * re-queues the wrapper — the shared L0 pool lives until the context dies. */
 static void _put_ze_event(struct _ze_event_h *val) {
   _ZE_MUST(ZE_EVENT_HOST_RESET_PTR(val->event));
-  struct _ze_event_pool_entry *pool = NULL;
-  HASH_FIND_PTR(_ze_event_pools, &val->context, pool);
-  if (!pool) {
-    pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(*pool));
-    if (!pool) {
-      THAPI_DBGLOG("Failed to allocate memory");
-      if (val->event_pool) {
-        if (val->event)
-          ZE_EVENT_DESTROY_PTR(val->event);
-        ZE_EVENT_POOL_DESTROY_PTR(val->event_pool);
-      }
-      free(val);
-      return;
-    }
-    pool->context = val->context;
-    HASH_ADD_PTR(_ze_event_pools, context, pool);
+  struct _ze_event_pool_entry *entry = NULL;
+  HASH_FIND_PTR(_ze_event_pools, &val->context, entry);
+  if (!entry) {
+    THAPI_DBGLOG("no event entry for context %p; destroying event", val->context);
+    if (val->event)
+      ZE_EVENT_DESTROY_PTR(val->event);
+    free(val);
+    return;
   }
-  LL_PREPEND(pool->events, val);
+  LL_PREPEND(entry->events, val);
 }
 
 struct _ze_event_h *_ze_event_wrappers = NULL;
@@ -511,40 +534,58 @@ static void _put_ze_event_wrapper(struct _ze_event_h *val) {
   LL_PREPEND(_ze_event_wrappers, val);
 }
 
-/* Hand out an injected event for a context: reuse one from the per-context
- * freelist, else create a fresh L0 pool+event. Caller holds the state mutex. */
+/* Ensure entry->cur_pool has a free index, creating a new _ZE_EVENT_POOL_CAP
+ * pool (and recording it for teardown) when the current one is full or absent.
+ * Returns false on OOM / pool-create failure. */
+static bool _event_pool_ensure_room(struct _ze_event_pool_entry *entry) {
+  if (entry->cur_pool && entry->next_index < _ZE_EVENT_POOL_CAP)
+    return true;
+  struct _ze_event_pool_node *node =
+      (struct _ze_event_pool_node *)calloc(1, sizeof(*node));
+  if (!node)
+    return false;
+  ze_event_pool_desc_t desc = {
+      ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL,
+      ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, _ZE_EVENT_POOL_CAP};
+  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(entry->context, &desc, 0, NULL, &node->pool);
+  if (res != ZE_RESULT_SUCCESS) {
+    THAPI_DBGLOG("zeEventPoolCreate failed with %d, for context: %p", res, entry->context);
+    free(node);
+    return false;
+  }
+  LL_PREPEND(entry->pools, node);
+  entry->cur_pool = node->pool;
+  entry->next_index = 0;
+  return true;
+}
+
+/* Hand out an injected event for a context: reuse one from the freelist, else
+ * create a fresh event at the next index of the context's shared pool (creating
+ * a new pool only when full). Caller holds the state mutex. */
 static struct _ze_event_h *_get_profiling_event(ze_context_handle_t context) {
   struct _ze_event_h *e_w = _get_ze_event(context);
   if (e_w)
     return e_w;
+  struct _ze_event_pool_entry *entry = _event_entry_get_or_add(context);
+  if (!entry || !_event_pool_ensure_room(entry))
+    return NULL;
   e_w = _get_ze_event_wrapper();
   if (!e_w) {
     THAPI_DBGLOG("Could not create a new event wrapper for context: %p", context);
     return NULL;
   }
-
-  ze_event_pool_desc_t desc = {
-      ZE_STRUCTURE_TYPE_EVENT_POOL_DESC, NULL,
-      ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP | ZE_EVENT_POOL_FLAG_HOST_VISIBLE, 1};
-  ze_result_t res = ZE_EVENT_POOL_CREATE_PTR(context, &desc, 0, NULL, &e_w->event_pool);
-  if (res != ZE_RESULT_SUCCESS) {
-    THAPI_DBGLOG("zeEventPoolCreate failed with %d, for context: %p", res, context);
-    goto cleanup_wrapper;
-  }
-  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, 0, ZE_EVENT_SCOPE_FLAG_HOST,
-                            ZE_EVENT_SCOPE_FLAG_HOST};
-  res = ZE_EVENT_CREATE_PTR(e_w->event_pool, &e_desc, &e_w->event);
+  ze_event_desc_t e_desc = {ZE_STRUCTURE_TYPE_EVENT_DESC, NULL, entry->next_index,
+                            ZE_EVENT_SCOPE_FLAG_HOST, ZE_EVENT_SCOPE_FLAG_HOST};
+  ze_result_t res = ZE_EVENT_CREATE_PTR(entry->cur_pool, &e_desc, &e_w->event);
   if (res != ZE_RESULT_SUCCESS) {
     THAPI_DBGLOG("zeEventCreate failed with %d, for event pool: %p, context: %p", res,
-                 e_w->event_pool, context);
-    goto cleanup_ep;
+                 entry->cur_pool, context);
+    _put_ze_event_wrapper(e_w);
+    return NULL;
   }
+  entry->next_index++;
+  e_w->context = context;
   return e_w;
-cleanup_ep:
-  ZE_EVENT_POOL_DESTROY_PTR(e_w->event_pool);
-cleanup_wrapper:
-  _put_ze_event_wrapper(e_w);
-  return NULL;
 }
 
 /* Append-prologue helper: look up the cl's context (stored at create) and hand
@@ -771,18 +812,22 @@ fail_locked:
 /* Dispose the per-slot resources shared by every teardown path: the inj event,
  * the waits[]/preds[] arrays, and the slot's latest-signaler entry. Disposal
  * target differs by caller:
- *   _ZE_DISPOSE_POOL    -> _put_ze_event (ctx alive: events recycle to the pool)
- *   _ZE_DISPOSE_WRAPPER -> _put_ze_event_wrapper (ctx dying: only recycle the
- *                          wrapper struct; the L0 event/pool die with the ctx)
+ *   _ZE_DISPOSE_POOL    -> _put_ze_event (ctx alive: event recycles to the freelist)
+ *   _ZE_DISPOSE_WRAPPER -> ctx dying: destroy the L0 event now (L0 requires every
+ *                          event be destroyed before its pool, which _on_destroy_context
+ *                          destroys next) and recycle just the wrapper struct
  * Nulls every field so it is idempotent; leaves chunk/refs/owner/live to the
  * caller. */
 enum _ze_slot_dispose_mode { _ZE_DISPOSE_POOL, _ZE_DISPOSE_WRAPPER };
 static void _slot_dispose_resources(struct _ze_slot *s, enum _ze_slot_dispose_mode mode) {
   if (s->inj) {
-    if (mode == _ZE_DISPOSE_WRAPPER)
+    if (mode == _ZE_DISPOSE_WRAPPER) {
+      if (s->inj->event)
+        ZE_EVENT_DESTROY_PTR(s->inj->event);
       _put_ze_event_wrapper(s->inj);
-    else
+    } else {
       _put_ze_event(s->inj);
+    }
     s->inj = NULL;
   }
   free(s->waits);
@@ -963,11 +1008,11 @@ static void _cl_data_reset(struct _ze_command_list_obj_data *cl_data) {
  * already removed cl_data from _ze_cls (single-cl: _cl_find_and_del;
  * per-ctx sweep: HASH_DEL inside the iter). ctx alive: reclaim per-chunk
  * (detaching chunks whose slots are still referenced cross-cl), exactly like
- * reset. ctx dying: no slot can outlive the ctx (no detach needed) and the L0
- * event/pool die with the ctx, so we only recycle the wrapper structs
- * (_ZE_DISPOSE_WRAPPER) and drop the index in bulk elsewhere. */
-static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_dying) {
-  if (!ctx_dying) {
+ * reset. ctx destroy: no slot can outlive the ctx (no detach needed); each
+ * slot's inj event is destroyed and its wrapper recycled (_ZE_DISPOSE_WRAPPER),
+ * so all events are gone before _on_destroy_context destroys the pools. */
+static void _cl_data_destroy(struct _ze_command_list_obj_data *cl_data, int ctx_destroy) {
+  if (!ctx_destroy) {
     _cl_reclaim_chunks(cl_data);
     free(cl_data);
     return;
@@ -990,7 +1035,7 @@ static void _on_destroy_command_list(ze_command_list_handle_t command_list) {
   pthread_mutex_lock(&_ze_state_mutex);
   struct _ze_command_list_obj_data *cl_data = _cl_find_and_del(command_list);
   if (cl_data)
-    _cl_data_destroy(cl_data, /*ctx_dying=*/0);
+    _cl_data_destroy(cl_data, /*ctx_destroy=*/0);
   pthread_mutex_unlock(&_ze_state_mutex);
 }
 
@@ -1023,10 +1068,12 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
     if (cl_data->context != hContext)
       continue;
     HASH_DEL(_ze_cls, cl_data);
-    _cl_data_destroy(cl_data, /*ctx_dying=*/1);
+    _cl_data_destroy(cl_data, /*ctx_destroy=*/1);
   }
 
-  /* 2) Per-ctx event pool freelist. */
+  /* 2) Per-ctx event allocator. L0 requires every event be destroyed before its
+   * pool, so destroy all freelist events first, then the pools. (In-flight
+   * events were already destroyed in sweep 1's WRAPPER disposal.) */
   struct _ze_event_pool_entry *pe = NULL;
   HASH_FIND_PTR(_ze_event_pools, &hContext, pe);
   if (pe) {
@@ -1035,9 +1082,12 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
     LL_FOREACH_SAFE (pe->events, w, w_tmp) {
       if (w->event)
         ZE_EVENT_DESTROY_PTR(w->event);
-      if (w->event_pool)
-        ZE_EVENT_POOL_DESTROY_PTR(w->event_pool);
       _put_ze_event_wrapper(w);
+    }
+    struct _ze_event_pool_node *n, *n_tmp;
+    LL_FOREACH_SAFE (pe->pools, n, n_tmp) {
+      ZE_EVENT_POOL_DESTROY_PTR(n->pool);
+      free(n);
     }
     free(pe);
   }
