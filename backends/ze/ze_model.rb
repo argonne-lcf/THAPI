@@ -164,8 +164,8 @@ EOF
 # says the user must have synchronized first, so our slots are drained — but
 # for a REGULAR cl "drained" is not "reclaimed" (_slot_release is a no-op for
 # regular cls; their inj is baked into the cl body for reuse across Executes).
-# Reset wipes that body, so we reclaim the slots/chunks/events now. Without it
-# the stale slots are re-published on the next Execute (over-count) and chunks
+# Reset wipes that body, so we reclaim the slots/slabs/events now. Without it
+# the stale slots are re-published on the next Execute (over-count) and slabs
 # leak. The cl stays registered, empty for reuse.
 register_epilogue 'zeCommandListReset', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
@@ -174,11 +174,17 @@ EOF
 
 # Destroy hook: the same spec rule applies for the GPU side (no in-flight
 # work on the cl), but we still need to clean up OUR host-side state —
-# slot/slab chunks, per-slot waits, and tracer-owned events that haven't
+# slot slabs, per-slot waits, and tracer-owned events that haven't
 # already gone back to the pool. Otherwise every cl create/destroy cycle
 # leaks all of the above.
+#
+# Gated on _do_state() to stay symmetric with the create hooks: create
+# registers a cl whenever _do_state() holds (profiling OR memory-info), so
+# destroy must unregister under the same condition. Using the narrower
+# _do_profile here would leak the registration in a memory-info-only config,
+# and leave a stale entry that a handle-recycled create later collides with.
 register_epilogue 'zeCommandListDestroy', <<EOF
-  if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
+  if (_do_state() && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_destroy_command_list(hCommandList);
 EOF
 
@@ -316,7 +322,7 @@ register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prolo
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
 # not very cleanly is used....
-#   prologue: always inject _ewrapper. Save user's signal (may be NULL).
+#   prologue: always inject _einj. Save user's signal (may be NULL).
 #             Swap user's signal -> our injected event.
 #   epilogue: on success, call _record_append, which records the slot for
 #             drain and re-exposes the user's original signal. The
@@ -326,14 +332,14 @@ register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prolo
 profiling_prologue = lambda { |event_name|
   <<EOF
   ze_event_handle_t _user_signal = #{event_name};
-  struct _ze_event_h * _ewrapper = NULL;
+  struct _ze_event_h * _einj = NULL;
   /* Resolved from the cl's stored context (no per-Append
    * zeCommandListGetContextHandle) and threaded to _record_append (epilogue). */
   ze_context_handle_t _ctx = NULL;
   if (_do_profile) {
-    _ewrapper = _get_profiling_event_for_cl(hCommandList, &_ctx);
-    if (_ewrapper)
-      #{event_name} = _ewrapper->event;
+    _einj = _get_event(hCommandList, &_ctx);
+    if (_einj)
+      #{event_name} = _einj->event;
     /* If injection failed, fall through with the user's signal unchanged;
      * we won't be able to time this Append, but it still runs. */
   }
@@ -342,14 +348,14 @@ EOF
 
 profiling_epilogue = lambda { |_event_name, waits_expr = 'phWaitEvents', n_waits_expr = 'numWaitEvents'|
   <<EOF
-  if (_do_profile && _ewrapper) {
+  if (_do_profile && _einj) {
     if (_retval == ZE_RESULT_SUCCESS) {
-      ze_event_handle_t _attr = _user_signal ? _user_signal : _ewrapper->event;
-      _record_append(hCommandList, _ctx, _ewrapper, _user_signal,
+      ze_event_handle_t _attr = _user_signal ? _user_signal : _einj->event;
+      _record_append(hCommandList, _ctx, _einj, _user_signal,
                      #{waits_expr}, #{n_waits_expr});
       tracepoint(lttng_ust_ze_profiling, event_profiling, _attr);
     } else {
-      _put_ze_event(_ewrapper);
+      _put_event(_einj);
     }
   }
 EOF

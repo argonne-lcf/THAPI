@@ -1,4 +1,6 @@
-#  Header Location
+# How to Update the Header
+
+## Header Location
 
 - Standard: `https://github.com/argonne-lcf/level-zero-spec/tree/ddi_ver`
 - Loader: `https://github.com/oneapi-src/level-zero/tags`
@@ -165,3 +167,121 @@ PogrammableParamValueInfoExp>': uninitialized constant ZE::ZETMetricProgrammable
 ```
 Update in `backends/ze/gen_ze_library.rb`, Module ZE.
 TODO: `h2yaml` should be able to find all the constants defined.
+
+# Timestamp profiling architecture
+
+This documents the runtime bookkeeping in `tracer_ze_helpers.include.c` /
+`ze_model.rb` that measures how long each submitted command takes.
+
+## Why it needs bookkeeping at all
+
+The goal is to measure each command submitted to the GPU. The only way is to
+read a profiling event the command signals. The subtlety: users are free to
+re-signal, share, and reset their events. So:
+
+- **If the user passes no signal event**, we inject our own and signal it.
+- **If the user passes a signal event**, we swap in our injected event, then
+  re-expose the user's event (a chained SignalEvent / Barrier) so their code
+  still works.
+
+At synchronization time we host-read our injected event to get the real kernel
+timing. Two API facts stop this from being a simple per-event list:
+
+1. **Users sync more than events** — a whole command list, a queue, or a fence,
+   not just `zeEventHostSynchronize`. So we must track, per command list, the
+   set of outstanding profiled commands (and a live count, to know when a cl is
+   fully drained).
+2. **A command signaled on one cl can be waited on from another** (cross-cl
+   `phWaitEvents`). So the dependency chain spans command lists, and a command's
+   storage must outlive its own cl being reset/destroyed while another cl still
+   depends on it (the **detach** mechanism).
+
+Each profiled Append becomes a **slot** (injected event + dependency edges +
+refcount). Slots are grouped per cl in fixed-size **slabs** (so cl/queue/fence
+sync can find them) but linked by raw pointers across cls (for the dependency
+chain).
+
+## Ownership
+
+```mermaid
+graph TD
+    cls["_ze_cls (global uthash)"] --> cld["cl_data"]
+    cld -- slabs (utlist DL) --> s1["slab"]
+    s1 --> s2["slab"]
+    s2 --> s3["slab (tail)"]
+    s1 -- "slots[64] inline" --> slot["slot"]
+    cld -. "live_slots (in-order only)" .-> slot
+    slot -- "slab (back-link)" --> s1
+    slot -- "preds[] (may cross cl)" --> other["slot in ANOTHER cl"]
+    other -. "each edge: target->refs++" .-> slot
+```
+
+Slabs grow by appending (never realloc), so a slot's address is stable for as
+long as it lives — required, because other slots hold raw pointers to it.
+
+**Why the slot -> slab back-link:** `_slot_drain` / `_slot_release` are entered
+holding only a bare slot pointer (a pred in another cl). To reach the counters
+or the owning cl they walk up via `slot->slab->owner`. The slab knows its slots
+(inline array); the slot must know its slab for the reverse direction.
+
+## Counters
+
+| counter | on | meaning |
+|---|---|---|
+| `n_used` | slab | slots ever handed out (monotonic) |
+| `n_held` | slab | slots not yet `_slot_release`'d (`n_used` − releases) |
+| `n_pinned` | slab | >0 only when **detached**: # slots still referenced cross-cl |
+| `refs` | slot | # live downstream slots whose `preds[]` point at this slot |
+
+`refs` is a **count, not a list** — we only ask "does anyone still depend on
+me?", never "who?". A slot is freed only when `live==0` (drained itself) AND
+`refs==0` (nobody points at it); the last dependent to drop the ref frees it.
+That is what lets us avoid a reverse index (see the detach note below).
+
+## Slot state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> LIVE: _slot_instantiate<br/>(resolve preds, preds[i]->refs++)
+    LIVE --> DRAINED: _slot_drain<br/>(recurse preds, emit tracepoint,<br/>--pred->refs each)
+    DRAINED --> RELEASED: _slot_release<br/>(iff refs==0: dispose inj, --slab.n_held)
+    RELEASED --> [*]: slab freed when<br/>n_held==0 && not tail
+```
+
+## Teardown paths
+
+```mermaid
+graph TD
+    A["imm slot drains, unreferenced"] --> A1["_slot_drain -> _slot_release"]
+    B["cl RESET / single DESTROY (ctx alive)"] --> B1["_cl_reclaim_slabs, per slab"]
+    B1 --> B2{"any slot still ref'd cross-cl?"}
+    B2 -- no --> B3["free slab now"]
+    B2 -- yes --> B4["DETACH: owner=NULL, n_pinned;<br/>referrer's later drain frees it"]
+    C["ctx DESTROY"] --> C1["_cl_data_destroy(ctx_destroy=1):<br/>destroy L0 event + free slot struct"]
+    D["event DESTROY"] --> D1["_on_destroy_event: evict<br/>_ze_event_state entry (kts/latest)"]
+```
+
+**Detach (`owner=NULL`).** Consider:
+
+```
+CL1.Append(signal=e1)            // slot P
+CL2.Append(signal=e2, wait=e1)   // slot Q; Q.preds=[P], so P.refs=1
+CL1.destroy()                    // P still referenced by Q -> P DETACHED
+CL2.sync()                       // drains Q, --P.refs -> 0, frees P's slab
+```
+
+At `CL1.destroy()`, `CL2` still has a pred pointing into `CL1`'s slab (legal L0 —
+there is no ordering rule for cross-cl event deps, unlike fences/queues), so
+freeing that slab would dangle `Q.preds[]`. Instead the slab is *detached*
+(unlinked, `owner=NULL`, `n_pinned` = referenced slots) and outlives `CL1`. Then
+`CL2.sync()` drains `Q`, drops the last ref on `P` (`--P.refs -> 0`), and *that*
+downstream drain frees the detached slab (`n_pinned -> 0`).
+
+(If `CL1` were synced+destroyed *before* `CL2`'s Append, `e1` would already have
+drained, the `wait=e1` would resolve to nothing, and no cross-cl edge — hence no
+detach — would exist. Detach only matters while the dependency is still live.)
+
+The alternative — severing `CL2`'s edges at `CL1` teardown — is rejected: edges
+are one-directional (`preds[]` + a `refs` count, no reverse index), so finding
+referrers would need an O(all-live-slots) global scan or a per-Append successor
+list. Detach is what keeps `refs` a mere count.
