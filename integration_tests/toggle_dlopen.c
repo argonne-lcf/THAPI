@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define check_error(ptr_)                                                      \
-  {                                                                            \
-    void *ptr = (void *)ptr_;                                                  \
-    if (!ptr) {                                                                \
-      fprintf(stderr, "%s:%d -- %s\n", __FILE__, __LINE__, dlerror());         \
-      return 1;                                                                \
-    }                                                                          \
+#define check_error(ptr_)                                                                          \
+  {                                                                                                \
+    void *ptr = (void *)ptr_;                                                                      \
+    if (!ptr) {                                                                                    \
+      fprintf(stderr, "%s:%d -- %s\n", __FILE__, __LINE__, dlerror());                             \
+      return 1;                                                                                    \
+    }                                                                                              \
   }
 
 int main(void) {
