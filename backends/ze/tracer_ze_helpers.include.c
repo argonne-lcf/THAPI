@@ -1,4 +1,4 @@
-/* Timestamp capture 
+/* Timestamp capture
  * =================
  *
  * The goal is to measure the command submitted
@@ -16,7 +16,7 @@
  * --------------------------------------
  *
  *   1. The user syncs on more than events. Besides zeEventHostSynchronize they
- *      can sync a whole COMMAND LIST (or a queue, or a fence). 
+ *      can sync a whole COMMAND LIST (or a queue, or a fence).
  *
  *   2. A command signaled on one cl can be waited on from another (phWaitEvents,
  *      cross-cl).
@@ -34,15 +34,14 @@
  * One global mutex (_ze_state_mutex) covers all tracer state. Per-cl mutexes
  * don't work because draining a synced event follows dependency edges that
  * cross command lists, so a drain started from one cl mutates another. One
- * global mutex sidesteps the cross-cl ordering problem entirely. 
+ * global mutex sidesteps the cross-cl ordering problem entirely.
  */
-
 
 //         _   __
 //     |  / \ /__
 //     |_ \_/ \_|
 //
-#define THAPI_LOG(fmt, ...)                                                                       \
+#define THAPI_LOG(fmt, ...)                                                                        \
   do {                                                                                             \
     fprintf(stderr, "THAPI(%s:%d): " fmt "\n", __func__, __LINE__, ##__VA_ARGS__);                 \
     fflush(stderr);                                                                                \
@@ -58,21 +57,19 @@
 
 /* Tracer invariant check: print + abort. */
 
-#define THAPI_ASSERT(cond, fmt, ...)                                                              \
+#define THAPI_ASSERT(cond, fmt, ...)                                                               \
   do {                                                                                             \
     if (!(cond)) {                                                                                 \
-      THAPI_LOG("assertion failed: %s — " fmt, #cond, ##__VA_ARGS__);                             \
+      THAPI_LOG("assertion failed: %s — " fmt, #cond, ##__VA_ARGS__);                              \
       abort();                                                                                     \
     }                                                                                              \
   } while (0)
 
-
-#define ZE_MUST(call)                                                                             \
+#define ZE_MUST(call)                                                                              \
   do {                                                                                             \
     ze_result_t _r = (call);                                                                       \
-    THAPI_ASSERT(_r == ZE_RESULT_SUCCESS, "%s = 0x%x", #call, _r);                                \
+    THAPI_ASSERT(_r == ZE_RESULT_SUCCESS, "%s = 0x%x", #call, _r);                                 \
   } while (0)
-
 
 static int _do_profile = 0;
 static int _do_chained_structs = 0;
@@ -101,10 +98,10 @@ struct ze_closure {
 struct ze_closure *ze_closures = NULL;
 
 /**
- *     ___                   
- *      | ._ _.  _ o ._   _  
- *      | | (_| (_ | | | (_| 
- *                        _| 
+ *     ___
+ *      | ._ _.  _ o ._   _
+ *      | | (_| (_ | | | (_|
+ *                        _|
  */
 
 struct _ze_slot;
@@ -315,7 +312,8 @@ static void _cl_index_clear(struct _ze_command_list_obj_data *cl) {
 }
 
 static inline void _on_create_command_list(ze_command_list_handle_t command_list,
-                                           ze_context_handle_t context, bool immediate,
+                                           ze_context_handle_t context,
+                                           bool immediate,
                                            bool in_order) {
   struct _ze_command_list_obj_data *cl_data =
       (struct _ze_command_list_obj_data *)calloc(1, sizeof(*cl_data));
@@ -365,7 +363,7 @@ struct _ze_event_pool_node {
 struct _ze_event_pool_entry {
   ze_context_handle_t context;
   UT_hash_handle hh;
-  struct _ze_event_h *events;     /* freelist of reset, ready-to-reuse events */
+  struct _ze_event_h *events; /* freelist of reset, ready-to-reuse events */
   struct _ze_event_pool_node *pools;
   ze_event_pool_handle_t cur_pool; /* pool currently being filled (NULL until first event) */
   uint32_t next_index;             /* next free index in cur_pool */
@@ -521,8 +519,7 @@ static void _put_event(struct _ze_event_h *val) {
 static bool _internal_pool_ensure_room(struct _ze_event_pool_entry *entry) {
   if (entry->cur_pool && entry->next_index < _ZE_EVENT_POOL_CAP)
     return true;
-  struct _ze_event_pool_node *node =
-      (struct _ze_event_pool_node *)calloc(1, sizeof(*node));
+  struct _ze_event_pool_node *node = (struct _ze_event_pool_node *)calloc(1, sizeof(*node));
   if (!node)
     return false;
   ze_event_pool_desc_t desc = {
@@ -536,7 +533,8 @@ static bool _internal_pool_ensure_room(struct _ze_event_pool_entry *entry) {
     if (!warned) {
       warned = 1;
       THAPI_LOG("warning: zeEventPoolCreate failed (0x%x) for context %p; "
-                "Appends will not be timed", res, (void *)entry->context);
+                "Appends will not be timed",
+                res, (void *)entry->context);
     }
     free(node);
     return false;
@@ -631,8 +629,8 @@ static struct _ze_slot *_cl_slot_append(struct _ze_command_list_obj_data *cl_dat
       if (!warned) {
         warned = 1;
         THAPI_LOG("warning: regular command list %p exceeded %d profiled "
-                   "Appends in one build; further Appends will not be timed",
-                   (void *)cl_data->ptr, _ZE_SLAB_SLOTS);
+                  "Appends in one build; further Appends will not be timed",
+                  (void *)cl_data->ptr, _ZE_SLAB_SLOTS);
       }
       return NULL;
     }
@@ -1072,13 +1070,13 @@ static void _on_destroy_context(ze_context_handle_t hContext) {
   if (pe) {
     HASH_DEL(_ze_event_pools, pe);
     struct _ze_event_h *w, *w_tmp;
-    LL_FOREACH_SAFE (pe->events, w, w_tmp) {
+    LL_FOREACH_SAFE(pe->events, w, w_tmp) {
       if (w->event)
         ZE_MUST(ZE_EVENT_DESTROY_PTR(w->event));
       free(w);
     }
     struct _ze_event_pool_node *n, *n_tmp;
-    LL_FOREACH_SAFE (pe->pools, n, n_tmp) {
+    LL_FOREACH_SAFE(pe->pools, n, n_tmp) {
       ZE_MUST(ZE_EVENT_POOL_DESTROY_PTR(n->pool));
       free(n);
     }
@@ -1229,8 +1227,6 @@ static void _on_execute_command_lists_prologue(uint32_t numCommandLists,
   for (uint32_t i = 0; i < numCommandLists; ++i)
     _on_execute_one_cl(hQueue, hFence, phCommandLists[i]);
 }
-
-
 
 /**
  *      _                                             ___
