@@ -8,10 +8,17 @@ static void _load_tracer(void) {
   int verbose = 0;
 
   s = getenv("LTTNG_UST_MPI_LIBMPI");
+  /* RTLD_GLOBAL: promote the real libmpi's symbols into the global scope so
+   * that symbols we do NOT wrap (e.g. MPIX_GPU_query_support) remain resolvable
+   * by the traced application. With RTLD_LOCAL they were hidden, causing
+   * "undefined symbol" errors at lookup time. Our own preloaded wrappers still
+   * take precedence for the symbols we do wrap (they are earlier in the global
+   * scope), and RTLD_DEEPBIND keeps the real lib's internal calls bound to
+   * itself rather than re-entering our wrappers. */
   if (s)
-    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen(s, RTLD_LAZY | RTLD_GLOBAL | RTLD_DEEPBIND);
   else
-    handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+    handle = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL | RTLD_DEEPBIND);
   if (handle) {
     void *ptr = dlsym(handle, "MPI_Init");
     if (ptr == (void *)&MPI_Init) { // opening oneself
