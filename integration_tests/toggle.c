@@ -3,5 +3,5 @@
 int main(void) {
   thapi_start();
   thapi_stop();
-	return 0;
+  return 0;
 }

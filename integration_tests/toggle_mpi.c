@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <mpi.h>
+#include <stdlib.h>
 
 #include <thapi.h>
 
@@ -15,7 +15,8 @@ int main(int argc, char *argv[]) {
     thapi_start();
   case 1:
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0) thapi_start();
+    if (rank == 0)
+      thapi_start();
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     break;
   default:
