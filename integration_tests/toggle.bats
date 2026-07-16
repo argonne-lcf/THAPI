@@ -3,6 +3,8 @@
 setup_file() {
   export THAPI_INCFLAGS="-I$(pkg-config --variable=includedir thapi)"
   export THAPI_LDFLAGS="-Wl,-rpath,$(pkg-config --variable=libdir thapi) $(pkg-config --libs thapi)"
+  # needed for toggle api dlopen test.
+  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(pkg-config --variable=libdir thapi)
 }
 
 get_unique_jobid() {
@@ -56,6 +58,8 @@ get_unique_jobid() {
 count_base() {
   rm -rf toggle_traces 2>/dev/null
 
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi ${THAPI_LDFLAGS}
+
   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s mpirun -n $1 \
     iprof --toggle-on --trace-output toggle_traces -- ./toggle_mpi $2
 }
@@ -67,8 +71,6 @@ count_traces() {
 }
 
 @test "toggle_plugin_mpi_np_1" {
-  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi ${THAPI_LDFLAGS}
-
   count_0=$(count_traces 1 0)
   count_1=$(count_traces 1 1)
   count_2=$(count_traces 1 2)
@@ -85,8 +87,6 @@ count_processors() {
 }
 
 @test "toggle_plugin_mpi_np_2" {
-  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi ${THAPI_LDFLAGS}
-
   count_0=$(count_processors 2 0)
   count_1=$(count_processors 2 1)
   count_2=$(count_processors 2 2)
