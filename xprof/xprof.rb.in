@@ -693,6 +693,7 @@ module LocalMaster
     opts = [trace_bt_prefix[:bt]]
     opts << "--output #{thapi_trace_dir_tmp}"
     opts << "--backends #{backends.join(',')}"
+    opts << '--toggle-on' if OPTIONS[:'toggle-on']
     opts << '--no-discard-metadata' if trace_bt_prefix[:bt] == 'to_aggreg' && OPTIONS.include?(:'kernel-verbose')
 
     if OPTIONS[:archive]
@@ -841,16 +842,19 @@ module GlobalMaster
     babeltrace_exe = "#{BINDIR}/babeltrace_thapi"
     backends = OPTIONS[:backends].join(',')
 
+    toggle_on = OPTIONS[:'toggle-on'] ? ['--toggle-on'] : []
+
     if OPTIONS.include?(:trace)
-      cmdnames = [babeltrace_exe, 'trace', '--restrict', '--context', '--backends', backends, '--', folder]
+      cmdnames = [babeltrace_exe, 'trace', '--restrict', '--context', '--backends', backends, *toggle_on, '--',
+                  folder]
     elsif OPTIONS.include?(:timeline)
       # check if there are any timelines. we check in advance
       # since if we don't have nay saved ones we should fall
       # back to generating the timeline from the interval
       files = Dir[folder + '/*/timeline_*.pftrace']
       cmdnames = if files.empty?
-                   [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline], '--',
-                    folder]
+                   [babeltrace_exe, 'timeline', '--backends', backends, '--output-path', OPTIONS[:timeline],
+                    *toggle_on, '--', folder]
                  else
                    warn("THAPI: Perfetto trace location: #{OPTIONS[:timeline]}")
                    # String because `>` is not a real command, and cannot be passed to popen
@@ -864,6 +868,7 @@ module GlobalMaster
       cmdnames << '--display_mode' << 'json' if OPTIONS.include?(:json)
       cmdnames << '--backends' << backends
       cmdnames << '--display' << 'extended' if OPTIONS.include?(:extended)
+      cmdnames += toggle_on
       cmdnames += ['--', folder]
     end
 
@@ -1052,6 +1057,9 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
             'Format: backend_name[:backend_level],...',
             default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
+  parser.on('--toggle-on',
+            'Enable the toggle filter so that tracing can be started/stopped programmatically',
+            'via thapi_start()/thapi_stop() in the application.', default: false)
 
   # Analysis
   parser.on('-r', '--replay [PATH]', 'Replay traces for post-mortem analysis.',

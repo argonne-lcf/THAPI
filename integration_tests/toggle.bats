@@ -57,7 +57,7 @@ toggle_count_base() {
   THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s mpirun -n $1 \
     iprof --trace-output toggle_traces --no-analysis -- ./toggle_mpi $2
 
-  traces=$(babeltrace_thapi ./toggle_traces)
+  traces=$(babeltrace_thapi --toggle-on ./toggle_traces)
 
   echo $traces
 }
