@@ -6,6 +6,7 @@
 #include <metababel/metababel.h>
 #include <regex>
 #include <string>
+#include <sstream>
 #include <unordered_map>
 
 /*
