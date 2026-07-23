@@ -514,6 +514,38 @@ static void hSignalEvent_eventMemory_1ptr_entry_callback(void *btx_handle,
       hCommandList, name, ts, btx_event_t::TRAFFIC, btx_additional_info_traffic_t{ts, size}};
 }
 
+static void hSignalEvent_eventMemory_region_entry_callback(void *btx_handle,
+                                                           void *usr_data,
+                                                           int64_t ts,
+                                                           const char *event_class_name,
+                                                           const char *hostname,
+                                                           int64_t vpid,
+                                                           uint64_t vtid,
+                                                           ze_command_list_handle_t hCommandList,
+                                                           void *dstptr,
+                                                           void *srcptr,
+                                                           ze_copy_region_t *dstRegion_val) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  const hp_t hp{hostname, vpid};
+
+  // No `size` field on region copies: bytes are implicit in the descriptor.
+  // depth == 0 denotes a 2D copy, i.e. a single slice.
+  size_t size = (size_t)dstRegion_val->width * dstRegion_val->height *
+                (dstRegion_val->depth != 0 ? dstRegion_val->depth : 1);
+
+  std::string name;
+  {
+    std::stringstream ss_name;
+    ss_name << strip_event_class_name_entry(event_class_name) << "("
+            << memory_location(data, hp, (uintptr_t)srcptr) << "2"
+            << memory_location(data, hp, (uintptr_t)dstptr) << ")";
+    name = ss_name.str();
+  }
+  data->threadToLastLaunchInfo[{hostname, vpid, vtid}] = {
+      hCommandList, name, ts, btx_event_t::TRAFFIC, btx_additional_info_traffic_t{ts, size}};
+}
+
 static void eventMemory_without_hSignalEvent_entry_callback(void *btx_handle,
                                                             void *usr_data,
                                                             int64_t ts,
@@ -1427,6 +1459,7 @@ void btx_register_usr_callbacks(void *btx_handle) {
 
   REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_eventMemory_2ptr_entry);
   REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_eventMemory_1ptr_entry);
+  REGISTER_ASSOCIATED_CALLBACK(hSignalEvent_eventMemory_region_entry);
 
   REGISTER_ASSOCIATED_CALLBACK(eventMemory_without_hSignalEvent_entry);
   REGISTER_ASSOCIATED_CALLBACK(eventMemory_without_hSignalEvent_exit);

@@ -145,6 +145,20 @@
       - :name: ^hCommandList$
       - :name: ^ptr$
       - :name: ^size$
+  - # Region copies (zeCommandListAppendMemoryCopyRegion): no `size` field; byte
+    # count is implicit in the region descriptor (width x height x depth). This
+    # leaf claims the eventMemory remainder that neither size-keyed set matched.
+    :set_id: hSignalEvent_eventMemory_region_entry
+    :domain: hSignalEvent_eventMemory_entry - (hSignalEvent_eventMemory_2ptr_entry + hSignalEvent_eventMemory_1ptr_entry)
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^hCommandList$
+      - :name: ^dstptr$
+      - :name: ^srcptr$
+      - :name: ^dstRegion_val$
+        :field_class:
+          :cast_type: ze_copy_region_t \*
   - ## Rest of Traffic
     :set_id: eventMemory_without_hSignalEvent_entry
     :name: "Memory"
