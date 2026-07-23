@@ -231,7 +231,7 @@ tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_cudart.map: $(srcdir)/gen_cudart_linker_script.rb $(CUDART_MODEL)
-	SRC_DIR=$(srcdir) $(RUBY) $< libcudart.so.12 > $@
+	SRC_DIR=$(srcdir) $(RUBY) $< libcudart.so.13 > $@
 
 EXTRA_DIST += \
 	gen_cuda.rb \
@@ -297,7 +297,7 @@ libcudart_la_DEPENDENCIES = tracer_cudart.map libcudarttracepoints.la
 libcudart_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libcudart_la_CFLAGS = -Wall -Wextra $(WERROR) $(LIBFFI_CFLAGS) $(LTTNG_UST_CFLAGS)
 libcudart_la_LDFLAGS = $(LTTNG_UST_LIBS) -ldl -lpthread $(LIBFFI_LIBS)
-libcudart_la_LDFLAGS += -version-number 12:1:55 -Wl,--version-script,tracer_cudart.map
+libcudart_la_LDFLAGS += -version-number 13:0:48 -Wl,--version-script,tracer_cudart.map
 libcudart_la_LIBADD = libcudarttracepoints.la
 
 tmplibdir = $(libdir)/tmp
