@@ -69,6 +69,7 @@ filenames += [
 ]
 
 filenames += [
+    "backends/opencl/opencl_tracepoints.tp",
     "backends/opencl/opencl_profiling.tp",
 ]
 
