@@ -66,7 +66,7 @@ event_lambda = lambda { |c, dir|
     c.parameters.select { |p| p.lttng_in_type }.each do |p|
       field = {}
       lttng = p.lttng_in_type
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       field.merge!(params[fname])
       field['lttng'] = lttng[0]
       fields[fname] = field
@@ -74,21 +74,21 @@ event_lambda = lambda { |c, dir|
     c.meta_parameters.select { |p| p.lttng_in_type }.each do |p|
       meta_field = {}
       lttng = p.lttng_in_type
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       if fname == 'errcode_ret_val'
         meta_field['type'] = 'cl_errcode'
       elsif fname.match(/_val\z/)
         pname = fname.gsub(/_val\z/, '')
         meta_field['type'] = params[pname]['type']
       else
-        meta_field['type'] = params[LTTng.expression(*lttng)]['type']
+        meta_field['type'] = params[LTTngFieldTuple.expression(*lttng)]['type']
       end
       if meta_field['type'].match(/\*\z/)
         meta_field['type'] = meta_field['type'].sub(/\*\z/, '')
         meta_field['pointer'] = true
       end
-      meta_field['array'] = true if LTTng.array?(*lttng)
-      meta_field['string'] = true if LTTng.string?(*lttng)
+      meta_field['array'] = true if LTTngFieldTuple.array?(*lttng)
+      meta_field['string'] = true if LTTngFieldTuple.string?(*lttng)
       meta_field['lttng'] = lttng[0]
       meta_field['length'] = lttng[4] if meta_field['lttng'].match('ctf_array')
       if  meta_field['array'] &&
@@ -105,14 +105,14 @@ event_lambda = lambda { |c, dir|
       field['type'] = c.prototype.return_type
       lttng = c.prototype.lttng_return_type
       field['lttng'] = lttng[0]
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       field['type'] = 'cl_errcode' if fname == 'errcode_ret_val'
       fields[fname] = field
     end
-    c.meta_parameters.select { |p| p.lttng_out_type && LTTng.name(*p.lttng_out_type) != '_param_name' }.each do |p|
+    c.meta_parameters.select { |p| p.lttng_out_type && LTTngFieldTuple.name(*p.lttng_out_type) != '_param_name' }.each do |p|
       meta_field = {}
       lttng = p.lttng_out_type
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       if fname == 'errcode_ret_val'
         meta_field['type'] = 'cl_errcode'
       elsif fname.match(/_val\z/)
@@ -120,7 +120,7 @@ event_lambda = lambda { |c, dir|
         meta_field['type'] = params[pname]['type']
       else
         begin
-          meta_field['type'] = params[LTTng.expression(*lttng)]['type']
+          meta_field['type'] = params[LTTngFieldTuple.expression(*lttng)]['type']
         rescue StandardError
           warn name, lttng.inspect
         end
@@ -129,8 +129,8 @@ event_lambda = lambda { |c, dir|
         meta_field['type'] = meta_field['type'].gsub(/\*\z/, '')
         meta_field['pointer'] = true
       end
-      meta_field['array'] = true if LTTng.array?(*lttng)
-      meta_field['string'] = true if LTTng.string?(*lttng)
+      meta_field['array'] = true if LTTngFieldTuple.array?(*lttng)
+      meta_field['string'] = true if LTTngFieldTuple.string?(*lttng)
       meta_field['lttng'] = lttng[0]
       meta_field['length'] = lttng[4] if meta_field['lttng'].match('ctf_array')
       if  meta_field['array'] &&

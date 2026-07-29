@@ -82,7 +82,7 @@ tracepoint_lambda = lambda { |c, dir|
   end
   event[dir] = fields
 
-  print_tracepoint('lttng_ust_opencl', event, dir)
+  LTTng.print_tracepoint('lttng_ust_opencl', event, dir)
 }
 
 $opencl_commands.each do |c|
@@ -105,6 +105,6 @@ namespace = 'lttng_ust_opencl'
 callbacks = YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml'))[namespace]
 callbacks['events'].each do |e|
   %w[start stop].each do |dir|
-    print_tracepoint(namespace, e, dir)
+    LTTng.print_tracepoint(namespace, e, dir)
   end
 end

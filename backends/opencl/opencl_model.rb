@@ -1,13 +1,12 @@
 require 'nokogiri'
 require 'yaml'
+require_relative '../../utils/LTTng'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
 START = 'entry'
 STOP = 'exit'
 SUFFIXES = { 'start' => START, 'stop' => STOP }
-
-MEMBER_SEPARATOR = '__'
 
 GENERATE_ENUMS_TRACEPOINTS = false
 
