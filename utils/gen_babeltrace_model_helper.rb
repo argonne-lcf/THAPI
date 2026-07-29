@@ -1,5 +1,6 @@
 # Include global variable INT_SIGN_MAP, ScalarMetaParameter, etc
 require_relative 'yaml_ast'
+require_relative 'type_registry'
 
 $integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
 $integer_signed = INT_SIGN_MAP
@@ -13,26 +14,12 @@ $all_enums.each do |t|
 end
 
 def integer_size(t)
-  return 64 if t.match(/\*/)
-  return 64 if t.match(/\[.*\]/)
-
-  r = $integer_sizes[t]
-  raise "unknown integer type #{t}" if r.nil?
-
-  r
+  $type_registry.integer_size(t)
 end
 
 def integer_signed?(t)
-  return false if t.match(/\*/)
-  return false if t.match(/\[.*\]/)
-
-  r = $integer_signed[t]
-  raise "unknown integer type #{t}" if r.nil?
-
-  r
+  $type_registry.integer_signed?(t)
 end
-
-# End of global variable use
 def meta_parameter_types_name(m, dir = nil)
   lttng = if dir == :start
             m.lttng_in_type
@@ -87,6 +74,16 @@ def get_extra_fields_types_name(event)
 end
 
 $types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
+
+$type_registry = TypeRegistry.new(
+  types_by_name: $types_by_name,
+  enum_names: $all_enum_names,
+  bitfield_names: $all_bitfield_names,
+  struct_names: $all_struct_names,
+  integer_sizes: $integer_sizes,
+  integer_signed: $integer_signed,
+  class_namer: ->(name) { to_scoped_class_name(name) },
+)
 
 def gen_bt_field_model(lttng_name, type, name, lttng)
   member = { name: name }
