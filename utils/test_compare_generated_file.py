@@ -69,6 +69,14 @@ filenames += [
 ]
 
 filenames += [
+    "backends/opencl/tracer_opencl.c",
+    "backends/opencl/btx_cl_model.yaml",
+    "backends/opencl/opencl_model.yaml",
+    "backends/opencl/opencl_arguments.tp",
+    "backends/opencl/opencl_build.tp",
+    "backends/opencl/opencl_devices.tp",
+    "backends/opencl/opencl_dump.tp",
+    "backends/opencl/opencl_source.tp",
     "backends/opencl/opencl_tracepoints.tp",
     "backends/opencl/opencl_profiling.tp",
 ]
