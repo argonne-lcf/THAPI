@@ -1,10 +1,5 @@
 require 'yaml'
 
-INT_SIZE_MAP = {}
-INT_SIGN_MAP = {}
-$all_enums = {}
-$all_types = {}
-
 require_relative '../../utils/gen_babeltrace_model_helper'
 OPENCL_MODEL = YAML.load_file('opencl_model.yaml')
 
