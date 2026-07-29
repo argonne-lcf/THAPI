@@ -85,11 +85,12 @@ $type_registry = TypeRegistry.new(
   class_namer: ->(name) { to_scoped_class_name(name) },
 )
 
-def gen_bt_field_model(lttng_name, type, name, lttng)
+def gen_bt_field_model(registry, lttng_name, type, name, lttng)
+  types_by_name = registry.types_by_name
   member = { name: name }
 
   field = { cast_type: type.gsub(/\[.*\]/, '*') }
-  if $types_by_name[type].is_a?(YAMLCAst::Declaration) && $types_by_name[type].type.is_a?(YAMLCAst::Function)
+  if types_by_name[type].is_a?(YAMLCAst::Declaration) && types_by_name[type].type.is_a?(YAMLCAst::Function)
     field[:cast_type] =
       "#{type} *"
   end
@@ -98,18 +99,18 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   when 'ctf_float'
     field[:type] = type == 'float' ? 'single' : type
   when 'ctf_integer', 'ctf_integer_hex'
-    field[:type] = integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
-    field[:field_value_range] = integer_size(type)
+    field[:type] = registry.integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
+    field[:field_value_range] = registry.integer_size(type)
     field[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
-    if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
-      member[:metadata] = { be_class: to_scoped_class_name(type) }
+    if registry.enum_names.include?(type) || registry.bitfield_names.include?(type)
+      member[:metadata] = { be_class: registry.class_namer.call(type) }
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
     array_type = lttng.type.to_s
     field[:type] = 'array_dynamic'
     field[:element_field_class] =
-      { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
-        field_value_range: integer_size(array_type) }
+      { type: registry.integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
+        field_value_range: registry.integer_size(array_type) }
 
     field[:element_field_class][:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
 
@@ -121,8 +122,8 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
     array_type = lttng.type.to_s
     field[:type] = 'array_static'
     field[:element_field_class] =
-      { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
-        field_value_range: integer_size(array_type) }
+      { type: registry.integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
+        field_value_range: registry.integer_size(array_type) }
     field[:element_field_class][:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
     field[:length] = lttng.length
   when 'ctf_string'
@@ -130,13 +131,13 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   when 'ctf_sequence_text', 'ctf_array_text'
     field[:type] = 'string'
     t = type.sub(' *', '')
-    while $types_by_name.include?(t) && $types_by_name[t].type.is_a?(YAMLCAst::CustomType)
-      t = $types_by_name[t].type.name
+    while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
+      t = types_by_name[t].type.name
     end
-    member[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
+    member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
 
     # Too complicated, not sure why `all_struct_names` is not enough
-    if !field[:cast_type].end_with?('*') && ($all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
+    if !field[:cast_type].end_with?('*') && (registry.struct_names.include?(t) || types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
       field[:cast_type_is_struct] = true
     end
   else
@@ -171,14 +172,14 @@ end
 def gen_event_fields_bt_model(c, dir)
   types_name = get_fields_types_name(c, dir)
   types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+    gen_bt_field_model($type_registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
   end
 end
 
 def gen_extra_event_fields_bt_model(event)
   types_name = get_extra_fields_types_name(event)
   types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+    gen_bt_field_model($type_registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
   end
 end
 
