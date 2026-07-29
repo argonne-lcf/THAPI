@@ -53,9 +53,17 @@ def parse_field(field)
     d[:field_class][:type] = unsigned?(field['type']) ? 'integer_unsigned' : 'integer_signed'
     d[:field_class][:field_value_range] = integer_size(field['type'], field['pointer'])
     d[:field_class][:preferred_display_base] = 16 if field['lttng'] == 'ctf_integer_hex'
-  when 'ctf_string', 'ctf_sequence_text'
+  when 'ctf_string'
     d[:field_class][:type] = 'string'
     d[:metadata] = { be_class: cl_to_class(field['type']) } if field['structure']
+  when 'ctf_sequence_text'
+    # Raw bytes (structs/buffers) are now recorded as a variable-length BLOB.
+    d[:field_class][:type] = 'blob_dynamic'
+    d[:field_class][:length_field_location] = payload_length_field_location(field['name'])
+    if field['structure']
+      d[:field_class][:cast_type_is_struct] = true
+      d[:metadata] = { be_class: cl_to_class(field['type']) }
+    end
   when 'ctf_array'
     d[:field_class][:type] = 'array_static'
     d_field = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
@@ -65,13 +73,13 @@ def parse_field(field)
     d[:field_class][:type] = 'array_dynamic'
     d_field = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })
     d[:field_class][:element_field_class] = d_field[:field_class]
-    d[:field_class][:length_field_path] = "EVENT_PAYLOAD[\"_#{field['name']}_length\"]"
+    d[:field_class][:length_field_location] = payload_length_field_location(field['name'])
 
   when 'ctf_sequence_hex'
     d[:field_class][:type] = 'array_dynamic'
     d_field = parse_field({ 'lttng' => 'ctf_integer_hex', 'type' => field['type'], 'pointer' => field['pointer'] })
     d[:field_class][:element_field_class] = d_field[:field_class]
-    d[:field_class][:length_field_path] = "EVENT_PAYLOAD[\"_#{field['name']}_length\"]"
+    d[:field_class][:length_field_location] = payload_length_field_location(field['name'])
   when 'ctf_enum'
     d[:field_class][:type] = unsigned?(field['type']) ? 'enumeration_unsigned' : 'enumeration_signed'
     enum_type = field['enum_type']

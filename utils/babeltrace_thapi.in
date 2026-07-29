@@ -64,8 +64,10 @@ module BTComponentClassRefinement
     end
   end
   refine(BT2::BTGraph.singleton_class) do
+    # MIP 1 is required to read CTF2 traces that use BLOB fields (lttng-ust >=
+    # 2.16). All THAPI metababel components advertise MIP 1 support.
     def new(handle = nil, retain: true, auto_release: true,
-            mip_version: 0)
+            mip_version: 1)
       obj = super
       obj.plugins_path = []
       obj.cli_v = []
@@ -234,7 +236,9 @@ def get_and_add_components(graph, names, l_inputs)
                               BT2.bt_version_get_patch].join('.')
       semantic_version_str += BT2.bt_version_get_development_stage if BT2.bt_version_get_development_stage
 
-      params['ctf-version'] = '1.8' if Gem::Version.new(semantic_version_str) >= Gem::Version.new('2.1.0')
+      # BLOB fields (lttng-ust >= 2.16) are only expressible in CTF 2, so the
+      # intermediate sink must write CTF 2 (requires babeltrace >= 2.1).
+      params['ctf-version'] = '2' if Gem::Version.new(semantic_version_str) >= Gem::Version.new('2.1.0')
       graph.add(comp, 'ctf_sink', params: params)
     # We cast integers, because babeltrace2 infers the type from the value
     # passed rather than from the one the *_params.yaml declares.

@@ -55,7 +55,7 @@ module YAMLCAst
   class Struct
     def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
-      ev.macro = :ctf_array_text
+      ev.macro = :lttng_ust_field_fixed_length_blob
       ev.type = :uint8_t
       ev.length = "sizeof(struct #{name})"
       ev
@@ -69,7 +69,7 @@ module YAMLCAst
   class Union
     def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
-      ev.macro = :ctf_array_text
+      ev.macro = :lttng_ust_field_fixed_length_blob
       ev.type = :uint8_t
       ev.length = "sizeof(union #{name})"
       ev
@@ -129,7 +129,7 @@ module YAMLCAst
         ev.macro = :ctf_integer
         ev.type = :int32_t
       when :aggregate
-        ev.macro = :ctf_array_text
+        ev.macro = :lttng_ust_field_fixed_length_blob
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
       else
@@ -189,12 +189,12 @@ module YAMLCAst
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
         when :aggregate
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length
             ev.length = "(#{ev.length}) * sizeof(#{type.name})"
             ev.length_type = 'size_t'
           end
+          ev.macro = ev.length_type ? :lttng_ust_field_variable_length_blob : :lttng_ust_field_fixed_length_blob
         else
           super(type_classes)
         end

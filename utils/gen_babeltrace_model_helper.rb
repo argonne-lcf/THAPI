@@ -24,11 +24,16 @@ def build_ast_registry(naming, expect_bitfields:)
   registry
 end
 
-# The rows describing one field: the sequence's companion length field, when it
-# has one, then the field itself.
+# The rows describing one field: the companion length field, when the field has
+# one, then the field itself. Variable-length sequences and blobs are the two
+# shapes lttng gives an implicit `_<name>_length`.
+def implicit_length_field?(macro)
+  macro.match?(/ctf_sequence/) || macro == 'lttng_ust_field_variable_length_blob'
+end
+
 def field_types_name(macro, type, name, lttng)
   rows = []
-  rows << ['ctf_integer', 'size_t', length_field_name(name), nil] if macro.match?(/ctf_sequence/)
+  rows << ['ctf_integer', 'size_t', length_field_name(name), nil] if implicit_length_field?(macro)
   rows << [macro, type, name, lttng]
   rows
 end
@@ -63,6 +68,24 @@ def element_field_class(registry, lttng, lttng_name)
   fc
 end
 
+# Raw bytes -- whether recorded as text or as a blob -- may really be a struct.
+# Resolve the typedef chain to its underlying name, and when that names a struct
+# say which FFI class reads it back.
+def name_packed_struct(registry, field, member, type)
+  types_by_name = registry.types_by_name
+  t = type.sub(' *', '')
+  t = types_by_name[t].type.name while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
+  member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
+
+  # Too complicated, not sure why `struct_names` is not enough
+  return if field[:cast_type].end_with?('*')
+
+  packed = registry.struct_names.include?(t) ||
+           types_by_name[t]&.type.is_a?(YAMLCAst::Union) ||
+           type.start_with?('struct')
+  field[:cast_type_is_struct] = true if packed
+end
+
 def gen_bt_field_model(registry, lttng_name, type, name, lttng)
   types_by_name = registry.types_by_name
   member = { name: name }
@@ -89,23 +112,28 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
     field[:type] = 'array_dynamic'
     field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
     field[:element_field_class][:cast_type] = type.match(/(.*) \*/)[1]
-    field[:length_field_path] = "EVENT_PAYLOAD[\"#{length_field_name(name)}\"]"
+    field[:length_field_location] = payload_length_field_location(name)
   when 'ctf_array', 'ctf_array_hex'
     field[:type] = 'array_static'
     field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
     field[:length] = lttng.length
-  when 'ctf_string'
+  when 'ctf_string', 'ctf_sequence_text', 'ctf_array_text'
+    # Genuine text: char strings and char sequences/arrays.
     field[:type] = 'string'
-  when 'ctf_sequence_text', 'ctf_array_text'
-    field[:type] = 'string'
-    t = type.sub(' *', '')
-    t = types_by_name[t].type.name while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
-    member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
-
-    # Too complicated, not sure why `all_struct_names` is not enough
-    if !field[:cast_type].end_with?('*') && (registry.struct_names.include?(t) || types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
-      field[:cast_type_is_struct] = true
+    name_packed_struct(registry, field, member, type)
+  when 'lttng_ust_field_fixed_length_blob', 'lttng_ust_field_variable_length_blob'
+    # Raw bytes -- a struct, a union, or an opaque buffer. A fixed-length blob
+    # knows its size; a variable-length one reads it from the companion length
+    # field lttng emits alongside it.
+    if lttng_name == 'lttng_ust_field_fixed_length_blob'
+      field[:type] = 'blob_static'
+      field[:length] = lttng.length
+    else
+      field[:type] = 'blob_dynamic'
+      field[:length_field_location] = payload_length_field_location(name)
     end
+    field[:media_type] = lttng.media_type if lttng.media_type
+    name_packed_struct(registry, field, member, type)
   else
     raise "unsupported lttng type: #{lttng.inspect}"
   end

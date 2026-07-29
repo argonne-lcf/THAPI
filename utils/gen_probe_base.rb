@@ -63,6 +63,13 @@ def length_field_name?(name)
   LENGTH_FIELD_PATTERN.match?(name.to_s)
 end
 
+# Where the model points a variable-length field at its companion length field.
+# MIP 1 addresses it as a scope plus a path, replacing the MIP 0
+# `EVENT_PAYLOAD["..."]` string.
+def payload_length_field_location(name)
+  { root_scope: 'BT_FIELD_LOCATION_SCOPE_EVENT_PAYLOAD', items: [length_field_name(name)] }
+end
+
 def print_tracepoint(provider, c, dir = nil)
   name = tracepoint_event_name(c, dir)
 
@@ -132,7 +139,7 @@ def print_struct_tracepoint(provider, t)
       ),
       TP_FIELDS(
         ctf_integer_hex(uintptr_t, p, (uintptr_t)(p))
-        ctf_sequence_text(uint8_t, p_val, p, size_t, (p ? sizeof(#{t}) : 0))
+        lttng_ust_field_variable_length_blob(p_val, p, size_t, (p ? sizeof(#{t}) : 0), "application/octet-stream")
       )
     )
 

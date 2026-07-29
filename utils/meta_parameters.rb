@@ -156,8 +156,10 @@ class ScalarMetaParameter < MetaParameter
 
     lttngt = t.type.lttng_type(command.type_classes)
     lttngt.name = name + '_val'
-    if lttngt.macro == :ctf_array_text
-      lttngt.macro = :ctf_sequence_text
+    if lttngt.macro == :lttng_ust_field_fixed_length_blob
+      # A pointer-to-struct scalar may be null, so record it as a variable-length
+      # blob whose length collapses to 0 when the pointer is null.
+      lttngt.macro = :lttng_ust_field_variable_length_blob
       lttngt.expression = sanitize_expression("#{name}")
       checks = check_for_null("#{name}")
       lttngt.length = sanitize_expression("#{lttngt.length}", checks)

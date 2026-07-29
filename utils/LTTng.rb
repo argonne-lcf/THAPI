@@ -76,13 +76,35 @@ module LTTng
       ctf_sequence_network_hex: %i[type name expression length_type length],
       ctf_sequence_text: %i[type name expression length_type length],
       ctf_string: %i[name expression],
+      lttng_ust_field_fixed_length_blob: %i[name expression length media_type],
+      lttng_ust_field_variable_length_blob: %i[name expression length_type length media_type],
     }
-    attr_accessor :macro, :expression, :type, :provider_name, :enum_name, :length, :length_type, :cast
+    # IANA media type for arbitrary binary struct/buffer data recorded as a blob.
+    DEFAULT_MEDIA_TYPE = 'application/octet-stream'.freeze
+    attr_accessor :macro, :expression, :type, :provider_name, :enum_name, :length, :length_type, :cast, :media_type
     attr_reader :name
+
+    # Rewrite a positional uint8_t text sequence/array (raw bytes recorded as
+    # "text") into the equivalent 2.16 blob macro. Genuine char text is left
+    # alone. Shape in:  [ctf_sequence_text, uint8_t, name, expr, len_type, len]
+    #             or:    [ctf_array_text,    uint8_t, name, expr, len]
+    def self.blobify(args)
+      return args unless args.length > 1 && %i[ctf_sequence_text ctf_array_text].include?(args[0].to_sym)
+      return args unless args[1].to_sym == :uint8_t
+
+      rest = args[2..-1]
+      case args[0].to_sym
+      when :ctf_sequence_text
+        [:lttng_ust_field_variable_length_blob, *rest, DEFAULT_MEDIA_TYPE]
+      when :ctf_array_text
+        [:lttng_ust_field_fixed_length_blob, *rest, DEFAULT_MEDIA_TYPE]
+      end
+    end
 
     def initialize(*args)
       return unless args.length > 0
 
+      args = self.class.blobify(args)
       desc = FIELDS[args[0].to_sym]
       raise "Invalid field #{args[0]}!" unless desc
 
@@ -100,10 +122,18 @@ module LTTng
     end
 
     def call_string
-      str = "#{@macro}("
-      str << [@provider_name, @enum_name, @type, @name, @cast ? "(#{@cast})(#{@expression})" : @expression,
-              @length_type, @length].compact.join(', ')
-      str << ')'
+      expr = @cast ? "(#{@cast})(#{@expression})" : @expression
+      media_type = "\"#{@media_type || DEFAULT_MEDIA_TYPE}\""
+      args =
+        case @macro
+        when :lttng_ust_field_fixed_length_blob
+          [@name, expr, @length, media_type]
+        when :lttng_ust_field_variable_length_blob
+          [@name, expr, @length_type, @length, media_type]
+        else
+          [@provider_name, @enum_name, @type, @name, expr, @length_type, @length]
+        end
+      "#{@macro}(#{args.compact.join(', ')})"
     end
 
     def name=(n)
@@ -141,7 +171,7 @@ module LTTng
   ),
   TP_FIELDS(
 EOF
-    fields = tp[phase || 'fields'].to_a.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }
+    fields = tp[phase || 'fields'].to_a.collect { |field| TracepointField.new(*field).call_string }
     puts indented(fields) unless fields.empty?
     puts <<~EOF
         )
