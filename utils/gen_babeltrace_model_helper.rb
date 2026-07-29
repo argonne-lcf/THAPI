@@ -1,25 +1,7 @@
-# Include global variable INT_SIGN_MAP, ScalarMetaParameter, etc
+# ScalarMetaParameter, YAMLCAst node classes, etc.
 require_relative 'yaml_ast'
 require_relative 'type_registry'
 
-$integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
-$integer_signed = INT_SIGN_MAP
-
-$all_enums.each do |t|
-  $integer_sizes["enum #{t.name}"] = 32
-end
-
-$all_enums.each do |t|
-  $integer_signed["enum #{t.name}"] = true
-end
-
-def integer_size(t)
-  $type_registry.integer_size(t)
-end
-
-def integer_signed?(t)
-  $type_registry.integer_signed?(t)
-end
 def meta_parameter_types_name(m, dir = nil)
   lttng = if dir == :start
             m.lttng_in_type
@@ -72,18 +54,6 @@ def get_extra_fields_types_name(event)
     end
   end.flatten(1)
 end
-
-$types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
-
-$type_registry = TypeRegistry.new(
-  types_by_name: $types_by_name,
-  enum_names: $all_enum_names,
-  bitfield_names: $all_bitfield_names,
-  struct_names: $all_struct_names,
-  integer_sizes: $integer_sizes,
-  integer_signed: $integer_signed,
-  class_namer: ->(name) { to_scoped_class_name(name) },
-)
 
 def gen_bt_field_model(registry, lttng_name, type, name, lttng)
   types_by_name = registry.types_by_name
@@ -169,21 +139,21 @@ def get_fields_types_name(c, dir)
   end.flatten(1)
 end
 
-def gen_event_fields_bt_model(c, dir)
+def gen_event_fields_bt_model(registry, c, dir)
   types_name = get_fields_types_name(c, dir)
   types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model($type_registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
   end
 end
 
-def gen_extra_event_fields_bt_model(event)
+def gen_extra_event_fields_bt_model(registry, event)
   types_name = get_extra_fields_types_name(event)
   types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model($type_registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
   end
 end
 
-def gen_event_bt_model(provider, c, dir = nil)
+def gen_event_bt_model(registry, provider, c, dir = nil)
   d = if dir
         { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}" }
       # OMP backend
@@ -191,7 +161,7 @@ def gen_event_bt_model(provider, c, dir = nil)
         { name: "#{provider}:#{c.name.gsub(/_func\z/, '')}" }
       end
 
-  m = gen_event_fields_bt_model(c, dir)
+  m = gen_event_fields_bt_model(registry, c, dir)
 
   unless m.empty?
     d[:payload_field_class] =
@@ -203,9 +173,9 @@ def gen_event_bt_model(provider, c, dir = nil)
   d
 end
 
-def gen_extra_event_bt_model(provider, event)
+def gen_extra_event_bt_model(registry, provider, event)
   d = { name: "#{provider}:#{event['name']}" }
-  m = gen_extra_event_fields_bt_model(event)
+  m = gen_extra_event_fields_bt_model(registry, event)
 
   unless m.empty?
     d[:payload_field_class] =
