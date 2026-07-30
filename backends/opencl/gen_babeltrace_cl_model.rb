@@ -40,6 +40,25 @@ def cl_to_class(type)
   'CL::' + type.sub(/\Acl_/, '').split('_').collect(&:capitalize).join
 end
 
+# NOTE: This stays deliberately separate from the shared utils/gen_bt_field_model
+# (used by the AST backends) rather than being unified. The de-globalization goal
+# is already met here: parse_field is side-effect-free and reads OPENCL_MODEL
+# explicitly. Merging it would add opencl-only branches/params to the shared
+# function, making both harder, and could not stay byte-identical, because:
+#   * Input shape differs: this reads a flat hash (field['type']/['pointer']/
+#     ['enum_type']); the shared fn reads AST objects + an LTTng object
+#     (lttng.type/.length).
+#   * ctf_enum: opencl emits real CTF enumerations with inline mappings from
+#     OPENCL_MODEL['lttng_enums']; AST backends have no ctf_enum case at all --
+#     they model enums as integers + be_class metadata. The two are not
+#     reconcilable without teaching the shared fn concepts the AST side lacks.
+#   * Pointer/signedness: opencl derives signedness from the bare type (a
+#     pointer field like `void *` / `cl_int *` stays integer_signed) and size
+#     from an explicit `pointer` flag; the shared fn encodes pointer as a `*` in
+#     the type string, whose /\*/ rule forces BOTH size=64 and unsigned. Routing
+#     opencl through it would flip ~173 signed pointer fields to unsigned.
+#   * cast_type is assembled by the caller here, inside the fn there.
+# This separation is a reasoned decision, not an unfinished TODO.
 def parse_field(field)
   d = {}
   d[:field_class] = {}
