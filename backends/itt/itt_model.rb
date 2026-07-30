@@ -21,12 +21,7 @@ gen_ffi_type_map(typedefs)
 
 INIT_FUNCTIONS = /None/
 
-$itt_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'itt_meta_parameters.yaml'))
-$itt_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
+load_meta_parameters('itt_meta_parameters.yaml')
 
 # Function we care
 whitelisted_functions = %w[

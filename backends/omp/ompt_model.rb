@@ -29,12 +29,7 @@ end
 
 INIT_FUNCTIONS = /None/
 
-$ompt_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'ompt_meta_parameters.yaml'))
-$ompt_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
+load_meta_parameters('ompt_meta_parameters.yaml')
 
 $ompt_commands = OMPT_CALLBACKS.collect do |func|
   Command.new(func)

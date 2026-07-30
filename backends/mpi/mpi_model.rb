@@ -55,12 +55,7 @@ INIT_FUNCTIONS = /
   P?MPI_T_init_thread)\b
 /ix
 
-$mpi_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'mpi_meta_parameters.yaml'))
-$mpi_meta_parameters.fetch('meta_parameters', []).each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
+load_meta_parameters('mpi_meta_parameters.yaml')
 
 $mpi_commands = mpi_funcs_e.collect do |func|
   Command.new(func)

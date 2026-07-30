@@ -81,18 +81,8 @@ EOF
   end
 end
 
-$cuda_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'cuda_meta_parameters.yaml'))
-$cuda_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-$cuda_exports_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'cuda_exports_meta_parameters.yaml'))
-$cuda_exports_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
+load_meta_parameters('cuda_meta_parameters.yaml')
+load_meta_parameters('cuda_exports_meta_parameters.yaml')
 
 $cuda_commands = cuda_funcs_e.collect do |func|
   Command.new(func)

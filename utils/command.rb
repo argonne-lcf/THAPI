@@ -1,3 +1,5 @@
+require 'yaml'
+
 class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
@@ -112,6 +114,16 @@ end
 
 def register_meta_parameter(method, type, *args)
   META_PARAMETERS[method].push [type, args]
+end
+
+# Load a backend's meta-parameter YAML (relative to SRC_DIR) and register every
+# entry. The file maps each function name to a list of [type, *args] rows.
+def load_meta_parameters(filename)
+  YAML.load_file(File.join(SRC_DIR, filename)).fetch('meta_parameters', []).each do |func, list|
+    list.each do |type, *args|
+      register_meta_parameter func, Kernel.const_get(type), *args
+    end
+  end
 end
 
 def register_meta_struct(method, name, type)

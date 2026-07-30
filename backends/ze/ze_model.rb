@@ -70,46 +70,12 @@ $struct_type_conversion_table = {
 $struct_type_reject = Set.new(%w[zet_metric_source_id_exp_t
                                  zex_device_module_register_file_exp_t])
 
-$ze_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'ze_meta_parameters.yaml'))
-$ze_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-$zet_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zet_meta_parameters.yaml'))
-$zet_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-
-$zes_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zes_meta_parameters.yaml'))
-$zes_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-
-$zel_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zel_meta_parameters.yaml'))
-$zel_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-
-# $zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
-# $zer_meta_parameters['meta_parameters'].each do |func, list|
-#  list.each do |type, *args|
-#    register_meta_parameter func, Kernel.const_get(type), *args
-#  end
-# end
-
-$zex_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zex_meta_parameters.yaml'))
-$zex_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
+load_meta_parameters('ze_meta_parameters.yaml')
+load_meta_parameters('zet_meta_parameters.yaml')
+load_meta_parameters('zes_meta_parameters.yaml')
+load_meta_parameters('zel_meta_parameters.yaml')
+# zer disabled: load_meta_parameters('zer_meta_parameters.yaml')
+load_meta_parameters('zex_meta_parameters.yaml')
 
 $ze_commands = ze_funcs_e.collect do |func|
   Command.new(func)
