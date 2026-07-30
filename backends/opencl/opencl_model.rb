@@ -25,10 +25,6 @@ INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateCont
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
-ENUMS = {}
-ENUM_PARAM_NAME_MAP = {}
-ENUM_TYPES = []
-
 # map = Hash::new { |h, k| h[k] = [] }
 
 doc = Nokogiri::XML(open('cl.xml.patched'))
@@ -271,7 +267,6 @@ class Parameter < Declaration
 
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
-    return ['ctf_enum', 'lttng_ust_opencl', @type, t, @name, @name] if ENUM_TYPES.include? @type
 
     case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
@@ -424,24 +419,19 @@ class InScalar < InMetaParameter
 
     type = command[name].type.gsub('*', '')
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
-    if ENUM_PARAM_NAME_MAP[name]
-      @lttng_in_type = ['ctf_enum', 'lttng_ust_opencl', ENUM_PARAM_NAME_MAP[name], type, name + '_val',
-                        nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
+      @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                        nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+    when *CL_INT_SCALARS
+      @lttng_in_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_STRUCTS
+      @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
+                        "#{name} == NULL ? 0 : sizeof(#{type})"]
     else
-      case type
-      when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
-        @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
-                          nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
-      when *CL_INT_SCALARS
-        @lttng_in_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when *CL_FLOAT_SCALARS
-        @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when *CL_STRUCTS
-        @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
-                          "#{name} == NULL ? 0 : sizeof(#{type})"]
-      else
-        raise "Unknown Type: #{type.inspect}!"
-      end
+      raise "Unknown Type: #{type.inspect}!"
     end
   end
 end
@@ -453,21 +443,16 @@ class OutScalar < OutMetaParameter
 
     type = command[name].type.gsub('*', '')
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
-    if ENUM_PARAM_NAME_MAP[name]
-      @lttng_out_type = ['ctf_enum', 'lttng_ust_opencl', ENUM_PARAM_NAME_MAP[name], type, name + '_val',
-                         nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
+      @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                         nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+    when *CL_INT_SCALARS
+      @lttng_out_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_out_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
-      case type
-      when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
-        @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
-                           nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
-      when *CL_INT_SCALARS
-        @lttng_out_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when *CL_FLOAT_SCALARS
-        @lttng_out_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      else
-        raise "Unknown Type: #{type.inspect}!"
-      end
+      raise "Unknown Type: #{type.inspect}!"
     end
   end
 end
