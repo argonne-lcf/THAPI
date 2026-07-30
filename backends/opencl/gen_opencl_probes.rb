@@ -13,36 +13,6 @@ puts <<~EOF
 
 EOF
 
-if GENERATE_ENUMS_TRACEPOINTS
-  puts <<~EOF
-    TRACEPOINT_ENUM(
-      lttng_ust_opencl,
-      cl_bool,
-      TP_ENUM_VALUES(
-        ctf_enum_value("CL_FALSE", 0)
-        ctf_enum_value("CL_TRUE", 1)
-      )
-    )
-
-  EOF
-
-  ENUMS.each do |name, e|
-    name = e['type_name'] if e['type_name']
-    puts <<~EOF
-      TRACEPOINT_ENUM(
-        lttng_ust_opencl,
-        #{name},
-        TP_ENUM_VALUES(
-          #{e['values'].collect do |k, v| # {' '}
-            "ctf_enum_value(\"#{k}\", #{"(#{name})" unless e['type_name']}#{v})"
-          end.join("\n    ")}
-        )
-      )
-
-    EOF
-  end
-end
-
 tracepoint_lambda = lambda { |c, dir|
   event = {}
   event['name'] = c.prototype.name

@@ -8,8 +8,6 @@ START = 'entry'
 STOP = 'exit'
 SUFFIXES = { 'start' => START, 'stop' => STOP }
 
-GENERATE_ENUMS_TRACEPOINTS = false
-
 HOST_PROFILE = true
 
 WINDOWS = /D3D|DX9/
@@ -175,24 +173,6 @@ end
 
 $requires = (doc.xpath('//feature/require').to_a + doc.xpath('//extensions/extension/require').to_a).collect do |r|
   Require.new(r)
-end
-
-if GENERATE_ENUMS_TRACEPOINTS
-  enums = YAML.load_file(File.join(SRC_DIR, 'supported_enums.yaml'))
-
-  enums.each do |e|
-    vals = $requires.select do |r|
-      r.comment && r.comment.match(/#{e['name']}(\z| )/)
-    end.collect do |r|
-      r.enums
-    end.reduce(:+).collect do |v|
-      [v, $constants[v]]
-    end.to_h
-    ENUMS[e['name']] = { 'values' => vals, 'trace_name' => e['trace_name'], 'type_name' => e['type_name'] }
-    ENUM_PARAM_NAME_MAP[e['trace_name']] = e['type_name']
-    ENUM_TYPES.push(e['type_name'] || e['name'])
-  end
-  ENUM_TYPES.push 'cl_bool'
 end
 
 class Declaration < CLXML
@@ -374,8 +354,6 @@ class Prototype < CLXML
 
     case @return_type
     when 'cl_int'
-      return %w[ctf_enum lttng_ust_opencl cl_errcode cl_int errcode_ret_val _retval] if GENERATE_ENUMS_TRACEPOINTS
-
       return %w[ctf_integer cl_int errcode_ret_val _retval]
 
     when *CL_OBJECTS

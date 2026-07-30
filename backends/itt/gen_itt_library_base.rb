@@ -27,10 +27,6 @@ $all_types.each do |t|
   $int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
 end
 
-def to_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
-end
-
 # Convert C / ITT names (e.g. "__itt_domain_t") to Ruby CamelCase class names
 def to_class_name(name)
   # Derive namespace (e.g. "ITT::" or "")

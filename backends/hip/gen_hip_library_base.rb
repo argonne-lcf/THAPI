@@ -27,10 +27,6 @@ $all_types.each do |t|
   $int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
 end
 
-def to_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
-end
-
 def to_class_name(name)
   mod = to_name_space(name)
   mod ||= ''
