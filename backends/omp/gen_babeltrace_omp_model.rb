@@ -3,11 +3,6 @@ require_relative '../../utils/gen_babeltrace_model_helper'
 
 registry = build_ast_registry('omp', expect_bitfields: true)
 
-event_classes =
-  [[:lttng_ust_ompt, $ompt_commands]].collect do |provider, commands|
-    commands.collect do |c|
-      [gen_event_bt_model(registry, provider, c)]
-    end
-  end.flatten(2)
+event_classes = gen_command_events_bt_model(registry, [[:lttng_ust_ompt, $ompt_commands]], phased: false)
 
 puts YAML.dump(gen_yaml(event_classes, 'omp'))

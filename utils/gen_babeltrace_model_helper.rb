@@ -204,6 +204,31 @@ def gen_extra_event_bt_model(registry, provider, event)
   d
 end
 
+# Build the command event classes for a backend: one [start, stop] pair per
+# command (phased), or a single event per command for itt/omp (phased: false).
+# provider_commands is a list of [provider_symbol, commands] pairs.
+def gen_command_events_bt_model(registry, provider_commands, phased: true)
+  provider_commands.collect do |provider, commands|
+    commands.collect do |c|
+      if phased
+        [gen_event_bt_model(registry, provider, c, :start),
+         gen_event_bt_model(registry, provider, c, :stop)]
+      else
+        [gen_event_bt_model(registry, provider, c)]
+      end
+    end
+  end.flatten(2)
+end
+
+# Build the "extra" event classes declared in a backend's <x>_events.yaml.
+def gen_extra_events_bt_model(registry, filename)
+  YAML.load_file(File.join(SRC_DIR, filename)).collect do |provider, es|
+    es['events'].collect do |event|
+      gen_extra_event_bt_model(registry, provider, event)
+    end
+  end.flatten
+end
+
 def gen_yaml(event_classes, backend)
   {
     environment: { entries: [

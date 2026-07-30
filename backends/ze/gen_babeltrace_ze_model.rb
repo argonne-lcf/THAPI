@@ -4,25 +4,14 @@ require 'set'
 
 registry = build_ast_registry('ze', expect_bitfields: true)
 
-event_classes =
+event_classes = gen_command_events_bt_model(registry,
   [[:lttng_ust_ze, $ze_commands],
    [:lttng_ust_zet, $zet_commands],
    [:lttng_ust_zes, $zes_commands],
    [:lttng_ust_zel, $zel_commands],
    [:lttng_ust_zer, $zer_commands],
-   [:lttng_ust_zex, $zex_commands]].collect do |provider, commands|
-    commands.collect do |c|
-      [gen_event_bt_model(registry, provider, c, :start),
-       gen_event_bt_model(registry, provider, c, :stop)]
-    end
-  end.flatten(2)
-
-ze_events = YAML.load_file(File.join(SRC_DIR, 'ze_events.yaml'))
-event_classes += ze_events.collect do |provider, es|
-  es['events'].collect do |event|
-    gen_extra_event_bt_model(registry, provider, event)
-  end
-end.flatten
+   [:lttng_ust_zex, $zex_commands]])
+event_classes += gen_extra_events_bt_model(registry, 'ze_events.yaml')
 
 def get_structs_types(namespace, types, structs)
   types.select do |t|
