@@ -92,10 +92,6 @@ $cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
   Command.new(func)
 end
 
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
 CUDA_POINTER_NAMES = ($cuda_commands +
                       $cuda_exports_commands).collect do |c|
   [c, upper_snake_case(c.pointer_name)]

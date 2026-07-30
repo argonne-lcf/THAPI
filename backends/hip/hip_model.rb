@@ -30,10 +30,6 @@ $hip_commands = funcs.collect do |func|
   Command.new(func)
 end
 
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
 HIP_POINTER_NAMES = $hip_commands.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

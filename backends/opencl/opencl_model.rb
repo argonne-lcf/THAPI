@@ -718,10 +718,6 @@ $opencl_extension_commands.each do |c|
   eval "$#{c.prototype.name} = c"
 end
 
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
 OPENCL_POINTER_NAMES = ($opencl_commands.collect do |c|
   [c, upper_snake_case(c.prototype.pointer_name)]
 end + $opencl_extension_commands.collect do |c|

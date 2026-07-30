@@ -41,10 +41,6 @@ $itt_commands = $itt_api['functions'].filter_map do |func|
   Command.new(func)
 end
 
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
 ITT_POINTER_NAMES = $itt_commands.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

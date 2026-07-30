@@ -35,10 +35,6 @@ $ompt_commands = OMPT_CALLBACKS.collect do |func|
   Command.new(func)
 end
 
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
 OMPT_POINTER_NAMES = $ompt_commands.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

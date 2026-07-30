@@ -1,5 +1,9 @@
 MEMBER_SEPARATOR = '__'
 
+def upper_snake_case(str)
+  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
+end
+
 module LTTng
   class TracepointField
     FIELDS = {
