@@ -1,5 +1,37 @@
 require_relative 'yaml_ast'
 
+# Classify a backend's typedef'd types into enum / bitfield / struct / union
+# name lists (in typedef order). A typedef'd enum whose underlying enum name
+# ends in `flag_t` is treated as a bitfield (OR-able flags); every other enum
+# is a plain enum. Each `_flag_t` bitfield additionally aliases the `_flags_t`
+# name the headers use for the OR'd value. Backends with no `flag_t` enums get
+# an empty bitfield list (the `flag_t` test and `_flags_t` derivation are then
+# no-ops), so the same rule serves all backends.
+def classify_ast_types(all_types, all_enums)
+  enum_names = []
+  bitfield_names = []
+  struct_names = []
+  union_names = []
+  all_types.each do |t|
+    case t.type
+    when YAMLCAst::Enum
+      enum = all_enums.find { |e| t.type.name == e.name }
+      if enum&.name&.end_with?('flag_t')
+        bitfield_names.push t.name
+      else
+        enum_names.push t.name
+      end
+    when YAMLCAst::Struct
+      struct_names.push t.name
+    when YAMLCAst::Union
+      union_names.push t.name
+    end
+  end
+  bitfield_names += bitfield_names.select { |n| n.end_with?('_flag_t') }
+                                  .map { |n| n.gsub('_flag_t', '_flags_t') }
+  [enum_names, bitfield_names, struct_names, union_names]
+end
+
 def has_typedef?(name)
   $all_types.any? { |t| t.type.respond_to?(:name) && t.type.name == name }
 end

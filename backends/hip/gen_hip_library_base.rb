@@ -8,11 +8,6 @@ $all_unions = $hip_api['unions']
 $all_enums = $hip_api['enums']
 $all_funcs = $hip_api['functions']
 
-$all_enum_names = []
-$all_bitfield_names = []
-$all_struct_names = []
-$all_union_names = []
-
 $objects = $all_types.filter_map do |t|
   t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
 end
@@ -50,16 +45,8 @@ def to_name_space(name)
   end
 end
 
-$all_types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    $all_enums.find { |e| t.type.name == e.name }
-    $all_enum_names.push t.name
-  elsif t.type.is_a? YAMLCAst::Struct
-    $all_struct_names.push t.name
-  elsif t.type.is_a? YAMLCAst::Union
-    $all_union_names.push t.name
-  end
-end
+$all_enum_names, $all_bitfield_names, $all_struct_names, $all_union_names =
+  classify_ast_types($all_types, $all_enums)
 
 FFI_STRUCT = 'FFI::HIPStruct'
 FFI_UNION = 'FFI::HIPUnion'

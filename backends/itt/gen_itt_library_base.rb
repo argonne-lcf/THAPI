@@ -8,11 +8,6 @@ $all_unions = $itt_api['unions']
 $all_enums = $itt_api['enums']
 $all_funcs = $itt_api['functions']
 
-$all_enum_names = []
-$all_bitfield_names = []
-$all_struct_names = []
-$all_union_names = []
-
 $objects = $all_types.select do |t|
   t.type.is_a?(YAMLCAst::Pointer) &&
     t.type.type.is_a?(YAMLCAst::Struct)
@@ -66,25 +61,8 @@ def to_name_space(name)
   name.match(/\A(__itt[dt]?)_/)[1].upcase
 end
 
-$all_types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
-    # Handle anonymous enum, and typedef enum
-    if enum&.name&.end_with?('flag_t')
-      $all_bitfield_names.push t.name
-    else
-      $all_enum_names.push t.name
-    end
-  elsif t.type.is_a? YAMLCAst::Struct
-    $all_struct_names.push t.name
-  elsif t.type.is_a? YAMLCAst::Union
-    $all_union_names.push t.name
-  end
-end
-
-$all_bitfield_names += $all_bitfield_names.select do |n|
-  n.end_with?('_flag_t')
-end.map { |n| n.gsub('_flag_t', '_flags_t') }
+$all_enum_names, $all_bitfield_names, $all_struct_names, $all_union_names =
+  classify_ast_types($all_types, $all_enums)
 
 FFI_STRUCT = 'FFI::ITTStruct'
 FFI_UNION = 'FFI::ITTUnion'
