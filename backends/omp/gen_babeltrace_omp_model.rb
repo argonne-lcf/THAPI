@@ -6,6 +6,7 @@ registry = TypeRegistry.from_ast(
   enum_names: $all_enum_names, bitfield_names: $all_bitfield_names, struct_names: $all_struct_names,
   class_namer: method(:to_scoped_class_name),
 )
+raise 'omp: expected bitfield types' if registry.bitfield_names.empty?
 
 event_classes =
   [[:lttng_ust_ompt, $ompt_commands]].collect do |provider, commands|

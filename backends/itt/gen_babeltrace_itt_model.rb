@@ -6,6 +6,7 @@ registry = TypeRegistry.from_ast(
   enum_names: $all_enum_names, bitfield_names: $all_bitfield_names, struct_names: $all_struct_names,
   class_namer: method(:to_scoped_class_name),
 )
+raise 'itt: expected no bitfield types' unless registry.bitfield_names.empty?
 
 event_classes =
   [[:lttng_ust_itt, $itt_commands]].collect do |provider, commands|
