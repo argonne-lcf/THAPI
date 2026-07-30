@@ -1,12 +1,7 @@
 require_relative 'gen_mpi_library_base'
 require_relative '../../utils/gen_babeltrace_model_helper'
 
-registry = TypeRegistry.from_ast(
-  all_types: $all_types, all_enums: $all_enums,
-  enum_names: $all_enum_names, bitfield_names: $all_bitfield_names, struct_names: $all_struct_names,
-  class_namer: method(:to_scoped_class_name),
-)
-raise 'mpi: expected no bitfield types' unless registry.bitfield_names.empty?
+registry = build_ast_registry('mpi', expect_bitfields: false)
 
 event_classes =
   [[:lttng_ust_mpi, $mpi_commands]].collect do |provider, commands|
