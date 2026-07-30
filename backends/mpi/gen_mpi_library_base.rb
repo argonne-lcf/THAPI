@@ -8,18 +8,8 @@ $all_unions = $mpi_api['unions'] || []
 $all_enums = $mpi_api['enums'] || []
 $all_funcs = $mpi_api['functions'] || []
 
-$objects = $all_types.filter_map do |t|
-  t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
-end
-
-$all_types.each do |t|
-  $objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-end
-
-$int_scalars = {}
-$all_types.each do |t|
-  $int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
-end
+$objects = find_objects($all_types)
+$int_scalars = find_int_scalars($all_types)
 
 def to_class_name(name)
   mod = to_name_space(name)

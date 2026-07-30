@@ -32,6 +32,29 @@ def classify_ast_types(all_types, all_enums)
   [enum_names, bitfield_names, struct_names, union_names]
 end
 
+# Collect the "object" type names: typedefs of pointer-to-struct, plus any
+# CustomType aliasing a known OBJECT_TYPES name. `extra` names are inserted
+# after the pointer-to-struct seed and before the alias pass (hip seeds one).
+def find_objects(all_types, extra: [])
+  objects = all_types.filter_map do |t|
+    t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
+  end
+  objects.concat(extra)
+  all_types.each do |t|
+    objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
+  end
+  objects
+end
+
+# Map each typedef that aliases an integer type to that underlying type name.
+def find_int_scalars(all_types)
+  int_scalars = {}
+  all_types.each do |t|
+    int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
+  end
+  int_scalars
+end
+
 def has_typedef?(name)
   $all_types.any? { |t| t.type.respond_to?(:name) && t.type.name == name }
 end

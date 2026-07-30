@@ -12,19 +12,8 @@ $all_enums = $ze_api['enums'] + $zet_api['enums'] + $zes_api['enums'] + $zel_api
 $all_funcs = $ze_api['functions'] + $zet_api['functions'] + $zes_api['functions'] + $zel_api['functions'] +
              $zex_api['functions']
 
-$objects = $all_types.select do |t|
-  t.type.is_a?(YAMLCAst::Pointer) &&
-    t.type.type.is_a?(YAMLCAst::Struct)
-end.collect { |t| t.name }
-
-$all_types.each do |t|
-  $objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-end
-
-$int_scalars = {}
-$all_types.each do |t|
-  $int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
-end
+$objects = find_objects($all_types)
+$int_scalars = find_int_scalars($all_types)
 
 def to_class_name(name)
   mod = to_name_space(name)
