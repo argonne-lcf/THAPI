@@ -928,6 +928,7 @@ def all_env_tracers(usr_binary)
       #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
       h['ZES_ENABLE_SYSMAN'] = 0
       h['LTTNG_UST_ZE_SAMPLING_ENERGY'] = 1
+      h['LTTNG_UST_ZE_SAMPLING_ENERGY_PERIOD_MS'] = OPTIONS[:'sample-interval'] if OPTIONS.include?(:'sample-interval')
       h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
     end
   end
@@ -1067,6 +1068,14 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
             'Use -1 for no limit.', default: 80)
 
   parser.on('-s', '--sample', 'Enable counters sampling.')
+  parser.on('-i', '--sample-interval MS', OptionParser::DecimalInteger,
+            'Set the Level Zero telemetry sampling interval in milliseconds.',
+            'Controls frequency, energy, engine, fabric-port, and memory samples.',
+            'Default: 50 ms.') do |interval|
+    raise(OptionParser::ParseError, 'sample interval must be greater than zero') unless interval.positive?
+
+    interval
+  end
 
   parser.on('--metadata', 'Display trace metadata.')
   parser.on('-v', '--version', 'Print the Version String.') do
@@ -1098,6 +1107,13 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
   options = {}
   begin
     parser.parse!(into: options)
+    options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
+    if options.include?(:'sample-interval')
+      raise OptionParser::ParseError, '--sample-interval requires --sample' unless options[:sample]
+      unless options[:'backend-names'].include?('ze')
+        raise OptionParser::ParseError, '--sample-interval requires the ze backend'
+      end
+    end
   rescue OptionParser::InvalidOption => e
     puts("ERROR: #{e}. Maybe missing --?")
     print_help_and_exit(parser)
@@ -1106,7 +1122,6 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
     print_help_and_exit(parser)
   end
 
-  options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
   OPTIONS = options.freeze
 
   if (launcher = %w[mpirun mpiexec].find { |b| ARGV.include?(b) })

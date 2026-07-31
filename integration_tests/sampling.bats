@@ -1,5 +1,49 @@
 bats_require_minimum_version 1.5.0
 
+@test "sampling_interval_help" {
+  run iprof --help
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-i, --sample-interval MS"* ]]
+  [[ "$output" == *"Default: 50"* ]]
+  [[ "$output" == *"frequency, energy, engine, fabric-port, and memory"* ]]
+}
+
+@test "sampling_interval_is_passed_to_ze_sampler" {
+  for option in -i --sample-interval; do
+    trace="sampling_interval_trace_${option#-}"
+    rm -rf "$trace"
+
+    LTTNG_UST_ZE_LIBZE_LOADER=/dev/null \
+      iprof --no-analysis --sample --backends ze "$option" 125 \
+      --trace-output "$trace" -- \
+      bash -c 'test "$LTTNG_UST_ZE_SAMPLING_ENERGY_PERIOD_MS" = 125'
+  done
+}
+
+@test "sampling_interval_rejects_invalid_values" {
+  for interval in 0 -1 nope; do
+    run iprof --sample --sample-interval "$interval" -- true
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"ERROR:"* ]]
+  done
+}
+
+@test "sampling_interval_requires_sampling" {
+  run iprof --sample-interval 125 -- true
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--sample-interval requires --sample"* ]]
+}
+
+@test "sampling_interval_requires_ze_backend" {
+  run iprof --sample --sample-interval 125 --backends cxi -- true
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--sample-interval requires the ze backend"* ]]
+}
+
 @test "sampling_heartbeat" {
   rm -rf heartbeat_trace
 
