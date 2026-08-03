@@ -65,10 +65,32 @@ fi
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
-AC_CHECK_LIB([iberty], [cplus_demangle])
-AC_CHECK_HEADERS([demangle.h], [using_demangle=yes], [using_demangle=no])
-AS_IF([test "x$using_demangle" != xyes],
-  [AC_CHECK_HEADERS([libiberty/demangle.h], [], [AC_MSG_WARN([Couldn't find demangle.h, demangling will be deactivated...])])])
+
+# Demangling. Baseline is abi::__cxa_demangle (<cxxabi.h>), the native libc++
+# demangler (the same one behind libiberty / llvm::demangle). gcc's libiberty
+# cannot parse a few mangled names, so if an LLVMDemangle library is on the
+# include and link path we fall back to llvm::demangle for those.
+AC_LANG_PUSH([C++])
+AC_CHECK_HEADERS([cxxabi.h])
+AC_CHECK_HEADER([llvm/Demangle/Demangle.h],
+  [thapi_save_LIBS="$LIBS"
+   LIBS="-lLLVMDemangle $LIBS"
+   AC_MSG_CHECKING([for a usable LLVMDemangle library])
+   AC_LINK_IFELSE(
+     [AC_LANG_PROGRAM([[#include <llvm/Demangle/Demangle.h>]],
+                      [[(void)llvm::demangle("_Z3fooi");]])],
+     [AC_MSG_RESULT([yes])
+      AC_DEFINE([HAVE_LLVM_DEMANGLE], [1], [Define to 1 if llvm::demangle is available.])
+      LLVM_DEMANGLE_LIBS="-lLLVMDemangle"],
+     [AC_MSG_RESULT([no])])
+   LIBS="$thapi_save_LIBS"])
+AC_LANG_POP([C++])
+AC_SUBST([LLVM_DEMANGLE_LIBS])
+
+# If neither backend is available, my_demangle() only passes names through
+# unchanged -- warn so this is not a silent surprise.
+AS_IF([test "x$ac_cv_header_cxxabi_h" != xyes && test "x$LLVM_DEMANGLE_LIBS" = x],
+  [AC_MSG_WARN([no <cxxabi.h> and no llvm::demangle: demangling will be disabled.])])
 
 AC_ARG_ENABLE([strict], AS_HELP_STRING([--enable-strict], [Enable -Werror]), [], [enable_strict=yes])
 AM_CONDITIONAL([STRICT], [test "x$enable_strict" = xyes])

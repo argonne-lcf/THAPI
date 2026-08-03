@@ -94,6 +94,7 @@ jobs:
       with:
         mpi: intelmpi
     - uses: ./.github/actions/setup-thapi
+    - run: sudo apt-get update
     - uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: bats coreutils libpocl2 clinfo
