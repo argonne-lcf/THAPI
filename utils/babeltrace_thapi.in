@@ -401,7 +401,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     on('--archive-session-found-file-path PATH')
     on('--[no-]muxer')
     on('-v', '--version', 'Print the version string') do
-      puts File.read(File.join(DATADIR, 'version'))
+      puts File.read(File.join(DATADIR, 'thapi_version'))
       exit
     end
   end
