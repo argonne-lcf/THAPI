@@ -113,14 +113,34 @@ nodist_libXStripper_la_SOURCES = \
 	$(BTX_STRIPPER_GENERATED) \
 	btx_stripper_callbacks.cpp
 
+# Installed shared library exposing my_demangle(). Packaged in $(libdir) so it
+# can be reused (e.g. by integration tests) via pkg-config, and linked into the
+# tally plugin below. The LLVM demangle fallback, when detected, is linked in
+# here so there is a single copy of the demangler.
+lib_LTLIBRARIES = libthapi_demangle.la
+libthapi_demangle_la_SOURCES = my_demangle.cpp my_demangle.h
+libthapi_demangle_la_CPPFLAGS = -I./
+libthapi_demangle_la_CXXFLAGS = $(AM_CXXFLAGS)
+libthapi_demangle_la_LIBADD = $(LLVM_DEMANGLE_LIBS)
+
+include_HEADERS = my_demangle.h
+
+# Installed CLI filter around my_demangle(): mangled name per line on stdin,
+# demangled name per line on stdout. Handy for scripting and integration tests.
+bin_PROGRAMS = thapi_demangle
+thapi_demangle_SOURCES = thapi_demangle.cpp
+thapi_demangle_CPPFLAGS = -I./
+thapi_demangle_CXXFLAGS = $(AM_CXXFLAGS)
+thapi_demangle_LDADD = libthapi_demangle.la
+
 # File not generated
 libXTally_la_SOURCES = \
 	tally_core.hpp \
 	btx_tally.hpp \
 	btx_tally.cpp \
-	my_demangle.c \
-	my_demangle.h \
 	$(top_srcdir)/utils/include/json.hpp
+
+libXTally_la_LIBADD = libthapi_demangle.la
 
 libXTimeline_la_SOURCES = \
 	btx_timeline.cpp

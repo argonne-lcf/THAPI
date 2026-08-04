@@ -79,6 +79,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+    - name: Update APT index
+      run: sudo apt-get update
     - name: Install clang-format
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
