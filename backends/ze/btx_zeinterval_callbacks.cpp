@@ -184,6 +184,25 @@ static void property_device_callback(void *btx_handle,
   data->device_property[{hostname, vpid, (thapi_device_id)hDevice}] = *pDeviceProperties_val;
 }
 
+static void
+property_command_queue_group_callback(void *btx_handle,
+                                      void *usr_data,
+                                      int64_t ts,
+                                      const char *hostname,
+                                      int64_t vpid,
+                                      uint64_t vtid,
+                                      ze_driver_handle_t hDriver,
+                                      ze_device_handle_t hDevice,
+                                      uint32_t numGroups,
+                                      size_t _pGroupProperties_val_length,
+                                      ze_command_queue_group_properties_t *pGroupProperties_val) {
+
+  auto *data = static_cast<data_t *>(usr_data);
+  data->command_queue_group_property[{hostname, vpid, (thapi_device_id)hDevice}] =
+      std::vector<ze_command_queue_group_properties_t>(pGroupProperties_val,
+                                                       pGroupProperties_val + numGroups);
+}
+
 static void property_subdevice_callback(void *btx_handle,
                                         void *usr_data,
                                         int64_t ts,
@@ -952,7 +971,35 @@ static void event_profiling_result_callback(void *btx_handle,
       ss_metadata << std::get<btx_additional_info_kernel_t>(ptr) << ", ";
     // Create additional Medatata of the Command Queue
     ss_metadata << "{ordinal: " << commandQueueDesc.ordinal << ", "
-                << "index: " << commandQueueDesc.index << "}";
+                << "index: " << commandQueueDesc.index;
+    // Decode the command-queue-group capability flags for this ordinal. The
+    // flags field is a bitmask (COMPUTE|COPY|COOPERATIVE_KERNELS|METRICS), and
+    // multiple bits are typically set, so emit every set bit as a list rather
+    // than collapsing to a single type.
+    const auto it_g =
+        data->command_queue_group_property.find({hostname, vpid, (thapi_device_id)device});
+    if (it_g != data->command_queue_group_property.cend() &&
+        commandQueueDesc.ordinal < it_g->second.size()) {
+      const auto flags = it_g->second[commandQueueDesc.ordinal].flags;
+      ss_metadata << ", flags: [";
+      const char *sep = "";
+      uint32_t known = 0;
+      auto add = [&](ze_command_queue_group_property_flag_t bit, const char *name) {
+        if (flags & bit) {
+          ss_metadata << sep << name;
+          sep = ", ";
+          known |= bit;
+        }
+      };
+      add(ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE, "COMPUTE");
+      add(ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY, "COPY");
+      add(ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COOPERATIVE_KERNELS, "COOPERATIVE_KERNELS");
+      add(ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_METRICS, "METRICS");
+      if (flags & ~known)
+        ss_metadata << sep << "UNKNOWN";
+      ss_metadata << "]";
+    }
+    ss_metadata << "}";
     metadata = ss_metadata.str();
   }
   if (!hCommandListIsImmediate)
@@ -1421,6 +1468,8 @@ void btx_register_usr_callbacks(void *btx_handle) {
   btx_register_callbacks_lttng_ust_ze_properties_device(btx_handle, &property_device_callback);
   btx_register_callbacks_lttng_ust_ze_properties_subdevice(btx_handle,
                                                            &property_subdevice_callback);
+  btx_register_callbacks_lttng_ust_ze_properties_command_queue_group(
+      btx_handle, &property_command_queue_group_callback);
 
   /* Map command list to device and to command queue dist*/
   btx_register_callbacks_lttng_ust_ze_zeCommandListCreateImmediate_entry(
