@@ -1300,6 +1300,22 @@ static void _dump_driver_device_properties(ze_driver_handle_t hDriver) {
       if (ZE_DEVICE_GET_PROPERTIES_PTR(phDevices[i], &props) == ZE_RESULT_SUCCESS)
         do_tracepoint(lttng_ust_ze_properties, device, hDriver, phDevices[i], &props);
     }
+    if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR &&
+        tracepoint_enabled(lttng_ust_ze_properties, command_queue_group)) {
+      uint32_t nGroups = 0;
+      if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(phDevices[i], &nGroups, NULL) ==
+              ZE_RESULT_SUCCESS &&
+          nGroups) {
+        ze_command_queue_group_properties_t *groups = (ze_command_queue_group_properties_t *)alloca(
+            nGroups * sizeof(ze_command_queue_group_properties_t));
+        for (uint32_t g = 0; g < nGroups; g++)
+          groups[g].stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_GROUP_PROPERTIES;
+        if (ZE_DEVICE_GET_COMMAND_QUEUE_GROUP_PROPERTIES_PTR(phDevices[i], &nGroups, groups) ==
+            ZE_RESULT_SUCCESS)
+          do_tracepoint(lttng_ust_ze_properties, command_queue_group, hDriver, phDevices[i],
+                        nGroups, groups);
+      }
+    }
     if (ZE_DEVICE_GET_GLOBAL_TIMESTAMPS_PTR &&
         tracepoint_enabled(lttng_ust_ze_properties, device_timer))
       _dump_device_timer(phDevices[i]);

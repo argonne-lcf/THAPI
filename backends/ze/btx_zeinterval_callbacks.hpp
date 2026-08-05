@@ -118,6 +118,8 @@ struct data_s {
   std::unordered_map<hpt_t, std::unordered_map<hp_t, memory_interval_t> *> rangeset_tmp;
 
   std::unordered_map<hp_device_t, ze_device_properties_t> device_property;
+  std::unordered_map<hp_device_t, std::vector<ze_command_queue_group_properties_t>>
+      command_queue_group_property;
   std::unordered_map<hp_device_t, thapi_device_id> subdevice_parent;
 
   std::unordered_map<hpt_t, std::pair<ze_device_handle_t, ze_command_queue_desc_t>> imm_tmp;
