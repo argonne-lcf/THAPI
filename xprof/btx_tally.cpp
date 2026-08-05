@@ -3,6 +3,8 @@
 #include "my_demangle.h"
 #include "xprof_utils.hpp"
 #include <array>
+#include <cstdlib>
+#include <memory>
 #include <metababel/metababel.h>
 #include <sstream> // std::stringstream, std::stringbuf
 #include <string>
@@ -135,24 +137,23 @@ static thapi_function_name f_demangle_name(thapi_function_name mangle_name) {
     line_num = base_match[2].str();
   }
 
-  const char *demangle = my_demangle(result.c_str());
-  if (demangle) {
-    thapi_function_name s{demangle};
-    if (!line_num.empty())
-      s += "_" + line_num;
+  // my_demangle() always hands back a malloc()'d string (the unmangled name if
+  // it could not be demangled), so it is owned here and must be freed.
+  std::unique_ptr<char, decltype(&std::free)> demangle{my_demangle(result.c_str()), std::free};
+  thapi_function_name s{demangle.get()};
+  if (!line_num.empty())
+    s += "_" + line_num;
 
-    /* We name the kernels after the type that gets passed in the first
-       template parameter to the sycl_kernel function in order to prevent
-       it from conflicting with any actual function name.
-       The result is the demangling will always be something like, “typeinfo
-       for...”.
-    */
-    const std::string prefix{"typeinfo name for "};
-    if (s.rfind(prefix) == 0)
-      return s.substr(prefix.size(), s.size());
-    return s;
-  }
-  return mangle_name;
+  /* We name the kernels after the type that gets passed in the first
+     template parameter to the sycl_kernel function in order to prevent
+     it from conflicting with any actual function name.
+     The result is the demangling will always be something like, “typeinfo
+     for...”.
+  */
+  const std::string prefix{"typeinfo name for "};
+  if (s.rfind(prefix) == 0)
+    return s.substr(prefix.size(), s.size());
+  return s;
 }
 
 static void print_metadata(std::vector<std::string> metadata) {
@@ -282,9 +283,17 @@ static void finalize_component_callback(void *usr_data) {
   delete data;
 }
 
-static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                 int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
-                                 uint64_t max, uint64_t total, uint64_t count, uint64_t backend,
+static void aggreg_host_callback(void *btx_handle,
+                                 void *usr_data,
+                                 const char *hostname,
+                                 int64_t vpid,
+                                 uint64_t vtid,
+                                 const char *name,
+                                 uint64_t min,
+                                 uint64_t max,
+                                 uint64_t total,
+                                 uint64_t count,
+                                 uint64_t backend,
                                  uint64_t err) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
@@ -303,10 +312,19 @@ static void aggreg_host_callback(void *btx_handle, void *usr_data, const char *h
   data->host[level][{hostname, vpid, vtid, name}] += {total, err, count, min, max};
 }
 
-static void aggreg_device_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                   int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
-                                   uint64_t max, uint64_t total, uint64_t count, uint64_t did,
-                                   uint64_t sdid, const char *metadata) {
+static void aggreg_device_callback(void *btx_handle,
+                                   void *usr_data,
+                                   const char *hostname,
+                                   int64_t vpid,
+                                   uint64_t vtid,
+                                   const char *name,
+                                   uint64_t min,
+                                   uint64_t max,
+                                   uint64_t total,
+                                   uint64_t count,
+                                   uint64_t did,
+                                   uint64_t sdid,
+                                   const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   const auto name_demangled =
@@ -318,9 +336,17 @@ static void aggreg_device_callback(void *btx_handle, void *usr_data, const char 
       {total, 0, count, min, max};
 }
 
-static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                    int64_t vpid, uint64_t vtid, const char *name, uint64_t min,
-                                    uint64_t max, uint64_t total, uint64_t count, uint64_t backend,
+static void aggreg_traffic_callback(void *btx_handle,
+                                    void *usr_data,
+                                    const char *hostname,
+                                    int64_t vpid,
+                                    uint64_t vtid,
+                                    const char *name,
+                                    uint64_t min,
+                                    uint64_t max,
+                                    uint64_t total,
+                                    uint64_t count,
+                                    uint64_t backend,
                                     const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
@@ -345,17 +371,28 @@ static void aggreg_traffic_callback(void *btx_handle, void *usr_data, const char
   ;
 }
 
-static void device_name_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                     int64_t vpid, uint64_t vtid, int64_t ts, int64_t backend,
-                                     const char *name, uint64_t did) {
+static void device_name_usr_callback(void *btx_handle,
+                                     void *usr_data,
+                                     const char *hostname,
+                                     int64_t vpid,
+                                     uint64_t vtid,
+                                     int64_t ts,
+                                     int64_t backend,
+                                     const char *name,
+                                     uint64_t did) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->device_name[hp_device_t(hostname, vpid, did)] = name;
 }
 
-static void ust_thapi_metadata_usr_callback(void *btx_handle, void *usr_data, const char *hostname,
-                                            int64_t vpid, uint64_t vtid, int64_t ts,
-                                            int64_t backend, const char *metadata) {
+static void ust_thapi_metadata_usr_callback(void *btx_handle,
+                                            void *usr_data,
+                                            const char *hostname,
+                                            int64_t vpid,
+                                            uint64_t vtid,
+                                            int64_t ts,
+                                            int64_t backend,
+                                            const char *metadata) {
 
   auto *data = static_cast<tally_dispatch_t *>(usr_data);
   data->metadata.push_back(metadata);

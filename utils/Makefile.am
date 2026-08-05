@@ -50,17 +50,17 @@ bin_SCRIPTS = \
 noinst_SCRIPTS = \
 	test_wrapper_thapi_text_pretty.sh
 
-.PHONY: version
+.PHONY: thapi_version
 
-version:
-	git describe --abbrev=7 --dirty --always --tags > version || echo $(PACKAGE_VERSION) > version
+thapi_version:
+	git describe --abbrev=7 --dirty --always --tags > thapi_version || echo $(PACKAGE_VERSION) > thapi_version
 
 data_DATA = \
-	version \
+	thapi_version \
 	optparse_thapi.rb
 
 CLEANFILES = \
-	version \
+	thapi_version \
 	optparse_thapi.rb \
 	lttng/tracepoint_gen.h \
 	$(BUILT_SOURCES)

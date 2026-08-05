@@ -1070,7 +1070,7 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
 
   parser.on('--metadata', 'Display trace metadata.')
   parser.on('-v', '--version', 'Print the Version String.') do
-    puts File.read(File.join(DATADIR, 'version'))
+    puts File.read(File.join(DATADIR, 'thapi_version'))
     exit
   end
   parser.on('-h', '--help', 'Display this message.') { print_help_and_exit(parser, exit_code: 0) }

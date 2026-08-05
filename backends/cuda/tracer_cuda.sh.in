@@ -47,7 +47,7 @@ display_help() {
 }
 
 display_version() {
-  cat $datadir/version
+  cat $datadir/thapi_version
   exit 1
 }
 

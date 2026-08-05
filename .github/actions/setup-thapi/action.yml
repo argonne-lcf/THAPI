@@ -28,10 +28,18 @@ runs:
   # valgrind:  package (e.g. libc6-dbg:i386).
   # valgrind:
   # valgrind:  Cannot continue -- exiting now.  Sorry.
+  # cache-apt-pkgs-action pins the exact versions it resolves from the local APT
+  # index, but only refreshes that index under `act` (it assumes hosted runners
+  # are fresh). When the image's index is older than the pool, the pinned .debs
+  # 404, the install fails, and the action still saves a package-less cache
+  # entry that every later run "hits" -- installing nothing. Refresh it here.
+  - name: Update APT index
+    shell: bash
+    run: sudo apt-get update
   - name: Install APT Dependencies
     uses: awalsh128/cache-apt-pkgs-action@latest
     with:
-      packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev
+      packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev llvm-dev
   - name: Install Ruby Dependencies
     shell: bash
     run: sudo gem install nokogiri babeltrace2 opencl_ruby_ffi metababel cast-to-yaml
@@ -103,3 +111,10 @@ runs:
       echo "CPATH=$HOME/efficios_dep/include:$CPATH" >> $GITHUB_ENV
       echo "LD_LIBRARY_PATH=$HOME/efficios_dep/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       echo "LIBRARY_PATH=$HOME/efficios_dep/lib:$LIBRARY_PATH" >> $GITHUB_ENV
+  # llvm-dev installs under a versioned prefix and does not add it to the paths.
+  - name: Set LLVM environment variables
+    shell: bash
+    run: |
+      set -euo pipefail
+      echo "CPATH=$(llvm-config --includedir):$CPATH" >> $GITHUB_ENV
+      echo "LIBRARY_PATH=$(llvm-config --libdir):$LIBRARY_PATH" >> $GITHUB_ENV

@@ -9,7 +9,9 @@ $itt_commands.each do |c|
                     if c.type.is_a?(YAMLCAst::Pointer)
                       "#{c.type} _retval = calloc(1, sizeof(*_retval));"
                     else
-                      "#{c.type} _retval = {};"
+                      # `= {}` is C23, so use `= {0}` which also works for scalars
+                      # pre-C23. Can be modernized once we require C23.
+                      "#{c.type} _retval = {0};"
                     end)
 
   register_epilogue(c.name, 'return _retval;')
