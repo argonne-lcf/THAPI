@@ -24,3 +24,4 @@ m4
 aclocal.m4
 configure
 Makefile.in
+__pycache__
