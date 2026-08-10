@@ -117,9 +117,17 @@ def register_meta_parameter(method, type, *args)
 end
 
 # Load a backend's meta-parameter YAML (relative to SRC_DIR) and register every
-# entry. The file maps each function name to a list of [type, *args] rows.
+# entry. The file maps each function name to a list of [type, *args] rows under
+# a top-level `meta_parameters` key. A backend with none of its own writes
+# `meta_parameters: []`; a missing key means a typo, which would otherwise
+# register nothing and look identical to having none.
 def load_meta_parameters(filename)
-  YAML.load_file(File.join(SRC_DIR, filename)).fetch('meta_parameters', []).each do |func, list|
+  path = File.join(SRC_DIR, filename)
+  content = YAML.load_file(path)
+  entries = content['meta_parameters']
+  raise "#{path} has no 'meta_parameters' key (use `meta_parameters: []` if it was not a typo)" if entries.nil?
+
+  entries.each do |func, list|
     list.each do |type, *args|
       register_meta_parameter func, Kernel.const_get(type), *args
     end
