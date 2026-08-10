@@ -35,10 +35,6 @@ def print_enum(name, enum)
   end
 end
 
-def print_ze_object(object)
-  print_object(object)
-end
-
 print_ffi_module(:ZE, enclosing_module: false)
 
 puts <<~EOF
@@ -345,7 +341,7 @@ all_type_sorted[:sorted].each do |t|
     enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, enum)
   elsif $objects.include?(t.name)
-    print_ze_object(t.name)
+    print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
     struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct

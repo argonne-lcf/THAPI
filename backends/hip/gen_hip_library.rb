@@ -4,10 +4,6 @@ def print_enum(name, enum)
   print_enum_with_namespace(:HIP, name, enum)
 end
 
-def print_hip_object(object)
-  print_object(object)
-end
-
 print_ffi_module(:HIP)
 
 puts <<~EOF
@@ -50,7 +46,7 @@ $all_types.each do |t|
     enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, enum)
   elsif $objects.include?(t.name)
-    print_hip_object(t.name)
+    print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
     struct = t.type.name ? $all_structs.find { |s| t.type.name == s.name } : t.type
     next unless struct

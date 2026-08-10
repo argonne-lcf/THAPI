@@ -98,10 +98,6 @@ def print_enum(name, enum)
   RUBY
 end
 
-def print_itt_object(object)
-  print_object(object)
-end
-
 print_ffi_module(:ITT)
 
 puts <<~EOF
@@ -175,7 +171,7 @@ $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
     print_enum(t.name, find_enum_by_name(t.name, $itt_api))
   elsif $objects.include?(t.name)
-    print_itt_object(t.name)
+    print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
     struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct

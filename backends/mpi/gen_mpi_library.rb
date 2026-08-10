@@ -4,10 +4,6 @@ def print_enum(name, enum)
   print_enum_with_namespace(:MPI, name, enum)
 end
 
-def print_mpi_object(object)
-  print_object(object)
-end
-
 print_ffi_module(:MPI)
 
 puts <<~EOF
@@ -31,7 +27,7 @@ $all_types.each do |t|
     enum = $all_enums.find { |e| t.type.name == e.name }
     print_enum(t.name, enum)
   elsif $objects.include?(t.name)
-    print_mpi_object(t.name)
+    print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
     # An anonymous target carries the layout itself, so the typedef is the
     # definition -- same guard hip already uses. Without it MPI_Status and
