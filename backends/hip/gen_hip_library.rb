@@ -1,9 +1,5 @@
 require_relative 'gen_hip_library_base'
 
-def print_enum(name, enum)
-  print_enum_with_namespace(:HIP, name, enum)
-end
-
 print_ffi_module(:HIP)
 
 puts <<~EOF
@@ -34,13 +30,13 @@ $all_enums.each do |e|
   next unless e.name
   next if typedef_enum_names.include?(e.name)
 
-  print_enum(e.name, e)
+  print_enum_with_namespace(:HIP, e.name, e)
 end
 
 $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    print_enum(t.name, enum)
+    print_enum_with_namespace(:HIP, t.name, enum)
   elsif $objects.include?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct

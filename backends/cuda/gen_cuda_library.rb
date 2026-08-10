@@ -1,9 +1,5 @@
 require_relative 'gen_cuda_library_base'
 
-def print_enum(name, enum)
-  print_enum_with_namespace(:CUDA, name, enum)
-end
-
 print_ffi_module(:CUDA)
 
 puts <<~EOF
@@ -40,7 +36,7 @@ EOF
 $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
-    print_enum(t.name, enum)
+    print_enum_with_namespace(:CUDA, t.name, enum)
   elsif $objects.include?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
