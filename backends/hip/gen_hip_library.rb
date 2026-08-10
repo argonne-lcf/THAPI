@@ -19,12 +19,6 @@ puts <<EOF
   ACTIVITY_DOMAIN_HIP_OPS = 2
 EOF
 
-def print_struct(name, struct)
-  prepends = []
-  prepends << 'UUID' if to_class_name(name).match('UUID')
-  print_struct_with_namespace(:HIP, name, struct, prepends: prepends)
-end
-
 typedef_enum_names = $all_types.filter_map { |t| t.type.name if t.type.is_a?(YAMLCAst::Enum) }.to_set
 $all_enums.each do |e|
   next unless e.name
@@ -43,7 +37,7 @@ $all_types.each do |t|
     struct = t.type.name ? $all_structs.find { |s| t.type.name == s.name } : t.type
     next unless struct
 
-    print_struct(t.name, struct)
+    print_struct_prepending_uuid(:HIP, t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
     union = $all_unions.find { |s| t.type.name == s.name }
     next unless union

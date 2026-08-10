@@ -409,6 +409,12 @@ def print_function_pointer_type(name, func)
 EOF
 end
 
+# Structs whose class name mentions UUID prepend the UUID module for its to_s.
+def print_struct_prepending_uuid(namespace, name, struct)
+  prepends = to_class_name(name).match('UUID') ? ['UUID'] : []
+  print_struct_with_namespace(namespace, name, struct, prepends: prepends)
+end
+
 def print_struct_with_namespace(namespace, name, struct, prepends: [], initializer: nil, close: true)
   members = struct.to_ffi
   print_lambda = lambda { |m|

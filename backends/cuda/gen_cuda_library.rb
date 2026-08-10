@@ -16,12 +16,6 @@ EOF
 print_handle_uuid_modules
 puts
 
-def print_struct(name, struct)
-  prepends = []
-  prepends << 'UUID' if to_class_name(name).match('UUID')
-  print_struct_with_namespace(:CUDA, name, struct, prepends: prepends)
-end
-
 puts <<EOF
   typedef :uint32, #{to_ffi_name('cuuint32_t')}
   typedef :uint64, #{to_ffi_name('cuuint64_t')}
@@ -43,7 +37,7 @@ $all_types.each do |t|
     struct = $all_structs.find { |s| t.type.name == s.name }
     next unless struct
 
-    print_struct(t.name, struct)
+    print_struct_prepending_uuid(:CUDA, t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
     union = $all_unions.find { |s| t.type.name == s.name }
     next unless union
