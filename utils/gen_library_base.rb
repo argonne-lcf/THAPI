@@ -181,6 +181,47 @@ def print_object(object)
 EOF
 end
 
+# ze has its own Handle/UUID: :data/:id fields, and a UUID printed back to front.
+def print_handle_uuid_modules
+  puts <<'EOF'
+  module Handle
+    def to_s
+      s = '{ reserved: "'
+      s << self[:reserved].to_a.collect { |v| "\\x%02x" % ((v + 256)%256) }.join
+      s << '" }'
+    end
+  end
+
+  module UUID
+    def to_s
+      a = self[:bytes].to_a.collect { |v| v < 0 ? 0x100 + v : v }
+      s = "{ id: "
+      s << "%02x" % a[0]
+      s << "%02x" % a[1]
+      s << "%02x" % a[2]
+      s << "%02x" % a[3]
+      s << "-"
+      s << "%02x" % a[4]
+      s << "%02x" % a[5]
+      s << "-"
+      s << "%02x" % a[6]
+      s << "%02x" % a[7]
+      s << "-"
+      s << "%02x" % a[8]
+      s << "%02x" % a[9]
+      s << "-"
+      s << "%02x" % a[10]
+      s << "%02x" % a[11]
+      s << "%02x" % a[12]
+      s << "%02x" % a[13]
+      s << "%02x" % a[14]
+      s << "%02x" % a[15]
+      s << " }"
+    end
+  end
+EOF
+end
+
 def print_ffi_module(namespace, struct: true, union: true, enum: true, bitmask: true, inline_array: true,
                      enclosing_module: true)
   puts <<~EOF
