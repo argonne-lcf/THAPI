@@ -23,10 +23,6 @@ puts <<EOF
   ACTIVITY_DOMAIN_HIP_OPS = 2
 EOF
 
-def print_union(name, union)
-  print_union_with_namespace(:HIP, name, union)
-end
-
 def print_struct(name, struct)
   prepends = []
   prepends << 'UUID' if to_class_name(name).match('UUID')
@@ -56,7 +52,7 @@ $all_types.each do |t|
     union = $all_unions.find { |s| t.type.name == s.name }
     next unless union
 
-    print_union(t.name, union)
+    print_union_with_namespace(:HIP, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
   elsif t.type.is_a?(YAMLCAst::Pointer)
