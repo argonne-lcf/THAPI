@@ -5,12 +5,12 @@ require 'set'
 registry = build_ast_registry('ze', expect_bitfields: true)
 
 event_classes = gen_command_events_bt_model(registry,
-  [[:lttng_ust_ze, $ze_commands],
-   [:lttng_ust_zet, $zet_commands],
-   [:lttng_ust_zes, $zes_commands],
-   [:lttng_ust_zel, $zel_commands],
-   [:lttng_ust_zer, $zer_commands],
-   [:lttng_ust_zex, $zex_commands]])
+                                            [[:lttng_ust_ze, $ze_commands],
+                                             [:lttng_ust_zet, $zet_commands],
+                                             [:lttng_ust_zes, $zes_commands],
+                                             [:lttng_ust_zel, $zel_commands],
+                                             [:lttng_ust_zer, $zer_commands],
+                                             [:lttng_ust_zex, $zex_commands]])
 event_classes += gen_extra_events_bt_model(registry, 'ze_events.yaml')
 
 def get_structs_types(namespace, types, structs)

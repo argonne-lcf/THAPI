@@ -7,58 +7,58 @@ def add_babeltrace_event_callbacks(file)
 
       fields = m.reject { |f| /^_.*_length$/ =~ f[:name] }
                 .map do |f|
-                  name = f[:name]
-                  fc = f[:field_class]
-                  be_class = f[:metadata]&.[](:be_class)
+        name = f[:name]
+        fc = f[:field_class]
+        be_class = f[:metadata]&.[](:be_class)
 
-                  default_command = %(s << "#{name}: \#{defi["#{name}"]}")
+        default_command = %(s << "#{name}: \#{defi["#{name}"]}")
 
-                  case fc[:type]
-                  when 'integer_signed', 'integer_unsigned'
-                    if be_class
-                      # Remaining read of the $all_bitfield_names global. This is
-                      # in the library/bindings path (not the babeltrace-model
-                      # path that was de-globalized): callers require their
-                      # gen_<x>_library_base first, which populates the global
-                      # before this call, so there is no load-order hazard. The
-                      # global cannot be dropped while gen_library_base.rb still
-                      # reads $all_struct_names, so it is left explicit here.
-                      if $all_bitfield_names.include?(fc[:cast_type])
-                        %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
-                      else
-                        %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}
-                      end
-                    elsif fc[:preferred_display_base] == 16
-                      %(s << "#{name}: \#{"0x%016x" % defi["#{name}"]}")
-                    else
-                      default_command
-                    end
-                  when 'double', 'single'
-                    default_command
-                  when 'string'
-                    if be_class
-                      if name.end_with?('_vals')
-                        %{s << "#{name}: [ \#{p = FFI::MemoryPointer.from_string(defi["#{name}"]); sz = #{be_class}.size; n = p.size / sz; (0...n).collect { |i| #{be_class}.new(p + i*sz).to_s}.join(", ")} ]"}
-                      else
-                        %{s << "#{name}: \#{defi["#{name}"].size > 0 ? #{be_class}.new(FFI::MemoryPointer.from_string(defi["#{name}"])) : nil}"}
-                      end
-                    else
-                      %(s << "#{name}: \#{defi["#{name}"].inspect}")
-                    end
-                  when 'array_dynamic', 'array_static'
-                    case fc[:element_field_class][:type]
-                    when 'integer_signed', 'integer_unsigned'
-                      if fc[:element_field_class][:preferred_display_base] == 16
-                        %{s << "#{name}: [ \#{defi["#{name}"].collect { |v| "0x%016x" % v }.join(", ")} ]"}
-                      else
-                        default_command
-                      end
-                    else
-                      raise "Unsupported field type for array: #{fc[:element_field_class][:type]}"
-                    end
-                  else
-                    raise "Unsupported field type: #{fc[:type]}"
-                  end
+        case fc[:type]
+        when 'integer_signed', 'integer_unsigned'
+          if be_class
+            # Remaining read of the $all_bitfield_names global. This is
+            # in the library/bindings path (not the babeltrace-model
+            # path that was de-globalized): callers require their
+            # gen_<x>_library_base first, which populates the global
+            # before this call, so there is no load-order hazard. The
+            # global cannot be dropped while gen_library_base.rb still
+            # reads $all_struct_names, so it is left explicit here.
+            if $all_bitfield_names.include?(fc[:cast_type])
+              %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
+            else
+              %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}
+            end
+          elsif fc[:preferred_display_base] == 16
+            %(s << "#{name}: \#{"0x%016x" % defi["#{name}"]}")
+          else
+            default_command
+          end
+        when 'double', 'single'
+          default_command
+        when 'string'
+          if be_class
+            if name.end_with?('_vals')
+              %{s << "#{name}: [ \#{p = FFI::MemoryPointer.from_string(defi["#{name}"]); sz = #{be_class}.size; n = p.size / sz; (0...n).collect { |i| #{be_class}.new(p + i*sz).to_s}.join(", ")} ]"}
+            else
+              %{s << "#{name}: \#{defi["#{name}"].size > 0 ? #{be_class}.new(FFI::MemoryPointer.from_string(defi["#{name}"])) : nil}"}
+            end
+          else
+            %(s << "#{name}: \#{defi["#{name}"].inspect}")
+          end
+        when 'array_dynamic', 'array_static'
+          case fc[:element_field_class][:type]
+          when 'integer_signed', 'integer_unsigned'
+            if fc[:element_field_class][:preferred_display_base] == 16
+              %{s << "#{name}: [ \#{defi["#{name}"].collect { |v| "0x%016x" % v }.join(", ")} ]"}
+            else
+              default_command
+            end
+          else
+            raise "Unsupported field type for array: #{fc[:element_field_class][:type]}"
+          end
+        else
+          raise "Unsupported field type: #{fc[:type]}"
+        end
       end.join("\n  s << ', '\n  ")
 
       # Now just print the full strings to pretty printf the struct

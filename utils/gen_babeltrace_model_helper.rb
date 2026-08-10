@@ -9,7 +9,7 @@ def build_ast_registry(backend, expect_bitfields:)
   registry = TypeRegistry.from_ast(
     all_types: $all_types, all_enums: $all_enums,
     enum_names: $all_enum_names, bitfield_names: $all_bitfield_names, struct_names: $all_struct_names,
-    class_namer: method(:to_scoped_class_name),
+    class_namer: method(:to_scoped_class_name)
   )
   if expect_bitfields
     raise "#{backend}: expected bitfield types" if registry.bitfield_names.empty?
@@ -118,9 +118,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
   when 'ctf_sequence_text', 'ctf_array_text'
     field[:type] = 'string'
     t = type.sub(' *', '')
-    while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
-      t = types_by_name[t].type.name
-    end
+    t = types_by_name[t].type.name while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
     member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
 
     # Too complicated, not sure why `all_struct_names` is not enough

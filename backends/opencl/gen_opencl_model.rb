@@ -109,7 +109,9 @@ event_lambda = lambda { |c, dir|
       field['type'] = 'cl_errcode' if fname == 'errcode_ret_val'
       fields[fname] = field
     end
-    c.meta_parameters.select { |p| p.lttng_out_type && LTTngFieldTuple.name(*p.lttng_out_type) != '_param_name' }.each do |p|
+    c.meta_parameters.select do |p|
+      p.lttng_out_type && LTTngFieldTuple.name(*p.lttng_out_type) != '_param_name'
+    end.each do |p|
       meta_field = {}
       lttng = p.lttng_out_type
       fname = LTTngFieldTuple.name(*lttng)
