@@ -1,0 +1,282 @@
+#!/usr/bin/env ruby
+# coding: utf-8
+# =============================================================================
+# ze_validator -- a correctness checker for Intel Level Zero ("ze") programs.
+#
+# WHAT THIS IS
+# ------------
+# THAPI (Tracing Heterogeneous APIs) ships a tracer that intercepts every call
+# an application makes into the Level Zero runtime and writes it to an LTTng
+# trace on disk (a "CTF" trace). This script reads such a trace back and
+# replays it against a software model of what the Level Zero runtime would have
+# been doing, looking for API misuse the runtime itself does not diagnose:
+# leaks, use-after-free, deadlocks, cross-context handle mixing, and so on.
+#
+# It never runs on the GPU and never touches the application. It is a pure
+# post-mortem analysis of a recorded trace.
+#
+# THE FIVE FILES THAT MAKE UP THE VALIDATOR
+# -----------------------------------------
+#   ze_validator.in                            <-- YOU ARE HERE
+#       Executable entry point. Parses CLI options, wires up the babeltrace2
+#       graph that decodes the trace, and hands each decoded event to the
+#       StateObject. ".in" means autoconf preprocesses it at build time,
+#       substituting @prefix@ below; the installed file is named `ze_validator`.
+#
+#   ze_validator_zemodel.rb
+#       Pure data model. Plain Ruby classes mirroring Level Zero objects
+#       (Device, Context, CommandList, Event, Fence, Memory, ...) plus the
+#       bookkeeping types used for deferred execution (RecordedOp, DeferredUnit).
+#       No checking logic lives here -- just state.
+#
+#   ze_validator_state_object.rb
+#       The engine. Holds the whole model (per host / per process / per thread),
+#       drives the trace-consumption loop, runs the deferred-execution
+#       scheduler, and owns every error-reporting method (print_usage_error etc).
+#
+#   ze_validator_function_entry_exit_callbacks.rb
+#       The dispatch tables. Three global hashes mapping a ze API name to a
+#       lambda: $upon_entry, $on_successful_exit, $on_erroneous_exit. This is
+#       where "what does zeMemAllocDevice do to the model" is written.
+#
+#   ze_validator_entry_exit_helpers.rb
+#       The check library. The `check_*` functions those callbacks call --
+#       out-of-bounds copies, use-after-free, deadlock cycles, context matching.
+#
+# HOW A TRACE BECOMES A DIAGNOSTIC (the data flow)
+# ------------------------------------------------
+#   trace on disk
+#     -> babeltrace2 graph (built in build_and_run_graph below)
+#     -> StateObject#consume receives one CTF event at a time
+#     -> event name is matched against /:(z.*)_(entry|exit)/ so
+#        "lttng_ust_ze:zeMemAllocDevice_entry" yields api="zeMemAllocDevice",
+#        phase="entry"
+#     -> StateObject#on_entry / #on_exit look the API up in the dispatch tables
+#     -> the callback mutates the model and/or calls a check_* helper
+#     -> a violated check prints "Level Zero <Kind> Error: ..." to stderr
+#     -> at end of trace StateObject#check_issues reports leaks and deadlocks
+#
+# WHY EVERY API APPEARS TWICE (entry and exit)
+# --------------------------------------------
+# The tracer emits one event just BEFORE the call enters the driver (_entry,
+# carrying the input arguments) and one just AFTER it returns (_exit, carrying
+# the return code and any output pointers). This matters constantly in the
+# callback code:
+#   * Output handles (the thing a Create call produced) only exist at _exit.
+#   * If the driver CRASHES inside the call, the _exit event is never written --
+#     so any check that could be the thing that crashes must run at _entry, or
+#     it will silently never fire. Several callbacks carry a comment saying
+#     exactly this.
+#
+# TYPICAL USE
+# -----------
+#   iprof -t -- ./my_app          # record a trace with the THAPI tracer
+#   ze_validator ~/lttng-traces/...  # replay it through this validator
+# =============================================================================
+
+# Where the installed data files live (ze_thread_safety.yaml, ze_deprecated.json,
+# ze_device_property.json) and where the ze_library Ruby bindings are found.
+# @prefix@ is replaced by autoconf with the configure --prefix at build time.
+DATADIR = File.join("@prefix@", "share")
+BINDIR = File.join("@prefix@", "bin")
+$:.unshift(DATADIR) if File.directory?(DATADIR)
+require 'optparse'
+require 'babeltrace2'              # Ruby bindings for babeltrace2, the CTF trace reader
+require 'find'
+require 'ze_library'               # generated FFI bindings: ZE::ZEResult, ZE::ZE*Desc structs
+require 'pp'
+require 'set'
+require 'ze_validator_zemodel'     # the object model (ZEModel::*)
+require 'ze_validator_function_entry_exit_callbacks'  # populates $upon_entry / $on_*_exit
+require 'ze_validator_state_object'                   # the StateObject engine
+require 'yaml'
+
+# Don't complain about broken pipe
+# (restores the default kill-on-SIGPIPE so piping our output into e.g. `head`
+# terminates quietly instead of raising Errno::EPIPE out of a puts)
+Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
+
+# Runs the ze_device_property helper binary to (re)generate ze_device_property.json
+# in DATADIR, where StateObject reads it. Best-effort: if the binary is missing or
+# fails (e.g. no accessible GPU on this node), the validator continues without the
+# device topology data rather than aborting.
+def generate_device_properties
+  json_path = File.join(DATADIR, 'ze_device_property.json')
+  binary = File.join(BINDIR, 'ze_device_property')
+  binary = 'ze_device_property' unless File.executable?(binary)
+
+  ok = system(binary, json_path, out: File::NULL, err: File::NULL)
+  unless ok
+    $stderr.puts "Warning: could not generate #{json_path} via '#{binary}'; " \
+                 "continuing without device properties."
+  end
+rescue SystemCallError => e
+  $stderr.puts "Warning: could not run ze_device_property: #{e.message}; " \
+               "continuing without device properties."
+end
+
+# Command-line defaults. All checking categories are ON unless explicitly
+# disabled, so a plain `ze_validator <trace>` gives the most thorough report.
+#   live                  - read a live LTTng session instead of a trace directory
+#   device_agnostic       - report portability hazards (hardcoded ordinals etc.)
+#   performance           - report API usage that costs performance
+#   gen_device_properties - shell out to the ze_device_property helper first
+$options = { live: false, device_agnostic: true, performance: true,
+             gen_device_properties: true }
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: ze_validator [OPTIONS] trace_directory...'
+
+  opts.on('-h', '--help', 'Prints this help') do
+    puts opts
+    exit
+  end
+
+  opts.on('--no-device-properties',
+          'Skip running the ze_device_property helper to (re)generate ze_device_property.json') do
+    $options[:gen_device_properties] = false
+  end
+
+  opts.on('--live', 'Enable live processing of the trace') do
+    $options[:live] = true
+  end
+
+  opts.on('--disable-dagn', 'Disables device agnostic semantic misuse checking') do
+    $options[:device_agnostic] = false
+  end
+
+  opts.on('--disable-performance', 'Disables reporting of API usages that results in downgrade of performance') do
+    $options[:performance] = false
+  end
+end.parse!
+
+
+# Builds and runs the babeltrace2 processing graph that decodes the trace and
+# feeds it to the validator, then triggers the end-of-trace reporting pass.
+#
+# babeltrace2 works as a dataflow graph of components connected port-to-port:
+#
+#     [source: trace_0] --\
+#     [source: trace_1] ----> [filter: muxer] --> [sink: our StateObject]
+#     [source: trace_2] --/
+#
+#   * SOURCES decode one CTF trace directory each into a stream of messages.
+#     A traced run produces one trace per process (and per node on a cluster),
+#     hence potentially many sources.
+#   * The MUXER merges those streams into a single stream ordered by timestamp.
+#     This is essential: the validator's model assumes it sees events in the
+#     order they really happened, across all processes and threads.
+#   * The SINK is us -- sink_object.consume is a lambda invoked with each batch
+#     of messages (see StateObject#consume).
+#
+# `source_location` is the list of paths given on the command line.
+def build_and_run_graph( source_location, sink_object )
+  # build graph and set up source
+  graph = BT2::BTGraph.new
+
+  # Look up the three component classes we need from babeltrace2's plugins.
+  #   ctf.fs          - read a CTF trace from the filesystem
+  #   ctf.lttng-live  - attach to a running LTTng session over the network
+  #   utils.muxer     - timestamp-order-merge several streams into one
+  ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
+  ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
+  utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
+
+  if !$options[:live]
+    # Offline mode: the user hands us a directory that may contain many traces
+    # nested at arbitrary depth (LTTng lays out one subdirectory per process,
+    # per node, per UST channel). Walk it and work out which directories are
+    # actually readable CTF traces, in four steps:
+    #   1. recursively enumerate every path, keeping only files
+    #   2. keep the ones literally named "metadata" -- every CTF trace directory
+    #      contains exactly one such file describing its event layout
+    #   3. take that file's parent directory: that IS the trace directory
+    trace_locations =
+      Find.find(*source_location).reject do |path|
+      FileTest.directory?(path)
+    end.select do |path|
+      File.basename(path) == 'metadata'
+    end.collect do |path|
+      File.dirname(path)
+    end.select do |path|
+      qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
+                                    params: { 'input' => path, 'type' => 'directory' })
+      qe.query.value['weight'] > 0.5
+    end
+  else
+    # Live mode: the arguments are LTTng relay-daemon URLs, not paths, so there
+    # is nothing on disk to search -- pass them through untouched.
+    trace_locations = source_location
+  end
+  raise 'Could not find lttng trace' if trace_locations.size == 0
+
+  # Add one source component per trace. Each gets a unique name ("trace_0",
+  # "trace_1", ...) because babeltrace requires component names to be distinct.
+  # In live mode, "session-not-found-action" => "end" makes the component finish
+  # cleanly rather than hang forever when the named session does not exist.
+  if !$options[:live]
+    comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+  else
+    comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+  end
+
+  # Muxer
+  comp_muxer = graph.add_component(utils_muxer, 'mux')
+
+  # The sink is where our code plugs in: `sink_object.consume` returns a lambda
+  # that babeltrace calls with an iterator over each batch of decoded messages.
+  # That lambda is the top of the whole validation pipeline.
+  sink = graph.add_simple_sink('babeltrace_thapi', sink_object.consume)
+
+  # Sources to muxer
+  # A single trace may expose several output ports (one per CTF stream, i.e.
+  # roughly per traced thread), so flat_map over all sources' ports and wire
+  # port i of the collected list into muxer input port i. The muxer grows its
+  # input ports on demand, which is why we can index it freely.
+  comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+    ip = comp_muxer.input_port(i)
+    graph.connect_ports(op, ip)
+  end
+
+  # Chain the rest
+  # Only one link is left (muxer -> sink). It is written as a generic
+  # each_cons(2) pairwise chain so extra filter components could be spliced into
+  # the array without changing this code.
+  [comp_muxer, sink].flatten.each_cons(2) do |_out, _in|
+    op = _out.output_port(0)
+    ip = _in.input_port(0)
+    graph.connect_ports(op, ip)
+  end
+
+  # Pull the whole trace through the graph. This call does not return until
+  # every event has been consumed, so by the time it finishes the model
+  # reflects the entire run.
+  graph.run
+  # End-of-trace pass: drain any still-pending deferred command lists, report
+  # deadlocks, and report every object that was created but never destroyed.
+  # Errors found DURING the run were already printed as they were discovered;
+  # these are the ones only visible once you know nothing more is coming.
+  sink_object.check_issues()
+
+end
+
+# only executive this code if we launch this as the main
+# script. if it's just included with "require" we just want access to the functions.
+# (Ruby's equivalent of C's `int main` guard: $0 is the script that was invoked,
+# __FILE__ is this file, so they match only when run directly. Tests can then
+# `require` this file to reuse build_and_run_graph without starting an analysis.)
+if __FILE__ == $0
+  # Refresh ze_device_property.json first, so StateObject picks up the real
+  # command-queue-group topology of this machine when it is constructed below.
+  generate_device_properties if $options[:gen_device_properties]
+  # One StateObject holds the entire model for the whole run and acts as the
+  # graph's sink.
+  sink_obj = StateObject.new(device_agnostic: $options[:device_agnostic],
+                             performance: $options[:performance])
+  # Whatever is left in ARGV after OptionParser#parse! are the trace paths.
+  # Deduplicate: feeding the same trace twice would double-apply every event and
+  # corrupt the model (e.g. a second create for an already-live handle).
+  ARGV.uniq!
+  source_location = ARGV
+  build_and_run_graph(source_location, sink_obj)
+end

@@ -181,6 +181,7 @@ AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_
 AC_CONFIG_FILES([backends/opencl/tracer_opencl.sh], [chmod +x backends/opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([backends/opencl/extract_enqueues], [chmod +x backends/opencl/extract_enqueues])
 AC_CONFIG_FILES([backends/ze/tracer_ze.sh], [chmod +x backends/ze/tracer_ze.sh])
+AC_CONFIG_FILES([backends/ze/ze_validator], [chmod +x backends/ze/ze_validator])
 AC_CONFIG_FILES([backends/cuda/tracer_cuda.sh], [chmod +x backends/cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([backends/omp/tracer_omp.sh], [chmod +x backends/omp/tracer_omp.sh])
 AC_CONFIG_FILES([backends/hip/tracer_hip.sh], [chmod +x backends/hip/tracer_hip.sh])
