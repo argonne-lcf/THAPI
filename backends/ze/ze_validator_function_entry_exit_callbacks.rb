@@ -2,51 +2,7 @@ require 'ze_validator_entry_exit_helpers'
 require 'ze_validator_zemodel'
 require 'ze_library'
 
-# =============================================================================
-# THE DISPATCH TABLES -- where each Level Zero API is taught to the validator.
-#
-# This file is a big flat registry. For every API the validator cares about,
-# it registers a lambda in one of three global hashes, keyed by API name.
-# StateObject#on_entry / #on_exit look the current API up in these and call
-# whatever it finds; an API with no entry here is simply ignored.
-#
-#   $upon_entry[api]         runs when the call STARTS
-#   $on_successful_exit[api] runs when it RETURNS SUCCESSFULLY
-#   $on_erroneous_exit[api]  runs when it RETURNS AN ERROR
-#
-# WHICH TABLE DOES A GIVEN THING BELONG IN?
-# -----------------------------------------
-# $on_successful_exit is the default, and holds most MODEL UPDATES:
-#   * Create calls -- the new handle only exists in the exit payload, and a
-#     failed create produced no object to record.
-#   * Destroy calls -- a failed destroy did not destroy anything.
-#   * Recording appended operations -- only an append that succeeded will
-#     actually execute later.
-#
-# $upon_entry holds checks that CANNOT wait for the exit, for two reasons:
-#   * The call may kill the process (a bad kernel launch, a copy from freed
-#     memory). If it does, the tracer never writes an _exit event, so an
-#     exit-time check would silently never run. Several callbacks below say
-#     exactly this in their comment.
-#   * The check needs pre-call state -- e.g. zeMemFree must inspect what is
-#     still in flight BEFORE the buffer is released.
-#
-# $on_erroneous_exit is for the rarer case where a FAILURE is itself
-# informative: the driver rejecting a copy is a good moment to point out that
-# the copy was out of bounds, and a failed free must undo the model change that
-# was applied optimistically at entry.
-#
-# READING THE LAMBDAS
-# -------------------
-# Every lambda takes |state, ctx, defi| -- see the argument conventions at the
-# top of ze_validator_entry_exit_helpers.rb. The recurring idiom
-#
-#     handle = defi['hFoo']                    # in an ENTRY callback
-#     handle = state.find_param(ctx, 'hFoo')   # in an EXIT callback
-#
-# is not inconsistency: at exit, defi holds only outputs, so inputs must be read
-# from the saved entry payload via find_param.
-# =============================================================================
+
 
 $upon_entry = {} #called to modify program state on entry
 $on_successful_exit = {} #called upon seeing exit functions with a successful return code
@@ -302,7 +258,7 @@ $on_successful_exit['zeCommandListAppendBarrier'] = lambda { |state, ctx, defi|
 # stream for the deferred scheduler and deadlock detection. It additionally names
 # memory ranges whose coherency it guarantees; those ranges are snapshotted and
 # validated against the allocation model when the barrier executes (see
-# record_ranges_barrier_op / check_ranges_barrier).
+# record_ranges_barrier_op / check_uaf_ranges_barrier).
 $on_successful_exit['zeCommandListAppendMemoryRangesBarrier'] = lambda { |state, ctx, defi|
   record_ranges_barrier_op(state, ctx)
 }
@@ -389,7 +345,7 @@ $upon_entry["zeCommandQueueExecuteCommandLists"] = lambda { |state, ctx, defi|
       # ADDED: a list with a compute kernel launch must not go to a copy-only queue
       check_copy_only_queue_submission(state,ctx,command_queue,known_command_lists[command_list_handle])
       # ADDED: events used by the list must come from an event pool on the queue's context
-      check_event_pool_queue_context_match(state,ctx,command_queue,known_command_lists[command_list_handle])
+      check_event_pool_list_context_match(state,ctx,known_command_lists[command_list_handle])
     end
   else
     # CHANGED: was raise_internal_error, which aborted the whole validator on one

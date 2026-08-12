@@ -1,55 +1,17 @@
 require 'ze_validator_zemodel'
 require 'ze_library'
 
-# =============================================================================
-# The check library: the actual rules the validator enforces.
-#
-# Every function here is called from a callback in
-# ze_validator_function_entry_exit_callbacks.rb. They are plain top-level
-# functions rather than methods, so they all take the engine as an explicit
-# first argument.
-#
-# THE SHARED ARGUMENT CONVENTION
-# ------------------------------
-#   state - the StateObject. Used for three things: looking objects up
-#           (find_objects / find_param), reporting (print_usage_error etc.),
-#           and deduplicating (print_tracker).
-#   ctx   - the TRACE context {hostname, vpid, vtid, api}: who is calling.
-#           NOT a Level Zero context. Where a Level Zero context is meant, the
-#           parameter is named ctx_handle or resolves to a ZEModel::Context.
-#   defi  - the decoded event payload. Input arguments at _entry, results at
-#           _exit. An exit-time check that needs an input calls
-#           state.find_param instead.
-#
-# TWO RULES THAT EXPLAIN MOST OF THE CODE BELOW
-# -----------------------------------------------
-#
-# 1. REPORT ONCE. GPU code loops; the same defect recurs constantly. Checks
-#    build a key naming the specific violation and consult
-#    state.print_tracker[key] before printing. The pattern is always
-#    `return unless state.print_tracker[key] == 0` followed by setting it to 1.
-#
-# 2. CHECK AT THE RIGHT MOMENT. Three timings appear throughout:
-#      at _entry  - when the call itself might crash the process (no _exit
-#                   would then be traced) or when pre-call state is needed
-#      at _exit   - when the check needs the call to have succeeded
-#      deferred   - when the operation is asynchronous and has not actually
-#                   happened yet at append or submit time; the scheduler runs
-#                   these later, when the op's wait-events are satisfied
-# =============================================================================
 
-# PORTABILITY / CRASH CHECK: a command queue is created with an (ordinal, index)
-# pair -- which engine group, and which queue within that group. Each group
-# exposes only numQueues queues; asking for an index at or beyond that limit
-# segfaults rather than returning an error, so it is worth catching. The real
-# limits come from ze_device_property.json, so the check is skipped entirely
-# when that file was unavailable.
+
+# A command queue is created with an (ordinal, index)
+# pair -- which engine group, and which queue within that group. Asking oob index segfaults
 def check_valid_index_for_ordinal(state,ctx,queue_handle,ordinal,index)
   #puts "entered"
   if state.device_properties
     command_queue_prop = state.device_properties["devices"][0]["command_queue_groups"]
     command_queue_prop.each do |prop|
-      if prop["ordinal"] == ordinal && (index >= prop["numQueues"] || index < 0)#oob index results in segfault
+      #find matching ordinal, and check whether the index is oob
+      if prop["ordinal"] == ordinal && (index >= prop["numQueues"] || index < 0)
         state.print_usage_error(ctx, "command queue (#{state.get_handle_str(queue_handle)}) with ordinal = #{ordinal} was created " +
                                      "with index = #{index}. Index value should be: 0<= index < #{prop["numQueues"]}")
       end
@@ -57,14 +19,9 @@ def check_valid_index_for_ordinal(state,ctx,queue_handle,ordinal,index)
   end
 end
 
-# PORTABILITY CHECK: did the application ever ask the device what engines it
-# has (zeDeviceGetCommandQueueGroupProperties) before passing an ordinal?
-# If not, the ordinal was hardcoded. That may work on today's GPU and silently
-# select the wrong engine -- or none at all -- on the next one. Reported once
-# per run, since it is a property of how the program was written, not of any
-# individual call.
+# Checking whether the application ever called zeDeviceGetCommandQueueGroupProperties
+# before calling command queue/list create. Not calling it implies hardcoded ordinals
 def check_group_property_queued(state, ctx, defi, device)
-  #puts "device = #{device}"
   if !(device.cmd_queue_group_properties_queried) && state.print_tracker["check_group_property"] == 0
     state.print_tracker["check_group_property"] = 1
     state.print_usage_error(ctx,"command queue group wasn't queried. Hardcoded group properties may break the code on different devices")
@@ -72,12 +29,7 @@ def check_group_property_queued(state, ctx, defi, device)
 end
 
 
-# ADDED: the set of command-queue-group ordinals that belong to copy-only
-# engines, as gathered by the device profiler (ze_device_property.json). When the
-# device-property file is absent, fall back to the hardcoded ordinals that are
-# copy-only on the Intel Data Center Max GPUs we target. Extracted so both the
-# append-time check (check_valid_ordinal) and the execute-time check
-# (check_copy_only_queue_submission) share one definition.
+# returns the copy ordinals if retrieved from the ze_device_property.json
 def copy_only_ordinals(state)
   return [1, 2] unless state.device_properties
   state.device_properties["devices"][0]["command_queue_groups"]
@@ -85,26 +37,14 @@ def copy_only_ordinals(state)
        .map    { |prop| prop["ordinal"] }
 end
 
-# CRASH CHECK (append-time): launching a compute kernel onto a command list
-# whose ordinal belongs to a copy-only engine. A copy engine cannot run compute
-# kernels; on the Intel Data Center Max GPUs this targets, the result is a
-# segfault with no diagnostic from the runtime.
-#
-# This is the append-time half of the check -- it inspects the ordinal the
-# command list itself was created with. The other half runs at submit time,
-# when the queue's ordinal is finally known: see
-# check_copy_only_queue_submission.
+# checks whether a command list attached to a copy-only engine receives a kernel
 def check_valid_ordinal(state, ctx, defi, cqg_ordinal)
   copy_only_ords = copy_only_ordinals(state)
-
-  if copy_only_ords.include?(cqg_ordinal) && state.print_tracker["zeCommandListAppendLaunchKernel::K2CopyOrdinal"] == 0
-    state.print_tracker["zeCommandListAppendLaunchKernel::K2CopyOrdinal"] = 1
+  if copy_only_ords.include?(cqg_ordinal) && state.print_tracker["check_valid_ordinal"] == 0
+    state.print_tracker["check_valid_ordinal"] = 1
     kernels = state.find_objects(ctx, 'kernel')
     kernel_handle = state.find_param(ctx, 'hKernel')
-    kernel_name = "UNKNOWN"
-    # CHANGED: was `state.find_object(ctx, 'hCommandList')` -- wrong arity
-    # (find_object needs type+handle) and returned an object, not a handle. Read
-    # the handle from the entry params and format it for the message.
+    kernel_name = "UNKNOWN" #kernel name wasn't passed, so mark it as unknown
     command_list_handle = state.find_param(ctx, 'hCommandList')
     if kernels[kernel_handle]
       kernel_name = kernels[kernel_handle].name
@@ -113,24 +53,14 @@ def check_valid_ordinal(state, ctx, defi, cqg_ordinal)
   end
 end
 
-# ADDED: true if the command list contains a compute kernel launch. A launch op
-# is recorded with kind :launch, but so is zeCommandListAppendMemoryCopyRegion
-# (which is a copy, not compute), so we match on the appending API name rather
-# than the kind alone. Cooperative kernel launches count as compute too.
+#list of compute launches
 COMPUTE_LAUNCH_APIS = ['zeCommandListAppendLaunchKernel',
                        'zeCommandListAppendLaunchCooperativeKernel'].freeze
 def command_list_has_kernel_launch?(cmd_list)
   cmd_list && cmd_list.ops.any? { |op| op.kind == :launch && COMPUTE_LAUNCH_APIS.include?(op.api) }
 end
 
-# ADDED: execute-time check for submitting a command list that contains a compute
-# kernel launch to a command queue associated with a copy-only engine. This
-# complements check_valid_ordinal (which fires at append time on the list's own
-# ordinal): here the queue is only known at zeCommandQueueExecuteCommandLists, so
-# we compare the QUEUE's group ordinal (queue.desc[:ordinal]) against the
-# copy-only set. On the Intel Data Center Max GPUs we target, running compute on a
-# copy-only engine segfaults with no diagnostic from the runtime. Reported once
-# per (queue, list) pair to avoid duplicate spam across repeated submits.
+#Checks whether a command list that has a compute kernel gets submitted to a command queue that is attached to a copy only engine.
 def check_copy_only_queue_submission(state, ctx, queue, cmd_list)
   return unless queue && queue.desc
   return unless command_list_has_kernel_launch?(cmd_list)
@@ -144,16 +74,7 @@ def check_copy_only_queue_submission(state, ctx, queue, cmd_list)
                                "with copy-only ordinal #{queue_ordinal}")
 end
 
-# ADDED: check that a launched kernel's module was created on the SAME Level Zero
-# context as the command list the kernel is appended to. The spec requires it:
-# zeCommandListAppendLaunchKernel/LaunchCooperativeKernel state "the command list,
-# kernel and events were created on the same context." A kernel has no context of
-# its own -- zeKernelCreate takes a module (hModule), and the module carries the
-# context it was created on (zeModuleCreate's hContext) -- so the kernel's context
-# is kernel.module.context. Runs at ENTRY (a launch can abort without an _exit),
-# reading handles from defi. Unknown kernel/module/list, or a module/list whose
-# context we never saw (tracing started mid-stream), are skipped rather than
-# flagged. Reported once per (command list, kernel) pair.
+# Checks whether the kernel module's context matches that of the command list's.
 def check_kernel_list_context_match(state, ctx, defi)
   command_lists = state.find_objects(ctx, 'command_list')
   kernels = state.find_objects(ctx, 'kernel')
@@ -183,13 +104,7 @@ def check_kernel_created(state, ctx, defi)
   end
 end
 
-#Checks for misuse of fences.
-#Not a proper use of fence if it was already signaled,
-#or being used by other commandslist.
-# A fence must be reset (zeFenceReset) between submissions. Reusing one that is
-# still in_use, or that was signaled and never reset, means the program cannot
-# tell which submission the fence refers to -- so it will either wait on the
-# wrong thing or not wait at all.
+#Checks for using fence without reset
 def check_fence_misuse(state, ctx, defi)
   fence_handle = defi['hFence']
   fence = get_fence(state,ctx,fence_handle)
@@ -198,7 +113,7 @@ def check_fence_misuse(state, ctx, defi)
   end
 end
 
-# USAGE CHECK: the queue handed to ExecuteCommandLists was never created (or
+# Check whether the queue handed to ExecuteCommandLists was never created (or
 # was already destroyed).
 def check_valid_command_queue(state,ctx,defi, cmd_queues, cmd_queue_ptr)
   cmd_queue = cmd_queues[cmd_queue_ptr]
@@ -208,8 +123,7 @@ def check_valid_command_queue(state,ctx,defi, cmd_queues, cmd_queue_ptr)
 
 end
 
-# USAGE CHECK on the lists passed to ExecuteCommandLists. Three ways to get it
-# wrong: submitting nothing at all, submitting a handle that was never created,
+# Checks for three things: submitting nothing at all, submitting a handle that was never created,
 # or submitting an IMMEDIATE list -- immediate lists carry their own implicit
 # queue and execute at append time, so passing one to a queue is invalid.
 def check_valid_command_lists(state, ctx, defi)
@@ -228,31 +142,7 @@ def check_valid_command_lists(state, ctx, defi)
   end
 end
 
-#change it to calculating the memory overlap region?
-# Returns [start, end] of the region two allocations share, or [] if they are
-# disjoint (or of different memory types, which cannot alias). Used by the data
-# race detection work.
-def get_memory_overlap(mem1, mem2)
-	overlap = []
-	if mem1 && mem2 && mem1.memtypestr == mem2.memtypestr
-		#Check if mem2 is contained in mem1
-		if mem1.base <= mem2.base && mem2.base <= mem1.base + mem1.size
-			overlap << mem2.base
-			overlap << [mem2.base+mem2.size, mem1.base+mem1.size].min
-		elsif mem2.base <= mem1.base && mem1.base <= mem2.base + mem2.size
-      overlap << mem1.base
-      overlap << [mem2.base+mem2.size, mem1.base+mem1.size].min
-		end
-  end
-	overlap
-end
 
-# REMOVED: record_copy_over / add_api_call_to_cmd_list.
-# These were the earlier "memory_in_transit" and "api_calls history" approaches
-# to correlating copies. They are superseded by the RecordedOp / DeferredUnit
-# model (each copy is recorded as an op and checked at execute time), and
-# add_api_call_to_cmd_list referenced undefined locals (state/ctx) so it could
-# never have run. See record_op / record_copy_op below.
 
 # Resolve a fence handle to its model object (nil if unknown).
 def get_fence(state,context,fence_handle)
@@ -260,34 +150,25 @@ def get_fence(state,context,fence_handle)
   fence = fences[fence_handle] #returns fence
 end
 
-# ADDED: resolve the Level Zero context handle that owns a command list, given
-# the list handle. Memory maps are keyed by context handle, but copy/fill append
-# APIs identify only the command list -- the context is reachable through the
-# list's Context object. Returns nil for an unknown list (tracing started
-# mid-stream); callers fall back to the shared nil bucket in that case.
+# Resolve the Level Zero context handle that owns a command list. 
 def cmd_list_ctx_handle(state, ctx, cmd_list_handle)
   cmd_list = state.find_objects(ctx, 'command_list')[cmd_list_handle]
   cmd_list && cmd_list.context ? cmd_list.context.handle : nil
 end
 
-# ADDED: read the wait-event handles from an append call's input params. Both
-# spellings appear in the trace: copies/barriers/launches use phWaitEvents_vals,
-# zeCommandListAppendWaitOnEvents uses phEvents_vals. find_param is used because
-# exit callbacks do not see input params in defi. Null/empty entries are dropped.
+# retrieves the wait event handles at the current state
 def wait_event_handles(state, ctx)
   handles = state.find_param(ctx, 'phWaitEvents_vals') ||
             state.find_param(ctx, 'phEvents_vals') || []
   handles.reject { |h| h.nil? || h == 0 }
 end
 
-# ADDED: record one op onto its command list. A regular (non-immediate) list
-# stores it for replay at execute time; an immediate list executes right away, so
-# the op is scheduled immediately. No-op if the list handle is unknown.
+# Record one op onto its command list. A regular (non-immediate) list
 def record_op(state, ctx, cmd_list_handle, op)
   cmd_list = state.find_objects(ctx, 'command_list')[cmd_list_handle]
   return unless cmd_list
   if cmd_list.immediate
-    # ADDED: an immediate list never reaches zeCommandQueueExecuteCommandLists, so
+    # An immediate list never reaches zeCommandQueueExecuteCommandLists, so
     # check its events' context here (against the list's own context) before the op
     # is scheduled.
     check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
@@ -297,19 +178,15 @@ def record_op(state, ctx, cmd_list_handle, op)
   end
 end
 
-# ADDED: record a memory-copy op (zeCommandListAppendMemoryCopy / MemoryFill).
-# Values are snapshotted now (via find_param) because the per-call context is
-# gone by the time the op is replayed. The out-of-bounds check is deferred to
-# execute time; see check_oob_copy.
+# Record a memory-copy op (zeCommandListAppendMemoryCopy / MemoryFill).
+# recording is necessary because the per-call context is
+# gone by the time the op is replayed.
 def record_copy_op(state, ctx, api, dst_key, src_key)
   cmd_list_handle = state.find_param(ctx, 'hCommandList')
   op = ZEModel::RecordedOp.new(:copy,
         signal: state.find_param(ctx, 'hSignalEvent'),
         waits: wait_event_handles(state, ctx),
         params: { api: api,
-                  # ADDED: snapshot the owning context handle so the deferred OOB/
-                  # UAF checks look in the right per-context allocation map when the
-                  # copy replays at execute time (the per-call context is gone by then).
                   ctx_handle: cmd_list_ctx_handle(state, ctx, cmd_list_handle),
                   dst: (dst_key ? state.find_param(ctx, dst_key) : nil),
                   src: (src_key ? state.find_param(ctx, src_key) : nil),
@@ -317,15 +194,7 @@ def record_copy_op(state, ctx, api, dst_key, src_key)
   record_op(state, ctx, cmd_list_handle, op)
 end
 
-# ADDED: record a zeCommandListAppendMemoryRangesBarrier op. Like a barrier, it
-# waits on its wait-events and signals its completion event, so it must appear in
-# the deferred op stream for the event-ordering / deadlock checks to see it. It
-# also names memory ranges whose coherency it guarantees; each range is snapshot
-# as {base:, size:} so a deferred check can verify the range lies within a live
-# allocation (see check_ranges_barrier). The two InArray params arrive in the
-# trace as pRanges_vals (the base addresses) and pRangeSizes_vals (byte sizes),
-# positionally paired. Missing/short arrays degrade to nil entries rather than
-# crashing (tracing may have started mid-stream).
+# Records a zeCommandListAppendMemoryRangesBarrier op. 
 def record_ranges_barrier_op(state, ctx)
   cmd_list_handle = state.find_param(ctx, 'hCommandList')
   bases = state.find_param(ctx, 'pRanges_vals') || []
@@ -340,19 +209,12 @@ def record_ranges_barrier_op(state, ctx)
   record_op(state, ctx, cmd_list_handle, op)
 end
 
-# USAGE CHECK: a command list must be finalized with zeCommandListClose before
-# it may be submitted. Submitting an open list means the driver may see a
-# partially recorded sequence; submitting a destroyed one is a use-after-free of
-# the handle.
+# Check if a command list was closed before launching anything on it (called at the execute command lists, for non-immediate command queues)
 def check_command_list_closed(state, ctx, defi)
   command_queue_handle = defi['hCommandQueue']
-  # CHANGED: guard against nil (empty submit) so .each does not crash
   command_lists = defi['phCommandLists_vals'] || []
   known_command_lists = state.find_objects(ctx, 'command_list')
   command_lists.each do |command_list_handle|
-    # CHANGED: was `knwon_command_lists` (typo -> NameError). Also skip unknown
-    # handles rather than calling .status on nil, and report the actual handle
-    # instead of the undefined local `cl`.
     cmd_list = known_command_lists[command_list_handle]
     next unless cmd_list
     if cmd_list.status == ZEModel::CommandList.class_variable_get(:@@INITIALIZED)
@@ -364,17 +226,8 @@ def check_command_list_closed(state, ctx, defi)
 end
 
 
-# ADDED: validate a zeCommandListReset. Runs at ENTRY, before the model applies
-# the reset, reading the list handle from defi. Reports three misuses:
-#   * already-destroyed list -- resetting a destroyed handle is a usage error.
-#   * immediate command list -- zeCommandListReset is invalid on an immediate list
-#     (it has no closed/execute lifecycle to reset); the runtime returns
-#     ZE_RESULT_ERROR_INVALID_ARGUMENT.
-#   * reset while in-flight -- the list is still executing a prior
-#     zeCommandQueueExecuteCommandLists submission. Resetting it now races the
-#     device and is undefined behavior in Level Zero.
-# Every command list handle is tracked, so the list is always found.
-# Reported once per (command list, reason) pair.
+# check if the command list reset is valid or not.
+# Invalid calls: reset on destroyed lists, reset on immeidate lists, and reset on command lists that are already exeucting.
 def check_command_list_reset(state, ctx, defi)
   handle = defi['hCommandList']
   cmd_list = state.find_objects(ctx, 'command_list')[handle]
@@ -408,7 +261,7 @@ def check_command_list_reset(state, ctx, defi)
   end
 end
 
-# USAGE CHECK: zeKernelCreate was given a null module handle.
+# checks whether zeKernelCreate was given a null module handle.
 def check_valid_module(state,ctx,defi)
   module_handle = state.find_param(ctx, 'hModule')
   if !module_handle || module_handle == 0
@@ -416,15 +269,8 @@ def check_valid_module(state,ctx,defi)
   end
 end
 
-# ---------------------------------------------------------------------------
-# CONTEXT-MATCHING CHECKS.
-# A Level Zero context is an isolation domain: objects used together must all
-# belong to one. The next three functions cover the triangle involved in a
-# submission -- the command list, the queue it goes to, and the fence that
-# signals its completion. All three must agree, so each pairing is checked.
-# ---------------------------------------------------------------------------
 
-# The fence's queue and the command list must be on the same context.
+# Checks if the fence's queue and the command list is on the same context.
 def check_list_and_fence_have_matching_context(state,ctx,defi,cmd_list,fence)
   if fence 
     unless cmd_list && fence.command_queue &&
@@ -436,8 +282,8 @@ def check_list_and_fence_have_matching_context(state,ctx,defi,cmd_list,fence)
   end
 end
 
-# Stronger than a context match: a fence is bound to ONE specific queue at
-# creation, and may only be used with that queue.
+# Checks for context between queue and the fence.
+# Stronger than a context match, as it checks for the matching of the queue.
 def check_fence_and_queue_compatibility(state,ctx,defi,cmd_queue,fence)
   if fence 
     unless cmd_queue && cmd_queue == fence.command_queue
@@ -449,7 +295,7 @@ def check_fence_and_queue_compatibility(state,ctx,defi,cmd_queue,fence)
   end
 end
 
-# A command list may only be submitted to a queue on its own context.
+# Check the contxt bettween the queue and the list
 def check_list_and_queue_have_matching_context(state,ctx,defi,cmd_list, cmd_queue)
   unless cmd_queue && cmd_list && cmd_list.context == cmd_queue.context
     queue_handle = cmd_queue ? state.get_handle_str(cmd_queue.handle) : "nullptr"
@@ -458,46 +304,25 @@ def check_list_and_queue_have_matching_context(state,ctx,defi,cmd_list, cmd_queu
   end
 end
 
-# ADDED: op kinds whose events are subject to the spec's same-context requirement.
-# Not every append that carries events requires them to share the list's context:
-# the Level Zero spec attaches "the command list and events were created on the
-# same context" to launch/copy/fill/signal/wait ops, but zeCommandListAppendBarrier
-# and zeCommandListAppendMemoryRangesBarrier use the WEAKER "events must be
-# accessible by the device on which the command list was created" wording -- no
-# same-context clause. So :barrier and :ranges_barrier are deliberately excluded
-# here to avoid false positives; their events would need a device-accessibility
-# model (which the validator does not currently have) rather than a context match.
-SAME_CONTEXT_EVENT_OP_KINDS = [:copy, :launch, :signal, :wait, :reset].freeze
+# List of operations to collect the events from
+EVENT_OP_KINDS = [:copy, :launch, :signal, :wait, :reset].freeze
 
-# ADDED: the distinct event handles one recorded op references -- the completion
-# event it signals (op.signal) and the events it waits on (op.waits). Null handles
-# are already normalized away (op.signal is nil when 0; op.waits drops nil/0 at
-# record time). Returns [] for ops whose events are not subject to the same-context
-# rule (see SAME_CONTEXT_EVENT_OP_KINDS).
-def same_context_event_handles_in_op(op)
-  return [] unless SAME_CONTEXT_EVENT_OP_KINDS.include?(op.kind)
+# retrieves the events in a given op
+def event_handles_in_op(op)
+  return [] unless EVENT_OP_KINDS.include?(op.kind)
   handles = []
   handles << op.signal if op.signal
   handles.concat(op.waits) if op.waits
   handles
 end
 
-# ADDED: distinct event handles a command list references across all of its
-# recorded ops that ARE subject to the same-context requirement.
-def same_context_event_handles_in_list(cmd_list)
-  cmd_list.ops.flat_map { |op| same_context_event_handles_in_op(op) }.uniq
+# returns the distinct event handles a command list references across all of its
+# recorded ops that are subject to the same-context requirement.
+def event_handles_in_list(cmd_list)
+  cmd_list.ops.flat_map { |op| event_handles_in_op(op) }.uniq
 end
 
-# ADDED: core context-consistency check shared by the queue-submission and
-# immediate-list cases. For each event handle, resolve its context THROUGH its
-# event pool (an event has no context of its own -- zeEventCreate takes no context
-# and derives it from the pool, which is bound to a context at zeEventPoolCreate or,
-# for an IPC-shared pool, at the hContext passed to zeEventPoolOpenIpcHandle) and
-# report if it differs from ref_context. `ref_kind`/`ref_handle` name the object
-# the events are expected to match (a command queue or an immediate command list),
-# for the message and the dedup key. Reported once per (ref, event) pair. Unknown
-# events, or events whose pool/context we never saw (tracing started mid-stream),
-# are skipped.
+#Check if all events share the same context
 def check_events_share_context(state, ctx, event_handles, ref_context, ref_kind, ref_handle)
   return unless ref_context
   events = state.find_objects(ctx, 'event')
@@ -517,58 +342,31 @@ def check_events_share_context(state, ctx, event_handles, ref_context, ref_kind,
   end
 end
 
-# ADDED: execute-time check that every event used by a submitted command list (in
-# an op subject to the same-context rule) comes from an event pool on the SAME
-# Level Zero context as the command queue the list is submitted to. The spec
-# requires such a command list and its events to share a context; since the list
-# must also match the queue's context, an event pool whose context differs from the
-# queue's is a mismatch.
-def check_event_pool_queue_context_match(state, ctx, queue, cmd_list)
-  return unless queue && queue.context && cmd_list
-  check_events_share_context(state, ctx, same_context_event_handles_in_list(cmd_list),
-                             queue.context, 'command queue', queue.handle)
+# Check if event pool's context matches the command queue's context
+def check_event_pool_list_context_match(state, ctx, cmd_list)
+  return unless cmd_list
+  check_events_share_context(state, ctx, event_handles_in_list(cmd_list),
+                             cmd_list.context, 'command list', cmd_list.handle)
 end
 
-# ADDED: append-time analogue for IMMEDIATE command lists. An immediate list is its
-# own implicit queue -- it never goes through zeCommandQueueExecuteCommandLists (and
-# is in fact rejected there), so the queue-submission check above never sees it. Its
-# ops execute at append time, so we validate each appended op's events here against
-# the immediate list's OWN context (which stands in for the queue's). Called from
-# record_op for the immediate branch.
+# Check if event pool's context matches the immediate command list's context
 def check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
   return unless cmd_list && cmd_list.context
-  check_events_share_context(state, ctx, same_context_event_handles_in_op(op),
+  check_events_share_context(state, ctx, event_handles_in_op(op),
                              cmd_list.context, 'immediate command list', cmd_list.handle)
 end
 
-# REPLACED check_oob_memory_copy (it iterated a CommandList as if enumerable and
-# referenced an undefined `defi`) with the helpers below.
 
-# ---------------------------------------------------------------------------
-# MEMORY CHECKS: out-of-bounds copies and use-after-free.
-#
-# Memory is the one kind of object not identified by an opaque handle but by an
-# ADDRESS, so these checks work on ranges: an allocation covers
-# [base, base + size), and a pointer into the middle of it is a legitimate
-# reference to it. That is why lookups here are two-step -- try the exact base
-# address, then fall back to a containment scan.
-# ---------------------------------------------------------------------------
-
-# ADDED: find the allocation that contains ptr, so a copy into an offset of a
-# base allocation is matched, not only an exact base-pointer copy.
+#Find the memory allocation containing the ptr
 def find_allocation_containing(allocations, ptr)
   allocations.each_value.find { |m| m.base && m.base <= ptr && ptr < m.base + m.size }
 end
 
-# ADDED: out-of-bounds check for one endpoint (source or destination) of a copy.
-# Measures the copy size against the bytes remaining from ptr's offset within its
-# allocation. An unknown pointer is left alone (nothing to compare against).
-def check_copy_endpoint(state, ctx, allocations, ptr, size, api, role)
+# Check whether the copy's endpoints have enough space to support the requested size 
+def check_copy_endpoint_oob(state, ctx, allocations, ptr, size, api, role)
   return if ptr.nil? || ptr == 0 || size.nil?
   mem = allocations[ptr] || find_allocation_containing(allocations, ptr)
   return unless mem
-  #the copy starts partway into the allocation, so the space it can legally use
-  #is what remains from that offset -- not the allocation's full size
   offset = ptr - mem.base
   available = mem.size - offset
   if available < size
@@ -577,30 +375,16 @@ def check_copy_endpoint(state, ctx, allocations, ptr, size, api, role)
   end
 end
 
-# ADDED: deferred out-of-bounds check for a recorded copy op. Called from the
-# scheduler once the copy's wait-events are satisfied, so it runs against the
-# memory model as it stands at the point the copy actually executes -- avoiding
-# the false positives that checking at execute-entry would give (the destination
-# may only be allocated after execute, by whoever signals the wait-event).
+# Performs the oob check for copy for both endpoints (src and dst)
 def check_oob_copy(state, ctx, params)
   api = params[:api] || 'zeCommandListAppendMemoryCopy'
   size = params[:size]
-  # CHANGED: look up allocations in the copy's own context sub-map. The context
-  # handle was snapshotted into params at record/append time (see record_copy_op).
   allocations = state.memory_allocations(ctx, params[:ctx_handle])
-  check_copy_endpoint(state, ctx, allocations, params[:dst], size, api, 'destination')
-  check_copy_endpoint(state, ctx, allocations, params[:src], size, api, 'source')
+  check_copy_endpoint_oob(state, ctx, allocations, params[:dst], size, api, 'destination')
+  check_copy_endpoint_oob(state, ctx, allocations, params[:src], size, api, 'source')
 end
 
-# ADDED: null-pointer check for a memory copy/fill. In Level Zero, a null dstptr
-# or srcptr on a copy (or a null ptr on a fill) is a usage error
-# (ZE_RESULT_ERROR_INVALID_NULL_POINTER) and can crash the driver inside the
-# append -- which then emits no _exit event -- so this runs at ENTRY, before the
-# (possibly fatal) call, reading the input pointers directly from defi. Null-ness
-# is a static property of the arguments, so unlike the OOB/UAF checks it needs no
-# deferral to execute time. `endpoints` is an ordered role -> pointer map; a fill
-# passes only the destination, so a fill's (absent) source is never flagged.
-# Reports every null endpoint found.
+# Check if the copy is from/to a nullptr
 def check_null_copy_ptr(state, ctx, api, endpoints)
   endpoints.each do |role, ptr|
     if ptr.nil? || ptr == 0
@@ -609,19 +393,15 @@ def check_null_copy_ptr(state, ctx, api, endpoints)
   end
 end
 
-# ADDED: a successful allocation may reuse an address previously freed. Drop any
-# freed record whose former range overlaps the new allocation so it is not
-# mistaken for a still-dangling pointer. Call from the alloc callbacks.
+# Deletes the address with a new allocation
+# An address might be reused after a free. In this case, we need to update the validator's state as well.
 def mark_reallocated(state, ctx, ctx_handle, handle, size)
-  # CHANGED: only scan the freed registry of the context this allocation belongs
-  # to -- a reused address in one context says nothing about another context.
   freed = state.freed_memory_allocations(ctx, ctx_handle)
   return if freed.empty?
   freed.delete_if { |_addr, m| ranges_overlap?(m.base, m.size, handle, size) }
 end
 
-# ADDED: like find_allocation_containing, but over the freed-allocation registry
-# -- finds a released allocation whose (former) range still contains ptr.
+# Finds the freed allocation that contains the ptr
 def find_freed_allocation_containing(freed, ptr)
   freed.each_value.find { |m| m.base && m.base <= ptr && ptr < m.base + m.size }
 end
@@ -647,10 +427,7 @@ def check_uaf_endpoint(state, ctx, live, freed, ptr, api, role)
                                 "freed#{mem.freed_by ? " by #{mem.freed_by}" : ""}; use-after-free")
 end
 
-# ADDED: deferred use-after-free check for a recorded copy/fill op. Runs from the
-# scheduler at the point the copy actually executes (alongside check_oob_copy),
-# so a pointer freed before the copy's turn is caught, while a destination only
-# allocated later is not falsely flagged.
+# Performs the actual checks for when an API uses a memory that has been freed
 def check_use_after_free(state, ctx, params)
   api  = params[:api] || 'zeCommandListAppendMemoryCopy'
   # CHANGED: resolve both maps within the copy's own context (see check_oob_copy).
@@ -661,28 +438,14 @@ def check_use_after_free(state, ctx, params)
   check_uaf_endpoint(state, ctx, live, freed, params[:src], api, 'source')
 end
 
-# ADDED: append-time UAF check that RESPECTS the op's own wait events. A copy
-# does not touch memory until its wait events are signaled: an immediate append
-# executes only once its waits are satisfied, and a recorded (regular-list)
-# append executes later still. So render a verdict at append entry only when the
-# waits are already satisfied (empty waits count as satisfied). If the waits are
-# still unmet, the copy has not accessed memory yet -- leave it to the deferred
-# scheduler (run_deferred_op), which re-checks at the exact point the copy
-# becomes runnable. This keeps the crash-safety benefit for the common
-# no-wait / ready case while staying event-aware for gated copies.
+# calls the check_use_after_free only if the wait events have been satisfied
 def check_use_after_free_on_append(state, ctx, params, waits)
   return unless state.waits_satisfied?(ctx, waits)
   check_use_after_free(state, ctx, params)
 end
 
-# ADDED: deferred validation of a zeCommandListAppendMemoryRangesBarrier's memory
-# ranges. Runs from the scheduler when the barrier executes (its waits satisfied),
-# so it sees the memory model as it stands at that point -- mirroring the copy
-# checks. For each range, if its base was already zeMemFree'd we report a
-# use-after-free (the barrier references memory that is gone); a base that matches
-# no live allocation is left alone, since it may be IPC/untracked memory (see
-# check_uaf_endpoint's rationale). A range base of nullptr is skipped.
-def check_ranges_barrier(state, ctx, params)
+# Checks for uaf on memory ranges barrier
+def check_uaf_ranges_barrier(state, ctx, params)
   api   = params[:api] || 'zeCommandListAppendMemoryRangesBarrier'
   live  = state.memory_allocations(ctx, params[:ctx_handle])
   freed = state.freed_memory_allocations(ctx, params[:ctx_handle])
@@ -692,7 +455,7 @@ def check_ranges_barrier(state, ctx, params)
   end
 end
 
-# ADDED: true if [a, a+asize) and [b, b+bsize) overlap.
+# returns true if [a, a+asize) and [b, b+bsize) overlap.
 def ranges_overlap?(a, asize, b, bsize)
   return false unless a && b && asize && bsize
   a < b + bsize && b < a + asize
