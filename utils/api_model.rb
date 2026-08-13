@@ -29,20 +29,26 @@ class ApiModel
     @enum_names, @bitfield_names, @struct_names = classify_ast_types(types, enums)
   end
 
-  # The lookups the library generator does per typedef. They return nil for a
-  # name the backend does not define: a typedef can name a struct that only
-  # ever appears as an opaque forward declaration, which the generator skips
-  # rather than emitting a layout for.
-  def struct(name)
-    @structs.find { |s| s.name == name }
+  # The definition a typedef refers to. `type` is the typedef's target, so it
+  # carries the layout itself when the struct or union was declared inline and
+  # has no name of its own.
+  #
+  # A named target that the API does not define is an opaque forward
+  # declaration: the headers name the struct but never give its layout, so
+  # there is nothing to generate. Callers ask for that case explicitly with
+  # `opaque_ok`, and anything else raises -- a missing definition is otherwise
+  # a parse that dropped a type, which would silently generate a library with
+  # a hole in it.
+  def struct(type, opaque_ok: false)
+    lookup(@structs, type, 'struct', opaque_ok)
   end
 
-  def union(name)
-    @unions.find { |u| u.name == name }
+  def union(type, opaque_ok: false)
+    lookup(@unions, type, 'union', opaque_ok)
   end
 
-  def enum(name)
-    @enums.find { |e| e.name == name }
+  def enum(type, opaque_ok: false)
+    lookup(@enums, type, 'enum', opaque_ok)
   end
 
   def object?(name)
@@ -63,6 +69,16 @@ class ApiModel
   end
 
   private
+
+  def lookup(definitions, type, kind, opaque_ok)
+    return type unless type.name
+
+    definition = definitions.find { |d| d.name == type.name }
+    return definition if definition
+    raise "no definition for #{kind} #{type.name}" unless opaque_ok
+
+    nil
+  end
 
   # A typedef'd enum whose underlying enum name ends in `flag_t` is a bitfield
   # (OR-able flags); every other enum is a plain enum. Each `_flag_t` bitfield

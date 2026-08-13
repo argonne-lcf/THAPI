@@ -29,19 +29,17 @@ end
 
 API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type.name)
+    enum = API.enum(t.type)
     print_enum_with_namespace(:HIP, t.name, enum)
   elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = t.type.name ? API.struct(t.type.name) : t.type
+    struct = API.struct(t.type, opaque_ok: true)
     next unless struct
 
     print_struct_prepending_uuid(:HIP, t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = API.union(t.type.name)
-    next unless union
-
+    union = API.union(t.type)
     print_union_with_namespace(:HIP, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)

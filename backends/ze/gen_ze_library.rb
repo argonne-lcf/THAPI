@@ -334,19 +334,15 @@ end
 
 all_type_sorted[:sorted].each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type.name)
+    enum = API.enum(t.type)
     print_enum(t.name, enum)
   elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = API.struct(t.type.name)
-    next unless struct
-
+    struct = API.struct(t.type)
     print_struct(t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = API.union(t.type.name)
-    next unless union
-
+    union = API.union(t.type)
     print_union_with_namespace(:ZE, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)

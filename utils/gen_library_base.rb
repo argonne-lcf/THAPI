@@ -415,15 +415,13 @@ module YAMLCAst
         if type.name && API.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          s = type.name ? API.struct(type.name) : type
-          "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(s.to_ffi)} }.by_value)"
+          "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(API.struct(type).to_ffi)} }.by_value)"
         end
       when Union
         if type.name && API.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          u = type.name ? API.union(type.name) : type
-          "(Class::new(#{FFI_UNION}) { layout #{gen_layout(u.to_ffi)} }.by_value)"
+          "(Class::new(#{FFI_UNION}) { layout #{gen_layout(API.union(type).to_ffi)} }.by_value)"
         end
       else
         type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")

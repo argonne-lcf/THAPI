@@ -23,7 +23,7 @@ EOF
 
 API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type.name)
+    enum = API.enum(t.type)
     print_enum(t.name, enum)
   end
 end

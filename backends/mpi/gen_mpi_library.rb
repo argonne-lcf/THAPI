@@ -12,22 +12,15 @@ print_handle_uuid_modules
 
 API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type.name)
+    enum = API.enum(t.type)
     print_enum_with_namespace(:MPI, t.name, enum)
   elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    # An anonymous target carries the layout itself, so the typedef is the
-    # definition -- same guard hip already uses. Without it MPI_Status and
-    # MPI_F08_status are silently dropped from the bindings.
-    struct = t.type.name ? API.struct(t.type.name) : t.type
-    next unless struct
-
+    struct = API.struct(t.type)
     print_struct_with_namespace(:MPI, t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = API.union(t.type.name)
-    next unless union
-
+    union = API.union(t.type)
     print_union_with_namespace(:MPI, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
