@@ -1,55 +1,6 @@
 require_relative 'gen_itt_library_base'
 require 'set'
 
-def unwrap_typedef_to_concrete(t)
-  # unwrap chains like Typedef -> Typedef -> Enum
-  seen = Set.new.compare_by_identity
-  t = t.type while t.respond_to?(:type) && seen.add?(t)
-  t
-end
-
-def enum_with_members_or_nil(e)
-  e if e && e.respond_to?(:members) && e.members && !e.members.empty?
-end
-
-def find_enum_by_name(name, api)
-  base = name.to_s
-  base_stripped = base.sub(/_t\z/, '')
-
-  enums = Array(api['enums'])
-  typedefs = Array(api['typedefs'])
-
-  # direct match (array or hash)
-  if api['enums'].is_a?(Hash)
-    e = api['enums'][base] || api['enums'][base_stripped]
-    return e if enum_with_members_or_nil(e)
-  else
-    e = enums.find { |x| x.respond_to?(:name) && [base, base_stripped].include?(x.name) }
-    return e if enum_with_members_or_nil(e)
-  end
-
-  # typedef: name or stripped name
-  td = typedefs.find { |t| t.respond_to?(:name) && [base, base_stripped].include?(t.name) }
-  if td
-    e = unwrap_typedef_to_concrete(td)
-    return e if enum_with_members_or_nil(e)
-  end
-
-  # forward-declared enum object; look for another enum with same name but members set
-  if e && e.respond_to?(:name)
-    alt = enums.find { |x| x != e && x.respond_to?(:name) && x.name == e.name && enum_with_members_or_nil(x) }
-    return alt if alt
-  end
-
-  # look for any anonymous enum that has members
-  if td
-    anon = unwrap_typedef_to_concrete(td)
-    return anon if enum_with_members_or_nil(anon)
-  end
-
-  nil
-end
-
 def print_enum(name, enum)
   by_name = {}
   current = -1
@@ -161,7 +112,7 @@ callbacks = []
 
 API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    print_enum(t.name, find_enum_by_name(t.name, $itt_api))
+    print_enum(t.name, API.enum(t.type))
   elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
