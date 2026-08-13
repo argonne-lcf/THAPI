@@ -25,7 +25,7 @@ def to_name_space(name)
   name.match(/\A(omp[dt]?)_/)[1].upcase
 end
 
-$all_enum_names, $all_bitfield_names, $all_struct_names, $all_union_names =
+$all_enum_names, $all_bitfield_names, $all_struct_names =
   classify_ast_types($all_types, $all_enums)
 
 FFI_STRUCT = 'FFI::OMPTStruct'

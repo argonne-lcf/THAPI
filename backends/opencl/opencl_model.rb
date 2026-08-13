@@ -690,8 +690,7 @@ end
 OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
 OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
 
-$meta_parameters = YAML.load_file(File.join(SRC_DIR, 'opencl_meta_parameters.yaml'))
-$meta_parameters['meta_parameters'].each do |func, list|
+YAML.load_file(File.join(SRC_DIR, 'opencl_meta_parameters.yaml'))['meta_parameters'].each do |func, list|
   list.each do |type, *args|
     register_meta_parameter func, Kernel.const_get(type), *args
   end

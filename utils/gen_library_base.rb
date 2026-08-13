@@ -11,7 +11,6 @@ def classify_ast_types(all_types, all_enums)
   enum_names = []
   bitfield_names = []
   struct_names = []
-  union_names = []
   all_types.each do |t|
     case t.type
     when YAMLCAst::Enum
@@ -23,13 +22,11 @@ def classify_ast_types(all_types, all_enums)
       end
     when YAMLCAst::Struct
       struct_names.push t.name
-    when YAMLCAst::Union
-      union_names.push t.name
     end
   end
   bitfield_names += bitfield_names.select { |n| n.end_with?('_flag_t') }
                                   .map { |n| n.gsub('_flag_t', '_flags_t') }
-  [enum_names, bitfield_names, struct_names, union_names]
+  [enum_names, bitfield_names, struct_names]
 end
 
 # Collect the "object" type names: typedefs of pointer-to-struct, plus any

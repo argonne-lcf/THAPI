@@ -9,8 +9,7 @@ class Command
   def initialize(function, meta_parameters: [])
     @function = function
     @tracepoint_parameters = []
-    @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += meta_parameters.collect do |type, args|
+    @meta_parameters = meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
     @prologues = []
@@ -132,5 +131,3 @@ def load_meta_parameters(*filenames)
   end
   spec
 end
-
-AUTO_META_PARAMETERS = []
