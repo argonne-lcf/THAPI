@@ -100,7 +100,8 @@ ZE_MODEL = \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb
+	$(top_srcdir)/utils/LTTng.rb \
+	$(top_srcdir)/utils/command.rb
 
 btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -211,6 +212,7 @@ install-data-hook:
 
 ZE_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_ze_library_base.rb \
 	$(top_srcdir)/utils/gen_probe_base.rb
