@@ -226,7 +226,7 @@ $on_successful_exit['zeCommandListHostSynchronize'] = lambda { |state, ctx, payl
 }
 
 # Submission is where the queue, the lists, their events and the fence are
-# first brought together, so most "must belong together" rules are checked here.
+# So the same context checkings between those objects are called here.
 $upon_entry["zeCommandQueueExecuteCommandLists"] = lambda { |state, ctx, payload|
   command_queues = state.find_objects(ctx, 'command_queue')
   command_queue_handle = payload['hCommandQueue']
@@ -296,9 +296,6 @@ $upon_entry["zeFenceReset"] =  lambda { |state, ctx, payload|
   curr_fence.status = curr_fence.not_signaled
 }
 
-# Object lifecycle callbacks. Create files the object in the process table and
-# its parent's; destroy removes both and reports children still alive.
-
 #Set the driver for the current context
 $on_successful_exit['zeDriverGet'] = lambda { |state, ctx, payload|
   drivers = state.get_process(ctx).drivers
@@ -307,7 +304,7 @@ $on_successful_exit['zeDriverGet'] = lambda { |state, ctx, payload|
   }
 }
 
-#Create device objects
+
 $on_successful_exit['zeDeviceGet'] = lambda { |state, ctx, payload|
   devices = state.find_objects(ctx, 'device')
   driver = state.find_object(ctx, 'driver', 'hDriver')
@@ -322,7 +319,7 @@ $on_successful_exit['zeDeviceGet'] = lambda { |state, ctx, payload|
 }
 
 
-#Create subdevice objects, with device as a parent
+
 $on_successful_exit['zeDeviceGetSubDevices'] = lambda { |state, ctx, payload|
   devices = state.find_objects(ctx, 'device')
   device = state.find_object(ctx, 'device', 'hDevice')
@@ -334,7 +331,7 @@ $on_successful_exit['zeDeviceGetSubDevices'] = lambda { |state, ctx, payload|
   }
 }
 
-#Create ze context objects
+
 $on_successful_exit['zeContextCreate'] = lambda { |state, ctx, payload|
   contexts = state.find_objects(ctx, 'context')
   driver = state.find_object(ctx, 'driver', 'hDriver')
@@ -358,7 +355,7 @@ $on_successful_exit['zeContextCreateEx'] = lambda { |state, ctx, payload|
   contexts[handle] = ZEModel::Context.new(handle, driver, desc, devs)
 }
 
-# Releases the corresponding ze context object
+
 $on_successful_exit['zeContextDestroy'] = lambda { |state, ctx, payload|
   contexts = state.find_objects(ctx, 'context')
   contexts.delete(state.find_param(ctx, 'hContext')) { |h|
@@ -366,7 +363,7 @@ $on_successful_exit['zeContextDestroy'] = lambda { |state, ctx, payload|
   }
 }
 
-# Creates an event pool
+
 $on_successful_exit['zeEventPoolCreate'] = lambda { |state, ctx, payload|
   context = state.find_object(ctx, 'context', 'hContext')
   devices = state.find_objects(ctx, 'device')
@@ -381,8 +378,8 @@ $on_successful_exit['zeEventPoolCreate'] = lambda { |state, ctx, payload|
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_EVENT_POOL_DESC,desc[:stype])
 }
 
-# Destroys the given event pool
-# Destroying a pool while events carved out of it are still alive leads to leaks
+
+# Destroying a pool while events are being used should not occur
 $on_successful_exit['zeEventPoolDestroy'] = lambda { |state, ctx, payload|
   event_pools = state.find_objects(ctx, 'event_pool')
   handle = state.find_param(ctx, 'hEventPool')
@@ -398,7 +395,7 @@ $on_successful_exit['zeEventPoolDestroy'] = lambda { |state, ctx, payload|
 }
 
 
-#Create an event
+
 $on_successful_exit['zeEventCreate'] = lambda { |state, ctx, payload|
   events = state.find_objects(ctx, 'event')
   event_pool = state.find_object(ctx, 'event_pool', 'hEventPool')
@@ -414,7 +411,7 @@ $on_successful_exit['zeEventCreate'] = lambda { |state, ctx, payload|
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_EVENT_DESC,desc[:stype])
 }
 
-# Destroys an event
+
 $on_successful_exit['zeEventDestroy'] = lambda { |state, ctx, payload|
   events = state.find_objects(ctx, 'event')
   handle = state.find_param(ctx, 'hEvent')
@@ -430,7 +427,7 @@ $on_successful_exit['zeEventDestroy'] = lambda { |state, ctx, payload|
   end
 }
 
-# Creates a command queue
+
 $on_successful_exit['zeCommandQueueCreate'] = lambda { |state, ctx, payload|
   command_queues = state.find_objects(ctx, 'command_queue')
   context = state.find_object(ctx, 'context', 'hContext')
@@ -452,7 +449,7 @@ $on_erroneous_exit['zeCommandQueueCreate'] = lambda { |state, ctx, payload|
   check_valid_index_for_ordinal(state,ctx,handle,desc[:ordinal],desc[:index])
 }
 
-# Destroys the given command queue
+
 $on_successful_exit['zeCommandQueueDestroy'] = lambda { |state, ctx, payload|
   command_queues = state.find_objects(ctx, 'command_queue')
   handle = state.find_param(ctx, 'hCommandQueue')
@@ -467,7 +464,7 @@ $on_successful_exit['zeCommandQueueDestroy'] = lambda { |state, ctx, payload|
   }
 }
 
-# Creates a fence
+
 $on_successful_exit['zeFenceCreate'] = lambda { |state, ctx, payload|
   fences = state.find_objects(ctx, 'fence')
   command_queue = state.find_object(ctx, 'command_queue', 'hCommandQueue')
@@ -480,7 +477,7 @@ $on_successful_exit['zeFenceCreate'] = lambda { |state, ctx, payload|
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_FENCE_DESC,desc[:stype])
 }
 
-# Destroys the fence
+
 $on_successful_exit['zeFenceDestroy'] = lambda { |state, ctx, payload|
   fences = state.find_objects(ctx, 'fence')
   handle = state.find_param(ctx, 'hFence')
@@ -493,7 +490,7 @@ $on_successful_exit['zeFenceDestroy'] = lambda { |state, ctx, payload|
   }
 }
 
-# Creates the command list
+
 $on_successful_exit['zeCommandListCreate'] = lambda { |state, ctx, payload|
   command_lists = state.find_objects(ctx, 'command_list')
   context = state.find_object(ctx, 'context', 'hContext')
@@ -509,7 +506,7 @@ $on_successful_exit['zeCommandListCreate'] = lambda { |state, ctx, payload|
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC,desc[:stype])
 }
 
-# Creates an immediate command list
+
 $on_successful_exit['zeCommandListCreateImmediate'] = lambda { |state, ctx, payload|
   command_lists = state.find_objects(ctx, 'command_list')
   context = state.find_object(ctx, 'context', 'hContext')
@@ -531,7 +528,7 @@ $on_successful_exit['zeCommandListCreateImmediate'] = lambda { |state, ctx, payl
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC,altdesc[:stype])
 }
 
-# Destroys the command list
+
 $on_successful_exit['zeCommandListDestroy'] = lambda { |state, ctx, payload|
   command_lists = state.find_objects(ctx, 'command_list')
   handle = state.find_param(ctx, 'hCommandList')
@@ -543,7 +540,7 @@ $on_successful_exit['zeCommandListDestroy'] = lambda { |state, ctx, payload|
   }
 }
 
-# Destroys the module
+
 $on_successful_exit['zeModuleCreate'] = lambda { |state, ctx, payload|
   modules = state.find_objects(ctx, 'module')
   context = state.find_object(ctx, 'context', 'hContext')
@@ -578,7 +575,7 @@ $on_erroneous_exit['zeModuleCreate'] = lambda { |state, ctx, payload|
   end
 }
 
-# Destroys the module. Kernel must be destroyed first.
+# Kernel must be destroyed first before module
 $on_successful_exit['zeModuleDestroy'] = lambda { |state, ctx, payload|
   modules = state.find_objects(ctx, 'module')
   handle = state.find_param(ctx, 'hModule')
@@ -593,7 +590,7 @@ $on_successful_exit['zeModuleDestroy'] = lambda { |state, ctx, payload|
   }
 }
 
-# Appends build log at dynamic link
+
 $on_erroneous_exit['zeModuleDynamicLink'] = $on_successful_exit['zeModuleDynamicLink'] = lambda { |state, ctx, payload|
   build_log_handle = payload['phLinkLog_val']
   if build_log_handle != 0
@@ -604,7 +601,7 @@ $on_erroneous_exit['zeModuleDynamicLink'] = $on_successful_exit['zeModuleDynamic
   end
 }
 
-# Destroys the build log
+
 $on_successful_exit['zeModuleBuildLogDestroy'] = lambda { |state, ctx, payload|
   module_build_logs = state.find_objects(ctx, 'module_build_log')
   handle = state.find_param(ctx, 'hModuleBuildLog')
@@ -624,7 +621,7 @@ $upon_entry['zeKernelCreate'] = lambda {|state, ctx, payload|
   check_valid_module(state,ctx, payload)
 }
 
-# Creates the kernel object
+
 $on_successful_exit['zeKernelCreate'] = lambda { |state, ctx, payload|
   kernels = state.find_objects(ctx, 'kernel')
   mod = state.find_object(ctx, 'module', 'hModule')
@@ -638,7 +635,7 @@ $on_successful_exit['zeKernelCreate'] = lambda { |state, ctx, payload|
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_KERNEL_DESC, desc[:stype])
 }
 
-# Destroys the kernel
+
 $on_successful_exit['zeKernelDestroy'] = lambda { |state, ctx, payload|
   kernels = state.find_objects(ctx, 'kernel')
   handle = state.find_param(ctx, 'hKernel')
@@ -654,7 +651,7 @@ $on_successful_exit['zeKernelDestroy'] = lambda { |state, ctx, payload|
 # Each allocator keys the allocation by its Level Zero context, then calls
 # mark_reallocated since the driver may hand back an address that was freed.
 
-# Allocs device memory
+
 $on_successful_exit['zeMemAllocDevice'] = lambda { |state, ctx, payload|
   # memory is associated with devices
   ctx_handle = state.find_param(ctx, 'hContext')
@@ -672,7 +669,7 @@ $on_successful_exit['zeMemAllocDevice'] = lambda { |state, ctx, payload|
   check_struct_stype_misuse(state,ctx,payload,:ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, device_desc[:stype])
 }
 
-# Allocs shared memory
+
 $on_successful_exit['zeMemAllocShared'] = lambda { |state, ctx, payload|
   ctx_handle = state.find_param(ctx, 'hContext')
   memory_allocations = state.memory_allocations(ctx, ctx_handle)
@@ -689,7 +686,7 @@ $on_successful_exit['zeMemAllocShared'] = lambda { |state, ctx, payload|
   device.memory_allocations[ctx_handle][handle] = memory_allocation if device
 }
 
-# Allocs Host memory
+
 $on_successful_exit['zeMemAllocHost'] = lambda { |state, ctx, payload|
   # Host allocations are accessible by the host and all devices within the driver’s context.
   ctx_handle = state.find_param(ctx, 'hContext')

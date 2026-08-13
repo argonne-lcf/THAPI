@@ -522,7 +522,6 @@ class StateObject
             context['api'] = m[1]
 			      #zeDriversInit or zeInit must be the first one to be called before any api calls
             check_initialization(context)
-            #print the known deprecated APIs
             print_deprecation_warning(m[1]) if @deprecated[m[1]]
 
             if m[2] == 'entry'
@@ -530,10 +529,10 @@ class StateObject
             elsif m[2] == 'exit'
               on_exit(m, hostname, context, payload)
             end
-            #this event may have signaled something a deferred command list waits on
-            pump_deferred
+            # Runs the blocked commands, if the wait-event(s) are satisfied
+            pump_deferred 
           end
         end
       }
 
-end #end of StateObject
+end
