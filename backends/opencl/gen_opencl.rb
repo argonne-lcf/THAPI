@@ -82,7 +82,7 @@ $opencl_commands.each do |c|
 
   puts <<EOF
 
-  #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[$clGetExtensionFunctionAddress]}("#{c.prototype.name}");
+  #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clGetExtensionFunctionAddress']]}("#{c.prototype.name}");
   if (!#{OPENCL_POINTER_NAMES[c]})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
