@@ -6,7 +6,6 @@ $all_types = $mpi_api['typedefs'] || []
 $all_structs = $mpi_api['structs'] || []
 $all_unions = $mpi_api['unions'] || []
 $all_enums = $mpi_api['enums'] || []
-$all_funcs = $mpi_api['functions'] || []
 
 $objects = find_objects($all_types)
 $int_scalars = find_int_scalars($all_types)

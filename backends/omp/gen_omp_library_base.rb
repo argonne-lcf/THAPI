@@ -6,7 +6,6 @@ $all_types = $ompt_api['typedefs']
 $all_structs = $ompt_api['structs']
 $all_unions = $ompt_api['unions']
 $all_enums = $ompt_api['enums']
-$all_funcs = $ompt_api['functions']
 
 $objects = find_objects($all_types)
 $int_scalars = find_int_scalars($all_types)

@@ -6,7 +6,6 @@ $all_types = $itt_api['typedefs']
 $all_structs = $itt_api['structs']
 $all_unions = $itt_api['unions']
 $all_enums = $itt_api['enums']
-$all_funcs = $itt_api['functions']
 
 $objects = find_objects($all_types)
 $int_scalars = find_int_scalars($all_types)

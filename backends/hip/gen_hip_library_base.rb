@@ -6,7 +6,6 @@ $all_types = $hip_api['typedefs']
 $all_structs = $hip_api['structs']
 $all_unions = $hip_api['unions']
 $all_enums = $hip_api['enums']
-$all_funcs = $hip_api['functions']
 
 $objects = find_objects($all_types, extra: ['hipGraphicsResource_t'])
 $int_scalars = find_int_scalars($all_types)
