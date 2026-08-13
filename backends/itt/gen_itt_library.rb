@@ -106,20 +106,16 @@ puts <<~EOF
 
 EOF
 
-def print_struct(name, struct)
-  members = struct.to_ffi
-
+def print_struct(name, struct, fnptr_syms)
   # Replace function pointer field types with :pointer.
   # This avoids unresolved type errors when callbacks are defined later.
-  if defined?($fnptr_syms) && $fnptr_syms
-    members = members.map do |m|
-      t = m[1]
-      if t.is_a?(Array)
-        elem_t = t[0]
-        [m[0], [($fnptr_syms.include?(elem_t.to_s) ? :pointer : elem_t), t[1]]]
-      else
-        [m[0], ($fnptr_syms.include?(t.to_s) ? :pointer : t)]
-      end
+  members = struct.to_ffi.map do |m|
+    t = m[1]
+    if t.is_a?(Array)
+      elem_t = t[0]
+      [m[0], [(fnptr_syms.include?(elem_t.to_s) ? :pointer : elem_t), t[1]]]
+    else
+      [m[0], (fnptr_syms.include?(t.to_s) ? :pointer : t)]
     end
   end
 
@@ -154,7 +150,7 @@ end
 
 # Build a set of all function pointer typedef symbols to detect struct fields
 # that should be converted to :pointer when generating layouts
-$fnptr_syms = Set.new(
+fnptr_syms = Set.new(
   API.types.select do |t|
     t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
   end.map { |t| to_ffi_name(t.name).to_s }
@@ -170,7 +166,7 @@ API.types.each do |t|
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
     struct = API.struct(t.type)
-    print_struct(t.name, struct)
+    print_struct(t.name, struct, fnptr_syms)
   elsif t.type.is_a? YAMLCAst::Union
     union = API.union(t.type)
     print_union_with_namespace(:ITT, t.name, union)
