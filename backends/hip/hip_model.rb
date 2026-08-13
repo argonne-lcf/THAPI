@@ -16,8 +16,6 @@ typedefs = $hip_api['typedefs']
 structs = $hip_api['structs']
 
 find_all_types(typedefs)
-OBJECT_TYPES.push('hipGraphicsResource_t')
-POINTER_TYPES.delete('hipGraphicsResource_t')
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs)
 

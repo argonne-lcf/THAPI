@@ -1,4 +1,5 @@
 require 'yaml'
+require 'set'
 
 module YAMLCAst
   class Type
@@ -465,10 +466,30 @@ STRUCT_TYPES = []
 UNION_TYPES = []
 POINTER_TYPES = []
 
-def find_all_types(types)
-  objs = types.filter_map do |t|
-    t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
+# A typedef of pointer-to-struct is an opaque handle -- an "object" -- rather
+# than a pointer the tracer should dereference.
+#
+# The struct is not always named directly: headers also spell it in two steps,
+#   typedef struct _Foo Foo;   typedef Foo *Foo_t;
+# which puts a CustomType between the pointer and the struct. Resolve those
+# aliases through `types` so both spellings classify the same way; otherwise
+# Foo_t lands in POINTER_TYPES and the backend has to correct it by hand.
+def object_typedef?(t, types)
+  return false unless t.type.is_a?(YAMLCAst::Pointer)
+
+  target = t.type.type
+  seen = Set.new
+  while target.is_a?(YAMLCAst::CustomType) && seen.add?(target.name)
+    aliased = types.find { |x| x.name == target.name }
+    break unless aliased
+
+    target = aliased.type
   end
+  target.is_a?(YAMLCAst::Struct)
+end
+
+def find_all_types(types)
+  objs = types.filter_map { |t| t.name if object_typedef?(t, types) }
   OBJECT_TYPES.concat objs
   transitive_closure(types, OBJECT_TYPES)
 
@@ -479,9 +500,7 @@ def find_all_types(types)
   find_types(types, YAMLCAst::Struct, STRUCT_TYPES)
   find_types(types, YAMLCAst::Union, UNION_TYPES)
   ptrs = types.filter_map do |t|
-    if (t.type.is_a?(YAMLCAst::Pointer) && !t.type.type.is_a?(YAMLCAst::Struct)) || t.type.is_a?(YAMLCAst::Function)
-      t.name
-    end
+    t.name if (t.type.is_a?(YAMLCAst::Pointer) && !object_typedef?(t, types)) || t.type.is_a?(YAMLCAst::Function)
   end
   POINTER_TYPES.concat ptrs
 end

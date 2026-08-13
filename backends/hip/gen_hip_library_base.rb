@@ -6,8 +6,7 @@ API = ApiModel.new(
   types: $hip_api['typedefs'],
   structs: $hip_api['structs'],
   unions: $hip_api['unions'],
-  enums: $hip_api['enums'],
-  extra_objects: ['hipGraphicsResource_t']
+  enums: $hip_api['enums']
 )
 
 def to_class_name(name)

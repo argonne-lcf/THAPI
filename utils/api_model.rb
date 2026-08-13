@@ -16,15 +16,13 @@ class ApiModel
               :objects, :int_scalars,
               :enum_names, :bitfield_names, :struct_names
 
-  # `extra_objects` names are folded into the object list (hip seeds one type
-  # the pointer-to-struct rule does not reach).
-  def initialize(types:, structs:, unions:, enums:, extra_objects: [])
+  def initialize(types:, structs:, unions:, enums:)
     @types = types
     @structs = structs
     @unions = unions
     @enums = enums
 
-    @objects = find_objects(types, extra: extra_objects)
+    @objects = find_objects(types)
     @int_scalars = find_int_scalars(types)
     @enum_names, @bitfield_names, @struct_names = classify_ast_types(types, enums)
   end
@@ -105,13 +103,11 @@ class ApiModel
   end
 
   # The "object" type names: typedefs of pointer-to-struct, plus any CustomType
-  # aliasing a known OBJECT_TYPES name. `extra` names are inserted after the
-  # pointer-to-struct seed and before the alias pass.
-  def find_objects(all_types, extra: [])
+  # aliasing a known OBJECT_TYPES name.
+  def find_objects(all_types)
     objects = all_types.filter_map do |t|
-      t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
+      t.name if object_typedef?(t, all_types)
     end
-    objects.concat(extra)
     all_types.each do |t|
       objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
     end
