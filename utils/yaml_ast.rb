@@ -1,3 +1,5 @@
+require 'yaml'
+
 module YAMLCAst
   class Type
     attr_reader :const, :restrict, :volatile
@@ -323,6 +325,13 @@ module YAMLCAst
     'function' => Function,
     'declaration' => Declaration,
   }
+
+  # Parse an api.yaml straight into an AST. Every backend does exactly this to
+  # each of its api.yaml files, so the intermediate raw hash never needs a name
+  # of its own.
+  def self.load_file(path)
+    from_yaml_ast(YAML.load_file(path))
+  end
 
   def self.from_yaml_ast(ast)
     res = {}

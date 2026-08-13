@@ -9,8 +9,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'mpiResult'
 
-$mpi_api_yaml = YAML.load_file('mpi_api.yaml')
-$mpi_api = YAMLCAst.from_yaml_ast($mpi_api_yaml)
+$mpi_api = YAMLCAst.load_file('mpi_api.yaml')
 
 typedefs = $mpi_api.fetch('typedefs', [])
 structs = $mpi_api.fetch('structs', [])

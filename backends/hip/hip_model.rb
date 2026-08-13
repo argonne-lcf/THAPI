@@ -9,8 +9,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'hipResult'
 
-$hip_api_yaml = YAML.load_file('hip_api.yaml')
-$hip_api = YAMLCAst.from_yaml_ast($hip_api_yaml)
+$hip_api = YAMLCAst.load_file('hip_api.yaml')
 
 funcs = $hip_api['functions']
 typedefs = $hip_api['typedefs']

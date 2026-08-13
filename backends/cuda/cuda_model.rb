@@ -10,12 +10,8 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'cuResult'
 
-$cuda_api_versions_yaml = YAML.load_file('cuda_api_versions.yaml')
-$cuda_api_yaml = YAML.load_file('cuda_api.yaml')
-$cuda_exports_api_yaml = YAML.load_file('cuda_exports_api.yaml')
-
-$cuda_api = YAMLCAst.from_yaml_ast($cuda_api_yaml)
-$cuda_exports_api = YAMLCAst.from_yaml_ast($cuda_exports_api_yaml)
+$cuda_api = YAMLCAst.load_file('cuda_api.yaml')
+$cuda_exports_api = YAMLCAst.load_file('cuda_exports_api.yaml')
 
 cuda_funcs_e = $cuda_api['functions']
 cuda_exports_funcs_e = $cuda_exports_api['functions']
@@ -273,6 +269,8 @@ commands.add_epilogue 'cuInit', <<EOF
 EOF
 
 # cuGetProcAddress*
+# Not an api.yaml: a plain name -> suffix -> versions map, used only here.
+api_versions = YAML.load_file('cuda_api_versions.yaml')
 command_names = $cuda_commands.collect(&:name).to_set
 pt_condition = '((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))'
 normal_condition = '((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))'
@@ -285,7 +283,7 @@ register_proc_callbacks = lambda { |method|
     fprintf(stderr, "THAPI: CUDA version %d is unsupported, could not wrap %s symbol\\n", cudaVersion, symbol);
   } else if (_retval == CUDA_SUCCESS && pfn && *pfn) {
 EOF
-  str << $cuda_api_versions_yaml.map { |name, suffixes|
+  str << api_versions.map { |name, suffixes|
     suffixes.map { |suffix, versions|
       versions.map.with_index { |version, i|
         fullname = "#{name}#{"_v#{versions.size - i}" if versions.size - i > 1}#{suffix}"

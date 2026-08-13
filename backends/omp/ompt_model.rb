@@ -9,8 +9,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'ompResult'
 
-$ompt_api_yaml = YAML.load_file('ompt_api.yaml')
-$ompt_api = YAMLCAst.from_yaml_ast($ompt_api_yaml)
+$ompt_api = YAMLCAst.load_file('ompt_api.yaml')
 
 typedefs = $ompt_api['typedefs']
 structs = $ompt_api['structs']

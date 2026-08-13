@@ -9,8 +9,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'ittResult'
 
-$itt_api_yaml = YAML.load_file('itt_api.yaml')
-$itt_api = YAMLCAst.from_yaml_ast($itt_api_yaml)
+$itt_api = YAMLCAst.load_file('itt_api.yaml')
 
 typedefs = $itt_api['typedefs']
 structs = $itt_api['structs']

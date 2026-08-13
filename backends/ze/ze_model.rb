@@ -10,20 +10,13 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'zeResult'
 
-$ze_api_yaml = YAML.load_file('ze_api.yaml')
-$zet_api_yaml = YAML.load_file('zet_api.yaml')
-$zes_api_yaml = YAML.load_file('zes_api.yaml')
-$zel_api_yaml = YAML.load_file('zel_api.yaml')
-# $zer_api_yaml = YAML.load_file('zer_api.yaml')
-$zer_api_yaml = { 'typedefs' => [], 'structs' => [], 'functions' => [] }
-$zex_api_yaml = YAML.load_file('zex_api.yaml')
-
-$ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
-$zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
-$zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
-$zel_api = YAMLCAst.from_yaml_ast($zel_api_yaml)
-$zer_api = YAMLCAst.from_yaml_ast($zer_api_yaml)
-$zex_api = YAMLCAst.from_yaml_ast($zex_api_yaml)
+$ze_api = YAMLCAst.load_file('ze_api.yaml')
+$zet_api = YAMLCAst.load_file('zet_api.yaml')
+$zes_api = YAMLCAst.load_file('zes_api.yaml')
+$zel_api = YAMLCAst.load_file('zel_api.yaml')
+# zer has no api.yaml yet; the empty shape keeps the concatenations below valid.
+$zer_api = YAMLCAst.from_yaml_ast({ 'typedefs' => [], 'structs' => [], 'functions' => [] })
+$zex_api = YAMLCAst.load_file('zex_api.yaml')
 
 ze_funcs_e = $ze_api['functions']
 zet_funcs_e = $zet_api['functions']

@@ -9,9 +9,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'cudaResult'
 
-$cudart_api_yaml = YAML.load_file('cudart_api.yaml')
-
-$cudart_api = YAMLCAst.from_yaml_ast($cudart_api_yaml)
+$cudart_api = YAMLCAst.load_file('cudart_api.yaml')
 
 funcs = $cudart_api['functions']
 typedefs = $cudart_api['typedefs']
