@@ -41,6 +41,8 @@ $itt_commands = $itt_api['functions'].filter_map do |func|
   Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
+check_meta_parameters(meta_parameters, $itt_commands)
+
 ITT_POINTER_NAMES = $itt_commands.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

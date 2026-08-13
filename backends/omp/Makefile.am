@@ -45,6 +45,7 @@ OMP_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(top_srcdir)/utils/command.rb \
 	$(top_srcdir)/utils/command_index.rb \
+	$(top_srcdir)/utils/meta_parameter_spec.rb \
 	$(OMP_EXTRACTED)
 
 BTX_OMP_GENERATED = \

@@ -2,6 +2,7 @@ require 'nokogiri'
 require 'yaml'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command_index'
+require_relative '../../utils/meta_parameter_spec'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
@@ -606,27 +607,20 @@ ParamValueSizeRet = AutoOutScalar.create('param_value_size_ret', nocheck: true)
 
 Event = AutoOutScalar.create('event')
 
-def register_meta_parameter(method, type, *args)
-  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-    raise "Unknown method: #{method}!"
-  end
-
-  META_PARAMETERS[method].push [type, args]
-end
-
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
-META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
 
 class Command < CLXML
   attr_reader :prototype, :parameters, :tracepoint_parameters, :meta_parameters, :prologues, :epilogues
 
-  def initialize(command)
-    super
+  # `meta_parameters` is this function's rows from a meta-parameter spec, as
+  # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
+  def initialize(command, meta_parameters: [])
+    super(command)
     @prototype = Prototype.new(command.search('proto'))
     @parameters = command.search('param').collect { |p| Parameter.new(p) }
     @tracepoint_parameters = []
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@prototype.name].collect do |type, args|
+    @meta_parameters += meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
     @extension = @prototype.name.match(EXTENSION_FUNCTIONS)
@@ -687,22 +681,17 @@ class Command < CLXML
   end
 end
 
-OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
-OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
-
-YAML.load_file(File.join(SRC_DIR, 'opencl_meta_parameters.yaml'))['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
+meta_parameters = load_meta_parameters('opencl_meta_parameters.yaml')
 
 $opencl_commands = funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.search('proto/name').text])
 end
 
 $opencl_extension_commands = ext_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.search('proto/name').text])
 end
+
+check_meta_parameters(meta_parameters, $opencl_commands, $opencl_extension_commands)
 
 # A constant, not a local, because gen_opencl.rb looks a command up too.
 OPENCL_COMMANDS = CommandIndex.new($opencl_commands, $opencl_extension_commands)

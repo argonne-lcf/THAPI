@@ -78,6 +78,7 @@ EXTRA_DIST = \
 	thapi_metadata_tracepoints.tp \
 	command.rb \
 	command_index.rb \
+	meta_parameter_spec.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \
 	thapi_log_to_bt_source_component.rb \

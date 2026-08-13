@@ -35,6 +35,8 @@ $ompt_commands = OMPT_CALLBACKS.collect do |func|
   Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
+check_meta_parameters(meta_parameters, $ompt_commands)
+
 OMPT_POINTER_NAMES = $ompt_commands.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

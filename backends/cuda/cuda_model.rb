@@ -91,6 +91,8 @@ $cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
   Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
+check_meta_parameters(meta_parameters, $cuda_commands, $cuda_exports_commands)
+
 CUDA_POINTER_NAMES = ($cuda_commands +
                       $cuda_exports_commands).collect do |c|
   [c, upper_snake_case(c.pointer_name)]

@@ -214,6 +214,7 @@ HIP_MODEL = \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(top_srcdir)/utils/command.rb \
 	$(top_srcdir)/utils/command_index.rb \
+	$(top_srcdir)/utils/meta_parameter_spec.rb \
 	hip.h.include
 
 btx_hip_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_LIB_GEN) $(HIP_MODEL)

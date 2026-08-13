@@ -1,5 +1,5 @@
-require 'yaml'
 require_relative 'command_index'
+require_relative 'meta_parameter_spec'
 
 class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
@@ -99,35 +99,4 @@ class Command
       res
     end
   end
-end
-
-# Read a backend's meta-parameter YAML (relative to SRC_DIR) and return the
-# spec it describes: a Hash mapping each function name to a list of
-# [MetaParameter subclass, args] rows, ready to hand to Command.new. Unlisted
-# functions read back as [], so callers can `spec[name]` unconditionally.
-#
-# The file maps each function name to a list of [type, *args] rows under a
-# top-level `meta_parameters` key. A backend with none of its own ships no
-# file and calls Command.new without a spec, so that key must be a mapping: a
-# missing, misspelled or empty one means a typo, which would otherwise yield
-# an empty spec and look identical to having none.
-#
-# Pass several filenames to merge their specs (ze splits its rows per
-# namespace, cuda across its two APIs). Each function must be declared in at
-# most one of them: listing it twice would silently concatenate both sets of
-# rows, so it raises instead.
-def load_meta_parameters(*filenames)
-  spec = Hash.new { [] }
-  filenames.each do |filename|
-    path = File.join(SRC_DIR, filename)
-    content = YAML.load_file(path)
-    entries = content['meta_parameters']
-    raise "#{path} has no 'meta_parameters' mapping" unless entries.is_a?(Hash)
-
-    rows = entries.transform_values do |list|
-      list.collect { |type, *args| [Kernel.const_get(type), args] }
-    end
-    spec.merge!(rows) { |func, _, _| raise "#{func} is declared twice, second time in #{path}" }
-  end
-  spec
 end

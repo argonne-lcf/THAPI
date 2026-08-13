@@ -30,6 +30,8 @@ $hip_commands = funcs.collect do |func|
   Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
+check_meta_parameters(meta_parameters, $hip_commands)
+
 HIP_POINTER_NAMES = $hip_commands.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

@@ -61,6 +61,8 @@ $mpi_commands = mpi_funcs_e.collect do |func|
   Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
+check_meta_parameters(meta_parameters, $mpi_commands)
+
 commands = CommandIndex.new($mpi_commands)
 
 # https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-underscore
