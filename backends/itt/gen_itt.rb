@@ -4,7 +4,7 @@ require_relative 'itt_model'
 
 commands = CommandIndex.new($itt_commands)
 
-$itt_commands.each do |c|
+commands.each do |c|
   next unless c.has_return_type?
 
   c.add_prologue(if c.type.is_a?(YAMLCAst::Pointer)

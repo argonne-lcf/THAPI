@@ -420,7 +420,7 @@ commands.add_epilogue 'zeKernelCreate', <<EOF
  }
 EOF
 
-($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).select do |c|
+commands.select do |c|
   c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
 end.each do |c|
   parent_type = c['pDdiTable'].type.type.to_s + '_'

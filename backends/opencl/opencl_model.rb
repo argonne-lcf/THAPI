@@ -702,25 +702,25 @@ end + $opencl_extension_commands.collect do |c|
   [c, c.prototype.pointer_name]
 end).to_h
 
-($opencl_commands + $opencl_extension_commands).select do |c|
+OPENCL_COMMANDS.select do |c|
   c.parameters.find { |p| p.name == 'errcode_ret' && p.pointer? }
 end.each do |c|
-  c.prologues.push <<EOF
+  c.add_prologue <<EOF
   cl_int _errcode_ret_force;
   if (!errcode_ret)
     errcode_ret = &_errcode_ret_force;
 EOF
 end
 
-($opencl_commands + $opencl_extension_commands).select do |c|
+OPENCL_COMMANDS.select do |c|
   c.parameters.find { |p| p.name == 'param_value_size_ret' && p.pointer? }
 end.each do |c|
-  c.prologues.push <<EOF
+  c.add_prologue <<EOF
   size_t _new_param_value_size;
   if (!param_value_size_ret)
     param_value_size_ret = &_new_param_value_size;
 EOF
-  c.epilogues.push <<EOF
+  c.add_epilogue <<EOF
   param_value_size = (param_value_size <= *param_value_size_ret ? param_value_size : *param_value_size_ret );
 EOF
 end
@@ -732,10 +732,10 @@ buffer_create_info.instance_variable_set(:@lttng_in_type,
 
 OPENCL_COMMANDS['clCreateSubBuffer'].meta_parameters.push buffer_create_info
 
-($opencl_commands + $opencl_extension_commands).each do |c|
+OPENCL_COMMANDS.each do |c|
   next unless c.prototype.name.match 'clEnqueue'
 
-  c.prologues.push <<EOF
+  c.add_prologue <<EOF
   int64_t _enqueue_counter = 0;
   if (do_dump) {
     pthread_mutex_lock(&enqueue_counter_mutex);
@@ -760,7 +760,7 @@ class ParamName < MetaParameter
   end
 end
 
-($opencl_commands + $opencl_extension_commands).each do |c|
+OPENCL_COMMANDS.each do |c|
   c.meta_parameters.push(ParamName.new(c)) if c.prototype.name.match(/clGet(\w*?)Info/) && c['param_name']
 end
 
@@ -1233,10 +1233,10 @@ register_extension_callbacks.call('clGetExtensionFunctionAddress')
 register_extension_callbacks.call('clGetExtensionFunctionAddressForPlatform')
 
 # Create event profiling code
-($opencl_commands + $opencl_extension_commands).each do |c|
+OPENCL_COMMANDS.each do |c|
   if c.event?
     if !c.returns_event?
-      c.prologues.push <<EOF
+      c.add_prologue <<EOF
   int _profile_release_event = 0;
   int _event_profiling = 0;
   cl_event _profiling_event = NULL;
@@ -1248,7 +1248,7 @@ register_extension_callbacks.call('clGetExtensionFunctionAddressForPlatform')
     _event_profiling = 1;
   }
 EOF
-      c.epilogues.push <<EOF
+      c.add_epilogue <<EOF
   if (_event_profiling) {
     if (_retval == CL_SUCCESS) {
       int _set_retval = #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clSetEventCallback']]}(*event, CL_COMPLETE, event_notify, NULL);
@@ -1261,7 +1261,7 @@ EOF
   }
 EOF
     elsif c.prototype.name != 'clCreateUserEvent'
-      c.epilogues.push <<EOF
+      c.add_epilogue <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling) ) {
     int _set_retval = #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clSetEventCallback']]}(_retval, CL_COMPLETE, event_notify, NULL);
     do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, _retval);

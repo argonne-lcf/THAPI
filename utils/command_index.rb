@@ -15,6 +15,8 @@
 # the Khronos XML with a Command class of its own, and so cannot require that
 # file, but indexes them just the same.
 class CommandIndex
+  include Enumerable
+
   def initialize(*command_lists)
     @by_name = {}
     command_lists.flatten.each do |c|
@@ -22,6 +24,13 @@ class CommandIndex
 
       @by_name[c.name] = c
     end
+  end
+
+  # Iterating yields every command across the lists it was built from, in the
+  # order they were given, so `commands` is also the handle for the sweeps that
+  # attach code to whichever commands match a shape.
+  def each(&)
+    @by_name.each_value(&)
   end
 
   def [](name)
