@@ -2,13 +2,12 @@ require_relative 'ompt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-$all_types = $ompt_api['typedefs']
-$all_structs = $ompt_api['structs']
-$all_unions = $ompt_api['unions']
-$all_enums = $ompt_api['enums']
-
-$objects = find_objects($all_types)
-$int_scalars = find_int_scalars($all_types)
+API = ApiModel.new(
+  types: $ompt_api['typedefs'],
+  structs: $ompt_api['structs'],
+  unions: $ompt_api['unions'],
+  enums: $ompt_api['enums']
+)
 
 def to_class_name(name)
   mod = to_name_space(name)
@@ -23,9 +22,6 @@ end
 def to_name_space(name)
   name.match(/\A(omp[dt]?)_/)[1].upcase
 end
-
-$all_enum_names, $all_bitfield_names, $all_struct_names =
-  classify_ast_types($all_types, $all_enums)
 
 FFI_STRUCT = 'FFI::OMPTStruct'
 FFI_UNION = 'FFI::OMPTUnion'

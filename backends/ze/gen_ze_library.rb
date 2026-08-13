@@ -244,7 +244,7 @@ EOF
   print_struct_with_namespace(:ZE, name, struct, prepends: prepends, initializer: initializer, close: false)
 end
 
-$int_scalars.each do |k, v|
+API.int_scalars.each do |k, v|
   next if to_ffi_name(k).match('_flags_t') && !to_ffi_name(k).match('_packed_')
 
   puts <<EOF
@@ -265,8 +265,8 @@ end
 
 # We put Enum and $objecs first.
 # If not, they are not added by the BFS, not sure why
-all_type_sorted = $all_types.group_by do |t|
-  if $objects.include?(t.name) || t.type.is_a?(YAMLCAst::Enum)
+all_type_sorted = API.types.group_by do |t|
+  if API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)
     :sorted
   else
     :to_be_sorted
@@ -276,7 +276,7 @@ end
 # Transform into set for fast `include`
 all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
 
-all_types_by_name = $all_types.collect { |t| [t.name, t] }.to_h
+all_types_by_name = API.types.collect { |t| [t.name, t] }.to_h
 
 # Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
 dfs = lambda do |node|
@@ -318,7 +318,7 @@ dfs = lambda do |node|
     # Enums have no dependencies
   when YAMLCAst::CustomType
     # Typedef-to-typedef (e.g. `typedef uint8_t ze_bool_t`). Recurse so the
-    # referenced typedef is emitted first when it lives in $all_types.
+    # referenced typedef is emitted first when it lives in API.types.
     dfs.call(node.type)
   else
     raise "dfs: unhandled node.type=#{node.type.class} on node=#{node.inspect}"
@@ -334,17 +334,17 @@ end
 
 all_type_sorted[:sorted].each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
+    enum = API.enum(t.type.name)
     print_enum(t.name, enum)
-  elsif $objects.include?(t.name)
+  elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = $all_structs.find { |s| t.type.name == s.name }
+    struct = API.struct(t.type.name)
     next unless struct
 
     print_struct(t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = $all_unions.find { |s| t.type.name == s.name }
+    union = API.union(t.type.name)
     next unless union
 
     print_union_with_namespace(:ZE, t.name, union)

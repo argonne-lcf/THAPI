@@ -2,13 +2,13 @@ require_relative 'hip_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-$all_types = $hip_api['typedefs']
-$all_structs = $hip_api['structs']
-$all_unions = $hip_api['unions']
-$all_enums = $hip_api['enums']
-
-$objects = find_objects($all_types, extra: ['hipGraphicsResource_t'])
-$int_scalars = find_int_scalars($all_types)
+API = ApiModel.new(
+  types: $hip_api['typedefs'],
+  structs: $hip_api['structs'],
+  unions: $hip_api['unions'],
+  enums: $hip_api['enums'],
+  extra_objects: ['hipGraphicsResource_t']
+)
 
 def to_class_name(name)
   mod = to_name_space(name)
@@ -32,9 +32,6 @@ def to_name_space(name)
     'HIP'
   end
 end
-
-$all_enum_names, $all_bitfield_names, $all_struct_names =
-  classify_ast_types($all_types, $all_enums)
 
 FFI_STRUCT = 'FFI::HIPStruct'
 FFI_UNION = 'FFI::HIPUnion'

@@ -21,9 +21,9 @@ puts <<~EOF
 
 EOF
 
-$all_types.each do |t|
+API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
+    enum = API.enum(t.type.name)
     print_enum(t.name, enum)
   end
 end

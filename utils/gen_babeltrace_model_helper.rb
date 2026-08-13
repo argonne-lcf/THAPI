@@ -2,13 +2,13 @@
 require_relative 'yaml_ast'
 require_relative 'type_registry'
 
-# Build the babeltrace TypeRegistry for an AST backend from its load-time
-# globals and assert the per-backend bitfield invariant: ze/omp have bitfield
-# types, cuda/hip/mpi/itt have none (see the babeltrace-model bitfield note).
+# Build the babeltrace TypeRegistry from the backend's API model and assert the
+# per-backend bitfield invariant: ze/omp have bitfield types, cuda/hip/mpi/itt
+# have none (see the babeltrace-model bitfield note).
 def build_ast_registry(backend, expect_bitfields:)
   registry = TypeRegistry.from_ast(
-    all_types: $all_types, all_enums: $all_enums,
-    enum_names: $all_enum_names, bitfield_names: $all_bitfield_names, struct_names: $all_struct_names,
+    all_types: API.types, all_enums: API.enums,
+    enum_names: API.enum_names, bitfield_names: API.bitfield_names, struct_names: API.struct_names,
     class_namer: method(:to_scoped_class_name)
   )
   if expect_bitfields

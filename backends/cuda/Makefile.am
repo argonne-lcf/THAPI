@@ -307,6 +307,7 @@ install-data-hook:
 
 CUDA_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_cuda_library_base.rb \

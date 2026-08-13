@@ -27,19 +27,19 @@ puts <<EOF
   typedef #{to_ffi_name('CUmemGenericAllocationHandle_v1')}, #{to_ffi_name('CUmemGenericAllocationHandle')}
 EOF
 
-$all_types.each do |t|
+API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
+    enum = API.enum(t.type.name)
     print_enum_with_namespace(:CUDA, t.name, enum)
-  elsif $objects.include?(t.name)
+  elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = $all_structs.find { |s| t.type.name == s.name }
+    struct = API.struct(t.type.name)
     next unless struct
 
     print_struct_prepending_uuid(:CUDA, t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = $all_unions.find { |s| t.type.name == s.name }
+    union = API.union(t.type.name)
     next unless union
 
     print_union_with_namespace(:CUDA, t.name, union)

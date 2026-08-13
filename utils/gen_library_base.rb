@@ -1,60 +1,4 @@
-require_relative 'yaml_ast'
-
-# Classify a backend's typedef'd types into enum / bitfield / struct / union
-# name lists (in typedef order). A typedef'd enum whose underlying enum name
-# ends in `flag_t` is treated as a bitfield (OR-able flags); every other enum
-# is a plain enum. Each `_flag_t` bitfield additionally aliases the `_flags_t`
-# name the headers use for the OR'd value. Backends with no `flag_t` enums get
-# an empty bitfield list (the `flag_t` test and `_flags_t` derivation are then
-# no-ops), so the same rule serves all backends.
-def classify_ast_types(all_types, all_enums)
-  enum_names = []
-  bitfield_names = []
-  struct_names = []
-  all_types.each do |t|
-    case t.type
-    when YAMLCAst::Enum
-      enum = all_enums.find { |e| t.type.name == e.name }
-      if enum&.name&.end_with?('flag_t')
-        bitfield_names.push t.name
-      else
-        enum_names.push t.name
-      end
-    when YAMLCAst::Struct
-      struct_names.push t.name
-    end
-  end
-  bitfield_names += bitfield_names.select { |n| n.end_with?('_flag_t') }
-                                  .map { |n| n.gsub('_flag_t', '_flags_t') }
-  [enum_names, bitfield_names, struct_names]
-end
-
-# Collect the "object" type names: typedefs of pointer-to-struct, plus any
-# CustomType aliasing a known OBJECT_TYPES name. `extra` names are inserted
-# after the pointer-to-struct seed and before the alias pass (hip seeds one).
-def find_objects(all_types, extra: [])
-  objects = all_types.filter_map do |t|
-    t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
-  end
-  objects.concat(extra)
-  all_types.each do |t|
-    objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-  end
-  objects
-end
-
-# Map each typedef that aliases an integer type to that underlying type name.
-def find_int_scalars(all_types)
-  int_scalars = {}
-  all_types.each do |t|
-    int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
-  end
-  int_scalars
-end
-
-def has_typedef?(name)
-  $all_types.any? { |t| t.type.respond_to?(:name) && t.type.name == name }
-end
+require_relative 'api_model'
 
 def to_ffi_name(name, default = true)
   case name
@@ -352,9 +296,7 @@ EOF
 end
 
 def close_type(name)
-  $all_types.select do |t|
-    t.type.is_a?(YAMLCAst::CustomType) && t.type.name == name
-  end.each do |t|
+  API.aliases_of(name).each do |t|
     puts <<EOF
   typedef #{to_ffi_name(name)}, #{to_ffi_name(t.name)}
 
@@ -470,17 +412,17 @@ module YAMLCAst
       when Pointer
         ':pointer'
       when Struct
-        if type.name && has_typedef?(type.name)
+        if type.name && API.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          s = type.name ? $all_structs.find { |st| st.name == type.name } : type
+          s = type.name ? API.struct(type.name) : type
           "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(s.to_ffi)} }.by_value)"
         end
       when Union
-        if type.name && has_typedef?(type.name)
+        if type.name && API.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          u = type.name ? $all_unions&.find { |un| un.name == type.name } : type
+          u = type.name ? API.union(type.name) : type
           "(Class::new(#{FFI_UNION}) { layout #{gen_layout(u.to_ffi)} }.by_value)"
         end
       else
@@ -564,7 +506,7 @@ module YAMLCAst
       p = (params || []).collect do |par|
         if par.type.is_a?(Pointer)
           if par.type.type.respond_to?(:name) &&
-             $all_struct_names.include?(par.type.type.name)
+             API.struct_names.include?(par.type.type.name)
             "#{to_class_name(par.type.type.name)}.ptr"
           else
             ':pointer'

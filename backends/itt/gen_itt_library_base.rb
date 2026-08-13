@@ -2,13 +2,12 @@ require_relative 'itt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-$all_types = $itt_api['typedefs']
-$all_structs = $itt_api['structs']
-$all_unions = $itt_api['unions']
-$all_enums = $itt_api['enums']
-
-$objects = find_objects($all_types)
-$int_scalars = find_int_scalars($all_types)
+API = ApiModel.new(
+  types: $itt_api['typedefs'],
+  structs: $itt_api['structs'],
+  unions: $itt_api['unions'],
+  enums: $itt_api['enums']
+)
 
 # Convert C / ITT names (e.g. "__itt_domain_t") to Ruby CamelCase class names
 def to_class_name(name)
@@ -48,9 +47,6 @@ end
 def to_name_space(name)
   name.match(/\A(__itt[dt]?)_/)[1].upcase
 end
-
-$all_enum_names, $all_bitfield_names, $all_struct_names =
-  classify_ast_types($all_types, $all_enums)
 
 FFI_STRUCT = 'FFI::ITTStruct'
 FFI_UNION = 'FFI::ITTUnion'

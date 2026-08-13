@@ -19,27 +19,27 @@ puts <<EOF
   ACTIVITY_DOMAIN_HIP_OPS = 2
 EOF
 
-typedef_enum_names = $all_types.filter_map { |t| t.type.name if t.type.is_a?(YAMLCAst::Enum) }.to_set
-$all_enums.each do |e|
+typedef_enum_names = API.types.filter_map { |t| t.type.name if t.type.is_a?(YAMLCAst::Enum) }.to_set
+API.enums.each do |e|
   next unless e.name
   next if typedef_enum_names.include?(e.name)
 
   print_enum_with_namespace(:HIP, e.name, e)
 end
 
-$all_types.each do |t|
+API.types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
+    enum = API.enum(t.type.name)
     print_enum_with_namespace(:HIP, t.name, enum)
-  elsif $objects.include?(t.name)
+  elsif API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = t.type.name ? $all_structs.find { |s| t.type.name == s.name } : t.type
+    struct = t.type.name ? API.struct(t.type.name) : t.type
     next unless struct
 
     print_struct_prepending_uuid(:HIP, t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = $all_unions.find { |s| t.type.name == s.name }
+    union = API.union(t.type.name)
     next unless union
 
     print_union_with_namespace(:HIP, t.name, union)

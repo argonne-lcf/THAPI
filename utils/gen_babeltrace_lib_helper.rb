@@ -16,14 +16,11 @@ def add_babeltrace_event_callbacks(file)
         case fc[:type]
         when 'integer_signed', 'integer_unsigned'
           if be_class
-            # Remaining read of the $all_bitfield_names global. This is
-            # in the library/bindings path (not the babeltrace-model
-            # path that was de-globalized): callers require their
-            # gen_<x>_library_base first, which populates the global
-            # before this call, so there is no load-order hazard. The
-            # global cannot be dropped while gen_library_base.rb still
-            # reads $all_struct_names, so it is left explicit here.
-            if $all_bitfield_names.include?(fc[:cast_type])
+            # Reads the backend's API model rather than being handed a
+            # registry: this is the library/bindings path, whose callers
+            # require their gen_<x>_library_base first, so API is defined
+            # by the time this runs.
+            if API.bitfield_names.include?(fc[:cast_type])
               %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
             else
               %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}
