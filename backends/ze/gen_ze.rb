@@ -57,9 +57,9 @@ def gen_struct_printer(namespace, types)
       #{namespace}_structure_type_t stype = (#{namespace}_structure_type_t)((ze_base_desc_t *)p)->stype;
       switch (stype) {
   EOF
-  types.reject { |t| $struct_type_reject.include?(t.to_s) }.each do |t|
+  types.reject { |t| STRUCT_TYPE_REJECT.include?(t.to_s) }.each do |t|
     ename = "#{namespace.to_s.upcase}_STRUCTURE_TYPE_#{t.delete_prefix(namespace.to_s + '_').delete_suffix('_t').upcase}"
-    ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
+    ename = STRUCT_TYPE_CONVERSION_TABLE[ename] if STRUCT_TYPE_CONVERSION_TABLE[ename]
     puts <<EOF
   case #{ename}:
     tracepoint(lttng_ust_#{namespace}_structs, #{t}, ((#{t} *)p));

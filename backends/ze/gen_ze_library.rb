@@ -210,7 +210,7 @@ def print_struct(name, struct)
     prepends << 'Handle'
   end
 
-  if struct.to_ffi.first[0] == ':stype' && !$struct_type_reject.include?(name)
+  if struct.to_ffi.first[0] == ':stype' && !STRUCT_TYPE_REJECT.include?(name)
     initializer = <<EOF
 
     def initialize(*args)
@@ -230,7 +230,7 @@ EOF
             else
               raise "Unrecognized namespace for #{ename}"
             end.upcase
-    ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
+    ename = STRUCT_TYPE_CONVERSION_TABLE[ename] if STRUCT_TYPE_CONVERSION_TABLE[ename]
 
     initializer << <<EOF
         self[:stype] = :#{ename}

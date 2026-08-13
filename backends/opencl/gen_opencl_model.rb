@@ -28,14 +28,14 @@ res = {
 
 en.each do |e|
   bitfield = false
-  vals = $requires.select do |r|
+  vals = CL_REQUIRES.select do |r|
     r.comment && r.comment.match(/#{e['name']}(\z| )/)
   end.each do |r|
     bitfield = true if r.comment.match(/ - bitfield/)
   end.collect do |r|
     r.enums
   end.reduce(:+).collect do |v|
-    [v, $constants[v]]
+    [v, CL_CONSTANTS[v]]
   end.to_h
   r = { 'values' => vals }
   r['trace_name'] = e['trace_name'] if e['trace_name']

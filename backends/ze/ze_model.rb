@@ -38,7 +38,7 @@ gen_ffi_type_map(typedefs)
 # so each namespace initializes its own symbols.
 INIT_FUNCTIONS = /zeInit|zeLoaderInit|zeInitDrivers|zesInit/
 
-$struct_type_conversion_table = {
+STRUCT_TYPE_CONVERSION_TABLE = {
   'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
   'ZE_STRUCTURE_TYPE_IMAGE_PITCHED_EXP_DESC' => 'ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC',
   'ZE_STRUCTURE_TYPE_IMAGE_BINDLESS_EXP_DESC' => 'ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC',
@@ -60,8 +60,8 @@ $struct_type_conversion_table = {
 # - zex tags structures with a uint32_t alias (level_zero/ze_stypes.h) rather
 #   than an enum, we don't handle that.
 # - zet_metric_source_id_exp_t's tag is simply absent from the spec.
-$struct_type_reject = Set.new(%w[zet_metric_source_id_exp_t
-                                 zex_device_module_register_file_exp_t])
+STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
+                                zex_device_module_register_file_exp_t])
 
 # zer disabled: 'zer_meta_parameters.yaml'
 meta_parameters = load_meta_parameters('ze_meta_parameters.yaml',

@@ -48,7 +48,7 @@ struct_e = doc.xpath('//types/type').select do |l|
   l['category'] == 'struct'
 end.collect
 
-$constants = doc.xpath('//enums/enum').collect do |n|
+CL_CONSTANTS = doc.xpath('//enums/enum').collect do |n|
   if n['value']
     [n['name'], n['value']]
   elsif n['bitpos']
@@ -169,7 +169,7 @@ class Require < CLXML
   end
 end
 
-$requires = (doc.xpath('//feature/require').to_a + doc.xpath('//extensions/extension/require').to_a).collect do |r|
+CL_REQUIRES = (doc.xpath('//feature/require').to_a + doc.xpath('//extensions/extension/require').to_a).collect do |r|
   Require.new(r)
 end
 
