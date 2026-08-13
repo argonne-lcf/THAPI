@@ -1,4 +1,5 @@
 require 'yaml'
+require_relative 'command_index'
 
 class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
@@ -12,12 +13,20 @@ class Command
     @meta_parameters += meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
-    @prologues = PROLOGUES[@function.name]
-    @epilogues = EPILOGUES[@function.name]
+    @prologues = []
+    @epilogues = []
   end
 
   def name
     @function.name
+  end
+
+  def add_prologue(code)
+    @prologues.push(code)
+  end
+
+  def add_epilogue(code)
+    @epilogues.push(code)
   end
 
   def decl_pointer(name = pointer_name)
@@ -124,14 +133,4 @@ def load_meta_parameters(*filenames)
   spec
 end
 
-def register_prologue(method, code)
-  PROLOGUES[method].push(code)
-end
-
-def register_epilogue(method, code)
-  EPILOGUES[method].push(code)
-end
-
 AUTO_META_PARAMETERS = []
-PROLOGUES = Hash.new { |h, k| h[k] = [] }
-EPILOGUES = Hash.new { |h, k| h[k] = [] }

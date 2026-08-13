@@ -133,6 +133,7 @@ CUDA_MODEL = \
 	$(top_srcdir)/utils/meta_parameters.rb \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(top_srcdir)/utils/command.rb \
+	$(top_srcdir)/utils/command_index.rb \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
 
@@ -144,6 +145,7 @@ CUDART_MODEL = \
 	$(top_srcdir)/utils/meta_parameters.rb \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(top_srcdir)/utils/command.rb \
+	$(top_srcdir)/utils/command_index.rb \
 	$(srcdir)/cudart.h.include
 
 btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)

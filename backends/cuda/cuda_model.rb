@@ -96,6 +96,8 @@ CUDA_POINTER_NAMES = ($cuda_commands +
   [c, upper_snake_case(c.pointer_name)]
 end.to_h
 
+commands = CommandIndex.new($cuda_commands, $cuda_exports_commands)
+
 dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, extra);
 EOF
@@ -104,7 +106,7 @@ EOF
    cuLaunchKernel_ptsz
    cuLaunchKernelEx
    cuLaunchKernelEx_ptsz].each do |m|
-  register_prologue m, dump_args
+  commands.add_prologue m, dump_args
 end
 
 dump_args = <<EOF
@@ -113,7 +115,7 @@ EOF
 
 %w[cuLaunchCooperativeKernel
    cuLaunchCooperativeKernel_ptsz].each do |m|
-  register_prologue m, dump_args
+  commands.add_prologue m, dump_args
 end
 
 dump_args = <<EOF
@@ -124,10 +126,10 @@ EOF
 
 %w[cuGraphAddKernelNode
    cuGraphExecKernelNodeSetParams].each do |m|
-  register_prologue m, dump_args
+  commands.add_prologue m, dump_args
 end
 
-register_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
+commands.add_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   if (launchParamsList) {
     for( unsigned int _i = 0; _i < numDevices; _i++) {
       _dump_kernel_args(launchParamsList[_i].function, launchParamsList[_i].kernelParams, NULL);
@@ -135,7 +137,7 @@ register_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   }
 EOF
 
-register_epilogue 'cuGraphKernelNodeGetParams', <<EOF
+commands.add_epilogue 'cuGraphKernelNodeGetParams', <<EOF
   if (_retval == CUDA_SUCCESS && nodeParams) {
     _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
   }
@@ -206,31 +208,31 @@ config_commands = %w[
 ]
 
 stream_commands.each do |m|
-  register_prologue m, profiling_start_stream
-  register_epilogue m, profiling_stop_stream
+  commands.add_prologue m, profiling_start_stream
+  commands.add_epilogue m, profiling_stop_stream
 end
 
 no_stream_commands.each do |m|
-  register_prologue m, profiling_start_no_stream
-  register_epilogue m, profiling_stop_no_stream
+  commands.add_prologue m, profiling_start_no_stream
+  commands.add_epilogue m, profiling_stop_no_stream
 end
 
 config_commands.each do |m|
-  register_prologue m, profiling_start_config
-  register_epilogue m, profiling_stop_config
+  commands.add_prologue m, profiling_start_config
+  commands.add_epilogue m, profiling_stop_config
 end
 
 # if a context is to be destroyed we must attempt to get profiling event results
 %w[cuCtxDestroy
    cuCtxDestroy_v2].each do |m|
-  register_prologue m, <<EOF
+  commands.add_prologue m, <<EOF
   if (ctx) {
     _context_event_cleanup(ctx);
   }
 EOF
 end
 
-register_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
+commands.add_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
   if (_do_profile && _retval == CUDA_SUCCESS && *pctx) {
     _primary_context_retain(dev, *pctx);
   }
@@ -238,7 +240,7 @@ EOF
 
 %w[cuDevicePrimaryCtxRelease_v2
    cuDevicePrimaryCtxRelease].each do |m|
-  register_prologue m, <<EOF
+  commands.add_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_release(dev);
   }
@@ -247,7 +249,7 @@ end
 
 %w[cuDevicePrimaryCtxReset_v2
    cuDevicePrimaryCtxReset].each do |m|
-  register_prologue m, <<EOF
+  commands.add_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_reset(dev);
   }
@@ -255,14 +257,14 @@ EOF
 end
 
 # Export tracing
-register_epilogue 'cuGetExportTable', <<EOF
+commands.add_epilogue 'cuGetExportTable', <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
     *ppExportTable = tmp;
   }
 EOF
 
-register_epilogue 'cuInit', <<EOF
+commands.add_epilogue 'cuInit', <<EOF
   if (_retval == CUDA_SUCCESS) {
     _init_cuda();
   }
@@ -311,7 +313,7 @@ EOF
   }
 EOF
 
-  register_epilogue method, str
+  commands.add_epilogue method, str
 }
 
 register_proc_callbacks.call('cuGetProcAddress')

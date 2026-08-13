@@ -46,6 +46,7 @@ MPI_MODEL = \
 	$(top_srcdir)/utils/meta_parameters.rb \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(top_srcdir)/utils/command.rb \
+	$(top_srcdir)/utils/command_index.rb \
 	$(MPI_EXTRACTED)
 
 btx_mpi_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_LIB_GEN) $(MPI_MODEL)

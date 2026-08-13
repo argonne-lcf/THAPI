@@ -1,6 +1,7 @@
 require 'nokogiri'
 require 'yaml'
 require_relative '../../utils/LTTng'
+require_relative '../../utils/command_index'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
@@ -613,26 +614,8 @@ def register_meta_parameter(method, type, *args)
   META_PARAMETERS[method].push [type, args]
 end
 
-def register_prologue(method, code)
-  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-    raise "Unknown method: #{method}!"
-  end
-
-  PROLOGUES[method].push(code)
-end
-
-def register_epilogue(method, code)
-  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-    raise "Unknown method: #{method}!"
-  end
-
-  EPILOGUES[method].push(code)
-end
-
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
 META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
-PROLOGUES = Hash.new { |h, k| h[k] = [] }
-EPILOGUES = Hash.new { |h, k| h[k] = [] }
 
 class Command < CLXML
   attr_reader :prototype, :parameters, :tracepoint_parameters, :meta_parameters, :prologues, :epilogues
@@ -648,8 +631,20 @@ class Command < CLXML
     end
     @extension = @prototype.name.match(EXTENSION_FUNCTIONS)
     @init      = @prototype.name.match(INIT_FUNCTIONS)
-    @prologues = PROLOGUES[@prototype.name]
-    @epilogues = EPILOGUES[@prototype.name]
+    @prologues = []
+    @epilogues = []
+  end
+
+  def name
+    @prototype.name
+  end
+
+  def add_prologue(code)
+    @prologues.push(code)
+  end
+
+  def add_epilogue(code)
+    @epilogues.push(code)
   end
 
   def [](name)
@@ -717,6 +712,8 @@ end
 $opencl_extension_commands.each do |c|
   eval "$#{c.prototype.name} = c"
 end
+
+commands = CommandIndex.new($opencl_commands, $opencl_extension_commands)
 
 OPENCL_POINTER_NAMES = ($opencl_commands.collect do |c|
   [c, upper_snake_case(c.prototype.pointer_name)]
@@ -786,31 +783,31 @@ end
   c.meta_parameters.push(ParamName.new(c)) if c.prototype.name.match(/clGet(\w*?)Info/) && c['param_name']
 end
 
-register_epilogue 'clCreateKernel', <<EOF
+commands.add_epilogue 'clCreateKernel', <<EOF
   if (do_dump && _retval != NULL) {
     add_kernel(_retval);
   }
 EOF
 
-register_epilogue 'clSetKernelArg', <<EOF
+commands.add_epilogue 'clSetKernelArg', <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
     add_kernel_arg(kernel, arg_index, arg_size, arg_value, 0);
   }
 EOF
 
-register_epilogue 'clSetKernelArgSVMPointer', <<EOF
+commands.add_epilogue 'clSetKernelArgSVMPointer', <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
     add_kernel_arg(kernel, arg_index, sizeof(arg_value), arg_value, 1);
   }
 EOF
 
-register_epilogue 'clSVMAlloc', <<EOF
+commands.add_epilogue 'clSVMAlloc', <<EOF
   if (do_dump && _retval != NULL) {
     add_svmptr(_retval, size);
   }
 EOF
 
-register_prologue 'clSVMFree', <<EOF
+commands.add_prologue 'clSVMFree', <<EOF
   if (do_dump && svm_pointer != NULL) {
     remove_svmptr(svm_pointer);
   }
@@ -830,8 +827,8 @@ str = <<EOF
     }
   }
 EOF
-register_prologue 'clEnqueueNDRangeKernel', str
-register_prologue 'clEnqueueNDRangeKernelINTEL', str
+commands.add_prologue 'clEnqueueNDRangeKernel', str
+commands.add_prologue 'clEnqueueNDRangeKernelINTEL', str
 
 str = <<EOF
   if (do_dump && _dump_release_events) {
@@ -841,29 +838,29 @@ str = <<EOF
     free((void *)event_wait_list);
   }
 EOF
-register_epilogue 'clEnqueueNDRangeKernel', str
-register_epilogue 'clEnqueueNDRangeKernelINTEL', str
+commands.add_epilogue 'clEnqueueNDRangeKernel', str
+commands.add_epilogue 'clEnqueueNDRangeKernelINTEL', str
 
-register_prologue 'clCreateBuffer', <<EOF
+commands.add_prologue 'clCreateBuffer', <<EOF
   if (do_dump) {
     flags &= ~CL_MEM_HOST_WRITE_ONLY;
     flags &= ~CL_MEM_HOST_NO_ACCESS;
   }
 EOF
 
-register_epilogue 'clCreateBuffer', <<EOF
+commands.add_epilogue 'clCreateBuffer', <<EOF
   if (do_dump && _retval != NULL) {
     add_buffer(_retval, size);
   }
 EOF
 
-register_prologue 'clCreateCommandQueue', <<EOF
+commands.add_prologue 'clCreateCommandQueue', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
 
-register_prologue 'clCreateCommandQueueWithProperties', <<EOF
+commands.add_prologue 'clCreateCommandQueueWithProperties', <<EOF
   cl_queue_properties *_profiling_properties = NULL;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     int _found_queue_properties = 0;
@@ -909,11 +906,11 @@ register_prologue 'clCreateCommandQueueWithProperties', <<EOF
   }
 EOF
 
-register_epilogue 'clCreateCommandQueueWithProperties', <<EOF
+commands.add_epilogue 'clCreateCommandQueueWithProperties', <<EOF
   if (_profiling_properties) free(_profiling_properties);
 EOF
 
-register_prologue 'clCreateProgramWithSource', <<EOF
+commands.add_prologue 'clCreateProgramWithSource', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_string) && strings != NULL) {
     cl_uint index;
     for (index = 0; index < count; index++) {
@@ -932,7 +929,7 @@ register_prologue 'clCreateProgramWithSource', <<EOF
   }
 EOF
 
-register_prologue 'clCreateProgramWithBinary', <<EOF
+commands.add_prologue 'clCreateProgramWithBinary', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_binary) && binaries != NULL && lengths != NULL) {
     cl_uint index;
     for (index = 0; index < num_devices; index++) {
@@ -944,7 +941,7 @@ register_prologue 'clCreateProgramWithBinary', <<EOF
   }
 EOF
 
-register_prologue 'clCreateProgramWithIL', <<EOF
+commands.add_prologue 'clCreateProgramWithIL', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
@@ -953,7 +950,7 @@ register_prologue 'clCreateProgramWithIL', <<EOF
   }
 EOF
 
-register_prologue 'clCreateProgramWithILKHR', <<EOF
+commands.add_prologue 'clCreateProgramWithILKHR', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
@@ -984,9 +981,9 @@ str = <<EOF
     }
   }
 EOF
-register_prologue 'clBuildProgram', str
-register_prologue 'clCompileProgram', str
-register_prologue 'clLinkProgram', <<EOF
+commands.add_prologue 'clBuildProgram', str
+commands.add_prologue 'clCompileProgram', str
+commands.add_prologue 'clLinkProgram', <<EOF
   int _free_options = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && input_programs && num_input_programs > 0) {
     struct opencl_version version = {1, 0};
@@ -1013,12 +1010,12 @@ str = <<EOF
   if (_free_options)
     free((char *)options);
 EOF
-register_epilogue 'clBuildProgram', str
-register_epilogue 'clCompileProgram', str
-register_epilogue 'clLinkProgram', str
+commands.add_epilogue 'clBuildProgram', str
+commands.add_epilogue 'clCompileProgram', str
+commands.add_epilogue 'clLinkProgram', str
 
 l = lambda { |func, name: 'pfn_notify', extra_conditions: nil|
-  register_prologue func, <<EOF
+  commands.add_prologue func, <<EOF
   struct #{func}_callback_payload *_payload = NULL;
   if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_#{START})#{if extra_conditions
                                                                           " || #{extra_conditions.join(' || ')}"
@@ -1049,31 +1046,31 @@ str = <<EOF
   if (_payload && _retval != CL_SUCCESS)
     free(_payload);
 EOF
-register_epilogue 'clBuildProgram', str
-register_epilogue 'clCompileProgram', str
-register_epilogue 'clSetMemObjectDestructorCallback', str
-register_epilogue 'clSetProgramReleaseCallback', str
-register_epilogue 'clSetEventCallback', str
-register_epilogue 'clEnqueueSVMFree', str
+commands.add_epilogue 'clBuildProgram', str
+commands.add_epilogue 'clCompileProgram', str
+commands.add_epilogue 'clSetMemObjectDestructorCallback', str
+commands.add_epilogue 'clSetProgramReleaseCallback', str
+commands.add_epilogue 'clSetEventCallback', str
+commands.add_epilogue 'clEnqueueSVMFree', str
 str = <<EOF
   if (_payload && !_retval)
     free(_payload);
 EOF
-register_epilogue 'clLinkProgram', str
-register_epilogue 'clCreateContext', str
-register_epilogue 'clCreateContextFromType', str
+commands.add_epilogue 'clLinkProgram', str
+commands.add_epilogue 'clCreateContext', str
+commands.add_epilogue 'clCreateContextFromType', str
 
-register_epilogue 'clBuildProgram', <<EOF
+commands.add_epilogue 'clBuildProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
-register_epilogue 'clCompileProgram', <<EOF
+commands.add_epilogue 'clCompileProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, objects) && !pfn_notify) {
     dump_program_objects(program);
   }
 EOF
-register_epilogue 'clLinkProgram', <<EOF
+commands.add_epilogue 'clLinkProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);
   }
@@ -1084,34 +1081,34 @@ str = <<EOF
     dump_program_build_infos(program);
   }
 EOF
-register_epilogue 'clBuildProgram', str
-register_epilogue 'clCompileProgram', str
-register_epilogue 'clLinkProgram', <<EOF
+commands.add_epilogue 'clBuildProgram', str
+commands.add_epilogue 'clCompileProgram', str
+commands.add_epilogue 'clLinkProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, infos) && _retval && !pfn_notify) {
     dump_program_build_infos(_retval);
   }
 EOF
 
-register_epilogue 'clCreateKernel', <<EOF
+commands.add_epilogue 'clCreateKernel', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info)) {
     dump_kernel_info(_retval);
   }
 EOF
 
-register_epilogue 'clCreateKernel', <<EOF
+commands.add_epilogue 'clCreateKernel', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval != NULL) {
     dump_kernel_arguments(program, _retval);
   }
 EOF
 
-register_prologue 'clCreateKernelsInProgram', <<EOF
+commands.add_prologue 'clCreateKernelsInProgram', <<EOF
   cl_uint n_k = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
-register_epilogue 'clCreateKernelsInProgram', <<EOF
+commands.add_epilogue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_info(kernels[i]);
@@ -1119,13 +1116,13 @@ register_epilogue 'clCreateKernelsInProgram', <<EOF
   }
 EOF
 
-register_prologue 'clCreateKernelsInProgram', <<EOF
+commands.add_prologue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
-register_epilogue 'clCreateKernelsInProgram', <<EOF
+commands.add_epilogue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_arguments(program, kernels[i]);
@@ -1133,20 +1130,20 @@ register_epilogue 'clCreateKernelsInProgram', <<EOF
   }
 EOF
 
-register_prologue 'clGetDeviceIDs', <<EOF
+commands.add_prologue 'clGetDeviceIDs', <<EOF
   cl_uint n_e;
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && !num_devices && devices) {
     num_devices = &n_e;
   }
 EOF
 
-register_prologue 'clGetDeviceIDs', <<EOF
+commands.add_prologue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && !num_devices && devices) {
     num_devices = &n_e;
   }
 EOF
 
-register_epilogue 'clGetDeviceIDs', <<EOF
+commands.add_epilogue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_name(devices[i]);
@@ -1154,7 +1151,7 @@ register_epilogue 'clGetDeviceIDs', <<EOF
   }
 EOF
 
-register_epilogue 'clGetDeviceIDs', <<EOF
+commands.add_epilogue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_timer(devices[i]);
@@ -1175,7 +1172,7 @@ end.join(<<EOF)
   else
 EOF
 
-register_prologue 'clGetExtensionFunctionAddressForPlatform', str
+commands.add_prologue 'clGetExtensionFunctionAddressForPlatform', str
 
 str = $opencl_commands.select { |c| c.extension? }.collect do |c|
   <<EOF
@@ -1190,7 +1187,7 @@ end.join(<<EOF)
   else
 EOF
 
-register_prologue 'clGetExtensionFunctionAddress', str
+commands.add_prologue 'clGetExtensionFunctionAddress', str
 
 register_extension_callbacks = lambda { |ext_method|
   str = <<EOF
@@ -1248,7 +1245,7 @@ EOF
   }
 EOF
 
-  register_epilogue ext_method, str
+  commands.add_epilogue ext_method, str
 }
 
 register_extension_callbacks.call('clGetExtensionFunctionAddress')
@@ -1318,5 +1315,5 @@ str = <<EOF
     }
   }
 EOF
-register_epilogue 'clEnqueueNDRangeKernel', str
-register_epilogue 'clEnqueueNDRangeKernelINTEL', str
+commands.add_epilogue 'clEnqueueNDRangeKernel', str
+commands.add_epilogue 'clEnqueueNDRangeKernelINTEL', str

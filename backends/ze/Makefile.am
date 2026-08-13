@@ -101,7 +101,8 @@ ZE_MODEL = \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \
 	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb
+	$(top_srcdir)/utils/command.rb \
+	$(top_srcdir)/utils/command_index.rb
 
 btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@

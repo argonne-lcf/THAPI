@@ -49,6 +49,7 @@ ITT_MODEL = \
 	$(top_srcdir)/utils/meta_parameters.rb \
 	$(top_srcdir)/utils/LTTng.rb \
 	$(top_srcdir)/utils/command.rb \
+	$(top_srcdir)/utils/command_index.rb \
 	$(ITT_EXTRACTED)
 
 # Generate the Probe (tracepoint)

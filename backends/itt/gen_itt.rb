@@ -2,31 +2,32 @@ require_relative 'itt_model'
 
 # Customization of codegen
 
+commands = CommandIndex.new($itt_commands)
+
 $itt_commands.each do |c|
   next unless c.has_return_type?
 
-  register_prologue(c.name,
-                    if c.type.is_a?(YAMLCAst::Pointer)
-                      "#{c.type} _retval = calloc(1, sizeof(*_retval));"
-                    else
-                      # `= {}` is C23, so use `= {0}` which also works for scalars
-                      # pre-C23. Can be modernized once we require C23.
-                      "#{c.type} _retval = {0};"
-                    end)
+  c.add_prologue(if c.type.is_a?(YAMLCAst::Pointer)
+                   "#{c.type} _retval = calloc(1, sizeof(*_retval));"
+                 else
+                   # `= {}` is C23, so use `= {0}` which also works for scalars
+                   # pre-C23. Can be modernized once we require C23.
+                   "#{c.type} _retval = {0};"
+                 end)
 
-  register_epilogue(c.name, 'return _retval;')
+  c.add_epilogue('return _retval;')
 end
 
 # Sometime, but not always, those function are called by ittstatic
 # But we never use them in btx
-register_prologue('__itt_event_create', '_retval = atomic_fetch_add(&event_counter, 1);')
-register_prologue('__itt_domain_create', '_retval->flags = 1; _retval->nameA=name;')
-register_prologue('__itt_string_handle_create', '_retval->strA=name;')
-register_prologue('__itt_task_begin', 'if (domain->flags == 0) return;')
-register_prologue('__itt_task_end', 'if (domain->flags == 0) return;')
+commands.add_prologue('__itt_event_create', '_retval = atomic_fetch_add(&event_counter, 1);')
+commands.add_prologue('__itt_domain_create', '_retval->flags = 1; _retval->nameA=name;')
+commands.add_prologue('__itt_string_handle_create', '_retval->strA=name;')
+commands.add_prologue('__itt_task_begin', 'if (domain->flags == 0) return;')
+commands.add_prologue('__itt_task_end', 'if (domain->flags == 0) return;')
 
-register_prologue('__itt_metadata_add',
-                  'tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);')
+commands.add_prologue('__itt_metadata_add',
+                      'tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);')
 
 # Printing
 

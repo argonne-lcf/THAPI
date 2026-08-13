@@ -61,6 +61,8 @@ $mpi_commands = mpi_funcs_e.collect do |func|
   Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
+commands = CommandIndex.new($mpi_commands)
+
 # https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-underscore
 # As a rule of thumb you can think of underscore as the inverse of camelize,
 def underscore(camel_cased_word)
@@ -78,7 +80,7 @@ MPI_POINTER_NAMES = $mpi_commands.collect do |c|
   [c, underscore(c.pointer_name).upcase]
 end.to_h
 
-register_epilogue 'MPI_Type_commit', <<EOF
+commands.add_epilogue 'MPI_Type_commit', <<EOF
   int size;#{' '}
   MPI_TYPE_SIZE_PTR(*datatype, &size);
   if (tracepoint_enabled(lttng_ust_mpi_type, property))#{' '}

@@ -109,7 +109,10 @@ ze_pointer_names += $zex_commands.collect do |c|
 end
 ZE_POINTER_NAMES = ze_pointer_names.to_h
 
-register_epilogue 'zeCommandListCreate', <<EOF
+commands = CommandIndex.new($ze_commands, $zet_commands, $zes_commands,
+                            $zel_commands, $zer_commands, $zex_commands)
+
+commands.add_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && desc) {
       bool _io = (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER) != 0;
@@ -118,7 +121,7 @@ register_epilogue 'zeCommandListCreate', <<EOF
   }
 EOF
 
-register_epilogue 'zeCommandListCreateImmediate', <<EOF
+commands.add_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && altdesc) {
       bool _io = (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER) != 0;
@@ -135,7 +138,7 @@ EOF
 # Reset wipes that body, so we reclaim the slots/slabs/events now. Without it
 # the stale slots are re-published on the next Execute (over-count) and slabs
 # leak. The cl stays registered, empty for reuse.
-register_epilogue 'zeCommandListReset', <<EOF
+commands.add_epilogue 'zeCommandListReset', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_reset_command_list(hCommandList);
 EOF
@@ -151,7 +154,7 @@ EOF
 # destroy must unregister under the same condition. Using the narrower
 # _do_profile here would leak the registration in a memory-info-only config,
 # and leave a stale entry that a handle-recycled create later collides with.
-register_epilogue 'zeCommandListDestroy', <<EOF
+commands.add_epilogue 'zeCommandListDestroy', <<EOF
   if (_do_state() && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_destroy_command_list(hCommandList);
 EOF
@@ -159,7 +162,7 @@ EOF
 # zeContextDestroy prologue: tear down our own L0 objects that live
 # inside this context (per-ctx event pools/events) before the user destroys
 # it, so we don't leak our allocations.
-register_prologue 'zeContextDestroy', <<EOF
+commands.add_prologue 'zeContextDestroy', <<EOF
   if (_do_profile && hContext)
     _on_destroy_context(hContext);
 EOF
@@ -170,19 +173,19 @@ EOF
 # previous instance BEFORE this submission re-signals the same baked injected
 # event is what keeps #N-1's timing from being clobbered by #N, and serializes
 # the same cl reused concurrently from another thread.
-register_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
+commands.add_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
   if (_do_profile && numCommandLists > 0 && phCommandLists)
     _on_execute_command_lists_prologue(numCommandLists, phCommandLists, hCommandQueue, hFence);
 EOF
 
 # Sync hooks: walk dependency edges from the synced anchor and drain
 # everything reachable. Each sync API has a different anchor.
-register_epilogue 'zeCommandQueueSynchronize', <<EOF
+commands.add_epilogue 'zeCommandQueueSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS)
     _on_sync(_ZE_SYNC_QUEUE, hCommandQueue);
 EOF
 
-register_epilogue 'zeEventHostSynchronize', <<EOF
+commands.add_epilogue 'zeEventHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
     _on_sync(_ZE_SYNC_EVENT, hEvent);
 EOF
@@ -193,12 +196,12 @@ EOF
 # would otherwise never drain those slots, leaking one injected event per
 # signalled append. Safe: _slot_drain no-ops on already-drained slots, so repeated
 # SUCCESS polls of the same event drain once.
-register_epilogue 'zeEventQueryStatus', <<EOF
+commands.add_epilogue 'zeEventQueryStatus', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
     _on_sync(_ZE_SYNC_EVENT, hEvent);
 EOF
 
-register_epilogue 'zeCommandListHostSynchronize', <<EOF
+commands.add_epilogue 'zeCommandListHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_sync(_ZE_SYNC_CL, hCommandList);
 EOF
@@ -207,7 +210,7 @@ EOF
 # the user's own event ends up carrying the barrier/signal op timing, not the
 # kernel's. If the user queries their event's kernel timestamp themselves,
 # serve back the kernel result we stashed at drain so they see kernel timing.
-register_epilogue 'zeEventQueryKernelTimestamp', <<EOF
+commands.add_epilogue 'zeEventQueryKernelTimestamp', <<EOF
   if (_do_profile && hEvent && dstptr &&
       _on_query_kernel_timestamp(hEvent, dstptr))
     _retval = ZE_RESULT_SUCCESS;
@@ -216,7 +219,7 @@ EOF
 # Fence sync: the fence the user passed to Execute is stamped onto each cl
 # (in_flight_fence), so a fence wait drains exactly the cls that Execute
 # submitted.
-register_epilogue 'zeFenceHostSynchronize', <<EOF
+commands.add_epilogue 'zeFenceHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
     _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
@@ -227,7 +230,7 @@ EOF
 # wait) would otherwise never drain the last Execute's slots. Safe like the event
 # QueryStatus hook: _slot_drain no-ops on already-drained slots and runs under the
 # state mutex, so repeated SUCCESS polls drain once.
-register_epilogue 'zeFenceQueryStatus', <<EOF
+commands.add_epilogue 'zeFenceQueryStatus', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
     _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
@@ -237,7 +240,7 @@ EOF
 # new event inherits the dead one's stashed kernel timing and a dangling latest-
 # signaled slot pointer. Epilogue gated on _retval — a failed destroy (e.g. a bad
 # handle) leaves the event alive, its address can't be recycled, data must stay.
-register_epilogue 'zeEventDestroy', <<EOF
+commands.add_epilogue 'zeEventDestroy', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
     _on_destroy_event(hEvent);
 EOF
@@ -256,7 +259,7 @@ memory_info_prologue = lambda { |ptr_names|
 EOF
 }
 
-register_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
+commands.add_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) &&
@@ -265,10 +268,10 @@ register_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
       _dump_memory_info(hCommandList, "pRanges[_i]");
 EOF
 
-register_prologue 'zeCommandListAppendMemoryCopy', memory_info_prologue.call(%w[dstptr srcptr])
-register_prologue 'zeCommandListAppendMemoryFill', memory_info_prologue.call(['ptr'])
-register_prologue 'zeCommandListAppendMemoryCopyRegion', memory_info_prologue.call(%w[dstptr srcptr])
-register_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
+commands.add_prologue 'zeCommandListAppendMemoryCopy', memory_info_prologue.call(%w[dstptr srcptr])
+commands.add_prologue 'zeCommandListAppendMemoryFill', memory_info_prologue.call(['ptr'])
+commands.add_prologue 'zeCommandListAppendMemoryCopyRegion', memory_info_prologue.call(%w[dstptr srcptr])
+commands.add_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range))) {
@@ -278,14 +281,14 @@ register_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
       _dump_memory_info_ctx(hContextSrc, srcptr);
   }
 EOF
-register_prologue 'zeCommandListAppendImageCopyToMemory', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendImageCopyFromMemory', memory_info_prologue.call(['srcptr'])
-register_prologue 'zeCommandListAppendMemoryPrefetch', memory_info_prologue.call(['ptr'])
-register_prologue 'zeCommandListAppendMemAdvise', memory_info_prologue.call(['ptr'])
-register_prologue 'zeCommandListAppendQueryKernelTimestamps', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendWriteGlobalTimestamp', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendImageCopyToMemoryExt', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prologue.call(['srcptr'])
+commands.add_prologue 'zeCommandListAppendImageCopyToMemory', memory_info_prologue.call(['dstptr'])
+commands.add_prologue 'zeCommandListAppendImageCopyFromMemory', memory_info_prologue.call(['srcptr'])
+commands.add_prologue 'zeCommandListAppendMemoryPrefetch', memory_info_prologue.call(['ptr'])
+commands.add_prologue 'zeCommandListAppendMemAdvise', memory_info_prologue.call(['ptr'])
+commands.add_prologue 'zeCommandListAppendQueryKernelTimestamps', memory_info_prologue.call(['dstptr'])
+commands.add_prologue 'zeCommandListAppendWriteGlobalTimestamp', memory_info_prologue.call(['dstptr'])
+commands.add_prologue 'zeCommandListAppendImageCopyToMemoryExt', memory_info_prologue.call(['dstptr'])
+commands.add_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prologue.call(['srcptr'])
 
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
@@ -355,21 +358,21 @@ EOF
    zeCommandListAppendImageCopyFromMemoryExt].each do |c|
   # zeCommandListAppendQueryKernelTimestamps intentionally NOT in this list
   # — it has no kernel to time
-  register_prologue c, profiling_prologue.call('hSignalEvent')
-  register_prologue c, paranoid_drift_prologue
-  register_epilogue c, profiling_epilogue.call('hSignalEvent')
+  commands.add_prologue c, profiling_prologue.call('hSignalEvent')
+  commands.add_prologue c, paranoid_drift_prologue
+  commands.add_epilogue c, profiling_epilogue.call('hSignalEvent')
 end
 
 ['zeCommandListAppendSignalEvent'].each do |c|
-  register_prologue c, profiling_prologue.call('hEvent')
-  register_epilogue c, profiling_epilogue.call('hEvent', 'NULL', '0')
+  commands.add_prologue c, profiling_prologue.call('hEvent')
+  commands.add_epilogue c, profiling_epilogue.call('hEvent', 'NULL', '0')
 end
 
 # WARNING
 # zeModuleGetKernelNames, returns an array of strings.
 # This is problematic for lttng.
 
-register_prologue 'zeModuleCreate', <<EOF
+commands.add_prologue 'zeModuleCreate', <<EOF
   int _build_log_release = 0;
   ze_module_build_log_handle_t _hBuildLog = NULL;
   if (tracepoint_enabled(lttng_ust_ze_build, log)) {
@@ -380,7 +383,7 @@ register_prologue 'zeModuleCreate', <<EOF
   }
 EOF
 
-register_epilogue 'zeModuleCreate', <<EOF
+commands.add_epilogue 'zeModuleCreate', <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_BUILD_FAILURE) && *phBuildLog) {
     _dump_build_log(*phBuildLog);
     if (_build_log_release) {
@@ -390,7 +393,7 @@ register_epilogue 'zeModuleCreate', <<EOF
   }
 EOF
 
-register_prologue 'zeModuleDynamicLink', <<EOF
+commands.add_prologue 'zeModuleDynamicLink', <<EOF
   int _link_log_release = 0;
   ze_module_build_log_handle_t _hLinkLog = NULL;
   if (tracepoint_enabled(lttng_ust_ze_build, log)) {
@@ -401,7 +404,7 @@ register_prologue 'zeModuleDynamicLink', <<EOF
   }
 EOF
 
-register_epilogue 'zeModuleDynamicLink', <<EOF
+commands.add_epilogue 'zeModuleDynamicLink', <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_LINK_FAILURE) && *phLinkLog) {
     _dump_build_log(*phLinkLog);
     if (_link_log_release) {
@@ -411,7 +414,7 @@ register_epilogue 'zeModuleDynamicLink', <<EOF
   }
 EOF
 
-register_epilogue 'zeKernelCreate', <<EOF
+commands.add_epilogue 'zeKernelCreate', <<EOF
  if (tracepoint_enabled(lttng_ust_ze_properties, kernel) && (_retval == ZE_RESULT_SUCCESS)) {
     _dump_kernel_properties(*phKernel);
  }
@@ -440,8 +443,8 @@ EOF
   str << "      goto ukn;\n"
   str << "  } else {\n"
   str << "ukn:\n"
-  register_prologue c.name, str
-  register_epilogue c.name, <<EOF
+  c.add_prologue str
+  c.add_epilogue <<EOF
   }
 EOF
 end
@@ -471,7 +474,7 @@ end.join(<<EOF)
   else
 EOF
 
-register_prologue 'zeDriverGetExtensionFunctionAddress', str
+commands.add_prologue 'zeDriverGetExtensionFunctionAddress', str
 
 str = <<EOF
   if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
@@ -524,24 +527,24 @@ str << <<EOF
   }
 EOF
 
-register_epilogue 'zeDriverGetExtensionFunctionAddress', str
+commands.add_epilogue 'zeDriverGetExtensionFunctionAddress', str
 
-register_epilogue 'zeMemOpenIpcHandle', <<EOF
+commands.add_epilogue 'zeMemOpenIpcHandle', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
 EOF
 
-register_epilogue 'zexMemOpenIpcHandles', <<EOF
+commands.add_epilogue 'zexMemOpenIpcHandles', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
 EOF
 
-register_prologue 'zeLoaderInit', <<EOF
+commands.add_prologue 'zeLoaderInit', <<EOF
   _in_loader_init = 1;
 EOF
 
-register_epilogue 'zeInit', <<EOF
+commands.add_epilogue 'zeInit', <<EOF
   _in_loader_init = 0;
 EOF

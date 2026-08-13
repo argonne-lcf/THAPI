@@ -39,6 +39,8 @@ TRACEPOINT_GEN = \
 OPENCL_MODEL = \
 	$(TRACEPOINT_GEN) \
 	$(ML_FILES) \
+	$(top_srcdir)/utils/LTTng.rb \
+	$(top_srcdir)/utils/command_index.rb \
 	cl.xml.patched
 
 BTX_OPENCL_GENERATED = \
