@@ -121,10 +121,7 @@ ML_CUDA_FILES = \
 	$(srcdir)/cuda_meta_parameters.yaml \
 	$(srcdir)/cuda_exports_meta_parameters.yaml
 
-ML_CUDART_FILES = \
-	$(srcdir)/cudart_meta_parameters.yaml
-
-EXTRA_DIST += $(ML_CUDA_FILES) $(ML_CUDART_FILES)
+EXTRA_DIST += $(ML_CUDA_FILES)
 
 CUDA_MODEL = \
 	$(srcdir)/cuda_model.rb \
@@ -141,7 +138,6 @@ CUDA_MODEL = \
 
 CUDART_MODEL = \
 	$(srcdir)/cudart_model.rb \
-	$(ML_CUDART_FILES) \
 	$(CUDART_EXTRACTED) \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \

@@ -29,10 +29,10 @@ end
 
 INIT_FUNCTIONS = /None/
 
-load_meta_parameters('ompt_meta_parameters.yaml')
+meta_parameters = load_meta_parameters('ompt_meta_parameters.yaml')
 
 $ompt_commands = OMPT_CALLBACKS.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 OMPT_POINTER_NAMES = $ompt_commands.collect do |c|

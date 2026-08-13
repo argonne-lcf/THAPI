@@ -21,7 +21,7 @@ gen_ffi_type_map(typedefs)
 
 INIT_FUNCTIONS = /None/
 
-load_meta_parameters('itt_meta_parameters.yaml')
+meta_parameters = load_meta_parameters('itt_meta_parameters.yaml')
 
 # Function we care
 whitelisted_functions = %w[
@@ -38,7 +38,7 @@ whitelisted_functions = %w[
 $itt_commands = $itt_api['functions'].filter_map do |func|
   next unless whitelisted_functions.include?(func.name)
 
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 ITT_POINTER_NAMES = $itt_commands.collect do |c|

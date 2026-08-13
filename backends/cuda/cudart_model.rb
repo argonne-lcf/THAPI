@@ -24,8 +24,7 @@ gen_ffi_type_map(typedefs)
 # Currently ignored by gen_cudart.rb
 INIT_FUNCTIONS = /.*/
 
-load_meta_parameters('cudart_meta_parameters.yaml')
-
+# cudart declares no meta-parameters, so it loads no spec.
 $cudart_commands = funcs.collect do |func|
   Command.new(func)
 end

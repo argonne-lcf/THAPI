@@ -81,15 +81,14 @@ EOF
   end
 end
 
-load_meta_parameters('cuda_meta_parameters.yaml')
-load_meta_parameters('cuda_exports_meta_parameters.yaml')
+meta_parameters = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
 
 $cuda_commands = cuda_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 $cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 CUDA_POINTER_NAMES = ($cuda_commands +

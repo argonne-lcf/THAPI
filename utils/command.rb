@@ -3,11 +3,13 @@ require 'yaml'
 class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
-  def initialize(function)
+  # `meta_parameters` is this function's rows from a meta-parameter spec, as
+  # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
+  def initialize(function, meta_parameters: [])
     @function = function
     @tracepoint_parameters = []
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@function.name].collect do |type, args|
+    @meta_parameters += meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
     @prologues = PROLOGUES[@function.name]
@@ -91,55 +93,35 @@ class Command
   end
 end
 
-class Member
-  def initialize(_command, member, prefix, dir = :start)
-    @member = member
-    @dir = dir
-    @prefix = prefix
-    name = "#{prefix}#{MEMBER_SEPARATOR}#{member.name}"
-    expr = "#{prefix} ? #{prefix}->#{member.name} : 0"
-    @lttng_type = member.type.lttng_type
-    @lttng_type.name = name
-    @lttng_type.expr = expr
-  end
+# Read a backend's meta-parameter YAML (relative to SRC_DIR) and return the
+# spec it describes: a Hash mapping each function name to a list of
+# [MetaParameter subclass, args] rows, ready to hand to Command.new. Unlisted
+# functions read back as [], so callers can `spec[name]` unconditionally.
+#
+# The file maps each function name to a list of [type, *args] rows under a
+# top-level `meta_parameters` key. A backend with none of its own ships no
+# file and calls Command.new without a spec, so that key must be a mapping: a
+# missing, misspelled or empty one means a typo, which would otherwise yield
+# an empty spec and look identical to having none.
+#
+# Pass several filenames to merge their specs (ze splits its rows per
+# namespace, cuda across its two APIs). Each function must be declared in at
+# most one of them: listing it twice would silently concatenate both sets of
+# rows, so it raises instead.
+def load_meta_parameters(*filenames)
+  spec = Hash.new { [] }
+  filenames.each do |filename|
+    path = File.join(SRC_DIR, filename)
+    content = YAML.load_file(path)
+    entries = content['meta_parameters']
+    raise "#{path} has no 'meta_parameters' mapping" unless entries.is_a?(Hash)
 
-  def lttng_in_type
-    @dir == :start ? @lttng_type : nil
-  end
-
-  def lttng_out_type
-    @dir == :start ? nil : @lttng_type
-  end
-end
-
-def register_meta_parameter(method, type, *args)
-  META_PARAMETERS[method].push [type, args]
-end
-
-# Load a backend's meta-parameter YAML (relative to SRC_DIR) and register every
-# entry. The file maps each function name to a list of [type, *args] rows under
-# a top-level `meta_parameters` key. A backend with none of its own writes
-# `meta_parameters: []`; a missing key means a typo, which would otherwise
-# register nothing and look identical to having none.
-def load_meta_parameters(filename)
-  path = File.join(SRC_DIR, filename)
-  content = YAML.load_file(path)
-  entries = content['meta_parameters']
-  raise "#{path} has no 'meta_parameters' key (use `meta_parameters: []` if it was not a typo)" if entries.nil?
-
-  entries.each do |func, list|
-    list.each do |type, *args|
-      register_meta_parameter func, Kernel.const_get(type), *args
+    rows = entries.transform_values do |list|
+      list.collect { |type, *args| [Kernel.const_get(type), args] }
     end
+    spec.merge!(rows) { |func, _, _| raise "#{func} is declared twice, second time in #{path}" }
   end
-end
-
-def register_meta_struct(method, name, type)
-  raise "Unknown struct: #{type}!" unless STRUCT_TYPES.include?(type)
-
-  STRUCT_MAP[type].each do |m|
-    META_PARAMETERS[method].push [Member, [m, name]]
-  end
+  spec
 end
 
 def register_prologue(method, code)
@@ -151,6 +133,5 @@ def register_epilogue(method, code)
 end
 
 AUTO_META_PARAMETERS = []
-META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
 PROLOGUES = Hash.new { |h, k| h[k] = [] }
 EPILOGUES = Hash.new { |h, k| h[k] = [] }

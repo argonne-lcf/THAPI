@@ -55,10 +55,10 @@ INIT_FUNCTIONS = /
   P?MPI_T_init_thread)\b
 /ix
 
-load_meta_parameters('mpi_meta_parameters.yaml')
+meta_parameters = load_meta_parameters('mpi_meta_parameters.yaml')
 
 $mpi_commands = mpi_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 # https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-underscore

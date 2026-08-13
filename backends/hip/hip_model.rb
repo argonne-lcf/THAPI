@@ -24,10 +24,10 @@ gen_ffi_type_map(typedefs)
 
 INIT_FUNCTIONS = /.*/
 
-load_meta_parameters('hip_meta_parameters.yaml')
+meta_parameters = load_meta_parameters('hip_meta_parameters.yaml')
 
 $hip_commands = funcs.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 HIP_POINTER_NAMES = $hip_commands.collect do |c|

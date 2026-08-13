@@ -70,35 +70,35 @@ $struct_type_conversion_table = {
 $struct_type_reject = Set.new(%w[zet_metric_source_id_exp_t
                                  zex_device_module_register_file_exp_t])
 
-load_meta_parameters('ze_meta_parameters.yaml')
-load_meta_parameters('zet_meta_parameters.yaml')
-load_meta_parameters('zes_meta_parameters.yaml')
-load_meta_parameters('zel_meta_parameters.yaml')
-# zer disabled: load_meta_parameters('zer_meta_parameters.yaml')
-load_meta_parameters('zex_meta_parameters.yaml')
+# zer disabled: 'zer_meta_parameters.yaml'
+meta_parameters = load_meta_parameters('ze_meta_parameters.yaml',
+                                       'zet_meta_parameters.yaml',
+                                       'zes_meta_parameters.yaml',
+                                       'zel_meta_parameters.yaml',
+                                       'zex_meta_parameters.yaml')
 
 $ze_commands = ze_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 $zet_commands = zet_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 $zes_commands = zes_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 $zel_commands = zel_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 $zer_commands = zer_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 $zex_commands = zex_funcs_e.collect do |func|
-  Command.new(func)
+  Command.new(func, meta_parameters: meta_parameters[func.name])
 end
 
 ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).collect do |c|
