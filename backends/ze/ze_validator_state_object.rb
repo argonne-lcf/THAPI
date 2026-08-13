@@ -15,7 +15,6 @@ class StateObject
   attr_accessor :print_tracker
   attr_accessor :device_agnostic
   attr_accessor :performance
-  attr_accessor :memory_in_transit
   attr_reader :device_properties
 
   def initialize(**opts)
@@ -34,7 +33,6 @@ class StateObject
     @lock_shared_object_on_entry = Hash.new { |h, k| h[k] = [] }
     @unlock_shared_object_on_exit = Hash.new { |h, k| h[k] = [] }
     @init_called = Hash.new { |h, k| h[k] = false } #pid : init called status
-    @memory_in_transit = Hash.new {|h,k| h[k] = []} #pid : [[mem, (src|dst)]] list of memories being transferred
     @printed_init_error = false
     @deferred_units = []
     @signal_epoch = 0
@@ -449,8 +447,8 @@ class StateObject
             }
           }
           process.objects('memory_allocation').each { |_ctx_handle, allocs|
-            allocs.each { |h, c|
-              print_leak_error(ctx, 'memory_allocation', h, c.instance_variable_get(:@memtypestr))
+            allocs.each { |c|
+              print_leak_error(ctx, 'memory_allocation', c.base, c.memtypestr)
             }
           }
         }

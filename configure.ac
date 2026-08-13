@@ -132,6 +132,7 @@ PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 AX_RUBY_EXTENSION([metababel >= 1.1.3], [yes])
+AX_RUBY_EXTENSION([rgl], [yes])
 
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 

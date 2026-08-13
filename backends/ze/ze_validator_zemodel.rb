@@ -1,17 +1,19 @@
+# frozen_string_literal: true
+
 require 'set'
 
 module ZEModel
-  #One of these APIs must be called before any other calls
-  INIT_API_NAMES = ['zeInit', 'zeInitDrivers']
-  #This defines the object in which most ze objects (command list, command queue) extend form
+  # One of these APIs must be called before any other calls
+  INIT_API_NAMES = %w[zeInit zeInitDrivers].freeze
+  # This defines the object in which most ze objects (command list, command queue) extend form
   class Object
     attr_reader :handle
     attr_accessor :status
 
     # returns what object the caller is
     # e.g., 'Device' will return device
-    def self.typename
-      @typename
+    class << self
+      attr_reader :typename
     end
 
     # lock is needed to check for concurrent properties.
@@ -23,7 +25,7 @@ module ZEModel
 
     # Reports a race: the trace is timestamp-ordered, so finding the object
     # already locked means two calls really overlapped.
-    def lock(state,ctx)
+    def lock(state, ctx)
       if @lock
         state.print_race_condition(ctx, @lock, self.class.typename, @handle)
       else
@@ -34,9 +36,9 @@ module ZEModel
     # Releases only if this same call is the holder, so a call that lost the
     # race above does not steal the real holder's lock on its way out.
     def unlock(ctx)
-      if @lock == ctx
-        @lock = nil
-      end
+      return unless @lock == ctx
+
+      @lock = nil
     end
   end
 
@@ -50,14 +52,9 @@ module ZEModel
     end
   end
 
-
   class Device < Object
     @typename = 'device'
-    attr_reader :properties #delete
     attr_reader :sub_devices
-    # ctx_handle -> {addr -> Memory}, keyed by context like Process#memory_allocations
-    attr_accessor :memory_allocations
-    # the "did the app query this before assuming it?" flags the portability
     # checks look at (see check_group_property_queued)
     attr_accessor :property_fetched
     attr_accessor :cmd_queue_group_properties_queried
@@ -65,35 +62,30 @@ module ZEModel
     def initialize(handle)
       super
       @sub_devices = []
-      @memory_allocations = Hash.new { |h, k| h[k] = {} }
       @property_fetched = false
       @cmd_queue_group_properties_queried = false
     end
   end
 
-
-
   class SubDevice < Device
     attr_reader :parent
+
     def initialize(handle, parent)
       @parent = parent
       super(handle)
     end
   end
 
-  #create memory object so that device, shared, host mem allocs can be differentiated
+  # create memory object so that device, shared, host mem allocs can be differentiated
   class Memory < Object
     @typename = 'memory_allocation'
-    attr_reader :context
-    attr_reader :size
-    attr_reader :owned_by    # the Device for a device allocation; nil for host
-    attr_accessor :memtypestr  # "device" | "host" | "shared"
-    attr_accessor :base
+    attr_reader :context, :size, :owned_by # the Device for a device allocation; nil for host
+    attr_accessor :memtypestr, :base # "device" | "host" | "shared"
     # the zeMemFree that released this allocation, nil while live. Freed
     # allocations are kept so a later reference is caught as use-after-free.
     attr_accessor :freed_by
 
-    def initialize(handle, context, size, owned_by, memtypestr="shared")
+    def initialize(handle, context, size, owned_by, memtypestr = 'shared')
       super(handle)
       @context = context
       @size = size
@@ -104,17 +96,9 @@ module ZEModel
     end
   end
 
-
   class Context < Object
     @typename = 'context'
-    attr_reader :driver
-    attr_reader :desc
-    attr_reader :devices 
-    attr_reader :event_pools
-    attr_reader :command_queues
-    attr_reader :command_lists
-    attr_reader :modules
-    attr_reader :module_build_logs
+    attr_reader :driver, :desc, :devices, :event_pools, :command_queues, :command_lists, :modules, :module_build_logs
 
     def initialize(handle, driver, desc, devices = nil)
       super(handle)
@@ -125,17 +109,14 @@ module ZEModel
       @event_pools = {}
       @command_queues = {}
       @command_lists = {}
-      @modules = {} #binaries for gpu
+      @modules = {} # binaries for gpu
       @module_build_logs = {}
     end
   end
 
   class EventPool < Object
     @typename = 'event_pool'
-    attr_reader :context
-    attr_reader :desc
-    attr_reader :devices
-    attr_reader :events
+    attr_reader :context, :desc, :devices, :events
     # slot indices not yet in use: zeEventCreate removes one (double use =
     # error), zeEventDestroy puts it back (double free = error)
     attr_reader :indices
@@ -152,10 +133,8 @@ module ZEModel
 
   class Event < Object
     @typename = 'event'
-    attr_reader :event_pool
-    attr_reader :desc
-    attr_accessor :signaled
-    attr_reader :signaled_by  # who last signaled it, for diagnostics
+    attr_reader :event_pool, :desc, :signaled_by
+    attr_accessor :signaled # who last signaled it, for diagnostics
     # whether the host observed the signaled state since the last signal. Tells
     # a concurrent double-signal (never consumed) from a reuse-without-reset.
     attr_reader :observed
@@ -164,7 +143,7 @@ module ZEModel
       super(handle)
       @event_pool = event_pool
       @desc = desc
-      #event can have 2 states, not signaled or signaled
+      # event can have 2 states, not signaled or signaled
       @signaled = false
       @signaled_by = nil
       @observed = false
@@ -190,12 +169,10 @@ module ZEModel
 
   class CommandQueue < Object
     @typename = 'command_queue'
-    attr_reader :context
-    attr_reader :device
+    attr_reader :context, :device, :fences
     # :ordinal and :index are checked against the topology in
     # ze_device_property.json
     attr_reader :desc
-    attr_reader :fences
 
     def initialize(handle, context, device, desc)
       super(handle)
@@ -203,21 +180,16 @@ module ZEModel
       @device = device
       @desc = desc
       @fences = {}
-      @valid_fences = Hash.new { |h, k| h[k] = true } #fences that have been reset or haven't been signaled
+      @valid_fences = Hash.new { |h, k| h[k] = true } # fences that have been reset or haven't been signaled
     end
   end
 
   class Fence < Object
     @typename = 'fence'
-    attr_reader :command_queue
-    attr_reader :desc
+    attr_reader :command_queue, :desc, :not_signaled, :in_use, :signaled
     # not_signaled -> in_use -> signaled -> not_signaled (zeFenceReset). Compared
     # as `fence.status == fence.signaled`; see check_fence_misuse.
     attr_accessor :status
-    attr_reader :not_signaled
-    attr_reader :in_use
-    attr_reader :signaled
-
 
     def initialize(handle, command_queue, desc)
       super(handle)
@@ -228,25 +200,20 @@ module ZEModel
       @signaled = 2
       @status = @not_signaled
     end
-
   end
 
   class CommandList < Object
     @typename = 'command_list'
-    attr_reader :context
-    attr_reader :device
-    attr_reader :desc     # nil for immediate lists
-    attr_reader :altdesc  # queue descriptor, immediate lists only
-    attr_accessor :associated_command_queue
-    attr_accessor :immediate
-    attr_accessor :associated_ordinal
+    attr_reader :context, :device, :desc, :altdesc # nil for immediate lists  # queue descriptor, immediate lists only
+    attr_accessor :associated_command_queue, :immediate, :associated_ordinal
     # enables check_in_order_self_deadlock: in an in-order list an op waiting on
     # an event only a later op in the same list signals can never complete
     attr_accessor :in_order
     # RecordedOps in append order, replayed when the list is executed so the
     # deferred checks run at the point the op would actually execute
     attr_accessor :ops
-    @@INITIALIZED = 0 #created or being properly recycled
+
+    @@INITIALIZED = 0 # created or being properly recycled
     @@CLOSED = 1
     @@DESTROYED = 2
 
@@ -268,23 +235,20 @@ module ZEModel
     # An immediate list is given a queue descriptor instead of a list one, so a
     # nil desc identifies it.
     def immediate?
-      return !desc
+      !desc
     end
   end
 
   class RecordedOp
     # :copy, :wait, :signal, :reset, :barrier, :ranges_barrier or :launch
     attr_reader :kind
-    attr_reader :signal  # event this op signals on completion (nil if none)
-    attr_reader :waits   # events that must be signaled before this op may run
-    attr_reader :params
-    attr_reader :api
+    attr_reader :signal, :waits, :params, :api # event this op signals on completion (nil if none)   # events that must be signaled before this op may run
 
     def initialize(kind, signal: 0, waits: [], params: {}, api: nil)
       @kind = kind
-      #normalize a null (0) signal handle to nil so "does this op signal?" is a
-      #simple truthiness test
-      @signal = (signal && signal != 0) ? signal : nil
+      # normalize a null (0) signal handle to nil so "does this op signal?" is a
+      # simple truthiness test
+      @signal = signal && signal != 0 ? signal : nil
       @waits = waits || []
       @params = params
       @api = api || params[:api]
@@ -292,15 +256,11 @@ module ZEModel
   end
 
   class DeferredUnit
-    attr_reader :ops        # snapshot of the list's ops for this execution
-    attr_reader :context    # trace context captured at submit time
-    attr_reader :label      # e.g. "command_list (0x00007f...)", for messages
-    attr_accessor :cursor   # index of the next op to run; == ops.size means done
-    attr_accessor :blocked_on      # events the current op is still waiting for
+    attr_reader :ops, :context, :label, :in_order # snapshot of the list's ops for this execution    # trace context captured at submit time      # e.g. "command_list (0x00007f...)", for messages
+    attr_accessor :cursor, :blocked_on # index of the next op to run; == ops.size means done # events the current op is still waiting for
     # Events this unit has not signaled yet. If unit U is blocked on an event
     # only in V's pending_signals, U waits on V: an edge in the wait-for graph.
     attr_accessor :pending_signals
-    attr_reader :in_order
     # the command list this unit came from, so list-scoped checks can find their
     # units without matching on the label string
     attr_reader :cmd_list_handle
@@ -313,8 +273,8 @@ module ZEModel
       @blocked_on = []
       @in_order = in_order
       @cmd_list_handle = cmd_list_handle
-      #every event this unit will eventually signal, for the wait-for graph
-      @pending_signals = ops.map { |op| op.signal }.compact
+      # every event this unit will eventually signal, for the wait-for graph
+      @pending_signals = ops.map(&:signal).compact
     end
 
     # true once every op has executed
@@ -333,7 +293,7 @@ module ZEModel
 
     class BuildLog < Object
       @typename = 'module_build_log'
-      attr_reader :module  # nil when the build failed and produced no module
+      attr_reader :module # nil when the build failed and produced no module
 
       def initialize(handle, mod = nil)
         super(handle)
@@ -341,11 +301,8 @@ module ZEModel
       end
     end
 
-    attr_reader :context
-    attr_reader :device
-    attr_reader :desc
+    attr_reader :context, :device, :desc, :kernels
     attr_accessor :build_log
-    attr_reader :kernels
 
     def initialize(handle, context, device, desc)
       super(handle)
@@ -358,9 +315,7 @@ module ZEModel
 
   class Kernel < Object
     @typename = 'kernel'
-    attr_reader :module  # also how the kernel's context is found
-    attr_reader :desc
-    attr_reader :name    # kernel name from the descriptor, for diagnostics
+    attr_reader :module, :desc, :name # also how the kernel's context is found    # kernel name from the descriptor, for diagnostics
 
     def initialize(handle, mod, desc, name)
       super(handle)
@@ -371,8 +326,7 @@ module ZEModel
   end
 
   class ApiCall
-    attr_reader :name
-    attr_reader :params  # the _entry payload, i.e. the call's input arguments
+    attr_reader :name, :params # the _entry payload, i.e. the call's input arguments
 
     def initialize(name, params)
       @name = name
@@ -398,19 +352,9 @@ module ZEModel
   end
 
   class Process
-    attr_reader :vpid     # LTTng virtual pid
-    attr_reader :threads  # tid -> Thread (auto-created on first sight)
+    attr_reader :vpid, :threads, :devices, :contexts, :event_pools, :events, :command_queues, :fences, :command_lists, :modules, :module_build_logs # LTTng virtual pid  # tid -> Thread (auto-created on first sight)
     # handle -> object, one table per Level Zero object type
     attr_reader :drivers
-    attr_reader :devices
-    attr_reader :contexts
-    attr_reader :event_pools
-    attr_reader :events
-    attr_reader :command_queues
-    attr_reader :fences
-    attr_reader :command_lists
-    attr_reader :modules
-    attr_reader :module_build_logs
     # allocations kept after zeMemFree, for use-after-free detection
     attr_reader :freed_memory_allocations
     # { ctx_handle => { address => Memory } }: addresses are only guaranteed
@@ -420,9 +364,9 @@ module ZEModel
     def initialize(vpid)
       @vpid = vpid
       @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
-      #can it model memory imports/exports??
+      # can it model memory imports/exports??
       @drivers = {}
-      @event_dependencies = {} #for detecting deadlocks
+      @event_dependencies = {} # for detecting deadlocks
       @devices = {}
       @contexts = {}
       @event_pools = {}
@@ -433,8 +377,8 @@ module ZEModel
       @modules = {}
       @module_build_logs = {}
       @kernels = {}
-      @memory_allocations = Hash.new { |h, k| h[k] = {} }
-      @freed_memory_allocations = Hash.new { |h, k| h[k] = {} }
+      @memory_allocations = Hash.new { |h, k| h[k] = [] }
+      @freed_memory_allocations = Hash.new { |h, k| h[k] = [] }
     end
 
     # objects('command_list') returns @command_lists, so callers can iterate
@@ -445,13 +389,11 @@ module ZEModel
   end
 
   class Node
-    attr_reader :name       # hostname
-    attr_reader :processes  # pid -> Process (auto-created on first sight)
+    attr_reader :name, :processes # hostname  # pid -> Process (auto-created on first sight)
 
     def initialize(name)
       @name = name
       @processes = Hash.new { |h, k| h[k] = Process.new(k) }
     end
   end
-
 end
