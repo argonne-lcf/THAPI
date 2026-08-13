@@ -14,8 +14,8 @@ $ze_api = YAMLCAst.load_file('ze_api.yaml')
 $zet_api = YAMLCAst.load_file('zet_api.yaml')
 $zes_api = YAMLCAst.load_file('zes_api.yaml')
 $zel_api = YAMLCAst.load_file('zel_api.yaml')
-# zer has no api.yaml yet; the empty shape keeps the concatenations below valid.
-$zer_api = YAMLCAst.from_yaml_ast({ 'typedefs' => [], 'structs' => [], 'functions' => [] })
+# zer has no api.yaml yet; an empty API keeps the concatenations below valid.
+$zer_api = YAMLCAst.from_yaml_ast({})
 $zex_api = YAMLCAst.load_file('zex_api.yaml')
 
 ze_funcs_e = $ze_api['functions']

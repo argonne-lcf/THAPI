@@ -11,8 +11,8 @@ RESULT_NAME = 'mpiResult'
 
 $mpi_api = YAMLCAst.load_file('mpi_api.yaml')
 
-typedefs = $mpi_api.fetch('typedefs', [])
-structs = $mpi_api.fetch('structs', [])
+typedefs = $mpi_api['typedefs']
+structs = $mpi_api['structs']
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)

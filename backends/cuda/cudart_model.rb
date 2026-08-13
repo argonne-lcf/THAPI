@@ -9,11 +9,11 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 RESULT_NAME = 'cudaResult'
 
-$cudart_api = YAMLCAst.load_file('cudart_api.yaml')
+cudart_api = YAMLCAst.load_file('cudart_api.yaml')
 
-funcs = $cudart_api['functions']
-typedefs = $cudart_api['typedefs']
-structs = $cudart_api['structs']
+funcs = cudart_api['functions']
+typedefs = cudart_api['typedefs']
+structs = cudart_api['structs']
 
 find_all_types(typedefs)
 gen_struct_map(typedefs, structs)

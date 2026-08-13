@@ -333,8 +333,14 @@ module YAMLCAst
     from_yaml_ast(YAML.load_file(path))
   end
 
+  # Every list an API can declare. A header that declares no unions simply has
+  # no 'unions' key, so each list defaults to empty here rather than at each of
+  # the call sites: an API without unions is an ordinary API, and the general
+  # path should handle it without every caller writing its own `|| []`.
+  API_LISTS = %w[typedefs structs unions enums functions].freeze
+
   def self.from_yaml_ast(ast)
-    res = {}
+    res = API_LISTS.to_h { |k| [k, []] }
     ast.each do |k, v|
       case k
       when 'typedefs'
