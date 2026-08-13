@@ -1,4 +1,4 @@
-$tracepoint_lambda = lambda { |provider, c, dir = nil|
+def print_tracepoint(provider, c, dir = nil)
   name = if dir
            "#{c.name}_#{SUFFIXES[dir]}"
          # OMP backend
@@ -66,9 +66,9 @@ EOF
     )
 
   EOF
-}
+end
 
-$struct_tracepoint_lambda = lambda { |provider, t|
+def print_struct_tracepoint(provider, t)
   puts <<~EOF
     TRACEPOINT_EVENT(
       #{provider},
@@ -83,4 +83,4 @@ $struct_tracepoint_lambda = lambda { |provider, t|
     )
 
   EOF
-}
+end

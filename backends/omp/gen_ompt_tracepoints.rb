@@ -11,5 +11,5 @@ EOF
 $ompt_commands.each do |c|
   next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
 
-  $tracepoint_lambda.call(provider, c)
+  print_tracepoint(provider, c)
 end

@@ -13,5 +13,5 @@ $zes_api['typedefs'].select do |t|
     t.type.name == s.name
   end) && struct.members.first.name == 'stype'
 end.each do |t|
-  $struct_tracepoint_lambda.call(provider, t.name)
+  print_struct_tracepoint(provider, t.name)
 end
