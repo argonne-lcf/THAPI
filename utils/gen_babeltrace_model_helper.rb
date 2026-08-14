@@ -6,7 +6,7 @@ require_relative 'type_registry'
 # what it expects: a backend that silently stopped classifying them would
 # otherwise emit plain integers where enum metadata belongs.
 def build_ast_registry(backend, expect_bitfields:)
-  registry = TypeRegistry.from_ast(
+  registry = TypeRegistry.new(
     all_types: API.types, all_enums: API.enums,
     enum_names: API.enum_names, bitfield_names: API.bitfield_names, struct_names: API.struct_names,
     class_namer: method(:to_scoped_class_name)

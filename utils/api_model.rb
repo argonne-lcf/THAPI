@@ -8,8 +8,6 @@
 require_relative 'yaml_ast'
 
 class ApiModel
-  ClassifiedNames = Struct.new(:enums, :bitfields, :structs, keyword_init: true)
-
   attr_reader :types, :structs, :unions, :enums, :functions
 
   # A list the file does not declare reads back empty, so every model answers
@@ -35,14 +33,6 @@ class ApiModel
                  functions: functions + other.functions)
   end
 
-  def type_classes
-    @type_classes ||= find_all_types(@types)
-  end
-
-  def objects
-    type_classes.objects
-  end
-
   def int_scalars
     @int_scalars ||= find_int_scalars(@types, type_classes.integers)
   end
@@ -52,15 +42,18 @@ class ApiModel
   end
 
   def enum_names
-    classified.enums
+    classify
+    @enum_names
   end
 
   def bitfield_names
-    classified.bitfields
+    classify
+    @bitfield_names
   end
 
   def struct_names
-    classified.structs
+    classify
+    @struct_names
   end
 
   # The definition a typedef refers to, or `type` itself when the layout was
@@ -83,7 +76,7 @@ class ApiModel
   end
 
   def object?(name)
-    objects.include?(name)
+    type_classes.objects.include?(name)
   end
 
   # True when the generator has already emitted an FFI name for `name` and can
@@ -100,6 +93,10 @@ class ApiModel
 
   private
 
+  def type_classes
+    @type_classes ||= find_all_types(@types)
+  end
+
   def lookup(definitions, type, kind, opaque_ok)
     return type unless type.name
 
@@ -115,24 +112,23 @@ class ApiModel
   # flags); every other enum is a plain enum. Each `_flag_t` bitfield
   # additionally aliases the `_flags_t` name the headers use for the OR'd
   # value.
-  def classified
-    @classified ||= begin
-      enums = []
-      bitfields = []
-      structs = []
-      @types.each do |t|
-        case t.type
-        when YAMLCAst::Enum
-          e = @enums.find { |x| t.type.name == x.name }
-          (e&.name&.end_with?('flag_t') ? bitfields : enums).push t.name
-        when YAMLCAst::Struct
-          structs.push t.name
-        end
+  def classify
+    return if @enum_names
+
+    @enum_names = []
+    @bitfield_names = []
+    @struct_names = []
+    @types.each do |t|
+      case t.type
+      when YAMLCAst::Enum
+        e = @enums.find { |x| t.type.name == x.name }
+        (e&.name&.end_with?('flag_t') ? @bitfield_names : @enum_names).push t.name
+      when YAMLCAst::Struct
+        @struct_names.push t.name
       end
-      bitfields += bitfields.select { |n| n.end_with?('_flag_t') }
-                            .map { |n| n.gsub('_flag_t', '_flags_t') }
-      ClassifiedNames.new(enums: enums, bitfields: bitfields, structs: structs)
     end
+    @bitfield_names += @bitfield_names.select { |n| n.end_with?('_flag_t') }
+                                      .map { |n| n.gsub('_flag_t', '_flags_t') }
   end
 
   def find_int_scalars(all_types, integers)
