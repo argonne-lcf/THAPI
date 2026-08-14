@@ -102,16 +102,13 @@ class ApiModel
     [enum_names, bitfield_names, struct_names]
   end
 
-  # The "object" type names: typedefs of pointer-to-struct, plus any CustomType
-  # aliasing a known OBJECT_TYPES name.
+  # The "object" type names: the pointer-to-struct typedefs, plus every typedef
+  # that aliases one of them, transitively.
   def find_objects(all_types)
     objects = all_types.filter_map do |t|
       t.name if object_typedef?(t, all_types)
     end
-    all_types.each do |t|
-      objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-    end
-    objects
+    transitive_closure(all_types, objects)
   end
 
   # Each typedef that aliases an integer type, mapped to that underlying type.
