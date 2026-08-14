@@ -38,7 +38,7 @@ def to_scoped_class_name(name)
 end
 
 def to_name_space(name)
-  name.match(/\A(__itt[dt]?)_/)[1].upcase
+  match_name_space(name, /\A(__itt[dt]?)_/, strict: true).upcase
 end
 
 FFI_STRUCT = 'FFI::ITTStruct'

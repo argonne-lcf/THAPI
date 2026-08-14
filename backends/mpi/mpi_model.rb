@@ -67,21 +67,11 @@ end)
 
 check_meta_parameters(meta_parameters, COMMANDS)
 
-# https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-underscore
-# As a rule of thumb you can think of underscore as the inverse of camelize,
-def underscore(camel_cased_word)
-  return camel_cased_word.to_s.dup unless /[A-Z-]|::/.match?(camel_cased_word)
-
-  word = camel_cased_word.to_s.gsub('::', '/')
-  word.gsub!(/(?=a)b/) { "#{Regexp.last_match(1) && '_'}#{Regexp.last_match(2).downcase}" }
-  word.gsub!(/(?<=[A-Z])(?=[A-Z][a-z])|(?<=[a-z\d])(?=[A-Z])/, '_')
-  word.tr!('-', '_')
-  word.downcase!
-  word
-end
-
+# MPI spells its functions MPI_Comm_rank, already snake_case, so the macro name
+# is the function name upcased. The other backends snake-case a camelCase name
+# with upper_snake_case; here that would give _MPI__COMM_RANK_PTR.
 MPI_POINTER_NAMES = COMMANDS.collect do |c|
-  [c, underscore(c.pointer_name).upcase]
+  [c, c.pointer_name.upcase]
 end.to_h
 
 COMMANDS.add_epilogue 'MPI_Type_commit', <<EOF

@@ -3,26 +3,17 @@ require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
 def to_class_name(name)
-  mod = to_name_space(name)
-  mod ||= ''
-  n = name.gsub(/\A#{mod}/, '')
-  mod.capitalize! if mod == 'hip'
-  res = mod << n
-  res[0] = res[0].upcase if res[0].match(/[[:lower:]]/)
-  res
+  prefixed_class_name(name, to_name_space(name))
 end
 
 def to_scoped_class_name(name)
   "HIP::#{to_class_name(name)}"
 end
 
+# Not strict: hip.h vendors the CUDA-compatible vector types (uchar4, dim3),
+# GLuint/GLenum and activity_domain_t, none of which carry a hip prefix.
 def to_name_space(name)
-  case name
-  when /\Ahip/
-    'hip'
-  when /\AHIP/
-    'HIP'
-  end
+  match_name_space(name, /\A(hip|HIP)/)
 end
 
 FFI_STRUCT = 'FFI::HIPStruct'

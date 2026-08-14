@@ -17,7 +17,7 @@ def to_scoped_class_name(name)
 end
 
 def to_name_space(name)
-  name.match(/\A(ze[xstlr]?)_/)[1].upcase
+  match_name_space(name, /\A(ze[xstlr]?)_/, strict: true).upcase
 end
 
 FFI_STRUCT = 'FFI::ZEStruct'

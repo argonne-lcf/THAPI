@@ -53,13 +53,11 @@ def to_ffi_name(name)
   mod.to_sym.inspect
 end
 
+# Not strict: cuda.h vendors the OpenCL and VDPAU interop typedefs
+# (cl_event_flags, VdpDevice) plus cuuint32_t/cuuint64_t, which carry no CU
+# prefix. to_ffi_name below relies on the nil.
 def to_name_space(name)
-  case name
-  when /\ACUDA/
-    'CUDA'
-  when /\ACU/
-    'CU'
-  end
+  match_name_space(name, /\A(CUDA|CU)/)
 end
 
 FFI_STRUCT = 'FFI::CUDAStruct'

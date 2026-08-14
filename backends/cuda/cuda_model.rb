@@ -304,15 +304,6 @@ EOF
   }.flatten.join(<<EOF)
     else
 EOF
-  #  str << $cuda_commands.collect { |c|
-  #    <<EOF
-  #    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
-  #      wrap_#{c.name}(pfn);
-  #    }
-  # EOF
-  #  }.join(<<EOF)
-  #    else
-  # EOF
   str << <<EOF
   }
 EOF

@@ -1,5 +1,39 @@
 require_relative 'api_model'
 
+# Class name for an API that already spells its types in the target case, so
+# the only work is the namespace prefix. hip and mpi each write theirs two ways
+# -- hipDeviceProp_t and HIP_ARRAY_DESCRIPTOR -- and only the lowercase
+# spelling is title-cased, leaving HipDeviceProp_t and HIP_ARRAY_DESCRIPTOR.
+# The rest of the name is left exactly as the header spells it.
+#
+# The backends whose headers are camelCase (cuda, ze, omp, itt) do more than
+# this -- they split on '_' and recase every word -- so they keep their own.
+def prefixed_class_name(name, namespace)
+  namespace = namespace.to_s
+  rest = name.sub(/\A#{namespace}/, '')
+  prefix = namespace.match?(/[[:lower:]]/) ? namespace.capitalize : namespace
+  res = prefix + rest
+  res[0] = res[0].upcase if res[0]&.match(/[[:lower:]]/)
+  res
+end
+
+# The namespace prefix `name` starts with, as the pattern captured it, or nil.
+#
+# Whether nil is reachable is a property of the API, not a style choice, so it
+# is opted into rather than left to whichever expression happened to be
+# written. ze/omp/itt/mpi headers declare only their own types, so every name
+# matches: they pass `strict: true`, and a future unprefixed type raises here
+# by name instead of surfacing as a NoMethodError on nil deep inside a
+# generator. cuda and hip vendor foreign types -- GLuint, dim3, VdpDevice, the
+# OpenCL interop typedefs -- that belong to no namespace, so nil is a real
+# answer their callers already handle.
+def match_name_space(name, pattern, strict: false)
+  m = name.match(pattern)
+  raise "#{name} does not start with a known namespace" if m.nil? && strict
+
+  m && m[1]
+end
+
 def to_ffi_name(name, default = true)
   case name
   when nil
