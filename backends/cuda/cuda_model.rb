@@ -22,11 +22,10 @@ cuda_exports_type_e = $cuda_exports_api['typedefs']
 typedefs = cuda_types_e + cuda_exports_type_e
 structs = $cuda_api['structs'] + $cuda_exports_api['structs']
 
-TYPE_CLASSES = find_all_types(typedefs)
+# CUdeviceptr is a device address carried in an integer, so it reads as hex.
+TYPE_CLASSES = find_all_types(typedefs, extra_hex_ints: ['CUdeviceptr'])
 gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
-
-HEX_INT_TYPES.push('CUdeviceptr')
 
 class TracepointParameter
   attr_reader :name, :type, :init, :after

@@ -447,10 +447,12 @@ INT_SIZE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[1]] }.to_h
 FFI_INT_TYPE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[2]] }.to_h
 INT_TYPES = INT_TYPE_MAP.keys
 
+# Integer types the tracer logs in hex rather than decimal. An API can name
+# more of its own -- see find_all_types' extra_hex_ints.
 HEX_INT_TYPES = %w[
   intptr_t
   uintptr_t
-]
+].freeze
 
 FFI_FLOAT_TYPE_MAP = {
   'float' => 'ffi_type_float',
@@ -488,12 +490,16 @@ end
 # `integers` starts from the fixed C scalar names rather than being purely the
 # API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
 # category has to contain both to answer "is this an integer?" in one lookup.
-TypeClasses = Struct.new(:objects, :integers, :enums, :structs, :unions, :pointers,
+TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unions, :pointers,
                          keyword_init: true)
 
 # Sort every typedef in `types` into a TypeClasses. Pure: nothing outside the
 # returned object is touched.
-def find_all_types(types)
+#
+# `extra_hex_ints` are API-specific integer types to log in hex: cuda's
+# CUdeviceptr is an address held in an integer, so hex reads far better than
+# decimal. An API declares them here rather than pushing onto the shared list.
+def find_all_types(types, extra_hex_ints: [])
   objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
   # Int and Char share one category, and the char pass closes over the list the
   # int pass produced, so a typedef aliasing either resolves the same way.
@@ -505,6 +511,7 @@ def find_all_types(types)
 
   TypeClasses.new(
     objects: objects, integers: integers, pointers: pointers,
+    hex_ints: HEX_INT_TYPES + extra_hex_ints,
     enums: find_types(types, YAMLCAst::Enum),
     structs: find_types(types, YAMLCAst::Struct),
     unions: find_types(types, YAMLCAst::Union)

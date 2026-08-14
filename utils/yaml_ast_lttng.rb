@@ -124,7 +124,7 @@ module YAMLCAst
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = 'uintptr_t'
-      when *HEX_INT_TYPES
+      when *TYPE_CLASSES.hex_ints
         ev.macro = :ctf_integer_hex
         ev.type = name
       when *TYPE_CLASSES.integers
@@ -189,7 +189,7 @@ module YAMLCAst
         when *TYPE_CLASSES.objects, *TYPE_CLASSES.pointers
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
-        when *HEX_INT_TYPES
+        when *TYPE_CLASSES.hex_ints
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = type.name
         when *TYPE_CLASSES.integers
