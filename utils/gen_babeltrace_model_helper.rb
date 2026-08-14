@@ -135,12 +135,13 @@ end
 def get_fields_types_name(c, dir)
   fields = []
 
-  r = c.type.lttng_type
+  r = c.type.lttng_type(c.type_classes)
   fields.push([r.macro.to_s, c.type.to_s, c.result_name, r]) if dir != :start && r
 
   if dir != :stop
     fields += c.parameters.to_a.collect do |p|
-      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
+      lttng = p.lttng_type(c.type_classes)
+      [lttng.macro.to_s, p.type.to_s, p.name.to_s, lttng]
     end
   end
 

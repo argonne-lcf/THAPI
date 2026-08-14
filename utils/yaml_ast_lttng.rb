@@ -5,19 +5,19 @@ FLOAT_SCALARS_MAP = { 'float' => 'uint32_t', 'double' => 'uint64_t' }
 
 module YAMLCAst
   class Type
-    def lttng_type
+    def lttng_type(_type_classes)
       raise "Unsupported type #{self}!"
     end
   end
 
   class Void
-    def lttng_type
+    def lttng_type(_type_classes)
       nil
     end
   end
 
   class Int
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_integer
       ev.type = name
@@ -26,7 +26,7 @@ module YAMLCAst
   end
 
   class Float
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_float
       ev.type = name
@@ -35,7 +35,7 @@ module YAMLCAst
   end
 
   class Char
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_integer
       ev.type = name
@@ -44,7 +44,7 @@ module YAMLCAst
   end
 
   class Bool
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_integer
       ev.type = name
@@ -53,7 +53,7 @@ module YAMLCAst
   end
 
   class Struct
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
@@ -67,7 +67,7 @@ module YAMLCAst
   end
 
   class Union
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_array_text
       ev.type = :uint8_t
@@ -77,7 +77,7 @@ module YAMLCAst
   end
 
   class Enum
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_integer
       ev.type = "enum #{name}"
@@ -86,7 +86,7 @@ module YAMLCAst
   end
 
   class Pointer
-    def lttng_type
+    def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
       ev.macro = :ctf_integer_hex
       ev.type = :uintptr_t
@@ -96,15 +96,15 @@ module YAMLCAst
   end
 
   class Declaration
-    def lttng_type
-      r = type.lttng_type
+    def lttng_type(type_classes)
+      r = type.lttng_type(type_classes)
       r.name = name
       r.expression = case type
                      when Struct, Union
                        "&#{name}"
                      when CustomType
                        case type.name
-                       when *TYPE_CLASSES.structs, *TYPE_CLASSES.unions
+                       when *type_classes.structs, *type_classes.unions
                          "&#{name}"
                        else
                          name
@@ -117,23 +117,23 @@ module YAMLCAst
   end
 
   class CustomType
-    def lttng_type
+    def lttng_type(type_classes)
       ev = LTTng::TracepointField.new
       case name
-      when *TYPE_CLASSES.objects, *TYPE_CLASSES.pointers
+      when *type_classes.objects, *type_classes.pointers
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = 'uintptr_t'
-      when *TYPE_CLASSES.hex_ints
+      when *type_classes.hex_ints
         ev.macro = :ctf_integer_hex
         ev.type = name
-      when *TYPE_CLASSES.integers
+      when *type_classes.integers
         ev.macro = :ctf_integer
         ev.type = name
-      when *TYPE_CLASSES.enums
+      when *type_classes.enums
         ev.macro = :ctf_integer
         ev.type = :int32_t
-      when *TYPE_CLASSES.structs, *TYPE_CLASSES.unions
+      when *type_classes.structs, *type_classes.unions
         ev.macro = :ctf_array_text
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
@@ -145,7 +145,7 @@ module YAMLCAst
   end
 
   class Array
-    def lttng_type(length: nil, length_type: nil)
+    def lttng_type(type_classes, length: nil, length_type: nil)
       ev = LTTng::TracepointField.new
       if length
         ev.length = length
@@ -186,19 +186,19 @@ module YAMLCAst
             ev.length = "(#{ev.length}) * sizeof(uint8_t)"
             ev.length_type = 'size_t'
           end
-        when *TYPE_CLASSES.objects, *TYPE_CLASSES.pointers
+        when *type_classes.objects, *type_classes.pointers
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
-        when *TYPE_CLASSES.hex_ints
+        when *type_classes.hex_ints
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = type.name
-        when *TYPE_CLASSES.integers
+        when *type_classes.integers
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = type.name
-        when *TYPE_CLASSES.enums
+        when *type_classes.enums
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
-        when *TYPE_CLASSES.structs, *TYPE_CLASSES.unions
+        when *type_classes.structs, *type_classes.unions
           ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length
@@ -206,10 +206,10 @@ module YAMLCAst
             ev.length_type = 'size_t'
           end
         else
-          super
+          super(type_classes)
         end
       else
-        super
+        super(type_classes)
       end
       ev
     end

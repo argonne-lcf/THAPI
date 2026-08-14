@@ -35,7 +35,7 @@ EOF
   fields = []
 
   # Add Result
-  r = c.type.lttng_type
+  r = c.type.lttng_type(c.type_classes)
   if dir != :start && r
     r.name = c.result_name
     r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
@@ -47,7 +47,7 @@ EOF
   end
 
   # Add parameters
-  fields += c.parameters.collect(&:lttng_type) if dir != :stop && c.parameters
+  fields += c.parameters.collect { |p| p.lttng_type(c.type_classes) } if dir != :stop && c.parameters
 
   # Add meta parameteter
   name = if dir == :start

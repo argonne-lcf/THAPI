@@ -166,7 +166,7 @@ class ScalarMetaParameter < MetaParameter
          else
            t.type
          end
-    lttngt = st.lttng_type
+    lttngt = st.lttng_type(command.type_classes)
     lttngt.name = name + '_val'
     if lttngt.macro == :ctf_array_text
       lttngt.macro = :ctf_sequence_text
@@ -246,7 +246,7 @@ class ArrayMetaParameter < MetaParameter
            t.type
          end
     y = YAMLCAst::Array.new(type: tt)
-    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
@@ -290,7 +290,7 @@ class FixedArrayMetaParameter < MetaParameter
            t.type
          end
     y = YAMLCAst::Array.new(type: tt)
-    lttngt = y.lttng_type(length: size, length_type: nil)
+    lttngt = y.lttng_type(command.type_classes, length: size, length_type: nil)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
@@ -346,7 +346,7 @@ class ArrayByRefMetaParameter < MetaParameter
            t.type.type
          end
     y = YAMLCAst::Array.new(type: tt)
-    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_val_vals'
     lttngt.expression = sanitize_expression("*#{name}")
     @lttng_type = lttngt
