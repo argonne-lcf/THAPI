@@ -1,10 +1,10 @@
-# ScalarMetaParameter, YAMLCAst node classes, etc.
 require_relative 'yaml_ast'
 require_relative 'type_registry'
 
-# Build the babeltrace TypeRegistry from the backend's API model and assert the
-# per-backend bitfield invariant: ze/omp have bitfield types, cuda/hip/mpi/itt
-# have none (see the babeltrace-model bitfield note).
+# Build the babeltrace TypeRegistry from the backend's API model. Whether an
+# API has bitfield types is a fact about its headers, so each backend states
+# what it expects: a backend that silently stopped classifying them would
+# otherwise emit plain integers where enum metadata belongs.
 def build_ast_registry(backend, expect_bitfields:)
   registry = TypeRegistry.from_ast(
     all_types: API.types, all_enums: API.enums,
@@ -203,9 +203,7 @@ def gen_extra_event_bt_model(registry, provider, event)
   d
 end
 
-# Build the command event classes for a backend: one [start, stop] pair per
-# command (phased), or a single event per command for itt/omp (phased: false).
-# provider_commands is a list of [provider_symbol, commands] pairs.
+# itt and omp trace a single event per command; everyone else a start/stop pair.
 def gen_command_events_bt_model(registry, provider_commands, phased: true)
   provider_commands.collect do |provider, commands|
     commands.collect do |c|
@@ -219,7 +217,6 @@ def gen_command_events_bt_model(registry, provider_commands, phased: true)
   end.flatten(2)
 end
 
-# Build the "extra" event classes declared in a backend's <x>_events.yaml.
 def gen_extra_events_bt_model(registry, filename)
   YAML.load_file(File.join(SRC_DIR, filename)).collect do |provider, es|
     es['events'].collect do |event|

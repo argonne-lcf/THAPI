@@ -19,7 +19,6 @@ gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'hipResult',
-  # Every entry point initializes the tracer.
   init_functions: /.*/,
   struct_map: find_struct_map(typedefs, structs),
   type_classes: TYPE_CLASSES

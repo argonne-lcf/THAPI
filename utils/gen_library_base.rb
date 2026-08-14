@@ -156,7 +156,8 @@ def print_object(object)
 EOF
 end
 
-# ze has its own Handle/UUID: :data/:id fields, and a UUID printed back to front.
+# Shared by cuda/hip/mpi. ze inlines its own -- :data/:id fields, and a UUID
+# printed back to front.
 def print_handle_uuid_modules
   puts <<'EOF'
   module Handle
@@ -382,7 +383,6 @@ def print_function_pointer_type(name, func)
 EOF
 end
 
-# Structs whose class name mentions UUID prepend the UUID module for its to_s.
 def print_struct_prepending_uuid(namespace, name, struct)
   prepends = to_class_name(name).match('UUID') ? ['UUID'] : []
   print_struct_with_namespace(namespace, name, struct, prepends: prepends)

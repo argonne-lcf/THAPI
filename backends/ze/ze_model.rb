@@ -9,10 +9,9 @@ require 'set'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-# The namespaces THAPI traces, each declared by its own header. Generators that
-# emit per-namespace code -- struct printers, tracepoint providers -- index this
-# by namespace. zer has no api.yaml yet, so it is an empty model rather than a
-# missing key: every namespace answers, and the loops below stay uniform.
+# The namespaces THAPI traces, each declared by its own header. zer has no
+# generated api.yaml yet, so it is an empty model rather than a missing key:
+# every namespace answers, and the loops below stay uniform.
 APIS = {
   ze: ApiModel.load_file('ze_api.yaml'),
   zet: ApiModel.load_file('zet_api.yaml'),
@@ -23,9 +22,7 @@ APIS = {
 }.freeze
 
 # The tracer wraps every namespace, so it classifies against all of them at
-# once: a zet typedef routinely names a ze struct. The Ruby bindings cover a
-# smaller set, which is why they merge their own subset of APIS rather than
-# reusing this one.
+# once: a zet typedef routinely names a ze struct.
 all_api = APIS.values.inject(:+)
 typedefs = all_api.types
 structs = all_api.structs
@@ -69,12 +66,10 @@ STRUCT_TYPE_CONVERSION_TABLE = {
 STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
                                 zex_device_module_register_file_exp_t])
 
-# Each namespace declares its meta-parameters in its own file, beside the
-# header they describe, so the list follows APIS rather than restating it. zer
-# is left out along with its api.yaml: turning zer on means dropping it from
-# here too, not editing entries out of a shared file.
-META_PARAMETER_NAMESPACES = APIS.keys - [:zer]
-meta_parameters = load_meta_parameters(*META_PARAMETER_NAMESPACES.collect { |ns| "#{ns}_meta_parameters.yaml" })
+# Each namespace declares its meta-parameters in its own file, so the list
+# follows APIS rather than restating it. zer's file exists but stays out until
+# zer has a generated api.yaml to match it against.
+meta_parameters = load_meta_parameters(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })
 
 # One group per namespace, because each namespace has its own LTTng provider.
 COMMANDS = CommandIndex.new(APIS.to_h do |ns, api|

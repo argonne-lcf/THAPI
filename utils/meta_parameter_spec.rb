@@ -1,15 +1,12 @@
 require 'yaml'
 
 # Read a backend's meta-parameter YAML (relative to SRC_DIR) and return the
-# spec it describes: a Hash mapping each function name to a list of
-# [MetaParameter subclass, args] rows, ready to hand to a Command. Unlisted
-# functions read back as [], so callers can `spec[name]` unconditionally.
+# spec it describes. Unlisted functions read back as [], so callers can
+# `spec[name]` unconditionally.
 #
-# The file maps each function name to a list of [type, *args] rows under a
-# top-level `meta_parameters` key. A backend with none of its own ships no
-# file and builds its commands without a spec, so that key must be a mapping:
-# a missing, misspelled or empty one means a typo, which would otherwise yield
-# an empty spec and look identical to having none.
+# A backend with no meta-parameters of its own ships no file at all, so a file
+# that exists must have the `meta_parameters` key: a missing or misspelled one
+# would otherwise yield an empty spec and look identical to having none.
 #
 # Pass several filenames to merge their specs (ze splits its rows per
 # namespace, cuda across its two APIs). Each function must be declared in at

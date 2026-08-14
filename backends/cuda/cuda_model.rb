@@ -22,14 +22,16 @@ cuda_exports_funcs_e = cuda_exports_api.functions
 typedefs = API.types
 structs = API.structs
 
-# CUdeviceptr is a device address carried in an integer, so it reads as hex.
+# CUdeviceptr is a device address carried in an integer, so it reads as hex
+# rather than as a decimal that means nothing to anyone.
 TYPE_CLASSES = find_all_types(typedefs, extra_hex_ints: ['CUdeviceptr'])
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'cuResult',
-  # gen_cuda.rb calls _init_tracer() from every wrapper, so no function is
-  # singled out as the initializer and Command#init? is never asked.
+  # cuda's pointers start at a _uninit trampoline that calls _init_tracer(), so
+  # no function is singled out as the initializer and Command#init? is never
+  # asked.
   init_functions: nil,
   struct_map: find_struct_map(typedefs, structs),
   type_classes: TYPE_CLASSES

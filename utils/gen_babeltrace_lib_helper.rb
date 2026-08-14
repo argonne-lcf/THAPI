@@ -16,10 +16,7 @@ def add_babeltrace_event_callbacks(file)
         case fc[:type]
         when 'integer_signed', 'integer_unsigned'
           if be_class
-            # Reads the backend's API model rather than being handed a
-            # registry: this is the library/bindings path, whose callers
-            # require their gen_<x>_library_base first, so API is defined
-            # by the time this runs.
+            # API is in scope: callers require their gen_<x>_library_base first.
             if API.bitfield_names.include?(fc[:cast_type])
               %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
             else

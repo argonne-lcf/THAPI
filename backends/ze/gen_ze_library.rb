@@ -263,7 +263,7 @@ end
 # We need to sort the type, so they are defined in order
 # We don't support cycle.
 
-# We put Enum and $objecs first.
+# We put Enum and objects first.
 # If not, they are not added by the BFS, not sure why
 all_type_sorted = API.types.group_by do |t|
   if API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)

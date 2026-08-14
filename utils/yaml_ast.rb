@@ -463,7 +463,7 @@ FFI_TYPE_MAP = {}
 #   typedef struct _Foo Foo;   typedef Foo *Foo_t;
 # which puts a CustomType between the pointer and the struct. Resolve those
 # aliases through `types` so both spellings classify the same way; otherwise
-# Foo_t lands in POINTER_TYPES and the backend has to correct it by hand.
+# Foo_t classifies as a plain pointer.
 def object_typedef?(t, types)
   return false unless t.type.is_a?(YAMLCAst::Pointer)
 
@@ -479,8 +479,7 @@ def object_typedef?(t, types)
 end
 
 # How one API's typedef names sort into the categories the tracer generators
-# care about. Derived from the typedef list alone, so the same input always
-# gives the same object.
+# care about.
 #
 # `integers` starts from the fixed C scalar names rather than being purely the
 # API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
@@ -490,11 +489,8 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
   # The one category a typedef name falls into, or nil when this API never
   # names it. The order is the answer: an object typedef is a pointer under the
   # hood and a hex int is an integer, so the more specific category has to win.
-  # The categories are otherwise disjoint (asserted across all seven backends),
-  # so nothing below the first match can also apply.
-  #
-  # Callers pick a tracepoint macro per category rather than per name, which is
-  # why the ladder is here once instead of once per lttng_type.
+  # The categories are otherwise disjoint (verified by hand across all seven
+  # backends), so nothing below the first match can also apply.
   def category_of(name)
     case name
     when *objects, *pointers then :address
@@ -510,12 +506,8 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
   end
 end
 
-# Sort every typedef in `types` into a TypeClasses. Pure: nothing outside the
-# returned object is touched.
-#
-# `extra_hex_ints` are API-specific integer types to log in hex: cuda's
-# CUdeviceptr is an address held in an integer, so hex reads far better than
-# decimal. An API declares them here rather than pushing onto the shared list.
+# `extra_hex_ints` are API-specific integer types to log in hex, declared by
+# the API rather than pushed onto the shared HEX_INT_TYPES.
 def find_all_types(types, extra_hex_ints: [])
   objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
   # Int and Char share one category, and the char pass closes over the list the

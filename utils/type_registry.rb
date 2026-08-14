@@ -1,15 +1,13 @@
-# Immutable value object holding the type facts the babeltrace-model generator
-# needs to classify a field. Threaded explicitly instead of read from globals.
+# The type facts the babeltrace-model generator needs to classify a field.
 require_relative 'yaml_ast'
 
 class TypeRegistry
   attr_reader :types_by_name, :enum_names, :bitfield_names, :struct_names,
               :integer_sizes, :integer_signed, :class_namer
 
-  # Build a registry from an AST backend's parsed model. The enum/bitfield/
-  # struct name lists are classified by the backend (their rules differ); this
-  # only derives the integer-size/-sign lookups (scalar widths plus a 32-bit
-  # signed entry per enum) and the by-name type index.
+  # The name lists come from ApiModel#classified; this only derives the
+  # integer-size/-sign lookups (scalar widths plus a 32-bit signed entry per
+  # enum) and the by-name type index.
   def self.from_ast(all_types:, all_enums:, enum_names:, bitfield_names:, struct_names:, class_namer:)
     integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
     integer_signed = INT_SIGN_MAP.dup

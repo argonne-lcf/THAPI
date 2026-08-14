@@ -103,7 +103,10 @@ gen_struct_printer(:ze, struct_types[:ze])
 gen_struct_printer(:zet, struct_types[:zet])
 gen_struct_printer(:zes, struct_types[:zes])
 gen_struct_printer(:zel, struct_types[:zel])
-# gen_struct_printer(:zer, struct_types[:zel])
+# zer and zex are off (see ZE_NAMESPACES in Makefile.am); re-enabling either
+# means adding its line here. zer's read zel's structs until 0d64341 fixed the
+# same slip in gen_zer_structs_tracepoints.rb -- keep the namespaces matched.
+# gen_struct_printer(:zer, struct_types[:zer])
 # gen_struct_printer(:zex, struct_types[:zex])
 
 # zex is excluded: it is reached through libffi closures, not dlsym'd symbols.
@@ -247,10 +250,8 @@ EOF
   EOF
 }
 
-# Which of a namespace's entry points get a hidden alias. The ProcAddrTable
-# getters belong to the loader and are never aliased, and ze skips the loader
-# helpers too. zel is the exception: only its tracer API is aliased, so it opts
-# in rather than out.
+# Which of a namespace's entry points get a hidden alias. zel is the exception:
+# only its tracer API is aliased, so it opts in rather than out.
 aliased = {
   ze: ->(n) { !n.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/) },
   zet: ->(n) { !n.match(/zetGet.*ProcAddrTable/) },

@@ -1,15 +1,10 @@
 # One parsed api.yaml: the five lists it declares, plus the facts the
-# generators derive from them. `ApiModel.load_file` is how a backend gets one,
-# so its API is a value it holds rather than a hash it indexes with strings.
+# generators derive from them.
 #
 # A backend whose headers span several namespaces (ze, cuda) adds its files
-# together; the derivations then see every list at once, which is what they
-# need -- a zet typedef can name a ze struct, so classifying zet alone would
-# get it wrong. That is also why the derivations are lazy: summing three models
-# would otherwise pay for two answers nobody asked for.
-#
-# Backends publish theirs as the API constant, the same way they already
-# publish FFI_STRUCT and FFI_UNION for the shared generator to read.
+# together with `+`, because the derivations have to see every list at once: a
+# zet typedef can name a ze struct, so classifying zet alone would get it
+# wrong.
 require_relative 'yaml_ast'
 
 class ApiModel
@@ -17,8 +12,8 @@ class ApiModel
 
   attr_reader :types, :structs, :unions, :enums, :functions
 
-  # An api.yaml, parsed. A list the file does not declare is empty here, so
-  # every model answers all five questions.
+  # A list the file does not declare reads back empty, so every model answers
+  # all five questions.
   def self.load_file(path)
     lists = YAMLCAst.load_file(path)
     new(types: lists.fetch('typedefs', []), structs: lists.fetch('structs', []),
@@ -34,7 +29,6 @@ class ApiModel
     @functions = functions
   end
 
-  # The lists concatenated, so `ze + zet` is the API of both headers.
   def +(other)
     ApiModel.new(types: types + other.types, structs: structs + other.structs,
                  unions: unions + other.unions, enums: enums + other.enums,
@@ -69,16 +63,13 @@ class ApiModel
     classified.structs
   end
 
-  # The definition a typedef refers to. `type` is the typedef's target, so it
-  # carries the layout itself when the struct or union was declared inline and
-  # has no name of its own.
+  # The definition a typedef refers to, or `type` itself when the layout was
+  # declared inline and has no name of its own.
   #
-  # A named target that the API does not define is an opaque forward
-  # declaration: the headers name the struct but never give its layout, so
-  # there is nothing to generate. Callers ask for that case explicitly with
-  # `opaque_ok`, and anything else raises -- a missing definition is otherwise
-  # a parse that dropped a type, which would silently generate a library with
-  # a hole in it.
+  # A named target the API never defines is an opaque forward declaration, and
+  # callers ask for that case with `opaque_ok`. Anything else raises: a missing
+  # definition is otherwise a parse that dropped a type, which would silently
+  # generate a library with a hole in it.
   def struct(type, opaque_ok: false)
     lookup(@structs, type, 'struct', opaque_ok)
   end
@@ -95,15 +86,14 @@ class ApiModel
     objects.include?(name)
   end
 
-  # True when some typedef aliases `name`, i.e. the generator has already
-  # emitted an FFI name for it and can refer to that instead of inlining a
-  # layout.
+  # True when the generator has already emitted an FFI name for `name` and can
+  # refer to it instead of inlining a layout.
   def typedef?(name)
     @types.any? { |t| t.type.respond_to?(:name) && t.type.name == name }
   end
 
-  # The typedefs that alias `name`, so the generator can chain a `typedef` line
-  # for every further alias of a type it just emitted.
+  # The typedefs aliasing `name`, so the generator can chain a `typedef` line
+  # for each further alias of a type it just emitted.
   def aliases_of(name)
     @types.select { |t| t.type.is_a?(YAMLCAst::CustomType) && t.type.name == name }
   end
@@ -124,9 +114,7 @@ class ApiModel
   # enum whose underlying enum name ends in `flag_t` is a bitfield (OR-able
   # flags); every other enum is a plain enum. Each `_flag_t` bitfield
   # additionally aliases the `_flags_t` name the headers use for the OR'd
-  # value. Backends with no `flag_t` enums get an empty bitfield list (the
-  # `flag_t` test and `_flags_t` derivation are then no-ops), so the same rule
-  # serves all backends.
+  # value.
   def classified
     @classified ||= begin
       enums = []
@@ -147,7 +135,6 @@ class ApiModel
     end
   end
 
-  # Each typedef that aliases an integer type, mapped to that underlying type.
   def find_int_scalars(all_types, integers)
     int_scalars = {}
     all_types.each do |t|

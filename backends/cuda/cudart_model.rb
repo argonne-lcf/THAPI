@@ -26,7 +26,6 @@ CONTEXT = BackendContext.new(
   type_classes: TYPE_CLASSES
 )
 
-# cudart declares no meta-parameters, so it loads no spec.
 COMMANDS = CommandIndex.new(lttng_ust_cudart: funcs.collect do |func|
   Command.new(func, context: CONTEXT)
 end)

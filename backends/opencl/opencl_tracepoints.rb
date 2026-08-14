@@ -2,9 +2,7 @@ require_relative '../../utils/LTTng'
 
 # Opencl's model is YAML-intermediate-driven (see gen_opencl_model.rb), so its
 # tracepoint fields travel as raw [macro, *args] tuples rather than as
-# utils/LTTng.rb's TracepointField objects. LTTngFieldTuple provides the same
-# kind of accessors (name/array?/string?/enum?/expression) over that tuple
-# representation.
+# utils/LTTng.rb's TracepointField objects.
 module LTTngFieldTuple
   def self.name(*args)
     case args[0]
