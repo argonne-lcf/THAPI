@@ -66,7 +66,10 @@ $all_types.each do |t|
   elsif $objects.include?(t.name)
     print_mpi_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = $all_structs.find { |s| t.type.name == s.name }
+    # An anonymous target carries the layout itself, so the typedef is the
+    # definition -- same guard hip already uses. Without it MPI_Status and
+    # MPI_F08_status are silently dropped from the bindings.
+    struct = t.type.name ? $all_structs.find { |s| t.type.name == s.name } : t.type
     next unless struct
 
     print_struct(t.name, struct)
