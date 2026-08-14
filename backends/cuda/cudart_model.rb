@@ -8,11 +8,11 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-cudart_api = ApiModel.load_file('cudart_api.yaml')
+API = ApiModel.load_file('cudart_api.yaml')
 
-funcs = cudart_api.functions
-typedefs = cudart_api.types
-structs = cudart_api.structs
+funcs = API.functions
+typedefs = API.types
+structs = API.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
