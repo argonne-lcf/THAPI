@@ -491,7 +491,29 @@ end
 # API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
 # category has to contain both to answer "is this an integer?" in one lookup.
 TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unions, :pointers,
-                         keyword_init: true)
+                         keyword_init: true) do
+  # The one category a typedef name falls into, or nil when this API never
+  # names it. The order is the answer: an object typedef is a pointer under the
+  # hood and a hex int is an integer, so the more specific category has to win.
+  # The categories are otherwise disjoint (asserted across all seven backends),
+  # so nothing below the first match can also apply.
+  #
+  # Callers pick a tracepoint macro per category rather than per name, which is
+  # why the ladder is here once instead of once per lttng_type.
+  def category_of(name)
+    case name
+    when *objects, *pointers then :address
+    when *hex_ints then :hex_int
+    when *integers then :integer
+    when *enums then :enum
+    when *structs, *unions then :aggregate
+    end
+  end
+
+  def aggregate?(name)
+    category_of(name) == :aggregate
+  end
+end
 
 # Sort every typedef in `types` into a TypeClasses. Pure: nothing outside the
 # returned object is touched.

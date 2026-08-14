@@ -103,12 +103,7 @@ module YAMLCAst
                      when Struct, Union
                        "&#{name}"
                      when CustomType
-                       case type.name
-                       when *type_classes.structs, *type_classes.unions
-                         "&#{name}"
-                       else
-                         name
-                       end
+                       type_classes.aggregate?(type.name) ? "&#{name}" : name
                      else
                        name
                      end
@@ -119,21 +114,21 @@ module YAMLCAst
   class CustomType
     def lttng_type(type_classes)
       ev = LTTng::TracepointField.new
-      case name
-      when *type_classes.objects, *type_classes.pointers
+      case type_classes.category_of(name)
+      when :address
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = 'uintptr_t'
-      when *type_classes.hex_ints
+      when :hex_int
         ev.macro = :ctf_integer_hex
         ev.type = name
-      when *type_classes.integers
+      when :integer
         ev.macro = :ctf_integer
         ev.type = name
-      when *type_classes.enums
+      when :enum
         ev.macro = :ctf_integer
         ev.type = :int32_t
-      when *type_classes.structs, *type_classes.unions
+      when :aggregate
         ev.macro = :ctf_array_text
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
@@ -177,28 +172,23 @@ module YAMLCAst
         ev.macro = :"ctf_#{lttng_arr_type}_text"
         ev.type = type.name
       when YAMLCAst::CustomType
-        case type.name
-        # Usually binary data or text
-        when 'uint8_t'
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
-          ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(uint8_t)"
-            ev.length_type = 'size_t'
-          end
-        when *type_classes.objects, *type_classes.pointers
+        # A uint8_t array is binary data or text rather than a run of numbers,
+        # so it gets an aggregate's treatment -- bytes, sized in bytes -- even
+        # though the name classifies as an integer.
+        case type.name == 'uint8_t' ? :aggregate : type_classes.category_of(type.name)
+        when :address
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
-        when *type_classes.hex_ints
+        when :hex_int
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = type.name
-        when *type_classes.integers
+        when :integer
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = type.name
-        when *type_classes.enums
+        when :enum
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
-        when *type_classes.structs, *type_classes.unions
+        when :aggregate
           ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length
