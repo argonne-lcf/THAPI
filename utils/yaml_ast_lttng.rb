@@ -104,7 +104,7 @@ module YAMLCAst
                        "&#{name}"
                      when CustomType
                        case type.name
-                       when *STRUCT_TYPES, *UNION_TYPES
+                       when *TYPE_CLASSES.structs, *TYPE_CLASSES.unions
                          "&#{name}"
                        else
                          name
@@ -120,20 +120,20 @@ module YAMLCAst
     def lttng_type
       ev = LTTng::TracepointField.new
       case name
-      when *OBJECT_TYPES, *POINTER_TYPES
+      when *TYPE_CLASSES.objects, *TYPE_CLASSES.pointers
         ev.macro = :ctf_integer_hex
         ev.type = :uintptr_t
         ev.cast = 'uintptr_t'
       when *HEX_INT_TYPES
         ev.macro = :ctf_integer_hex
         ev.type = name
-      when *INT_TYPES
+      when *TYPE_CLASSES.integers
         ev.macro = :ctf_integer
         ev.type = name
-      when *ENUM_TYPES
+      when *TYPE_CLASSES.enums
         ev.macro = :ctf_integer
         ev.type = :int32_t
-      when *STRUCT_TYPES, *UNION_TYPES
+      when *TYPE_CLASSES.structs, *TYPE_CLASSES.unions
         ev.macro = :ctf_array_text
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
@@ -186,19 +186,19 @@ module YAMLCAst
             ev.length = "(#{ev.length}) * sizeof(uint8_t)"
             ev.length_type = 'size_t'
           end
-        when *OBJECT_TYPES, *POINTER_TYPES
+        when *TYPE_CLASSES.objects, *TYPE_CLASSES.pointers
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
         when *HEX_INT_TYPES
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = type.name
-        when *INT_TYPES
+        when *TYPE_CLASSES.integers
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = type.name
-        when *ENUM_TYPES
+        when *TYPE_CLASSES.enums
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
-        when *STRUCT_TYPES, *UNION_TYPES
+        when *TYPE_CLASSES.structs, *TYPE_CLASSES.unions
           ev.macro = :"ctf_#{lttng_arr_type}_text"
           ev.type = :uint8_t
           if ev.length

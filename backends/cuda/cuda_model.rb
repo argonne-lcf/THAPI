@@ -22,9 +22,9 @@ cuda_exports_type_e = $cuda_exports_api['typedefs']
 typedefs = cuda_types_e + cuda_exports_type_e
 structs = $cuda_api['structs'] + $cuda_exports_api['structs']
 
-find_all_types(typedefs)
+TYPE_CLASSES = find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
+gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 HEX_INT_TYPES.push('CUdeviceptr')
 

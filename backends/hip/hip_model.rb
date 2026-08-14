@@ -15,9 +15,9 @@ funcs = $hip_api['functions']
 typedefs = $hip_api['typedefs']
 structs = $hip_api['structs']
 
-find_all_types(typedefs)
+TYPE_CLASSES = find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
+gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 INIT_FUNCTIONS = /.*/
 

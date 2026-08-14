@@ -28,9 +28,9 @@ zex_funcs_e = $zex_api['functions']
 typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] + $zer_api['typedefs'] + $zex_api['typedefs']
 structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zer_api['structs'] + $zex_api['structs']
 
-find_all_types(typedefs)
+TYPE_CLASSES = find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
+gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 # zesInit is included here so that a pure-Sysman program (one that only calls
 # zesInit, never zeInit) still triggers the tracer initialization.

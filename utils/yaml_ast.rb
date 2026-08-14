@@ -459,12 +459,6 @@ FFI_FLOAT_TYPE_MAP = {
 
 FFI_TYPE_MAP = {}
 
-OBJECT_TYPES = []
-ENUM_TYPES = []
-STRUCT_TYPES = []
-UNION_TYPES = []
-POINTER_TYPES = []
-
 # A typedef of pointer-to-struct is an opaque handle -- an "object" -- rather
 # than a pointer the tracer should dereference.
 #
@@ -487,20 +481,34 @@ def object_typedef?(t, types)
   target.is_a?(YAMLCAst::Struct)
 end
 
-def find_all_types(types)
-  objs = types.filter_map { |t| t.name if object_typedef?(t, types) }
-  OBJECT_TYPES.concat objs
-  transitive_closure(types, OBJECT_TYPES)
+# How one API's typedef names sort into the categories the tracer generators
+# care about. Derived from the typedef list alone, so the same input always
+# gives the same object.
+#
+# `integers` starts from the fixed C scalar names rather than being purely the
+# API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
+# category has to contain both to answer "is this an integer?" in one lookup.
+TypeClasses = Struct.new(:objects, :integers, :enums, :structs, :unions, :pointers,
+                         keyword_init: true)
 
-  find_types(types, YAMLCAst::Int, INT_TYPES)
-  find_types(types, YAMLCAst::Char, INT_TYPES)
-  find_types(types, YAMLCAst::Enum, ENUM_TYPES)
-  find_types(types, YAMLCAst::Struct, STRUCT_TYPES)
-  find_types(types, YAMLCAst::Union, UNION_TYPES)
-  ptrs = types.filter_map do |t|
+# Sort every typedef in `types` into a TypeClasses. Pure: nothing outside the
+# returned object is touched.
+def find_all_types(types)
+  objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
+  # Int and Char share one category, and the char pass closes over the list the
+  # int pass produced, so a typedef aliasing either resolves the same way.
+  integers = find_types(types, YAMLCAst::Int, INT_TYPES.dup)
+  integers = find_types(types, YAMLCAst::Char, integers)
+  pointers = types.filter_map do |t|
     t.name if (t.type.is_a?(YAMLCAst::Pointer) && !object_typedef?(t, types)) || t.type.is_a?(YAMLCAst::Function)
   end
-  POINTER_TYPES.concat ptrs
+
+  TypeClasses.new(
+    objects: objects, integers: integers, pointers: pointers,
+    enums: find_types(types, YAMLCAst::Enum),
+    structs: find_types(types, YAMLCAst::Struct),
+    unions: find_types(types, YAMLCAst::Union)
+  ).each_pair { |_, v| v.freeze }.freeze
 end
 
 STRUCT_MAP = {}
@@ -517,7 +525,7 @@ def gen_struct_map(types, structs)
   transitive_closure_map(types, STRUCT_MAP)
 end
 
-def gen_ffi_type_map(types)
+def gen_ffi_type_map(types, type_classes)
   find_types_map(types, YAMLCAst::Int, INT_SIGN_MAP)
   find_types_map(types, YAMLCAst::Int, INT_SIZE_MAP)
   find_types_map(types, YAMLCAst::Int, FFI_INT_TYPE_MAP)
@@ -528,18 +536,18 @@ def gen_ffi_type_map(types)
 
   find_types_map(types, YAMLCAst::Float, FFI_FLOAT_TYPE_MAP)
   FFI_TYPE_MAP.merge!(FFI_INT_TYPE_MAP, FFI_FLOAT_TYPE_MAP)
-  OBJECT_TYPES.each do |o|
+  type_classes.objects.each do |o|
     FFI_TYPE_MAP[o] = 'ffi_type_pointer'
     INT_SIZE_MAP[o] = 8
     INT_SIGN_MAP[o] = false
   end
   # Debatable
-  ENUM_TYPES.each do |e|
+  type_classes.enums.each do |e|
     FFI_TYPE_MAP[e] = 'ffi_type_sint32'
     INT_SIZE_MAP[e] = 4
     INT_SIGN_MAP[e] = true
   end
-  POINTER_TYPES.each do |p|
+  type_classes.pointers.each do |p|
     FFI_TYPE_MAP[p] = 'ffi_type_pointer'
     INT_SIZE_MAP[p] = 8
     INT_SIGN_MAP[p] = false

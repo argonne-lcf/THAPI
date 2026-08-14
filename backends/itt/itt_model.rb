@@ -14,9 +14,9 @@ $itt_api = YAMLCAst.load_file('itt_api.yaml')
 typedefs = $itt_api['typedefs']
 structs = $itt_api['structs']
 
-find_all_types(typedefs)
+TYPE_CLASSES = find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
+gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 INIT_FUNCTIONS = /None/
 

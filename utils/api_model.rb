@@ -22,8 +22,9 @@ class ApiModel
     @unions = unions
     @enums = enums
 
-    @objects = find_objects(types)
-    @int_scalars = find_int_scalars(types)
+    classes = find_all_types(types)
+    @objects = classes.objects
+    @int_scalars = find_int_scalars(types, classes.integers)
     @enum_names, @bitfield_names, @struct_names = classify_ast_types(types, enums)
   end
 
@@ -102,20 +103,11 @@ class ApiModel
     [enum_names, bitfield_names, struct_names]
   end
 
-  # The "object" type names: the pointer-to-struct typedefs, plus every typedef
-  # that aliases one of them, transitively.
-  def find_objects(all_types)
-    objects = all_types.filter_map do |t|
-      t.name if object_typedef?(t, all_types)
-    end
-    transitive_closure(all_types, objects)
-  end
-
   # Each typedef that aliases an integer type, mapped to that underlying type.
-  def find_int_scalars(all_types)
+  def find_int_scalars(all_types, integers)
     int_scalars = {}
     all_types.each do |t|
-      int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
+      int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && integers.include?(t.type.name)
     end
     int_scalars
   end

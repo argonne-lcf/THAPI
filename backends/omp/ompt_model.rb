@@ -14,9 +14,9 @@ $ompt_api = YAMLCAst.load_file('ompt_api.yaml')
 typedefs = $ompt_api['typedefs']
 structs = $ompt_api['structs']
 
-find_all_types(typedefs)
+TYPE_CLASSES = find_all_types(typedefs)
 gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
+gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 OMPT_CALLBACKS = typedefs.select do |t|
   t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/)
