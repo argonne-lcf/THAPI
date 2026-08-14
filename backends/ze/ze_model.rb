@@ -8,8 +8,6 @@ require 'set'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-RESULT_NAME = 'zeResult'
-
 $ze_api = YAMLCAst.load_file('ze_api.yaml')
 $zet_api = YAMLCAst.load_file('zet_api.yaml')
 $zes_api = YAMLCAst.load_file('zes_api.yaml')
@@ -29,14 +27,18 @@ typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $
 structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zer_api['structs'] + $zex_api['structs']
 
 TYPE_CLASSES = find_all_types(typedefs)
-gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
-# zesInit is included here so that a pure-Sysman program (one that only calls
-# zesInit, never zeInit) still triggers the tracer initialization.
-# Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
-# so each namespace initializes its own symbols.
-INIT_FUNCTIONS = /zeInit|zeLoaderInit|zeInitDrivers|zesInit/
+CONTEXT = BackendContext.new(
+  result_name: 'zeResult',
+  # zesInit is included here so that a pure-Sysman program (one that only calls
+  # zesInit, never zeInit) still triggers the tracer initialization.
+  # Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
+  # so each namespace initializes its own symbols.
+  init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/,
+  struct_map: find_struct_map(typedefs, structs),
+  type_classes: TYPE_CLASSES
+)
 
 STRUCT_TYPE_CONVERSION_TABLE = {
   'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
@@ -71,27 +73,27 @@ meta_parameters = load_meta_parameters('ze_meta_parameters.yaml',
                                        'zex_meta_parameters.yaml')
 
 $ze_commands = ze_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 $zet_commands = zet_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 $zes_commands = zes_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 $zel_commands = zel_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 $zer_commands = zer_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 $zex_commands = zex_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).collect do |c|
@@ -417,7 +419,7 @@ commands.select do |c|
   c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
 end.each do |c|
   parent_type = c['pDdiTable'].type.type.to_s + '_'
-  child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }
+  child_types = CONTEXT.struct_map.select { |k, _| k.match(parent_type) }
   str = <<EOF
   #{c.type} _retval;
   if (!_do_ddi_table_forward && !_in_loader_init && pDdiTable && version <= ZE_API_VERSION_CURRENT) {

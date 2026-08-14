@@ -518,18 +518,21 @@ def find_all_types(types, extra_hex_ints: [])
   ).each_pair { |_, v| v.freeze }.freeze
 end
 
-STRUCT_MAP = {}
-
-def gen_struct_map(types, structs)
+# Each struct typedef mapped to its member list, so a meta-parameter naming
+# `a->b` can be resolved to b's declaration. The layout is either inline on the
+# typedef or carried by a separately declared struct of the same name.
+def find_struct_map(types, structs)
+  struct_map = {}
   types.select { |t| t.type.is_a? YAMLCAst::Struct }.each do |t|
     if t.type.members
-      STRUCT_MAP[t.name] = t.type.members
+      struct_map[t.name] = t.type.members
     else
       mapped = structs.find { |str| str.name == t.type.name }
-      STRUCT_MAP[t.name] = mapped.members if mapped
+      struct_map[t.name] = mapped.members if mapped
     end
   end
-  transitive_closure_map(types, STRUCT_MAP)
+  transitive_closure_map(types, struct_map)
+  struct_map
 end
 
 def gen_ffi_type_map(types, type_classes)

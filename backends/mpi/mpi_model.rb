@@ -7,20 +7,17 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-RESULT_NAME = 'mpiResult'
-
 $mpi_api = YAMLCAst.load_file('mpi_api.yaml')
 
 typedefs = $mpi_api['typedefs']
 structs = $mpi_api['structs']
 
 TYPE_CLASSES = find_all_types(typedefs)
-gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
 mpi_funcs_e = $mpi_api['functions']
 
-INIT_FUNCTIONS = /
+init_functions = /
   \b(?:P?MPI_Init|
   P?MPI_Init_thread|
   P?MPI_Initialized|
@@ -54,10 +51,17 @@ INIT_FUNCTIONS = /
   P?MPI_T_init_thread)\b
 /ix
 
+CONTEXT = BackendContext.new(
+  result_name: 'mpiResult',
+  init_functions: init_functions,
+  struct_map: find_struct_map(typedefs, structs),
+  type_classes: TYPE_CLASSES
+)
+
 meta_parameters = load_meta_parameters('mpi_meta_parameters.yaml')
 
 $mpi_commands = mpi_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 check_meta_parameters(meta_parameters, $mpi_commands)

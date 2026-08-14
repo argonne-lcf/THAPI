@@ -8,8 +8,6 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-RESULT_NAME = 'cuResult'
-
 $cuda_api = YAMLCAst.load_file('cuda_api.yaml')
 $cuda_exports_api = YAMLCAst.load_file('cuda_exports_api.yaml')
 
@@ -24,8 +22,16 @@ structs = $cuda_api['structs'] + $cuda_exports_api['structs']
 
 # CUdeviceptr is a device address carried in an integer, so it reads as hex.
 TYPE_CLASSES = find_all_types(typedefs, extra_hex_ints: ['CUdeviceptr'])
-gen_struct_map(typedefs, structs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
+
+CONTEXT = BackendContext.new(
+  result_name: 'cuResult',
+  # gen_cuda.rb calls _init_tracer() from every wrapper, so no function is
+  # singled out as the initializer and Command#init? is never asked.
+  init_functions: nil,
+  struct_map: find_struct_map(typedefs, structs),
+  type_classes: TYPE_CLASSES
+)
 
 class TracepointParameter
   attr_reader :name, :type, :init, :after
@@ -79,11 +85,11 @@ end
 meta_parameters = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
 
 $cuda_commands = cuda_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 $cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.name])
+  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
 check_meta_parameters(meta_parameters, $cuda_commands, $cuda_exports_commands)

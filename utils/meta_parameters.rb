@@ -124,8 +124,8 @@ class ReturnString < MetaParameter
 
     ev = LTTng::TracepointField.new
     ev.macro = :ctf_string
-    ev.name = "#{RESULT_NAME}_val"
-    ev.expression = "#{RESULT_NAME}"
+    ev.name = "#{command.result_name}_val"
+    ev.expression = command.result_name
     @lttng_out_type = ev
   end
 end

@@ -22,7 +22,7 @@ def print_tracepoint(provider, c, dir = nil)
         "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
       end)
     end
-    params.push("#{c.type}, #{RESULT_NAME}") if c.has_return_type? && dir != :start
+    params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
     params += c.tracepoint_parameters.reject { |p| p.after? && dir == :start }.collect do |p|
       "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
     end
@@ -37,11 +37,11 @@ EOF
   # Add Result
   r = c.type.lttng_type
   if dir != :start && r
-    r.name = RESULT_NAME
+    r.name = c.result_name
     r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
-                     "&#{RESULT_NAME}"
+                     "&#{c.result_name}"
                    else
-                     RESULT_NAME
+                     c.result_name
                    end
     fields.push(r)
   end

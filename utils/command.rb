@@ -1,19 +1,42 @@
 require_relative 'command_index'
 require_relative 'meta_parameter_spec'
 
+# The per-backend facts the shared generators need but cannot derive from a
+# function alone: what the traced return value is called, which functions
+# initialize the API, the struct layouts to walk when a meta-parameter names a
+# member, and how the API's typedefs classify.
+#
+# These used to be ambient constants (RESULT_NAME, INIT_FUNCTIONS, STRUCT_MAP,
+# TYPE_CLASSES) that shared code read from whichever backend happened to be
+# required. Every reader already holds a Command, and a Command belongs to
+# exactly one backend, so it carries this instead and the state is explicit.
+BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes,
+                            keyword_init: true)
+
 class Command
-  attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
+  attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function,
+              :context
 
   # `meta_parameters` is this function's rows from a meta-parameter spec, as
   # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
-  def initialize(function, meta_parameters: [])
+  def initialize(function, context:, meta_parameters: [])
     @function = function
+    @context = context
     @tracepoint_parameters = []
     @meta_parameters = meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
     @prologues = []
     @epilogues = []
+  end
+
+  # Shorthands for the context facts the generators reach for most.
+  def result_name
+    @context.result_name
+  end
+
+  def type_classes
+    @context.type_classes
   end
 
   def name
@@ -70,7 +93,7 @@ class Command
   end
 
   def init?
-    name.match(INIT_FUNCTIONS)
+    name.match(@context.init_functions)
   end
 
   def has_return_type?
@@ -79,7 +102,7 @@ class Command
 
   def [](name)
     # special case when querying the return value
-    return YAMLCAst::Declaration.new(name: "#{RESULT_NAME}", type: type) if name == :result
+    return YAMLCAst::Declaration.new(name: result_name, type: type) if name == :result
 
     path = name.split('->')
     if path.length == 1
@@ -93,7 +116,7 @@ class Command
       return nil unless res
 
       path.each do |n|
-        res = STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
+        res = @context.struct_map[res.type.type.name].find { |m| m.name == n }
         return nil unless res
       end
       res
