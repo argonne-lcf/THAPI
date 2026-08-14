@@ -69,12 +69,12 @@ STRUCT_TYPE_CONVERSION_TABLE = {
 STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
                                 zex_device_module_register_file_exp_t])
 
-# zer disabled: 'zer_meta_parameters.yaml'
-meta_parameters = load_meta_parameters('ze_meta_parameters.yaml',
-                                       'zet_meta_parameters.yaml',
-                                       'zes_meta_parameters.yaml',
-                                       'zel_meta_parameters.yaml',
-                                       'zex_meta_parameters.yaml')
+# Each namespace declares its meta-parameters in its own file, beside the
+# header they describe, so the list follows APIS rather than restating it. zer
+# is left out along with its api.yaml: turning zer on means dropping it from
+# here too, not editing entries out of a shared file.
+META_PARAMETER_NAMESPACES = APIS.keys - [:zer]
+meta_parameters = load_meta_parameters(*META_PARAMETER_NAMESPACES.collect { |ns| "#{ns}_meta_parameters.yaml" })
 
 # One group per namespace, because each namespace has its own LTTng provider.
 COMMANDS = CommandIndex.new(APIS.to_h do |ns, api|
