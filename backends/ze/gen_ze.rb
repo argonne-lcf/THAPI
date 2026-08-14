@@ -97,19 +97,14 @@ EOF
   EOF
 end
 
-ze_struct_types = get_structs_types(:ze, $ze_api.types, $ze_api.structs)
-zet_struct_types = get_structs_types(:zet, $zet_api.types, $zet_api.structs)
-zes_struct_types = get_structs_types(:zes, $zes_api.types, $zes_api.structs)
-zel_struct_types = get_structs_types(:zel, $zel_api.types, $zel_api.structs)
-zer_struct_types = get_structs_types(:zer, $zer_api.types, $zer_api.structs)
-zex_struct_types = get_structs_types(:zex, $zex_api.types, $zex_api.structs)
+struct_types = APIS.to_h { |ns, api| [ns, get_structs_types(ns, api.types, api.structs)] }
 
-gen_struct_printer(:ze, ze_struct_types)
-gen_struct_printer(:zet, zet_struct_types)
-gen_struct_printer(:zes, zes_struct_types)
-gen_struct_printer(:zel, zel_struct_types)
-# gen_struct_printer(:zer, zel_struct_types)
-# gen_struct_printer(:zex, zex_struct_types)
+gen_struct_printer(:ze, struct_types[:ze])
+gen_struct_printer(:zet, struct_types[:zet])
+gen_struct_printer(:zes, struct_types[:zes])
+gen_struct_printer(:zel, struct_types[:zel])
+# gen_struct_printer(:zer, struct_types[:zel])
+# gen_struct_printer(:zex, struct_types[:zex])
 
 all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands
 all_commands.each do |c|
@@ -284,19 +279,19 @@ $zer_commands.each do |c|
 end
 
 $ze_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
+  normal_wrapper.call(c, :lttng_ust_ze, struct_types[:ze])
 end
 $zet_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zet, zet_struct_types)
+  normal_wrapper.call(c, :lttng_ust_zet, struct_types[:zet])
 end
 $zes_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zes, zes_struct_types)
+  normal_wrapper.call(c, :lttng_ust_zes, struct_types[:zes])
 end
 $zel_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
+  normal_wrapper.call(c, :lttng_ust_zel, struct_types[:zel])
 end
 $zer_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zer, zer_struct_types)
+  normal_wrapper.call(c, :lttng_ust_zer, struct_types[:zer])
 end
 
 $zex_commands.each do |c|
@@ -309,7 +304,7 @@ $zex_commands.each do |c|
   #{p} = *(#{p.type} *)args[#{i}];
 EOF
   end
-  common_block.call(c, :lttng_ust_zex, zex_struct_types)
+  common_block.call(c, :lttng_ust_zex, struct_types[:zex])
   if c.has_return_type?
     puts <<EOF
   *ffi_ret = _retval;

@@ -2,8 +2,6 @@ require_relative 'hip_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = $hip_api
-
 def to_class_name(name)
   mod = to_name_space(name)
   mod ||= ''

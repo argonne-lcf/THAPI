@@ -63,17 +63,10 @@ def gen_struct_event_bt_model(provider, struct)
   }
 end
 
-event_classes +=
-  [[:lttng_ust_ze_structs, get_structs_types(:ze, $ze_api.types, $ze_api.structs)],
-   [:lttng_ust_zet_structs, get_structs_types(:zet, $zet_api.types, $zet_api.structs)],
-   [:lttng_ust_zes_structs, get_structs_types(:zes, $zes_api.types, $zes_api.structs)],
-   [:lttng_ust_zel_structs, get_structs_types(:zel, $zel_api.types, $zel_api.structs)],
-   [:lttng_ust_zer_structs, get_structs_types(:zer, $zer_api.types, $zer_api.structs)],
-   [:lttng_ust_zex_structs,
-    get_structs_types(:zex, $zex_api.types, $zex_api.structs)]].collect do |provider, structs|
-    structs.collect do |struct|
-      gen_struct_event_bt_model(provider, struct)
-    end
-  end.flatten
+event_classes += APIS.collect do |ns, api|
+  get_structs_types(ns, api.types, api.structs).collect do |struct|
+    gen_struct_event_bt_model(:"lttng_ust_#{ns}_structs", struct)
+  end
+end.flatten
 
 puts YAML.dump(gen_yaml(event_classes, 'ze'))

@@ -8,11 +8,11 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$hip_api = ApiModel.load_file('hip_api.yaml')
+API = ApiModel.load_file('hip_api.yaml')
 
-funcs = $hip_api.functions
-typedefs = $hip_api.types
-structs = $hip_api.structs
+funcs = API.functions
+typedefs = API.types
+structs = API.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)

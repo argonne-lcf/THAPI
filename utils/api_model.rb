@@ -34,7 +34,7 @@ class ApiModel
     @functions = functions
   end
 
-  # The lists concatenated, so `$ze_api + $zet_api` is the API of both headers.
+  # The lists concatenated, so `ze + zet` is the API of both headers.
   def +(other)
     ApiModel.new(types: types + other.types, structs: structs + other.structs,
                  unions: unions + other.unions, enums: enums + other.enums,

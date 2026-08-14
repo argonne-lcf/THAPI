@@ -9,17 +9,18 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$cuda_api = ApiModel.load_file('cuda_api.yaml')
-$cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
+cuda_api = ApiModel.load_file('cuda_api.yaml')
+cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
 
-cuda_funcs_e = $cuda_api.functions
-cuda_exports_funcs_e = $cuda_exports_api.functions
+# The driver and its export tables are traced as one API: an export-table
+# typedef can name a driver struct, so they have to be classified together.
+API = cuda_api + cuda_exports_api
 
-cuda_types_e = $cuda_api.types
-cuda_exports_type_e = $cuda_exports_api.types
+cuda_funcs_e = cuda_api.functions
+cuda_exports_funcs_e = cuda_exports_api.functions
 
-typedefs = cuda_types_e + cuda_exports_type_e
-structs = $cuda_api.structs + $cuda_exports_api.structs
+typedefs = API.types
+structs = API.structs
 
 # CUdeviceptr is a device address carried in an integer, so it reads as hex.
 TYPE_CLASSES = find_all_types(typedefs, extra_hex_ints: ['CUdeviceptr'])

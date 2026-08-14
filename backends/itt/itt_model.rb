@@ -8,10 +8,10 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$itt_api = ApiModel.load_file('itt_api.yaml')
+API = ApiModel.load_file('itt_api.yaml')
 
-typedefs = $itt_api.types
-structs = $itt_api.structs
+typedefs = API.types
+structs = API.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
@@ -37,7 +37,7 @@ whitelisted_functions = %w[
   __itt_metadata_add
 ]
 
-$itt_commands = $itt_api.functions.filter_map do |func|
+$itt_commands = API.functions.filter_map do |func|
   next unless whitelisted_functions.include?(func.name)
 
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])

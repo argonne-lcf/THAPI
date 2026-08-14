@@ -9,24 +9,24 @@ require 'set'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$ze_api = ApiModel.load_file('ze_api.yaml')
-$zet_api = ApiModel.load_file('zet_api.yaml')
-$zes_api = ApiModel.load_file('zes_api.yaml')
-$zel_api = ApiModel.load_file('zel_api.yaml')
-# zer has no api.yaml yet; an empty API keeps the concatenations below valid.
-$zer_api = ApiModel.new
-$zex_api = ApiModel.load_file('zex_api.yaml')
-
-ze_funcs_e = $ze_api.functions
-zet_funcs_e = $zet_api.functions
-zes_funcs_e = $zes_api.functions
-zel_funcs_e = $zel_api.functions
-zer_funcs_e = $zer_api.functions
-zex_funcs_e = $zex_api.functions
+# The namespaces THAPI traces, each declared by its own header. Generators that
+# emit per-namespace code -- struct printers, tracepoint providers -- index this
+# by namespace. zer has no api.yaml yet, so it is an empty model rather than a
+# missing key: every namespace answers, and the loops below stay uniform.
+APIS = {
+  ze: ApiModel.load_file('ze_api.yaml'),
+  zet: ApiModel.load_file('zet_api.yaml'),
+  zes: ApiModel.load_file('zes_api.yaml'),
+  zel: ApiModel.load_file('zel_api.yaml'),
+  zer: ApiModel.new,
+  zex: ApiModel.load_file('zex_api.yaml'),
+}.freeze
 
 # The tracer wraps every namespace, so it classifies against all of them at
-# once: a zet typedef routinely names a ze struct.
-all_api = $ze_api + $zet_api + $zes_api + $zel_api + $zer_api + $zex_api
+# once: a zet typedef routinely names a ze struct. The Ruby bindings cover a
+# smaller set, which is why they merge their own subset of APIS rather than
+# reusing this one.
+all_api = APIS.values.inject(:+)
 typedefs = all_api.types
 structs = all_api.structs
 
@@ -76,27 +76,27 @@ meta_parameters = load_meta_parameters('ze_meta_parameters.yaml',
                                        'zel_meta_parameters.yaml',
                                        'zex_meta_parameters.yaml')
 
-$ze_commands = ze_funcs_e.collect do |func|
+$ze_commands = APIS[:ze].functions.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
-$zet_commands = zet_funcs_e.collect do |func|
+$zet_commands = APIS[:zet].functions.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
-$zes_commands = zes_funcs_e.collect do |func|
+$zes_commands = APIS[:zes].functions.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
-$zel_commands = zel_funcs_e.collect do |func|
+$zel_commands = APIS[:zel].functions.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
-$zer_commands = zer_funcs_e.collect do |func|
+$zer_commands = APIS[:zer].functions.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 
-$zex_commands = zex_funcs_e.collect do |func|
+$zex_commands = APIS[:zex].functions.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
 end
 

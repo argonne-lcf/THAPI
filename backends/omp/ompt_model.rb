@@ -8,10 +8,10 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$ompt_api = ApiModel.load_file('ompt_api.yaml')
+API = ApiModel.load_file('ompt_api.yaml')
 
-typedefs = $ompt_api.types
-structs = $ompt_api.structs
+typedefs = API.types
+structs = API.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)

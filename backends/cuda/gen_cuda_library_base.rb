@@ -2,8 +2,6 @@ require_relative 'cuda_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = $cuda_api + $cuda_exports_api
-
 def to_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
 end

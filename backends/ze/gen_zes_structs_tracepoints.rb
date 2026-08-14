@@ -8,8 +8,8 @@ puts <<~EOF
   #include "ze.h.include"
 EOF
 
-$zes_api.types.select do |t|
-  t.type.is_a?(YAMLCAst::Struct) && (struct = $zes_api.structs.find do |s|
+APIS[:zes].types.select do |t|
+  t.type.is_a?(YAMLCAst::Struct) && (struct = APIS[:zes].structs.find do |s|
     t.type.name == s.name
   end) && struct.members.first.name == 'stype'
 end.each do |t|

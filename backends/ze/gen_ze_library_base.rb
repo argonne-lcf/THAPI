@@ -4,7 +4,7 @@ require_relative '../../utils/gen_library_base'
 
 # The Ruby bindings cover every namespace with an api.yaml; zer has none, so it
 # gets no generated class.
-API = $ze_api + $zet_api + $zes_api + $zel_api + $zex_api
+API = APIS.values_at(:ze, :zet, :zes, :zel, :zex).inject(:+)
 
 def to_class_name(name)
   mod = to_name_space(name)

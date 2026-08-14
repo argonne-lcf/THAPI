@@ -2,8 +2,6 @@ require_relative 'ompt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = $ompt_api
-
 def to_class_name(name)
   mod = to_name_space(name)
   n = name.gsub(/_t\z/, '').gsub(/\Aomp[dt]?_/, '').split('_').collect(&:capitalize).join

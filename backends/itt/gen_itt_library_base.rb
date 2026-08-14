@@ -2,8 +2,6 @@ require_relative 'itt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = $itt_api
-
 # Convert C / ITT names (e.g. "__itt_domain_t") to Ruby CamelCase class names
 def to_class_name(name)
   # Derive namespace (e.g. "ITT::" or "")

@@ -8,15 +8,15 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$mpi_api = ApiModel.load_file('mpi_api.yaml')
+API = ApiModel.load_file('mpi_api.yaml')
 
-typedefs = $mpi_api.types
-structs = $mpi_api.structs
+typedefs = API.types
+structs = API.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
-mpi_funcs_e = $mpi_api.functions
+mpi_funcs_e = API.functions
 
 init_functions = /
   \b(?:P?MPI_Init|
