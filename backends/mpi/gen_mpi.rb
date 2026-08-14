@@ -50,7 +50,7 @@ def normal_wrapper(c, provider)
 end
 
 def define_and_find_mpi_symbols
-  $mpi_commands.each do |c|
+  COMMANDS.each do |c|
     puts <<~EOF
       #define #{MPI_POINTER_NAMES[c]} #{c.pointer_name}
       #{c.decl_pointer(c.pointer_type_name)};
@@ -60,7 +60,7 @@ def define_and_find_mpi_symbols
   end
 
   puts 'static void find_mpi_symbols(void * handle, int verbose) {'
-  $mpi_commands.each do |c|
+  COMMANDS.each do |c|
     puts <<EOF
 
   #{MPI_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
@@ -87,6 +87,6 @@ define_and_find_mpi_symbols
 
 puts File.read(File.join(SRC_DIR, 'tracer_mpi_helpers.include.c'))
 
-$mpi_commands.each do |c|
+COMMANDS.each do |c|
   normal_wrapper(c, :lttng_ust_mpi)
 end

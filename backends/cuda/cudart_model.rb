@@ -27,10 +27,10 @@ CONTEXT = BackendContext.new(
 )
 
 # cudart declares no meta-parameters, so it loads no spec.
-$cudart_commands = funcs.collect do |func|
+COMMANDS = CommandIndex.new(lttng_ust_cudart: funcs.collect do |func|
   Command.new(func, context: CONTEXT)
-end
+end)
 
-CUDART_POINTER_NAMES = $cudart_commands.collect do |c|
+CUDART_POINTER_NAMES = COMMANDS.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

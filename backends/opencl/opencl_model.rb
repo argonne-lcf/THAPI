@@ -683,22 +683,21 @@ end
 
 meta_parameters = load_meta_parameters('opencl_meta_parameters.yaml')
 
-$opencl_commands = funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.search('proto/name').text])
-end
+# Both groups go to the one lttng_ust_opencl provider, so they are grouped by
+# what actually separates them: an extension is reached through
+# clGetExtensionFunctionAddress rather than dlsym, which several of the
+# generators below need to tell apart.
+OPENCL_COMMANDS = CommandIndex.new(
+  { core: funcs_e, extension: ext_funcs_e }.transform_values do |funcs|
+    funcs.collect { |func| Command.new(func, meta_parameters: meta_parameters[func.search('proto/name').text]) }
+  end
+)
 
-$opencl_extension_commands = ext_funcs_e.collect do |func|
-  Command.new(func, meta_parameters: meta_parameters[func.search('proto/name').text])
-end
+check_meta_parameters(meta_parameters, OPENCL_COMMANDS)
 
-check_meta_parameters(meta_parameters, $opencl_commands, $opencl_extension_commands)
-
-# A constant, not a local, because gen_opencl.rb looks a command up too.
-OPENCL_COMMANDS = CommandIndex.new($opencl_commands, $opencl_extension_commands)
-
-OPENCL_POINTER_NAMES = ($opencl_commands.collect do |c|
+OPENCL_POINTER_NAMES = (OPENCL_COMMANDS.groups[:core].collect do |c|
   [c, upper_snake_case(c.prototype.pointer_name)]
-end + $opencl_extension_commands.collect do |c|
+end + OPENCL_COMMANDS.groups[:extension].collect do |c|
   [c, c.prototype.pointer_name]
 end).to_h
 
@@ -1140,7 +1139,7 @@ OPENCL_COMMANDS.add_epilogue 'clGetDeviceIDs', <<EOF
   }
 EOF
 
-str = $opencl_commands.select { |c| c.extension? }.collect do |c|
+str = OPENCL_COMMANDS.groups[:core].select { |c| c.extension? }.collect do |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
     tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_#{STOP}, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{if HOST_PROFILE
@@ -1155,7 +1154,7 @@ EOF
 
 OPENCL_COMMANDS.add_prologue 'clGetExtensionFunctionAddressForPlatform', str
 
-str = $opencl_commands.select { |c| c.extension? }.collect do |c|
+str = OPENCL_COMMANDS.groups[:core].select { |c| c.extension? }.collect do |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
     tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_#{STOP}, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{if HOST_PROFILE
@@ -1174,7 +1173,7 @@ register_extension_callbacks = lambda { |ext_method|
   str = <<EOF
   if (_retval != NULL) {
 EOF
-  str << $opencl_extension_commands.collect { |c|
+  str << OPENCL_COMMANDS.groups[:extension].collect { |c|
     sstr = <<EOF
     if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_#{START}) && strcmp(func_name, "#{c.prototype.name}") == 0) {
       struct opencl_closure *closure = NULL;

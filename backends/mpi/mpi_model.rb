@@ -61,13 +61,11 @@ CONTEXT = BackendContext.new(
 
 meta_parameters = load_meta_parameters('mpi_meta_parameters.yaml')
 
-$mpi_commands = mpi_funcs_e.collect do |func|
+COMMANDS = CommandIndex.new(lttng_ust_mpi: mpi_funcs_e.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-end
+end)
 
-check_meta_parameters(meta_parameters, $mpi_commands)
-
-commands = CommandIndex.new($mpi_commands)
+check_meta_parameters(meta_parameters, COMMANDS)
 
 # https://api.rubyonrails.org/classes/ActiveSupport/Inflector.html#method-i-underscore
 # As a rule of thumb you can think of underscore as the inverse of camelize,
@@ -82,11 +80,11 @@ def underscore(camel_cased_word)
   word
 end
 
-MPI_POINTER_NAMES = $mpi_commands.collect do |c|
+MPI_POINTER_NAMES = COMMANDS.collect do |c|
   [c, underscore(c.pointer_name).upcase]
 end.to_h
 
-commands.add_epilogue 'MPI_Type_commit', <<EOF
+COMMANDS.add_epilogue 'MPI_Type_commit', <<EOF
   int size;#{' '}
   MPI_TYPE_SIZE_PTR(*datatype, &size);
   if (tracepoint_enabled(lttng_ust_mpi_type, property))#{' '}

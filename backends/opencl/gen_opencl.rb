@@ -41,11 +41,11 @@ puts <<~EOF
           tracepoint(provider, name, __VA_ARGS__)
 EOF
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   puts "#define #{OPENCL_POINTER_NAMES[c]} #{c.prototype.pointer_name}"
 end
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   puts <<~EOF
 
     typedef #{c.decl_pointer(type: true)};
@@ -53,7 +53,7 @@ $opencl_commands.each do |c|
   EOF
 end
 
-$opencl_extension_commands.each do |c|
+OPENCL_COMMANDS.groups[:extension].each do |c|
   puts <<~EOF
 
     typedef #{c.decl_pointer(type: true)};
@@ -66,7 +66,7 @@ puts <<~EOF
   static void find_opencl_symbols(void * handle, int verbose) {
 EOF
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   next if c.extension? && c.prototype.name.match(/KHR$|EXT$/)
 
   puts <<EOF
@@ -77,7 +77,7 @@ $opencl_commands.each do |c|
 EOF
 end
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   next unless c.extension? && c.prototype.name.match(/KHR$|EXT$/)
 
   puts <<EOF
@@ -150,7 +150,7 @@ EOF
 EOF
 }
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   puts <<~EOF
     #{c.decl} {
   EOF
@@ -171,7 +171,7 @@ EOF
   EOF
 end
 
-$opencl_extension_commands.each do |c|
+OPENCL_COMMANDS.groups[:extension].each do |c|
   puts <<~EOF
     static #{c.decl_ffi_wrapper} {
       (void)cif;

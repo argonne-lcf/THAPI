@@ -40,7 +40,7 @@ normal_wrapper = lambda { |c, provider|
   EOF
 }
 
-$ompt_commands.each do |c|
+COMMANDS.each do |c|
   next if c.name == 'ompt_callback_control_tool_func'
 
   normal_wrapper.call(c, :lttng_ust_ompt)

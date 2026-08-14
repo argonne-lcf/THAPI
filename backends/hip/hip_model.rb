@@ -27,12 +27,12 @@ CONTEXT = BackendContext.new(
 
 meta_parameters = load_meta_parameters('hip_meta_parameters.yaml')
 
-$hip_commands = funcs.collect do |func|
+COMMANDS = CommandIndex.new(lttng_ust_hip: funcs.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-end
+end)
 
-check_meta_parameters(meta_parameters, $hip_commands)
+check_meta_parameters(meta_parameters, COMMANDS)
 
-HIP_POINTER_NAMES = $hip_commands.collect do |c|
+HIP_POINTER_NAMES = COMMANDS.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h

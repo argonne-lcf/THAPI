@@ -40,7 +40,7 @@ end
 # written by hand against an API that keeps moving, so a key matching nothing
 # is a typo or a function that has since been dropped -- either way its rows
 # would apply to no command at all, silently.
-def check_meta_parameters(spec, *command_lists)
-  unknown = spec.keys - command_lists.flatten.collect(&:name)
+def check_meta_parameters(spec, commands)
+  unknown = spec.keys - commands.collect(&:name)
   raise "Unknown method#{'s' if unknown.size > 1}: #{unknown.join(', ')}!" unless unknown.empty?
 end

@@ -106,7 +106,9 @@ gen_struct_printer(:zel, struct_types[:zel])
 # gen_struct_printer(:zer, struct_types[:zel])
 # gen_struct_printer(:zex, struct_types[:zex])
 
-all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands
+# zex is excluded: it is reached through libffi closures, not dlsym'd symbols.
+zex_commands = COMMANDS.groups[:lttng_ust_zex]
+all_commands = COMMANDS.to_a - zex_commands
 all_commands.each do |c|
   puts "#define #{ZE_POINTER_NAMES[c]} #{c.pointer_name}"
 end
@@ -119,7 +121,7 @@ all_commands.each do |c|
   EOF
 end
 
-$zex_commands.each do |c|
+zex_commands.each do |c|
   puts <<~EOF
 
     #{c.decl_pointer(c.pointer_type_name)};
@@ -245,56 +247,35 @@ EOF
   EOF
 }
 
-$ze_commands.each do |c|
-  next if c.name.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/)
+# Which of a namespace's entry points get a hidden alias. The ProcAddrTable
+# getters belong to the loader and are never aliased, and ze skips the loader
+# helpers too. zel is the exception: only its tracer API is aliased, so it opts
+# in rather than out.
+aliased = {
+  ze: ->(n) { !n.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/) },
+  zet: ->(n) { !n.match(/zetGet.*ProcAddrTable/) },
+  zes: ->(n) { !n.match(/zesGet.*ProcAddrTable/) },
+  zel: ->(n) { n.match(/^zelTracer/) && !n.match(/RegisterCallback$|ResetAllCallbacks$/) },
+  zer: ->(n) { !n.match(/zerGet.*ProcAddrTable/) },
+}
 
-  puts <<~EOF
-    #{c.decl_hidden_alias};
+aliased.each do |ns, alias_wanted|
+  COMMANDS.groups[:"lttng_ust_#{ns}"].each do |c|
+    puts <<~EOF if alias_wanted.call(c.name)
+      #{c.decl_hidden_alias};
 
-  EOF
-end
-$zet_commands.each do |c|
-  puts <<~EOF unless c.name.match(/zetGet.*ProcAddrTable/)
-    #{c.decl_hidden_alias};
-
-  EOF
-end
-$zes_commands.each do |c|
-  puts <<~EOF unless c.name.match(/zesGet.*ProcAddrTable/)
-    #{c.decl_hidden_alias};
-
-  EOF
-end
-$zel_commands.each do |c|
-  puts <<~EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$|ResetAllCallbacks$/)
-    #{c.decl_hidden_alias};
-
-  EOF
-end
-$zer_commands.each do |c|
-  puts <<~EOF unless c.name.match(/zerGet.*ProcAddrTable/)
-    #{c.decl_hidden_alias};
-
-  EOF
+    EOF
+  end
 end
 
-$ze_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_ze, struct_types[:ze])
-end
-$zet_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zet, struct_types[:zet])
-end
-$zes_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zes, struct_types[:zes])
-end
-$zel_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zel, struct_types[:zel])
-end
-$zer_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zer, struct_types[:zer])
+%i[ze zet zes zel zer].each do |ns|
+  provider = :"lttng_ust_#{ns}"
+  COMMANDS.groups[provider].each do |c|
+    normal_wrapper.call(c, provider, struct_types[ns])
+  end
 end
 
-$zex_commands.each do |c|
+zex_commands.each do |c|
   puts <<~EOF
     static #{c.decl_ffi_wrapper} {
       (void)cif;

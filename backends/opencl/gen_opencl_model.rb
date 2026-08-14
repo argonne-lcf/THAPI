@@ -147,7 +147,7 @@ event_lambda = lambda { |c, dir|
   [name, fields]
 }
 
-($opencl_commands + $opencl_extension_commands).each do |c|
+(OPENCL_COMMANDS.groups[:core] + OPENCL_COMMANDS.groups[:extension]).each do |c|
   %w[start stop].each do |dir|
     name, val = event_lambda.call(c, dir)
     events[name] = val

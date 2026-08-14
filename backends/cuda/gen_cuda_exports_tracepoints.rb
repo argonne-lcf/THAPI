@@ -21,7 +21,7 @@ h['events'].each do |e|
   LTTng.print_tracepoint(provider, e)
 end
 
-$cuda_exports_commands.each do |c|
+COMMANDS.groups[provider].each do |c|
   next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
 
   print_tracepoint(provider, c, :start)

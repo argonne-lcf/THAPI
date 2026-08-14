@@ -55,14 +55,14 @@ tracepoint_lambda = lambda { |c, dir|
   LTTng.print_tracepoint('lttng_ust_opencl', event, dir)
 }
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   next if c.parameters.length > LTTNG_USABLE_PARAMS
 
   tracepoint_lambda.call(c, 'start')
   tracepoint_lambda.call(c, 'stop')
 end
 
-$opencl_extension_commands.each do |c|
+OPENCL_COMMANDS.groups[:extension].each do |c|
   next if c.parameters.length > LTTNG_USABLE_PARAMS
 
   tracepoint_lambda.call(c, 'start')

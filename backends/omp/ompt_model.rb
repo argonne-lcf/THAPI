@@ -33,8 +33,8 @@ end
 
 meta_parameters = load_meta_parameters('ompt_meta_parameters.yaml')
 
-$ompt_commands = OMPT_CALLBACKS.collect do |func|
+COMMANDS = CommandIndex.new(lttng_ust_ompt: OMPT_CALLBACKS.collect do |func|
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-end
+end)
 
-check_meta_parameters(meta_parameters, $ompt_commands)
+check_meta_parameters(meta_parameters, COMMANDS)

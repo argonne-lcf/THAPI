@@ -9,11 +9,11 @@ puts <<~EOF
   #include "cudart_tracepoints.h"
 EOF
 
-$cudart_commands.each do |c|
+COMMANDS.each do |c|
   puts "#define #{CUDART_POINTER_NAMES[c]} #{c.pointer_name}"
 end
 
-$cudart_commands.each do |c|
+COMMANDS.each do |c|
   puts <<~EOF
 
     #{c.decl_pointer(c.pointer_type_name)};
@@ -26,7 +26,7 @@ puts <<~EOF
   static void find_cudart_symbols(void * handle, int verbose) {
 EOF
 
-$cudart_commands.each do |c|
+COMMANDS.each do |c|
   puts <<EOF
 
   #{CUDART_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
@@ -100,10 +100,10 @@ EOF
   EOF
 }
 
-$cudart_commands.each do |c|
+COMMANDS.each do |c|
   normal_wrapper.call(c, :lttng_ust_cudart)
 end
 
-$cudart_commands.each do |c|
+COMMANDS.each do |c|
   puts "__asm__(\".symver #{c.name},#{c.name}@@libcudart.so.12, remove\");"
 end

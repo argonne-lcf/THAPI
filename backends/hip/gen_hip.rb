@@ -7,11 +7,11 @@ puts <<~EOF
   #include "hip_tracepoints.h"
 EOF
 
-$hip_commands.each do |c|
+COMMANDS.each do |c|
   puts "#define #{HIP_POINTER_NAMES[c]} #{c.pointer_name}"
 end
 
-$hip_commands.each do |c|
+COMMANDS.each do |c|
   puts <<~EOF
 
     #{c.decl_pointer(c.pointer_type_name)};
@@ -24,7 +24,7 @@ puts <<~EOF
   static void find_hip_symbols(void * handle, int verbose) {
 EOF
 
-$hip_commands.each do |c|
+COMMANDS.each do |c|
   puts <<EOF
 
   #{HIP_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
@@ -111,6 +111,6 @@ EOF
   EOF
 }
 
-$hip_commands.each do |c|
+COMMANDS.each do |c|
   normal_wrapper.call(c, :lttng_ust_hip)
 end

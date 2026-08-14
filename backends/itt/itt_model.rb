@@ -37,10 +37,10 @@ whitelisted_functions = %w[
   __itt_metadata_add
 ]
 
-$itt_commands = API.functions.filter_map do |func|
+COMMANDS = CommandIndex.new(lttng_ust_itt: API.functions.filter_map do |func|
   next unless whitelisted_functions.include?(func.name)
 
   Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-end
+end)
 
-check_meta_parameters(meta_parameters, $itt_commands)
+check_meta_parameters(meta_parameters, COMMANDS)

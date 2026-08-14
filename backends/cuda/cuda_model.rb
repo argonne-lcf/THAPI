@@ -86,22 +86,19 @@ end
 
 meta_parameters = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
 
-$cuda_commands = cuda_funcs_e.collect do |func|
-  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-end
+# The driver and its export tables are one API but two LTTng providers, so the
+# commands are grouped by the provider that will carry them.
+COMMANDS = CommandIndex.new(
+  { lttng_ust_cuda: cuda_funcs_e, lttng_ust_cuda_exports: cuda_exports_funcs_e }.transform_values do |funcs|
+    funcs.collect { |func| Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name]) }
+  end
+)
 
-$cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
-  Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-end
+check_meta_parameters(meta_parameters, COMMANDS)
 
-check_meta_parameters(meta_parameters, $cuda_commands, $cuda_exports_commands)
-
-CUDA_POINTER_NAMES = ($cuda_commands +
-                      $cuda_exports_commands).collect do |c|
+CUDA_POINTER_NAMES = COMMANDS.collect do |c|
   [c, upper_snake_case(c.pointer_name)]
 end.to_h
-
-commands = CommandIndex.new($cuda_commands, $cuda_exports_commands)
 
 dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, extra);
@@ -111,7 +108,7 @@ EOF
    cuLaunchKernel_ptsz
    cuLaunchKernelEx
    cuLaunchKernelEx_ptsz].each do |m|
-  commands.add_prologue m, dump_args
+  COMMANDS.add_prologue m, dump_args
 end
 
 dump_args = <<EOF
@@ -120,7 +117,7 @@ EOF
 
 %w[cuLaunchCooperativeKernel
    cuLaunchCooperativeKernel_ptsz].each do |m|
-  commands.add_prologue m, dump_args
+  COMMANDS.add_prologue m, dump_args
 end
 
 dump_args = <<EOF
@@ -131,10 +128,10 @@ EOF
 
 %w[cuGraphAddKernelNode
    cuGraphExecKernelNodeSetParams].each do |m|
-  commands.add_prologue m, dump_args
+  COMMANDS.add_prologue m, dump_args
 end
 
-commands.add_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
+COMMANDS.add_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   if (launchParamsList) {
     for( unsigned int _i = 0; _i < numDevices; _i++) {
       _dump_kernel_args(launchParamsList[_i].function, launchParamsList[_i].kernelParams, NULL);
@@ -142,7 +139,7 @@ commands.add_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   }
 EOF
 
-commands.add_epilogue 'cuGraphKernelNodeGetParams', <<EOF
+COMMANDS.add_epilogue 'cuGraphKernelNodeGetParams', <<EOF
   if (_retval == CUDA_SUCCESS && nodeParams) {
     _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
   }
@@ -184,7 +181,7 @@ EOF
 
 stream_commands = []
 no_stream_commands = []
-mem_commands = $cuda_commands.select { |c| c.name.match(/cuMemcpy|cuMemset/) }
+mem_commands = COMMANDS.groups[:lttng_ust_cuda].select { |c| c.name.match(/cuMemcpy|cuMemset/) }
 mem_stream_commands = mem_commands.select { |c| c.name.match(/Async/) }
 mem_no_stream_commands = mem_commands - mem_stream_commands
 stream_commands += mem_stream_commands.collect(&:name)
@@ -213,31 +210,31 @@ config_commands = %w[
 ]
 
 stream_commands.each do |m|
-  commands.add_prologue m, profiling_start_stream
-  commands.add_epilogue m, profiling_stop_stream
+  COMMANDS.add_prologue m, profiling_start_stream
+  COMMANDS.add_epilogue m, profiling_stop_stream
 end
 
 no_stream_commands.each do |m|
-  commands.add_prologue m, profiling_start_no_stream
-  commands.add_epilogue m, profiling_stop_no_stream
+  COMMANDS.add_prologue m, profiling_start_no_stream
+  COMMANDS.add_epilogue m, profiling_stop_no_stream
 end
 
 config_commands.each do |m|
-  commands.add_prologue m, profiling_start_config
-  commands.add_epilogue m, profiling_stop_config
+  COMMANDS.add_prologue m, profiling_start_config
+  COMMANDS.add_epilogue m, profiling_stop_config
 end
 
 # if a context is to be destroyed we must attempt to get profiling event results
 %w[cuCtxDestroy
    cuCtxDestroy_v2].each do |m|
-  commands.add_prologue m, <<EOF
+  COMMANDS.add_prologue m, <<EOF
   if (ctx) {
     _context_event_cleanup(ctx);
   }
 EOF
 end
 
-commands.add_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
+COMMANDS.add_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
   if (_do_profile && _retval == CUDA_SUCCESS && *pctx) {
     _primary_context_retain(dev, *pctx);
   }
@@ -245,7 +242,7 @@ EOF
 
 %w[cuDevicePrimaryCtxRelease_v2
    cuDevicePrimaryCtxRelease].each do |m|
-  commands.add_prologue m, <<EOF
+  COMMANDS.add_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_release(dev);
   }
@@ -254,7 +251,7 @@ end
 
 %w[cuDevicePrimaryCtxReset_v2
    cuDevicePrimaryCtxReset].each do |m|
-  commands.add_prologue m, <<EOF
+  COMMANDS.add_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_reset(dev);
   }
@@ -262,14 +259,14 @@ EOF
 end
 
 # Export tracing
-commands.add_epilogue 'cuGetExportTable', <<EOF
+COMMANDS.add_epilogue 'cuGetExportTable', <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
     *ppExportTable = tmp;
   }
 EOF
 
-commands.add_epilogue 'cuInit', <<EOF
+COMMANDS.add_epilogue 'cuInit', <<EOF
   if (_retval == CUDA_SUCCESS) {
     _init_cuda();
   }
@@ -278,7 +275,7 @@ EOF
 # cuGetProcAddress*
 # Not an api.yaml: a plain name -> suffix -> versions map, used only here.
 api_versions = YAML.load_file('cuda_api_versions.yaml')
-command_names = $cuda_commands.collect(&:name).to_set
+command_names = COMMANDS.groups[:lttng_ust_cuda].collect(&:name).to_set
 pt_condition = '((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))'
 normal_condition = '((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))'
 
@@ -320,7 +317,7 @@ EOF
   }
 EOF
 
-  commands.add_epilogue method, str
+  COMMANDS.add_epilogue method, str
 }
 
 register_proc_callbacks.call('cuGetProcAddress')

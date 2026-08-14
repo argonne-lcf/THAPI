@@ -8,7 +8,7 @@ puts <<~EOF
   #include <mpi.h.include>
 EOF
 
-$mpi_commands.each do |c|
+COMMANDS.groups[provider].each do |c|
   next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
 
   print_tracepoint(provider, c, :start)

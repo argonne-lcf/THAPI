@@ -15,11 +15,11 @@ puts <<~EOF
   static void _init_tracer(void);
 EOF
 
-($cuda_commands + $cuda_exports_commands).each do |c|
+COMMANDS.each do |c|
   puts "#define #{CUDA_POINTER_NAMES[c]} #{c.pointer_name}"
 end
 
-$cuda_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda].each do |c|
   puts <<~EOF
 
     static #{YAMLCAst::Declaration.new(name: c.name + '_unsupp', type: c.function.type)} {
@@ -49,7 +49,7 @@ EOF
   EOF
 end
 
-$cuda_exports_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda_exports].each do |c|
   puts <<~EOF
 
     #{c.decl_pointer(c.pointer_type_name)};
@@ -57,7 +57,7 @@ $cuda_exports_commands.each do |c|
   EOF
 end
 
-$cuda_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda].each do |c|
   puts <<~EOF
     #{c.decl_hidden_alias};
     static void wrap_#{c.name}(void **pfn);
@@ -69,7 +69,7 @@ puts <<~EOF
   static void find_cuda_symbols(void * handle, int verbose) {
 EOF
 
-$cuda_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda].each do |c|
   puts <<EOF
 
   #{CUDA_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
@@ -186,11 +186,11 @@ EOF
   EOF
 }
 
-$cuda_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda].each do |c|
   normal_wrapper.call(c, :lttng_ust_cuda)
 end
 
-$cuda_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda].each do |c|
   puts <<~EOF
 
     static void wrap_#{c.name}(void **pfn) {
@@ -207,7 +207,7 @@ EOF
   EOF
 end
 
-$cuda_exports_commands.each do |c|
+COMMANDS.groups[:lttng_ust_cuda_exports].each do |c|
   c.function.instance_variable_set(:@storage, 'static')
   normal_wrapper.call(c, :lttng_ust_cuda_exports)
 end
