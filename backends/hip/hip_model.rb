@@ -1,5 +1,6 @@
 require 'yaml'
 require 'pp'
+require_relative '../../utils/api_model'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command'
@@ -7,11 +8,11 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$hip_api = YAMLCAst.load_file('hip_api.yaml')
+$hip_api = ApiModel.load_file('hip_api.yaml')
 
-funcs = $hip_api['functions']
-typedefs = $hip_api['typedefs']
-structs = $hip_api['structs']
+funcs = $hip_api.functions
+typedefs = $hip_api.types
+structs = $hip_api.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)

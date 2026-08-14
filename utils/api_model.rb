@@ -1,32 +1,72 @@
-# Immutable value object holding one AST backend's parsed API: the typedefs,
-# structs, unions and enums it was built from, plus the facts the library
-# generator derives from them once.
+# One parsed api.yaml: the five lists it declares, plus the facts the
+# generators derive from them. `ApiModel.load_file` is how a backend gets one,
+# so its API is a value it holds rather than a hash it indexes with strings.
 #
-# Every AST backend assembles the same four lists out of its *_api.yaml (ze and
-# cuda concatenate theirs across namespaces) and derives the same three things,
-# so the derivation lives here instead of being spelled out in each of the six
-# gen_<x>_library_base.rb files.
+# A backend whose headers span several namespaces (ze, cuda) adds its files
+# together; the derivations then see every list at once, which is what they
+# need -- a zet typedef can name a ze struct, so classifying zet alone would
+# get it wrong. That is also why the derivations are lazy: summing three models
+# would otherwise pay for two answers nobody asked for.
 #
 # Backends publish theirs as the API constant, the same way they already
 # publish FFI_STRUCT and FFI_UNION for the shared generator to read.
 require_relative 'yaml_ast'
 
 class ApiModel
-  attr_reader :types, :structs, :unions, :enums,
-              :objects, :int_scalars, :struct_map,
-              :enum_names, :bitfield_names, :struct_names
+  ClassifiedNames = Struct.new(:enums, :bitfields, :structs, keyword_init: true)
 
-  def initialize(types:, structs:, unions:, enums:)
+  attr_reader :types, :structs, :unions, :enums, :functions
+
+  # An api.yaml, parsed. A list the file does not declare is empty here, so
+  # every model answers all five questions.
+  def self.load_file(path)
+    lists = YAMLCAst.load_file(path)
+    new(types: lists.fetch('typedefs', []), structs: lists.fetch('structs', []),
+        unions: lists.fetch('unions', []), enums: lists.fetch('enums', []),
+        functions: lists.fetch('functions', []))
+  end
+
+  def initialize(types: [], structs: [], unions: [], enums: [], functions: [])
     @types = types
     @structs = structs
     @unions = unions
     @enums = enums
+    @functions = functions
+  end
 
-    classes = find_all_types(types)
-    @objects = classes.objects
-    @int_scalars = find_int_scalars(types, classes.integers)
-    @struct_map = find_struct_map(types, structs)
-    @enum_names, @bitfield_names, @struct_names = classify_ast_types(types, enums)
+  # The lists concatenated, so `$ze_api + $zet_api` is the API of both headers.
+  def +(other)
+    ApiModel.new(types: types + other.types, structs: structs + other.structs,
+                 unions: unions + other.unions, enums: enums + other.enums,
+                 functions: functions + other.functions)
+  end
+
+  def type_classes
+    @type_classes ||= find_all_types(@types)
+  end
+
+  def objects
+    type_classes.objects
+  end
+
+  def int_scalars
+    @int_scalars ||= find_int_scalars(@types, type_classes.integers)
+  end
+
+  def struct_map
+    @struct_map ||= find_struct_map(@types, @structs)
+  end
+
+  def enum_names
+    classified.enums
+  end
+
+  def bitfield_names
+    classified.bitfields
+  end
+
+  def struct_names
+    classified.structs
   end
 
   # The definition a typedef refers to. `type` is the typedef's target, so it
@@ -52,7 +92,7 @@ class ApiModel
   end
 
   def object?(name)
-    @objects.include?(name)
+    objects.include?(name)
   end
 
   # True when some typedef aliases `name`, i.e. the generator has already
@@ -80,28 +120,31 @@ class ApiModel
     nil
   end
 
-  # A typedef'd enum whose underlying enum name ends in `flag_t` is a bitfield
-  # (OR-able flags); every other enum is a plain enum. Each `_flag_t` bitfield
+  # The typedef names this API declares, split by what they name. A typedef'd
+  # enum whose underlying enum name ends in `flag_t` is a bitfield (OR-able
+  # flags); every other enum is a plain enum. Each `_flag_t` bitfield
   # additionally aliases the `_flags_t` name the headers use for the OR'd
   # value. Backends with no `flag_t` enums get an empty bitfield list (the
   # `flag_t` test and `_flags_t` derivation are then no-ops), so the same rule
   # serves all backends.
-  def classify_ast_types(all_types, all_enums)
-    enum_names = []
-    bitfield_names = []
-    struct_names = []
-    all_types.each do |t|
-      case t.type
-      when YAMLCAst::Enum
-        e = all_enums.find { |x| t.type.name == x.name }
-        (e&.name&.end_with?('flag_t') ? bitfield_names : enum_names).push t.name
-      when YAMLCAst::Struct
-        struct_names.push t.name
+  def classified
+    @classified ||= begin
+      enums = []
+      bitfields = []
+      structs = []
+      @types.each do |t|
+        case t.type
+        when YAMLCAst::Enum
+          e = @enums.find { |x| t.type.name == x.name }
+          (e&.name&.end_with?('flag_t') ? bitfields : enums).push t.name
+        when YAMLCAst::Struct
+          structs.push t.name
+        end
       end
+      bitfields += bitfields.select { |n| n.end_with?('_flag_t') }
+                            .map { |n| n.gsub('_flag_t', '_flags_t') }
+      ClassifiedNames.new(enums: enums, bitfields: bitfields, structs: structs)
     end
-    bitfield_names += bitfield_names.select { |n| n.end_with?('_flag_t') }
-                                    .map { |n| n.gsub('_flag_t', '_flags_t') }
-    [enum_names, bitfield_names, struct_names]
   end
 
   # Each typedef that aliases an integer type, mapped to that underlying type.

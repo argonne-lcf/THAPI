@@ -1,5 +1,6 @@
 require 'yaml'
 require 'pp'
+require_relative '../../utils/api_model'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command'
@@ -7,15 +8,15 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$mpi_api = YAMLCAst.load_file('mpi_api.yaml')
+$mpi_api = ApiModel.load_file('mpi_api.yaml')
 
-typedefs = $mpi_api['typedefs']
-structs = $mpi_api['structs']
+typedefs = $mpi_api.types
+structs = $mpi_api.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)
 
-mpi_funcs_e = $mpi_api['functions']
+mpi_funcs_e = $mpi_api.functions
 
 init_functions = /
   \b(?:P?MPI_Init|

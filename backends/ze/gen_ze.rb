@@ -97,12 +97,12 @@ EOF
   EOF
 end
 
-ze_struct_types = get_structs_types(:ze, $ze_api['typedefs'], $ze_api['structs'])
-zet_struct_types = get_structs_types(:zet, $zet_api['typedefs'], $zet_api['structs'])
-zes_struct_types = get_structs_types(:zes, $zes_api['typedefs'], $zes_api['structs'])
-zel_struct_types = get_structs_types(:zel, $zel_api['typedefs'], $zel_api['structs'])
-zer_struct_types = get_structs_types(:zer, $zer_api['typedefs'], $zer_api['structs'])
-zex_struct_types = get_structs_types(:zex, $zex_api['typedefs'], $zex_api['structs'])
+ze_struct_types = get_structs_types(:ze, $ze_api.types, $ze_api.structs)
+zet_struct_types = get_structs_types(:zet, $zet_api.types, $zet_api.structs)
+zes_struct_types = get_structs_types(:zes, $zes_api.types, $zes_api.structs)
+zel_struct_types = get_structs_types(:zel, $zel_api.types, $zel_api.structs)
+zer_struct_types = get_structs_types(:zer, $zer_api.types, $zer_api.structs)
+zex_struct_types = get_structs_types(:zex, $zex_api.types, $zex_api.structs)
 
 gen_struct_printer(:ze, ze_struct_types)
 gen_struct_printer(:zet, zet_struct_types)

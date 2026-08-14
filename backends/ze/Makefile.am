@@ -97,6 +97,7 @@ ZE_MODEL = \
 	$(srcdir)/ze_model.rb \
 	$(ML_FILES) \
 	$(ZE_EXTRACTED) \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \

@@ -2,12 +2,7 @@ require_relative 'ompt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = ApiModel.new(
-  types: $ompt_api['typedefs'],
-  structs: $ompt_api['structs'],
-  unions: $ompt_api['unions'],
-  enums: $ompt_api['enums']
-)
+API = $ompt_api
 
 def to_class_name(name)
   mod = to_name_space(name)

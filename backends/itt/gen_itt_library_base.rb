@@ -2,12 +2,7 @@ require_relative 'itt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = ApiModel.new(
-  types: $itt_api['typedefs'],
-  structs: $itt_api['structs'],
-  unions: $itt_api['unions'],
-  enums: $itt_api['enums']
-)
+API = $itt_api
 
 # Convert C / ITT names (e.g. "__itt_domain_t") to Ruby CamelCase class names
 def to_class_name(name)

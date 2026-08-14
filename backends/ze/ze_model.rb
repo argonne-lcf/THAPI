@@ -1,5 +1,6 @@
 require 'yaml'
 require 'pp'
+require_relative '../../utils/api_model'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command'
@@ -8,23 +9,26 @@ require 'set'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$ze_api = YAMLCAst.load_file('ze_api.yaml')
-$zet_api = YAMLCAst.load_file('zet_api.yaml')
-$zes_api = YAMLCAst.load_file('zes_api.yaml')
-$zel_api = YAMLCAst.load_file('zel_api.yaml')
+$ze_api = ApiModel.load_file('ze_api.yaml')
+$zet_api = ApiModel.load_file('zet_api.yaml')
+$zes_api = ApiModel.load_file('zes_api.yaml')
+$zel_api = ApiModel.load_file('zel_api.yaml')
 # zer has no api.yaml yet; an empty API keeps the concatenations below valid.
-$zer_api = YAMLCAst.from_yaml_ast({})
-$zex_api = YAMLCAst.load_file('zex_api.yaml')
+$zer_api = ApiModel.new
+$zex_api = ApiModel.load_file('zex_api.yaml')
 
-ze_funcs_e = $ze_api['functions']
-zet_funcs_e = $zet_api['functions']
-zes_funcs_e = $zes_api['functions']
-zel_funcs_e = $zel_api['functions']
-zer_funcs_e = $zer_api['functions']
-zex_funcs_e = $zex_api['functions']
+ze_funcs_e = $ze_api.functions
+zet_funcs_e = $zet_api.functions
+zes_funcs_e = $zes_api.functions
+zel_funcs_e = $zel_api.functions
+zer_funcs_e = $zer_api.functions
+zex_funcs_e = $zex_api.functions
 
-typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] + $zer_api['typedefs'] + $zex_api['typedefs']
-structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zer_api['structs'] + $zex_api['structs']
+# The tracer wraps every namespace, so it classifies against all of them at
+# once: a zet typedef routinely names a ze struct.
+all_api = $ze_api + $zet_api + $zes_api + $zel_api + $zer_api + $zex_api
+typedefs = all_api.types
+structs = all_api.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)

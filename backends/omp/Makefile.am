@@ -39,6 +39,7 @@ OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
 	$(srcdir)/ompt_meta_parameters.yaml \
 	$(top_srcdir)/utils/gen_probe_base.rb \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \

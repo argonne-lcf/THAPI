@@ -1,6 +1,7 @@
 require 'yaml'
 require 'pp'
 require 'set'
+require_relative '../../utils/api_model'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command'
@@ -8,17 +9,17 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-$cuda_api = YAMLCAst.load_file('cuda_api.yaml')
-$cuda_exports_api = YAMLCAst.load_file('cuda_exports_api.yaml')
+$cuda_api = ApiModel.load_file('cuda_api.yaml')
+$cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
 
-cuda_funcs_e = $cuda_api['functions']
-cuda_exports_funcs_e = $cuda_exports_api['functions']
+cuda_funcs_e = $cuda_api.functions
+cuda_exports_funcs_e = $cuda_exports_api.functions
 
-cuda_types_e = $cuda_api['typedefs']
-cuda_exports_type_e = $cuda_exports_api['typedefs']
+cuda_types_e = $cuda_api.types
+cuda_exports_type_e = $cuda_exports_api.types
 
 typedefs = cuda_types_e + cuda_exports_type_e
-structs = $cuda_api['structs'] + $cuda_exports_api['structs']
+structs = $cuda_api.structs + $cuda_exports_api.structs
 
 # CUdeviceptr is a device address carried in an integer, so it reads as hex.
 TYPE_CLASSES = find_all_types(typedefs, extra_hex_ints: ['CUdeviceptr'])

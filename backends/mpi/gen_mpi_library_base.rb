@@ -2,12 +2,7 @@ require_relative 'mpi_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = ApiModel.new(
-  types: $mpi_api['typedefs'],
-  structs: $mpi_api['structs'],
-  unions: $mpi_api['unions'],
-  enums: $mpi_api['enums']
-)
+API = $mpi_api
 
 def to_class_name(name)
   mod = to_name_space(name)

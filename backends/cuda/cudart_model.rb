@@ -1,5 +1,6 @@
 require 'yaml'
 require 'pp'
+require_relative '../../utils/api_model'
 require_relative '../../utils/yaml_ast_lttng'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command'
@@ -7,11 +8,11 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-cudart_api = YAMLCAst.load_file('cudart_api.yaml')
+cudart_api = ApiModel.load_file('cudart_api.yaml')
 
-funcs = cudart_api['functions']
-typedefs = cudart_api['typedefs']
-structs = cudart_api['structs']
+funcs = cudart_api.functions
+typedefs = cudart_api.types
+structs = cudart_api.structs
 
 TYPE_CLASSES = find_all_types(typedefs)
 gen_ffi_type_map(typedefs, TYPE_CLASSES)

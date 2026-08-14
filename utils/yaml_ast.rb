@@ -327,21 +327,16 @@ module YAMLCAst
     'declaration' => Declaration,
   }
 
-  # Parse an api.yaml straight into an AST. Every backend does exactly this to
-  # each of its api.yaml files, so the intermediate raw hash never needs a name
-  # of its own.
+  # Parse an api.yaml into its five lists of AST nodes, keyed as the file keys
+  # them. A header that declares no unions simply has no 'unions' key, so a
+  # list the file omits is absent rather than empty -- ApiModel, which is what
+  # callers actually want, supplies the defaults.
   def self.load_file(path)
     from_yaml_ast(YAML.load_file(path))
   end
 
-  # Every list an API can declare. A header that declares no unions simply has
-  # no 'unions' key, so each list defaults to empty here rather than at each of
-  # the call sites: an API without unions is an ordinary API, and the general
-  # path should handle it without every caller writing its own `|| []`.
-  API_LISTS = %w[typedefs structs unions enums functions].freeze
-
   def self.from_yaml_ast(ast)
-    res = API_LISTS.to_h { |k| [k, []] }
+    res = {}
     ast.each do |k, v|
       case k
       when 'typedefs'

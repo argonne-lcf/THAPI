@@ -208,6 +208,7 @@ HIP_MODEL = \
 	$(ML_HIP_FILES) \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \

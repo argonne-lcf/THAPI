@@ -9,7 +9,7 @@ puts <<~EOF
 
 EOF
 
-funcs = $ze_api['functions'] + $zet_api['functions'] + $zes_api['functions'] + $zel_api['functions']
+funcs = $ze_api.functions + $zet_api.functions + $zes_api.functions + $zel_api.functions
 
 funcs.each do |f|
   type, params = f.type.to_ffi

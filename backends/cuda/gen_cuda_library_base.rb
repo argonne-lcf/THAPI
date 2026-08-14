@@ -2,12 +2,7 @@ require_relative 'cuda_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = ApiModel.new(
-  types: $cuda_api['typedefs'] + $cuda_exports_api['typedefs'],
-  structs: $cuda_api['structs'] + $cuda_exports_api['structs'],
-  unions: $cuda_api['unions'],
-  enums: $cuda_api['enums']
-)
+API = $cuda_api + $cuda_exports_api
 
 def to_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase

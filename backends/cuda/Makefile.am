@@ -128,6 +128,7 @@ CUDA_MODEL = \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \
@@ -141,6 +142,7 @@ CUDA_MODEL = \
 CUDART_MODEL = \
 	$(srcdir)/cudart_model.rb \
 	$(CUDART_EXTRACTED) \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \

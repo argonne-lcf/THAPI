@@ -2,15 +2,9 @@ require_relative 'ze_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-API = ApiModel.new(
-  types: $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] +
-         $zex_api['typedefs'],
-  structs: $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] +
-           $zex_api['structs'],
-  unions: $zet_api['unions'],
-  enums: $ze_api['enums'] + $zet_api['enums'] + $zes_api['enums'] + $zel_api['enums'] +
-         $zex_api['enums']
-)
+# The Ruby bindings cover every namespace with an api.yaml; zer has none, so it
+# gets no generated class.
+API = $ze_api + $zet_api + $zes_api + $zel_api + $zex_api
 
 def to_class_name(name)
   mod = to_name_space(name)

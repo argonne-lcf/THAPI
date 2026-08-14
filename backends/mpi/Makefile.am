@@ -41,6 +41,7 @@ MPI_MODEL = \
 	$(srcdir)/mpi_model.rb \
 	$(srcdir)/mpi_meta_parameters.yaml \
 	$(srcdir)/mpi_events.yaml \
+	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
 	$(top_srcdir)/utils/meta_parameters.rb \

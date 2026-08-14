@@ -8,8 +8,8 @@ puts <<~EOF
   #include "ze.h.include"
 EOF
 
-$zer_api['typedefs'].select do |t|
-  t.type.is_a?(YAMLCAst::Struct) && (struct = $zel_api['structs'].find do |s|
+$zer_api.types.select do |t|
+  t.type.is_a?(YAMLCAst::Struct) && (struct = $zel_api.structs.find do |s|
     t.type.name == s.name
   end) && struct.members.first.name == 'stype'
 end.each do |t|
