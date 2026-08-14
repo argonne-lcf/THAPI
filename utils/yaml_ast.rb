@@ -456,7 +456,6 @@ FFI_FLOAT_TYPE_MAP = {
   'float' => 'ffi_type_float',
   'double' => 'ffi_type_double',
 }
-FLOAT_TYPES = FFI_FLOAT_TYPE_MAP.keys
 
 FFI_TYPE_MAP = {}
 
@@ -495,7 +494,6 @@ def find_all_types(types)
 
   find_types(types, YAMLCAst::Int, INT_TYPES)
   find_types(types, YAMLCAst::Char, INT_TYPES)
-  find_types(types, YAMLCAst::Float, FLOAT_TYPES)
   find_types(types, YAMLCAst::Enum, ENUM_TYPES)
   find_types(types, YAMLCAst::Struct, STRUCT_TYPES)
   find_types(types, YAMLCAst::Union, UNION_TYPES)
