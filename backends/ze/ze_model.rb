@@ -83,6 +83,8 @@ COMMANDS = CommandIndex.new(APIS.to_h do |ns, api|
   end]
 end)
 
+check_meta_parameters(meta_parameters, COMMANDS)
+
 # zex is called through libffi rather than dlsym, so its pointer keeps the name
 # from the header instead of the upper-snake macro the other namespaces get.
 zex_commands = COMMANDS.groups[:lttng_ust_zex]
