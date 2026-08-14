@@ -22,7 +22,7 @@ LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
 MAX_UINT64_VALUE = (2**64) - 1
 SAMPLING_PERIOD_ENV = {
   'ze' => 'LTTNG_UST_ZE_SAMPLING_ENERGY_PERIOD_MS',
-  'cxi' => 'LTTNG_UST_CXI_SAMPLING_CXI_PERIOD_MS'
+  'cxi' => 'LTTNG_UST_CXI_SAMPLING_CXI_PERIOD_MS',
 }.freeze
 
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
@@ -144,7 +144,7 @@ end
 def parse_sampling_intervals(mappings)
   (mappings || []).each_with_object({}) do |mapping, intervals|
     backend, milliseconds = mapping.split(':', 2)
-    unless (SAMPLING_PERIOD_ENV.key?(backend) || backend == '*') && milliseconds&.match?(/\A[1-9]\d*\z/)
+    unless valid_sampling_interval?(backend, milliseconds)
       raise OptionParser::ParseError,
             "invalid sample interval #{mapping.inspect}; expected BACKEND:MS"
     end
@@ -152,6 +152,12 @@ def parse_sampling_intervals(mappings)
 
     intervals[backend] = milliseconds.to_i
   end
+end
+
+def valid_sampling_interval?(backend, milliseconds)
+  return false unless SAMPLING_PERIOD_ENV.key?(backend) || backend == '*'
+
+  milliseconds&.match?(/\A[1-9]\d*\z/)
 end
 
 # Wait until the block return true
