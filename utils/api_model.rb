@@ -13,7 +13,7 @@ require_relative 'yaml_ast'
 
 class ApiModel
   attr_reader :types, :structs, :unions, :enums,
-              :objects, :int_scalars,
+              :objects, :int_scalars, :struct_map,
               :enum_names, :bitfield_names, :struct_names
 
   def initialize(types:, structs:, unions:, enums:)
@@ -25,6 +25,7 @@ class ApiModel
     classes = find_all_types(types)
     @objects = classes.objects
     @int_scalars = find_int_scalars(types, classes.integers)
+    @struct_map = find_struct_map(types, structs)
     @enum_names, @bitfield_names, @struct_names = classify_ast_types(types, enums)
   end
 

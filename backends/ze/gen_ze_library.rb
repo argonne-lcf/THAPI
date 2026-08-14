@@ -294,7 +294,7 @@ dfs = lambda do |node|
 
   case node.type
   when YAMLCAst::Struct
-    members = CONTEXT.struct_map[node.name]
+    members = API.struct_map[node.name]
     members.each do |m|
       m_type = m.type
       m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
