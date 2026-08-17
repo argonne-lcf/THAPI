@@ -30,10 +30,13 @@ end
 
 # returns the copy ordinals if retrieved from the ze_device_property.json
 def copy_only_ordinals(state)
-  return [1, 2] unless state.device_properties
-  state.device_properties["devices"][0]["command_queue_groups"]
-       .select { |prop| prop["type"] == "copy" }
-       .map    { |prop| prop["ordinal"] }
+  if state.device_properties
+    state.device_properties["devices"][0]["command_queue_groups"]
+        .select { |prop| prop["type"] == "copy" }
+        .map    { |prop| prop["ordinal"] }
+  else
+    return [1, 2]
+  end 
 end
 
 # checks whether a command list attached to a copy-only engine receives a kernel
@@ -62,16 +65,18 @@ end
 
 #Checks whether a command list that has a compute kernel gets submitted to a command queue that is attached to a copy only engine.
 def check_copy_only_queue_submission(state, ctx, queue, cmd_list)
-  return unless queue && queue.desc
-  return unless command_list_has_kernel_launch?(cmd_list)
-  queue_ordinal = queue.desc[:ordinal]
-  return unless copy_only_ordinals(state).include?(queue_ordinal)
-  key = "copyq-submit-#{state.get_handle_str(queue.handle)}-#{state.get_handle_str(cmd_list.handle)}"
-  return unless state.print_tracker[key] == 0
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx, "command list #{state.get_handle_str(cmd_list.handle)} contains a compute kernel " \
-                               "launch but was submitted to command queue #{state.get_handle_str(queue.handle)} " \
-                               "with copy-only ordinal #{queue_ordinal}")
+  if queue && queue.desc && command_list_has_kernel_launch?(cmd_list)
+    queue_ordinal = queue.desc[:ordinal]
+    if copy_only_ordinals(state).include?(queue_ordinal)
+    key = "copyq-submit-#{state.get_handle_str(queue.handle)}-#{state.get_handle_str(cmd_list.handle)}"
+      if state.print_tracker[key] == 0
+        state.print_tracker[key] = 1
+        state.print_usage_error(ctx, "command list #{state.get_handle_str(cmd_list.handle)} contains a compute kernel " \
+                                    "launch but was submitted to command queue #{state.get_handle_str(queue.handle)} " \
+                                    "with copy-only ordinal #{queue_ordinal}")
+      end
+    end 
+  end 
 end
 
 # Checks whether the kernel module's context matches that of the command list's.
@@ -80,18 +85,20 @@ def check_kernel_list_context_match(state, ctx, payload)
   kernels = state.find_objects(ctx, 'kernel')
   cmd_list = command_lists[payload['hCommandList']]
   kernel = kernels[payload['hKernel']]
-  return unless cmd_list && cmd_list.context && kernel
-  mod = kernel.module
-  return unless mod && mod.context
-  return if mod.context == cmd_list.context
-  key = "kernel-list-ctx-#{state.get_handle_str(cmd_list.handle)}-#{state.get_handle_str(kernel.handle)}"
-  return unless state.print_tracker[key] == 0
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx,
-    "kernel #{state.get_handle_str(kernel.handle)} (from module " \
-    "#{state.get_handle_str(mod.handle)} on context #{state.get_handle_str(mod.context.handle)}) " \
-    "does not share the context of command list #{state.get_handle_str(cmd_list.handle)} " \
-    "(context #{state.get_handle_str(cmd_list.context.handle)})")
+  if cmd_list && cmd_list.context && kernel
+    mod = kernel.module
+    if mod && mod.context && mod.context != cmd_list.context
+      key = "kernel-list-ctx-#{state.get_handle_str(cmd_list.handle)}-#{state.get_handle_str(kernel.handle)}"
+      if state.print_tracker[key] == 0
+        state.print_tracker[key] = 1
+        state.print_usage_error(ctx,
+          "kernel #{state.get_handle_str(kernel.handle)} (from module " \
+          "#{state.get_handle_str(mod.handle)} on context #{state.get_handle_str(mod.context.handle)}) " \
+          "does not share the context of command list #{state.get_handle_str(cmd_list.handle)} " \
+          "(context #{state.get_handle_str(cmd_list.context.handle)})")
+      end
+    end
+  end
 end
 
 # Checks if the kernel was created
@@ -163,12 +170,13 @@ end
 # Record one op onto a command list
 def record_op(state, ctx, cmd_list_handle, op)
   cmd_list = state.find_objects(ctx, 'command_list')[cmd_list_handle]
-  return unless cmd_list
-  if cmd_list.immediate
-    check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
-    state.enqueue_immediate_op(ctx, op, cmd_list_handle)
-  else
-    cmd_list.ops << op
+  if cmd_list
+    if cmd_list.immediate
+      check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
+      state.enqueue_immediate_op(ctx, op, cmd_list_handle)
+    else
+      cmd_list.ops << op
+    end
   end
 end
 
@@ -301,10 +309,11 @@ EVENT_OP_KINDS = [:copy, :launch, :signal, :wait, :reset].freeze
 
 # retrieves the events in a given op
 def event_handles_in_op(op)
-  return [] unless EVENT_OP_KINDS.include?(op.kind)
   handles = []
-  handles << op.signal if op.signal
-  handles.concat(op.waits) if op.waits
+  if EVENT_OP_KINDS.include?(op.kind)
+    handles << op.signal if op.signal
+    handles.concat(op.waits) if op.waits
+  end
   handles
 end
 
@@ -316,36 +325,39 @@ end
 
 #Check if all events share the same context
 def check_events_share_context(state, ctx, event_handles, ref_context, ref_kind, ref_handle)
-  return unless ref_context
-  events = state.find_objects(ctx, 'event')
-  event_handles.uniq.each do |h|
-    ev = events[h]
-    next unless ev && ev.event_pool && ev.event_pool.context
-    next if ev.event_pool.context == ref_context
-    key = "evpool-#{ref_kind}-ctx-#{state.get_handle_str(ref_handle)}-#{state.get_handle_str(h)}"
-    next unless state.print_tracker[key] == 0
-    state.print_tracker[key] = 1
-    state.print_usage_error(ctx,
-      "event #{state.get_handle_str(h)} (from event pool " \
-      "#{state.get_handle_str(ev.event_pool.handle)} on context " \
-      "#{state.get_handle_str(ev.event_pool.context.handle)}) does not share the context of " \
-      "#{ref_kind} #{state.get_handle_str(ref_handle)} " \
-      "(context #{state.get_handle_str(ref_context.handle)})")
+  if ref_context
+    events = state.find_objects(ctx, 'event')
+    event_handles.uniq.each do |h|
+      ev = events[h]
+      next if !(ev && ev.event_pool && ev.event_pool.context) || ev.event_pool.context == ref_context
+      key = "evpool-#{ref_kind}-ctx-#{state.get_handle_str(ref_handle)}-#{state.get_handle_str(h)}"
+      if state.print_tracker[key] == 0
+        state.print_tracker[key] = 1
+        state.print_usage_error(ctx,
+          "event #{state.get_handle_str(h)} (from event pool " \
+          "#{state.get_handle_str(ev.event_pool.handle)} on context " \
+          "#{state.get_handle_str(ev.event_pool.context.handle)}) does not share the context of " \
+          "#{ref_kind} #{state.get_handle_str(ref_handle)} " \
+          "(context #{state.get_handle_str(ref_context.handle)})")
+      end
+    end
   end
 end
 
 # Check if event pool's context matches the command queue's context
 def check_event_pool_list_context_match(state, ctx, cmd_list)
-  return unless cmd_list
-  check_events_share_context(state, ctx, event_handles_in_list(cmd_list),
-                             cmd_list.context, 'command list', cmd_list.handle)
+  if cmd_list
+    check_events_share_context(state, ctx, event_handles_in_list(cmd_list),
+                              cmd_list.context, 'command list', cmd_list.handle)
+  end
 end
 
 # Check if event pool's context matches the immediate command list's context
 def check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
-  return unless cmd_list && cmd_list.context
-  check_events_share_context(state, ctx, event_handles_in_op(op),
-                             cmd_list.context, 'immediate command list', cmd_list.handle)
+  if cmd_list && cmd_list.context
+    check_events_share_context(state, ctx, event_handles_in_op(op),
+                              cmd_list.context, 'immediate command list', cmd_list.handle)
+  end
 end
 
 
@@ -358,17 +370,21 @@ end
 # Check whether the copy's endpoints have enough space to support the requested size
 # Deduped so an append checked at entry is not reported again when it executes.
 def check_copy_endpoint_oob(state, ctx, allocations, ptr, size, api, role)
-  return if ptr.nil? || ptr == 0 || size.nil?
-  mem = allocations[ptr] || find_allocation_containing(allocations, ptr)
-  return unless mem
-  offset = ptr - mem.base
-  available = mem.size - offset
-  return unless available < size
-  key = "oob-#{api}-#{role}-#{state.get_handle_str(ptr)}-#{size}"
-  return unless state.print_tracker[key] == 0
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx, "#{api}: #{role} memory #{state.get_handle_str(ptr)} only has #{available} " \
-                               "bytes available from this offset but the copy needs #{size} bytes")
+  if !(ptr.nil?) && ptr != 0 && !(size.nil?)
+    mem = allocations[ptr] || find_allocation_containing(allocations, ptr)
+    if mem
+      offset = ptr - mem.base
+      available = mem.size - offset
+      if  available < size
+        key = "oob-#{api}-#{role}-#{state.get_handle_str(ptr)}-#{size}"
+        if state.print_tracker[key] == 0
+          state.print_tracker[key] = 1
+          state.print_usage_error(ctx, "#{api}: #{role} memory #{state.get_handle_str(ptr)} only has #{available} " \
+                                      "bytes available from this offset but the copy needs #{size} bytes")
+        end
+      end
+    end
+  end
 end
 
 # Performs the oob check for copy for both endpoints (src and dst)
@@ -404,17 +420,19 @@ end
 
 # Checks for use-after-free on an address
 def check_uaf_endpoint(state, ctx, live, freed, ptr, api, role)
-  return if ptr.nil? || ptr == 0
-  return if live[ptr] || find_allocation_containing(live, ptr)
-  mem = freed[ptr] || find_freed_allocation_containing(freed, ptr)
-  return unless mem
-  key = "uaf-#{api}-#{state.get_handle_str(ptr)}"
-  return unless state.print_tracker[key] == 0
-  state.print_tracker[key] = 1
-  offset = ptr - mem.base
-  where = offset == 0 ? "" : " (offset #{offset} into the freed allocation)"
-  state.print_memory_error(ctx, "#{api}: #{role} memory #{state.get_handle_str(ptr)}#{where} was already " \
-                                "freed#{mem.freed_by ? " by #{mem.freed_by}" : ""}; use-after-free")
+  if !(ptr.nil?) && ptr != 0 && live[ptr].nil? && find_allocation_containing(live, ptr).nil?
+    mem = freed[ptr] || find_freed_allocation_containing(freed, ptr)
+    if mem
+      key = "uaf-#{api}-#{state.get_handle_str(ptr)}"
+      if state.print_tracker[key] == 0
+        state.print_tracker[key] = 1
+        offset = ptr - mem.base
+        where = offset == 0 ? "" : " (offset #{offset} into the freed allocation)"
+        state.print_memory_error(ctx, "#{api}: #{role} memory #{state.get_handle_str(ptr)}#{where} was already " \
+                                      "freed#{mem.freed_by ? " by #{mem.freed_by}" : ""}; use-after-free")
+      end
+    end
+  end
 end
 
 # Checks for when an API uses a memory that has been freed
@@ -422,9 +440,10 @@ def check_use_after_free(state, ctx, params)
   api  = params[:api] || 'zeCommandListAppendMemoryCopy'
   live  = state.memory_allocations(ctx, params[:ctx_handle])
   freed = state.freed_memory_allocations(ctx, params[:ctx_handle])
-  return if freed.empty?
-  check_uaf_endpoint(state, ctx, live, freed, params[:dst], api, 'destination')
-  check_uaf_endpoint(state, ctx, live, freed, params[:src], api, 'source')
+  if !(freed.empty?)
+    check_uaf_endpoint(state, ctx, live, freed, params[:dst], api, 'destination')
+    check_uaf_endpoint(state, ctx, live, freed, params[:src], api, 'source')
+  end
 end
 
 # calls the check_use_after_free only if the wait events have been satisfied
@@ -447,9 +466,10 @@ def check_uaf_ranges_barrier(state, ctx, params)
   api   = params[:api] || 'zeCommandListAppendMemoryRangesBarrier'
   live  = state.memory_allocations(ctx, params[:ctx_handle])
   freed = state.freed_memory_allocations(ctx, params[:ctx_handle])
-  return if freed.empty?
-  (params[:ranges] || []).each do |r|
-    check_uaf_endpoint(state, ctx, live, freed, r[:base], api, 'range')
+  if !(freed.empty?)
+    (params[:ranges] || []).each do |r|
+      check_uaf_endpoint(state, ctx, live, freed, r[:base], api, 'range')
+    end
   end
 end
 
@@ -461,19 +481,22 @@ end
 
 # Checks for whether memory was deleted during execution of a command list
 def check_free_in_flight(state, ctx, mem)
-  return unless mem
-  mem_ctx_handle = mem.context ? mem.context.handle : nil
-  state.each_inflight_copy_op(ctx) do |unit, op|
-    p = op.params
-    next unless p[:ctx_handle] == mem_ctx_handle
-    hit = [[p[:dst], 'destination'], [p[:src], 'source']].find do |ptr, _role|
-      ptr && ptr != 0 && ranges_overlap?(mem.base, mem.size, ptr, p[:size])
+  if mem
+    mem_ctx_handle = mem.context ? mem.context.handle : nil
+    state.each_inflight_copy_op(ctx) do |unit, op|
+      p = op.params
+      if  p[:ctx_handle] == mem_ctx_handle
+        hit = [[p[:dst], 'destination'], [p[:src], 'source']].find do |ptr, _role|
+          ptr && ptr != 0 && ranges_overlap?(mem.base, mem.size, ptr, p[:size])
+        end
+        if hit
+          _ptr, role = hit
+          state.print_memory_error(ctx, "memory #{state.get_handle_str(mem.base)} is being freed while still in use as " \
+                                        "the #{role} of an in-flight #{p[:api] || 'copy'} on #{unit.label}; the device " \
+                                        "may access freed memory")
+        end
+      end
     end
-    next unless hit
-    _ptr, role = hit
-    state.print_memory_error(ctx, "memory #{state.get_handle_str(mem.base)} is being freed while still in use as " \
-                                  "the #{role} of an in-flight #{p[:api] || 'copy'} on #{unit.label}; the device " \
-                                  "may access freed memory")
   end
 end
 
@@ -485,36 +508,43 @@ end
 
 # Returns [memory, ctx_handle] for ptr, preferring the passed context (usually command list's context).
 def find_known_memory(state, ctx, ptr, prefer_ctx_handle)
-  return [nil, nil] if ptr.nil? || ptr == 0
-  all_maps = state.get_process(ctx).memory_allocations
-  if prefer_ctx_handle && all_maps.key?(prefer_ctx_handle)
-    mem = find_memory_in_submap(all_maps[prefer_ctx_handle], ptr)
-    return [mem, prefer_ctx_handle] if mem
+  ret = [nil,nil]
+  if !(ptr.nil?) && ptr != 0
+    all_maps = state.get_process(ctx).memory_allocations
+    if prefer_ctx_handle && all_maps.key?(prefer_ctx_handle)
+      mem = find_memory_in_submap(all_maps[prefer_ctx_handle], ptr)
+      ret = [mem, prefer_ctx_handle] if mem
+    end
+    all_maps.each do |cth, submap|
+      if cth != prefer_ctx_handle
+        mem = find_memory_in_submap(submap, ptr)
+        ret = [mem, cth] if mem
+      end
+    end
   end
-  all_maps.each do |cth, submap|
-    next if cth == prefer_ctx_handle
-    mem = find_memory_in_submap(submap, ptr)
-    return [mem, cth] if mem
-  end
-  [nil, nil]
+  ret 
 end
 
 # Checks that one copy/fill endpoint was allocated on the command list's
 # context. Untracked pointers are skipped; deduped per (list, endpoint, ptr).
 def check_ptr_endpoint_list_context(state, ctx, list_ctx_handle, list_handle, ptr, api, role)
-  return if ptr.nil? || ptr == 0
-  return if list_ctx_handle.nil? # unknown command list context -> skip
-  mem, found_ctx = find_known_memory(state, ctx, ptr, list_ctx_handle)
-  return unless mem                      # unknown pointer -> skip (no false alarm)
-  return if found_ctx == list_ctx_handle # correctly in the list's context -> fine
-  key = "ptr-list-ctx-#{state.get_handle_str(list_handle)}-#{role}-#{state.get_handle_str(ptr)}"
-  return unless state.print_tracker[key] == 0
-  state.print_tracker[key] = 1
-  mem_ctx_str = mem.context ? state.get_handle_str(mem.context.handle) : state.get_handle_str(found_ctx)
-  state.print_usage_error(ctx,
-    "#{api}: #{role} memory #{state.get_handle_str(ptr)} was allocated on context #{mem_ctx_str} " \
-    "but command list #{state.get_handle_str(list_handle)} is on context #{state.get_handle_str(list_ctx_handle)}; " \
-    "the command list and copied memory must share a context")
+  
+                                # unknown command list context -> skip
+  if !(ptr.nil?) && ptr != 0 && !(list_ctx_handle.nil?) 
+    mem, found_ctx = find_known_memory(state, ctx, ptr, list_ctx_handle)
+    # unknown pointer -> skip (no false alarm)
+    if mem && found_ctx != list_ctx_handle 
+      key = "ptr-list-ctx-#{state.get_handle_str(list_handle)}-#{role}-#{state.get_handle_str(ptr)}"
+      if state.print_tracker[key] == 0
+        state.print_tracker[key] = 1
+        mem_ctx_str = mem.context ? state.get_handle_str(mem.context.handle) : state.get_handle_str(found_ctx)
+        state.print_usage_error(ctx,
+          "#{api}: #{role} memory #{state.get_handle_str(ptr)} was allocated on context #{mem_ctx_str} " \
+          "but command list #{state.get_handle_str(list_handle)} is on context #{state.get_handle_str(list_ctx_handle)}; " \
+          "the command list and copied memory must share a context")
+      end
+    end
+  end
 end
 
 # Checks a copy/fill's endpoints against the command list's context. Runs at
@@ -530,15 +560,16 @@ end
 # reuse-no-reset if the host observed the prior signal, double-signal if not.
 def check_event_signal_reuse(state, ctx, handle, who)
   ev = state.event_by_handle(ctx, handle)
-  return unless ev && ev.signaled
-  if ev.observed
-    state.print_usage_error(ctx, "event #{state.get_handle_str(handle)} was reused as a signal target by #{who} " \
-                                 "without calling zeEventHostReset/zeCommandListAppendEventReset after it was " \
-                                 "signaled#{ev.signaled_by ? " by #{ev.signaled_by}" : ""}")
-  else
-    state.print_usage_error(ctx, "event #{state.get_handle_str(handle)} was signaled by #{who} before being reset " \
-                                 "or consumed#{ev.signaled_by ? " (already signaled by #{ev.signaled_by})" : ""}; " \
-                                 "concurrent signals of the same event are undefined")
+  if ev && ev.signaled
+    if ev.observed
+      state.print_usage_error(ctx, "event #{state.get_handle_str(handle)} was reused as a signal target by #{who} " \
+                                  "without calling zeEventHostReset/zeCommandListAppendEventReset after it was " \
+                                  "signaled#{ev.signaled_by ? " by #{ev.signaled_by}" : ""}")
+    else
+      state.print_usage_error(ctx, "event #{state.get_handle_str(handle)} was signaled by #{who} before being reset " \
+                                  "or consumed#{ev.signaled_by ? " (already signaled by #{ev.signaled_by})" : ""}; " \
+                                  "concurrent signals of the same event are undefined")
+    end
   end
 end
 
@@ -622,13 +653,13 @@ end
 # list signals. The cross-list detector misses this since it drops self-edges.
 def check_in_order_self_deadlock(state, units)
   units.each do |unit|
-    next unless unit.in_order
-    next if unit.blocked_on.nil? || unit.blocked_on.empty?
-    self_waits = unit.blocked_on & unit.pending_signals
-    self_waits.each do |ev|
-      #the later op in this same list that would signal ev (but never runs)
-      later = unit.ops[(unit.cursor + 1)..]&.find { |o| o.signal == ev }
-      report_in_order_self_deadlock(state, unit, ev, later)
+    if unit.in_order && !(unit.blocked_on.nil?) && !(unit.blocked_on.empty?)
+      self_waits = unit.blocked_on & unit.pending_signals
+      self_waits.each do |ev|
+        #the later op in this same list that would signal ev (but never runs)
+        later = unit.ops[(unit.cursor + 1)..]&.find { |o| o.signal == ev }
+        report_in_order_self_deadlock(state, unit, ev, later)
+      end
     end
   end
 end

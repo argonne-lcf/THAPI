@@ -58,9 +58,10 @@ $upon_entry["zeCommandListReset"] = lambda { |state, ctx, payload|
 $on_successful_exit["zeCommandListReset"] = lambda { |state, ctx, payload|
   command_lists = state.find_objects(ctx, 'command_list')
   cmd_list = command_lists[state.find_param(ctx, 'hCommandList')]
-  return unless cmd_list
-  cmd_list.ops.clear
-  cmd_list.status = ZEModel::CommandList.class_variable_get(:@@INITIALIZED)
+  if cmd_list
+    cmd_list.ops.clear
+    cmd_list.status = ZEModel::CommandList.class_variable_get(:@@INITIALIZED)
+  end
 }
 
 #check_command_list_closed later verifies this happened before any submission
@@ -292,8 +293,9 @@ $on_successful_exit["zeFenceHostSynchronize"] =  lambda { |state, ctx, payload|
 #Also, a fence can be shared throughout the threads and is modeled correctly (if you are wondering about whether the model treats fence associated with different thread-id differently).
 $upon_entry["zeFenceReset"] =  lambda { |state, ctx, payload|
   curr_fence = get_fence(state, ctx, payload['hFence'])
-  return unless curr_fence
-  curr_fence.status = curr_fence.not_signaled
+  if curr_fence
+    curr_fence.status = curr_fence.not_signaled
+  end
 }
 
 #Set the driver for the current context
