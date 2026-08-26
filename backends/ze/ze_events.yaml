@@ -164,13 +164,13 @@ lttng_ust_ze_properties:
     args:
     - [ze_driver_handle_t, hDriver]
     - [ze_device_handle_t, hDevice]
-    - [uint32_t, numGroups]
+    - [uint32_t, pCount]
     - [ze_command_queue_group_properties_t *, pGroupProperties]
     fields:
     - [ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver"]
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
-    - [ctf_integer, uint32_t, numGroups, numGroups]
-    - [ctf_sequence_text, uint8_t, pGroupProperties_val, pGroupProperties, size_t, "numGroups * sizeof(ze_command_queue_group_properties_t)"]
+    - [ctf_integer, uint32_t, pCount, pCount]
+    - [ctf_sequence_text, uint8_t, pGroupProperties_vals, pGroupProperties, size_t, "pCount * sizeof(ze_command_queue_group_properties_t)"]
   - name: device_timer
     args:
     - [ze_device_handle_t, hDevice]
