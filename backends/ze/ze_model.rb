@@ -21,6 +21,24 @@ APIS = {
   zex: ApiModel.load_file('zex_api.yaml'),
 }.freeze
 
+# The extensible structs of one namespace. Level Zero starts each of them with
+# an `stype` tag naming its own type, which is how the tracer knows what a
+# `void *` points at.
+def stype_structs(api)
+  api.types.select do |t|
+    t.type.is_a?(YAMLCAst::Struct) &&
+      (struct = api.structs.find { |s| t.type.name == s.name }) &&
+      struct.members.first.name == 'stype'
+  end.map(&:name)
+end
+
+# Those a caller can be handed. The `<ns>_base_` types are the tag's own base
+# classes: a tracepoint exists for each, but no API call ever passes one, so
+# nothing dispatches on them.
+def concrete_stype_structs(namespace, api)
+  stype_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
+end
+
 # The tracer wraps every namespace, so it classifies against all of them at
 # once: a zet typedef routinely names a ze struct.
 all_api = APIS.values.inject(:+)

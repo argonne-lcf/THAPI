@@ -8,10 +8,6 @@ puts <<~EOF
   #include "ze.h.include"
 EOF
 
-APIS[:zer].types.select do |t|
-  t.type.is_a?(YAMLCAst::Struct) && (struct = APIS[:zer].structs.find do |s|
-    t.type.name == s.name
-  end) && struct.members.first.name == 'stype'
-end.each do |t|
-  print_struct_tracepoint(provider, t.name)
+stype_structs(APIS[:zer]).each do |t|
+  print_struct_tracepoint(provider, t)
 end

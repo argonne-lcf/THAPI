@@ -40,16 +40,6 @@ puts <<~EOF
 
 EOF
 
-def get_structs_types(namespace, types, structs)
-  types.select do |t|
-    t.type.is_a?(YAMLCAst::Struct) && (struct = structs.find do |s|
-      t.type.name == s.name
-    end) && struct.members.first.name == 'stype'
-  end.reject do |t|
-    t.name.start_with?("#{namespace}_base_")
-  end.map(&:name).to_set
-end
-
 def gen_struct_printer(namespace, types)
   puts <<~EOF
     static
@@ -97,17 +87,14 @@ EOF
   EOF
 end
 
-struct_types = APIS.to_h { |ns, api| [ns, get_structs_types(ns, api.types, api.structs)] }
+struct_types = APIS.to_h { |ns, api| [ns, concrete_stype_structs(ns, api)] }
 
 gen_struct_printer(:ze, struct_types[:ze])
 gen_struct_printer(:zet, struct_types[:zet])
 gen_struct_printer(:zes, struct_types[:zes])
 gen_struct_printer(:zel, struct_types[:zel])
-# zer and zex are off (see ZE_NAMESPACES in Makefile.am); re-enabling either
-# means adding its line here. zer's read zel's structs until 0d64341 fixed the
-# same slip in gen_zer_structs_tracepoints.rb -- keep the namespaces matched.
-# gen_struct_printer(:zer, struct_types[:zer])
-# gen_struct_printer(:zex, struct_types[:zex])
+# The printer switches on <ns>_structure_type_t, which zer and zex do not
+# declare: zer has no api.yaml at all, and zex names no structure types.
 
 # zex is excluded: it is reached through libffi closures, not dlsym'd symbols.
 zex_commands = COMMANDS.groups[:lttng_ust_zex]
