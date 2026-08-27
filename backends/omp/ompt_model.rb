@@ -10,20 +10,17 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 API = ApiModel.load_file('ompt_api.yaml')
 
-typedefs = API.types
-structs = API.structs
-
-TYPE_CLASSES = find_all_types(typedefs)
-gen_ffi_type_map(typedefs, TYPE_CLASSES)
+TYPE_CLASSES = find_all_types(API.types)
+gen_ffi_type_map(API.types, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'ompResult',
   init_functions: /None/,
-  struct_map: find_struct_map(typedefs, structs),
+  struct_map: API.struct_map,
   type_classes: TYPE_CLASSES
 )
 
-OMPT_CALLBACKS = typedefs.select do |t|
+OMPT_CALLBACKS = API.types.select do |t|
   t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/)
 end.reject do |t|
   %w[ompt_callback_buffer_complete_t ompt_callback_buffer_request_t].include?(t.name)

@@ -24,11 +24,9 @@ APIS = {
 # The tracer wraps every namespace, so it classifies against all of them at
 # once: a zet typedef routinely names a ze struct.
 all_api = APIS.values.inject(:+)
-typedefs = all_api.types
-structs = all_api.structs
 
-TYPE_CLASSES = find_all_types(typedefs)
-gen_ffi_type_map(typedefs, TYPE_CLASSES)
+TYPE_CLASSES = find_all_types(all_api.types)
+gen_ffi_type_map(all_api.types, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'zeResult',
@@ -37,7 +35,7 @@ CONTEXT = BackendContext.new(
   # Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
   # so each namespace initializes its own symbols.
   init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/,
-  struct_map: find_struct_map(typedefs, structs),
+  struct_map: all_api.struct_map,
   type_classes: TYPE_CLASSES
 )
 

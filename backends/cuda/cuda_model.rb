@@ -16,16 +16,10 @@ cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
 # typedef can name a driver struct, so they have to be classified together.
 API = cuda_api + cuda_exports_api
 
-cuda_funcs_e = cuda_api.functions
-cuda_exports_funcs_e = cuda_exports_api.functions
-
-typedefs = API.types
-structs = API.structs
-
 # CUdeviceptr is a device address carried in an integer, so it reads as hex
 # rather than as a decimal that means nothing to anyone.
-TYPE_CLASSES = find_all_types(typedefs, extra_hex_ints: ['CUdeviceptr'])
-gen_ffi_type_map(typedefs, TYPE_CLASSES)
+TYPE_CLASSES = find_all_types(API.types, extra_hex_ints: ['CUdeviceptr'])
+gen_ffi_type_map(API.types, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'cuResult',
@@ -33,7 +27,7 @@ CONTEXT = BackendContext.new(
   # no function is singled out as the initializer and Command#init? is never
   # asked.
   init_functions: nil,
-  struct_map: find_struct_map(typedefs, structs),
+  struct_map: API.struct_map,
   type_classes: TYPE_CLASSES
 )
 
@@ -91,7 +85,7 @@ meta_parameters = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_export
 # The driver and its export tables are one API but two LTTng providers, so the
 # commands are grouped by the provider that will carry them.
 COMMANDS = CommandIndex.new(
-  { lttng_ust_cuda: cuda_funcs_e, lttng_ust_cuda_exports: cuda_exports_funcs_e }.transform_values do |funcs|
+  { lttng_ust_cuda: cuda_api.functions, lttng_ust_cuda_exports: cuda_exports_api.functions }.transform_values do |funcs|
     funcs.collect { |func| Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name]) }
   end
 )

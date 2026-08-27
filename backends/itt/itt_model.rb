@@ -10,16 +10,13 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 API = ApiModel.load_file('itt_api.yaml')
 
-typedefs = API.types
-structs = API.structs
-
-TYPE_CLASSES = find_all_types(typedefs)
-gen_ffi_type_map(typedefs, TYPE_CLASSES)
+TYPE_CLASSES = find_all_types(API.types)
+gen_ffi_type_map(API.types, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'ittResult',
   init_functions: /None/,
-  struct_map: find_struct_map(typedefs, structs),
+  struct_map: API.struct_map,
   type_classes: TYPE_CLASSES
 )
 

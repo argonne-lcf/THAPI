@@ -10,23 +10,19 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 API = ApiModel.load_file('cudart_api.yaml')
 
-funcs = API.functions
-typedefs = API.types
-structs = API.structs
-
-TYPE_CLASSES = find_all_types(typedefs)
-gen_ffi_type_map(typedefs, TYPE_CLASSES)
+TYPE_CLASSES = find_all_types(API.types)
+gen_ffi_type_map(API.types, TYPE_CLASSES)
 
 CONTEXT = BackendContext.new(
   result_name: 'cudaResult',
   # gen_cudart.rb calls _init_tracer() from every wrapper, so no function is
   # singled out as the initializer and Command#init? is never asked.
   init_functions: nil,
-  struct_map: find_struct_map(typedefs, structs),
+  struct_map: API.struct_map,
   type_classes: TYPE_CLASSES
 )
 
-COMMANDS = CommandIndex.new(lttng_ust_cudart: funcs.collect do |func|
+COMMANDS = CommandIndex.new(lttng_ust_cudart: API.functions.collect do |func|
   Command.new(func, context: CONTEXT)
 end)
 
