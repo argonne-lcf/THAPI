@@ -193,14 +193,14 @@ property_command_queue_group_callback(void *btx_handle,
                                       uint64_t vtid,
                                       ze_driver_handle_t hDriver,
                                       ze_device_handle_t hDevice,
-                                      uint32_t numGroups,
-                                      size_t _pGroupProperties_val_length,
-                                      ze_command_queue_group_properties_t *pGroupProperties_val) {
+                                      uint32_t pCount,
+                                      size_t _pGroupProperties_vals_length,
+                                      ze_command_queue_group_properties_t *pGroupProperties_vals) {
 
   auto *data = static_cast<data_t *>(usr_data);
   data->command_queue_group_property[{hostname, vpid, (thapi_device_id)hDevice}] =
-      std::vector<ze_command_queue_group_properties_t>(pGroupProperties_val,
-                                                       pGroupProperties_val + numGroups);
+      std::vector<ze_command_queue_group_properties_t>(pGroupProperties_vals,
+                                                       pGroupProperties_vals + pCount);
 }
 
 static void property_subdevice_callback(void *btx_handle,
