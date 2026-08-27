@@ -7,11 +7,6 @@ from deepdiff import DeepDiff
 # Please put the corrects paths
 stems = [os.environ["THAPI_REF"], os.environ["THAPI_NEW"]]
 
-# Known intentional divergence from devel: mpi_library.rb gains MPI_Status and
-# MPI_F08_status. Both are anonymous struct typedefs that the generator used to
-# drop, because only hip guarded for that shape. Regenerating THAPI_REF from a
-# commit before "raise on a missing type definition" will show them as a diff.
-
 filenames = []
 
 filenames += [
