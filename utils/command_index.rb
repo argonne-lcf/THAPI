@@ -25,8 +25,8 @@ class CommandIndex
     end
   end
 
-  def each(&)
-    @by_name.each_value(&)
+  def each(&block)
+    @by_name.each_value(&block)
   end
 
   def [](name)
