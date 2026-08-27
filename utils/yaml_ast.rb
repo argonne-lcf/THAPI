@@ -443,7 +443,7 @@ FFI_INT_TYPE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[2]] }.to_h
 INT_TYPES = INT_TYPE_MAP.keys
 
 # Integer types the tracer logs in hex rather than decimal. An API can name
-# more of its own -- see find_all_types' extra_hex_ints.
+# more of its own -- see ApiModel's hex_ints.
 HEX_INT_TYPES = %w[
   intptr_t
   uintptr_t
@@ -506,9 +506,9 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
   end
 end
 
-# `extra_hex_ints` are API-specific integer types to log in hex, declared by
-# the API rather than pushed onto the shared HEX_INT_TYPES.
-def find_all_types(types, extra_hex_ints: [])
+# `hex_ints` are the API's own integer types to log in hex, on top of the ones
+# every API shares.
+def find_all_types(types, hex_ints: [])
   objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
   # Int and Char share one category, and the char pass closes over the list the
   # int pass produced, so a typedef aliasing either resolves the same way.
@@ -520,7 +520,7 @@ def find_all_types(types, extra_hex_ints: [])
 
   TypeClasses.new(
     objects: objects, integers: integers, pointers: pointers,
-    hex_ints: HEX_INT_TYPES + extra_hex_ints,
+    hex_ints: HEX_INT_TYPES + hex_ints,
     enums: find_types(types, YAMLCAst::Enum),
     structs: find_types(types, YAMLCAst::Struct),
     unions: find_types(types, YAMLCAst::Union)

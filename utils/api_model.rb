@@ -8,29 +8,40 @@
 require_relative 'yaml_ast'
 
 class ApiModel
-  attr_reader :types, :structs, :unions, :enums, :functions
+  attr_reader :types, :structs, :unions, :enums, :functions, :hex_ints
 
   # A list the file does not declare reads back empty, so every model answers
   # all five questions.
-  def self.load_file(path)
+  #
+  # `hex_ints` names integer typedefs this API logs in hex: an address carried
+  # in an integer reads as a decimal that means nothing to anyone.
+  def self.load_file(path, hex_ints: [])
     lists = YAMLCAst.load_file(path)
     new(types: lists.fetch('typedefs', []), structs: lists.fetch('structs', []),
         unions: lists.fetch('unions', []), enums: lists.fetch('enums', []),
-        functions: lists.fetch('functions', []))
+        functions: lists.fetch('functions', []), hex_ints: hex_ints)
   end
 
-  def initialize(types: [], structs: [], unions: [], enums: [], functions: [])
+  def initialize(types: [], structs: [], unions: [], enums: [], functions: [], hex_ints: [])
     @types = types
     @structs = structs
     @unions = unions
     @enums = enums
     @functions = functions
+    @hex_ints = hex_ints
   end
 
   def +(other)
     ApiModel.new(types: types + other.types, structs: structs + other.structs,
                  unions: unions + other.unions, enums: enums + other.enums,
-                 functions: functions + other.functions)
+                 functions: functions + other.functions,
+                 hex_ints: @hex_ints | other.hex_ints)
+  end
+
+  # How each typedef in this API is classified: objects, integers, pointers,
+  # hex ints, enums, structs, unions.
+  def type_classes
+    @type_classes ||= find_all_types(@types, hex_ints: @hex_ints)
   end
 
   def int_scalars
@@ -92,10 +103,6 @@ class ApiModel
   end
 
   private
-
-  def type_classes
-    @type_classes ||= find_all_types(@types)
-  end
 
   def lookup(definitions, type, kind, opaque_ok)
     return type unless type.name

@@ -10,8 +10,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 API = ApiModel.load_file('cudart_api.yaml')
 
-TYPE_CLASSES = find_all_types(API.types)
-gen_ffi_type_map(API.types, TYPE_CLASSES)
+gen_ffi_type_map(API.types, API.type_classes)
 
 CONTEXT = BackendContext.new(
   result_name: 'cudaResult',
@@ -19,7 +18,7 @@ CONTEXT = BackendContext.new(
   # singled out as the initializer and Command#init? is never asked.
   init_functions: nil,
   struct_map: API.struct_map,
-  type_classes: TYPE_CLASSES
+  type_classes: API.type_classes
 )
 
 COMMANDS = CommandIndex.new(lttng_ust_cudart: API.functions.collect do |func|

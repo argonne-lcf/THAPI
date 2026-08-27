@@ -9,17 +9,16 @@ require_relative '../../utils/meta_parameters'
 
 SRC_DIR = ENV['SRC_DIR'] || '.'
 
-cuda_api = ApiModel.load_file('cuda_api.yaml')
+# CUdeviceptr is a device address carried in an integer, so it reads as hex
+# rather than as a decimal that means nothing to anyone.
+cuda_api = ApiModel.load_file('cuda_api.yaml', hex_ints: ['CUdeviceptr'])
 cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
 
 # The driver and its export tables are traced as one API: an export-table
 # typedef can name a driver struct, so they have to be classified together.
 API = cuda_api + cuda_exports_api
 
-# CUdeviceptr is a device address carried in an integer, so it reads as hex
-# rather than as a decimal that means nothing to anyone.
-TYPE_CLASSES = find_all_types(API.types, extra_hex_ints: ['CUdeviceptr'])
-gen_ffi_type_map(API.types, TYPE_CLASSES)
+gen_ffi_type_map(API.types, API.type_classes)
 
 CONTEXT = BackendContext.new(
   result_name: 'cuResult',
@@ -28,7 +27,7 @@ CONTEXT = BackendContext.new(
   # asked.
   init_functions: nil,
   struct_map: API.struct_map,
-  type_classes: TYPE_CLASSES
+  type_classes: API.type_classes
 )
 
 class TracepointParameter

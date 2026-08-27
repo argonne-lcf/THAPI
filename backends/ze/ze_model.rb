@@ -25,8 +25,7 @@ APIS = {
 # once: a zet typedef routinely names a ze struct.
 all_api = APIS.values.inject(:+)
 
-TYPE_CLASSES = find_all_types(all_api.types)
-gen_ffi_type_map(all_api.types, TYPE_CLASSES)
+gen_ffi_type_map(all_api.types, all_api.type_classes)
 
 CONTEXT = BackendContext.new(
   result_name: 'zeResult',
@@ -36,7 +35,7 @@ CONTEXT = BackendContext.new(
   # so each namespace initializes its own symbols.
   init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/,
   struct_map: all_api.struct_map,
-  type_classes: TYPE_CLASSES
+  type_classes: all_api.type_classes
 )
 
 STRUCT_TYPE_CONVERSION_TABLE = {

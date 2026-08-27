@@ -10,14 +10,13 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 API = ApiModel.load_file('itt_api.yaml')
 
-TYPE_CLASSES = find_all_types(API.types)
-gen_ffi_type_map(API.types, TYPE_CLASSES)
+gen_ffi_type_map(API.types, API.type_classes)
 
 CONTEXT = BackendContext.new(
   result_name: 'ittResult',
   init_functions: /None/,
   struct_map: API.struct_map,
-  type_classes: TYPE_CLASSES
+  type_classes: API.type_classes
 )
 
 meta_parameters = load_meta_parameters('itt_meta_parameters.yaml')

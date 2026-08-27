@@ -10,8 +10,7 @@ SRC_DIR = ENV['SRC_DIR'] || '.'
 
 API = ApiModel.load_file('mpi_api.yaml')
 
-TYPE_CLASSES = find_all_types(API.types)
-gen_ffi_type_map(API.types, TYPE_CLASSES)
+gen_ffi_type_map(API.types, API.type_classes)
 
 init_functions = /
   \b(?:P?MPI_Init|
@@ -51,7 +50,7 @@ CONTEXT = BackendContext.new(
   result_name: 'mpiResult',
   init_functions: init_functions,
   struct_map: API.struct_map,
-  type_classes: TYPE_CLASSES
+  type_classes: API.type_classes
 )
 
 meta_parameters = load_meta_parameters('mpi_meta_parameters.yaml')
