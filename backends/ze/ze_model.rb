@@ -39,11 +39,12 @@ def concrete_stype_structs(namespace, api)
   stype_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
 end
 
-# The tracer wraps every namespace, so it classifies against all of them at
-# once: a zet typedef routinely names a ze struct.
-all_api = APIS.values.inject(:+)
+# Every namespace as one API, the same thing `API` names in every other
+# backend. The derivations have to see all of them at once: a zet typedef
+# routinely names a ze struct.
+API = APIS.values.inject(:+)
 
-gen_ffi_type_map(all_api.types, all_api.type_classes)
+gen_ffi_type_map(API.types, API.type_classes)
 
 CONTEXT = BackendContext.new(
   result_name: 'zeResult',
@@ -52,8 +53,8 @@ CONTEXT = BackendContext.new(
   # Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
   # so each namespace initializes its own symbols.
   init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/,
-  struct_map: all_api.struct_map,
-  type_classes: all_api.type_classes
+  struct_map: API.struct_map,
+  type_classes: API.type_classes
 )
 
 STRUCT_TYPE_CONVERSION_TABLE = {

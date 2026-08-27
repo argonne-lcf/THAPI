@@ -9,7 +9,7 @@ puts <<~EOF
 
 EOF
 
-API.functions.each do |f|
+BOUND_API.functions.each do |f|
   type, params = f.type.to_ffi
   puts <<EOF
   begin

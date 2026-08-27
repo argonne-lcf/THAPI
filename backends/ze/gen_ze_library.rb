@@ -244,7 +244,7 @@ EOF
   print_struct_with_namespace(:ZE, name, struct, prepends: prepends, initializer: initializer, close: false)
 end
 
-API.int_scalars.each do |k, v|
+BOUND_API.int_scalars.each do |k, v|
   next if to_ffi_name(k).match('_flags_t') && !to_ffi_name(k).match('_packed_')
 
   puts <<EOF
@@ -265,8 +265,8 @@ end
 
 # We put Enum and objects first.
 # If not, they are not added by the BFS, not sure why
-all_type_sorted = API.types.group_by do |t|
-  if API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)
+all_type_sorted = BOUND_API.types.group_by do |t|
+  if BOUND_API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)
     :sorted
   else
     :to_be_sorted
@@ -276,7 +276,7 @@ end
 # Transform into set for fast `include`
 all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
 
-all_types_by_name = API.types.collect { |t| [t.name, t] }.to_h
+all_types_by_name = BOUND_API.types.collect { |t| [t.name, t] }.to_h
 
 # Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
 dfs = lambda do |node|
@@ -294,7 +294,7 @@ dfs = lambda do |node|
 
   case node.type
   when YAMLCAst::Struct
-    members = API.struct_map[node.name]
+    members = BOUND_API.struct_map[node.name]
     members.each do |m|
       m_type = m.type
       m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
@@ -318,7 +318,7 @@ dfs = lambda do |node|
     # Enums have no dependencies
   when YAMLCAst::CustomType
     # Typedef-to-typedef (e.g. `typedef uint8_t ze_bool_t`). Recurse so the
-    # referenced typedef is emitted first when it lives in API.types.
+    # referenced typedef is emitted first when it lives in BOUND_API.types.
     dfs.call(node.type)
   else
     raise "dfs: unhandled node.type=#{node.type.class} on node=#{node.inspect}"
@@ -334,15 +334,15 @@ end
 
 all_type_sorted[:sorted].each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type)
+    enum = BOUND_API.enum(t.type)
     print_enum(t.name, enum)
-  elsif API.object?(t.name)
+  elsif BOUND_API.object?(t.name)
     print_object(t.name)
   elsif t.type.is_a? YAMLCAst::Struct
-    struct = API.struct(t.type)
+    struct = BOUND_API.struct(t.type)
     print_struct(t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
-    union = API.union(t.type)
+    union = BOUND_API.union(t.type)
     print_union_with_namespace(:ZE, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)

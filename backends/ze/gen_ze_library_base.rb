@@ -3,8 +3,9 @@ require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
 # The Ruby bindings cover every namespace with an api.yaml; zer has none, so it
-# gets no generated class.
-API = APIS.values_at(:ze, :zet, :zes, :zel, :zex).inject(:+)
+# gets no generated class. This is a subset of API, which is everything the
+# tracer wraps.
+BOUND_API = APIS.values_at(:ze, :zet, :zes, :zel, :zex).inject(:+)
 
 def to_class_name(name)
   mod = to_name_space(name)
