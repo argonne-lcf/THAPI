@@ -20,6 +20,10 @@ LTTNG_ARCHIVE_TIMER = '60s'
 LTTNG_DIRWATCH_SIZE = '500' # In MiB
 LTTNG_DIRWATCH_LOCK_RETRY_DELAY = 0.1
 MAX_UINT64_VALUE = (2**64) - 1
+SAMPLING_PERIOD_ENV = {
+  'ze' => 'LTTNG_UST_ZE_SAMPLING_ENERGY_PERIOD_MS',
+  'cxi' => 'LTTNG_UST_CXI_SAMPLING_CXI_PERIOD_MS',
+}.freeze
 
 $LOAD_PATH.unshift(DATADIR) if File.directory?(DATADIR)
 require 'open3'
@@ -135,6 +139,25 @@ end
 #
 def env_fetch_first(*args, default: nil)
   ENV.values_at(*args).compact.first || default
+end
+
+def parse_sampling_intervals(mappings)
+  (mappings || []).each_with_object({}) do |mapping, intervals|
+    backend, milliseconds = mapping.split(':', 2)
+    unless valid_sampling_interval?(backend, milliseconds)
+      raise OptionParser::ParseError,
+            "invalid sample interval #{mapping.inspect}; expected BACKEND:MS"
+    end
+    raise OptionParser::ParseError, "duplicate sample interval backend #{backend}" if intervals.include?(backend)
+
+    intervals[backend] = milliseconds.to_i
+  end
+end
+
+def valid_sampling_interval?(backend, milliseconds)
+  return false unless SAMPLING_PERIOD_ENV.key?(backend) || backend == '*'
+
+  milliseconds&.match?(/\A[1-9]\d*\z/)
 end
 
 # Wait until the block return true
@@ -928,6 +951,7 @@ def all_env_tracers(usr_binary)
       #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
       h['ZES_ENABLE_SYSMAN'] = 0
       h['LTTNG_UST_ZE_SAMPLING_ENERGY'] = 1
+      h[SAMPLING_PERIOD_ENV['ze']] = OPTIONS[:sample]['ze'] if OPTIONS[:sample].key?('ze')
       h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'ze', 'libZESampling.so')
     end
   end
@@ -941,6 +965,7 @@ def all_env_tracers(usr_binary)
     backends << 'cxi'
     if SamplingDaemon.active?
       h['LTTNG_UST_CXI_SAMPLING_CXI'] = 1
+      h[SAMPLING_PERIOD_ENV['cxi']] = OPTIONS[:sample]['cxi'] if OPTIONS[:sample].key?('cxi')
       h['THAPI_SAMPLING_LIBRARIES'] << File.join(PKGLIBDIR, 'cxi', 'libCXISampling.so')
     end
   end
@@ -1066,7 +1091,12 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
             'Set the maximum allowed kernels name size.',
             'Use -1 for no limit.', default: 80)
 
-  parser.on('-s', '--sample', 'Enable counters sampling.')
+  parser.on('-s', '--sample [MAPPINGS]', Array,
+            'Enable counters sampling.',
+            'Format: BACKEND:MS[,BACKEND:MS...].',
+            'Use *:MS to apply an interval to every selected sampling backend.') do |intervals|
+    parse_sampling_intervals(intervals)
+  end
 
   parser.on('--metadata', 'Display trace metadata.')
   parser.on('-v', '--version', 'Print the Version String.') do
@@ -1098,6 +1128,23 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
   options = {}
   begin
     parser.parse!(into: options)
+    options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
+    if options.include?(:sample)
+      sampling_backends = options[:'backend-names'] & SAMPLING_PERIOD_ENV.keys
+      raise OptionParser::ParseError, '--sample requires a sampling backend' if sampling_backends.empty?
+
+      options[:sample].each_key do |backend|
+        next if backend == '*'
+
+        unless sampling_backends.include?(backend)
+          raise OptionParser::ParseError, "--sample backend #{backend} is not selected"
+        end
+      end
+      if (interval = options[:sample].delete('*'))
+        wildcard_intervals = sampling_backends.to_h { |backend| [backend, interval] }
+        options[:sample] = wildcard_intervals.merge(options[:sample])
+      end
+    end
   rescue OptionParser::InvalidOption => e
     puts("ERROR: #{e}. Maybe missing --?")
     print_help_and_exit(parser)
@@ -1106,7 +1153,6 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
     print_help_and_exit(parser)
   end
 
-  options[:'backend-names'] = options[:backends].map { |name_level| name_level.split(':').first }
   OPTIONS = options.freeze
 
   if (launcher = %w[mpirun mpiexec].find { |b| ARGV.include?(b) })

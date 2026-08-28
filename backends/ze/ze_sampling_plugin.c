@@ -755,7 +755,10 @@ void thapi_initialize_sampling_plugin(void) {
 
   // register L0 sampler exactly once
   {
-    struct timespec interval = {.tv_sec = 0, .tv_nsec = 50000000}; /* 50 ms */
+    const char *s = getenv("LTTNG_UST_ZE_SAMPLING_ENERGY_PERIOD_MS");
+    long milliseconds = s ? atol(s) : 50;
+    struct timespec interval = {.tv_sec = milliseconds / 1000,
+                                .tv_nsec = (milliseconds % 1000) * 1000000L};
     plugin_handle = thapi_register_sampling(&thapi_sampling_energy, &interval);
   }
   return;
