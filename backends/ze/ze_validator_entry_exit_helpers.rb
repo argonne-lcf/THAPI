@@ -7,16 +7,16 @@ require 'rgl/traversal'
 
 # Checks for oob index. A command queue is created with an (ordinal, index)
 # pair -- which engine group, and which queue within that group.
-def check_valid_index_for_ordinal(state, ctx, queue_handle, ordinal, index)
+def check_valid_index_for_ordinal(state, ctx, device_handle, cmd_q_handle, ordinal, index)
   return unless state.device_properties
-
-  command_queue_prop = state.device_properties['devices'][0]['command_queue_groups']
-  command_queue_prop.each do |prop|
+  groups = state.device_properties[device_handle]
+  return unless groups
+  
+  groups.each do |ordinal_key, info|
     # find matching ordinal, and check whether the index is oob
-    next unless prop['ordinal'] == ordinal && (index >= prop['numQueues'] || index.negative?)
-
-    state.print_usage_error(ctx, "command queue (#{state.get_handle_str(queue_handle)}) with ordinal = #{ordinal} was created " \
-                                 "with index = #{index}. Index value should be: 0<= index < #{prop['numQueues']}")
+    next unless ordinal_key == ordinal && (index >= info['numQueues'] || index.negative?)
+    state.print_usage_error(ctx, "command queue (#{state.get_handle_str(cmd_q_handle)}) with ordinal = #{ordinal} was created " \
+                                 "with index = #{index}. Index value should be: 0<= index < #{info['numQueues']}")
   end
 end
 
@@ -30,17 +30,21 @@ def check_group_property_queued(state, ctx, _payload, device)
                           "command queue group wasn't queried. Hardcoded group properties may break the code on different devices")
 end
 
-# returns the copy ordinals if retrieved from the ze_device_property.json
-def copy_only_ordinals(state)
+# returns the copy ordinals retrieved from the trace
+def copy_only_ordinals(state, cmd_list)
   return [1, 2] unless state.device_properties
-
-  state.device_properties['devices'][0]['command_queue_groups']
-       .filter_map { |prop| prop['ordinal'] if prop['type'] == 'copy' }
+  groups = state.device_properties[cmd_list.device.handle]
+  return unless groups
+  groups.filter_map do |ordinal, prop|
+      flags = prop['flags']
+      ordinal if flags.include?(:ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY) &&
+                !flags.include?(:ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
+  end
 end
 
 # checks whether a command list attached to a copy-only engine receives a kernel
-def check_valid_ordinal(state, ctx, _payload, cqg_ordinal)
-  copy_only_ords = copy_only_ordinals(state)
+def check_valid_ordinal(state, ctx, _payload, cqg_ordinal, cmd_list)
+  copy_only_ords = copy_only_ordinals(state, cmd_list)
   return unless copy_only_ords.include?(cqg_ordinal) && state.print_tracker['check_valid_ordinal'].zero?
 
   state.print_tracker['check_valid_ordinal'] = 1

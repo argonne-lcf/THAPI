@@ -35,7 +35,7 @@ $upon_entry['zeCommandListAppendLaunchKernel'] = lambda { |state, ctx, payload|
     cqg_ordinal = cmd_list.altdesc[:ordinal]
   end
   # both checks must run even if the launch later aborts
-  check_valid_ordinal(state, ctx, payload, cqg_ordinal)
+  check_valid_ordinal(state, ctx, payload, cqg_ordinal, cmd_list)
   check_kernel_created(state, ctx, payload)
   # the kernel's module must be on the same context as the command list
   check_kernel_list_context_match(state, ctx, payload)
@@ -433,8 +433,9 @@ $on_successful_exit['zeCommandQueueCreate'] = lambda { |state, ctx, payload|
 $on_erroneous_exit['zeCommandQueueCreate'] = lambda { |state, ctx, _payload|
   desc_val = state.find_param(ctx, 'desc_val')
   desc = state.to_struct(desc_val, ZE::ZECommandQueueDesc)
-  handle = state.find_param(ctx, 'phCommandQueue')
-  check_valid_index_for_ordinal(state, ctx, handle, desc[:ordinal], desc[:index])
+  device_handle = state.find_param(ctx, 'hDevice')
+  cmd_queue_handle = state.find_param(ctx, 'phCommandQueue')
+  check_valid_index_for_ordinal(state, ctx, device_handle, cmd_queue_handle, desc[:ordinal], desc[:index])
 }
 
 $on_successful_exit['zeCommandQueueDestroy'] = lambda { |state, ctx, _payload|
@@ -656,7 +657,7 @@ $on_successful_exit['zeMemAllocShared'] = lambda { |state, ctx, payload|
   size = state.find_param(ctx, 'size')
   handle = payload['pptr_val']
   mark_reallocated(state, ctx, ze_context, handle, size)
-  memory_allocation = ZEModel::Memory.new(handle, context_obj, size, device)
+  memory_allocation = ZEModel::Memory.new(handle, context_obj, size, device, 'shared')
   memory_allocations << memory_allocation
   memory_allocations.sort_by!(&:base) if memory_allocation
 }

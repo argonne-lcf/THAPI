@@ -85,7 +85,7 @@ module ZEModel
     # allocations are kept so a later reference is caught as use-after-free.
     attr_accessor :freed_by
 
-    def initialize(handle, context, size, owned_by, memtypestr = 'shared')
+    def initialize(handle, context, size, owned_by, memtypestr)
       super(handle)
       @context = context
       @size = size

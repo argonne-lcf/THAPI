@@ -19,7 +19,7 @@ class StateObject
 
   def initialize(**opts)
     @deprecated = JSON.parse(File.read(File.join(DATADIR, 'ze_deprecated.json')))
-    @device_properties = load_device_properties
+    @device_properties = Hash.new { |h, k| h[k] = {} }
     #for supressing redundant error outputs
     @print_tracker = Hash.new { |h, k| h[k] = 0 }
     # Append a third slot to every entry: "has this warning been printed?".
@@ -70,29 +70,6 @@ class StateObject
 
   end
 
-  # Returns the parsed ze_device_property.json, or nil if it is missing or
-  # unparseable so the validator degrades gracefully.
-  def load_device_properties
-    path = File.join(DATADIR, 'ze_device_property.json')
-    return nil unless File.file?(path)
-    JSON.parse(File.read(path))
-  rescue JSON::ParserError => e
-    $stderr.puts "Warning: could not parse #{path}: #{e.message}"
-    nil
-  end
-
-  # Returns a map e.g.,{"ordinal"=>1, "type"=>"copy", "numQueues"=>8} or nil. Without a
-  # device index it uses the first device.
-  def command_queue_group(ordinal, device_index: nil)
-    return nil unless @device_properties
-    devices = @device_properties['devices'] || []
-    devices = devices.select { |d| d['device_index'] == device_index } if device_index
-    devices.each do |dev|
-      group = (dev['command_queue_groups'] || []).find { |g| g['ordinal'] == ordinal }
-      return group if group
-    end
-    nil
-  end
 
 
   # The innermost API call currently executing on this thread, or nil.
@@ -511,6 +488,7 @@ class StateObject
           #splits "lttng_ust_ze:zeMemAllocDevice_entry" into the API name (m[1])
           #and the phase (m[2]); anything else is ignored
           m = e.name.match(/:(z.*)_(entry|exit)/)
+          device_property = e.name.match(/lttng_ust_ze_properties:command_queue_group/) 
           if m
             hostname = e.stream.trace.get_environment_entry_value_by_name('hostname').value
             context = e.get_common_context_field.value
@@ -529,6 +507,21 @@ class StateObject
             end
             # Runs the blocked commands, if the wait-event(s) are satisfied
             pump_deferred 
+          elsif device_property
+            payload = e.payload_field.value
+            count = payload["pCount"]
+            device = payload["hDevice"]
+            blob  = payload["pGroupProperties_vals"]
+            ptr   = FFI::MemoryPointer.from_string(blob)
+            size  = ZE::ZECommandQueueGroupProperties.size 
+            groups = (0...count).map do |i| ZE::ZECommandQueueGroupProperties.new(ptr + i * size) end
+
+            groups.each_with_index do |g, ordinal|
+              @device_properties[device][ordinal] = {}
+              @device_properties[device][ordinal]['flags'] = g[:flags]
+              @device_properties[device][ordinal]['numQueues'] = g[:numQueues]
+            end
+
           end
         end
       }

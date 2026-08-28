@@ -181,32 +181,6 @@ bin_SCRIPTS = \
 	tracer_ze.sh \
 	ze_validator
 
-# Standalone Level Zero utility that dumps per-device command-queue-group
-# topology (ordinal -> engine type + numQueues) to a JSON file. Meant to be
-# invoked by a separate program. Per the requirement, it is compiled with icpx
-# rather than the project's default $(CXX).
-ICPX = icpx
-ZE_DEVICE_PROPERTY_CXXFLAGS = -std=c++17 -Wall -Wextra -O2
-ZE_DEVICE_PROPERTY_CPPFLAGS = -I$(srcdir)/include
-ZE_DEVICE_PROPERTY_LIBS = -lze_loader
-
-ze_device_property$(EXEEXT): $(srcdir)/ze_device_property.cpp
-	$(ICPX) $(ZE_DEVICE_PROPERTY_CXXFLAGS) $(ZE_DEVICE_PROPERTY_CPPFLAGS) \
-		$< -o $@ $(ZE_DEVICE_PROPERTY_LIBS)
-
-all-local: ze_device_property$(EXEEXT)
-
-install-exec-local: ze_device_property$(EXEEXT)
-	$(MKDIR_P) $(DESTDIR)$(bindir)
-	$(INSTALL_PROGRAM) ze_device_property$(EXEEXT) \
-		$(DESTDIR)$(bindir)/ze_device_property$(EXEEXT)
-
-uninstall-local:
-	$(RM) $(DESTDIR)$(bindir)/ze_device_property$(EXEEXT)
-
-CLEANFILES += ze_device_property$(EXEEXT)
-
-EXTRA_DIST += ze_device_property.cpp
 
 noinst_LTLIBRARIES = libzetracepoints.la
 
