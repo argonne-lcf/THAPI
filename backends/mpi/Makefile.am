@@ -189,8 +189,23 @@ EXTRA_DIST += \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_mpimatching_model.yaml
 
-$(BTX_MPI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_mpimatching_model.yaml btx_mpi_model.yaml
-	$(METABABEL) -u btx_mpi_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_mpi -p mpiinterval -c interval --matching $(srcdir)/btx_mpimatching_model.yaml -i mpi.h.include
+# The MPI interval filter needs to receive Level Zero allocation/free
+# events in addition to MPI events so that btx_mpiinterval_callbacks.cpp
+# can tag GPU-aware MPI calls via address-range lookup. metababel's bare
+# `-u model_a,model_b` union fails when both backend models declare the
+# same environment field (hostname), so we generate a merged upstream
+# model that copies only the ze events we need into MPI's stream class.
+# This adds a build-order dependency mpi -> ze.
+BTX_ZE_MODEL = $(top_builddir)/backends/ze/btx_ze_model.yaml
+
+btx_mpi_with_ze_model.yaml: $(srcdir)/gen_btx_mpi_with_ze_model.rb btx_mpi_model.yaml $(BTX_ZE_MODEL)
+	$(RUBY) $(srcdir)/gen_btx_mpi_with_ze_model.rb btx_mpi_model.yaml $(BTX_ZE_MODEL) > $@
+
+CLEANFILES += btx_mpi_with_ze_model.yaml
+EXTRA_DIST += gen_btx_mpi_with_ze_model.rb
+
+$(BTX_MPI_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_mpimatching_model.yaml btx_mpi_with_ze_model.yaml
+	$(METABABEL) -u btx_mpi_with_ze_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_mpi -p mpiinterval -c interval --matching $(srcdir)/btx_mpimatching_model.yaml -i mpi.h.include
 
 CLEANFILES += \
 	$(BTX_MPI_GENERATED) \
