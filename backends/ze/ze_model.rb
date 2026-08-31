@@ -21,22 +21,26 @@ APIS = {
   zex: ApiModel.load_file('zex_api.yaml'),
 }.freeze
 
-# The extensible structs of one namespace. Level Zero starts each of them with
-# an `stype` tag naming its own type, which is how the tracer knows what a
-# `void *` points at.
-def stype_structs(api)
+# The self-describing structs of one namespace: those whose first member is a
+# tag naming the struct's own type. That tag is what lets the tracer decode a
+# `void *` at runtime, so it is what makes a struct worth its own tracepoint.
+#
+# Level Zero spells the tag `stype`; the name is a parameter because the
+# pattern is not Level Zero's. Any API that tags its extensible structs the
+# same way answers this question by passing its own spelling.
+def tagged_structs(api, tag: 'stype')
   api.types.select do |t|
     t.type.is_a?(YAMLCAst::Struct) &&
-      (struct = api.structs.find { |s| t.type.name == s.name }) &&
-      struct.members.first.name == 'stype'
+      (struct = api.struct_named(t.type.name)) &&
+      struct.members.first.name == tag
   end.map(&:name)
 end
 
 # Those a caller can be handed. The `<ns>_base_` types are the tag's own base
 # classes: a tracepoint exists for each, but no API call ever passes one, so
 # nothing dispatches on them.
-def concrete_stype_structs(namespace, api)
-  stype_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
+def concrete_tagged_structs(namespace, api)
+  tagged_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
 end
 
 # Every namespace as one API, the same thing `API` names in every other

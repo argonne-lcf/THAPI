@@ -8,6 +8,6 @@ puts <<~EOF
   #include "ze.h.include"
 EOF
 
-stype_structs(APIS[:zel]).each do |t|
+tagged_structs(APIS[:zel]).each do |t|
   print_struct_tracepoint(provider, t)
 end

@@ -47,7 +47,7 @@ def gen_struct_event_bt_model(provider, struct)
 end
 
 event_classes += APIS.collect do |ns, api|
-  concrete_stype_structs(ns, api).collect do |struct|
+  concrete_tagged_structs(ns, api).collect do |struct|
     gen_struct_event_bt_model(:"lttng_ust_#{ns}_structs", struct)
   end
 end.flatten

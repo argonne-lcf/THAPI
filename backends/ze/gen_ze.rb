@@ -87,7 +87,7 @@ EOF
   EOF
 end
 
-struct_types = APIS.to_h { |ns, api| [ns, concrete_stype_structs(ns, api)] }
+struct_types = APIS.to_h { |ns, api| [ns, concrete_tagged_structs(ns, api)] }
 
 gen_struct_printer(:ze, struct_types[:ze])
 gen_struct_printer(:zet, struct_types[:zet])

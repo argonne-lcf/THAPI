@@ -52,6 +52,13 @@ class ApiModel
     @struct_map ||= find_struct_map(@types, @structs)
   end
 
+  # The struct a name refers to. Struct names are unique within an API, so this
+  # answers in one lookup what a scan of `structs` answers in a linear pass.
+  def struct_named(name)
+    @structs_by_name ||= @structs.to_h { |s| [s.name, s] }
+    @structs_by_name[name]
+  end
+
   def enum_names
     classify
     @enum_names
