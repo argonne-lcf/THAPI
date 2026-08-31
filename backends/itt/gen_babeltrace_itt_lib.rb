@@ -5,4 +5,4 @@ puts <<~EOF
   require_relative 'itt_library.rb'
 EOF
 
-add_babeltrace_event_callbacks('btx_itt_model.yaml')
+add_babeltrace_event_callbacks(NAMING, 'btx_itt_model.yaml')

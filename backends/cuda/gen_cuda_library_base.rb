@@ -14,8 +14,7 @@ end
 # namer restores three initialisms the word split would lowercase.
 NAMING = NamingContext.new(
   module_name: 'CUDA',
-  api_files: ['cuda_api.yaml', 'cuda_exports_api.yaml'],
-  hex_ints: ['CUdeviceptr'],
+  api: API,
   namespace_pattern: /\A(CUDA|CU)/,
   class_namer: lambda { |naming, name|
     case name

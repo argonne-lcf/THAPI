@@ -4,7 +4,7 @@ require_relative '../../utils/gen_library_base'
 
 NAMING = NamingContext.new(
   module_name: 'MPI',
-  api_files: ['mpi_api.yaml'],
+  api: API,
   namespace_pattern: /\A(mpi|MPI)/,
   strict: true
 )

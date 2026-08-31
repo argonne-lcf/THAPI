@@ -1,5 +1,5 @@
 # Print to std::cout ruby code to pretty print ze event
-def add_babeltrace_event_callbacks(file)
+def add_babeltrace_event_callbacks(naming, file)
   YAML.load_file(file)[:stream_classes].each do |s|
     s[:event_classes].each do |e|
       # Handle payload_field_class not present, in this case empty array
@@ -16,8 +16,7 @@ def add_babeltrace_event_callbacks(file)
         case fc[:type]
         when 'integer_signed', 'integer_unsigned'
           if be_class
-            # API is in scope: callers require their gen_<x>_library_base first.
-            if API.bitfield_names.include?(fc[:cast_type])
+            if naming.api.bitfield_names.include?(fc[:cast_type])
               %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
             else
               %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}

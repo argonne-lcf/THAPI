@@ -60,7 +60,7 @@ EOF
 def print_struct(name, struct, fnptr_syms)
   # Replace function pointer field types with :pointer.
   # This avoids unresolved type errors when callbacks are defined later.
-  members = struct.to_ffi.map do |m|
+  members = struct.to_ffi(NAMING).map do |m|
     t = m[1]
     if t.is_a?(Array)
       elem_t = t[0]
@@ -96,7 +96,7 @@ EOF
   typedef #{NAMING.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
-  close_type(name)
+  close_type(NAMING, name)
 end
 
 # Build a set of all function pointer typedef symbols to detect struct fields
@@ -135,7 +135,7 @@ end
 
 # Emit collected callbacks
 callbacks.each do |name, func|
-  print_function_pointer_type(name, func)
+  print_function_pointer_type(NAMING, name, func)
 end
 
 puts <<~EOF

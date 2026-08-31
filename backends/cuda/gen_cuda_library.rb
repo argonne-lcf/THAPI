@@ -40,7 +40,7 @@ API.types.each do |t|
     union = API.union(t.type)
     print_union_with_namespace(NAMING, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    print_function_pointer_type(t.name, t.type.type)
+    print_function_pointer_type(NAMING, t.name, t.type.type)
   end
 end
 

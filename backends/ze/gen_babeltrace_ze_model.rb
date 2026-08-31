@@ -1,7 +1,7 @@
 require_relative 'gen_ze_library_base'
 require_relative '../../utils/gen_babeltrace_model_helper'
 
-registry = build_ast_registry('ze', expect_bitfields: true)
+registry = build_ast_registry(NAMING, 'ze', expect_bitfields: true)
 
 event_classes = gen_command_events_bt_model(registry, COMMANDS.groups)
 event_classes += gen_extra_events_bt_model(registry, 'ze_events.yaml')

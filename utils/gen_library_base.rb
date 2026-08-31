@@ -1,13 +1,5 @@
 require_relative 'api_model'
 
-# Class name for an API that already spells its types in the target case, so
-# the only work is the namespace prefix. hip and mpi each write theirs two ways
-# -- hipDeviceProp_t and HIP_ARRAY_DESCRIPTOR -- and only the lowercase
-# spelling is title-cased, leaving HipDeviceProp_t and HIP_ARRAY_DESCRIPTOR.
-# The rest of the name is left exactly as the header spells it.
-#
-# The backends whose headers are camelCase (cuda, ze, omp, itt) do more than
-# this -- they split on '_' and recase every word -- so they keep their own.
 # What a backend owes the shared library generator: where its types come from,
 # and how their names are spelled in Ruby.
 #
@@ -15,40 +7,36 @@ require_relative 'api_model'
 # that API and the others, stated in one place instead of hidden in a redefined
 # function or a hardcoded constant. Reading six of these side by side is meant
 # to show exactly what a general generator would still have to account for.
-#
-# The api.yaml files are parsed on first use and kept, so asking for `api`
-# repeatedly costs one parse.
 class NamingContext
-  attr_reader :module_name, :namespace_pattern, :strict, :ffi_struct, :ffi_union
+  attr_reader :api, :module_name, :namespace_pattern, :strict, :ffi_struct, :ffi_union
 
+  # `api` is the model the backend has already built, handed over rather than
+  # reached for. The shared generators below have to ask what a name is, and
+  # this is the single place that says which API answers them.
+  #
   # `ffi_prefix` names the FFI base classes. It defaults to `module_name`
   # because five backends agree; OMPT spells its bases OMPT* under a module
   # called OMP, and says so here.
   #
   # `class_namer` defaults to the prefix rule hip and mpi follow. A backend
   # whose headers are camelCase recases every word instead, and passes its own.
+  #
   # `upcase_namespace` reports an API whose C prefix is lowercase but whose Ruby
   # class prefix is not (ze_ -> ZE); it is a property of the headers, not a
   # style choice, so it is stated rather than folded into each namer.
-  def initialize(module_name:, api_files:, namespace_pattern:, strict: false,
-                 hex_ints: [], ffi_prefix: nil, upcase_namespace: false,
-                 class_namer: nil)
+  def initialize(module_name:, api:, namespace_pattern:, strict: false,
+                 ffi_prefix: nil, upcase_namespace: false, class_namer: nil)
     @upcase_namespace = upcase_namespace
     @module_name = module_name
-    @api_files = api_files
+    @api = api
     @namespace_pattern = namespace_pattern
     @strict = strict
-    @hex_ints = hex_ints
     ffi_prefix ||= module_name
     @ffi_struct = "FFI::#{ffi_prefix}Struct"
     @ffi_union = "FFI::#{ffi_prefix}Union"
     # A namer is handed the context so it can reuse name_space rather than
     # restate the pattern.
     @class_namer = class_namer || ->(ctx, name) { prefixed_class_name(name, ctx.name_space(name)) }
-  end
-
-  def api
-    @api ||= @api_files.collect { |f| ApiModel.load_file(f, hex_ints: @hex_ints) }.inject(:+)
   end
 
   def name_space(name)
@@ -65,6 +53,14 @@ class NamingContext
   end
 end
 
+# Class name for an API that already spells its types in the target case, so
+# the only work is the namespace prefix. hip and mpi each write theirs two ways
+# -- hipDeviceProp_t and HIP_ARRAY_DESCRIPTOR -- and only the lowercase
+# spelling is title-cased, leaving HipDeviceProp_t and HIP_ARRAY_DESCRIPTOR.
+# The rest of the name is left exactly as the header spells it.
+#
+# The backends whose headers are camelCase (cuda, ze, omp, itt) do more than
+# this -- they split on '_' and recase every word -- so they keep their own.
 def prefixed_class_name(name, namespace)
   namespace = namespace.to_s
   rest = name.sub(/\A#{namespace}/, '')
@@ -389,19 +385,19 @@ EOF
   EOF
 end
 
-def close_type(name)
-  API.aliases_of(name).each do |t|
+def close_type(naming, name)
+  naming.api.aliases_of(name).each do |t|
     puts <<EOF
   typedef #{to_ffi_name(name)}, #{to_ffi_name(t.name)}
 
 EOF
-    close_type(t.name)
+    close_type(naming, t.name)
   end
 end
 
 def print_union_with_namespace(naming, name, union)
   namespace = naming.module_name
-  members = union.to_ffi
+  members = union.to_ffi(naming)
   print_lambda = lambda { |m|
     s = "#{m[0]}, "
     s << if m[1].is_a?(Array)
@@ -433,8 +429,8 @@ def print_int_type(name, t_name)
 EOF
 end
 
-def print_function_pointer_type(name, func)
-  type, params = func.to_ffi
+def print_function_pointer_type(naming, name, func)
+  type, params = func.to_ffi(naming)
   puts <<EOF
   callback #{to_ffi_name(name)},
            [ #{params.join(",\n" + (' ' * 13))} ],
@@ -450,7 +446,7 @@ end
 
 def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true)
   namespace = naming.module_name
-  members = struct.to_ffi
+  members = struct.to_ffi(naming)
   print_lambda = lambda { |m|
     s = "#{m[0]}, "
     s << if m[1].is_a?(Array)
@@ -477,12 +473,12 @@ EOF
   typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
-  close_type(name) if close
+  close_type(naming, name) if close
 end
 
 module YAMLCAst
   module Composite
-    def to_ffi
+    def to_ffi(naming)
       unamed_count = 0
       result = []
       bitfields = BitfieldAccumulator.new
@@ -491,7 +487,8 @@ module YAMLCAst
           bitfields.add(m)
         else
           bitfields.flush_to_result(result)
-          result << [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}", member_to_ffi(m.type)]
+          result << [m.name ? m.name.to_sym.inspect : ":_unamed_#{unamed_count += 1}",
+                     member_to_ffi(naming, m.type)]
         end
       end
       bitfields.flush_to_result(result)
@@ -500,23 +497,24 @@ module YAMLCAst
 
     private
 
-    def member_to_ffi(type)
+    def member_to_ffi(naming, type)
+      api = naming.api
       case type
       when Array
         type.to_ffi
       when Pointer
         ':pointer'
       when Struct
-        if type.name && API.typedef?(type.name)
+        if type.name && api.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          "(Class::new(#{NAMING.ffi_struct}) { layout #{gen_layout(API.struct(type).to_ffi)} }.by_value)"
+          "(Class::new(#{naming.ffi_struct}) { layout #{gen_layout(api.struct(type).to_ffi(naming))} }.by_value)"
         end
       when Union
-        if type.name && API.typedef?(type.name)
+        if type.name && api.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          "(Class::new(#{NAMING.ffi_union}) { layout #{gen_layout(API.union(type).to_ffi)} }.by_value)"
+          "(Class::new(#{naming.ffi_union}) { layout #{gen_layout(api.union(type).to_ffi(naming))} }.by_value)"
         end
       else
         type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")
@@ -588,7 +586,7 @@ module YAMLCAst
   end
 
   class Function
-    def to_ffi
+    def to_ffi(naming)
       t = if type.respond_to?(:name)
             to_ffi_name(type.name)
           elsif type.is_a?(Pointer)
@@ -599,8 +597,8 @@ module YAMLCAst
       p = (params || []).collect do |par|
         if par.type.is_a?(Pointer)
           if par.type.type.respond_to?(:name) &&
-             API.struct_names.include?(par.type.type.name)
-            "#{NAMING.class_name(par.type.type.name)}.ptr"
+             naming.api.struct_names.include?(par.type.type.name)
+            "#{naming.class_name(par.type.type.name)}.ptr"
           else
             ':pointer'
           end

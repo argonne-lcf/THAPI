@@ -6,7 +6,7 @@ require_relative '../../utils/gen_library_base'
 # rule does not strip, and names that may be snake_case or camelCase.
 NAMING = NamingContext.new(
   module_name: 'ITT',
-  api_files: ['itt_api.yaml'],
+  api: API,
   namespace_pattern: /\A(__itt[dt]?)_/,
   strict: true,
   upcase_namespace: true,

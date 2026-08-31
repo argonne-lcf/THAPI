@@ -210,7 +210,7 @@ def print_struct(name, struct)
     prepends << 'Handle'
   end
 
-  if struct.to_ffi.first[0] == ':stype' && !STRUCT_TYPE_REJECT.include?(name)
+  if struct.to_ffi(NAMING).first[0] == ':stype' && !STRUCT_TYPE_REJECT.include?(name)
     initializer = <<EOF
 
     def initialize(*args)
@@ -345,7 +345,7 @@ all_type_sorted[:sorted].each do |t|
     union = BOUND_API.union(t.type)
     print_union_with_namespace(NAMING, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    print_function_pointer_type(t.name, t.type.type)
+    print_function_pointer_type(NAMING, t.name, t.type.type)
   end
 end
 

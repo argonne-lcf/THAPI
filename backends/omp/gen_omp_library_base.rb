@@ -7,7 +7,7 @@ require_relative '../../utils/gen_library_base'
 NAMING = NamingContext.new(
   module_name: 'OMP',
   ffi_prefix: 'OMPT',
-  api_files: ['ompt_api.yaml'],
+  api: API,
   namespace_pattern: /\A(omp[dt]?)_/,
   strict: true,
   upcase_namespace: true,

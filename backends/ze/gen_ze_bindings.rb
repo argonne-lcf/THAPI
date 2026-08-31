@@ -10,7 +10,7 @@ puts <<~EOF
 EOF
 
 BOUND_API.functions.each do |f|
-  type, params = f.type.to_ffi
+  type, params = f.type.to_ffi(NAMING)
   puts <<EOF
   begin
     attach_function #{to_ffi_name(f.name)},

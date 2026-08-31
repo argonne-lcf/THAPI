@@ -11,7 +11,7 @@ BOUND_API = APIS.values_at(:ze, :zet, :zes, :zel, :zex).inject(:+)
 # is recased, and four initialisms are restored afterwards.
 NAMING = NamingContext.new(
   module_name: 'ZE',
-  api_files: ['ze_api.yaml', 'zet_api.yaml', 'zes_api.yaml', 'zel_api.yaml'],
+  api: API,
   namespace_pattern: /\A(ze[xstlr]?)_/,
   strict: true,
   upcase_namespace: true,

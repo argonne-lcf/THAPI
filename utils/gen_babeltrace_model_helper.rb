@@ -5,11 +5,12 @@ require_relative 'type_registry'
 # API has bitfield types is a fact about its headers, so each backend states
 # what it expects: a backend that silently stopped classifying them would
 # otherwise emit plain integers where enum metadata belongs.
-def build_ast_registry(backend, expect_bitfields:)
+def build_ast_registry(naming, backend, expect_bitfields:)
+  api = naming.api
   registry = TypeRegistry.new(
-    all_types: API.types, all_enums: API.enums,
-    enum_names: API.enum_names, bitfield_names: API.bitfield_names, struct_names: API.struct_names,
-    class_namer: ->(name) { NAMING.scoped_class_name(name) }
+    all_types: api.types, all_enums: api.enums,
+    enum_names: api.enum_names, bitfield_names: api.bitfield_names, struct_names: api.struct_names,
+    class_namer: ->(name) { naming.scoped_class_name(name) }
   )
   if expect_bitfields
     raise "#{backend}: expected bitfield types" if registry.bitfield_names.empty?
