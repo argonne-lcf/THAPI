@@ -38,7 +38,6 @@ CLEANFILES = $(OMP_EXTRACTED)
 OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
 	$(srcdir)/ompt_meta_parameters.yaml \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
@@ -90,7 +89,7 @@ OMP_PROBES_TP = $(OMP_PROBES:=.tp)
 OMP_PROBES_INCL = $(OMP_PROBES:=.h)
 OMP_PROBES_SRC = $(OMP_PROBES:=.c)
 
-$(OMP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(OMP_MODEL)
+$(OMP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(OMP_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 %.h %.c: %.tp

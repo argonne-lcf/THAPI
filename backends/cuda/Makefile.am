@@ -191,13 +191,13 @@ CUDART_PROBES_INCL = $(CUDART_PROBES:=.h)
 
 CUDART_PROBES_SRC = $(CUDART_PROBES:=.c)
 
-$(CUDA_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDA_MODEL)
+$(CUDA_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDA_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL)
+$(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(CUDA_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cuda_events.yaml
+$(CUDA_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cuda_events.yaml $(top_srcdir)/utils/gen_probe_base.rb
 	$(RUBY) $< $(srcdir)/cuda_events.yaml lttng_ust_$* "<cuda.h>" > $@
 
 %.h %.c: %.tp

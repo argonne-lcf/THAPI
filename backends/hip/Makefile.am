@@ -235,7 +235,7 @@ HIP_PROBES_INCL = $(HIP_PROBES:=.h)
 
 HIP_PROBES_SRC = $(HIP_PROBES:=.c)
 
-$(HIP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(HIP_MODEL)
+$(HIP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(HIP_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 %.h %.c: %.tp

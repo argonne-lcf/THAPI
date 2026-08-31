@@ -43,7 +43,6 @@ EXTRA_DIST += \
 ITT_MODEL = \
 	$(srcdir)/itt_model.rb \
 	$(srcdir)/itt_meta_parameters.yaml \
-	$(top_srcdir)/utils/gen_probe_base.rb \
 	$(top_srcdir)/utils/api_model.rb \
 	$(top_srcdir)/utils/yaml_ast.rb \
 	$(top_srcdir)/utils/yaml_ast_lttng.rb \
@@ -61,7 +60,7 @@ ITT_PROBES_TP = $(ITT_PROBES:=.tp)
 ITT_PROBES_INCL = $(ITT_PROBES:=.h)
 ITT_PROBES_SRC = $(ITT_PROBES:=.c)
 
-$(ITT_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ITT_MODEL)
+$(ITT_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ITT_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 ITT_STATIC_PROBES = itt_metadata
@@ -69,7 +68,7 @@ ITT_STATIC_PROBES_TP = $(ITT_STATIC_PROBES:=.tp)
 ITT_STATIC_PROBES_INCL = $(ITT_STATIC_PROBES:=.h)
 ITT_STATIC_PROBES_SRC = $(ITT_STATIC_PROBES:=.c)
 
-$(ITT_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/itt_events.yaml $(ITT_MODEL)
+$(ITT_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/itt_events.yaml $(ITT_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	$(RUBY) $< $(srcdir)/itt_events.yaml lttng_ust_$* ittnotify.h > $@
 
 %.h %.c: %.tp

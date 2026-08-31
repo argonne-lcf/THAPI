@@ -1,5 +1,22 @@
-# The whole of a tracepoint-provider generator: an include line, then one pair
-# of entry/exit tracepoints per traced function.
+require 'yaml'
+require_relative 'LTTng'
+
+# The events a backend writes out by hand, rather than deriving them from a
+# traced function's prototype. They live under the provider's name in a
+# `<backend>_events.yaml`; a provider that has none is simply absent from it.
+#
+# The enums come first so that an enum a declared event names is in scope for
+# it.
+def print_declared_events(provider, declared)
+  return unless declared
+
+  declared['enums'].to_a.each { |e| LTTng.print_enum(provider, e) }
+  declared['events'].to_a.each { |e| LTTng.print_tracepoint(provider, e) }
+end
+
+# The whole of a tracepoint-provider generator. A provider's events come from
+# two places and it may use either or both: the ones declared in `events_path`,
+# and one pair of entry/exit tracepoints per traced function.
 #
 # `directions` is what a backend wires an event to. Five APIs trace a call's
 # entry and its return separately, so a function becomes two tracepoints.
@@ -8,16 +25,13 @@
 #
 # A function with more parameters than LTTng can carry is skipped: the macro
 # would not compile, and dropping the event is better than failing the build.
-def print_tracepoint_provider(provider, commands, include:, directions: %i[start stop])
+def print_tracepoint_provider(provider, commands, include:, events_path: nil, directions: %i[start stop])
   puts <<~EOF
     #include "lttng/tracepoint_gen.h"
     #{include}
   EOF
 
-  # A provider that also declares events of its own, not derived from a traced
-  # function, emits them here -- before the generated ones, so its enums are in
-  # scope for them.
-  yield if block_given?
+  print_declared_events(provider, events_path && YAML.load_file(events_path)[provider.to_s])
 
   commands.groups[provider].each do |c|
     next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
