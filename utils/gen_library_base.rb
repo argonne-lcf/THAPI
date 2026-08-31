@@ -399,9 +399,10 @@ end
 # an inline array. Struct and union bodies differ only in the class they open,
 # so they render their members through here.
 def ffi_layout(members)
-  members.collect { |name, type|
+  layouts = members.collect do |name, type|
     "#{name}, " + (type.is_a?(Array) ? "[ #{type[0]}, #{type[1]} ]" : type.to_s)
-  }.join(",\n" + (' ' * 11))
+  end
+  layouts.join(",\n" + (' ' * 11))
 end
 
 def print_union_with_namespace(naming, name, union)

@@ -15,9 +15,9 @@ NAMING = NamingContext.new(
     mod += '::' unless mod.empty? || mod.end_with?('::')
 
     base = name.to_s
-      .sub(/_t\z/i, '')
-      .sub(/\A_+/, '')
-      .sub(/\A__?itt[dt]?_/i, '')
+               .sub(/_t\z/i, '')
+               .sub(/\A_+/, '')
+               .sub(/\A__?itt[dt]?_/i, '')
     base = if base.include?('_')
              base.split('_').map(&:capitalize).join
            elsif base[0] =~ /[a-z]/

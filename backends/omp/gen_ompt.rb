@@ -9,10 +9,10 @@ puts <<~EOF
 EOF
 
 normal_wrapper = lambda { |c, provider|
-  print_wrapper(c, storage: 'static ') {
+  print_wrapper(c, storage: 'static ') do
     print_tracepoint_locals(c)
     print_tracepoint_call(provider, c, nil, tracepoint_call_args(c))
-  }
+  end
 }
 
 COMMANDS.each do |c|

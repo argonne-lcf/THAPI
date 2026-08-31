@@ -48,7 +48,7 @@ def to_ffi_name(name)
   mod = NAMING.name_space(name)
   if mod
     n = n.gsub(/\A#{mod}/, '')
-    mod = mod + '_'
+    mod += '_'
     mod = mod.downcase
   else
     mod = ''

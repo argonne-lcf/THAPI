@@ -145,17 +145,18 @@ puts File.read(File.join(SRC_DIR, 'tracer_ze_helpers.include.c'))
 # handed. `direction` picks which side of the call is worth walking: an input
 # struct is only meaningful before the call, an output struct only after.
 print_chained_structs = lambda { |c, provider, types, direction|
-  c.meta_parameters.select { |p|
+  chained = c.meta_parameters.select do |p|
     p.is_a?(direction) &&
       (a = p.command[p.name]) &&
       !a.type.type.is_a?(YAMLCAst::Pointer) &&
       types.include?(a.type.type.name)
-  }.each { |p|
+  end
+  chained.each do |p|
     puts <<EOF
   if (_do_chained_structs && #{p.name})
     _print_#{provider}_structs(#{p.name}->pNext);
 EOF
-  }
+  end
 }
 
 common_block = lambda { |c, provider, types|

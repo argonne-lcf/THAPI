@@ -131,7 +131,8 @@ module YAMLCAst
     def self.from_yaml_ast(node)
       new_node = node.dup
       new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| self::MEMBER_CLASS.from_yaml_ast(m) } if new_node['members']
+      members = new_node['members']
+      new_node['members'] = members.collect { |m| self::MEMBER_CLASS.from_yaml_ast(m) } if members
       new_node.transform_keys!(&:to_sym)
       new(**new_node)
     end
