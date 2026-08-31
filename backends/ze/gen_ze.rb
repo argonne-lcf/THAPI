@@ -1,4 +1,5 @@
 require_relative 'ze_model'
+require_relative '../../utils/gen_tracer_base'
 
 puts <<~EOF
     #include <stdint.h>
@@ -140,101 +141,58 @@ EOF
 
 puts File.read(File.join(SRC_DIR, 'tracer_ze_helpers.include.c'))
 
-common_block = lambda { |c, provider, types|
-  params = c.parameters ? c.parameters.collect(&:name) : []
-  tp_params = if c.parameters
-                c.parameters.collect do |p|
-                  if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
-                    '(void *)(intptr_t)' + p.name
-                  else
-                    p.name
-                  end
-                end
-              else
-                []
-              end
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  c.tracepoint_parameters.each do |p|
-    puts "  #{p.type} #{p.name};"
-  end
-  c.tracepoint_parameters.each do |p|
-    puts p.init
-  end
-  puts <<EOF
-  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params + tracepoint_params).join(', ')});
-EOF
-  c.meta_parameters.select do |p|
-    p.is_a?(InScalar) &&
+# ze can be asked to walk the pNext chain of an extension struct a call was
+# handed. `direction` picks which side of the call is worth walking: an input
+# struct is only meaningful before the call, an output struct only after.
+print_chained_structs = lambda { |c, provider, types, direction|
+  c.meta_parameters.select { |p|
+    p.is_a?(direction) &&
       (a = p.command[p.name]) &&
+      !a.type.type.is_a?(YAMLCAst::Pointer) &&
       types.include?(a.type.type.name)
-  end.each do |p|
+  }.each { |p|
     puts <<EOF
   if (_do_chained_structs && #{p.name})
     _print_#{provider}_structs(#{p.name}->pNext);
 EOF
-  end
+  }
+}
+
+common_block = lambda { |c, provider, types|
+  call_args = tracepoint_call_args(c)
+  print_tracepoint_locals(c)
+  print_tracepoint_call(provider, c, :start, call_args)
+  print_chained_structs.call(c, provider, types, InScalar)
 
   c.prologues.each do |p|
     puts p
   end
 
-  if c.has_return_type?
-    puts <<EOF unless c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
-  #{c.type} _retval;
-EOF
-    puts <<EOF
-  _retval = #{ZE_POINTER_NAMES[c]}(#{params.join(', ')});
-EOF
-  else
-    puts "  #{ZE_POINTER_NAMES[c]}(#{params.join(', ')});"
-  end
+  # A ProcAddrTable getter declares _retval in its own prologue, because the
+  # prologue has to reach into the table the call is about to fill in.
+  print_traced_call(c, ZE_POINTER_NAMES[c],
+                    declare_retval: !c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/))
+
   c.epilogues.each do |e|
     puts e
   end
-  tp_params.push '_retval' if c.has_return_type?
-  puts <<EOF
-  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params + tracepoint_params).join(', ')});
-EOF
-  c.meta_parameters.select do |p|
-    p.is_a?(OutScalar) &&
-      (a = p.command[p.name]) &&
-      !a.type.type.is_a?(YAMLCAst::Pointer) &&
-      types.include?(a.type.type.name)
-  end.each do |p|
-    puts <<EOF
-  if (_do_chained_structs && #{p.name})
-    _print_#{provider}_structs(#{p.name}->pNext);
-EOF
-  end
+  call_args.push '_retval' if c.has_return_type?
+  print_tracepoint_call(provider, c, :stop, call_args)
+  print_chained_structs.call(c, provider, types, OutScalar)
 }
 
 normal_wrapper = lambda { |c, provider, types|
-  puts <<~EOF
-    #{c.decl} {
-  EOF
-  if c.init?
-    puts <<EOF
-  _init_tracer();
-EOF
-    # _init_tracer_dump() calls the real zeInit (ZE_INIT_PTR) and dumps device
-    # properties. zesInit piggybacks on it so a pure-Sysman program (no zeInit)
-    # still initializes the ze backend it depends on.
-    if %w[zeInit zesInit].include?(c.name)
-      puts <<EOF
-  _init_tracer_dump();
-EOF
-    end
-  end
-  common_block.call(c, provider, types)
-  if c.has_return_type?
-    puts <<EOF
-  return _retval;
-EOF
-  end
-  puts <<~EOF
-    }
-
-  EOF
+  # _init_tracer_dump() calls the real zeInit (ZE_INIT_PTR) and dumps device
+  # properties. zesInit piggybacks on it so a pure-Sysman program (no zeInit)
+  # still initializes the ze backend it depends on.
+  init = if !c.init?
+           nil
+         elsif %w[zeInit zesInit].include?(c.name)
+           "_init_tracer();\n  _init_tracer_dump();"
+         else
+           '_init_tracer();'
+         end
+  print_wrapper(c, init: init) { common_block.call(c, provider, types) }
 }
 
 # Which of a namespace's entry points get a hidden alias. zel is the exception:

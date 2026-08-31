@@ -98,7 +98,7 @@ BUILT_SOURCES = \
 	$(MPI_PROBES_INCL) \
 	$(MPI_STATIC_PROBES_INCL)
 
-tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL) $(MPI_STATIC_PROBES_INCL)
+tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL) $(MPI_STATIC_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \

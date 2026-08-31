@@ -227,10 +227,10 @@ BUILT_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	tracer_cudart.map
 
-tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml
+tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL)
+tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_cudart.map: $(srcdir)/gen_cudart_linker_script.rb $(CUDART_MODEL)

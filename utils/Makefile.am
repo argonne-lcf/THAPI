@@ -73,6 +73,9 @@ EXTRA_DIST = \
 	yaml_ast.rb \
 	yaml_ast_lttng.rb \
 	gen_library_base.rb \
+	gen_probe_base.rb \
+	gen_tracer_base.rb \
+	gen_custom_probes.rb \
 	api_model.rb \
 	type_registry.rb \
 	dump_trace_format.rb \

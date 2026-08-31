@@ -22,13 +22,18 @@ class ApiModel
         functions: lists.fetch('functions', []), hex_ints: hex_ints)
   end
 
+  # The five lists are what the YAML said, so they are frozen: a generator that
+  # edited one would make its output depend on the order things ran in, and the
+  # freeze turns that into a FrozenError at the site instead of a puzzle later.
+  # It is shallow -- it guards the lists, not the AST nodes in them -- and `+`
+  # builds new lists, so composing models still works.
   def initialize(types: [], structs: [], unions: [], enums: [], functions: [], hex_ints: [])
-    @types = types
-    @structs = structs
-    @unions = unions
-    @enums = enums
-    @functions = functions
-    @hex_ints = hex_ints
+    @types = types.freeze
+    @structs = structs.freeze
+    @unions = unions.freeze
+    @enums = enums.freeze
+    @functions = functions.freeze
+    @hex_ints = hex_ints.freeze
   end
 
   def +(other)
@@ -45,17 +50,17 @@ class ApiModel
   end
 
   def int_scalars
-    @int_scalars ||= find_int_scalars(@types, type_classes.integers)
+    @int_scalars ||= find_int_scalars(@types, type_classes.integers).freeze
   end
 
   def struct_map
-    @struct_map ||= find_struct_map(@types, @structs)
+    @struct_map ||= find_struct_map(@types, @structs).freeze
   end
 
   # The struct a name refers to. Struct names are unique within an API, so this
   # answers in one lookup what a scan of `structs` answers in a linear pass.
   def struct_named(name)
-    @structs_by_name ||= @structs.to_h { |s| [s.name, s] }
+    @structs_by_name ||= @structs.to_h { |s| [s.name, s] }.freeze
     @structs_by_name[name]
   end
 
@@ -143,6 +148,7 @@ class ApiModel
     end
     @bitfield_names += @bitfield_names.select { |n| n.end_with?('_flag_t') }
                                       .map { |n| n.gsub('_flag_t', '_flags_t') }
+    [@enum_names, @bitfield_names, @struct_names].each(&:freeze)
   end
 
   def find_int_scalars(all_types, integers)

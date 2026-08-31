@@ -46,7 +46,7 @@ end
 # Every namespace as one API, the same thing `API` names in every other
 # backend. The derivations have to see all of them at once: a zet typedef
 # routinely names a ze struct.
-API = APIS.values.inject(:+)
+API = APIS.values.reduce(:+)
 
 gen_ffi_type_map(API.types, API.type_classes)
 

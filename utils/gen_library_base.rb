@@ -395,21 +395,21 @@ EOF
   end
 end
 
+# One `layout` argument list: `:name, :type`, or `:name, [ :type, count ]` for
+# an inline array. Struct and union bodies differ only in the class they open,
+# so they render their members through here.
+def ffi_layout(members)
+  members.collect { |name, type|
+    "#{name}, " + (type.is_a?(Array) ? "[ #{type[0]}, #{type[1]} ]" : type.to_s)
+  }.join(",\n" + (' ' * 11))
+end
+
 def print_union_with_namespace(naming, name, union)
   namespace = naming.module_name
   members = union.to_ffi(naming)
-  print_lambda = lambda { |m|
-    s = "#{m[0]}, "
-    s << if m[1].is_a?(Array)
-           "[ #{m[1][0]}, #{m[1][1]} ]"
-         else
-           "#{m[1]}"
-         end
-    s
-  }
   puts <<EOF
   class #{naming.class_name(name)} < FFI::#{namespace}Union
-    layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
+    layout #{ffi_layout(members)}
   end
   typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}
 
@@ -444,18 +444,13 @@ def print_struct_prepending_uuid(naming, name, struct)
   print_struct_with_namespace(naming, name, struct, prepends: prepends)
 end
 
-def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true)
+# `members` defaults to the struct's own layout. A backend overrides it when it
+# has to rewrite member types before emitting -- itt refers to function
+# pointers it only defines further down the file, so it passes :pointer for
+# them instead of a name FFI cannot resolve yet.
+def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true,
+                                members: struct.to_ffi(naming))
   namespace = naming.module_name
-  members = struct.to_ffi(naming)
-  print_lambda = lambda { |m|
-    s = "#{m[0]}, "
-    s << if m[1].is_a?(Array)
-           "[ #{m[1][0]}, #{m[1][1]} ]"
-         else
-           "#{m[1]}"
-         end
-    s
-  }
   puts <<EOF
   class #{naming.class_name(name)} < FFI::#{namespace}Struct
 EOF
@@ -465,7 +460,7 @@ EOF
 EOF
   end
   puts <<EOF
-    layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
+    layout #{ffi_layout(members)}
 EOF
   puts initializer if initializer
   puts <<EOF
@@ -504,17 +499,19 @@ module YAMLCAst
         type.to_ffi
       when Pointer
         ':pointer'
-      when Struct
+      when Struct, Union
+        # A named layout the API also typedefs can be referred to by that name.
+        # An anonymous one, or one this API never typedefs, has to be spelled
+        # out as a class defined right here.
         if type.name && api.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          "(Class::new(#{naming.ffi_struct}) { layout #{gen_layout(api.struct(type).to_ffi(naming))} }.by_value)"
-        end
-      when Union
-        if type.name && api.typedef?(type.name)
-          to_ffi_name(type.name)
-        else
-          "(Class::new(#{naming.ffi_union}) { layout #{gen_layout(api.union(type).to_ffi(naming))} }.by_value)"
+          ffi_base, definition = if type.is_a?(Struct)
+                                   [naming.ffi_struct, api.struct(type)]
+                                 else
+                                   [naming.ffi_union, api.union(type)]
+                                 end
+          "(Class::new(#{ffi_base}) { layout #{gen_layout(definition.to_ffi(naming))} }.by_value)"
         end
       else
         type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")

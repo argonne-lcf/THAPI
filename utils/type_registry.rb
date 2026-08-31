@@ -20,6 +20,10 @@ class TypeRegistry
       @integer_sizes["enum #{e.name}"] = 32
       @integer_signed["enum #{e.name}"] = true
     end
+    # Nothing here changes once the registry is built, so a later write is a
+    # bug: freezing turns it into a FrozenError at the write instead of a
+    # classification that silently depends on generation order.
+    [@types_by_name, @integer_sizes, @integer_signed].each(&:freeze)
   end
 
   # A pointer or an array is an address, whatever it points at.

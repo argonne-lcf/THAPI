@@ -1,9 +1,5 @@
 require_relative 'gen_omp_library_base'
 
-def print_bitfield(name, enum)
-  print_bitfield_with_namespace(NAMING, name, enum, check_flags: true)
-end
-
 def print_enum(name, enum)
   if enum.name.end_with?('flag_t')
     print_bitfield_with_namespace(NAMING, name, enum, check_flags: true)

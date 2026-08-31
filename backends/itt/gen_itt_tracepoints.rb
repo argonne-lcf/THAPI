@@ -1,15 +1,6 @@
 require_relative 'itt_model'
 require_relative '../../utils/gen_probe_base'
 
-provider = :lttng_ust_itt
-
-puts <<~EOF
-  #include "lttng/tracepoint_gen.h"
-  #include "ittnotify.h"
-EOF
-
-COMMANDS.groups[provider].each do |c|
-  next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
-
-  print_tracepoint(provider, c)
-end
+print_tracepoint_provider(:lttng_ust_itt, COMMANDS,
+                          include: '#include "ittnotify.h"',
+                          directions: [nil])

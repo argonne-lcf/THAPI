@@ -1,13 +1,5 @@
 require_relative 'ze_model'
 require_relative '../../utils/gen_probe_base'
 
-provider = :lttng_ust_zes_structs
-
-puts <<~EOF
-  #include "lttng/tracepoint_gen.h"
-  #include "ze.h.include"
-EOF
-
-tagged_structs(APIS[:zes]).each do |t|
-  print_struct_tracepoint(provider, t)
-end
+print_struct_tracepoint_provider(:lttng_ust_zes_structs, tagged_structs(APIS[:zes]),
+                                 include: '#include "ze.h.include"')

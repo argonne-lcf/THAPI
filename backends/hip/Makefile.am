@@ -252,7 +252,7 @@ EXTRA_DIST += \
 BUILT_SOURCES = \
 	$(HIP_PROBES_INCL)
 
-tracer_hip.c: $(srcdir)/gen_hip.rb $(srcdir)/tracer_hip_helpers.include.c $(HIP_MODEL) $(HIP_PROBES_INCL)
+tracer_hip.c: $(srcdir)/gen_hip.rb $(srcdir)/tracer_hip_helpers.include.c $(HIP_MODEL) $(HIP_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \

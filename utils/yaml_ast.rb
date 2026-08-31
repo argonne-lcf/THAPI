@@ -116,7 +116,11 @@ module YAMLCAst
   class CustomType < DirectType
   end
 
-  class Struct < DirectType
+  # struct, union and enum are the same node: a C keyword, a name, and a braced
+  # member list. They differ only in which class parses a member and how the
+  # list is punctuated, so each subclass states those four facts and inherits
+  # the rest.
+  class CompositeType < DirectType
     attr_reader :members
 
     def initialize(name: nil, members: nil, const: nil, restrict: nil, volatile: nil)
@@ -127,41 +131,31 @@ module YAMLCAst
     def self.from_yaml_ast(node)
       new_node = node.dup
       new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| Declaration.from_yaml_ast(m) } if new_node['members']
+      new_node['members'] = new_node['members'].collect { |m| self::MEMBER_CLASS.from_yaml_ast(m) } if new_node['members']
       new_node.transform_keys!(&:to_sym)
       new(**new_node)
     end
 
     def full_name
-      str = 'struct'
+      str = self.class::C_KEYWORD.dup
       str << " #{name}" if name
-      str << " {#{members.join('; ')};}" if members
+      str << " {#{members.join(self.class::MEMBER_SEPARATOR)}#{self.class::MEMBER_TERMINATOR}}" if members
       str
     end
   end
 
-  class Union < DirectType
-    attr_reader :members
+  class Struct < CompositeType
+    C_KEYWORD = 'struct'
+    MEMBER_CLASS = Declaration
+    MEMBER_SEPARATOR = '; '
+    MEMBER_TERMINATOR = ';'
+  end
 
-    def initialize(name: nil, members: nil, const: nil, restrict: nil, volatile: nil)
-      @members = members
-      super(name: name, const: const, restrict: restrict, volatile: volatile)
-    end
-
-    def self.from_yaml_ast(node)
-      new_node = node.dup
-      new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| Declaration.from_yaml_ast(m) } if new_node['members']
-      new_node.transform_keys!(&:to_sym)
-      new(**new_node)
-    end
-
-    def full_name
-      str = 'union'
-      str << " #{name}" if name
-      str << " {#{members.join('; ')};}" if members
-      str
-    end
+  class Union < CompositeType
+    C_KEYWORD = 'union'
+    MEMBER_CLASS = Declaration
+    MEMBER_SEPARATOR = '; '
+    MEMBER_TERMINATOR = ';'
   end
 
   class Enumerator
@@ -185,28 +179,11 @@ module YAMLCAst
     end
   end
 
-  class Enum < DirectType
-    attr_reader :members
-
-    def initialize(name: nil, members: nil, const: nil, restrict: nil, volatile: nil)
-      @members = members
-      super(name: name, const: const, restrict: restrict, volatile: volatile)
-    end
-
-    def self.from_yaml_ast(node)
-      new_node = node.dup
-      new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| Enumerator.from_yaml_ast(m) } if new_node['members']
-      new_node.transform_keys!(&:to_sym)
-      new(**new_node)
-    end
-
-    def full_name
-      str = 'enum'
-      str << " #{name}" if name
-      str << " {#{members.join(', ')}}" if members
-      str
-    end
+  class Enum < CompositeType
+    C_KEYWORD = 'enum'
+    MEMBER_CLASS = Enumerator
+    MEMBER_SEPARATOR = ', '
+    MEMBER_TERMINATOR = ''
   end
 
   class IndirectType < Type

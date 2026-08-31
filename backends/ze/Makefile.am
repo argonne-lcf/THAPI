@@ -167,7 +167,7 @@ libZESampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libZESampling_la_LDFLAGS = -avoid-version -module
 libZESampling_la_LIBADD = $(top_builddir)/sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
 
-tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
+tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \

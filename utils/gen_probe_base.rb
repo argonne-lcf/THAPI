@@ -1,10 +1,43 @@
+# The whole of a tracepoint-provider generator: an include line, then one pair
+# of entry/exit tracepoints per traced function.
+#
+# `directions` is what a backend wires an event to. Five APIs trace a call's
+# entry and its return separately, so a function becomes two tracepoints.
+# itt and ompt are callback APIs -- the runtime calls in once, there is no
+# return to observe -- so they emit a single undirected tracepoint.
+#
+# A function with more parameters than LTTng can carry is skipped: the macro
+# would not compile, and dropping the event is better than failing the build.
+def print_tracepoint_provider(provider, commands, include:, directions: %i[start stop])
+  puts <<~EOF
+    #include "lttng/tracepoint_gen.h"
+    #{include}
+  EOF
+
+  # A provider that also declares events of its own, not derived from a traced
+  # function, emits them here -- before the generated ones, so its enums are in
+  # scope for them.
+  yield if block_given?
+
+  commands.groups[provider].each do |c|
+    next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
+
+    directions.each { |dir| print_tracepoint(provider, c, dir) }
+  end
+end
+
+# The event a tracepoint declares and the event the tracer fires have to be
+# spelled the same way, so both sides read the name from here.
+#
+# `dir` is :start or :stop for an API whose calls have an entry and a return to
+# observe, and nil for a callback API: the runtime calls in once, so there is
+# one event, and its name drops the _func suffix the callback typedef carries.
+def tracepoint_event_name(c, dir)
+  dir ? "#{c.name}_#{SUFFIXES[dir]}" : c.name.gsub(/_func\z/, '')
+end
+
 def print_tracepoint(provider, c, dir = nil)
-  name = if dir
-           "#{c.name}_#{SUFFIXES[dir]}"
-         # OMP backend
-         else
-           c.name.gsub(/_func\z/, '')
-         end
+  name = tracepoint_event_name(c, dir)
 
   puts <<~EOF
     TRACEPOINT_EVENT(
@@ -66,6 +99,17 @@ EOF
     )
 
   EOF
+end
+
+# The struct-payload counterpart of print_tracepoint_provider: ze traces the
+# bytes of the extension structs a call was handed, one tracepoint per struct.
+def print_struct_tracepoint_provider(provider, structs, include:)
+  puts <<~EOF
+    #include "lttng/tracepoint_gen.h"
+    #{include}
+  EOF
+
+  structs.each { |t| print_struct_tracepoint(provider, t) }
 end
 
 def print_struct_tracepoint(provider, t)

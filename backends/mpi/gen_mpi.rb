@@ -1,52 +1,24 @@
 require_relative 'mpi_model'
+require_relative '../../utils/gen_tracer_base'
 
 def common_block(c, provider)
-  tp_params = c.parameters.collect do |p|
-    if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
-      '(void *)(intptr_t)' + p.name
-    elsif p.type.to_s.match(/\[.*\]/)
-      "(#{p.type.to_s.gsub(/\[.*\]/, '*')}) #{p.name}"
-    else
-      p.name
-    end
-  end
-  c.tracepoint_parameters.each do |p|
-    puts "  #{p.type} #{p.name};"
-  end
-  c.tracepoint_parameters.each do |p|
-    puts p.init unless p.after?
-  end
-  tracepoint_params = c.tracepoint_parameters.reject { |p| p.after? }.collect(&:name)
-  puts "  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params + tracepoint_params).join(', ')});"
+  call_args = tracepoint_call_args(c)
+  print_tracepoint_locals(c)
+  print_tracepoint_call(provider, c, :start, call_args)
 
-  params = c.parameters.collect(&:name)
-  if c.has_return_type?
-    puts "  #{c.type} _retval;"
-    puts "  _retval = #{MPI_POINTER_NAMES[c]}(#{params.join(', ')});"
-  else
-    puts "  #{MPI_POINTER_NAMES[c]}(#{params.join(', ')});"
-  end
-  c.tracepoint_parameters.each do |p|
-    puts p.init if p.after?
-  end
+  print_traced_call(c, MPI_POINTER_NAMES[c])
+  c.tracepoint_parameters.each { |p| puts p.init if p.after? }
 
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  tp_params.push '_retval' if c.has_return_type?
-  puts "  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params + tracepoint_params).join(', ')});"
+  call_args.push '_retval' if c.has_return_type?
+  print_tracepoint_call(provider, c, :stop, call_args)
 
   c.epilogues.each do |p|
     puts p
   end
-
-  puts '  return _retval;' if c.has_return_type?
 end
 
 def normal_wrapper(c, provider)
-  puts "#{c.decl} {"
-  puts '  _init_tracer();' if c.init?
-  common_block(c, provider)
-  puts '}'
-  puts ''
+  print_wrapper(c, init: ('_init_tracer();' if c.init?)) { common_block(c, provider) }
 end
 
 def define_and_find_mpi_symbols

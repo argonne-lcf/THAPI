@@ -108,7 +108,7 @@ BUILT_SOURCES = \
 	$(MODIFIED_OMP_HDR) \
 	$(OMP_PROBES_INCL)
 
-tracer_ompt.c: $(srcdir)/gen_ompt.rb tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL)
+tracer_ompt.c: $(srcdir)/gen_ompt.rb tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_ompt_helpers.include.c: $(srcdir)/tracer_ompt_helpers.include.c.erb ompt_callbacks.yaml

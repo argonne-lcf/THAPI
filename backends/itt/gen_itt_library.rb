@@ -57,46 +57,15 @@ puts <<~EOF
 
 EOF
 
+# itt defines its callbacks at the end of the file, so a struct member typed as
+# one would name a callback FFI has not seen yet. Those members are emitted as
+# a plain :pointer, which is the same machine type.
 def print_struct(name, struct, fnptr_syms)
-  # Replace function pointer field types with :pointer.
-  # This avoids unresolved type errors when callbacks are defined later.
-  members = struct.to_ffi(NAMING).map do |m|
-    t = m[1]
-    if t.is_a?(Array)
-      elem_t = t[0]
-      [m[0], [(fnptr_syms.include?(elem_t.to_s) ? :pointer : elem_t), t[1]]]
-    else
-      [m[0], (fnptr_syms.include?(t.to_s) ? :pointer : t)]
-    end
+  as_pointer = ->(t) { fnptr_syms.include?(t.to_s) ? ':pointer' : t }
+  members = struct.to_ffi(NAMING).map do |field, type|
+    [field, type.is_a?(Array) ? [as_pointer.call(type[0]), type[1]] : as_pointer.call(type)]
   end
-
-  print_lambda = lambda { |m|
-    # Render symbols with a leading colon
-    fmt = lambda { |x|
-      case x
-      when Symbol then ":#{x}"
-      else x
-      end
-    }
-    s = "#{m[0]}, "
-    s << if m[1].is_a?(Array)
-           "[ #{fmt.call(m[1][0])}, #{m[1][1]} ]"
-         else
-           "#{fmt.call(m[1])}"
-         end
-    s
-  }
-
-  puts <<EOF
-  class #{NAMING.class_name(name)} < FFI::ITTStruct
-EOF
-  puts <<EOF
-    layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
-  end
-  typedef #{NAMING.class_name(name)}.by_value, #{to_ffi_name(name)}
-
-EOF
-  close_type(NAMING, name)
+  print_struct_with_namespace(NAMING, name, struct, members: members)
 end
 
 # Build a set of all function pointer typedef symbols to detect struct fields
