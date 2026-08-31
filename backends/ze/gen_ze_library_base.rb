@@ -7,19 +7,17 @@ require_relative '../../utils/gen_library_base'
 # tracer wraps.
 BOUND_API = APIS.values_at(:ze, :zet, :zes, :zel, :zex).inject(:+)
 
-def to_class_name(name)
-  mod = to_name_space(name)
-  n = name.gsub(/_t\z/, '').gsub(/\Aze[stl]?_/, '').split('_').collect(&:capitalize).join
-  mod << n.gsub('Uuid', 'UUID').gsub('Dditable', 'DDITable').gsub(/\AFp/, 'FP').gsub('P2p', 'P2P')
-end
-
-def to_scoped_class_name(name)
-  "ZE::#{to_class_name(name)}"
-end
-
-def to_name_space(name)
-  match_name_space(name, /\A(ze[xstlr]?)_/, strict: true).upcase
-end
-
-FFI_STRUCT = 'FFI::ZEStruct'
-FFI_UNION = 'FFI::ZEUnion'
+# ze headers are camelCase, so the shared prefix rule is not enough: every word
+# is recased, and four initialisms are restored afterwards.
+NAMING = NamingContext.new(
+  module_name: 'ZE',
+  api_files: ['ze_api.yaml', 'zet_api.yaml', 'zes_api.yaml', 'zel_api.yaml'],
+  namespace_pattern: /\A(ze[xstlr]?)_/,
+  strict: true,
+  upcase_namespace: true,
+  class_namer: lambda { |naming, name|
+    n = name.gsub(/_t\z/, '').gsub(/\Aze[stl]?_/, '').split('_').collect(&:capitalize).join
+    naming.name_space(name) +
+      n.gsub('Uuid', 'UUID').gsub('Dditable', 'DDITable').gsub(/\AFp/, 'FP').gsub('P2p', 'P2P')
+  }
+)

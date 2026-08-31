@@ -44,7 +44,7 @@ def print_enum(name, enum)
   }
 
   puts <<~RUBY
-    #{to_class_name(name)} = ittenum #{to_ffi_name(name)},
+    #{NAMING.class_name(name)} = ittenum #{to_ffi_name(name)},
       [ #{resolved.map(&pair).join(",\n        ")} ]
   RUBY
 end
@@ -88,12 +88,12 @@ def print_struct(name, struct, fnptr_syms)
   }
 
   puts <<EOF
-  class #{to_class_name(name)} < FFI::ITTStruct
+  class #{NAMING.class_name(name)} < FFI::ITTStruct
 EOF
   puts <<EOF
     layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
   end
-  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+  typedef #{NAMING.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
   close_type(name)
@@ -120,7 +120,7 @@ API.types.each do |t|
     print_struct(t.name, struct, fnptr_syms)
   elsif t.type.is_a? YAMLCAst::Union
     union = API.union(t.type)
-    print_union_with_namespace(:ITT, t.name, union)
+    print_union_with_namespace(NAMING, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     # Defer callbacks until the end so all referenced types are defined
     callbacks << [t.name, t.type.type]

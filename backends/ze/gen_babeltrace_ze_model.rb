@@ -38,7 +38,7 @@ def gen_struct_event_bt_model(provider, struct)
           type: 'string',
         },
         metadata: {
-          be_class: "ZE::#{to_class_name(struct)}",
+          be_class: "ZE::#{NAMING.class_name(struct)}",
         },
       },
     ],

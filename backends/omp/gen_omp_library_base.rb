@@ -2,19 +2,17 @@ require_relative 'ompt_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-def to_class_name(name)
-  mod = to_name_space(name)
-  n = name.gsub(/_t\z/, '').gsub(/\Aomp[dt]?_/, '').split('_').collect(&:capitalize).join
-  mod << n
-end
-
-def to_scoped_class_name(name)
-  "OMP::#{to_class_name(name)}"
-end
-
-def to_name_space(name)
-  match_name_space(name, /\A(omp[dt]?)_/, strict: true).upcase
-end
-
-FFI_STRUCT = 'FFI::OMPTStruct'
-FFI_UNION = 'FFI::OMPTUnion'
+# OMPT names its FFI base classes OMPT* while the Ruby module is OMP, so the
+# two cannot be derived from one another.
+NAMING = NamingContext.new(
+  module_name: 'OMP',
+  ffi_prefix: 'OMPT',
+  api_files: ['ompt_api.yaml'],
+  namespace_pattern: /\A(omp[dt]?)_/,
+  strict: true,
+  upcase_namespace: true,
+  class_namer: lambda { |naming, name|
+    naming.name_space(name) +
+      name.gsub(/_t\z/, '').gsub(/\Aomp[dt]?_/, '').split('_').collect(&:capitalize).join
+  }
+)

@@ -8,6 +8,63 @@ require_relative 'api_model'
 #
 # The backends whose headers are camelCase (cuda, ze, omp, itt) do more than
 # this -- they split on '_' and recase every word -- so they keep their own.
+# What a backend owes the shared library generator: where its types come from,
+# and how their names are spelled in Ruby.
+#
+# Every field a backend sets away from the default is a real divergence between
+# that API and the others, stated in one place instead of hidden in a redefined
+# function or a hardcoded constant. Reading six of these side by side is meant
+# to show exactly what a general generator would still have to account for.
+#
+# The api.yaml files are parsed on first use and kept, so asking for `api`
+# repeatedly costs one parse.
+class NamingContext
+  attr_reader :module_name, :namespace_pattern, :strict, :ffi_struct, :ffi_union
+
+  # `ffi_prefix` names the FFI base classes. It defaults to `module_name`
+  # because five backends agree; OMPT spells its bases OMPT* under a module
+  # called OMP, and says so here.
+  #
+  # `class_namer` defaults to the prefix rule hip and mpi follow. A backend
+  # whose headers are camelCase recases every word instead, and passes its own.
+  # `upcase_namespace` reports an API whose C prefix is lowercase but whose Ruby
+  # class prefix is not (ze_ -> ZE); it is a property of the headers, not a
+  # style choice, so it is stated rather than folded into each namer.
+  def initialize(module_name:, api_files:, namespace_pattern:, strict: false,
+                 hex_ints: [], ffi_prefix: nil, upcase_namespace: false,
+                 class_namer: nil)
+    @upcase_namespace = upcase_namespace
+    @module_name = module_name
+    @api_files = api_files
+    @namespace_pattern = namespace_pattern
+    @strict = strict
+    @hex_ints = hex_ints
+    ffi_prefix ||= module_name
+    @ffi_struct = "FFI::#{ffi_prefix}Struct"
+    @ffi_union = "FFI::#{ffi_prefix}Union"
+    # A namer is handed the context so it can reuse name_space rather than
+    # restate the pattern.
+    @class_namer = class_namer || ->(ctx, name) { prefixed_class_name(name, ctx.name_space(name)) }
+  end
+
+  def api
+    @api ||= @api_files.collect { |f| ApiModel.load_file(f, hex_ints: @hex_ints) }.inject(:+)
+  end
+
+  def name_space(name)
+    ns = match_name_space(name, @namespace_pattern, strict: @strict)
+    @upcase_namespace ? ns.upcase : ns
+  end
+
+  def class_name(name)
+    @class_namer.call(self, name)
+  end
+
+  def scoped_class_name(name)
+    "#{@module_name}::#{class_name(name)}"
+  end
+end
+
 def prefixed_class_name(name, namespace)
   namespace = namespace.to_s
   rest = name.sub(/\A#{namespace}/, '')
@@ -86,7 +143,8 @@ def firstbitpos(x)
   r
 end
 
-def print_bitfield_with_namespace(namespace, name, enum, check_flags: false)
+def print_bitfield_with_namespace(naming, name, enum, check_flags: false)
+  namespace = naming.module_name
   special_values = []
   members = []
   default = nil
@@ -111,12 +169,12 @@ def print_bitfield_with_namespace(namespace, name, enum, check_flags: false)
     "#{m[0].inspect}, #{m[1]}"
   }
   puts <<EOF
-  #{to_class_name(name)} = #{namespace.downcase}bitmask #{to_ffi_name(name)},
+  #{naming.class_name(name)} = #{namespace.downcase}bitmask #{to_ffi_name(name)},
     [ #{members.collect(&print_lambda).join(",\n      ")} ]
 EOF
   if default
     puts <<EOF
-  #{to_class_name(name)}.default = #{default.inspect}
+  #{naming.class_name(name)}.default = #{default.inspect}
 EOF
   end
   unless special_values.empty?
@@ -125,13 +183,14 @@ EOF
 EOF
   end
   if check_flags && to_ffi_name(name).match('_flag_t')
-    puts "  #{to_class_name(name)}s = #{to_class_name(name)}"
+    puts "  #{naming.class_name(name)}s = #{naming.class_name(name)}"
     puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub('_flag_t', '_flags_t')}"
   end
   puts "\n"
 end
 
-def print_enum_with_namespace(namespace, name, enum, filter_members: ->(_m) { true })
+def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true })
+  namespace = naming.module_name
   members = enum.members.filter(&filter_members).collect do |m|
     r = [m.name.to_sym]
     r.push m.val if m.val
@@ -143,7 +202,7 @@ def print_enum_with_namespace(namespace, name, enum, filter_members: ->(_m) { tr
     s
   }
   puts <<EOF
-  #{to_class_name(name)} = #{namespace.downcase}enum #{to_ffi_name(name)},
+  #{naming.class_name(name)} = #{namespace.downcase}enum #{to_ffi_name(name)},
     [ #{members.collect(&print_lambda).join(",\n      ")} ]
 
 EOF
@@ -340,7 +399,8 @@ EOF
   end
 end
 
-def print_union_with_namespace(namespace, name, union)
+def print_union_with_namespace(naming, name, union)
+  namespace = naming.module_name
   members = union.to_ffi
   print_lambda = lambda { |m|
     s = "#{m[0]}, "
@@ -352,10 +412,10 @@ def print_union_with_namespace(namespace, name, union)
     s
   }
   puts <<EOF
-  class #{to_class_name(name)} < FFI::#{namespace}Union
+  class #{naming.class_name(name)} < FFI::#{namespace}Union
     layout #{members.collect(&print_lambda).join(",\n" + (' ' * 11))}
   end
-  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+  typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
 end
@@ -383,12 +443,13 @@ def print_function_pointer_type(name, func)
 EOF
 end
 
-def print_struct_prepending_uuid(namespace, name, struct)
-  prepends = to_class_name(name).match('UUID') ? ['UUID'] : []
-  print_struct_with_namespace(namespace, name, struct, prepends: prepends)
+def print_struct_prepending_uuid(naming, name, struct)
+  prepends = naming.class_name(name).match('UUID') ? ['UUID'] : []
+  print_struct_with_namespace(naming, name, struct, prepends: prepends)
 end
 
-def print_struct_with_namespace(namespace, name, struct, prepends: [], initializer: nil, close: true)
+def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true)
+  namespace = naming.module_name
   members = struct.to_ffi
   print_lambda = lambda { |m|
     s = "#{m[0]}, "
@@ -400,7 +461,7 @@ def print_struct_with_namespace(namespace, name, struct, prepends: [], initializ
     s
   }
   puts <<EOF
-  class #{to_class_name(name)} < FFI::#{namespace}Struct
+  class #{naming.class_name(name)} < FFI::#{namespace}Struct
 EOF
   prepends.each do |prep|
     puts <<EOF
@@ -413,7 +474,7 @@ EOF
   puts initializer if initializer
   puts <<EOF
   end
-  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+  typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
   close_type(name) if close
@@ -449,13 +510,13 @@ module YAMLCAst
         if type.name && API.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          "(Class::new(#{FFI_STRUCT}) { layout #{gen_layout(API.struct(type).to_ffi)} }.by_value)"
+          "(Class::new(#{NAMING.ffi_struct}) { layout #{gen_layout(API.struct(type).to_ffi)} }.by_value)"
         end
       when Union
         if type.name && API.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          "(Class::new(#{FFI_UNION}) { layout #{gen_layout(API.union(type).to_ffi)} }.by_value)"
+          "(Class::new(#{NAMING.ffi_union}) { layout #{gen_layout(API.union(type).to_ffi)} }.by_value)"
         end
       else
         type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")
@@ -539,7 +600,7 @@ module YAMLCAst
         if par.type.is_a?(Pointer)
           if par.type.type.respond_to?(:name) &&
              API.struct_names.include?(par.type.type.name)
-            "#{to_class_name(par.type.type.name)}.ptr"
+            "#{NAMING.class_name(par.type.type.name)}.ptr"
           else
             ':pointer'
           end

@@ -6,7 +6,7 @@ end
 
 def print_version_enum_struct(name)
   puts <<EOF
-  class #{to_class_name(name)} < FFI::ZEStruct
+  class #{NAMING.class_name(name)} < FFI::ZEStruct
     prepend Version
     layout :minor, :uint16,
            :major, :uint16
@@ -18,7 +18,7 @@ def print_version_enum_struct(name)
       v
     end
   end
-  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+  typedef #{NAMING.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
 end
@@ -29,9 +29,9 @@ def print_enum(name, enum)
   if enum.members.find { |m| m.val && m.val.is_a?(String) && m.val.match('ZE_BIT') } || enum.members.all? do |m|
     m.name.include?('_FLAG_')
   end
-    print_bitfield_with_namespace(:ZE, name, enum, check_flags: true)
+    print_bitfield_with_namespace(NAMING, name, enum, check_flags: true)
   else
-    print_enum_with_namespace(:ZE, name, enum)
+    print_enum_with_namespace(NAMING, name, enum)
   end
 end
 
@@ -200,13 +200,13 @@ EOF
 
 def print_struct(name, struct)
   prepends = []
-  if to_class_name(name).match('UUID')
-    prepends << if to_class_name(name).match('ZEKernelUUID')
+  if NAMING.class_name(name).match('UUID')
+    prepends << if NAMING.class_name(name).match('ZEKernelUUID')
                   'KUUID'
                 else
                   'UUID'
                 end
-  elsif to_class_name(name).match(/Handle\z/)
+  elsif NAMING.class_name(name).match(/Handle\z/)
     prepends << 'Handle'
   end
 
@@ -241,7 +241,7 @@ EOF
     initializer = nil
   end
 
-  print_struct_with_namespace(:ZE, name, struct, prepends: prepends, initializer: initializer, close: false)
+  print_struct_with_namespace(NAMING, name, struct, prepends: prepends, initializer: initializer, close: false)
 end
 
 BOUND_API.int_scalars.each do |k, v|
@@ -343,7 +343,7 @@ all_type_sorted[:sorted].each do |t|
     print_struct(t.name, struct)
   elsif t.type.is_a? YAMLCAst::Union
     union = BOUND_API.union(t.type)
-    print_union_with_namespace(:ZE, t.name, union)
+    print_union_with_namespace(NAMING, t.name, union)
   elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
     print_function_pointer_type(t.name, t.type.type)
   end
