@@ -107,7 +107,12 @@ btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL
 
 EXTRA_DIST += \
 	ze_model.rb \
-	gen_babeltrace_ze_model.rb
+	gen_babeltrace_ze_model.rb \
+	ze_validator_zemodel.rb \
+	ze_validator_function_entry_exit_callbacks.rb \
+	ze_validator_entry_exit_helpers.rb \
+	ze_validator_state_object.rb \
+	ze_deprecated.json
 
 
 ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints) $(ZE_STRUCTS_NAMESPACES:=_tracepoints)
@@ -173,7 +178,9 @@ EXTRA_DIST += \
 CLEANFILES += tracer_ze.c
 
 bin_SCRIPTS = \
-	tracer_ze.sh
+	tracer_ze.sh \
+	ze_validator
+
 
 noinst_LTLIBRARIES = libzetracepoints.la
 
@@ -242,14 +249,21 @@ EXTRA_DIST += \
 	gen_ze_library.rb \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
-	gen_ze_bindings.rb
+	gen_ze_bindings.rb \
+	ze_thread_safety.yaml
 
 CLEANFILES += $(ZE_BINDINGS)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb \
-	babeltrace_zeprofiling_apis.txt
+	babeltrace_zeprofiling_apis.txt \
+	ze_thread_safety.yaml \
+	ze_deprecated.json \
+	ze_validator_zemodel.rb \
+	ze_validator_function_entry_exit_callbacks.rb \
+	ze_validator_entry_exit_helpers.rb \
+	ze_validator_state_object.rb
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@

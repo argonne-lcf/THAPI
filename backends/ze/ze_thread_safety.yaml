@@ -1,0 +1,29 @@
+---
+zeCommandListDestroy:
+ - [hCommandList, command_list]
+zeCommandListClose:
+ - [hCommandList, command_list]
+zeCommandListReset:
+ - [hCommandList, command_list]
+zeCommandListAppendWriteGlobalTimestamp:
+ - [hCommandList, command_list]
+zeCommandListAppendLaunchKernel:
+ - [hCommandList, command_list]
+zeCommandListAppendBarrier:
+ - [hCommandList, command_list]
+zeCommandListAppendLaunchCooperativeKernel:
+ - [hCommandList, command_list]
+zeCommandListAppendMemoryCopy:
+ - [hCommandList, command_list]
+zeCommandListAppendMemoryFill:
+ - [hCommandList, command_list]
+zeCommandListAppendMemoryCopyRegion:
+ - [hCommandList, command_list]
+zeCommandListAppendSignalEvent:
+ - [hCommandList, command_list]
+zeCommandListAppendWaitOnEvents:
+ - [hCommandList, command_list]
+zeCommandListAppendEventReset:
+ - [hCommandList, command_list]
+zeCommandQueueExecuteCommandLists:
+ - [phCommandLists_vals, command_list]

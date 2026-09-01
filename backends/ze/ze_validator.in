@@ -1,0 +1,113 @@
+#!/usr/bin/env ruby
+# coding: utf-8
+DATADIR = File.join("@prefix@", "share")
+BINDIR = File.join("@prefix@", "bin")
+$:.unshift(DATADIR) if File.directory?(DATADIR)
+require 'optparse'
+require 'babeltrace2'
+require 'find'
+require 'ze_library'
+require 'pp'
+require 'set'
+require 'ze_validator_zemodel'
+require 'ze_validator_function_entry_exit_callbacks'
+require 'ze_validator_state_object'
+require 'yaml'
+
+# Don't complain about broken pipe
+Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
+
+$options = { live: false, device_agnostic: true, performance: true,
+             gen_device_properties: true }
+
+OptionParser.new do |opts|
+  opts.banner = 'Usage: ze_validator [OPTIONS] trace_directory...'
+
+  opts.on('-h', '--help', 'Prints this help') do
+    puts opts
+    exit
+  end
+
+  opts.on('--no-device-properties',
+          'Skip running the ze_device_property helper to (re)generate ze_device_property.json') do
+    $options[:gen_device_properties] = false
+  end
+
+  opts.on('--live', 'Enable live processing of the trace') do
+    $options[:live] = true
+  end
+
+  opts.on('--disable-dagn', 'Disables device agnostic semantic misuse checking') do
+    $options[:device_agnostic] = false
+  end
+
+  opts.on('--disable-performance', 'Disables reporting of API usages that results in downgrade of performance') do
+    $options[:performance] = false
+  end
+end.parse!
+
+
+def build_and_run_graph( source_location, sink_object )
+  # build graph and set up source
+  graph = BT2::BTGraph.new
+
+  ctf_fs = BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs')
+  ctf_lttng_live = BT2::BTPlugin.find("ctf").get_source_component_class_by_name("lttng-live")
+  utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
+
+  if !$options[:live]
+    trace_locations =
+      Find.find(*source_location).reject do |path|
+      FileTest.directory?(path)
+    end.select do |path|
+      File.basename(path) == 'metadata'
+    end.collect do |path|
+      File.dirname(path)
+    end.select do |path|
+      qe = BT2::BTQueryExecutor.new(component_class: ctf_fs, object_name: 'babeltrace.support-info',
+                                    params: { 'input' => path, 'type' => 'directory' })
+      qe.query.value['weight'] > 0.5
+    end
+  else
+    trace_locations = source_location
+  end
+  raise 'Could not find lttng trace' if trace_locations.size == 0
+
+  if !$options[:live]
+    comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
+  else
+    comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_lttng_live, "trace_#{i}", params: {"inputs" => [ trace_location ], "session-not-found-action" => "end" }) }
+  end
+
+  # Muxer
+  comp_muxer = graph.add_component(utils_muxer, 'mux')
+
+  sink = graph.add_simple_sink('babeltrace_thapi', sink_object.consume)
+
+  # Sources to muxer
+  comp_sources.flat_map(&:output_ports).each_with_index do |op, i|
+    ip = comp_muxer.input_port(i)
+    graph.connect_ports(op, ip)
+  end
+
+  # Chain the rest
+  [comp_muxer, sink].flatten.each_cons(2) do |_out, _in|
+    op = _out.output_port(0)
+    ip = _in.input_port(0)
+    graph.connect_ports(op, ip)
+  end
+
+  graph.run
+  sink_object.check_issues()
+
+end
+
+# only executive this code if we launch this as the main
+# script. if it's just included with "require" we just want access to the functions.
+if __FILE__ == $0
+  sink_obj = StateObject.new(device_agnostic: $options[:device_agnostic],
+                             performance: $options[:performance])
+  ARGV.uniq!
+  source_location = ARGV
+  build_and_run_graph(source_location, sink_obj)
+end
