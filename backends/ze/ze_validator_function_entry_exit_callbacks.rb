@@ -681,8 +681,8 @@ $upon_entry['zeMemFree'] = lambda { |state, ctx, payload|
   ze_context = payload['hContext']
   memory_allocations = state.memory_allocations(ctx, ze_context)
   handle = payload['ptr']
-  memory_allocation = memory_allocations.find { |m| m.base == handle }
-  return unless memory_allocation
+  memory_allocation = find_allocation(memory_allocations, handle)
+  return unless memory_allocation&.base == handle
 
   # flag if this buffer is still referenced by a copy/fill that has been
   # submitted but not yet completed (in-flight device work would touch freed mem)
@@ -700,11 +700,21 @@ $on_erroneous_exit['zeMemFree'] = lambda { |state, ctx, _payload|
   ze_context = state.find_param(ctx, 'hContext')
   handle = state.find_param(ctx, 'ptr')
   freed = state.freed_memory_allocations(ctx, ze_context)
-  mem = freed.find { |m| m.base == handle }
-  if mem
+  mem = find_allocation(freed, handle)
+  if mem&.base == handle
     freed.delete_if { |m| m.base == handle }
     mem.freed_by = nil
     state.memory_allocations(ctx, ze_context) << mem
     state.memory_allocations(ctx, ze_context).sort_by!(&:base) if mem
+  end
+}
+
+$upon_entry['zeMemGetAddressRange'] = lambda { |state, ctx, payload|
+  ze_context = payload['hContext']
+  memory_allocations = state.memory_allocations(ctx, ze_context)
+  handle = payload['ptr']
+  memory_allocation = find_allocation(memory_allocations, handle)
+  if !memory_allocation || memory_allocation.base != handle
+    state.print_usage_error(ctx, "Memory range is either out-of-range or never allocated")
   end
 }
