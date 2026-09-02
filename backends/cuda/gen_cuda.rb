@@ -70,17 +70,8 @@ puts <<~EOF
   static void find_cuda_symbols(void * handle, int verbose) {
 EOF
 
-COMMANDS.groups[:lttng_ust_cuda].each do |c|
-  puts <<EOF
-
-  #{CUDA_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{CUDA_POINTER_NAMES[c]}) {
-    #{CUDA_POINTER_NAMES[c]} = &#{c.name}_unsupp;
-    if (verbose)
-      fprintf(stderr, "THAPI: Missing symbol #{c.name}!\\n");
-  }
-EOF
-end
+print_dlsym_lookups(COMMANDS.groups[:lttng_ust_cuda], CUDA_POINTER_NAMES,
+                    prefix: 'THAPI: ', fallback: ->(c) { "#{c.name}_unsupp" })
 
 puts <<~EOF
   }

@@ -125,14 +125,7 @@ puts <<~EOF
   static void find_ze_symbols(void * handle, int verbose) {
 EOF
 
-all_commands.each do |c|
-  puts <<EOF
-
-  #{ZE_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{ZE_POINTER_NAMES[c]} && verbose)
-    fprintf(stderr, "Missing symbol #{c.name}!\\n");
-EOF
-end
+print_dlsym_lookups(all_commands, ZE_POINTER_NAMES)
 
 puts <<~EOF
   }

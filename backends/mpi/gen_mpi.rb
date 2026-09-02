@@ -32,15 +32,7 @@ def define_and_find_mpi_symbols
   end
 
   puts 'static void find_mpi_symbols(void * handle, int verbose) {'
-  COMMANDS.each do |c|
-    puts <<EOF
-
-  #{MPI_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{MPI_POINTER_NAMES[c]} && verbose)
-    fprintf(stderr, "THAPI: Missing symbol #{c.name}!\\n");
-EOF
-  end
-
+  print_dlsym_lookups(COMMANDS, MPI_POINTER_NAMES, prefix: 'THAPI: ')
   puts '}'
   puts ''
 end

@@ -74,6 +74,37 @@ def print_traced_body(c, provider, pointer_names)
   print_tracepoint_call(provider, c, :stop, call_args)
 end
 
+# The dlsym lookups that fill in a backend's function-pointer table: one per
+# traced function, each reporting a symbol the loaded library does not export.
+#
+# `prefix` is what the diagnostic is tagged with, and `indent` how far its
+# fprintf is indented -- both are as each backend's generated tracer already
+# spells them.
+#
+# `fallback` names a stub to install when the symbol is missing, and changes
+# the shape of the check: cuda points every unresolved symbol at a wrapper that
+# reports CUDA_ERROR_NOT_SUPPORTED, so its lookup cannot leave a null behind
+# and the verbose report moves inside. The backends that pass nothing leave the
+# pointer null and let the caller check it.
+def print_dlsym_lookups(commands, pointer_names, prefix: '', indent: '    ', fallback: nil)
+  commands.each do |c|
+    ptr = pointer_names[c]
+    report = %(fprintf(stderr, "#{prefix}Missing symbol #{c.name}!\\n");)
+    puts
+    puts %(  #{ptr} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");)
+    if fallback
+      puts "  if (!#{ptr}) {"
+      puts "    #{ptr} = &#{fallback.call(c)};"
+      puts '    if (verbose)'
+      puts "      #{report}"
+      puts '  }'
+    else
+      puts "  if (!#{ptr} && verbose)"
+      puts "#{indent}#{report}"
+    end
+  end
+end
+
 # `storage` is 'static ' for a wrapper that is not itself the exported symbol.
 # `init` is the tracer's one-time setup call, for a backend that needs one
 # before the traced function can run.

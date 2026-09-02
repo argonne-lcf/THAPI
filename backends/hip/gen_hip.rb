@@ -25,14 +25,7 @@ puts <<~EOF
   static void find_hip_symbols(void * handle, int verbose) {
 EOF
 
-COMMANDS.each do |c|
-  puts <<EOF
-
-  #{HIP_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{HIP_POINTER_NAMES[c]} && verbose)
-	fprintf(stderr, "Missing symbol #{c.name}!\\n");
-EOF
-end
+print_dlsym_lookups(COMMANDS, HIP_POINTER_NAMES, indent: "\t")
 
 puts <<~EOF
   }
