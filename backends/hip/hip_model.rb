@@ -19,6 +19,4 @@ end)
 
 check_meta_parameters(meta_parameters, COMMANDS)
 
-HIP_POINTER_NAMES = COMMANDS.collect do |c|
-  [c, upper_snake_case(c.pointer_name)]
-end.to_h
+HIP_POINTER_NAMES = COMMANDS.pointer_names

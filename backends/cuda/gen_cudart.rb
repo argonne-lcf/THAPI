@@ -14,13 +14,7 @@ COMMANDS.each do |c|
   puts "#define #{CUDART_POINTER_NAMES[c]} #{c.pointer_name}"
 end
 
-COMMANDS.each do |c|
-  puts <<~EOF
-
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{c.pointer_type_name} #{CUDART_POINTER_NAMES[c]} = (void *) 0x0;
-  EOF
-end
+print_pointer_table(COMMANDS, CUDART_POINTER_NAMES)
 
 puts <<~EOF
 

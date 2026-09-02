@@ -74,6 +74,22 @@ def print_traced_body(c, provider, pointer_names)
   print_tracepoint_call(provider, c, :stop, call_args)
 end
 
+# The function-pointer table the dlsym lookups fill in: for each traced
+# function, the pointer typedef and the variable holding the real function.
+#
+# `initializer` is what the variable starts as. It defaults to a null the
+# lookup overwrites; cuda instead starts each pointer at a trampoline that
+# initializes the tracer on first call, so it passes one per command.
+def print_pointer_table(commands, pointer_names, initializer: ->(_c) { '(void *) 0x0' })
+  commands.each do |c|
+    puts <<~EOF
+
+      #{c.decl_pointer(c.pointer_type_name)};
+      static #{c.pointer_type_name} #{pointer_names[c]} = #{initializer.call(c)};
+    EOF
+  end
+end
+
 # The dlsym lookups that fill in a backend's function-pointer table: one per
 # traced function, each reporting a symbol the loaded library does not export.
 #

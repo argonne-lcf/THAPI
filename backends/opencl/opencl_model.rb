@@ -695,11 +695,12 @@ OPENCL_COMMANDS = CommandIndex.new(
 
 check_meta_parameters(meta_parameters, OPENCL_COMMANDS)
 
-OPENCL_POINTER_NAMES = (OPENCL_COMMANDS.groups[:core].collect do |c|
-  [c, upper_snake_case(c.prototype.pointer_name)]
-end + OPENCL_COMMANDS.groups[:extension].collect do |c|
-  [c, c.prototype.pointer_name]
-end).to_h
+# An extension is reached through libffi rather than dlsym, so its pointer
+# keeps the header's own spelling instead of the upper-snake macro.
+extension_commands = OPENCL_COMMANDS.groups[:extension]
+OPENCL_POINTER_NAMES = OPENCL_COMMANDS.pointer_names(
+  pointer_name_of: ->(c) { c.prototype.pointer_name }
+) { |c, name| name if extension_commands.include?(c) }
 
 OPENCL_COMMANDS.select do |c|
   c.parameters.find { |p| p.name == 'errcode_ret' && p.pointer? }

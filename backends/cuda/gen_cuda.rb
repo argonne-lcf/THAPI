@@ -50,13 +50,7 @@ EOF
   EOF
 end
 
-COMMANDS.groups[:lttng_ust_cuda_exports].each do |c|
-  puts <<~EOF
-
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{c.pointer_type_name} #{CUDA_POINTER_NAMES[c]} = (void *) 0x0;
-  EOF
-end
+print_pointer_table(COMMANDS.groups[:lttng_ust_cuda_exports], CUDA_POINTER_NAMES)
 
 COMMANDS.groups[:lttng_ust_cuda].each do |c|
   puts <<~EOF

@@ -54,11 +54,8 @@ end)
 check_meta_parameters(meta_parameters, COMMANDS)
 
 # MPI spells its functions MPI_Comm_rank, already snake_case, so the macro name
-# is the function name upcased. The other backends snake-case a camelCase name
-# with upper_snake_case; here that would give _MPI__COMM_RANK_PTR.
-MPI_POINTER_NAMES = COMMANDS.collect do |c|
-  [c, c.pointer_name.upcase]
-end.to_h
+# is the function name upcased. upper_snake_case would give _MPI__COMM_RANK_PTR.
+MPI_POINTER_NAMES = COMMANDS.pointer_names(naming: :upcase.to_proc)
 
 COMMANDS.add_epilogue 'MPI_Type_commit', <<EOF
   int size;#{' '}

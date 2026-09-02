@@ -94,13 +94,9 @@ check_meta_parameters(meta_parameters, COMMANDS)
 # zex is called through libffi rather than dlsym, so its pointer keeps the name
 # from the header instead of the upper-snake macro the other namespaces get.
 zex_commands = COMMANDS.groups[:lttng_ust_zex]
-ze_pointer_names = (COMMANDS.to_a - zex_commands).collect do |c|
-  [c, upper_snake_case(c.pointer_name)]
+ZE_POINTER_NAMES = COMMANDS.pointer_names do |c, name|
+  name if zex_commands.include?(c)
 end
-ze_pointer_names += zex_commands.collect do |c|
-  [c, c.pointer_name]
-end
-ZE_POINTER_NAMES = ze_pointer_names.to_h
 
 COMMANDS.add_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {

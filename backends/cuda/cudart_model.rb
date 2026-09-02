@@ -17,6 +17,4 @@ COMMANDS = CommandIndex.new(lttng_ust_cudart: API.functions.collect do |func|
   Command.new(func, context: CONTEXT)
 end)
 
-CUDART_POINTER_NAMES = COMMANDS.collect do |c|
-  [c, upper_snake_case(c.pointer_name)]
-end.to_h
+CUDART_POINTER_NAMES = COMMANDS.pointer_names

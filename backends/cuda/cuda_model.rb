@@ -82,9 +82,7 @@ COMMANDS = CommandIndex.new(
 
 check_meta_parameters(meta_parameters, COMMANDS)
 
-CUDA_POINTER_NAMES = COMMANDS.collect do |c|
-  [c, upper_snake_case(c.pointer_name)]
-end.to_h
+CUDA_POINTER_NAMES = COMMANDS.pointer_names
 
 dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, extra);
