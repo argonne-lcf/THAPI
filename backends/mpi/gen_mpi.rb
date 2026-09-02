@@ -1,24 +1,10 @@
 require_relative 'mpi_model'
 require_relative '../../utils/gen_tracer_base'
 
-def common_block(c, provider)
-  call_args = tracepoint_call_args(c)
-  print_tracepoint_locals(c)
-  print_tracepoint_call(provider, c, :start, call_args)
-
-  print_traced_call(c, MPI_POINTER_NAMES[c])
-  c.tracepoint_parameters.each { |p| puts p.init if p.after? }
-
-  call_args.push '_retval' if c.has_return_type?
-  print_tracepoint_call(provider, c, :stop, call_args)
-
-  c.epilogues.each do |p|
-    puts p
-  end
-end
-
 def normal_wrapper(c, provider)
-  print_wrapper(c, init: ('_init_tracer();' if c.init?)) { common_block(c, provider) }
+  print_wrapper(c, init: ('_init_tracer();' if c.init?)) do
+    print_traced_body(c, provider, MPI_POINTER_NAMES, epilogues: :after_exit)
+  end
 end
 
 def define_and_find_mpi_symbols

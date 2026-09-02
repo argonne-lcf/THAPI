@@ -145,26 +145,14 @@ EOF
 }
 
 common_block = lambda { |c, provider, types|
-  call_args = tracepoint_call_args(c)
-  print_tracepoint_locals(c)
-  print_tracepoint_call(provider, c, :start, call_args)
-  print_chained_structs.call(c, provider, types, InScalar)
-
-  c.prologues.each do |p|
-    puts p
-  end
-
-  # A ProcAddrTable getter declares _retval in its own prologue, because the
-  # prologue has to reach into the table the call is about to fill in.
-  print_traced_call(c, ZE_POINTER_NAMES[c],
-                    declare_retval: !c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/))
-
-  c.epilogues.each do |e|
-    puts e
-  end
-  call_args.push '_retval' if c.has_return_type?
-  print_tracepoint_call(provider, c, :stop, call_args)
-  print_chained_structs.call(c, provider, types, OutScalar)
+  print_traced_body(
+    c, provider, ZE_POINTER_NAMES,
+    after_entry: ->(cmd) { print_chained_structs.call(cmd, provider, types, InScalar) },
+    after_exit: ->(cmd) { print_chained_structs.call(cmd, provider, types, OutScalar) },
+    # A ProcAddrTable getter declares _retval in its own prologue, because the
+    # prologue has to reach into the table the call is about to fill in.
+    declare_retval: !c.name.match(PROC_ADDR_TABLE_GETTER)
+  )
 }
 
 normal_wrapper = lambda { |c, provider, types|

@@ -54,24 +54,47 @@ def print_traced_call(c, target, declare_retval: true)
   end
 end
 
+# The body of an interposed wrapper: fire the entry event, run the prologues,
+# call the real function, run the epilogues, fire the exit event. Every backend
+# generates this shape; the arguments below are where they differ.
+#
 # `pointer_names` maps a command to the symbol holding the address of the real
-# function, which is the only part of this that is per-backend. A backend whose
-# body does more than this -- ze walks pNext chains between these steps --
-# writes its own rather than growing a flag here.
-def print_traced_body(c, provider, pointer_names)
+# function.
+#
+# `epilogues` says whether a command's epilogue runs before the exit tracepoint
+# or after it. Before is what five backends want: an epilogue that rewrites the
+# result must run while the tracepoint can still see the rewrite. mpi's single
+# epilogue instead fires a second tracepoint of its own, which belongs after
+# the exit event rather than between it and the call.
+#
+# `after_entry` and `after_exit` are extra text to emit just inside each
+# tracepoint, for a backend with something to say about the call's own
+# arguments: ze walks the pNext chain of an extension struct it was handed,
+# which is only meaningful before the call for an input and after it for an
+# output.
+#
+# `declare_retval` is false for a command whose prologue has already declared
+# `_retval` -- ze's ProcAddrTable getters do, because their prologue rewrites
+# the table the call is about to fill in.
+def print_traced_body(c, provider, pointer_names, epilogues: :before_exit,
+                      after_entry: nil, after_exit: nil, declare_retval: true)
   call_args = tracepoint_call_args(c)
   print_tracepoint_locals(c)
   print_tracepoint_call(provider, c, :start, call_args)
+  after_entry&.call(c)
 
   c.prologues.each { |p| puts p }
 
-  print_traced_call(c, pointer_names[c])
+  print_traced_call(c, pointer_names[c], declare_retval: declare_retval)
 
   c.tracepoint_parameters.each { |p| puts p.init if p.after? }
-  c.epilogues.each { |e| puts e }
+  c.epilogues.each { |e| puts e } if epilogues == :before_exit
 
   call_args.push '_retval' if c.has_return_type?
   print_tracepoint_call(provider, c, :stop, call_args)
+  after_exit&.call(c)
+
+  c.epilogues.each { |e| puts e } if epilogues == :after_exit
 end
 
 # The function-pointer table the dlsym lookups fill in: for each traced

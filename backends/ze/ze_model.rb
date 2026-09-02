@@ -406,8 +406,13 @@ COMMANDS.add_epilogue 'zeKernelCreate', <<EOF
  }
 EOF
 
+# A namespace's dispatch-table getter: the call through which the loader hands
+# out every entry point at once. The tracer answers these itself, so both the
+# model and the tracer generator ask this question.
+PROC_ADDR_TABLE_GETTER = /(ze|zet|zes|zel|zer)Get.*ProcAddrTable/
+
 COMMANDS.select do |c|
-  c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
+  c.name.match(PROC_ADDR_TABLE_GETTER)
 end.each do |c|
   parent_type = c['pDdiTable'].type.type.to_s + '_'
   child_types = CONTEXT.struct_map.select { |k, _| k.match(parent_type) }
