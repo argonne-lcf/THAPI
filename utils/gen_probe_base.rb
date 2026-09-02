@@ -5,8 +5,7 @@ require_relative 'LTTng'
 # traced function's prototype. They live under the provider's name in a
 # `<backend>_events.yaml`; a provider that has none is simply absent from it.
 #
-# The enums come first so that an enum a declared event names is in scope for
-# it.
+# Enums first: a declared event may name one.
 def print_declared_events(provider, declared)
   return unless declared
 
@@ -18,10 +17,8 @@ end
 # two places and it may use either or both: the ones declared in `events_path`,
 # and one pair of entry/exit tracepoints per traced function.
 #
-# `directions` is what a backend wires an event to. Five APIs trace a call's
-# entry and its return separately, so a function becomes two tracepoints.
-# itt and ompt are callback APIs -- the runtime calls in once, there is no
-# return to observe -- so they emit a single undirected tracepoint.
+# `directions` is [nil] for a callback API, which has a single undirected
+# event; see tracepoint_event_name.
 #
 # A function with more parameters than LTTng can carry is skipped: the macro
 # would not compile, and dropping the event is better than failing the build.

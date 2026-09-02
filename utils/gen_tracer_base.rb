@@ -1,21 +1,12 @@
 # The interposed C wrapper THAPI puts in front of a traced function: fire an
 # entry tracepoint, call the real function, fire an exit tracepoint. Six
 # backends generate one, and these are the parts they generate the same way.
-#
-# What is left to each backend is what actually differs: where its function
-# pointers live, whether it has a return to observe, and where its prologues
-# and epilogues sit relative to the call.
 
 require_relative 'gen_probe_base'
 
 # The traced function's own arguments, as the tracepoint macro must receive
 # them. An array parameter decays to a pointer, and a function pointer goes
 # through intptr_t because the macro stores it as an address.
-#
-# Both casts are written here rather than behind a per-backend flag: only mpi
-# declares an array parameter and no backend declares a function-pointer one,
-# so a backend without either gets the same list from this as from a version
-# that never tested for them.
 def tracepoint_call_args(c)
   return [] unless c.parameters
 
@@ -31,17 +22,13 @@ def tracepoint_call_args(c)
 end
 
 # A tracepoint parameter is a value the tracer computes itself rather than one
-# the caller passed. They are declared together at the top of the wrapper so
-# both tracepoints can name them, and each is initialised on the side of the
-# call it can be read from: an `after?` parameter describes the result, so its
-# initialiser has to wait until the call has returned.
+# the caller passed. An `after?` one describes the result, so it cannot be
+# initialised until the call has returned.
 def print_tracepoint_locals(c)
   c.tracepoint_parameters.each { |p| puts "  #{p.type} #{p.name};" }
   c.tracepoint_parameters.each { |p| puts p.init unless p.after? }
 end
 
-# Fire one tracepoint, naming the event the way its declaration does.
-#
 # The entry event leaves out the `after?` parameters: they describe the result,
 # which does not exist yet.
 def print_tracepoint_call(provider, c, dir, call_args)
@@ -51,9 +38,8 @@ def print_tracepoint_call(provider, c, dir, call_args)
   puts "  tracepoint(#{provider}, #{name}, #{(call_args + locals.collect(&:name)).join(', ')});"
 end
 
-# The call the wrapper exists to wrap. A returning function's value is kept in
-# `_retval` so the exit tracepoint and the wrapper's own `return` can both read
-# it.
+# The return value goes in `_retval` because both the exit tracepoint and the
+# wrapper's own `return` read it.
 #
 # `declare_retval` is false when the caller has already declared `_retval`
 # itself -- ze's ProcAddrTable getters do, because their epilogue rewrites the
@@ -68,10 +54,6 @@ def print_traced_call(c, target, declare_retval: true)
   end
 end
 
-# The body of an interposed wrapper for an API that traces a call's entry and
-# its return: entry tracepoint, prologues, the call, epilogues, exit
-# tracepoint.
-#
 # `pointer_names` maps a command to the symbol holding the address of the real
 # function, which is the only part of this that is per-backend. A backend whose
 # body does more than this -- ze walks pNext chains between these steps --
@@ -92,13 +74,9 @@ def print_traced_body(c, provider, pointer_names)
   print_tracepoint_call(provider, c, :stop, call_args)
 end
 
-# The wrapper around a traced body: the function's own signature, the body,
-# and the return of whatever the real call produced.
-#
 # `storage` is 'static ' for a wrapper that is not itself the exported symbol.
-# `init` is the tracer's one-time setup call, emitted when this backend needs
-# it before the traced function can run: cudart puts it in every wrapper, hip
-# only in the entry points its model marks, and the rest do not use one.
+# `init` is the tracer's one-time setup call, for a backend that needs one
+# before the traced function can run.
 def print_wrapper(c, storage: nil, init: nil)
   puts "#{storage}#{c.decl} {"
   puts "  #{init}" if init

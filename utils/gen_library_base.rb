@@ -5,14 +5,12 @@ require_relative 'api_model'
 #
 # Every field a backend sets away from the default is a real divergence between
 # that API and the others, stated in one place instead of hidden in a redefined
-# function or a hardcoded constant. Reading six of these side by side is meant
-# to show exactly what a general generator would still have to account for.
+# function or a hardcoded constant.
 class NamingContext
   attr_reader :api, :module_name, :namespace_pattern, :strict, :ffi_struct, :ffi_union
 
-  # `api` is the model the backend has already built, handed over rather than
-  # reached for. The shared generators below have to ask what a name is, and
-  # this is the single place that says which API answers them.
+  # `api` is the one place that says which model the shared generators below
+  # ask about a name.
   #
   # `ffi_prefix` names the FFI base classes. It defaults to `module_name`
   # because five backends agree; OMPT spells its bases OMPT* under a module
@@ -396,8 +394,7 @@ EOF
 end
 
 # One `layout` argument list: `:name, :type`, or `:name, [ :type, count ]` for
-# an inline array. Struct and union bodies differ only in the class they open,
-# so they render their members through here.
+# an inline array.
 def ffi_layout(members)
   layouts = members.collect do |name, type|
     "#{name}, " + (type.is_a?(Array) ? "[ #{type[0]}, #{type[1]} ]" : type.to_s)
