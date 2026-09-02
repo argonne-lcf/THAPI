@@ -24,16 +24,17 @@ def declare(c, suffix)
   "static #{YAMLCAst::Declaration.new(name: "#{c.name}_#{suffix}", type: c.function.type)}"
 end
 
-# Written to sit after a two-space indent, so a function with no parameters
-# leaves that indent alone on its line -- which is what the generated file has.
-def discard_parameters(c)
-  c.parameters.map { |p| "(void)#{p.name};" }.join("\n  ")
+# The parameters, cast to void so the stub does not warn about them. `indent`
+# is the indentation of the line this is interpolated into: the first line
+# inherits it from the heredoc, and every line after has to reproduce it.
+def discard_parameters(c, indent:)
+  c.parameters.map { |p| "(void)#{p.name};" }.join("\n#{indent}")
 end
 
 def unsupported_stub(c)
   <<~EOF
     #{declare(c, 'unsupp')} {
-      #{discard_parameters(c)}
+      #{discard_parameters(c, indent: '  ')}
       fprintf(stderr, "THAPI: #{c.name} was called, but it is unsupported by the driver\\n");
       return CUDA_ERROR_NOT_SUPPORTED;
     }
@@ -45,7 +46,7 @@ def uninitialized_stub(c)
   call = "#{CUDA_POINTER_NAMES[c]}(#{c.parameters.collect(&:name).join(', ')});"
   <<~EOF
     #{declare(c, 'uninit')} {
-      #{discard_parameters(c)}
+      #{discard_parameters(c, indent: '  ')}
       _init_tracer();
       #{c.has_return_type? ? "return #{call}" : call}
     }
