@@ -18,10 +18,8 @@ EOF
 
 print_pointer_defines(COMMANDS, CUDA_POINTER_NAMES)
 
-# Each driver entry is bracketed by the two stubs its pointer can name: an
-# _unsupp the dlsym lookup installs when the driver lacks the symbol, and an
-# _uninit the pointer starts at, which initializes the tracer and then calls
-# through whatever the lookup found.
+# _unsupp is what the dlsym lookup installs when the driver lacks the symbol;
+# _uninit is what the pointer starts at.
 def declare(c, suffix)
   "static #{YAMLCAst::Declaration.new(name: "#{c.name}_#{suffix}", type: c.function.type)}"
 end

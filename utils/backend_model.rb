@@ -1,9 +1,5 @@
 # What every AST-driven backend model starts from: the parsed-header stack it
 # builds on, and where its YAML inputs live.
-#
-# A model requires this rather than restating the list, so the stack is
-# described in one place and no backend can end up with a different subset of
-# it by accident.
 require 'yaml'
 require 'set'
 
@@ -13,6 +9,6 @@ require_relative 'LTTng'
 require_relative 'command'
 require_relative 'meta_parameters'
 
-# The generators run from the build tree, so the directory holding a backend's
-# own YAML inputs is passed in by the build system.
+# The build system passes this; the fallback is for running a generator by hand
+# from the directory its inputs live in.
 SRC_DIR = ENV['SRC_DIR'] || '.'

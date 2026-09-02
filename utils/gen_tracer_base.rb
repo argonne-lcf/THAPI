@@ -108,10 +108,8 @@ end
 # backend whose table entry is more than the pointer itself: cuda wraps each
 # one in the two stubs that pointer can name.
 #
-# `blank` says which side of an entry its separating blank line falls on. Every
-# backend separates entries the same way; mpi's happens to lead with the
-# declaration rather than the blank, which is visible here rather than as a
-# loop of its own.
+# `blank` is which side of an entry its separating blank line falls on; mpi's
+# generated file leads with the declaration.
 def print_pointer_table(commands, pointer_names, initializer: ->(_c) { '(void *) 0x0' },
                         before: nil, after: nil, blank: :before)
   commands.each do |c|
@@ -131,11 +129,9 @@ end
 # fprintf is indented -- both are as each backend's generated tracer already
 # spells them.
 #
-# `fallback` names a stub to install when the symbol is missing, and changes
-# the shape of the check: cuda points every unresolved symbol at a wrapper that
-# reports CUDA_ERROR_NOT_SUPPORTED, so its lookup cannot leave a null behind
-# and the verbose report moves inside. The backends that pass nothing leave the
-# pointer null and let the caller check it.
+# `fallback` names a stub to install when the symbol is missing. cuda installs
+# one for every unresolved symbol, so its lookup cannot leave a null behind and
+# the verbose report moves inside the check.
 def print_dlsym_lookups(commands, pointer_names, prefix: '', indent: '    ', fallback: nil)
   commands.each do |c|
     ptr = pointer_names[c]

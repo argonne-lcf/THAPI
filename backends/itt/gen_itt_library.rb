@@ -76,8 +76,6 @@ fnptr_syms = Set.new(
   end.map { |t| to_ffi_name(t.name).to_s }
 )
 
-# Callbacks are deferred to the end of the file so every type they name is
-# already defined.
 callbacks = []
 
 print_typedefs(
@@ -87,7 +85,7 @@ print_typedefs(
   function_pointer: ->(name, t) { callbacks << [name, t.type.type] }
 )
 
-# Emit collected callbacks
+# Deferred to the end of the file so every type they name is already defined.
 callbacks.each do |name, func|
   print_function_pointer_type(NAMING, name, func)
 end

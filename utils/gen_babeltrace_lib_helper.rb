@@ -1,7 +1,5 @@
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
-#
-# Both filenames follow from the backend's name, so that is all a backend says.
 def print_babeltrace_lib(naming, backend)
   puts "require_relative '#{backend}_library.rb'"
   add_babeltrace_event_callbacks(naming, "btx_#{backend}_model.yaml")
