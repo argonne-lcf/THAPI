@@ -85,6 +85,53 @@ def match_name_space(name, pattern, strict: false)
   m && m[1]
 end
 
+# What a typedef declares, as the library generators need to tell apart.
+#
+# An object -- a pointer to a struct the API never defines -- is a handle,
+# emitted as an opaque pointer rather than a layout, so it is asked about
+# before the pointer case that would otherwise claim it.
+#
+# A kind this returns nil for is one no backend emits from the typedef itself:
+# an alias of another typedef, a bare function type, a void.
+def typedef_kind(api, t)
+  return :object if api.object?(t.name)
+
+  case t.type
+  when YAMLCAst::Enum then :enum
+  when YAMLCAst::Struct then :struct
+  when YAMLCAst::Union then :union
+  when YAMLCAst::Pointer then t.type.type.is_a?(YAMLCAst::Function) ? :function_pointer : :pointer
+  when YAMLCAst::Int, YAMLCAst::Char then :integer
+  end
+end
+
+# Emit an FFI declaration for every typedef the API names.
+#
+# The walk and the classification are the same for all six backends; only the
+# printing differs, so each kind is a keyword argument defaulting to the shared
+# printer. A backend passes one only where its API really diverges -- cuda
+# prepends a UUID module to matching structs, itt defers its callbacks -- and
+# passes `nil` for a kind its bindings do not carry, which is how omp emits
+# enums alone.
+#
+# `types` is the list to walk, the API's own unless the backend reordered it:
+# ze sorts its typedefs so a layout is defined before it is used.
+def print_typedefs(naming, api: naming.api, types: api.types,
+                   enum: ->(name, t) { print_enum_with_namespace(naming, name, api.enum(t.type)) },
+                   object: ->(name, _t) { print_object(name) },
+                   struct: ->(name, t) { print_struct_with_namespace(naming, name, api.struct(t.type)) },
+                   union: ->(name, t) { print_union_with_namespace(naming, name, api.union(t.type)) },
+                   function_pointer: ->(name, t) { print_function_pointer_type(naming, name, t.type.type) },
+                   pointer: ->(name, _t) { print_pointer_type(name) },
+                   integer: ->(name, t) { print_int_type(name, t.type.name) })
+  printers = { enum: enum, object: object, struct: struct, union: union,
+               function_pointer: function_pointer, pointer: pointer, integer: integer }
+  types.each do |t|
+    printer = printers[typedef_kind(api, t)]
+    printer&.call(t.name, t)
+  end
+end
+
 def to_ffi_name(name, default = true)
   case name
   when nil

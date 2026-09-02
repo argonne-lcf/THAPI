@@ -27,22 +27,14 @@ puts <<EOF
   typedef #{to_ffi_name('CUmemGenericAllocationHandle_v1')}, #{to_ffi_name('CUmemGenericAllocationHandle')}
 EOF
 
-API.types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type)
-    print_enum_with_namespace(NAMING, t.name, enum)
-  elsif API.object?(t.name)
-    print_object(t.name)
-  elsif t.type.is_a? YAMLCAst::Struct
-    struct = API.struct(t.type)
-    print_struct_prepending_uuid(NAMING, t.name, struct)
-  elsif t.type.is_a? YAMLCAst::Union
-    union = API.union(t.type)
-    print_union_with_namespace(NAMING, t.name, union)
-  elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    print_function_pointer_type(NAMING, t.name, t.type.type)
-  end
-end
+# The plain pointer and integer typedefs cuda declares are spelled out by hand
+# above, so the shared printer must not emit them a second time.
+print_typedefs(
+  NAMING,
+  struct: ->(name, t) { print_struct_prepending_uuid(NAMING, name, API.struct(t.type)) },
+  pointer: nil,
+  integer: nil
+)
 
 puts <<~EOF
   end

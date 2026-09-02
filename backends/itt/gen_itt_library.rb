@@ -76,31 +76,16 @@ fnptr_syms = Set.new(
   end.map { |t| to_ffi_name(t.name).to_s }
 )
 
-# Collect callbacks to print after all other types
+# Callbacks are deferred to the end of the file so every type they name is
+# already defined.
 callbacks = []
 
-API.types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    print_enum(t.name, API.enum(t.type))
-  elsif API.object?(t.name)
-    print_object(t.name)
-  elsif t.type.is_a? YAMLCAst::Struct
-    struct = API.struct(t.type)
-    print_struct(t.name, struct, fnptr_syms)
-  elsif t.type.is_a? YAMLCAst::Union
-    union = API.union(t.type)
-    print_union_with_namespace(NAMING, t.name, union)
-  elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    # Defer callbacks until the end so all referenced types are defined
-    callbacks << [t.name, t.type.type]
-  elsif t.type.is_a?(YAMLCAst::Pointer)
-    print_pointer_type(t.name)
-  elsif t.type.is_a?(YAMLCAst::Int) || t.type.is_a?(YAMLCAst::Char)
-    print_int_type(t.name, t.type.name)
-  else
-    # $stderr.puts t.inspect
-  end
-end
+print_typedefs(
+  NAMING,
+  enum: ->(name, t) { print_enum(name, API.enum(t.type)) },
+  struct: ->(name, t) { print_struct(name, API.struct(t.type), fnptr_syms) },
+  function_pointer: ->(name, t) { callbacks << [name, t.type.type] }
+)
 
 # Emit collected callbacks
 callbacks.each do |name, func|

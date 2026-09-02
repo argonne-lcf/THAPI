@@ -17,12 +17,11 @@ puts <<~EOF
 
 EOF
 
-API.types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    enum = API.enum(t.type)
-    print_enum(t.name, enum)
-  end
-end
+# The Ruby bindings for OMPT carry only its enums.
+print_typedefs(NAMING,
+               enum: ->(name, t) { print_enum(name, API.enum(t.type)) },
+               object: nil, struct: nil, union: nil,
+               function_pointer: nil, pointer: nil, integer: nil)
 
 puts <<~EOF
   end

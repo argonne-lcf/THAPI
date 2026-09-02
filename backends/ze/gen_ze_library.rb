@@ -332,22 +332,17 @@ all_type_sorted[:to_be_sorted].each do |t|
   dfs.call(t)
 end
 
-all_type_sorted[:sorted].each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    enum = BOUND_API.enum(t.type)
-    print_enum(t.name, enum)
-  elsif BOUND_API.object?(t.name)
-    print_object(t.name)
-  elsif t.type.is_a? YAMLCAst::Struct
-    struct = BOUND_API.struct(t.type)
-    print_struct(t.name, struct)
-  elsif t.type.is_a? YAMLCAst::Union
-    union = BOUND_API.union(t.type)
-    print_union_with_namespace(NAMING, t.name, union)
-  elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    print_function_pointer_type(NAMING, t.name, t.type.type)
-  end
-end
+# NAMING answers for the whole traced API; the bindings cover the bound subset,
+# so the model walked here is BOUND_API, in the order the sort above settled on.
+print_typedefs(
+  NAMING,
+  api: BOUND_API,
+  types: all_type_sorted[:sorted],
+  enum: ->(name, t) { print_enum(name, BOUND_API.enum(t.type)) },
+  struct: ->(name, t) { print_struct(name, BOUND_API.struct(t.type)) },
+  pointer: nil,
+  integer: nil
+)
 
 puts <<~EOF
     class ZETypedValue
