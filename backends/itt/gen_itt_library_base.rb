@@ -59,8 +59,11 @@ def to_class_name(name)
   mod + base
 end
 
+# to_class_name already carries the ITT:: namespace, and the library declares
+# its classes inside `module ITT`, where a leading ITT:: resolves to that same
+# module. Prefixing again produced ITT::ITT::Foo, which no constant matches.
 def to_scoped_class_name(name)
-  "ITT::#{to_class_name(name)}"
+  to_class_name(name)
 end
 
 def to_name_space(name)
