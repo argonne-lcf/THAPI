@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -97,14 +98,7 @@ ZE_MODEL = \
 	$(srcdir)/ze_model.rb \
 	$(ML_FILES) \
 	$(ZE_EXTRACTED) \
-	$(top_srcdir)/utils/api_model.rb \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb
+	$(BACKEND_MODEL_DEPS)
 
 btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@

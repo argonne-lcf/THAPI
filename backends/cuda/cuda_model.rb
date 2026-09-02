@@ -1,13 +1,4 @@
-require 'yaml'
-require 'pp'
-require 'set'
-require_relative '../../utils/api_model'
-require_relative '../../utils/yaml_ast_lttng'
-require_relative '../../utils/LTTng'
-require_relative '../../utils/command'
-require_relative '../../utils/meta_parameters'
-
-SRC_DIR = ENV['SRC_DIR'] || '.'
+require_relative '../../utils/backend_model'
 
 # CUdeviceptr is a device address carried in an integer, so it reads as hex
 # rather than as a decimal that means nothing to anyone.

@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -38,14 +39,7 @@ CLEANFILES = $(OMP_EXTRACTED)
 OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
 	$(srcdir)/ompt_meta_parameters.yaml \
-	$(top_srcdir)/utils/api_model.rb \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(OMP_EXTRACTED)
 
 BTX_OMP_GENERATED = \

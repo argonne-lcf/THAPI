@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -43,14 +44,7 @@ EXTRA_DIST += \
 ITT_MODEL = \
 	$(srcdir)/itt_model.rb \
 	$(srcdir)/itt_meta_parameters.yaml \
-	$(top_srcdir)/utils/api_model.rb \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(ITT_EXTRACTED)
 
 # Generate the Probe (tracepoint)

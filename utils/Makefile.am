@@ -77,6 +77,8 @@ EXTRA_DIST = \
 	gen_tracer_base.rb \
 	gen_custom_probes.rb \
 	api_model.rb \
+	backend_model.rb \
+	backend_model.mk \
 	type_registry.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \

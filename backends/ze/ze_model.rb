@@ -1,13 +1,4 @@
-require 'yaml'
-require 'pp'
-require_relative '../../utils/api_model'
-require_relative '../../utils/yaml_ast_lttng'
-require_relative '../../utils/LTTng'
-require_relative '../../utils/command'
-require_relative '../../utils/meta_parameters'
-require 'set'
-
-SRC_DIR = ENV['SRC_DIR'] || '.'
+require_relative '../../utils/backend_model'
 
 # The namespaces THAPI traces, each declared by its own header. zer has no
 # generated api.yaml yet, so it is an empty model rather than a missing key:

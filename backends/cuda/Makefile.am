@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -128,28 +129,14 @@ CUDA_MODEL = \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
-	$(top_srcdir)/utils/api_model.rb \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
 
 CUDART_MODEL = \
 	$(srcdir)/cudart_model.rb \
 	$(CUDART_EXTRACTED) \
-	$(top_srcdir)/utils/api_model.rb \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(srcdir)/cudart.h.include
 
 btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
