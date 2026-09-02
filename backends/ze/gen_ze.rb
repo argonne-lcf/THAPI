@@ -100,9 +100,7 @@ gen_struct_printer(:zel, struct_types[:zel])
 # zex is excluded: it is reached through libffi closures, not dlsym'd symbols.
 zex_commands = COMMANDS.groups[:lttng_ust_zex]
 all_commands = COMMANDS.to_a - zex_commands
-all_commands.each do |c|
-  puts "#define #{ZE_POINTER_NAMES[c]} #{c.pointer_name}"
-end
+print_pointer_defines(all_commands, ZE_POINTER_NAMES)
 
 print_pointer_table(all_commands, ZE_POINTER_NAMES)
 

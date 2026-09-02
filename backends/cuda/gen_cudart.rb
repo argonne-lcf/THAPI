@@ -10,9 +10,7 @@ puts <<~EOF
   #include "cudart_tracepoints.h"
 EOF
 
-COMMANDS.each do |c|
-  puts "#define #{CUDART_POINTER_NAMES[c]} #{c.pointer_name}"
-end
+print_pointer_defines(COMMANDS, CUDART_POINTER_NAMES)
 
 print_pointer_table(COMMANDS, CUDART_POINTER_NAMES)
 

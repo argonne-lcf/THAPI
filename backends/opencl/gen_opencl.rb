@@ -41,9 +41,8 @@ puts <<~EOF
           tracepoint(provider, name, __VA_ARGS__)
 EOF
 
-OPENCL_COMMANDS.groups[:core].each do |c|
-  puts "#define #{OPENCL_POINTER_NAMES[c]} #{c.prototype.pointer_name}"
-end
+print_pointer_defines(OPENCL_COMMANDS.groups[:core], OPENCL_POINTER_NAMES,
+                      pointer_name_of: ->(c) { c.prototype.pointer_name })
 
 OPENCL_COMMANDS.groups[:core].each do |c|
   puts <<~EOF

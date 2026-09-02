@@ -8,9 +8,7 @@ puts <<~EOF
   #include "hip_tracepoints.h"
 EOF
 
-COMMANDS.each do |c|
-  puts "#define #{HIP_POINTER_NAMES[c]} #{c.pointer_name}"
-end
+print_pointer_defines(COMMANDS, HIP_POINTER_NAMES)
 
 print_pointer_table(COMMANDS, HIP_POINTER_NAMES)
 

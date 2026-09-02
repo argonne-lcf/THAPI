@@ -16,9 +16,7 @@ puts <<~EOF
   static void _init_tracer(void);
 EOF
 
-COMMANDS.each do |c|
-  puts "#define #{CUDA_POINTER_NAMES[c]} #{c.pointer_name}"
-end
+print_pointer_defines(COMMANDS, CUDA_POINTER_NAMES)
 
 # Each driver entry is bracketed by the two stubs its pointer can name: an
 # _unsupp the dlsym lookup installs when the driver lacks the symbol, and an
