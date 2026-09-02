@@ -226,6 +226,31 @@ def gen_extra_events_bt_model(registry, filename)
   end.flatten
 end
 
+# The whole of an AST backend's babeltrace-model generator: classify the API's
+# types, turn every traced command into event classes, add the events the
+# backend declares by hand, and print the model.
+#
+# `backend` names both the stream class and the backend the bitfield check
+# reports against.
+#
+# `extra_events` is the backend's declared-event file, absent for a backend
+# that declares none. `phased` is false for a callback API, whose commands
+# trace a single event rather than an entry/exit pair. `expect_bitfields` says
+# whether this API's headers have bitfield types at all.
+#
+# `extra_event_classes` is anything the backend derives itself: ze adds one
+# event per self-describing struct, which no other backend has.
+def print_bt_model(naming, backend, expect_bitfields:, extra_events: nil, phased: true,
+                   extra_event_classes: [])
+  registry = build_ast_registry(naming, backend, expect_bitfields: expect_bitfields)
+
+  event_classes = gen_command_events_bt_model(registry, COMMANDS.groups, phased: phased)
+  event_classes += gen_extra_events_bt_model(registry, extra_events) if extra_events
+  event_classes += extra_event_classes
+
+  puts YAML.dump(gen_yaml(event_classes, backend))
+end
+
 def gen_yaml(event_classes, backend)
   {
     environment: { entries: [
