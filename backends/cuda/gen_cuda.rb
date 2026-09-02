@@ -20,35 +20,46 @@ COMMANDS.each do |c|
   puts "#define #{CUDA_POINTER_NAMES[c]} #{c.pointer_name}"
 end
 
-COMMANDS.groups[:lttng_ust_cuda].each do |c|
-  puts <<~EOF
+# Each driver entry is bracketed by the two stubs its pointer can name: an
+# _unsupp the dlsym lookup installs when the driver lacks the symbol, and an
+# _uninit the pointer starts at, which initializes the tracer and then calls
+# through whatever the lookup found.
+def declare(c, suffix)
+  "static #{YAMLCAst::Declaration.new(name: "#{c.name}_#{suffix}", type: c.function.type)}"
+end
 
-    static #{YAMLCAst::Declaration.new(name: c.name + '_unsupp', type: c.function.type)} {
-      #{c.parameters.map(&:name).map { |n| "(void)#{n};" }.join("\n  ")}
+# Written to sit after a two-space indent, so a function with no parameters
+# leaves that indent alone on its line -- which is what the generated file has.
+def discard_parameters(c)
+  c.parameters.map { |p| "(void)#{p.name};" }.join("\n  ")
+end
+
+def unsupported_stub(c)
+  <<~EOF
+    #{declare(c, 'unsupp')} {
+      #{discard_parameters(c)}
       fprintf(stderr, "THAPI: #{c.name} was called, but it is unsupported by the driver\\n");
       return CUDA_ERROR_NOT_SUPPORTED;
     }
-    static #{YAMLCAst::Declaration.new(name: c.name + '_uninit', type: c.function.type)};
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{c.pointer_type_name} #{CUDA_POINTER_NAMES[c]} = (void *)&#{c.name}_uninit;
-    static #{YAMLCAst::Declaration.new(name: c.name + '_uninit', type: c.function.type)} {
-      #{c.parameters.map(&:name).map { |n| "(void)#{n};" }.join("\n  ")}
-      _init_tracer();
+    #{declare(c, 'uninit')};
   EOF
-  params = c.parameters.collect(&:name)
-  if c.has_return_type?
-    puts <<EOF
-  return #{CUDA_POINTER_NAMES[c]}(#{params.join(', ')});
-EOF
-  else
-    puts <<EOF
-  #{CUDA_POINTER_NAMES[c]}(#{params.join(', ')});
-EOF
-  end
-  puts <<~EOF
+end
+
+def uninitialized_stub(c)
+  call = "#{CUDA_POINTER_NAMES[c]}(#{c.parameters.collect(&:name).join(', ')});"
+  <<~EOF
+    #{declare(c, 'uninit')} {
+      #{discard_parameters(c)}
+      _init_tracer();
+      #{c.has_return_type? ? "return #{call}" : call}
     }
   EOF
 end
+
+print_pointer_table(COMMANDS.groups[:lttng_ust_cuda], CUDA_POINTER_NAMES,
+                    initializer: ->(c) { "(void *)&#{c.name}_uninit" },
+                    before: method(:unsupported_stub),
+                    after: method(:uninitialized_stub))
 
 print_pointer_table(COMMANDS.groups[:lttng_ust_cuda_exports], CUDA_POINTER_NAMES)
 

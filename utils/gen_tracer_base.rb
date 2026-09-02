@@ -80,13 +80,24 @@ end
 # `initializer` is what the variable starts as. It defaults to a null the
 # lookup overwrites; cuda instead starts each pointer at a trampoline that
 # initializes the tracer on first call, so it passes one per command.
-def print_pointer_table(commands, pointer_names, initializer: ->(_c) { '(void *) 0x0' })
+#
+# `before` and `after` are extra text to emit around the declaration, for a
+# backend whose table entry is more than the pointer itself: cuda wraps each
+# one in the two stubs that pointer can name.
+#
+# `blank` says which side of an entry its separating blank line falls on. Every
+# backend separates entries the same way; mpi's happens to lead with the
+# declaration rather than the blank, which is visible here rather than as a
+# loop of its own.
+def print_pointer_table(commands, pointer_names, initializer: ->(_c) { '(void *) 0x0' },
+                        before: nil, after: nil, blank: :before)
   commands.each do |c|
-    puts <<~EOF
-
-      #{c.decl_pointer(c.pointer_type_name)};
-      static #{c.pointer_type_name} #{pointer_names[c]} = #{initializer.call(c)};
-    EOF
+    puts if blank == :before
+    puts before.call(c) if before
+    puts "#{c.decl_pointer(c.pointer_type_name)};"
+    puts "static #{c.pointer_type_name} #{pointer_names[c]} = #{initializer.call(c)};"
+    puts after.call(c) if after
+    puts if blank == :after
   end
 end
 

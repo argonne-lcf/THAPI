@@ -22,14 +22,10 @@ def normal_wrapper(c, provider)
 end
 
 def define_and_find_mpi_symbols
-  COMMANDS.each do |c|
-    puts <<~EOF
-      #define #{MPI_POINTER_NAMES[c]} #{c.pointer_name}
-      #{c.decl_pointer(c.pointer_type_name)};
-      static #{c.pointer_type_name} #{MPI_POINTER_NAMES[c]} = (void *) 0x0;
-
-    EOF
-  end
+  print_pointer_table(COMMANDS, MPI_POINTER_NAMES, blank: :after,
+                                                   before: lambda { |c|
+                                                     "#define #{MPI_POINTER_NAMES[c]} #{c.pointer_name}"
+                                                   })
 
   puts 'static void find_mpi_symbols(void * handle, int verbose) {'
   print_dlsym_lookups(COMMANDS, MPI_POINTER_NAMES, prefix: 'THAPI: ')
