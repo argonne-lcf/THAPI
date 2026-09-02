@@ -1,8 +1,4 @@
 require_relative 'gen_cuda_library_base'
 require_relative '../../utils/gen_babeltrace_lib_helper'
 
-puts <<~EOF
-  require_relative 'cuda_library.rb'
-EOF
-
-add_babeltrace_event_callbacks(NAMING, 'btx_cuda_model.yaml')
+print_babeltrace_lib(NAMING, 'cuda')

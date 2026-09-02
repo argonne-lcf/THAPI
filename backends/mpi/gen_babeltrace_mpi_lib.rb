@@ -1,8 +1,4 @@
 require_relative 'gen_mpi_library_base'
 require_relative '../../utils/gen_babeltrace_lib_helper'
 
-puts <<~EOF
-  require_relative 'mpi_library.rb'
-EOF
-
-add_babeltrace_event_callbacks(NAMING, 'btx_mpi_model.yaml')
+print_babeltrace_lib(NAMING, 'mpi')

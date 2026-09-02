@@ -1,4 +1,14 @@
-# Print to std::cout ruby code to pretty print ze event
+# The whole of a backend's babeltrace-library generator: require the FFI
+# bindings, then emit one pretty-printer per event in the model.
+#
+# Both filenames follow from the backend's name, so that is all a backend says.
+def print_babeltrace_lib(naming, backend)
+  puts "require_relative '#{backend}_library.rb'"
+  add_babeltrace_event_callbacks(naming, "btx_#{backend}_model.yaml")
+end
+
+# One `$event_lambdas` entry per event: a lambda that renders the event's
+# payload as a string.
 def add_babeltrace_event_callbacks(naming, file)
   YAML.load_file(file)[:stream_classes].each do |s|
     s[:event_classes].each do |e|
