@@ -41,16 +41,12 @@ API = APIS.values.reduce(:+)
 
 gen_ffi_type_map(API.types, API.type_classes)
 
-CONTEXT = BackendContext.new(
-  result_name: 'zeResult',
-  # zesInit is included here so that a pure-Sysman program (one that only calls
-  # zesInit, never zeInit) still triggers the tracer initialization.
-  # Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
-  # so each namespace initializes its own symbols.
-  init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/,
-  struct_map: API.struct_map,
-  type_classes: API.type_classes
-)
+# zesInit is included here so that a pure-Sysman program (one that only calls
+# zesInit, never zeInit) still triggers the tracer initialization.
+# Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
+# so each namespace initializes its own symbols.
+CONTEXT = BackendContext.for(API, result_name: 'zeResult',
+                                  init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/)
 
 STRUCT_TYPE_CONVERSION_TABLE = {
   'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
@@ -83,13 +79,8 @@ STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
 meta_parameters = load_meta_parameters(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })
 
 # One group per namespace, because each namespace has its own LTTng provider.
-COMMANDS = CommandIndex.new(APIS.to_h do |ns, api|
-  [:"lttng_ust_#{ns}", api.functions.collect do |func|
-    Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name])
-  end]
-end)
-
-check_meta_parameters(meta_parameters, COMMANDS)
+COMMANDS = build_command_index(APIS.to_h { |ns, api| [:"lttng_ust_#{ns}", api.functions] },
+                               context: CONTEXT, spec: meta_parameters)
 
 # zex is called through libffi rather than dlsym, so its pointer keeps the name
 # from the header instead of the upper-snake macro the other namespaces get.

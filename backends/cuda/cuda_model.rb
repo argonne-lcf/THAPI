@@ -11,15 +11,10 @@ API = cuda_api + cuda_exports_api
 
 gen_ffi_type_map(API.types, API.type_classes)
 
-CONTEXT = BackendContext.new(
-  result_name: 'cuResult',
-  # cuda's pointers start at a _uninit trampoline that calls _init_tracer(), so
-  # no function is singled out as the initializer and Command#init? is never
-  # asked.
-  init_functions: nil,
-  struct_map: API.struct_map,
-  type_classes: API.type_classes
-)
+# cuda's pointers start at a _uninit trampoline that calls _init_tracer(), so
+# no function is singled out as the initializer and Command#init? is never
+# asked.
+CONTEXT = BackendContext.for(API, result_name: 'cuResult', init_functions: nil)
 
 class TracepointParameter
   attr_reader :name, :type, :init, :after
@@ -70,17 +65,13 @@ EOF
   end
 end
 
-meta_parameters = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
-
 # The driver and its export tables are one API but two LTTng providers, so the
 # commands are grouped by the provider that will carry them.
-COMMANDS = CommandIndex.new(
-  { lttng_ust_cuda: cuda_api.functions, lttng_ust_cuda_exports: cuda_exports_api.functions }.transform_values do |funcs|
-    funcs.collect { |func| Command.new(func, context: CONTEXT, meta_parameters: meta_parameters[func.name]) }
-  end
+COMMANDS = build_command_index(
+  { lttng_ust_cuda: cuda_api.functions, lttng_ust_cuda_exports: cuda_exports_api.functions },
+  context: CONTEXT,
+  spec: load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
 )
-
-check_meta_parameters(meta_parameters, COMMANDS)
 
 CUDA_POINTER_NAMES = COMMANDS.pointer_names
 

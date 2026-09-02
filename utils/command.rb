@@ -9,7 +9,36 @@ require_relative 'meta_parameter_spec'
 # A Command belongs to exactly one backend, so it carries this rather than the
 # shared generators reading it from whichever backend was required last.
 BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes,
-                            keyword_init: true)
+                            keyword_init: true) do
+  # The two derived fields always come from the same model, so a backend names
+  # the model rather than restating where each one is read from.
+  def self.for(api, result_name:, init_functions:)
+    new(result_name: result_name, init_functions: init_functions,
+        struct_map: api.struct_map, type_classes: api.type_classes)
+  end
+end
+
+# Build the command index a backend traces, and check its meta-parameter spec
+# against it: three steps every AST backend takes in the same order.
+#
+# `groups` maps each LTTng provider to the functions it carries. `spec` is the
+# backend's meta-parameter spec, whose rows are attached to the command they
+# name and whose keys are then checked to name a real one.
+#
+# `select` narrows the functions traced, for a backend that wraps only some of
+# what its headers declare: itt traces eight of the hundred-odd it parses.
+#
+# This lives here rather than on CommandIndex because it names Command, which
+# opencl does not share.
+def build_command_index(groups, context:, spec: Hash.new { [] }, select: ->(_func) { true })
+  index = CommandIndex.new(groups.transform_values do |funcs|
+    funcs.filter_map do |func|
+      Command.new(func, context: context, meta_parameters: spec[func.name]) if select.call(func)
+    end
+  end)
+  check_meta_parameters(spec, index)
+  index
+end
 
 class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function,

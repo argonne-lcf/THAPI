@@ -52,4 +52,4 @@ def struct_event_classes
 end
 
 print_bt_model(NAMING, 'ze', expect_bitfields: true, extra_events: 'ze_events.yaml',
-               extra_event_classes: struct_event_classes)
+                             extra_event_classes: struct_event_classes)
