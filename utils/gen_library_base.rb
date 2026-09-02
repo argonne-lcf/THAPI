@@ -23,7 +23,8 @@ class NamingContext
   # class prefix is not (ze_ -> ZE); it is a property of the headers, not a
   # style choice, so it is stated rather than folded into each namer.
   def initialize(module_name:, api:, namespace_pattern:, strict: false,
-                 ffi_prefix: nil, upcase_namespace: false, class_namer: nil)
+                 ffi_prefix: nil, upcase_namespace: false, class_namer: nil,
+                 scoped_namer: nil)
     @upcase_namespace = upcase_namespace
     @module_name = module_name
     @api = api
@@ -35,6 +36,7 @@ class NamingContext
     # A namer is handed the context so it can reuse name_space rather than
     # restate the pattern.
     @class_namer = class_namer || ->(ctx, name) { prefixed_class_name(name, ctx.name_space(name)) }
+    @scoped_namer = scoped_namer || ->(ctx, name) { "#{ctx.module_name}::#{ctx.class_name(name)}" }
   end
 
   def name_space(name)
@@ -46,8 +48,11 @@ class NamingContext
     @class_namer.call(self, name)
   end
 
+  # The name the babeltrace model records for a class, as Ruby must resolve it
+  # at runtime. Five backends qualify the class name with the module; itt's
+  # class names already carry it, so it passes a namer that does not repeat it.
   def scoped_class_name(name)
-    "#{@module_name}::#{class_name(name)}"
+    @scoped_namer.call(self, name)
   end
 end
 

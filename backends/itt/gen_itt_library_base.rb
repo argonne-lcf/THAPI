@@ -10,6 +10,11 @@ NAMING = NamingContext.new(
   namespace_pattern: /\A(__itt[dt]?)_/,
   strict: true,
   upcase_namespace: true,
+  # class_namer already returns a namespaced name ("ITT::IttId"), and the
+  # library declares the class inside `module ITT`, where that leading ITT::
+  # resolves to the same module. Qualifying again would ask for ITT::ITT::Foo,
+  # which no constant matches.
+  scoped_namer: ->(ctx, name) { ctx.class_name(name) },
   class_namer: lambda { |naming, name|
     mod = naming.name_space(name).gsub(/\A_+/, '')
     mod += '::' unless mod.empty? || mod.end_with?('::')
