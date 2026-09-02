@@ -31,31 +31,19 @@ NAMING = NamingContext.new(
   }
 )
 
-alias original_to_ffi_name to_ffi_name
+# cuda spells an FFI type as snake_case of its Ruby class name, namespace
+# first: CUdevice -> :cu_device. cuuint32_t/cuuint64_t keep the header's own
+# spelling, which that rule would mangle.
+CUDA_FFI_NAMES = { 'cuuint64_t' => ':cuuint64_t', 'cuuint32_t' => ':cuuint32_t' }.freeze
 
-def to_ffi_name(name)
-  case name
-  when 'cuuint64_t'
-    return ':cuuint64_t'
-  when 'cuuint32_t'
-    return ':cuuint32_t'
-  end
+FFIName.fallback = lambda { |name|
+  next CUDA_FFI_NAMES[name] if CUDA_FFI_NAMES.key?(name)
 
-  result = original_to_ffi_name(name, false)
-  return result if result
-
-  n = NAMING.class_name(name)
-  mod = NAMING.name_space(name)
-  if mod
-    n = n.gsub(/\A#{mod}/, '')
-    mod += '_'
-    mod = mod.downcase
-  else
-    mod = ''
-  end
-  n = to_snake_case(n).gsub(/\A_+/, '')
-  (mod + n).to_sym.inspect
-end
+  namespace = NAMING.name_space(name)
+  rest = NAMING.class_name(name).sub(/\A#{namespace}/, '')
+  prefix = namespace ? "#{namespace.downcase}_" : ''
+  "#{prefix}#{to_snake_case(rest).gsub(/\A_+/, '')}".to_sym.inspect
+}
 
 module YAMLCAst
   class Array

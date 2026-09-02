@@ -12,7 +12,7 @@ def tracepoint_call_args(c)
 
   c.parameters.collect do |p|
     if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
-      '(void *)(intptr_t)' + p.name
+      "(void *)(intptr_t)#{p.name}"
     elsif p.type.to_s.match(/\[.*\]/)
       "(#{p.type.to_s.gsub(/\[.*\]/, '*')}) #{p.name}"
     else
@@ -24,6 +24,10 @@ end
 # A tracepoint parameter is a value the tracer computes itself rather than one
 # the caller passed. An `after?` one describes the result, so it cannot be
 # initialised until the call has returned.
+#
+# Two passes, not one: every local is declared before any is initialised, so an
+# init is free to read a local declared after it. Merging the loops would
+# interleave the declarations with the inits and change the emitted C.
 def print_tracepoint_locals(c)
   c.tracepoint_parameters.each { |p| puts "  #{p.type} #{p.name};" }
   c.tracepoint_parameters.each { |p| puts p.init unless p.after? }

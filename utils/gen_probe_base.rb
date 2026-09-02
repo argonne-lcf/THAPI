@@ -1,5 +1,6 @@
 require 'yaml'
 require_relative 'LTTng'
+require_relative 'meta_parameters'
 
 # The events a backend writes out by hand, rather than deriving them from a
 # traced function's prototype. They live under the provider's name in a

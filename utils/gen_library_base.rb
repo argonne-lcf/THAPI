@@ -132,119 +132,116 @@ def print_typedefs(naming, api: naming.api, types: api.types,
   end
 end
 
-def to_ffi_name(name, default = true)
-  case name
-  when nil
-    return ':anonymous'
-  when 'unsigned int'
-    return ':uint'
-  when 'short', 'short int'
-    return ':short'
-  when 'unsigned short', 'unsigned short int'
-    return ':ushort'
-  when 'unsigned char'
-    return ':uchar'
-  when 'long', 'long int'
-    return ':long'
-  when 'unsigned long', 'unsigned long int'
-    return ':ulong'
-  when 'long long', 'long long int'
-    return ':int64'
-  when 'unsigned long long', 'unsigned long long int'
-    return ':uint64'
-  when 'size_t'
-    return ':size_t'
-  when /^(u?int\d+)_t$/
-    return ":#{Regexp.last_match(1)}"
-  when '_Bool'
-    return ':bool'
+# The C types FFI spells differently from the header. Every other type keeps
+# the header's own name, as a symbol.
+FFI_NAMES = {
+  nil => ':anonymous',
+  'unsigned int' => ':uint',
+  'short' => ':short', 'short int' => ':short',
+  'unsigned short' => ':ushort', 'unsigned short int' => ':ushort',
+  'unsigned char' => ':uchar',
+  'long' => ':long', 'long int' => ':long',
+  'unsigned long' => ':ulong', 'unsigned long int' => ':ulong',
+  'long long' => ':int64', 'long long int' => ':int64',
+  'unsigned long long' => ':uint64', 'unsigned long long int' => ':uint64',
+  'size_t' => ':size_t',
+  '_Bool' => ':bool'
+}.freeze
+
+# Where a backend installs its own naming for the types the rules below cannot
+# name: cuda recases its own and adds cuuint32_t/cuuint64_t. The fallback is
+# consulted only after the shared rules decline, so a backend cannot shadow
+# them by accident, and it returns nil to defer.
+module FFIName
+  class << self
+    attr_accessor :fallback
   end
+  self.fallback = ->(_name) {}
+end
+
+# Pass `false` for `default` to ask whether this type has a name at all; the
+# answer is nil when it does not.
+def to_ffi_name(name, default = true)
+  return FFI_NAMES[name] if FFI_NAMES.key?(name)
+  return ":#{Regexp.last_match(1)}" if name.match(/^(u?int\d+)_t$/)
+
+  named = FFIName.fallback.call(name)
+  return named if named
+
   name.to_sym.inspect if default
 end
 
-def popcount(x)
-  raise 'Unsigned integer needed!' if x < 0
+# FFI stores a flag by bit position and cannot express a multi-bit alias like
+# ALL = READ|WRITE, so composites are printed as a comment instead.
+BitfieldMembers = Struct.new(:flags, :default, :composites)
 
-  c = 0
-  while x != 0
-    c += 1 if x & 1 != 0
-    x >>= 1
-  end
-  c
+# A header writes an enum value as a decimal or hex literal, which Integer()
+# reads directly. The eval is the fallback for an expression it cannot -- no
+# vendored header currently needs it, but a `1 << 3` would.
+def enum_value(val)
+  return val unless val.is_a?(String)
+
+  Integer(val, exception: false) || eval(val)
 end
 
-def firstbitpos(x)
-  raise 'Signed positive integer needed!' if x <= 0
-
-  r = 0
-  while x & 1 == 0
-    r += 1
-    x >>= 1
-  end
-  r
-end
-
-def print_bitfield_with_namespace(naming, name, enum, check_flags: false)
-  namespace = naming.module_name
-  special_values = []
-  members = []
+def classify_bitfield_members(enum)
+  flags = []
+  composites = []
   default = nil
   counter = 0
   enum.members.each do |m|
-    if m.val
-      counter = m.val.is_a?(String) ? eval(m.val) : m.val
-    else
-      counter += 1
-    end
-    if counter > 0 && popcount(counter) == 1
-      members.push [m.name.to_sym, firstbitpos(counter)]
-    elsif counter == 0
+    counter = if m.val
+                enum_value(m.val)
+              else
+                counter + 1
+              end
+    if counter.positive? && counter.nobits?(counter - 1)
+      flags.push [m.name.to_sym, counter.bit_length - 1]
+    elsif counter.zero?
       default = m.name.to_sym
     else
-      r = [m.name.to_sym]
-      r.push m.val || counter
-      special_values.push r
+      composites.push [m.name.to_sym, m.val || counter]
     end
   end
-  print_lambda = lambda { |m|
-    "#{m[0].inspect}, #{m[1]}"
-  }
+  BitfieldMembers.new(flags, default, composites)
+end
+
+# `check_flags` is true for an API that also spells a one-flag type in the
+# plural: ze and omp declare both names for the same type.
+def print_bitfield_with_namespace(naming, name, enum, check_flags: false)
+  klass = naming.class_name(name)
+  members = classify_bitfield_members(enum)
+  pair = ->(m) { "#{m[0].inspect}, #{m[1]}" }
+
   puts <<EOF
-  #{naming.class_name(name)} = #{namespace.downcase}bitmask #{to_ffi_name(name)},
-    [ #{members.collect(&print_lambda).join(",\n      ")} ]
+  #{klass} = #{naming.module_name.downcase}bitmask #{to_ffi_name(name)},
+    [ #{members.flags.collect(&pair).join(",\n      ")} ]
 EOF
-  if default
-    puts <<EOF
-  #{naming.class_name(name)}.default = #{default.inspect}
+  puts <<EOF if members.default
+  #{klass}.default = #{members.default.inspect}
 EOF
-  end
-  unless special_values.empty?
-    puts <<EOF
-  # #{special_values.collect(&print_lambda).join(",\n  # ")}
+  puts <<EOF unless members.composites.empty?
+  # #{members.composites.collect(&pair).join(",\n  # ")}
 EOF
-  end
   if check_flags && to_ffi_name(name).match('_flag_t')
-    puts "  #{naming.class_name(name)}s = #{naming.class_name(name)}"
+    puts "  #{klass}s = #{klass}"
     puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub('_flag_t', '_flags_t')}"
   end
   puts "\n"
 end
 
+# A member is printed with its value only where the header gives one; FFI
+# numbers the rest itself.
+#
+# `filter_members` drops a member the bindings must not declare: omp's headers
+# still carry a callback its runtime removed.
 def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true })
-  namespace = naming.module_name
   members = enum.members.filter(&filter_members).collect do |m|
-    r = [m.name.to_sym]
-    r.push m.val if m.val
-    r
+    m.val ? "#{m.name.to_sym.inspect}, #{m.val}" : m.name.to_sym.inspect
   end
-  print_lambda = lambda { |m|
-    s = "#{m[0].inspect}"
-    s << ", #{m[1]}" if m.size == 2
-    s
-  }
   puts <<EOF
-  #{naming.class_name(name)} = #{namespace.downcase}enum #{to_ffi_name(name)},
-    [ #{members.collect(&print_lambda).join(",\n      ")} ]
+  #{naming.class_name(name)} = #{naming.module_name.downcase}enum #{to_ffi_name(name)},
+    [ #{members.join(",\n      ")} ]
 
 EOF
 end
@@ -298,7 +295,12 @@ def print_handle_uuid_modules
 EOF
 end
 
-def print_ffi_module(namespace, struct: true, union: true, enum: true, bitmask: true, inline_array: true,
+# The FFI base classes every backend's bindings open with.
+#
+# `struct`, `union` and `inline_array` are false for a backend whose bindings
+# never declare one: omp binds enums alone. `enclosing_module` is false for ze,
+# whose classes resolve their own names.
+def print_ffi_module(namespace, struct: true, union: true, inline_array: true,
                      enclosing_module: true)
   puts <<~EOF
     require 'ffi'
@@ -306,17 +308,26 @@ def print_ffi_module(namespace, struct: true, union: true, enum: true, bitmask: 
 
   EOF
 
-  if struct
-    puts <<EOF
+  print_ffi_struct_class(namespace, enclosing_module) if struct
+  print_ffi_enum_class(namespace)
+  print_ffi_union_class(namespace, enclosing_module) if union
+  print_ffi_bitmask_class(namespace)
+  print_ffi_library_module(namespace)
+  print_ffi_inline_array_class if inline_array
+  print_ffi_epilogue
+end
+
+def print_ffi_struct_class(namespace, enclosing_module)
+  puts <<EOF
   class #{namespace}Struct < Struct
 EOF
-    puts <<EOF if enclosing_module
+  puts <<EOF if enclosing_module
     def self.enclosing_module
       #{namespace}
     end
 
 EOF
-    puts <<EOF
+  puts <<EOF
     def to_h
       members.zip(values).to_h
     end
@@ -335,31 +346,33 @@ EOF
     end
   end
 EOF
-  end
+end
 
-  if enum
-    puts <<EOF
+def print_ffi_enum_class(namespace)
+  puts <<EOF
   class #{namespace}Enum < Enum
   end
 EOF
-  end
+end
 
-  if union
-    puts <<EOF
+def print_ffi_union_class(namespace, enclosing_module)
+  puts <<EOF
   class #{namespace}Union < Union
 EOF
-    puts <<EOF if enclosing_module
+  puts <<EOF if enclosing_module
     def self.enclosing_module
       #{namespace}
     end
 EOF
-    puts <<EOF
+  puts <<EOF
   end
 EOF
-  end
+end
 
-  if bitmask
-    puts <<EOF
+# `default` is the value the API spells as zero: FFI has no name for an empty
+# flag set, so the bitmask maps it both ways itself.
+def print_ffi_bitmask_class(namespace)
+  puts <<EOF
   class #{namespace}Bitmask < Bitmask
     def default=(default)
       @default = default
@@ -389,27 +402,23 @@ EOF
     end
   end
 EOF
-  end
+end
 
-  if bitmask || enum
-    puts <<EOF
+def print_ffi_library_module(namespace)
+  puts <<EOF
   module Library
-EOF
-    puts <<EOF if bitmask
     def #{namespace.downcase}bitmask(*args)
       generic_enum(FFI::#{namespace}Bitmask, *args)
     end
-EOF
-    puts <<EOF if enum
     def #{namespace.downcase}enum(*args)
       generic_enum(FFI::#{namespace}Enum, *args)
     end
-EOF
-    puts <<EOF
   end
 EOF
-  end
-  puts <<EOF if inline_array
+end
+
+def print_ffi_inline_array_class
+  puts <<EOF
 
   class Struct::InlineArray
     def to_s
@@ -419,6 +428,9 @@ EOF
     end
   end
 EOF
+end
+
+def print_ffi_epilogue
   puts <<~EOF
 
       class Pointer
@@ -440,13 +452,25 @@ EOF
   end
 end
 
-# One `layout` argument list: `:name, :type`, or `:name, [ :type, count ]` for
-# an inline array.
+# One `layout` argument: `:name, :type`, or `:name, [ :type, count ]` for an
+# inline array.
+def ffi_layout_member(name, type)
+  spelled = type.is_a?(Array) ? "[ #{type[0]}, #{type[1]} ]" : type.to_s
+  "#{name}, #{spelled}"
+end
+
+# Continuation lines align under the first item, which starts where the text
+# introducing it ends -- the literals below are that text, as the heredocs
+# spell it.
+LAYOUT_CONTINUATION = "\n#{' ' * '    layout '.length}".freeze
+CALLBACK_CONTINUATION = "\n#{' ' * '  callback [ '.length}".freeze
+
 def ffi_layout(members)
-  layouts = members.collect do |name, type|
-    "#{name}, " + (type.is_a?(Array) ? "[ #{type[0]}, #{type[1]} ]" : type.to_s)
-  end
-  layouts.join(",\n" + (' ' * 11))
+  members.collect { |name, type| ffi_layout_member(name, type) }.join(",#{LAYOUT_CONTINUATION}")
+end
+
+def inline_layout(members)
+  members.collect { |name, type| ffi_layout_member(name, type) }.join(', ')
 end
 
 def print_union_with_namespace(naming, name, union)
@@ -478,7 +502,7 @@ def print_function_pointer_type(naming, name, func)
   type, params = func.to_ffi(naming)
   puts <<EOF
   callback #{to_ffi_name(name)},
-           [ #{params.join(",\n" + (' ' * 13))} ],
+           [ #{params.join(",#{CALLBACK_CONTINUATION}")} ],
            #{type}
 
 EOF
@@ -556,18 +580,11 @@ module YAMLCAst
                                  else
                                    [naming.ffi_union, api.union(type)]
                                  end
-          "(Class::new(#{ffi_base}) { layout #{gen_layout(definition.to_ffi(naming))} }.by_value)"
+          "(Class::new(#{ffi_base}) { layout #{inline_layout(definition.to_ffi(naming))} }.by_value)"
         end
       else
         type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")
       end
-    end
-
-    def gen_layout(membs)
-      membs.map do |a, b|
-        s = "#{a}, "
-        s << (b.is_a?(::Array) ? "[ #{b[0]}, #{b[1]} ]" : b)
-      end.join(', ')
     end
 
     # TODO: FFI doesn't support bitfields. Consecutive bitfield members are
@@ -597,7 +614,7 @@ module YAMLCAst
       end
 
       def flush_to_result(result)
-        return if @count == 0
+        return if @count.zero?
 
         @group += 1
         result << [":_aggregated_bitfields_#{@group}", to_ffi_name(@type)]
