@@ -62,7 +62,13 @@ $struct_type_conversion_table = {
   'ZES_STRUCTURE_TYPE_MEM_PAGE_OFFLINE_STATE_EXP' => 'ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP',
 }
 
-$struct_type_reject = Set.new(['zet_metric_source_id_exp_t'])
+# Structs whose stype tag is not a member of ze_structure_type_t.
+#
+# - zex tags structures with a uint32_t alias (level_zero/ze_stypes.h) rather
+#   than an enum, we don't handle that.
+# - zet_metric_source_id_exp_t's tag is simply absent from the spec.
+$struct_type_reject = Set.new(%w[zet_metric_source_id_exp_t
+                                 zex_device_module_register_file_exp_t])
 
 $ze_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'ze_meta_parameters.yaml'))
 $ze_meta_parameters['meta_parameters'].each do |func, list|
