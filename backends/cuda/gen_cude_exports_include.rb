@@ -1,5 +1,4 @@
 require_relative '../../utils/yaml_ast'
-SRC_DIR = ENV.fetch('SRC_DIR', nil)
 export_tables = yaml_load_file_cached(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 
 puts <<~EOF

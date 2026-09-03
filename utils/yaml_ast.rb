@@ -1,6 +1,11 @@
 require 'yaml'
 require 'set'
 
+# Where a generator's YAML inputs live. The build system passes this; the
+# fallback is for running a generator by hand from the directory its inputs
+# are in.
+SRC_DIR = ENV['SRC_DIR'] || '.'
+
 def yaml_load_file_cached(path)
   @yaml_cache ||= {}
   @yaml_cache[path] ||= YAML.load_file(path)
