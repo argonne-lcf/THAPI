@@ -1,6 +1,6 @@
 # The interposed C wrapper THAPI puts in front of a traced function: fire an
-# entry tracepoint, call the real function, fire an exit tracepoint. Six
-# backends generate one, and these are the parts they generate the same way.
+# entry tracepoint, call the real function, fire an exit tracepoint. cuda, hip,
+# mpi, omp and ze generate one, and these are the parts they share.
 
 require_relative 'gen_probe_base'
 
@@ -59,15 +59,16 @@ def print_traced_call(c, target, declare_retval: true)
 end
 
 # The body of an interposed wrapper: fire the entry event, run the prologues,
-# call the real function, run the epilogues, fire the exit event. Every backend
-# generates this shape; the arguments below are where they differ.
+# call the real function, run the epilogues, fire the exit event. cuda, hip,
+# mpi and ze generate this shape; the arguments below are where they differ.
+# (omp's callbacks need only print_wrapper, not this.)
 #
 # `pointer_names` maps a command to the symbol holding the address of the real
 # function.
 #
 # `epilogues` says whether a command's epilogue runs before the exit tracepoint
-# or after it. Before is what five backends want: an epilogue that rewrites the
-# result must run while the tracepoint can still see the rewrite. mpi's single
+# or after it. Before is what cuda, hip and ze want: an epilogue that rewrites
+# the result must run while the tracepoint can still see it. mpi's single
 # epilogue instead fires a second tracepoint of its own, which belongs after
 # the exit event rather than between it and the call.
 #

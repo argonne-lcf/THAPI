@@ -467,8 +467,8 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
   # The one category a typedef name falls into, or nil when this API never
   # names it. The order is the answer: an object typedef is a pointer under the
   # hood and a hex int is an integer, so the more specific category has to win.
-  # The categories are otherwise disjoint (verified by hand across all seven
-  # backends), so nothing below the first match can also apply.
+  # The categories are otherwise disjoint across all seven parsed APIs, so
+  # nothing below the first match can also apply.
   def category_of(name)
     case name
     when *objects, *pointers then :address

@@ -153,10 +153,15 @@ FFI_NAMES = {
   '_Bool' => ':bool'
 }.freeze
 
-# Where a backend installs its own naming for the types the rules below cannot
-# name: cuda recases its own and adds cuuint32_t/cuuint64_t. The fallback is
-# consulted only after the shared rules decline, so a backend cannot shadow
-# them by accident, and it returns nil to defer.
+# The naming for types to_ffi_name's own rules cannot name, consulted only
+# after they decline; it returns nil to defer. cuda is the one backend that
+# sets it.
+#
+# It is a global rather than a NamingContext field because to_ffi_name is
+# called from places that are handed no naming context, among them the AST-node
+# methods Array#to_ffi and BitfieldAccumulator#flush_to_result. One process
+# generates one backend, so the single slot is never contended -- but a second
+# setter would silently replace the first.
 module FFIName
   class << self
     attr_accessor :fallback
