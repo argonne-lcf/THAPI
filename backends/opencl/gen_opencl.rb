@@ -31,8 +31,8 @@ puts <<~EOF
   #include "opencl_devices.h"
 
   #define CONCAT(c,suf) c ## _ ## suf
-  #define STARTEV(command) CONCAT(command, #{START})
-  #define STOPEV(command) CONCAT(command, #{STOP})
+  #define STARTEV(command) CONCAT(command, #{CL_START})
+  #define STOPEV(command) CONCAT(command, #{CL_STOP})
   #define do_tracepoint_safe(provider, name, ...) \
           do_tracepoint(provider, name, __VA_ARGS__)
   #define tracepoint_enabled_safe(provider, name) \
@@ -109,7 +109,7 @@ common_block = lambda { |c|
     puts p.init
   end
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES['start']}, #{(tp_params + tracepoint_params).join(', ')});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{CL_EVENT_SUFFIXES['start']}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
   c.prologues.each do |p|
     puts p
@@ -145,7 +145,7 @@ EOF
   tp_params.push '_retval' if c.prototype.has_return_type?
   tp_params.push '_duration' if HOST_PROFILE
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES['stop']}, #{(tp_params + tracepoint_params).join(', ')});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{CL_EVENT_SUFFIXES['stop']}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
 }
 

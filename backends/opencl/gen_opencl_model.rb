@@ -49,7 +49,7 @@ en.each do |e|
 end
 
 event_lambda = lambda { |c, dir|
-  name = "lttng_ust_opencl:#{c.prototype.name}_#{SUFFIXES[dir]}"
+  name = "lttng_ust_opencl:#{c.prototype.name}_#{CL_EVENT_SUFFIXES[dir]}"
   fields = {}
   params = {}
   c.parameters.each do |p|
@@ -158,7 +158,7 @@ YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namesp
   h['events'].each do |e|
     %w[start stop].each do |dir|
       event = get_fields(e['args'], e[dir.to_s])
-      events["#{namespace}:#{e['name']}_#{SUFFIXES[dir]}"] = event
+      events["#{namespace}:#{e['name']}_#{CL_EVENT_SUFFIXES[dir]}"] = event
     end
   end
 end
@@ -177,6 +177,6 @@ YAML.load_file(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
   end
 end
 
-res['suffixes'] = SUFFIXES
+res['suffixes'] = CL_EVENT_SUFFIXES
 
 puts YAML.dump(res)

@@ -77,11 +77,11 @@ module LTTng
     EOF
   end
 
-  def self.print_tracepoint(namespace, tp, dir = nil)
+  def self.print_tracepoint(namespace, tp, phase = nil, suffix: nil)
     puts <<~EOF
       TRACEPOINT_EVENT(
         #{namespace},
-        #{tp['name']}#{"_#{SUFFIXES[dir]}" if dir},
+        #{tp['name']}#{"_#{suffix}" if suffix},
         TP_ARGS(
     EOF
     print '    '
@@ -95,10 +95,10 @@ module LTTng
   ),
   TP_FIELDS(
 EOF
-    dir ||= 'fields'
-    if tp[dir]
+    fields = tp[phase || 'fields']
+    if fields
       print '    '
-      puts tp[dir].collect { |(f, *args)| "#{f}(#{args.join(', ')})" }.join("\n    ")
+      puts fields.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }.join("\n    ")
     end
     puts <<~EOF
         )
