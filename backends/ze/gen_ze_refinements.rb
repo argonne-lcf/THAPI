@@ -17,11 +17,11 @@ puts <<~EOF
       refine FFI::Pointer do
 EOF
 
-ze_bool = BOUND_API.types.find { |t| t.name == 'ze_bool_t' }
+ze_bool = API.types.find { |t| t.name == 'ze_bool_t' }
 print_acessor(ze_bool.type.name.gsub(/_t\z/, ''), ze_bool.name)
 
-BOUND_API.types.each do |t|
-  print_acessor(:pointer, t.name) if BOUND_API.object?(t.name)
+API.types.each do |t|
+  print_acessor(:pointer, t.name) if API.object?(t.name)
 end
 puts <<EOF
       if FFI.find_type(:size_t).size == 8

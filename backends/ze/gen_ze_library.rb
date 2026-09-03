@@ -244,7 +244,7 @@ EOF
   print_struct_with_namespace(NAMING, name, struct, prepends: prepends, initializer: initializer, close: false)
 end
 
-BOUND_API.int_scalars.each do |k, v|
+API.int_scalars.each do |k, v|
   next if to_ffi_name(k).match('_flags_t') && !to_ffi_name(k).match('_packed_')
 
   puts <<EOF
@@ -265,8 +265,8 @@ end
 
 # We put Enum and objects first.
 # If not, they are not added by the BFS, not sure why
-all_type_sorted = BOUND_API.types.group_by do |t|
-  if BOUND_API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)
+all_type_sorted = API.types.group_by do |t|
+  if API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)
     :sorted
   else
     :to_be_sorted
@@ -276,7 +276,7 @@ end
 # Transform into set for fast `include`
 all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
 
-all_types_by_name = BOUND_API.types.collect { |t| [t.name, t] }.to_h
+all_types_by_name = API.types.collect { |t| [t.name, t] }.to_h
 
 # Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
 dfs = lambda do |node|
@@ -294,7 +294,7 @@ dfs = lambda do |node|
 
   case node.type
   when YAMLCAst::Struct
-    members = BOUND_API.struct_map[node.name]
+    members = API.struct_map[node.name]
     members.each do |m|
       m_type = m.type
       m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
@@ -318,7 +318,7 @@ dfs = lambda do |node|
     # Enums have no dependencies
   when YAMLCAst::CustomType
     # Typedef-to-typedef (e.g. `typedef uint8_t ze_bool_t`). Recurse so the
-    # referenced typedef is emitted first when it lives in BOUND_API.types.
+    # referenced typedef is emitted first when it lives in API.types.
     dfs.call(node.type)
   else
     raise "dfs: unhandled node.type=#{node.type.class} on node=#{node.inspect}"
@@ -332,14 +332,13 @@ all_type_sorted[:to_be_sorted].each do |t|
   dfs.call(t)
 end
 
-# NAMING answers for the whole traced API; the bindings cover the bound subset,
-# so the model walked here is BOUND_API, in the order the sort above settled on.
+# Walked in the order the sort above settled on, not the order the API declares.
 print_typedefs(
   NAMING,
-  api: BOUND_API,
+  api: API,
   types: all_type_sorted[:sorted],
-  enum: ->(name, t) { print_enum(name, BOUND_API.enum(t.type)) },
-  struct: ->(name, t) { print_struct(name, BOUND_API.struct(t.type)) },
+  enum: ->(name, t) { print_enum(name, API.enum(t.type)) },
+  struct: ->(name, t) { print_struct(name, API.struct(t.type)) },
   pointer: nil,
   integer: nil
 )
