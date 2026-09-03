@@ -2,11 +2,15 @@ require_relative 'ze_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-$all_types = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs']
-$all_structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs']
+$all_types = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] +
+             $zex_api['typedefs']
+$all_structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] +
+               $zex_api['structs']
 $all_unions = $zet_api['unions']
-$all_enums = $ze_api['enums'] + $zet_api['enums'] + $zes_api['enums'] + $zel_api['enums']
-$all_funcs = $ze_api['functions'] + $zet_api['functions'] + $zes_api['functions'] + $zel_api['functions']
+$all_enums = $ze_api['enums'] + $zet_api['enums'] + $zes_api['enums'] + $zel_api['enums'] +
+             $zex_api['enums']
+$all_funcs = $ze_api['functions'] + $zet_api['functions'] + $zes_api['functions'] + $zel_api['functions'] +
+             $zex_api['functions']
 $all_types_map = $all_types.collect { |t| [t.name, t.type] }.to_h
 
 $all_enum_names = []

@@ -89,8 +89,31 @@ grep "ZE_API_VERSION_CURRENT" ../include/ze_api.h # Sanity check
 
 ## 3/ Optional: ZEX
 
-- We are missing the `zex` header:
-- Found at `https://github.com/intel/compute-runtime/blob/master/level_zero/include/level_zero/driver_experimental/zex_api.h`
+- The `zex` (experimental) extensions come from compute-runtime, not the spec repo:
+  `https://github.com/intel/compute-runtime/tree/master/level_zero/include/level_zero/driver_experimental/`
+
+- Upstream is C++ despite the `.h`, so it cannot be included in our repo. The
+  signatures are plain C: our `include/zex_api.h` is a hand transcription of
+  just the entry points we trace.
+
+- To check which functions we don't trace yet:
+
+```bash
+$ diff <(grep -ho 'zex[A-Za-z]*(' /usr/include/level_zero/driver_experimental/*.h | tr -d '(' | sort -u) \
+       <(grep -o  'zex[A-Za-z]*(' include/zex_api.h | tr -d '(' | sort -u)
+```
+
+- Two manual changes when transcribing:
+
+  - Spell `zex_command_list_handle_t` / `zex_event_handle_t` as their `ze_`
+    originals (they are plain typedefs of them). One type must have one name:
+    metababel dispatches on field name plus type, and a field such as
+    `hSignalEvent` carrying both spellings is a conflicting signature.
+
+  - zex tags its structs with `ZEX_STRUCTURE_*` macros, not with members of
+    `ze_structure_type_t`. The generated bindings can only name an enum member,
+    so such a struct goes in `$struct_type_reject` in `ze_model.rb`; otherwise
+    `gen_ze_library.rb` raises `Unrecognized namespace`.
 
 ## Now Try to Compile:
 
