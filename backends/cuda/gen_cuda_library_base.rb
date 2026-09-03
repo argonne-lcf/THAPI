@@ -42,7 +42,7 @@ FFIName.fallback = lambda { |name|
   namespace = NAMING.name_space(name)
   rest = NAMING.class_name(name).sub(/\A#{namespace}/, '')
   prefix = namespace ? "#{namespace.downcase}_" : ''
-  "#{prefix}#{to_snake_case(rest).gsub(/\A_+/, '')}".to_sym.inspect
+  :"#{prefix}#{to_snake_case(rest).gsub(/\A_+/, '')}".inspect
 }
 
 module YAMLCAst
