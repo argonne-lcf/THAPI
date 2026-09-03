@@ -5,7 +5,6 @@ require_relative '../../utils/LTTng'
 require_relative '../../utils/command_index'
 require_relative '../../utils/meta_parameter_spec'
 
-
 # Keyed by the phase strings opencl's wrapper YAML uses. utils/meta_parameters
 # has a symbol-keyed SUFFIXES of its own; the two are not interchangeable.
 CL_START = 'entry'
