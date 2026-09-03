@@ -27,9 +27,6 @@ ZE_HDR_ROOT = \
 	zet_api.h \
 	zet_ddi.h \
 	zet_ddi_ver.h \
-        #zer_api.h \
-        #zer_ddi.h \
-        #zer_ddi_ver.h \
 	zex_api.h \
 	layers/zel_tracing_api.h \
 	layers/zel_tracing_ddi.h \
@@ -37,6 +34,9 @@ ZE_HDR_ROOT = \
 	layers/zel_tracing_register_cb.h \
 	loader/ze_loader.h \
 	loader/ze_loader_api.h
+# zer is not traced yet: zer_api.h, zer_ddi.h and zer_ddi_ver.h stay out. Do
+# not park them in the list above -- a comment runs to the end of the logical
+# line, so a commented entry swallows every entry after it.
 
 ZE_HDR = $(ZE_HDR_ROOT:%=$(srcdir)/include/%)
 MODIFIED_ZE_HDR = $(ZE_HDR_ROOT:%=modified_include/%)
