@@ -1,3 +1,6 @@
+require_relative 'yaml_ast'
+require_relative 'LTTng'
+
 START = 'entry'
 STOP = 'exit'
 SUFFIXES = { start: START, stop: STOP }
@@ -18,6 +21,14 @@ end
 
 class MetaParameter
   attr_reader :name, :command, :lttng_type
+
+  # Here rather than in each generator that walks these, so every caller asks
+  # the direction question the same way.
+  LTTNG_TYPE_BY_DIRECTION = { start: :lttng_in_type, stop: :lttng_out_type, nil => :lttng_type }.freeze
+
+  def lttng_type_for(dir)
+    send(LTTNG_TYPE_BY_DIRECTION.fetch(dir))
+  end
 
   def initialize(command, name)
     @command = command

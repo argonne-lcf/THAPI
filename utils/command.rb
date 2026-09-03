@@ -41,8 +41,7 @@ def build_command_index(groups, context:, spec: Hash.new { [] }, select: ->(_fun
 end
 
 class Command
-  attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function,
-              :context
+  attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
   # `meta_parameters` is this function's rows from a meta-parameter spec, as
   # returned by load_meta_parameters: a list of [MetaParameter subclass, args].

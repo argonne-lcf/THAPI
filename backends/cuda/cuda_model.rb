@@ -1,3 +1,4 @@
+require 'set'
 require_relative '../../utils/backend_model'
 
 # CUdeviceptr is a device address carried in an integer, so it reads as hex
@@ -249,7 +250,7 @@ EOF
 
 # cuGetProcAddress*
 # Not an api.yaml: a plain name -> suffix -> versions map, used only here.
-api_versions = YAML.load_file('cuda_api_versions.yaml')
+api_versions = yaml_load_file_cached('cuda_api_versions.yaml')
 command_names = COMMANDS.groups[:lttng_ust_cuda].collect(&:name).to_set
 pt_condition = '((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))'
 normal_condition = '((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))'

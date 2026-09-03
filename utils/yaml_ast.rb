@@ -1,10 +1,13 @@
 require 'yaml'
 require 'set'
 
+def yaml_load_file_cached(path)
+  @yaml_cache ||= {}
+  @yaml_cache[path] ||= YAML.load_file(path)
+end
+
 module YAMLCAst
   class Type
-    attr_reader :const, :restrict, :volatile
-
     def volatile?
       @volatile
     end
@@ -310,7 +313,7 @@ module YAMLCAst
   # list the file omits is absent rather than empty -- ApiModel, which is what
   # callers actually want, supplies the defaults.
   def self.load_file(path)
-    from_yaml_ast(YAML.load_file(path))
+    from_yaml_ast(yaml_load_file_cached(path))
   end
 
   def self.from_yaml_ast(ast)

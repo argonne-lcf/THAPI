@@ -7,7 +7,7 @@ require_relative 'api_model'
 # that API and the others, stated in one place instead of hidden in a redefined
 # function or a hardcoded constant.
 class NamingContext
-  attr_reader :api, :module_name, :namespace_pattern, :strict, :ffi_struct, :ffi_union
+  attr_reader :api, :module_name, :ffi_struct, :ffi_union
 
   # `api` is the one place that says which model the shared generators below
   # ask about a name.
@@ -169,16 +169,11 @@ module FFIName
   self.fallback = ->(_name) {}
 end
 
-# Pass `false` for `default` to ask whether this type has a name at all; the
-# answer is nil when it does not.
-def to_ffi_name(name, default = true)
+def to_ffi_name(name)
   return FFI_NAMES[name] if FFI_NAMES.key?(name)
   return ":#{Regexp.last_match(1)}" if name.match(/^(u?int\d+)_t$/)
 
-  named = FFIName.fallback.call(name)
-  return named if named
-
-  name.to_sym.inspect if default
+  FFIName.fallback.call(name) || name.to_sym.inspect
 end
 
 # FFI stores a flag by bit position and cannot express a multi-bit alias like
@@ -186,22 +181,25 @@ end
 BitfieldMembers = Struct.new(:flags, :default, :composites)
 
 # A header writes an enum value as a decimal or hex literal, which Integer()
-# reads directly. The eval is the fallback for an expression it cannot -- no
-# vendored header currently needs it, but a `1 << 3` would.
-def enum_value(val)
+# reads directly. Anything else is a macro, which only the API whose header
+# defines it can evaluate -- so that API passes a `resolver`, and a value
+# neither rule can read raises rather than guessing.
+def enum_value(val, resolver)
   return val unless val.is_a?(String)
 
-  Integer(val, exception: false) || eval(val)
+  Integer(val, exception: false) ||
+    resolver.call(val) ||
+    raise("cannot read enum value #{val.inspect}; the API's resolver declined it")
 end
 
-def classify_bitfield_members(enum)
+def classify_bitfield_members(enum, resolver: ->(_val) {})
   flags = []
   composites = []
   default = nil
   counter = 0
   enum.members.each do |m|
     counter = if m.val
-                enum_value(m.val)
+                enum_value(m.val, resolver)
               else
                 counter + 1
               end
@@ -218,13 +216,14 @@ end
 
 # `check_flags` is true for an API that also spells a one-flag type in the
 # plural: ze and omp declare both names for the same type.
-def print_bitfield_with_namespace(naming, name, enum, check_flags: false)
+def print_bitfield_with_namespace(naming, name, enum, check_flags: false, resolver: ->(_val) {})
   klass = naming.class_name(name)
-  members = classify_bitfield_members(enum)
+  members = classify_bitfield_members(enum, resolver: resolver)
   pair = ->(m) { "#{m[0].inspect}, #{m[1]}" }
+  ffi_name = to_ffi_name(name)
 
   puts <<EOF
-  #{klass} = #{naming.module_name.downcase}bitmask #{to_ffi_name(name)},
+  #{klass} = #{naming.module_name.downcase}bitmask #{ffi_name},
     [ #{members.flags.collect(&pair).join(",\n      ")} ]
 EOF
   puts <<EOF if members.default
@@ -233,9 +232,9 @@ EOF
   puts <<EOF unless members.composites.empty?
   # #{members.composites.collect(&pair).join(",\n  # ")}
 EOF
-  if check_flags && to_ffi_name(name).match('_flag_t')
+  if check_flags && ffi_name.match('_flag_t')
     puts "  #{klass}s = #{klass}"
-    puts "  typedef #{to_ffi_name(name)}, #{to_ffi_name(name).gsub('_flag_t', '_flags_t')}"
+    puts "  typedef #{ffi_name}, #{ffi_name.gsub('_flag_t', '_flags_t')}"
   end
   puts "\n"
 end

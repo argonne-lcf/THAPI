@@ -1,8 +1,12 @@
+require 'set'
 require_relative 'gen_ze_library_base'
 
-def ZE_BIT(i)
-  1 << i
-end
+# ZE_BIT is a macro in ze's headers, so the parsed AST carries the call
+# unevaluated -- this is our implementation of it.
+ZE_ENUM_VALUE_RESOLVER = lambda { |val|
+  m = val.match(/\AZE_BIT\((\d+)\)\z/)
+  1 << Integer(m[1]) if m
+}
 
 def print_version_enum_struct(name)
   puts <<EOF
@@ -29,7 +33,8 @@ def print_enum(name, enum)
   if enum.members.find { |m| m.val && m.val.is_a?(String) && m.val.match('ZE_BIT') } || enum.members.all? do |m|
     m.name.include?('_FLAG_')
   end
-    print_bitfield_with_namespace(NAMING, name, enum, check_flags: true)
+    print_bitfield_with_namespace(NAMING, name, enum, check_flags: true,
+                                                      resolver: ZE_ENUM_VALUE_RESOLVER)
   else
     print_enum_with_namespace(NAMING, name, enum)
   end

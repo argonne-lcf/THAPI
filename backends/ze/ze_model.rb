@@ -1,3 +1,4 @@
+require 'set'
 require_relative '../../utils/backend_model'
 
 # The namespaces THAPI traces, each declared by its own header. zer has no
@@ -12,18 +13,15 @@ APIS = {
   zex: ApiModel.load_file('zex_api.yaml'),
 }.freeze
 
-# The self-describing structs of one namespace: those whose first member is a
-# tag naming the struct's own type. That tag is what lets the tracer decode a
-# `void *` at runtime, so it is what makes a struct worth its own tracepoint.
-#
-# Level Zero spells the tag `stype`; the name is a parameter because the
-# pattern is not Level Zero's. Any API that tags its extensible structs the
-# same way answers this question by passing its own spelling.
-def tagged_structs(api, tag: 'stype')
+# A struct tagged with its own type is one the tracer can decode from a
+# `void *` at runtime, which is what makes it worth its own tracepoint.
+STRUCT_TYPE_TAG = 'stype'
+
+def tagged_structs(api)
   api.types.select do |t|
     t.type.is_a?(YAMLCAst::Struct) &&
       (struct = api.struct_named(t.type.name)) &&
-      struct.members.first.name == tag
+      struct.members.first.name == STRUCT_TYPE_TAG
   end.map(&:name)
 end
 

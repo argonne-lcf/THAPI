@@ -1,7 +1,7 @@
 require 'yaml'
 
 require_relative '../../utils/gen_babeltrace_model_helper'
-OPENCL_MODEL = YAML.load_file('opencl_model.yaml')
+OPENCL_MODEL = yaml_load_file_cached('opencl_model.yaml')
 
 def get_bottom(type)
   type = type.gsub('cl_errcode', 'cl_int')

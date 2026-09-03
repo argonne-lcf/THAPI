@@ -1,3 +1,6 @@
+require 'yaml'
+
+require_relative 'gen_probe_base'
 require_relative 'yaml_ast'
 require_relative 'type_registry'
 require_relative 'meta_parameters'
@@ -21,14 +24,8 @@ def build_ast_registry(naming, backend, expect_bitfields:)
   registry
 end
 
-def meta_parameter_types_name(m, dir = nil)
-  lttng = if dir == :start
-            m.lttng_in_type
-          elsif dir == :stop
-            m.lttng_out_type
-          else
-            m.lttng_type
-          end
+def meta_parameter_types_name(m, dir)
+  lttng = m.lttng_type_for(dir)
   name = lttng.name
   t = m.command[m.name].type.type
 
@@ -147,12 +144,14 @@ def get_fields_types_name(c, dir)
     end
   end
 
-  name = case dir
-         when :start then In
-         when :stop  then Out
-         end
+  # An entry event carries only the meta-parameters that describe an input, an
+  # exit event only those that describe a result; an undirected event takes all.
+  phase = case dir
+          when :start then In
+          when :stop  then Out
+          end
 
-  fields + c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
+  fields + c.meta_parameters.select { |m| phase.nil? || m.is_a?(phase) }.collect do |m|
     meta_parameter_types_name(m, dir)
   end.flatten(1)
 end
@@ -171,38 +170,19 @@ def gen_extra_event_fields_bt_model(registry, event)
   end
 end
 
+def gen_bt_event(provider, name, members)
+  event = { name: "#{provider}:#{name}" }
+  event[:payload_field_class] = { type: 'structure', members: members } unless members.empty?
+  event
+end
+
+# The name has to match the one the tracepoint provider declares.
 def gen_event_bt_model(registry, provider, c, dir = nil)
-  d = if dir
-        { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}" }
-      # OMP backend
-      else
-        { name: "#{provider}:#{c.name.gsub(/_func\z/, '')}" }
-      end
-
-  m = gen_event_fields_bt_model(registry, c, dir)
-
-  unless m.empty?
-    d[:payload_field_class] =
-      {
-        type: 'structure',
-        members: m,
-      }
-  end
-  d
+  gen_bt_event(provider, tracepoint_event_name(c, dir), gen_event_fields_bt_model(registry, c, dir))
 end
 
 def gen_extra_event_bt_model(registry, provider, event)
-  d = { name: "#{provider}:#{event['name']}" }
-  m = gen_extra_event_fields_bt_model(registry, event)
-
-  unless m.empty?
-    d[:payload_field_class] =
-      {
-        type: 'structure',
-        members: m,
-      }
-  end
-  d
+  gen_bt_event(provider, event['name'], gen_extra_event_fields_bt_model(registry, event))
 end
 
 # itt and omp trace a single event per command; everyone else a start/stop pair.
@@ -220,7 +200,7 @@ def gen_command_events_bt_model(registry, provider_commands, phased: true)
 end
 
 def gen_extra_events_bt_model(registry, events_path)
-  YAML.load_file(events_path).collect do |provider, es|
+  yaml_load_file_cached(events_path).collect do |provider, es|
     es['events'].collect do |event|
       gen_extra_event_bt_model(registry, provider, event)
     end

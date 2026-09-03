@@ -1,6 +1,6 @@
-require 'yaml'
+require_relative '../../utils/yaml_ast'
 SRC_DIR = ENV.fetch('SRC_DIR', nil)
-export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
+export_tables = yaml_load_file_cached(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 
 puts <<~EOF
   #ifndef _CUDA_EXPORTS_H_INCLUDE

@@ -1,3 +1,5 @@
+require 'yaml'
+
 begin
   require 'opencl_ruby_ffi/opencl_types'
   require 'opencl_ruby_ffi/opencl_arithmetic_gen'

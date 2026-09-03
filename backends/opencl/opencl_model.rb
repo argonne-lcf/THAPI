@@ -1,5 +1,6 @@
 require 'nokogiri'
 require 'yaml'
+require_relative '../../utils/yaml_ast'
 require_relative '../../utils/LTTng'
 require_relative '../../utils/command_index'
 require_relative '../../utils/meta_parameter_spec'
@@ -22,7 +23,7 @@ ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTermi
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /#{YAML.load_file(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
+SUPPORTED_EXTENSION_FUNCTIONS = /#{yaml_load_file_cached(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 

@@ -72,7 +72,7 @@ end
 puts ''
 
 namespace = 'lttng_ust_opencl'
-callbacks = YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml'))[namespace]
+callbacks = yaml_load_file_cached(File.join(SRC_DIR, 'opencl_wrapper_events.yaml'))[namespace]
 callbacks['events'].each do |e|
   %w[start stop].each do |dir|
     LTTng.print_tracepoint(namespace, e, dir, suffix: CL_EVENT_SUFFIXES[dir])

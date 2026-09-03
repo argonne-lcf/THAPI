@@ -1,15 +1,21 @@
-require 'yaml'
+require_relative 'yaml_ast'
 require_relative 'LTTng'
 require_relative 'meta_parameters'
 
+# One provider's entry in a backend's `<backend>_events.yaml`: the enums and
+# events it declares by hand.
+def declared_events(path, provider)
+  yaml_load_file_cached(path).fetch(provider.to_s) do
+    raise "#{path} declares no events for #{provider}!"
+  end
+end
+
 # The events a backend writes out by hand, rather than deriving them from a
 # traced function's prototype. They live under the provider's name in a
-# `<backend>_events.yaml`; a provider that has none is simply absent from it.
+# `<backend>_events.yaml`.
 #
 # Enums first: a declared event may name one.
 def print_declared_events(provider, declared)
-  return unless declared
-
   declared['enums'].to_a.each { |e| LTTng.print_enum(provider, e) }
   declared['events'].to_a.each { |e| LTTng.print_tracepoint(provider, e) }
 end
@@ -29,7 +35,7 @@ def print_tracepoint_provider(provider, commands, include:, events_path: nil, di
     #{include}
   EOF
 
-  print_declared_events(provider, events_path && YAML.load_file(events_path)[provider.to_s])
+  print_declared_events(provider, declared_events(events_path, provider)) if events_path
 
   commands.groups[provider].each do |c|
     next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
@@ -94,16 +100,7 @@ EOF
   # Add parameters
   fields += c.parameters.collect { |p| p.lttng_type(c.type_classes) } if dir != :stop && c.parameters
 
-  # Add meta parameteter
-  name = if dir == :start
-           :lttng_in_type
-         elsif dir == :stop
-           :lttng_out_type
-         else
-           :lttng_type
-         end
-
-  fields += c.meta_parameters.collect(&name).flatten
+  fields += c.meta_parameters.collect { |m| m.lttng_type_for(dir) }.flatten
 
   puts '    ' << fields.compact.map(&:call_string).join("\n    ")
   puts <<~EOF

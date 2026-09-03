@@ -80,7 +80,7 @@ puts <<~EOF
 
 EOF
 
-export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
+export_tables = yaml_load_file_cached(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 
 puts <<~EOF
   static void * cuda_extension_dispatcher(const CUuuid *uuid, size_t offset);

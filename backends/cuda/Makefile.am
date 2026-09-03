@@ -86,7 +86,7 @@ cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cuda
 cuda_api.yaml: $(srcdir)/extract/cuda_api.h $(MODIFIED_CUDA_HDR)
 	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ $< > $@
 
-cuda_exports_extract.h: $(srcdir)/gen_cuda_exports_extract.rb $(srcdir)/cuda_export_tables.yaml $(MODIFIED_CUDA_HDR)
+cuda_exports_extract.h: $(srcdir)/gen_cuda_exports_extract.rb $(srcdir)/cuda_export_tables.yaml $(MODIFIED_CUDA_HDR) $(top_srcdir)/utils/yaml_ast.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 cuda_exports_api.yaml: cuda_exports_extract.h $(MODIFIED_CUDA_HDR)
@@ -109,7 +109,7 @@ EXTRA_DIST += \
 	gen_cuda_exports_extract.rb \
 	extract_cuda_versions.rb
 
-cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml
+cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml $(top_srcdir)/utils/yaml_ast.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \

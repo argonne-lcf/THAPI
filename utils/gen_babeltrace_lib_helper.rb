@@ -1,3 +1,5 @@
+require_relative 'yaml_ast'
+
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
 def print_babeltrace_lib(naming, backend)
@@ -8,7 +10,7 @@ end
 # One `$event_lambdas` entry per event: a lambda that renders the event's
 # payload as a string.
 def add_babeltrace_event_callbacks(naming, file)
-  YAML.load_file(file)[:stream_classes].each do |s|
+  yaml_load_file_cached(file)[:stream_classes].each do |s|
     s[:event_classes].each do |e|
       # Handle payload_field_class not present, in this case empty array
       members = e[:payload_field_class]&.[](:members).to_a

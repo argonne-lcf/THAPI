@@ -1,7 +1,9 @@
+require 'yaml'
+
 require_relative 'opencl_model'
 require_relative 'opencl_tracepoints'
 
-en = YAML.load_file(File.join(SRC_DIR, 'supported_enums.yaml'))
+en = yaml_load_file_cached(File.join(SRC_DIR, 'supported_enums.yaml'))
 en.push({ 'name' => 'cl_bool' })
 en.push({ 'name' => 'command execution status', 'trace_name' => 'command_exec_callback_type',
           'type_name' => 'cl_command_execution_status' })
@@ -154,7 +156,7 @@ event_lambda = lambda { |c, dir|
   end
 end
 
-YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namespace, h|
+yaml_load_file_cached(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namespace, h|
   h['events'].each do |e|
     %w[start stop].each do |dir|
       event = get_fields(e['args'], e[dir.to_s])
@@ -163,7 +165,7 @@ YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namesp
   end
 end
 
-YAML.load_file(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
+yaml_load_file_cached(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
   if h['enums']
     h['enums'].each do |e|
       lttng_enums[e['name']] = {
