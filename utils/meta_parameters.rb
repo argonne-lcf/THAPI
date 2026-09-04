@@ -57,22 +57,7 @@ class MetaParameter
   end
 
   def check_for_null(expr, incl = true)
-    list = expr.split('->')
-    if list.length == 1
-      return [expr] if incl
-
-      []
-
-    else
-      res = []
-      pre = ''
-      list[0..(incl ? -1 : -2)].each do |n|
-        pre += n
-        res.push(pre)
-        pre += '->'
-      end
-      res
-    end
+    MemberPath.prefixes(expr, incl: incl)
   end
 
   def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
@@ -278,7 +263,7 @@ end
 # once the call has filled it.
 module NullTerminated
   def initialize(command, name)
-    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
+    sname = "_#{MemberPath.flatten(name)}_size"
     checks = check_for_null(name)
     fill = <<EOF
   #{sname} = 0;

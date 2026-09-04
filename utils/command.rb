@@ -1,3 +1,4 @@
+require_relative 'LTTng'
 require_relative 'command_index'
 require_relative 'meta_parameter_spec'
 
@@ -141,22 +142,14 @@ class Command
     # special case when querying the return value
     return YAMLCAst::Declaration.new(name: result_name, type: type) if name == :result
 
-    path = name.split('->')
-    if path.length == 1
-      res = parameters.find { |p| p.name == name }
-      return res if res
+    param_name, *members = MemberPath.segments(name)
+    res = parameters.find { |p| p.name == param_name }
+    return @tracepoint_parameters.find { |p| p.name == name } if res.nil?
 
-      @tracepoint_parameters.find { |p| p.name == name }
-    else
-      param_name = path.shift
-      res = parameters.find { |p| p.name == param_name }
+    members.each do |m|
+      res = @context.struct_map[res.type.type.name].find { |member| member.name == m }
       return nil unless res
-
-      path.each do |n|
-        res = @context.struct_map[res.type.type.name].find { |m| m.name == n }
-        return nil unless res
-      end
-      res
     end
+    res
   end
 end

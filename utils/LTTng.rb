@@ -1,5 +1,31 @@
 MEMBER_SEPARATOR = '__'
 
+# A meta-parameter names either a function parameter or a path to a member of
+# one, written as it would be in C: `nodeParams->extra`. Everything that has to
+# take such a name apart reads the grammar from here.
+module MemberPath
+  # The path, outermost first: `a->b->c` is a, then b within it, then c.
+  def self.segments(name)
+    name.split('->')
+  end
+
+  # Every prefix of the path, outermost first -- the pointers C must find
+  # non-NULL before the whole expression can be read. `incl: false` stops at the
+  # last pointer, for a caller that guards an expression reading the final
+  # member rather than the member itself.
+  def self.prefixes(name, incl: true)
+    path = segments(name)
+    path = path[0..-2] unless incl
+    path.each_index.map { |i| path[0..i].join('->') }
+  end
+
+  # A path is one identifier once it names a tracepoint field, which cannot
+  # carry an arrow.
+  def self.flatten(name)
+    name.gsub('->', MEMBER_SEPARATOR)
+  end
+end
+
 def upper_snake_case(str)
   str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
 end
@@ -55,7 +81,7 @@ module LTTng
     end
 
     def name=(n)
-      @name = n.gsub('->', MEMBER_SEPARATOR)
+      @name = MemberPath.flatten(n)
     end
   end
 
