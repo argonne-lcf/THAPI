@@ -71,6 +71,22 @@ STRUCT_TYPE_CONVERSION_TABLE = {
 STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
                                 zex_device_module_register_file_exp_t])
 
+# The ze_structure_type_t enumerator that tags `name`, a struct typedef such as
+# ze_device_properties_t -> ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES.
+#
+# The tracer switches on this to pick a tracepoint, and the Ruby bindings stamp
+# it into the struct's initializer; the two have to name the same enumerator or
+# a struct is traced under a tag its class never sets. So it is derived here
+# once, from the struct name, rather than recomputed on each side.
+#
+# A handful of enumerators do not follow the rule -- the spec renamed them after
+# the struct was named -- and the table has the last word.
+def structure_type_name(name)
+  namespace = name[/\A[a-z]+/]
+  tag = "#{namespace}_STRUCTURE_TYPE_#{name.delete_prefix("#{namespace}_").delete_suffix('_t')}".upcase
+  STRUCT_TYPE_CONVERSION_TABLE.fetch(tag, tag)
+end
+
 # Each namespace declares its meta-parameters in its own file, so the list
 # follows APIS rather than restating it. zer's file exists but stays out until
 # zer has a generated api.yaml to match it against.

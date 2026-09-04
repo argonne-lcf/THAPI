@@ -4,7 +4,9 @@ API = ApiModel.load_file('ompt_api.yaml')
 
 gen_ffi_type_map(API.types, API.type_classes)
 
-CONTEXT = BackendContext.for(API, result_name: 'ompResult', init_functions: /None/)
+# A callback API: one undirected event per call.
+CONTEXT = BackendContext.for(API, result_name: 'ompResult', init_functions: /None/,
+                                  directions: [nil])
 
 OMPT_CALLBACKS = API.types.select do |t|
   t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function) && t.name.match(/ompt_callback_.*_t/)

@@ -4,7 +4,9 @@ API = ApiModel.load_file('itt_api.yaml')
 
 gen_ffi_type_map(API.types, API.type_classes)
 
-CONTEXT = BackendContext.for(API, result_name: 'ittResult', init_functions: /None/)
+# A callback API: one undirected event per call.
+CONTEXT = BackendContext.for(API, result_name: 'ittResult', init_functions: /None/,
+                                  directions: [nil])
 
 # The handful of entry points itt traces, of the hundred-odd its header
 # declares.

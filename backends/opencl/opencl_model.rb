@@ -5,10 +5,10 @@ require_relative '../../utils/LTTng'
 require_relative '../../utils/command_index'
 require_relative '../../utils/meta_parameter_spec'
 
-# Keyed by the phase strings opencl's wrapper YAML uses. utils/meta_parameters
-# has a symbol-keyed SUFFIXES of its own; the two are not interchangeable.
-CL_START = 'entry'
-CL_STOP = 'exit'
+# The same suffixes utils/LTTng defines, keyed by the phase strings opencl's
+# wrapper YAML and its generators use rather than by the AST backends' symbols.
+CL_START = START
+CL_STOP = STOP
 CL_EVENT_SUFFIXES = { 'start' => CL_START, 'stop' => CL_STOP }.freeze
 
 HOST_PROFILE = true
@@ -24,9 +24,6 @@ EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 SUPPORTED_EXTENSION_FUNCTIONS = /#{yaml_load_file_cached(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
-
-LTTNG_AVAILABLE_PARAMS = 25
-LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
 # map = Hash::new { |h, k| h[k] = [] }
 

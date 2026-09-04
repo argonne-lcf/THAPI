@@ -30,9 +30,7 @@ end
 def print_enum(name, enum)
   return print_version_enum_struct(name) if name.match(/_version_t\z/)
 
-  if enum.members.find { |m| m.val && m.val.is_a?(String) && m.val.match('ZE_BIT') } || enum.members.all? do |m|
-    m.name.include?('_FLAG_')
-  end
+  if API.bitfield?(name)
     print_bitfield_with_namespace(NAMING, name, enum, check_flags: true,
                                                       resolver: ZE_ENUM_VALUE_RESOLVER)
   else
@@ -222,23 +220,8 @@ def print_struct(name, struct)
       super(*args)
       if(args.length == 0)
 EOF
-    ename = to_ffi_name(name)
-    ename = case ename
-            when /\A:ze_/
-              "ZE_STRUCTURE_TYPE_#{ename.to_s[4..-3]}"
-            when /\A:zet_/
-              "ZET_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
-            when /\A:zes_/
-              "ZES_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
-            when /\A:zel_/
-              "ZEL_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
-            else
-              raise "Unrecognized namespace for #{ename}"
-            end.upcase
-    ename = STRUCT_TYPE_CONVERSION_TABLE[ename] if STRUCT_TYPE_CONVERSION_TABLE[ename]
-
     initializer << <<EOF
-        self[:stype] = :#{ename}
+        self[:stype] = :#{structure_type_name(name)}
       end
     end
 EOF

@@ -1,7 +1,7 @@
 require_relative 'gen_omp_library_base'
 
 def print_enum(name, enum)
-  if enum.name.end_with?('flag_t')
+  if API.bitfield?(name)
     print_bitfield_with_namespace(NAMING, name, enum, check_flags: true)
   else
     print_enum_with_namespace(NAMING, name, enum, filter_members: ->(m) { m.name != 'ompt_callback_master' })

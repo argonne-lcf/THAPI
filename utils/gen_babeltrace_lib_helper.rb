@@ -2,9 +2,9 @@ require_relative 'yaml_ast'
 
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
-def print_babeltrace_lib(naming, backend)
-  puts "require_relative '#{backend}_library.rb'"
-  add_babeltrace_event_callbacks(naming, "btx_#{backend}_model.yaml")
+def print_babeltrace_lib(naming)
+  puts "require_relative '#{naming.backend}_library.rb'"
+  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml")
 end
 
 # One `$event_lambdas` entry per event: a lambda that renders the event's
@@ -70,7 +70,7 @@ end
 # A bitmask's value is a set of flags, so it renders as a list; a plain enum
 # renders as the single name it stands for.
 def render_named_integer(naming, name, field_class, be_class)
-  if naming.api.bitfield_names.include?(field_class[:cast_type])
+  if naming.api.bitfield?(field_class[:cast_type])
     %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
   else
     %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}

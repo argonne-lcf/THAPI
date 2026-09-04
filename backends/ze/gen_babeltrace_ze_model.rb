@@ -51,7 +51,7 @@ def struct_event_classes
   end.flatten
 end
 
-print_bt_model(NAMING, 'ze', COMMANDS,
+print_bt_model(NAMING, COMMANDS,
                expect_bitfields: true,
                extra_events_path: File.join(SRC_DIR, 'ze_events.yaml'),
                extra_event_classes: struct_event_classes)

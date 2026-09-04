@@ -74,6 +74,14 @@ class ApiModel
     @bitfield_names
   end
 
+  # Whether a typedef names OR-able flags rather than a plain enum. The library
+  # generator emits a bitmask class for one and an enum class for the other,
+  # and the babeltrace renderer decides from the same answer whether to render
+  # a list of flags or a single name -- so both ask here.
+  def bitfield?(name)
+    bitfield_names.include?(name)
+  end
+
   def struct_names
     classify
     @struct_names

@@ -9,7 +9,7 @@ require_relative 'meta_parameters'
 # API has bitfield types is a fact about its headers, so each backend states
 # what it expects: a backend that silently stopped classifying them would
 # otherwise emit plain integers where enum metadata belongs.
-def build_ast_registry(naming, backend, expect_bitfields:)
+def build_ast_registry(naming, expect_bitfields:)
   api = naming.api
   registry = TypeRegistry.new(
     all_types: api.types, all_enums: api.enums,
@@ -17,9 +17,9 @@ def build_ast_registry(naming, backend, expect_bitfields:)
     class_namer: ->(name) { naming.scoped_class_name(name) }
   )
   if expect_bitfields
-    raise "#{backend}: expected bitfield types" if registry.bitfield_names.empty?
+    raise "#{naming.backend}: expected bitfield types" if registry.bitfield_names.empty?
   else
-    raise "#{backend}: expected no bitfield types" unless registry.bitfield_names.empty?
+    raise "#{naming.backend}: expected no bitfield types" unless registry.bitfield_names.empty?
   end
   registry
 end
@@ -185,16 +185,12 @@ def gen_extra_event_bt_model(registry, provider, event)
   gen_bt_event(provider, event['name'], gen_extra_event_fields_bt_model(registry, event))
 end
 
-# itt and omp trace a single event per command; everyone else a start/stop pair.
-def gen_command_events_bt_model(registry, provider_commands, phased: true)
+# One event class per event the command produces, which is the command's own
+# answer -- the same one the tracepoint provider enumerates.
+def gen_command_events_bt_model(registry, provider_commands)
   provider_commands.collect do |provider, commands|
     commands.collect do |c|
-      if phased
-        [gen_event_bt_model(registry, provider, c, :start),
-         gen_event_bt_model(registry, provider, c, :stop)]
-      else
-        [gen_event_bt_model(registry, provider, c)]
-      end
+      c.directions.collect { |dir| gen_event_bt_model(registry, provider, c, dir) }
     end
   end.flatten(2)
 end
@@ -211,25 +207,21 @@ end
 # types, turn every traced command into event classes, add the events the
 # backend declares by hand, and print the model.
 #
-# `backend` names both the stream class and the backend the bitfield check
-# reports against.
-#
 # `extra_events_path` is the backend's declared-event file, absent for a
-# backend that declares none. `phased` is false for a callback API, whose commands
-# trace a single event rather than an entry/exit pair. `expect_bitfields` says
-# whether this API's headers have bitfield types at all.
+# backend that declares none. `expect_bitfields` says whether this API's headers
+# have bitfield types at all.
 #
 # `extra_event_classes` is anything the backend derives itself: ze adds one
 # event per self-describing struct, which no other backend has.
-def print_bt_model(naming, backend, commands, expect_bitfields:, extra_events_path: nil, phased: true,
+def print_bt_model(naming, commands, expect_bitfields:, extra_events_path: nil,
                    extra_event_classes: [])
-  registry = build_ast_registry(naming, backend, expect_bitfields: expect_bitfields)
+  registry = build_ast_registry(naming, expect_bitfields: expect_bitfields)
 
-  event_classes = gen_command_events_bt_model(registry, commands.groups, phased: phased)
+  event_classes = gen_command_events_bt_model(registry, commands.groups)
   event_classes += gen_extra_events_bt_model(registry, extra_events_path) if extra_events_path
   event_classes += extra_event_classes
 
-  puts YAML.dump(gen_yaml(event_classes, backend))
+  puts YAML.dump(gen_yaml(event_classes, naming.backend))
 end
 
 def gen_yaml(event_classes, backend)

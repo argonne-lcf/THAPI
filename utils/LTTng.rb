@@ -1,5 +1,18 @@
 MEMBER_SEPARATOR = '__'
 
+# The suffix each half of a traced call is spelled with, everywhere: in the
+# tracepoint the provider declares, in the event class the babeltrace model
+# names, and in the trace itself. It is the wire format the two sides agree on,
+# so it is stated here rather than per backend.
+START = 'entry'
+STOP = 'exit'
+
+# The tracepoint macro takes a fixed number of arguments, one of which LTTng
+# spends itself; a function with more parameters than the rest can carry has no
+# tracepoint generated for it.
+LTTNG_AVAILABLE_PARAMS = 25
+LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
+
 # A meta-parameter names either a function parameter or a path to a member of
 # one, written as it would be in C: `nodeParams->extra`. Everything that has to
 # take such a name apart reads the grammar from here.
@@ -24,8 +37,18 @@ module MemberPath
   end
 end
 
+# How a camelCase C name splits into words: a run of capitals starts a new one.
+# cuMemAllocHost -> cu_Mem_Alloc_Host.
+def snake_case_parts(str)
+  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1')
+end
+
 def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
+  snake_case_parts(str).upcase
+end
+
+def lower_snake_case(str)
+  snake_case_parts(str).downcase
 end
 
 module LTTng

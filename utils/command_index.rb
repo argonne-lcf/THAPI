@@ -62,11 +62,14 @@ end
 # The macro that lets hand-written tracer C call a traced function through the
 # same symbol the generated code uses.
 #
-# Takes any list of commands, because a backend defines these for the subset it
-# reaches by dlsym rather than always for the whole index.
-#
 # `pointer_name_of` reads the name off a command, because opencl's Command
 # class keeps it on a prototype rather than on the command itself.
+def pointer_define(c, pointer_names, pointer_name_of: :pointer_name.to_proc)
+  "#define #{pointer_names[c]} #{pointer_name_of.call(c)}"
+end
+
+# Those macros for a list of commands. A backend defines these for the subset it
+# reaches by dlsym rather than always for the whole index.
 def print_pointer_defines(commands, pointer_names, pointer_name_of: :pointer_name.to_proc)
-  commands.each { |c| puts "#define #{pointer_names[c]} #{pointer_name_of.call(c)}" }
+  commands.each { |c| puts pointer_define(c, pointer_names, pointer_name_of: pointer_name_of) }
 end

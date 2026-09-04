@@ -2,10 +2,6 @@ require_relative 'cuda_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-def to_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
-end
-
 # cuda.h vendors the OpenCL and VDPAU interop typedefs (cl_event_flags,
 # VdpDevice) plus cuuint32_t/cuuint64_t, which carry no CU prefix, so `strict`
 # stays false and name_space can answer nil.
@@ -42,7 +38,7 @@ FFIName.fallback = lambda { |name|
   namespace = NAMING.name_space(name)
   rest = NAMING.class_name(name).sub(/\A#{namespace}/, '')
   prefix = namespace ? "#{namespace.downcase}_" : ''
-  :"#{prefix}#{to_snake_case(rest).gsub(/\A_+/, '')}".inspect
+  :"#{prefix}#{lower_snake_case(rest).gsub(/\A_+/, '')}".inspect
 }
 
 module YAMLCAst

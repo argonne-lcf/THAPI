@@ -1,11 +1,8 @@
 require_relative 'yaml_ast'
 require_relative 'LTTng'
 
-START = 'entry'
-STOP = 'exit'
-SUFFIXES = { start: START, stop: STOP }
-LTTNG_AVAILABLE_PARAMS = 25
-LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
+# The suffixes keyed by the direction symbol the AST generators pass around.
+SUFFIXES = { start: START, stop: STOP }.freeze
 
 # A meta-parameter's field is the same whichever event carries it; a direction
 # says only which events those are. Prepending one is therefore a whole class

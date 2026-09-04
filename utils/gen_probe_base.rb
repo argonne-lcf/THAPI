@@ -22,14 +22,11 @@ end
 
 # The whole of a tracepoint-provider generator. A provider's events come from
 # two places and it may use either or both: the ones declared in `events_path`,
-# and one pair of entry/exit tracepoints per traced function.
-#
-# `directions` is [nil] for a callback API, which has a single undirected
-# event; see tracepoint_event_name.
+# and one tracepoint per event a traced function produces.
 #
 # A function with more parameters than LTTng can carry is skipped: the macro
 # would not compile, and dropping the event is better than failing the build.
-def print_tracepoint_provider(provider, commands, include:, events_path: nil, directions: %i[start stop])
+def print_tracepoint_provider(provider, commands, include:, events_path: nil)
   puts <<~EOF
     #include "lttng/tracepoint_gen.h"
     #{include}
@@ -40,7 +37,7 @@ def print_tracepoint_provider(provider, commands, include:, events_path: nil, di
   commands.groups[provider].each do |c|
     next if c.parameters && c.parameters.length > LTTNG_USABLE_PARAMS
 
-    directions.each { |dir| print_tracepoint(provider, c, dir) }
+    c.directions.each { |dir| print_tracepoint(provider, c, dir) }
   end
 end
 

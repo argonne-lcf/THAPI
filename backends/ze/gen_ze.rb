@@ -49,10 +49,8 @@ def gen_struct_printer(namespace, types)
       switch (stype) {
   EOF
   types.reject { |t| STRUCT_TYPE_REJECT.include?(t.to_s) }.each do |t|
-    ename = "#{namespace.to_s.upcase}_STRUCTURE_TYPE_#{t.delete_prefix(namespace.to_s + '_').delete_suffix('_t').upcase}"
-    ename = STRUCT_TYPE_CONVERSION_TABLE[ename] if STRUCT_TYPE_CONVERSION_TABLE[ename]
     puts <<EOF
-  case #{ename}:
+  case #{structure_type_name(t)}:
     tracepoint(lttng_ust_#{namespace}_structs, #{t}, ((#{t} *)p));
     break;
 EOF

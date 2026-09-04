@@ -9,9 +9,7 @@ end
 
 def define_and_find_mpi_symbols
   print_pointer_table(COMMANDS, MPI_POINTER_NAMES, blank: :after,
-                                                   before: lambda { |c|
-                                                     "#define #{MPI_POINTER_NAMES[c]} #{c.pointer_name}"
-                                                   })
+                                                   before: ->(c) { pointer_define(c, MPI_POINTER_NAMES) })
 
   puts 'static void find_mpi_symbols(void * handle, int verbose) {'
   print_dlsym_lookups(COMMANDS, MPI_POINTER_NAMES, prefix: 'THAPI: ')

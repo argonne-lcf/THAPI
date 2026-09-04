@@ -5,16 +5,20 @@ require_relative 'meta_parameter_spec'
 # The per-backend facts the shared generators need but cannot derive from a
 # function alone: what the traced return value is called, which functions
 # initialize the API, the struct layouts to walk when a meta-parameter names a
-# member, and how the API's typedefs classify.
+# member, how the API's typedefs classify, and which events a call produces.
 #
 # A Command belongs to exactly one backend, so it carries this rather than the
 # shared generators reading it from whichever backend was required last.
-BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes,
+BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes, :directions,
                             keyword_init: true) do
   # The two derived fields always come from the same model, so a backend names
   # the model rather than restating where each one is read from.
-  def self.for(api, result_name:, init_functions:)
-    new(result_name: result_name, init_functions: init_functions,
+  #
+  # `directions` is the events one traced call produces. The tracepoint provider
+  # and the babeltrace model both name events from it, so they cannot disagree.
+  # A callback API passes [nil]: the runtime calls in once.
+  def self.for(api, result_name:, init_functions:, directions: %i[start stop])
+    new(result_name: result_name, init_functions: init_functions, directions: directions,
         struct_map: api.struct_map, type_classes: api.type_classes)
   end
 end
@@ -75,6 +79,10 @@ class Command
 
   def type_classes
     @context.type_classes
+  end
+
+  def directions
+    @context.directions
   end
 
   def name

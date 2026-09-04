@@ -7,14 +7,10 @@ require_relative 'api_model'
 # that API and the others, stated in one place instead of hidden in a redefined
 # function or a hardcoded constant.
 class NamingContext
-  attr_reader :api, :module_name, :ffi_struct, :ffi_union
+  attr_reader :api, :module_name
 
   # `api` is the one place that says which model the shared generators below
   # ask about a name.
-  #
-  # `ffi_prefix` names the FFI base classes. It defaults to `module_name`
-  # because five backends agree; OMPT spells its bases OMPT* under a module
-  # called OMP, and says so here.
   #
   # `class_namer` defaults to the prefix rule hip and mpi follow. A backend
   # whose headers are camelCase recases every word instead, and passes its own.
@@ -23,20 +19,30 @@ class NamingContext
   # class prefix is not (ze_ -> ZE); it is a property of the headers, not a
   # style choice, so it is stated rather than folded into each namer.
   def initialize(module_name:, api:, namespace_pattern:, strict: false,
-                 ffi_prefix: nil, upcase_namespace: false, class_namer: nil,
-                 scoped_namer: nil)
+                 upcase_namespace: false, class_namer: nil, scoped_namer: nil)
     @upcase_namespace = upcase_namespace
     @module_name = module_name
     @api = api
     @namespace_pattern = namespace_pattern
     @strict = strict
-    ffi_prefix ||= module_name
-    @ffi_struct = "FFI::#{ffi_prefix}Struct"
-    @ffi_union = "FFI::#{ffi_prefix}Union"
     # A namer is handed the context so it can reuse name_space rather than
     # restate the pattern.
     @class_namer = class_namer || ->(ctx, name) { prefixed_class_name(name, ctx.name_space(name)) }
     @scoped_namer = scoped_namer || ->(ctx, name) { "#{ctx.module_name}::#{ctx.class_name(name)}" }
+  end
+
+  # The FFI base class a layout of this kind subclasses. print_ffi_module
+  # declares these under the same module name, and a named layout and an
+  # anonymous one have to name the same base -- so both ask here.
+  def ffi_base(kind)
+    "FFI::#{@module_name}#{kind}"
+  end
+
+  # The backend's short name, as the build system spells it in filenames and
+  # the trace in stream-class names. Every backend's Ruby module is its short
+  # name upcased, so this is derived rather than passed in beside it.
+  def backend
+    @module_name.downcase
   end
 
   def name_space(name)
@@ -483,10 +489,9 @@ def inline_layout(members)
 end
 
 def print_union_with_namespace(naming, name, union)
-  namespace = naming.module_name
   members = union.to_ffi(naming)
   puts <<EOF
-  class #{naming.class_name(name)} < FFI::#{namespace}Union
+  class #{naming.class_name(name)} < #{naming.ffi_base('Union')}
     layout #{ffi_layout(members)}
   end
   typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}
@@ -528,9 +533,8 @@ end
 # them instead of a name FFI cannot resolve yet.
 def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true,
                                 members: struct.to_ffi(naming))
-  namespace = naming.module_name
   puts <<EOF
-  class #{naming.class_name(name)} < FFI::#{namespace}Struct
+  class #{naming.class_name(name)} < #{naming.ffi_base('Struct')}
 EOF
   prepends.each do |prep|
     puts <<EOF
@@ -584,12 +588,12 @@ module YAMLCAst
         if type.name && api.typedef?(type.name)
           to_ffi_name(type.name)
         else
-          ffi_base, definition = if type.is_a?(Struct)
-                                   [naming.ffi_struct, api.struct(type)]
-                                 else
-                                   [naming.ffi_union, api.union(type)]
-                                 end
-          "(Class::new(#{ffi_base}) { layout #{inline_layout(definition.to_ffi(naming))} }.by_value)"
+          base, definition = if type.is_a?(Struct)
+                               [naming.ffi_base('Struct'), api.struct(type)]
+                             else
+                               [naming.ffi_base('Union'), api.union(type)]
+                             end
+          "(Class::new(#{base}) { layout #{inline_layout(definition.to_ffi(naming))} }.by_value)"
         end
       else
         type.name ? to_ffi_name(type.name) : raise("unknown type: #{type}")
