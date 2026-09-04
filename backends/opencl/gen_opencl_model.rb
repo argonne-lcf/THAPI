@@ -1,7 +1,9 @@
+require 'yaml'
+
 require_relative 'opencl_model'
 require_relative 'opencl_tracepoints'
 
-en = YAML.load_file(File.join(SRC_DIR, 'supported_enums.yaml'))
+en = yaml_load_file_cached(File.join(SRC_DIR, 'supported_enums.yaml'))
 en.push({ 'name' => 'cl_bool' })
 en.push({ 'name' => 'command execution status', 'trace_name' => 'command_exec_callback_type',
           'type_name' => 'cl_command_execution_status' })
@@ -28,14 +30,14 @@ res = {
 
 en.each do |e|
   bitfield = false
-  vals = $requires.select do |r|
+  vals = CL_REQUIRES.select do |r|
     r.comment && r.comment.match(/#{e['name']}(\z| )/)
   end.each do |r|
     bitfield = true if r.comment.match(/ - bitfield/)
   end.collect do |r|
     r.enums
   end.reduce(:+).collect do |v|
-    [v, $constants[v]]
+    [v, CL_CONSTANTS[v]]
   end.to_h
   r = { 'values' => vals }
   r['trace_name'] = e['trace_name'] if e['trace_name']
@@ -49,7 +51,7 @@ en.each do |e|
 end
 
 event_lambda = lambda { |c, dir|
-  name = "lttng_ust_opencl:#{c.prototype.name}_#{SUFFIXES[dir]}"
+  name = "lttng_ust_opencl:#{c.prototype.name}_#{CL_EVENT_SUFFIXES[dir]}"
   fields = {}
   params = {}
   c.parameters.each do |p|
@@ -66,7 +68,7 @@ event_lambda = lambda { |c, dir|
     c.parameters.select { |p| p.lttng_in_type }.each do |p|
       field = {}
       lttng = p.lttng_in_type
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       field.merge!(params[fname])
       field['lttng'] = lttng[0]
       fields[fname] = field
@@ -74,21 +76,21 @@ event_lambda = lambda { |c, dir|
     c.meta_parameters.select { |p| p.lttng_in_type }.each do |p|
       meta_field = {}
       lttng = p.lttng_in_type
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       if fname == 'errcode_ret_val'
         meta_field['type'] = 'cl_errcode'
       elsif fname.match(/_val\z/)
         pname = fname.gsub(/_val\z/, '')
         meta_field['type'] = params[pname]['type']
       else
-        meta_field['type'] = params[LTTng.expression(*lttng)]['type']
+        meta_field['type'] = params[LTTngFieldTuple.expression(*lttng)]['type']
       end
       if meta_field['type'].match(/\*\z/)
         meta_field['type'] = meta_field['type'].sub(/\*\z/, '')
         meta_field['pointer'] = true
       end
-      meta_field['array'] = true if LTTng.array?(*lttng)
-      meta_field['string'] = true if LTTng.string?(*lttng)
+      meta_field['array'] = true if LTTngFieldTuple.array?(*lttng)
+      meta_field['string'] = true if LTTngFieldTuple.string?(*lttng)
       meta_field['lttng'] = lttng[0]
       meta_field['length'] = lttng[4] if meta_field['lttng'].match('ctf_array')
       if  meta_field['array'] &&
@@ -105,14 +107,16 @@ event_lambda = lambda { |c, dir|
       field['type'] = c.prototype.return_type
       lttng = c.prototype.lttng_return_type
       field['lttng'] = lttng[0]
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       field['type'] = 'cl_errcode' if fname == 'errcode_ret_val'
       fields[fname] = field
     end
-    c.meta_parameters.select { |p| p.lttng_out_type && LTTng.name(*p.lttng_out_type) != '_param_name' }.each do |p|
+    c.meta_parameters.select do |p|
+      p.lttng_out_type && LTTngFieldTuple.name(*p.lttng_out_type) != '_param_name'
+    end.each do |p|
       meta_field = {}
       lttng = p.lttng_out_type
-      fname = LTTng.name(*lttng)
+      fname = LTTngFieldTuple.name(*lttng)
       if fname == 'errcode_ret_val'
         meta_field['type'] = 'cl_errcode'
       elsif fname.match(/_val\z/)
@@ -120,7 +124,7 @@ event_lambda = lambda { |c, dir|
         meta_field['type'] = params[pname]['type']
       else
         begin
-          meta_field['type'] = params[LTTng.expression(*lttng)]['type']
+          meta_field['type'] = params[LTTngFieldTuple.expression(*lttng)]['type']
         rescue StandardError
           warn name, lttng.inspect
         end
@@ -129,8 +133,8 @@ event_lambda = lambda { |c, dir|
         meta_field['type'] = meta_field['type'].gsub(/\*\z/, '')
         meta_field['pointer'] = true
       end
-      meta_field['array'] = true if LTTng.array?(*lttng)
-      meta_field['string'] = true if LTTng.string?(*lttng)
+      meta_field['array'] = true if LTTngFieldTuple.array?(*lttng)
+      meta_field['string'] = true if LTTngFieldTuple.string?(*lttng)
       meta_field['lttng'] = lttng[0]
       meta_field['length'] = lttng[4] if meta_field['lttng'].match('ctf_array')
       if  meta_field['array'] &&
@@ -145,23 +149,23 @@ event_lambda = lambda { |c, dir|
   [name, fields]
 }
 
-($opencl_commands + $opencl_extension_commands).each do |c|
+(OPENCL_COMMANDS.groups[:core] + OPENCL_COMMANDS.groups[:extension]).each do |c|
   %w[start stop].each do |dir|
     name, val = event_lambda.call(c, dir)
     events[name] = val
   end
 end
 
-YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namespace, h|
+yaml_load_file_cached(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namespace, h|
   h['events'].each do |e|
     %w[start stop].each do |dir|
       event = get_fields(e['args'], e[dir.to_s])
-      events["#{namespace}:#{e['name']}_#{SUFFIXES[dir]}"] = event
+      events["#{namespace}:#{e['name']}_#{CL_EVENT_SUFFIXES[dir]}"] = event
     end
   end
 end
 
-YAML.load_file(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
+yaml_load_file_cached(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
   if h['enums']
     h['enums'].each do |e|
       lttng_enums[e['name']] = {
@@ -175,6 +179,6 @@ YAML.load_file(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
   end
 end
 
-res['suffixes'] = SUFFIXES
+res['suffixes'] = CL_EVENT_SUFFIXES
 
 puts YAML.dump(res)

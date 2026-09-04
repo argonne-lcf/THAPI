@@ -1,46 +1,31 @@
-# Include global variable INT_SIGN_MAP, ScalarMetaParameter, etc
+require 'yaml'
+
+require_relative 'gen_probe_base'
 require_relative 'yaml_ast'
+require_relative 'type_registry'
+require_relative 'meta_parameters'
 
-$integer_sizes = INT_SIZE_MAP.transform_values { |v| v * 8 }
-$integer_signed = INT_SIGN_MAP
-
-$all_enums.each do |t|
-  $integer_sizes["enum #{t.name}"] = 32
+# Build the babeltrace TypeRegistry from the backend's API model. Whether an
+# API has bitfield types is a fact about its headers, so each backend states
+# what it expects: a backend that silently stopped classifying them would
+# otherwise emit plain integers where enum metadata belongs.
+def build_ast_registry(naming, expect_bitfields:)
+  api = naming.api
+  registry = TypeRegistry.new(
+    all_types: api.types, all_enums: api.enums,
+    enum_names: api.enum_names, bitfield_names: api.bitfield_names, struct_names: api.struct_names,
+    class_namer: ->(name) { naming.scoped_class_name(name) }
+  )
+  if expect_bitfields
+    raise "#{naming.backend}: expected bitfield types" if registry.bitfield_names.empty?
+  else
+    raise "#{naming.backend}: expected no bitfield types" unless registry.bitfield_names.empty?
+  end
+  registry
 end
 
-$all_enums.each do |t|
-  $integer_signed["enum #{t.name}"] = true
-end
-
-def integer_size(t)
-  return 64 if t.match(/\*/)
-  return 64 if t.match(/\[.*\]/)
-
-  r = $integer_sizes[t]
-  raise "unknown integer type #{t}" if r.nil?
-
-  r
-end
-
-def integer_signed?(t)
-  return false if t.match(/\*/)
-  return false if t.match(/\[.*\]/)
-
-  r = $integer_signed[t]
-  raise "unknown integer type #{t}" if r.nil?
-
-  r
-end
-
-# End of global variable use
-def meta_parameter_types_name(m, dir = nil)
-  lttng = if dir == :start
-            m.lttng_in_type
-          elsif dir == :stop
-            m.lttng_out_type
-          else
-            m.lttng_type
-          end
+def meta_parameter_types_name(m, dir)
+  lttng = m.lttng_type_for(dir)
   name = lttng.name
   t = m.command[m.name].type.type
 
@@ -48,24 +33,24 @@ def meta_parameter_types_name(m, dir = nil)
   when ScalarMetaParameter
     if lttng.length
       [['ctf_integer', 'size_t', "_#{name}_length", nil],
-       [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+       [lttng.macro.to_s, "#{t} *", name.to_s, lttng]]
     else
-      [[lttng.macro.to_s, "#{t}", "#{name}", lttng]]
+      [[lttng.macro.to_s, t.to_s, name.to_s, lttng]]
     end
   when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng, ReturnString
     if lttng.macro.to_s == 'ctf_string'
-      [['ctf_string', "#{t} *", "#{name}", lttng]]
+      [['ctf_string', "#{t} *", name.to_s, lttng]]
     else
       [['ctf_integer', 'size_t', "_#{name}_length", nil],
-       [lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+       [lttng.macro.to_s, "#{t} *", name.to_s, lttng]]
     end
   when ArrayByRefMetaParameter
     [['ctf_integer', 'size_t', "_#{name}_length", nil],
-     [lttng.macro.to_s, "#{t.type} *", "#{name}", lttng]]
+     [lttng.macro.to_s, "#{t.type} *", name.to_s, lttng]]
   when FixedArrayMetaParameter
-    [[lttng.macro.to_s, "#{t} *", "#{name}", lttng]]
+    [[lttng.macro.to_s, "#{t} *", name.to_s, lttng]]
   when OutPtrString
-    [['ctf_string', "#{t}", "#{name}", lttng]]
+    [['ctf_string', t.to_s, name.to_s, lttng]]
   else
     raise "unsupported meta parameter class #{m.class} #{lttng.call_string} #{t}"
   end
@@ -86,13 +71,22 @@ def get_extra_fields_types_name(event)
   end.flatten(1)
 end
 
-$types_by_name = $all_types.map { |ty| [ty.name, ty] }.to_h
+# The element description an array field carries, shared by the static and
+# dynamic cases. Keys are inserted in the order the model YAML prints them.
+def element_field_class(registry, lttng, lttng_name)
+  array_type = lttng.type.to_s
+  fc = { type: registry.integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
+         field_value_range: registry.integer_size(array_type) }
+  fc[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
+  fc
+end
 
-def gen_bt_field_model(lttng_name, type, name, lttng)
+def gen_bt_field_model(registry, lttng_name, type, name, lttng)
+  types_by_name = registry.types_by_name
   member = { name: name }
 
   field = { cast_type: type.gsub(/\[.*\]/, '*') }
-  if $types_by_name[type].is_a?(YAMLCAst::Declaration) && $types_by_name[type].type.is_a?(YAMLCAst::Function)
+  if types_by_name[type].is_a?(YAMLCAst::Declaration) && types_by_name[type].type.is_a?(YAMLCAst::Function)
     field[:cast_type] =
       "#{type} *"
   end
@@ -101,45 +95,33 @@ def gen_bt_field_model(lttng_name, type, name, lttng)
   when 'ctf_float'
     field[:type] = type == 'float' ? 'single' : type
   when 'ctf_integer', 'ctf_integer_hex'
-    field[:type] = integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
-    field[:field_value_range] = integer_size(type)
+    field[:type] = registry.integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
+    field[:field_value_range] = registry.integer_size(type)
     field[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
-    if $all_enum_names.include?(type) || $all_bitfield_names.include?(type)
-      member[:metadata] = { be_class: to_scoped_class_name(type) }
+    if registry.enum_names.include?(type) || registry.bitfield_names.include?(type)
+      member[:metadata] = { be_class: registry.class_namer.call(type) }
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
-    array_type = lttng.type.to_s
+    # A sequence carries its length in a companion field, and its element type
+    # is the pointed-to half of the member's own type.
     field[:type] = 'array_dynamic'
-    field[:element_field_class] =
-      { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
-        field_value_range: integer_size(array_type) }
-
-    field[:element_field_class][:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
-
-    match = type.match(/(.*) \*/)
-
-    field[:element_field_class][:cast_type] = match[1]
+    field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
+    field[:element_field_class][:cast_type] = type.match(/(.*) \*/)[1]
     field[:length_field_path] = "EVENT_PAYLOAD[\"_#{name}_length\"]"
   when 'ctf_array', 'ctf_array_hex'
-    array_type = lttng.type.to_s
     field[:type] = 'array_static'
-    field[:element_field_class] =
-      { type: integer_signed?(array_type) ? 'integer_signed' : 'integer_unsigned',
-        field_value_range: integer_size(array_type) }
-    field[:element_field_class][:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
+    field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
     field[:length] = lttng.length
   when 'ctf_string'
     field[:type] = 'string'
   when 'ctf_sequence_text', 'ctf_array_text'
     field[:type] = 'string'
     t = type.sub(' *', '')
-    while $types_by_name.include?(t) && $types_by_name[t].type.is_a?(YAMLCAst::CustomType)
-      t = $types_by_name[t].type.name
-    end
-    member[:metadata] = { be_class: to_scoped_class_name(t) } if $all_struct_names.include?(t)
+    t = types_by_name[t].type.name while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
+    member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
 
     # Too complicated, not sure why `all_struct_names` is not enough
-    if !field[:cast_type].end_with?('*') && ($all_struct_names.include?(t) || $types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
+    if !field[:cast_type].end_with?('*') && (registry.struct_names.include?(t) || types_by_name[t]&.type.is_a?(YAMLCAst::Union) || type.start_with?('struct'))
       field[:cast_type_is_struct] = true
     end
   else
@@ -152,71 +134,94 @@ end
 def get_fields_types_name(c, dir)
   fields = []
 
-  r = c.type.lttng_type
-  fields.push([r.macro.to_s, c.type.to_s, "#{RESULT_NAME}", r]) if dir != :start && r
+  r = c.type.lttng_type(c.type_classes)
+  fields.push([r.macro.to_s, c.type.to_s, c.result_name, r]) if dir != :start && r
 
   if dir != :stop
     fields += c.parameters.to_a.collect do |p|
-      [p.lttng_type.macro.to_s, p.type.to_s, p.name.to_s, p.lttng_type]
+      lttng = p.lttng_type(c.type_classes)
+      [lttng.macro.to_s, p.type.to_s, p.name.to_s, lttng]
     end
   end
 
-  name = case dir
-         when :start then In
-         when :stop  then Out
-         end
+  # An entry event carries only the meta-parameters that describe an input, an
+  # exit event only those that describe a result; an undirected event takes all.
+  phase = case dir
+          when :start then In
+          when :stop  then Out
+          end
 
-  fields + c.meta_parameters.select { |m| name.nil? || m.is_a?(name) }.collect do |m|
+  fields + c.meta_parameters.select { |m| phase.nil? || m.is_a?(phase) }.collect do |m|
     meta_parameter_types_name(m, dir)
   end.flatten(1)
 end
 
-def gen_event_fields_bt_model(c, dir)
+def gen_event_fields_bt_model(registry, c, dir)
   types_name = get_fields_types_name(c, dir)
   types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
   end
 end
 
-def gen_extra_event_fields_bt_model(event)
+def gen_extra_event_fields_bt_model(registry, event)
   types_name = get_extra_fields_types_name(event)
   types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model(lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
   end
 end
 
-def gen_event_bt_model(provider, c, dir = nil)
-  d = if dir
-        { name: "#{provider}:#{c.name}_#{SUFFIXES[dir]}" }
-      # OMP backend
-      else
-        { name: "#{provider}:#{c.name.gsub(/_func\z/, '')}" }
-      end
-
-  m = gen_event_fields_bt_model(c, dir)
-
-  unless m.empty?
-    d[:payload_field_class] =
-      {
-        type: 'structure',
-        members: m,
-      }
-  end
-  d
+def gen_bt_event(provider, name, members)
+  event = { name: "#{provider}:#{name}" }
+  event[:payload_field_class] = { type: 'structure', members: members } unless members.empty?
+  event
 end
 
-def gen_extra_event_bt_model(provider, event)
-  d = { name: "#{provider}:#{event['name']}" }
-  m = gen_extra_event_fields_bt_model(event)
+# The name has to match the one the tracepoint provider declares.
+def gen_event_bt_model(registry, provider, c, dir = nil)
+  gen_bt_event(provider, tracepoint_event_name(c, dir), gen_event_fields_bt_model(registry, c, dir))
+end
 
-  unless m.empty?
-    d[:payload_field_class] =
-      {
-        type: 'structure',
-        members: m,
-      }
-  end
-  d
+def gen_extra_event_bt_model(registry, provider, event)
+  gen_bt_event(provider, event['name'], gen_extra_event_fields_bt_model(registry, event))
+end
+
+# One event class per event the command produces, which is the command's own
+# answer -- the same one the tracepoint provider enumerates.
+def gen_command_events_bt_model(registry, provider_commands)
+  provider_commands.collect do |provider, commands|
+    commands.collect do |c|
+      c.directions.collect { |dir| gen_event_bt_model(registry, provider, c, dir) }
+    end
+  end.flatten(2)
+end
+
+def gen_extra_events_bt_model(registry, events_path)
+  yaml_load_file_cached(events_path).collect do |provider, es|
+    es['events'].collect do |event|
+      gen_extra_event_bt_model(registry, provider, event)
+    end
+  end.flatten
+end
+
+# The whole of an AST backend's babeltrace-model generator: classify the API's
+# types, turn every traced command into event classes, add the events the
+# backend declares by hand, and print the model.
+#
+# `extra_events_path` is the backend's declared-event file, absent for a
+# backend that declares none. `expect_bitfields` says whether this API's headers
+# have bitfield types at all.
+#
+# `extra_event_classes` is anything the backend derives itself: ze adds one
+# event per self-describing struct, which no other backend has.
+def print_bt_model(naming, commands, expect_bitfields:, extra_events_path: nil,
+                   extra_event_classes: [])
+  registry = build_ast_registry(naming, expect_bitfields: expect_bitfields)
+
+  event_classes = gen_command_events_bt_model(registry, commands.groups)
+  event_classes += gen_extra_events_bt_model(registry, extra_events_path) if extra_events_path
+  event_classes += extra_event_classes
+
+  puts YAML.dump(gen_yaml(event_classes, naming.backend))
 end
 
 def gen_yaml(event_classes, backend)

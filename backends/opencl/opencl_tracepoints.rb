@@ -1,4 +1,9 @@
-class LTTng
+require_relative '../../utils/LTTng'
+
+# Opencl's model is YAML-intermediate-driven (see gen_opencl_model.rb), so its
+# tracepoint fields travel as raw [macro, *args] tuples rather than as
+# utils/LTTng.rb's TracepointField objects.
+module LTTngFieldTuple
   def self.name(*args)
     case args[0]
     when 'ctf_string'
@@ -34,64 +39,16 @@ class LTTng
   end
 end
 
-def print_enum(namespace, en)
-  puts <<~EOF
-    TRACEPOINT_ENUM(
-      #{namespace},
-      #{en['name']},
-      TP_ENUM_VALUES(
-  EOF
-  print '    '
-  puts en['values'].collect { |(f, sy, *args)|
-    "#{f}(#{sy.to_s.inspect}, #{args.join(', ')})"
-  }.join("\n    ")
-  puts <<~EOF
-      )
-    )
-
-  EOF
-end
-
-def print_tracepoint(namespace, tp, dir = nil)
-  puts <<~EOF
-    TRACEPOINT_EVENT(
-      #{namespace},
-      #{tp['name']}#{"_#{SUFFIXES[dir]}" if dir},
-      TP_ARGS(
-  EOF
-  print '    '
-  args = tp['args']
-  if args.empty?
-    puts 'void'
-  else
-    puts args.collect { |a| a.join(', ') }.join(",\n    ")
-  end
-  puts <<EOF
-  ),
-  TP_FIELDS(
-EOF
-  dir ||= 'fields'
-  if tp[dir]
-    print '    '
-    puts tp[dir].collect { |(f, *args)| "#{f}(#{args.join(', ')})" }.join("\n    ")
-  end
-  puts <<~EOF
-      )
-    )
-
-  EOF
-end
-
 def get_field(args, field)
   res = {}
-  name = LTTng.name(*field)
+  name = LTTngFieldTuple.name(*field)
   if name.match(/_val\z/)
     pname = name.gsub(/_val\z/, '')
     type = args[pname]
   else
     type = args[name]
     unless type
-      pname = LTTng.expression(*field)
+      pname = LTTngFieldTuple.expression(*field)
       type = args[pname]
     end
   end
@@ -102,15 +59,15 @@ def get_field(args, field)
   end
   res['type'] = type
   res['pointer'] = pointer if pointer
-  if LTTng.array?(*field)
+  if LTTngFieldTuple.array?(*field)
     res['array'] = true
     res.delete('pointer')
   end
-  if LTTng.string?(*field)
+  if LTTngFieldTuple.string?(*field)
     res['string'] = true
     res.delete('pointer')
   end
-  res['enum_type'] = field[2] if LTTng.enum?(*field)
+  res['enum_type'] = field[2] if LTTngFieldTuple.enum?(*field)
   res['lttng'] = field[0]
   [name, res]
 end

@@ -1,7 +1,5 @@
-require 'yaml'
-
-SRC_DIR = ENV['SRC_DIR'] || '.'
-export_tables = YAML.load_file(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
+require_relative '../../utils/yaml_ast'
+export_tables = yaml_load_file_cached(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 
 puts <<~EOF
   #define __CUDA_API_VERSION_INTERNAL=1

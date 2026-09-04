@@ -73,9 +73,18 @@ EXTRA_DIST = \
 	yaml_ast.rb \
 	yaml_ast_lttng.rb \
 	gen_library_base.rb \
+	gen_probe_base.rb \
+	gen_tracer_base.rb \
+	gen_custom_probes.rb \
+	api_model.rb \
+	backend_model.rb \
+	backend_model.mk \
+	type_registry.rb \
 	dump_trace_format.rb \
 	thapi_metadata_tracepoints.tp \
 	command.rb \
+	command_index.rb \
+	meta_parameter_spec.rb \
 	meta_parameters.rb \
 	optparse_thapi.rb \
 	thapi_log_to_bt_source_component.rb \

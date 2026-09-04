@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -41,10 +42,7 @@ MPI_MODEL = \
 	$(srcdir)/mpi_model.rb \
 	$(srcdir)/mpi_meta_parameters.yaml \
 	$(srcdir)/mpi_events.yaml \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(MPI_EXTRACTED)
 
 btx_mpi_model.yaml: $(srcdir)/gen_babeltrace_mpi_model.rb $(MPI_LIB_GEN) $(MPI_MODEL)
@@ -69,10 +67,10 @@ MPI_STATIC_PROBES_INCL = $(MPI_STATIC_PROBES:=.h)
 MPI_STATIC_PROBES_SRC = $(MPI_STATIC_PROBES:=.c)
 MPI_GEN_TRACEPOINTS = $(MPI_PROBES:%=gen_%.rb)
 
-$(MPI_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(MPI_MODEL)
+$(MPI_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(MPI_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(MPI_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/mpi_events.yaml $(srcdir)/mpi.h.include
+$(MPI_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/mpi_events.yaml $(srcdir)/mpi.h.include $(top_srcdir)/utils/gen_probe_base.rb
 	$(RUBY) $< $(srcdir)/mpi_events.yaml lttng_ust_$* mpi.h.include > $@
 
 %.h %.c: %.tp
@@ -94,7 +92,7 @@ BUILT_SOURCES = \
 	$(MPI_PROBES_INCL) \
 	$(MPI_STATIC_PROBES_INCL)
 
-tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL) $(MPI_STATIC_PROBES_INCL)
+tracer_mpi.c: $(srcdir)/gen_mpi.rb $(srcdir)/tracer_mpi_helpers.include.c $(MPI_MODEL) $(MPI_PROBES_INCL) $(MPI_STATIC_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
@@ -144,6 +142,8 @@ install-data-hook:
 
 MPI_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/api_model.rb \
+	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_mpi_library_base.rb \
 	$(top_srcdir)/utils/gen_probe_base.rb

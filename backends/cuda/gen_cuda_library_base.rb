@@ -2,104 +2,44 @@ require_relative 'cuda_model'
 require_relative '../../utils/gen_probe_base'
 require_relative '../../utils/gen_library_base'
 
-$all_types = $cuda_api['typedefs'] + $cuda_exports_api['typedefs']
-$all_structs = $cuda_api['structs'] + $cuda_exports_api['structs']
-$all_unions = $cuda_api['unions']
-$all_enums = $cuda_api['enums']
-$all_funcs = $cuda_api['functions']
+# cuda.h vendors the OpenCL and VDPAU interop typedefs (cl_event_flags,
+# VdpDevice) plus cuuint32_t/cuuint64_t, which carry no CU prefix, so `strict`
+# stays false and name_space can answer nil.
+#
+# Two types are spelled CUstream* in the header but CUStream* in Ruby, and the
+# namer restores three initialisms the word split would lowercase.
+NAMING = NamingContext.new(
+  module_name: 'CUDA',
+  api: API,
+  namespace_pattern: /\A(CUDA|CU)/,
+  class_namer: lambda { |naming, name|
+    case name
+    when 'CUstreamBatchMemOpType' then 'CUStreamBatchMemOpType'
+    when 'CUstreamBatchMemOpParams' then 'CUStreamBatchMemOpParams'
+    else
+      mod = naming.name_space(name) || ''
+      n = name.gsub(/_t\z/, '').gsub(/\A#{mod}/, '').split('_').collect do |s|
+        s[0] = s[0].capitalize if s.length > 0
+        s
+      end.join
+      mod + n.gsub('Uuid', 'UUID').gsub('Ipc', 'IPC').gsub('P2p', 'P2P')
+    end
+  }
+)
 
-$all_enum_names = []
-$all_bitfield_names = []
-$all_struct_names = []
-$all_union_names = []
+# cuda spells an FFI type as snake_case of its Ruby class name, namespace
+# first: CUdevice -> :cu_device. cuuint32_t/cuuint64_t keep the header's own
+# spelling, which that rule would mangle.
+CUDA_FFI_NAMES = { 'cuuint64_t' => ':cuuint64_t', 'cuuint32_t' => ':cuuint32_t' }.freeze
 
-$objects = $all_types.select do |t|
-  t.type.is_a?(YAMLCAst::Pointer) &&
-    t.type.type.is_a?(YAMLCAst::Struct)
-end.collect { |t| t.name }
+FFIName.fallback = lambda { |name|
+  next CUDA_FFI_NAMES[name] if CUDA_FFI_NAMES.key?(name)
 
-$all_types.each do |t|
-  $objects.push t.name if t.type.is_a?(YAMLCAst::CustomType) && OBJECT_TYPES.include?(t.type.name)
-end
-
-$int_scalars = {}
-$all_types.each do |t|
-  $int_scalars[t.name] = t.type.name if t.type.is_a?(YAMLCAst::CustomType) && INT_TYPES.include?(t.type.name)
-end
-
-def to_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').downcase
-end
-
-def to_class_name(name)
-  case name
-  when 'CUstreamBatchMemOpType'
-    return 'CUStreamBatchMemOpType'
-  when 'CUstreamBatchMemOpParams'
-    return 'CUStreamBatchMemOpParams'
-  end
-  mod = to_name_space(name)
-  mod ||= ''
-  n = name.gsub(/_t\z/, '').gsub(/\A#{mod}/, '').split('_').collect do |s|
-    s[0] = s[0].capitalize if s.length > 0
-    s
-  end.join
-  mod << n.gsub('Uuid', 'UUID').gsub('Ipc', 'IPC').gsub('P2p', 'P2P')
-end
-
-def to_scoped_class_name(name)
-  "CUDA::#{to_class_name(name)}"
-end
-
-alias original_to_ffi_name to_ffi_name
-
-def to_ffi_name(name)
-  case name
-  when 'cuuint64_t'
-    return ':cuuint64_t'
-  when 'cuuint32_t'
-    return ':cuuint32_t'
-  end
-
-  result = original_to_ffi_name(name, false)
-  return result if result
-
-  n = to_class_name(name)
-  mod = to_name_space(name)
-  if mod
-    n = n.gsub(/\A#{mod}/, '')
-    mod << '_'
-    mod.downcase!
-  else
-    mod = ''
-  end
-  n = to_snake_case(n).gsub(/\A_+/, '')
-  mod << n
-  mod.to_sym.inspect
-end
-
-def to_name_space(name)
-  case name
-  when /\ACUDA/
-    'CUDA'
-  when /\ACU/
-    'CU'
-  end
-end
-
-$all_types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    $all_enums.find { |e| t.type.name == e.name }
-    $all_enum_names.push t.name
-  elsif t.type.is_a? YAMLCAst::Struct
-    $all_struct_names.push t.name
-  elsif t.type.is_a? YAMLCAst::Union
-    $all_union_names.push t.name
-  end
-end
-
-FFI_STRUCT = 'FFI::CUDAStruct'
-FFI_UNION = 'FFI::CUDAUnion'
+  namespace = NAMING.name_space(name)
+  rest = NAMING.class_name(name).sub(/\A#{namespace}/, '')
+  prefix = namespace ? "#{namespace.downcase}_" : ''
+  :"#{prefix}#{lower_snake_case(rest).gsub(/\A_+/, '')}".inspect
+}
 
 module YAMLCAst
   class Array

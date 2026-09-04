@@ -1,3 +1,5 @@
+require 'yaml'
+
 begin
   require 'opencl_ruby_ffi/opencl_types'
   require 'opencl_ruby_ffi/opencl_arithmetic_gen'
@@ -9,9 +11,9 @@ rescue LoadError
 end
 
 opencl_model = YAML.load_file(File.join(DATADIR, 'opencl_model.yaml'))
-SUFFIXES = opencl_model['suffixes']
-START = SUFFIXES['start']
-STOP = SUFFIXES['stop']
+CL_EVENT_SUFFIXES = opencl_model['suffixes']
+CL_START = CL_EVENT_SUFFIXES['start']
+CL_STOP = CL_EVENT_SUFFIXES['stop']
 infos = YAML.load_file(File.join(DATADIR, 'opencl_infos.yaml'))
 enums_by_type = {}
 enums_by_value = {}
@@ -211,9 +213,9 @@ opencl_model['events'].each do |n, v|
   src << v.collect { |name, desc|
     expr =
       if name == 'param_value_vals'
-        startn = n.gsub("_#{STOP}", "_#{START}")
+        startn = n.gsub("_#{CL_STOP}", "_#{CL_START}")
         type = opencl_model['events'][startn]['param_name']['type']
-        if n == "lttng_ust_opencl:clSetKernelExecInfo_#{START}"
+        if n == "lttng_ust_opencl:clSetKernelExecInfo_#{CL_START}"
           info_str_lambda.call('param_name', name, type)
         else
           info_str_lambda.call('_param_name', name, type)

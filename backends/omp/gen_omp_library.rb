@@ -1,14 +1,10 @@
 require_relative 'gen_omp_library_base'
 
-def print_bitfield(name, enum)
-  print_bitfield_with_namespace(:OMP, name, enum, check_flags: true)
-end
-
 def print_enum(name, enum)
-  if enum.name.end_with?('flag_t')
-    print_bitfield_with_namespace(:OMP, name, enum, check_flags: true)
+  if API.bitfield?(name)
+    print_bitfield_with_namespace(NAMING, name, enum, check_flags: true)
   else
-    print_enum_with_namespace(:OMP, name, enum, filter_members: ->(m) { m.name != 'ompt_callback_master' })
+    print_enum_with_namespace(NAMING, name, enum, filter_members: ->(m) { m.name != 'ompt_callback_master' })
   end
 end
 
@@ -21,12 +17,11 @@ puts <<~EOF
 
 EOF
 
-$all_types.each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
-    print_enum(t.name, enum)
-  end
-end
+# The Ruby bindings for OMPT carry only its enums.
+print_typedefs(NAMING,
+               enum: ->(name, t) { print_enum(name, API.enum(t.type)) },
+               object: nil, struct: nil, union: nil,
+               function_pointer: nil, pointer: nil, integer: nil)
 
 puts <<~EOF
   end

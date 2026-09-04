@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -38,11 +39,7 @@ CLEANFILES = $(OMP_EXTRACTED)
 OMP_MODEL = \
 	$(srcdir)/ompt_model.rb \
 	$(srcdir)/ompt_meta_parameters.yaml \
-	$(top_srcdir)/utils/gen_probe_base.rb \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(OMP_EXTRACTED)
 
 BTX_OMP_GENERATED = \
@@ -57,6 +54,8 @@ BTX_OMP_GENERATED = \
 
 OMP_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/api_model.rb \
+	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_omp_library_base.rb \
 	$(top_srcdir)/utils/gen_probe_base.rb
@@ -84,7 +83,7 @@ OMP_PROBES_TP = $(OMP_PROBES:=.tp)
 OMP_PROBES_INCL = $(OMP_PROBES:=.h)
 OMP_PROBES_SRC = $(OMP_PROBES:=.c)
 
-$(OMP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(OMP_MODEL)
+$(OMP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(OMP_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 %.h %.c: %.tp
@@ -102,7 +101,7 @@ BUILT_SOURCES = \
 	$(MODIFIED_OMP_HDR) \
 	$(OMP_PROBES_INCL)
 
-tracer_ompt.c: $(srcdir)/gen_ompt.rb tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL)
+tracer_ompt.c: $(srcdir)/gen_ompt.rb tracer_ompt_helpers.include.c $(OMP_MODEL) $(OMP_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_ompt_helpers.include.c: $(srcdir)/tracer_ompt_helpers.include.c.erb ompt_callbacks.yaml

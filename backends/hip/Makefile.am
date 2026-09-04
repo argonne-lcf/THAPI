@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -208,10 +209,7 @@ HIP_MODEL = \
 	$(ML_HIP_FILES) \
 	$(srcdir)/hip_events.yaml \
 	$(HIP_EXTRACTED) \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
+	$(BACKEND_MODEL_DEPS) \
 	hip.h.include
 
 btx_hip_model.yaml: $(srcdir)/gen_babeltrace_hip_model.rb $(HIP_LIB_GEN) $(HIP_MODEL)
@@ -231,7 +229,7 @@ HIP_PROBES_INCL = $(HIP_PROBES:=.h)
 
 HIP_PROBES_SRC = $(HIP_PROBES:=.c)
 
-$(HIP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(HIP_MODEL)
+$(HIP_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(HIP_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 %.h %.c: %.tp
@@ -248,7 +246,7 @@ EXTRA_DIST += \
 BUILT_SOURCES = \
 	$(HIP_PROBES_INCL)
 
-tracer_hip.c: $(srcdir)/gen_hip.rb $(srcdir)/tracer_hip_helpers.include.c $(HIP_MODEL) $(HIP_PROBES_INCL)
+tracer_hip.c: $(srcdir)/gen_hip.rb $(srcdir)/tracer_hip_helpers.include.c $(HIP_MODEL) $(HIP_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
@@ -296,6 +294,8 @@ install-data-hook:
 
 HIP_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/api_model.rb \
+	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_hip_library_base.rb \
 	$(top_srcdir)/utils/gen_probe_base.rb

@@ -1,12 +1,16 @@
+require 'set'
 require_relative 'gen_ze_library_base'
 
-def ZE_BIT(i)
-  1 << i
-end
+# ZE_BIT is a macro in ze's headers, so the parsed AST carries the call
+# unevaluated -- this is our implementation of it.
+ZE_ENUM_VALUE_RESOLVER = lambda { |val|
+  m = val.match(/\AZE_BIT\((\d+)\)\z/)
+  1 << Integer(m[1]) if m
+}
 
 def print_version_enum_struct(name)
   puts <<EOF
-  class #{to_class_name(name)} < FFI::ZEStruct
+  class #{NAMING.class_name(name)} < FFI::ZEStruct
     prepend Version
     layout :minor, :uint16,
            :major, :uint16
@@ -18,7 +22,7 @@ def print_version_enum_struct(name)
       v
     end
   end
-  typedef #{to_class_name(name)}.by_value, #{to_ffi_name(name)}
+  typedef #{NAMING.class_name(name)}.by_value, #{to_ffi_name(name)}
 
 EOF
 end
@@ -26,17 +30,12 @@ end
 def print_enum(name, enum)
   return print_version_enum_struct(name) if name.match(/_version_t\z/)
 
-  if enum.members.find { |m| m.val && m.val.is_a?(String) && m.val.match('ZE_BIT') } || enum.members.all? do |m|
-    m.name.include?('_FLAG_')
-  end
-    print_bitfield_with_namespace(:ZE, name, enum, check_flags: true)
+  if API.bitfield?(name)
+    print_bitfield_with_namespace(NAMING, name, enum, check_flags: true,
+                                                      resolver: ZE_ENUM_VALUE_RESOLVER)
   else
-    print_enum_with_namespace(:ZE, name, enum)
+    print_enum_with_namespace(NAMING, name, enum)
   end
-end
-
-def print_ze_object(object)
-  print_object(object)
 end
 
 print_ffi_module(:ZE, enclosing_module: false)
@@ -202,46 +201,27 @@ puts <<~EOF
 
 EOF
 
-def print_union(name, union)
-  print_union_with_namespace(:ZE, name, union)
-end
-
 def print_struct(name, struct)
   prepends = []
-  if to_class_name(name).match('UUID')
-    prepends << if to_class_name(name).match('ZEKernelUUID')
+  if NAMING.class_name(name).match('UUID')
+    prepends << if NAMING.class_name(name).match('ZEKernelUUID')
                   'KUUID'
                 else
                   'UUID'
                 end
-  elsif to_class_name(name).match(/Handle\z/)
+  elsif NAMING.class_name(name).match(/Handle\z/)
     prepends << 'Handle'
   end
 
-  if struct.to_ffi.first[0] == ':stype' && !$struct_type_reject.include?(name)
+  if struct.to_ffi(NAMING).first[0] == ':stype' && !STRUCT_TYPE_REJECT.include?(name)
     initializer = <<EOF
 
     def initialize(*args)
       super(*args)
       if(args.length == 0)
 EOF
-    ename = to_ffi_name(name)
-    ename = case ename
-            when /\A:ze_/
-              "ZE_STRUCTURE_TYPE_#{ename.to_s[4..-3]}"
-            when /\A:zet_/
-              "ZET_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
-            when /\A:zes_/
-              "ZES_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
-            when /\A:zel_/
-              "ZEL_STRUCTURE_TYPE_#{ename.to_s[5..-3]}"
-            else
-              raise "Unrecognized namespace for #{ename}"
-            end.upcase
-    ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
-
     initializer << <<EOF
-        self[:stype] = :#{ename}
+        self[:stype] = :#{structure_type_name(name)}
       end
     end
 EOF
@@ -249,10 +229,10 @@ EOF
     initializer = nil
   end
 
-  print_struct_with_namespace(:ZE, name, struct, prepends: prepends, initializer: initializer, close: false)
+  print_struct_with_namespace(NAMING, name, struct, prepends: prepends, initializer: initializer, close: false)
 end
 
-$int_scalars.each do |k, v|
+API.int_scalars.each do |k, v|
   next if to_ffi_name(k).match('_flags_t') && !to_ffi_name(k).match('_packed_')
 
   puts <<EOF
@@ -271,10 +251,10 @@ end
 # We need to sort the type, so they are defined in order
 # We don't support cycle.
 
-# We put Enum and $objecs first.
+# We put Enum and objects first.
 # If not, they are not added by the BFS, not sure why
-all_type_sorted = $all_types.group_by do |t|
-  if $objects.include?(t.name) || t.type.is_a?(YAMLCAst::Enum)
+all_type_sorted = API.types.group_by do |t|
+  if API.object?(t.name) || t.type.is_a?(YAMLCAst::Enum)
     :sorted
   else
     :to_be_sorted
@@ -284,7 +264,7 @@ end
 # Transform into set for fast `include`
 all_type_sorted[:sorted] = all_type_sorted[:sorted].to_set
 
-all_types_by_name = $all_types.collect { |t| [t.name, t] }.to_h
+all_types_by_name = API.types.collect { |t| [t.name, t] }.to_h
 
 # Do the recursion, to put the child first. We mutate `all_type_sorted[:sorted]`
 dfs = lambda do |node|
@@ -302,7 +282,7 @@ dfs = lambda do |node|
 
   case node.type
   when YAMLCAst::Struct
-    members = STRUCT_MAP[node.name]
+    members = API.struct_map[node.name]
     members.each do |m|
       m_type = m.type
       m_type = m_type.type while m_type.is_a?(YAMLCAst::Array)
@@ -326,7 +306,7 @@ dfs = lambda do |node|
     # Enums have no dependencies
   when YAMLCAst::CustomType
     # Typedef-to-typedef (e.g. `typedef uint8_t ze_bool_t`). Recurse so the
-    # referenced typedef is emitted first when it lives in $all_types.
+    # referenced typedef is emitted first when it lives in API.types.
     dfs.call(node.type)
   else
     raise "dfs: unhandled node.type=#{node.type.class} on node=#{node.inspect}"
@@ -340,26 +320,16 @@ all_type_sorted[:to_be_sorted].each do |t|
   dfs.call(t)
 end
 
-all_type_sorted[:sorted].each do |t|
-  if t.type.is_a? YAMLCAst::Enum
-    enum = $all_enums.find { |e| t.type.name == e.name }
-    print_enum(t.name, enum)
-  elsif $objects.include?(t.name)
-    print_ze_object(t.name)
-  elsif t.type.is_a? YAMLCAst::Struct
-    struct = $all_structs.find { |s| t.type.name == s.name }
-    next unless struct
-
-    print_struct(t.name, struct)
-  elsif t.type.is_a? YAMLCAst::Union
-    union = $all_unions.find { |s| t.type.name == s.name }
-    next unless union
-
-    print_union(t.name, union)
-  elsif t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Function)
-    print_function_pointer_type(t.name, t.type.type)
-  end
-end
+# Walked in the order the sort above settled on, not the order the API declares.
+print_typedefs(
+  NAMING,
+  api: API,
+  types: all_type_sorted[:sorted],
+  enum: ->(name, t) { print_enum(name, API.enum(t.type)) },
+  struct: ->(name, t) { print_struct(name, API.struct(t.type)) },
+  pointer: nil,
+  integer: nil
+)
 
 puts <<~EOF
     class ZETypedValue

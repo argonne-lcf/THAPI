@@ -1,115 +1,28 @@
-require 'yaml'
-require 'pp'
 require 'set'
-require_relative '../../utils/yaml_ast_lttng'
-require_relative '../../utils/LTTng'
-require_relative '../../utils/command'
-require_relative '../../utils/meta_parameters'
+require_relative '../../utils/backend_model'
 
-SRC_DIR = ENV['SRC_DIR'] || '.'
+# CUdeviceptr is a device address carried in an integer, so it reads as hex
+# rather than as a decimal that means nothing to anyone.
+cuda_api = ApiModel.load_file('cuda_api.yaml', hex_ints: ['CUdeviceptr'])
+cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
 
-RESULT_NAME = 'cuResult'
+# The driver and its export tables are traced as one API: an export-table
+# typedef can name a driver struct, so they have to be classified together.
+API = cuda_api + cuda_exports_api
 
-$cuda_api_versions_yaml = YAML.load_file('cuda_api_versions.yaml')
-$cuda_api_yaml = YAML.load_file('cuda_api.yaml')
-$cuda_exports_api_yaml = YAML.load_file('cuda_exports_api.yaml')
+gen_ffi_type_map(API.types, API.type_classes)
 
-$cuda_api = YAMLCAst.from_yaml_ast($cuda_api_yaml)
-$cuda_exports_api = YAMLCAst.from_yaml_ast($cuda_exports_api_yaml)
+CONTEXT = BackendContext.for(API, result_name: 'cuResult', init_functions: nil)
 
-cuda_funcs_e = $cuda_api['functions']
-cuda_exports_funcs_e = $cuda_exports_api['functions']
+# The driver and its export tables are one API but two LTTng providers, so the
+# commands are grouped by the provider that will carry them.
+COMMANDS = build_command_index(
+  { lttng_ust_cuda: cuda_api.functions, lttng_ust_cuda_exports: cuda_exports_api.functions },
+  context: CONTEXT,
+  spec: load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
+)
 
-cuda_types_e = $cuda_api['typedefs']
-cuda_exports_type_e = $cuda_exports_api['typedefs']
-
-typedefs = cuda_types_e + cuda_exports_type_e
-structs = $cuda_api['structs'] + $cuda_exports_api['structs']
-
-find_all_types(typedefs)
-gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
-
-HEX_INT_TYPES.push('CUdeviceptr')
-
-class TracepointParameter
-  attr_reader :name, :type, :init, :after
-
-  def initialize(name, type, init, after: false)
-    @name = name
-    @type = type
-    @init = init
-    @after = after
-  end
-
-  def after?
-    @after
-  end
-end
-
-class OutNullArray < OutArray
-  def initialize(command, name)
-    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
-    checks = check_for_null("#{name}")
-    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF, after: true)
-  #{sname} = 0;
-  if(#{checks.join(' && ')}) {
-    while(#{name}[#{sname}] != 0) {
-      #{sname} += 2;
-    }
-    #{sname} ++;
-  }
-EOF
-    super(command, name, sname)
-  end
-end
-
-class InNullArray < InArray
-  def initialize(command, name)
-    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
-    checks = check_for_null("#{name}")
-    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF)
-  #{sname} = 0;
-  if(#{checks.join(' && ')}) {
-    while(#{name}[#{sname}] != 0) {
-      #{sname} += 2;
-    }
-    #{sname} ++;
-  }
-EOF
-    super(command, name, sname)
-  end
-end
-
-$cuda_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'cuda_meta_parameters.yaml'))
-$cuda_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-$cuda_exports_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'cuda_exports_meta_parameters.yaml'))
-$cuda_exports_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-
-$cuda_commands = cuda_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-$cuda_exports_commands = cuda_exports_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
-CUDA_POINTER_NAMES = ($cuda_commands +
-                      $cuda_exports_commands).collect do |c|
-  [c, upper_snake_case(c.pointer_name)]
-end.to_h
+CUDA_POINTER_NAMES = COMMANDS.pointer_names
 
 dump_args = <<EOF
   _dump_kernel_args(f, kernelParams, extra);
@@ -119,7 +32,7 @@ EOF
    cuLaunchKernel_ptsz
    cuLaunchKernelEx
    cuLaunchKernelEx_ptsz].each do |m|
-  register_prologue m, dump_args
+  COMMANDS.add_prologue m, dump_args
 end
 
 dump_args = <<EOF
@@ -128,7 +41,7 @@ EOF
 
 %w[cuLaunchCooperativeKernel
    cuLaunchCooperativeKernel_ptsz].each do |m|
-  register_prologue m, dump_args
+  COMMANDS.add_prologue m, dump_args
 end
 
 dump_args = <<EOF
@@ -139,10 +52,10 @@ EOF
 
 %w[cuGraphAddKernelNode
    cuGraphExecKernelNodeSetParams].each do |m|
-  register_prologue m, dump_args
+  COMMANDS.add_prologue m, dump_args
 end
 
-register_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
+COMMANDS.add_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   if (launchParamsList) {
     for( unsigned int _i = 0; _i < numDevices; _i++) {
       _dump_kernel_args(launchParamsList[_i].function, launchParamsList[_i].kernelParams, NULL);
@@ -150,7 +63,7 @@ register_prologue 'cuLaunchCooperativeKernelMultiDevice', <<EOF
   }
 EOF
 
-register_epilogue 'cuGraphKernelNodeGetParams', <<EOF
+COMMANDS.add_epilogue 'cuGraphKernelNodeGetParams', <<EOF
   if (_retval == CUDA_SUCCESS && nodeParams) {
     _dump_kernel_args(nodeParams->func, nodeParams->kernelParams, nodeParams->extra);
   }
@@ -192,7 +105,7 @@ EOF
 
 stream_commands = []
 no_stream_commands = []
-mem_commands = $cuda_commands.select { |c| c.name.match(/cuMemcpy|cuMemset/) }
+mem_commands = COMMANDS.groups[:lttng_ust_cuda].select { |c| c.name.match(/cuMemcpy|cuMemset/) }
 mem_stream_commands = mem_commands.select { |c| c.name.match(/Async/) }
 mem_no_stream_commands = mem_commands - mem_stream_commands
 stream_commands += mem_stream_commands.collect(&:name)
@@ -221,31 +134,31 @@ config_commands = %w[
 ]
 
 stream_commands.each do |m|
-  register_prologue m, profiling_start_stream
-  register_epilogue m, profiling_stop_stream
+  COMMANDS.add_prologue m, profiling_start_stream
+  COMMANDS.add_epilogue m, profiling_stop_stream
 end
 
 no_stream_commands.each do |m|
-  register_prologue m, profiling_start_no_stream
-  register_epilogue m, profiling_stop_no_stream
+  COMMANDS.add_prologue m, profiling_start_no_stream
+  COMMANDS.add_epilogue m, profiling_stop_no_stream
 end
 
 config_commands.each do |m|
-  register_prologue m, profiling_start_config
-  register_epilogue m, profiling_stop_config
+  COMMANDS.add_prologue m, profiling_start_config
+  COMMANDS.add_epilogue m, profiling_stop_config
 end
 
 # if a context is to be destroyed we must attempt to get profiling event results
 %w[cuCtxDestroy
    cuCtxDestroy_v2].each do |m|
-  register_prologue m, <<EOF
+  COMMANDS.add_prologue m, <<EOF
   if (ctx) {
     _context_event_cleanup(ctx);
   }
 EOF
 end
 
-register_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
+COMMANDS.add_epilogue 'cuDevicePrimaryCtxRetain', <<EOF
   if (_do_profile && _retval == CUDA_SUCCESS && *pctx) {
     _primary_context_retain(dev, *pctx);
   }
@@ -253,7 +166,7 @@ EOF
 
 %w[cuDevicePrimaryCtxRelease_v2
    cuDevicePrimaryCtxRelease].each do |m|
-  register_prologue m, <<EOF
+  COMMANDS.add_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_release(dev);
   }
@@ -262,7 +175,7 @@ end
 
 %w[cuDevicePrimaryCtxReset_v2
    cuDevicePrimaryCtxReset].each do |m|
-  register_prologue m, <<EOF
+  COMMANDS.add_prologue m, <<EOF
   if (_do_profile) {
     _primary_context_reset(dev);
   }
@@ -270,21 +183,23 @@ EOF
 end
 
 # Export tracing
-register_epilogue 'cuGetExportTable', <<EOF
+COMMANDS.add_epilogue 'cuGetExportTable', <<EOF
   if (_do_trace_export_tables && _retval == CUDA_SUCCESS) {
     const void *tmp = _wrap_and_cache_export_table(*ppExportTable, pExportTableId);
     *ppExportTable = tmp;
   }
 EOF
 
-register_epilogue 'cuInit', <<EOF
+COMMANDS.add_epilogue 'cuInit', <<EOF
   if (_retval == CUDA_SUCCESS) {
     _init_cuda();
   }
 EOF
 
 # cuGetProcAddress*
-command_names = $cuda_commands.collect(&:name).to_set
+# Not an api.yaml: a plain name -> suffix -> versions map, used only here.
+api_versions = yaml_load_file_cached('cuda_api_versions.yaml')
+command_names = COMMANDS.groups[:lttng_ust_cuda].collect(&:name).to_set
 pt_condition = '((flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM) && !(flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM))'
 normal_condition = '((flags & CU_GET_PROC_ADDRESS_LEGACY_STREAM) || !(flags & CU_GET_PROC_ADDRESS_PER_THREAD_DEFAULT_STREAM))'
 
@@ -296,7 +211,7 @@ register_proc_callbacks = lambda { |method|
     fprintf(stderr, "THAPI: CUDA version %d is unsupported, could not wrap %s symbol\\n", cudaVersion, symbol);
   } else if (_retval == CUDA_SUCCESS && pfn && *pfn) {
 EOF
-  str << $cuda_api_versions_yaml.map { |name, suffixes|
+  str << api_versions.map { |name, suffixes|
     suffixes.map { |suffix, versions|
       versions.map.with_index { |version, i|
         fullname = "#{name}#{"_v#{versions.size - i}" if versions.size - i > 1}#{suffix}"
@@ -313,20 +228,11 @@ EOF
   }.flatten.join(<<EOF)
     else
 EOF
-  #  str << $cuda_commands.collect { |c|
-  #    <<EOF
-  #    if (tracepoint_enabled(lttng_ust_cuda, #{c.name}_#{START}) && strcmp(symbol, "#{c.name}") == 0) {
-  #      wrap_#{c.name}(pfn);
-  #    }
-  # EOF
-  #  }.join(<<EOF)
-  #    else
-  # EOF
   str << <<EOF
   }
 EOF
 
-  register_epilogue method, str
+  COMMANDS.add_epilogue method, str
 }
 
 register_proc_callbacks.call('cuGetProcAddress')

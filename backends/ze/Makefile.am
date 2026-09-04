@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -26,9 +27,6 @@ ZE_HDR_ROOT = \
 	zet_api.h \
 	zet_ddi.h \
 	zet_ddi_ver.h \
-        #zer_api.h \
-        #zer_ddi.h \
-        #zer_ddi_ver.h \
 	zex_api.h \
 	layers/zel_tracing_api.h \
 	layers/zel_tracing_ddi.h \
@@ -36,6 +34,9 @@ ZE_HDR_ROOT = \
 	layers/zel_tracing_register_cb.h \
 	loader/ze_loader.h \
 	loader/ze_loader_api.h
+# zer is not traced yet: zer_api.h, zer_ddi.h and zer_ddi_ver.h stay out. Do
+# not park them in the list above -- a comment runs to the end of the logical
+# line, so a commented entry swallows every entry after it.
 
 ZE_HDR = $(ZE_HDR_ROOT:%=$(srcdir)/include/%)
 MODIFIED_ZE_HDR = $(ZE_HDR_ROOT:%=modified_include/%)
@@ -97,10 +98,7 @@ ZE_MODEL = \
 	$(srcdir)/ze_model.rb \
 	$(ML_FILES) \
 	$(ZE_EXTRACTED) \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb
+	$(BACKEND_MODEL_DEPS)
 
 btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
@@ -129,7 +127,7 @@ ZE_GEN_TRACEPOINTS = $(ZE_PROBES:%=gen_%.rb)
 $(ZE_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(ZE_MODEL) $(top_srcdir)/utils/gen_probe_base.rb $(srcdir)/ze.h.include
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(ZE_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/ze_events.yaml $(srcdir)/ze.h.include
+$(ZE_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/ze_events.yaml $(srcdir)/ze.h.include $(top_srcdir)/utils/gen_probe_base.rb
 	$(RUBY) $< $(srcdir)/ze_events.yaml lttng_ust_$* ze.h.include > $@
 
 %.h %.c: %.tp
@@ -163,7 +161,7 @@ libZESampling_la_CFLAGS = -Wall -Wextra $(WERROR) $(LTTNG_UST_CFLAGS)
 libZESampling_la_LDFLAGS = -avoid-version -module
 libZESampling_la_LIBADD = $(top_builddir)/sampling/libThapiSampling.la libzetracepoints.la -ldl $(LTTNG_UST_LIBS)
 
-tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL)
+tracer_ze.c: $(srcdir)/gen_ze.rb $(srcdir)/tracer_ze_helpers.include.c $(srcdir)/ze.h.include $(ZE_MODEL) $(ZE_PROBES_INCL) $(ZE_STATIC_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 EXTRA_DIST += \
@@ -211,6 +209,8 @@ install-data-hook:
 
 ZE_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/api_model.rb \
+	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_ze_library_base.rb \
 	$(top_srcdir)/utils/gen_probe_base.rb

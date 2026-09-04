@@ -1,4 +1,5 @@
 require_relative 'ze_model'
+require_relative '../../utils/gen_tracer_base'
 
 puts <<~EOF
     #include <stdint.h>
@@ -40,16 +41,6 @@ puts <<~EOF
 
 EOF
 
-def get_structs_types(namespace, types, structs)
-  types.select do |t|
-    t.type.is_a?(YAMLCAst::Struct) && (struct = structs.find do |s|
-      t.type.name == s.name
-    end) && struct.members.first.name == 'stype'
-  end.reject do |t|
-    t.name.start_with?("#{namespace}_base_")
-  end.map(&:name).to_set
-end
-
 def gen_struct_printer(namespace, types)
   puts <<~EOF
     static
@@ -57,11 +48,9 @@ def gen_struct_printer(namespace, types)
       #{namespace}_structure_type_t stype = (#{namespace}_structure_type_t)((ze_base_desc_t *)p)->stype;
       switch (stype) {
   EOF
-  types.reject { |t| $struct_type_reject.include?(t.to_s) }.each do |t|
-    ename = "#{namespace.to_s.upcase}_STRUCTURE_TYPE_#{t.delete_prefix(namespace.to_s + '_').delete_suffix('_t').upcase}"
-    ename = $struct_type_conversion_table[ename] if $struct_type_conversion_table[ename]
+  types.reject { |t| STRUCT_TYPE_REJECT.include?(t.to_s) }.each do |t|
     puts <<EOF
-  case #{ename}:
+  case #{structure_type_name(t)}:
     tracepoint(lttng_ust_#{namespace}_structs, #{t}, ((#{t} *)p));
     break;
 EOF
@@ -97,34 +86,23 @@ EOF
   EOF
 end
 
-ze_struct_types = get_structs_types(:ze, $ze_api['typedefs'], $ze_api['structs'])
-zet_struct_types = get_structs_types(:zet, $zet_api['typedefs'], $zet_api['structs'])
-zes_struct_types = get_structs_types(:zes, $zes_api['typedefs'], $zes_api['structs'])
-zel_struct_types = get_structs_types(:zel, $zel_api['typedefs'], $zel_api['structs'])
-zer_struct_types = get_structs_types(:zer, $zer_api['typedefs'], $zer_api['structs'])
-zex_struct_types = get_structs_types(:zex, $zex_api['typedefs'], $zex_api['structs'])
+struct_types = APIS.to_h { |ns, api| [ns, concrete_tagged_structs(ns, api)] }
 
-gen_struct_printer(:ze, ze_struct_types)
-gen_struct_printer(:zet, zet_struct_types)
-gen_struct_printer(:zes, zes_struct_types)
-gen_struct_printer(:zel, zel_struct_types)
-# gen_struct_printer(:zer, zel_struct_types)
-# gen_struct_printer(:zex, zex_struct_types)
+gen_struct_printer(:ze, struct_types[:ze])
+gen_struct_printer(:zet, struct_types[:zet])
+gen_struct_printer(:zes, struct_types[:zes])
+gen_struct_printer(:zel, struct_types[:zel])
+# The printer switches on <ns>_structure_type_t, which zer and zex do not
+# declare: zer has no api.yaml at all, and zex names no structure types.
 
-all_commands = $ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands
-all_commands.each do |c|
-  puts "#define #{ZE_POINTER_NAMES[c]} #{c.pointer_name}"
-end
+# zex is excluded: it is reached through libffi closures, not dlsym'd symbols.
+zex_commands = COMMANDS.groups[:lttng_ust_zex]
+all_commands = COMMANDS.to_a - zex_commands
+print_pointer_defines(all_commands, ZE_POINTER_NAMES)
 
-all_commands.each do |c|
-  puts <<~EOF
+print_pointer_table(all_commands, ZE_POINTER_NAMES)
 
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{c.pointer_type_name} #{ZE_POINTER_NAMES[c]} = (void *) 0x0;
-  EOF
-end
-
-$zex_commands.each do |c|
+zex_commands.each do |c|
   puts <<~EOF
 
     #{c.decl_pointer(c.pointer_type_name)};
@@ -137,14 +115,7 @@ puts <<~EOF
   static void find_ze_symbols(void * handle, int verbose) {
 EOF
 
-all_commands.each do |c|
-  puts <<EOF
-
-  #{ZE_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}");
-  if (!#{ZE_POINTER_NAMES[c]} && verbose)
-    fprintf(stderr, "Missing symbol #{c.name}!\\n");
-EOF
-end
+print_dlsym_lookups(all_commands, ZE_POINTER_NAMES)
 
 puts <<~EOF
   }
@@ -153,67 +124,17 @@ EOF
 
 puts File.read(File.join(SRC_DIR, 'tracer_ze_helpers.include.c'))
 
-common_block = lambda { |c, provider, types|
-  params = c.parameters ? c.parameters.collect(&:name) : []
-  tp_params = if c.parameters
-                c.parameters.collect do |p|
-                  if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
-                    '(void *)(intptr_t)' + p.name
-                  else
-                    p.name
-                  end
-                end
-              else
-                []
-              end
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  c.tracepoint_parameters.each do |p|
-    puts "  #{p.type} #{p.name};"
-  end
-  c.tracepoint_parameters.each do |p|
-    puts p.init
-  end
-  puts <<EOF
-  tracepoint(#{provider}, #{c.name}_#{START}, #{(tp_params + tracepoint_params).join(', ')});
-EOF
-  c.meta_parameters.select do |p|
-    p.is_a?(InScalar) &&
-      (a = p.command[p.name]) &&
-      types.include?(a.type.type.name)
-  end.each do |p|
-    puts <<EOF
-  if (_do_chained_structs && #{p.name})
-    _print_#{provider}_structs(#{p.name}->pNext);
-EOF
-  end
-
-  c.prologues.each do |p|
-    puts p
-  end
-
-  if c.has_return_type?
-    puts <<EOF unless c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
-  #{c.type} _retval;
-EOF
-    puts <<EOF
-  _retval = #{ZE_POINTER_NAMES[c]}(#{params.join(', ')});
-EOF
-  else
-    puts "  #{ZE_POINTER_NAMES[c]}(#{params.join(', ')});"
-  end
-  c.epilogues.each do |e|
-    puts e
-  end
-  tp_params.push '_retval' if c.has_return_type?
-  puts <<EOF
-  tracepoint(#{provider}, #{c.name}_#{STOP}, #{(tp_params + tracepoint_params).join(', ')});
-EOF
-  c.meta_parameters.select do |p|
-    p.is_a?(OutScalar) &&
+# ze can be asked to walk the pNext chain of an extension struct a call was
+# handed. `direction` picks which side of the call is worth walking: an input
+# struct is only meaningful before the call, an output struct only after.
+print_chained_structs = lambda { |c, provider, types, direction|
+  chained = c.meta_parameters.select do |p|
+    p.is_a?(direction) &&
       (a = p.command[p.name]) &&
       !a.type.type.is_a?(YAMLCAst::Pointer) &&
       types.include?(a.type.type.name)
-  end.each do |p|
+  end
+  chained.each do |p|
     puts <<EOF
   if (_do_chained_structs && #{p.name})
     _print_#{provider}_structs(#{p.name}->pNext);
@@ -221,85 +142,58 @@ EOF
   end
 }
 
-normal_wrapper = lambda { |c, provider, types|
-  puts <<~EOF
-    #{c.decl} {
-  EOF
-  if c.init?
-    puts <<EOF
-  _init_tracer();
-EOF
-    # _init_tracer_dump() calls the real zeInit (ZE_INIT_PTR) and dumps device
-    # properties. zesInit piggybacks on it so a pure-Sysman program (no zeInit)
-    # still initializes the ze backend it depends on.
-    if %w[zeInit zesInit].include?(c.name)
-      puts <<EOF
-  _init_tracer_dump();
-EOF
-    end
-  end
-  common_block.call(c, provider, types)
-  if c.has_return_type?
-    puts <<EOF
-  return _retval;
-EOF
-  end
-  puts <<~EOF
-    }
-
-  EOF
+common_block = lambda { |c, provider, types|
+  print_traced_body(
+    c, provider, ZE_POINTER_NAMES,
+    after_entry: ->(cmd) { print_chained_structs.call(cmd, provider, types, InScalar) },
+    after_exit: ->(cmd) { print_chained_structs.call(cmd, provider, types, OutScalar) },
+    # A ProcAddrTable getter declares _retval in its own prologue, because the
+    # prologue has to reach into the table the call is about to fill in.
+    declare_retval: !c.name.match(PROC_ADDR_TABLE_GETTER)
+  )
 }
 
-$ze_commands.each do |c|
-  next if c.name.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/)
+normal_wrapper = lambda { |c, provider, types|
+  # _init_tracer_dump() calls the real zeInit (ZE_INIT_PTR) and dumps device
+  # properties. zesInit piggybacks on it so a pure-Sysman program (no zeInit)
+  # still initializes the ze backend it depends on.
+  init = if !c.init?
+           nil
+         elsif %w[zeInit zesInit].include?(c.name)
+           "_init_tracer();\n  _init_tracer_dump();"
+         else
+           '_init_tracer();'
+         end
+  print_wrapper(c, init: init) { common_block.call(c, provider, types) }
+}
 
-  puts <<~EOF
-    #{c.decl_hidden_alias};
+# Which of a namespace's entry points get a hidden alias. zel is the exception:
+# only its tracer API is aliased, so it opts in rather than out.
+aliased = {
+  ze: ->(n) { !n.match(/zeGet.*ProcAddrTable|^zeLoaderInit|^zeLoaderGetTracingHandle/) },
+  zet: ->(n) { !n.match(/zetGet.*ProcAddrTable/) },
+  zes: ->(n) { !n.match(/zesGet.*ProcAddrTable/) },
+  zel: ->(n) { n.match(/^zelTracer/) && !n.match(/RegisterCallback$|ResetAllCallbacks$/) },
+  zer: ->(n) { !n.match(/zerGet.*ProcAddrTable/) },
+}
 
-  EOF
-end
-$zet_commands.each do |c|
-  puts <<~EOF unless c.name.match(/zetGet.*ProcAddrTable/)
-    #{c.decl_hidden_alias};
+aliased.each do |ns, alias_wanted|
+  COMMANDS.groups[:"lttng_ust_#{ns}"].each do |c|
+    puts <<~EOF if alias_wanted.call(c.name)
+      #{c.decl_hidden_alias};
 
-  EOF
-end
-$zes_commands.each do |c|
-  puts <<~EOF unless c.name.match(/zesGet.*ProcAddrTable/)
-    #{c.decl_hidden_alias};
-
-  EOF
-end
-$zel_commands.each do |c|
-  puts <<~EOF if c.name.match(/^zelTracer/) && !c.name.match(/RegisterCallback$|ResetAllCallbacks$/)
-    #{c.decl_hidden_alias};
-
-  EOF
-end
-$zer_commands.each do |c|
-  puts <<~EOF unless c.name.match(/zerGet.*ProcAddrTable/)
-    #{c.decl_hidden_alias};
-
-  EOF
-end
-
-$ze_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_ze, ze_struct_types)
-end
-$zet_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zet, zet_struct_types)
-end
-$zes_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zes, zes_struct_types)
-end
-$zel_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zel, zel_struct_types)
-end
-$zer_commands.each do |c|
-  normal_wrapper.call(c, :lttng_ust_zer, zer_struct_types)
+    EOF
+  end
 end
 
-$zex_commands.each do |c|
+%i[ze zet zes zel zer].each do |ns|
+  provider = :"lttng_ust_#{ns}"
+  COMMANDS.groups[provider].each do |c|
+    normal_wrapper.call(c, provider, struct_types[ns])
+  end
+end
+
+zex_commands.each do |c|
   puts <<~EOF
     static #{c.decl_ffi_wrapper} {
       (void)cif;
@@ -309,7 +203,7 @@ $zex_commands.each do |c|
   #{p} = *(#{p.type} *)args[#{i}];
 EOF
   end
-  common_block.call(c, :lttng_ust_zex, zex_struct_types)
+  common_block.call(c, :lttng_ust_zex, struct_types[:zex])
   if c.has_return_type?
     puts <<EOF
   *ffi_ret = _retval;

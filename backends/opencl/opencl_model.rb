@@ -1,15 +1,14 @@
 require 'nokogiri'
 require 'yaml'
+require_relative '../../utils/yaml_ast'
+require_relative '../../utils/LTTng'
+require_relative '../../utils/command_index'
+require_relative '../../utils/meta_parameter_spec'
 
-SRC_DIR = ENV['SRC_DIR'] || '.'
-
-START = 'entry'
-STOP = 'exit'
-SUFFIXES = { 'start' => START, 'stop' => STOP }
-
-MEMBER_SEPARATOR = '__'
-
-GENERATE_ENUMS_TRACEPOINTS = false
+# Keyed by the phase strings opencl's wrapper YAML uses, where the AST backends
+# key by symbol. Serialized into opencl_model.yaml for the babeltrace lib, which
+# reads the suffixes back rather than restating them.
+CL_EVENT_SUFFIXES = { 'start' => START, 'stop' => STOP }.freeze
 
 HOST_PROFILE = true
 
@@ -21,16 +20,9 @@ ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTermi
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /#{YAML.load_file(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
+SUPPORTED_EXTENSION_FUNCTIONS = /#{yaml_load_file_cached(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
-
-LTTNG_AVAILABLE_PARAMS = 25
-LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
-
-ENUMS = {}
-ENUM_PARAM_NAME_MAP = {}
-ENUM_TYPES = []
 
 # map = Hash::new { |h, k| h[k] = [] }
 
@@ -53,7 +45,7 @@ struct_e = doc.xpath('//types/type').select do |l|
   l['category'] == 'struct'
 end.collect
 
-$constants = doc.xpath('//enums/enum').collect do |n|
+CL_CONSTANTS = doc.xpath('//enums/enum').collect do |n|
   if n['value']
     [n['name'], n['value']]
   elsif n['bitpos']
@@ -174,26 +166,8 @@ class Require < CLXML
   end
 end
 
-$requires = (doc.xpath('//feature/require').to_a + doc.xpath('//extensions/extension/require').to_a).collect do |r|
+CL_REQUIRES = (doc.xpath('//feature/require').to_a + doc.xpath('//extensions/extension/require').to_a).collect do |r|
   Require.new(r)
-end
-
-if GENERATE_ENUMS_TRACEPOINTS
-  enums = YAML.load_file(File.join(SRC_DIR, 'supported_enums.yaml'))
-
-  enums.each do |e|
-    vals = $requires.select do |r|
-      r.comment && r.comment.match(/#{e['name']}(\z| )/)
-    end.collect do |r|
-      r.enums
-    end.reduce(:+).collect do |v|
-      [v, $constants[v]]
-    end.to_h
-    ENUMS[e['name']] = { 'values' => vals, 'trace_name' => e['trace_name'], 'type_name' => e['type_name'] }
-    ENUM_PARAM_NAME_MAP[e['trace_name']] = e['type_name']
-    ENUM_TYPES.push(e['type_name'] || e['name'])
-  end
-  ENUM_TYPES.push 'cl_bool'
 end
 
 class Declaration < CLXML
@@ -292,7 +266,6 @@ class Parameter < Declaration
 
     t = @type
     t = CL_TYPE_MAP[@type] if CL_TYPE_MAP[@type]
-    return ['ctf_enum', 'lttng_ust_opencl', @type, t, @name, @name] if ENUM_TYPES.include? @type
 
     case t
     when *CL_OBJECTS, *CL_EXT_OBJECTS
@@ -375,8 +348,6 @@ class Prototype < CLXML
 
     case @return_type
     when 'cl_int'
-      return %w[ctf_enum lttng_ust_opencl cl_errcode cl_int errcode_ret_val _retval] if GENERATE_ENUMS_TRACEPOINTS
-
       return %w[ctf_integer cl_int errcode_ret_val _retval]
 
     when *CL_OBJECTS
@@ -447,24 +418,19 @@ class InScalar < InMetaParameter
 
     type = command[name].type.gsub('*', '')
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
-    if ENUM_PARAM_NAME_MAP[name]
-      @lttng_in_type = ['ctf_enum', 'lttng_ust_opencl', ENUM_PARAM_NAME_MAP[name], type, name + '_val',
-                        nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
+      @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                        nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+    when *CL_INT_SCALARS
+      @lttng_in_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_STRUCTS
+      @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
+                        "#{name} == NULL ? 0 : sizeof(#{type})"]
     else
-      case type
-      when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
-        @lttng_in_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
-                          nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
-      when *CL_INT_SCALARS
-        @lttng_in_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when *CL_FLOAT_SCALARS
-        @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when *CL_STRUCTS
-        @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
-                          "#{name} == NULL ? 0 : sizeof(#{type})"]
-      else
-        raise "Unknown Type: #{type.inspect}!"
-      end
+      raise "Unknown Type: #{type.inspect}!"
     end
   end
 end
@@ -476,21 +442,16 @@ class OutScalar < OutMetaParameter
 
     type = command[name].type.gsub('*', '')
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
-    if ENUM_PARAM_NAME_MAP[name]
-      @lttng_out_type = ['ctf_enum', 'lttng_ust_opencl', ENUM_PARAM_NAME_MAP[name], type, name + '_val',
-                         nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    case type
+    when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
+      @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
+                         nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
+    when *CL_INT_SCALARS
+      @lttng_out_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
+    when *CL_FLOAT_SCALARS
+      @lttng_out_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     else
-      case type
-      when *CL_OBJECTS, *CL_EXT_OBJECTS, 'void'
-        @lttng_out_type = ['ctf_integer_hex', 'uintptr_t', name + '_val',
-                           nocheck ? "(uintptr_t)(*#{name})" : "(uintptr_t)(#{name} == NULL ? 0 : *#{name})"]
-      when *CL_INT_SCALARS
-        @lttng_out_type = ['ctf_integer', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      when *CL_FLOAT_SCALARS
-        @lttng_out_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
-      else
-        raise "Unknown Type: #{type.inspect}!"
-      end
+      raise "Unknown Type: #{type.inspect}!"
     end
   end
 end
@@ -643,51 +604,38 @@ ParamValueSizeRet = AutoOutScalar.create('param_value_size_ret', nocheck: true)
 
 Event = AutoOutScalar.create('event')
 
-def register_meta_parameter(method, type, *args)
-  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-    raise "Unknown method: #{method}!"
-  end
-
-  META_PARAMETERS[method].push [type, args]
-end
-
-def register_prologue(method, code)
-  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-    raise "Unknown method: #{method}!"
-  end
-
-  PROLOGUES[method].push(code)
-end
-
-def register_epilogue(method, code)
-  unless OPENCL_COMMAND_NAMES.include?(method) || OPENCL_EXTENSION_COMMAND_NAMES.include?(method)
-    raise "Unknown method: #{method}!"
-  end
-
-  EPILOGUES[method].push(code)
-end
-
 AUTO_META_PARAMETERS = [EventWaitList, ErrCodeRet, ParamValueSizeRet, ParamValue, Event]
-META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
-PROLOGUES = Hash.new { |h, k| h[k] = [] }
-EPILOGUES = Hash.new { |h, k| h[k] = [] }
 
 class Command < CLXML
   attr_reader :prototype, :parameters, :tracepoint_parameters, :meta_parameters, :prologues, :epilogues
 
-  def initialize(command)
-    super
+  # `meta_parameters` is this function's rows from a meta-parameter spec, as
+  # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
+  def initialize(command, meta_parameters: [])
+    super(command)
     @prototype = Prototype.new(command.search('proto'))
     @parameters = command.search('param').collect { |p| Parameter.new(p) }
     @tracepoint_parameters = []
     @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@prototype.name].collect do |type, args|
+    @meta_parameters += meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
     @extension = @prototype.name.match(EXTENSION_FUNCTIONS)
     @init      = @prototype.name.match(INIT_FUNCTIONS)
-    @prologues = PROLOGUES[@prototype.name]
-    @epilogues = EPILOGUES[@prototype.name]
+    @prologues = []
+    @epilogues = []
+  end
+
+  def name
+    @prototype.name
+  end
+
+  def add_prologue(code)
+    @prologues.push(code)
+  end
+
+  def add_epilogue(code)
+    @epilogues.push(code)
   end
 
   def [](name)
@@ -730,76 +678,61 @@ class Command < CLXML
   end
 end
 
-OPENCL_COMMAND_NAMES = funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
-OPENCL_EXTENSION_COMMAND_NAMES = ext_funcs_e.collect { |c| Prototype.new(c.search('proto')) }.collect { |p| p.name }
+meta_parameters = load_meta_parameters('opencl_meta_parameters.yaml')
 
-$meta_parameters = YAML.load_file(File.join(SRC_DIR, 'opencl_meta_parameters.yaml'))
-$meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
+# Both groups go to the one lttng_ust_opencl provider, so they are grouped by
+# what actually separates them: an extension is reached through
+# clGetExtensionFunctionAddress rather than dlsym, which several of the
+# generators below need to tell apart.
+OPENCL_COMMANDS = CommandIndex.new(
+  { core: funcs_e, extension: ext_funcs_e }.transform_values do |funcs|
+    funcs.collect { |func| Command.new(func, meta_parameters: meta_parameters[func.search('proto/name').text]) }
   end
-end
+)
 
-$opencl_commands = funcs_e.collect do |func|
-  Command.new(func)
-end
+check_meta_parameters(meta_parameters, OPENCL_COMMANDS)
 
-$opencl_extension_commands = ext_funcs_e.collect do |func|
-  Command.new(func)
-end
+# An extension is reached through libffi rather than dlsym, so its pointer
+# keeps the header's own spelling instead of the upper-snake macro.
+extension_commands = OPENCL_COMMANDS.groups[:extension]
+OPENCL_POINTER_NAMES = OPENCL_COMMANDS.pointer_names(
+  pointer_name_of: ->(c) { c.prototype.pointer_name }
+) { |c, name| name if extension_commands.include?(c) }
 
-$opencl_commands.each do |c|
-  eval "$#{c.prototype.name} = c"
-end
-
-$opencl_extension_commands.each do |c|
-  eval "$#{c.prototype.name} = c"
-end
-
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
-OPENCL_POINTER_NAMES = ($opencl_commands.collect do |c|
-  [c, upper_snake_case(c.prototype.pointer_name)]
-end + $opencl_extension_commands.collect do |c|
-  [c, c.prototype.pointer_name]
-end).to_h
-
-($opencl_commands + $opencl_extension_commands).select do |c|
+OPENCL_COMMANDS.select do |c|
   c.parameters.find { |p| p.name == 'errcode_ret' && p.pointer? }
 end.each do |c|
-  c.prologues.push <<EOF
+  c.add_prologue <<EOF
   cl_int _errcode_ret_force;
   if (!errcode_ret)
     errcode_ret = &_errcode_ret_force;
 EOF
 end
 
-($opencl_commands + $opencl_extension_commands).select do |c|
+OPENCL_COMMANDS.select do |c|
   c.parameters.find { |p| p.name == 'param_value_size_ret' && p.pointer? }
 end.each do |c|
-  c.prologues.push <<EOF
+  c.add_prologue <<EOF
   size_t _new_param_value_size;
   if (!param_value_size_ret)
     param_value_size_ret = &_new_param_value_size;
 EOF
-  c.epilogues.push <<EOF
+  c.add_epilogue <<EOF
   param_value_size = (param_value_size <= *param_value_size_ret ? param_value_size : *param_value_size_ret );
 EOF
 end
 
-buffer_create_info = InMetaParameter.new($clCreateSubBuffer, 'buffer_create_info')
+buffer_create_info = InMetaParameter.new(OPENCL_COMMANDS['clCreateSubBuffer'], 'buffer_create_info')
 buffer_create_info.instance_variable_set(:@lttng_in_type,
                                          ['ctf_sequence_text', 'uint8_t', 'buffer_create_info_vals', 'buffer_create_info', 'size_t',
                                           'buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)'])
 
-$clCreateSubBuffer.meta_parameters.push buffer_create_info
+OPENCL_COMMANDS['clCreateSubBuffer'].meta_parameters.push buffer_create_info
 
-($opencl_commands + $opencl_extension_commands).each do |c|
+OPENCL_COMMANDS.each do |c|
   next unless c.prototype.name.match 'clEnqueue'
 
-  c.prologues.push <<EOF
+  c.add_prologue <<EOF
   int64_t _enqueue_counter = 0;
   if (do_dump) {
     pthread_mutex_lock(&enqueue_counter_mutex);
@@ -824,35 +757,35 @@ class ParamName < MetaParameter
   end
 end
 
-($opencl_commands + $opencl_extension_commands).each do |c|
+OPENCL_COMMANDS.each do |c|
   c.meta_parameters.push(ParamName.new(c)) if c.prototype.name.match(/clGet(\w*?)Info/) && c['param_name']
 end
 
-register_epilogue 'clCreateKernel', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateKernel', <<EOF
   if (do_dump && _retval != NULL) {
     add_kernel(_retval);
   }
 EOF
 
-register_epilogue 'clSetKernelArg', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clSetKernelArg', <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
     add_kernel_arg(kernel, arg_index, arg_size, arg_value, 0);
   }
 EOF
 
-register_epilogue 'clSetKernelArgSVMPointer', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clSetKernelArgSVMPointer', <<EOF
   if (do_dump && _retval == CL_SUCCESS) {
     add_kernel_arg(kernel, arg_index, sizeof(arg_value), arg_value, 1);
   }
 EOF
 
-register_epilogue 'clSVMAlloc', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clSVMAlloc', <<EOF
   if (do_dump && _retval != NULL) {
     add_svmptr(_retval, size);
   }
 EOF
 
-register_prologue 'clSVMFree', <<EOF
+OPENCL_COMMANDS.add_prologue 'clSVMFree', <<EOF
   if (do_dump && svm_pointer != NULL) {
     remove_svmptr(svm_pointer);
   }
@@ -864,7 +797,7 @@ str = <<EOF
   cl_event extra_event;
   if (do_dump && command_queue != NULL && kernel != NULL && _enqueue_counter >= dump_start && _enqueue_counter <= dump_end) {
     cl_command_queue_properties properties;
-    #{OPENCL_POINTER_NAMES[$clGetCommandQueueInfo]}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
+    #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clGetCommandQueueInfo']]}(command_queue, CL_QUEUE_PROPERTIES, sizeof(cl_command_queue_properties), &properties, NULL);
     _dump_release_events = dump_kernel_args(command_queue, kernel, _enqueue_counter, properties, &num_events_in_wait_list, (cl_event **)&event_wait_list);
     if ((properties & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) && event == NULL) {
       event = &extra_event;
@@ -872,40 +805,40 @@ str = <<EOF
     }
   }
 EOF
-register_prologue 'clEnqueueNDRangeKernel', str
-register_prologue 'clEnqueueNDRangeKernelINTEL', str
+OPENCL_COMMANDS.add_prologue 'clEnqueueNDRangeKernel', str
+OPENCL_COMMANDS.add_prologue 'clEnqueueNDRangeKernelINTEL', str
 
 str = <<EOF
   if (do_dump && _dump_release_events) {
     for (cl_uint event_index = 0; event_index < num_events_in_wait_list; event_index++) {
-      #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(event_wait_list[event_index]);
+      #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clReleaseEvent']]}(event_wait_list[event_index]);
     }
     free((void *)event_wait_list);
   }
 EOF
-register_epilogue 'clEnqueueNDRangeKernel', str
-register_epilogue 'clEnqueueNDRangeKernelINTEL', str
+OPENCL_COMMANDS.add_epilogue 'clEnqueueNDRangeKernel', str
+OPENCL_COMMANDS.add_epilogue 'clEnqueueNDRangeKernelINTEL', str
 
-register_prologue 'clCreateBuffer', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateBuffer', <<EOF
   if (do_dump) {
     flags &= ~CL_MEM_HOST_WRITE_ONLY;
     flags &= ~CL_MEM_HOST_NO_ACCESS;
   }
 EOF
 
-register_epilogue 'clCreateBuffer', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateBuffer', <<EOF
   if (do_dump && _retval != NULL) {
     add_buffer(_retval, size);
   }
 EOF
 
-register_prologue 'clCreateCommandQueue', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateCommandQueue', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     properties |= CL_QUEUE_PROFILING_ENABLE;
   }
 EOF
 
-register_prologue 'clCreateCommandQueueWithProperties', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateCommandQueueWithProperties', <<EOF
   cl_queue_properties *_profiling_properties = NULL;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling)) {
     int _found_queue_properties = 0;
@@ -951,11 +884,11 @@ register_prologue 'clCreateCommandQueueWithProperties', <<EOF
   }
 EOF
 
-register_epilogue 'clCreateCommandQueueWithProperties', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateCommandQueueWithProperties', <<EOF
   if (_profiling_properties) free(_profiling_properties);
 EOF
 
-register_prologue 'clCreateProgramWithSource', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateProgramWithSource', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_string) && strings != NULL) {
     cl_uint index;
     for (index = 0; index < count; index++) {
@@ -974,7 +907,7 @@ register_prologue 'clCreateProgramWithSource', <<EOF
   }
 EOF
 
-register_prologue 'clCreateProgramWithBinary', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateProgramWithBinary', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_binary) && binaries != NULL && lengths != NULL) {
     cl_uint index;
     for (index = 0; index < num_devices; index++) {
@@ -986,7 +919,7 @@ register_prologue 'clCreateProgramWithBinary', <<EOF
   }
 EOF
 
-register_prologue 'clCreateProgramWithIL', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateProgramWithIL', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
@@ -995,7 +928,7 @@ register_prologue 'clCreateProgramWithIL', <<EOF
   }
 EOF
 
-register_prologue 'clCreateProgramWithILKHR', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateProgramWithILKHR', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_source, program_il) && il != NULL) {
     char path[sizeof(IL_SOURCE_TEMPLATE)];
     strncpy(path, IL_SOURCE_TEMPLATE, sizeof(path));
@@ -1026,9 +959,9 @@ str = <<EOF
     }
   }
 EOF
-register_prologue 'clBuildProgram', str
-register_prologue 'clCompileProgram', str
-register_prologue 'clLinkProgram', <<EOF
+OPENCL_COMMANDS.add_prologue 'clBuildProgram', str
+OPENCL_COMMANDS.add_prologue 'clCompileProgram', str
+OPENCL_COMMANDS.add_prologue 'clLinkProgram', <<EOF
   int _free_options = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && input_programs && num_input_programs > 0) {
     struct opencl_version version = {1, 0};
@@ -1055,12 +988,12 @@ str = <<EOF
   if (_free_options)
     free((char *)options);
 EOF
-register_epilogue 'clBuildProgram', str
-register_epilogue 'clCompileProgram', str
-register_epilogue 'clLinkProgram', str
+OPENCL_COMMANDS.add_epilogue 'clBuildProgram', str
+OPENCL_COMMANDS.add_epilogue 'clCompileProgram', str
+OPENCL_COMMANDS.add_epilogue 'clLinkProgram', str
 
 l = lambda { |func, name: 'pfn_notify', extra_conditions: nil|
-  register_prologue func, <<EOF
+  OPENCL_COMMANDS.add_prologue func, <<EOF
   struct #{func}_callback_payload *_payload = NULL;
   if ((tracepoint_enabled(lttng_ust_opencl, #{func}_callback_#{START})#{if extra_conditions
                                                                           " || #{extra_conditions.join(' || ')}"
@@ -1091,31 +1024,31 @@ str = <<EOF
   if (_payload && _retval != CL_SUCCESS)
     free(_payload);
 EOF
-register_epilogue 'clBuildProgram', str
-register_epilogue 'clCompileProgram', str
-register_epilogue 'clSetMemObjectDestructorCallback', str
-register_epilogue 'clSetProgramReleaseCallback', str
-register_epilogue 'clSetEventCallback', str
-register_epilogue 'clEnqueueSVMFree', str
+OPENCL_COMMANDS.add_epilogue 'clBuildProgram', str
+OPENCL_COMMANDS.add_epilogue 'clCompileProgram', str
+OPENCL_COMMANDS.add_epilogue 'clSetMemObjectDestructorCallback', str
+OPENCL_COMMANDS.add_epilogue 'clSetProgramReleaseCallback', str
+OPENCL_COMMANDS.add_epilogue 'clSetEventCallback', str
+OPENCL_COMMANDS.add_epilogue 'clEnqueueSVMFree', str
 str = <<EOF
   if (_payload && !_retval)
     free(_payload);
 EOF
-register_epilogue 'clLinkProgram', str
-register_epilogue 'clCreateContext', str
-register_epilogue 'clCreateContextFromType', str
+OPENCL_COMMANDS.add_epilogue 'clLinkProgram', str
+OPENCL_COMMANDS.add_epilogue 'clCreateContext', str
+OPENCL_COMMANDS.add_epilogue 'clCreateContextFromType', str
 
-register_epilogue 'clBuildProgram', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clBuildProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && !pfn_notify) {
     dump_program_binaries(program);
   }
 EOF
-register_epilogue 'clCompileProgram', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCompileProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, objects) && !pfn_notify) {
     dump_program_objects(program);
   }
 EOF
-register_epilogue 'clLinkProgram', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clLinkProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, binaries) && _retval && !pfn_notify) {
     dump_program_binaries(_retval);
   }
@@ -1126,34 +1059,34 @@ str = <<EOF
     dump_program_build_infos(program);
   }
 EOF
-register_epilogue 'clBuildProgram', str
-register_epilogue 'clCompileProgram', str
-register_epilogue 'clLinkProgram', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clBuildProgram', str
+OPENCL_COMMANDS.add_epilogue 'clCompileProgram', str
+OPENCL_COMMANDS.add_epilogue 'clLinkProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_build, infos) && _retval && !pfn_notify) {
     dump_program_build_infos(_retval);
   }
 EOF
 
-register_epilogue 'clCreateKernel', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateKernel', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info)) {
     dump_kernel_info(_retval);
   }
 EOF
 
-register_epilogue 'clCreateKernel', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateKernel', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval != NULL) {
     dump_kernel_arguments(program, _retval);
   }
 EOF
 
-register_prologue 'clCreateKernelsInProgram', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateKernelsInProgram', <<EOF
   cl_uint n_k = 0;
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
-register_epilogue 'clCreateKernelsInProgram', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, kernel_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_info(kernels[i]);
@@ -1161,13 +1094,13 @@ register_epilogue 'clCreateKernelsInProgram', <<EOF
   }
 EOF
 
-register_prologue 'clCreateKernelsInProgram', <<EOF
+OPENCL_COMMANDS.add_prologue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && !num_kernels_ret && kernels) {
     num_kernels_ret = &n_k;
   }
 EOF
 
-register_epilogue 'clCreateKernelsInProgram', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clCreateKernelsInProgram', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_arguments, argument_info) && _retval == CL_SUCCESS && kernels) {
     for (cl_uint i = 0; i < *num_kernels_ret; i++) {
       dump_kernel_arguments(program, kernels[i]);
@@ -1175,20 +1108,20 @@ register_epilogue 'clCreateKernelsInProgram', <<EOF
   }
 EOF
 
-register_prologue 'clGetDeviceIDs', <<EOF
+OPENCL_COMMANDS.add_prologue 'clGetDeviceIDs', <<EOF
   cl_uint n_e;
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && !num_devices && devices) {
     num_devices = &n_e;
   }
 EOF
 
-register_prologue 'clGetDeviceIDs', <<EOF
+OPENCL_COMMANDS.add_prologue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && !num_devices && devices) {
     num_devices = &n_e;
   }
 EOF
 
-register_epilogue 'clGetDeviceIDs', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_name) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_name(devices[i]);
@@ -1196,7 +1129,7 @@ register_epilogue 'clGetDeviceIDs', <<EOF
   }
 EOF
 
-register_epilogue 'clGetDeviceIDs', <<EOF
+OPENCL_COMMANDS.add_epilogue 'clGetDeviceIDs', <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_devices, device_timer) && _retval == CL_SUCCESS && devices) {
     for (cl_uint i = 0; i < *num_devices; i++) {
       dump_device_timer(devices[i]);
@@ -1204,7 +1137,7 @@ register_epilogue 'clGetDeviceIDs', <<EOF
   }
 EOF
 
-str = $opencl_commands.select { |c| c.extension? }.collect do |c|
+str = OPENCL_COMMANDS.groups[:core].select { |c| c.extension? }.collect do |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
     tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddressForPlatform_#{STOP}, platform, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{if HOST_PROFILE
@@ -1217,9 +1150,9 @@ end.join(<<EOF)
   else
 EOF
 
-register_prologue 'clGetExtensionFunctionAddressForPlatform', str
+OPENCL_COMMANDS.add_prologue 'clGetExtensionFunctionAddressForPlatform', str
 
-str = $opencl_commands.select { |c| c.extension? }.collect do |c|
+str = OPENCL_COMMANDS.groups[:core].select { |c| c.extension? }.collect do |c|
   <<EOF
   if (strcmp(func_name, "#{c.prototype.name}") == 0) {
     tracepoint(lttng_ust_opencl, clGetExtensionFunctionAddress_#{STOP}, func_name, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}#{if HOST_PROFILE
@@ -1232,13 +1165,13 @@ end.join(<<EOF)
   else
 EOF
 
-register_prologue 'clGetExtensionFunctionAddress', str
+OPENCL_COMMANDS.add_prologue 'clGetExtensionFunctionAddress', str
 
 register_extension_callbacks = lambda { |ext_method|
   str = <<EOF
   if (_retval != NULL) {
 EOF
-  str << $opencl_extension_commands.collect { |c|
+  str << OPENCL_COMMANDS.groups[:extension].collect { |c|
     sstr = <<EOF
     if (tracepoint_enabled(lttng_ust_opencl, #{c.prototype.name}_#{START}) && strcmp(func_name, "#{c.prototype.name}") == 0) {
       struct opencl_closure *closure = NULL;
@@ -1290,17 +1223,17 @@ EOF
   }
 EOF
 
-  register_epilogue ext_method, str
+  OPENCL_COMMANDS.add_epilogue ext_method, str
 }
 
 register_extension_callbacks.call('clGetExtensionFunctionAddress')
 register_extension_callbacks.call('clGetExtensionFunctionAddressForPlatform')
 
 # Create event profiling code
-($opencl_commands + $opencl_extension_commands).each do |c|
+OPENCL_COMMANDS.each do |c|
   if c.event?
     if !c.returns_event?
-      c.prologues.push <<EOF
+      c.add_prologue <<EOF
   int _profile_release_event = 0;
   int _event_profiling = 0;
   cl_event _profiling_event = NULL;
@@ -1312,22 +1245,22 @@ register_extension_callbacks.call('clGetExtensionFunctionAddressForPlatform')
     _event_profiling = 1;
   }
 EOF
-      c.epilogues.push <<EOF
+      c.add_epilogue <<EOF
   if (_event_profiling) {
     if (_retval == CL_SUCCESS) {
-      int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(*event, CL_COMPLETE, event_notify, NULL);
+      int _set_retval = #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clSetEventCallback']]}(*event, CL_COMPLETE, event_notify, NULL);
       do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, *event);
     }
     if(_profile_release_event) {
-      #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
+      #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clReleaseEvent']]}(*event);
       event = NULL;
     }
   }
 EOF
     elsif c.prototype.name != 'clCreateUserEvent'
-      c.epilogues.push <<EOF
+      c.add_epilogue <<EOF
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling) ) {
-    int _set_retval = #{OPENCL_POINTER_NAMES[$clSetEventCallback]}(_retval, CL_COMPLETE, event_notify, NULL);
+    int _set_retval = #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clSetEventCallback']]}(_retval, CL_COMPLETE, event_notify, NULL);
     do_tracepoint(lttng_ust_opencl_profiling, event_profiling, _set_retval, _retval);
   }
 EOF
@@ -1340,25 +1273,25 @@ str = <<EOF
     if (_retval == CL_SUCCESS) {
       cl_event ev = dump_kernel_buffers(command_queue, kernel, _enqueue_counter, event);
       if (_dump_release_event) {
-        #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
+        #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clReleaseEvent']]}(*event);
         event = NULL;
         if (ev != NULL) {
-          #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(ev);
+          #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clReleaseEvent']]}(ev);
         }
       } else if ( ev != NULL ) {
         if (event != NULL) {
           if (*event != NULL)
-            #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
+            #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clReleaseEvent']]}(*event);
           *event = ev;
         }
       }
     } else {
       if (_dump_release_event) {
-        #{OPENCL_POINTER_NAMES[$clReleaseEvent]}(*event);
+        #{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clReleaseEvent']]}(*event);
         event = NULL;
       }
     }
   }
 EOF
-register_epilogue 'clEnqueueNDRangeKernel', str
-register_epilogue 'clEnqueueNDRangeKernelINTEL', str
+OPENCL_COMMANDS.add_epilogue 'clEnqueueNDRangeKernel', str
+OPENCL_COMMANDS.add_epilogue 'clEnqueueNDRangeKernelINTEL', str

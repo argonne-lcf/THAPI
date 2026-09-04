@@ -13,36 +13,6 @@ puts <<~EOF
 
 EOF
 
-if GENERATE_ENUMS_TRACEPOINTS
-  puts <<~EOF
-    TRACEPOINT_ENUM(
-      lttng_ust_opencl,
-      cl_bool,
-      TP_ENUM_VALUES(
-        ctf_enum_value("CL_FALSE", 0)
-        ctf_enum_value("CL_TRUE", 1)
-      )
-    )
-
-  EOF
-
-  ENUMS.each do |name, e|
-    name = e['type_name'] if e['type_name']
-    puts <<~EOF
-      TRACEPOINT_ENUM(
-        lttng_ust_opencl,
-        #{name},
-        TP_ENUM_VALUES(
-          #{e['values'].collect do |k, v| # {' '}
-            "ctf_enum_value(\"#{k}\", #{"(#{name})" unless e['type_name']}#{v})"
-          end.join("\n    ")}
-        )
-      )
-
-    EOF
-  end
-end
-
 tracepoint_lambda = lambda { |c, dir|
   event = {}
   event['name'] = c.prototype.name
@@ -82,17 +52,17 @@ tracepoint_lambda = lambda { |c, dir|
   end
   event[dir] = fields
 
-  print_tracepoint('lttng_ust_opencl', event, dir)
+  LTTng.print_tracepoint('lttng_ust_opencl', event, dir, suffix: CL_EVENT_SUFFIXES[dir])
 }
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   next if c.parameters.length > LTTNG_USABLE_PARAMS
 
   tracepoint_lambda.call(c, 'start')
   tracepoint_lambda.call(c, 'stop')
 end
 
-$opencl_extension_commands.each do |c|
+OPENCL_COMMANDS.groups[:extension].each do |c|
   next if c.parameters.length > LTTNG_USABLE_PARAMS
 
   tracepoint_lambda.call(c, 'start')
@@ -102,9 +72,9 @@ end
 puts ''
 
 namespace = 'lttng_ust_opencl'
-callbacks = YAML.load_file(File.join(SRC_DIR, 'opencl_wrapper_events.yaml'))[namespace]
+callbacks = yaml_load_file_cached(File.join(SRC_DIR, 'opencl_wrapper_events.yaml'))[namespace]
 callbacks['events'].each do |e|
   %w[start stop].each do |dir|
-    print_tracepoint(namespace, e, dir)
+    LTTng.print_tracepoint(namespace, e, dir, suffix: CL_EVENT_SUFFIXES[dir])
   end
 end
