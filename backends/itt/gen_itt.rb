@@ -33,7 +33,7 @@ common_block = lambda { |c, provider|
   l = []
 
   l += c.tracepoint_parameters.map { |p| "  #{p.type} #{p.name};" }
-  l += c.tracepoint_parameters.filter_map { |p| p.init unless p.after? }
+  l += c.tracepoint_inits(:start)
   l += c.prologues
 
   params = c.parameters.collect(&:name)

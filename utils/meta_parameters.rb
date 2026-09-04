@@ -282,6 +282,40 @@ class InArray < ArrayMetaParameter
   end
 end
 
+# A synthesized tracepoint parameter: a C local the tracer declares and fills
+# itself, then passes to the tracepoint alongside the real arguments. It
+# answers to `name` and `type` because Command#[] offers it to meta-parameters
+# as a function parameter.
+TracepointParameter = Struct.new(:name, :type, :init, :dir)
+
+# A NULL-terminated array carries no count, so its length is walked at run time
+# and shipped as a synthesized parameter. An output array can only be walked
+# once the call has filled it.
+module NullTerminated
+  def initialize(command, name)
+    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
+    checks = check_for_null(name)
+    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF, is_a?(Out) ? :stop : :start)
+  #{sname} = 0;
+  if(#{checks.join(' && ')}) {
+    while(#{name}[#{sname}] != 0) {
+      #{sname} += 2;
+    }
+    #{sname} ++;
+  }
+EOF
+    super(command, name, sname)
+  end
+end
+
+class OutNullArray < OutArray
+  prepend NullTerminated
+end
+
+class InNullArray < InArray
+  prepend NullTerminated
+end
+
 class FixedArrayMetaParameter < MetaParameter
   attr_reader :size
 

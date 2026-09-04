@@ -12,59 +12,7 @@ API = cuda_api + cuda_exports_api
 
 gen_ffi_type_map(API.types, API.type_classes)
 
-# cuda's pointers start at a _uninit trampoline that calls _init_tracer(), so
-# no function is singled out as the initializer and Command#init? is never
-# asked.
 CONTEXT = BackendContext.for(API, result_name: 'cuResult', init_functions: nil)
-
-class TracepointParameter
-  attr_reader :name, :type, :init, :after
-
-  def initialize(name, type, init, after: false)
-    @name = name
-    @type = type
-    @init = init
-    @after = after
-  end
-
-  def after?
-    @after
-  end
-end
-
-class OutNullArray < OutArray
-  def initialize(command, name)
-    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
-    checks = check_for_null("#{name}")
-    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF, after: true)
-  #{sname} = 0;
-  if(#{checks.join(' && ')}) {
-    while(#{name}[#{sname}] != 0) {
-      #{sname} += 2;
-    }
-    #{sname} ++;
-  }
-EOF
-    super(command, name, sname)
-  end
-end
-
-class InNullArray < InArray
-  def initialize(command, name)
-    sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
-    checks = check_for_null("#{name}")
-    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF)
-  #{sname} = 0;
-  if(#{checks.join(' && ')}) {
-    while(#{name}[#{sname}] != 0) {
-      #{sname} += 2;
-    }
-    #{sname} ++;
-  }
-EOF
-    super(command, name, sname)
-  end
-end
 
 # The driver and its export tables are one API but two LTTng providers, so the
 # commands are grouped by the provider that will carry them.

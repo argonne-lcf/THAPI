@@ -21,25 +21,18 @@ def tracepoint_call_args(c)
   end
 end
 
-# A tracepoint parameter is a value the tracer computes itself rather than one
-# the caller passed. An `after?` one describes the result, so it cannot be
-# initialised until the call has returned.
-#
-# Two passes, not one: every local is declared before any is initialised, so an
-# init is free to read a local declared after it. Merging the loops would
-# interleave the declarations with the inits and change the emitted C.
+# Every parameter is declared here, the :stop ones too, so they are in scope at
+# the exit tracepoint that fires after their init. Declare all before
+# initialising any: an init may read a local declared after it.
 def print_tracepoint_locals(c)
   c.tracepoint_parameters.each { |p| puts "  #{p.type} #{p.name};" }
-  c.tracepoint_parameters.each { |p| puts p.init unless p.after? }
+  puts c.tracepoint_inits(:start)
 end
 
-# The entry event leaves out the `after?` parameters: they describe the result,
-# which does not exist yet.
 def print_tracepoint_call(provider, c, dir, call_args)
   name = tracepoint_event_name(c, dir)
-  locals = c.tracepoint_parameters
-  locals = locals.reject(&:after?) unless dir == :stop
-  puts "  tracepoint(#{provider}, #{name}, #{(call_args + locals.collect(&:name)).join(', ')});"
+  locals = c.tracepoint_parameters_for(dir).collect(&:name)
+  puts "  tracepoint(#{provider}, #{name}, #{(call_args + locals).join(', ')});"
 end
 
 # The return value goes in `_retval` because both the exit tracepoint and the
@@ -92,7 +85,7 @@ def print_traced_body(c, provider, pointer_names, epilogues: :before_exit,
 
   print_traced_call(c, pointer_names[c], declare_retval: declare_retval)
 
-  c.tracepoint_parameters.each { |p| puts p.init if p.after? }
+  puts c.tracepoint_inits(:stop)
   c.epilogues.each { |e| puts e } if epilogues == :before_exit
 
   call_args.push '_retval' if c.has_return_type?

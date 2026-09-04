@@ -74,7 +74,7 @@ def print_tracepoint(provider, c, dir = nil)
       end)
     end
     params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
-    params += c.tracepoint_parameters.reject { |p| p.after? && dir == :start }.collect do |p|
+    params += c.tracepoint_parameters_for(dir).collect do |p|
       "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
     end
     puts params.join(",\n    ")

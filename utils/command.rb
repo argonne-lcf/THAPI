@@ -56,6 +56,18 @@ class Command
     @epilogues = []
   end
 
+  # An event carries every parameter computed by the time it fires: a :stop
+  # parameter reads the result, so only the exit event -- never an entry, and
+  # never a callback API's single undirected event -- can see one.
+  def tracepoint_parameters_for(dir)
+    dir == :stop ? @tracepoint_parameters : @tracepoint_parameters.select { |p| p.dir == :start }
+  end
+
+  # The C computing the parameters that belong to this tracepoint's block.
+  def tracepoint_inits(dir)
+    @tracepoint_parameters.select { |p| p.dir == dir }.collect(&:init)
+  end
+
   def result_name
     @context.result_name
   end
