@@ -59,15 +59,6 @@
 extern "C" {
 #endif // __cplusplus
 
-/*
- * Macros for the latest version for each driver function in cudaVDPAU.h
- */
-#define PFN_cuVDPAUGetDevice  PFN_cuVDPAUGetDevice_v3010
-#define PFN_cuVDPAUCtxCreate  PFN_cuVDPAUCtxCreate_v3020
-#define PFN_cuGraphicsVDPAURegisterVideoSurface  PFN_cuGraphicsVDPAURegisterVideoSurface_v3010
-#define PFN_cuGraphicsVDPAURegisterOutputSurface  PFN_cuGraphicsVDPAURegisterOutputSurface_v3010
-
-
 /**
  * Type definitions for functions defined in cudaVDPAU.h
  */

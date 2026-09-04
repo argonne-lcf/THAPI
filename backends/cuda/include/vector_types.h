@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2018 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2025 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -65,11 +65,84 @@
 #include "crt/host_defines.h"
 #endif
 
+/* NVRTC compiler defines these instead of in the header (to reduce compile time)
+*/
+#ifndef __CUDACC_RTC_BUILTIN_VECTOR_TYPES__
+
 /*******************************************************************************
 *                                                                              *
 *                                                                              *
 *                                                                              *
 *******************************************************************************/
+
+
+#if defined(__NVCOMPILER)
+# define __NV_SILENCE_HOST_DEPRECATION_BEGIN                                   \
+  _Pragma("diag_suppress 1216")                                                \
+  _Pragma("diag_suppress deprecated_entity_with_custom_message")
+# define __NV_SILENCE_HOST_DEPRECATION_END                                     \
+  _Pragma("diag_default 1216")                                                 \
+  _Pragma("diag_default deprecated_entity_with_custom_message")
+#elif defined(__GNUC__) || defined(__clang__)
+# define __NV_SILENCE_HOST_DEPRECATION_BEGIN                                   \
+  _Pragma("GCC diagnostic push")                                               \
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+# define __NV_SILENCE_HOST_DEPRECATION_END                                     \
+  _Pragma("GCC diagnostic pop")
+#elif defined(_MSC_VER)
+# define __NV_SILENCE_HOST_DEPRECATION_BEGIN                                   \
+  __pragma(warning(push))                                                      \
+  __pragma(warning(disable:4996))
+# define __NV_SILENCE_HOST_DEPRECATION_END                                     \
+  __pragma(warning(pop))
+#elif defined(__EDG__)
+# define __NV_SILENCE_HOST_DEPRECATION_BEGIN                                   \
+  _Pragma("warning push")                                                      \
+  _Pragma("warning disable 1444")
+# define __NV_SILENCE_HOST_DEPRECATION_END                                     \
+  _Pragma("warning pop")
+#else
+  #define __NV_SILENCE_HOST_DEPRECATION_BEGIN
+  #define __NV_SILENCE_HOST_DEPRECATION_END
+#endif
+
+#if defined(__NV_NO_VECTOR_DEPRECATION_DIAG)
+# if defined(__CUDACC__)
+#  pragma nv_diag_suppress vector_deprecation
+# endif
+# define __NV_SILENCE_DEPRECATION_BEGIN
+# define __NV_SILENCE_DEPRECATION_END
+#elif defined(__CUDACC__) && defined(_MSC_VER)
+# define __NV_SILENCE_DEPRECATION_BEGIN \
+  __NV_SILENCE_HOST_DEPRECATION_BEGIN \
+  __pragma(nv_diagnostic push)                                                \
+  __pragma(nv_diag_suppress 1444)
+# define __NV_SILENCE_DEPRECATION_END \
+  __NV_SILENCE_HOST_DEPRECATION_END \
+  __pragma(nv_diagnostic pop)
+#elif defined(__CUDACC__)
+# define __NV_SILENCE_DEPRECATION_BEGIN \
+  _Pragma("nv_diagnostic push")                                               \
+  _Pragma("nv_diag_suppress 20199")                                           \
+  _Pragma("nv_diag_suppress 1444")                                            \
+  __NV_SILENCE_HOST_DEPRECATION_BEGIN 
+# define __NV_SILENCE_DEPRECATION_END \
+  __NV_SILENCE_HOST_DEPRECATION_END \
+  _Pragma("nv_diagnostic pop")
+#else
+#define __NV_SILENCE_DEPRECATION_BEGIN __NV_SILENCE_HOST_DEPRECATION_BEGIN
+#define __NV_SILENCE_DEPRECATION_END __NV_SILENCE_HOST_DEPRECATION_END
+#endif
+
+#if defined(__NV_NO_VECTOR_DEPRECATION_DIAG)
+# define __VECTOR_TYPE_DEPRECATED__(msg)
+#elif defined(_WIN32)
+# define __VECTOR_TYPE_DEPRECATED__(msg) __declspec(deprecated(msg))
+#elif (defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 5 && !defined(__clang__))))
+# define __VECTOR_TYPE_DEPRECATED__(msg) __attribute__((deprecated))
+#else
+# define __VECTOR_TYPE_DEPRECATED__(msg) __attribute__((deprecated(msg)))
+#endif
 
 #if !defined(__CUDACC__) && !defined(__CUDACC_RTC__) && \
     defined(_WIN32) && !defined(_WIN64)
@@ -241,15 +314,44 @@ struct __device_builtin__ ulong3
     unsigned long int x, y, z;
 };
 
-struct __device_builtin__ __builtin_align__(16) long4
+struct __VECTOR_TYPE_DEPRECATED__("use long4_16a or long4_32a")
+__device_builtin__ __builtin_align__(16) long4
 {
     long int x, y, z, w;
 };
 
-struct __device_builtin__ __builtin_align__(16) ulong4
+struct __VECTOR_TYPE_DEPRECATED__("use ulong4_16a or ulong4_32a")
+__device_builtin__ __builtin_align__(16) ulong4
 {
     unsigned long int x, y, z, w;
 };
+
+struct __device_builtin__ __builtin_align__(16) long4_16a
+{
+    long int x, y, z, w;
+};
+
+struct __device_builtin__ __builtin_align__(16) ulong4_16a
+{
+    unsigned long int x, y, z, w;
+};
+
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4324)
+#endif
+struct __device_builtin__ __builtin_align__(32) long4_32a
+{
+    long int x, y, z, w;
+};
+
+struct __device_builtin__ __builtin_align__(32) ulong4_32a
+{
+    unsigned long int x, y, z, w;
+};
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 struct __device_builtin__ float1
 {
@@ -318,15 +420,38 @@ struct __device_builtin__ ulonglong3
     unsigned long long int x, y, z;
 };
 
-struct __device_builtin__ __builtin_align__(16) longlong4
+struct __VECTOR_TYPE_DEPRECATED__("use longlong4_16a or longlong4_32a")
+__device_builtin__ __builtin_align__(16) longlong4
 {
     long long int x, y, z ,w;
 };
 
-struct __device_builtin__ __builtin_align__(16) ulonglong4
+struct __device_builtin__ __builtin_align__(16) longlong4_16a
+{
+    long long int x, y, z ,w;
+};
+
+struct __device_builtin__ __builtin_align__(32) longlong4_32a
+{
+    long long int x, y, z ,w;
+};
+
+struct __VECTOR_TYPE_DEPRECATED__("use ulonglong4_16a or ulonglong4_32a")
+__device_builtin__ __builtin_align__(16) ulonglong4
 {
     unsigned long long int x, y, z, w;
 };
+
+struct __device_builtin__ __builtin_align__(16) ulonglong4_16a
+{
+    unsigned long long int x, y, z, w;
+};
+
+struct __device_builtin__ __builtin_align__(32) ulonglong4_32a
+{
+    unsigned long long int x, y, z, w;
+};
+
 
 struct __device_builtin__ double1
 {
@@ -343,7 +468,18 @@ struct __device_builtin__ double3
     double x, y, z;
 };
 
-struct __device_builtin__ __builtin_align__(16) double4
+struct __VECTOR_TYPE_DEPRECATED__("use double4_16a or double4_32a")
+__device_builtin__ __builtin_align__(16) double4
+{
+    double x, y, z, w;
+};
+
+struct __device_builtin__ __builtin_align__(16) double4_16a
+{
+    double x, y, z, w;
+};
+
+struct __device_builtin__ __builtin_align__(32) double4_32a
 {
     double x, y, z, w;
 };
@@ -390,8 +526,14 @@ typedef __device_builtin__ struct long2 long2;
 typedef __device_builtin__ struct ulong2 ulong2;
 typedef __device_builtin__ struct long3 long3;
 typedef __device_builtin__ struct ulong3 ulong3;
-typedef __device_builtin__ struct long4 long4;
-typedef __device_builtin__ struct ulong4 ulong4;
+__NV_SILENCE_DEPRECATION_BEGIN
+typedef __device_builtin__ struct long4 __VECTOR_TYPE_DEPRECATED__("use long4_16a or long4_32a") long4;
+typedef __device_builtin__ struct ulong4 __VECTOR_TYPE_DEPRECATED__("use ulong4_16a or ulong4_32a") ulong4;
+__NV_SILENCE_DEPRECATION_END
+typedef __device_builtin__ struct long4_16a long4_16a;
+typedef __device_builtin__ struct ulong4_16a ulong4_16a;
+typedef __device_builtin__ struct long4_32a long4_32a;
+typedef __device_builtin__ struct ulong4_32a ulong4_32a;
 typedef __device_builtin__ struct float1 float1;
 typedef __device_builtin__ struct float2 float2;
 typedef __device_builtin__ struct float3 float3;
@@ -402,12 +544,26 @@ typedef __device_builtin__ struct longlong2 longlong2;
 typedef __device_builtin__ struct ulonglong2 ulonglong2;
 typedef __device_builtin__ struct longlong3 longlong3;
 typedef __device_builtin__ struct ulonglong3 ulonglong3;
-typedef __device_builtin__ struct longlong4 longlong4;
-typedef __device_builtin__ struct ulonglong4 ulonglong4;
+__NV_SILENCE_DEPRECATION_BEGIN
+typedef __device_builtin__ struct longlong4 __VECTOR_TYPE_DEPRECATED__("use longlong4_16a or longlong4_32a") longlong4;
+typedef __device_builtin__ struct ulonglong4 __VECTOR_TYPE_DEPRECATED__("use ulonglong4_16a or ulonglong4_32a") ulonglong4;
+__NV_SILENCE_DEPRECATION_END
+typedef __device_builtin__ struct longlong4_16a longlong4_16a;
+typedef __device_builtin__ struct ulonglong4_16a ulonglong4_16a;
+typedef __device_builtin__ struct longlong4_32a longlong4_32a;
+typedef __device_builtin__ struct ulonglong4_32a ulonglong4_32a;
 typedef __device_builtin__ struct double1 double1;
 typedef __device_builtin__ struct double2 double2;
 typedef __device_builtin__ struct double3 double3;
-typedef __device_builtin__ struct double4 double4;
+__NV_SILENCE_DEPRECATION_BEGIN
+typedef __device_builtin__ struct double4 __VECTOR_TYPE_DEPRECATED__("use double4_16a or double4_32a") double4;
+__NV_SILENCE_DEPRECATION_END
+typedef __device_builtin__ struct double4_16a double4_16a;
+typedef __device_builtin__ struct double4_32a double4_32a;
+
+#undef  __cuda_builtin_vector_align8
+
+#endif /* !defined(__CUDACC_RTC_BUILTIN_VECTOR_TYPES__) */
 
 /*******************************************************************************
 *                                                                              *
@@ -419,7 +575,10 @@ struct __device_builtin__ dim3
 {
     unsigned int x, y, z;
 #if defined(__cplusplus)
-#if __cplusplus >= 201103L
+#if __cplusplus >= 201103L || ( defined(_MSC_VER) && _MSC_VER >= 1900 )
+    /* MSVC 2015 introduced support for constexpr constructors. A check in addition to the _cpluscplus macro comparison
+       that uses the _MSC_VER macro is required because by default, Visual Studio always returns the value 199711L for 
+       the __cplusplus preprocessor macro. */
     __host__ __device__ constexpr dim3(unsigned int vx = 1, unsigned int vy = 1, unsigned int vz = 1) : x(vx), y(vy), z(vz) {}
     __host__ __device__ constexpr dim3(uint3 v) : x(v.x), y(v.y), z(v.z) {}
     __host__ __device__ constexpr operator uint3(void) const { return uint3{x, y, z}; }
@@ -433,7 +592,7 @@ struct __device_builtin__ dim3
 
 typedef __device_builtin__ struct dim3 dim3;
 
-#undef  __cuda_builtin_vector_align8
+#undef __VECTOR_TYPE_DEPRECATED__
 
 #if defined(__UNDEF_CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS_VECTOR_TYPES_H__)
 #undef __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__

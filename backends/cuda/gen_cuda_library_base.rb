@@ -89,7 +89,6 @@ end
 
 $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
-    $all_enums.find { |e| t.type.name == e.name }
     $all_enum_names.push t.name
   elsif t.type.is_a? YAMLCAst::Struct
     $all_struct_names.push t.name
@@ -110,7 +109,12 @@ module YAMLCAst
           else
             to_ffi_name(type.name)
           end
-      length_ = length.is_a?(String) ? length.gsub('sizeof(CUlaunchAttributeID)', '4') : length
+      length_ = if length.is_a?(String)
+                  length.gsub('sizeof(CUlaunchAttributeID)', '4')
+                        .gsub('sizeof(CUcheckpointGpuPair*)', '8')
+                else
+                  length
+                end
       [t, length_]
     end
   end
