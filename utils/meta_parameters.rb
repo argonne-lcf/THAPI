@@ -282,11 +282,18 @@ class InArray < ArrayMetaParameter
   end
 end
 
-# A synthesized tracepoint parameter: a C local the tracer declares and fills
-# itself, then passes to the tracepoint alongside the real arguments. It
-# answers to `name` and `type` because Command#[] offers it to meta-parameters
-# as a function parameter.
-TracepointParameter = Struct.new(:name, :type, :init, :dir)
+# A C local the tracer declares and fills itself, then passes to the tracepoint
+# alongside the real arguments -- a declaration like any other, plus `fill`, the
+# C that computes it, and `dir`, the tracepoint whose block runs that C.
+class TracepointParameter < YAMLCAst::Declaration
+  attr_reader :fill, :dir
+
+  def initialize(name:, type:, fill:, dir:)
+    super(name: name, type: type)
+    @fill = fill
+    @dir = dir
+  end
+end
 
 # A NULL-terminated array carries no count, so its length is walked at run time
 # and shipped as a synthesized parameter. An output array can only be walked
@@ -295,7 +302,7 @@ module NullTerminated
   def initialize(command, name)
     sname = "_#{name.split('->').join(MEMBER_SEPARATOR)}_size"
     checks = check_for_null(name)
-    command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF, is_a?(Out) ? :stop : :start)
+    fill = <<EOF
   #{sname} = 0;
   if(#{checks.join(' && ')}) {
     while(#{name}[#{sname}] != 0) {
@@ -304,6 +311,12 @@ module NullTerminated
     #{sname} ++;
   }
 EOF
+    command.tracepoint_parameters.push TracepointParameter.new(
+      name: sname, type: YAMLCAst::CustomType.new(name: 'size_t'),
+      fill: fill, dir: is_a?(Out) ? :stop : :start
+    )
+    # Command#[] searches the tracepoint parameters too, so the array below
+    # resolves its size to the one just pushed.
     super(command, name, sname)
   end
 end

@@ -65,7 +65,7 @@ class Command
 
   # The C computing the parameters that belong to this tracepoint's block.
   def tracepoint_inits(dir)
-    @tracepoint_parameters.select { |p| p.dir == dir }.collect(&:init)
+    @tracepoint_parameters.select { |p| p.dir == dir }.collect(&:fill)
   end
 
   def result_name
