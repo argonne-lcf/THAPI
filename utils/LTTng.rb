@@ -4,15 +4,13 @@ MEMBER_SEPARATOR = '__'
 # one, written as it would be in C: `nodeParams->extra`. Everything that has to
 # take such a name apart reads the grammar from here.
 module MemberPath
-  # The path, outermost first: `a->b->c` is a, then b within it, then c.
   def self.segments(name)
     name.split('->')
   end
 
   # Every prefix of the path, outermost first -- the pointers C must find
-  # non-NULL before the whole expression can be read. `incl: false` stops at the
-  # last pointer, for a caller that guards an expression reading the final
-  # member rather than the member itself.
+  # non-NULL before the whole expression can be read. `incl: false` drops the
+  # last, for a caller guarding an expression that already reads it.
   def self.prefixes(name, incl: true)
     path = segments(name)
     path = path[0..-2] unless incl

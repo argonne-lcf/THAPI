@@ -246,8 +246,8 @@ class InArray < ArrayMetaParameter
 end
 
 # A C local the tracer declares and fills itself, then passes to the tracepoint
-# alongside the real arguments -- a declaration like any other, plus `fill`, the
-# C that computes it, and `dir`, the tracepoint whose block runs that C.
+# alongside the real arguments -- a declaration like any other, plus the C that
+# computes it and the tracepoint whose block runs that C.
 class TracepointParameter < YAMLCAst::Declaration
   attr_reader :fill, :dir
 
