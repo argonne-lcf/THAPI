@@ -7,13 +7,26 @@ SUFFIXES = { start: START, stop: STOP }
 LTTNG_AVAILABLE_PARAMS = 25
 LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
 
+# A meta-parameter's field is the same whichever event carries it; a direction
+# says only which events those are. Prepending one is therefore a whole class
+# definition.
 module In
+  def initialize(*args)
+    super
+    @lttng_in_type = @lttng_type
+  end
+
   def lttng_in_type
     @lttng_in_type
   end
 end
 
 module Out
+  def initialize(*args)
+    super
+    @lttng_out_type = @lttng_type
+  end
+
   def lttng_out_type
     @lttng_out_type
   end
@@ -109,20 +122,10 @@ end
 
 class InString < StringMetaParameter
   prepend In
-
-  def initialize(command, name, size = nil)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 class OutString < StringMetaParameter
   prepend Out
-
-  def initialize(command, name, size = nil)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class ReturnString < MetaParameter
@@ -137,7 +140,7 @@ class ReturnString < MetaParameter
     ev.macro = :ctf_string
     ev.name = "#{command.result_name}_val"
     ev.expression = command.result_name
-    @lttng_out_type = ev
+    @lttng_type = ev
   end
 end
 
@@ -156,7 +159,7 @@ class OutPtrString < MetaParameter
     ev.macro = :ctf_string
     ev.name = "#{name}_val_val"
     ev.expression = sanitize_expression("*#{name}")
-    @lttng_out_type = ev
+    @lttng_type = ev
   end
 end
 
@@ -199,29 +202,14 @@ end
 class InOutScalar < ScalarMetaParameter
   prepend In
   prepend Out
-
-  def initialize(command, name, type = nil)
-    super
-    @lttng_out_type = @lttng_in_type = @lttng_type
-  end
 end
 
 class OutScalar < ScalarMetaParameter
   prepend Out
-
-  def initialize(command, name, type = nil)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class InScalar < ScalarMetaParameter
   prepend In
-
-  def initialize(command, name, type = nil)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 class ArrayMetaParameter < MetaParameter
@@ -266,20 +254,10 @@ end
 
 class OutArray < ArrayMetaParameter
   prepend Out
-
-  def initialize(command, name, size)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class InArray < ArrayMetaParameter
   prepend In
-
-  def initialize(command, name, size)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 # A C local the tracer declares and fills itself, then passes to the tracepoint
@@ -357,20 +335,10 @@ end
 
 class InFixedArray < FixedArrayMetaParameter
   prepend In
-
-  def initialize(command, name, size)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 class OutFixedArray < FixedArrayMetaParameter
   prepend Out
-
-  def initialize(command, name, size)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class ArrayByRefMetaParameter < MetaParameter
@@ -413,11 +381,6 @@ end
 
 class OutArrayByRef < ArrayByRefMetaParameter
   prepend Out
-
-  def initialize(command, name, size)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class OutLTTng < MetaParameter
@@ -427,7 +390,7 @@ class OutLTTng < MetaParameter
     raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
 
     super(command, name)
-    @lttng_out_type = LTTng::TracepointField.new(*args)
+    @lttng_type = LTTng::TracepointField.new(*args)
   end
 end
 
@@ -438,6 +401,6 @@ class InLTTng < MetaParameter
     raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
 
     super(command, name)
-    @lttng_in_type = LTTng::TracepointField.new(*args)
+    @lttng_type = LTTng::TracepointField.new(*args)
   end
 end
