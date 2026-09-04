@@ -31,8 +31,8 @@ puts <<~EOF
   #include "opencl_devices.h"
 
   #define CONCAT(c,suf) c ## _ ## suf
-  #define STARTEV(command) CONCAT(command, #{CL_START})
-  #define STOPEV(command) CONCAT(command, #{CL_STOP})
+  #define STARTEV(command) CONCAT(command, #{START})
+  #define STOPEV(command) CONCAT(command, #{STOP})
   #define do_tracepoint_safe(provider, name, ...) \
           do_tracepoint(provider, name, __VA_ARGS__)
   #define tracepoint_enabled_safe(provider, name) \
