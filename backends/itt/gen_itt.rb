@@ -40,8 +40,6 @@ COMMANDS.add_prologue '__itt_metadata_add', <<EOF
   tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);
 EOF
 
-# Printing
-
 puts <<~EOF
   #define INTEL_NO_MACRO_BODY
   #define INTEL_ITTNOTIFY_API_PRIVATE

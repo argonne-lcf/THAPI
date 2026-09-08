@@ -132,10 +132,8 @@ EOF
   end
 end
 
-# What print_traced_body needs for one ze command: the pNext walks around the
-# call, and whether to declare _retval -- a ProcAddrTable getter declares it in
-# its own prologue, because that prologue reaches into the table the call is
-# about to fill in.
+# A ProcAddrTable getter declares _retval in its own prologue, because that
+# prologue reaches into the table the call is about to fill in.
 def ze_body_opts(c, provider, types)
   { after_entry: ->(cmd) { print_chained_structs(cmd, provider, types, InScalar) },
     after_exit: ->(cmd) { print_chained_structs(cmd, provider, types, OutScalar) },

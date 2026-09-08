@@ -52,8 +52,7 @@ def lower_snake_case(str)
 end
 
 module LTTng
-  # The body of a TP_* block: one item per line, indented to match the macro
-  # the heredocs above and below it spell.
+  # Indented to match the macro the heredocs above and below it spell.
   def self.indented(items, separator: '')
     items.join("#{separator}\n    ").prepend('    ')
   end

@@ -52,8 +52,7 @@ def print_traced_call(c, target, declare_retval: true)
 end
 
 # The body of a callback wrapper: the runtime calls in once, so there is no
-# real function to call and one undirected event to fire. itt and omp are the
-# two APIs shaped this way.
+# real function to call. itt and omp are the two APIs shaped this way.
 #
 # There is no traced call to assign `_retval`, so a command with a return type
 # must declare it in a prologue; the tracepoint reads it alongside the
@@ -149,8 +148,6 @@ end
 # The dlsym lookups that fill in a backend's function-pointer table: one per
 # traced function, each reporting a symbol the loaded library does not export.
 #
-# `prefix` is what the diagnostic is tagged with.
-#
 # `fallback` names a stub to install when the symbol is missing. cuda installs
 # one for every unresolved symbol, so its lookup cannot leave a null behind and
 # the verbose report moves inside the check.
@@ -174,12 +171,8 @@ def print_dlsym_lookups(commands, pointer_names, prefix: '', fallback: nil)
 end
 
 # One interposed wrapper per traced function, for every backend that generates
-# them.
-#
-# `init` and `body_opts` are asked per command rather than given once, because
-# both vary within a single backend: ze fires _init_tracer_dump() from zeInit
-# and zesInit alone, and its ProcAddrTable getters declare `_retval` in their
-# own prologue while its other commands do not.
+# them. `init` and `body_opts` are asked per command because both vary within a
+# backend -- ze alone dumps device properties from zeInit.
 def print_traced_wrappers(commands, provider, pointer_names, init: ->(c) { '_init_tracer();' if c.init? },
                           storage: nil, body_opts: ->(_c) { {} })
   commands.each do |c|

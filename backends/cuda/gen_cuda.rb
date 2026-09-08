@@ -24,9 +24,8 @@ def declare(c, suffix)
   "static #{YAMLCAst::Declaration.new(name: "#{c.name}_#{suffix}", type: c.function.type)}"
 end
 
-# The body of a stub, as lines: each cast to void so the compiler does not
-# warn about a parameter the stub ignores, then whatever the stub does. A
-# command with no parameters contributes no lines rather than a blank one.
+# The body of a stub: each parameter cast to void so the compiler does not warn
+# about one the stub ignores, then whatever the stub does.
 def stub_body(c, *statements)
   (c.parameters.to_a.map { |p| "(void)#{p.name};" } + statements).map { |l| "  #{l}" }.join("\n")
 end
