@@ -1,4 +1,5 @@
 require_relative 'itt_model'
+require_relative '../../utils/gen_tracer_base'
 
 # Customization of codegen
 
@@ -12,8 +13,6 @@ COMMANDS.each do |c|
                    # pre-C23. Can be modernized once we require C23.
                    "#{c.type} _retval = {0};"
                  end)
-
-  c.add_epilogue('return _retval;')
 end
 
 # Sometime, but not always, those function are called by ittstatic
@@ -29,21 +28,13 @@ COMMANDS.add_prologue('__itt_metadata_add',
 
 # Printing
 
-common_block = lambda { |c, provider|
-  l = []
-
-  l += c.tracepoint_parameters.map { |p| "  #{p.type} #{p.name};" }
-  l += c.tracepoint_inits(:start)
-  l += c.prologues
-
-  params = c.parameters.collect(&:name)
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  tracepoint_params.push('_retval') if c.has_return_type?
-
-  l += ["tracepoint(#{provider}, #{c.name}, #{(params + tracepoint_params).join(', ')});"]
-  l += c.epilogues
-
-  '  ' + l.join("\n  ")
+print_traced_body = lambda { |c, provider|
+  print_tracepoint_locals(c)
+  c.prologues.each { |p| puts p }
+  args = c.parameters.collect(&:name)
+  args.push('_retval') if c.has_return_type?
+  print_tracepoint_call(provider, c, nil, args)
+  c.epilogues.each { |e| puts e }
 }
 
 puts <<~EOF
@@ -84,13 +75,9 @@ puts <<~EOF
 EOF
 
 provider = :lttng_ust_itt
-puts COMMANDS.filter_map { |c|
-  next if c.function.inline
-
-  l  = ["#{c.decl} {"]
-  l += [common_block.call(c, provider)]
-  l + ['}']
-}.join("\n")
+COMMANDS.reject { |c| c.function.inline }.each do |c|
+  print_wrapper(c, separator: '') { print_traced_body.call(c, provider) }
+end
 
 puts <<~EOF
 
