@@ -143,7 +143,7 @@ hstream_commands += %w[
 ]
 
 stream_commands += COMMANDS.groups[:lttng_ust_cuda].select { |c| c.name.match(/cuStreamWaitValue|cuStreamWriteValue/) }
-                           .collect(&:name)
+                                                   .collect(&:name)
 
 stream_commands += %w[
   cuMemBatchDecompressAsync
