@@ -90,7 +90,7 @@ puts COMMANDS.filter_map { |c|
   l  = ["#{c.decl} {"]
   l += [common_block.call(c, provider)]
   l + ['}']
-}.join("  \n")
+}.join("\n")
 
 puts <<~EOF
 

@@ -111,7 +111,8 @@ EOF
 
   fields += c.meta_parameters.collect { |m| m.lttng_type_for(dir) }.flatten
 
-  puts '    ' << fields.compact.map(&:call_string).join("\n    ")
+  rows = fields.compact.map(&:call_string)
+  puts "    #{rows.join("\n    ")}" unless rows.empty?
   puts <<~EOF
       )
     )
