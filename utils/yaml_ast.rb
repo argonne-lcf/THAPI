@@ -1,7 +1,18 @@
+require 'yaml'
+require 'set'
+
+# Where a generator's YAML inputs live. The build system passes this; the
+# fallback is for running a generator by hand from the directory its inputs
+# are in.
+SRC_DIR = ENV['SRC_DIR'] || '.'
+
+def yaml_load_file_cached(path)
+  @yaml_cache ||= {}
+  @yaml_cache[path] ||= YAML.load_file(path)
+end
+
 module YAMLCAst
   class Type
-    attr_reader :const, :restrict, :volatile
-
     def volatile?
       @volatile
     end
@@ -113,7 +124,11 @@ module YAMLCAst
   class CustomType < DirectType
   end
 
-  class Struct < DirectType
+  # struct, union and enum are the same node: a C keyword, a name, and a braced
+  # member list. They differ only in which class parses a member and how the
+  # list is punctuated, so each subclass states those four facts and inherits
+  # the rest.
+  class CompositeType < DirectType
     attr_reader :members
 
     def initialize(name: nil, members: nil, const: nil, restrict: nil, volatile: nil)
@@ -124,41 +139,32 @@ module YAMLCAst
     def self.from_yaml_ast(node)
       new_node = node.dup
       new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| Declaration.from_yaml_ast(m) } if new_node['members']
+      members = new_node['members']
+      new_node['members'] = members.collect { |m| self::MEMBER_CLASS.from_yaml_ast(m) } if members
       new_node.transform_keys!(&:to_sym)
       new(**new_node)
     end
 
     def full_name
-      str = 'struct'
+      str = self.class::C_KEYWORD.dup
       str << " #{name}" if name
-      str << " {#{members.join('; ')};}" if members
+      str << " {#{members.join(self.class::MEMBER_SEPARATOR)}#{self.class::MEMBER_TERMINATOR}}" if members
       str
     end
   end
 
-  class Union < DirectType
-    attr_reader :members
+  class Struct < CompositeType
+    C_KEYWORD = 'struct'
+    MEMBER_CLASS = Declaration
+    MEMBER_SEPARATOR = '; '
+    MEMBER_TERMINATOR = ';'
+  end
 
-    def initialize(name: nil, members: nil, const: nil, restrict: nil, volatile: nil)
-      @members = members
-      super(name: name, const: const, restrict: restrict, volatile: volatile)
-    end
-
-    def self.from_yaml_ast(node)
-      new_node = node.dup
-      new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| Declaration.from_yaml_ast(m) } if new_node['members']
-      new_node.transform_keys!(&:to_sym)
-      new(**new_node)
-    end
-
-    def full_name
-      str = 'union'
-      str << " #{name}" if name
-      str << " {#{members.join('; ')};}" if members
-      str
-    end
+  class Union < CompositeType
+    C_KEYWORD = 'union'
+    MEMBER_CLASS = Declaration
+    MEMBER_SEPARATOR = '; '
+    MEMBER_TERMINATOR = ';'
   end
 
   class Enumerator
@@ -182,28 +188,11 @@ module YAMLCAst
     end
   end
 
-  class Enum < DirectType
-    attr_reader :members
-
-    def initialize(name: nil, members: nil, const: nil, restrict: nil, volatile: nil)
-      @members = members
-      super(name: name, const: const, restrict: restrict, volatile: volatile)
-    end
-
-    def self.from_yaml_ast(node)
-      new_node = node.dup
-      new_node.delete('kind')
-      new_node['members'] = new_node['members'].collect { |m| Enumerator.from_yaml_ast(m) } if new_node['members']
-      new_node.transform_keys!(&:to_sym)
-      new(**new_node)
-    end
-
-    def full_name
-      str = 'enum'
-      str << " #{name}" if name
-      str << " {#{members.join(', ')}}" if members
-      str
-    end
+  class Enum < CompositeType
+    C_KEYWORD = 'enum'
+    MEMBER_CLASS = Enumerator
+    MEMBER_SEPARATOR = ', '
+    MEMBER_TERMINATOR = ''
   end
 
   class IndirectType < Type
@@ -324,6 +313,14 @@ module YAMLCAst
     'declaration' => Declaration,
   }
 
+  # Parse an api.yaml into its five lists of AST nodes, keyed as the file keys
+  # them. A header that declares no unions simply has no 'unions' key, so a
+  # list the file omits is absent rather than empty -- ApiModel, which is what
+  # callers actually want, supplies the defaults.
+  def self.load_file(path)
+    from_yaml_ast(yaml_load_file_cached(path))
+  end
+
   def self.from_yaml_ast(ast)
     res = {}
     ast.each do |k, v|
@@ -431,61 +428,109 @@ INT_SIZE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[1]] }.to_h
 FFI_INT_TYPE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[2]] }.to_h
 INT_TYPES = INT_TYPE_MAP.keys
 
+# Integer types the tracer logs in hex rather than decimal. An API can name
+# more of its own -- see ApiModel's hex_ints.
 HEX_INT_TYPES = %w[
   intptr_t
   uintptr_t
-]
+].freeze
 
 FFI_FLOAT_TYPE_MAP = {
   'float' => 'ffi_type_float',
   'double' => 'ffi_type_double',
 }
-FLOAT_TYPES = FFI_FLOAT_TYPE_MAP.keys
 
 FFI_TYPE_MAP = {}
 
-OBJECT_TYPES = []
-ENUM_TYPES = []
-STRUCT_TYPES = []
-UNION_TYPES = []
-POINTER_TYPES = []
+# A typedef of pointer-to-struct is an opaque handle -- an "object" -- rather
+# than a pointer the tracer should dereference.
+#
+# The struct is not always named directly: headers also spell it in two steps,
+#   typedef struct _Foo Foo;   typedef Foo *Foo_t;
+# which puts a CustomType between the pointer and the struct. Resolve those
+# aliases through `types` so both spellings classify the same way; otherwise
+# Foo_t classifies as a plain pointer.
+def object_typedef?(t, types)
+  return false unless t.type.is_a?(YAMLCAst::Pointer)
 
-def find_all_types(types)
-  objs = types.filter_map do |t|
-    t.name if t.type.is_a?(YAMLCAst::Pointer) && t.type.type.is_a?(YAMLCAst::Struct)
-  end
-  OBJECT_TYPES.concat objs
-  transitive_closure(types, OBJECT_TYPES)
+  target = t.type.type
+  seen = Set.new
+  while target.is_a?(YAMLCAst::CustomType) && seen.add?(target.name)
+    aliased = types.find { |x| x.name == target.name }
+    break unless aliased
 
-  find_types(types, YAMLCAst::Int, INT_TYPES)
-  find_types(types, YAMLCAst::Char, INT_TYPES)
-  find_types(types, YAMLCAst::Float, FLOAT_TYPES)
-  find_types(types, YAMLCAst::Enum, ENUM_TYPES)
-  find_types(types, YAMLCAst::Struct, STRUCT_TYPES)
-  find_types(types, YAMLCAst::Union, UNION_TYPES)
-  ptrs = types.filter_map do |t|
-    if (t.type.is_a?(YAMLCAst::Pointer) && !t.type.type.is_a?(YAMLCAst::Struct)) || t.type.is_a?(YAMLCAst::Function)
-      t.name
-    end
+    target = aliased.type
   end
-  POINTER_TYPES.concat ptrs
+  target.is_a?(YAMLCAst::Struct)
 end
 
-STRUCT_MAP = {}
+# How one API's typedef names sort into the categories the tracer generators
+# care about.
+#
+# `integers` starts from the fixed C scalar names rather than being purely the
+# API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
+# category has to contain both to answer "is this an integer?" in one lookup.
+TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unions, :pointers,
+                         keyword_init: true) do
+  # The one category a typedef name falls into, or nil when this API never
+  # names it. The order is the answer: an object typedef is a pointer under the
+  # hood and a hex int is an integer, so the more specific category has to win.
+  # The categories are otherwise disjoint across all seven parsed APIs, so
+  # nothing below the first match can also apply.
+  def category_of(name)
+    case name
+    when *objects, *pointers then :address
+    when *hex_ints then :hex_int
+    when *integers then :integer
+    when *enums then :enum
+    when *structs, *unions then :aggregate
+    end
+  end
 
-def gen_struct_map(types, structs)
+  def aggregate?(name)
+    category_of(name) == :aggregate
+  end
+end
+
+# `hex_ints` are the API's own integer types to log in hex, on top of the ones
+# every API shares.
+def find_all_types(types, hex_ints: [])
+  objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
+  # Int and Char share one category, and the char pass closes over the list the
+  # int pass produced, so a typedef aliasing either resolves the same way.
+  integers = find_types(types, YAMLCAst::Int, INT_TYPES.dup)
+  integers = find_types(types, YAMLCAst::Char, integers)
+  pointers = types.filter_map do |t|
+    t.name if (t.type.is_a?(YAMLCAst::Pointer) && !object_typedef?(t, types)) || t.type.is_a?(YAMLCAst::Function)
+  end
+
+  TypeClasses.new(
+    objects: objects, integers: integers, pointers: pointers,
+    hex_ints: HEX_INT_TYPES + hex_ints,
+    enums: find_types(types, YAMLCAst::Enum),
+    structs: find_types(types, YAMLCAst::Struct),
+    unions: find_types(types, YAMLCAst::Union)
+  ).each_pair { |_, v| v.freeze }.freeze
+end
+
+# Each struct typedef mapped to its member list, so a meta-parameter naming
+# `a->b` can be resolved to b's declaration. The layout is either inline on the
+# typedef or carried by a separately declared struct of the same name.
+def find_struct_map(types, structs)
+  struct_map = {}
   types.select { |t| t.type.is_a? YAMLCAst::Struct }.each do |t|
     if t.type.members
-      STRUCT_MAP[t.name] = t.type.members
+      struct_map[t.name] = t.type.members
     else
       mapped = structs.find { |str| str.name == t.type.name }
-      STRUCT_MAP[t.name] = mapped.members if mapped
+      struct_map[t.name] = mapped.members if mapped
     end
   end
-  transitive_closure_map(types, STRUCT_MAP)
+  transitive_closure_map(types, struct_map)
+  struct_map
 end
 
-def gen_ffi_type_map(types)
+def gen_ffi_type_map(types, type_classes)
   find_types_map(types, YAMLCAst::Int, INT_SIGN_MAP)
   find_types_map(types, YAMLCAst::Int, INT_SIZE_MAP)
   find_types_map(types, YAMLCAst::Int, FFI_INT_TYPE_MAP)
@@ -496,18 +541,18 @@ def gen_ffi_type_map(types)
 
   find_types_map(types, YAMLCAst::Float, FFI_FLOAT_TYPE_MAP)
   FFI_TYPE_MAP.merge!(FFI_INT_TYPE_MAP, FFI_FLOAT_TYPE_MAP)
-  OBJECT_TYPES.each do |o|
+  type_classes.objects.each do |o|
     FFI_TYPE_MAP[o] = 'ffi_type_pointer'
     INT_SIZE_MAP[o] = 8
     INT_SIGN_MAP[o] = false
   end
   # Debatable
-  ENUM_TYPES.each do |e|
+  type_classes.enums.each do |e|
     FFI_TYPE_MAP[e] = 'ffi_type_sint32'
     INT_SIZE_MAP[e] = 4
     INT_SIGN_MAP[e] = true
   end
-  POINTER_TYPES.each do |p|
+  type_classes.pointers.each do |p|
     FFI_TYPE_MAP[p] = 'ffi_type_pointer'
     INT_SIZE_MAP[p] = 8
     INT_SIGN_MAP[p] = false

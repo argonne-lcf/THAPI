@@ -9,8 +9,8 @@ puts <<~EOF
 
 EOF
 
-$all_funcs.each do |f|
-  type, params = f.type.to_ffi
+API.functions.each do |f|
+  type, params = f.type.to_ffi(NAMING)
   puts <<EOF
   begin
     attach_function #{to_ffi_name(f.name)},

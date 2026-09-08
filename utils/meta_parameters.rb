@@ -1,16 +1,29 @@
-START = 'entry'
-STOP = 'exit'
-SUFFIXES = { start: START, stop: STOP }
-LTTNG_AVAILABLE_PARAMS = 25
-LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
+require_relative 'yaml_ast'
+require_relative 'LTTng'
 
+# The suffixes keyed by the direction symbol the AST generators pass around.
+SUFFIXES = { start: START, stop: STOP }.freeze
+
+# A meta-parameter's field is the same whichever event carries it; a direction
+# says only which events those are. Prepending one is therefore a whole class
+# definition.
 module In
+  def initialize(*args)
+    super
+    @lttng_in_type = @lttng_type
+  end
+
   def lttng_in_type
     @lttng_in_type
   end
 end
 
 module Out
+  def initialize(*args)
+    super
+    @lttng_out_type = @lttng_type
+  end
+
   def lttng_out_type
     @lttng_out_type
   end
@@ -18,6 +31,14 @@ end
 
 class MetaParameter
   attr_reader :name, :command, :lttng_type
+
+  # Here rather than in each generator that walks these, so every caller asks
+  # the direction question the same way.
+  LTTNG_TYPE_BY_DIRECTION = { start: :lttng_in_type, stop: :lttng_out_type, nil => :lttng_type }.freeze
+
+  def lttng_type_for(dir)
+    send(LTTNG_TYPE_BY_DIRECTION.fetch(dir))
+  end
 
   def initialize(command, name)
     @command = command
@@ -33,22 +54,7 @@ class MetaParameter
   end
 
   def check_for_null(expr, incl = true)
-    list = expr.split('->')
-    if list.length == 1
-      return [expr] if incl
-
-      []
-
-    else
-      res = []
-      pre = ''
-      list[0..(incl ? -1 : -2)].each do |n|
-        pre += n
-        res.push(pre)
-        pre += '->'
-      end
-      res
-    end
+    MemberPath.prefixes(expr, incl: incl)
   end
 
   def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
@@ -98,20 +104,10 @@ end
 
 class InString < StringMetaParameter
   prepend In
-
-  def initialize(command, name, size = nil)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 class OutString < StringMetaParameter
   prepend Out
-
-  def initialize(command, name, size = nil)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class ReturnString < MetaParameter
@@ -124,9 +120,9 @@ class ReturnString < MetaParameter
 
     ev = LTTng::TracepointField.new
     ev.macro = :ctf_string
-    ev.name = "#{RESULT_NAME}_val"
-    ev.expression = "#{RESULT_NAME}"
-    @lttng_out_type = ev
+    ev.name = "#{command.result_name}_val"
+    ev.expression = command.result_name
+    @lttng_type = ev
   end
 end
 
@@ -145,7 +141,7 @@ class OutPtrString < MetaParameter
     ev.macro = :ctf_string
     ev.name = "#{name}_val_val"
     ev.expression = sanitize_expression("*#{name}")
-    @lttng_out_type = ev
+    @lttng_type = ev
   end
 end
 
@@ -166,7 +162,7 @@ class ScalarMetaParameter < MetaParameter
          else
            t.type
          end
-    lttngt = st.lttng_type
+    lttngt = st.lttng_type(command.type_classes)
     lttngt.name = name + '_val'
     if lttngt.macro == :ctf_array_text
       lttngt.macro = :ctf_sequence_text
@@ -188,29 +184,14 @@ end
 class InOutScalar < ScalarMetaParameter
   prepend In
   prepend Out
-
-  def initialize(command, name, type = nil)
-    super
-    @lttng_out_type = @lttng_in_type = @lttng_type
-  end
 end
 
 class OutScalar < ScalarMetaParameter
   prepend Out
-
-  def initialize(command, name, type = nil)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class InScalar < ScalarMetaParameter
   prepend In
-
-  def initialize(command, name, type = nil)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 class ArrayMetaParameter < MetaParameter
@@ -246,7 +227,7 @@ class ArrayMetaParameter < MetaParameter
            t.type
          end
     y = YAMLCAst::Array.new(type: tt)
-    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
@@ -255,20 +236,57 @@ end
 
 class OutArray < ArrayMetaParameter
   prepend Out
-
-  def initialize(command, name, size)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class InArray < ArrayMetaParameter
   prepend In
+end
 
-  def initialize(command, name, size)
-    super
-    @lttng_in_type = @lttng_type
+# A C local the tracer declares and fills itself, then passes to the tracepoint
+# alongside the real arguments -- a declaration like any other, plus the C that
+# computes it and the tracepoint whose block runs that C.
+class TracepointParameter < YAMLCAst::Declaration
+  attr_reader :fill, :dir
+
+  def initialize(name:, type:, fill:, dir:)
+    super(name: name, type: type)
+    @fill = fill
+    @dir = dir
   end
+end
+
+# A NULL-terminated array carries no count, so its length is walked at run time
+# and shipped as a synthesized parameter. An output array can only be walked
+# once the call has filled it.
+module NullTerminated
+  def initialize(command, name)
+    sname = "_#{MemberPath.flatten(name)}_size"
+    checks = check_for_null(name)
+    fill = <<EOF
+  #{sname} = 0;
+  if(#{checks.join(' && ')}) {
+    while(#{name}[#{sname}] != 0) {
+      #{sname} += 2;
+    }
+    #{sname} ++;
+  }
+EOF
+    command.tracepoint_parameters.push TracepointParameter.new(
+      name: sname, type: YAMLCAst::CustomType.new(name: 'size_t'),
+      fill: fill, dir: is_a?(Out) ? :stop : :start
+    )
+    # Command#[] searches the tracepoint parameters too, so the array below
+    # resolves its size to the one just pushed.
+    super(command, name, sname)
+  end
+end
+
+class OutNullArray < OutArray
+  prepend NullTerminated
+end
+
+class InNullArray < InArray
+  prepend NullTerminated
 end
 
 class FixedArrayMetaParameter < MetaParameter
@@ -290,7 +308,7 @@ class FixedArrayMetaParameter < MetaParameter
            t.type
          end
     y = YAMLCAst::Array.new(type: tt)
-    lttngt = y.lttng_type(length: size, length_type: nil)
+    lttngt = y.lttng_type(command.type_classes, length: size, length_type: nil)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
@@ -299,20 +317,10 @@ end
 
 class InFixedArray < FixedArrayMetaParameter
   prepend In
-
-  def initialize(command, name, size)
-    super
-    @lttng_in_type = @lttng_type
-  end
 end
 
 class OutFixedArray < FixedArrayMetaParameter
   prepend Out
-
-  def initialize(command, name, size)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class ArrayByRefMetaParameter < MetaParameter
@@ -346,7 +354,7 @@ class ArrayByRefMetaParameter < MetaParameter
            t.type.type
          end
     y = YAMLCAst::Array.new(type: tt)
-    lttngt = y.lttng_type(length: sz, length_type: st)
+    lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_val_vals'
     lttngt.expression = sanitize_expression("*#{name}")
     @lttng_type = lttngt
@@ -355,11 +363,6 @@ end
 
 class OutArrayByRef < ArrayByRefMetaParameter
   prepend Out
-
-  def initialize(command, name, size)
-    super
-    @lttng_out_type = @lttng_type
-  end
 end
 
 class OutLTTng < MetaParameter
@@ -369,7 +372,7 @@ class OutLTTng < MetaParameter
     raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
 
     super(command, name)
-    @lttng_out_type = LTTng::TracepointField.new(*args)
+    @lttng_type = LTTng::TracepointField.new(*args)
   end
 end
 
@@ -380,6 +383,6 @@ class InLTTng < MetaParameter
     raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
 
     super(command, name)
-    @lttng_in_type = LTTng::TracepointField.new(*args)
+    @lttng_type = LTTng::TracepointField.new(*args)
   end
 end

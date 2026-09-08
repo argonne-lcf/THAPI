@@ -1,88 +1,32 @@
 require_relative 'gen_ze_library_base'
 require_relative '../../utils/gen_babeltrace_model_helper'
-require 'set'
 
-event_classes =
-  [[:lttng_ust_ze, $ze_commands],
-   [:lttng_ust_zet, $zet_commands],
-   [:lttng_ust_zes, $zes_commands],
-   [:lttng_ust_zel, $zel_commands],
-   [:lttng_ust_zer, $zer_commands],
-   [:lttng_ust_zex, $zex_commands]].collect do |provider, commands|
-    commands.collect do |c|
-      [gen_event_bt_model(provider, c, :start),
-       gen_event_bt_model(provider, c, :stop)]
-    end
-  end.flatten(2)
+# A length this side never reads: gen_bt_field_model's ctf_sequence_text branch
+# takes the count from the companion length field instead.
+UNREAD_LENGTH = '0'
 
-ze_events = YAML.load_file(File.join(SRC_DIR, 'ze_events.yaml'))
-event_classes += ze_events.collect do |provider, es|
-  es['events'].collect do |event|
-    gen_extra_event_bt_model(provider, event)
-  end
-end.flatten
+# These are the rows print_struct_tracepoint emits into the provider, so both
+# sides of the wire describe the same fields.
+def gen_struct_event_bt_model(registry, provider, struct)
+  address = LTTng::TracepointField.new('ctf_integer_hex', 'uintptr_t', 'p', 'p')
+  bytes = LTTng::TracepointField.new('ctf_sequence_text', 'uint8_t', 'p_val', 'p', 'size_t', UNREAD_LENGTH)
 
-def get_structs_types(namespace, types, structs)
-  types.select do |t|
-    t.type.is_a?(YAMLCAst::Struct) && (struct = structs.find do |s|
-      t.type.name == s.name
-    end) && struct.members.first.name == 'stype'
-  end.map(&:name).reject do |n|
-    n.start_with?("#{namespace}_base_")
-  end.to_set
+  gen_bt_event(registry, provider, struct,
+               [['ctf_integer_hex', "#{struct} *", 'p', address],
+                *field_types_name('ctf_sequence_text', "#{struct} *", 'p_val', bytes)])
 end
 
-def gen_struct_event_bt_model(provider, struct)
-  {
-    name: "#{provider}:#{struct}",
-    payload_field_class:
-          {
-            type: 'structure',
-            members:
-    [
-      {
-        name: 'p',
-        field_class: {
-          cast_type: "#{struct} *",
-          type: 'integer_unsigned',
-          field_value_range: 64,
-          preferred_display_base: 16,
-        },
-      },
-      {
-        name: '_p_val_length',
-        field_class: {
-          cast_type: 'size_t',
-          type: 'integer_unsigned',
-          field_value_range: 64,
-        },
-      },
-      {
-        name: 'p_val',
-        field_class: {
-          cast_type: "#{struct} *",
-          type: 'string',
-        },
-        metadata: {
-          be_class: "ZE::#{to_class_name(struct)}",
-        },
-      },
-    ],
-          },
-  }
-end
-
-event_classes +=
-  [[:lttng_ust_ze_structs, get_structs_types(:ze, $ze_api['typedefs'], $ze_api['structs'])],
-   [:lttng_ust_zet_structs, get_structs_types(:zet, $zet_api['typedefs'], $zet_api['structs'])],
-   [:lttng_ust_zes_structs, get_structs_types(:zes, $zes_api['typedefs'], $zes_api['structs'])],
-   [:lttng_ust_zel_structs, get_structs_types(:zel, $zel_api['typedefs'], $zel_api['structs'])],
-   [:lttng_ust_zer_structs, get_structs_types(:zer, $zer_api['typedefs'], $zer_api['structs'])],
-   [:lttng_ust_zex_structs,
-    get_structs_types(:zex, $zex_api['typedefs'], $zex_api['structs'])]].collect do |provider, structs|
-    structs.collect do |struct|
-      gen_struct_event_bt_model(provider, struct)
+# Each self-describing struct is traced as an event of its own, carrying the
+# struct's bytes; no other backend has these.
+def struct_event_classes(registry)
+  APIS.collect do |ns, api|
+    concrete_tagged_structs(ns, api).collect do |struct|
+      gen_struct_event_bt_model(registry, :"lttng_ust_#{ns}_structs", struct)
     end
   end.flatten
+end
 
-puts YAML.dump(gen_yaml(event_classes, 'ze'))
+print_bt_model(NAMING, COMMANDS,
+               expect_bitfields: true,
+               extra_events_path: File.join(SRC_DIR, 'ze_events.yaml'),
+               extra_event_classes: method(:struct_event_classes))

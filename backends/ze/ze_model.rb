@@ -1,51 +1,52 @@
-require 'yaml'
-require 'pp'
-require_relative '../../utils/yaml_ast_lttng'
-require_relative '../../utils/LTTng'
-require_relative '../../utils/command'
-require_relative '../../utils/meta_parameters'
 require 'set'
+require_relative '../../utils/backend_model'
 
-SRC_DIR = ENV['SRC_DIR'] || '.'
+# The namespaces THAPI traces, each declared by its own header. zer has no
+# generated api.yaml yet, so it is an empty model rather than a missing key:
+# every namespace answers, and the loops below stay uniform.
+APIS = {
+  ze: ApiModel.load_file('ze_api.yaml'),
+  zet: ApiModel.load_file('zet_api.yaml'),
+  zes: ApiModel.load_file('zes_api.yaml'),
+  zel: ApiModel.load_file('zel_api.yaml'),
+  zer: ApiModel.new,
+  zex: ApiModel.load_file('zex_api.yaml'),
+}.freeze
 
-RESULT_NAME = 'zeResult'
+# A struct tagged with its own type is one the tracer can decode from a
+# `void *` at runtime, which is what makes it worth its own tracepoint.
+STRUCT_TYPE_TAG = 'stype'
 
-$ze_api_yaml = YAML.load_file('ze_api.yaml')
-$zet_api_yaml = YAML.load_file('zet_api.yaml')
-$zes_api_yaml = YAML.load_file('zes_api.yaml')
-$zel_api_yaml = YAML.load_file('zel_api.yaml')
-# $zer_api_yaml = YAML.load_file('zer_api.yaml')
-$zer_api_yaml = { 'typedefs' => [], 'structs' => [], 'functions' => [] }
-$zex_api_yaml = YAML.load_file('zex_api.yaml')
+def tagged_structs(api)
+  api.types.select do |t|
+    t.type.is_a?(YAMLCAst::Struct) &&
+      (struct = api.struct_named(t.type.name)) &&
+      struct.members.first.name == STRUCT_TYPE_TAG
+  end.map(&:name)
+end
 
-$ze_api = YAMLCAst.from_yaml_ast($ze_api_yaml)
-$zet_api = YAMLCAst.from_yaml_ast($zet_api_yaml)
-$zes_api = YAMLCAst.from_yaml_ast($zes_api_yaml)
-$zel_api = YAMLCAst.from_yaml_ast($zel_api_yaml)
-$zer_api = YAMLCAst.from_yaml_ast($zer_api_yaml)
-$zex_api = YAMLCAst.from_yaml_ast($zex_api_yaml)
+# Those a caller can be handed. The `<ns>_base_` types are the tag's own base
+# classes: a tracepoint exists for each, but no API call ever passes one, so
+# nothing dispatches on them.
+def concrete_tagged_structs(namespace, api)
+  tagged_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
+end
 
-ze_funcs_e = $ze_api['functions']
-zet_funcs_e = $zet_api['functions']
-zes_funcs_e = $zes_api['functions']
-zel_funcs_e = $zel_api['functions']
-zer_funcs_e = $zer_api['functions']
-zex_funcs_e = $zex_api['functions']
+# Every namespace as one API, the same thing `API` names in every other
+# backend. The derivations have to see all of them at once: a zet typedef
+# routinely names a ze struct.
+API = APIS.values.reduce(:+)
 
-typedefs = $ze_api['typedefs'] + $zet_api['typedefs'] + $zes_api['typedefs'] + $zel_api['typedefs'] + $zer_api['typedefs'] + $zex_api['typedefs']
-structs = $ze_api['structs'] + $zet_api['structs'] + $zes_api['structs'] + $zel_api['structs'] + $zer_api['structs'] + $zex_api['structs']
-
-find_all_types(typedefs)
-gen_struct_map(typedefs, structs)
-gen_ffi_type_map(typedefs)
+gen_ffi_type_map(API.types, API.type_classes)
 
 # zesInit is included here so that a pure-Sysman program (one that only calls
 # zesInit, never zeInit) still triggers the tracer initialization.
 # Ideally we would split this into INIT_ZE_FUNCTIONS / INIT_ZES_FUNCTIONS
 # so each namespace initializes its own symbols.
-INIT_FUNCTIONS = /zeInit|zeLoaderInit|zeInitDrivers|zesInit/
+CONTEXT = BackendContext.for(API, result_name: 'zeResult',
+                                  init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/)
 
-$struct_type_conversion_table = {
+STRUCT_TYPE_CONVERSION_TABLE = {
   'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
   'ZE_STRUCTURE_TYPE_IMAGE_PITCHED_EXP_DESC' => 'ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC',
   'ZE_STRUCTURE_TYPE_IMAGE_BINDLESS_EXP_DESC' => 'ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC',
@@ -67,87 +68,42 @@ $struct_type_conversion_table = {
 # - zex tags structures with a uint32_t alias (level_zero/ze_stypes.h) rather
 #   than an enum, we don't handle that.
 # - zet_metric_source_id_exp_t's tag is simply absent from the spec.
-$struct_type_reject = Set.new(%w[zet_metric_source_id_exp_t
-                                 zex_device_module_register_file_exp_t])
+STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
+                                zex_device_module_register_file_exp_t])
 
-$ze_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'ze_meta_parameters.yaml'))
-$ze_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-$zet_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zet_meta_parameters.yaml'))
-$zet_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-
-$zes_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zes_meta_parameters.yaml'))
-$zes_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
+# The ze_structure_type_t enumerator that tags `name`, a struct typedef such as
+# ze_device_properties_t -> ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES.
+#
+# The tracer switches on this to pick a tracepoint, and the Ruby bindings stamp
+# it into the struct's initializer; the two have to name the same enumerator or
+# a struct is traced under a tag its class never sets. So it is derived here
+# once, from the struct name, rather than recomputed on each side.
+#
+# A handful of enumerators do not follow the rule -- the spec renamed them after
+# the struct was named -- and the table has the last word.
+def structure_type_name(name)
+  namespace = name[/\A[a-z]+/]
+  tag = "#{namespace}_STRUCTURE_TYPE_#{name.delete_prefix("#{namespace}_").delete_suffix('_t')}".upcase
+  STRUCT_TYPE_CONVERSION_TABLE.fetch(tag, tag)
 end
 
-$zel_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zel_meta_parameters.yaml'))
-$zel_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
+# Each namespace declares its meta-parameters in its own file, so the list
+# follows APIS rather than restating it. zer's file exists but stays out until
+# zer has a generated api.yaml to match it against.
+meta_parameters = load_meta_parameters(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })
+
+# One group per namespace, because each namespace has its own LTTng provider.
+COMMANDS = build_command_index(APIS.to_h { |ns, api| [:"lttng_ust_#{ns}", api.functions] },
+                               context: CONTEXT, spec: meta_parameters)
+
+# zex is called through libffi rather than dlsym, so its pointer keeps the name
+# from the header instead of the upper-snake macro the other namespaces get.
+zex_commands = COMMANDS.groups[:lttng_ust_zex]
+ZE_POINTER_NAMES = COMMANDS.pointer_names do |c, name|
+  name if zex_commands.include?(c)
 end
 
-# $zer_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zer_meta_parameters.yaml'))
-# $zer_meta_parameters['meta_parameters'].each do |func, list|
-#  list.each do |type, *args|
-#    register_meta_parameter func, Kernel.const_get(type), *args
-#  end
-# end
-
-$zex_meta_parameters = YAML.load_file(File.join(SRC_DIR, 'zex_meta_parameters.yaml'))
-$zex_meta_parameters['meta_parameters'].each do |func, list|
-  list.each do |type, *args|
-    register_meta_parameter func, Kernel.const_get(type), *args
-  end
-end
-
-$ze_commands = ze_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-$zet_commands = zet_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-$zes_commands = zes_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-$zel_commands = zel_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-$zer_commands = zer_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-$zex_commands = zex_funcs_e.collect do |func|
-  Command.new(func)
-end
-
-def upper_snake_case(str)
-  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1').upcase
-end
-
-ze_pointer_names = ($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).collect do |c|
-  [c, upper_snake_case(c.pointer_name)]
-end
-ze_pointer_names += $zex_commands.collect do |c|
-  [c, c.pointer_name]
-end
-ZE_POINTER_NAMES = ze_pointer_names.to_h
-
-register_epilogue 'zeCommandListCreate', <<EOF
+COMMANDS.add_epilogue 'zeCommandListCreate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && desc) {
       bool _io = (desc->flags & ZE_COMMAND_LIST_FLAG_IN_ORDER) != 0;
@@ -156,7 +112,7 @@ register_epilogue 'zeCommandListCreate', <<EOF
   }
 EOF
 
-register_epilogue 'zeCommandListCreateImmediate', <<EOF
+COMMANDS.add_epilogue 'zeCommandListCreateImmediate', <<EOF
   if (_do_state()) {
     if (_retval == ZE_RESULT_SUCCESS && phCommandList && *phCommandList && altdesc) {
       bool _io = (altdesc->flags & ZE_COMMAND_QUEUE_FLAG_IN_ORDER) != 0;
@@ -173,7 +129,7 @@ EOF
 # Reset wipes that body, so we reclaim the slots/slabs/events now. Without it
 # the stale slots are re-published on the next Execute (over-count) and slabs
 # leak. The cl stays registered, empty for reuse.
-register_epilogue 'zeCommandListReset', <<EOF
+COMMANDS.add_epilogue 'zeCommandListReset', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_reset_command_list(hCommandList);
 EOF
@@ -189,7 +145,7 @@ EOF
 # destroy must unregister under the same condition. Using the narrower
 # _do_profile here would leak the registration in a memory-info-only config,
 # and leave a stale entry that a handle-recycled create later collides with.
-register_epilogue 'zeCommandListDestroy', <<EOF
+COMMANDS.add_epilogue 'zeCommandListDestroy', <<EOF
   if (_do_state() && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_destroy_command_list(hCommandList);
 EOF
@@ -197,7 +153,7 @@ EOF
 # zeContextDestroy prologue: tear down our own L0 objects that live
 # inside this context (per-ctx event pools/events) before the user destroys
 # it, so we don't leak our allocations.
-register_prologue 'zeContextDestroy', <<EOF
+COMMANDS.add_prologue 'zeContextDestroy', <<EOF
   if (_do_profile && hContext)
     _on_destroy_context(hContext);
 EOF
@@ -208,19 +164,19 @@ EOF
 # previous instance BEFORE this submission re-signals the same baked injected
 # event is what keeps #N-1's timing from being clobbered by #N, and serializes
 # the same cl reused concurrently from another thread.
-register_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
+COMMANDS.add_prologue 'zeCommandQueueExecuteCommandLists', <<EOF
   if (_do_profile && numCommandLists > 0 && phCommandLists)
     _on_execute_command_lists_prologue(numCommandLists, phCommandLists, hCommandQueue, hFence);
 EOF
 
 # Sync hooks: walk dependency edges from the synced anchor and drain
 # everything reachable. Each sync API has a different anchor.
-register_epilogue 'zeCommandQueueSynchronize', <<EOF
+COMMANDS.add_epilogue 'zeCommandQueueSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS)
     _on_sync(_ZE_SYNC_QUEUE, hCommandQueue);
 EOF
 
-register_epilogue 'zeEventHostSynchronize', <<EOF
+COMMANDS.add_epilogue 'zeEventHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
     _on_sync(_ZE_SYNC_EVENT, hEvent);
 EOF
@@ -231,12 +187,12 @@ EOF
 # would otherwise never drain those slots, leaking one injected event per
 # signalled append. Safe: _slot_drain no-ops on already-drained slots, so repeated
 # SUCCESS polls of the same event drain once.
-register_epilogue 'zeEventQueryStatus', <<EOF
+COMMANDS.add_epilogue 'zeEventQueryStatus', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
     _on_sync(_ZE_SYNC_EVENT, hEvent);
 EOF
 
-register_epilogue 'zeCommandListHostSynchronize', <<EOF
+COMMANDS.add_epilogue 'zeCommandListHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hCommandList)
     _on_sync(_ZE_SYNC_CL, hCommandList);
 EOF
@@ -245,7 +201,7 @@ EOF
 # the user's own event ends up carrying the barrier/signal op timing, not the
 # kernel's. If the user queries their event's kernel timestamp themselves,
 # serve back the kernel result we stashed at drain so they see kernel timing.
-register_epilogue 'zeEventQueryKernelTimestamp', <<EOF
+COMMANDS.add_epilogue 'zeEventQueryKernelTimestamp', <<EOF
   if (_do_profile && hEvent && dstptr &&
       _on_query_kernel_timestamp(hEvent, dstptr))
     _retval = ZE_RESULT_SUCCESS;
@@ -254,7 +210,7 @@ EOF
 # Fence sync: the fence the user passed to Execute is stamped onto each cl
 # (in_flight_fence), so a fence wait drains exactly the cls that Execute
 # submitted.
-register_epilogue 'zeFenceHostSynchronize', <<EOF
+COMMANDS.add_epilogue 'zeFenceHostSynchronize', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
     _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
@@ -265,7 +221,7 @@ EOF
 # wait) would otherwise never drain the last Execute's slots. Safe like the event
 # QueryStatus hook: _slot_drain no-ops on already-drained slots and runs under the
 # state mutex, so repeated SUCCESS polls drain once.
-register_epilogue 'zeFenceQueryStatus', <<EOF
+COMMANDS.add_epilogue 'zeFenceQueryStatus', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hFence)
     _on_sync(_ZE_SYNC_FENCE, hFence);
 EOF
@@ -275,7 +231,7 @@ EOF
 # new event inherits the dead one's stashed kernel timing and a dangling latest-
 # signaled slot pointer. Epilogue gated on _retval — a failed destroy (e.g. a bad
 # handle) leaves the event alive, its address can't be recycled, data must stay.
-register_epilogue 'zeEventDestroy', <<EOF
+COMMANDS.add_epilogue 'zeEventDestroy', <<EOF
   if (_do_profile && _retval == ZE_RESULT_SUCCESS && hEvent)
     _on_destroy_event(hEvent);
 EOF
@@ -294,7 +250,7 @@ memory_info_prologue = lambda { |ptr_names|
 EOF
 }
 
-register_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
+COMMANDS.add_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range)) &&
@@ -303,10 +259,10 @@ register_prologue 'zeCommandListAppendMemoryRangesBarrier', <<EOF
       _dump_memory_info(hCommandList, "pRanges[_i]");
 EOF
 
-register_prologue 'zeCommandListAppendMemoryCopy', memory_info_prologue.call(%w[dstptr srcptr])
-register_prologue 'zeCommandListAppendMemoryFill', memory_info_prologue.call(['ptr'])
-register_prologue 'zeCommandListAppendMemoryCopyRegion', memory_info_prologue.call(%w[dstptr srcptr])
-register_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
+COMMANDS.add_prologue 'zeCommandListAppendMemoryCopy', memory_info_prologue.call(%w[dstptr srcptr])
+COMMANDS.add_prologue 'zeCommandListAppendMemoryFill', memory_info_prologue.call(['ptr'])
+COMMANDS.add_prologue 'zeCommandListAppendMemoryCopyRegion', memory_info_prologue.call(%w[dstptr srcptr])
+COMMANDS.add_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
   if (_do_paranoid_memory_location &&
       (tracepoint_enabled(lttng_ust_ze_properties, memory_info_properties) ||
        tracepoint_enabled(lttng_ust_ze_properties, memory_info_range))) {
@@ -316,14 +272,14 @@ register_prologue 'zeCommandListAppendMemoryCopyFromContext', <<EOF
       _dump_memory_info_ctx(hContextSrc, srcptr);
   }
 EOF
-register_prologue 'zeCommandListAppendImageCopyToMemory', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendImageCopyFromMemory', memory_info_prologue.call(['srcptr'])
-register_prologue 'zeCommandListAppendMemoryPrefetch', memory_info_prologue.call(['ptr'])
-register_prologue 'zeCommandListAppendMemAdvise', memory_info_prologue.call(['ptr'])
-register_prologue 'zeCommandListAppendQueryKernelTimestamps', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendWriteGlobalTimestamp', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendImageCopyToMemoryExt', memory_info_prologue.call(['dstptr'])
-register_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prologue.call(['srcptr'])
+COMMANDS.add_prologue 'zeCommandListAppendImageCopyToMemory', memory_info_prologue.call(['dstptr'])
+COMMANDS.add_prologue 'zeCommandListAppendImageCopyFromMemory', memory_info_prologue.call(['srcptr'])
+COMMANDS.add_prologue 'zeCommandListAppendMemoryPrefetch', memory_info_prologue.call(['ptr'])
+COMMANDS.add_prologue 'zeCommandListAppendMemAdvise', memory_info_prologue.call(['ptr'])
+COMMANDS.add_prologue 'zeCommandListAppendQueryKernelTimestamps', memory_info_prologue.call(['dstptr'])
+COMMANDS.add_prologue 'zeCommandListAppendWriteGlobalTimestamp', memory_info_prologue.call(['dstptr'])
+COMMANDS.add_prologue 'zeCommandListAppendImageCopyToMemoryExt', memory_info_prologue.call(['dstptr'])
+COMMANDS.add_prologue 'zeCommandListAppendImageCopyFromMemoryExt', memory_info_prologue.call(['srcptr'])
 
 # WARNING: there seems to be no way to profile if
 # zeCommandListAppendEventReset is used or at least
@@ -393,21 +349,21 @@ EOF
    zeCommandListAppendImageCopyFromMemoryExt].each do |c|
   # zeCommandListAppendQueryKernelTimestamps intentionally NOT in this list
   # — it has no kernel to time
-  register_prologue c, profiling_prologue.call('hSignalEvent')
-  register_prologue c, paranoid_drift_prologue
-  register_epilogue c, profiling_epilogue.call('hSignalEvent')
+  COMMANDS.add_prologue c, profiling_prologue.call('hSignalEvent')
+  COMMANDS.add_prologue c, paranoid_drift_prologue
+  COMMANDS.add_epilogue c, profiling_epilogue.call('hSignalEvent')
 end
 
 ['zeCommandListAppendSignalEvent'].each do |c|
-  register_prologue c, profiling_prologue.call('hEvent')
-  register_epilogue c, profiling_epilogue.call('hEvent', 'NULL', '0')
+  COMMANDS.add_prologue c, profiling_prologue.call('hEvent')
+  COMMANDS.add_epilogue c, profiling_epilogue.call('hEvent', 'NULL', '0')
 end
 
 # WARNING
 # zeModuleGetKernelNames, returns an array of strings.
 # This is problematic for lttng.
 
-register_prologue 'zeModuleCreate', <<EOF
+COMMANDS.add_prologue 'zeModuleCreate', <<EOF
   int _build_log_release = 0;
   ze_module_build_log_handle_t _hBuildLog = NULL;
   if (tracepoint_enabled(lttng_ust_ze_build, log)) {
@@ -418,7 +374,7 @@ register_prologue 'zeModuleCreate', <<EOF
   }
 EOF
 
-register_epilogue 'zeModuleCreate', <<EOF
+COMMANDS.add_epilogue 'zeModuleCreate', <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_BUILD_FAILURE) && *phBuildLog) {
     _dump_build_log(*phBuildLog);
     if (_build_log_release) {
@@ -428,7 +384,7 @@ register_epilogue 'zeModuleCreate', <<EOF
   }
 EOF
 
-register_prologue 'zeModuleDynamicLink', <<EOF
+COMMANDS.add_prologue 'zeModuleDynamicLink', <<EOF
   int _link_log_release = 0;
   ze_module_build_log_handle_t _hLinkLog = NULL;
   if (tracepoint_enabled(lttng_ust_ze_build, log)) {
@@ -439,7 +395,7 @@ register_prologue 'zeModuleDynamicLink', <<EOF
   }
 EOF
 
-register_epilogue 'zeModuleDynamicLink', <<EOF
+COMMANDS.add_epilogue 'zeModuleDynamicLink', <<EOF
   if (tracepoint_enabled(lttng_ust_ze_build, log) && (_retval == ZE_RESULT_SUCCESS || _retval == ZE_RESULT_ERROR_MODULE_LINK_FAILURE) && *phLinkLog) {
     _dump_build_log(*phLinkLog);
     if (_link_log_release) {
@@ -449,17 +405,22 @@ register_epilogue 'zeModuleDynamicLink', <<EOF
   }
 EOF
 
-register_epilogue 'zeKernelCreate', <<EOF
+COMMANDS.add_epilogue 'zeKernelCreate', <<EOF
  if (tracepoint_enabled(lttng_ust_ze_properties, kernel) && (_retval == ZE_RESULT_SUCCESS)) {
     _dump_kernel_properties(*phKernel);
  }
 EOF
 
-($ze_commands + $zet_commands + $zes_commands + $zel_commands + $zer_commands).select do |c|
-  c.name.match(/(ze|zet|zes|zel|zer)Get.*ProcAddrTable/)
+# A namespace's dispatch-table getter: the call through which the loader hands
+# out every entry point at once. The tracer answers these itself, so both the
+# model and the tracer generator ask this question.
+PROC_ADDR_TABLE_GETTER = /(ze|zet|zes|zel|zer)Get.*ProcAddrTable/
+
+COMMANDS.select do |c|
+  c.name.match(PROC_ADDR_TABLE_GETTER)
 end.each do |c|
   parent_type = c['pDdiTable'].type.type.to_s + '_'
-  child_types = STRUCT_MAP.select { |k, _| k.match(parent_type) }
+  child_types = CONTEXT.struct_map.select { |k, _| k.match(parent_type) }
   str = <<EOF
   #{c.type} _retval;
   if (!_do_ddi_table_forward && !_in_loader_init && pDdiTable && version <= ZE_API_VERSION_CURRENT) {
@@ -478,8 +439,8 @@ EOF
   str << "      goto ukn;\n"
   str << "  } else {\n"
   str << "ukn:\n"
-  register_prologue c.name, str
-  register_epilogue c.name, <<EOF
+  c.add_prologue str
+  c.add_epilogue <<EOF
   }
 EOF
 end
@@ -496,7 +457,7 @@ def get_ffi_type(a)
   end
 end
 
-str = $ze_commands.select { |c| c.name.end_with?('Exp') }.map do |c|
+str = COMMANDS.groups[:lttng_ust_ze].select { |c| c.name.end_with?('Exp') }.map do |c|
   <<EOF
   if (strcmp(name, "#{c.name}") == 0) {
     *ppFunctionAddress = (void *)(intptr_t)#{ZE_POINTER_NAMES[c]};
@@ -509,12 +470,12 @@ end.join(<<EOF)
   else
 EOF
 
-register_prologue 'zeDriverGetExtensionFunctionAddress', str
+COMMANDS.add_prologue 'zeDriverGetExtensionFunctionAddress', str
 
 str = <<EOF
   if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
 EOF
-str << $zex_commands.collect { |c|
+str << zex_commands.collect { |c|
   sstr = <<EOF
     if (tracepoint_enabled(lttng_ust_zex, #{c.name}_#{START}) && strcmp(name, "#{c.name}") == 0) {
       struct ze_closure *closure = NULL;
@@ -562,24 +523,24 @@ str << <<EOF
   }
 EOF
 
-register_epilogue 'zeDriverGetExtensionFunctionAddress', str
+COMMANDS.add_epilogue 'zeDriverGetExtensionFunctionAddress', str
 
-register_epilogue 'zeMemOpenIpcHandle', <<EOF
+COMMANDS.add_epilogue 'zeMemOpenIpcHandle', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
 EOF
 
-register_epilogue 'zexMemOpenIpcHandles', <<EOF
+COMMANDS.add_epilogue 'zexMemOpenIpcHandles', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {
     _dump_memory_info_ctx(hContext, *pptr);
   }
 EOF
 
-register_prologue 'zeLoaderInit', <<EOF
+COMMANDS.add_prologue 'zeLoaderInit', <<EOF
   _in_loader_init = 1;
 EOF
 
-register_epilogue 'zeInit', <<EOF
+COMMANDS.add_epilogue 'zeInit', <<EOF
   _in_loader_init = 0;
 EOF

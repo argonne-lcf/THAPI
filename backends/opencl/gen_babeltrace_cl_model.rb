@@ -1,12 +1,7 @@
 require 'yaml'
 
-INT_SIZE_MAP = {}
-INT_SIGN_MAP = {}
-$all_enums = {}
-$all_types = {}
-
 require_relative '../../utils/gen_babeltrace_model_helper'
-OPENCL_MODEL = YAML.load_file('opencl_model.yaml')
+OPENCL_MODEL = yaml_load_file_cached('opencl_model.yaml')
 
 def get_bottom(type)
   type = type.gsub('cl_errcode', 'cl_int')
@@ -45,6 +40,10 @@ def cl_to_class(type)
   'CL::' + type.sub(/\Acl_/, '').split('_').collect(&:capitalize).join
 end
 
+# Not the AST backends' gen_bt_field_model, because the two disagree on what a
+# field is: opencl emits real CTF enumerations, which that function has no case
+# for, and keeps pointer fields signed, while its `*`-in-the-type-string rule
+# forces every pointer to unsigned 64.
 def parse_field(field)
   d = {}
   d[:field_class] = {}
@@ -102,7 +101,7 @@ schema_event = OPENCL_MODEL['events'].map do |name, fields|
 
     if (field['array'] || field['structure']) && field['lttng'].match('ctf_sequence')
 
-      additional_parsed_field = parse_field({ 'name' => "_#{sub_name}_length",
+      additional_parsed_field = parse_field({ 'name' => length_field_name(sub_name),
                                               'lttng' => 'ctf_integer', 'type' => 'size_t' })
       additional_parsed_field[:field_class][:cast_type] = 'size_t'
       [additional_parsed_field, parsed_field]

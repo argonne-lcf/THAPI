@@ -16,7 +16,7 @@ CXI_STATIC_PROBES_INCL = $(CXI_STATIC_PROBES:=.h)
 
 CXI_STATIC_PROBES_SRC = $(CXI_STATIC_PROBES:=.c)
 
-$(CXI_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cxi_events.yaml
+$(CXI_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cxi_events.yaml $(top_srcdir)/utils/gen_probe_base.rb
 	$(RUBY) $< $(srcdir)/cxi_events.yaml lttng_ust_$* > $@
 
 %.h %.c: %.tp

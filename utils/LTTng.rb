@@ -1,5 +1,56 @@
 MEMBER_SEPARATOR = '__'
 
+# The suffix each half of a traced call is spelled with, everywhere: in the
+# tracepoint the provider declares, in the event class the babeltrace model
+# names, and in the trace itself. It is the wire format the two sides agree on,
+# so it is stated here rather than per backend.
+START = 'entry'
+STOP = 'exit'
+
+# The tracepoint macro takes a fixed number of arguments, one of which LTTng
+# spends itself; a function with more parameters than the rest can carry has no
+# tracepoint generated for it.
+LTTNG_AVAILABLE_PARAMS = 25
+LTTNG_USABLE_PARAMS = LTTNG_AVAILABLE_PARAMS - 1
+
+# A meta-parameter names either a function parameter or a path to a member of
+# one, written as it would be in C: `nodeParams->extra`. Everything that has to
+# take such a name apart reads the grammar from here.
+module MemberPath
+  def self.segments(name)
+    name.split('->')
+  end
+
+  # Every prefix of the path, outermost first -- the pointers C must find
+  # non-NULL before the whole expression can be read. `incl: false` drops the
+  # last, for a caller guarding an expression that already reads it.
+  def self.prefixes(name, incl: true)
+    path = segments(name)
+    path = path[0..-2] unless incl
+    path.each_index.map { |i| path[0..i].join('->') }
+  end
+
+  # A path is one identifier once it names a tracepoint field, which cannot
+  # carry an arrow.
+  def self.flatten(name)
+    name.gsub('->', MEMBER_SEPARATOR)
+  end
+end
+
+# How a camelCase C name splits into words: a run of capitals starts a new one.
+# cuMemAllocHost -> cu_Mem_Alloc_Host.
+def snake_case_parts(str)
+  str.gsub(/([A-Z][A-Z0-9]*)/, '_\1')
+end
+
+def upper_snake_case(str)
+  snake_case_parts(str).upcase
+end
+
+def lower_snake_case(str)
+  snake_case_parts(str).downcase
+end
+
 module LTTng
   class TracepointField
     FIELDS = {
@@ -51,7 +102,7 @@ module LTTng
     end
 
     def name=(n)
-      @name = n.gsub('->', MEMBER_SEPARATOR)
+      @name = MemberPath.flatten(n)
     end
   end
 
@@ -73,11 +124,11 @@ module LTTng
     EOF
   end
 
-  def self.print_tracepoint(namespace, tp, dir = nil)
+  def self.print_tracepoint(namespace, tp, phase = nil, suffix: nil)
     puts <<~EOF
       TRACEPOINT_EVENT(
         #{namespace},
-        #{tp['name']}#{"_#{SUFFIXES[dir]}" if dir},
+        #{tp['name']}#{"_#{suffix}" if suffix},
         TP_ARGS(
     EOF
     print '    '
@@ -91,10 +142,10 @@ module LTTng
   ),
   TP_FIELDS(
 EOF
-    dir ||= 'fields'
-    if tp[dir]
+    fields = tp[phase || 'fields']
+    if fields
       print '    '
-      puts tp[dir].collect { |(f, *args)| "#{f}(#{args.join(', ')})" }.join("\n    ")
+      puts fields.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }.join("\n    ")
     end
     puts <<~EOF
         )

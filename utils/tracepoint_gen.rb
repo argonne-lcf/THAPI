@@ -64,11 +64,19 @@ EOF
     end.join(',')
   }
 
-  arg_count.times do |i|
-    c = (i + 1)
-    puts "#undef #{prefix}_TP_EXVAR#{c * 2}"
-    puts "#define #{prefix}_TP_EXVAR#{c * 2}(#{arg_list.call(c)}) #{second_arg_list.call(c)}"
-  end
+  # Each of these macros exists once per arity: the name ends in the number of
+  # macro arguments (two per tuple), takes `c` type/var tuples, and expands to
+  # some rendering of them. The _DATA_ variants are the same list with the
+  # tracepoint's data pointer in front.
+  per_arity = lambda { |macro, body|
+    arg_count.times do |i|
+      c = i + 1
+      puts "#undef #{prefix}_#{macro}#{c * 2}"
+      puts "#define #{prefix}_#{macro}#{c * 2}(#{arg_list.call(c)}) #{body.call(c)}"
+    end
+  }
+
+  per_arity.call('TP_EXVAR', second_arg_list)
 
   puts <<~EOF
     #undef #{prefix}_TP_EXDATA_VAR0
@@ -77,11 +85,7 @@ EOF
     #define #{prefix}_TP_EXDATA_VAR1(p_0_0) __tp_data
   EOF
 
-  arg_count.times do |i|
-    c = (i + 1)
-    puts "#undef #{prefix}_TP_EXDATA_VAR#{c * 2}"
-    puts "#define #{prefix}_TP_EXDATA_VAR#{c * 2}(#{arg_list.call(c)}) __tp_data,#{second_arg_list.call(c)}"
-  end
+  per_arity.call('TP_EXDATA_VAR', ->(c) { "__tp_data,#{second_arg_list.call(c)}" })
 
   puts <<~EOF
 
@@ -95,11 +99,7 @@ EOF
     #define #{prefix}_TP_EXPROTO1(p_0_0) void
   EOF
 
-  arg_count.times do |i|
-    c = (i + 1)
-    puts "#undef #{prefix}_TP_EXPROTO#{c * 2}"
-    puts "#define #{prefix}_TP_EXPROTO#{c * 2}(#{arg_list.call(c)}) #{tuple_arg_list.call(c)}"
-  end
+  per_arity.call('TP_EXPROTO', tuple_arg_list)
 
   puts <<~EOF
 
@@ -109,11 +109,7 @@ EOF
     #define #{prefix}_TP_EXDATA_PROTO1(p_0_0) void *__tp_data
   EOF
 
-  arg_count.times do |i|
-    c = (i + 1)
-    puts "#undef #{prefix}_TP_EXDATA_PROTO#{c * 2}"
-    puts "#define #{prefix}_TP_EXDATA_PROTO#{c * 2}(#{arg_list.call(c)}) void *__tp_data,#{tuple_arg_list.call(c)}"
-  end
+  per_arity.call('TP_EXDATA_PROTO', ->(c) { "void *__tp_data,#{tuple_arg_list.call(c)}" })
 
   puts <<~EOF
     /* Preprocessor trick to count arguments. Inspired from sdt.h. */

@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -85,7 +86,7 @@ cuda_api_versions.yaml: $(srcdir)/extract_cuda_versions.rb modified_include/cuda
 cuda_api.yaml: $(srcdir)/extract/cuda_api.h $(MODIFIED_CUDA_HDR)
 	h2yaml --compat-cast-to-yaml -Wc,-Imodified_include/ $< > $@
 
-cuda_exports_extract.h: $(srcdir)/gen_cuda_exports_extract.rb $(srcdir)/cuda_export_tables.yaml $(MODIFIED_CUDA_HDR)
+cuda_exports_extract.h: $(srcdir)/gen_cuda_exports_extract.rb $(srcdir)/cuda_export_tables.yaml $(MODIFIED_CUDA_HDR) $(top_srcdir)/utils/yaml_ast.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 cuda_exports_api.yaml: cuda_exports_extract.h $(MODIFIED_CUDA_HDR)
@@ -108,7 +109,7 @@ EXTRA_DIST += \
 	gen_cuda_exports_extract.rb \
 	extract_cuda_versions.rb
 
-cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml
+cuda_exports.h.include: $(srcdir)/gen_cude_exports_include.rb cuda_export_tables.yaml $(top_srcdir)/utils/yaml_ast.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += \
@@ -121,32 +122,21 @@ ML_CUDA_FILES = \
 	$(srcdir)/cuda_meta_parameters.yaml \
 	$(srcdir)/cuda_exports_meta_parameters.yaml
 
-ML_CUDART_FILES = \
-	$(srcdir)/cudart_meta_parameters.yaml
-
-EXTRA_DIST += $(ML_CUDA_FILES) $(ML_CUDART_FILES)
+EXTRA_DIST += $(ML_CUDA_FILES)
 
 CUDA_MODEL = \
 	$(srcdir)/cuda_model.rb \
 	$(ML_CUDA_FILES) \
 	$(srcdir)/cuda_events.yaml \
 	$(CUDA_EXTRACTED) \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(srcdir)/cuda.h.include \
 	cuda_exports.h.include
 
 CUDART_MODEL = \
 	$(srcdir)/cudart_model.rb \
-	$(ML_CUDART_FILES) \
 	$(CUDART_EXTRACTED) \
-	$(top_srcdir)/utils/yaml_ast.rb \
-	$(top_srcdir)/utils/yaml_ast_lttng.rb \
-	$(top_srcdir)/utils/meta_parameters.rb \
-	$(top_srcdir)/utils/LTTng.rb \
+	$(BACKEND_MODEL_DEPS) \
 	$(srcdir)/cudart.h.include
 
 btx_cuda_model.yaml: $(srcdir)/gen_babeltrace_cuda_model.rb $(CUDA_LIB_GEN) $(CUDA_MODEL)
@@ -188,13 +178,13 @@ CUDART_PROBES_INCL = $(CUDART_PROBES:=.h)
 
 CUDART_PROBES_SRC = $(CUDART_PROBES:=.c)
 
-$(CUDA_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDA_MODEL)
+$(CUDA_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDA_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL)
+$(CUDART_PROBES_TP): %.tp: $(srcdir)/gen_%.rb $(CUDART_MODEL) $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-$(CUDA_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cuda_events.yaml
+$(CUDA_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/cuda_events.yaml $(top_srcdir)/utils/gen_probe_base.rb
 	$(RUBY) $< $(srcdir)/cuda_events.yaml lttng_ust_$* "<cuda.h>" > $@
 
 %.h %.c: %.tp
@@ -224,10 +214,10 @@ BUILT_SOURCES = \
 	$(CUDART_PROBES_INCL) \
 	tracer_cudart.map
 
-tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml
+tracer_cuda.c: $(srcdir)/gen_cuda.rb $(srcdir)/tracer_cuda_helpers.include.c $(CUDA_MODEL) $(CUDA_PROBES_INCL) $(CUDA_STATIC_PROBES_INCL) cuda_export_tables.yaml $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL)
+tracer_cudart.c: $(srcdir)/gen_cudart.rb $(srcdir)/tracer_cudart_helpers.include.c $(CUDART_MODEL) $(CUDART_PROBES_INCL) $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 tracer_cudart.map: $(srcdir)/gen_cudart_linker_script.rb $(CUDART_MODEL)
@@ -306,6 +296,8 @@ install-data-hook:
 
 CUDA_LIB_GEN = \
 	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/api_model.rb \
+	$(top_srcdir)/utils/type_registry.rb \
 	$(top_srcdir)/utils/gen_library_base.rb \
 	$(srcdir)/gen_cuda_library_base.rb \
 	$(top_srcdir)/utils/gen_probe_base.rb

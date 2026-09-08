@@ -1,16 +1,11 @@
-require 'yaml'
-require_relative 'LTTng'
+require_relative 'gen_probe_base'
 
-events_path = ARGV[0]
-namespace = ARGV[1]
-header = ARGV[2]
+events_path, namespace, header = ARGV
 
 raise 'No events to load!' unless events_path
 raise 'No namespace provided!' unless namespace
 
-h = YAML.load_file(events_path)[namespace]
-
-raise "Invalid namespace: #{namespace}!" unless h
+declared = declared_events(events_path, namespace)
 
 ['lttng/tracepoint_gen.h', header].compact.each do |h|
   puts h.start_with?('<') ? %(#include #{h}) : %(#include "#{h}")
@@ -18,10 +13,4 @@ end
 
 puts
 
-h['enums'].to_a.each do |e|
-  LTTng.print_enum(namespace, e)
-end
-
-h['events'].to_a.each do |e|
-  LTTng.print_tracepoint(namespace, e)
-end
+print_declared_events(namespace, declared)

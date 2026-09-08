@@ -1,19 +1,100 @@
+require_relative 'LTTng'
+require_relative 'command_index'
+require_relative 'meta_parameter_spec'
+
+# The per-backend facts the shared generators need but cannot derive from a
+# function alone: what the traced return value is called, which functions
+# initialize the API, the struct layouts to walk when a meta-parameter names a
+# member, how the API's typedefs classify, and which events a call produces.
+#
+# A Command belongs to exactly one backend, so it carries this rather than the
+# shared generators reading it from whichever backend was required last.
+BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes, :directions,
+                            keyword_init: true) do
+  # The two derived fields always come from the same model, so a backend names
+  # the model rather than restating where each one is read from.
+  #
+  # `directions` is the events one traced call produces. The tracepoint provider
+  # and the babeltrace model both name events from it, so they cannot disagree.
+  # A callback API passes [nil]: the runtime calls in once.
+  def self.for(api, result_name:, init_functions:, directions: %i[start stop])
+    new(result_name: result_name, init_functions: init_functions, directions: directions,
+        struct_map: api.struct_map, type_classes: api.type_classes)
+  end
+end
+
+# Build the command index a backend traces, and check its meta-parameter spec
+# against it: three steps every AST backend takes in the same order.
+#
+# `groups` maps each LTTng provider to the functions it carries. `spec` is the
+# backend's meta-parameter spec, whose rows are attached to the command they
+# name and whose keys are then checked to name a real one.
+#
+# `select` narrows the functions traced, for a backend that wraps only some of
+# what its headers declare: itt traces eight of the hundred-odd it parses.
+#
+# This lives here rather than on CommandIndex because it names Command, which
+# opencl does not share.
+def build_command_index(groups, context:, spec: Hash.new { [] }, select: ->(_func) { true })
+  index = CommandIndex.new(groups.transform_values do |funcs|
+    funcs.filter_map do |func|
+      Command.new(func, context: context, meta_parameters: spec[func.name]) if select.call(func)
+    end
+  end)
+  check_meta_parameters(spec, index)
+  index
+end
+
 class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
-  def initialize(function)
+  # `meta_parameters` is this function's rows from a meta-parameter spec, as
+  # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
+  def initialize(function, context:, meta_parameters: [])
     @function = function
+    @context = context
     @tracepoint_parameters = []
-    @meta_parameters = AUTO_META_PARAMETERS.collect { |klass| klass.create_if_match(self) }.compact
-    @meta_parameters += META_PARAMETERS[@function.name].collect do |type, args|
+    @meta_parameters = meta_parameters.collect do |type, args|
       type.new(self, *args)
     end
-    @prologues = PROLOGUES[@function.name]
-    @epilogues = EPILOGUES[@function.name]
+    @prologues = []
+    @epilogues = []
+  end
+
+  # An event carries every parameter computed by the time it fires: a :stop
+  # parameter reads the result, so only the exit event -- never an entry, and
+  # never a callback API's single undirected event -- can see one.
+  def tracepoint_parameters_for(dir)
+    dir == :stop ? @tracepoint_parameters : @tracepoint_parameters.select { |p| p.dir == :start }
+  end
+
+  # The C computing the parameters that belong to this tracepoint's block.
+  def tracepoint_inits(dir)
+    @tracepoint_parameters.select { |p| p.dir == dir }.collect(&:fill)
+  end
+
+  def result_name
+    @context.result_name
+  end
+
+  def type_classes
+    @context.type_classes
+  end
+
+  def directions
+    @context.directions
   end
 
   def name
     @function.name
+  end
+
+  def add_prologue(code)
+    @prologues.push(code)
+  end
+
+  def add_epilogue(code)
+    @epilogues.push(code)
   end
 
   def decl_pointer(name = pointer_name)
@@ -58,7 +139,7 @@ class Command
   end
 
   def init?
-    name.match(INIT_FUNCTIONS)
+    name.match(@context.init_functions)
   end
 
   def has_return_type?
@@ -67,70 +148,16 @@ class Command
 
   def [](name)
     # special case when querying the return value
-    return YAMLCAst::Declaration.new(name: "#{RESULT_NAME}", type: type) if name == :result
+    return YAMLCAst::Declaration.new(name: result_name, type: type) if name == :result
 
-    path = name.split('->')
-    if path.length == 1
-      res = parameters.find { |p| p.name == name }
-      return res if res
+    param_name, *members = MemberPath.segments(name)
+    res = parameters.find { |p| p.name == param_name }
+    return @tracepoint_parameters.find { |p| p.name == name } if res.nil?
 
-      @tracepoint_parameters.find { |p| p.name == name }
-    else
-      param_name = path.shift
-      res = parameters.find { |p| p.name == param_name }
+    members.each do |m|
+      res = @context.struct_map[res.type.type.name].find { |member| member.name == m }
       return nil unless res
-
-      path.each do |n|
-        res = STRUCT_MAP[res.type.type.name].find { |m| m.name == n }
-        return nil unless res
-      end
-      res
     end
+    res
   end
 end
-
-class Member
-  def initialize(_command, member, prefix, dir = :start)
-    @member = member
-    @dir = dir
-    @prefix = prefix
-    name = "#{prefix}#{MEMBER_SEPARATOR}#{member.name}"
-    expr = "#{prefix} ? #{prefix}->#{member.name} : 0"
-    @lttng_type = member.type.lttng_type
-    @lttng_type.name = name
-    @lttng_type.expr = expr
-  end
-
-  def lttng_in_type
-    @dir == :start ? @lttng_type : nil
-  end
-
-  def lttng_out_type
-    @dir == :start ? nil : @lttng_type
-  end
-end
-
-def register_meta_parameter(method, type, *args)
-  META_PARAMETERS[method].push [type, args]
-end
-
-def register_meta_struct(method, name, type)
-  raise "Unknown struct: #{type}!" unless STRUCT_TYPES.include?(type)
-
-  STRUCT_MAP[type].each do |m|
-    META_PARAMETERS[method].push [Member, [m, name]]
-  end
-end
-
-def register_prologue(method, code)
-  PROLOGUES[method].push(code)
-end
-
-def register_epilogue(method, code)
-  EPILOGUES[method].push(code)
-end
-
-AUTO_META_PARAMETERS = []
-META_PARAMETERS = Hash.new { |h, k| h[k] = [] }
-PROLOGUES = Hash.new { |h, k| h[k] = [] }
-EPILOGUES = Hash.new { |h, k| h[k] = [] }

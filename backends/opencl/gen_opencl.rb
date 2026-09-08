@@ -41,11 +41,10 @@ puts <<~EOF
           tracepoint(provider, name, __VA_ARGS__)
 EOF
 
-$opencl_commands.each do |c|
-  puts "#define #{OPENCL_POINTER_NAMES[c]} #{c.prototype.pointer_name}"
-end
+print_pointer_defines(OPENCL_COMMANDS.groups[:core], OPENCL_POINTER_NAMES,
+                      pointer_name_of: ->(c) { c.prototype.pointer_name })
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   puts <<~EOF
 
     typedef #{c.decl_pointer(type: true)};
@@ -53,7 +52,7 @@ $opencl_commands.each do |c|
   EOF
 end
 
-$opencl_extension_commands.each do |c|
+OPENCL_COMMANDS.groups[:extension].each do |c|
   puts <<~EOF
 
     typedef #{c.decl_pointer(type: true)};
@@ -66,7 +65,7 @@ puts <<~EOF
   static void find_opencl_symbols(void * handle, int verbose) {
 EOF
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   next if c.extension? && c.prototype.name.match(/KHR$|EXT$/)
 
   puts <<EOF
@@ -77,12 +76,12 @@ $opencl_commands.each do |c|
 EOF
 end
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   next unless c.extension? && c.prototype.name.match(/KHR$|EXT$/)
 
   puts <<EOF
 
-  #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[$clGetExtensionFunctionAddress]}("#{c.prototype.name}");
+  #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clGetExtensionFunctionAddress']]}("#{c.prototype.name}");
   if (!#{OPENCL_POINTER_NAMES[c]})
     fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
 EOF
@@ -110,7 +109,7 @@ common_block = lambda { |c|
     puts p.init
   end
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES['start']}, #{(tp_params + tracepoint_params).join(', ')});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{CL_EVENT_SUFFIXES['start']}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
   c.prologues.each do |p|
     puts p
@@ -146,11 +145,11 @@ EOF
   tp_params.push '_retval' if c.prototype.has_return_type?
   tp_params.push '_duration' if HOST_PROFILE
   puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{SUFFIXES['stop']}, #{(tp_params + tracepoint_params).join(', ')});
+  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{CL_EVENT_SUFFIXES['stop']}, #{(tp_params + tracepoint_params).join(', ')});
 EOF
 }
 
-$opencl_commands.each do |c|
+OPENCL_COMMANDS.groups[:core].each do |c|
   puts <<~EOF
     #{c.decl} {
   EOF
@@ -171,7 +170,7 @@ EOF
   EOF
 end
 
-$opencl_extension_commands.each do |c|
+OPENCL_COMMANDS.groups[:extension].each do |c|
   puts <<~EOF
     static #{c.decl_ffi_wrapper} {
       (void)cif;
