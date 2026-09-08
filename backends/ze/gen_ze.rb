@@ -110,17 +110,7 @@ zex_commands.each do |c|
   EOF
 end
 
-puts <<~EOF
-
-  static void find_ze_symbols(void * handle, int verbose) {
-EOF
-
-print_dlsym_lookups(all_commands, ZE_POINTER_NAMES)
-
-puts <<~EOF
-  }
-
-EOF
+print_find_symbols('ze', all_commands, ZE_POINTER_NAMES)
 
 puts File.read(File.join(SRC_DIR, 'tracer_ze_helpers.include.c'))
 

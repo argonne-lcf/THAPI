@@ -14,27 +14,13 @@ print_pointer_defines(COMMANDS, CUDART_POINTER_NAMES)
 
 print_pointer_table(COMMANDS, CUDART_POINTER_NAMES)
 
-puts <<~EOF
-
-  static void find_cudart_symbols(void * handle, int verbose) {
-EOF
-
-print_dlsym_lookups(COMMANDS, CUDART_POINTER_NAMES)
-
-puts <<~EOF
-  }
-
-EOF
+print_find_symbols('cudart', COMMANDS, CUDART_POINTER_NAMES)
 
 puts File.read(File.join(SRC_DIR, 'tracer_cudart_helpers.include.c'))
 
-normal_wrapper = lambda { |c, provider|
-  print_wrapper(c, init: '_init_tracer();') { print_traced_body(c, provider, CUDART_POINTER_NAMES) }
-}
-
-COMMANDS.each do |c|
-  normal_wrapper.call(c, :lttng_ust_cudart)
-end
+# cudart initializes from every wrapper: no function is singled out.
+print_traced_wrappers(COMMANDS, :lttng_ust_cudart, CUDART_POINTER_NAMES,
+                      init: ->(_c) { '_init_tracer();' })
 
 COMMANDS.each do |c|
   puts "__asm__(\".symver #{c.name},#{c.name}@@libcudart.so.13, remove\");"

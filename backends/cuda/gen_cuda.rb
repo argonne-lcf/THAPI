@@ -67,18 +67,8 @@ COMMANDS.groups[:lttng_ust_cuda].each do |c|
   EOF
 end
 
-puts <<~EOF
-
-  static void find_cuda_symbols(void * handle, int verbose) {
-EOF
-
-print_dlsym_lookups(COMMANDS.groups[:lttng_ust_cuda], CUDA_POINTER_NAMES,
-                    prefix: 'THAPI: ', fallback: ->(c) { "#{c.name}_unsupp" })
-
-puts <<~EOF
-  }
-
-EOF
+print_find_symbols('cuda', COMMANDS.groups[:lttng_ust_cuda], CUDA_POINTER_NAMES,
+                   prefix: 'THAPI: ', fallback: ->(c) { "#{c.name}_unsupp" })
 
 export_tables = yaml_load_file_cached(File.join(SRC_DIR, 'cuda_export_tables.yaml'))
 

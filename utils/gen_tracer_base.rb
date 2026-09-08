@@ -120,6 +120,21 @@ def print_pointer_table(commands, pointer_names, initializer: ->(_c) { '(void *)
   end
 end
 
+# The whole of a backend's symbol-resolution function: the `find_<backend>_symbols`
+# the tracer's one-time init calls, wrapping the lookups below. Every backend
+# declares it the same way, so the signature is stated here rather than in each
+# generator's heredoc.
+#
+# `blank` is false for mpi, whose pointer table already ends with the blank line
+# that separates the two.
+def print_find_symbols(backend, commands, pointer_names, blank: true, **opts)
+  puts if blank
+  puts "static void find_#{backend}_symbols(void * handle, int verbose) {"
+  print_dlsym_lookups(commands, pointer_names, **opts)
+  puts '}'
+  puts
+end
+
 # The dlsym lookups that fill in a backend's function-pointer table: one per
 # traced function, each reporting a symbol the loaded library does not export.
 #
@@ -145,6 +160,18 @@ def print_dlsym_lookups(commands, pointer_names, prefix: '', indent: '    ', fal
     else
       puts "  if (!#{ptr} && verbose)"
       puts "#{indent}#{report}"
+    end
+  end
+end
+
+# One interposed wrapper per traced function: the shape cudart, hip and mpi
+# generate. `init` is the tracer's one-time setup, which cudart runs from every
+# wrapper and the others only from the functions that initialize the API.
+def print_traced_wrappers(commands, provider, pointer_names, init: ->(c) { '_init_tracer();' if c.init? },
+                          **body_opts)
+  commands.each do |c|
+    print_wrapper(c, init: init.call(c)) do
+      print_traced_body(c, provider, pointer_names, **body_opts)
     end
   end
 end
