@@ -62,14 +62,36 @@ class NamingContext
   end
 end
 
+# Class name for an API whose typedefs are snake_case words: drop the trailing
+# _t, drop the namespace the pattern matched, upper-case each word's first
+# letter, and put the namespace back in front. cuda, omp and ze name their
+# types this way; each supplies only the initialisms the word split would
+# otherwise lower-case (CUuuid -> CUUUID, not CUUuid).
+#
+# `word_case` is how a word other than the first is cased. Every word keeps the
+# header's own spelling after its initial by default -- ze_pfnInitCb_t is
+# ZEPfninitcb, not ZEPfnInitCb, because ze down-cases each word first.
+def word_split_class_name(name, namespace, pattern, initialisms: {}, word_case: :keep)
+  namespace = namespace.to_s
+  words = name.sub(/_t\z/, '').sub(pattern, '').split('_')
+  res = words.collect do |w|
+    next w if w.empty?
+
+    w = w.downcase if word_case == :downcase
+    w[0].upcase + w[1..]
+  end.join
+  initialisms.each { |from, to| res = res.gsub(from, to) }
+  namespace + res
+end
+
 # Class name for an API that already spells its types in the target case, so
 # the only work is the namespace prefix. hip and mpi each write theirs two ways
 # -- hipDeviceProp_t and HIP_ARRAY_DESCRIPTOR -- and only the lowercase
 # spelling is title-cased, leaving HipDeviceProp_t and HIP_ARRAY_DESCRIPTOR.
 # The rest of the name is left exactly as the header spells it.
 #
-# The backends whose headers are camelCase (cuda, ze, omp, itt) do more than
-# this -- they split on '_' and recase every word -- so they keep their own.
+# itt is the one camelCase API that keeps its own namer: its names carry a
+# leading-underscore prefix and it qualifies the result with a module.
 def prefixed_class_name(name, namespace)
   namespace = namespace.to_s
   rest = name.sub(/\A#{namespace}/, '')
@@ -129,7 +151,7 @@ end
 # ze sorts its typedefs so a layout is defined before it is used.
 def print_typedefs(naming, api: naming.api, types: api.types,
                    enum: ->(name, t) { print_enum_with_namespace(naming, name, api.enum(t.type)) },
-                   object: ->(name, _t) { print_object(name) },
+                   object: ->(name, _t) { print_pointer_type(name) },
                    struct: ->(name, t) { print_struct_with_namespace(naming, name, api.struct(t.type)) },
                    union: ->(name, t) { print_union_with_namespace(naming, name, api.union(t.type)) },
                    function_pointer: ->(name, t) { print_function_pointer_type(naming, name, t.type.type) },
@@ -261,13 +283,6 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-def print_object(object)
-  puts <<EOF
-  typedef :pointer, #{to_ffi_name(object)}
-
-EOF
-end
-
 # Shared by cuda/hip/mpi. ze inlines its own -- :data/:id fields, and a UUID
 # printed back to front.
 def print_handle_uuid_modules
@@ -310,13 +325,16 @@ def print_handle_uuid_modules
 EOF
 end
 
-# The FFI base classes every backend's bindings open with.
+# The FFI base classes every backend's bindings open with, named after the
+# module the bindings declare -- the same name NamingContext#ffi_base spells
+# when a layout subclasses one, so the two cannot drift apart.
 #
 # `struct`, `union` and `inline_array` are false for a backend whose bindings
 # never declare one: omp binds enums alone. `enclosing_module` is false for ze,
 # whose classes resolve their own names.
-def print_ffi_module(namespace, struct: true, union: true, inline_array: true,
+def print_ffi_module(naming, struct: true, union: true, inline_array: true,
                      enclosing_module: true)
+  namespace = naming.module_name
   puts <<~EOF
     require 'ffi'
     module FFI

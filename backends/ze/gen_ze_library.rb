@@ -38,7 +38,7 @@ def print_enum(name, enum)
   end
 end
 
-print_ffi_module(:ZE, enclosing_module: false)
+print_ffi_module(NAMING, enclosing_module: false)
 
 puts <<~EOF
   module ZE

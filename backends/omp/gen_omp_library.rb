@@ -8,7 +8,7 @@ def print_enum(name, enum)
   end
 end
 
-print_ffi_module(:OMP, struct: false, union: false, inline_array: false)
+print_ffi_module(NAMING, struct: false, union: false, inline_array: false)
 
 puts <<~EOF
 

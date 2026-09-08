@@ -1,6 +1,6 @@
 require_relative 'gen_cuda_library_base'
 
-print_ffi_module(:CUDA)
+print_ffi_module(NAMING)
 
 puts <<~EOF
   module CUDA

@@ -49,7 +49,7 @@ def print_enum(name, enum)
   RUBY
 end
 
-print_ffi_module(:ITT)
+print_ffi_module(NAMING)
 
 puts <<~EOF
   module ITT

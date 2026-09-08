@@ -1,4 +1,5 @@
 require_relative 'yaml_ast'
+require_relative 'gen_probe_base'
 
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
@@ -14,7 +15,7 @@ def add_babeltrace_event_callbacks(naming, file)
     s[:event_classes].each do |e|
       # Handle payload_field_class not present, in this case empty array
       members = e[:payload_field_class]&.[](:members).to_a
-      fields = members.reject { |f| /^_.*_length$/ =~ f[:name] }
+      fields = members.reject { |f| length_field_name?(f[:name]) }
                       .map { |f| render_field(naming, f) }
 
       # Now just print the full strings to pretty printf the struct

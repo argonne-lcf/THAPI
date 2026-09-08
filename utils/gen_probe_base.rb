@@ -51,6 +51,18 @@ def tracepoint_event_name(c, dir)
   dir ? "#{c.name}_#{SUFFIXES[dir]}" : c.name.gsub(/_func\z/, '')
 end
 
+# A sequence field ships its element count in a companion integer field, named
+# here because the tracepoint, the model and the pretty-printer must agree.
+def length_field_name(name)
+  "_#{name}_length"
+end
+
+LENGTH_FIELD_PATTERN = /\A#{length_field_name('.*')}\z/
+
+def length_field_name?(name)
+  LENGTH_FIELD_PATTERN.match?(name.to_s)
+end
+
 def print_tracepoint(provider, c, dir = nil)
   name = tracepoint_event_name(c, dir)
 

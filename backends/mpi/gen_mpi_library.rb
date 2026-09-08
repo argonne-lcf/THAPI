@@ -1,6 +1,6 @@
 require_relative 'gen_mpi_library_base'
 
-print_ffi_module(:MPI)
+print_ffi_module(NAMING)
 
 puts <<~EOF
   module MPI

@@ -101,7 +101,7 @@ schema_event = OPENCL_MODEL['events'].map do |name, fields|
 
     if (field['array'] || field['structure']) && field['lttng'].match('ctf_sequence')
 
-      additional_parsed_field = parse_field({ 'name' => "_#{sub_name}_length",
+      additional_parsed_field = parse_field({ 'name' => length_field_name(sub_name),
                                               'lttng' => 'ctf_integer', 'type' => 'size_t' })
       additional_parsed_field[:field_class][:cast_type] = 'size_t'
       [additional_parsed_field, parsed_field]

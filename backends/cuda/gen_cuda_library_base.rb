@@ -8,22 +8,15 @@ require_relative '../../utils/gen_library_base'
 #
 # Two types are spelled CUstream* in the header but CUStream* in Ruby, and the
 # namer restores three initialisms the word split would lowercase.
+CUDA_NAMESPACE_PATTERN = /\A(CUDA|CU)/
+
 NAMING = NamingContext.new(
   module_name: 'CUDA',
   api: API,
-  namespace_pattern: /\A(CUDA|CU)/,
+  namespace_pattern: CUDA_NAMESPACE_PATTERN,
   class_namer: lambda { |naming, name|
-    case name
-    when 'CUstreamBatchMemOpType' then 'CUStreamBatchMemOpType'
-    when 'CUstreamBatchMemOpParams' then 'CUStreamBatchMemOpParams'
-    else
-      mod = naming.name_space(name) || ''
-      n = name.gsub(/_t\z/, '').gsub(/\A#{mod}/, '').split('_').collect do |s|
-        s[0] = s[0].capitalize if s.length > 0
-        s
-      end.join
-      mod + n.gsub('Uuid', 'UUID').gsub('Ipc', 'IPC').gsub('P2p', 'P2P')
-    end
+    word_split_class_name(name, naming.name_space(name), CUDA_NAMESPACE_PATTERN,
+                          initialisms: { 'Uuid' => 'UUID', 'Ipc' => 'IPC', 'P2p' => 'P2P' })
   }
 )
 

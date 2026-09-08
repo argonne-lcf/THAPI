@@ -24,36 +24,24 @@ def build_ast_registry(naming, expect_bitfields:)
   registry
 end
 
+# The rows describing one field: the sequence's companion length field, when it
+# has one, then the field itself.
+def field_types_name(macro, type, name, lttng)
+  rows = []
+  rows << ['ctf_integer', 'size_t', length_field_name(name), nil] if macro.match?(/ctf_sequence/)
+  rows << [macro, type, name, lttng]
+  rows
+end
+
+# OutPtrString's parameter is already a pointer to the string, and a
+# length-less scalar is read by value; everything else is traced by address.
 def meta_parameter_types_name(m, dir)
   lttng = m.lttng_type_for(dir)
-  name = lttng.name
   t = m.command[m.name].type.type
+  t = t.type if m.is_a?(ArrayByRefMetaParameter)
+  by_value = m.is_a?(OutPtrString) || (m.is_a?(ScalarMetaParameter) && !lttng.length)
 
-  case m
-  when ScalarMetaParameter
-    if lttng.length
-      [['ctf_integer', 'size_t', "_#{name}_length", nil],
-       [lttng.macro.to_s, "#{t} *", name.to_s, lttng]]
-    else
-      [[lttng.macro.to_s, t.to_s, name.to_s, lttng]]
-    end
-  when ArrayMetaParameter, InString, OutString, OutLTTng, InLTTng, ReturnString
-    if lttng.macro.to_s == 'ctf_string'
-      [['ctf_string', "#{t} *", name.to_s, lttng]]
-    else
-      [['ctf_integer', 'size_t', "_#{name}_length", nil],
-       [lttng.macro.to_s, "#{t} *", name.to_s, lttng]]
-    end
-  when ArrayByRefMetaParameter
-    [['ctf_integer', 'size_t', "_#{name}_length", nil],
-     [lttng.macro.to_s, "#{t.type} *", name.to_s, lttng]]
-  when FixedArrayMetaParameter
-    [[lttng.macro.to_s, "#{t} *", name.to_s, lttng]]
-  when OutPtrString
-    [['ctf_string', t.to_s, name.to_s, lttng]]
-  else
-    raise "unsupported meta parameter class #{m.class} #{lttng.call_string} #{t}"
-  end
+  field_types_name(lttng.macro.to_s, by_value ? t.to_s : "#{t} *", lttng.name.to_s, lttng)
 end
 
 def get_extra_fields_types_name(event)
@@ -61,13 +49,7 @@ def get_extra_fields_types_name(event)
     lttng = LTTng::TracepointField.new(*field)
     name = lttng.name.to_s
     type = event['args'].find { |_t, n| n == name || n == name.gsub(/_vals?\z/, '') }[0]
-    case lttng.macro.to_s
-    when /ctf_sequence/
-      [['ctf_integer', 'size_t', "_#{name}_length", nil],
-       [lttng.macro.to_s, type, name, lttng]]
-    else
-      [[lttng.macro.to_s, type, name, lttng]]
-    end
+    field_types_name(lttng.macro.to_s, type, name, lttng)
   end.flatten(1)
 end
 
@@ -107,7 +89,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
     field[:type] = 'array_dynamic'
     field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
     field[:element_field_class][:cast_type] = type.match(/(.*) \*/)[1]
-    field[:length_field_path] = "EVENT_PAYLOAD[\"_#{name}_length\"]"
+    field[:length_field_path] = "EVENT_PAYLOAD[\"#{length_field_name(name)}\"]"
   when 'ctf_array', 'ctf_array_hex'
     field[:type] = 'array_static'
     field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
@@ -156,21 +138,13 @@ def get_fields_types_name(c, dir)
   end.flatten(1)
 end
 
-def gen_event_fields_bt_model(registry, c, dir)
-  types_name = get_fields_types_name(c, dir)
-  types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
+# One event class: its name, qualified by the provider that declares it, and a
+# field for each row describing its payload. `const` is a promise to the C
+# compiler, not part of the traced type, so it is dropped here.
+def gen_bt_event(registry, provider, name, types_name)
+  members = types_name.collect do |lttng_name, type, field_name, lttng|
+    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), field_name, lttng)
   end
-end
-
-def gen_extra_event_fields_bt_model(registry, event)
-  types_name = get_extra_fields_types_name(event)
-  types_name.collect do |lttng_name, type, name, lttng|
-    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), name, lttng)
-  end
-end
-
-def gen_bt_event(provider, name, members)
   event = { name: "#{provider}:#{name}" }
   event[:payload_field_class] = { type: 'structure', members: members } unless members.empty?
   event
@@ -178,11 +152,11 @@ end
 
 # The name has to match the one the tracepoint provider declares.
 def gen_event_bt_model(registry, provider, c, dir = nil)
-  gen_bt_event(provider, tracepoint_event_name(c, dir), gen_event_fields_bt_model(registry, c, dir))
+  gen_bt_event(registry, provider, tracepoint_event_name(c, dir), get_fields_types_name(c, dir))
 end
 
 def gen_extra_event_bt_model(registry, provider, event)
-  gen_bt_event(provider, event['name'], gen_extra_event_fields_bt_model(registry, event))
+  gen_bt_event(registry, provider, event['name'], get_extra_fields_types_name(event))
 end
 
 # One event class per event the command produces, which is the command's own
@@ -212,14 +186,15 @@ end
 # have bitfield types at all.
 #
 # `extra_event_classes` is anything the backend derives itself: ze adds one
-# event per self-describing struct, which no other backend has.
+# event per self-describing struct, which no other backend has. It is handed
+# the registry, so its fields go through the shared classifier.
 def print_bt_model(naming, commands, expect_bitfields:, extra_events_path: nil,
-                   extra_event_classes: [])
+                   extra_event_classes: ->(_registry) { [] })
   registry = build_ast_registry(naming, expect_bitfields: expect_bitfields)
 
   event_classes = gen_command_events_bt_model(registry, commands.groups)
   event_classes += gen_extra_events_bt_model(registry, extra_events_path) if extra_events_path
-  event_classes += extra_event_classes
+  event_classes += extra_event_classes.call(registry)
 
   puts YAML.dump(gen_yaml(event_classes, naming.backend))
 end

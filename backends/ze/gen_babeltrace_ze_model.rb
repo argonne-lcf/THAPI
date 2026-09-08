@@ -1,52 +1,27 @@
 require_relative 'gen_ze_library_base'
 require_relative '../../utils/gen_babeltrace_model_helper'
 
-def gen_struct_event_bt_model(provider, struct)
-  {
-    name: "#{provider}:#{struct}",
-    payload_field_class:
-          {
-            type: 'structure',
-            members:
-    [
-      {
-        name: 'p',
-        field_class: {
-          cast_type: "#{struct} *",
-          type: 'integer_unsigned',
-          field_value_range: 64,
-          preferred_display_base: 16,
-        },
-      },
-      {
-        name: '_p_val_length',
-        field_class: {
-          cast_type: 'size_t',
-          type: 'integer_unsigned',
-          field_value_range: 64,
-        },
-      },
-      {
-        name: 'p_val',
-        field_class: {
-          cast_type: "#{struct} *",
-          type: 'string',
-        },
-        metadata: {
-          be_class: "ZE::#{NAMING.class_name(struct)}",
-        },
-      },
-    ],
-          },
-  }
+# A length this side never reads: gen_bt_field_model's ctf_sequence_text branch
+# takes the count from the companion length field instead.
+UNREAD_LENGTH = '0'
+
+# These are the rows print_struct_tracepoint emits into the provider, so both
+# sides of the wire describe the same fields.
+def gen_struct_event_bt_model(registry, provider, struct)
+  address = LTTng::TracepointField.new('ctf_integer_hex', 'uintptr_t', 'p', 'p')
+  bytes = LTTng::TracepointField.new('ctf_sequence_text', 'uint8_t', 'p_val', 'p', 'size_t', UNREAD_LENGTH)
+
+  gen_bt_event(registry, provider, struct,
+               [['ctf_integer_hex', "#{struct} *", 'p', address],
+                *field_types_name('ctf_sequence_text', "#{struct} *", 'p_val', bytes)])
 end
 
 # Each self-describing struct is traced as an event of its own, carrying the
 # struct's bytes; no other backend has these.
-def struct_event_classes
+def struct_event_classes(registry)
   APIS.collect do |ns, api|
     concrete_tagged_structs(ns, api).collect do |struct|
-      gen_struct_event_bt_model(:"lttng_ust_#{ns}_structs", struct)
+      gen_struct_event_bt_model(registry, :"lttng_ust_#{ns}_structs", struct)
     end
   end.flatten
 end
@@ -54,4 +29,4 @@ end
 print_bt_model(NAMING, COMMANDS,
                expect_bitfields: true,
                extra_events_path: File.join(SRC_DIR, 'ze_events.yaml'),
-               extra_event_classes: struct_event_classes)
+               extra_event_classes: method(:struct_event_classes))

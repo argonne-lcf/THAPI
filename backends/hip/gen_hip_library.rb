@@ -1,7 +1,7 @@
 require 'set'
 require_relative 'gen_hip_library_base'
 
-print_ffi_module(:HIP)
+print_ffi_module(NAMING)
 
 puts <<~EOF
   module HIP
