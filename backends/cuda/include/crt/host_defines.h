@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2022 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2025 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -60,6 +60,14 @@
 #if !defined(__HOST_DEFINES_H__)
 #define __HOST_DEFINES_H__
 
+#if defined(__CUDACC__) && !defined(__CUDACC_RTC__) && !defined(__CUDADEVRT_INTERNAL__) && !defined(_ALLOW_UNSUPPORTED_LIBCPP)
+#include <ctype.h>
+#if ((defined(_MSC_VER ) && (defined(_M_X64) || defined(_M_AMD64))) ||\
+     (defined(__x86_64__) || defined(__amd64__))) && defined(_LIBCPP_VERSION) && !(defined(__HORIZON__) || defined(__ANDROID__) || defined(__QNX__))
+#error "libc++ is not supported on x86 system"
+#endif
+#endif
+
 /* CUDA JIT mode (__CUDACC_RTC__) also uses GNU style attributes */
 #if defined(__GNUC__) || (defined(__PGIC__) && defined(__linux__)) || defined(__CUDA_LIBDEVICE__) || defined(__CUDACC_RTC__)
 
@@ -69,24 +77,18 @@
 
 #define __no_return__ \
         __attribute__((noreturn))
-        
-#if defined(__CUDACC__) || defined(__CUDA_ARCH__) || defined(__CUDA_LIBDEVICE__)
-/* gcc allows users to define attributes with underscores, 
-   e.g., __attribute__((__noinline__)).
-   Consider a non-CUDA source file (e.g. .cpp) that has the 
-   above attribute specification, and includes this header file. In that case,
-   defining __noinline__ as below  would cause a gcc compilation error.
-   Hence, only define __noinline__ when the code is being processed
-   by a  CUDA compiler component.
-*/   
-#define __noinline__ \
-        __attribute__((noinline))
-#endif /* __CUDACC__  || __CUDA_ARCH__ || __CUDA_LIBDEVICE__ */
-        
+
+#undef __forceinline__
 #define __forceinline__ \
         __inline__ __attribute__((always_inline))
+#define __inline_hint__ \
+        __attribute__((nv_inline_hint))
 #define __align__(n) \
         __attribute__((aligned(n)))
+#define __maxnreg__(a) \
+        __attribute__((maxnreg(a)))
+#define __local_maxnreg__(a) \
+        __attribute__((local_maxnreg(a)))
 #define __thread__ \
         __thread
 #define __import__
@@ -116,12 +118,16 @@
         __inline
 #define __no_return__ \
         __declspec(noreturn)
-#define __noinline__ \
-        __declspec(noinline)
 #define __forceinline__ \
         __forceinline
+#define __inline_hint__ \
+        __declspec(nv_inline_hint)
 #define __align__(n) \
         __declspec(align(n))
+#define __maxnreg__(n) \
+        __declspec(maxnreg(n))
+#define __local_maxnreg__(n) \
+        __declspec(local_maxnreg(n))
 #define __thread__ \
         __declspec(thread)
 #define __import__ \
@@ -213,6 +219,18 @@
 #define __global__ \
         __location__(global)
 #endif /* defined(__CUDACC__) || !defined(__global__) */
+#if defined(__CUDACC__) || !defined(__tile_global__)
+#define __tile_global__ \
+        __location__(tile_global)
+#endif /* defined(__CUDACC__) || !defined(__tile_global__) */
+#if defined(__CUDACC__) || !defined(__tile__)
+#define __tile__ \
+        __location__(tile)
+#endif /* defined(__CUDACC__) || !defined(__tile__) */
+#if defined(__CUDACC__) || !defined(__tile_builtin__)
+#define __tile_builtin__ \
+        __location__(tile_builtin)
+#endif /* defined(__CUDACC__) || !defined(__tile_builtin__) */
 #if defined(__CUDACC__) || !defined(__shared__)
 #define __shared__ \
         __location__(shared)
@@ -225,7 +243,10 @@
 #define __managed__ \
         __location__(managed)
 #endif /* defined(__CUDACC__) || !defined(__managed__) */
-        
+#if defined(__CUDACC__) || !defined(__nv_pure__)
+#define __nv_pure__ \
+        __location__(nv_pure)
+#endif /* defined(__CUDACC__) || !defined(__nv_pure__) */  
 #if !defined(__CUDACC__)
 #define __device_builtin__
 #define __device_builtin_texture_type__
@@ -253,7 +274,36 @@
 #endif  /* defined(_MSC_VER) */
 #endif  /* defined(__CUDACC__) || !defined(__cluster_dims__) */
 
+#if defined(__CUDACC__) || !defined(__block_size__)
+#if defined(_MSC_VER)        
+#define __block_size__(...) \
+        __declspec(__block_size__(__VA_ARGS__))
+        
+#else  /* !defined(_MSC_VER) */
+#define __block_size__(...) \
+        __attribute__((block_size(__VA_ARGS__)))
+#endif  /* defined(_MSC_VER) */
+#endif  /* defined(__CUDACC__) || !defined(__block_size__) */
+
 #define __CUDA_ARCH_HAS_FEATURE__(_FEAT) __CUDA_ARCH_FEAT_##_FEAT
+
+#ifndef __CUDA_ARCH_FAMILY_SPECIFIC__
+#define __CUDA_HAS_ARCH_FAMILY_SPECIFIC(N)  0
+#else  /* defined(__CUDA_ARCH_FAMILY_SPECIFIC__) */
+#if (__CUDA_ARCH_FAMILY_SPECIFIC__ == 1010)
+#define __CUDA_HAS_ARCH_FAMILY_SPECIFIC(N) (__CUDA_ARCH_FAMILY_SPECIFIC__ == (N##0))
+#else
+#define __CUDA_HAS_ARCH_FAMILY_SPECIFIC(N) \
+    ( (((N) == 101) && (__CUDA_ARCH_FAMILY_SPECIFIC__ == 1010)) || \
+      (((N) != 101) && (__CUDA_ARCH_FAMILY_SPECIFIC__ >= (N##0) && __CUDA_ARCH_FAMILY_SPECIFIC__ < ((N##0) + 100))))
+#endif  /* defined(__CUDA_ARCH_FAMILY_SPECIFIC__) && (__CUDA_ARCH_FAMILY_SPECIFIC__ == 1010) */
+#endif  /* __CUDA_ARCH_FAMILY_SPECIFIC__ */
+
+#ifndef  __CUDA_ARCH_SPECIFIC__
+#define __CUDA_HAS_ARCH_SPECIFIC(N) 0
+#else
+#define __CUDA_HAS_ARCH_SPECIFIC(N) (__CUDA_ARCH_SPECIFIC__ == (N##0))
+#endif
 
 #endif /* !__HOST_DEFINES_H__ */
 

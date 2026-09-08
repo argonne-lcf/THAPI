@@ -101,10 +101,10 @@ EOF
   puts "\n"
 end
 
-def print_enum_with_namespace(namespace, name, enum, filter_members: ->(_m) { true })
+def print_enum_with_namespace(namespace, name, enum, filter_members: ->(_m) { true }, fix_values: ->(v) { v })
   members = enum.members.filter(&filter_members).collect do |m|
     r = [m.name.to_sym]
-    r.push m.val if m.val
+    r.push fix_values.call(m.val) if m.val
     r
   end
   print_lambda = lambda { |m|

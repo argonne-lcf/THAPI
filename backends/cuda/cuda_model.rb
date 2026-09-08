@@ -167,7 +167,8 @@ EOF
 }
 
 profiling_start_no_stream = profiling_start.call('NULL')
-profiling_start_stream = profiling_start.call('hStream')
+profiling_start_hstream = profiling_start.call('hStream')
+profiling_start_stream = profiling_start.call('stream')
 
 profiling_start_config = <<EOF
   CUevent _hStart = NULL;
@@ -183,7 +184,8 @@ EOF
 }
 
 profiling_stop_no_stream = profiling_stop.call('NULL')
-profiling_stop_stream = profiling_stop.call('hStream')
+profiling_stop_hstream = profiling_stop.call('hStream')
+profiling_stop_stream = profiling_stop.call('stream')
 
 profiling_stop_config = <<EOF
   if (_do_profile && config)
@@ -191,14 +193,15 @@ profiling_stop_config = <<EOF
 EOF
 
 stream_commands = []
+hstream_commands = []
 no_stream_commands = []
 mem_commands = $cuda_commands.select { |c| c.name.match(/cuMemcpy|cuMemset/) }
 mem_stream_commands = mem_commands.select { |c| c.name.match(/Async/) }
 mem_no_stream_commands = mem_commands - mem_stream_commands
-stream_commands += mem_stream_commands.collect(&:name)
+hstream_commands += mem_stream_commands.collect(&:name)
 no_stream_commands += mem_no_stream_commands.collect(&:name)
 
-stream_commands += %w[
+hstream_commands += %w[
   cuMemPrefetchAsync
   cuMemPrefetchAsync_ptsz
   cuLaunchGridAsync
@@ -208,6 +211,37 @@ stream_commands += %w[
   cuLaunchKernel_ptsz
   cuLaunchCooperativeKernel_ptsz
   cuLaunchHostFunc_ptsz
+  cuMemAllocAsync
+  cuMemAllocAsync_ptsz
+  cuMemAllocFromPoolAsync
+  cuMemAllocFromPoolAsync_ptsz
+  cuStreamAttachMemAsync
+  cuStreamAttachMemAsync_ptsz
+  cuMemFreeAsync
+  cuMemFreeAsync_ptsz
+  cuMemPrefetchBatchAsync
+  cuMemPrefetchBatchAsync_ptsz
+  cuMemDiscardAndPrefetchBatchAsync
+  cuMemDiscardAndPrefetchBatchAsync_ptsz
+  cuMemDiscardBatchAsync
+  cuMemDiscardBatchAsync_ptsz
+  cuMemPrefetchAsync_v2
+  cuMemPrefetchAsync_v2_ptsz
+]
+
+stream_commands += $cuda_commands.select { |c| c.name.match(/cuStreamWaitValue|cuStreamWriteValue/) }.collect(&:name)
+
+stream_commands += %w[
+  cuMemBatchDecompressAsync
+  cuMemBatchDecompressAsync_ptsz
+  cuSignalExternalSemaphoresAsync
+  cuSignalExternalSemaphoresAsync_ptsz
+  cuWaitExternalSemaphoresAsync
+  cuWaitExternalSemaphoresAsync_ptsz
+  cuStreamBatchMemOp
+  cuStreamBatchMemOp_ptsz
+  cuStreamBatchMemOp_v2
+  cuStreamBatchMemOp_v2_ptsz
 ]
 
 no_stream_commands += %w[
@@ -219,6 +253,11 @@ config_commands = %w[
   cuLaunchKernelEx
   cuLaunchKernelEx_ptsz
 ]
+
+hstream_commands.each do |m|
+  register_prologue m, profiling_start_hstream
+  register_epilogue m, profiling_stop_hstream
+end
 
 stream_commands.each do |m|
   register_prologue m, profiling_start_stream

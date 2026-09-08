@@ -838,3 +838,243 @@ meta_parameters:
   cuGetExportTable:
     - [InScalar, pExportTableId]
     - [OutScalar, ppExportTable]
+  cuCheckpointProcessCheckpoint:
+    - [InScalar, args]
+  cuCheckpointProcessGetRestoreThreadId:
+    - [OutScalar, tid]
+  cuCheckpointProcessGetState:
+    - [OutScalar, state]
+  cuCheckpointProcessLock:
+    - [InScalar, args]
+  cuCheckpointProcessRestore:
+    - [InScalar, args]
+    - [InArray, args->gpuPairs, args->gpuPairsCount]
+  cuCheckpointProcessUnlock:
+    - [InScalar, args]
+  cuCtxCreate_v4:
+    - [OutScalar, pctx]
+    - [InScalar, ctxCreateParams]
+    - [InArray, ctxCreateParams->execAffinityParams, ctxCreateParams->numExecAffinityParams]
+    - [InScalar, ctxCreateParams->cigParams]
+  cuCtxFromGreenCtx:
+    - [OutScalar, pContext]
+  cuCtxGetDevice_v2:
+    - [OutScalar, device]
+  cuCtxGetDevResource:
+    - [OutScalar, resource]
+  cuDeviceGetDevResource:
+    - [OutScalar, resource]
+  cuDeviceGetHostAtomicCapabilities:
+    - [OutArray, capabilities, count]
+    - [InArray, operations, count]
+  cuDeviceGetP2PAtomicCapabilities:
+    - [OutArray, capabilities, count]
+    - [InArray, operations, count]
+  cuDeviceRegisterAsyncNotification:
+    - [OutScalar, callback]
+  cuDevResourceGenerateDesc:
+    - [OutScalar, phDesc]
+    - [InArray, resources, nbResources]
+  cuDevSmResourceSplitByCount:
+    - [InOutScalar, nbGroups]
+    - [OutArray, result, nbGroups]
+    - [InScalar, input]
+    - [OutScalar, remaining]
+  cuEventElapsedTime_v2:
+    - [OutScalar, pMilliseconds]
+  cuFuncGetName:
+    - [OutPtrString, name]
+  cuFuncGetParamInfo:
+    - [OutScalar, paramOffset]
+    - [OutScalar, paramSize]
+  cuFuncIsLoaded:
+    - [OutScalar, state]
+  cuGraphAddDependencies_v2:
+    - [InArray, from, numDependencies]
+    - [InArray, to, numDependencies]
+    - [InArray, edgeData, numDependencies]
+  cuGraphAddNode:
+    - [OutScalar, phGraphNode]
+    - [InArray, dependencies, numDependencies]
+    - [InScalar, nodeParams]
+  cuGraphAddNode_v2:
+    - [OutScalar, phGraphNode]
+    - [InArray, dependencies, numDependencies]
+    - [InArray, dependencyData, numDependencies]
+    - [InScalar, nodeParams]
+  cuGraphConditionalHandleCreate:
+    - [OutScalar, pHandle_out]
+  cuGraphExecNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphGetEdges_v2:
+    - [InOutScalar, numEdges]
+    - [OutArray, from, numEdges]
+    - [OutArray, to, numEdges]
+    - [OutArray, edgeData, numEdges]
+  cuGraphNodeGetDependencies_v2:
+    - [InOutScalar, numDependencies]
+    - [OutArray, dependencies, numDependencies]
+    - [OutArray, edgeData, numDependencies]
+  cuGraphNodeGetDependentNodes_v2:
+    - [InOutScalar, numDependentNodes]
+    - [OutArray, dependentNodes, numDependentNodes]
+    - [OutArray, edgeData, numDependentNodes]
+  cuGraphNodeSetParams:
+    - [InScalar, nodeParams]
+  cuGraphRemoveDependencies_v2:
+    - [InArray, from, numDependencies]
+    - [InArray, to, numDependencies]
+    - [InArray, edgeData, numDependencies]
+  cuGreenCtxCreate:
+    - [OutScalar, phCtx]
+  cuGreenCtxGetDevResource:
+    - [OutScalar, resource]
+  cuGreenCtxGetId:
+    - [OutScalar, greenCtxId]
+  cuGreenCtxStreamCreate:
+    - [OutScalar, phStream]
+  cuKernelGetLibrary:
+    - [OutScalar, pLib]
+  cuKernelGetName:
+    - [OutPtrString, name]
+  cuKernelGetParamInfo:
+    - [OutScalar, paramOffset]
+    - [OutScalar, paramSize]
+  cuLibraryEnumerateKernels:
+    - [OutArray, kernels, numKernels]
+  cuLibraryGetKernelCount:
+    - [OutScalar, count]
+  cuLogsCurrent:
+    - [OutScalar, iterator_out]
+  cuLogsDumpToFile:
+    - [InScalar, iterator]
+    - [InString, pathToFile]
+  cuLogsDumpToMemory:
+    - [InScalar, iterator]
+    - [InOutScalar, size]
+    - [OutArray, buffer, size]
+  cuLogsRegisterCallback:
+    - [OutScalar, callback_out]
+  cuMemBatchDecompressAsync:
+    - [InArray, paramsArray, count]
+    - [OutScalar, errorIndex]
+  cuMemBatchDecompressAsync_ptsz:
+    - [InArray, paramsArray, count]
+    - [OutScalar, errorIndex]
+  cuMemcpy3DBatchAsync:
+    - [InArray, opList, numOps]
+    - [OutScalar, failIdx]
+  cuMemcpy3DBatchAsync_ptsz:
+    - [InArray, opList, numOps]
+    - [OutScalar, failIdx]
+  cuMemcpy3DBatchAsync_v2:
+    - [InArray, opList, numOps]
+  cuMemcpy3DBatchAsync_v2_ptsz:
+    - [InArray, opList, numOps]
+  cuMemcpyBatchAsync:
+    - [InArray, dsts, count]
+    - [InArray, srcs, count]
+    - [InArray, sizes, count]
+    - [InArray, attrs, numAttrs]
+    - [InArray, attrsIdxs, numAttrs]
+    - [OutScalar, failIdx]
+  cuMemcpyBatchAsync_ptsz:
+    - [InArray, dsts, count]
+    - [InArray, srcs, count]
+    - [InArray, sizes, count]
+    - [InArray, attrs, numAttrs]
+    - [InArray, attrsIdxs, numAttrs]
+    - [OutScalar, failIdx]
+  cuMemcpyBatchAsync_v2:
+    - [InArray, dsts, count]
+    - [InArray, srcs, count]
+    - [InArray, sizes, count]
+    - [InArray, attrs, numAttrs]
+    - [InArray, attrsIdxs, numAttrs]
+  cuMemcpyBatchAsync_v2_ptsz:
+    - [InArray, dsts, count]
+    - [InArray, srcs, count]
+    - [InArray, sizes, count]
+    - [InArray, attrs, numAttrs]
+    - [InArray, attrsIdxs, numAttrs]
+  cuMemDiscardAndPrefetchBatchAsync:
+    - [InArray, dptrs, count]
+    - [InArray, sizes, count]
+    - [InArray, prefetchLocs, numPrefetchLocs]
+    - [InArray, prefetchLocIdxs, numPrefetchLocs]
+  cuMemDiscardAndPrefetchBatchAsync_ptsz:
+    - [InArray, dptrs, count]
+    - [InArray, sizes, count]
+    - [InArray, prefetchLocs, numPrefetchLocs]
+    - [InArray, prefetchLocIdxs, numPrefetchLocs]
+  cuMemDiscardBatchAsync:
+    - [InArray, dptrs, count]
+    - [InArray, sizes, count]
+  cuMemDiscardBatchAsync_ptsz:
+    - [InArray, dptrs, count]
+    - [InArray, sizes, count]
+  cuMemGetDefaultMemPool:
+    - [OutScalar, pool_out]
+    - [InScalar, location]
+  cuMemGetMemPool:
+    - [OutScalar, pool]
+    - [InScalar, location]
+  cuMemPrefetchBatchAsync:
+    - [InArray, dptrs, count]
+    - [InArray, sizes, count]
+    - [InArray, prefetchLocs, numPrefetchLocs]
+    - [InArray, prefetchLocIdxs, numPrefetchLocs]
+  cuMemPrefetchBatchAsync_ptsz:
+    - [InArray, dptrs, count]
+    - [InArray, sizes, count]
+    - [InArray, prefetchLocs, numPrefetchLocs]
+    - [InArray, prefetchLocIdxs, numPrefetchLocs]
+  cuMemSetMemPool:
+    - [InScalar, location]
+  cuModuleEnumerateFunctions:
+    - [OutArray, functions, numFunctions]
+  cuModuleGetFunctionCount:
+    - [OutScalar, count]
+  cuStreamBeginCaptureToGraph:
+    - [InArray, dependencies, numDependencies]
+    - [InArray, dependencyData, numDependencies]
+  cuStreamBeginCaptureToGraph_ptsz: 
+    - [InArray, dependencies, numDependencies]
+    - [InArray, dependencyData, numDependencies]
+  cuStreamGetCaptureInfo_v3:
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
+    - [OutScalar, graph_out]
+    - [OutScalar, numDependencies_out]
+    - [OutArrayByRef, dependencies_out, numDependencies_out]
+    - [OutArrayByRef, edgeData_out, numDependencies_out]
+  cuStreamGetCaptureInfo_v3_ptsz:
+    - [OutScalar, captureStatus_out]
+    - [OutScalar, id_out]
+    - [OutScalar, graph_out]
+    - [OutScalar, numDependencies_out]
+    - [OutArrayByRef, dependencies_out, numDependencies_out]
+    - [OutArrayByRef, edgeData_out, numDependencies_out]
+  cuStreamGetCtx_v2:
+    - [OutScalar, pCtx]
+    - [OutScalar, pGreenCtx]
+  cuStreamGetCtx_v2_ptsz:
+    - [OutScalar, pCtx]
+    - [OutScalar, pGreenCtx]
+  cuStreamGetDevice:
+    - [OutScalar, device]
+  cuStreamGetDevice_ptsz:
+    - [OutScalar, device]
+  cuStreamGetGreenCtx:
+    - [OutScalar, phCtx]
+  cuStreamUpdateCaptureDependencies_v2:
+    - [InArray, dependencies, numDependencies]
+    - [InArray, dependencyData, numDependencies]
+  cuStreamUpdateCaptureDependencies_v2_ptsz:
+    - [InArray, dependencies, numDependencies]
+    - [InArray, dependencyData, numDependencies]
+  cuTensorMapEncodeIm2colWide:
+    - [OutScalar, tensorMap]
+    - [InArray, globalDim, tensorRank]
+    - [InArray, globalStrides, tensorRank]
+    - [InArray, elementStrides, tensorRank]

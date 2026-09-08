@@ -105,5 +105,5 @@ $cudart_commands.each do |c|
 end
 
 $cudart_commands.each do |c|
-  puts "__asm__(\".symver #{c.name},#{c.name}@@libcudart.so.12, remove\");"
+  puts "__asm__(\".symver #{c.name},#{c.name}@@libcudart.so.13, remove\");"
 end

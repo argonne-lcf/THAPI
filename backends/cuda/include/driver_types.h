@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2018 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2023 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -62,6 +62,7 @@
 
 
 
+#ifndef __CUDACC_RTC_MINIMAL__
 /**
  * \defgroup CUDART_TYPES Data types used by CUDA Runtime
  * \ingroup CUDART
@@ -76,6 +77,7 @@
 *******************************************************************************/
 
 #if !defined(__CUDA_INTERNAL_COMPILATION__)
+
 
 #if !defined(__CUDACC_RTC__)
 #include <limits.h>
@@ -139,7 +141,7 @@
 #define cudaDeviceScheduleMask              0x07  /**< Device schedule flags mask */
 #define cudaDeviceMapHost                   0x08  /**< Device flag - Support mapped pinned allocations */
 #define cudaDeviceLmemResizeToMax           0x10  /**< Device flag - Keep local memory allocation after launch */
-#define cudaDeviceSyncMemops                0x80  /**< Device flag - Use synchronous behavior for cudaMemcpy/cudaMemset */
+#define cudaDeviceSyncMemops                0x80  /**< Device flag - Ensure synchronous memory operations on this context will synchronize */
 #define cudaDeviceMask                      0xff  /**< Device flags mask */
 
 #define cudaArrayDefault                    0x00  /**< Default CUDA array allocation flag */
@@ -163,19 +165,6 @@
 #define cudaCpuDeviceId                     ((int)-1) /**< Device id that represents the CPU */
 #define cudaInvalidDeviceId                 ((int)-2) /**< Device id that represents an invalid device */
 #define cudaInitDeviceFlagsAreValid         0x01  /**< Tell the CUDA runtime that DeviceFlags is being set in cudaInitDevice call */
-/**
- * If set, each kernel launched as part of ::cudaLaunchCooperativeKernelMultiDevice only
- * waits for prior work in the stream corresponding to that GPU to complete before the
- * kernel begins execution.
- */
-#define cudaCooperativeLaunchMultiDeviceNoPreSync  0x01
-
-/**
- * If set, any subsequent work pushed in a stream that participated in a call to
- * ::cudaLaunchCooperativeKernelMultiDevice will only wait for the kernel launched on
- * the GPU corresponding to that stream to complete before it begins execution.
- */
-#define cudaCooperativeLaunchMultiDeviceNoPostSync 0x02
 
 #endif /* !__CUDA_INTERNAL_COMPILATION__ */
 
@@ -216,8 +205,8 @@ enum __device_builtin__ cudaError
     cudaErrorInvalidValue                 =     1,
   
     /**
-     * The API call failed because it was unable to allocate enough memory to
-     * perform the requested operation.
+     * The API call failed because it was unable to allocate enough memory or
+     * other resources to perform the requested operation.
      */
     cudaErrorMemoryAllocation             =      2,
   
@@ -262,7 +251,6 @@ enum __device_builtin__ cudaError
      * to call cudaProfilerStop() when profiling is already disabled.
      */
      cudaErrorProfilerAlreadyStopped       =    8,
-  
     /**
      * This indicates that a kernel launch is requesting resources that can
      * never be satisfied by the current device. Requesting more shared memory
@@ -283,7 +271,7 @@ enum __device_builtin__ cudaError
      * is not a valid name or identifier.
      */
     cudaErrorInvalidSymbol                =     13,
-  
+
     /**
      * This indicates that at least one host pointer passed to the API call is
      * not a valid host pointer.
@@ -299,7 +287,6 @@ enum __device_builtin__ cudaError
      * This error return is deprecated as of CUDA 10.1.
      */
     cudaErrorInvalidDevicePointer         =     17,
-  
     /**
      * This indicates that the texture passed to the API call is not a valid
      * texture.
@@ -324,7 +311,7 @@ enum __device_builtin__ cudaError
      * not one of the types specified by ::cudaMemcpyKind.
      */
     cudaErrorInvalidMemcpyDirection       =     21,
-  
+
     /**
      * This indicated that the user has taken the address of a constant variable,
      * which was forbidden up until the CUDA 3.1 release.
@@ -361,7 +348,6 @@ enum __device_builtin__ cudaError
      * removed with the CUDA 3.1 release.
      */
     cudaErrorSynchronizationError         =     25,
-  
     /**
      * This indicates that a non-float texture was being accessed with linear
      * filtering. This is not supported by CUDA.
@@ -369,11 +355,11 @@ enum __device_builtin__ cudaError
     cudaErrorInvalidFilterSetting         =     26,
   
     /**
-     * This indicates that an attempt was made to read a non-float texture as a
+     * This indicates that an attempt was made to read an unsupported data type as a
      * normalized float. This is not supported by CUDA.
      */
     cudaErrorInvalidNormSetting           =     27,
-  
+
     /**
      * Mixing of device and device emulation code was not allowed.
      * \deprecated
@@ -398,7 +384,6 @@ enum __device_builtin__ cudaError
      * removed with the CUDA 3.1 release.
      */
     cudaErrorMemoryValueTooLarge          =     32,
-  
     /**
      * This indicates that the CUDA driver that the application has loaded is a
      * stub library. Applications that run with the stub rather than a real
@@ -472,7 +457,7 @@ enum __device_builtin__ cudaError
      * previously configured via the ::cudaConfigureCall() function.
      */
     cudaErrorMissingConfiguration         =      52,
-  
+
     /**
      * This indicated that a previous kernel launch failed. This was previously
      * used for device emulation of kernel launches.
@@ -481,7 +466,6 @@ enum __device_builtin__ cudaError
      * removed with the CUDA 3.1 release.
      */
     cudaErrorPriorLaunchFailure           =      53,
-
     /**
      * This error indicates that a device runtime grid launch did not occur 
      * because the depth of the child grid would exceed the maximum supported
@@ -711,6 +695,17 @@ enum __device_builtin__ cudaError
     cudaErrorUnsupportedDevSideSync       =     225,
 
     /**
+     * This indicates that an exception occurred on the device that is now
+     * contained by the GPU's error containment capability. Common causes are -
+     * a. Certain types of invalid accesses of peer GPU memory over nvlink
+     * b. Certain classes of hardware errors
+     * This leaves the process in an inconsistent state and any further CUDA
+     * work will return the same error. To continue using CUDA, the process must
+     * be terminated and relaunched.
+     */
+    cudaErrorContained                    =     226,
+
+    /**
      * This indicates that the device kernel source is invalid.
      */
     cudaErrorInvalidSource                =     300,
@@ -749,6 +744,14 @@ enum __device_builtin__ cudaError
     cudaErrorIllegalState                 =     401,
 
     /**
+     * This indicates an attempt was made to introspect an object in a way that
+     * would discard semantically important information. This is either due to
+     * the object using funtionality newer than the API version used to
+     * introspect it or omission of optional return arguments.
+     */
+    cudaErrorLossyQuery                   =     402,
+
+    /**
      * This indicates that a named symbol was not found. Examples of symbols
      * are global/constant variable names, driver function names, texture names,
      * and surface names.
@@ -782,8 +785,8 @@ enum __device_builtin__ cudaError
   
     /**
      * This indicates that the device kernel took too long to execute. This can
-     * only occur if timeouts are enabled - see the device property
-     * \ref ::cudaDeviceProp::kernelExecTimeoutEnabled "kernelExecTimeoutEnabled"
+     * only occur if timeouts are enabled - see the device attribute 
+     * \ref ::cudaDeviceAttr::cudaDevAttrKernelExecTimeout "cudaDevAttrKernelExecTimeout"
      * for more information.
      * This leaves the process in an inconsistent state and any further CUDA work
      * will return the same error. To continue using CUDA, the process must be terminated
@@ -915,12 +918,20 @@ enum __device_builtin__ cudaError
 
     /**
      * This error indicates that the number of blocks launched per grid for a kernel that was
-     * launched via either ::cudaLaunchCooperativeKernel or ::cudaLaunchCooperativeKernelMultiDevice
+     * launched via either ::cudaLaunchCooperativeKernel
      * exceeds the maximum number of blocks as allowed by ::cudaOccupancyMaxActiveBlocksPerMultiprocessor
      * or ::cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags times the number of multiprocessors
      * as specified by the device attribute ::cudaDevAttrMultiProcessorCount.
      */
     cudaErrorCooperativeLaunchTooLarge    =     720,
+
+    /**
+     * An exception occurred on the device while exiting a kernel using tensor memory: the
+     * tensor memory was not completely deallocated. This leaves the process in an inconsistent
+     * state and any further CUDA work will return the same error. To continue using CUDA, the
+     * process must be terminated and relaunched.
+     */
+    cudaErrorTensorMemoryLeak             =     721,
     
     /**
      * This error indicates the attempted operation is not permitted.
@@ -1081,9 +1092,27 @@ enum __device_builtin__ cudaError
     cudaErrorInvalidClusterSize           =    912,
 
     /**
+     * Indiciates a function handle is not loaded when calling an API that requires
+     * a loaded function.
+     */
+    cudaErrorFunctionNotLoaded            =    913,
+
+    /**
+     * This error indicates one or more resources passed in are not valid resource
+     * types for the operation.
+     */
+    cudaErrorInvalidResourceType          =    914,
+
+    /**
+     * This error indicates one or more resources are insufficient or non-applicable for
+     * the operation.
+     */
+    cudaErrorInvalidResourceConfiguration =    915,
+
+    /**
      * This indicates that an unknown internal error has occurred.
      */
-    cudaErrorUnknown                      =    999,
+    cudaErrorUnknown                      =    999
 
     /**
      * Any unhandled CUDA driver error is added to this value and returned via
@@ -1091,7 +1120,7 @@ enum __device_builtin__ cudaError
      * \deprecated
      * This error return is deprecated as of CUDA 4.1.
      */
-    cudaErrorApiFailureBase               =  10000
+    , cudaErrorApiFailureBase               =  10000
 };
 
 /**
@@ -1129,7 +1158,9 @@ enum __device_builtin__ cudaChannelFormatKind
     cudaChannelFormatKindUnsignedBlockCompressed6H      =   27,     /**< 3 channel unsigned half-float block-compressed (BC6H compression) format */
     cudaChannelFormatKindSignedBlockCompressed6H        =   28,     /**< 3 channel signed half-float block-compressed (BC6H compression) format */
     cudaChannelFormatKindUnsignedBlockCompressed7       =   29,     /**< 4 channel unsigned normalized block-compressed (BC7 compression) format */
-    cudaChannelFormatKindUnsignedBlockCompressed7SRGB   =   30      /**< 4 channel unsigned normalized block-compressed (BC7 compression) format with sRGB encoding */
+    cudaChannelFormatKindUnsignedBlockCompressed7SRGB   =   30,     /**< 4 channel unsigned normalized block-compressed (BC7 compression) format with sRGB encoding */
+    cudaChannelFormatKindUnsignedNormalized1010102      =   31      /**< 4 channel unsigned normalized (10-bit, 10-bit, 10-bit, 2-bit) format */
+
 };
 
 /**
@@ -1275,6 +1306,15 @@ struct __device_builtin__ cudaMemcpy3DParms
 };
 
 /**
+ * Memcpy node parameters
+ */
+struct __device_builtin__ cudaMemcpyNodeParams {
+    int flags;                            /**< Must be zero */
+    int reserved[3];                      /**< Must be zero */
+    struct cudaMemcpy3DParms copyParams;  /**< Parameters for the memory copy */
+};
+
+/**
  * CUDA 3D cross-device memory copying parameters
  */
 struct __device_builtin__ cudaMemcpy3DPeerParms
@@ -1296,6 +1336,18 @@ struct __device_builtin__ cudaMemcpy3DPeerParms
  * CUDA Memset node parameters
  */
 struct __device_builtin__  cudaMemsetParams {
+    void *dst;                              /**< Destination device pointer */
+    size_t pitch;                           /**< Pitch of destination device pointer. Unused if height is 1 */
+    unsigned int value;                     /**< Value to be set */
+    unsigned int elementSize;               /**< Size of each element in bytes. Must be 1, 2, or 4. */
+    size_t width;                           /**< Width of the row in elements */
+    size_t height;                          /**< Number of rows */
+};
+
+/**
+ * CUDA Memset node parameters
+ */
+struct __device_builtin__  cudaMemsetParamsV2 {
     void *dst;                              /**< Destination device pointer */
     size_t pitch;                           /**< Pitch of destination device pointer. Unused if height is 1 */
     unsigned int value;                     /**< Value to be set */
@@ -1348,6 +1400,14 @@ typedef void (CUDART_CB *cudaHostFn_t)(void *userData);
  * CUDA host node parameters
  */
 struct __device_builtin__ cudaHostNodeParams {
+    cudaHostFn_t fn;    /**< The function to call when the node executes */
+    void* userData; /**< Argument to pass to the function */
+};
+
+/**
+ * CUDA host node parameters
+ */
+struct __device_builtin__ cudaHostNodeParamsV2 {
     cudaHostFn_t fn;    /**< The function to call when the node executes */
     void* userData; /**< Argument to pass to the function */
 };
@@ -1528,7 +1588,12 @@ struct __device_builtin__ cudaResourceDesc {
             size_t height;                     /**< Height of the array in elements */
             size_t pitchInBytes;               /**< Pitch between two rows in bytes */
         } pitch2D;
+        struct {
+            int reserved[32];
+        } reserved;
     } res;
+
+    unsigned int flags;                        /**< Flags (must be zero) */
 };
 
 /**
@@ -1544,6 +1609,7 @@ struct __device_builtin__ cudaResourceViewDesc
     unsigned int                lastMipmapLevel;  /**< Last defined mipmap level */
     unsigned int                firstLayer;       /**< First layer index */
     unsigned int                lastLayer;        /**< Last layer index */
+    unsigned int                reserved[16];     /**< Must be zero */
 };
 
 /**
@@ -1582,6 +1648,11 @@ struct __device_builtin__ cudaPointerAttributes
      * may contain invalid pointer if an invalid pointer has been passed to CUDA.
      */
     void *hostPointer;
+
+    /**
+     * Must be zero
+     */
+    long reserved[8];
 };
 
 /**
@@ -1737,8 +1808,8 @@ enum __device_builtin__ cudaFuncCache
 
 /**
  * CUDA shared memory configuration
+ * \deprecated
  */
-
 enum __device_builtin__ cudaSharedMemConfig
 {
     cudaSharedMemBankSizeDefault   = 0,
@@ -1798,10 +1869,14 @@ enum __device_builtin__ cudaMemoryAdvise
  */
 enum __device_builtin__ cudaMemRangeAttribute
 {
-    cudaMemRangeAttributeReadMostly           = 1, /**< Whether the range will mostly be read and only occassionally be written to */
-    cudaMemRangeAttributePreferredLocation    = 2, /**< The preferred location of the range */
-    cudaMemRangeAttributeAccessedBy           = 3, /**< Memory range has ::cudaMemAdviseSetAccessedBy set for specified device */
-    cudaMemRangeAttributeLastPrefetchLocation = 4  /**< The last location to which the range was prefetched */
+    cudaMemRangeAttributeReadMostly               = 1, /**< Whether the range will mostly be read and only occassionally be written to */
+    cudaMemRangeAttributePreferredLocation        = 2, /**< The preferred location of the range */
+    cudaMemRangeAttributeAccessedBy               = 3, /**< Memory range has ::cudaMemAdviseSetAccessedBy set for specified device */
+    cudaMemRangeAttributeLastPrefetchLocation     = 4, /**< The last location to which the range was prefetched */
+    cudaMemRangeAttributePreferredLocationType    = 5, /**< The preferred location type of the range */
+    cudaMemRangeAttributePreferredLocationId      = 6, /**< The preferred location id of the range */
+    cudaMemRangeAttributeLastPrefetchLocationType = 7, /**< The last location type to which the range was prefetched */
+    cudaMemRangeAttributeLastPrefetchLocationId   = 8  /**< The last location id to which the range was prefetched */
 };
 
 /**
@@ -1936,7 +2011,7 @@ enum __device_builtin__ cudaDeviceAttr
     cudaDevAttrReserved93                     = 93,
     cudaDevAttrReserved94                     = 94,
     cudaDevAttrCooperativeLaunch              = 95, /**< Device supports launching cooperative kernels via ::cudaLaunchCooperativeKernel*/
-    cudaDevAttrCooperativeMultiDeviceLaunch   = 96, /**< Deprecated, cudaLaunchCooperativeKernelMultiDevice is deprecated. */
+    cudaDevAttrReserved96                     = 96,
     cudaDevAttrMaxSharedMemoryPerBlockOptin   = 97, /**< The maximum optin shared memory per block. This value may vary by chip. See ::cudaFuncSetAttribute */
     cudaDevAttrCanFlushRemoteWrites           = 98, /**< Device supports flushing of outstanding remote writes. */
     cudaDevAttrHostRegisterSupported          = 99, /**< Device supports host memory registration via ::cudaHostRegister. */
@@ -1949,7 +2024,6 @@ enum __device_builtin__ cudaDeviceAttr
     cudaDevAttrSparseCudaArraySupported       = 112, /**< Device supports sparse CUDA arrays and sparse CUDA mipmapped arrays */
     cudaDevAttrHostRegisterReadOnlySupported  = 113,  /**< Device supports using the ::cudaHostRegister flag cudaHostRegisterReadOnly to register memory that must be mapped as read-only to the GPU */
     cudaDevAttrTimelineSemaphoreInteropSupported = 114,  /**< External timeline semaphore interop is supported on the device */
-    cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114,  /**< Deprecated, External timeline semaphore interop is supported on the device */
     cudaDevAttrMemoryPoolsSupported           = 115, /**< Device supports using the ::cudaMallocAsync and ::cudaMemPool family of APIs */
     cudaDevAttrGPUDirectRDMASupported         = 116, /**< Device supports GPUDirect RDMA APIs, like nvidia_p2p_get_pages (see https://docs.nvidia.com/cuda/gpudirect-rdma for more information) */
     cudaDevAttrGPUDirectRDMAFlushWritesOptions = 117, /**< The returned attribute shall be interpreted as a bitmask, where the individual bits are listed in the ::cudaFlushGPUDirectRDMAWritesOptions enum */
@@ -1965,7 +2039,22 @@ enum __device_builtin__ cudaDeviceAttr
     cudaDevAttrReserved127                    = 127,
     cudaDevAttrReserved128                    = 128,
     cudaDevAttrReserved129                    = 129,
+    cudaDevAttrNumaConfig                     = 130, /**< NUMA configuration of a device: value is of type ::cudaDeviceNumaConfig enum */
+    cudaDevAttrNumaId                         = 131, /**< NUMA node ID of the GPU memory */
     cudaDevAttrReserved132                    = 132,
+    cudaDevAttrMpsEnabled                     = 133, /**< Contexts created on this device will be shared via MPS */
+    cudaDevAttrHostNumaId                     = 134, /**< NUMA ID of the host node closest to the device or -1 when system does not support NUMA */
+    cudaDevAttrD3D12CigSupported              = 135, /**< Device supports CIG with D3D12. */
+    cudaDevAttrVulkanCigSupported             = 138, /**< Device supports CIG with Vulkan. */
+    cudaDevAttrGpuPciDeviceId                 = 139, /**< The combined 16-bit PCI device ID and 16-bit PCI vendor ID. */
+    cudaDevAttrGpuPciSubsystemId              = 140, /**< The combined 16-bit PCI subsystem ID and 16-bit PCI subsystem vendor ID. */
+    cudaDevAttrReserved141                    = 141,
+    cudaDevAttrHostNumaMemoryPoolsSupported   = 142, /**< Device supports HOST_NUMA location with the ::cudaMallocAsync and ::cudaMemPool family of APIs */
+    cudaDevAttrHostNumaMultinodeIpcSupported  = 143, /**< Device supports HostNuma location IPC between nodes in a multi-node system. */
+    cudaDevAttrHostMemoryPoolsSupported       = 144, /**< Device suports HOST location with the ::cuMemAllocAsync and ::cuMemPool family of APIs */
+    cudaDevAttrReserved145                    = 145,
+    cudaDevAttrOnlyPartialHostNativeAtomicSupported = 147,     /**< Link between the device and the host supports only some native atomic operations */
+
     cudaDevAttrMax
 };
 
@@ -2042,13 +2131,18 @@ enum __device_builtin__ cudaMemPoolAttr
  */
 enum __device_builtin__ cudaMemLocationType {
     cudaMemLocationTypeInvalid = 0,
-    cudaMemLocationTypeDevice = 1  /**< Location is a device location, thus id is a device ordinal */
+    cudaMemLocationTypeNone = 0, /**< Location is unspecified. This is used when creating a managed memory pool to indicate no preferred location for the pool */
+    cudaMemLocationTypeDevice = 1,  /**< Location is a device location, thus id is a device ordinal */
+    cudaMemLocationTypeHost = 2     /**< Location is host, id is ignored */
+    , cudaMemLocationTypeHostNuma = 3 /**< Location is a host NUMA node, thus id is a host NUMA node id */
+    , cudaMemLocationTypeHostNumaCurrent = 4 /**< Location is the host NUMA node closest to the current thread's CPU, id is ignored */
 };
 
 /**
  * Specifies a memory location.
  *
  * To specify a gpu, set type = ::cudaMemLocationTypeDevice and set id = the gpu's device ordinal.
+ * To specify a cpu NUMA node, set type = ::cudaMemLocationTypeHostNuma and set id = host NUMA node id.
  */
 struct __device_builtin__ cudaMemLocation {
     enum cudaMemLocationType type;  /**< Specifies the location type, which modifies the meaning of id. */
@@ -2081,6 +2175,9 @@ enum __device_builtin__ cudaMemAllocationType {
       * location while the application is actively using it
       */
     cudaMemAllocationTypePinned  = 0x1,
+    /** This allocation type is managed memory
+      */
+    cudaMemAllocationTypeManaged = 0x2,
     cudaMemAllocationTypeMax     = 0x7FFFFFFF 
 };
 
@@ -2091,8 +2188,15 @@ enum __device_builtin__ cudaMemAllocationHandleType {
     cudaMemHandleTypeNone                    = 0x0,  /**< Does not allow any export mechanism. > */
     cudaMemHandleTypePosixFileDescriptor     = 0x1,  /**< Allows a file descriptor to be used for exporting. Permitted only on POSIX systems. (int) */
     cudaMemHandleTypeWin32                   = 0x2,  /**< Allows a Win32 NT handle to be used for exporting. (HANDLE) */
-    cudaMemHandleTypeWin32Kmt                = 0x4   /**< Allows a Win32 KMT handle to be used for exporting. (D3DKMT_HANDLE) */
+    cudaMemHandleTypeWin32Kmt                = 0x4,   /**< Allows a Win32 KMT handle to be used for exporting. (D3DKMT_HANDLE) */
+    cudaMemHandleTypeFabric                  = 0x8  /**< Allows a fabric handle to be used for exporting. (cudaMemFabricHandle_t) */
 };
+
+/**
+ * This flag, if set, indicates that the memory will be used as a buffer for
+ * hardware accelerated decompression.
+ */
+#define cudaMemPoolCreateUsageHwDecompress 0x2
 
 /**
  * Specifies the properties of allocations made from the pool.
@@ -2108,7 +2212,9 @@ struct __device_builtin__ cudaMemPoolProps {
      * processes.  In all other cases, this field is required to be zero.
      */
     void                              *win32SecurityAttributes;
-    unsigned char                      reserved[64]; /**< reserved for future use, must be 0 */
+    size_t                             maxSize;     /**< Maximum pool size. When set to 0, defaults to a system dependent value.*/
+    unsigned short                     usage;        /**< Bitmask indicating intended usage for the pool. */
+    unsigned char                      reserved[54]; /**< reserved for future use, must be 0 */
 };
 
 /**
@@ -2131,6 +2237,28 @@ struct __device_builtin__ cudaMemAllocNodeParams {
     size_t                          accessDescCount; /**< in: Number of `accessDescs`s */
     size_t                          bytesize;        /**< in: size in bytes of the requested allocation */
     void                           *dptr;            /**< out: address of the allocation returned by CUDA */
+};
+
+/**
+ * Memory allocation node parameters
+ */
+struct __device_builtin__ cudaMemAllocNodeParamsV2 {
+    /**
+    * in: location where the allocation should reside (specified in ::location).
+    * ::handleTypes must be ::cudaMemHandleTypeNone. IPC is not supported.
+    */
+    struct cudaMemPoolProps         poolProps;       /**< in: array of memory access descriptors. Used to describe peer GPU access */
+    const struct cudaMemAccessDesc *accessDescs;     /**< in: number of memory access descriptors.  Must not exceed the number of GPUs. */
+    size_t                          accessDescCount; /**< in: Number of `accessDescs`s */
+    size_t                          bytesize;        /**< in: size in bytes of the requested allocation */
+    void                           *dptr;            /**< out: address of the allocation returned by CUDA */
+};
+
+/**
+ * Memory free node parameters
+ */
+struct __device_builtin__ cudaMemFreeNodeParams {
+    void *dptr; /**< in: the pointer to free */
 };
 
 /**
@@ -2166,6 +2294,114 @@ enum __device_builtin__ cudaGraphMemAttributeType {
 };
 
 /**
+ * Flags to specify for copies within a batch. For more details see ::cudaMemcpyBatchAsync.
+ */
+enum __device_builtin__ cudaMemcpyFlags {
+    cudaMemcpyFlagDefault                  = 0x0,
+
+    /**
+     * Hint to the driver to try and overlap the copy with compute work on the SMs.
+     */
+    cudaMemcpyFlagPreferOverlapWithCompute = 0x1
+};
+
+enum __device_builtin__ cudaMemcpySrcAccessOrder {
+    /**
+     * Default invalid.
+     */
+    cudaMemcpySrcAccessOrderInvalid       = 0x0,
+
+    /**
+     * Indicates that access to the source pointer must be in stream order.
+     */
+    cudaMemcpySrcAccessOrderStream        = 0x1,
+
+    /**
+     * Indicates that access to the source pointer can be out of stream order and all
+     * accesses must be complete before the API call returns. This flag is suited for
+     * ephemeral sources (ex., stack variables) when it's known that no prior operations
+     * in the stream can be accessing the memory and also that the lifetime of the memory
+     * is limited to the scope that the source variable was declared in. Specifying
+     * this flag allows the driver to optimize the copy and removes the need for the user
+     * to synchronize the stream after the API call.
+     */
+    cudaMemcpySrcAccessOrderDuringApiCall = 0x2,
+
+    /**
+     * Indicates that access to the source pointer can be out of stream order and the accesses
+     * can happen even after the API call returns. This flag is suited for host pointers
+     * allocated outside CUDA (ex., via malloc) when it's known that no prior operations
+     * in the stream can be accessing the memory. Specifying this flag allows the driver
+     * to optimize the copy on certain platforms.
+     */
+    cudaMemcpySrcAccessOrderAny           = 0x3,
+
+    cudaMemcpySrcAccessOrderMax           = 0x7FFFFFFF
+};
+
+/**
+ * Attributes specific to copies within a batch. For more details on usage see ::cudaMemcpyBatchAsync.
+ */
+struct __device_builtin__ cudaMemcpyAttributes {
+    enum cudaMemcpySrcAccessOrder srcAccessOrder;  /**< Source access ordering to be observed for copies with this attribute. */
+    struct cudaMemLocation srcLocHint;             /**< Hint location for the source operand. Ignored when the pointers are not managed memory or memory allocated outside CUDA. */
+    struct cudaMemLocation dstLocHint;             /**< Hint location for the destination operand. Ignored when the pointers are not managed memory or memory allocated outside CUDA. */
+    unsigned int flags;                            /**< Additional flags for copies with this attribute. See ::cudaMemcpyFlags. */
+};
+
+/**
+ * These flags allow applications to convey the operand type for individual copies specified in ::cudaMemcpy3DBatchAsync.
+ */
+enum __device_builtin__ cudaMemcpy3DOperandType {
+    cudaMemcpyOperandTypePointer = 0x1,            /**< Memcpy operand is a valid pointer. */
+    cudaMemcpyOperandTypeArray = 0x2,              /**< Memcpy operand is a CUarray. */
+    cudaMemcpyOperandTypeMax = 0x7FFFFFFF
+};
+
+/**
+ * Struct representing offset into a ::cudaArray_t in elements
+ */
+struct __device_builtin__ cudaOffset3D {
+    size_t x;
+    size_t y;
+    size_t z;
+};
+
+/**
+ * Struct representing an operand for copy with ::cudaMemcpy3DBatchAsync
+ */
+struct __device_builtin__ cudaMemcpy3DOperand {
+    enum cudaMemcpy3DOperandType type;
+    union {
+        /**
+         * Struct representing an operand when ::cudaMemcpy3DOperand::type is ::cudaMemcpyOperandTypePointer
+         */
+        struct {
+            void *ptr;
+            size_t rowLength;                /**< Length of each row in elements. */ 
+            size_t layerHeight;              /**< Height of each layer in elements. */ 
+            struct cudaMemLocation locHint;  /**< Hint location for the operand. Ignored when the pointers are not managed memory or memory allocated outside CUDA. */
+        } ptr;
+
+        /**
+         * Struct representing an operand when ::cudaMemcpy3DOperand::type is ::cudaMemcpyOperandTypeArray
+         */
+        struct {
+            cudaArray_t array;
+            struct cudaOffset3D offset;
+        } array;
+    } op;  
+};
+
+struct __device_builtin__ cudaMemcpy3DBatchOp {
+    struct cudaMemcpy3DOperand src;                /**< Source memcpy operand. */
+    struct cudaMemcpy3DOperand dst;                /**< Destination memcpy operand. */
+    struct cudaExtent extent;                      /**< Extents of the memcpy between src and dst. The width, height and depth components must not be 0.*/
+    enum cudaMemcpySrcAccessOrder srcAccessOrder;  /**< Source access ordering to be observed for copy from src to dst. */
+    unsigned int flags;                            /**< Additional flags for copy from src to dst. See ::cudaMemcpyFlags. */
+};
+
+/**
  * CUDA device P2P attributes
  */
 
@@ -2174,7 +2410,44 @@ enum __device_builtin__ cudaDeviceP2PAttr {
     cudaDevP2PAttrAccessSupported              = 2, /**< Peer access is enabled */
     cudaDevP2PAttrNativeAtomicSupported        = 3, /**< Native atomic operation over the link supported */
     cudaDevP2PAttrCudaArrayAccessSupported     = 4  /**< Accessing CUDA arrays over the link supported */
+    ,
+    cudaDevP2PAttrOnlyPartialNativeAtomicSupported = 5   /**< Only some CUDA-valid atomic operations over the link are supported. */
+
 };
+
+/**
+ * CUDA-valid Atomic Operations
+ */
+enum __device_builtin__ cudaAtomicOperation {
+    cudaAtomicOperationIntegerAdd          = 0,
+    cudaAtomicOperationIntegerMin          = 1,
+    cudaAtomicOperationIntegerMax          = 2,
+    cudaAtomicOperationIntegerIncrement    = 3,
+    cudaAtomicOperationIntegerDecrement    = 4,
+    cudaAtomicOperationAnd                 = 5,
+    cudaAtomicOperationOr                  = 6,
+    cudaAtomicOperationXOR                 = 7,
+    cudaAtomicOperationExchange            = 8,
+    cudaAtomicOperationCAS                 = 9,
+    cudaAtomicOperationFloatAdd            = 10,
+    cudaAtomicOperationFloatMin            = 11,
+    cudaAtomicOperationFloatMax            = 12,
+};
+
+/** 
+ * CUDA-valid Atomic Operation capabilities
+ */
+enum __device_builtin__ cudaAtomicOperationCapability {
+    cudaAtomicCapabilitySigned          = 1u<<0,
+    cudaAtomicCapabilityUnsigned        = 1u<<1,
+    cudaAtomicCapabilityReduction       = 1u<<2,
+    cudaAtomicCapabilityScalar32        = 1u<<3,
+    cudaAtomicCapabilityScalar64        = 1u<<4,
+    cudaAtomicCapabilityScalar128       = 1u<<5,
+    cudaAtomicCapabilityVector32x4      = 1u<<6,
+};
+
+
 
 /**
  * CUDA UUID types
@@ -2205,21 +2478,16 @@ struct __device_builtin__ cudaDeviceProp
     int          maxThreadsPerBlock;         /**< Maximum number of threads per block */
     int          maxThreadsDim[3];           /**< Maximum size of each dimension of a block */
     int          maxGridSize[3];             /**< Maximum size of each dimension of a grid */
-    int          clockRate;                  /**< Deprecated, Clock frequency in kilohertz */
     size_t       totalConstMem;              /**< Constant memory available on device in bytes */
     int          major;                      /**< Major compute capability */
     int          minor;                      /**< Minor compute capability */
     size_t       textureAlignment;           /**< Alignment requirement for textures */
     size_t       texturePitchAlignment;      /**< Pitch alignment requirement for texture references bound to pitched memory */
-    int          deviceOverlap;              /**< Device can concurrently copy memory and execute a kernel. Deprecated. Use instead asyncEngineCount. */
     int          multiProcessorCount;        /**< Number of multiprocessors on device */
-    int          kernelExecTimeoutEnabled;   /**< Deprecated, Specified whether there is a run time limit on kernels */
     int          integrated;                 /**< Device is integrated as opposed to discrete */
     int          canMapHostMemory;           /**< Device can map host memory with cudaHostAlloc/cudaHostGetDevicePointer */
-    int          computeMode;                /**< Deprecated, Compute mode (See ::cudaComputeMode) */
     int          maxTexture1D;               /**< Maximum 1D texture size */
     int          maxTexture1DMipmap;         /**< Maximum 1D mipmapped texture size */
-    int          maxTexture1DLinear;         /**< Deprecated, do not use. Use cudaDeviceGetTexture1DLinearMaxWidth() or cuDeviceGetTexture1DLinearMaxWidth() instead. */
     int          maxTexture2D[2];            /**< Maximum 2D texture dimensions */
     int          maxTexture2DMipmap[2];      /**< Maximum 2D mipmapped texture dimensions */
     int          maxTexture2DLinear[3];      /**< Maximum dimensions (width, height, pitch) for 2D textures bound to pitched memory */
@@ -2246,7 +2514,6 @@ struct __device_builtin__ cudaDeviceProp
     int          tccDriver;                  /**< 1 if device is a Tesla device using TCC driver, 0 otherwise */
     int          asyncEngineCount;           /**< Number of asynchronous engines */
     int          unifiedAddressing;          /**< Device shares a unified address space with the host */
-    int          memoryClockRate;            /**< Deprecated, Peak memory clock frequency in kilohertz */
     int          memoryBusWidth;             /**< Global memory bus width in bits */
     int          l2CacheSize;                /**< Size of L2 cache in bytes */
     int          persistingL2CacheMaxSize;   /**< Device's maximum l2 persisting lines capacity setting in bytes */
@@ -2260,13 +2527,11 @@ struct __device_builtin__ cudaDeviceProp
     int          isMultiGpuBoard;            /**< Device is on a multi-GPU board */
     int          multiGpuBoardGroupID;       /**< Unique identifier for a group of devices on the same multi-GPU board */
     int          hostNativeAtomicSupported;  /**< Link between the device and the host supports native atomic operations */
-    int          singleToDoublePrecisionPerfRatio; /**< Deprecated, Ratio of single precision performance (in floating-point operations per second) to double precision performance */
     int          pageableMemoryAccess;       /**< Device supports coherently accessing pageable memory without calling cudaHostRegister on it */
     int          concurrentManagedAccess;    /**< Device can coherently access managed memory concurrently with the CPU */
     int          computePreemptionSupported; /**< Device supports Compute Preemption */
     int          canUseHostPointerForRegisteredMem; /**< Device can access host registered memory at the same virtual address as the CPU */
     int          cooperativeLaunch;          /**< Device supports launching cooperative kernels via ::cudaLaunchCooperativeKernel */
-    int          cooperativeMultiDeviceLaunch; /**< Deprecated, cudaLaunchCooperativeKernelMultiDevice is deprecated. */
     size_t       sharedMemPerBlockOptin;     /**< Per device maximum shared memory per block usable by special opt in */
     int          pageableMemoryAccessUsesHostPageTables; /**< Device accesses pageable memory via the host's page tables */
     int          directManagedMemAccessFromHost; /**< Host can directly access managed memory on the device without migration. */
@@ -2286,8 +2551,14 @@ struct __device_builtin__ cudaDeviceProp
     int          ipcEventSupported;          /**< Device supports IPC Events. */
     int          clusterLaunch;              /**< Indicates device supports cluster launch */
     int          unifiedFunctionPointers;    /**< Indicates device supports unified pointers */
-    int          reserved2[2];
-    int          reserved[61];               /**< Reserved for future use */
+    int          deviceNumaConfig;           /**< NUMA configuration of a device: value is of type ::cudaDeviceNumaConfig enum */
+    int          deviceNumaId;               /**< NUMA node ID of the GPU memory */
+    int          mpsEnabled;                 /**< Indicates if contexts created on this device will be shared via MPS */
+    int          hostNumaId;                 /**< NUMA ID of the host node closest to the device or -1 when system does not support NUMA */
+    unsigned int gpuPciDeviceID; /**< The combined 16-bit PCI device ID and 16-bit PCI vendor ID */
+    unsigned int gpuPciSubsystemID; /**< The combined 16-bit PCI subsystem ID and 16-bit PCI subsystem vendor ID */
+    int          hostNumaMultinodeIpcSupported; /**< 1 if the device supports HostNuma location IPC between nodes in a multi-node system. */
+    int          reserved[56];               /**< Reserved for future use */
 };
 
 /**
@@ -2310,6 +2581,14 @@ typedef __device_builtin__ struct __device_builtin__ cudaIpcMemHandle_st
 {
     char reserved[CUDA_IPC_HANDLE_SIZE];
 }cudaIpcMemHandle_t;
+
+/*
+ * CUDA Mem Fabric Handle
+ */
+typedef __device_builtin__ struct __device_builtin__ cudaMemFabricHandle_st 
+{
+    char reserved[CUDA_IPC_HANDLE_SIZE];
+}cudaMemFabricHandle_t;
 
 /**
  * External memory handle types
@@ -2441,6 +2720,10 @@ struct __device_builtin__ cudaExternalMemoryHandleDesc {
      * Flags must either be zero or ::cudaExternalMemoryDedicated
      */
     unsigned int flags;
+    /**
+     * Must be zero
+     */
+    unsigned int reserved[16];
 };
 
 /**
@@ -2459,6 +2742,10 @@ struct __device_builtin__ cudaExternalMemoryBufferDesc {
      * Flags reserved for future use. Must be zero.
      */
     unsigned int flags;
+    /**
+     * Must be zero
+     */
+    unsigned int reserved[16];
 };
  
 /**
@@ -2487,6 +2774,10 @@ struct __device_builtin__ cudaExternalMemoryMipmappedArrayDesc {
      * Total number of levels in the mipmap chain
      */
     unsigned int numLevels;
+    /**
+     * Must be zero
+     */
+    unsigned int reserved[16];
 };
  
 /**
@@ -2586,100 +2877,10 @@ struct __device_builtin__ cudaExternalSemaphoreHandleDesc {
      * Flags reserved for the future. Must be zero.
      */
     unsigned int flags;
-};
-
-/**
- * External semaphore signal parameters(deprecated)
- */
-struct __device_builtin__ cudaExternalSemaphoreSignalParams_v1 {
-    struct {
-        /**
-         * Parameters for fence objects
-         */
-        struct {
-            /**
-             * Value of fence to be signaled
-             */
-            unsigned long long value;
-        } fence;
-        union {
-            /**
-             * Pointer to NvSciSyncFence. Valid if ::cudaExternalSemaphoreHandleType
-             * is of type ::cudaExternalSemaphoreHandleTypeNvSciSync.
-             */
-            void *fence;
-            unsigned long long reserved;
-        } nvSciSync;
-        /**
-         * Parameters for keyed mutex objects
-         */
-        struct {
-            /*
-             * Value of key to release the mutex with
-             */
-            unsigned long long key;
-        } keyedMutex;
-    } params;
     /**
-     * Only when ::cudaExternalSemaphoreSignalParams is used to
-     * signal a ::cudaExternalSemaphore_t of type
-     * ::cudaExternalSemaphoreHandleTypeNvSciSync, the valid flag is 
-     * ::cudaExternalSemaphoreSignalSkipNvSciBufMemSync: which indicates
-     * that while signaling the ::cudaExternalSemaphore_t, no memory
-     * synchronization operations should be performed for any external memory
-     * object imported as ::cudaExternalMemoryHandleTypeNvSciBuf.
-     * For all other types of ::cudaExternalSemaphore_t, flags must be zero.
+     * Must be zero
      */
-    unsigned int flags;
-};
-
-/**
-* External semaphore wait parameters(deprecated)
-*/
-struct __device_builtin__ cudaExternalSemaphoreWaitParams_v1 {
-    struct {
-        /**
-        * Parameters for fence objects
-        */
-        struct {
-            /**
-            * Value of fence to be waited on
-            */
-            unsigned long long value;
-        } fence;
-        union {
-            /**
-             * Pointer to NvSciSyncFence. Valid if ::cudaExternalSemaphoreHandleType
-             * is of type ::cudaExternalSemaphoreHandleTypeNvSciSync.
-             */
-            void *fence;
-            unsigned long long reserved;
-        } nvSciSync;
-        /**
-         * Parameters for keyed mutex objects
-         */
-        struct {
-            /**
-             * Value of key to acquire the mutex with
-             */
-            unsigned long long key;
-            /**
-             * Timeout in milliseconds to wait to acquire the mutex
-             */
-            unsigned int timeoutMs;
-        } keyedMutex;
-    } params;
-    /**
-     * Only when ::cudaExternalSemaphoreSignalParams is used to
-     * signal a ::cudaExternalSemaphore_t of type
-     * ::cudaExternalSemaphoreHandleTypeNvSciSync, the valid flag is 
-     * ::cudaExternalSemaphoreSignalSkipNvSciBufMemSync: which indicates
-     * that while waiting for the ::cudaExternalSemaphore_t, no memory
-     * synchronization operations should be performed for any external memory
-     * object imported as ::cudaExternalMemoryHandleTypeNvSciBuf.
-     * For all other types of ::cudaExternalSemaphore_t, flags must be zero.
-     */
-    unsigned int flags;
+    unsigned int reserved[16];
 };
 
 /**
@@ -2832,6 +3033,11 @@ typedef __device_builtin__ struct CUgraphNode_st *cudaGraphNode_t;
 typedef __device_builtin__ struct CUuserObject_st *cudaUserObject_t;
 
 /**
+ * CUDA handle for conditional graph nodes
+ */
+typedef __device_builtin__ unsigned long long cudaGraphConditionalHandle;
+
+/**
  * CUDA function
  */
 typedef __device_builtin__ struct CUfunc_st *cudaFunction_t;
@@ -2840,6 +3046,219 @@ typedef __device_builtin__ struct CUfunc_st *cudaFunction_t;
  * CUDA kernel
  */
 typedef __device_builtin__ struct CUkern_st *cudaKernel_t;
+
+/**
+ * Online compiler and linker options
+ */
+enum __device_builtin__ cudaJitOption
+{
+    /**
+     * Max number of registers that a thread may use.\n
+     * Option type: unsigned int\n
+     * Applies to: compiler only
+     */
+    cudaJitMaxRegisters = 0,
+
+    /**
+     * IN: Specifies minimum number of threads per block to target compilation
+     * for\n
+     * OUT: Returns the number of threads the compiler actually targeted.
+     * This restricts the resource utilization of the compiler (e.g. max
+     * registers) such that a block with the given number of threads should be
+     * able to launch based on register limitations. Note, this option does not
+     * currently take into account any other resource limitations, such as
+     * shared memory utilization.\n
+     * Option type: unsigned int\n
+     * Applies to: compiler only
+     */
+    cudaJitThreadsPerBlock = 1,
+
+    /**
+     * Overwrites the option value with the total wall clock time, in
+     * milliseconds, spent in the compiler and linker\n
+     * Option type: float\n
+     * Applies to: compiler and linker
+     */
+    cudaJitWallTime = 2,
+
+    /**
+     * Pointer to a buffer in which to print any log messages
+     * that are informational in nature (the buffer size is specified via
+     * option ::cudaJitInfoLogBufferSizeBytes)\n
+     * Option type: char *\n
+     * Applies to: compiler and linker
+     */
+    cudaJitInfoLogBuffer = 3,
+
+    /**
+     * IN: Log buffer size in bytes.  Log messages will be capped at this size
+     * (including null terminator)\n
+     * OUT: Amount of log buffer filled with messages\n
+     * Option type: unsigned int\n
+     * Applies to: compiler and linker
+     */
+    cudaJitInfoLogBufferSizeBytes = 4,
+
+    /**
+     * Pointer to a buffer in which to print any log messages that
+     * reflect errors (the buffer size is specified via option
+     * ::cudaJitErrorLogBufferSizeBytes)\n
+     * Option type: char *\n
+     * Applies to: compiler and linker
+     */
+    cudaJitErrorLogBuffer = 5,
+
+    /**
+     * IN: Log buffer size in bytes.  Log messages will be capped at this size
+     * (including null terminator)\n
+     * OUT: Amount of log buffer filled with messages\n
+     * Option type: unsigned int\n
+     * Applies to: compiler and linker
+     */
+    cudaJitErrorLogBufferSizeBytes = 6,
+
+    /**
+     * Level of optimizations to apply to generated code (0 - 4), with 4
+     * being the default and highest level of optimizations.\n
+     * Option type: unsigned int\n
+     * Applies to: compiler only
+     */
+    cudaJitOptimizationLevel = 7,
+
+    /**
+     * Specifies choice of fallback strategy if matching cubin is not found.
+     * Choice is based on supplied ::cudaJit_Fallback.
+     * Option type: unsigned int for enumerated type ::cudaJit_Fallback\n
+     * Applies to: compiler only
+     */
+    cudaJitFallbackStrategy = 10,
+
+    /**
+     * Specifies whether to create debug information in output (-g)
+     * (0: false, default)\n
+     * Option type: int\n
+     * Applies to: compiler and linker
+     */
+    cudaJitGenerateDebugInfo = 11,
+
+    /**
+     * Generate verbose log messages (0: false, default)\n
+     * Option type: int\n
+     * Applies to: compiler and linker
+     */
+    cudaJitLogVerbose = 12,
+
+    /**
+     * Generate line number information (-lineinfo) (0: false, default)\n
+     * Option type: int\n
+     * Applies to: compiler only
+     */
+    cudaJitGenerateLineInfo = 13,
+
+    /**
+     * Specifies whether to enable caching explicitly (-dlcm) \n
+     * Choice is based on supplied ::cudaJit_CacheMode.\n
+     * Option type: unsigned int for enumerated type ::cudaJit_CacheMode\n
+     * Applies to: compiler only
+     */
+    cudaJitCacheMode = 14,
+
+    /**
+     * Generate position independent code (0: false)\n
+     * Option type: int\n
+     * Applies to: compiler only
+     */
+    cudaJitPositionIndependentCode = 30,
+
+    /**
+     * This option hints to the JIT compiler the minimum number of CTAs from the
+     * kernel’s grid to be mapped to a SM. This option is ignored when used together
+     * with ::cudaJitMaxRegisters or ::cudaJitThreadsPerBlock.
+     * Optimizations based on this option need ::cudaJitMaxThreadsPerBlock to
+     * be specified as well. For kernels already using PTX directive .minnctapersm,
+     * this option will be ignored by default. Use ::cudaJitOverrideDirectiveValues
+     * to let this option take precedence over the PTX directive.
+     * Option type: unsigned int\n
+     * Applies to: compiler only
+    */
+    cudaJitMinCtaPerSm = 31,
+
+     /**
+     * Maximum number threads in a thread block, computed as the product of
+     * the maximum extent specifed for each dimension of the block. This limit
+     * is guaranteed not to be exeeded in any invocation of the kernel. Exceeding
+     * the the maximum number of threads results in runtime error or kernel launch
+     * failure. For kernels already using PTX directive .maxntid, this option will
+     * be ignored by default. Use ::cudaJitOverrideDirectiveValues to let this
+     * option take precedence over the PTX directive.
+     * Option type: int\n
+     * Applies to: compiler only
+    */
+    cudaJitMaxThreadsPerBlock = 32,
+
+    /**
+     * This option lets the values specified using ::cudaJitMaxRegisters,
+     * ::cudaJitThreadsPerBlock, ::cudaJitMaxThreadsPerBlock and
+     * ::cudaJitMinCtaPerSm take precedence over any PTX directives.
+     * (0: Disable, default; 1: Enable)
+     * Option type: int\n
+     * Applies to: compiler only
+    */
+    cudaJitOverrideDirectiveValues = 33,
+};
+
+
+/**
+ * Library options to be specified with ::cudaLibraryLoadData() or ::cudaLibraryLoadFromFile()
+ */
+enum __device_builtin__ cudaLibraryOption
+{
+    cudaLibraryHostUniversalFunctionAndDataTable = 0,
+
+    /**
+     * Specifes that the argument \p code passed to ::cudaLibraryLoadData() will be preserved.
+     * Specifying this option will let the driver know that \p code can be accessed at any point
+     * until ::cudaLibraryUnload(). The default behavior is for the driver to allocate and
+     * maintain its own copy of \p code. Note that this is only a memory usage optimization
+     * hint and the driver can choose to ignore it if required.
+     * Specifying this option with ::cudaLibraryLoadFromFile() is invalid and
+     * will return ::cudaErrorInvalidValue.
+     */
+    cudaLibraryBinaryIsPreserved = 1,
+};
+
+struct __device_builtin__ cudalibraryHostUniversalFunctionAndDataTable
+{
+    void *functionTable;
+    size_t functionWindowSize;
+    void *dataTable;
+    size_t dataWindowSize;
+};
+
+/**
+ * Caching modes for dlcm
+ */
+enum __device_builtin__ cudaJit_CacheMode
+{
+    cudaJitCacheOptionNone = 0,   /**< Compile with no -dlcm flag specified */
+    cudaJitCacheOptionCG,         /**< Compile with L1 cache disabled */
+    cudaJitCacheOptionCA          /**< Compile with L1 cache enabled */
+};
+
+/**
+ * Cubin matching fallback strategies
+ */
+enum __device_builtin__ cudaJit_Fallback
+{
+    cudaPreferPtx = 0,  /**< Prefer to compile ptx if exact binary match not found */
+
+    cudaPreferBinary    /**< Prefer to fall back to compatible binary code if exact match not found */
+};
+
+/**
+ * CUDA library
+ */
+typedef __device_builtin__ struct CUlib_st *cudaLibrary_t;
 
 /**
  * CUDA memory pool
@@ -2852,20 +3271,7 @@ typedef __device_builtin__ struct CUmemPoolHandle_st *cudaMemPool_t;
 enum __device_builtin__ cudaCGScope {
     cudaCGScopeInvalid   = 0, /**< Invalid cooperative group scope */
     cudaCGScopeGrid      = 1, /**< Scope represented by a grid_group */
-    cudaCGScopeMultiGrid = 2  /**< Scope represented by a multi_grid_group */
-};
-
-/**
- * CUDA launch parameters
- */
-struct __device_builtin__ cudaLaunchParams
-{
-    void *func;          /**< Device function symbol */
-    dim3 gridDim;        /**< Grid dimentions */
-    dim3 blockDim;       /**< Block dimentions */
-    void **args;         /**< Arguments */
-    size_t sharedMem;    /**< Shared memory */
-    cudaStream_t stream; /**< Stream identifier */
+    cudaCGScopeReserved  = 2  /**< Reserved */
 };
 
 /**
@@ -2881,9 +3287,36 @@ struct __device_builtin__ cudaKernelNodeParams {
 };
 
 /**
+ * CUDA GPU kernel node parameters
+ */
+struct __device_builtin__ cudaKernelNodeParamsV2 {
+    void* func;                     /**< Kernel to launch */
+    #if !defined(__cplusplus) || __cplusplus >= 201103L
+        dim3 gridDim;                   /**< Grid dimensions */
+        dim3 blockDim;                  /**< Block dimensions */
+    #else
+        /* Union members cannot have nontrivial constructors until C++11. */
+        uint3 gridDim;                  /**< Grid dimensions */
+        uint3 blockDim;                 /**< Block dimensions */
+    #endif
+    unsigned int sharedMemBytes;    /**< Dynamic shared-memory size per thread block in bytes */
+    void **kernelParams;            /**< Array of pointers to individual kernel arguments*/
+    void **extra;                   /**< Pointer to kernel arguments in the "extra" format */
+};
+
+/**
  * External semaphore signal node parameters
  */
 struct __device_builtin__ cudaExternalSemaphoreSignalNodeParams {
+    cudaExternalSemaphore_t* extSemArray;                        /**< Array of external semaphore handles. */
+    const struct cudaExternalSemaphoreSignalParams* paramsArray; /**< Array of external semaphore signal parameters. */
+    unsigned int numExtSems;                                     /**< Number of handles and parameters supplied in extSemArray and paramsArray. */
+};
+
+/**
+ * External semaphore signal node parameters
+ */
+struct __device_builtin__ cudaExternalSemaphoreSignalNodeParamsV2 {
     cudaExternalSemaphore_t* extSemArray;                        /**< Array of external semaphore handles. */
     const struct cudaExternalSemaphoreSignalParams* paramsArray; /**< Array of external semaphore signal parameters. */
     unsigned int numExtSems;                                     /**< Number of handles and parameters supplied in extSemArray and paramsArray. */
@@ -2896,6 +3329,59 @@ struct __device_builtin__ cudaExternalSemaphoreWaitNodeParams {
     cudaExternalSemaphore_t* extSemArray;                      /**< Array of external semaphore handles. */
     const struct cudaExternalSemaphoreWaitParams* paramsArray; /**< Array of external semaphore wait parameters. */
     unsigned int numExtSems;                                   /**< Number of handles and parameters supplied in extSemArray and paramsArray. */
+};
+
+/**
+ * External semaphore wait node parameters
+ */
+struct __device_builtin__ cudaExternalSemaphoreWaitNodeParamsV2 {
+    cudaExternalSemaphore_t* extSemArray;                      /**< Array of external semaphore handles. */
+    const struct cudaExternalSemaphoreWaitParams* paramsArray; /**< Array of external semaphore wait parameters. */
+    unsigned int numExtSems;                                   /**< Number of handles and parameters supplied in extSemArray and paramsArray. */
+};
+
+enum __device_builtin__ cudaGraphConditionalHandleFlags {
+    cudaGraphCondAssignDefault = 1 /**< Apply default handle value when graph is launched. */
+};
+
+/**
+ * CUDA conditional node types
+ */
+enum __device_builtin__ cudaGraphConditionalNodeType {
+    cudaGraphCondTypeIf  = 0,    /**< Conditional 'if/else' Node. Body[0] executed if condition is non-zero.  If \p size == 2, an optional ELSE graph is created and this is executed if the condition is zero. */
+    cudaGraphCondTypeWhile = 1,  /**< Conditional 'while' Node. Body executed repeatedly while condition value is non-zero. */
+    cudaGraphCondTypeSwitch = 2, /**< Conditional 'switch' Node. Body[n] is executed once, where 'n' is the value of the condition. If the condition does not match a body index, no body is launched. */
+};
+
+/**
+ * CUDA conditional node parameters
+ */
+struct __device_builtin__ cudaConditionalNodeParams {
+    cudaGraphConditionalHandle handle;       /**< Conditional node handle.
+                                                  Handles must be created in advance of creating the node
+                                                  using ::cudaGraphConditionalHandleCreate. */
+    enum cudaGraphConditionalNodeType type;  /**< Type of conditional node. */
+    unsigned int size;                       /**< Size of graph output array.  Allowed values are 1 for cudaGraphCondTypeWhile, 1 or 2
+                                                  for cudaGraphCondTypeIf, or any value greater than zero for cudaGraphCondTypeSwitch. */
+    cudaGraph_t *phGraph_out;                /**< CUDA-owned array populated with conditional node child graphs during creation of the node.
+                                                  Valid for the lifetime of the conditional node.
+                                                  The contents of the graph(s) are subject to the following constraints:
+                                                  
+                                                  - Allowed node types are kernel nodes, empty nodes, child graphs, memsets,
+                                                    memcopies, and conditionals. This applies recursively to child graphs and conditional bodies.
+                                                  - All kernels, including kernels in nested conditionals or child graphs at any level,
+                                                    must belong to the same CUDA context.
+                                                  
+                                                  These graphs may be populated using graph node creation APIs or ::cudaStreamBeginCaptureToGraph.
+                                                  cudaGraphCondTypeIf:
+                                                  phGraph_out[0] is executed when the condition is non-zero.  If \p size == 2, phGraph_out[1] will
+                                                  be executed when the condition is zero.
+                                                  cudaGraphCondTypeWhile:
+                                                  phGraph_out[0] is executed as long as the condition is non-zero.
+                                                  cudaGraphCondTypeSwitch:
+                                                  phGraph_out[n] is executed when the condition is equal to n.  If the condition >= \p size,
+                                                  no body graph is executed.
+                                         */
 };
 
 /**
@@ -2914,8 +3400,154 @@ enum __device_builtin__ cudaGraphNodeType {
     cudaGraphNodeTypeExtSemaphoreWait = 0x09, /**< External semaphore wait node */
     cudaGraphNodeTypeMemAlloc    = 0x0a, /**< Memory allocation node */
     cudaGraphNodeTypeMemFree     = 0x0b, /**< Memory free node */
+    cudaGraphNodeTypeConditional = 0x0d, /**< Conditional node
+                                              
+                                              May be used to implement a conditional execution path or loop
+                                              inside of a graph. The graph(s) contained within the body of the conditional node
+                                              can be selectively executed or iterated upon based on the value of a conditional
+                                              variable.
+                                              
+                                              Handles must be created in advance of creating the node
+                                              using ::cudaGraphConditionalHandleCreate.
+                                              
+                                              The following restrictions apply to graphs which contain conditional nodes:
+                                                The graph cannot be used in a child node.
+                                                Only one instantiation of the graph may exist at any point in time.
+                                                The graph cannot be cloned.
+                                              
+                                              To set the control value, supply a default value when creating the handle and/or
+                                              call ::cudaGraphSetConditional from device code.*/
     cudaGraphNodeTypeCount
 };
+
+/**
+ * Child graph node ownership
+ */
+enum __device_builtin__ cudaGraphChildGraphNodeOwnership {
+    cudaGraphChildGraphOwnershipClone = 0,      /**< Default behavior for a child graph node. Child graph is cloned
+                                                     into the parent and memory allocation/free nodes can't be present
+                                                     in the child graph. */
+    cudaGraphChildGraphOwnershipMove  = 1,      /**< The child graph is moved to the parent. The handle to the child graph
+                                                     is owned by the parent and will be destroyed when the parent is
+                                                     destroyed.
+
+                                                     The following restrictions apply to child graphs after they have been moved:
+                                                      Cannot be independently instantiated or destroyed;
+                                                      Cannot be added as a child graph of a separate parent graph;
+                                                      Cannot be used as an argument to cudaGraphExecUpdate;
+                                                      Cannot have additional memory allocation or free nodes added. */
+};
+
+/**
+ * Child graph node parameters
+ */
+struct __device_builtin__ cudaChildGraphNodeParams {
+    cudaGraph_t graph; /**< The child graph to clone into the node for node creation, or
+                        *   a handle to the graph owned by the node for node query.
+                        *   The graph must not contain conditional nodes. Graphs
+                        *   containing memory allocation or memory free nodes must
+                        *   set the ownership to be moved to the parent.
+                        */
+    enum cudaGraphChildGraphNodeOwnership ownership; /**< The ownership relationship of the child graph node. */
+};
+
+/**
+ * Event record node parameters
+ */
+struct __device_builtin__ cudaEventRecordNodeParams {
+    cudaEvent_t event; /**< The event to record when the node executes */
+};
+
+/**
+ * Event wait node parameters
+ */
+struct __device_builtin__ cudaEventWaitNodeParams {
+    cudaEvent_t event; /**< The event to wait on from the node */
+};
+
+/**
+ * Graph node parameters.  See ::cudaGraphAddNode.
+ */
+struct __device_builtin__ cudaGraphNodeParams {
+    enum cudaGraphNodeType type; /**< Type of the node */
+    int reserved0[3];            /**< Reserved.  Must be zero. */
+
+    union {
+        long long                                      reserved1[29]; /**< Padding. Unused bytes must be zero. */
+        struct cudaKernelNodeParamsV2                  kernel;        /**< Kernel node parameters. */
+        struct cudaMemcpyNodeParams                    memcpy;        /**< Memcpy node parameters. */
+        struct cudaMemsetParamsV2                      memset;        /**< Memset node parameters. */
+        struct cudaHostNodeParamsV2                    host;          /**< Host node parameters. */
+        struct cudaChildGraphNodeParams                graph;         /**< Child graph node parameters. */
+        struct cudaEventWaitNodeParams                 eventWait;     /**< Event wait node parameters. */
+        struct cudaEventRecordNodeParams               eventRecord;   /**< Event record node parameters. */
+        struct cudaExternalSemaphoreSignalNodeParamsV2 extSemSignal;  /**< External semaphore signal node parameters. */
+        struct cudaExternalSemaphoreWaitNodeParamsV2   extSemWait;    /**< External semaphore wait node parameters. */
+        struct cudaMemAllocNodeParamsV2                alloc;         /**< Memory allocation node parameters. */
+        struct cudaMemFreeNodeParams                   free;          /**< Memory free node parameters. */
+        struct cudaConditionalNodeParams               conditional;   /**< Conditional node parameters. */
+    };
+
+    long long reserved2; /**< Reserved bytes. Must be zero. */
+};
+
+/**
+ * Type annotations that can be applied to graph edges as part of ::cudaGraphEdgeData.
+ */
+typedef __device_builtin__ enum cudaGraphDependencyType_enum {
+    cudaGraphDependencyTypeDefault = 0, /**< This is an ordinary dependency. */
+    cudaGraphDependencyTypeProgrammatic = 1  /**< This dependency type allows the downstream node to
+                                                  use \c cudaGridDependencySynchronize(). It may only be used
+                                                  between kernel nodes, and must be used with either the
+                                                  ::cudaGraphKernelNodePortProgrammatic or
+                                                  ::cudaGraphKernelNodePortLaunchCompletion outgoing port. */
+} cudaGraphDependencyType;
+
+/**
+ * Optional annotation for edges in a CUDA graph. Note, all edges implicitly have annotations and
+ * default to a zero-initialized value if not specified. A zero-initialized struct indicates a
+ * standard full serialization of two nodes with memory visibility.
+ */
+typedef __device_builtin__ struct cudaGraphEdgeData_st {
+    unsigned char from_port; /**< This indicates when the dependency is triggered from the upstream
+                                  node on the edge. The meaning is specfic to the node type. A value
+                                  of 0 in all cases means full completion of the upstream node, with
+                                  memory visibility to the downstream node or portion thereof
+                                  (indicated by \c to_port).
+                                  <br>
+                                  Only kernel nodes define non-zero ports. A kernel node
+                                  can use the following output port types:
+                                  ::cudaGraphKernelNodePortDefault, ::cudaGraphKernelNodePortProgrammatic,
+                                  or ::cudaGraphKernelNodePortLaunchCompletion. */
+    unsigned char to_port; /**< This indicates what portion of the downstream node is dependent on
+                                the upstream node or portion thereof (indicated by \c from_port). The
+                                meaning is specific to the node type. A value of 0 in all cases means
+                                the entirety of the downstream node is dependent on the upstream work.
+                                <br>
+                                Currently no node types define non-zero ports. Accordingly, this field
+                                must be set to zero. */
+    unsigned char type; /**< This should be populated with a value from ::cudaGraphDependencyType. (It
+                             is typed as char due to compiler-specific layout of bitfields.) See
+                             ::cudaGraphDependencyType. */
+    unsigned char reserved[5]; /**< These bytes are unused and must be zeroed. This ensures
+                                    compatibility if additional fields are added in the future. */
+} cudaGraphEdgeData;
+
+/**
+ * This port activates when the kernel has finished executing.
+ */
+#define cudaGraphKernelNodePortDefault 0
+/**
+ * This port activates when all blocks of the kernel have performed cudaTriggerProgrammaticLaunchCompletion()
+ * or have terminated. It must be used with edge type ::cudaGraphDependencyTypeProgrammatic. See also
+ * ::cudaLaunchAttributeProgrammaticEvent.
+ */
+#define cudaGraphKernelNodePortProgrammatic 1
+/**
+ * This port activates when all blocks of the kernel have begun execution. See also
+ * ::cudaLaunchAttributeLaunchCompletionEvent.
+ */
+#define cudaGraphKernelNodePortLaunchCompletion 2
 
 /**
  * CUDA executable (launchable) graph
@@ -2945,7 +3577,8 @@ typedef __device_builtin__ enum cudaGraphInstantiateResult {
     cudaGraphInstantiateError = 1,                         /**< Instantiation failed for an unexpected reason which is described in the return value of the function */
     cudaGraphInstantiateInvalidStructure = 2,              /**< Instantiation failed due to invalid structure, such as cycles */
     cudaGraphInstantiateNodeOperationNotSupported = 3,     /**< Instantiation for device launch failed because the graph contained an unsupported operation */
-    cudaGraphInstantiateMultipleDevicesNotSupported = 4    /**< Instantiation for device launch failed due to the nodes belonging to different contexts */
+    cudaGraphInstantiateMultipleDevicesNotSupported = 4,   /**< Instantiation for device launch failed due to the nodes belonging to different contexts */
+    cudaGraphInstantiateConditionalHandleUnused = 5        /**< One or more conditional handles are not associated with conditional nodes */
 } cudaGraphInstantiateResult;
 
 /**
@@ -2982,6 +3615,44 @@ typedef __device_builtin__ struct cudaGraphExecUpdateResultInfo_st {
 } cudaGraphExecUpdateResultInfo;
 
 /**
+ * CUDA device node handle for device-side node update
+ */
+typedef struct CUgraphDeviceUpdatableNode_st* cudaGraphDeviceNode_t;
+
+/**
+ * Specifies the field to update when performing multiple node updates from the device
+ */
+enum __device_builtin__ cudaGraphKernelNodeField
+{
+    cudaGraphKernelNodeFieldInvalid = 0, /**< Invalid field */
+    cudaGraphKernelNodeFieldGridDim,     /**< Grid dimension update */
+    cudaGraphKernelNodeFieldParam,       /**< Kernel parameter update */
+    cudaGraphKernelNodeFieldEnabled      /**< Node enable/disable */
+};
+
+/**
+ * Struct to specify a single node update to pass as part of a larger array to ::cudaGraphKernelNodeUpdatesApply
+ */
+struct __device_builtin__ cudaGraphKernelNodeUpdate {
+    cudaGraphDeviceNode_t node;     /**< Node to update */
+    enum cudaGraphKernelNodeField field; /**< Which type of update to apply. Determines how updateData is interpreted */
+    union {
+#if !defined(__cplusplus) || __cplusplus >= 201103L
+        dim3 gridDim;               /**< Grid dimensions */
+#else
+        /* Union members cannot have nontrivial constructors until C++11. */
+        uint3 gridDim;              /**< Grid dimensions */
+#endif
+        struct {
+            const void *pValue;     /**< Kernel parameter data to write in */
+            size_t offset;          /**< Offset into the parameter buffer at which to apply the update */
+            size_t size;            /**< Number of bytes to update */
+        } param;                    /**< Kernel parameter data */
+        unsigned int isEnabled;     /**< Node enable/disable data. Nonzero if the node should be enabled, 0 if it should be disabled */
+    } updateData;                   /**< Update data to apply. Which field is used depends on field's value */
+};
+
+/**
  * Flags to specify search options to be used with ::cudaGetDriverEntryPoint
  * For more details see ::cuGetProcAddress
  */ 
@@ -3013,7 +3684,8 @@ enum __device_builtin__ cudaGraphDebugDotFlags {
     cudaGraphDebugDotFlagsExtSemasSignalNodeParams = 1<<7,  /**< Adds cudaExternalSemaphoreSignalNodeParams values to output */
     cudaGraphDebugDotFlagsExtSemasWaitNodeParams   = 1<<8,  /**< Adds cudaExternalSemaphoreWaitNodeParams to output */
     cudaGraphDebugDotFlagsKernelNodeAttributes     = 1<<9,  /**< Adds cudaKernelNodeAttrID values to output */
-    cudaGraphDebugDotFlagsHandles                  = 1<<10  /**< Adds node handles and every kernel function handle to output */
+    cudaGraphDebugDotFlagsHandles                  = 1<<10, /**< Adds node handles and every kernel function handle to output */
+    cudaGraphDebugDotFlagsConditionalNodeParams    = 1<<15, /**< Adds cudaConditionalNodeParams to output */
 };
 
 /**
@@ -3021,20 +3693,51 @@ enum __device_builtin__ cudaGraphDebugDotFlags {
  */
 enum __device_builtin__ cudaGraphInstantiateFlags {
     cudaGraphInstantiateFlagAutoFreeOnLaunch = 1 /**< Automatically free memory allocated in a graph before relaunching. */
-  , cudaGraphInstantiateFlagUpload           = 2 /**< Automatically upload the graph after instantiaton. */
-  , cudaGraphInstantiateFlagDeviceLaunch     = 4 /**< Instantiate the graph to be launchable from the device. */
+  , cudaGraphInstantiateFlagUpload           = 2 /**< Automatically upload the graph after instantiation. Only supported by                                                                                                                                                                                                                                                                                                     
+                                                      ::cudaGraphInstantiateWithParams.  The upload will be performed using the                                                                                                                                                                                                                                                                                                   
+                                                      stream provided in \p instantiateParams. */                                                                                                                                                                                                                                                                                                                               
+  , cudaGraphInstantiateFlagDeviceLaunch     = 4 /**< Instantiate the graph to be launchable from the device. This flag can only                                                                                                                                                                                                                                                                                                
+                                                      be used on platforms which support unified addressing. This flag cannot be                                                                                                                                                                                                                                                                                                
+                                                      used in conjunction with cudaGraphInstantiateFlagAutoFreeOnLaunch. */                                                                                                                                                                                                                                                                                              
   , cudaGraphInstantiateFlagUseNodePriority  = 8 /**< Run the graph using the per-node priority attributes rather than the
                                                       priority of the stream it is launched into. */
 };
 
+/**
+ * Memory Synchronization Domain
+ *
+ * A kernel can be launched in a specified memory synchronization domain that affects all memory operations issued by
+ * that kernel. A memory barrier issued in one domain will only order memory operations in that domain, thus eliminating
+ * latency increase from memory barriers ordering unrelated traffic.
+ *
+ * By default, kernels are launched in domain 0. Kernel launched with ::cudaLaunchMemSyncDomainRemote will have a
+ * different domain ID. User may also alter the domain ID with ::cudaLaunchMemSyncDomainMap for a specific stream /
+ * graph node / kernel launch. See ::cudaLaunchAttributeMemSyncDomain, ::cudaStreamSetAttribute, ::cudaLaunchKernelEx,
+ * ::cudaGraphKernelNodeSetAttribute.
+ *
+ * Memory operations done in kernels launched in different domains are considered system-scope distanced. In other
+ * words, a GPU scoped memory synchronization is not sufficient for memory order to be observed by kernels in another
+ * memory synchronization domain even if they are on the same GPU.
+ */
 typedef __device_builtin__ enum cudaLaunchMemSyncDomain {
-    cudaLaunchMemSyncDomainDefault = 0,
-    cudaLaunchMemSyncDomainRemote  = 1
+    cudaLaunchMemSyncDomainDefault = 0,    /**< Launch kernels in the default domain */
+    cudaLaunchMemSyncDomainRemote  = 1     /**< Launch kernels in the remote domain */
 } cudaLaunchMemSyncDomain;
 
+/**
+ * Memory Synchronization Domain map
+ *
+ * See ::cudaLaunchMemSyncDomain.
+ *
+ * By default, kernels are launched in domain 0. Kernel launched with ::cudaLaunchMemSyncDomainRemote will have a
+ * different domain ID. User may also alter the domain ID with ::cudaLaunchMemSyncDomainMap for a specific stream /
+ * graph node / kernel launch. See ::cudaLaunchAttributeMemSyncDomainMap.
+ *
+ * Domain ID range is available through ::cudaDevAttrMemSyncDomainCount.
+ */
 typedef __device_builtin__ struct cudaLaunchMemSyncDomainMap_st {
-    unsigned char default_;
-    unsigned char remote;
+    unsigned char default_;                /**< The default domain ID to use for designated kernels */
+    unsigned char remote;                  /**< The remote domain ID to use for designated kernels */
 } cudaLaunchMemSyncDomainMap;
 
 /**
@@ -3042,26 +3745,32 @@ typedef __device_builtin__ struct cudaLaunchMemSyncDomainMap_st {
  */
 typedef __device_builtin__ enum cudaLaunchAttributeID {
     cudaLaunchAttributeIgnore                = 0 /**< Ignored entry, for convenient composition */
-  , cudaLaunchAttributeAccessPolicyWindow    = 1 /**< Valid for streams, graph nodes, launches. */
-  , cudaLaunchAttributeCooperative           = 2 /**< Valid for graph nodes, launches. */
-  , cudaLaunchAttributeSynchronizationPolicy = 3 /**< Valid for streams. */
-  , cudaLaunchAttributeClusterDimension                  = 4 /**< Valid for graph nodes, launches. */
-  , cudaLaunchAttributeClusterSchedulingPolicyPreference = 5 /**< Valid for graph nodes, launches. */
+  , cudaLaunchAttributeAccessPolicyWindow    = 1 /**< Valid for streams, graph nodes, launches. See
+                                                    ::cudaLaunchAttributeValue::accessPolicyWindow. */
+  , cudaLaunchAttributeCooperative           = 2 /**< Valid for graph nodes, launches. See
+                                                    ::cudaLaunchAttributeValue::cooperative. */
+  , cudaLaunchAttributeSynchronizationPolicy = 3 /**< Valid for streams. See ::cudaLaunchAttributeValue::syncPolicy. */
+  , cudaLaunchAttributeClusterDimension                  = 4 /**< Valid for graph nodes, launches. See
+                                                                ::cudaLaunchAttributeValue::clusterDim. */
+  , cudaLaunchAttributeClusterSchedulingPolicyPreference = 5 /**< Valid for graph nodes, launches. See
+                                                                ::cudaLaunchAttributeValue::clusterSchedulingPolicyPreference. */
   , cudaLaunchAttributeProgrammaticStreamSerialization   = 6 /**< Valid for launches. Setting
-                                                                  programmaticStreamSerializationAllowed to non-0
-                                                                  signals that the kernel will use programmatic
-                                                                  means to resolve its stream dependency, so that
-                                                                  the CUDA runtime should opportunistically allow
-                                                                  the grid's execution to overlap with the previous
-                                                                  kernel in the stream, if that kernel requests the
-                                                                  overlap. The dependent launches can choose to wait on
-                                                                  the dependency using the programmatic sync
+                                                                  ::cudaLaunchAttributeValue::programmaticStreamSerializationAllowed
+                                                                  to non-0 signals that the kernel will use programmatic
+                                                                  means to resolve its stream dependency, so that the
+                                                                  CUDA runtime should opportunistically allow the grid's
+                                                                  execution to overlap with the previous kernel in the
+                                                                  stream, if that kernel requests the overlap. The
+                                                                  dependent launches can choose to wait on the
+                                                                  dependency using the programmatic sync
                                                                   (cudaGridDependencySynchronize() or equivalent PTX
                                                                   instructions). */
-  , cudaLaunchAttributeProgrammaticEvent                 = 7 /**< Valid for launches. Event recorded through this
-                                                                  launch attribute is guaranteed to only trigger after
-                                                                  all block in the associated kernel trigger the event.
-                                                                  A block can trigger the event programmatically in a
+  , cudaLaunchAttributeProgrammaticEvent                 = 7 /**< Valid for launches. Set
+                                                                  ::cudaLaunchAttributeValue::programmaticEvent to
+                                                                  record the event. Event recorded through this launch
+                                                                  attribute is guaranteed to only trigger after all
+                                                                  block in the associated kernel trigger the event.  A
+                                                                  block can trigger the event programmatically in a
                                                                   future CUDA release. A trigger can also be inserted at
                                                                   the beginning of each block's execution if
                                                                   triggerAtBlockStart is set to non-0. The dependent
@@ -3075,12 +3784,125 @@ typedef __device_builtin__ enum cudaLaunchAttributeID {
                                                                   event trigger long after the associated kernel has
                                                                   completed. This recording type is primarily meant for
                                                                   establishing programmatic dependency between device
-                                                                  tasks. The event supplied must not be an interprocess
-                                                                  or interop event. The event must disable timing (i.e.
-                                                                  created with ::cudaEventDisableTiming flag set). */
-  , cudaLaunchAttributePriority              = 8 /**< Valid for streams, graph nodes, launches. */
-  , cudaLaunchAttributeMemSyncDomainMap                  = 9
-  , cudaLaunchAttributeMemSyncDomain                    = 10
+                                                                  tasks. Note also this type of dependency allows, but
+                                                                  does not guarantee, concurrent execution of tasks.
+                                                                  <br>
+                                                                  The event supplied must not be an interprocess or
+                                                                  interop event. The event must disable timing (i.e.
+                                                                  must be created with the ::cudaEventDisableTiming flag
+                                                                  set). */
+  , cudaLaunchAttributePriority              = 8 /**< Valid for streams, graph nodes, launches. See
+                                                    ::cudaLaunchAttributeValue::priority. */
+  , cudaLaunchAttributeMemSyncDomainMap                  = 9 /**< Valid for streams, graph nodes, launches. See
+                                                                ::cudaLaunchAttributeValue::memSyncDomainMap. */
+  , cudaLaunchAttributeMemSyncDomain                    = 10 /**< Valid for streams, graph nodes, launches. See
+                                                                ::cudaLaunchAttributeValue::memSyncDomain. */
+  , cudaLaunchAttributePreferredClusterDimension = 11 /**< Valid for graph nodes and launches. Set
+                                                           ::cudaLaunchAttributeValue::preferredClusterDim
+                                                           to allow the kernel launch to specify a preferred substitute
+                                                           cluster dimension. Blocks may be grouped according to either
+                                                           the dimensions specified with this attribute (grouped into a
+                                                           "preferred substitute cluster"), or the one specified with
+                                                           ::cudaLaunchAttributeClusterDimension attribute (grouped
+                                                           into a "regular cluster"). The cluster dimensions of a
+                                                           "preferred substitute cluster" shall be an integer multiple
+                                                           greater than zero of the regular cluster dimensions. The
+                                                           device will attempt - on a best-effort basis - to group
+                                                           thread blocks into preferred clusters over grouping them
+                                                           into regular clusters. When it deems necessary (primarily
+                                                           when the device temporarily runs out of physical resources
+                                                           to launch the larger preferred clusters), the device may
+                                                           switch to launch the regular clusters instead to attempt to
+                                                           utilize as much of the physical device resources as possible.
+                                                           <br>
+                                                           Each type of cluster will have its enumeration / coordinate
+                                                           setup as if the grid consists solely of its type of cluster.
+                                                           For example, if the preferred substitute cluster dimensions
+                                                           double the regular cluster dimensions, there might be
+                                                           simultaneously a regular cluster indexed at (1,0,0), and a
+                                                           preferred cluster indexed at (1,0,0). In this example, the
+                                                           preferred substitute cluster (1,0,0) replaces regular
+                                                           clusters (2,0,0) and (3,0,0) and groups their blocks.
+                                                           <br>
+                                                           This attribute will only take effect when a regular cluster
+                                                           dimension has been specified. The preferred substitute cluster
+                                                           dimension must be an integer multiple greater than zero of the
+                                                           regular cluster dimension and must divide the grid. It must
+                                                           also be no more than `maxBlocksPerCluster`, if it is set in
+                                                           the kernel's `__launch_bounds__`. Otherwise it must be less
+                                                           than the maximum value the driver can support. Otherwise,
+                                                           setting this attribute to a value physically unable to fit on
+                                                           any particular device is permitted. */
+  , cudaLaunchAttributeLaunchCompletionEvent = 12 /**< Valid for launches. Set
+                                                       ::cudaLaunchAttributeValue::launchCompletionEvent to record the
+                                                       event.
+                                                       <br>
+                                                       Nominally, the event is triggered once all blocks of the kernel
+                                                       have begun execution. Currently this is a best effort. If a kernel
+                                                       B has a launch completion dependency on a kernel A, B may wait
+                                                       until A is complete. Alternatively, blocks of B may begin before
+                                                       all blocks of A have begun, for example if B can claim execution
+                                                       resources unavailable to A (e.g. they run on different GPUs) or
+                                                       if B is a higher priority than A.
+                                                       Exercise caution if such an ordering inversion could lead
+                                                       to deadlock.
+                                                       <br>
+                                                       A launch completion event is nominally similar to a programmatic
+                                                       event with \c triggerAtBlockStart set except that it is not
+                                                       visible to \c cudaGridDependencySynchronize() and can be used with
+                                                       compute capability less than 9.0.
+                                                       <br>
+                                                       The event supplied must not be an interprocess or interop event.
+                                                       The event must disable timing (i.e. must be created with the
+                                                       ::cudaEventDisableTiming flag set). */
+  , cudaLaunchAttributeDeviceUpdatableKernelNode = 13 /**< Valid for graph nodes, launches. This attribute is graphs-only,
+                                                           and passing it to a launch in a non-capturing stream will result
+                                                           in an error.
+                                                           <br>
+                                                           :cudaLaunchAttributeValue::deviceUpdatableKernelNode::deviceUpdatable can 
+                                                           only be set to 0 or 1. Setting the field to 1 indicates that the
+                                                           corresponding kernel node should be device-updatable. On success, a handle
+                                                           will be returned via
+                                                           ::cudaLaunchAttributeValue::deviceUpdatableKernelNode::devNode which can be
+                                                           passed to the various device-side update functions to update the node's
+                                                           kernel parameters from within another kernel. For more information on the
+                                                           types of device updates that can be made, as well as the relevant limitations
+                                                           thereof, see ::cudaGraphKernelNodeUpdatesApply.
+                                                           <br>
+                                                           Nodes which are device-updatable have additional restrictions compared to
+                                                           regular kernel nodes. Firstly, device-updatable nodes cannot be removed
+                                                           from their graph via ::cudaGraphDestroyNode. Additionally, once opted-in
+                                                           to this functionality, a node cannot opt out, and any attempt to set the
+                                                           deviceUpdatable attribute to 0 will result in an error. Device-updatable
+                                                           kernel nodes also cannot have their attributes copied to/from another kernel
+                                                           node via ::cudaGraphKernelNodeCopyAttributes. Graphs containing one or more
+                                                           device-updatable nodes also do not allow multiple instantiation, and neither
+                                                           the graph nor its instantiated version can be passed to ::cudaGraphExecUpdate.
+                                                           <br>
+                                                           If a graph contains device-updatable nodes and updates those nodes from the device
+                                                           from within the graph, the graph must be uploaded with ::cuGraphUpload before it
+                                                           is launched. For such a graph, if host-side executable graph updates are made to the
+                                                           device-updatable nodes, the graph must be uploaded before it is launched again. */
+  , cudaLaunchAttributePreferredSharedMemoryCarveout = 14 /**< Valid for launches. On devices where the L1 cache and shared memory use the
+                                                               same hardware resources, setting ::cudaLaunchAttributeValue::sharedMemCarveout 
+                                                               to a percentage between 0-100 signals sets the shared memory carveout 
+                                                               preference in percent of the total shared memory for that kernel launch. 
+                                                               This attribute takes precedence over ::cudaFuncAttributePreferredSharedMemoryCarveout.
+                                                               This is only a hint, and the driver can choose a different configuration if
+                                                               required for the launch.*/  
+  , cudaLaunchAttributeNvlinkUtilCentricScheduling   = 16 /**< Valid for streams, graph nodes, launches. This attribute is a hint to the CUDA runtime that the 
+                                                                 launch should attempt to make the kernel maximize its NVLINK utilization.  
+                                                                 <br>
+                                                                 When possible to honor this hint, CUDA will assume each block in the grid launch will carry out an even amount 
+                                                                 of NVLINK traffic, and make a best-effort attempt to adjust the kernel launch based on that assumption.
+                                                                 <br>
+                                                                 This attribute is a hint only. CUDA makes no functional or performance guarantee. Its applicability can be 
+                                                                 affected by many different factors, including driver version (i.e. CUDA doesn't guarantee the performance 
+                                                                 characteristics will be maintained between driver versions or a driver update could alter or regress 
+                                                                 previously observed perf characteristics.) It also doesn't guarantee a successful result, i.e. applying 
+                                                                 the attribute may not improve the performance of either the targeted kernel or the encapsulating application.
+                                                                 <br>
+                                                                 Valid values for ::cudaLaunchAttributeValue::nvlinkUtilCentricScheduling are 0 (disabled) and 1 (enabled).  */
 } cudaLaunchAttributeID;
 
 /**
@@ -3088,33 +3910,106 @@ typedef __device_builtin__ enum cudaLaunchAttributeID {
  */
 typedef __device_builtin__ union cudaLaunchAttributeValue {
     char pad[64]; /* Pad to 64 bytes */
-    struct cudaAccessPolicyWindow accessPolicyWindow; /**< Attribute ::cudaAccessPolicyWindow. */
-    int cooperative; /**< Nonzero indicates a cooperative kernel (see ::cudaLaunchCooperativeKernel). */
-    enum cudaSynchronizationPolicy syncPolicy; /**< ::cudaSynchronizationPolicy for work queued up in this stream */
+    struct cudaAccessPolicyWindow accessPolicyWindow; /**< Value of launch attribute ::cudaLaunchAttributeAccessPolicyWindow. */
+    int cooperative; /**< Value of launch attribute ::cudaLaunchAttributeCooperative. Nonzero indicates a cooperative
+                        kernel (see ::cudaLaunchCooperativeKernel). */
+    enum cudaSynchronizationPolicy syncPolicy; /**< Value of launch attribute
+                                                  ::cudaLaunchAttributeSynchronizationPolicy. ::cudaSynchronizationPolicy
+                                                  for work queued up in this stream. */
+    /**
+     * Value of launch attribute ::cudaLaunchAttributeClusterDimension that
+     * represents the desired cluster dimensions for the kernel. Opaque type
+     * with the following fields:
+     *     - \p x - The X dimension of the cluster, in blocks. Must be a divisor
+     *              of the grid X dimension.
+     *     - \p y - The Y dimension of the cluster, in blocks. Must be a divisor
+     *              of the grid Y dimension.
+     *     - \p z - The Z dimension of the cluster, in blocks. Must be a divisor
+     *              of the grid Z dimension.
+     */
     struct {
         unsigned int x;
         unsigned int y;
         unsigned int z;
-    } clusterDim; /**< Cluster dimensions for the kernel node. */
-    enum cudaClusterSchedulingPolicy clusterSchedulingPolicyPreference; /**< Cluster scheduling policy preference for the kernel node. */
-    int programmaticStreamSerializationAllowed;
+    } clusterDim;
+    enum cudaClusterSchedulingPolicy clusterSchedulingPolicyPreference; /**< Value of launch attribute
+                                                                           ::cudaLaunchAttributeClusterSchedulingPolicyPreference. Cluster
+                                                                           scheduling policy preference for the kernel. */
+    int programmaticStreamSerializationAllowed; /**< Value of launch attribute
+                                                   ::cudaLaunchAttributeProgrammaticStreamSerialization. */
+
+    /**
+     * Value of launch attribute ::cudaLaunchAttributeProgrammaticEvent
+     * with the following fields:
+     *     - \p cudaEvent_t event - Event to fire when all blocks trigger it.
+     *     - \p int flags;        - Event record flags, see ::cudaEventRecordWithFlags. Does not accept
+     *                               ::cudaEventRecordExternal.
+     *     - \p int triggerAtBlockStart - If this is set to non-0, each block launch will automatically trigger the event.
+     */
     struct {
         cudaEvent_t event;
         int flags;
         int triggerAtBlockStart;
     } programmaticEvent;
-    int priority; /**< Execution priority of the kernel. */
-    cudaLaunchMemSyncDomainMap memSyncDomainMap;
-    cudaLaunchMemSyncDomain memSyncDomain;
+    int priority; /**< Value of launch attribute ::cudaLaunchAttributePriority. Execution priority of the kernel. */
+    cudaLaunchMemSyncDomainMap memSyncDomainMap; /**< Value of launch attribute
+                                                    ::cudaLaunchAttributeMemSyncDomainMap. See
+                                                    ::cudaLaunchMemSyncDomainMap. */
+    cudaLaunchMemSyncDomain memSyncDomain;       /**< Value of launch attribute ::cudaLaunchAttributeMemSyncDomain. See
+                                                    ::cudaLaunchMemSyncDomain. */
+    /**
+     * Value of launch attribute ::cudaLaunchAttributePreferredClusterDimension
+     * that represents the desired preferred cluster dimensions for the kernel.
+     * Opaque type with the following fields:
+     *     - \p x - The X dimension of the preferred cluster, in blocks. Must be
+     *              a divisor of the grid X dimension, and must be a multiple of
+     *              the \p x field of ::cudaLaunchAttributeValue::clusterDim.
+     *     - \p y - The Y dimension of the preferred cluster, in blocks. Must be
+     *              a divisor of the grid Y dimension, and must be a multiple of
+     *              the \p y field of ::cudaLaunchAttributeValue::clusterDim.
+     *     - \p z - The Z dimension of the preferred cluster, in blocks. Must be
+     *              equal to the \p z field of ::cudaLaunchAttributeValue::clusterDim.
+     */
+    struct {
+        unsigned int x;
+        unsigned int y;
+        unsigned int z;
+    } preferredClusterDim;
+
+    /**
+     * Value of launch attribute ::cudaLaunchAttributeLaunchCompletionEvent
+     * with the following fields:
+     *     - \p cudaEvent_t event - Event to fire when the last block launches.
+     *     - \p int flags - Event record flags, see ::cudaEventRecordWithFlags. Does not accept
+     *                   ::cudaEventRecordExternal.
+     */
+    struct {
+        cudaEvent_t event;
+        int flags;
+    } launchCompletionEvent;
+
+    /**
+     * Value of launch attribute ::cudaLaunchAttributeDeviceUpdatableKernelNode
+     * with the following fields:
+     *    - \p int deviceUpdatable - Whether or not the resulting kernel node should be device-updatable.
+     *    - \p cudaGraphDeviceNode_t devNode - Returns a handle to pass to the various device-side update functions.
+     */
+    struct {
+        int deviceUpdatable;
+        cudaGraphDeviceNode_t devNode;
+    } deviceUpdatableKernelNode;
+    unsigned int sharedMemCarveout; /**< Value of launch attribute ::cudaLaunchAttributePreferredSharedMemoryCarveout. */
+    unsigned int nvlinkUtilCentricScheduling; /**< Value of launch attribute ::cudaLaunchAttributeNvlinkUtilCentricScheduling. */
+
 } cudaLaunchAttributeValue;
 
 /**
  * Launch attribute
  */
 typedef __device_builtin__ struct cudaLaunchAttribute_st {
-    cudaLaunchAttributeID id;
+    cudaLaunchAttributeID id; /**< Attribute to set */
     char pad[8 - sizeof(cudaLaunchAttributeID)];
-    cudaLaunchAttributeValue val;
+    cudaLaunchAttributeValue val; /**< Value of the attribute */
 } cudaLaunchAttribute;
 
 /**
@@ -3125,8 +4020,8 @@ typedef __device_builtin__ struct cudaLaunchConfig_st {
     dim3 blockDim;              /**< Block dimensions */
     size_t dynamicSmemBytes;    /**< Dynamic shared-memory size per thread block in bytes */
     cudaStream_t stream;        /**< Stream identifier */
-    cudaLaunchAttribute *attrs; /**< nullable if numAttrs == 0 */
-    unsigned int numAttrs;      /**< Number of attributes populated in attrs */
+    cudaLaunchAttribute *attrs; /**< List of attributes; nullable if ::cudaLaunchConfig_t::numAttrs == 0 */
+    unsigned int numAttrs;      /**< Number of attributes populated in ::cudaLaunchConfig_t::attrs */
 } cudaLaunchConfig_t;
 
 #define cudaStreamAttrID cudaLaunchAttributeID
@@ -3146,11 +4041,62 @@ typedef __device_builtin__ struct cudaLaunchConfig_st {
 #define cudaKernelNodeAttributeClusterSchedulingPolicyPreference    cudaLaunchAttributeClusterSchedulingPolicyPreference
 #define cudaKernelNodeAttributeMemSyncDomainMap   cudaLaunchAttributeMemSyncDomainMap
 #define cudaKernelNodeAttributeMemSyncDomain      cudaLaunchAttributeMemSyncDomain
+#define cudaKernelNodeAttributePreferredSharedMemoryCarveout cudaLaunchAttributePreferredSharedMemoryCarveout
+#define cudaKernelNodeAttributeDeviceUpdatableKernelNode cudaLaunchAttributeDeviceUpdatableKernelNode
+#define cudaKernelNodeAttributeNvlinkUtilCentricScheduling cudaLaunchAttributeNvlinkUtilCentricScheduling 
+
 
 #define cudaKernelNodeAttrValue cudaLaunchAttributeValue
 
+/**
+ * CUDA device NUMA config
+ */
+enum __device_builtin__  cudaDeviceNumaConfig {
+    cudaDeviceNumaConfigNone  = 0, /**< The GPU is not a NUMA node */
+    cudaDeviceNumaConfigNumaNode, /**< The GPU is a NUMA node, cudaDevAttrNumaId contains its NUMA ID */
+};
+
+/**
+ * CUDA async callback handle
+ */
+typedef struct cudaAsyncCallbackEntry* cudaAsyncCallbackHandle_t;
+
+struct cudaAsyncCallbackEntry;
+
+/**
+* Types of async notification that can occur
+*/
+typedef __device_builtin__ enum cudaAsyncNotificationType_enum {
+    cudaAsyncNotificationTypeOverBudget = 0x1 /**< Sent when the process has exceeded its device memory budget */
+} cudaAsyncNotificationType;
+
+/**
+* Information describing an async notification event
+*/
+typedef __device_builtin__ struct cudaAsyncNotificationInfo
+{
+    cudaAsyncNotificationType type; /**< The type of notification being sent */
+    union {
+        struct {
+            unsigned long long bytesOverBudget; /**< The number of bytes that the process has allocated above its device memory budget */
+        } overBudget; /**< Information about notifications of type \p cudaAsyncNotificationTypeOverBudget */
+    } info; /**< Information about the notification. \p type must be checked in order to interpret this field. */
+} cudaAsyncNotificationInfo_t;
+
+typedef void (*cudaAsyncCallback)(cudaAsyncNotificationInfo_t*, void*, cudaAsyncCallbackHandle_t);
+
+typedef __device_builtin__ enum CUDAlogLevel_enum {
+    cudaLogLevelError = 0,
+    cudaLogLevelWarning = 1
+} cudaLogLevel;
+
+typedef __device_builtin__ struct CUlogsCallbackEntry_st *cudaLogsCallbackHandle;
+typedef __device_builtin__ unsigned int cudaLogIterator;
+
 /** @} */
 /** @} */ /* END CUDART_TYPES */
+
+#endif  /* !__CUDACC_RTC_MINIMAL__ */
 
 #if defined(__UNDEF_CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS_DRIVER_TYPES_H__)
 #undef __CUDA_INCLUDE_COMPILER_INTERNAL_HEADERS__
@@ -3158,5 +4104,7 @@ typedef __device_builtin__ struct cudaLaunchConfig_st {
 #endif
 
 #undef __CUDA_DEPRECATED
+
+
 
 #endif /* !__DRIVER_TYPES_H__ */

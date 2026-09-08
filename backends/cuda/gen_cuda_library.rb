@@ -1,7 +1,11 @@
 require_relative 'gen_cuda_library_base'
 
 def print_enum(name, enum)
-  print_enum_with_namespace(:CUDA, name, enum)
+  print_enum_with_namespace(
+    :CUDA, name, enum,
+    filter_members: ->(m) { m.name != 'CU_COREDUMP_LIGHTWEIGHT_FLAGS' },
+    fix_values: ->(v) { v.gsub('1u <<', '1 <<') }
+  )
 end
 
 def print_cuda_object(object)
@@ -13,10 +17,17 @@ print_ffi_module(:CUDA)
 puts <<~EOF
   module CUDA
     CU_COMPUTE_ACCELERATED_TARGET_BASE = 0x10000
+    CU_COMPUTE_FAMILY_TARGET_BASE = 0x20000
     CU_TARGET_COMPUTE_90 = 90
+    CU_TARGET_COMPUTE_100 = 100
+    CU_TARGET_COMPUTE_103 = 103
+    CU_TARGET_COMPUTE_110 = 110
+    CU_TARGET_COMPUTE_120 = 120
+    CU_TARGET_COMPUTE_121 = 121
     CU_TENSOR_MAP_NUM_QWORDS = 16
     CU_IPC_HANDLE_SIZE = 64
     CUDA_IPC_HANDLE_SIZE = 64
+    RESOURCE_ABI_EXTERNAL_BYTES = 48
     extend FFI::Library
 
     module Handle
@@ -76,11 +87,13 @@ puts <<EOF
   typedef :uint64, #{to_ffi_name('CUsurfObject')}
   typedef :uint64, #{to_ffi_name('CUmemGenericAllocationHandle_v1')}
   typedef #{to_ffi_name('CUmemGenericAllocationHandle_v1')}, #{to_ffi_name('CUmemGenericAllocationHandle')}
+  typedef :uint64, #{to_ffi_name('CUgraphConditionalHandle')}
 EOF
 
 $all_types.each do |t|
   if t.type.is_a? YAMLCAst::Enum
     enum = $all_enums.find { |e| t.type.name == e.name }
+    enum ||= t.type
     print_enum(t.name, enum)
   elsif $objects.include?(t.name)
     print_cuda_object(t.name)
