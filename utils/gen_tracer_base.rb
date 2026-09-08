@@ -51,6 +51,23 @@ def print_traced_call(c, target, declare_retval: true)
   end
 end
 
+# The body of a callback wrapper: the runtime calls in once, so there is no
+# real function to call and one undirected event to fire. itt and omp are the
+# two APIs shaped this way.
+#
+# A callback that returns a value has already computed it in a prologue -- the
+# tracepoint reads `_retval` alongside the arguments.
+def print_callback_body(c, provider)
+  print_tracepoint_locals(c)
+  c.prologues.each { |p| puts p }
+
+  args = tracepoint_call_args(c)
+  args.push('_retval') if c.has_return_type?
+  print_tracepoint_call(provider, c, nil, args)
+
+  c.epilogues.each { |e| puts e }
+end
+
 # The body of an interposed wrapper: fire the entry event, run the prologues,
 # call the real function, run the epilogues, fire the exit event. cuda, hip,
 # mpi and ze generate this shape; the arguments below are where they differ.
