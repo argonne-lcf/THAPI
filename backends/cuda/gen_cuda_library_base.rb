@@ -43,7 +43,12 @@ module YAMLCAst
           else
             to_ffi_name(type.name)
           end
-      length_ = length.is_a?(String) ? length.gsub('sizeof(CUlaunchAttributeID)', '4') : length
+      length_ = if length.is_a?(String)
+                  length.gsub('sizeof(CUlaunchAttributeID)', '4')
+                        .gsub('sizeof(CUcheckpointGpuPair*)', '8')
+                else
+                  length
+                end
       [t, length_]
     end
   end

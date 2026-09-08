@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2012 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2023 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -58,6 +58,8 @@
 
 #include "driver_types.h"
 
+#ifndef __CUDACC_RTC_MINIMAL__
+
 /**
  * \addtogroup CUDART_TYPES
  *
@@ -105,4 +107,5 @@ typedef __device_builtin__ unsigned long long cudaSurfaceObject_t;
 /** @} */
 /** @} */ /* END CUDART_TYPES */
 
+#endif  /* !__CUDACC_RTC_MINIMAL__ */
 #endif /* !__SURFACE_TYPES_H__ */

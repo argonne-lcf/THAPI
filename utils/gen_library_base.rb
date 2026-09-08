@@ -272,9 +272,13 @@ end
 #
 # `filter_members` drops a member the bindings must not declare: omp's headers
 # still carry a callback its runtime removed.
-def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true })
+#
+# `fix_values` rewrites a value the header spells in C but Ruby cannot read:
+# cuda 13 writes some flags as `1u << n`.
+def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true },
+                              fix_values: ->(v) { v })
   members = enum.members.filter(&filter_members).collect do |m|
-    m.val ? "#{m.name.to_sym.inspect}, #{m.val}" : m.name.to_sym.inspect
+    m.val ? "#{m.name.to_sym.inspect}, #{fix_values.call(m.val)}" : m.name.to_sym.inspect
   end
   puts <<EOF
   #{naming.class_name(name)} = #{naming.module_name.downcase}enum #{to_ffi_name(name)},
