@@ -142,7 +142,8 @@ hstream_commands += %w[
   cuMemPrefetchAsync_v2_ptsz
 ]
 
-stream_commands += $cuda_commands.select { |c| c.name.match(/cuStreamWaitValue|cuStreamWriteValue/) }.collect(&:name)
+stream_commands += COMMANDS.groups[:lttng_ust_cuda].select { |c| c.name.match(/cuStreamWaitValue|cuStreamWriteValue/) }
+                           .collect(&:name)
 
 stream_commands += %w[
   cuMemBatchDecompressAsync
@@ -168,8 +169,8 @@ config_commands = %w[
 ]
 
 hstream_commands.each do |m|
-  register_prologue m, profiling_start_hstream
-  register_epilogue m, profiling_stop_hstream
+  COMMANDS.add_prologue m, profiling_start_hstream
+  COMMANDS.add_epilogue m, profiling_stop_hstream
 end
 
 stream_commands.each do |m|
