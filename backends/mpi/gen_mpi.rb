@@ -2,10 +2,10 @@ require_relative 'mpi_model'
 require_relative '../../utils/gen_tracer_base'
 
 def define_and_find_mpi_symbols
-  print_pointer_table(COMMANDS, MPI_POINTER_NAMES, blank: :after,
-                                                   before: ->(c) { pointer_define(c, MPI_POINTER_NAMES) })
+  print_pointer_table(COMMANDS, MPI_POINTER_NAMES,
+                      before: ->(c) { pointer_define(c, MPI_POINTER_NAMES) })
 
-  print_find_symbols('mpi', COMMANDS, MPI_POINTER_NAMES, blank: false, prefix: 'THAPI: ')
+  print_find_symbols('mpi', COMMANDS, MPI_POINTER_NAMES, prefix: 'THAPI: ')
 end
 
 puts <<~EOF

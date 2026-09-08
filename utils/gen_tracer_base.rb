@@ -105,18 +105,14 @@ end
 # `before` and `after` are extra text to emit around the declaration, for a
 # backend whose table entry is more than the pointer itself: cuda wraps each
 # one in the two stubs that pointer can name.
-#
-# `blank` is which side of an entry its separating blank line falls on; mpi's
-# generated file leads with the declaration.
 def print_pointer_table(commands, pointer_names, initializer: ->(_c) { '(void *) 0x0' },
-                        before: nil, after: nil, blank: :before)
+                        before: nil, after: nil)
   commands.each do |c|
-    puts if blank == :before
+    puts
     puts before.call(c) if before
     puts "#{c.decl_pointer(c.pointer_type_name)};"
     puts "static #{c.pointer_type_name} #{pointer_names[c]} = #{initializer.call(c)};"
     puts after.call(c) if after
-    puts if blank == :after
   end
 end
 
@@ -124,11 +120,8 @@ end
 # the tracer's one-time init calls, wrapping the lookups below. Every backend
 # declares it the same way, so the signature is stated here rather than in each
 # generator's heredoc.
-#
-# `blank` is false for mpi, whose pointer table already ends with the blank line
-# that separates the two.
-def print_find_symbols(backend, commands, pointer_names, blank: true, **opts)
-  puts if blank
+def print_find_symbols(backend, commands, pointer_names, **opts)
+  puts
   puts "static void find_#{backend}_symbols(void * handle, int verbose) {"
   print_dlsym_lookups(commands, pointer_names, **opts)
   puts '}'
@@ -138,14 +131,12 @@ end
 # The dlsym lookups that fill in a backend's function-pointer table: one per
 # traced function, each reporting a symbol the loaded library does not export.
 #
-# `prefix` is what the diagnostic is tagged with, and `indent` how far its
-# fprintf is indented -- both are as each backend's generated tracer already
-# spells them.
+# `prefix` is what the diagnostic is tagged with.
 #
 # `fallback` names a stub to install when the symbol is missing. cuda installs
 # one for every unresolved symbol, so its lookup cannot leave a null behind and
 # the verbose report moves inside the check.
-def print_dlsym_lookups(commands, pointer_names, prefix: '', indent: '    ', fallback: nil)
+def print_dlsym_lookups(commands, pointer_names, prefix: '', fallback: nil)
   commands.each do |c|
     ptr = pointer_names[c]
     report = %(fprintf(stderr, "#{prefix}Missing symbol #{c.name}!\\n");)
@@ -159,7 +150,7 @@ def print_dlsym_lookups(commands, pointer_names, prefix: '', indent: '    ', fal
       puts '  }'
     else
       puts "  if (!#{ptr} && verbose)"
-      puts "#{indent}#{report}"
+      puts "    #{report}"
     end
   end
 end
