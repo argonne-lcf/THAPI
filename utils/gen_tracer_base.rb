@@ -170,7 +170,7 @@ end
 # `storage` is 'static ' for a wrapper that is not itself the exported symbol.
 # `init` is the tracer's one-time setup call, for a backend that needs one
 # before the traced function can run.
-def print_wrapper(c, storage: nil, init: nil, separator: "\n")
+def print_wrapper(c, storage: nil, init: nil)
   puts "#{storage}#{c.decl} {"
   puts "  #{init}" if init
 
@@ -178,5 +178,5 @@ def print_wrapper(c, storage: nil, init: nil, separator: "\n")
 
   puts '  return _retval;' if c.has_return_type?
   puts '}'
-  print separator
+  puts
 end

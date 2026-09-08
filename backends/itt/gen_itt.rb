@@ -30,7 +30,9 @@ COMMANDS.add_prologue('__itt_metadata_add',
 
 print_traced_body = lambda { |c, provider|
   print_tracepoint_locals(c)
-  c.prologues.each { |p| puts p }
+  # itt's prologues are bare statements; every other backend's carry their own
+  # indentation because they are heredocs.
+  c.prologues.each { |p| puts "  #{p}" }
   args = c.parameters.collect(&:name)
   args.push('_retval') if c.has_return_type?
   print_tracepoint_call(provider, c, nil, args)
@@ -76,7 +78,7 @@ EOF
 
 provider = :lttng_ust_itt
 COMMANDS.reject { |c| c.function.inline }.each do |c|
-  print_wrapper(c, separator: '') { print_traced_body.call(c, provider) }
+  print_wrapper(c) { print_traced_body.call(c, provider) }
 end
 
 puts <<~EOF
