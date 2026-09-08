@@ -7,32 +7,31 @@ COMMANDS.each do |c|
   next unless c.has_return_type?
 
   c.add_prologue(if c.type.is_a?(YAMLCAst::Pointer)
-                   "#{c.type} _retval = calloc(1, sizeof(*_retval));"
+                   "  #{c.type} _retval = calloc(1, sizeof(*_retval));"
                  else
                    # `= {}` is C23, so use `= {0}` which also works for scalars
                    # pre-C23. Can be modernized once we require C23.
-                   "#{c.type} _retval = {0};"
+                   "  #{c.type} _retval = {0};"
                  end)
 end
 
 # Sometime, but not always, those function are called by ittstatic
 # But we never use them in btx
-COMMANDS.add_prologue('__itt_event_create', '_retval = atomic_fetch_add(&event_counter, 1);')
-COMMANDS.add_prologue('__itt_domain_create', '_retval->flags = 1; _retval->nameA=name;')
-COMMANDS.add_prologue('__itt_string_handle_create', '_retval->strA=name;')
-COMMANDS.add_prologue('__itt_task_begin', 'if (domain->flags == 0) return;')
-COMMANDS.add_prologue('__itt_task_end', 'if (domain->flags == 0) return;')
+COMMANDS.add_prologue('__itt_event_create', '  _retval = atomic_fetch_add(&event_counter, 1);')
+COMMANDS.add_prologue('__itt_domain_create', '  _retval->flags = 1; _retval->nameA=name;')
+COMMANDS.add_prologue('__itt_string_handle_create', '  _retval->strA=name;')
+COMMANDS.add_prologue('__itt_task_begin', '  if (domain->flags == 0) return;')
+COMMANDS.add_prologue('__itt_task_end', '  if (domain->flags == 0) return;')
 
 COMMANDS.add_prologue('__itt_metadata_add',
-                      'tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);')
+                      '  tracepoint(lttng_ust_itt_metadata, metadata, type, count, ' \
+                      'count * __itt_metadata_type_size(type), data);')
 
 # Printing
 
 print_traced_body = lambda { |c, provider|
   print_tracepoint_locals(c)
-  # itt's prologues are bare statements; every other backend's carry their own
-  # indentation because they are heredocs.
-  c.prologues.each { |p| puts "  #{p}" }
+  c.prologues.each { |p| puts p }
   args = c.parameters.collect(&:name)
   args.push('_retval') if c.has_return_type?
   print_tracepoint_call(provider, c, nil, args)
