@@ -142,8 +142,8 @@ module LTTng
   ),
   TP_FIELDS(
 EOF
-    fields = tp[phase || 'fields']
-    puts indented(fields.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }) if fields
+    fields = tp[phase || 'fields'].to_a.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }
+    puts indented(fields) unless fields.empty?
     puts <<~EOF
         )
       )

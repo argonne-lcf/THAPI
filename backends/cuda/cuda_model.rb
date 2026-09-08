@@ -8,9 +8,7 @@ cuda_exports_api = ApiModel.load_file('cuda_exports_api.yaml')
 
 # The driver and its export tables are traced as one API: an export-table
 # typedef can name a driver struct, so they have to be classified together.
-API = cuda_api + cuda_exports_api
-
-gen_ffi_type_map(API.types, API.type_classes)
+API = (cuda_api + cuda_exports_api).register_ffi_types
 
 CONTEXT = BackendContext.for(API, result_name: 'cuResult', init_functions: nil)
 

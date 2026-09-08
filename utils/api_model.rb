@@ -36,6 +36,14 @@ class ApiModel
     @hex_ints = hex_ints.freeze
   end
 
+  # Grow the shared INT_*/FFI_* maps with this API's typedefs. Every generator
+  # that reads a type through those maps needs it done first, so it is the
+  # model's own step rather than a call each backend has to remember.
+  def register_ffi_types
+    gen_ffi_type_map(types, type_classes)
+    self
+  end
+
   def +(other)
     ApiModel.new(types: types + other.types, structs: structs + other.structs,
                  unions: unions + other.unions, enums: enums + other.enums,

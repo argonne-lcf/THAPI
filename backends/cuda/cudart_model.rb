@@ -1,8 +1,6 @@
 require_relative '../../utils/backend_model'
 
-API = ApiModel.load_file('cudart_api.yaml')
-
-gen_ffi_type_map(API.types, API.type_classes)
+API = ApiModel.load_file('cudart_api.yaml').register_ffi_types
 
 # gen_cudart.rb calls _init_tracer() from every wrapper, so no function is
 # singled out as the initializer and Command#init? is never asked.

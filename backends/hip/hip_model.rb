@@ -1,8 +1,6 @@
 require_relative '../../utils/backend_model'
 
-API = ApiModel.load_file('hip_api.yaml')
-
-gen_ffi_type_map(API.types, API.type_classes)
+API = ApiModel.load_file('hip_api.yaml').register_ffi_types
 
 CONTEXT = BackendContext.for(API, result_name: 'hipResult', init_functions: /.*/)
 
