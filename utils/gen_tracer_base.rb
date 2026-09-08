@@ -55,8 +55,9 @@ end
 # real function to call and one undirected event to fire. itt and omp are the
 # two APIs shaped this way.
 #
-# A callback that returns a value has already computed it in a prologue -- the
-# tracepoint reads `_retval` alongside the arguments.
+# There is no traced call to assign `_retval`, so a command with a return type
+# must declare it in a prologue; the tracepoint reads it alongside the
+# arguments.
 def print_callback_body(c, provider)
   print_tracepoint_locals(c)
   c.prologues.each { |p| puts p }
