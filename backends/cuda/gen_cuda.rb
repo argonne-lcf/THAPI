@@ -24,31 +24,28 @@ def declare(c, suffix)
   "static #{YAMLCAst::Declaration.new(name: "#{c.name}_#{suffix}", type: c.function.type)}"
 end
 
-# The parameters, cast to void so the stub does not warn about them. `indent`
-# is the indentation of the line this is interpolated into: the first line
-# inherits it from the heredoc, and every line after has to reproduce it.
-def discard_parameters(c, indent:)
-  c.parameters.map { |p| "(void)#{p.name};" }.join("\n#{indent}")
+# The body of a stub, as lines: each cast to void so the compiler does not
+# warn about a parameter the stub ignores, then whatever the stub does. A
+# command with no parameters contributes no lines rather than a blank one.
+def stub_body(c, *statements)
+  (c.parameters.to_a.map { |p| "(void)#{p.name};" } + statements).map { |l| "  #{l}" }.join("\n")
 end
 
 def unsupported_stub(c)
   <<~EOF
     #{declare(c, 'unsupp')} {
-      #{discard_parameters(c, indent: '  ')}
-      fprintf(stderr, "THAPI: #{c.name} was called, but it is unsupported by the driver\\n");
-      return CUDA_ERROR_NOT_SUPPORTED;
+    #{stub_body(c, %(fprintf(stderr, "THAPI: #{c.name} was called, but it is unsupported by the driver\\n");),
+                'return CUDA_ERROR_NOT_SUPPORTED;')}
     }
     #{declare(c, 'uninit')};
   EOF
 end
 
 def uninitialized_stub(c)
-  call = "#{CUDA_POINTER_NAMES[c]}(#{c.parameters.collect(&:name).join(', ')});"
+  call = "#{CUDA_POINTER_NAMES[c]}(#{c.parameters.to_a.collect(&:name).join(', ')});"
   <<~EOF
     #{declare(c, 'uninit')} {
-      #{discard_parameters(c, indent: '  ')}
-      _init_tracer();
-      #{c.has_return_type? ? "return #{call}" : call}
+    #{stub_body(c, '_init_tracer();', c.has_return_type? ? "return #{call}" : call)}
     }
   EOF
 end
