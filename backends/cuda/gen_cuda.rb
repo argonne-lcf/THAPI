@@ -106,38 +106,32 @@ EOF
 
 puts File.read(File.join(SRC_DIR, 'tracer_cuda_helpers.include.c'))
 
-normal_wrapper = lambda { |c, provider|
-  print_wrapper(c) { print_traced_body(c, provider, CUDA_POINTER_NAMES) }
-}
+# cuda initializes from the _uninit trampoline each pointer starts at, not
+# from the wrapper, so no wrapper carries an _init_tracer() call.
+no_init = ->(_c) {}
 
-COMMANDS.groups[:lttng_ust_cuda].each do |c|
-  normal_wrapper.call(c, :lttng_ust_cuda)
-end
+print_traced_wrappers(COMMANDS.groups[:lttng_ust_cuda], :lttng_ust_cuda, CUDA_POINTER_NAMES,
+                      init: no_init)
 
+# The dispatch table hands back a pointer to the real function; swap in the
+# hidden alias so a caller that resolves through it is traced too.
 COMMANDS.groups[:lttng_ust_cuda].each do |c|
   puts <<~EOF
-
     static void wrap_#{c.name}(void **pfn) {
-  EOF
-  str = <<EOF
-  if (*pfn == #{CUDA_POINTER_NAMES[c]}) {
-    *pfn = #{c.hidden_alias_name};
-  }
-EOF
-  print str
-  puts <<~EOF
+      if (*pfn == #{CUDA_POINTER_NAMES[c]}) {
+        *pfn = #{c.hidden_alias_name};
+      }
     }
 
   EOF
 end
 
-COMMANDS.groups[:lttng_ust_cuda_exports].each do |c|
-  c.function.instance_variable_set(:@storage, 'static')
-  normal_wrapper.call(c, :lttng_ust_cuda_exports)
-end
+# An export-table entry is reached through the dispatcher, never linked
+# against, so its wrapper is not the exported symbol.
+print_traced_wrappers(COMMANDS.groups[:lttng_ust_cuda_exports], :lttng_ust_cuda_exports,
+                      CUDA_POINTER_NAMES, init: no_init, storage: 'static ')
 
 puts <<~EOF
-
   static void * cuda_extension_dispatcher(const CUuuid *uuid, size_t offset) {
 EOF
 

@@ -57,7 +57,6 @@ puts <<~EOF
 
   static _Atomic uint32_t event_counter = 0;
 
-
   static inline size_t __itt_metadata_type_size(__itt_metadata_type type)
   {
       switch (type) {
@@ -85,8 +84,6 @@ COMMANDS.reject { |c| c.function.inline }.each do |c|
 end
 
 puts <<~EOF
-
-
   static void fill_func_ptr_per_lib(__itt_global* p)
   {
       __itt_api_info* api_list = (__itt_api_info*)p->api_list_ptr;

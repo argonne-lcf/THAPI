@@ -173,14 +173,18 @@ def print_dlsym_lookups(commands, pointer_names, prefix: '', fallback: nil)
   end
 end
 
-# One interposed wrapper per traced function: the shape cudart, hip and mpi
-# generate. `init` is the tracer's one-time setup, which cudart runs from every
-# wrapper and the others only from the functions that initialize the API.
+# One interposed wrapper per traced function, for every backend that generates
+# them.
+#
+# `init` and `body_opts` are asked per command rather than given once, because
+# both vary within a single backend: ze fires _init_tracer_dump() from zeInit
+# and zesInit alone, and its ProcAddrTable getters declare `_retval` in their
+# own prologue while its other commands do not.
 def print_traced_wrappers(commands, provider, pointer_names, init: ->(c) { '_init_tracer();' if c.init? },
-                          **body_opts)
+                          storage: nil, body_opts: ->(_c) { {} })
   commands.each do |c|
-    print_wrapper(c, init: init.call(c)) do
-      print_traced_body(c, provider, pointer_names, **body_opts)
+    print_wrapper(c, storage: storage, init: init.call(c)) do
+      print_traced_body(c, provider, pointer_names, **body_opts.call(c))
     end
   end
 end
