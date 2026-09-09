@@ -48,29 +48,21 @@ def gen_struct_printer(namespace, types)
       #{namespace}_structure_type_t stype = (#{namespace}_structure_type_t)((ze_base_desc_t *)p)->stype;
       switch (stype) {
   EOF
-  types.reject { |t| STRUCT_TYPE_REJECT.include?(t.to_s) }.each do |t|
+  types.each do |t|
+    stypes = traced_structure_type_names(t.to_s)
+    next if stypes.empty?
+
+    puts stypes.map { |stype| "  case #{stype}:\n" }.join
     puts <<EOF
-  case #{structure_type_name(t)}:
     tracepoint(lttng_ust_#{namespace}_structs, #{t}, ((#{t} *)p));
     break;
 EOF
   end
-  if namespace == :ze
-    puts <<EOF
-  case ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2:
-    tracepoint(lttng_ust_ze_structs, ze_device_properties_t, ((ze_device_properties_t *)p));
-    break;
-EOF
-  elsif namespace == :zes
-    puts <<EOF
-  case ZES_STRUCTURE_TYPE_BASE_STATE:
-    break;
-  case ZES_STRUCTURE_TYPE_DEVICE_UUID:
-    break;
-EOF
-  end
+  # The stypes with no tracepoint of their own: an end marker, a tag whose
+  # struct the headers do not declare, an abstract base, or a value from a
+  # driver newer than our headers.
   puts <<~EOF
-      case #{namespace.to_s.upcase}_STRUCTURE_TYPE_FORCE_UINT32:
+      default:
         break;
       }
     }
