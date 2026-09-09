@@ -103,17 +103,11 @@ $ diff <(grep -ho 'zex[A-Za-z]*(' /usr/include/level_zero/driver_experimental/*.
        <(grep -o  'zex[A-Za-z]*(' include/zex_api.h | tr -d '(' | sort -u)
 ```
 
-- Two manual changes when transcribing:
-
-  - Spell `zex_command_list_handle_t` / `zex_event_handle_t` as their `ze_`
-    originals (they are plain typedefs of them). One type must have one name:
-    metababel dispatches on field name plus type, and a field such as
-    `hSignalEvent` carrying both spellings is a conflicting signature.
-
-  - zex tags its structs with `ZEX_STRUCTURE_*` macros, not with members of
-    `ze_structure_type_t`. The generated bindings can only name an enum member,
-    so such a struct goes in `$struct_type_reject` in `ze_model.rb`; otherwise
-    `gen_ze_library.rb` raises `Unrecognized namespace`.
+- One manual change when transcribing: spell `zex_command_list_handle_t` /
+  `zex_event_handle_t` as their `ze_` originals (they are plain typedefs of
+  them). One type must have one name: metababel dispatches on field name plus
+  type, and a field such as `hSignalEvent` carrying both spellings is a
+  conflicting signature.
 
 ## Now Try to Compile:
 
@@ -169,7 +163,11 @@ tracer_ze.c:197:8: error: use of undeclared identifier 'ZE_STRUCTURE_TYPE_DEVICE
       |        ZE_STRUCTURE_TYPE_DEVICE_CACHELINE_SIZE_EXT
 ```
 
-Due to Intel's lack of naming consistency, you may need to update the `struct_type_conversion_table` in `ze_model.rb`.
+Due to Intel's lack of naming consistency, you may need to add a row to
+`STRUCT_TYPES` in `ze_model.rb`, which maps a struct to the stypes that tag it.
+The same table is where a struct tagged by *two* enumerators goes -- list both,
+and the switch gives them one case each falling through to one tracepoint (see
+`ze_device_properties_t`).
 
 ## 2
 
