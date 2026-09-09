@@ -287,18 +287,10 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# Shared by cuda/hip/mpi. ze inlines its own -- :data/:id fields, and a UUID
-# printed back to front.
-def print_handle_uuid_modules
+# The UUID renderer cuda and hip prepend to their UUID structs. ze prints its
+# UUIDs back to front and inlines its own.
+def print_uuid_module
   puts <<'EOF'
-  module Handle
-    def to_s
-      s = '{ reserved: "'
-      s << self[:reserved].to_a.collect { |v| "\\x%02x" % ((v + 256)%256) }.join
-      s << '" }'
-    end
-  end
-
   module UUID
     def to_s
       a = self[:bytes].to_a.collect { |v| v < 0 ? 0x100 + v : v }

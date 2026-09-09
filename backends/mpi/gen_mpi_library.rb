@@ -8,8 +8,6 @@ puts <<~EOF
 
 EOF
 
-print_handle_uuid_modules
-
 print_typedefs(NAMING)
 
 puts <<~EOF
