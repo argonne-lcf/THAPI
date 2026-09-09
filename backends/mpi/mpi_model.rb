@@ -1,8 +1,6 @@
 require_relative '../../utils/backend_model'
 
-API = ApiModel.load_file('mpi_api.yaml')
-
-gen_ffi_type_map(API.types, API.type_classes)
+API = ApiModel.load_file('mpi_api.yaml').register_ffi_types
 
 init_functions = /
   \b(?:P?MPI_Init|
@@ -50,8 +48,8 @@ COMMANDS = build_command_index(
 MPI_POINTER_NAMES = COMMANDS.pointer_names(naming: :upcase.to_proc)
 
 COMMANDS.add_epilogue 'MPI_Type_commit', <<EOF
-  int size;#{' '}
+  int size;
   MPI_TYPE_SIZE_PTR(*datatype, &size);
-  if (tracepoint_enabled(lttng_ust_mpi_type, property))#{' '}
+  if (tracepoint_enabled(lttng_ust_mpi_type, property))
     tracepoint(lttng_ust_mpi_type, property, *datatype, size);
 EOF

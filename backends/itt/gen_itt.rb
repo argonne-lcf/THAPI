@@ -1,50 +1,44 @@
 require_relative 'itt_model'
+require_relative '../../utils/gen_tracer_base'
 
 # Customization of codegen
 
 COMMANDS.each do |c|
   next unless c.has_return_type?
 
-  c.add_prologue(if c.type.is_a?(YAMLCAst::Pointer)
-                   "#{c.type} _retval = calloc(1, sizeof(*_retval));"
-                 else
-                   # `= {}` is C23, so use `= {0}` which also works for scalars
-                   # pre-C23. Can be modernized once we require C23.
-                   "#{c.type} _retval = {0};"
-                 end)
-
-  c.add_epilogue('return _retval;')
+  # `= {}` is C23, so use `= {0}`, which also works for scalars pre-C23.
+  # Can be modernized once we require C23.
+  init = c.type.is_a?(YAMLCAst::Pointer) ? 'calloc(1, sizeof(*_retval))' : '{0}'
+  c.add_prologue <<EOF
+  #{c.type} _retval = #{init};
+EOF
 end
 
 # Sometime, but not always, those function are called by ittstatic
 # But we never use them in btx
-COMMANDS.add_prologue('__itt_event_create', '_retval = atomic_fetch_add(&event_counter, 1);')
-COMMANDS.add_prologue('__itt_domain_create', '_retval->flags = 1; _retval->nameA=name;')
-COMMANDS.add_prologue('__itt_string_handle_create', '_retval->strA=name;')
-COMMANDS.add_prologue('__itt_task_begin', 'if (domain->flags == 0) return;')
-COMMANDS.add_prologue('__itt_task_end', 'if (domain->flags == 0) return;')
+COMMANDS.add_prologue '__itt_event_create', <<EOF
+  _retval = atomic_fetch_add(&event_counter, 1);
+EOF
 
-COMMANDS.add_prologue('__itt_metadata_add',
-                      'tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);')
+COMMANDS.add_prologue '__itt_domain_create', <<EOF
+  _retval->flags = 1; _retval->nameA=name;
+EOF
 
-# Printing
+COMMANDS.add_prologue '__itt_string_handle_create', <<EOF
+  _retval->strA=name;
+EOF
 
-common_block = lambda { |c, provider|
-  l = []
+COMMANDS.add_prologue '__itt_task_begin', <<EOF
+  if (domain->flags == 0) return;
+EOF
 
-  l += c.tracepoint_parameters.map { |p| "  #{p.type} #{p.name};" }
-  l += c.tracepoint_inits(:start)
-  l += c.prologues
+COMMANDS.add_prologue '__itt_task_end', <<EOF
+  if (domain->flags == 0) return;
+EOF
 
-  params = c.parameters.collect(&:name)
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  tracepoint_params.push('_retval') if c.has_return_type?
-
-  l += ["tracepoint(#{provider}, #{c.name}, #{(params + tracepoint_params).join(', ')});"]
-  l += c.epilogues
-
-  '  ' + l.join("\n  ")
-}
+COMMANDS.add_prologue '__itt_metadata_add', <<EOF
+  tracepoint(lttng_ust_itt_metadata, metadata, type, count, count * __itt_metadata_type_size(type), data);
+EOF
 
 puts <<~EOF
   #define INTEL_NO_MACRO_BODY
@@ -60,7 +54,6 @@ puts <<~EOF
   #include <stdatomic.h>
 
   static _Atomic uint32_t event_counter = 0;
-
 
   static inline size_t __itt_metadata_type_size(__itt_metadata_type type)
   {
@@ -84,17 +77,11 @@ puts <<~EOF
 EOF
 
 provider = :lttng_ust_itt
-puts COMMANDS.filter_map { |c|
-  next if c.function.inline
-
-  l  = ["#{c.decl} {"]
-  l += [common_block.call(c, provider)]
-  l + ['}']
-}.join("  \n")
+COMMANDS.reject { |c| c.function.inline }.each do |c|
+  print_wrapper(c) { print_callback_body(c, provider) }
+end
 
 puts <<~EOF
-
-
   static void fill_func_ptr_per_lib(__itt_global* p)
   {
       __itt_api_info* api_list = (__itt_api_info*)p->api_list_ptr;

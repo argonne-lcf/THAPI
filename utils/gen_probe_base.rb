@@ -72,22 +72,13 @@ def print_tracepoint(provider, c, dir = nil)
       #{name},
       TP_ARGS(
   EOF
-  print '    '
-  if (c.parameters.nil? || c.parameters.empty?) && !(c.has_return_type? && dir != :start)
-    print 'void'
-  else
-    params = []
-    unless c.parameters.nil? || c.parameters.empty?
-      params.concat(c.parameters.collect do |p|
-        "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
-      end)
-    end
-    params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
-    params += c.tracepoint_parameters_for(dir).collect do |p|
-      "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
-    end
-    puts params.join(",\n    ")
-  end
+  decl = ->(p) { "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}" }
+  params = c.parameters.to_a.collect(&decl)
+  params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
+  params += c.tracepoint_parameters_for(dir).collect(&decl)
+
+  # A tracepoint that carries nothing still has to say so: TP_ARGS(void).
+  puts "    #{params.empty? ? 'void' : params.join(",\n    ")}"
   puts <<EOF
   ),
   TP_FIELDS(
@@ -111,7 +102,8 @@ EOF
 
   fields += c.meta_parameters.collect { |m| m.lttng_type_for(dir) }.flatten
 
-  puts '    ' << fields.compact.map(&:call_string).join("\n    ")
+  rows = fields.compact.map(&:call_string)
+  puts "    #{rows.join("\n    ")}" unless rows.empty?
   puts <<~EOF
       )
     )

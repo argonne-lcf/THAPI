@@ -52,6 +52,11 @@ def lower_snake_case(str)
 end
 
 module LTTng
+  # Indented to match the macro the heredocs above and below it spell.
+  def self.indented(items, separator: '')
+    items.join("#{separator}\n    ").prepend('    ')
+  end
+
   class TracepointField
     FIELDS = {
       ctf_array: %i[type name expression length],
@@ -113,10 +118,9 @@ module LTTng
         #{en['name']},
         TP_ENUM_VALUES(
     EOF
-    print '    '
-    puts en['values'].collect { |(f, sy, *args)|
+    puts indented(en['values'].collect { |(f, sy, *args)|
       "#{f}(#{sy.to_s.inspect}, #{args.join(', ')})"
-    }.join("\n    ")
+    })
     puts <<~EOF
         )
       )
@@ -131,22 +135,14 @@ module LTTng
         #{tp['name']}#{"_#{suffix}" if suffix},
         TP_ARGS(
     EOF
-    print '    '
-    args = tp['args']
-    if args.empty?
-      puts 'void'
-    else
-      puts args.collect { |a| a.join(', ') }.join(",\n    ")
-    end
+    args = tp['args'].collect { |a| a.join(', ') }
+    puts args.empty? ? '    void' : indented(args, separator: ',')
     puts <<EOF
   ),
   TP_FIELDS(
 EOF
-    fields = tp[phase || 'fields']
-    if fields
-      print '    '
-      puts fields.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }.join("\n    ")
-    end
+    fields = tp[phase || 'fields'].to_a.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }
+    puts indented(fields) unless fields.empty?
     puts <<~EOF
         )
       )

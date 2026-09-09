@@ -69,8 +69,6 @@ OPENCL_COMMANDS.groups[:extension].each do |c|
   tracepoint_lambda.call(c, 'stop')
 end
 
-puts ''
-
 namespace = 'lttng_ust_opencl'
 callbacks = yaml_load_file_cached(File.join(SRC_DIR, 'opencl_wrapper_events.yaml'))[namespace]
 callbacks['events'].each do |e|

@@ -117,7 +117,7 @@ puts File.read(File.join(SRC_DIR, 'tracer_ze_helpers.include.c'))
 # ze can be asked to walk the pNext chain of an extension struct a call was
 # handed. `direction` picks which side of the call is worth walking: an input
 # struct is only meaningful before the call, an output struct only after.
-print_chained_structs = lambda { |c, provider, types, direction|
+def print_chained_structs(c, provider, types, direction)
   chained = c.meta_parameters.select do |p|
     p.is_a?(direction) &&
       (a = p.command[p.name]) &&
@@ -130,31 +130,23 @@ print_chained_structs = lambda { |c, provider, types, direction|
     _print_#{provider}_structs(#{p.name}->pNext);
 EOF
   end
-}
+end
 
-common_block = lambda { |c, provider, types|
-  print_traced_body(
-    c, provider, ZE_POINTER_NAMES,
-    after_entry: ->(cmd) { print_chained_structs.call(cmd, provider, types, InScalar) },
-    after_exit: ->(cmd) { print_chained_structs.call(cmd, provider, types, OutScalar) },
-    # A ProcAddrTable getter declares _retval in its own prologue, because the
-    # prologue has to reach into the table the call is about to fill in.
-    declare_retval: !c.name.match(PROC_ADDR_TABLE_GETTER)
-  )
-}
+# A ProcAddrTable getter declares _retval in its own prologue, because that
+# prologue reaches into the table the call is about to fill in.
+def ze_body_opts(c, provider, types)
+  { after_entry: ->(cmd) { print_chained_structs(cmd, provider, types, InScalar) },
+    after_exit: ->(cmd) { print_chained_structs(cmd, provider, types, OutScalar) },
+    declare_retval: !c.name.match(PROC_ADDR_TABLE_GETTER) }
+end
 
-normal_wrapper = lambda { |c, provider, types|
-  # _init_tracer_dump() calls the real zeInit (ZE_INIT_PTR) and dumps device
-  # properties. zesInit piggybacks on it so a pure-Sysman program (no zeInit)
-  # still initializes the ze backend it depends on.
-  init = if !c.init?
-           nil
-         elsif %w[zeInit zesInit].include?(c.name)
-           "_init_tracer();\n  _init_tracer_dump();"
-         else
-           '_init_tracer();'
-         end
-  print_wrapper(c, init: init) { common_block.call(c, provider, types) }
+# _init_tracer_dump() calls the real zeInit (ZE_INIT_PTR) and dumps device
+# properties. zesInit piggybacks on it so a pure-Sysman program (no zeInit)
+# still initializes the ze backend it depends on.
+ze_init = lambda { |c|
+  next unless c.init?
+
+  %w[zeInit zesInit].include?(c.name) ? "_init_tracer();\n  _init_tracer_dump();" : '_init_tracer();'
 }
 
 # Which of a namespace's entry points get a hidden alias. zel is the exception:
@@ -178,9 +170,8 @@ end
 
 %i[ze zet zes zel zer].each do |ns|
   provider = :"lttng_ust_#{ns}"
-  COMMANDS.groups[provider].each do |c|
-    normal_wrapper.call(c, provider, struct_types[ns])
-  end
+  print_traced_wrappers(COMMANDS.groups[provider], provider, ZE_POINTER_NAMES,
+                        init: ze_init, body_opts: ->(c) { ze_body_opts(c, provider, struct_types[ns]) })
 end
 
 zex_commands.each do |c|
@@ -193,7 +184,8 @@ zex_commands.each do |c|
   #{p} = *(#{p.type} *)args[#{i}];
 EOF
   end
-  common_block.call(c, :lttng_ust_zex, struct_types[:zex])
+  print_traced_body(c, :lttng_ust_zex, ZE_POINTER_NAMES,
+                    **ze_body_opts(c, :lttng_ust_zex, struct_types[:zex]))
   if c.has_return_type?
     puts <<EOF
   *ffi_ret = _retval;
