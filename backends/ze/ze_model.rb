@@ -13,25 +13,6 @@ APIS = {
   zex: ApiModel.load_file('zex_api.yaml'),
 }.freeze
 
-# A struct tagged with its own type is one the tracer can decode from a
-# `void *` at runtime, which is what makes it worth its own tracepoint.
-STRUCT_TYPE_TAG = 'stype'
-
-def tagged_structs(api)
-  api.types.select do |t|
-    t.type.is_a?(YAMLCAst::Struct) &&
-      (struct = api.struct_named(t.type.name)) &&
-      struct.members.first.name == STRUCT_TYPE_TAG
-  end.map(&:name)
-end
-
-# Those a caller can be handed. The `<ns>_base_` types are the tag's own base
-# classes: a tracepoint exists for each, but no API call ever passes one, so
-# nothing dispatches on them.
-def concrete_tagged_structs(namespace, api)
-  tagged_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
-end
-
 # Every namespace as one API, the same thing `API` names in every other
 # backend. The derivations have to see all of them at once: a zet typedef
 # routinely names a ze struct.
@@ -44,45 +25,72 @@ API = APIS.values.reduce(:+).register_ffi_types
 CONTEXT = BackendContext.for(API, result_name: 'zeResult',
                                   init_functions: /zeInit|zeLoaderInit|zeInitDrivers|zesInit/)
 
-STRUCT_TYPE_CONVERSION_TABLE = {
-  'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_PROPERTIES_EXP' => 'ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES',
-  'ZE_STRUCTURE_TYPE_IMAGE_PITCHED_EXP_DESC' => 'ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC',
-  'ZE_STRUCTURE_TYPE_IMAGE_BINDLESS_EXP_DESC' => 'ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC',
-  'ZE_STRUCTURE_TYPE_DEVICE_PITCHED_ALLOC_EXP_PROPERTIES' => 'ZE_STRUCTURE_TYPE_PITCHED_ALLOC_DEVICE_EXP_PROPERTIES',
-  'ZE_STRUCTURE_TYPE_CONTEXT_POWER_SAVING_HINT_EXP_DESC' => 'ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC',
-  'ZE_STRUCTURE_TYPE_EVENT_POOL_COUNTER_BASED_EXP_DESC' => 'ZE_STRUCTURE_TYPE_COUNTER_BASED_EVENT_POOL_EXP_DESC',
-  'ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_PROPERTIES_EXT' => 'ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_EXT_PROPERTIES',
-  'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32_HANDLE' => 'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32',
-  'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32_HANDLE' => 'ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32',
-  'ZE_STRUCTURE_TYPE_COMMAND_LIST_APPEND_LAUNCH_KERNEL_PARAM_COOPERATIVE_DESC' => 'ZE_STRUCTURE_TYPE_COMMAND_LIST_APPEND_PARAM_COOPERATIVE_DESC',
-  'ZE_STRUCTURE_TYPE_DEVICE_CACHE_LINE_SIZE_EXT' => 'ZE_STRUCTURE_TYPE_DEVICE_CACHELINE_SIZE_EXT',
-  'ZE_STRUCTURE_TYPE_KERNEL_ALLOCATION_EXP_PROPERTIES' => 'ZE_STRUCTURE_TYPE_KERNEL_ALLOCATION_PROPERTIES',
-  'ZET_STRUCTURE_TYPE_EXPORT_DMA_BUF_EXP_PROPERTIES' => 'ZET_STRUCTURE_TYPE_EXPORT_DMA_EXP_PROPERTIES',
-  'ZES_STRUCTURE_TYPE_MEM_PAGE_OFFLINE_STATE_EXP' => 'ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP',
-}
+# The stypes of a struct whose name does not spell them. Every entry replaces
+# the derived name outright, so a struct the spec renamed has one row and a
+# struct the spec gave a second stype lists both.
+STRUCT_TYPES = {
+  'ze_image_memory_properties_exp_t' => %w[ZE_STRUCTURE_TYPE_IMAGE_MEMORY_EXP_PROPERTIES],
+  'ze_image_pitched_exp_desc_t' => %w[ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC],
+  'ze_image_bindless_exp_desc_t' => %w[ZE_STRUCTURE_TYPE_BINDLESS_IMAGE_EXP_DESC],
+  'ze_device_pitched_alloc_exp_properties_t' => %w[ZE_STRUCTURE_TYPE_PITCHED_ALLOC_DEVICE_EXP_PROPERTIES],
+  'ze_context_power_saving_hint_exp_desc_t' => %w[ZE_STRUCTURE_TYPE_POWER_SAVING_HINT_EXP_DESC],
+  'ze_event_pool_counter_based_exp_desc_t' => %w[ZE_STRUCTURE_TYPE_COUNTER_BASED_EVENT_POOL_EXP_DESC],
+  'ze_kernel_max_group_size_properties_ext_t' => %w[ZE_STRUCTURE_TYPE_KERNEL_MAX_GROUP_SIZE_EXT_PROPERTIES],
+  'ze_external_memory_import_win32_handle_t' => %w[ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMPORT_WIN32],
+  'ze_external_memory_export_win32_handle_t' => %w[ZE_STRUCTURE_TYPE_EXTERNAL_MEMORY_EXPORT_WIN32],
+  'ze_command_list_append_launch_kernel_param_cooperative_desc_t' =>
+    %w[ZE_STRUCTURE_TYPE_COMMAND_LIST_APPEND_PARAM_COOPERATIVE_DESC],
+  'ze_device_cache_line_size_ext_t' => %w[ZE_STRUCTURE_TYPE_DEVICE_CACHELINE_SIZE_EXT],
+  'ze_kernel_allocation_exp_properties_t' => %w[ZE_STRUCTURE_TYPE_KERNEL_ALLOCATION_PROPERTIES],
+  'ze_device_properties_t' => %w[ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES
+                                 ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2],
+  'zet_export_dma_buf_exp_properties_t' => %w[ZET_STRUCTURE_TYPE_EXPORT_DMA_EXP_PROPERTIES],
+  'zes_mem_page_offline_state_exp_t' => %w[ZES_STRUCTURE_TYPE_MEMORY_PAGE_OFFLINE_STATE_EXP],
+}.freeze
 
-# Structs whose stype tag is not a member of ze_structure_type_t.
-#
-# - zex tags structures with a uint32_t alias (level_zero/ze_stypes.h) rather
-#   than an enum, we don't handle that.
-# - zet_metric_source_id_exp_t's tag is simply absent from the spec.
-STRUCT_TYPE_REJECT = Set.new(%w[zet_metric_source_id_exp_t
-                                zex_device_module_register_file_exp_t])
+# Every enumerator name the traced namespaces declare.
+ENUMERATORS = APIS.values.flat_map(&:enums).flat_map(&:members).map(&:name).to_set
 
-# The ze_structure_type_t enumerator that tags `name`, a struct typedef such as
-# ze_device_properties_t -> ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES.
+# The stypes that tag `name` and that the spec really declares: what the tracer
+# dispatches on, and what a Ruby class stamps into its initializer.
 #
-# The tracer switches on this to pick a tracepoint, and the Ruby bindings stamp
-# it into the struct's initializer; the two have to name the same enumerator or
-# a struct is traced under a tag its class never sets. So it is derived here
-# once, from the struct name, rather than recomputed on each side.
+# A struct usually spells its own single stype. STRUCT_TYPES holds the ones it
+# does not, and a name the spec never declares drops out -- the <ns>_base_
+# headers are tagged by nothing, and zex tags its structs with a uint32_t.
 #
-# A handful of enumerators do not follow the rule -- the spec renamed them after
-# the struct was named -- and the table has the last word.
-def structure_type_name(name)
+#   >> traced_structure_type_names('ze_context_desc_t')
+#   => ["ZE_STRUCTURE_TYPE_CONTEXT_DESC"]
+#   >> traced_structure_type_names('ze_image_pitched_exp_desc_t') # spec renamed it
+#   => ["ZE_STRUCTURE_TYPE_PITCHED_IMAGE_EXP_DESC"]
+#   >> traced_structure_type_names('ze_device_properties_t')      # two stypes
+#   => ["ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES", "ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES_1_2"]
+#   >> traced_structure_type_names('ze_base_desc_t')
+#   => []
+#   >> traced_structure_type_names('zex_device_module_register_file_exp_t')
+#   => []
+def traced_structure_type_names(name)
   namespace = name[/\A[a-z]+/]
-  tag = "#{namespace}_STRUCTURE_TYPE_#{name.delete_prefix("#{namespace}_").delete_suffix('_t')}".upcase
-  STRUCT_TYPE_CONVERSION_TABLE.fetch(tag, tag)
+  derived = "#{namespace}_STRUCTURE_TYPE_#{name.delete_prefix("#{namespace}_").delete_suffix('_t')}".upcase
+  STRUCT_TYPES.fetch(name, [derived]).select { |stype| ENUMERATORS.include?(stype) }
+end
+
+# The structs associated with a `<ns>_structure_type_t` value.
+#
+#   >> traced_structs(APIS[:zel]).to_a
+#   => ["zel_tracer_desc_t"]
+#   >> traced_structs(APIS[:zex]).to_a
+#   => []
+#   >> traced_structs(APIS[:ze]).include?('ze_base_desc_t')
+#   => false
+#   >> traced_structs(APIS[:ze]).include?('ze_context_desc_t')
+#   => true
+def traced_structs(api)
+  api.types.filter_map do |t|
+    next unless t.type.is_a?(YAMLCAst::Struct)
+    next if traced_structure_type_names(t.name).empty?
+
+    t.name if api.struct_named(t.type.name).members.first.name == 'stype'
+  end.to_set
 end
 
 # Each namespace declares its meta-parameters in its own file, so the list

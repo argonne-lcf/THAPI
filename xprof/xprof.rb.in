@@ -542,6 +542,12 @@ def enable_events_ze(channel_name, tracing_mode: 'default', profiling: true)
     exec("#{lttng_enable} lttng_ust_zer:*")
     exec("#{lttng_enable} lttng_ust_zet:*")
     exec("#{lttng_enable} lttng_ust_zex:*")
+    # The structs carried on a call's pNext chain. zer has no struct provider.
+    exec("#{lttng_enable} lttng_ust_ze_structs:*")
+    exec("#{lttng_enable} lttng_ust_zes_structs:*")
+    exec("#{lttng_enable} lttng_ust_zet_structs:*")
+    exec("#{lttng_enable} lttng_ust_zel_structs:*")
+    exec("#{lttng_enable} lttng_ust_zex_structs:*")
   when 'default'
     # Wildcard using the * character are supported at the end of tracepoint names.
     #   https://lttng.org/man/1/lttng-enable-event/v2.8/#doc-_understanding_event_rule_conditions
@@ -923,6 +929,8 @@ def all_env_tracers(usr_binary)
   # Customization
   if OPTIONS[:'backend-names'].include?('ze')
     h['LTTNG_UST_ZE_PARANOID_DRIFT'] = 1 if OPTIONS[:profile]
+    # Walk pNext only on full.
+    h['LTTNG_UST_ZE_CHAINED_STRUCTS'] = 1 if OPTIONS[:'tracing-mode'] == 'full'
     if SamplingDaemon.active?
       # The current only reliable way to use zes api
       #   is to call zesInit and set ZES_ENABLE_SYSMAN to 0
