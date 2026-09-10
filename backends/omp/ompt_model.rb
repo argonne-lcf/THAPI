@@ -16,5 +16,5 @@ end
 
 COMMANDS = build_command_index(
   { lttng_ust_ompt: OMPT_CALLBACKS },
-  context: CONTEXT, spec: load_meta_parameters('ompt_meta_parameters.yaml')
+  context: CONTEXT, spec: load_meta_parameters('ompt_meta_parameters.yaml')[:meta_parameters]
 )

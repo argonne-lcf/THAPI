@@ -593,10 +593,10 @@ meta_parameters:
 # which is what the fixed-width strings want.
 meta_parameters_struct:
   hipUUID:
-    - [ Uuid, bytes ]
+    - [ uuid, bytes ]
   hipIpcMemHandle_t:
-    - [ Blob, reserved ]
+    - [ blob, reserved ]
   hipIpcEventHandle_t:
-    - [ Blob, reserved ]
+    - [ blob, reserved ]
   hipMemPoolPtrExportData:
-    - [ Blob, reserved ]
+    - [ blob, reserved ]

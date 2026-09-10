@@ -1090,12 +1090,12 @@ meta_parameters:
 # which is what the fixed-width strings want.
 meta_parameters_struct:
   CUuuid:
-    - [ Uuid, bytes ]
+    - [ uuid, bytes ]
   CUmemFabricHandle_v1:
-    - [ Blob, data ]
+    - [ blob, data ]
   CUipcEventHandle_v1:
-    - [ Blob, reserved ]
+    - [ blob, reserved ]
   CUipcMemHandle_v1:
-    - [ Blob, reserved ]
+    - [ blob, reserved ]
   CUmemPoolPtrExportData_v1:
-    - [ Blob, reserved ]
+    - [ blob, reserved ]

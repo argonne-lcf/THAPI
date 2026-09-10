@@ -115,10 +115,11 @@ puts <<~EOF
 
 EOF
 
-print_renderer_modules(NAMING, STRUCT_SPEC)
+print_renderer_modules(NAMING, STRUCT_SPEC, APIS.values.flat_map { |api| api.types.collect(&:name) })
 
 def print_struct(name, struct)
-  prepends = STRUCT_SPEC.key?(name) ? ["#{NAMING.class_name(name)}Rendering"] : []
+  members = STRUCT_SPEC[name]
+  rendered = members ? print_rendered_to_s(NAMING, name, struct, members) : nil
 
   stype = traced_structure_type_names(name).first
   initializer = <<EOF if stype
@@ -131,7 +132,8 @@ def print_struct(name, struct)
     end
 EOF
 
-  print_struct_with_namespace(NAMING, name, struct, prepends: prepends, initializer: initializer, close: false)
+  print_struct_with_namespace(NAMING, name, struct,
+                              initializer: presence([rendered, initializer].compact.join), close: false)
 end
 
 API.int_scalars.each do |k, v|

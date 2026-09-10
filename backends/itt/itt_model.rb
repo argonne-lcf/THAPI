@@ -21,6 +21,6 @@ traced_functions = %w[
 
 COMMANDS = build_command_index(
   { lttng_ust_itt: API.functions },
-  context: CONTEXT, spec: load_meta_parameters('itt_meta_parameters.yaml'),
+  context: CONTEXT, spec: load_meta_parameters('itt_meta_parameters.yaml')[:meta_parameters],
   select: ->(func) { traced_functions.include?(func.name) }
 )

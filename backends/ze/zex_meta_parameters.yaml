@@ -14,4 +14,4 @@ meta_parameters:
 # which is what the fixed-width strings want.
 meta_parameters_struct:
   zex_ipc_counter_based_event_handle_t:
-    - [ Blob, data ]
+    - [ blob, data ]

@@ -307,4 +307,4 @@ meta_parameters:
 # which is what the fixed-width strings want.
 meta_parameters_struct:
   zes_uuid_t:
-    - [ UuidReversed, id ]
+    - [ uuid_reversed, id ]

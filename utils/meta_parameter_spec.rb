@@ -1,8 +1,10 @@
 require_relative 'yaml_ast'
 
-# Read a backend's meta-parameter YAML (relative to SRC_DIR) and return the
-# spec it describes. Unlisted functions read back as [], so callers can
-# `spec[name]` unconditionally.
+# Read a backend's meta-parameter YAML (relative to SRC_DIR) and return what it
+# declares: `[:meta_parameters]`, the per-function rows, and
+# `[:meta_parameters_struct]`, how a struct's byte-array members should be read.
+# Unlisted functions read back as [], so callers can `spec[name]`
+# unconditionally, and a file declaring no structs reads back as {}.
 #
 # A backend with no meta-parameters of its own ships no file at all, so a file
 # that exists must have the `meta_parameters` key: a missing or misspelled one
@@ -19,6 +21,7 @@ require_relative 'yaml_ast'
 # it lives here rather than next to either set.
 def load_meta_parameters(*filenames)
   spec = Hash.new { [] }
+  structs = {}
   filenames.each do |filename|
     path = File.join(SRC_DIR, filename)
     content = yaml_load_file_cached(path)
@@ -29,45 +32,19 @@ def load_meta_parameters(*filenames)
       list.collect { |type, *args| [Kernel.const_get(type), args] }
     end
     spec.merge!(rows) { |func, _, _| raise "#{func} is declared twice, second time in #{path}" }
-  end
-  spec
-end
 
-# How a struct's byte-array members should be read, from the same YAML the
-# meta-parameters come from and shaped like them -- one entry per struct, whose
-# rows are `[ <renderer>, <member> ]`:
-#
-#   meta_parameters_struct:
-#     ze_kernel_uuid_t:
-#       - [ UuidReversed, kid ]
-#       - [ UuidReversed, mid ]
-#
-# A byte array cannot say from its shape what it holds: an opaque blob, a UUID
-# and a fixed-width string are all `uint8_t x[N]` -- and `char x[N]` is all
-# three too, so not even the element type separates them. The header's answer
-# is written down here instead of guessed from the member's name.
-#
-# Rows are per MEMBER because most byte arrays share a struct with other
-# members: zes_device_properties_t is six strings among ten fields, and
-# ze_kernel_uuid_t is two UUIDs side by side. A per-struct answer could not
-# describe either.
-#
-# Reads back {} for a file that declares none, so callers can ask
-# unconditionally. Merged across filenames like the rows above.
-def load_meta_parameters_struct(*filenames)
-  filenames.each_with_object({}) do |filename, spec|
-    path = File.join(SRC_DIR, filename)
-    entries = yaml_load_file_cached(path).fetch('meta_parameters_struct', {})
-    rows = entries.transform_values do |list|
+    struct_rows = content.fetch('meta_parameters_struct', {}).transform_values do |list|
       list.each_with_object({}) do |(renderer, member), members|
         raise "#{path}: #{member} is rendered twice" if members.key?(member)
 
         members[member] = renderer
       end
     end
-    spec.merge!(rows) { |name, _, _| raise "#{name} is declared twice, second time in #{path}" }
+    structs.merge!(struct_rows) { |name, _, _| raise "#{name} is declared twice, second time in #{path}" }
   end
+  { meta_parameters: spec, meta_parameters_struct: structs }
 end
+
 
 # Raise unless every function the spec names is one of `commands`. A spec is
 # written by hand against an API that keeps moving, so a key matching nothing

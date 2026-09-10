@@ -10,7 +10,7 @@ puts <<~EOF
 
 EOF
 
-print_renderer_modules(NAMING, STRUCT_SPEC)
+print_renderer_modules(NAMING, STRUCT_SPEC, API.types.collect(&:name))
 
 puts <<EOF
 

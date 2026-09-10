@@ -287,55 +287,102 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# The renderers a member can be given, keyed by the name its
-# `meta_parameters_struct` row asks for. Each takes the member's bytes and
-# returns the text that stands for them.
+# The FFI spellings of a byte. A header writes the same array as `char`,
+# `unsigned char` or `uint8_t` as it pleases -- cuda uses all three -- and none
+# of them says what the bytes mean, which is why the rows below exist.
+BYTE_TYPES = %w[:char :uchar :int8 :uint8].freeze
+
+# Raise unless every row names a member of that struct, and one whose bytes the
+# renderer can read.
+#
+# The rows are written by hand against headers that keep moving, so a member
+# that matches nothing is a typo or a field the vendor has since renamed --
+# either way the row would silently do nothing, which is exactly the failure
+# these rows exist to end. A renderer pointed at something that is not a byte
+# array is the same mistake from the other side: every renderer reads the
+# member's bytes, so a scalar or a pointer would raise at trace time, where it
+# is far more expensive to notice.
+def check_renderings(naming, name, struct, members)
+  byte_arrays = struct.to_ffi(naming).to_h { |member, type|
+    [member.delete_prefix(':'), type.is_a?(Array) && BYTE_TYPES.include?(type[0].to_s)]
+  }
+  members.each_key do |member|
+    is_bytes = byte_arrays.fetch(member) do
+      raise "#{name} has no member #{member} (has #{byte_arrays.keys.join(', ')})"
+    end
+    raise "#{name}.#{member} is not a byte array, so its bytes cannot be rendered" unless is_bytes
+  end
+end
+
+# The renderers, each a whole function body reading `bytes` and returning text.
+# A row in `meta_parameters_struct` names one, and only the named ones are
+# emitted.
 #
 # Blob escapes every byte and stops at none: a blob is not a C string, and
 # reading one as text would truncate it at the first NUL and lose the rest.
 #
-# The UUID renderers differ in byte order alone: cuda and hip print a UUID
-# first byte first, ze last byte first. Which one a type wants is a fact about
-# its header, so it is asked for by name rather than unified away.
-#
-# Grouping keeps the canonical UUID dashes -- after bytes 4, 6, 8 and 10 -- that
-# the array is long enough to reach, so 16 bytes render as the familiar
-# 8-4-4-4-12 and a shorter identifier such as an 8-byte LUID degrades to
-# `17161514-1312-1110` rather than running off the end.
-UUID_RENDERER = <<~'EOF'
-  hex = BYTES.collect { |v| format('%02x', v % 256) }
+# The two UUID renderers differ in byte order alone -- cuda and hip print a
+# UUID first byte first, ze last byte first -- so the reversed one is written
+# out rather than layered on the other: at this size a second name for the same
+# four lines costs more than the repetition. Both keep the canonical dashes
+# (after bytes 4, 6, 8 and 10) that the array is long enough to reach, so 16
+# bytes read 8-4-4-4-12 and an 8-byte LUID degrades to `17161514-1312-1110`
+# rather than running off the end.
+DASHED_HEX = <<~'EOF'
+  hex = ORDER.collect { |v| format('%02x', v % 256) }
   cuts = [0, *[4, 6, 8, 10].select { |c| c < hex.length }, hex.length]
   cuts.each_cons(2).collect { |a, b| hex[a...b].join }.join('-')
 EOF
 
 RENDERERS = {
-  'Blob' => "self[m].to_ptr.read_bytes(self[m].size).b.inspect",
-  'Uuid' => UUID_RENDERER.gsub('BYTES', 'self[m].to_a'),
-  'UuidReversed' => UUID_RENDERER.gsub('BYTES', 'self[m].to_a.reverse'),
+  'blob' => "bytes.pack('C*').b.inspect\n",
+  'uuid' => DASHED_HEX.gsub('ORDER', 'bytes'),
+  'uuid_reversed' => DASHED_HEX.gsub('ORDER', 'bytes.reverse'),
 }.freeze
 
-# Emit one module per struct that declares any member, overriding to_s to
-# render each member the way its row asks and every other member the way the
-# base class would.
-def print_renderer_modules(naming, spec)
-  spec.each do |name, members|
-    puts "  module #{naming.class_name(name)}Rendering"
-    puts '    def to_s'
-    puts '      rendered = members.collect do |m|'
-    puts '        case m'
-    members.each do |member, renderer|
-      body = RENDERERS.fetch(renderer) { raise "#{name}.#{member}: unknown renderer #{renderer}" }
-      puts "        when :#{member}"
-      body.lines.each { |l| puts "          #{l.rstrip}" }
-    end
-    puts '        else next "#{m}: #{self[m]}"'
-    puts '        end.then { |text| "#{m}: #{text}" }'
-    puts '      end'
-    puts %(      "{ \#{rendered.join(', ')} }")
-    puts '    end'
-    puts '  end'
-    puts
+# The renderers this backend's rows ask for, as one module of plain functions.
+# A struct that declares members gets a to_s naming them directly -- no dispatch
+# table, no module of its own.
+def print_renderer_modules(naming, spec, structs)
+  unknown = spec.keys - structs
+  raise "meta_parameters_struct names no such struct: #{unknown.join(', ')}" unless unknown.empty?
+
+  wanted = spec.values.flat_map(&:values).uniq.sort
+  unknown_renderers = wanted - RENDERERS.keys
+  raise "unknown renderer: #{unknown_renderers.join(', ')}" unless unknown_renderers.empty?
+  return if wanted.empty?
+
+  puts '  module Rendering'
+  puts wanted.collect { |name|
+    body = RENDERERS.fetch(name).lines.collect { |l| "      #{l}" }.join
+    "    def self.#{name}(bytes)\n#{body}    end\n"
+  }.join("\n")
+  puts "  end"
+  puts
+end
+
+# nil for an empty string, so a caller can pass a built-up chunk straight to an
+# argument that means "nothing to emit" by being nil.
+def presence(string)
+  string unless string.empty?
+end
+
+# The to_s a rendered struct carries: every member spelled out, the declared
+# ones through their renderer and the rest as the base class would print them.
+def print_rendered_to_s(naming, name, struct, members)
+  check_renderings(naming, name, struct, members)
+  rendered = struct.to_ffi(naming).collect do |member, _type|
+    key = member.delete_prefix(':')
+    renderer = members[key]
+    value = renderer ? "\#{Rendering.#{renderer}(self[#{member}].to_a)}" : "\#{self[#{member}]}"
+    "#{key}: #{value}"
   end
+  <<EOF
+
+    def to_s
+      "{ #{rendered.join(', ')} }"
+    end
+EOF
 end
 
 # The FFI base classes every backend's bindings open with, named after the
@@ -554,8 +601,11 @@ EOF
 end
 
 def print_struct_rendered(naming, name, struct, spec)
-  prepends = spec.key?(name) ? ["#{naming.class_name(name)}Rendering"] : []
-  print_struct_with_namespace(naming, name, struct, prepends: prepends)
+  members = spec[name]
+  return print_struct_with_namespace(naming, name, struct) unless members
+
+  print_struct_with_namespace(naming, name, struct,
+                              initializer: print_rendered_to_s(naming, name, struct, members))
 end
 
 # `members` defaults to the struct's own layout. A backend overrides it when it

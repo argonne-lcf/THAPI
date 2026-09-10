@@ -14,11 +14,15 @@ CONTEXT = BackendContext.for(API, result_name: 'cuResult', init_functions: nil)
 
 # The driver and its export tables are one API but two LTTng providers, so the
 # commands are grouped by the provider that will carry them.
+meta_parameters = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
+
 COMMANDS = build_command_index(
   { lttng_ust_cuda: cuda_api.functions, lttng_ust_cuda_exports: cuda_exports_api.functions },
   context: CONTEXT,
-  spec: load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
+  spec: meta_parameters[:meta_parameters]
 )
+
+STRUCT_SPEC = meta_parameters[:meta_parameters_struct]
 
 CUDA_POINTER_NAMES = COMMANDS.pointer_names
 
@@ -275,6 +279,3 @@ EOF
 
 register_proc_callbacks.call('cuGetProcAddress')
 register_proc_callbacks.call('cuGetProcAddress_v2')
-
-# How each struct's byte-array members should be read.
-STRUCT_SPEC = load_meta_parameters_struct('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')

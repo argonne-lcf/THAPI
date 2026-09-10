@@ -377,19 +377,19 @@ meta_parameters:
 # which is what the fixed-width strings want.
 meta_parameters_struct:
   ze_uuid_t:
-    - [ UuidReversed, id ]
+    - [ uuid_reversed, id ]
   ze_driver_uuid_t:
-    - [ UuidReversed, id ]
+    - [ uuid_reversed, id ]
   ze_device_uuid_t:
-    - [ UuidReversed, id ]
+    - [ uuid_reversed, id ]
   ze_native_kernel_uuid_t:
-    - [ UuidReversed, id ]
+    - [ uuid_reversed, id ]
   ze_kernel_uuid_t:
-    - [ UuidReversed, kid ]
-    - [ UuidReversed, mid ]
+    - [ uuid_reversed, kid ]
+    - [ uuid_reversed, mid ]
   ze_device_luid_ext_t:
-    - [ UuidReversed, id ]
+    - [ uuid_reversed, id ]
   ze_ipc_mem_handle_t:
-    - [ Blob, data ]
+    - [ blob, data ]
   ze_ipc_event_pool_handle_t:
-    - [ Blob, data ]
+    - [ blob, data ]

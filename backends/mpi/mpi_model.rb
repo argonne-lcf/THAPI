@@ -40,7 +40,7 @@ CONTEXT = BackendContext.for(API, result_name: 'mpiResult', init_functions: init
 
 COMMANDS = build_command_index(
   { lttng_ust_mpi: API.functions },
-  context: CONTEXT, spec: load_meta_parameters('mpi_meta_parameters.yaml')
+  context: CONTEXT, spec: load_meta_parameters('mpi_meta_parameters.yaml')[:meta_parameters]
 )
 
 # MPI spells its functions MPI_Comm_rank, already snake_case, so the macro name
