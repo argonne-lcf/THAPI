@@ -581,3 +581,12 @@ meta_parameters:
     - [ReturnString]
   amd_dbgapi_get_git_hash:
     - [ReturnString]
+
+# How a struct's bytes should be read. A byte array cannot say from its shape
+# whether it holds an opaque handle, a UUID or a string, and the class name
+# only sometimes says it, so the header's answer is written down here.
+renderings:
+  hipUUID: Uuid
+  hipIpcMemHandle_t: Handle
+  hipIpcEventHandle_t: Handle
+  hipMemPoolPtrExportData: Handle

@@ -287,38 +287,57 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# The UUID renderer cuda and hip prepend to their UUID structs. ze prints its
-# UUIDs back to front and inlines its own.
-def print_uuid_module
-  puts <<'EOF'
-  module UUID
-    def to_s
-      a = self[:bytes].to_a.collect { |v| v < 0 ? 0x100 + v : v }
-      s = "{ id: "
-      s << "%02x" % a[0]
-      s << "%02x" % a[1]
-      s << "%02x" % a[2]
-      s << "%02x" % a[3]
-      s << "-"
-      s << "%02x" % a[4]
-      s << "%02x" % a[5]
-      s << "-"
-      s << "%02x" % a[6]
-      s << "%02x" % a[7]
-      s << "-"
-      s << "%02x" % a[8]
-      s << "%02x" % a[9]
-      s << "-"
-      s << "%02x" % a[10]
-      s << "%02x" % a[11]
-      s << "%02x" % a[12]
-      s << "%02x" % a[13]
-      s << "%02x" % a[14]
-      s << "%02x" % a[15]
-      s << " }"
-    end
-  end
+# The renderers a struct can prepend, keyed by the name its `renderings:` row
+# asks for.
+#
+# Each reads `members.first` rather than a member name of its own. A handle's
+# bytes are `data` in ze and `reserved` in cuda, and a struct that carries a
+# UUID beside something else (ze_kernel_uuid_t: kid, mid) renders the first --
+# that difference in member names is the only reason these were written twice.
+#
+# The two UUID renderers differ in byte order alone: cuda and hip print a UUID
+# first byte first, ze last byte first. Which one a type wants is a fact about
+# its header, so it is asked for by name rather than unified away.
+UUID_GROUPING = <<~'EOF'
+  hex = bytes.collect { |v| format('%02x', v % 256) }
+  [hex[0, 4], hex[4, 2], hex[6, 2], hex[8, 2], hex[10, 6]].collect(&:join).join('-')
 EOF
+
+def uuid_renderer(order)
+  <<~EOF
+    def to_s
+      bytes = self[members.first].to_a#{order}
+      #{UUID_GROUPING.lines.first.strip}
+      "{ \#{members.first}: \#{#{UUID_GROUPING.lines.last.strip}} }"
+    end
+  EOF
+end
+
+RENDERERS = {
+  'Handle' => <<~'EOF',
+    def to_s
+      bytes = self[members.first].to_a.collect { |v| format('\x%02x', v % 256) }
+      "{ #{members.first}: \"#{bytes.join}\" }"
+    end
+  EOF
+  'Uuid' => uuid_renderer(''),
+  'UuidReversed' => uuid_renderer('.reverse'),
+}.freeze
+
+# Emit the renderers this backend's types ask for, and only those: a module no
+# type names would be dead code in the bindings, which is what the shared
+# Handle/UUID printer used to leave in three of them.
+def print_renderer_modules(renderings)
+  wanted = renderings.values.uniq.sort
+  unknown = wanted - RENDERERS.keys
+  raise "unknown renderer#{'s' if unknown.size > 1}: #{unknown.join(', ')}" unless unknown.empty?
+
+  wanted.each do |name|
+    puts "  module #{name}"
+    puts RENDERERS.fetch(name).lines.collect { |l| l.strip.empty? ? l : "    #{l}" }.join
+    puts "  end"
+    puts
+  end
 end
 
 # The FFI base classes every backend's bindings open with, named after the
@@ -536,8 +555,8 @@ def print_function_pointer_type(naming, name, func)
 EOF
 end
 
-def print_struct_prepending_uuid(naming, name, struct)
-  prepends = naming.class_name(name).match('UUID') ? ['UUID'] : []
+def print_struct_rendered(naming, name, struct, renderings)
+  prepends = [renderings[name]].compact
   print_struct_with_namespace(naming, name, struct, prepends: prepends)
 end
 

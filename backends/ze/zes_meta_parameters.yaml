@@ -299,3 +299,6 @@ meta_parameters:
   zesVFManagementGetVFEngineUtilizationExp:
     - [ InOutScalar, pCount ]
     - [ OutArray, pEngineUtil, pCount ]
+
+renderings:
+  zes_uuid_t: UuidReversed

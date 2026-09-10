@@ -33,6 +33,29 @@ def load_meta_parameters(*filenames)
   spec
 end
 
+# How a type wants to be rendered, from the same YAML the meta-parameters come
+# from: `renderings: { <c type name>: <module> }`.
+#
+# A struct holding a byte array cannot say from its shape what those bytes
+# mean -- an opaque handle, a UUID and a fixed-width string are all
+# `uint8_t x[N]` -- and the class name only sometimes says it. So the header's
+# own answer is written down here instead of guessed, and a type nobody
+# declares renders the way FFI renders any struct.
+#
+# Reads back {} for a file that declares none, so callers can ask
+# unconditionally. Merged across filenames like the rows above.
+def load_renderings(*filenames)
+  filenames.each_with_object({}) do |filename, renderings|
+    content = yaml_load_file_cached(File.join(SRC_DIR, filename))
+    rows = content.fetch('renderings', {})
+    renderings.merge!(rows) do |type, old, new|
+      raise "#{type} is rendered as both #{old} and #{new}" unless old == new
+
+      old
+    end
+  end
+end
+
 # Raise unless every function the spec names is one of `commands`. A spec is
 # written by hand against an API that keeps moving, so a key matching nothing
 # is a typo or a function that has since been dropped -- either way its rows

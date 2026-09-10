@@ -102,42 +102,6 @@ puts <<~EOF
       ver & 0x0000ffff
     end
 
-    module Handle
-      def to_s
-        s = '{ data: "'
-        s << self[:data].to_a.collect { |v| "\\\\x%02x" % ((v + 256)%256) }.join
-        s << '" }'
-      end
-    end
-
-    module UUID
-      def to_s
-        a = self[:id].to_a
-        s = "{ id: "
-        s << "%02x" % a[15]
-        s << "%02x" % a[14]
-        s << "%02x" % a[13]
-        s << "%02x" % a[12]
-        s << "-"
-        s << "%02x" % a[11]
-        s << "%02x" % a[10]
-        s << "-"
-        s << "%02x" % a[9]
-        s << "%02x" % a[8]
-        s << "-"
-        s << "%02x" % a[7]
-        s << "%02x" % a[6]
-        s << "-"
-        s << "%02x" % a[5]
-        s << "%02x" % a[4]
-        s << "%02x" % a[3]
-        s << "%02x" % a[2]
-        s << "%02x" % a[1]
-        s << "%02x" % a[0]
-        s << " }"
-      end
-    end
-
     module KUUID
       def to_s
         a = self[:kid].to_a
@@ -201,17 +165,13 @@ puts <<~EOF
 
 EOF
 
+print_renderer_modules(RENDERINGS)
+
 def print_struct(name, struct)
-  prepends = []
-  if NAMING.class_name(name).match('UUID')
-    prepends << if NAMING.class_name(name).match('ZEKernelUUID')
-                  'KUUID'
-                else
-                  'UUID'
-                end
-  elsif NAMING.class_name(name).match(/Handle\z/)
-    prepends << 'Handle'
-  end
+  # ze_kernel_uuid_t renders two members, kid and mid, which the shared
+  # single-member renderers cannot express -- so it keeps a renderer of its own
+  # rather than a `renderings:` row.
+  prepends = [name == 'ze_kernel_uuid_t' ? 'KUUID' : RENDERINGS[name]].compact
 
   stype = traced_structure_type_names(name).first
   initializer = <<EOF if stype

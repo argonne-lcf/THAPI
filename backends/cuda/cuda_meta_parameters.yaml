@@ -1078,3 +1078,13 @@ meta_parameters:
     - [InArray, globalDim, tensorRank]
     - [InArray, globalStrides, tensorRank]
     - [InArray, elementStrides, tensorRank]
+
+# How a struct's bytes should be read. A byte array cannot say from its shape
+# whether it holds an opaque handle, a UUID or a string, and the class name
+# only sometimes says it, so the header's answer is written down here.
+renderings:
+  CUuuid: Uuid
+  CUmemFabricHandle_v1: Handle
+  CUipcEventHandle_v1: Handle
+  CUipcMemHandle_v1: Handle
+  CUmemPoolPtrExportData_v1: Handle

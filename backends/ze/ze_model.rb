@@ -550,3 +550,6 @@ EOF
 COMMANDS.add_epilogue 'zeInit', <<EOF
   _in_loader_init = 0;
 EOF
+
+# How each byte-array struct wants its bytes read.
+RENDERINGS = load_renderings(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })

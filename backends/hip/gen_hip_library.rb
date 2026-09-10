@@ -10,7 +10,7 @@ puts <<~EOF
 
 EOF
 
-print_uuid_module
+print_renderer_modules(RENDERINGS)
 
 puts <<EOF
 
@@ -32,7 +32,7 @@ end
 # layout to emit.
 print_typedefs(NAMING, struct: lambda { |name, t|
   struct = API.struct(t.type, opaque_ok: true)
-  print_struct_prepending_uuid(NAMING, name, struct) if struct
+  print_struct_rendered(NAMING, name, struct, RENDERINGS) if struct
 })
 
 puts <<~EOF

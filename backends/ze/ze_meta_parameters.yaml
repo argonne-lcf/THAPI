@@ -364,3 +364,16 @@ meta_parameters:
   zeCommandListUpdateMutableCommandKernelsExp:
     - [ InArray, pCommandId, numKernels ]
     - [ InArray, phKernels, numKernels ]
+
+# How a struct's bytes should be read. A byte array cannot say from its shape
+# whether it holds an opaque handle, a UUID or a string, and the class name
+# only sometimes says it, so the header's answer is written down here. ze
+# prints a UUID last byte first.
+renderings:
+  ze_uuid_t: UuidReversed
+  ze_driver_uuid_t: UuidReversed
+  ze_device_uuid_t: UuidReversed
+  ze_native_kernel_uuid_t: UuidReversed
+  ze_device_luid_ext_t: Handle
+  ze_ipc_mem_handle_t: Handle
+  ze_ipc_event_pool_handle_t: Handle
