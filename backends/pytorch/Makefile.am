@@ -68,6 +68,9 @@ clean-local:
 	-$(RM) $(DUMMY_TORCH_LIBS)
 	-rmdir dummy_libs
 
+bin_SCRIPTS = \
+	tracer_pytorch.sh
+
 lib_LTLIBRARIES = libTracerPytorch.la
 
 # pytorch.c is only built once, into libpytorchtracepoints.la above; pull it
