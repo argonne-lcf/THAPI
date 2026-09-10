@@ -214,7 +214,7 @@ def print_struct(name, struct)
   end
 
   stype = traced_structure_type_names(name).first
-  initializer = (<<EOF if stype)
+  initializer = <<EOF if stype
 
     def initialize(*args)
       super(*args)
