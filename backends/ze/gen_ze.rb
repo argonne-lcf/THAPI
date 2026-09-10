@@ -49,18 +49,15 @@ def gen_struct_printer(namespace, types)
       switch (stype) {
   EOF
   types.each do |t|
-    stypes = traced_structure_type_names(t.to_s)
-    next if stypes.empty?
-
-    puts stypes.map { |stype| "  case #{stype}:\n" }.join
+    puts traced_structure_type_names(t.to_s).map { |stype| "  case #{stype}:\n" }.join
     puts <<EOF
     tracepoint(lttng_ust_#{namespace}_structs, #{t}, ((#{t} *)p));
     break;
 EOF
   end
-  # The stypes with no tracepoint of their own: an end marker, a tag whose
-  # struct the headers do not declare, an abstract base, or a value from a
-  # driver newer than our headers.
+  # The stypes with no case: the FORCE_UINT32 end marker, an stype the spec
+  # renamed (both names share one value), a struct traced_structs rejects, and
+  # at run time a value from a driver newer than our headers.
   puts <<~EOF
       default:
         break;
@@ -78,7 +75,7 @@ EOF
   EOF
 end
 
-struct_types = APIS.to_h { |ns, api| [ns, concrete_tagged_structs(ns, api)] }
+struct_types = APIS.to_h { |ns, api| [ns, traced_structs(api)] }
 
 gen_struct_printer(:ze, struct_types[:ze])
 gen_struct_printer(:zet, struct_types[:zet])

@@ -13,25 +13,6 @@ APIS = {
   zex: ApiModel.load_file('zex_api.yaml'),
 }.freeze
 
-# A struct tagged with its own type is one the tracer can decode from a
-# `void *` at runtime, which is what makes it worth its own tracepoint.
-STRUCT_TYPE_TAG = 'stype'
-
-def tagged_structs(api)
-  api.types.select do |t|
-    t.type.is_a?(YAMLCAst::Struct) &&
-      (struct = api.struct_named(t.type.name)) &&
-      struct.members.first.name == STRUCT_TYPE_TAG
-  end.map(&:name)
-end
-
-# Those a caller can be handed. The `<ns>_base_` types are the tag's own base
-# classes: a tracepoint exists for each, but no API call ever passes one, so
-# nothing dispatches on them.
-def concrete_tagged_structs(namespace, api)
-  tagged_structs(api).reject { |n| n.start_with?("#{namespace}_base_") }.to_set
-end
-
 # Every namespace as one API, the same thing `API` names in every other
 # backend. The derivations have to see all of them at once: a zet typedef
 # routinely names a ze struct.
@@ -91,6 +72,25 @@ def traced_structure_type_names(name)
   namespace = name[/\A[a-z]+/]
   derived = "#{namespace}_STRUCTURE_TYPE_#{name.delete_prefix("#{namespace}_").delete_suffix('_t')}".upcase
   STRUCT_TYPES.fetch(name, [derived]).select { |stype| ENUMERATORS.include?(stype) }
+end
+
+# The structs associated with a `<ns>_structure_type_t` value.
+#
+#   >> traced_structs(APIS[:zel]).to_a
+#   => ["zel_tracer_desc_t"]
+#   >> traced_structs(APIS[:zex]).to_a
+#   => []
+#   >> traced_structs(APIS[:ze]).include?('ze_base_desc_t')
+#   => false
+#   >> traced_structs(APIS[:ze]).include?('ze_context_desc_t')
+#   => true
+def traced_structs(api)
+  api.types.filter_map do |t|
+    next unless t.type.is_a?(YAMLCAst::Struct)
+    next if traced_structure_type_names(t.name).empty?
+
+    t.name if api.struct_named(t.type.name).members.first.name == 'stype'
+  end.to_set
 end
 
 # Each namespace declares its meta-parameters in its own file, so the list

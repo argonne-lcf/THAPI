@@ -213,21 +213,16 @@ def print_struct(name, struct)
     prepends << 'Handle'
   end
 
-  if struct.to_ffi(NAMING).first[0] == ':stype' && !traced_structure_type_names(name).empty?
-    initializer = <<EOF
+  stype = traced_structure_type_names(name).first
+  initializer = (<<EOF if stype)
 
     def initialize(*args)
       super(*args)
       if(args.length == 0)
-EOF
-    initializer << <<EOF
-        self[:stype] = :#{traced_structure_type_names(name).first}
+        self[:stype] = :#{stype}
       end
     end
 EOF
-  else
-    initializer = nil
-  end
 
   print_struct_with_namespace(NAMING, name, struct, prepends: prepends, initializer: initializer, close: false)
 end
