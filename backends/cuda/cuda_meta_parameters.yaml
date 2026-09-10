@@ -1082,9 +1082,20 @@ meta_parameters:
 # How a struct's bytes should be read. A byte array cannot say from its shape
 # whether it holds an opaque handle, a UUID or a string, and the class name
 # only sometimes says it, so the header's answer is written down here.
-renderings:
-  CUuuid: Uuid
-  CUmemFabricHandle_v1: Handle
-  CUipcEventHandle_v1: Handle
-  CUipcMemHandle_v1: Handle
-  CUmemPoolPtrExportData_v1: Handle
+
+# How each struct's byte-array members should be read. A byte array cannot say
+# from its shape whether it holds an opaque blob or a UUID -- both spell
+# themselves `uint8_t x[N]` or `char x[N]` -- so the header's answer is written
+# down here. A member with no row renders the way the base class renders it,
+# which is what the fixed-width strings want.
+meta_parameters_struct:
+  CUuuid:
+    - [ Uuid, bytes ]
+  CUmemFabricHandle_v1:
+    - [ Blob, data ]
+  CUipcEventHandle_v1:
+    - [ Blob, reserved ]
+  CUipcMemHandle_v1:
+    - [ Blob, reserved ]
+  CUmemPoolPtrExportData_v1:
+    - [ Blob, reserved ]

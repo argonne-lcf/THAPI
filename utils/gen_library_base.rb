@@ -287,54 +287,53 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# The renderers a struct can prepend, keyed by the name its `renderings:` row
-# asks for.
+# The renderers a member can be given, keyed by the name its
+# `meta_parameters_struct` row asks for. Each takes the member's bytes and
+# returns the text that stands for them.
 #
-# Each renders EVERY member, so one renderer serves a struct holding a single
-# blob and one holding several: ze_kernel_uuid_t is {kid, mid}, two UUIDs side
-# by side, and reads the same as ze_uuid_t's lone id. Members are read by
-# position rather than by name, which is what lets one Handle serve ze's `data`
-# and cuda's `reserved`.
+# Blob escapes every byte and stops at none: a blob is not a C string, and
+# reading one as text would truncate it at the first NUL and lose the rest.
 #
-# The two UUID renderers differ in byte order alone: cuda and hip print a UUID
+# The UUID renderers differ in byte order alone: cuda and hip print a UUID
 # first byte first, ze last byte first. Which one a type wants is a fact about
 # its header, so it is asked for by name rather than unified away.
+#
+# Grouping keeps the canonical UUID dashes -- after bytes 4, 6, 8 and 10 -- that
+# the array is long enough to reach, so 16 bytes render as the familiar
+# 8-4-4-4-12 and a shorter identifier such as an 8-byte LUID degrades to
+# `17161514-1312-1110` rather than running off the end.
 UUID_RENDERER = <<~'EOF'
-  def to_s
-    rendered = members.collect do |m|
-      hex = ORDER.collect { |v| format('%02x', v % 256) }
-      "#{m}: #{[hex[0, 4], hex[4, 2], hex[6, 2], hex[8, 2], hex[10, 6]].collect(&:join).join('-')}"
-    end
-    "{ #{rendered.join(', ')} }"
-  end
+  hex = BYTES.collect { |v| format('%02x', v % 256) }
+  cuts = [0, *[4, 6, 8, 10].select { |c| c < hex.length }, hex.length]
+  cuts.each_cons(2).collect { |a, b| hex[a...b].join }.join('-')
 EOF
 
 RENDERERS = {
-  'Handle' => <<~'EOF',
-    def to_s
-      rendered = members.collect do |m|
-        bytes = self[m].to_a.collect { |v| format('\x%02x', v % 256) }
-        "#{m}: \"#{bytes.join}\""
-      end
-      "{ #{rendered.join(', ')} }"
-    end
-  EOF
-  'Uuid' => UUID_RENDERER.sub('ORDER', 'self[m].to_a'),
-  'UuidReversed' => UUID_RENDERER.sub('ORDER', 'self[m].to_a.reverse'),
+  'Blob' => "self[m].to_ptr.read_bytes(self[m].size).b.inspect",
+  'Uuid' => UUID_RENDERER.gsub('BYTES', 'self[m].to_a'),
+  'UuidReversed' => UUID_RENDERER.gsub('BYTES', 'self[m].to_a.reverse'),
 }.freeze
 
-# Emit the renderers this backend's types ask for, and only those: a module no
-# type names would be dead code in the bindings, which is what the shared
-# Handle/UUID printer used to leave in three of them.
-def print_renderer_modules(renderings)
-  wanted = renderings.values.uniq.sort
-  unknown = wanted - RENDERERS.keys
-  raise "unknown renderer#{'s' if unknown.size > 1}: #{unknown.join(', ')}" unless unknown.empty?
-
-  wanted.each do |name|
-    puts "  module #{name}"
-    puts RENDERERS.fetch(name).lines.collect { |l| l.strip.empty? ? l : "    #{l}" }.join
-    puts "  end"
+# Emit one module per struct that declares any member, overriding to_s to
+# render each member the way its row asks and every other member the way the
+# base class would.
+def print_renderer_modules(naming, spec)
+  spec.each do |name, members|
+    puts "  module #{naming.class_name(name)}Rendering"
+    puts '    def to_s'
+    puts '      rendered = members.collect do |m|'
+    puts '        case m'
+    members.each do |member, renderer|
+      body = RENDERERS.fetch(renderer) { raise "#{name}.#{member}: unknown renderer #{renderer}" }
+      puts "        when :#{member}"
+      body.lines.each { |l| puts "          #{l.rstrip}" }
+    end
+    puts '        else next "#{m}: #{self[m]}"'
+    puts '        end.then { |text| "#{m}: #{text}" }'
+    puts '      end'
+    puts %(      "{ \#{rendered.join(', ')} }")
+    puts '    end'
+    puts '  end'
     puts
   end
 end
@@ -554,8 +553,8 @@ def print_function_pointer_type(naming, name, func)
 EOF
 end
 
-def print_struct_rendered(naming, name, struct, renderings)
-  prepends = [renderings[name]].compact
+def print_struct_rendered(naming, name, struct, spec)
+  prepends = spec.key?(name) ? ["#{naming.class_name(name)}Rendering"] : []
   print_struct_with_namespace(naming, name, struct, prepends: prepends)
 end
 

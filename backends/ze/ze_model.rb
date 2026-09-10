@@ -551,5 +551,5 @@ COMMANDS.add_epilogue 'zeInit', <<EOF
   _in_loader_init = 0;
 EOF
 
-# How each byte-array struct wants its bytes read.
-RENDERINGS = load_renderings(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })
+# How each struct's byte-array members should be read.
+STRUCT_SPEC = load_meta_parameters_struct(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })

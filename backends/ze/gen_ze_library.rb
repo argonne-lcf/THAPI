@@ -115,10 +115,10 @@ puts <<~EOF
 
 EOF
 
-print_renderer_modules(RENDERINGS)
+print_renderer_modules(NAMING, STRUCT_SPEC)
 
 def print_struct(name, struct)
-  prepends = [RENDERINGS[name]].compact
+  prepends = STRUCT_SPEC.key?(name) ? ["#{NAMING.class_name(name)}Rendering"] : []
 
   stype = traced_structure_type_names(name).first
   initializer = <<EOF if stype

@@ -276,5 +276,5 @@ EOF
 register_proc_callbacks.call('cuGetProcAddress')
 register_proc_callbacks.call('cuGetProcAddress_v2')
 
-# How each byte-array struct wants its bytes read.
-RENDERINGS = load_renderings('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
+# How each struct's byte-array members should be read.
+STRUCT_SPEC = load_meta_parameters_struct('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')

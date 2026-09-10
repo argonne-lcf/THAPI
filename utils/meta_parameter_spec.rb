@@ -33,26 +33,39 @@ def load_meta_parameters(*filenames)
   spec
 end
 
-# How a type wants to be rendered, from the same YAML the meta-parameters come
-# from: `renderings: { <c type name>: <module> }`.
+# How a struct's byte-array members should be read, from the same YAML the
+# meta-parameters come from and shaped like them -- one entry per struct, whose
+# rows are `[ <renderer>, <member> ]`:
 #
-# A struct holding a byte array cannot say from its shape what those bytes
-# mean -- an opaque handle, a UUID and a fixed-width string are all
-# `uint8_t x[N]` -- and the class name only sometimes says it. So the header's
-# own answer is written down here instead of guessed, and a type nobody
-# declares renders the way FFI renders any struct.
+#   meta_parameters_struct:
+#     ze_kernel_uuid_t:
+#       - [ UuidReversed, kid ]
+#       - [ UuidReversed, mid ]
+#
+# A byte array cannot say from its shape what it holds: an opaque blob, a UUID
+# and a fixed-width string are all `uint8_t x[N]` -- and `char x[N]` is all
+# three too, so not even the element type separates them. The header's answer
+# is written down here instead of guessed from the member's name.
+#
+# Rows are per MEMBER because most byte arrays share a struct with other
+# members: zes_device_properties_t is six strings among ten fields, and
+# ze_kernel_uuid_t is two UUIDs side by side. A per-struct answer could not
+# describe either.
 #
 # Reads back {} for a file that declares none, so callers can ask
 # unconditionally. Merged across filenames like the rows above.
-def load_renderings(*filenames)
-  filenames.each_with_object({}) do |filename, renderings|
-    content = yaml_load_file_cached(File.join(SRC_DIR, filename))
-    rows = content.fetch('renderings', {})
-    renderings.merge!(rows) do |type, old, new|
-      raise "#{type} is rendered as both #{old} and #{new}" unless old == new
+def load_meta_parameters_struct(*filenames)
+  filenames.each_with_object({}) do |filename, spec|
+    path = File.join(SRC_DIR, filename)
+    entries = yaml_load_file_cached(path).fetch('meta_parameters_struct', {})
+    rows = entries.transform_values do |list|
+      list.each_with_object({}) do |(renderer, member), members|
+        raise "#{path}: #{member} is rendered twice" if members.key?(member)
 
-      old
+        members[member] = renderer
+      end
     end
+    spec.merge!(rows) { |name, _, _| raise "#{name} is declared twice, second time in #{path}" }
   end
 end
 

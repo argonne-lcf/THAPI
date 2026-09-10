@@ -30,7 +30,7 @@ puts <<~EOF
 
 EOF
 
-print_renderer_modules(RENDERINGS)
+print_renderer_modules(NAMING, STRUCT_SPEC)
 
 puts <<EOF
   typedef :uint32, #{to_ffi_name('cuuint32_t')}
@@ -49,7 +49,7 @@ EOF
 print_typedefs(
   NAMING,
   enum: ->(name, t) { print_enum(NAMING, name, API.enum(t.type, opaque_ok: true) || t.type) },
-  struct: ->(name, t) { print_struct_rendered(NAMING, name, API.struct(t.type), RENDERINGS) },
+  struct: ->(name, t) { print_struct_rendered(NAMING, name, API.struct(t.type), STRUCT_SPEC) },
   pointer: nil,
   integer: nil
 )

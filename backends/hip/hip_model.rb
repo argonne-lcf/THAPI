@@ -11,5 +11,5 @@ COMMANDS = build_command_index(
 
 HIP_POINTER_NAMES = COMMANDS.pointer_names
 
-# How each byte-array struct wants its bytes read.
-RENDERINGS = load_renderings('hip_meta_parameters.yaml')
+# How each struct's byte-array members should be read.
+STRUCT_SPEC = load_meta_parameters_struct('hip_meta_parameters.yaml')
