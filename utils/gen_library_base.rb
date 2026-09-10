@@ -290,38 +290,37 @@ end
 # The renderers a struct can prepend, keyed by the name its `renderings:` row
 # asks for.
 #
-# Each reads `members.first` rather than a member name of its own. A handle's
-# bytes are `data` in ze and `reserved` in cuda, and a struct that carries a
-# UUID beside something else (ze_kernel_uuid_t: kid, mid) renders the first --
-# that difference in member names is the only reason these were written twice.
+# Each renders EVERY member, so one renderer serves a struct holding a single
+# blob and one holding several: ze_kernel_uuid_t is {kid, mid}, two UUIDs side
+# by side, and reads the same as ze_uuid_t's lone id. Members are read by
+# position rather than by name, which is what lets one Handle serve ze's `data`
+# and cuda's `reserved`.
 #
 # The two UUID renderers differ in byte order alone: cuda and hip print a UUID
 # first byte first, ze last byte first. Which one a type wants is a fact about
 # its header, so it is asked for by name rather than unified away.
-UUID_GROUPING = <<~'EOF'
-  hex = bytes.collect { |v| format('%02x', v % 256) }
-  [hex[0, 4], hex[4, 2], hex[6, 2], hex[8, 2], hex[10, 6]].collect(&:join).join('-')
-EOF
-
-def uuid_renderer(order)
-  <<~EOF
-    def to_s
-      bytes = self[members.first].to_a#{order}
-      #{UUID_GROUPING.lines.first.strip}
-      "{ \#{members.first}: \#{#{UUID_GROUPING.lines.last.strip}} }"
+UUID_RENDERER = <<~'EOF'
+  def to_s
+    rendered = members.collect do |m|
+      hex = ORDER.collect { |v| format('%02x', v % 256) }
+      "#{m}: #{[hex[0, 4], hex[4, 2], hex[6, 2], hex[8, 2], hex[10, 6]].collect(&:join).join('-')}"
     end
-  EOF
-end
+    "{ #{rendered.join(', ')} }"
+  end
+EOF
 
 RENDERERS = {
   'Handle' => <<~'EOF',
     def to_s
-      bytes = self[members.first].to_a.collect { |v| format('\x%02x', v % 256) }
-      "{ #{members.first}: \"#{bytes.join}\" }"
+      rendered = members.collect do |m|
+        bytes = self[m].to_a.collect { |v| format('\x%02x', v % 256) }
+        "#{m}: \"#{bytes.join}\""
+      end
+      "{ #{rendered.join(', ')} }"
     end
   EOF
-  'Uuid' => uuid_renderer(''),
-  'UuidReversed' => uuid_renderer('.reverse'),
+  'Uuid' => UUID_RENDERER.sub('ORDER', 'self[m].to_a'),
+  'UuidReversed' => UUID_RENDERER.sub('ORDER', 'self[m].to_a.reverse'),
 }.freeze
 
 # Emit the renderers this backend's types ask for, and only those: a module no
