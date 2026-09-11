@@ -35,7 +35,7 @@ print_typedefs(NAMING, struct: lambda { |name, t|
   next unless struct
 
   print_struct_with_namespace(NAMING, name, struct,
-                              initializer: rendered_to_s(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
+                              body: struct_to_s_definition(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
 })
 
 puts <<~EOF

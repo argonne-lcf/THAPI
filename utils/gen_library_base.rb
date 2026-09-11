@@ -287,16 +287,8 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# The FFI spellings of a byte. A header picks among them as it pleases -- cuda
-# and hip write `char` and `unsigned char`, ze writes `char` and `uint8_t` --
-# and none says what the bytes mean, which is why the rows below exist.
 BYTE_TYPES = %w[:char :uchar :int8 :uint8].freeze
 
-# The members of `struct_name` whose type is an array of bytes -- the only ones
-# a renderer can read. `ze_kernel_uuid_t` answers ["kid", "mid"].
-#
-# Raises when the API declares no such struct, which for a row means a typo or
-# a type the vendor has since renamed.
 def byte_array_members(naming, struct_name)
   typedef = naming.api.types.find { |t| t.name == struct_name }
   raise "meta_parameters_struct names no such struct: #{struct_name}" unless typedef
@@ -306,18 +298,9 @@ def byte_array_members(naming, struct_name)
   end
 end
 
-# Raise unless every row names a struct, a byte-array member of it, and a
-# renderer -- checked once, before a single line is generated.
-#
-# The rows are written by hand against headers that keep moving, so a member
-# that is not there and one that is not bytes fail the same way: the renderer
-# has nothing to read. Either would otherwise raise at trace time, where it is
-# far more expensive to notice.
-#
-# A declared struct must also declare all of its byte arrays. Declaring one
-# member replaces the whole `to_s`, so a byte array left out is interpolated
-# raw -- ze_kernel_uuid_t with only `kid` prints mid's 16 bytes as control
-# characters. Half a rendering is the bug these rows exist to prevent.
+# Declaring one member replaces the whole `to_s`, so a byte array left
+# undeclared is interpolated raw: ze_kernel_uuid_t with only `kid` prints mid
+# as 16 control characters. Hence the second check.
 def check_meta_parameters_struct(naming, meta_parameters_struct)
   unknown = meta_parameters_struct.values.flat_map(&:values).uniq - BYTES_BODIES.keys
   raise "unknown renderer: #{unknown.join(', ')}" unless unknown.empty?
@@ -335,13 +318,8 @@ def check_meta_parameters_struct(naming, meta_parameters_struct)
   end
 end
 
-# The body of each `Bytes` function: it reads `bytes` and returns text. A row in
-# `meta_parameters_struct` names one, and only the named ones are emitted. See
-# backends/README.md for what each prints and why it must be declared rather
-# than guessed from the C type.
-#
-# The two UUID functions differ in byte order alone, so each opens by putting
-# the bytes in its own order and they share the rest.
+# See backends/README.md for what each prints and why it must be declared
+# rather than guessed from the C type.
 DASHED_HEX = <<~EOF
   hex = ordered.collect { |v| format('%02x', v % 256) }
   cuts = [0, *[4, 6, 8, 10].select { |c| c < hex.length }, hex.length]
@@ -354,16 +332,6 @@ BYTES_BODIES = {
   'uuid_reversed' => "ordered = bytes.reverse\n#{DASHED_HEX}",
 }.freeze
 
-# The one `Bytes` module a backend gets, holding just the functions its rows ask
-# for. Each turns a byte array into text, so the call site reads
-# `Bytes.uuid_reversed(...)`.
-#
-# Both sections are read, because both call these: a renderer only a function
-# row asks for still has to be defined here.
-#
-# Every backend calls this, including the ones that declare nothing -- it emits
-# nothing for them, but it is also where the struct rows are checked, so a
-# backend cannot carry rows that are silently ignored.
 def print_bytes_module(naming, meta_parameters)
   sections = meta_parameters.values_at(:meta_parameters_struct, :meta_parameters_function)
   check_meta_parameters_struct(naming, sections.first)
@@ -379,10 +347,7 @@ def print_bytes_module(naming, meta_parameters)
   puts
 end
 
-# The `to_s` a rendered struct carries: every member spelled out, the declared
-# ones through their renderer and the rest as the base class prints them.
-# nil when the struct declares nothing, which means "emit no to_s".
-def rendered_to_s(naming, struct, members)
+def struct_to_s_definition(naming, struct, members)
   return nil unless members
 
   rendered = struct.to_ffi(naming).collect do |member, _type|
@@ -619,14 +584,15 @@ end
 # pointers it only defines further down the file, so it passes :pointer for
 # them instead of a name FFI cannot resolve yet.
 #
-# `initializer` may be nil or empty.
-def print_struct_with_namespace(naming, name, struct, initializer: nil, close: true,
+# `body` is the method definitions to put inside the class -- a to_s, an
+# initialize, or both -- and may be nil or empty.
+def print_struct_with_namespace(naming, name, struct, body: nil, close: true,
                                 members: struct.to_ffi(naming))
   puts <<EOF
   class #{naming.class_name(name)} < #{naming.ffi_base('Struct')}
     layout #{ffi_layout(members)}
 EOF
-  puts initializer unless initializer.to_s.empty?
+  puts body unless body.to_s.empty?
   puts <<EOF
   end
   typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}

@@ -9,6 +9,10 @@ def print_babeltrace_lib(naming, meta_parameters)
                                  meta_parameters[:meta_parameters_function])
 end
 
+def payload_fields(event)
+  event[:payload_field_class]&.[](:members) || []
+end
+
 # One `$event_lambdas` entry per event: a lambda that renders the event's
 # payload as a string.
 def add_babeltrace_event_callbacks(naming, file, meta_parameters_function)
@@ -16,13 +20,13 @@ def add_babeltrace_event_callbacks(naming, file, meta_parameters_function)
   check_meta_parameters_function(meta_parameters_function, byte_array_parameters(event_classes))
 
   event_classes.each do |e|
-    # Handle payload_field_class not present, in this case empty array
-    members = e[:payload_field_class]&.[](:members).to_a
     renderers = meta_parameters_function.fetch(event_function_name(e[:name]), {})
-    fields = members.reject { |f| length_field_name?(f[:name]) }
-                    .map { |f| render_field(naming, f, renderers[parameter_name(f[:name])]) }
+    fields = payload_fields(e).filter_map do |f|
+      next if length_field_name?(f[:name])
 
-    # Now just print the full strings to pretty printf the struct
+      render_field(naming, f, renderers[parameter_name(f[:name])])
+    end
+
     puts <<~EOF
       $event_lambdas["#{e[:name]}"] = lambda { |defi|
         s = "{ "
@@ -33,44 +37,16 @@ def add_babeltrace_event_callbacks(naming, file, meta_parameters_function)
   end
 end
 
-# An event's name carries the provider that declares it and the direction it
-# reports, around the name of the function it belongs to.
-#
-#   >> event_function_name('lttng_ust_cuda:cuDeviceGetLuid_exit')
-#   => "cuDeviceGetLuid"
-def event_function_name(event_name)
-  event_name.split(':').last.sub(/_(#{START}|#{STOP})\z/, '')
-end
-
-# The parameter a payload field carries. A tracepoint decorates the name it
-# traces a parameter under -- cuDeviceGetLuid's `luid` is traced as `luid_vals`
-# -- and a row names the parameter, which is what the header calls it.
-#
-#   >> parameter_name('luid_vals')
-#   => "luid"
-def parameter_name(field_name)
-  field_name.sub(/_vals?\z/, '')
-end
-
-# The byte-array parameters the model carries, as `{ function => [parameter] }`
-# -- the only ones a renderer can read. A byte array reaches the payload as a
-# string, whichever of char, unsigned char or uint8_t the header spells it with.
-#
-# One function's parameters are gathered from all of its events, because a
-# direction says only which event carries a parameter, never how it prints.
+# A byte array reaches the payload as a string, we will print it according to
+# metadata.
 def byte_array_parameters(event_classes)
   event_classes.group_by { |e| event_function_name(e[:name]) }.transform_values do |events|
-    events.flat_map { |e| e[:payload_field_class]&.[](:members).to_a }
+    events.flat_map { |e| payload_fields(e) }
           .select { |f| f[:field_class][:type] == 'string' }
           .collect { |f| parameter_name(f[:name]) }
   end
 end
 
-# Raise unless every row names a traced function and a byte-array parameter of
-# it -- checked once, before a single line is generated. This is
-# `check_meta_parameters_struct` for a function's parameters, and fails the
-# same way: a name that is not there and one that is not bytes both leave the
-# renderer nothing to read, which would otherwise raise at read time.
 def check_meta_parameters_function(meta_parameters_function, byte_arrays)
   meta_parameters_function.each do |function, parameters|
     bytes = byte_arrays.fetch(function) do
@@ -87,8 +63,7 @@ end
 # The statement that appends one field to the rendered payload. `be_class` is
 # the FFI class for a field whose raw bytes mean something richer -- an enum, a
 # bitmask, a struct -- and is absent for one that prints as itself. `renderer`
-# is the `Bytes` function the backend declared for this field, for bytes that
-# mean something no type says.
+# is the `Bytes` function declared for bytes that mean something no type says.
 def render_field(naming, field, renderer = nil)
   name = field[:name]
   fc = field[:field_class]

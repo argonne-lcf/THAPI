@@ -129,9 +129,9 @@ def print_struct(name, struct)
     end
 EOF
 
-  to_s = rendered_to_s(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name])
+  to_s = struct_to_s_definition(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name])
   print_struct_with_namespace(NAMING, name, struct,
-                              initializer: [to_s, initializer].compact.join,
+                              body: [to_s, initializer].compact.join,
                               close: false)
 end
 

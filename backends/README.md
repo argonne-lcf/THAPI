@@ -2,10 +2,11 @@
 
 ## `meta_parameters_struct` and `meta_parameters_function`
 
-`<backend>_meta_parameters.yaml` can carry two rendering sections. They say how
-to print bytes whose meaning no C type states: `meta_parameters_struct` for a
-struct's byte-array members, `meta_parameters_function` for a function's
-byte-array parameters.
+`<backend>_meta_parameters.yaml` can carry two more sections of the same kind
+as `meta_parameters` itself: facts the header knows that the C declaration does
+not carry. These two say how to print bytes whose meaning no C type states --
+`meta_parameters_struct` for a struct's byte-array members,
+`meta_parameters_function` for a function's byte-array parameters.
 
 ```yaml
 meta_parameters_struct:

@@ -48,7 +48,7 @@ def get_extra_fields_types_name(event)
   event['fields'].collect do |field|
     lttng = LTTng::TracepointField.new(*field)
     name = lttng.name.to_s
-    type = event['args'].find { |_t, n| n == name || n == name.gsub(/_vals?\z/, '') }[0]
+    type = event['args'].find { |_t, n| n == name || n == parameter_name(name) }[0]
     field_types_name(lttng.macro.to_s, type, name, lttng)
   end.flatten(1)
 end

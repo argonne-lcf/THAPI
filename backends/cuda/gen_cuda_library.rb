@@ -52,7 +52,7 @@ print_typedefs(
   struct: lambda { |name, t|
     struct = API.struct(t.type)
     print_struct_with_namespace(NAMING, name, struct,
-                                initializer: rendered_to_s(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
+                                body: struct_to_s_definition(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
   },
   pointer: nil,
   integer: nil
