@@ -30,7 +30,7 @@ puts <<~EOF
 
 EOF
 
-print_rendering_module(NAMING, META_PARAMETERS_STRUCT)
+print_bytes_module(NAMING, META_PARAMETERS_STRUCT)
 
 puts <<EOF
   typedef :uint32, #{to_ffi_name('cuuint32_t')}

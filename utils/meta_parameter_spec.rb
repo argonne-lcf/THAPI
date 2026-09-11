@@ -34,11 +34,10 @@ def load_meta_parameters(*filenames)
     spec.merge!(rows) { |func, _, _| raise "#{func} is declared twice, second time in #{path}" }
 
     struct_rows = content.fetch('meta_parameters_struct', {}).transform_values do |list|
-      list.each_with_object({}) do |(renderer, member), members|
-        raise "#{path}: #{member} is rendered twice" if members.key?(member)
+      twice = list.collect(&:last).tally.select { |_, n| n > 1 }.keys
+      raise "#{path}: #{twice.join(', ')} rendered twice" unless twice.empty?
 
-        members[member] = renderer
-      end
+      list.to_h(&:reverse)
     end
     structs.merge!(struct_rows) { |name, _, _| raise "#{name} is declared twice, second time in #{path}" }
   end

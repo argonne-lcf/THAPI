@@ -317,7 +317,7 @@ end
 # has nothing to read. Either would otherwise raise at trace time, where it is
 # far more expensive to notice.
 def check_meta_parameters_struct(naming, meta_parameters_struct)
-  unknown = meta_parameters_struct.values.flat_map(&:values).uniq - RENDERER_BODIES.keys
+  unknown = meta_parameters_struct.values.flat_map(&:values).uniq - BYTES_BODIES.keys
   raise "unknown renderer: #{unknown.join(', ')}" unless unknown.empty?
 
   meta_parameters_struct.each do |struct_name, members|
@@ -330,33 +330,37 @@ def check_meta_parameters_struct(naming, meta_parameters_struct)
   end
 end
 
-# The renderers, each a whole function body reading `bytes` and returning text.
-# A row in `meta_parameters_struct` names one, and only the named ones are
-# emitted. See backends/README.md for what each prints and why it must be
-# declared rather than guessed from the C type.
+# The body of each `Bytes` function: it reads `bytes` and returns text. A row in
+# `meta_parameters_struct` names one, and only the named ones are emitted. See
+# backends/README.md for what each prints and why it must be declared rather
+# than guessed from the C type.
+#
+# The two UUID functions differ in byte order alone, so each opens by putting
+# the bytes in its own order and they share the rest.
 DASHED_HEX = <<~EOF
-  hex = ORDER.collect { |v| format('%02x', v % 256) }
+  hex = ordered.collect { |v| format('%02x', v % 256) }
   cuts = [0, *[4, 6, 8, 10].select { |c| c < hex.length }, hex.length]
   cuts.each_cons(2).collect { |a, b| hex[a...b].join }.join('-')
 EOF
 
-RENDERER_BODIES = {
+BYTES_BODIES = {
   'blob' => "bytes.pack('C*').b.inspect\n",
-  'uuid' => DASHED_HEX.gsub('ORDER', 'bytes'),
-  'uuid_reversed' => DASHED_HEX.gsub('ORDER', 'bytes.reverse'),
+  'uuid' => "ordered = bytes\n#{DASHED_HEX}",
+  'uuid_reversed' => "ordered = bytes.reverse\n#{DASHED_HEX}",
 }.freeze
 
-# The one `Rendering` module a backend gets, holding just the renderers its rows
-# ask for. This is also where every row is checked, so the build stops here
-# rather than emitting a library that is wrong further down.
-def print_rendering_module(naming, meta_parameters_struct)
+# The one `Bytes` module a backend gets, holding just the functions its rows ask
+# for. Each turns a byte array into text, so the call site reads
+# `Bytes.uuid_reversed(...)`. This is also where every row is checked, so the
+# build stops here rather than emitting a library that is wrong further down.
+def print_bytes_module(naming, meta_parameters_struct)
   check_meta_parameters_struct(naming, meta_parameters_struct)
   wanted = meta_parameters_struct.values.flat_map(&:values).uniq.sort
   return if wanted.empty?
 
-  puts '  module Rendering'
+  puts '  module Bytes'
   puts wanted.collect { |name|
-    body = RENDERER_BODIES.fetch(name).lines.collect { |l| "      #{l}" }.join
+    body = BYTES_BODIES.fetch(name).lines.collect { |l| "      #{l}" }.join
     "    def self.#{name}(bytes)\n#{body}    end\n"
   }.join("\n")
   puts '  end'
@@ -372,7 +376,7 @@ def rendered_to_s(naming, struct, members)
   rendered = struct.to_ffi(naming).collect do |member, _type|
     key = member.delete_prefix(':')
     renderer = members[key]
-    value = renderer ? "\#{Rendering.#{renderer}(self[#{member}].to_a)}" : "\#{self[#{member}]}"
+    value = renderer ? "\#{Bytes.#{renderer}(self[#{member}].to_a)}" : "\#{self[#{member}]}"
     "#{key}: #{value}"
   end
   <<EOF

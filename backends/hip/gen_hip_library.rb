@@ -10,7 +10,7 @@ puts <<~EOF
 
 EOF
 
-print_rendering_module(NAMING, META_PARAMETERS_STRUCT)
+print_bytes_module(NAMING, META_PARAMETERS_STRUCT)
 
 puts <<EOF
 
