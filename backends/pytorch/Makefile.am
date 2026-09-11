@@ -42,17 +42,19 @@ BUILT_SOURCES = \
 	$(PYTORCH_STATIC_PROBES_INCL)
 
 # libTracerPytorch.so is meant to be LD_PRELOAD-ed onto a process that already
-# has the real libtorch_cpu.so/libc10.so loaded (e.g. via `python -c "import
-# torch"`), the same way the POC does it. So it only needs to *compile*
-# against torch's headers here; the two dummy libraries below exist purely to
-# satisfy the linker's -ltorch_cpu/-lc10 at build time. They are never
-# installed or shipped: removed right after the link (all-local,
-# install-exec-hook) and again on `make clean` (clean-local) as a safety net.
+# has the real libtorch_cpu.so loaded (e.g. via `python -c "import torch"`),
+# the same way the POC does it. So it only needs to *compile* against torch's
+# headers here; the dummy library below exists purely to satisfy the linker's
+# -ltorch_cpu at build time. It is never installed or shipped: removed right
+# after the link (all-local, install-exec-hook) and again on `make clean`
+# (clean-local) as a safety net.
+#
+# Only -ltorch_cpu is needed: at::addGlobalCallback and at::RecordFunction::name
+# are both defined in libtorch_cpu.so.
 DUMMY_TORCH_LIBS = \
-	dummy_libs/libtorch_cpu.so \
-	dummy_libs/libc10.so
+	dummy_libs/libtorch_cpu.so
 
-dummy_libs/libtorch_cpu.so dummy_libs/libc10.so:
+dummy_libs/libtorch_cpu.so:
 	$(MKDIR_P) dummy_libs
 	$(CXX) -shared -o $@ -x c++ /dev/null
 
@@ -84,6 +86,6 @@ libTracerPytorch_la_SOURCES = \
 
 libTracerPytorch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libTracerPytorch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
-libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -ltorch_cpu -lc10 -avoid-version -module
+libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -ltorch_cpu -avoid-version -module
 libTracerPytorch_la_LIBADD = libpytorchtracepoints.la
 EXTRA_libTracerPytorch_la_DEPENDENCIES = $(DUMMY_TORCH_LIBS)
