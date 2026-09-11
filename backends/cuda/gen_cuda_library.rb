@@ -49,7 +49,11 @@ EOF
 print_typedefs(
   NAMING,
   enum: ->(name, t) { print_enum(NAMING, name, API.enum(t.type, opaque_ok: true) || t.type) },
-  struct: ->(name, t) { print_struct_rendered(NAMING, name, API.struct(t.type), META_PARAMETERS_STRUCT) },
+  struct: lambda { |name, t|
+    struct = API.struct(t.type)
+    print_struct_with_namespace(NAMING, name, struct,
+                                initializer: rendered_to_s(NAMING, struct, META_PARAMETERS_STRUCT[name]))
+  },
   pointer: nil,
   integer: nil
 )

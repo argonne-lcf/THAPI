@@ -603,28 +603,16 @@ def print_function_pointer_type(naming, name, func)
 EOF
 end
 
-def print_struct_rendered(naming, name, struct, meta_parameters_struct)
-  print_struct_with_namespace(naming, name, struct,
-                              initializer: rendered_to_s(naming, struct, meta_parameters_struct[name]))
-end
-
 # `members` defaults to the struct's own layout. A backend overrides it when it
 # has to rewrite member types before emitting -- itt refers to function
 # pointers it only defines further down the file, so it passes :pointer for
 # them instead of a name FFI cannot resolve yet.
 #
 # `initializer` may be nil or empty.
-def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true,
+def print_struct_with_namespace(naming, name, struct, initializer: nil, close: true,
                                 members: struct.to_ffi(naming))
   puts <<EOF
   class #{naming.class_name(name)} < #{naming.ffi_base('Struct')}
-EOF
-  prepends.each do |prep|
-    puts <<EOF
-    prepend #{prep}
-EOF
-  end
-  puts <<EOF
     layout #{ffi_layout(members)}
 EOF
   puts initializer unless initializer.to_s.empty?

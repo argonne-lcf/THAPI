@@ -32,7 +32,10 @@ end
 # layout to emit.
 print_typedefs(NAMING, struct: lambda { |name, t|
   struct = API.struct(t.type, opaque_ok: true)
-  print_struct_rendered(NAMING, name, struct, META_PARAMETERS_STRUCT) if struct
+  next unless struct
+
+  print_struct_with_namespace(NAMING, name, struct,
+                              initializer: rendered_to_s(NAMING, struct, META_PARAMETERS_STRUCT[name]))
 })
 
 puts <<~EOF
