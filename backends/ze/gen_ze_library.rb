@@ -131,7 +131,7 @@ EOF
 
   to_s = rendered_to_s(NAMING, struct, META_PARAMETERS_STRUCT[name])
   print_struct_with_namespace(NAMING, name, struct,
-                              initializer: [to_s, initializer].compact.join.then { |s| s unless s.empty? },
+                              initializer: [to_s, initializer].compact.join,
                               close: false)
 end
 

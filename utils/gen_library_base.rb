@@ -611,6 +611,9 @@ end
 # has to rewrite member types before emitting -- itt refers to function
 # pointers it only defines further down the file, so it passes :pointer for
 # them instead of a name FFI cannot resolve yet.
+#
+# `initializer` may be nil or empty; either way nothing is emitted, so a caller
+# can join what it has without first asking whether it has anything.
 def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true,
                                 members: struct.to_ffi(naming))
   puts <<EOF
@@ -624,7 +627,7 @@ EOF
   puts <<EOF
     layout #{ffi_layout(members)}
 EOF
-  puts initializer if initializer
+  puts initializer unless initializer.to_s.empty?
   puts <<EOF
   end
   typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}
