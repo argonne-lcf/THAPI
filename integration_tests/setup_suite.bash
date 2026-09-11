@@ -3,6 +3,7 @@
 setup_suite() {
   export MPIRUN=${MPIRUN:-mpirun}
 
+  # Set the path to find iprof, babeltrace_thapi, etc.
   export PATH=$(pkg-config --variable=bindir thapi):${PATH}
 
   missing_tools=()
