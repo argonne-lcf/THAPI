@@ -46,12 +46,10 @@ def load_meta_parameters(*filenames)
 end
 
 # One rendering section, as `{ owner => { thing => renderer } }`. A row reads
-# `[ renderer, thing ]` -- renderer first, so a reader sees what the section is
-# for before what it applies to -- and the map is keyed the other way, because
-# every user asks "how do I print this member?".
+# `[ renderer, thing ]` and the map is keyed the other way, because every user
+# asks "how do I print this member?".
 #
-# Naming the same thing twice would silently keep one renderer, so it raises,
-# and it names every repeat rather than stopping at the first.
+# Naming the same thing twice would silently keep one renderer, so it raises.
 def rendering_rows(content, path, section)
   content.fetch(section, {}).transform_values do |list|
     twice = list.collect(&:last).tally.select { |_, n| n > 1 }.keys

@@ -143,7 +143,7 @@ end
 # The walk and the classification are the same for all six backends; only the
 # printing differs, so each kind is a keyword argument defaulting to the shared
 # printer. A backend passes one only where its API really diverges -- cuda
-# prepends a UUID module to matching structs, itt defers its callbacks -- and
+# renders a struct's declared byte arrays, itt defers its callbacks -- and
 # passes `nil` for a kind its bindings do not carry, which is how omp emits
 # enums alone.
 #
@@ -287,16 +287,13 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# The FFI spellings of a byte. A header writes the same array as `char`,
-# `unsigned char` or `uint8_t` as it pleases -- cuda uses all three -- and none
-# of them says what the bytes mean, which is why the rows below exist.
+# The FFI spellings of a byte. A header picks among them as it pleases -- cuda
+# and hip write `char` and `unsigned char`, ze writes `char` and `uint8_t` --
+# and none says what the bytes mean, which is why the rows below exist.
 BYTE_TYPES = %w[:char :uchar :int8 :uint8].freeze
 
 # The members of `struct_name` whose type is an array of bytes -- the only ones
-# a renderer can read.
-#
-#   >> byte_array_members(NAMING, 'ze_kernel_uuid_t')
-#   => ["kid", "mid"]
+# a renderer can read. `ze_kernel_uuid_t` answers ["kid", "mid"].
 #
 # Raises when the API declares no such struct, which for a row means a typo or
 # a type the vendor has since renamed.
@@ -354,10 +351,8 @@ BYTES_BODIES = {
 # `Bytes.uuid_reversed(...)`. This is also where every struct row is checked, so
 # the build stops here rather than emitting a library that is wrong further down.
 #
-# Both rendering sections call these, from the two sides of the trace: the
-# struct rows from the `to_s` printed just below, the function rows from the
-# babeltrace library. So both say which functions to emit, or a renderer only a
-# function asks for would be called and not be there.
+# Both sections are read, because both call these: a renderer only a function
+# row asks for still has to be defined here.
 def print_bytes_module(naming, meta_parameters_struct, meta_parameters_function = {})
   check_meta_parameters_struct(naming, meta_parameters_struct)
   wanted = [meta_parameters_struct, meta_parameters_function]

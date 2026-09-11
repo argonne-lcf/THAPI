@@ -22,7 +22,11 @@ meta_parameters_function:
     - [ uuid, luid ]
 ```
 
-If the menbers is not specified here, it will fall back to the default print.
-For example, `char[N]` will be printed as a C string, stoping at the first null char.
+A member with no row falls back to the default print: `char[N]` prints as a C
+string, stopping at the first null char.
 
-We support `uuid`, `uuid_reversed`, and `blob`.
+| Renderer | Prints |
+| --- | --- |
+| `uuid` | dashed hex, first byte first (cuda, hip) |
+| `uuid_reversed` | dashed hex, last byte first (ze, zes) |
+| `blob` | every byte escaped, stopping at none |
