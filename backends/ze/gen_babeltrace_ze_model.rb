@@ -20,7 +20,7 @@ end
 # struct's bytes; no other backend has these.
 def struct_event_classes(registry)
   APIS.collect do |ns, api|
-    concrete_tagged_structs(ns, api).collect do |struct|
+    traced_structs(api).collect do |struct|
       gen_struct_event_bt_model(registry, :"lttng_ust_#{ns}_structs", struct)
     end
   end.flatten
