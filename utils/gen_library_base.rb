@@ -351,11 +351,17 @@ BYTES_BODIES = {
 
 # The one `Bytes` module a backend gets, holding just the functions its rows ask
 # for. Each turns a byte array into text, so the call site reads
-# `Bytes.uuid_reversed(...)`. This is also where every row is checked, so the
-# build stops here rather than emitting a library that is wrong further down.
-def print_bytes_module(naming, meta_parameters_struct)
+# `Bytes.uuid_reversed(...)`. This is also where every struct row is checked, so
+# the build stops here rather than emitting a library that is wrong further down.
+#
+# Both rendering sections call these, from the two sides of the trace: the
+# struct rows from the `to_s` printed just below, the function rows from the
+# babeltrace library. So both say which functions to emit, or a renderer only a
+# function asks for would be called and not be there.
+def print_bytes_module(naming, meta_parameters_struct, meta_parameters_function = {})
   check_meta_parameters_struct(naming, meta_parameters_struct)
-  wanted = meta_parameters_struct.values.flat_map(&:values).uniq.sort
+  wanted = [meta_parameters_struct, meta_parameters_function]
+           .flat_map { |rows| rows.values.flat_map(&:values) }.uniq.sort
   return if wanted.empty?
 
   puts '  module Bytes'

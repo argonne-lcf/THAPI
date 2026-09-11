@@ -6,32 +6,32 @@ require_relative 'gen_probe_base'
 #
 # `meta_parameters_function` is what the backend declares about the byte-array
 # parameters of its functions; a backend that declares none passes nothing.
-def print_babeltrace_lib(naming, commands, meta_parameters_function = {})
+def print_babeltrace_lib(naming, meta_parameters_function = {})
   puts "require_relative '#{naming.backend}_library.rb'"
-  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml",
-                                 function_renderers(commands, meta_parameters_function))
+  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml", meta_parameters_function)
 end
 
 # One `$event_lambdas` entry per event: a lambda that renders the event's
 # payload as a string.
-def add_babeltrace_event_callbacks(naming, file, renderers_by_function)
-  yaml_load_file_cached(file)[:stream_classes].each do |s|
-    s[:event_classes].each do |e|
-      # Handle payload_field_class not present, in this case empty array
-      members = e[:payload_field_class]&.[](:members).to_a
-      renderers = renderers_by_function.fetch(event_function_name(e[:name]), {})
-      fields = members.reject { |f| length_field_name?(f[:name]) }
-                      .map { |f| render_field(naming, f, renderers[f[:name]]) }
+def add_babeltrace_event_callbacks(naming, file, meta_parameters_function)
+  event_classes = yaml_load_file_cached(file)[:stream_classes].flat_map { |s| s[:event_classes] }
+  check_meta_parameters_function(meta_parameters_function, byte_array_parameters(event_classes))
 
-      # Now just print the full strings to pretty printf the struct
-      puts <<~EOF
-        $event_lambdas["#{e[:name]}"] = lambda { |defi|
-          s = "{ "
-          #{fields.join("\n  s << ', '\n  ")}
-          s << " }"
-        }
-      EOF
-    end
+  event_classes.each do |e|
+    # Handle payload_field_class not present, in this case empty array
+    members = e[:payload_field_class]&.[](:members).to_a
+    renderers = meta_parameters_function.fetch(event_function_name(e[:name]), {})
+    fields = members.reject { |f| length_field_name?(f[:name]) }
+                    .map { |f| render_field(naming, f, renderers[parameter_name(f[:name])]) }
+
+    # Now just print the full strings to pretty printf the struct
+    puts <<~EOF
+      $event_lambdas["#{e[:name]}"] = lambda { |defi|
+        s = "{ "
+        #{fields.join("\n  s << ', '\n  ")}
+        s << " }"
+      }
+    EOF
   end
 end
 
@@ -44,37 +44,46 @@ def event_function_name(event_name)
   event_name.split(':').last.sub(/_(#{START}|#{STOP})\z/, '')
 end
 
-# The declared rows, re-keyed from the parameter a person writes to the field
-# the payload actually carries -- the tracepoint traces cuDeviceGetLuid's
-# `luid` as `luid_vals`, so `{ 'luid' => 'uuid' }` becomes
-# `{ 'luid_vals' => 'uuid' }`. Both directions go in one map, because a
-# parameter traced by each is the same bytes either way.
+# The parameter a payload field carries. A tracepoint decorates the name it
+# traces a parameter under -- cuDeviceGetLuid's `luid` is traced as `luid_vals`
+# -- and a row names the parameter, which is what the header calls it.
 #
-# Raises unless the parameter is one the function traces as bytes -- a name
-# that is not there and one that is not bytes both leave the renderer nothing
-# to read, and would otherwise fail at trace time.
-def function_renderers(commands, meta_parameters_function)
-  meta_parameters_function.to_h do |function, parameters|
-    traced = byte_array_parameters(commands[function])
-    unrenderable = parameters.keys - traced.keys
-    unless unrenderable.empty?
-      raise "#{function} traces no byte-array parameter #{unrenderable.join(', ')} " \
-            "(it traces #{traced.empty? ? 'none' : traced.keys.join(', ')})"
-    end
+#   >> parameter_name('luid_vals')
+#   => "luid"
+def parameter_name(field_name)
+  field_name.sub(/_vals?\z/, '')
+end
 
-    [function, parameters.transform_keys { |name| traced.fetch(name) }]
+# The byte-array parameters the model carries, as `{ function => [parameter] }`
+# -- the only ones a renderer can read. A byte array reaches the payload as a
+# string, whichever of char, unsigned char or uint8_t the header spells it with.
+#
+# One function's parameters are gathered from all of its events, because a
+# direction says only which event carries a parameter, never how it prints.
+def byte_array_parameters(event_classes)
+  event_classes.group_by { |e| event_function_name(e[:name]) }.transform_values do |events|
+    events.flat_map { |e| e[:payload_field_class]&.[](:members).to_a }
+          .select { |f| f[:field_class][:type] == 'string' }
+          .collect { |f| parameter_name(f[:name]) }
   end
 end
 
-# The parameters of `command` that reach the trace as bytes, as
-# `{ parameter => field }`. `_text` is what LTTng calls a byte array, whichever
-# of char, unsigned char or uint8_t the header spells it with.
-def byte_array_parameters(command)
-  command.meta_parameters.to_h do |m|
-    field = command.directions.filter_map { |dir| m.lttng_type_for(dir) }
-                              .find { |lttng| lttng.macro.to_s.end_with?('_text') }
-    [m.name, field&.name&.to_s]
-  end.compact
+# Raise unless every row names a traced function and a byte-array parameter of
+# it -- checked once, before a single line is generated. This is
+# `check_meta_parameters_struct` for a function's parameters, and fails the
+# same way: a name that is not there and one that is not bytes both leave the
+# renderer nothing to read, which would otherwise raise at read time.
+def check_meta_parameters_function(meta_parameters_function, byte_arrays)
+  meta_parameters_function.each do |function, parameters|
+    bytes = byte_arrays.fetch(function) do
+      raise "meta_parameters_function names no traced function: #{function}"
+    end
+    unrenderable = parameters.keys - bytes
+    next if unrenderable.empty?
+
+    raise "#{function} traces no byte-array parameter #{unrenderable.join(', ')} " \
+          "(traces #{bytes.empty? ? 'none' : bytes.join(', ')})"
+  end
 end
 
 # The statement that appends one field to the rendered payload. `be_class` is

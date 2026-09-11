@@ -115,7 +115,7 @@ puts <<~EOF
 
 EOF
 
-print_bytes_module(NAMING, META_PARAMETERS_STRUCT)
+print_bytes_module(NAMING, META_PARAMETERS_STRUCT, META_PARAMETERS_FUNCTION)
 
 def print_struct(name, struct)
   stype = traced_structure_type_names(name).first
