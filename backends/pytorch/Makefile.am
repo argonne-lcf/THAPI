@@ -41,14 +41,6 @@ CLEANFILES = \
 BUILT_SOURCES = \
 	$(PYTORCH_STATIC_PROBES_INCL)
 
-# libTracerPytorch.so is meant to be LD_PRELOAD-ed onto a process that already
-# has the real libtorch_cpu.so loaded (e.g. via `python -c "import torch"`),
-# the same way the POC does it. So it only needs to *compile* against torch's
-# headers here; the dummy library below exists purely to satisfy the linker's
-# -ltorch_cpu at build time. It is never installed or shipped: removed right
-# after the link (all-local, install-exec-hook) and again on `make clean`
-# (clean-local) as a safety net.
-#
 # Only -ltorch_cpu is needed: at::addGlobalCallback and at::RecordFunction::name
 # are both defined in libtorch_cpu.so.
 DUMMY_TORCH_LIBS = \
@@ -57,10 +49,6 @@ DUMMY_TORCH_LIBS = \
 dummy_libs/libtorch_cpu.so:
 	$(MKDIR_P) dummy_libs
 	$(CXX) -shared -o $@ -x c++ /dev/null
-
-all-local: libTracerPytorch.la
-	-$(RM) $(DUMMY_TORCH_LIBS)
-	-rmdir dummy_libs
 
 install-exec-hook:
 	-$(RM) $(DUMMY_TORCH_LIBS)
