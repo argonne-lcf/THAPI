@@ -3,12 +3,10 @@ require_relative 'gen_probe_base'
 
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
-#
-# `meta_parameters_function` is what the backend declares about the byte-array
-# parameters of its functions; a backend that declares none passes nothing.
-def print_babeltrace_lib(naming, meta_parameters_function = {})
+def print_babeltrace_lib(naming, meta_parameters)
   puts "require_relative '#{naming.backend}_library.rb'"
-  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml", meta_parameters_function)
+  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml",
+                                 meta_parameters[:meta_parameters_function])
 end
 
 # One `$event_lambdas` entry per event: a lambda that renders the event's

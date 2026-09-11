@@ -313,6 +313,11 @@ end
 # that is not there and one that is not bytes fail the same way: the renderer
 # has nothing to read. Either would otherwise raise at trace time, where it is
 # far more expensive to notice.
+#
+# A declared struct must also declare all of its byte arrays. Declaring one
+# member replaces the whole `to_s`, so a byte array left out is interpolated
+# raw -- ze_kernel_uuid_t with only `kid` prints mid's 16 bytes as control
+# characters. Half a rendering is the bug these rows exist to prevent.
 def check_meta_parameters_struct(naming, meta_parameters_struct)
   unknown = meta_parameters_struct.values.flat_map(&:values).uniq - BYTES_BODIES.keys
   raise "unknown renderer: #{unknown.join(', ')}" unless unknown.empty?
@@ -320,10 +325,13 @@ def check_meta_parameters_struct(naming, meta_parameters_struct)
   meta_parameters_struct.each do |struct_name, members|
     bytes = byte_array_members(naming, struct_name)
     unrenderable = members.keys - bytes
-    next if unrenderable.empty?
+    unless unrenderable.empty?
+      raise "#{struct_name} has no byte-array member #{unrenderable.join(', ')} " \
+            "(has #{bytes.join(', ')})"
+    end
 
-    raise "#{struct_name} has no byte-array member #{unrenderable.join(', ')} " \
-          "(has #{bytes.join(', ')})"
+    undeclared = bytes - members.keys
+    raise "#{struct_name} declares no renderer for #{undeclared.join(', ')}" unless undeclared.empty?
   end
 end
 
@@ -348,15 +356,18 @@ BYTES_BODIES = {
 
 # The one `Bytes` module a backend gets, holding just the functions its rows ask
 # for. Each turns a byte array into text, so the call site reads
-# `Bytes.uuid_reversed(...)`. This is also where every struct row is checked, so
-# the build stops here rather than emitting a library that is wrong further down.
+# `Bytes.uuid_reversed(...)`.
 #
 # Both sections are read, because both call these: a renderer only a function
 # row asks for still has to be defined here.
-def print_bytes_module(naming, meta_parameters_struct, meta_parameters_function = {})
-  check_meta_parameters_struct(naming, meta_parameters_struct)
-  wanted = [meta_parameters_struct, meta_parameters_function]
-           .flat_map { |rows| rows.values.flat_map(&:values) }.uniq.sort
+#
+# Every backend calls this, including the ones that declare nothing -- it emits
+# nothing for them, but it is also where the struct rows are checked, so a
+# backend cannot carry rows that are silently ignored.
+def print_bytes_module(naming, meta_parameters)
+  sections = meta_parameters.values_at(:meta_parameters_struct, :meta_parameters_function)
+  check_meta_parameters_struct(naming, sections.first)
+  wanted = sections.flat_map { |rows| rows.values.flat_map(&:values) }.uniq.sort
   return if wanted.empty?
 
   puts '  module Bytes'

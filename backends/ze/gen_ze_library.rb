@@ -115,7 +115,7 @@ puts <<~EOF
 
 EOF
 
-print_bytes_module(NAMING, META_PARAMETERS_STRUCT, META_PARAMETERS_FUNCTION)
+print_bytes_module(NAMING, META_PARAMETERS)
 
 def print_struct(name, struct)
   stype = traced_structure_type_names(name).first
@@ -129,7 +129,7 @@ def print_struct(name, struct)
     end
 EOF
 
-  to_s = rendered_to_s(NAMING, struct, META_PARAMETERS_STRUCT[name])
+  to_s = rendered_to_s(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name])
   print_struct_with_namespace(NAMING, name, struct,
                               initializer: [to_s, initializer].compact.join,
                               close: false)

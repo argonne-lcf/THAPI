@@ -8,6 +8,8 @@ puts <<~EOF
 
 EOF
 
+print_bytes_module(NAMING, META_PARAMETERS)
+
 print_typedefs(NAMING)
 
 puts <<~EOF

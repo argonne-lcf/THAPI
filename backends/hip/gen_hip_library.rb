@@ -10,7 +10,7 @@ puts <<~EOF
 
 EOF
 
-print_bytes_module(NAMING, META_PARAMETERS_STRUCT, META_PARAMETERS_FUNCTION)
+print_bytes_module(NAMING, META_PARAMETERS)
 
 puts <<EOF
 
@@ -35,7 +35,7 @@ print_typedefs(NAMING, struct: lambda { |name, t|
   next unless struct
 
   print_struct_with_namespace(NAMING, name, struct,
-                              initializer: rendered_to_s(NAMING, struct, META_PARAMETERS_STRUCT[name]))
+                              initializer: rendered_to_s(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
 })
 
 puts <<~EOF

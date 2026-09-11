@@ -4,14 +4,11 @@ API = ApiModel.load_file('hip_api.yaml').register_ffi_types
 
 CONTEXT = BackendContext.for(API, result_name: 'hipResult', init_functions: /.*/)
 
-meta_parameters = load_meta_parameters('hip_meta_parameters.yaml')
+META_PARAMETERS = load_meta_parameters('hip_meta_parameters.yaml')
 
 COMMANDS = build_command_index(
   { lttng_ust_hip: API.functions },
-  context: CONTEXT, spec: meta_parameters[:meta_parameters]
+  context: CONTEXT, spec: META_PARAMETERS[:meta_parameters]
 )
-
-META_PARAMETERS_STRUCT = meta_parameters[:meta_parameters_struct]
-META_PARAMETERS_FUNCTION = meta_parameters[:meta_parameters_function]
 
 HIP_POINTER_NAMES = COMMANDS.pointer_names
