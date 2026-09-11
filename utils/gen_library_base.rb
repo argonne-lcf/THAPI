@@ -292,13 +292,11 @@ end
 # of them says what the bytes mean, which is why the rows below exist.
 BYTE_TYPES = %w[:char :uchar :int8 :uint8].freeze
 
-# Which members of `struct_name` are byte arrays, as `{ member => true/false }`.
-# Bytes are all a renderer can read, so this is what a row is checked against.
+# The members of `struct_name` whose type is an array of bytes -- the only ones
+# a renderer can read.
 #
 #   >> byte_array_members(NAMING, 'ze_kernel_uuid_t')
-#   => { "kid" => true, "mid" => true }
-#   >> byte_array_members(NAMING, 'ze_device_properties_t')['coreClockRate']
-#   => false
+#   => ["kid", "mid"]
 #
 # Raises when the API declares no such struct, which for a row means a typo or
 # a type the vendor has since renamed.
@@ -306,33 +304,29 @@ def byte_array_members(naming, struct_name)
   typedef = naming.api.types.find { |t| t.name == struct_name }
   raise "meta_parameters_struct names no such struct: #{struct_name}" unless typedef
 
-  naming.api.struct(typedef.type).to_ffi(naming).to_h do |member, ffi_type|
-    is_bytes = ffi_type.is_a?(Array) && BYTE_TYPES.include?(ffi_type[0].to_s)
-    [member.delete_prefix(':'), is_bytes]
+  naming.api.struct(typedef.type).to_ffi(naming).filter_map do |member, ffi_type|
+    member.delete_prefix(':') if ffi_type.is_a?(Array) && BYTE_TYPES.include?(ffi_type[0].to_s)
   end
 end
 
-# Raise unless every row names a struct, a member of it, and a renderer --
-# checked once, before a single line is generated.
+# Raise unless every row names a struct, a byte-array member of it, and a
+# renderer -- checked once, before a single line is generated.
 #
-# The rows are written by hand against headers that keep moving, so a name that
-# matches nothing is a typo or a field the vendor has since renamed; either way
-# the row would silently do nothing, which is exactly the failure these rows
-# exist to end. A renderer pointed at something that is not a byte array is the
-# same mistake from the other side: it would raise at trace time instead, where
-# it is far more expensive to notice.
+# The rows are written by hand against headers that keep moving, so a member
+# that is not there and one that is not bytes fail the same way: the renderer
+# has nothing to read. Either would otherwise raise at trace time, where it is
+# far more expensive to notice.
 def check_meta_parameters_struct(naming, meta_parameters_struct)
   unknown = meta_parameters_struct.values.flat_map(&:values).uniq - RENDERER_BODIES.keys
   raise "unknown renderer: #{unknown.join(', ')}" unless unknown.empty?
 
   meta_parameters_struct.each do |struct_name, members|
-    byte_arrays = byte_array_members(naming, struct_name)
-    members.each_key do |member|
-      is_bytes = byte_arrays.fetch(member) do
-        raise "#{struct_name} has no member #{member} (has #{byte_arrays.keys.join(', ')})"
-      end
-      raise "#{struct_name}.#{member} is not a byte array, cannot render its bytes" unless is_bytes
-    end
+    bytes = byte_array_members(naming, struct_name)
+    unrenderable = members.keys - bytes
+    next if unrenderable.empty?
+
+    raise "#{struct_name} has no byte-array member #{unrenderable.join(', ')} " \
+          "(has #{bytes.join(', ')})"
   end
 end
 
