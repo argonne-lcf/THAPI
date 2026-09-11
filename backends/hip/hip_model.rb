@@ -12,5 +12,6 @@ COMMANDS = build_command_index(
 )
 
 META_PARAMETERS_STRUCT = meta_parameters[:meta_parameters_struct]
+META_PARAMETERS_FUNCTION = meta_parameters[:meta_parameters_function]
 
 HIP_POINTER_NAMES = COMMANDS.pointer_names

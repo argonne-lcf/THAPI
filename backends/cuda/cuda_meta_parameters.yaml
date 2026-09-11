@@ -1079,6 +1079,10 @@ meta_parameters:
     - [InArray, globalStrides, tensorRank]
     - [InArray, elementStrides, tensorRank]
 
+meta_parameters_function:
+  cuDeviceGetLuid:
+    - [ uuid, luid ]
+
 meta_parameters_struct:
   CUuuid:
     - [ uuid, bytes ]

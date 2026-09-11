@@ -3,20 +3,25 @@ require_relative 'gen_probe_base'
 
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
-def print_babeltrace_lib(naming)
+#
+# `meta_parameters_function` is what the backend declares about the byte-array
+# parameters of its functions; a backend that declares none passes nothing.
+def print_babeltrace_lib(naming, commands, meta_parameters_function = {})
   puts "require_relative '#{naming.backend}_library.rb'"
-  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml")
+  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml",
+                                 function_renderers(commands, meta_parameters_function))
 end
 
 # One `$event_lambdas` entry per event: a lambda that renders the event's
 # payload as a string.
-def add_babeltrace_event_callbacks(naming, file)
+def add_babeltrace_event_callbacks(naming, file, renderers_by_function)
   yaml_load_file_cached(file)[:stream_classes].each do |s|
     s[:event_classes].each do |e|
       # Handle payload_field_class not present, in this case empty array
       members = e[:payload_field_class]&.[](:members).to_a
+      renderers = renderers_by_function.fetch(event_function_name(e[:name]), {})
       fields = members.reject { |f| length_field_name?(f[:name]) }
-                      .map { |f| render_field(naming, f) }
+                      .map { |f| render_field(naming, f, renderers[f[:name]]) }
 
       # Now just print the full strings to pretty printf the struct
       puts <<~EOF
@@ -30,10 +35,54 @@ def add_babeltrace_event_callbacks(naming, file)
   end
 end
 
+# An event's name carries the provider that declares it and the direction it
+# reports, around the name of the function it belongs to.
+#
+#   >> event_function_name('lttng_ust_cuda:cuDeviceGetLuid_exit')
+#   => "cuDeviceGetLuid"
+def event_function_name(event_name)
+  event_name.split(':').last.sub(/_(#{START}|#{STOP})\z/, '')
+end
+
+# The declared rows, re-keyed from the parameter a person writes to the field
+# the payload actually carries -- the tracepoint traces cuDeviceGetLuid's
+# `luid` as `luid_vals`, so `{ 'luid' => 'uuid' }` becomes
+# `{ 'luid_vals' => 'uuid' }`. Both directions go in one map, because a
+# parameter traced by each is the same bytes either way.
+#
+# Raises unless the parameter is one the function traces as bytes -- a name
+# that is not there and one that is not bytes both leave the renderer nothing
+# to read, and would otherwise fail at trace time.
+def function_renderers(commands, meta_parameters_function)
+  meta_parameters_function.to_h do |function, parameters|
+    traced = byte_array_parameters(commands[function])
+    unrenderable = parameters.keys - traced.keys
+    unless unrenderable.empty?
+      raise "#{function} traces no byte-array parameter #{unrenderable.join(', ')} " \
+            "(it traces #{traced.empty? ? 'none' : traced.keys.join(', ')})"
+    end
+
+    [function, parameters.transform_keys { |name| traced.fetch(name) }]
+  end
+end
+
+# The parameters of `command` that reach the trace as bytes, as
+# `{ parameter => field }`. `_text` is what LTTng calls a byte array, whichever
+# of char, unsigned char or uint8_t the header spells it with.
+def byte_array_parameters(command)
+  command.meta_parameters.to_h do |m|
+    field = command.directions.filter_map { |dir| m.lttng_type_for(dir) }
+                              .find { |lttng| lttng.macro.to_s.end_with?('_text') }
+    [m.name, field&.name&.to_s]
+  end.compact
+end
+
 # The statement that appends one field to the rendered payload. `be_class` is
 # the FFI class for a field whose raw bytes mean something richer -- an enum, a
-# bitmask, a struct -- and is absent for one that prints as itself.
-def render_field(naming, field)
+# bitmask, a struct -- and is absent for one that prints as itself. `renderer`
+# is the `Bytes` function the backend declared for this field, for bytes that
+# mean something no type says.
+def render_field(naming, field, renderer = nil)
   name = field[:name]
   fc = field[:field_class]
   be_class = field[:metadata]&.[](:be_class)
@@ -51,7 +100,13 @@ def render_field(naming, field)
   when 'double', 'single'
     plain
   when 'string'
-    be_class ? render_packed_struct(name, be_class) : %(s << "#{name}: \#{defi["#{name}"].inspect}")
+    if renderer
+      %{s << "#{name}: \#{#{naming.module_name}::Bytes.#{renderer}(defi["#{name}"].bytes)}"}
+    elsif be_class
+      render_packed_struct(name, be_class)
+    else
+      %(s << "#{name}: \#{defi["#{name}"].inspect}")
+    end
   when 'array_dynamic', 'array_static'
     element = fc[:element_field_class]
     unless %w[integer_signed integer_unsigned].include?(element[:type])

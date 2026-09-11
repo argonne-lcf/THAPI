@@ -1,10 +1,11 @@
 require_relative 'yaml_ast'
 
 # Read a backend's meta-parameter YAML (relative to SRC_DIR) and return what it
-# declares: `[:meta_parameters]`, the per-function rows, and
-# `[:meta_parameters_struct]`, how a struct's byte-array members should be read.
+# declares: `[:meta_parameters]`, the per-function rows, and the two rendering
+# sections -- `[:meta_parameters_struct]` for a struct's byte-array members,
+# `[:meta_parameters_function]` for a function's byte-array parameters.
 # Unlisted functions read back as [], so callers can `spec[name]`
-# unconditionally, and a file declaring no structs reads back as {}.
+# unconditionally, and a section a file omits reads back as {}.
 #
 # A backend with no meta-parameters of its own ships no file at all, so a file
 # that exists must have the `meta_parameters` key: a missing or misspelled one
@@ -22,6 +23,7 @@ require_relative 'yaml_ast'
 def load_meta_parameters(*filenames)
   spec = Hash.new { [] }
   structs = {}
+  functions = {}
   filenames.each do |filename|
     path = File.join(SRC_DIR, filename)
     content = yaml_load_file_cached(path)
@@ -33,17 +35,31 @@ def load_meta_parameters(*filenames)
     end
     spec.merge!(rows) { |func, _, _| raise "#{func} is declared twice, second time in #{path}" }
 
-    struct_rows = content.fetch('meta_parameters_struct', {}).transform_values do |list|
-      twice = list.collect(&:last).tally.select { |_, n| n > 1 }.keys
-      raise "#{path}: #{twice.join(', ')} rendered twice" unless twice.empty?
-
-      list.to_h(&:reverse)
+    structs.merge!(rendering_rows(content, path, 'meta_parameters_struct')) do |name, _, _|
+      raise "#{name} is declared twice, second time in #{path}"
     end
-    structs.merge!(struct_rows) { |name, _, _| raise "#{name} is declared twice, second time in #{path}" }
+    functions.merge!(rendering_rows(content, path, 'meta_parameters_function')) do |name, _, _|
+      raise "#{name} is declared twice, second time in #{path}"
+    end
   end
-  { meta_parameters: spec, meta_parameters_struct: structs }
+  { meta_parameters: spec, meta_parameters_struct: structs, meta_parameters_function: functions }
 end
 
+# One rendering section, as `{ owner => { thing => renderer } }`. A row reads
+# `[ renderer, thing ]` -- renderer first, so a reader sees what the section is
+# for before what it applies to -- and the map is keyed the other way, because
+# every user asks "how do I print this member?".
+#
+# Naming the same thing twice would silently keep one renderer, so it raises,
+# and it names every repeat rather than stopping at the first.
+def rendering_rows(content, path, section)
+  content.fetch(section, {}).transform_values do |list|
+    twice = list.collect(&:last).tally.select { |_, n| n > 1 }.keys
+    raise "#{path}: #{twice.join(', ')} rendered twice" unless twice.empty?
+
+    list.to_h(&:reverse)
+  end
+end
 
 # Raise unless every function the spec names is one of `commands`. A spec is
 # written by hand against an API that keeps moving, so a key matching nothing
