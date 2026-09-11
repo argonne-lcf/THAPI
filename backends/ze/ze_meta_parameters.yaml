@@ -365,16 +365,6 @@ meta_parameters:
     - [ InArray, pCommandId, numKernels ]
     - [ InArray, phKernels, numKernels ]
 
-# How a struct's bytes should be read. A byte array cannot say from its shape
-# whether it holds an opaque handle, a UUID or a string, and the class name
-# only sometimes says it, so the header's answer is written down here. ze
-# prints a UUID last byte first.
-
-# How each struct's byte-array members should be read. A byte array cannot say
-# from its shape whether it holds an opaque blob or a UUID -- both spell
-# themselves `uint8_t x[N]` or `char x[N]` -- so the header's answer is written
-# down here. A member with no row renders the way the base class renders it,
-# which is what the fixed-width strings want.
 meta_parameters_struct:
   ze_uuid_t:
     - [ uuid_reversed, id ]

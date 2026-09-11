@@ -22,7 +22,7 @@ COMMANDS = build_command_index(
   spec: meta_parameters[:meta_parameters]
 )
 
-STRUCT_SPEC = meta_parameters[:meta_parameters_struct]
+META_PARAMETERS_STRUCT = meta_parameters[:meta_parameters_struct]
 
 CUDA_POINTER_NAMES = COMMANDS.pointer_names
 

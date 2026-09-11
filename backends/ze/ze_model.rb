@@ -97,7 +97,7 @@ end
 # follows APIS rather than restating it. zer's file exists but stays out until
 # zer has a generated api.yaml to match it against.
 meta_parameters = load_meta_parameters(*(APIS.keys - [:zer]).collect { |ns| "#{ns}_meta_parameters.yaml" })
-STRUCT_SPEC = meta_parameters[:meta_parameters_struct]
+META_PARAMETERS_STRUCT = meta_parameters[:meta_parameters_struct]
 
 # One group per namespace, because each namespace has its own LTTng provider.
 COMMANDS = build_command_index(APIS.to_h { |ns, api| [:"lttng_ust_#{ns}", api.functions] },

@@ -10,7 +10,7 @@ puts <<~EOF
 
 EOF
 
-print_renderer_modules(NAMING, STRUCT_SPEC, API.types.collect(&:name))
+print_rendering_module(NAMING, META_PARAMETERS_STRUCT)
 
 puts <<EOF
 
@@ -32,7 +32,7 @@ end
 # layout to emit.
 print_typedefs(NAMING, struct: lambda { |name, t|
   struct = API.struct(t.type, opaque_ok: true)
-  print_struct_rendered(NAMING, name, struct, STRUCT_SPEC) if struct
+  print_struct_rendered(NAMING, name, struct, META_PARAMETERS_STRUCT) if struct
 })
 
 puts <<~EOF

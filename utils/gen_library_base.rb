@@ -292,85 +292,89 @@ end
 # of them says what the bytes mean, which is why the rows below exist.
 BYTE_TYPES = %w[:char :uchar :int8 :uint8].freeze
 
-# Raise unless every row names a member of that struct, and one whose bytes the
-# renderer can read.
+# Which members of `struct_name` are byte arrays, as `{ member => true/false }`.
+# Bytes are all a renderer can read, so this is what a row is checked against.
 #
-# The rows are written by hand against headers that keep moving, so a member
-# that matches nothing is a typo or a field the vendor has since renamed --
-# either way the row would silently do nothing, which is exactly the failure
-# these rows exist to end. A renderer pointed at something that is not a byte
-# array is the same mistake from the other side: every renderer reads the
-# member's bytes, so a scalar or a pointer would raise at trace time, where it
-# is far more expensive to notice.
-def check_renderings(naming, name, struct, members)
-  byte_arrays = struct.to_ffi(naming).to_h { |member, type|
-    [member.delete_prefix(':'), type.is_a?(Array) && BYTE_TYPES.include?(type[0].to_s)]
-  }
-  members.each_key do |member|
-    is_bytes = byte_arrays.fetch(member) do
-      raise "#{name} has no member #{member} (has #{byte_arrays.keys.join(', ')})"
+#   >> byte_array_members(NAMING, 'ze_kernel_uuid_t')
+#   => { "kid" => true, "mid" => true }
+#   >> byte_array_members(NAMING, 'ze_device_properties_t')['coreClockRate']
+#   => false
+#
+# Raises when the API declares no such struct, which for a row means a typo or
+# a type the vendor has since renamed.
+def byte_array_members(naming, struct_name)
+  typedef = naming.api.types.find { |t| t.name == struct_name }
+  raise "meta_parameters_struct names no such struct: #{struct_name}" unless typedef
+
+  naming.api.struct(typedef.type).to_ffi(naming).to_h do |member, ffi_type|
+    is_bytes = ffi_type.is_a?(Array) && BYTE_TYPES.include?(ffi_type[0].to_s)
+    [member.delete_prefix(':'), is_bytes]
+  end
+end
+
+# Raise unless every row names a struct, a member of it, and a renderer --
+# checked once, before a single line is generated.
+#
+# The rows are written by hand against headers that keep moving, so a name that
+# matches nothing is a typo or a field the vendor has since renamed; either way
+# the row would silently do nothing, which is exactly the failure these rows
+# exist to end. A renderer pointed at something that is not a byte array is the
+# same mistake from the other side: it would raise at trace time instead, where
+# it is far more expensive to notice.
+def check_meta_parameters_struct(naming, meta_parameters_struct)
+  unknown = meta_parameters_struct.values.flat_map(&:values).uniq - RENDERER_BODIES.keys
+  raise "unknown renderer: #{unknown.join(', ')}" unless unknown.empty?
+
+  meta_parameters_struct.each do |struct_name, members|
+    byte_arrays = byte_array_members(naming, struct_name)
+    members.each_key do |member|
+      is_bytes = byte_arrays.fetch(member) do
+        raise "#{struct_name} has no member #{member} (has #{byte_arrays.keys.join(', ')})"
+      end
+      raise "#{struct_name}.#{member} is not a byte array, cannot render its bytes" unless is_bytes
     end
-    raise "#{name}.#{member} is not a byte array, so its bytes cannot be rendered" unless is_bytes
   end
 end
 
 # The renderers, each a whole function body reading `bytes` and returning text.
 # A row in `meta_parameters_struct` names one, and only the named ones are
-# emitted.
-#
-# Blob escapes every byte and stops at none: a blob is not a C string, and
-# reading one as text would truncate it at the first NUL and lose the rest.
-#
-# The two UUID renderers differ in byte order alone -- cuda and hip print a
-# UUID first byte first, ze last byte first -- so the reversed one is written
-# out rather than layered on the other: at this size a second name for the same
-# four lines costs more than the repetition. Both keep the canonical dashes
-# (after bytes 4, 6, 8 and 10) that the array is long enough to reach, so 16
-# bytes read 8-4-4-4-12 and an 8-byte LUID degrades to `17161514-1312-1110`
-# rather than running off the end.
-DASHED_HEX = <<~'EOF'
+# emitted. See backends/README.md for what each prints and why it must be
+# declared rather than guessed from the C type.
+DASHED_HEX = <<~EOF
   hex = ORDER.collect { |v| format('%02x', v % 256) }
   cuts = [0, *[4, 6, 8, 10].select { |c| c < hex.length }, hex.length]
   cuts.each_cons(2).collect { |a, b| hex[a...b].join }.join('-')
 EOF
 
-RENDERERS = {
+RENDERER_BODIES = {
   'blob' => "bytes.pack('C*').b.inspect\n",
   'uuid' => DASHED_HEX.gsub('ORDER', 'bytes'),
   'uuid_reversed' => DASHED_HEX.gsub('ORDER', 'bytes.reverse'),
 }.freeze
 
-# The renderers this backend's rows ask for, as one module of plain functions.
-# A struct that declares members gets a to_s naming them directly -- no dispatch
-# table, no module of its own.
-def print_renderer_modules(naming, spec, structs)
-  unknown = spec.keys - structs
-  raise "meta_parameters_struct names no such struct: #{unknown.join(', ')}" unless unknown.empty?
-
-  wanted = spec.values.flat_map(&:values).uniq.sort
-  unknown_renderers = wanted - RENDERERS.keys
-  raise "unknown renderer: #{unknown_renderers.join(', ')}" unless unknown_renderers.empty?
+# The one `Rendering` module a backend gets, holding just the renderers its rows
+# ask for. This is also where every row is checked, so the build stops here
+# rather than emitting a library that is wrong further down.
+def print_rendering_module(naming, meta_parameters_struct)
+  check_meta_parameters_struct(naming, meta_parameters_struct)
+  wanted = meta_parameters_struct.values.flat_map(&:values).uniq.sort
   return if wanted.empty?
 
   puts '  module Rendering'
   puts wanted.collect { |name|
-    body = RENDERERS.fetch(name).lines.collect { |l| "      #{l}" }.join
+    body = RENDERER_BODIES.fetch(name).lines.collect { |l| "      #{l}" }.join
     "    def self.#{name}(bytes)\n#{body}    end\n"
   }.join("\n")
-  puts "  end"
+  puts '  end'
   puts
 end
 
-# nil for an empty string, so a caller can pass a built-up chunk straight to an
-# argument that means "nothing to emit" by being nil.
-def presence(string)
-  string unless string.empty?
-end
+# The `to_s` a rendered struct carries: every member spelled out, the declared
+# ones through their renderer and the rest as the base class prints them.
+# nil when the struct declares nothing, which means "emit no to_s".
+def rendered_to_s(naming, struct, members)
+  return nil unless members
 
-# The to_s a rendered struct carries: every member spelled out, the declared
-# ones through their renderer and the rest as the base class would print them.
-def print_rendered_to_s(naming, name, struct, members)
-  check_renderings(naming, name, struct, members)
   rendered = struct.to_ffi(naming).collect do |member, _type|
     key = member.delete_prefix(':')
     renderer = members[key]
@@ -600,12 +604,9 @@ def print_function_pointer_type(naming, name, func)
 EOF
 end
 
-def print_struct_rendered(naming, name, struct, spec)
-  members = spec[name]
-  return print_struct_with_namespace(naming, name, struct) unless members
-
+def print_struct_rendered(naming, name, struct, meta_parameters_struct)
   print_struct_with_namespace(naming, name, struct,
-                              initializer: print_rendered_to_s(naming, name, struct, members))
+                              initializer: rendered_to_s(naming, struct, meta_parameters_struct[name]))
 end
 
 # `members` defaults to the struct's own layout. A backend overrides it when it

@@ -300,11 +300,6 @@ meta_parameters:
     - [ InOutScalar, pCount ]
     - [ OutArray, pEngineUtil, pCount ]
 
-# How each struct's byte-array members should be read. A byte array cannot say
-# from its shape whether it holds an opaque blob or a UUID -- both spell
-# themselves `uint8_t x[N]` or `char x[N]` -- so the header's answer is written
-# down here. A member with no row renders the way the base class renders it,
-# which is what the fixed-width strings want.
 meta_parameters_struct:
   zes_uuid_t:
     - [ uuid_reversed, id ]
