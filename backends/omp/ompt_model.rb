@@ -14,7 +14,9 @@ end.collect do |t|
   YAMLCAst::Declaration.new(name: t.name.gsub(/_t\z/, '') + '_func', type: t.type.type)
 end
 
+META_PARAMETERS = load_meta_parameters('ompt_meta_parameters.yaml')
+
 COMMANDS = build_command_index(
   { lttng_ust_ompt: OMPT_CALLBACKS },
-  context: CONTEXT, spec: load_meta_parameters('ompt_meta_parameters.yaml')
+  context: CONTEXT, spec: META_PARAMETERS[:meta_parameters]
 )

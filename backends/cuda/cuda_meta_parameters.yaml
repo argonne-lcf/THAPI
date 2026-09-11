@@ -1078,3 +1078,19 @@ meta_parameters:
     - [InArray, globalDim, tensorRank]
     - [InArray, globalStrides, tensorRank]
     - [InArray, elementStrides, tensorRank]
+
+meta_parameters_function:
+  cuDeviceGetLuid:
+    - [ uuid, luid ]
+
+meta_parameters_struct:
+  CUuuid:
+    - [ uuid, bytes ]
+  CUmemFabricHandle_v1:
+    - [ blob, data ]
+  CUipcEventHandle_v1:
+    - [ blob, reserved ]
+  CUipcMemHandle_v1:
+    - [ blob, reserved ]
+  CUmemPoolPtrExportData_v1:
+    - [ blob, reserved ]

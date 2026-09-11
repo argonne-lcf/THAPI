@@ -30,8 +30,7 @@ puts <<~EOF
 
 EOF
 
-print_handle_uuid_modules
-puts
+print_bytes_module(NAMING, META_PARAMETERS)
 
 puts <<EOF
   typedef :uint32, #{to_ffi_name('cuuint32_t')}
@@ -50,7 +49,11 @@ EOF
 print_typedefs(
   NAMING,
   enum: ->(name, t) { print_enum(NAMING, name, API.enum(t.type, opaque_ok: true) || t.type) },
-  struct: ->(name, t) { print_struct_prepending_uuid(NAMING, name, API.struct(t.type)) },
+  struct: lambda { |name, t|
+    struct = API.struct(t.type)
+    print_struct_with_namespace(NAMING, name, struct,
+                                body: struct_to_s_definition(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
+  },
   pointer: nil,
   integer: nil
 )

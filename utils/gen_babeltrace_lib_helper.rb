@@ -3,37 +3,68 @@ require_relative 'gen_probe_base'
 
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
-def print_babeltrace_lib(naming)
+def print_babeltrace_lib(naming, meta_parameters)
   puts "require_relative '#{naming.backend}_library.rb'"
-  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml")
+  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml",
+                                 meta_parameters[:meta_parameters_function])
+end
+
+def payload_fields(event)
+  event[:payload_field_class]&.[](:members) || []
 end
 
 # One `$event_lambdas` entry per event: a lambda that renders the event's
 # payload as a string.
-def add_babeltrace_event_callbacks(naming, file)
-  yaml_load_file_cached(file)[:stream_classes].each do |s|
-    s[:event_classes].each do |e|
-      # Handle payload_field_class not present, in this case empty array
-      members = e[:payload_field_class]&.[](:members).to_a
-      fields = members.reject { |f| length_field_name?(f[:name]) }
-                      .map { |f| render_field(naming, f) }
+def add_babeltrace_event_callbacks(naming, file, meta_parameters_function)
+  event_classes = yaml_load_file_cached(file)[:stream_classes].flat_map { |s| s[:event_classes] }
+  check_meta_parameters_function(meta_parameters_function, byte_array_parameters(event_classes))
 
-      # Now just print the full strings to pretty printf the struct
-      puts <<~EOF
-        $event_lambdas["#{e[:name]}"] = lambda { |defi|
-          s = "{ "
-          #{fields.join("\n  s << ', '\n  ")}
-          s << " }"
-        }
-      EOF
+  event_classes.each do |e|
+    renderers = meta_parameters_function.fetch(event_function_name(e[:name]), {})
+    fields = payload_fields(e).filter_map do |f|
+      next if length_field_name?(f[:name])
+
+      render_field(naming, f, renderers[parameter_name(f[:name])])
     end
+
+    puts <<~EOF
+      $event_lambdas["#{e[:name]}"] = lambda { |defi|
+        s = "{ "
+        #{fields.join("\n  s << ', '\n  ")}
+        s << " }"
+      }
+    EOF
+  end
+end
+
+# A byte array reaches the payload as a string, we will print it according to
+# metadata.
+def byte_array_parameters(event_classes)
+  event_classes.group_by { |e| event_function_name(e[:name]) }.transform_values do |events|
+    events.flat_map { |e| payload_fields(e) }
+          .select { |f| f[:field_class][:type] == 'string' }
+          .collect { |f| parameter_name(f[:name]) }
+  end
+end
+
+def check_meta_parameters_function(meta_parameters_function, byte_arrays)
+  meta_parameters_function.each do |function, parameters|
+    bytes = byte_arrays.fetch(function) do
+      raise "meta_parameters_function names no traced function: #{function}"
+    end
+    unrenderable = parameters.keys - bytes
+    next if unrenderable.empty?
+
+    raise "#{function} traces no byte-array parameter #{unrenderable.join(', ')} " \
+          "(traces #{bytes.empty? ? 'none' : bytes.join(', ')})"
   end
 end
 
 # The statement that appends one field to the rendered payload. `be_class` is
 # the FFI class for a field whose raw bytes mean something richer -- an enum, a
-# bitmask, a struct -- and is absent for one that prints as itself.
-def render_field(naming, field)
+# bitmask, a struct -- and is absent for one that prints as itself. `renderer`
+# is the `Bytes` function declared for bytes that mean something no type says.
+def render_field(naming, field, renderer = nil)
   name = field[:name]
   fc = field[:field_class]
   be_class = field[:metadata]&.[](:be_class)
@@ -51,7 +82,13 @@ def render_field(naming, field)
   when 'double', 'single'
     plain
   when 'string'
-    be_class ? render_packed_struct(name, be_class) : %(s << "#{name}: \#{defi["#{name}"].inspect}")
+    if renderer
+      %{s << "#{name}: \#{#{naming.module_name}::Bytes.#{renderer}(defi["#{name}"].bytes)}"}
+    elsif be_class
+      render_packed_struct(name, be_class)
+    else
+      %(s << "#{name}: \#{defi["#{name}"].inspect}")
+    end
   when 'array_dynamic', 'array_static'
     element = fc[:element_field_class]
     unless %w[integer_signed integer_unsigned].include?(element[:type])

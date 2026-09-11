@@ -10,7 +10,7 @@ puts <<~EOF
 
 EOF
 
-print_handle_uuid_modules
+print_bytes_module(NAMING, META_PARAMETERS)
 
 puts <<EOF
 
@@ -32,7 +32,10 @@ end
 # layout to emit.
 print_typedefs(NAMING, struct: lambda { |name, t|
   struct = API.struct(t.type, opaque_ok: true)
-  print_struct_prepending_uuid(NAMING, name, struct) if struct
+  next unless struct
+
+  print_struct_with_namespace(NAMING, name, struct,
+                              body: struct_to_s_definition(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name]))
 })
 
 puts <<~EOF

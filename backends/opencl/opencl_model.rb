@@ -678,7 +678,7 @@ class Command < CLXML
   end
 end
 
-meta_parameters = load_meta_parameters('opencl_meta_parameters.yaml')
+meta_parameters = load_meta_parameters('opencl_meta_parameters.yaml')[:meta_parameters]
 
 # Both groups go to the one lttng_ust_opencl provider, so they are grouped by
 # what actually separates them: an extension is reached through

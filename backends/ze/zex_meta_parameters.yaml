@@ -6,3 +6,7 @@ meta_parameters:
   zexMemOpenIpcHandles:
     - [InArray, pIpcHandles, numIpcHandles]
     - [OutScalar, pptr]
+
+meta_parameters_struct:
+  zex_ipc_counter_based_event_handle_t:
+    - [ blob, data ]
