@@ -612,8 +612,7 @@ end
 # pointers it only defines further down the file, so it passes :pointer for
 # them instead of a name FFI cannot resolve yet.
 #
-# `initializer` may be nil or empty; either way nothing is emitted, so a caller
-# can join what it has without first asking whether it has anything.
+# `initializer` may be nil or empty.
 def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true,
                                 members: struct.to_ffi(naming))
   puts <<EOF
