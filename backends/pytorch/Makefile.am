@@ -73,7 +73,14 @@ libTracerPytorch_la_SOURCES = \
 	tracer_pytorch.cpp
 
 libTracerPytorch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-libTracerPytorch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(LTTNG_UST_CFLAGS)
+# -Wno-missing-field-initializers: LTTng's own tracepoint.h (not our code)
+#   aggregate-initializes structs without naming every field; clang is
+#   stricter than gcc about this under -Wextra.
+# -Wno-unused-private-field: RecordFunctionCallback's fields exist only to
+#   match PyTorch's real class layout byte-for-byte (see the comment in
+#   include/ATen/record_function.h) -- the real libtorch reads them, we
+#   never do, by design.
+libTracerPytorch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-private-field $(WERROR) $(LTTNG_UST_CFLAGS)
 libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -ltorch_cpu -avoid-version -module
 libTracerPytorch_la_LIBADD = libpytorchtracepoints.la
 EXTRA_libTracerPytorch_la_DEPENDENCIES = $(DUMMY_TORCH_LIBS)
