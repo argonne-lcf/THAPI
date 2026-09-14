@@ -23,6 +23,7 @@ enum backend_e {
   BACKEND_MPI = 7,
   BACKEND_CXI = 8,
   BACKEND_ITT = 9,
+  BACKEND_PYTORCH = 10,
 };
 typedef enum backend_e backend_t;
 typedef unsigned backend_level_t;

@@ -84,3 +84,40 @@ libTracerPytorch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -W
 libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -ltorch_cpu -avoid-version -module
 libTracerPytorch_la_LIBADD = libpytorchtracepoints.la
 EXTRA_libTracerPytorch_la_DEPENDENCIES = $(DUMMY_TORCH_LIBS)
+
+BTX_PYTORCH_GENERATED = \
+	btx_filter_pytorch/metababel/metababel.h \
+	btx_filter_pytorch/metababel/btx_component.h \
+	btx_filter_pytorch/metababel/btx_component.c \
+	btx_filter_pytorch/metababel/btx_upstream.h \
+	btx_filter_pytorch/metababel/btx_upstream.c \
+	btx_filter_pytorch/metababel/btx_downstream.h \
+	btx_filter_pytorch/metababel/btx_downstream.c \
+	btx_filter_pytorch/btx_main.c
+
+EXTRA_DIST += \
+	$(top_srcdir)/xprof/btx_interval_model.yaml \
+	$(srcdir)/btx_pytorch_model.yaml
+
+$(BTX_PYTORCH_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml $(srcdir)/btx_pytorch_model.yaml
+	$(METABABEL) -u $(srcdir)/btx_pytorch_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_pytorch -p pytorchinterval -c interval
+
+CLEANFILES += \
+	$(BTX_PYTORCH_GENERATED)
+
+BUILT_SOURCES += \
+	$(BTX_PYTORCH_GENERATED)
+
+nodist_libPyTorchInterval_la_SOURCES = \
+	$(BTX_PYTORCH_GENERATED)
+
+libPyTorchInterval_la_SOURCES = \
+	btx_pytorchinterval_callbacks.cpp
+
+libPyTorchInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./ -I./btx_filter_pytorch
+libPyTorchInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libPyTorchInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libPyTorchInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libPyTorchInterval.la
