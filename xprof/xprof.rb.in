@@ -976,7 +976,7 @@ def all_env_tracers(usr_binary)
     else
       backends << 'pytorch'
       # LibTracerPytorch.so calls at::addGlobalCallback() and RecordFunction::name()
-      # both implemented in libtorch_cpu.so. The lib is reachable via LD_LIBRARY_PATH. 
+      # both implemented in libtorch_cpu.so. The lib is reachable via LD_LIBRARY_PATH.
       h[%w[LD_LIBRARY_PATH prepend]] << torch_lib
       h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, 'libTracerPytorch.so')
     end
