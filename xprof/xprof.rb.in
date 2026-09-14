@@ -652,7 +652,7 @@ def enable_events_itt(channel_name, tracing_mode: 'default', profiling: true)
   LOGGER.debug("Tracing mode #{tracing_mode} similar to default for itt") unless tracing_mode == 'default'
 end
 
-def enable_events_pytorch(channel_name, tracing_mode: 'default', profiling: true)
+def enable_events_pytorch(channel_name, tracing_mode: 'default', profiling: false)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   exec("#{lttng_enable} lttng_ust_pytorch:*")
   LOGGER.debug('Profiling is ignored for pytorch') if profiling
@@ -966,12 +966,17 @@ def all_env_tracers(usr_binary)
   end
 
   if OPTIONS[:'backend-names'].include?('pytorch')
-    torch_lib = exec('python3 -c "import torch, os; print(os.path.join(os.path.dirname(torch.__file__), \'lib\'))"',
-                     debug: false).strip
+    # Supported calling: iprof -- python3 model.py (torch env is active).
+    # Unsupported calling: iprof -- venv/bin/python3 module.py (non-active torch env)
+    # TODO: We need env vars to support the second calling convention.
+    torch_file = exec('python3 -c "import torch; print(torch.__file__)"', debug: false).strip
+    torch_lib = torch_file.empty? ? '' : File.join(File.dirname(torch_file), 'lib')
     if torch_lib.empty?
       LOGGER.warn('No torch module found for python3, pytorch backend will not be enabled')
     else
       backends << 'pytorch'
+      # LibTracerPytorch.so calls at::addGlobalCallback() and RecordFunction::name()
+      # both implemented in libtorch_cpu.so. The lib is reachable via LD_LIBRARY_PATH. 
       h[%w[LD_LIBRARY_PATH prepend]] << torch_lib
       h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, 'libTracerPytorch.so')
     end
