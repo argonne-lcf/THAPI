@@ -1,0 +1,12 @@
+lttng_ust_pytorch:
+  events:
+  - name: op_entry
+    args:
+    - ["const char *", name]
+    fields:
+    - [ctf_string, name, name]
+  - name: op_exit
+    args:
+    - ["const char *", name]
+    fields:
+    - [ctf_string, name, name]

@@ -1,0 +1,71 @@
+#!/bin/sh
+exec_prefix=@prefix@
+libdir=@libdir@
+prefix=@prefix@
+datarootdir=@datarootdir@
+datadir=@datadir@
+
+display_help() {
+  echo "Usage:"
+  echo " $(basename $0) [options] [--] <application> <application-arguments>"
+  echo "  --help                        Show this screen"
+  echo "  --version                     Print the version string"
+  exit 1
+}
+
+display_version() {
+  cat $datadir/thapi_version
+  exit 1
+}
+
+while true; do
+  case "$1" in
+    --help)
+      display_help
+      exit
+      ;;
+    --version)
+      display_version
+      exit
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) break ;;
+  esac
+done
+
+if [ "$#" -eq 0 ]; then
+  display_help
+fi
+
+torch_lib=$(python3 -c 'import torch, os; print(os.path.join(os.path.dirname(torch.__file__), "lib"))' 2>/dev/null)
+if [ -z "$torch_lib" ]; then
+  echo "$(basename $0): no 'torch' module found for python3, cannot locate libtorch_cpu.so/libc10.so" >&2
+  exit 1
+fi
+
+lttng-sessiond --daemonize --quiet
+lttng create thapi-pytorch-session
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_pytorch:*
+
+export LD_LIBRARY_PATH=$torch_lib:$LD_LIBRARY_PATH
+export LD_PRELOAD=$libdir/libTracerPytorch.so
+export LTTNG_UST_ALLOW_BLOCKING=1
+
+lttng start
+
+ctrl_c() {
+  lttng stop
+  lttng destroy
+  exit
+}
+
+trap ctrl_c INT
+
+"$@"
+lttng stop
+lttng destroy
