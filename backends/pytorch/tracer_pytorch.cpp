@@ -15,6 +15,7 @@ static void on_exit(const at::RecordFunction &fn, at::ObserverContext *) {
 
 // Auto-register at library load (works under LD_PRELOAD, no python changes).
 __attribute__((constructor)) static void tracer_pytorch_init() {
-  at::addGlobalCallback(at::RecordFunctionCallback(&on_entry, &on_exit)
-                             .scopes({at::RecordScope::FUNCTION, at::RecordScope::BACKWARD_FUNCTION}));
+  at::addGlobalCallback(
+      at::RecordFunctionCallback(&on_entry, &on_exit)
+          .scopes({at::RecordScope::FUNCTION, at::RecordScope::BACKWARD_FUNCTION}));
 }

@@ -49,7 +49,7 @@ enum class RecordScope : uint8_t {
 struct ObserverContext {
   virtual ~ObserverContext() = default;
 
- protected:
+protected:
   ObserverContext() = default;
 };
 
@@ -58,7 +58,7 @@ struct RecordFunction {
 };
 
 class RecordFunctionCallback {
- public:
+public:
   using StartCallback = std::unique_ptr<ObserverContext> (*)(const RecordFunction &);
   using EndCallback = void (*)(const RecordFunction &, ObserverContext *);
 
@@ -79,7 +79,7 @@ class RecordFunctionCallback {
     return *this;
   }
 
- private:
+private:
   StartCallback start_;
   EndCallback end_;
   double sampling_prob_ = 1.0;
@@ -93,4 +93,4 @@ using CallbackHandle = uint64_t;
 
 CallbackHandle addGlobalCallback(RecordFunctionCallback cb);
 
-}  // namespace at
+} // namespace at
