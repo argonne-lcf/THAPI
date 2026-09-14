@@ -1,4 +1,3 @@
----
 lttng_ust_pytorch:
   events:
   - name: op_entry
