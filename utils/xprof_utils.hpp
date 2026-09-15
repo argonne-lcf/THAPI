@@ -40,6 +40,7 @@ const std::unordered_map<std::string, backend_t> pretty_backend_name_g = {
     {"mpi", BACKEND_MPI},
     {"cxi", BACKEND_CXI},
     {"itt", BACKEND_ITT},
+    {"pytorch", BACKEND_PYTORCH},
 };
 
 const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
@@ -53,6 +54,7 @@ const std::unordered_map<backend_t, backend_level_t> backend_levels_g = {
     {BACKEND_MPI, 3},
     {BACKEND_CXI, 4},
     {BACKEND_ITT, 5},
+    {BACKEND_PYTORCH, 6},
 };
 
 typedef std::string thapi_metadata_t;

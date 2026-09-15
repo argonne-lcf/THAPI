@@ -1075,7 +1075,7 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, 'Select which backends to use and their grouping level.',
             'Format: backend_name[:backend_level],...',
-            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5', 'pytorch:6'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
 
   # Analysis
