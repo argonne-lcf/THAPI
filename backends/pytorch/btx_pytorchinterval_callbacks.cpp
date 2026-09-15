@@ -1,8 +1,17 @@
 #include "xprof_utils.hpp"
 #include <metababel/metababel.h>
+#include <unordered_map>
+#include <vector>
 
+// A per-thread LIFO stack of entry timestamps, not a single scalar, is
+// required because PyTorch ops can re-enter themselves before returning
+// (reentrance): torch.isfinite() on a complex tensor calls at::isfinite()
+// again, once on the real part and once on the imaginary part, while its
+// own outer call is still open (see aten/src/ATen/native/TensorCompare.cpp).
+// A scalar slot would be overwritten by the inner call and the outer
+// call's exit would then read the wrong (inner) entry timestamp.
 struct data_s {
-  EntryState entry_state;
+  std::unordered_map<hpt_t, std::vector<int64_t>> entry_stack;
 };
 typedef struct data_s data_t;
 
@@ -17,7 +26,7 @@ static void lttng_ust_pytorch_op_entry_callback(void *btx_handle,
                                                 int64_t vpid,
                                                 uint64_t vtid,
                                                 char * /*name*/) {
-  static_cast<data_t *>(usr_data)->entry_state.set_ts({hostname, vpid, vtid}, ts);
+  static_cast<data_t *>(usr_data)->entry_stack[{hostname, vpid, vtid}].push_back(ts);
 }
 
 static void lttng_ust_pytorch_op_exit_callback(void *btx_handle,
@@ -28,9 +37,14 @@ static void lttng_ust_pytorch_op_exit_callback(void *btx_handle,
                                                uint64_t vtid,
                                                char *name) {
   auto *state = static_cast<data_t *>(usr_data);
-  const int64_t entry_ts = state->entry_state.get_ts({hostname, vpid, vtid});
+  auto &stack = state->entry_stack[{hostname, vpid, vtid}];
+  // Empty means an exit arrived with no matching entry (e.g. a trace
+  // truncated mid-call); report it via the existing err flag instead of
+  // reading undefined data.
+  const bool err = stack.empty();
+  const int64_t entry_ts = err ? ts : stack.back();
+  if (!err) stack.pop_back();
 
-  const bool err = false;
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_PYTORCH, name,
                               (ts - entry_ts), err);
 }
