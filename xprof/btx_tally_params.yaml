@@ -9,7 +9,7 @@
 - :name: display_metadata
   :type: bool
 - :name: display_name_max_size
-  :type: integer_unsigned
+  :type: integer_signed
 - :name: display_kernel_verbose
   :type: bool
 - :name: backend_levels
