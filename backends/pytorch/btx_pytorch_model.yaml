@@ -1,0 +1,45 @@
+:environment:
+  :entries:
+  - :name: hostname
+    :type: string
+:stream_classes:
+- :name: thapi_pytorch
+  :default_clock_class: {}
+  :packet_context_field_class:
+    :type: structure
+    :members:
+    - :name: cpu_id
+      :field_class:
+        :type: integer_unsigned
+        :cast_type: uint64_t
+        :field_value_range: 32
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: vpid
+      :field_class:
+        :type: integer_signed
+        :cast_type: int64_t
+        :field_value_range: 64
+    - :name: vtid
+      :field_class:
+        :type: integer_unsigned
+        :cast_type: uint64_t
+        :field_value_range: 64
+  :event_classes:
+  - :name: lttng_ust_pytorch:op_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: name
+        :field_class:
+          :cast_type: char *
+          :type: string
+  - :name: lttng_ust_pytorch:op_exit
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: name
+        :field_class:
+          :cast_type: char *
+          :type: string
