@@ -1,0 +1,8 @@
+{
+    "zeInit": ["1.10", "zeInitDrivers"],
+    "zeDriverGet": ["1.10", "zeInitDrivers"],
+    "zeCommandListImmediateAppendCommandListsExp": ["1.16", "zeCommandListImmediateAppendCommandListsWithParameters"],
+    "zeImageViewCreateExp": ["", "zeImageViewCreateExt"],
+    "zesRasGetConfig": ["1.16", "zesRasGetConfigExp"],
+    "zesRasSetConfig": ["1.16", "zesRasSetConfigExp"]
+}
