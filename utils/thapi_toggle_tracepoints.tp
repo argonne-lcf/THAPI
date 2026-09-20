@@ -1,0 +1,5 @@
+TRACEPOINT_EVENT(lttng_ust_toggle, start, TP_ARGS(), TP_FIELDS())
+
+TRACEPOINT_EVENT(lttng_ust_toggle, auto_stop, TP_ARGS(), TP_FIELDS())
+
+TRACEPOINT_EVENT(lttng_ust_toggle, stop, TP_ARGS(), TP_FIELDS())

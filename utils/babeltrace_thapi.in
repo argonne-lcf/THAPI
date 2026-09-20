@@ -251,6 +251,8 @@ def get_and_add_components(graph, names, l_inputs)
                           'offset' => $options[:'output-offset'] })
     when 'filter.utils.muxer'
       graph.add(comp, name)
+    when 'filter.toggle.toggle'
+      graph.add(comp, name)
     when 'filter.btx_aggreg.aggreg'
       graph.add(comp, 'aggreg',
                 params: { 'discard_metadata' => $options[:'discard-metadata'] })
@@ -316,6 +318,11 @@ def bt_graphs(inputs)
 
     if $options[:muxer] || inputs.any? { |trace| thapi_metadata(trace)[:type] == 'lttng' }
       g_comps << 'filter.utils.muxer'
+      # The toggle filter gates events on/off based on the lttng_ust_toggle
+      # start/stop tracepoints. It must come after the muxer so it sees the
+      # toggle and backend events in timestamp order. It is only added when
+      # the user requests it via `--toggle-on`.
+      g_comps << 'filter.toggle.toggle' if $options[:'toggle-on']
     end
 
     { 'tally' => ['filter.intervals.interval',
@@ -400,6 +407,7 @@ class BabeltraceParserThapi < OptionParserWithDefaultAndValidation
     on('--archive SESSION-NAME')
     on('--archive-session-found-file-path PATH')
     on('--[no-]muxer')
+    on('--toggle-on', default: false)
     on('-v', '--version', 'Print the version string') do
       puts File.read(File.join(DATADIR, 'thapi_version'))
       exit
