@@ -59,10 +59,7 @@ def parse_field(field)
   when 'lttng_ust_field_variable_length_blob'
     d[:field_class][:type] = 'blob_dynamic'
     d[:field_class][:length_field_location] = payload_length_field_location(field['name'])
-    if field['structure']
-      d[:field_class][:cast_type_is_struct] = true
-      d[:metadata] = { be_class: cl_to_class(field['type']) }
-    end
+    d[:metadata] = { be_class: cl_to_class(field['type']) } if field['structure']
   when 'ctf_array'
     d[:field_class][:type] = 'array_static'
     d_field = parse_field({ 'lttng' => 'ctf_integer', 'type' => field['type'], 'pointer' => field['pointer'] })

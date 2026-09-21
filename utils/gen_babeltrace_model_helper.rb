@@ -71,19 +71,11 @@ end
 # Raw bytes -- whether recorded as text or as a blob -- may really be a struct.
 # Resolve the typedef chain to its underlying name, and when that names a struct
 # say which FFI class reads it back.
-def name_packed_struct(registry, field, member, type)
+def name_packed_struct(registry, member, type)
   types_by_name = registry.types_by_name
   t = type.sub(' *', '')
   t = types_by_name[t].type.name while types_by_name.include?(t) && types_by_name[t].type.is_a?(YAMLCAst::CustomType)
   member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
-
-  # Too complicated, not sure why `struct_names` is not enough
-  return if field[:cast_type].end_with?('*')
-
-  packed = registry.struct_names.include?(t) ||
-           types_by_name[t]&.type.is_a?(YAMLCAst::Union) ||
-           type.start_with?('struct')
-  field[:cast_type_is_struct] = true if packed
 end
 
 def gen_bt_field_model(registry, lttng_name, type, name, lttng)
@@ -120,7 +112,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
   when 'ctf_string', 'ctf_sequence_text', 'ctf_array_text'
     # Genuine text: char strings and char sequences/arrays.
     field[:type] = 'string'
-    name_packed_struct(registry, field, member, type)
+    name_packed_struct(registry, member, type)
   when 'lttng_ust_field_fixed_length_blob', 'lttng_ust_field_variable_length_blob'
     # Raw bytes -- a struct, a union, or an opaque buffer. A fixed-length blob
     # knows its size; a variable-length one reads it from the companion length
@@ -133,7 +125,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
       field[:length_field_location] = payload_length_field_location(name)
     end
     field[:media_type] = lttng.media_type if lttng.media_type
-    name_packed_struct(registry, field, member, type)
+    name_packed_struct(registry, member, type)
   else
     raise "unsupported lttng type: #{lttng.inspect}"
   end
