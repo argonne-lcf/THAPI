@@ -172,10 +172,7 @@ module YAMLCAst
         ev.macro = :"ctf_#{lttng_arr_type}_text"
         ev.type = type.name
       when YAMLCAst::CustomType
-        # A uint8_t array is binary data or text rather than a run of numbers,
-        # so it gets an aggregate's treatment -- bytes, sized in bytes -- even
-        # though the name classifies as an integer.
-        case type.name == 'uint8_t' ? :aggregate : type_classes.category_of(type.name)
+        case type_classes.array_category_of(type.name)
         when :address
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t

@@ -32,6 +32,12 @@ end
 class MetaParameter
   attr_reader :name, :command, :lttng_type
 
+  # What a pointer points at, for a meta-parameter that traces the pointee.
+  # `void *` names no type, so say what the trace records: a run of bytes.
+  def element_type(pointee)
+    pointee.is_a?(YAMLCAst::Void) ? YAMLCAst::CustomType.new(name: 'uint8_t') : pointee
+  end
+
   # Here rather than in each generator that walks these, so every caller asks
   # the direction question the same way.
   LTTNG_TYPE_BY_DIRECTION = { start: :lttng_in_type, stop: :lttng_out_type, nil => :lttng_type }.freeze
@@ -212,12 +218,7 @@ class ArrayMetaParameter < MetaParameter
       sz = sanitize_expression("#{size}", checks)
       st = INT_SIGN_MAP["#{s.type}"] ? 'size_t' : "#{s.type}"
     end
-    tt = if t.type.is_a?(YAMLCAst::Void)
-           YAMLCAst::CustomType.new(name: 'uint8_t')
-         else
-           t.type
-         end
-    y = YAMLCAst::Array.new(type: tt)
+    y = YAMLCAst::Array.new(type: element_type(t.type))
     lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
@@ -293,12 +294,7 @@ class FixedArrayMetaParameter < MetaParameter
     raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
 
     check_for_null("#{name}")
-    tt = if t.type.is_a?(YAMLCAst::Void)
-           YAMLCAst::CustomType.new(name: 'uint8_t')
-         else
-           t.type
-         end
-    y = YAMLCAst::Array.new(type: tt)
+    y = YAMLCAst::Array.new(type: element_type(t.type))
     lttngt = y.lttng_type(command.type_classes, length: size, length_type: nil)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
@@ -339,12 +335,7 @@ class ArrayByRefMetaParameter < MetaParameter
       sz = sanitize_expression("#{size}", checks)
       st = "#{s.type}"
     end
-    tt = if t.type.type.is_a?(YAMLCAst::Void)
-           YAMLCAst::CustomType.new(name: 'uint8_t')
-         else
-           t.type.type
-         end
-    y = YAMLCAst::Array.new(type: tt)
+    y = YAMLCAst::Array.new(type: element_type(t.type.type))
     lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_val_vals'
     lttngt.expression = sanitize_expression("*#{name}")
