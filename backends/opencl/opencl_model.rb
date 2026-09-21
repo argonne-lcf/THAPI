@@ -561,19 +561,16 @@ class EventWaitList < AutoMetaParameter
 end
 
 class AutoOutScalar
+  # An out-scalar that attaches itself to any command taking `name` as a
+  # pointer. The name and the check are captured by the block, so the class
+  # body is written once rather than built as a string.
   def self.create(name, nocheck: false)
-    str = <<EOF
-    Class::new(AutoMetaParameter) do
-      def self.create_if_match(command)
-        par = command.parameters.find { |p| p.name == "#{name}" && p.pointer? }
-        if par
-          return OutScalar::new(command, "#{name}", nocheck: #{nocheck})
-        end
-        nil
+    Class.new(AutoMetaParameter) do
+      define_singleton_method(:create_if_match) do |command|
+        par = command.parameters.find { |p| p.name == name && p.pointer? }
+        par ? OutScalar.new(command, name, nocheck: nocheck) : nil
       end
     end
-EOF
-    eval str
   end
 end
 
