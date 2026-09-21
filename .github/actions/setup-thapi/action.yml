@@ -42,7 +42,17 @@ runs:
       packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev llvm-dev
   - name: Install Ruby Dependencies
     shell: bash
-    run: sudo gem install nokogiri babeltrace2 opencl_ruby_ffi metababel cast-to-yaml
+    run: sudo gem install nokogiri opencl_ruby_ffi metababel cast-to-yaml
+  - name: Install babeltrace2-ruby
+    shell: bash
+    # The published gem (0.1.5) predates BLOB support, so it cannot read the
+    # traces THAPI now writes. Build it from the branch until a release
+    # carries those commits.
+    run: |
+      git clone --depth 1 https://github.com/argonne-lcf/babeltrace2-ruby.git
+      cd babeltrace2-ruby
+      gem build babeltrace2.gemspec
+      sudo gem install --local ./babeltrace2-*.gem
   - name: Set PKG_CONFIG
     shell: bash
     run: |
