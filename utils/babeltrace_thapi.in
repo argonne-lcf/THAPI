@@ -132,12 +132,20 @@ def get_components(names)
   components_classes = {
     'source.ctf.fs' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('fs'),
     'source.ctf.lttng_live' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-live'),
-    'source.ctf.lttng_archive' => BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-archive'),
     'filter.utils.muxer' => BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer'),
     'sink.text.pretty' => BT2::BTPlugin.find('text').get_sink_component_class_by_name('pretty'),
     'sink.ctf.fs' => BT2::BTPlugin.find('ctf').get_sink_component_class_by_name('fs'),
     'sink.utils.dummy' => BT2::BTPlugin.find('utils').get_sink_component_class_by_name('dummy'),
   }
+
+  # `lttng-archive` is an ANL addition rather than an upstream component class,
+  # and a build without archive support links a plain babeltrace2 that does not
+  # have it. Resolve it only when a graph actually names it, so every other
+  # mode keeps working.
+  if names.include?('source.ctf.lttng_archive')
+    components_classes['source.ctf.lttng_archive'] =
+      BT2::BTPlugin.find('ctf').get_source_component_class_by_name('lttng-archive')
+  end
 
   # THAPI components
   thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib', '@PACKAGE@', 'bt2'))
