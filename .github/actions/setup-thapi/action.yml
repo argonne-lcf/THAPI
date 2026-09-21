@@ -51,16 +51,19 @@ runs:
     shell: bash
     run: |
       echo "PKG_CONFIG_PATH=$HOME/efficios_dep/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+  - name: Read the efficios dependency versions
+    shell: bash
+    run: grep "=" "$GITHUB_ACTION_PATH/efficios-versions.env" >> "$GITHUB_ENV"
   - uses: actions/cache@v4
     id: efficios_dep
     with:
       path: ~/efficios_dep/
-      key: ${{ runner.os }}-${{ hashFiles('.github/actions/setup-thapi/action.yml') }}-build-cache-efficios_dep
+      key: ${{ runner.os }}-${{ hashFiles('.github/actions/setup-thapi/efficios-versions.env') }}-build-cache-efficios_dep
   - name: Build userspace-rcu
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/urcu/userspace-rcu -b v0.15.3
+      git clone https://github.com/urcu/userspace-rcu -b "$URCU_REF"
       cd userspace-rcu
       ./bootstrap
       ./configure --prefix=$HOME/efficios_dep/
@@ -70,7 +73,7 @@ runs:
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/lttng/lttng-ust -b v2.14.0
+      git clone https://github.com/lttng/lttng-ust -b "$LTTNG_UST_REF"
       cd lttng-ust
       wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/a57eb4fa1b2b8621bb0e83a6ec25e48e3a761d15/packages/lttng-ust/55cca69.diff
       patch -p1 < 55cca69.diff
@@ -82,7 +85,7 @@ runs:
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-v2.14.0
+      git clone https://github.com/argonne-lcf/lttng-tools.git -b "$LTTNG_TOOLS_REF"
       cd lttng-tools
       ./bootstrap
       ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
@@ -92,7 +95,7 @@ runs:
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
+      git clone https://github.com/argonne-lcf/babeltrace.git -b "$BABELTRACE_REF"
       # TODO use anl-ms3-v2.1.2 when ctf.archive.reader doesn't segfault anymore
       cd babeltrace
       # Fix include path
