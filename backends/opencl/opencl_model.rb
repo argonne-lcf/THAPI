@@ -367,6 +367,14 @@ class MetaParameter
     @name = name
   end
 
+  # A variable-length blob always ships a run-time length. A fixed-size array
+  # has no length parameter of its own, so its size is the length.
+  def blob_length_args(stype, name, size)
+    return ['size_t', size] unless stype
+
+    [CL_TYPE_MAP[stype] || stype, "#{name} == NULL ? 0 : #{size}"]
+  end
+
   def lttng_array_type_broker(type, name, size, stype = nil)
     type = CL_TYPE_MAP[type] if CL_TYPE_MAP[type]
     if stype
@@ -386,7 +394,11 @@ class MetaParameter
     when *CL_FLOAT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}_hex", CL_FLOAT_SCALARS_MAP[type]]
     when *CL_STRUCTS, 'void'
-      lttng_type = ["ctf_#{lttng_arr_type}_text", 'uint8_t']
+      # Raw bytes rather than a run of numbers, so a blob. Its slots are not the
+      # ctf_* array ones: no element type, and a media type at the end.
+      return ['lttng_ust_field_variable_length_blob', name + '_vals', expr,
+              *blob_length_args(stype, name, size),
+              LTTng::TracepointField::DEFAULT_MEDIA_TYPE]
     else
       raise "Unknown Type: #{type.inspect} for #{name} in #{@command.prototype.name}!"
     end
@@ -427,8 +439,8 @@ class InScalar < InMetaParameter
     when *CL_FLOAT_SCALARS
       @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     when *CL_STRUCTS
-      @lttng_in_type = ['ctf_sequence_text', 'uint8_t', name + '_val', "(uint8_t *)#{name}", 'size_t',
-                        "#{name} == NULL ? 0 : sizeof(#{type})"]
+      @lttng_in_type = ['lttng_ust_field_variable_length_blob', name + '_val', "(uint8_t *)#{name}", 'size_t',
+                        "#{name} == NULL ? 0 : sizeof(#{type})", LTTng::TracepointField::DEFAULT_MEDIA_TYPE]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
@@ -721,8 +733,9 @@ end
 
 buffer_create_info = InMetaParameter.new(OPENCL_COMMANDS['clCreateSubBuffer'], 'buffer_create_info')
 buffer_create_info.instance_variable_set(:@lttng_in_type,
-                                         ['ctf_sequence_text', 'uint8_t', 'buffer_create_info_vals', 'buffer_create_info', 'size_t',
-                                          'buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)'])
+                                         ['lttng_ust_field_variable_length_blob', 'buffer_create_info_vals', 'buffer_create_info', 'size_t',
+                                          'buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)',
+                                          LTTng::TracepointField::DEFAULT_MEDIA_TYPE])
 
 OPENCL_COMMANDS['clCreateSubBuffer'].meta_parameters.push buffer_create_info
 

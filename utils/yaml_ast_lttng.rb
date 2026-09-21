@@ -186,12 +186,14 @@ module YAMLCAst
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
         when :aggregate
+          # An element count times an element size. The array arm is only
+          # reached once a length is known -- a length-less array is logged as
+          # its address above -- so the total is always a run-time size_t, and
+          # the blob is always the variable-length one.
+          ev.macro = :lttng_ust_field_variable_length_blob
           ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(#{type.name})"
-            ev.length_type = 'size_t'
-          end
-          ev.macro = ev.length_type ? :lttng_ust_field_variable_length_blob : :lttng_ust_field_fixed_length_blob
+          ev.length = "(#{ev.length}) * sizeof(#{type.name})"
+          ev.length_type = 'size_t'
         else
           super(type_classes)
         end

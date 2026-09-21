@@ -18,7 +18,7 @@ lttng_ust_cuda_args:
     - [ ctf_integer_hex, uintptr_t, f, "(uintptr_t)f" ]
     - [ ctf_integer, size_t, argIndex, argIndex ]
     - [ ctf_integer_hex, uintptr_t, kernelParam, "(uintptr_t)kernelParam" ]
-    - [ ctf_sequence_text, uint8_t, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0" ]
+    - [ lttng_ust_field_variable_length_blob, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0" , "application/octet-stream"]
 lttng_ust_cuda_profiling:
   events:
   - name: event_profiling
@@ -52,7 +52,7 @@ lttng_ust_cuda_exports:
     fields:
     - [ ctf_integer_hex, uintptr_t, pExportTableId, "(uintptr_t)pExportTableId" ]
     - [ ctf_integer_hex, size_t, exportOffset, exportOffset ]
-    - [ ctf_sequence_text, uint8_t, pExportTableId_val, pExportTableId, size_t, "sizeof(CUuuid)" ]
+    - [ lttng_ust_field_variable_length_blob, pExportTableId_val, pExportTableId, size_t, "sizeof(CUuuid)" , "application/octet-stream"]
 lttng_ust_cuda_properties:
   events:
   - name: device
@@ -65,4 +65,4 @@ lttng_ust_cuda_properties:
     - [ ctf_integer, int, ordinal, ordinal ]
     - [ ctf_integer_hex, int, device, device ]
     - [ ctf_string, name, name ]
-    - [ ctf_sequence_text, uint8_t, uuid, uuid, size_t, "sizeof(CUuuid)" ]
+    - [ lttng_ust_field_variable_length_blob, uuid, uuid, size_t, "sizeof(CUuuid)" , "application/octet-stream"]

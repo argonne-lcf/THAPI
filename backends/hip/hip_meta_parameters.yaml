@@ -93,7 +93,7 @@ meta_parameters:
   hipPointerGetAttributes:
     - [OutScalar, attributes]
   hipPointerGetAttribute:
-    - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "\
+    - [OutLTTng, data, lttng_ust_field_variable_length_blob, data_val, data, size_t, "\
       attribute == HIP_POINTER_ATTRIBUTE_CONTEXT ? 0 : \
       attribute == HIP_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : \
       attribute == HIP_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(hipDeviceptr_t) : \
@@ -110,7 +110,7 @@ meta_parameters:
       attribute == HIP_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES ? 0 : \
       attribute == HIP_POINTER_ATTRIBUTE_IS_GPU_DIRECT_RDMA_CAPABLE ? 0 : \
       attribute == HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS ? sizeof(hipMemAccessFlags) : \
-      attribute == HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE ? 0 : 0"]
+      attribute == HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE ? 0 : 0", "application/octet-stream"]
   hipImportExternalSemaphore:
     - [InScalar, semHandleDesc]
     - [OutScalar, extSem_out]
@@ -146,7 +146,7 @@ meta_parameters:
   hipMallocAsync:
     - [OutScalar, dev_ptr]
   hipMemPoolSetAttribute:
-    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipMemPoolReuseFollowEventDependencies ? sizeof(int) : \
       attr == hipMemPoolReuseAllowOpportunistic ? sizeof(int) : \
       attr == hipMemPoolReuseAllowInternalDependencies ? sizeof(int) : \
@@ -154,9 +154,9 @@ meta_parameters:
       attr == hipMemPoolAttrReservedMemCurrent ? 0 : \
       attr == hipMemPoolAttrReservedMemHigh ? 0 : \
       attr == hipMemPoolAttrUsedMemCurrent ? 0 : \
-      attr == hipMemPoolAttrUsedMemHigh ? 0 : 0"]
+      attr == hipMemPoolAttrUsedMemHigh ? 0 : 0", "application/octet-stream"]
   hipMemPoolGetAttribute:
-    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [OutLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipMemPoolReuseFollowEventDependencies ? sizeof(int) : \
       attr == hipMemPoolReuseAllowOpportunistic ? sizeof(int) : \
       attr == hipMemPoolReuseAllowInternalDependencies ? sizeof(int) : \
@@ -164,7 +164,7 @@ meta_parameters:
       attr == hipMemPoolAttrReservedMemCurrent ? 0 : \
       attr == hipMemPoolAttrReservedMemHigh ? 0 : \
       attr == hipMemPoolAttrUsedMemCurrent ? 0 : \
-      attr == hipMemPoolAttrUsedMemHigh ? 0 : 0"]
+      attr == hipMemPoolAttrUsedMemHigh ? 0 : 0", "application/octet-stream"]
   hipMemPoolSetAccess:
     - [InArray, desc_list, count]
   hipMemPoolGetAccess:
@@ -176,11 +176,11 @@ meta_parameters:
   hipMallocFromPoolAsync:
     - [OutScalar, dev_ptr]
   hipMemPoolExportToShareableHandle:
-    - [OutLTTng, shared_handle, ctf_sequence_text, uint8_t, shared_handle_val, shared_handle, size_t, "\
-      handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+    - [OutLTTng, shared_handle, lttng_ust_field_variable_length_blob, shared_handle_val, shared_handle, size_t, "\
+      handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0", "application/octet-stream"]
   hipMemPoolImportFromShareableHandle:
-    - [InLTTng, shared_handle, ctf_sequence_text, uint8_t, shared_handle_val, shared_handle, size_t, "\
-      handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+    - [InLTTng, shared_handle, lttng_ust_field_variable_length_blob, shared_handle_val, shared_handle, size_t, "\
+      handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0", "application/octet-stream"]
     - [OutScalar, mem_pool]
   hipMemPoolExportPointer:
     - [OutScalar, export_data]
@@ -516,15 +516,15 @@ meta_parameters:
   hipGraphEventWaitNodeGetEvent:
     - [OutScalar, event_out]
   hipDeviceGetGraphMemAttribute:
-    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [OutLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipGraphMemAttrUsedMemCurrent ? sizeof(uint64_t) : \
       attr == hipGraphMemAttrUsedMemHigh ? sizeof(uint64_t) : \
       attr == hipGraphMemAttrReservedMemCurrent ? sizeof(uint64_t) : \
-      attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0"]
+      attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0", "application/octet-stream"]
   hipDeviceSetGraphMemAttribute:
-    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipGraphMemAttrUsedMemHigh ? sizeof(uint64_t) : \
-      attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0"]
+      attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0", "application/octet-stream"]
   hipUserObjectCreate:
     - [OutScalar, object_out]
   hipMemAddressReserve:
@@ -533,8 +533,8 @@ meta_parameters:
     - [InScalar, prop]
     - [OutScalar, handle]
   hipMemExportToShareableHandle:
-    - [OutLTTng, shareableHandle, ctf_sequence_text, uint8_t, shareableHandle_val, shareableHandle, size_t, "\
-      handleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+    - [OutLTTng, shareableHandle, lttng_ust_field_variable_length_blob, shareableHandle_val, shareableHandle, size_t, "\
+      handleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0", "application/octet-stream"]
   hipMemGetAccess:
     - [InScalar, location]
     - [OutScalar, flags]
@@ -544,8 +544,8 @@ meta_parameters:
   hipMemGetAllocationPropertiesFromHandle:
     - [OutScalar, prop]
   hipMemImportFromShareableHandle:
-    - [InLTTng, osHandle, ctf_sequence_text, uint8_t, osHandle_val, osHandle, size_t, "\
-      shHandleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
+    - [InLTTng, osHandle, lttng_ust_field_variable_length_blob, osHandle_val, osHandle, size_t, "\
+      shHandleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0", "application/octet-stream"]
     - [OutScalar, handle]
   hipMemMapArrayAsync:
     - [InScalar, mapInfoList]
