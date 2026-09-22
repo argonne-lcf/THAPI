@@ -17,4 +17,3 @@ __attribute__((constructor)) static void tracer_pytorch_init() {
       at::RecordFunctionCallback(&on_entry, &on_exit)
           .scopes({at::RecordScope::FUNCTION, at::RecordScope::BACKWARD_FUNCTION}));
 }
-
