@@ -236,19 +236,25 @@ def get_and_add_components(graph, names, l_inputs)
 
       params['ctf-version'] = '1.8' if Gem::Version.new(semantic_version_str) >= Gem::Version.new('2.1.0')
       graph.add(comp, 'ctf_sink', params: params)
+    # We cast integers, because babeltrace2 infers the type from the value
+    # passed rather than from the one the *_params.yaml declares.
     when 'sink.btx_tally.tally'
       graph.add(comp, 'tally',
                 params: { 'display' => $options[:display],
                           'name' => $options[:name],
                           'display_mode' => $options[:'display-mode'],
                           'display_metadata' => $options[:'display-metadata'],
-                          'display_name_max_size' => $options[:'display-name-max-size'],
+                          'display_name_max_size' => BT2::BTValueIntegerSigned.new(
+                            value: $options[:'display-name-max-size']
+                          ),
                           'display_kernel_verbose' => $options[:'display-kernel-verbose'],
                           'backend_levels' => $options[:backends].join(',') })
     when 'sink.btx_timeline.timeline'
       graph.add(comp, 'timeline',
                 params: { 'output_path' => $options[:'output-path'],
-                          'offset' => $options[:'output-offset'] })
+                          'offset' => BT2::BTValueIntegerUnsigned.new(
+                            value: $options[:'output-offset']
+                          ) })
     when 'filter.utils.muxer'
       graph.add(comp, name)
     when 'filter.btx_aggreg.aggreg'

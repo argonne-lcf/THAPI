@@ -146,23 +146,15 @@ class OutPtrString < MetaParameter
 end
 
 class ScalarMetaParameter < MetaParameter
-  attr_reader :type
-
-  def initialize(command, name, type = nil)
-    super(command, name)
-    @type = type
+  def initialize(command, name)
+    super
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
 
     t = a.type
     raise "Type is not a pointer: #{t}!" unless t.is_a?(YAMLCAst::Pointer)
 
-    st = if type
-           eval(type)
-         else
-           t.type
-         end
-    lttngt = st.lttng_type(command.type_classes)
+    lttngt = t.type.lttng_type(command.type_classes)
     lttngt.name = name + '_val'
     if lttngt.macro == :ctf_array_text
       lttngt.macro = :ctf_sequence_text
@@ -170,9 +162,6 @@ class ScalarMetaParameter < MetaParameter
       checks = check_for_null("#{name}")
       lttngt.length = sanitize_expression("#{lttngt.length}", checks)
       lttngt.length_type = 'size_t'
-    elsif type
-      checks = check_for_null("#{name}")
-      lttngt.expression = sanitize_expression("*(#{YAMLCAst::Pointer.new(type: st)})#{name}", checks)
     else
       checks = check_for_null("#{name}")
       lttngt.expression = sanitize_expression("*#{name}", checks)
