@@ -3,10 +3,14 @@ lttng_ust_pytorch:
   - name: op_entry
     args:
     - ["const char *", name]
+    - ["const char *", overload_name]
     fields:
     - [ctf_string, name, name]
+    - [ctf_string, overload_name, overload_name]
   - name: op_exit
     args:
     - ["const char *", name]
+    - ["const char *", overload_name]
     fields:
     - [ctf_string, name, name]
+    - [ctf_string, overload_name, overload_name]

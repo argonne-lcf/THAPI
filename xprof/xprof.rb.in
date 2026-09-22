@@ -967,35 +967,26 @@ def all_env_tracers(usr_binary)
 
   if OPTIONS[:'backend-names'].include?('pytorch')
     # Supported patterns:
-    # * iprof -- python3 model.py (torch env is active).
-    # * iprof -- venv/bin/python3 module.py (non-active torch env, with LTTNG_UST_PYTORCH_LIBRARY_PATH)
+    # - iprof -- python3 model.py (torch env is active).
+    # - iprof -- venv/bin/python3 model.py (non-active torch env, with LTTNG_UST_PYTORCH_LIBRARY_PATH)
+    # - LTTNG_UST_PYTORCH_LIBRARY_PATH=${LIBTORCH_USED_BY_VENV}  iprof -- venv/bin/python3 model.py
 
     torch_lib = env_fetch_first('LTTNG_UST_PYTORCH_LIBRARY_PATH')
 
     if torch_lib.nil?
       torch_info = exec('python3 -c "import torch; print(torch.__file__); print(torch.__version__)"', debug: false)
-      torch_file, torch_version = torch_info.strip.split("\n")
-      torch_lib = torch_file && File.join(File.dirname(torch_file), 'lib')
-
-      if torch_lib.nil?
-        LOGGER.warn('No torch module found for python3, pytorch backend will not be enabled')
-      else
-        torch_version_parts = torch_version.split(/[.+ab-]/).reject(&:empty?).first(3).map(&:to_i)
-        # 1.10.0 and older fail this check: RecordScope had fewer members
-        # (6 vs. our 10), shrinking RecordFunctionCallback's scopes_ bit-array.
-        # This only catches size/count changes -- a same-size reordering of
-        # members (e.g. swapping two fields of equal size) would pass
-        # undetected, breaking ABI compatibility.
-        unless ([1, 11, 0]..[2, 14, 0]).cover?(torch_version_parts)
-          LOGGER.warn("THAPI: untested PyTorch version #{torch_version}")
-        end
-      end
+      torch_file, torch_version = torch_info.split("\n")
+      torch_lib = File.join(File.dirname(torch_file), 'lib') unless torch_file.nil?
     end
 
-    unless torch_lib.nil?
+    if torch_lib.nil?
+      LOGGER.warn('No torch module found for python3, pytorch backend will not be enabled')
+    else
+      tested = Gem::Version.new('1.11.0')..Gem::Version.new('2.14.0')
+      version = torch_version && Gem::Version.new(torch_version[/\d+(\.\d+)*/] || '0')
+      LOGGER.warn("THAPI: untested PyTorch version #{torch_version}") if version && !tested.cover?(version)
+
       backends << 'pytorch'
-      # LibTracerPytorch.so calls at::addGlobalCallback() and RecordFunction::name()
-      # both implemented in libtorch_cpu.so. The lib is reachable via LD_LIBRARY_PATH.
       h[%w[LD_LIBRARY_PATH prepend]] << torch_lib
       h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, 'libTracerPytorch.so')
     end

@@ -1,29 +1,5 @@
-// Minimal hand-written stand-in for PyTorch's <ATen/record_function.h>.
-//
-// Declares only the names tracer_pytorch.cpp actually uses:
-//   at::RecordScope             - FUNCTION / BACKWARD_FUNCTION values
-//   at::ObserverContext         - empty base; we only ever return nullptr
-//   at::RecordFunction          - only .name() and .overload_name(); we
-//                                 never construct one ourselves, only
-//                                 receive a reference from the real library,
-//                                 so no field layout is needed here -- both
-//                                 resolve against their real out-of-line
-//                                 symbols in libtorch_cpu.
-//   at::RecordFunctionCallback  - constructed BY US and passed BY VALUE into
-//                                 addGlobalCallback. Its field layout below
-//                                 (order, types, and the scopes_ array sized
-//                                 by NUM_SCOPES) must match PyTorch's real
-//                                 class byte-for-byte, copied verbatim from
-//                                 the upstream header. If a future PyTorch
-//                                 release reorders/adds a field or changes
-//                                 RecordScope's member count, this header
-//                                 will still compile cleanly but
-//                                 addGlobalCallback will read the wrong
-//                                 bytes back -- silent corruption, not a
-//                                 build failure. Re-verify this layout
-//                                 against ATen/record_function.h whenever
-//                                 upstream PyTorch changes.
-//   at::addGlobalCallback       - registers the callback pair
+// Minimal hand-written PyTorch's <ATen/record_function.h>.
+
 #pragma once
 
 #include <array>

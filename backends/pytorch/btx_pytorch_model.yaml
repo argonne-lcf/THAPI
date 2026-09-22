@@ -35,11 +35,19 @@
         :field_class:
           :cast_type: char *
           :type: string
+      - :name: overload_name
+        :field_class:
+          :cast_type: char *
+          :type: string
   - :name: lttng_ust_pytorch:op_exit
     :payload_field_class:
       :type: structure
       :members:
       - :name: name
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: overload_name
         :field_class:
           :cast_type: char *
           :type: string
